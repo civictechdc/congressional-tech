@@ -41,7 +41,8 @@ from pathlib import Path
 
 import requests
 from congress_shared.auth import load_congress_api_key
-from congress_shared.globals import CONGRESS_METADATA, DEFAULT_GPO_HEARINGS_FILE
+from congress_shared.resources import CONGRESS_METADATA
+from congress_shared.paths import DEFAULT_GPO_HEARINGS_FILE
 
 from congress_api.matching.gpo_committees import clean_rows, merge_cached_row
 from congress_api.models.gpo import GpoCollectionPage, GpoTranscriptDates

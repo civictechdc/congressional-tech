@@ -262,7 +262,7 @@ stable labels, not Python import paths. Replay commands use `congress_api.replay
 | `hearing-transcribe` | `cli.transcribe` | `{stem}.json` + `{stem}.gpo.txt` |
 | `raw-source-sync` | `cli.raw_sync` | Missing bodies, appended receipts, capture/retry indexes and rebuilt filename/document tables in R2 |
 
-`congress_shared.globals.add_global_args` adds `--tinydb_dir` where used. Commands that call `parse_known_args` leave `--congress-api-key` available for the key loader.
+`congress_shared.cli.add_global_args` adds `--tinydb_dir` where used. Commands that call `parse_known_args` leave `--congress-api-key` available for the key loader.
 
 ### Module-only CLIs
 
@@ -687,7 +687,7 @@ The independent YouTube collectors remain active.
 
 ## Default paths
 
-From `congress_shared.globals` (package-relative, not cwd-relative):
+From `congress_shared.paths` (output/cache defaults) and `congress_shared.resources` (bundled channel CSV). Values remain package-relative:
 
 | Constant | Relative path |
 | --- | --- |

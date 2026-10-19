@@ -3,13 +3,15 @@
 import argparse
 from pathlib import Path
 
-from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE
+from congress_shared.cli import configure_logging
+from congress_shared.paths import DEFAULT_GPO_HEARINGS_FILE
 
 from congress_api.cli.common import positive
 from congress_api.transcripts.gpo import main
 
 
 def parse_args_and_run():
+    configure_logging()
     parser = argparse.ArgumentParser(description="Download GPO hearing transcripts as plain text.")
     parser.add_argument("--out-dir", required=True, help="Local folder for <package_id>.txt files.")
     parser.add_argument("--gpo-path", type=Path, default=DEFAULT_GPO_HEARINGS_FILE)

@@ -24,7 +24,7 @@ from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_FILE
+from congress_shared.paths import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_FILE
 
 from congress_api.matching import speaker_names as names
 from congress_api.models.transcription import Header, Person

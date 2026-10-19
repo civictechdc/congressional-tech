@@ -3,12 +3,14 @@
 import argparse
 from pathlib import Path
 
+from congress_shared.cli import configure_logging
 from congress_shared.auth import load_congress_api_key
 
 from congress_api.acquisition.committees import collect
 
 
 def main():
+    configure_logging()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--meetings-path', type=Path, required=True)
     parser.add_argument('--gpo-path', type=Path, help='Include Congresses represented by retained GPO documents')

@@ -8,14 +8,13 @@ import logging
 from pathlib import Path
 
 from congress_shared.youtube_cache import decode_cache
-
-from congress_shared.globals import (
-    DATA_DIR,
-    DEFAULT_CHANNELS_CSV,
+from congress_shared.cli import add_global_args, configure_logging
+from congress_shared.resources import DEFAULT_CHANNELS_CSV
+from congress_shared.paths import (
+    DEFAULT_OVERRIDES_FILE,
     DEFAULT_GPO_HEARINGS_FILE,
     DEFAULT_HEARING_VIDEOS_FILE,
     DEFAULT_MEETINGS_FILE,
-    add_global_args,
 )
 
 from congress_api.matching.committees import codes_of
@@ -24,8 +23,6 @@ from congress_api.matching.gpo_videos import EVENT_ID, dates_in_text, words
 from congress_api.matching.meetings import scheduled_or_rescheduled
 from congress_api.retention.meetings import read_meetings
 from congress_api.parsers.media import youtube_video_id, senate_player_reference
-
-DEFAULT_OVERRIDES_FILE = DATA_DIR / "hearing_video_overrides.csv"
 
 
 def load_videos(tinydb_dir, channels):
@@ -98,6 +95,7 @@ def main(output_path, tinydb_dir, channels_csv_path, gpo_path, meetings_path, ov
 
 
 def parse_args_and_run():
+    configure_logging()
     parser = argparse.ArgumentParser(description="Match GPO hearing transcripts to committee YouTube videos.")
     add_global_args(parser)
     parser.add_argument("--output-path", type=Path, default=DEFAULT_HEARING_VIDEOS_FILE)

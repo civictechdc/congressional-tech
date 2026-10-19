@@ -3,13 +3,15 @@
 import argparse
 from pathlib import Path
 
-from congress_shared.globals import DEFAULT_GPO_HEARINGS_FILE
+from congress_shared.cli import configure_logging
+from congress_shared.paths import DEFAULT_GPO_HEARINGS_FILE
 
 from congress_api.cli.common import nonnegative, positive
 from congress_api.acquisition.gpo import main
 
 
 def parse_args_and_run():
+    configure_logging()
     parser = argparse.ArgumentParser(
         description="Fetch metadata and transcript links for GPO hearing transcripts."
     )
