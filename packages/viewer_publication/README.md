@@ -19,6 +19,7 @@ Install it with the workspace (`uv sync --locked`).
 | `client` | `GuardedPublicationClient` accepts only derived catalog and viewer keys, requires a condition on every write, and disables SDK retries. After a put, it reads the object back and returns a `VerifiedTransfer` (bucket, key, size, SHA-256, and ETag). `require_publication_client` rejects a client that could retry a write on its own. |
 | `continuation` | `Continuation` and `DurableJournal` record each accepted phase. Resume returns the recorded result when the artifacts still match. A changed file is a refusal, not a silent rerun. |
 | `local` | `LocalContinuation` owns deliberately local recovery through synced `events.jsonl` records. `read_local_journal` inspects the same bounded history without changing files or granting current readback proof. |
+| `reconciliation` | Records the latest bounded per-object read observation, outcome, and next check during explicit reconciliation. Its file never supplies readback proof or write authority. |
 | `attempt` | Identifies one publish attempt (run, revision, artifact digest) so a later publish cannot claim a different attempt. |
 | `verify` | Read-only checks that a published viewer object matches the attempt that was prepared. |
 
@@ -43,3 +44,17 @@ never truncated or retried automatically. These are local admission limits, not
 a complete process memory budget. The cloud journal and its remote custody rules
 do not change. Runtime source pins distinguish older attempts; this change does
 not migrate their local histories automatically.
+
+Explicit reconciliation replaces `reconciliation-progress.json` as it reads each
+object. The observation names the key, bytes read, declared body length, object
+count, outcome, and exact next check. It binds the input identity and carries a
+scan ID and timestamp. Status shows it as the last recorded observation, which
+may be stale if the producer stops. It never claims public verification or
+permission to resume. Read success requires the complete body and existing
+size/digest/version checks; scan completion follows the state checkpoint.
+
+Each object produces at most 36 observations, plus scan start and completion.
+Only the latest file is retained, capped at 16 KiB. These observations add no
+`fsync` calls, durable journal events, remote requests, or retries. Observation
+write failures cannot replace the original reconciliation outcome. Diagnostics
+use fixed messages and do not copy transport exception text or credentials.
