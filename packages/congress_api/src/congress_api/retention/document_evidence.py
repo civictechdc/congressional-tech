@@ -17,6 +17,7 @@ from zipfile import is_zipfile
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 from congress_api.parsers.document_cover import COVER_FIELDS, document_cover
 from congress_api.retention import pdf_tools
+from congress_api.retention.body_keys import body_key_digest
 from congress_api.parsers import document_links
 from congress_api.parsers.xml import parse_xml, xml_element
 
@@ -128,8 +129,8 @@ def legacy_house_cache_name(url):
 
 def read_retained_body(root, key, *, read_compressed=None, limit=16 * 1024 * 1024):
     """Read bounded content-addressed evidence; missing/oversize bodies abstain."""
-    match = re.fullmatch(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})\.gz', key or '')
-    if not match or match[1] != match[2][:2]:
+    digest = body_key_digest(key)
+    if digest is None:
         return None
     try:
         if read_compressed is None:
@@ -145,7 +146,7 @@ def read_retained_body(root, key, *, read_compressed=None, limit=16 * 1024 * 102
         return None
     if len(data) > limit:
         return None
-    if sha256(data).hexdigest() != match[2]:
+    if sha256(data).hexdigest() != digest:
         raise ValueError(f'Retained body digest mismatch: {key}')
     return data
 

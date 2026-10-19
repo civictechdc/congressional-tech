@@ -2,8 +2,7 @@
 import re
 
 from congress_api.parsers.archive_links import allowed_url, capture_links
-
-BODY_KEY = re.compile(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})\.gz')
+from congress_api.retention.body_keys import body_key_digest
 
 
 def wrapped_target(value):
@@ -36,8 +35,7 @@ def content_kind(row):
 
 
 def valid_body(key):
-    match = BODY_KEY.fullmatch(key or '')
-    return bool(match and match[1] == match[2][:2])
+    return body_key_digest(key) is not None
 
 
 def catalog_aliases(path, accepted=()):
