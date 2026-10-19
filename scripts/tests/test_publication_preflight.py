@@ -139,7 +139,7 @@ def test_early_cli_imports_without_site_packages_and_workflow_keeps_fresh_write_
     assert early<setup and 'preparation_required' in steps[setup]['if'] and "github.event_name == 'push'" in steps[setup]['if']
     assert next(s for s in steps if s.get('id')=='prepare')['if'].find('preparation_required')>=0
     publication=next(s for s in steps if s.get('name')=='Publish accepted preparation')
-    assert '--artifact-id' in publication['run'] and '--attempt' in publication['run']
+    assert '--artifact-id' in publication['run'] and '--resume --resume-descriptor' in publication['run']
 
 
 @pytest.mark.parametrize('key,kind',[

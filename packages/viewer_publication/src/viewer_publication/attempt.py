@@ -11,6 +11,7 @@ import tempfile
 import uuid
 from datetime import datetime, timezone
 
+from viewer_publication.resume import resume_descriptor, validate_resume_descriptor
 from viewer_publication.client import ContinuedPublicationClient
 from viewer_publication.continuation import Continuation, DurableJournal, MissingPublicationJournal, sha256
 from congress_api.retention.derived_files import file_identity
@@ -206,33 +207,6 @@ def verify_github_artifact(artifact, prepared):
             raise ValueError(diagnostic)
     return {'id': str(metadata['id']), 'digest': expected_digest, 'name': metadata['name'],
             'run_id': str(artifact['run_id']), 'repository': artifact['repository']}
-
-
-def resume_descriptor(artifact, run, repository):
-    name = artifact.get('name', '')
-    match = re.fullmatch(r'viewer-prepared-([0-9]+)-([0-9]+)-([a-f0-9]{64})', name)
-    if not match or match[1] != str(run.get('id')):
-        raise ValueError('Artifact name does not identify the original preparation run')
-    result = {'version': 1, 'revision': run.get('head_sha'), 'run_id': str(run['id']),
-              'run_attempt': match[2], 'artifact_id': str(artifact.get('id', '')),
-              'artifact_digest': artifact.get('digest', '').removeprefix('sha256:'),
-              'artifact_name': name, 'attempt': '-'.join(match.groups()), 'repository': repository}
-    return validate_resume_descriptor(result)
-
-
-def validate_resume_descriptor(value):
-    if not isinstance(value, dict) or type(value.get('version')) is not int or value['version'] != 1:
-        raise ValueError('Unsupported resume descriptor version')
-    for name, pattern in (('revision', r'[a-f0-9]{40}'), ('run_id', r'[0-9]+'),
-            ('run_attempt', r'[0-9]+'), ('artifact_id', r'[0-9]+'),
-            ('artifact_digest', r'[a-f0-9]{64}'), ('repository', r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+')):
-        if not isinstance(value.get(name), str) or not re.fullmatch(pattern, value[name]):
-            raise ValueError('Invalid resume descriptor field: ' + name)
-    match = re.fullmatch(r'viewer-prepared-([0-9]+)-([0-9]+)-([a-f0-9]{64})', value.get('artifact_name', ''))
-    if (not match or match[1] != value['run_id'] or match[2] != value['run_attempt']
-            or value.get('attempt') != '-'.join(match.groups())):
-        raise ValueError('Resume descriptor attempt/name/run fields differ')
-    return value
 
 
 def lookup_attempt(repository, run_id, artifact_id=None):

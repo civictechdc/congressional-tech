@@ -1,6 +1,6 @@
 ---
 id: ct-2io2
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-19T18:51:10Z
@@ -27,3 +27,7 @@ Independent repair cross-reviews approved. Local production-offline passed 9459 
 **2026-10-19T19:22:05Z**
 
 External test-relocation commits 6016ca1 and d0386c7 integrated with PR132. Inventories preserve 335 Python test files, 644 moved test functions and 1433 assertions. Full local run: 9457 passed, 38 subtests, 50 excluded; two relocation failures repaired and targeted checks passed. Review also fixed moved notes and historical fixture ownership. Exact receipts: docs/experiments/efficiency-debt/test-relocation-evidence.json. Worktree refresh remains pending.
+
+**2026-10-19T19:25:05Z**
+
+PR133 merged 3757f55ed33ea390895c20a2007cb08eb39ce519. Primary and all three implementation worktrees refreshed to that revision; owned drafts preserved. Independent relocation, archive and workflow reviews approved. Integration complete.

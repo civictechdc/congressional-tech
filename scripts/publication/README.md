@@ -17,6 +17,18 @@ One interface for a viewer publish attempt. Run these commands through `apps/sit
 
 A failed command replaces a stale success report before it opens a client that could write.
 
+## Resume through GitHub Actions
+
+Run `describe-attempt` with the original run ID and save its JSON report. If that
+run has several accepted artifacts, select its exact artifact ID. Paste the
+report into the publication workflow's single `resume_descriptor` input.
+
+The workflow checks the record before installing the workspace, then checks out
+its exact original revision and restores its exact artifact. The CLI rechecks
+the same record before opening a publication client. The input is limited to
+16 KiB; duplicate fields, conflicting identities and another repository fail
+before selection. Ordinary scheduled runs need no resume input.
+
 ## `pipeline_status.py`
 
 Reads the status of a capture or publish **without changing it**. Give it a GitHub Actions run ID. It asks GitHub for that run and reads the public heartbeat object (`status/raw-source-sync.json`). It attributes heartbeat numbers to the run only when the run, attempt, and git revision match. It does not resume work, write status, or estimate a finish time.

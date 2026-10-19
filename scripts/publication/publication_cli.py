@@ -7,6 +7,8 @@ import subprocess
 import sys
 import tempfile
 
+from viewer_publication.resume import MAX_DESCRIPTOR_BYTES, parse_resume_descriptor
+
 
 def save_report(path, result):
     path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
@@ -46,10 +48,8 @@ def validate(args, attempts):
             if not args.resume:
                 raise ValueError('--resume-descriptor requires explicit --resume')
             with args.resume_descriptor.open('rb') as stream:
-                raw = stream.read(16 * 1024 + 1)
-            if len(raw) > 16 * 1024:
-                raise ValueError('Resume descriptor exceeds 16 KiB limit')
-            descriptor = attempts.validate_resume_descriptor(json.loads(raw))
+                raw = stream.read(MAX_DESCRIPTOR_BYTES + 1)
+            descriptor = parse_resume_descriptor(raw)
             for field, name in (('artifact_id','artifact_id'), ('artifact_digest','artifact_digest'),
                                 ('attempt','attempt'), ('run_id','run_id'), ('repository','repository')):
                 existing = getattr(args, name)
