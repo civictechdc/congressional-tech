@@ -361,7 +361,7 @@ def public_probe(base, pointer, manifest):
 
 def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=PUBLIC_URL,
            probe=public_probe, publication_plan=None, validation=None):
-    from guarded_recovery_publication_client import require_publication_client
+    from viewer_publication.client import require_publication_client
     require_publication_client(client)
     if not all(callable(getattr(client,name,None)) for name in ('get_object','put_object','download_file')):
         raise TypeError('Viewer publication client requires conditional writes and complete file upload/readback')
@@ -484,6 +484,6 @@ def check_selected_publication(client, pointer, *, public_url=PUBLIC_URL, record
 
 if __name__ == '__main__':
     import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts'))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts/publication'))
     from publication_cli import main
     raise SystemExit(main(sys.modules[__name__]))

@@ -4,7 +4,7 @@ import importlib.util
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('viewer_benchmark', ROOT / 'scripts/benchmark_viewer_publication.py')
+spec = importlib.util.spec_from_file_location('viewer_benchmark', ROOT / 'scripts/measure/benchmark_viewer_publication.py')
 benchmark = importlib.util.module_from_spec(spec); spec.loader.exec_module(benchmark)
 
 

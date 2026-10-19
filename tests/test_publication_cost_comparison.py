@@ -3,11 +3,14 @@ from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
+import sys
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts/measure'))
 import compare_publication_costs as comparison
 
 

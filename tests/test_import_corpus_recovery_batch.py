@@ -5,10 +5,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(ROOT / 'scripts'), str(ROOT / 'packages/congress_api/src')]
 import pyarrow as pa
-from import_corpus_recovery_batch import import_batch
+from corpus_recovery.transfer import import_batch
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, CAPTURES_KEY, STATE_KEY
 
 
@@ -123,7 +121,7 @@ if __name__ == '__main__':
 def test_existing_body_skips_compression():
     from unittest.mock import patch
     import gzip
-    import import_corpus_recovery_batch as module
+    import corpus_recovery.transfer as module
     fixture = ImportTests()
     fixture.setUp()
     try:
@@ -141,9 +139,9 @@ def test_existing_body_skips_compression():
 
 def test_prior_body_identity_reuses_head_without_get_or_gzip():
     from unittest.mock import patch
-    import import_corpus_recovery_batch as module
+    import corpus_recovery.transfer as module
     from test_reconcile_corpus_recovery_bodies import Client
-    from reconcile_corpus_recovery_bodies import reconcile
+    from corpus_recovery.inventory import reconcile
     from types import SimpleNamespace
     fixture = ImportTests()
     fixture.setUp()
@@ -171,7 +169,7 @@ def test_prior_body_identity_reuses_head_without_get_or_gzip():
 
 def test_missing_bodies_compress_once_each_even_after_lost_ack():
     from unittest.mock import patch
-    import import_corpus_recovery_batch as module
+    import corpus_recovery.transfer as module
     fixture = ImportTests()
     fixture.setUp()
     try:

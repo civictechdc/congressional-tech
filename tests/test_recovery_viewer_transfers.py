@@ -15,9 +15,9 @@ from unittest.mock import patch
 from botocore.exceptions import ClientError
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT/'scripts'))
+sys.path.insert(0, str(ROOT/'scripts/publication'))
 sys.path.insert(0, str(ROOT/'apps/site/scripts'))
-from guarded_recovery_publication_client import GuardedPublicationClient, VerifiedTransfer
+from viewer_publication.client import GuardedPublicationClient, VerifiedTransfer
 
 spec = importlib.util.spec_from_file_location('recovery_transfer_publisher', ROOT/'apps/site/scripts/publish-viewer-r2.py')
 publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)

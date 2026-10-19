@@ -9,8 +9,7 @@ import pytest
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-import publication_verification as verification
+import viewer_publication.verify as verification
 
 
 def observed(tmp_path):

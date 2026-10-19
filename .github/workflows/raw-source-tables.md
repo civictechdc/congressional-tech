@@ -332,7 +332,7 @@ updates and raw capture upload the fixture qualification report when validation
 runs. Successful validation caches include revision and dependency identity.
 
 For a full source/index snapshot benchmark, use
-[`scripts/benchmark_core_rebuild.py`](../../scripts/benchmark_core_rebuild.py)
+[`scripts/measure/benchmark_core_rebuild.py`](../../scripts/measure/benchmark_core_rebuild.py)
 as described in [`core-workflow-qualification.md`](../../docs/core-workflow-qualification.md).
 It pins consumed source/index inputs, seeds, and published outputs; records time,
 reads and stage memory; and compares hashes of complete records with a reference

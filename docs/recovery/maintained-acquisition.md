@@ -1,15 +1,15 @@
 # Maintained recovery commands
 
-`scripts/webharvest_recovery.py` promotes the retained-first requests and content
+`scripts/webharvest/webharvest_recovery.py` promotes the retained-first requests and content
 checks from `recover_nara_html_continuation_04.py` and
 `recover_firecrawl_nara_scaled_02.py`. It acquires only exact indexed HTML replay
 URLs. It never imports, publishes, or selects new targets. Run it against an
 explicitly reviewed queue; a generated plan alone does not approve acquisition.
 
 ```sh
-python scripts/webharvest_recovery.py plan --queue queue.json --prior prior-receipt.json --deferred deferred.json --output dispositions.json
-python scripts/webharvest_recovery.py pagination --pages retained-index-pages.json
-python scripts/webharvest_recovery.py acquire --queue approved-queue.json --config acquisition-config.json --receipts run-directory
+python scripts/webharvest/webharvest_recovery.py plan --queue queue.json --prior prior-receipt.json --deferred deferred.json --output dispositions.json
+python scripts/webharvest/webharvest_recovery.py pagination --pages retained-index-pages.json
+python scripts/webharvest/webharvest_recovery.py acquire --queue approved-queue.json --config acquisition-config.json --receipts run-directory
 ```
 
 All paths are explicit. Queues contain groups with `original_urls` and
@@ -83,7 +83,7 @@ command aggregates completed receipts once into `results.json`. Reconstruct
 lost counters and aggregate output without acquiring anything:
 
 ```sh
-python scripts/webharvest_recovery.py aggregate --receipts run-directory
+python scripts/webharvest/webharvest_recovery.py aggregate --receipts run-directory
 ```
 
 The request receipts are authoritative; partial aggregate output is disposable.
@@ -97,7 +97,7 @@ worker script bytes may change after their completed receipts were produced.
 One configurable qualifier replaces dated snapshot copies:
 
 ```sh
-python scripts/webharvest_recovery.py qualify --source completed-receipt.json --source another-receipt.json --deferred deferred.json --kind pdf --receipts qualification-directory
+python scripts/webharvest/webharvest_recovery.py qualify --source completed-receipt.json --source another-receipt.json --deferred deferred.json --kind pdf --receipts qualification-directory
 ```
 
 It verifies each source receipt's current bytes and records their SHA-256,

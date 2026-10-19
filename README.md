@@ -26,6 +26,8 @@ This is a [Turborepo](https://turborepo.com) monorepo using npm workspaces, in t
 | **`congress_api`** | Production meeting mirror, GovInfo and committee-site capture, inventories and transcripts. Start with `congress-meetings`; TinyDB explore commands remain optional. |
 | **`youtube_api`** | Fetch and analyze committee YouTube data. CLIs: `youtube-fetch`, `youtube-analyze`. |
 | **`committee_meeting`** | Committee meeting metadata helpers. |
+| **`corpus_recovery`** | Checks recovered committee documents and adds them to the raw archive. Commands are in [`scripts/corpus_recovery`](scripts/corpus_recovery/README.md). |
+| **`viewer_publication`** | Publishes the public filename viewer without rewriting archive objects. Commands are in [`scripts/publication`](scripts/publication/README.md). |
 
 ## Submodules
 
@@ -75,7 +77,7 @@ Content lives as markdown under `src/content/` (themes, proposals, projects) —
 
 ### The Python tools
 
-One locked environment installs the six maintained Python packages:
+One locked environment installs the workspace Python packages:
 
 ```bash
 uv sync --locked
@@ -85,6 +87,8 @@ python scripts/dev.py prepare-baseline
 python scripts/dev.py test production-offline
 python scripts/dev.py test active-experiment-regression
 ```
+
+Other commands in [`scripts/`](scripts/README.md) publish the filename viewer, add recovered documents to the archive, query the Library of Congress Web Harvest, and measure local rebuilds. Those jobs are separate from the CLIs below.
 
 Install Poppler with `brew install poppler` on macOS or
 `sudo apt-get install poppler-utils procps` on Ubuntu. See the
@@ -132,7 +136,7 @@ The repo ships a [dev container](https://containers.dev/) that installs the Pyth
 Inspect an existing capture or rebuild run without changing it:
 
 ```bash
-.venv/bin/python scripts/pipeline_status.py --run RUN_ID
+.venv/bin/python scripts/publication/pipeline_status.py --run RUN_ID
 ```
 
 The [pipeline status guide](docs/pipeline-status.md) explains identity checks,

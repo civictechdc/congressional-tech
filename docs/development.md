@@ -1,6 +1,6 @@
 # Python development and validation
 
-Use the root `uv.lock` for the six maintained Python members. Each checkout gets
+Use the root `uv.lock` for the eight maintained Python members. Each checkout gets
 its own `.venv`; editable imports must point into that checkout. Python 3.12.13 is
 pinned in `.python-version` and checked by doctor. The exact patch matters because
 accepted publication receipts bind the runtime; explicit resume must recreate it.
@@ -21,7 +21,7 @@ python scripts/dev.py test production-offline
 python scripts/dev.py test active-experiment-regression
 ```
 
-`doctor` checks Python, all six import locations, the locked PyArrow version and
+`doctor` checks Python, all eight import locations, the locked PyArrow version and
 both Poppler commands (`pdfinfo`, `pdftotext`) and the `ps` command used by
 the PDF memory guard. Import and command probes have
 bounded timeouts. Missing native commands fail before pytest starts.

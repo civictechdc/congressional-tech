@@ -35,7 +35,7 @@ A homepage capture timestamp does not establish that a PDF was captured. A succe
 Run from the repository root with its existing Python environment:
 
 ```sh
-.venv/bin/python scripts/webharvest_committee_map.py lookup \
+.venv/bin/python scripts/webharvest/webharvest_committee_map.py lookup \
   'https://energycommerce.house.gov/path/file.pdf' --congress 118
 ```
 
@@ -44,7 +44,7 @@ Omit `--congress` to search every mapped Congress, newest first. The file path a
 Rebuild entirely from retained source pages:
 
 ```sh
-.venv/bin/python scripts/webharvest_committee_map.py build --offline
+.venv/bin/python scripts/webharvest/webharvest_committee_map.py build --offline
 ```
 
 Use `build --output NEW_DIRECTORY` for a fresh source snapshot. Existing retained pages are reused and checked against their hashes.
@@ -52,7 +52,7 @@ Use `build --output NEW_DIRECTORY` for a fresh source snapshot. Existing retaine
 Resolve homepage redirects through Zyte into a **new directory**, using `ZYTE_TOKEN` in the environment or a supplied environment file and a trusted CA bundle that includes the Zyte certificate:
 
 ```sh
-.venv/bin/python scripts/webharvest_committee_map.py resolve-zyte \
+.venv/bin/python scripts/webharvest/webharvest_committee_map.py resolve-zyte \
   --env-file /path/to/provider.env \
   --ca-bundle /path/to/zyte-ca-bundle.pem \
   --output output/webharvest-redirects-new
@@ -77,7 +77,7 @@ All 319 matched PDFs have an exact-domain match; `www` variants add lookup optio
 Generated local outputs are in `output/webharvest-committee-lookups/`: `pdf-candidates.jsonl`, `unmatched-pdfs.jsonl`, and `lookup-summary.json`. Recreate them with:
 
 ```sh
-.venv/bin/python scripts/webharvest_committee_map.py join \
+.venv/bin/python scripts/webharvest/webharvest_committee_map.py join \
   --targets .cache/document-bulk-recovery-20261014T1552Z/targets.csv \
   --exclude-recovered .cache/document-bulk-recovery-20261014T1552Z/publication-1386/recovered.json \
   --include-www --output output/webharvest-committee-lookups

@@ -5,8 +5,7 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from guarded_recovery_publication_client import GuardedPublicationClient
+from viewer_publication.client import GuardedPublicationClient
 
 
 class Client:
@@ -143,8 +142,8 @@ def test_invalid_guard_client_and_sdk_retry_policy_fail_before_any_write():
 
 def test_shared_continuation_client_refuses_changed_original_write_condition(tmp_path):
     import pytest
-    from guarded_recovery_publication_client import ContinuedPublicationClient
-    from recovery_publication_continuation import Continuation
+    from viewer_publication.client import ContinuedPublicationClient
+    from viewer_publication.continuation import Continuation
     state=Continuation(tmp_path/'attempt',{})
     client=Client()
     proxy=ContinuedPublicationClient(client,continuation=state,guard=lambda:None,journal=state.record,after_write=lambda *a:None)

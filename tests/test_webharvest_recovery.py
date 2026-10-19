@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/webharvest'))
 import webharvest_recovery as recovery
 
 
@@ -320,13 +320,12 @@ def test_new_classifier_source_invalidates_cache(tmp_path, monkeypatch):
     item, config, directory = retained(tmp_path)
     raw = Path(item['retained']['body_path']).read_bytes()
     first = validation.freeze(tmp_path / 'first', {})
-    scripts = tmp_path / 'alternate-scripts'
-    scripts.mkdir()
-    real_scripts = Path(validation.__file__).parent
-    (scripts / 'webharvest_validation.py').write_bytes(Path(validation.__file__).read_bytes())
-    for name in ['classify_recovery_html.py', 'classify_recovery_html_transcripts.py']:
-        (scripts / name).write_bytes((real_scripts / name).read_bytes() + b'\n# newer classifier source\n')
-    monkeypatch.setattr(validation, '__file__', str(scripts / 'webharvest_validation.py'))
+    package = tmp_path / 'package'
+    package.mkdir()
+    real = validation.classifier_directory()
+    for name in ['html.py']:
+        (package / name).write_bytes((real / name).read_bytes() + b'\n# newer classifier source\n')
+    monkeypatch.setattr(validation, 'classifier_directory', lambda: package)
     second = validation.freeze(tmp_path / 'second', {})
     assert first['classifier_sha256'] != second['classifier_sha256']
     _, a = validation.classify_cached(raw, tmp_path / 'cache', tmp_path / 'first', first)

@@ -6,7 +6,7 @@ from urllib.parse import urlencode
 
 import pytest
 
-SPEC = importlib.util.spec_from_file_location('index_audit', Path(__file__).resolve().parents[1] / 'scripts/webharvest_index_remaining.py')
+SPEC = importlib.util.spec_from_file_location('index_audit', Path(__file__).resolve().parents[1] / 'scripts/webharvest/webharvest_index_remaining.py')
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 

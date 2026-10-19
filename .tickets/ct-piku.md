@@ -2,7 +2,7 @@
 id: ct-piku
 status: open
 deps: [ct-2d3k]
-links: [ct-d3un]
+links: [ct-d3un, ct-esm4]
 created: 2026-10-19T16:40:41Z
 type: task
 priority: 1
@@ -30,3 +30,7 @@ Review evidence: scripts/dispatch_corpus_recovery_publication.py:78:load. See do
 **2026-10-19T16:56:07Z**
 
 Prioritized for efficiency and architectural debt per user direction. Require measured work/resource changes and simpler ownership; preserve behavior and data. Grok/Cursor is concurrently refactoring /scripts; use this ticket as its acceptance checklist and avoid duplicate implementation. Keep open until reviewed evidence passes.
+
+**2026-10-19T17:00:42Z**
+
+Related reshape ct-esm4 packages corpus recovery and pins the files that execute. Related only. It does not close this ticket.

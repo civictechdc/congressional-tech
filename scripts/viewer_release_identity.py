@@ -30,9 +30,12 @@ def source_files(root):
     paths.update((root/'docs/youtube-coverage/research/scripts').glob('*.py'))
     paths.update(root/name for name in (
         'apps/site/scripts/publish-filename-viewer.py','apps/site/scripts/publish-viewer-r2.py',
-        'scripts/viewer_publication_attempt.py','scripts/publication_cli.py',
-        'scripts/recovery_publication_continuation.py','scripts/guarded_recovery_publication_client.py',
-        'scripts/viewer_release_identity.py','scripts/publication_preflight.py',
+        'scripts/publication/publication_cli.py','scripts/viewer_release_identity.py','scripts/publication_preflight.py',
+        'packages/viewer_publication/src/viewer_publication/__init__.py',
+        'packages/viewer_publication/src/viewer_publication/client.py',
+        'packages/viewer_publication/src/viewer_publication/continuation.py',
+        'packages/viewer_publication/src/viewer_publication/attempt.py',
+        'packages/viewer_publication/src/viewer_publication/verify.py',
         'apps/site/document-review-identities.json','apps/site/document-review-publication.json',
         '.python-version','pyproject.toml','uv.lock','.github/actions/setup-python-project/action.yml'))
     paths=sorted(path for path in paths if path.is_file())

@@ -33,7 +33,7 @@ on:
       - 'packages/congress_api/src/congress_api/models/**'
       - 'packages/congress_shared/src/congress_shared/globals.py'
       - 'packages/congress_shared/src/congress_shared/data/**'
-      - 'scripts/benchmark_core_rebuild.py'
+      - 'scripts/measure/benchmark_core_rebuild.py'
       - 'tests/test_core_benchmark.py'
       - 'tests/test_core_source_context.py'
       - 'tests/test_document_source_lineage.py'

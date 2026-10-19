@@ -7,9 +7,8 @@ import tempfile
 import unittest
 from botocore.exceptions import ClientError
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from recovery_publication_continuation import Continuation
-from guarded_recovery_publication_client import GuardedPublicationClient
+from viewer_publication.client import GuardedPublicationClient
+from viewer_publication.continuation import Continuation
 
 
 class Remote:
