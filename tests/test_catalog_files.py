@@ -324,3 +324,41 @@ def test_remote_snapshot_history_handoff_preserves_proof_and_rechecks_restored_f
             assert client.data == payloads[0]
         assert sum(hashed_bytes) == (len(payloads[0]) if handoff.startswith('serialized') else 0)
     assert not client.responses and all(response['Body'].closed for response in responses)
+
+
+@pytest.mark.parametrize('handoff', ['issued', 'serialized', 'changed', 'serialized_changed'])
+def test_remote_read_to_owned_retention_reuses_only_issued_file_custody(tmp_path, monkeypatch, handoff):
+    import json
+    import congress_api.retention.derived_files as files
+
+    data = b'owned remote catalog bytes'
+    body = io.BytesIO(data)
+    client = Client()
+    client.responses = [dict(Body=body, ContentLength=len(data), ETag='source-version')]
+    source = tmp_path / 'download.parquet'
+    proof = R2Store(client, 'bucket').read_derived_file(KEY, source, expected=identity(data))
+    assert proof['version'] == 'source-version' and body.closed
+    expected = json.loads(json.dumps(proof)) if handoff.startswith('serialized') else proof
+    if handoff.endswith('changed'):
+        source.write_bytes(data[:-1] + b'!')
+    hashed_bytes = []
+    original = files.sha256
+    class Counted:
+        def __init__(self): self.digest = original()
+        def update(self, value):
+            hashed_bytes.append(len(value)); self.digest.update(value)
+        def hexdigest(self): return self.digest.hexdigest()
+    monkeypatch.setattr(files, 'sha256', Counted)
+    destination = tmp_path / 'retained' / 'documents.parquet'
+    if handoff.endswith('changed'):
+        with pytest.raises(ValueError, match='checksum' if handoff == 'serialized_changed' else 'custody'):
+            files.retain_verified_file(source, destination, expected=expected, key=KEY)
+        assert not destination.exists()
+    else:
+        retained = files.retain_verified_file(source, destination, expected=expected, key=KEY)
+        assert retained.require(destination)
+        assert destination.stat().st_ino == source.stat().st_ino
+        assert destination.read_bytes() == data
+        if handoff == 'issued':
+            assert retained['version'] == 'source-version'
+    assert sum(hashed_bytes) == (len(data) if handoff.startswith('serialized') else 0)
