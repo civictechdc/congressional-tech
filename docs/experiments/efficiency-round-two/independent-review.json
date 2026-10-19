@@ -1,0 +1,219 @@
+{
+  "verdict": "APPROVE",
+  "findings": [],
+  "scope": "Independent static review of both frozen changes against 3b87599d27603195146afc36bb30e75ebda8af56; ccd6c36 adds planning tickets only. No implementation edits, tests, benchmarks, network or production actions by reviewer.",
+  "baseline": "3b87599d27603195146afc36bb30e75ebda8af56",
+  "lanes": {
+    "catalog": {
+      "tip": "a41e36933eda984999c277c3b4056ada1a08acfb",
+      "implementation": "a41e36933eda984999c277c3b4056ada1a08acfb",
+      "evidence": "catalog-evidence.json",
+      "raw_key": "raw_files",
+      "files": {
+        ".tickets/ct-2bhh.md": {
+          "bytes": 1223,
+          "sha256": "f67bfc23cd67c57eb5f35761d0b61a925e6d8b057ca9bc00fbf9a7b8612c0c0c"
+        },
+        "apps/site/scripts/publish-filename-viewer.py": {
+          "bytes": 20987,
+          "sha256": "a222bc8cb7ce56c7b702e49a4e107481380ee0eeedfa041eda35fdec5396ee4d"
+        },
+        "docs/experiments/efficiency-round-two/catalog-evidence.json": {
+          "bytes": 25279,
+          "sha256": "dfe497a5a73cda230fbf110fc220637b3680d7e3ae45b0df4a5a3d0d4d542e2e"
+        },
+        "docs/experiments/efficiency-round-two/catalog.md": {
+          "bytes": 3891,
+          "sha256": "bc7c9801641e3e300b96d093b84377561d71c66f9f61bfbbb1bf4850e94d15da"
+        },
+        "docs/experiments/efficiency-round-two/catalog_measure.py": {
+          "bytes": 5541,
+          "sha256": "5e532ac3ec8808b432d30fcd2fba113c22436b9d27652df976e6b77d141fab90"
+        },
+        "docs/youtube-coverage/research/scripts/view_document_filenames.py": {
+          "bytes": 47248,
+          "sha256": "1a4af85a8067f32f01bb5fe7734c1a698a6956e32f69479f86a121fdea84f01f"
+        },
+        "tests/test_document_filename_viewer.py": {
+          "bytes": 40625,
+          "sha256": "c99a559434e77971b1364c0dbd2b7d89c956568cbc0822c4e0c3d468bd6c672c"
+        }
+      },
+      "raw_receipt_pins_verified": 115,
+      "raw_receipt_mismatches": []
+    },
+    "remote": {
+      "tip": "5490e5389e8bf41020f7494de5a58dd308949913",
+      "implementation": "2672fe9480769ba7d0847534720b6185cb444153",
+      "evidence": "remote-evidence.json",
+      "raw_key": "raw_receipts",
+      "files": {
+        ".tickets/ct-30pw.md": {
+          "bytes": 1430,
+          "sha256": "8c8a77ed56a8d5d24916e30e805a3f5ab8d4e93d3c0bbf278159f48eeff55e93"
+        },
+        "docs/experiments/efficiency-round-two/remote-evidence.json": {
+          "bytes": 18218,
+          "sha256": "8c3ac696083d0c2b31bebad610e8c2c54d170e46f302c9623883e9cb5dba5478"
+        },
+        "docs/experiments/efficiency-round-two/remote.md": {
+          "bytes": 4671,
+          "sha256": "549090e764b4a2b15ba8df76300783161ac23c56c7f66e088ee8ff21b21d84d6"
+        },
+        "packages/viewer_publication/src/viewer_publication/continuation.py": {
+          "bytes": 26328,
+          "sha256": "bf32a64028050923e3b5ec4c2f101a55012c11c18ab68b476c5dbac216aba7f3"
+        },
+        "packages/viewer_publication/tests/test_publication_state_bounds.py": {
+          "bytes": 16063,
+          "sha256": "4c938954b10ac1ac0f28683592a5a62dad84f3dec0aab2d66fb05d963f1c6af6"
+        },
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py": {
+          "bytes": 27837,
+          "sha256": "2d8b001d698bd6de4e7da61be4a76f06a10e334b1f44c2ab458f18fee6122726"
+        }
+      },
+      "raw_receipt_pins_verified": 7,
+      "raw_receipt_mismatches": []
+    }
+  },
+  "patch_summary": {
+    "catalog": "Retain eight needed source columns in non-search construction, stream saved-response flags, promote interactive columns once under the existing lock, and discard browse-only unused columns before take.",
+    "remote": "DurableJournal retains one immediately checkpointed verified fact and appends it with the next normal event, flushing an older fact separately on consecutive verifications."
+  },
+  "function_trace": [
+    [
+      "Catalog._initialize",
+      "docs/youtube-coverage/research/scripts/view_document_filenames.py:315",
+      "Catalog inputs and search_indexes",
+      "same identities/members/flags/facets; smaller non-search source table"
+    ],
+    [
+      "Catalog._ensure_list_columns",
+      "docs/youtube-coverage/research/scripts/view_document_filenames.py:472",
+      "open Catalog",
+      "one atomic table replacement under read_lock; failed read leaves prior table"
+    ],
+    [
+      "Catalog.searchable",
+      "docs/youtube-coverage/research/scripts/view_document_filenames.py:492",
+      "field",
+      "resident column or existing locked Parquet read"
+    ],
+    [
+      "Catalog.search / entry",
+      "docs/youtube-coverage/research/scripts/view_document_filenames.py:505 / :632",
+      "interactive request",
+      "ensure full list columns then existing search/entry behavior"
+    ],
+    [
+      "Catalog.close",
+      "docs/youtube-coverage/research/scripts/view_document_filenames.py:298",
+      "owned readers",
+      "existing closure and cache release retained"
+    ],
+    [
+      "_publish browse construction",
+      "apps/site/scripts/publish-filename-viewer.py:327",
+      "documents and existing order",
+      "same output columns/rows; drop precedes take"
+    ],
+    [
+      "DurableJournal.restore",
+      "packages/viewer_publication/src/viewer_publication/continuation.py:380",
+      "bounded digest-linked records",
+      "validate optional embedded verification before normal event and before checkpoint"
+    ],
+    [
+      "DurableJournal.record",
+      "packages/viewer_publication/src/viewer_publication/continuation.py:444",
+      "event/value",
+      "validate transition; checkpoint verification now; preserve at most one pending fact"
+    ],
+    [
+      "DurableJournal._append",
+      "packages/viewer_publication/src/viewer_publication/continuation.py:465",
+      "event/value and optional verified fact",
+      "same limits, nonce-bound local intent, conditional remote creation and full readback before sequence advance"
+    ],
+    [
+      "Continuation.record / reconcile",
+      "packages/viewer_publication/src/viewer_publication/continuation.py:219 / :262",
+      "verified fact or current remote object",
+      "local checkpoint unchanged; uncertain intent requires complete SHA/size read and recorded verified ETag must still match"
+    ],
+    [
+      "GuardedPublicationClient.put_object",
+      "packages/viewer_publication/src/viewer_publication/client.py:124",
+      "conditional payload write",
+      "durable intent before mutation, unchanged original conditions and full payload readback"
+    ],
+    [
+      "attempt.publish completion/failure",
+      "packages/viewer_publication/src/viewer_publication/attempt.py:330 / :336",
+      "terminal result/error",
+      "normal journal record persists final pending verification"
+    ]
+  ],
+  "invariants_and_failure_paths": [
+    "Catalog retained columns still include every grouping/identity/facet input; saved flags use the same saved_response decision and row order. No second grouping or review authority introduced.",
+    "Lazy list restoration owns the only new full-list read. Failed reload does not assign a partial table. Concurrent entry/search uses the existing reader lock. No documented or exercised search-after-close guarantee was found; other lazy operations already require open readers.",
+    "A payload always has an accepted durable original intent before its mutation. Delaying remote verification durability extends the existing uncertain-intent interval; restart must fully reconcile the payload rather than blindly repeat it.",
+    "One pending verification is protected by journal RLock. Consecutive completions flush the previous fact; completion and failure use the same append owner.",
+    "Combined events retain byte/event/count bounds, nonce/digest chain and IfNoneMatch sequence fencing. Failed append does not advance the sequence or discard its pending fact; lost acknowledgment is reconciled through exact nonce-bound readback.",
+    "Persisted verified ETags remain exact version guards. Missing last remote verification remains an uncertain original intent and is checked using complete current payload bytes."
+  ],
+  "test_evidence": {
+    "execution": "Reviewed recorded local test results and test bodies; no tests rerun by reviewer.",
+    "catalog": {
+      "baseline_passed": 60,
+      "candidate_passed": 64,
+      "locations": [
+        "tests/test_document_filename_viewer.py:648",
+        "tests/test_document_filename_viewer.py:679",
+        "tests/test_document_filename_viewer.py:697"
+      ],
+      "coverage": "entry/search exact parity, Unicode/nested/direct-column reads, failed promotion state and retry, twelve concurrent calls with one promotion, reader closure"
+    },
+    "remote": {
+      "baseline_passed": 74,
+      "candidate_passed": 87,
+      "unit_fault": 51,
+      "attempt_integration": 36,
+      "locations": [
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:176",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:194",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:210",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:230",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:250",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:265",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:287",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:303",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:257",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:280"
+      ],
+      "coverage": "immediate checkpoint, crash before append/full reconcile, consecutive/final flush, failed request/size admission before next payload, malformed embedded fact before checkpoint, lost ack without repeat, changed exact ETag, existing competing-runner/nonce guards and complete attempt conditions/readback"
+    }
+  },
+  "measured_result_review": {
+    "catalog": "Accepted run-2: logical retained source Arrow bytes 20405570 to 11455564, reduction 8950006 (43.8606%). Three samples per arm preserve all 269 payload hashes/sizes and all manifest values except published_at. Documentation accurately disclaims demonstrated speed or process-peak benefit.",
+    "remote": "One six-worker modeled-latency fixture: normal GET 833 to 724, PUT 821 to 712, HEAD 270 unchanged; 109 journal PUT/readback pairs removed (13.2765% fewer PUTs). PUT bytes 315587 to 296284; full body bytes read 319614 to 300311; fsync 2191 to 1973. Exact 269-payload/recovery comparison retained. Documentation correctly makes timing descriptive and count reduction schedule-dependent.",
+    "verification_boundary": "Independently hashed all 122 indexed raw receipt/log files and matched measured source hashes; relied on existing exact-output receipts rather than repeating payload generation or benchmarks."
+  },
+  "structural_judgment": {
+    "decision": "Both are the smallest coherent transformations for the observed cost. Existing PyArrow operations, saved-response policy, journal serializer/guarded client and continuation owner remain authoritative.",
+    "before_after": "Catalog moves unused resident source data to one explicit lazy restoration point and drops discarded columns before copying. Journal separates persistence mechanics into _append and adds one bounded pending slot, avoiding a generic batch protocol or alternate publisher.",
+    "next_change_questions": [
+      "If another interactive method needs list columns, can it use Catalog._ensure_list_columns rather than create another reload owner?",
+      "If another terminal publication event is added, does it use DurableJournal.record so the last pending fact is persisted?"
+    ]
+  },
+  "residual_limits": [
+    "Review is scoped static analysis plus verification of existing local evidence, not proof for every concurrent schedule.",
+    "Catalog measurements are a bounded retained fixture and measure logical Arrow bytes, not total retained native buffers or full-catalog RSS.",
+    "Remote timing is one tiny local fixture with modeled request latency; no hosted, live, browser or full-catalog performance qualification.",
+    "Root combined focused interaction test is separate from this independent review."
+  ],
+  "coverage": "ADEQUATE",
+  "confidence": "HIGH"
+}
