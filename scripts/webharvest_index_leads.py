@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-from webharvest_index_remaining import digest, key, load, parse_cdx, save
+from webharvest_cdx import digest, key, load, parse_cdx, save
 
 
 def basename(url):

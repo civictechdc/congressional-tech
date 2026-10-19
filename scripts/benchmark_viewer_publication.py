@@ -22,6 +22,8 @@ import sys
 import time
 import traceback
 
+from process_rss import resident_tree
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
 
@@ -37,18 +39,6 @@ def save(path, value):
     temporary = path.with_suffix('.partial')
     temporary.write_text(json.dumps(value, sort_keys=True, indent=2) + '\n')
     temporary.replace(path)
-
-
-def resident_tree(pid):
-    """Same process-tree RSS sampler for every arm; missing samples are explicit."""
-    rows = subprocess.run(['ps', '-axo', 'pid=,ppid=,rss='], capture_output=True, text=True, check=True, timeout=5).stdout
-    processes = {int(p): (int(parent), int(rss) * 1024) for p, parent, rss in (line.split() for line in rows.splitlines())}
-    children = {pid}
-    while True:
-        found = {p for p, (parent, _) in processes.items() if parent in children}
-        if found <= children:
-            return sum(processes[p][1] for p in children if p in processes)
-        children.update(found)
 
 
 def worker(args):

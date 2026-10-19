@@ -14,7 +14,7 @@ import sqlite3
 import threading
 import time
 
-from benchmark_viewer_publication import resident_tree
+from process_rss import resident_tree
 
 
 class PublicationCosts:

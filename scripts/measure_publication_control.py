@@ -118,7 +118,8 @@ def run(checkout, source, output, source_manifest_sha256, *, maximum_source_byte
         'command_process_model': 'source identity cache starts cold for each timed command; interpreter/import startup excluded',
         'prepared_recovery_supported': hasattr(publisher, 'prepare_recovery'),
         'measurement_sources': {name: digest(Path(__file__).with_name(name))
-                                for name in ('publication_costs.py', 'measure_publication_control.py', 'benchmark_viewer_publication.py')}}
+                                for name in ('publication_costs.py', 'measure_publication_control.py',
+                                             'process_rss.py', 'benchmark_viewer_publication.py')}}
     def publish(*, resume=False, probe=lambda *args: None):
         return attempts.publish(publisher, remote, root, artifact={'id': '456'}, public_url=publisher.PUBLIC_URL,
             verify_artifact=fixture.custody, probe=probe, resume=resume, attempt=prepared['attempt'] if resume else None)
