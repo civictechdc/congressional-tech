@@ -1,4 +1,10 @@
-"""Compare publication-only Catalog state and exact navigation buffers offline."""
+"""Compare publication-only Catalog state and exact navigation buffers offline.
+
+The preparation-readers receipt is
+docs/experiments/publication-remediation/preparation-readers.md and
+docs/experiments/publication-remediation/evidence/preparation-memory.json.
+Pass --revision to select the baseline files.
+"""
 import argparse
 import gc
 import hashlib
@@ -38,7 +44,9 @@ def catalog(path, minimal):
 
 
 def main():
-    parser = argparse.ArgumentParser(); parser.add_argument('--worker', type=Path)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--revision', required=True)
+    parser.add_argument('--worker', type=Path)
     parser.add_argument('--minimal', action='store_true'); parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     if args.worker:
@@ -58,9 +66,10 @@ def main():
         pq.write_table(table.take(pa.array(range(0, len(rows), 5))), folder / 'documents.parquet')
         measured = {}
         for name, options in [('search', []), ('preparation', ['--minimal'])]:
-            measured[name] = json.loads(subprocess.check_output([sys.executable, __file__, '--worker', str(sources), *options], text=True))
+            measured[name] = json.loads(subprocess.check_output(
+                [sys.executable, __file__, '--revision', args.revision, '--worker', str(sources), *options], text=True))
         old_path = folder / 'old_navigation.py'
-        old_path.write_bytes(subprocess.check_output(['git', 'show', '9a1baed:apps/site/scripts/filename_navigation.py'], cwd=ROOT))
+        old_path.write_bytes(subprocess.check_output(['git', 'show', f'{args.revision}:apps/site/scripts/filename_navigation.py'], cwd=ROOT))
         functions = [('before', load(old_path, 'old_navigation').publish_navigation),
                      ('after', load(ROOT / 'apps/site/scripts/filename_navigation.py', 'new_navigation').publish_navigation)]
         navigation = {}

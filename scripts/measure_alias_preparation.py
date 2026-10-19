@@ -1,4 +1,10 @@
-"""Measure exact alias indexing on a bounded high-cardinality/fanout fixture."""
+"""Measure exact alias indexing on a bounded high-cardinality/fanout fixture.
+
+The preparation-aliases receipt is
+docs/experiments/publication-remediation/preparation-aliases.md and
+docs/experiments/publication-remediation/evidence/preparation-aliases.json.
+Pass --revision to select the baseline files.
+"""
 import argparse
 import gc
 import hashlib
@@ -67,7 +73,9 @@ def worker(root, old):
 
 
 def main():
-    parser = argparse.ArgumentParser(); parser.add_argument('--worker', type=Path); parser.add_argument('--old', action='store_true')
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--revision', required=True)
+    parser.add_argument('--worker', type=Path); parser.add_argument('--old', action='store_true')
     parser.add_argument('--output', type=Path); args = parser.parse_args()
     if args.worker: print(json.dumps(worker(args.worker, args.old))); return
     with tempfile.TemporaryDirectory(prefix='alias-measure-') as folder:
@@ -88,8 +96,9 @@ def main():
                  for name, file in [('filenames', path), ('groups', groups)]}
         (root / 'manifest.json').write_text(json.dumps(dict(files=files, info=dict(rows=len(rows), entries=100, catalog_id='bounded'))))
         for name in ('aliases', 'recoveries'):
-            (root / f'old_{name}.py').write_bytes(subprocess.check_output(['git', 'show', f'9a1baed:apps/site/scripts/filename_{name}.py'], cwd=ROOT))
-        result = {name: json.loads(subprocess.check_output([sys.executable, __file__, '--worker', str(root), *options], text=True))
+            (root / f'old_{name}.py').write_bytes(subprocess.check_output(['git', 'show', f'{args.revision}:apps/site/scripts/filename_{name}.py'], cwd=ROOT))
+        result = {name: json.loads(subprocess.check_output(
+            [sys.executable, __file__, '--revision', args.revision, '--worker', str(root), *options], text=True))
                   for name, options in [('before', ['--old']), ('after', [])]}
         assert result['before']['output_sha256'] == result['after']['output_sha256']
         result['scope'] = 'bounded offline high-cardinality/fanout fixture; no production extrapolation'

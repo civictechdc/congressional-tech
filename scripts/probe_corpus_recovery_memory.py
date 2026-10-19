@@ -1,8 +1,9 @@
 """Offline synthetic RSS comparison; no network, credentials, or retained inputs.
 
-Run from the repository with --baseline-ref to compare an earlier implementation
-against the current worktree. Each measurement uses a fresh child process. This
-measures end-to-end import memory, including required encoded index payloads.
+The parent command requires --baseline-ref because no saved receipt records
+that revision. Each measurement uses a fresh child process, and the parent
+passes the revision to that child. This measures end-to-end import memory,
+including required encoded index payloads.
 """
 import argparse
 import gzip
@@ -113,7 +114,8 @@ def preservation_probe(args, state):
 def run(args):
     results = []
     for ref in (args.baseline_ref, ''):
-        command = [sys.executable, str(Path(__file__).resolve()), '--child', '--mode', args.mode,
+        command = [sys.executable, str(Path(__file__).resolve()), '--child',
+                   '--baseline-ref', args.baseline_ref, '--mode', args.mode,
                    '--rows', str(args.rows), '--additions', str(args.additions)]
         if ref:
             command += ['--ref', ref]
@@ -124,7 +126,7 @@ def run(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--baseline-ref', default='37ee074')
+    parser.add_argument('--baseline-ref', required=True)
     parser.add_argument('--rows', type=int, default=200000)
     parser.add_argument('--additions', type=int, default=1525)
     parser.add_argument('--mode', choices=('import', 'preservation'), default='import')
