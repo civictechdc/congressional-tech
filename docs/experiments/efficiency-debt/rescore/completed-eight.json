@@ -1,0 +1,879 @@
+{
+  "reviewed_revision": "75820f3f6dcb5ea52fece46c77af27ffd1a5759a",
+  "historical_assessment_sha256": "76fe0b92100e80c9b51fe21ebb10e9d681873b7b9e8a4d84ed5ae5b48ac144ae",
+  "historical_markdown_sha256": "307b8b54de18dd86c1d238ab5c607926a926540c4a0eb0dbdff6b4be48052611",
+  "scope": "Independent supplemental six-dimension rescore of eight completed followups; original168-entry assessment unchanged",
+  "verification": "Read-only code/evidence review; no tests/experiments repeated",
+  "tickets": [
+    "ct-2uwd",
+    "ct-tdsx",
+    "ct-o6d1",
+    "ct-4zer",
+    "ct-v6ao",
+    "ct-76n5",
+    "ct-m9ry",
+    "ct-h73z"
+  ],
+  "summary": {
+    "affected_rows": 22,
+    "changed_rows": 8,
+    "unchanged_rows": 14
+  },
+  "entries": [
+    {
+      "historical_index": 10,
+      "entry_id": "apps/site/src/components/filename-catalog.mjs:10:text",
+      "ticket_ids": [
+        "ct-4zer"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-catalog.mjs:15:text",
+        "apps/site/src/components/filename-catalog.mjs:279:searchTexts"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/search.md",
+        "docs/experiments/efficiency-debt/search-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 20,
+      "entry_id": "apps/site/src/components/filename-catalog.mjs:194:read",
+      "ticket_ids": [
+        "ct-4zer"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-catalog.mjs:198:read",
+        "apps/site/src/components/filename-catalog.mjs:238:selected"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/search.md",
+        "docs/experiments/efficiency-debt/search-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 23,
+      "entry_id": "apps/site/src/components/filename-catalog.mjs:225:sourceRecord",
+      "ticket_ids": [
+        "ct-o6d1"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-catalog.mjs:230:sourceRecord",
+        "apps/site/src/components/filename-catalog.mjs:431:technical"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/complete-export.md",
+        "docs/experiments/efficiency-debt/complete-export-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 25,
+      "entry_id": "apps/site/src/components/filename-catalog.mjs:242:column",
+      "ticket_ids": [
+        "ct-4zer"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-catalog.mjs:265:column"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/search.md",
+        "docs/experiments/efficiency-debt/search-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 27,
+      "entry_id": "apps/site/src/components/filename-catalog.mjs:255:search",
+      "ticket_ids": [
+        "ct-4zer"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-catalog.mjs:296:search"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/search.md",
+        "docs/experiments/efficiency-debt/search-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 30,
+      "entry_id": "apps/site/src/components/filename-observations.mjs:16:decode",
+      "ticket_ids": [
+        "ct-o6d1"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-observations.mjs:19:decode"
+      ],
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B"
+      },
+      "current_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/complete-export.md",
+        "docs/experiments/efficiency-debt/complete-export-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 32,
+      "entry_id": "apps/site/src/components/filename-observations.mjs:63:read",
+      "ticket_ids": [
+        "ct-o6d1"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-observations.mjs:81:read"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/complete-export.md",
+        "docs/experiments/efficiency-debt/complete-export-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 33,
+      "entry_id": "apps/site/src/components/filename-observations.mjs:67:scan",
+      "ticket_ids": [
+        "ct-4zer"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-observations.mjs:85:scan"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/search.md",
+        "docs/experiments/efficiency-debt/search-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 34,
+      "entry_id": "apps/site/src/components/filename-observations.mjs:81:matchingSources",
+      "ticket_ids": [
+        "ct-4zer"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-observations.mjs:99:observationTexts",
+        "apps/site/src/components/filename-observations.mjs:113:matchingSources"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/search.md",
+        "docs/experiments/efficiency-debt/search-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 38,
+      "entry_id": "apps/site/src/components/filename-recoveries.mjs:2:loadRecoveries",
+      "ticket_ids": [
+        "ct-tdsx"
+      ],
+      "current_locations": [
+        "apps/site/src/components/filename-recoveries.mjs:8:loadRecoveries",
+        "apps/site/src/components/filename-startup.mjs:9:withVerifiedJson"
+      ],
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "A-",
+        "thoughtfulness": "A-",
+        "debt": "A-",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "from": "B+",
+          "to": "A-"
+        },
+        "efficiency": {
+          "from": "B",
+          "to": "B+"
+        },
+        "dx": {
+          "from": "B+",
+          "to": "A-"
+        },
+        "debt": {
+          "from": "B+",
+          "to": "A-"
+        }
+      },
+      "evidence": [
+        "docs/experiments/efficiency-debt/recovery.md"
+      ],
+      "changed_grade_reason": "Descriptor admission, decoded-byte streaming overrun refusal, digest/catalog/position checks and independent30s mandatory deadline replace unbounded recovery fetch. Shared helper removes review-loader transport duplication while preserving optional/mandatory caller policy. Local overrun consumes64KiB rather than4MiB; oversized descriptor makes zero fetches. No hard heap/native transport or production latency bound."
+    },
+    {
+      "historical_index": 54,
+      "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:654:(closure)",
+      "ticket_ids": [
+        "ct-o6d1"
+      ],
+      "current_locations": [
+        "docs/youtube-coverage/research/filename-viewer.mjs:657:copy click handler"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B-",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B-",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/complete-export.md",
+        "docs/experiments/efficiency-debt/complete-export-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 57,
+      "entry_id": ".github/workflows/publish-filename-viewer.yml:62:publish (workflow job)",
+      "ticket_ids": [
+        "ct-h73z"
+      ],
+      "current_locations": [
+        ".github/workflows/publish-filename-viewer.yml:63:publish",
+        "scripts/publication/prepare_workflow_resume.py:1",
+        "packages/viewer_publication/src/viewer_publication/resume.py:1"
+      ],
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "A-",
+        "thoughtfulness": "A-",
+        "debt": "A-",
+        "overall": "A-"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "from": "B+",
+          "to": "A-"
+        },
+        "dx": {
+          "from": "B",
+          "to": "A-"
+        },
+        "thoughtfulness": {
+          "from": "B+",
+          "to": "A-"
+        },
+        "debt": {
+          "from": "B+",
+          "to": "A-"
+        },
+        "overall": {
+          "from": "B+",
+          "to": "A-"
+        }
+      },
+      "evidence": [
+        "docs/experiments/efficiency-debt/workflow-resume.md"
+      ],
+      "changed_grade_reason": "Five manual fields become one validated original-attempt descriptor, shared stdlib validator, exact admitted UTF8 retention, repository/conflict/duplicate/16KiB refusal before selection, exact original revision/artifact and explicit CLI resume checks. Seven heavy scheduled-no-op steps stay skipped. Local validator median12.15\u219219.73ms and extra explicit-resume checkout are acknowledged assurance costs; no hosted resume proof."
+    },
+    {
+      "historical_index": 92,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:238:run.catalog_phase",
+      "ticket_ids": [
+        "ct-76n5"
+      ],
+      "current_locations": [
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:214:catalog_phase",
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:273:failure handler",
+        "packages/corpus_recovery/src/corpus_recovery/diagnostics.py:5:catalog_build_observation",
+        "scripts/publication/pipeline_status.py:113:continuation"
+      ],
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "from": "B+",
+          "to": "A-"
+        },
+        "dx": {
+          "from": "B",
+          "to": "B+"
+        },
+        "overall": {
+          "from": "B",
+          "to": "B+"
+        }
+      },
+      "evidence": [
+        "docs/experiments/efficiency-debt/incomplete-build.md"
+      ],
+      "changed_grade_reason": "Shared read-only description now names exact retained path, last recorded accepted phase and four checks in status/failure receipt. Helper/save OSError does not replace original build error; retained-build refusal and accepted-phase reuse remain. Larger nested controller remains, so debt staysB and efficiency staysB; no speed claim."
+    },
+    {
+      "historical_index": 93,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:259:run.mapping_phase",
+      "ticket_ids": [
+        "ct-2uwd"
+      ],
+      "current_locations": [
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:235:mapping_phase",
+        "packages/corpus_recovery/src/corpus_recovery/mappings.py:43:publish_mappings"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "efficiency": {
+          "from": "B",
+          "to": "B+"
+        },
+        "debt": {
+          "from": "B",
+          "to": "B+"
+        }
+      },
+      "evidence": [
+        "docs/experiments/efficiency-debt/mappings.md"
+      ],
+      "changed_grade_reason": "Mapping phase delegates to one bounded accepted-control policy and receipt-aware domain helper. Plain lost-ack cached readback removes one full GET; original guarded receipt already avoided duplicate GET at this merged baseline. Generic event/progress ownership remains for ct-2ut4, so this broader historical row stays partial."
+    },
+    {
+      "historical_index": 101,
+      "entry_id": "scripts/publish_corpus_recovery_mappings.py:14:publish_mappings",
+      "ticket_ids": [
+        "ct-2uwd"
+      ],
+      "current_locations": [
+        "packages/corpus_recovery/src/corpus_recovery/mappings.py:43:publish_mappings",
+        "packages/congress_api/src/congress_api/retention/control_documents.py:9:bounded_control_read",
+        "packages/corpus_recovery/src/corpus_recovery/acknowledge.py:8:reconcile_lost_acknowledgment"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "efficiency": {
+          "from": "B",
+          "to": "B+"
+        },
+        "debt": {
+          "from": "B",
+          "to": "B+"
+        }
+      },
+      "evidence": [
+        "docs/experiments/efficiency-debt/mappings.md"
+      ],
+      "changed_grade_reason": "Shared16MiB admission, exact issuing-client/key/body/current-version receipt use and bounded independent fallback replace unbounded mapping reads. Plain lost-ack3\u21922GET/206\u2192119fixture bytes; onePUT/originalIfMatch and successful saved/result hashes equal. Valid guarded2GET+1HEAD unchanged; invalid receipts add one independentGET. Dual errors retained without formatting transport messages."
+    },
+    {
+      "historical_index": 106,
+      "entry_id": "scripts/recovery_publication_continuation.py:37:Continuation.flush",
+      "ticket_ids": [
+        "ct-v6ao"
+      ],
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:139:Continuation.flush"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "efficiency": {
+          "from": "B",
+          "to": "B+"
+        },
+        "debt": {
+          "from": "B",
+          "to": "B+"
+        }
+      },
+      "evidence": [
+        "docs/experiments/efficiency-debt/checkpoints.md",
+        "docs/experiments/efficiency-debt/checkpoint-evidence.json"
+      ],
+      "changed_grade_reason": "One compact complete serialization is admitted before temp creation, then original file+directory fsync/replace remains. Normal publication state encoding median0.566\u21920.142s and characters61,665,612\u219253,492,225; complete fixture success median3.564\u21922.931s. Whole-state serialization and temporary string+bytes remain; no hard total-memory or production speed bound."
+    },
+    {
+      "historical_index": 109,
+      "entry_id": "scripts/recovery_publication_continuation.py:73:Continuation.record",
+      "ticket_ids": [
+        "ct-v6ao"
+      ],
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:216:Continuation.record"
+      ],
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "from": "B+",
+          "to": "A-"
+        },
+        "efficiency": {
+          "from": "B",
+          "to": "B+"
+        },
+        "thoughtfulness": {
+          "from": "B+",
+          "to": "A-"
+        },
+        "debt": {
+          "from": "B",
+          "to": "B+"
+        }
+      },
+      "evidence": [
+        "docs/experiments/efficiency-debt/checkpoints.md",
+        "docs/experiments/efficiency-debt/checkpoint-evidence.json"
+      ],
+      "changed_grade_reason": "Verified write facts and protected version advance now share one checkpoint; crash-before-replacement test restores original intent and reconciles full bytes without anotherPUT. Complete publication549vs550serializations and2199vs2201fsyncs including preparation. Intent/readback/remoteevent durability preserved; local duplicated event ownership remains separate."
+    },
+    {
+      "historical_index": 114,
+      "entry_id": "scripts/recovery_publication_continuation.py:205:DurableJournal.record",
+      "ticket_ids": [
+        "ct-v6ao"
+      ],
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:390:DurableJournal.record"
+      ],
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "C+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B"
+      },
+      "current_grades": {
+        "correctness": "B+",
+        "efficiency": "C+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/checkpoints.md",
+        "docs/experiments/efficiency-debt/checkpoint-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 122,
+      "entry_id": "scripts/viewer_publication_attempt.py:200:publish.after_write",
+      "ticket_ids": [
+        "ct-v6ao"
+      ],
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/attempt.py:296:after_write no-op callback",
+        "packages/viewer_publication/src/viewer_publication/continuation.py:216:Continuation.record (new checkpoint owner)"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "A-",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "A-",
+        "overall": "A-"
+      },
+      "changed_dimensions": {
+        "efficiency": {
+          "from": "B",
+          "to": "A-"
+        },
+        "thoughtfulness": {
+          "from": "B+",
+          "to": "A-"
+        },
+        "debt": {
+          "from": "B",
+          "to": "A-"
+        },
+        "overall": {
+          "from": "B+",
+          "to": "A-"
+        }
+      },
+      "evidence": [
+        "docs/experiments/efficiency-debt/checkpoints.md",
+        "docs/experiments/efficiency-debt/checkpoint-evidence.json"
+      ],
+      "changed_grade_reason": "Removed the cloud protected-version flush callback; no-op now delegates authority advancement to Continuation.record verified-event checkpoint. Original readback-before-verification and crash reconciliation stay tested. This narrow redundant callback cost is removed; expensive durable remote journal remains independently graded."
+    },
+    {
+      "historical_index": 142,
+      "entry_id": "apps/site/scripts/filename_review_binding.py:72:main",
+      "ticket_ids": [
+        "ct-m9ry"
+      ],
+      "current_locations": [
+        "apps/site/scripts/filename_review_binding.py:117:main"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B-",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B-",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/catalog.md",
+        "docs/experiments/efficiency-debt/catalog-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 149,
+      "entry_id": "apps/site/scripts/publish-filename-viewer.py:132:publish",
+      "ticket_ids": [
+        "ct-m9ry"
+      ],
+      "current_locations": [
+        "apps/site/scripts/publish-filename-viewer.py:191:publish",
+        "apps/site/scripts/publish-filename-viewer.py:205:_publish"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "C+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "C+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/catalog.md",
+        "docs/experiments/efficiency-debt/catalog-evidence.json"
+      ]
+    },
+    {
+      "historical_index": 150,
+      "entry_id": "docs/youtube-coverage/research/scripts/view_document_filenames.py:270:Catalog.__init__",
+      "ticket_ids": [
+        "ct-m9ry"
+      ],
+      "current_locations": [
+        "docs/youtube-coverage/research/scripts/view_document_filenames.py:284:Catalog.__init__",
+        "docs/youtube-coverage/research/scripts/view_document_filenames.py:314:Catalog._initialize"
+      ],
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "C",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "C",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "changed_dimensions": {},
+      "evidence": [
+        "docs/experiments/efficiency-debt/catalog.md",
+        "docs/experiments/efficiency-debt/catalog-evidence.json"
+      ]
+    }
+  ],
+  "retained_limitations": {
+    "ct-4zer": "Retain all six grades on six search rows. Rejected candidate warm arbitrary-field median0.1%slower; cold arbitrary/AND27.0%/30.7%slower, decoded-cache estimates19,101,790\u219234,512,864bytes, RSS171,622,400\u2192179,617,792. Exact scan ships unchanged. Historical actual-catalog27.523s remains historical, not current guarantee.",
+    "ct-o6d1": "Retain all six grades on four exact-value rows. No product route changed. Blob known storage+25.9%, failed target. Exact values may require parse/clone/format/clipboard copies;16MiB diagnostic/item/cache limits are not hard heap admission. Caught failures tested; OS/tab death cannot guarantee visible diagnostics.",
+    "ct-m9ry": "Retain all six grades on three Catalog/publication/review rows, including Catalog efficiencyC, debtC+, overallB-. Packed experiment publication peak3.2%lower but5.4058\u21925.4796s; constructor peak1.4%lower.269payload hashes equal on fixture with nested occurrences typed-null. General tables/maps remain; historical5.085GBloading/7.310GBoverall not requalified.",
+    "ct-v6ao": "DurableJournal.record retains all grades, especially efficiencyC+ and debtB:833GET/821PUT/270HEAD unchanged, remoteevents/fullreadbacks remain. Fixture latency gains derive mainly compact serialization. No consistent resume latency claim; no hosted/full-catalog speed claim.",
+    "scope": "22 affected historical rows only. No aggregate168-row count or architecture grade recomputed; broader unresolved runtime, local event/progress and accepted-plan ownership stays outside this completed-ticket subset. Ticket closure does not imply all related historical debt is removed."
+  },
+  "source_sha256": {
+    ".github/workflows/publish-filename-viewer.yml": "4ac709593dfebf1537eee8ac65e175ca17f15d1c8aa0638c6ac7e8f60be0a97e",
+    "apps/site/scripts/filename_review_binding.py": "67383688f541d0ca9a79748c52be51f8be80fa94242ff9fd50ab312e1d8d4714",
+    "apps/site/scripts/publish-filename-viewer.py": "0f4ad73f9d9bd84dc1be18796069d56cb3f4b86fd408502fdc051faf72b6a986",
+    "apps/site/src/components/filename-catalog.mjs": "e2adfaf0d0c618d61ca3d23e31f4d2143f53d383e049a589ed266e3f93aaafc3",
+    "apps/site/src/components/filename-observations.mjs": "8e8151334b80f9478cf80ebedc910aa67b6ef7e8134f3a5ee8839199917099fb",
+    "apps/site/src/components/filename-recoveries.mjs": "3abde3da1604d101d993621216bbd82b40eceb74de56fc4e21963045854f053a",
+    "apps/site/src/components/filename-startup.mjs": "62f5c23b85df69b6b82c5f80024e1804ed6aae5cb5fe67005ed40836715ae878",
+    "docs/youtube-coverage/research/filename-viewer.mjs": "cb22ef248316e22ac9ba19f7a731ac841d5fce6d9c53c5a6675b00d235f59a39",
+    "docs/youtube-coverage/research/scripts/view_document_filenames.py": "b031b3ab5962ef049fe7b94f6f339b17cd1387bbbd081ef440179a83ae8a7895",
+    "packages/congress_api/src/congress_api/retention/control_documents.py": "2575b042872df84cc719321902c1f6393d7ca168d3ca4931e4ac44e5742eb201",
+    "packages/corpus_recovery/src/corpus_recovery/acknowledge.py": "e5235c0a2b92d331719e7d1b7126524398b88fd24753765950e8bb23617a88da",
+    "packages/corpus_recovery/src/corpus_recovery/diagnostics.py": "fee525a84deeb4bcfd4fd68515ff1380fb6b06323bce6b1c5ac5e1a9ab2176e6",
+    "packages/corpus_recovery/src/corpus_recovery/mappings.py": "56f6235a4a2102e94f53d598dc91321573028c54fa0bf119b789d58cab45f791",
+    "packages/viewer_publication/src/viewer_publication/attempt.py": "ad38d29efb4f1f7b93770f60d8b45a0c4f92193b6c92357a65c47b3ac75a216a",
+    "packages/viewer_publication/src/viewer_publication/continuation.py": "d6ab23de50766c9939ab6b6a9e2db909a39c04e6253040ae7ba1a0d74349a606",
+    "packages/viewer_publication/src/viewer_publication/resume.py": "9f1b676a1f92b6e4e3cd6503030fad2cee60d100958ea99f5f915f45e2d20e75",
+    "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py": "d73e84fa69731dbdcd58771629f8cdf7a505b88ce44e8001b081b8c6bb883a48",
+    "scripts/publication/pipeline_status.py": "abe7b33cd6910ae680b12239fd8c161ce8edb8b49508cf1c548ab3743167cc75",
+    "scripts/publication/prepare_workflow_resume.py": "ea1d2fe5d35039449a852603d000c8440c9e609b1de022a7e056516a1becfdcd"
+  },
+  "evidence_sha256": {
+    "docs/experiments/efficiency-debt/catalog-evidence.json": "fb0d2c79b401aa10210660f09c41754981a6bd452344f11af48875a1b42decb8",
+    "docs/experiments/efficiency-debt/catalog.md": "056af1af98f1c4e847066587306a476e577ac00a6ed7c2b24a3d42159476c099",
+    "docs/experiments/efficiency-debt/checkpoint-evidence.json": "4060c36e7a4236e5f33636a3a6c9c3b16ed53bc9b908d662f40628334ff80319",
+    "docs/experiments/efficiency-debt/checkpoints.md": "2f9618e6c2c14266b8edeb1e5e84ace6dd83e34b9c47a39956398120f7ac4649",
+    "docs/experiments/efficiency-debt/complete-export-evidence.json": "dd94aac77979ab8236cafc6fae65a2f655fe02f4ce4dce87f94944f2ad723357",
+    "docs/experiments/efficiency-debt/complete-export.md": "a574fd8039ada7989f27eb729ea8b1d0143fbfb21475ae53d88eee32e1f486a7",
+    "docs/experiments/efficiency-debt/incomplete-build.md": "614f9bf8f247b2929eac916c9a7e670e0512543aa6f0ed6c4b4b01a1012c5332",
+    "docs/experiments/efficiency-debt/mappings.md": "1c8423355c21ee97962a6e3c731b11078abe3d9ab123fe0bdae00843ef74ba7a",
+    "docs/experiments/efficiency-debt/recovery.md": "f71b40d85c0f33b35772f6b1b43a1fafd4f83081d745dcbb09996b67e9ea9373",
+    "docs/experiments/efficiency-debt/search-evidence.json": "6b7c9a742c1a68ce5ff606002db0620a90420886f982ebecc0821f690a9514cd",
+    "docs/experiments/efficiency-debt/search.md": "38ef8a6e05d8dcde90bc0c53368f501819abc6e5371e1ffe2ff7cb022cec3101",
+    "docs/experiments/efficiency-debt/workflow-resume.md": "369108c7bcd460344a72bb8b9fb3a76ffb6a1304874ed40c884371546b2fc9c2"
+  }
+}

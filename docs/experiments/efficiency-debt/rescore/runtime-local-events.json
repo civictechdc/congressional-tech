@@ -1,0 +1,609 @@
+{
+  "reviewed_revision": "fd8eb4d373aed93319ddc8ed4a755d203c4c65c4",
+  "tickets": [
+    "ct-piku",
+    "ct-2ut4"
+  ],
+  "scope": "Supplemental six-grade rescore; historical 168rows preserved",
+  "method": "Read-only exact git-object source/trace/assertion review and retained receipt hash validation; no tests or experiments repeated; no closure-derived grade.",
+  "reviewer_independence": "Reviewer implemented ct-piku: this is a supplemental rescore, not independent self-approval. Parent independent review is hashed. ct-2ut4 source/evidence reviewed independently here.",
+  "historical_source_gap": "Requested primary output/publication-exam-20261018/BELOW-B-PLUS.md absent. Maintained historical docs/package-overlap-rescore-20261019 JSON/MD contain 168 rows and exactly match completed-eight input hashes. Neither file changed.",
+  "historical_assessment_sha256": "76fe0b92100e80c9b51fe21ebb10e9d681873b7b9e8a4d84ed5ae5b48ac144ae",
+  "historical_markdown_sha256": "307b8b54de18dd86c1d238ab5c607926a926540c4a0eb0dbdff6b4be48052611",
+  "dimensions": [
+    "correctness",
+    "efficiency",
+    "dx",
+    "thoughtfulness",
+    "debt (higher means less debt)",
+    "overall (scoped judgment, not arithmetic mean)"
+  ],
+  "summary": {
+    "affected_rows": 9,
+    "changed_rows": 2,
+    "retained_rows": 7,
+    "historical_rows": 168,
+    "historical_rows_modified": 0
+  },
+  "entries": [
+    {
+      "historical_index": 80,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:78:load",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "A-",
+        "dx": "C+",
+        "thoughtfulness": "B",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "before_this_supplement": {
+        "correctness": "B+",
+        "efficiency": "A-",
+        "dx": "C+",
+        "thoughtfulness": "B",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "A-",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "before": "B+",
+          "after": "A-"
+        },
+        "dx": {
+          "before": "C+",
+          "after": "B+"
+        },
+        "thoughtfulness": {
+          "before": "B",
+          "after": "A-"
+        },
+        "debt": {
+          "before": "C+",
+          "after": "B+"
+        },
+        "overall": {
+          "before": "B-",
+          "after": "B+"
+        }
+      },
+      "current_locations": [
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:123:load",
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:38:SelectedRuntime.__init__",
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:69:SelectedRuntime.check",
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:96:SelectedRuntime.files",
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:145:run"
+      ],
+      "dimension_reasons": {
+        "correctness": "B+ to A-: execute-mode selection precedes admission; required package source owners must exist and stay contained. Foreign/unknown cached origins and extended paths refuse. Real explicit-file children receive origin checks before flock/client. Eight retained unsafe cases issue zero admission/client calls.",
+        "efficiency": "Retain A- for the narrow explicit-file loader; no speed credit. Cached observations avoid repeated path resolution: 25 warm checks issue zero resolves, 0.453 ms median observed. Complete pins add 58 files / 330,101 bytes per existing digest guard; this assurance cost prevents a whole-route speed claim.",
+        "dx": "C+ to B+: named SelectedRuntime and specific source-owner/fresh-process errors replace implicit mixed-owner behavior. Complete checkout required; unsupported historical layouts refuse explicitly.",
+        "thoughtfulness": "B to A-: preflight stays lazy, cached modules are never evicted, exact pin changes still refuse resume, and a retained eager-import traceback leaves the shared lock reacquirable.",
+        "debt": "C+ to B+: one early source selection and named ownership proof replace late path mutation and unverified transitive owners. Explicit-file loading and in-process sys.path selection remain; no fully packaged or hostile-code-isolated runtime is claimed.",
+        "overall": "B- to B+: the historical owner gap now has implementation and real-import evidence. Interpreter-owned dependencies and the explicit loader remain, and no integrated live-runtime qualification is claimed."
+      }
+    },
+    {
+      "historical_index": 82,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:94:run",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "C+",
+        "dx": "B-",
+        "thoughtfulness": "A-",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "before_this_supplement": {
+        "correctness": "B+",
+        "efficiency": "C+",
+        "dx": "B-",
+        "thoughtfulness": "A-",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "current_grades": {
+        "correctness": "B+",
+        "efficiency": "C+",
+        "dx": "B-",
+        "thoughtfulness": "A-",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:145:run"
+      ],
+      "dimension_reasons": {
+        "correctness": "Keep the broader controller vector: the two corrected seams do not remove duplicated local/cloud preparation or accepted-plan ownership. ct-bpyj is separate; no parent upgrade from ticket closure.",
+        "efficiency": "Keep the broader controller vector: the two corrected seams do not remove duplicated local/cloud preparation or accepted-plan ownership. ct-bpyj is separate; no parent upgrade from ticket closure.",
+        "dx": "Keep the broader controller vector: the two corrected seams do not remove duplicated local/cloud preparation or accepted-plan ownership. ct-bpyj is separate; no parent upgrade from ticket closure.",
+        "thoughtfulness": "Keep the broader controller vector: the two corrected seams do not remove duplicated local/cloud preparation or accepted-plan ownership. ct-bpyj is separate; no parent upgrade from ticket closure.",
+        "debt": "Keep the broader controller vector: the two corrected seams do not remove duplicated local/cloud preparation or accepted-plan ownership. ct-bpyj is separate; no parent upgrade from ticket closure.",
+        "overall": "Keep the broader controller vector: the two corrected seams do not remove duplicated local/cloud preparation or accepted-plan ownership. ct-bpyj is separate; no parent upgrade from ticket closure."
+      }
+    },
+    {
+      "historical_index": 83,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:113:run.journal",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "C+",
+        "thoughtfulness": "A-",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "before_this_supplement": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "C+",
+        "thoughtfulness": "A-",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "before": "B+",
+          "after": "A-"
+        },
+        "efficiency": {
+          "before": "B",
+          "after": "B+"
+        },
+        "dx": {
+          "before": "C+",
+          "after": "B+"
+        },
+        "debt": {
+          "before": "C+",
+          "after": "B+"
+        },
+        "overall": {
+          "before": "B-",
+          "after": "B+"
+        }
+      },
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/local.py:130:LocalContinuation.record",
+        "packages/viewer_publication/src/viewer_publication/local.py:91:LocalContinuation._append",
+        "packages/viewer_publication/src/viewer_publication/local.py:120:LocalContinuation.flush",
+        "packages/viewer_publication/src/viewer_publication/local.py:40:read_local_journal",
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:145:run"
+      ],
+      "dimension_reasons": {
+        "correctness": "B+ to A-: synced intent precedes conditional PUT; full readback precedes verified event and protected-version advancement. Validated local history restores accepted phases without the derived checkpoint; fresh resume grants no persisted ephemeral proof.",
+        "efficiency": "B to B+: retained 128-write/four-phase evidence removes 507 syncs (783 to 276), full-state encodings 263 to 12, and JSON characters 5,493,025 to 511,187. Ordinary JSON calls increase 652 to 923; scratch rises 117,247 to 245,262 bytes. Full snapshots and whole-history restore remain.",
+        "dx": "C+ to B+: one read-only parser serves restore/status. Status sees current intent facts without checkpoint mutation and labels legacy counts stale/unknown. Partial, excessive and failed histories stay retained with explicit refusal.",
+        "thoughtfulness": "Retain A-: durable intent/readback/phase semantics, deliberate constraints and refusal policy were already thoughtful; stronger evidence alone does not justify an A grade.",
+        "debt": "C+ to B+: local events.jsonl owns state; continuation.json is derived. Dispatcher duplicate append and version callback are removed. Local/cloud persistence intentionally remain separate, with full phase/control snapshots.",
+        "overall": "B- to B+: overlapping local progress ownership is replaced with an evidenced maintained route. Larger retained history, bounded complete-history restore and separate accepted-plan work keep the grade below A."
+      }
+    },
+    {
+      "historical_index": 100,
+      "entry_id": "scripts/pipeline_status.py:113:continuation",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "before_this_supplement": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "scripts/publication/pipeline_status.py:113:continuation"
+      ],
+      "dimension_reasons": {
+        "correctness": "Keep all six grades: status now uses validated local facts and labels legacy stale counts, but remains observational and proves neither output integrity nor current remote state. No new status latency or memory claim.",
+        "efficiency": "Keep all six grades: status now uses validated local facts and labels legacy stale counts, but remains observational and proves neither output integrity nor current remote state. No new status latency or memory claim.",
+        "dx": "Keep all six grades: status now uses validated local facts and labels legacy stale counts, but remains observational and proves neither output integrity nor current remote state. No new status latency or memory claim.",
+        "thoughtfulness": "Keep all six grades: status now uses validated local facts and labels legacy stale counts, but remains observational and proves neither output integrity nor current remote state. No new status latency or memory claim.",
+        "debt": "Keep all six grades: status now uses validated local facts and labels legacy stale counts, but remains observational and proves neither output integrity nor current remote state. No new status latency or memory claim.",
+        "overall": "Keep all six grades: status now uses validated local facts and labels legacy stale counts, but remains observational and proves neither output integrity nor current remote state. No new status latency or memory claim."
+      }
+    },
+    {
+      "historical_index": 105,
+      "entry_id": "scripts/recovery_publication_continuation.py:21:Continuation.__init__",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "B+",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "before_this_supplement": {
+        "correctness": "B+",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "B+",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "B+",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "B+",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:123:Continuation.__init__",
+        "packages/viewer_publication/src/viewer_publication/continuation.py:139:Continuation._restore",
+        "packages/viewer_publication/src/viewer_publication/local.py:114:LocalContinuation._restore"
+      ],
+      "dimension_reasons": {
+        "correctness": "Keep all six grades: named base restore hook permits the local authority override; original binding refusal and empty proof cache remain. Credit the new local route in row83 rather than each inherited primitive.",
+        "efficiency": "Keep all six grades: named base restore hook permits the local authority override; original binding refusal and empty proof cache remain. Credit the new local route in row83 rather than each inherited primitive.",
+        "dx": "Keep all six grades: named base restore hook permits the local authority override; original binding refusal and empty proof cache remain. Credit the new local route in row83 rather than each inherited primitive.",
+        "thoughtfulness": "Keep all six grades: named base restore hook permits the local authority override; original binding refusal and empty proof cache remain. Credit the new local route in row83 rather than each inherited primitive.",
+        "debt": "Keep all six grades: named base restore hook permits the local authority override; original binding refusal and empty proof cache remain. Credit the new local route in row83 rather than each inherited primitive.",
+        "overall": "Keep all six grades: named base restore hook permits the local authority override; original binding refusal and empty proof cache remain. Credit the new local route in row83 rather than each inherited primitive."
+      }
+    },
+    {
+      "historical_index": 106,
+      "entry_id": "scripts/recovery_publication_continuation.py:37:Continuation.flush",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "before_this_supplement": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:142:Continuation.flush",
+        "packages/viewer_publication/src/viewer_publication/local.py:120:LocalContinuation.flush"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain completed-eight grades: compact shared checkpoint serialization/fsync is unchanged; local full checkpoints remain at phase/control boundaries and whole-state string/bytes copies persist. Avoid double credit.",
+        "efficiency": "Retain completed-eight grades: compact shared checkpoint serialization/fsync is unchanged; local full checkpoints remain at phase/control boundaries and whole-state string/bytes copies persist. Avoid double credit.",
+        "dx": "Retain completed-eight grades: compact shared checkpoint serialization/fsync is unchanged; local full checkpoints remain at phase/control boundaries and whole-state string/bytes copies persist. Avoid double credit.",
+        "thoughtfulness": "Retain completed-eight grades: compact shared checkpoint serialization/fsync is unchanged; local full checkpoints remain at phase/control boundaries and whole-state string/bytes copies persist. Avoid double credit.",
+        "debt": "Retain completed-eight grades: compact shared checkpoint serialization/fsync is unchanged; local full checkpoints remain at phase/control boundaries and whole-state string/bytes copies persist. Avoid double credit.",
+        "overall": "Retain completed-eight grades: compact shared checkpoint serialization/fsync is unchanged; local full checkpoints remain at phase/control boundaries and whole-state string/bytes copies persist. Avoid double credit."
+      }
+    },
+    {
+      "historical_index": 108,
+      "entry_id": "scripts/recovery_publication_continuation.py:60:Continuation.phase",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "before_this_supplement": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:169:Continuation.phase"
+      ],
+      "dimension_reasons": {
+        "correctness": "Keep all six grades: accepted output rehash/reuse stays inherited. Checkpoint-loss recovery is credited to row83 rather than inventing a new phase-validation implementation.",
+        "efficiency": "Keep all six grades: accepted output rehash/reuse stays inherited. Checkpoint-loss recovery is credited to row83 rather than inventing a new phase-validation implementation.",
+        "dx": "Keep all six grades: accepted output rehash/reuse stays inherited. Checkpoint-loss recovery is credited to row83 rather than inventing a new phase-validation implementation.",
+        "thoughtfulness": "Keep all six grades: accepted output rehash/reuse stays inherited. Checkpoint-loss recovery is credited to row83 rather than inventing a new phase-validation implementation.",
+        "debt": "Keep all six grades: accepted output rehash/reuse stays inherited. Checkpoint-loss recovery is credited to row83 rather than inventing a new phase-validation implementation.",
+        "overall": "Keep all six grades: accepted output rehash/reuse stays inherited. Checkpoint-loss recovery is credited to row83 rather than inventing a new phase-validation implementation."
+      }
+    },
+    {
+      "historical_index": 109,
+      "entry_id": "scripts/recovery_publication_continuation.py:73:Continuation.record",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "before_this_supplement": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:219:Continuation.record",
+        "packages/viewer_publication/src/viewer_publication/local.py:130:LocalContinuation.record"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain completed-eight grades: cloud/base verified event and protected version already share one checkpoint. Local record overrides it and is graded in row83; no local fixture speed credit to cloud journal.",
+        "efficiency": "Retain completed-eight grades: cloud/base verified event and protected version already share one checkpoint. Local record overrides it and is graded in row83; no local fixture speed credit to cloud journal.",
+        "dx": "Retain completed-eight grades: cloud/base verified event and protected version already share one checkpoint. Local record overrides it and is graded in row83; no local fixture speed credit to cloud journal.",
+        "thoughtfulness": "Retain completed-eight grades: cloud/base verified event and protected version already share one checkpoint. Local record overrides it and is graded in row83; no local fixture speed credit to cloud journal.",
+        "debt": "Retain completed-eight grades: cloud/base verified event and protected version already share one checkpoint. Local record overrides it and is graded in row83; no local fixture speed credit to cloud journal.",
+        "overall": "Retain completed-eight grades: cloud/base verified event and protected version already share one checkpoint. Local record overrides it and is graded in row83; no local fixture speed credit to cloud journal."
+      }
+    },
+    {
+      "historical_index": 110,
+      "entry_id": "scripts/recovery_publication_continuation.py:102:Continuation.reconcile",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "before_this_supplement": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/continuation.py:244:Continuation.reconcile",
+        "packages/viewer_publication/src/viewer_publication/continuation.py:266:Continuation.replay"
+      ],
+      "dimension_reasons": {
+        "correctness": "Keep all six grades at this exact revision: explicit resume still reads complete current bytes and refuses conflicts, while replay proof is client/key/version scoped. Upcoming progress work is outside scope.",
+        "efficiency": "Keep all six grades at this exact revision: explicit resume still reads complete current bytes and refuses conflicts, while replay proof is client/key/version scoped. Upcoming progress work is outside scope.",
+        "dx": "Keep all six grades at this exact revision: explicit resume still reads complete current bytes and refuses conflicts, while replay proof is client/key/version scoped. Upcoming progress work is outside scope.",
+        "thoughtfulness": "Keep all six grades at this exact revision: explicit resume still reads complete current bytes and refuses conflicts, while replay proof is client/key/version scoped. Upcoming progress work is outside scope.",
+        "debt": "Keep all six grades at this exact revision: explicit resume still reads complete current bytes and refuses conflicts, while replay proof is client/key/version scoped. Upcoming progress work is outside scope.",
+        "overall": "Keep all six grades at this exact revision: explicit resume still reads complete current bytes and refuses conflicts, while replay proof is client/key/version scoped. Upcoming progress work is outside scope."
+      }
+    }
+  ],
+  "function_traces": [
+    {
+      "location": "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:38:SelectedRuntime.__init__",
+      "inputs": "runtime, cached modules, required package roots",
+      "outputs": "selected source paths or refusal",
+      "verified_behavior": "Source containment and cached ownership precede execute admission; no module eviction."
+    },
+    {
+      "location": "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:69:SelectedRuntime.check",
+      "inputs": "cached/direct modules and prior observations",
+      "outputs": "ownership observations or refusal",
+      "verified_behavior": "New objects or changed origin/package paths recheck; direct children outside sys.modules included."
+    },
+    {
+      "location": "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:96:SelectedRuntime.files",
+      "inputs": "selected source directories and actual driver",
+      "outputs": "exact source pins",
+      "verified_behavior": "Selected common/control/local sources and executing driver included; bytecode excluded."
+    },
+    {
+      "location": "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:145:run",
+      "inputs": "sealed batch, selected runtime, execute/resume flags",
+      "outputs": "preflight or guarded publication",
+      "verified_behavior": "Lazy preflight; real builder imports and selected LocalContinuation alias before lock/client."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/local.py:23:transition",
+      "inputs": "state,event,detail",
+      "outputs": "validated candidate delta",
+      "verified_behavior": "Copies mutable write/version maps before transition validation."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/local.py:91:LocalContinuation._append",
+      "inputs": "bounded event/checkpoint",
+      "outputs": "synced chained JSONL record",
+      "verified_behavior": "Failed sync sets refusal; no in-memory admission or PUT follows that failure."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/local.py:130:LocalContinuation.record",
+      "inputs": "intent/refused/verified event",
+      "outputs": "durable event and in-memory delta",
+      "verified_behavior": "Sync before exposing key/version delta; never clear shared guard map or overwrite unrelated writes."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/local.py:120:LocalContinuation.flush",
+      "inputs": "phase/control state",
+      "outputs": "authoritative event then derived checkpoint",
+      "verified_behavior": "Event snapshot sync owns acceptance before checkpoint replacement."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/local.py:40:read_local_journal",
+      "inputs": "bounded local history",
+      "outputs": "validated state and inspection counts",
+      "verified_behavior": "Checks chain,binding,transitions and limits without mutation or current remote proof."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/continuation.py:169:Continuation.phase",
+      "inputs": "phase action and accepted files",
+      "outputs": "reused or newly accepted result",
+      "verified_behavior": "Accepted file hashes checked; local subclass owns new acceptance flush."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/continuation.py:244:Continuation.reconcile",
+      "inputs": "fresh client and restored intents",
+      "outputs": "current readback observations",
+      "verified_behavior": "Complete current bytes/version required; proof cache begins empty."
+    },
+    {
+      "location": "scripts/publication/pipeline_status.py:113:continuation",
+      "inputs": "attempt path and expected identity",
+      "outputs": "read-only state observation",
+      "verified_behavior": "Shared parser rather than mutable continuation; legacy counts explicitly stale/unknown."
+    }
+  ],
+  "test_assertions_read": [
+    {
+      "location": "scripts/corpus_recovery/tests/test_runtime_ownership.py:25:test_clean_alternate_runtime_loads_real_builder_and_transitive_owners",
+      "behavior": "Actual selected builder/publisher origins and zero warm path resolutions."
+    },
+    {
+      "location": "scripts/corpus_recovery/tests/test_runtime_ownership.py:49:test_foreign_prebound_modules_refused_before_client_or_destination",
+      "behavior": "Foreign modules refuse before admission/client/destination."
+    },
+    {
+      "location": "scripts/corpus_recovery/tests/test_runtime_ownership.py:61:test_required_selected_source_cannot_fall_back_to_ambient_admission",
+      "behavior": "Missing/escaping corpus owner refuses before application admission."
+    },
+    {
+      "location": "scripts/corpus_recovery/tests/test_runtime_ownership.py:99:test_eager_import_failure_does_not_hold_shared_lock",
+      "behavior": "Retained eager-import traceback leaves lock available."
+    },
+    {
+      "location": "packages/viewer_publication/tests/test_local_continuation.py:17:test_each_accepted_phase_restores_from_events_without_checkpoint",
+      "behavior": "Accepted phases restore without checkpoint; changed binding/files refuse."
+    },
+    {
+      "location": "packages/viewer_publication/tests/test_local_continuation.py:42:test_uncertain_write_restore_requires_current_body_without_duplicate_put",
+      "behavior": "Intent/committed/verified boundaries reconcile current bytes without duplicate PUT."
+    },
+    {
+      "location": "packages/viewer_publication/tests/test_local_continuation.py:171:test_write_event_sync_precedes_put_and_guard_versions_keep_identity",
+      "behavior": "Intent sync before PUT, verified sync after; failed sync blocks next request."
+    },
+    {
+      "location": "packages/viewer_publication/tests/test_local_continuation.py:218:test_event_application_never_clears_guard_versions_or_unrelated_writes",
+      "behavior": "No transient map clear/update; unrelated write identity unchanged."
+    },
+    {
+      "location": "scripts/publication/tests/test_pipeline_status.py:238:test_local_event_status_reads_new_intent_without_mutation_or_checkpoint",
+      "behavior": "Status sees current intent with absent/stale checkpoint without mutable construction/files or remote proof."
+    }
+  ],
+  "evidence_validation": {
+    "runtime-ownership_raw_hashes_verified": 6,
+    "local-events_raw_hashes_verified": 8,
+    "runtime_ownership_class_load_conditions_AST_matches_approved_0affd10": true,
+    "integrated_local_source_matches_reviewed_final_followup": true
+  },
+  "limits": [
+    "No tests/benchmarks repeated, no integrated runtime speed or production/hosted/full-catalog qualification. Runtime single process samples do not prove speed gain.",
+    "Local counts/timings belong to 0c2b782; final 1e572d0 map correction preserves operation boundaries with targeted assertions, not a new timing run.",
+    "Local scratch and JSON call count increase; restore scans complete bounded history. No memory improvement claim.",
+    "Complete package source layout required; third-party dependencies remain interpreter-owned. Origin checks are not hostile Python isolation.",
+    "Broader accepted-plan duplication, final progress grades and whole-system architecture grade remain outside this supplement."
+  ],
+  "findings": [],
+  "conclusion": {
+    "verdict": "Two scoped improvements justified; preserve related grades and historical book",
+    "coverage": "Adequate for static/evidence supplemental rescore; no new execution",
+    "confidence": "high for scope-limited conclusions"
+  },
+  "source_sha256": {
+    "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py": "6127de34ca95d0c58c06a1181a8c7980c7288afd997c8fbd800afd2b23ff54c1",
+    "packages/viewer_publication/src/viewer_publication/local.py": "cf4789c8c1b28833693ea8b50a421fdb30029321cfa47419c410f60f7e240efd",
+    "packages/viewer_publication/src/viewer_publication/continuation.py": "dedaa27833a8bd39c483d1242f66c7207ddd181e09677911b683099f0cd7003c",
+    "scripts/publication/pipeline_status.py": "ad8b252bb20fc0959abf389c11d0a7437d8dcbaa7a7e1b2edfb842a4745108c8",
+    "packages/viewer_publication/src/viewer_publication/client.py": "f2052c5e6e256f0eebf87575ee374a1b7c1fc6ffffc66fc71ec00f20dc05817e",
+    "scripts/corpus_recovery/tests/test_runtime_ownership.py": "c0b69e978e05b22c175ab712a21793f787571bd1353605f255315b45e768d9b7",
+    "scripts/corpus_recovery/tests/test_dispatch_corpus_recovery_publication.py": "3acb64499233fc6f67a0156e2896cfe851ee5b9936431b0bfcb7971b30d70f2e",
+    "packages/viewer_publication/tests/test_local_continuation.py": "892f9ae2eed88f7262fb58523858928b3ccf2fc05646be5e3325604eaa2a853d",
+    "scripts/publication/tests/test_pipeline_status.py": "8b3440a3bde4051d9cd77936cc08871f66e07d14be47ba45bf8b4d9b764f0b6b"
+  },
+  "evidence_sha256": {
+    "docs/package-overlap-rescore-20261019.json": "76fe0b92100e80c9b51fe21ebb10e9d681873b7b9e8a4d84ed5ae5b48ac144ae",
+    "docs/package-overlap-rescore-20261019.md": "307b8b54de18dd86c1d238ab5c607926a926540c4a0eb0dbdff6b4be48052611",
+    "docs/experiments/efficiency-debt/runtime-ownership.md": "8e6b20b69d7c46b6eda08b0bf5def4165959620a4f5fbd6c7b871c7cc2770e0e",
+    "docs/experiments/efficiency-debt/runtime-ownership-evidence.json": "414d26b0d1e63f587fe5eacf61e08486c2f6293c962fb77091b6ebc8994d8999",
+    "docs/experiments/efficiency-debt/runtime-ownership-probe.py": "aeff3e31c6a53ad0b75003cca95255370fd1c6f41de4831e2e7ce6445226cee4",
+    "docs/experiments/efficiency-debt/local-events.md": "b872378b3a0f486b657b5372006699a48beb01ae54d44ee5fda94007d276a921",
+    "docs/experiments/efficiency-debt/local-events-evidence.json": "e03e3c8083d517f5586a3fdd69ff4c81f09ae29d2994365ddda2b68260509048",
+    "docs/experiments/efficiency-debt/local-events-measure.py": "9882f7b82daab4bc17225e2dc17d9a80c16b7eef1e820a803864c0cbaa0a229d"
+  },
+  "raw_evidence_sha256": {
+    "rescore/completed-eight.json": "1be0ede7c0f3ff0a892b1d2de70e615e02779cb30baf8e39ff04265cf8a1fe82",
+    "rescore/completed-eight.md": "ce735a3a6e69949966ea170ccb5687adf44f7fa4217541be1cf25ed22ab0ca69",
+    "runtime-ownership/review.json": "991f47ba1f557006ccbac931d743176c5d8eca1d83938dacda8246d029d641cc",
+    "runtime-ownership/review.md": "87a3dd38485e33602f70898364459ecb4c0c96385c88bdfa0510a7975445110e",
+    "runtime-ownership/before.json": "ecd9d20e5ffaec6d02bc4045029a0a9bb6e9b8ccece384fb78d417becc913f89",
+    "runtime-ownership/after.json": "7d5cb10ff00325f04e3ca93f50c3659b1f93c4714ebf999bc219920802727c54",
+    "local-events/review.json": "4054521292b0c2460eb7acc953f49f1da12240bca7760df69691275fee79e640",
+    "local-events/review.md": "da2a41e52d97e0e80f994dd94a5f0b61713089aa5d90fb18de4581d0a998ff70",
+    "local-events/run-final/comparison.json": "d2647424b187dc6628655434a980b30de8d540ebc886ec9cd08bff233a24b14d",
+    "local-events/guard-map-focused-tests.log": "98cd43a3f55cfc2620776ee6df6a5c791e17cc1fee7b0f247f204555d08c409a"
+  }
+}
