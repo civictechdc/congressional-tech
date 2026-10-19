@@ -1,0 +1,23 @@
+{
+  "status": "independently reviewed; merge pending",
+  "base": "b879ba642f4e8b2abdb21640dcf22c5442b186fc",
+  "tickets": {
+    "ct-2uwd": "Independent review approved ec13bf1: shared reader preserves policy; lost acknowledgment 3 to 2 full GETs with same one conditional PUT and exact results. 107 focused checks and two subtests pass. Bounded local fixture only.",
+    "ct-v6ao": "Independent review approved 1879546 with matched instrumentation and all 269 actual payload hashes per arm. Three normal-path fixture medians improve 3.564 to 2.931 seconds; no production or consistent resume speed claim. 60 existing plus 74 focused checks pass; durability boundaries retained.",
+    "ct-76n5": "Independent review approved b54542d after fixing diagnostic-inspection failure handling. Exact original error preserved; retained build path, last recorded accepted phase and four read-only checks visible without new reads or authority. 65 initial checks plus five subtests and focused repair checks pass."
+  },
+  "reviews": {
+    "mappings/review.json": {
+      "sha256": "cef9f085d0f25fc40f9bf4f412a527b736c224a94fd09dd1c1d8a1a3187591bb",
+      "head": "ec13bf13cd75f545b0b2b7b7baa653c17bae7fca"
+    },
+    "checkpoint/review.json": {
+      "sha256": "fb99e0fcc6a076111e94f848962f15f0f9691a59bd3de8f031f37a93d767c41f",
+      "head": "1879546e9077dbb408c55c5abd7831daf1b663e1"
+    },
+    "incomplete-build/review-repair.json": {
+      "sha256": "f6b5e6e57ef24b160daaa4f13b9c7f735e92e40e551bd2f0bebb75fd9dc3ba64",
+      "head": "b54542d6dc87f6260de2198cf461bfec4efc0acd"
+    }
+  }
+}

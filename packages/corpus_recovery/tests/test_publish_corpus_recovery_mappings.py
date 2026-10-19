@@ -6,6 +6,8 @@ from pathlib import Path
 import sys
 import unittest
 
+import pytest
+
 from corpus_recovery.mappings import KEY, publish_mappings
 from viewer_publication.client import VerifiedTransfer
 
@@ -23,9 +25,15 @@ class Client:
         self.lose_ack = False
         self.conflict = False
         self.corrupt = False
+        self.gets = self.heads = 0
 
     def get_object(self, **kwargs):
+        self.gets += 1
         return dict(Body=io.BytesIO(self.raw), ContentLength=len(self.raw), ETag=self.etag)
+
+    def head_object(self, **kwargs):
+        self.heads += 1
+        return dict(ContentLength=len(self.raw), ETag=self.etag)
 
     def put_object(self, **kwargs):
         self.writes.append(kwargs)
@@ -35,6 +43,7 @@ class Client:
         self.etag = 'new'
         if self.lose_ack:
             raise TimeoutError('Acknowledgment lost')
+        return {'ETag': self.etag}
 
 
 class PublishTests(unittest.TestCase):
@@ -134,7 +143,7 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(result['etag'], 'new')
         self.assertFalse(result['acknowledgment_reconciled'])
 
-    def test_rejected_transfer_does_not_reread_or_rewrite(self):
+    def test_rejected_transfer_checks_bytes_without_rewriting(self):
         client = Client(doc())
         body_reads = []
         original = client.get_object
@@ -150,7 +159,160 @@ class PublishTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'readback'):
             self.run_publish(client)
         self.assertEqual(len(client.writes), 1)
-        self.assertEqual(body_reads, [KEY])
+        self.assertEqual(body_reads, [KEY, KEY])
+
+
+class CountedBody(io.BytesIO):
+    def __init__(self, data):
+        super().__init__(data)
+        self.consumed = 0
+
+    def read(self, size=-1):
+        assert size >= 0, 'control read must request a bounded amount'
+        chunk = super().read(size)
+        self.consumed += len(chunk)
+        return chunk
+
+
+def test_publisher_and_mapping_share_one_control_reader_and_policy():
+    import importlib.util
+    import congress_api.retention.control_documents as controls
+    import corpus_recovery.mappings as mappings
+    root = Path(__file__).resolve().parents[3]
+    spec = importlib.util.spec_from_file_location('shared_control_publisher', root / 'apps/site/scripts/publish-viewer-r2.py')
+    publisher = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(publisher)
+    assert publisher.bounded_control_read is mappings.bounded_control_read is controls.bounded_control_read
+    assert publisher.CONTROL_LIMITS is mappings.CONTROL_LIMITS is controls.CONTROL_LIMITS
+    assert controls.CONTROL_LIMITS == {'manifest': 4 * 1024**2, 'accepted': 16 * 1024**2, 'recovery': 32 * 1024**2}
+
+
+@pytest.mark.parametrize('proof', ['issued', 'missing', 'foreign', 'stale', 'wrong_key'])
+def test_real_guarded_receipts_or_independent_fallback_verify_one_put(proof):
+    from viewer_publication.client import GuardedPublicationClient
+    base = Client(doc())
+    events, saved = [], {}
+    journal = lambda event, value: events.append(event)
+    other = GuardedPublicationClient(base, guard=lambda: None, journal=journal, after_write=lambda *args: None)
+
+    class Proxy(GuardedPublicationClient):
+        def put_object(self, **kwargs):
+            result = super().put_object(**kwargs)
+            if proof == 'missing':
+                result.pop('_verified_transfer')
+            elif proof == 'foreign':
+                result = other.verified_result({}, bucket='test', key=KEY, size=len(base.raw),
+                    sha256=hashlib.sha256(base.raw).hexdigest(), etag=base.etag)
+            elif proof == 'stale':
+                base.etag = 'same-bytes-new-version'
+            elif proof == 'wrong_key':
+                result = self.verified_result({}, bucket='test', key='viewer-publications/other', size=len(base.raw),
+                    sha256=hashlib.sha256(base.raw).hexdigest(), etag=base.etag)
+            return result
+
+    proxy = Proxy(base, guard=lambda: None, journal=journal, after_write=lambda *args: None)
+    result = publish_mappings(proxy, bucket='test', baseline=doc(), prepared=doc('new'), validate=lambda rows: rows,
+        guard=lambda: None, save_payload=saved.__setitem__, journal=journal)
+    assert result['complete'] and not result['viewer_pointer_advanced']
+    assert result['etag'] == base.etag
+    assert len(base.writes) == 1 and base.writes[0]['IfMatch'] == 'old'
+    assert base.raw == saved['accepted-proposed.json']
+    assert json.loads(saved['accepted-before.json']) == doc()
+    assert base.gets == (2 if proof == 'issued' else 3)  # Initial mapping + guarded full readback [+ independent fallback].
+    assert base.heads == int(proof in ('issued', 'stale'))
+    assert events.count('publication_write_verified') == 1
+
+
+
+def test_guarded_failure_keeps_its_own_reconciliation_without_outer_read():
+    from viewer_publication.client import GuardedPublicationClient
+    client = Client(doc())
+    request_error, read_error = TimeoutError('request detail'), OSError('read detail')
+    original_put, original_get = client.put_object, client.get_object
+    def put(**kwargs):
+        original_put(**kwargs)
+        raise request_error
+    def get(**kwargs):
+        if client.writes:
+            client.gets += 1
+            raise read_error
+        return original_get(**kwargs)
+    client.put_object, client.get_object = put, get
+    proxy = GuardedPublicationClient(client, guard=lambda: None,
+        journal=lambda *args: None, after_write=lambda *args: None)
+    with pytest.raises(RuntimeError, match='outcome is uncertain') as caught:
+        publish_mappings(proxy, bucket='test', baseline=doc(), prepared=doc('new'), validate=lambda rows: rows,
+            guard=lambda: None, save_payload=lambda *args: None, journal=lambda *args: None)
+    assert caught.value.request_error is request_error
+    assert caught.value.reconciliation_error is read_error
+    assert client.gets == 2 and len(client.writes) == 1
+
+
+def test_plain_lost_ack_reuses_exact_readback_and_retains_both_failures():
+    client = Client(doc()); client.lose_ack = True
+    result = publish_mappings(client, bucket='test', baseline=doc(), prepared=doc('new'), validate=lambda rows: rows,
+        guard=lambda: None, save_payload=lambda *args: None, journal=lambda *args: None)
+    assert result['acknowledgment_reconciled'] and client.gets == 2 and len(client.writes) == 1
+    client = Client(doc())
+    request_error = TimeoutError('signed URL and secret request detail')
+    read_error = OSError('secret reconciliation detail')
+    original_put, original_get = client.put_object, client.get_object
+    def put(**kwargs):
+        original_put(**kwargs)
+        raise request_error
+    def get(**kwargs):
+        if client.writes:
+            raise read_error
+        return original_get(**kwargs)
+    client.put_object, client.get_object = put, get
+    with pytest.raises(RuntimeError, match='outcome is uncertain') as caught:
+        publish_mappings(client, bucket='test', baseline=doc(), prepared=doc('new'), validate=lambda rows: rows,
+            guard=lambda: None, save_payload=lambda *args: None, journal=lambda *args: None)
+    assert caught.value.request_error is caught.value.__cause__ is request_error
+    assert caught.value.reconciliation_error is read_error
+    assert 'secret' not in str(caught.value) and all('secret' not in note for note in caught.value.__notes__)
+    assert len(client.writes) == 1
+
+
+@pytest.mark.parametrize('damage', ['declared_oversize', 'streamed_oversize', 'truncated', 'malformed', 'shape', 'version', 'missing_version'])
+def test_mapping_admission_closes_bad_input_before_any_write(damage):
+    from congress_api.retention.control_documents import CONTROL_LIMITS
+    client = Client(doc())
+    raw, declared, etag = client.raw, len(client.raw), 'old'
+    if damage == 'declared_oversize':
+        declared = CONTROL_LIMITS['accepted'] + 1
+    elif damage == 'streamed_oversize':
+        raw = b' ' * (CONTROL_LIMITS['accepted'] + 1)
+        declared = CONTROL_LIMITS['accepted']
+    elif damage == 'truncated':
+        declared += 1
+    elif damage == 'malformed':
+        raw = b'{'; declared = len(raw)
+    elif damage == 'shape':
+        raw = b'[]'; declared = len(raw)
+    elif damage == 'version':
+        raw = json.dumps(dict(version=True, recoveries=[])).encode(); declared = len(raw)
+    else:
+        etag = ''
+    body = CountedBody(raw)
+    client.get_object = lambda **kwargs: dict(Body=body, ContentLength=declared, ETag=etag)
+    with pytest.raises(ValueError):
+        publish_mappings(client, bucket='test', baseline=doc(), prepared=doc('new'), validate=lambda rows: rows,
+            guard=lambda: None, save_payload=lambda *args: None, journal=lambda *args: None)
+    assert not client.writes and body.closed
+    assert body.consumed <= CONTROL_LIMITS['accepted'] + 1
+    if damage == 'declared_oversize':
+        assert body.consumed == 0
+
+
+def test_proposed_mapping_must_fit_supported_ceiling_before_put(monkeypatch):
+    from congress_api.retention.control_documents import CONTROL_LIMITS
+    client = Client(doc())
+    monkeypatch.setitem(CONTROL_LIMITS, 'accepted', len(client.raw))
+    with pytest.raises(ValueError, match='byte limit'):
+        publish_mappings(client, bucket='test', baseline=doc(), prepared=doc('new'), validate=lambda rows: rows,
+            guard=lambda: None, save_payload=lambda *args: None, journal=lambda *args: None)
+    assert not client.writes
 
 
 if __name__ == '__main__':

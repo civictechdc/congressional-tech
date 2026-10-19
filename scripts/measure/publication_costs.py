@@ -92,6 +92,10 @@ class PublicationCosts:
             counts['json_dumps_calls'] += 1
             counts['json_serialized_characters'] += len(result)
             counts['json_serialization_seconds'] += time.perf_counter() - started
+            if isinstance(value, dict) and {'binding', 'phases', 'writes', 'versions'} <= value.keys():
+                counts['state_json_dump_calls'] += 1
+                counts['state_json_serialized_characters'] += len(result)
+                counts['state_json_serialization_seconds'] += time.perf_counter() - started
             return result
         class CountedParquet(old_parquet):
             def iter_batches(self, *args, **kwargs):

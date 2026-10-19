@@ -121,9 +121,14 @@ def continuation(path, expected):
     phases = value.get('phases', {})
     if not isinstance(phases, dict):
         raise ValueError('Continuation phases must be an object')
-    order = ('catalog', 'mappings', 'prepared', 'publication') if any(name in phases for name in ('catalog','mappings')) else ('prepared','publication')
+    local_recovery = 'batch' in binding or any(name in phases for name in ('catalog', 'mappings'))
+    order = ('catalog', 'mappings', 'prepared', 'publication') if local_recovery else ('prepared','publication')
     local_state = {'recorded_phases': list(phases), 'next_incomplete_phase': next((name for name in order if name not in phases), None),
                    'integrity_rechecked': False, 'remote_reconciliation': 'not_performed'}
+    if local_recovery:
+        from corpus_recovery.diagnostics import catalog_build_observation
+        if observation := catalog_build_observation(path.parent, phases):
+            local_state['catalog_build'] = observation
     writes = value.get('writes', {})
     if (not isinstance(writes, dict) or len(writes) > 8192
             or any(not isinstance(key, str) or not key or len(key) > 2048
@@ -231,6 +236,10 @@ def format_status(value):
         lines.append(f"Recorded accepted output: {output['phase']} ({output['recorded_files']} files; integrity not rechecked)")
     if publication := value.get('continuation', {}).get('recorded_publication_status'):
         lines.append('Recorded publisher result: ' + publication)
+    if build := value.get('continuation', {}).get('local_phase_observation', {}).get('catalog_build'):
+        lines.append('Retained catalog build: ' + build['retained_build_path'])
+        lines.append('Last recorded accepted phase: ' + (build['last_recorded_accepted_phase'] or 'none'))
+        lines += ['Read-only check: ' + item['path'] + ': ' + item['check'] for item in build['next_read_only_checks']]
     lines.append('Current public readback: not checked')
     if verification := value.get('publication_verification'):
         lines.append('Read-only publication verification: ' + verification['status'])
