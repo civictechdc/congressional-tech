@@ -1,6 +1,6 @@
 ---
 id: ct-57gf
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-19T15:46:23Z
@@ -34,3 +34,7 @@ Traced every Python import of `congress_shared.globals`, package console-script 
 Validation: own worktree `uv sync --frozen`; 129 focused tests passed across shared import/setup, Congress CLI/boundaries/import fences, YouTube interpretation/fetch fidelity, committee metadata/details, and transcript regression tests. New checks audit imports for filesystem writes with both empty and configured root logging, exercise all nine entrypoints through help, check default/explicit argument types and output paths, preserve credentials and exact missing-key errors. `uv build --package congress-shared --wheel` passed; extracted wheel imported cleanly and both bundled resources matched source bytes. `git diff --check` passed.
 
 Concrete improvement: importing collectors/readers no longer configures application logging; each responsibility has one maintained owner. Compatibility aliases reuse those definitions. No speed/resource claim or live-source qualification is made. Full pipeline replay and remote operations were outside this focused configuration change. Status stays `in_progress` until independent review and parent merge.
+
+**2026-10-19T15:55:08Z**
+
+Independent category-lane reviewer approved exact implementation 790f437. Traced all nine command normal/help/error paths and verified original argument helper/logging AST, default paths and unchanged resource/auth blobs. 129 focused tests and wheel checks passed. Parent ct-snh8 tracks CI, merge and cleanup.
