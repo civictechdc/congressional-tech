@@ -1,6 +1,5 @@
 """Validate explicit workflow resume before checkout or workspace setup."""
 import importlib.util
-import json
 import os
 from pathlib import Path
 
@@ -17,13 +16,15 @@ def prepare(environment):
         root / 'packages/viewer_publication/src/viewer_publication/resume.py')
     validation = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(validation)
-    descriptor = validation.parse_resume_descriptor(raw.encode('utf-8'))
+    admitted = raw.encode('utf-8')
+    descriptor = validation.parse_resume_descriptor(admitted)
     if descriptor['repository'] != environment['GITHUB_REPOSITORY']:
         raise ValueError('Resume descriptor repository differs from this workflow')
     path = Path(environment['RUNNER_TEMP']) / 'viewer-resume.json'
-    with path.open('x', encoding='utf-8') as stream:
-        json.dump(descriptor, stream, sort_keys=True)
-        stream.write('\n')
+    # Preserve admitted bytes: JSON re-encoding can expand Unicode or whitespace
+    # beyond the same byte limit that the original CLI enforces on this file.
+    with path.open('xb') as stream:
+        stream.write(admitted)
     return {'resume': 'true', **{name: descriptor[name]
         for name in ('revision', 'run_id', 'artifact_id')}}
 

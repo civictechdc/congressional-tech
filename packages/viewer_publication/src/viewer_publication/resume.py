@@ -48,4 +48,3 @@ def validate_resume_descriptor(value):
             or value.get('attempt') != '-'.join(match.groups())):
         raise ValueError('Resume descriptor attempt/name/run fields differ')
     return value
-

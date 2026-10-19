@@ -39,6 +39,20 @@ def test_original_identity_is_validated_without_site_packages(tmp_path):
     assert json.loads((tmp_path / 'viewer-resume.json').read_bytes()) == value
 
 
+@pytest.mark.parametrize('at_limit', [False, True])
+def test_retained_descriptor_preserves_admitted_multibyte_bytes(tmp_path, at_limit):
+    value = dict(descriptor(), annotation='é' * 5000)
+    raw = json.dumps(value, ensure_ascii=False).encode('utf-8')
+    if at_limit:
+        raw += b' ' * (16384 - len(raw))
+    result, output = execute(tmp_path, raw.decode('utf-8'))
+    assert result.returncode == 0, result.stderr
+    assert output.read_text().startswith('resume=true\n')
+    retained = (tmp_path / 'viewer-resume.json').read_bytes()
+    assert retained == raw
+    assert parse_resume_descriptor(retained) == value
+
+
 @pytest.mark.parametrize('raw', [
     '{', '[]', 'null', 'x' * (16 * 1024 + 1),
     json.dumps(descriptor()).replace('"version": 1', '"version": 1, "version": 1'),

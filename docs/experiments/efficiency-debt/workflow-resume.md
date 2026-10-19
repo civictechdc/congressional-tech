@@ -32,7 +32,11 @@ Baseline: `3757f55ed33ea390895c20a2007cb08eb39ce519`.
 - **117 focused tests passed**, including isolated Python without site packages,
   rejected input without selection output, retained-file protection, real shell
   test-path selection for both layouts, release identity inclusion, existing
-  artifact custody checks and explicit CLI conflict checks.
+  artifact custody checks and explicit CLI conflict checks. Independent review
+  found that JSON re-encoding could expand a valid multibyte record beyond
+  16 KiB. The bootstrap now retains the exact admitted UTF-8 bytes; both a
+  multibyte record and a record exactly at the byte limit pass the round trip.
+  The 41-test focused repair rerun passed.
 
 The practical gain is fewer manual transcription steps and one shared validator.
 No publication, source acquisition or workflow dispatch was used for this check.
