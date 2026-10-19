@@ -7,7 +7,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("webharvest_map", ROOT / "scripts/webharvest_committee_map.py")
+SPEC = importlib.util.spec_from_file_location("webharvest_map", ROOT / "scripts/webharvest/webharvest_committee_map.py")
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 

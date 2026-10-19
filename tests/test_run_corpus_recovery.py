@@ -3,7 +3,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts/corpus_recovery'))
 import run_corpus_recovery as runner
 
 class RunnerTests(unittest.TestCase):

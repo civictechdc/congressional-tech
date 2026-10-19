@@ -4,10 +4,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-spec = importlib.util.spec_from_file_location('merge_recovery',
-    Path(__file__).resolve().parents[1] / 'scripts/merge_corpus_recovery_mappings.py')
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+import corpus_recovery.mappings as module
 
 
 def document(**rows):

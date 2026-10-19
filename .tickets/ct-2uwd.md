@@ -2,7 +2,7 @@
 id: ct-2uwd
 status: open
 deps: [ct-2d3k]
-links: [ct-d3un]
+links: [ct-d3un, ct-vxzu]
 created: 2026-10-19T16:40:41Z
 type: task
 priority: 1
@@ -31,3 +31,7 @@ Review evidence: scripts/dispatch_corpus_recovery_publication.py:259:run.mapping
 **2026-10-19T16:56:07Z**
 
 Prioritized for efficiency and architectural debt per user direction. Require measured work/resource changes and simpler ownership; preserve behavior and data. Grok/Cursor is concurrently refactoring /scripts; use this ticket as its acceptance checklist and avoid duplicate implementation. Keep open until reviewed evidence passes.
+
+**2026-10-19T17:00:42Z**
+
+Related reshape ct-vxzu shares the plain exact-byte reconcile and consumes _verified_transfer. It does not close this ticket. publish_mappings still consumes the guarded readback here.

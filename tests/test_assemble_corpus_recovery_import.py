@@ -4,10 +4,7 @@ import importlib.util
 from pathlib import Path
 import unittest
 
-spec = importlib.util.spec_from_file_location('assemble_recovery', Path(__file__).resolve().parents[1]
-                                            / 'scripts/assemble_corpus_recovery_import.py')
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+import corpus_recovery.assemble as module
 
 
 class AssemblyTests(unittest.TestCase):

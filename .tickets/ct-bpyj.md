@@ -2,7 +2,7 @@
 id: ct-bpyj
 status: open
 deps: [ct-2d3k, ct-piku, ct-u7gg, ct-3g69, ct-du3e, ct-tenb]
-links: [ct-d3un]
+links: [ct-d3un, ct-esm4]
 created: 2026-10-19T16:40:41Z
 type: task
 priority: 1
@@ -36,3 +36,7 @@ The ct-du3e fix preserves proposed versus selected bytes through verified commit
 **2026-10-19T16:56:07Z**
 
 Prioritized for efficiency and architectural debt per user direction. Require measured work/resource changes and simpler ownership; preserve behavior and data. Grok/Cursor is concurrently refactoring /scripts; use this ticket as its acceptance checklist and avoid duplicate implementation. Keep open until reviewed evidence passes.
+
+**2026-10-19T17:00:42Z**
+
+Related reshape ct-esm4 packages corpus recovery and pins the files that execute. Related only. It does not close this ticket.
