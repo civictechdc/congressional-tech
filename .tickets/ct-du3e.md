@@ -1,6 +1,6 @@
 ---
 id: ct-du3e
-status: in_progress
+status: closed
 deps: [ct-2d3k]
 links: []
 created: 2026-10-19T16:38:43Z
@@ -23,3 +23,7 @@ Retain a separately named proposal before the write. Preserve prior selected byt
 **2026-10-19T16:43:22Z**
 
 Local Store retains proposed/indexes/catalog.json before the original conditional write and installs source/indexes/catalog.json only after verified storage success. Actual guarded Store tests cover condition refusal, uncommitted uncertainty, committed readback failure, success and lost-ack reconciliation; one PUT each, selected bytes unchanged through readback, proposal retained. Dispatcher/guard/mapping suite: 39 passed plus 5 subtests. Awaiting independent review; ticket remains in progress.
+
+**2026-10-19T16:47:44Z**
+
+Independent review approved e9b5483. Focused local failure, custody and selector-route tests passed; exact logs checked. Larger accepted-plan ownership stays open in ct-bpyj. Integrated offline verification follows in ct-us67.

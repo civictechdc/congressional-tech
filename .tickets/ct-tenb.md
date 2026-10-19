@@ -1,6 +1,6 @@
 ---
 id: ct-tenb
-status: in_progress
+status: closed
 deps: [ct-2d3k]
 links: []
 created: 2026-10-19T16:38:43Z
@@ -23,3 +23,7 @@ Reject file and parent symlink escapes before hashing or accepting restored outp
 **2026-10-19T16:43:22Z**
 
 Restored non-inventory phase files now repeat file-symlink/resolved-root confinement before hashing. Matching owned files and digest refusal remain covered; file/parent symlink escapes refuse before hashing or checkpoint changes. State/continuation/attempt regression suite: 60 passed. Awaiting independent review; ticket remains in progress.
+
+**2026-10-19T16:47:44Z**
+
+Independent review approved e9b5483. Focused local failure, custody and selector-route tests passed; exact logs checked. Larger accepted-plan ownership stays open in ct-bpyj. Integrated offline verification follows in ct-us67.
