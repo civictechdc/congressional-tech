@@ -1,0 +1,77 @@
+{
+  "baseline_revision": "75820f3f6dcb5ea52fece46c77af27ffd1a5759a",
+  "candidate_revision": "0c2b782d15a1277d78ba0d7867f6b612d19e2e96",
+  "candidate_files": {
+    "packages/viewer_publication/src/viewer_publication/continuation.py": "dedaa27833a8bd39c483d1242f66c7207ddd181e09677911b683099f0cd7003c",
+    "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py": "d8a7960792b3cb89a00fd8cb82ef58a1a316af6ffa3d1cfd5ee256ed458a6e77",
+    "packages/viewer_publication/src/viewer_publication/local.py": "13f40e6ce3a0766d73d13ae9ceb909360bf390de857c2b40f720eca399f138db",
+    "packages/viewer_publication/src/viewer_publication/client.py": "f2052c5e6e256f0eebf87575ee374a1b7c1fc6ffffc66fc71ec00f20dc05817e",
+    "scripts/measure/publication_costs.py": "24d8d1efae858fb91daf21e43730b39910a8380afcc9e9d3c1d278430b93a16a",
+    "scripts/measure/process_rss.py": "d998bdfb02a3eed8491fe6a7203a3c1efdbf854fbc0f11b7c55592d1c5e079d5"
+  },
+  "baseline_source_sha256": "d6ab23de50766c9939ab6b6a9e2db909a39c04e6253040ae7ba1a0d74349a606",
+  "baseline_dispatch_sha256": "d73e84fa69731dbdcd58771629f8cdf7a505b88ce44e8001b081b8c6bb883a48",
+  "measurement_sha256": "9882f7b82daab4bc17225e2dc17d9a80c16b7eef1e820a803864c0cbaa0a229d",
+  "telemetry_sha256": "24d8d1efae858fb91daf21e43730b39910a8380afcc9e9d3c1d278430b93a16a",
+  "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+  "executable": "/Users/mikewolfd/.codex/worktrees/efficiency-catalog/congressional-tech/.venv-catalog/bin/python",
+  "limits": {
+    "writes": 128,
+    "accepted_phases": 4,
+    "repeats_per_arm": 3,
+    "remote_network": false,
+    "fixture_body_bytes": 9874,
+    "execution_ceiling_seconds": 120,
+    "scratch_ceiling_bytes": 67108864,
+    "sampled_rss_ceiling_bytes": 536870912
+  },
+  "medians": {
+    "baseline": {
+      "seconds": 0.1539482909720391,
+      "serialized_characters": 5493025,
+      "fsync_calls": 783
+    },
+    "candidate": {
+      "seconds": 0.07947429199703038,
+      "serialized_characters": 511187,
+      "fsync_calls": 276
+    }
+  },
+  "candidate_tracked_changes": "",
+  "parity": {
+    "outcome_sha256": "8bd1c58c2644196e06043d70299dc0e2ac93b7437759e273baa8d52838728bf1",
+    "ordinary_events": 257,
+    "writes": 128,
+    "current_readbacks": 128,
+    "accepted_phases": 4,
+    "arms_and_repeats": 6,
+    "exact_equal": [
+      "complete continuation state",
+      "ordinary event facts excluding timestamps",
+      "all 128 body hashes",
+      "remote PUT/GET counts"
+    ]
+  },
+  "raw_files": {
+    "run-final/comparison.json": "d2647424b187dc6628655434a980b30de8d540ebc886ec9cd08bff233a24b14d",
+    "run-final/baseline-0.json": "ec39f8f67950358cf5e5289b243ba0d2a26b4a7534dd8a346cea16b32e142a5c",
+    "run-final/baseline-1.json": "3a720ae3717d9e3ca5000879cf295749e33ce3bddc75f3e9cfdda7239874aba8",
+    "run-final/baseline-2.json": "0dbe964d33a4252fc7cd4dfbc49d86ca9f3b153f6f13c27f5463020a34e6af6a",
+    "run-final/candidate-0.json": "8447d9755176e88b92ebe9441791cd9ad97e6ada6fd9f7eba563a64fa6e2d88e",
+    "run-final/candidate-1.json": "979f4476714831ec0a3b66e36a20a849b91fdb54fe1203724cf7f637b89b66bc",
+    "run-final/candidate-2.json": "16d46ab6afba0b47fdd53bf331447e3b932f3cd92a5888c6a9256e11902c2e58",
+    "focused-tests.log": "236c8a3ee8ab04bc9d448991158dfe3f701ce89ed8d9a3f6f3b733ccc30c4c7b"
+  },
+  "tests": {
+    "command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv-catalog/bin/python -m pytest -q packages/viewer_publication/tests scripts/corpus_recovery/tests/test_dispatch_corpus_recovery_publication.py scripts/publication/tests/test_pipeline_status.py",
+    "result": "165 passed, 7 subtests passed in 33.20s",
+    "revision": "0c2b782d15a1277d78ba0d7867f6b612d19e2e96"
+  },
+  "limits_of_evidence": [
+    "Synthetic local mock store only; no acquisition, network, real catalog build, or current production qualification.",
+    "No complete process memory budget or production speed claim.",
+    "Larger inventories may reach the explicit local 256 MiB history admission limit; histories are preserved and refused.",
+    "No automatic migration of older runtime-pinned local attempts.",
+    "run-75820f3 was preliminary before shared status parser extraction; run-final is the accepted exact-source comparison."
+  ]
+}

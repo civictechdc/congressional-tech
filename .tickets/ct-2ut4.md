@@ -34,3 +34,7 @@ Prioritized for efficiency and architectural debt per user direction. Require me
 **2026-10-19T19:51:06Z**
 
 Implemented LocalContinuation: synced events.jsonl owns local write and accepted-phase state; continuation.json is derived at explicit phase/control boundaries. Shared read-only parser supplies status, including intent newer than checkpoint and missing checkpoint. Old checkpoint-only observations explicitly stale/unknown. Bounded 128-write/four-phase comparison gives exact final states/event facts/body hashes; final pinned measurement and independent review pending. No remote custody or full catalog execution.
+
+**2026-10-19T19:52:47Z**
+
+Frozen implementation0c2b782; exact-source matched run-final shows 783→276 fsync, 5,493,025→511,187 serialized JSON chars, exact state/257 event facts/128 body hashes and PUT+GET counts in 3pairs. Retained scratch grows117,247→245,262B for authoritative phase snapshots; explicit256MiB history ceiling. Full affected package/dispatcher/status focused suite165 passed+7subtests33.20s. Tracked local-events report/receipt; independent review pending.
