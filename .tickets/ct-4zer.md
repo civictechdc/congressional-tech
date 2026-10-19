@@ -5,7 +5,7 @@ deps: [ct-2d3k]
 links: [ct-d3un]
 created: 2026-10-19T16:40:41Z
 type: task
-priority: 2
+priority: 1
 assignee: mikewolfd
 tags: [overlap-followup]
 ---
@@ -26,3 +26,7 @@ Arbitrary-field and observation searches still scan whole source columns or all 
 **2026-10-19T16:40:42Z**
 
 Review evidence: apps/site/src/components/filename-catalog.mjs:10:text, apps/site/src/components/filename-catalog.mjs:194:read, apps/site/src/components/filename-catalog.mjs:242:column, apps/site/src/components/filename-catalog.mjs:255:search, apps/site/src/components/filename-observations.mjs:67:scan, apps/site/src/components/filename-observations.mjs:81:matchingSources. See docs/package-overlap-rescore-20261019.md for the full grade map.
+
+**2026-10-19T16:56:07Z**
+
+Prioritized for efficiency and architectural debt per user direction. Require measured work/resource changes and simpler ownership; preserve behavior and data.

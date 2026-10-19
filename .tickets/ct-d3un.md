@@ -1,6 +1,6 @@
 ---
 id: ct-d3un
-status: open
+status: closed
 deps: [ct-us67]
 links: [ct-4zer, ct-o6d1, ct-tdsx, ct-bpyj, ct-piku, ct-2uwd, ct-v6ao, ct-2ut4, ct-h73z, ct-5jqd, ct-76n5, ct-m9ry]
 created: 2026-10-19T16:35:49Z
@@ -16,3 +16,9 @@ Preserve source behavior and data while removing verified duplication and closin
 ## Acceptance Criteria
 
 Selected cleanups are locally tested, independently reviewed, merged and cleaned up. All original entries have current grades and remaining work has clear priority and dependencies.
+
+## Notes
+
+**2026-10-19T16:57:13Z**
+
+Eight selected fixes merged in PRs 128-130 after independent exact-revision reviews. Integrated f438264 passed 9447 offline tests and 38 subtests; browser checks/build passed. All 168 entries rescored; twelve larger follow-ups remain open and prioritized for efficiency/debt. This evidence PR records closure; final archive/cleanup will be recorded in the primary output completion receipt after merge. Grok/Cursor /scripts work stays untouched.

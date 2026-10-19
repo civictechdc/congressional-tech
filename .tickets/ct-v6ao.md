@@ -5,7 +5,7 @@ deps: [ct-2d3k, ct-tenb]
 links: [ct-d3un]
 created: 2026-10-19T16:40:41Z
 type: task
-priority: 2
+priority: 1
 assignee: mikewolfd
 tags: [overlap-followup]
 ---
@@ -27,3 +27,7 @@ Validated remote restore now checkpoints once, but normal intent/verified events
 **2026-10-19T16:40:42Z**
 
 Review evidence: scripts/recovery_publication_continuation.py:37:Continuation.flush, scripts/recovery_publication_continuation.py:73:Continuation.record, scripts/recovery_publication_continuation.py:205:DurableJournal.record, scripts/viewer_publication_attempt.py:200:publish.after_write. See docs/package-overlap-rescore-20261019.md for the full grade map.
+
+**2026-10-19T16:56:07Z**
+
+Prioritized for efficiency and architectural debt per user direction. Require measured work/resource changes and simpler ownership; preserve behavior and data. Grok/Cursor is concurrently refactoring /scripts; use this ticket as its acceptance checklist and avoid duplicate implementation. Keep open until reviewed evidence passes.

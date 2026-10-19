@@ -2,15 +2,18 @@
 
 Three independent reviews reassessed **all 168 original entries** against the
 six original dimensions at `90982181ad95366c12bb08d2b9789ea4f9042216`.
-This is the starting assessment for the current cleanup batch. Code review and
-saved qualification evidence support these judgments; no new full-corpus or
-hosted qualification was performed. Closed tickets did not determine grades.
+Eleven narrow grade updates incorporate the eight reviewed fixes merged at
+`f438264f791956abd37177e9d334d00eb010e169`. Source and test-file equivalence was
+checked after integration. Saved evidence and new local tests support this
+assessment; no new full-corpus or hosted qualification was performed. Closed
+tickets did not determine grades.
 
-The review found 107 resolved entries, 30 intentional tradeoffs, 27 partial
-improvements and four unresolved entries. Multiple entries can describe one
-underlying problem. The browser retry identity, missing local proof handoffs,
-resource cleanup and saved-file/selector custody gaps are in the eight selected
-implementation tickets. Larger changes are the follow-up work below.
+The initial review found 107 resolved entries, 30 intentional tradeoffs, 27 partial
+improvements and four unresolved entries. After this batch: **116 resolved,
+30 intentional tradeoffs, 20 partial and 2 unresolved**. Twenty-three rows
+retain explicit actions across twelve open follow-up tickets. Multiple entries
+can describe one underlying problem. The eight scoped fixes are complete; larger
+local-controller structure and costs remain open.
 
 Grades are consequence-weighted judgments, not numerical averages. A resolved
 entry can retain a B for an intentional full read or exact-value allocation.
@@ -18,6 +21,29 @@ The general Catalog remains the clearest architecture cost: C efficiency and
 C+ debt, with B- overall. Retained measurements show 5.085 GB highwater during
 loading and 7.310 GB across full local preparation. They establish a remaining
 cost; without a matched baseline they do not prove an aggregate improvement.
+
+## Architecture assessment
+
+An independent synthesis grades this examined scope **B- overall**: correctness
+B+, efficiency C+, developer/operator experience B-, thoughtfulness A-, and
+architectural debt C+. These are consequence-weighted judgments, not averages of
+function grades. Strong evidence preservation and conditional writes earn credit;
+the general Catalog, duplicated local/cloud preparation ownership, runtime loading
+and normal journal checkpoint cost still dominate architecture and operating effort.
+
+The user prioritized **efficiency and architectural debt**. Priority 1 work now
+covers repeated mapping/checkpoint work (`ct-2uwd`, `ct-v6ao`), preparation memory
+(`ct-m9ry`), broad-search cost (`ct-4zer`), and one explicit runtime/accepted-plan
+owner (`ct-piku`, `ct-bpyj`). Measure work counts and resource use on comparable
+cases; do not add overlapping timing percentages. Resource policy and recovery
+diagnostics follow.
+This assessment covers the 168 flagged entries and their reviewed replacements,
+not a fresh review of all 372 functions in the original exam.
+
+The concurrent Grok/Cursor `/scripts` refactor is outside this pinned assessment.
+Its changes remain untouched; the open script tickets provide acceptance criteria
+for reviewing that work. They should close only when new evidence demonstrates the
+specific finding is addressed.
 
 ## Prioritized follow-ups
 
@@ -28,16 +54,16 @@ profiling follows proof and reader cleanup. No dependency cycles exist.
 
 | Priority | Ticket | Outcome |
 | --- | --- | --- |
-| 2 | [ct-2uwd](../.tickets/ct-2uwd.md) | Consume one verified mapping write receipt |
+| 1 | [ct-2uwd](../.tickets/ct-2uwd.md) | Consume one verified mapping write receipt |
 | 2 | [ct-tdsx](../.tickets/ct-tdsx.md) | Define bounded startup handling for mandatory recovery status |
 | 2 | [ct-o6d1](../.tickets/ct-o6d1.md) | Define the exact-value browser memory and complete-export policy |
-| 2 | [ct-piku](../.tickets/ct-piku.md) | Make recovery runtime imports belong to the declared runtime |
-| 2 | [ct-4zer](../.tickets/ct-4zer.md) | Measure broad browser search cost and choose a bounded improvement |
-| 2 | [ct-v6ao](../.tickets/ct-v6ao.md) | Reduce normal publication checkpoint work with crash proof |
-| 2 | [ct-bpyj](../.tickets/ct-bpyj.md) | Share accepted viewer plans across local and cloud publication |
+| 1 | [ct-piku](../.tickets/ct-piku.md) | Make recovery runtime imports belong to the declared runtime |
+| 1 | [ct-4zer](../.tickets/ct-4zer.md) | Measure broad browser search cost and choose a bounded improvement |
+| 1 | [ct-v6ao](../.tickets/ct-v6ao.md) | Reduce normal publication checkpoint work with crash proof |
+| 1 | [ct-bpyj](../.tickets/ct-bpyj.md) | Share accepted viewer plans across local and cloud publication |
 | 3 | [ct-76n5](../.tickets/ct-76n5.md) | Expose retained incomplete build reconciliation steps |
-| 3 | [ct-2ut4](../.tickets/ct-2ut4.md) | Give local recovery one event owner and derived progress |
-| 3 | [ct-m9ry](../.tickets/ct-m9ry.md) | Measure publication Catalog state before choosing a narrower reader |
+| 2 | [ct-2ut4](../.tickets/ct-2ut4.md) | Give local recovery one event owner and derived progress |
+| 1 | [ct-m9ry](../.tickets/ct-m9ry.md) | Measure publication Catalog state before choosing a narrower reader |
 | 3 | [ct-5jqd](../.tickets/ct-5jqd.md) | Report bounded per-object reconciliation progress |
 | 3 | [ct-h73z](../.tickets/ct-h73z.md) | Use original-attempt descriptor at workflow resume boundary |
 
@@ -60,20 +86,21 @@ original reports and qualification receipts remain unchanged.
 ## Complete assessment
 
 C: correctness; E: efficiency; DX: developer/operator experience; T: thoughtfulness;
-D: architectural debt (higher means less unnecessary debt). Original entries
-identify the old function; the JSON traces removed functions to their current owners.
+D: architectural debt (higher means less unnecessary debt). Locations refer to
+each row's reviewed revision. JSON retains original and pre-cleanup grades and
+closed fix tickets; the last column here shows only open follow-up work.
 
-| Original entry | Old overall | C | E | DX | T | D | Overall | Disposition | New work |
+| Original entry | Old overall | C | E | DX | T | D | Overall | Disposition | Open work |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `.github/scripts/publication-budget.py:7:check` | B+ | A- | A- | A- | A- | A- | A- | resolved | Keep / resolved |
 | `.github/workflows/deploy-pages.yml:1:Pages build and deploy workflow` | C+ | A- | B | B+ | A- | B+ | B+ | intentional tradeoff | Keep / resolved |
 | `.github/workflows/deploy-pages.yml:54:inline Explorer stage prerequisite` | C+ | A- | B | B+ | A- | B+ | B+ | intentional tradeoff | Keep / resolved |
 | `apps/site/scripts/stage-document-reviews.py:8:module build entry` | C+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
-| `apps/site/src/components/filename-bootstrap.mjs:8:worker.onmessage` | B+ | B | B+ | B+ | B+ | B | B | partial | ct-xmo8 |
+| `apps/site/src/components/filename-bootstrap.mjs:8:worker.onmessage` | B+ | B+ | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/src/components/filename-bootstrap.mjs:20:(closure)` | C+ | A- | A- | B+ | A- | A- | A- | resolved | Keep / resolved |
-| `apps/site/src/components/filename-bootstrap.mjs:21:worker.onerror` | C+ | B | B+ | B | B+ | B | B | partial | ct-xmo8 |
+| `apps/site/src/components/filename-bootstrap.mjs:21:worker.onerror` | C+ | B+ | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/src/components/filename-bootstrap.mjs:22:(closure)` | C+ | A- | A- | B+ | A- | A- | A- | resolved | Keep / resolved |
-| `apps/site/src/components/filename-bootstrap.mjs:22:window.filenameViewerApi` | C+ | B | B+ | B | B+ | B | B | partial | ct-xmo8 |
+| `apps/site/src/components/filename-bootstrap.mjs:22:window.filenameViewerApi` | C+ | B+ | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/src/components/filename-bootstrap.mjs:25:abort` | B | A- | A- | B+ | A- | A- | A- | resolved | Keep / resolved |
 | `apps/site/src/components/filename-catalog.mjs:10:text` | B- | A- | B | B+ | A- | B+ | B+ | intentional tradeoff | ct-4zer |
 | `apps/site/src/components/filename-catalog.mjs:11:normalized` | B | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
@@ -123,7 +150,7 @@ identify the old function; the JSON traces removed functions to their current ow
 | `docs/youtube-coverage/research/filename-viewer.mjs:656:(closure)` | B | A- | A- | B+ | A- | B+ | A- | resolved | Keep / resolved |
 | `docs/youtube-coverage/research/filename-viewer.mjs:657:initialization block` | B+ | B+ | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `.github/workflows/publish-filename-viewer.yml:62:publish (workflow job)` | C+ | B+ | B+ | B | B+ | B+ | B+ | partial | ct-h73z |
-| `apps/site/scripts/publish-viewer-r2.py:38:open_public` | B+ | B+ | B+ | B | A- | B | B+ | partial | ct-lzck |
+| `apps/site/scripts/publish-viewer-r2.py:38:open_public` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/scripts/publish-viewer-r2.py:61:read_identity` | B+ | B+ | A- | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/scripts/publish-viewer-r2.py:79:implementation_identity` | C+ | B+ | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/scripts/publish-viewer-r2.py:85:dependency_fingerprint` | B | B+ | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
@@ -151,10 +178,10 @@ identify the old function; the JSON traces removed functions to their current ow
 | `scripts/dispatch_corpus_recovery_publication.py:113:run.journal` | B- | B+ | B | C+ | A- | C+ | B- | partial | ct-2ut4 |
 | `scripts/dispatch_corpus_recovery_publication.py:177:run.protected_check` | B+ | A- | B | B+ | A- | B+ | B+ | intentional tradeoff | Keep / resolved |
 | `scripts/dispatch_corpus_recovery_publication.py:188:run.ContinuedClient.put_object` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
-| `scripts/dispatch_corpus_recovery_publication.py:209:run.Store.read` | B | B+ | B | B- | B+ | C+ | B | unresolved | ct-du3e |
-| `scripts/dispatch_corpus_recovery_publication.py:214:run.Store.put` | B | B | B | B- | B+ | C+ | B | unresolved | ct-du3e |
+| `scripts/dispatch_corpus_recovery_publication.py:209:run.Store.read` | B | B+ | B | B- | B+ | C+ | B | unresolved | ct-bpyj |
+| `scripts/dispatch_corpus_recovery_publication.py:214:run.Store.put` | B | A- | B | B | B+ | C+ | B | partial | ct-bpyj |
 | `scripts/dispatch_corpus_recovery_publication.py:218:run.Store.save_derived` | B | A- | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
-| `scripts/dispatch_corpus_recovery_publication.py:223:run.Store.read_derived_file` | B | A- | B | B | B+ | B | B | partial | ct-u7gg |
+| `scripts/dispatch_corpus_recovery_publication.py:223:run.Store.read_derived_file` | B | A- | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `scripts/dispatch_corpus_recovery_publication.py:228:run.Store.put_derived_file` | B | A- | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `scripts/dispatch_corpus_recovery_publication.py:231:run.Store.put_catalog_manifest` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `scripts/dispatch_corpus_recovery_publication.py:238:run.catalog_phase` | B- | B+ | B | B | A- | B | B | partial | ct-76n5 |
@@ -165,7 +192,7 @@ identify the old function; the JSON traces removed functions to their current ow
 | `scripts/guarded_recovery_publication_client.py:49:GuardedPublicationClient.verified_result` | B+ | A- | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `scripts/guarded_recovery_publication_client.py:84:GuardedPublicationClient.put_object` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `scripts/guarded_recovery_publication_client.py:155:GuardedPublicationClient.upload_file` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
-| `scripts/pipeline_status.py:113:continuation` | B+ | A- | B+ | B | A- | B | B+ | partial | ct-lzck |
+| `scripts/pipeline_status.py:113:continuation` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `scripts/publish_corpus_recovery_mappings.py:14:publish_mappings` | B+ | A- | B | B+ | A- | B | B+ | partial | ct-2uwd |
 | `scripts/recovery_guards.py:19:active_cloud_writers` | B- | B+ | B | B+ | B+ | B+ | B+ | intentional tradeoff | Keep / resolved |
 | `scripts/recovery_guards.py:86:RecoveryGuard._cloud` | B+ | B+ | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
@@ -173,7 +200,7 @@ identify the old function; the JSON traces removed functions to their current ow
 | `scripts/recovery_publication_continuation.py:21:Continuation.__init__` | B+ | B+ | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `scripts/recovery_publication_continuation.py:37:Continuation.flush` | B | A- | B | B+ | A- | B | B+ | partial | ct-v6ao |
 | `scripts/recovery_publication_continuation.py:48:Continuation.save` | B | B+ | B | B+ | B+ | B+ | B+ | intentional tradeoff | Keep / resolved |
-| `scripts/recovery_publication_continuation.py:60:Continuation.phase` | B+ | B | B+ | B | B+ | B | B+ | partial | ct-tenb |
+| `scripts/recovery_publication_continuation.py:60:Continuation.phase` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `scripts/recovery_publication_continuation.py:73:Continuation.record` | B- | B+ | B | B+ | B+ | B | B+ | partial | ct-v6ao |
 | `scripts/recovery_publication_continuation.py:102:Continuation.reconcile` | B+ | A- | B+ | B | A- | B+ | B+ | partial | ct-5jqd |
 | `scripts/recovery_publication_continuation.py:124:Continuation.replay` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
@@ -189,7 +216,7 @@ identify the old function; the JSON traces removed functions to their current ow
 | `scripts/viewer_publication_attempt.py:186:publish.guard` | B | B+ | B | B+ | B+ | B+ | B+ | intentional tradeoff | Keep / resolved |
 | `scripts/viewer_publication_attempt.py:200:publish.after_write` | B+ | A- | B | B+ | B+ | B | B+ | partial | ct-v6ao |
 | `scripts/viewer_publication_attempt.py:213:publish.ContinuedClient.put_object` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
-| `apps/site/scripts/filename_aliases.py:47:catalog_aliases` | B | A- | B+ | B+ | A- | B+ | B+ | resolved | ct-yifn |
+| `apps/site/scripts/filename_aliases.py:47:catalog_aliases` | B | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/scripts/filename_details.py:45:publish_details` | B- | A- | B | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/scripts/filename_details.py:58:publish_details.observation_counts` | B- | A- | A- | B+ | A- | A- | A- | resolved | Keep / resolved |
 | `apps/site/scripts/filename_details.py:70:publish_details.encode` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
@@ -202,8 +229,8 @@ identify the old function; the JSON traces removed functions to their current ow
 | `apps/site/scripts/filename_observations.py:55:publish_observations` | B | A- | B | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/scripts/filename_observations.py:80:verify_observations` | B+ | A- | B | B+ | A- | B+ | B+ | intentional tradeoff | Keep / resolved |
 | `apps/site/scripts/filename_observations.py:90:verify_observations.read_block` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
-| `apps/site/scripts/filename_recoveries.py:15:accepted_rows` | B | A- | B+ | B+ | B+ | B+ | B+ | resolved | ct-yifn |
-| `apps/site/scripts/filename_recoveries.py:35:index_recoveries` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | ct-yifn |
+| `apps/site/scripts/filename_recoveries.py:15:accepted_rows` | B | A- | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
+| `apps/site/scripts/filename_recoveries.py:35:index_recoveries` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/scripts/filename_review_binding.py:20:load_identities` | B | A- | A- | B+ | A- | B+ | A- | resolved | Keep / resolved |
 | `apps/site/scripts/filename_review_binding.py:30:bind` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `apps/site/scripts/filename_review_binding.py:56:identities_from` | B+ | A- | B | B+ | A- | B+ | B+ | resolved | Keep / resolved |
@@ -222,14 +249,14 @@ identify the old function; the JSON traces removed functions to their current ow
 | `docs/youtube-coverage/research/scripts/view_document_filenames.py:552:Catalog.review_rows` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `packages/congress_api/src/congress_api/retention/catalog_cache.py:53:LocalStore.keys` | B | A- | A- | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `packages/congress_api/src/congress_api/retention/catalog_cache.py:57:LocalStore.put` | B- | A- | B+ | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
-| `packages/congress_api/src/congress_api/retention/catalog_publication.py:132:publish_catalog` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | ct-u7gg |
+| `packages/congress_api/src/congress_api/retention/catalog_publication.py:132:publish_catalog` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
 | `packages/congress_api/src/congress_api/retention/catalog_validation.py:23:_validator_identity` | B+ | A- | A- | B+ | A- | B+ | A- | resolved | Keep / resolved |
 | `packages/congress_api/src/congress_api/retention/catalog_validation.py:52:validate_catalog_pair` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
-| `packages/congress_api/src/congress_api/retention/document_index.py:681:validate_document_indexes` | B+ | A- | B | B | B+ | B | B | partial | ct-3g69, ct-u7gg |
-| `packages/congress_api/src/congress_api/retention/document_index.py:2659:selected_filename_path` | B | B+ | B | B | B+ | C+ | B- | unresolved | ct-3g69 |
+| `packages/congress_api/src/congress_api/retention/document_index.py:681:validate_document_indexes` | B+ | A- | B | B+ | A- | B+ | B+ | resolved | Keep / resolved |
+| `packages/congress_api/src/congress_api/retention/document_index.py:2659:selected_filename_path` | B | B+ | B | B+ | B+ | B+ | B+ | resolved | Keep / resolved |
 | `packages/congress_api/src/congress_api/retention/r2.py:53:_configure_retries` | B+ | B+ | A- | B+ | B+ | B+ | B+ | intentional tradeoff | Keep / resolved |
 | `packages/congress_api/src/congress_api/retention/r2.py:58:_configure_retries.retry` | B+ | B+ | A- | B+ | B+ | B+ | B+ | intentional tradeoff | Keep / resolved |
 | `packages/congress_api/src/congress_api/retention/r2.py:164:R2Store.read` | B | B+ | B | B+ | B+ | B | B+ | intentional tradeoff | Keep / resolved |
 | `packages/congress_api/src/congress_api/retention/r2.py:192:R2Store.put` | B+ | A- | B+ | B | B+ | B | B | intentional tradeoff | Keep / resolved |
 | `packages/congress_api/src/congress_api/retention/r2.py:313:R2Store.put_derived_file` | B+ | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
-| `packages/congress_api/src/congress_api/retention/raw_catalog.py:349:_publish_result` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | ct-u7gg |
+| `packages/congress_api/src/congress_api/retention/raw_catalog.py:349:_publish_result` | B- | A- | B+ | B+ | A- | B+ | B+ | resolved | Keep / resolved |
