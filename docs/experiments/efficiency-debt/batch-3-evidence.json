@@ -1,0 +1,32 @@
+{
+  "status": "independently reviewed; merge pending",
+  "base": "75820f3f6dcb5ea52fece46c77af27ffd1a5759a",
+  "integration_revision": "fd8eb4d373aed93319ddc8ed4a755d203c4c65c4",
+  "tickets": {
+    "ct-piku": "One selected runtime before admission; eight unsafe source-owner cases refuse before admission/client creation. Required source pin coverage increases by58files/330101bytes; no speed gain claimed.",
+    "ct-2ut4": "One durable local event owner, read-only authoritative status and in-place verified version update. Three paired128-write fixtures preserve state/payloads:783to276fsyncs,5493025to511187serializedcharacters; scratch grows117247to245262bytes. Timing belongs to0c2b782, later map-application repair has focused tests."
+  },
+  "reviews": {
+    "runtime-ownership/review.json": {
+      "sha256": "991f47ba1f557006ccbac931d743176c5d8eca1d83938dacda8246d029d641cc",
+      "head": "0affd10f17a8a090616ef30bc9a884f5c4fa3977"
+    },
+    "local-events/review.json": {
+      "sha256": "4054521292b0c2460eb7acc953f49f1da12240bca7760df69691275fee79e640",
+      "head": "1e572d028a53ee104c31a4ba4eeded530e34ec51"
+    },
+    "integration/runtime-local-merge-review.json": {
+      "sha256": "0a4a847b9bd414dd30ca192c576b4bfccdfd93b80493c8ff0e258dfa8c5044ec",
+      "head": "fd8eb4d373aed93319ddc8ed4a755d203c4c65c4"
+    }
+  },
+  "integration_tests": {
+    "result": "92 passed, 5 subtests passed in3.87s",
+    "sha256": "6f245ea6ad565e8ae9499d97f7b303b43cd1428fde28a30c33f0f11aa37dee75"
+  },
+  "limits": [
+    "Local tests only; CI not a gate.",
+    "No source acquisition, live qualification or workflow mutation.",
+    "Fixture timing and resource counts are not production estimates."
+  ]
+}

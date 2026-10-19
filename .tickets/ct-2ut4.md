@@ -1,6 +1,6 @@
 ---
 id: ct-2ut4
-status: in_progress
+status: closed
 deps: [ct-2d3k, ct-v6ao]
 links: [ct-d3un]
 created: 2026-10-19T16:40:42Z
@@ -42,3 +42,7 @@ Frozen implementation0c2b782; exact-source matched run-final shows 783→276 fsy
 **2026-10-19T19:54:08Z**
 
 Independent review follow-up: replace versions.clear/update with protected-key assignment only, and writes.clear/update with admitted-key delta. Regression forbids clearing/repopulating shared versions across informational/immutable/protected events and checks unrelated write identity.79passed+5subtests0.98s. Serialization/fsync/request boundaries unchanged; prior timing remains attributed to0c2b782, no rerun.
+
+**2026-10-19T19:58:38Z**
+
+Independent review approved 1e572d0. Integrated with selected runtime ownership at fd8eb4d; 92 local integration tests and 5 subtests passed. Same-fixture 128-write journal experiment preserves state/body hashes while fsync calls fall 783 to 276; scratch grows 117247 to 245262 bytes. Evidence: docs/experiments/efficiency-debt/local-events.md.
