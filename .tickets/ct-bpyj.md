@@ -1,6 +1,6 @@
 ---
 id: ct-bpyj
-status: in_progress
+status: closed
 deps: [ct-2d3k, ct-piku, ct-u7gg, ct-3g69, ct-du3e, ct-tenb]
 links: [ct-d3un, ct-esm4]
 created: 2026-10-19T16:40:41Z
@@ -44,3 +44,7 @@ Related reshape ct-esm4 packages corpus recovery and pins the files that execute
 **2026-10-19T20:15:20Z**
 
 Local implementation ready for independent review at refreshed 014303e baseline. One AcceptedViewerPlan reuses issued inventory/status for local/cloud; artifact checks stay cloud-only. Original input/release conditions remain in the existing continuation before upload; a fresh process rehashes 271 files once. Domain Store/phases moved to corpus_recovery.publication; runtime admission/lock/pins/guard stay in the dispatcher. Real seven-source builder/upload comparison: 269 payloads and manifests/status/results/original conditions match; observed output helper hash passes fall 823 to 270, bytes 279,129 to 50,688. Total recovery scans remain one, moved into preparation. Adds three GETs and three fsyncs; no speed/memory gain claimed, and the tiny arm is slower. 222 distinct focused checks plus seven subtests verified after isolated PyYAML environment repair. Primary accepted-plan evidence and committed report/JSON retain limitations. Remain in_progress pending independent review.
+
+**2026-10-19T20:19:49Z**
+
+Independent code and evidence reviews approved 0757790. Integrated at e9b18a9: 251 local tests and 7 subtests passed in one final run. Actual 269 payload hashes per arm, manifests/results and original write-condition counts match. Known output hash helper passes fall 823 to 270; one recovery scan moves earlier. The tiny candidate is slower and adds 3 GETs/syncs; no speed or memory gain claimed. Shared plan and maintained domain entry point reduce duplicate acceptance work. Evidence: docs/experiments/efficiency-debt/accepted-plan.md.
