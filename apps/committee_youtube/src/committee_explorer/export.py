@@ -424,11 +424,12 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                 scopes.append(SourceScope(provider="govinfo", scope="GPO packages", status="not_collected", explanation="No GPO input was supplied."))
             if youtube_dir:
                 from youtube_api import adapters as youtube
+                from congress_shared.youtube_cache import decode_cache
                 for path in sorted(Path(youtube_dir).glob("youtube_*.json")):
                     c, content = context(path, "youtube")
-                    data = json.loads(content)
-                    videos = [v for table, entries in data.items() if table.startswith("youtube_videos_") for v in entries.values()]
-                    for channel in data.get("youtube_channels", {}).values():
+                    cache = decode_cache(content)
+                    videos = [row for _, row in cache.videos()]
+                    for channel in cache.channels():
                         assembly.add([c.source("youtube-channel|" + str(channel.get("handle") or channel.get("channelId")), channel)])
                     input_videos = len(videos)
                     if limit:

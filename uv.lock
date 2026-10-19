@@ -461,6 +461,7 @@ source = { editable = "apps/committee_youtube" }
 dependencies = [
     { name = "committee-meeting" },
     { name = "congress-api" },
+    { name = "congress-shared" },
     { name = "pyarrow" },
     { name = "tinydb" },
     { name = "youtube-api" },
@@ -470,6 +471,7 @@ dependencies = [
 requires-dist = [
     { name = "committee-meeting", editable = "packages/committee_meeting" },
     { name = "congress-api", editable = "packages/congress_api" },
+    { name = "congress-shared", editable = "packages/congress_shared" },
     { name = "pyarrow", specifier = ">=19,<26" },
     { name = "tinydb" },
     { name = "youtube-api", editable = "packages/youtube_api" },
