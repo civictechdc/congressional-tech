@@ -1,6 +1,6 @@
 ---
 id: ct-kpuy
-status: open
+status: closed
 deps: [ct-84x7, ct-xh2t, ct-677t]
 links: []
 created: 2026-10-19T16:11:14Z
@@ -18,3 +18,13 @@ Independently review each change, run combined local production-offline tests an
 
 Exact code reviewed and locally tested; PRs merged; clean main; all cleanup tickets closed; unrelated worktrees and source data preserved.
 
+
+## Notes
+
+**2026-10-19T16:23:58Z**
+
+All three implementation PRs merged: #122 Congress.gov, #123 Senate URL selection, #124 storage retry loop. Independent integration review approved f18352c; 9379 local tests and 38 subtests passed. Final evidence and cleanup remain.
+
+**2026-10-19T16:24:41Z**
+
+All three code changes merged and independently approved. Combined production-offline suite: 9379 passed, 38 subtests passed; 50 loopback tests deselected. Exact merged code matches tested f18352c. Evidence is docs/download-retry-qualification.md; final merge/archive identities will be retained in the primary completion receipt.
