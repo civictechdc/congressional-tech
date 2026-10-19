@@ -16,8 +16,17 @@ def reconcile_lost_acknowledgment(put, read, payload):
     """
     try:
         put()
-    except Exception:
-        if read() != payload:
+    except Exception as request_error:
+        try:
+            actual = read()
+        except Exception as reconciliation_error:
+            failure = RuntimeError('Write and reconciliation failed; outcome is uncertain; no request was resent')
+            failure.request_error = request_error
+            failure.reconciliation_error = reconciliation_error
+            failure.add_note('Original request failure type: ' + type(request_error).__name__)
+            failure.add_note('Reconciliation failure type: ' + type(reconciliation_error).__name__)
+            raise failure from request_error
+        if actual != payload:
             raise
         return True
     return False

@@ -1,6 +1,6 @@
 ---
 id: ct-2uwd
-status: open
+status: in_progress
 deps: [ct-2d3k]
 links: [ct-d3un, ct-vxzu]
 created: 2026-10-19T16:40:41Z
@@ -35,3 +35,7 @@ Prioritized for efficiency and architectural debt per user direction. Require me
 **2026-10-19T17:00:42Z**
 
 Related reshape ct-vxzu shares the plain exact-byte reconcile and consumes _verified_transfer. It does not close this ticket. publish_mappings still consumes the guarded readback here.
+
+**2026-10-19T19:40:28Z**
+
+Local implementation ready for independent review. Shared congress_api.retention.control_documents preserves publisher reader AST and 4/16/32 MiB policy; mapping reads/proposals enforce accepted 16 MiB. Real guarded receipts checked for issuing identity/key/body/current version; unusable receipts trigger bounded independent verification. Plain lost-ack reuses exact readback: 3 to 2 full GETs (206 to119 local fixture bytes), one PUT/original IfMatch/result and saved-byte hashes preserved. Dual errors retain both exception objects; guarded failures receive no outer retry/read. Focused tests107 passed +2subtests; bounded comparison and hashes under primary output/efficiency-debt-20261019/mappings; report docs/experiments/efficiency-debt/mappings.md. Keep in_progress pending independent review.

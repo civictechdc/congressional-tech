@@ -8,6 +8,7 @@ import hashlib
 import json
 from copy import deepcopy
 
+from congress_api.retention.control_documents import CONTROL_LIMITS, bounded_control_read
 from corpus_recovery.acknowledge import reconcile_lost_acknowledgment
 
 KEY = 'viewer-publications/recoveries/accepted.json'
@@ -44,12 +45,16 @@ def publish_mappings(client, *, bucket, baseline, prepared, validate,
     def read():
         response = client.get_object(Bucket=bucket, Key=KEY)
         with response['Body'] as stream:
-            raw = stream.read()
-        if len(raw) != response['ContentLength']:
-            raise ValueError('Incomplete recovery mapping read')
+            raw = bounded_control_read(stream, kind='accepted', declared=response['ContentLength'],
+                                       expected=response['ContentLength'])
+        if not isinstance(response['ETag'], str) or not response['ETag']:
+            raise ValueError('Recovery mapping is missing its object version')
         return raw, response['ETag']
 
     def canonical(document):
+        if (not isinstance(document, dict) or type(document.get('version')) is not int
+                or document['version'] != 1 or not isinstance(document.get('recoveries'), list)):
+            raise ValueError('Invalid recovery mapping document')
         return {**document, 'recoveries': validate(document['recoveries'])}
 
     guard()
@@ -60,6 +65,8 @@ def publish_mappings(client, *, bucket, baseline, prepared, validate,
         return dict(complete=True, wrote=False, etag=expected,
                     sha256=hashlib.sha256(previous).hexdigest())
     payload = (json.dumps(merged, sort_keys=True, separators=(',', ':')) + '\n').encode()
+    if len(payload) > CONTROL_LIMITS['accepted']:
+        raise ValueError('Recovery mapping exceeds the accepted control byte limit')
     save_payload('accepted-before.json', previous)
     save_payload('accepted-proposed.json', payload)
     intent = dict(key=KEY, expected_etag=expected,
@@ -71,23 +78,30 @@ def publish_mappings(client, *, bucket, baseline, prepared, validate,
         return client.put_object(Bucket=bucket, Key=KEY, Body=payload,
                                  ContentType='application/json', IfMatch=expected)
 
+    readback = None
+    reconciled = False
     if callable(getattr(client, 'confirm_transfer', None)):
+        # Guarded clients already own their PUT/readback/error reconciliation.
         response = put()
         receipt = response.get('_verified_transfer') if isinstance(response, dict) else None
-        if receipt is None or not client.confirm_transfer(
+        if receipt is not None and client.confirm_transfer(
                 receipt, bucket=bucket, key=KEY, size=len(payload), sha256=intent['sha256']):
-            raise ValueError('Recovery mapping readback differs from proposed bytes')
-        version = receipt.etag
-        reconciled = False
+            version = receipt.etag
+        else:
+            readback = read()
     else:
         def read_exact():
-            actual, _version = read()
-            return actual
+            nonlocal readback
+            readback = read()
+            return readback[0]
 
         reconciled = reconcile_lost_acknowledgment(put, read_exact, payload)
         if reconciled:
             journal('mapping_acknowledgment_reconciled', intent)
-        actual, version = read()
+        else:
+            readback = read()
+    if readback is not None:
+        actual, version = readback
         if actual != payload:
             raise ValueError('Recovery mapping readback differs from proposed bytes')
     result = dict(complete=True, wrote=True, etag=version,
