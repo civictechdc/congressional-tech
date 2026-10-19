@@ -113,7 +113,18 @@ def heartbeat(value, expected, now, previous=None):
 def continuation(path, expected):
     """Report recorded acceptance; do not hash large prepared outputs or reuse them."""
     path = Path(path)
-    value = read_json(path)
+    event_source = None
+    journal_path = path.parent / 'events.jsonl'
+    if journal_path.exists():
+        from viewer_publication.local import LegacyLocalJournal, read_local_journal
+        try:
+            value, inspection = read_local_journal(journal_path)
+            event_source = dict(source='validated_local_events', path=str(journal_path),
+                                recorded_events=inspection['events'], inspected_bytes=inspection['bytes'])
+        except LegacyLocalJournal:
+            value = read_json(path)
+    else:
+        value = read_json(path)
     binding = value.get('binding', {})
     observed = (str(binding.get('run_id', binding.get('github_run_id', ''))),
                 str(binding.get('run_attempt', binding.get('github_run_attempt', ''))),
@@ -125,6 +136,10 @@ def continuation(path, expected):
     order = ('catalog', 'mappings', 'prepared', 'publication') if local_recovery else ('prepared','publication')
     local_state = {'recorded_phases': list(phases), 'next_incomplete_phase': next((name for name in order if name not in phases), None),
                    'integrity_rechecked': False, 'remote_reconciliation': 'not_performed'}
+    if event_source or local_recovery:
+        local_state['write_observation'] = event_source or dict(source='checkpoint_only', path=str(path),
+            latest_event_state='unknown; checkpoint write counts may be stale',
+            next_check='Inspect the retained local events.jsonl before any explicit reconciliation')
     if local_recovery:
         from corpus_recovery.diagnostics import catalog_build_observation
         if observation := catalog_build_observation(path.parent, phases):
@@ -236,6 +251,10 @@ def format_status(value):
         lines.append(f"Recorded accepted output: {output['phase']} ({output['recorded_files']} files; integrity not rechecked)")
     if publication := value.get('continuation', {}).get('recorded_publication_status'):
         lines.append('Recorded publisher result: ' + publication)
+    if observation := value.get('continuation', {}).get('local_phase_observation', {}).get('write_observation'):
+        lines.append('Local write observation: ' + observation['source'] + ': ' + observation['path'])
+        if observation.get('latest_event_state'):
+            lines.append('Local write state: ' + observation['latest_event_state'])
     if build := value.get('continuation', {}).get('local_phase_observation', {}).get('catalog_build'):
         lines.append('Retained catalog build: ' + build['retained_build_path'])
         lines.append('Last recorded accepted phase: ' + (build['last_recorded_accepted_phase'] or 'none'))

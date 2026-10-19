@@ -71,15 +71,12 @@ def run(args):
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     destination = args.destination.resolve()
     parent = os.getppid()
-    from viewer_publication.continuation import Continuation
+    from viewer_publication.local import LocalContinuation as Continuation
     from corpus_recovery.guards import RecoveryGuard
     def report(name, value):
         continuation.save(name, (json.dumps(value, indent=2) + '\n').encode())
     def journal(event, value):
         continuation.record(event, value)
-        with (destination / 'events.jsonl').open('a') as stream:
-            stream.write(json.dumps(dict(at=datetime.now(timezone.utc).isoformat(), event=event, value=value))+'\n')
-            stream.flush(); os.fsync(stream.fileno())
     paths = [p for folder in ['packages/congress_api/src', 'packages/house-naming/src',
                 'apps/site/scripts', 'docs/youtube-coverage/research/scripts']
              for p in (runtime / folder).rglob('*') if p.is_file() and '__pycache__' not in str(p)]
@@ -93,10 +90,12 @@ def run(args):
     import corpus_recovery.mappings as mapping_module
     import viewer_publication.client as publication_client
     import viewer_publication.continuation as publication_continuation
+    import viewer_publication.local as publication_local
     paths += [Path(corpus_recovery.__file__).resolve(),
               Path(inventory_module.__file__).resolve(),
               Path(publication_client.__file__).resolve(),
               Path(publication_continuation.__file__).resolve(),
+              Path(publication_local.__file__).resolve(),
               Path(acknowledgment_module.__file__).resolve(),
               Path(recovery_guard_module.__file__).resolve(),
               Path(admission_module.__file__).resolve(),
@@ -162,11 +161,8 @@ def run(args):
                 raise RuntimeError('Publication input changed: '+key)
     guard = RecoveryGuard(pins=pins, local_check=local_check, cloud_check=cloud_clear,
                           protected_check=protected_check)
-    def after_write(key, version):
-        if key in versions:
-            versions[key] = version
-            continuation.flush()
-    proxy = ContinuedPublicationClient(client, continuation=continuation, guard=guard, journal=journal, after_write=after_write)
+    proxy = ContinuedPublicationClient(client, continuation=continuation, guard=guard, journal=journal,
+                                       after_write=lambda *args: None)
     source = destination/'source'; expected = set(json.loads((batch/'bodies.json').read_text()))
     pair_validation = None
     content_validation = None
