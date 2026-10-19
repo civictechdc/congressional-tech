@@ -18,6 +18,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'packages/congress_api/src'))
+from publication_import_evidence import compare_loaded_digest, compare_source_preparation
 
 
 def digest(path):
@@ -85,23 +86,38 @@ def reconcile(store, inventory, *, prior=None):
 
 
 def sealed_inputs(batch):
-    manifest = json.loads((batch / 'manifest.json').read_text())
+    def changed(name):
+        return ValueError(f'Batch changed: {name}')
+
+    manifest_bytes = (batch / 'manifest.json').read_bytes()
+    manifest = json.loads(manifest_bytes)
     files = dict(manifest['files'])
-    files['manifest.json'] = digest(batch / 'manifest.json')
+    files['manifest.json'] = hashlib.sha256(manifest_bytes).hexdigest()
+    loaded = {'manifest.json': manifest_bytes}
     for name in ('prepared-source-records.json', 'source-record-preparation.json'):
-        actual = digest(batch / name)
-        if name in files and files[name] != actual:
-            raise ValueError(f'Batch changed: {name}')
-        files[name] = actual
+        data = (batch / name).read_bytes()
+        loaded[name] = data
+        if name in files:
+            compare_loaded_digest(data, files[name], lambda name=name: changed(name))
+        else:
+            files[name] = hashlib.sha256(data).hexdigest()
     for name, expected in files.items():
-        if Path(name).name != name or digest(batch / name) != expected:
-            raise ValueError(f'Batch changed: {name}')
-    source = json.loads((batch / 'source-record-preparation.json').read_text())
-    if source['unresolved'] or source['batch_manifest_sha256'] != files['manifest.json']:
-        raise ValueError('Incomplete or mismatched source preparation')
-    prepared = json.loads((batch / 'prepared-source-records.json').read_text())
-    prepared += json.loads((batch / 'zip-receipts.json').read_text())
-    inventory = json.loads((batch / 'bodies.json').read_text())
+        if Path(name).name != name:
+            raise changed(name)
+        data = loaded.get(name)
+        if data is None:
+            data = (batch / name).read_bytes()
+            loaded[name] = data
+        compare_loaded_digest(data, expected, lambda name=name: changed(name))
+    source = json.loads(loaded['source-record-preparation.json'])
+    compare_source_preparation(
+        source, files['manifest.json'],
+        lambda: ValueError('Incomplete or mismatched source preparation'))
+    prepared = json.loads(loaded['prepared-source-records.json'])
+    prepared += json.loads(loaded['zip-receipts.json'] if 'zip-receipts.json' in loaded
+                           else (batch / 'zip-receipts.json').read_bytes())
+    inventory = json.loads(loaded['bodies.json'] if 'bodies.json' in loaded
+                           else (batch / 'bodies.json').read_bytes())
     captures = [cap for item in prepared for cap in item['captures']]
     if {cap['body_key'] for cap in captures} != set(inventory):
         raise ValueError('Capture/body inventory coverage differs')

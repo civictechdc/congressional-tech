@@ -24,6 +24,24 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def compare_loaded_digest(data, expected, error):
+    """Hash bytes the caller already loaded and raise that caller's error on mismatch."""
+    actual = hashlib.sha256(data).hexdigest()
+    if actual != expected:
+        raise error()
+    return actual
+
+
+def compare_source_preparation(preparation, manifest_sha256, error):
+    """Require this parsed preparation to cover the sealed manifest.
+
+    ``error`` returns the caller's exception. A missing field escapes as the
+    caller's own lookup error.
+    """
+    if preparation['unresolved'] or preparation['batch_manifest_sha256'] != manifest_sha256:
+        raise error()
+
+
 def parse(data, path, field='$'):
     try:
         return json.loads(data)
@@ -31,7 +49,7 @@ def parse(data, path, field='$'):
         raise invalid(path, field, 'invalid JSON') from error
 
 
-def read(path, shape):
+def read_loaded(path, shape):
     with path.open('rb') as stream:
         data = stream.read(JSON_BYTES + 1)
     if len(data) > JSON_BYTES:
@@ -39,7 +57,11 @@ def read(path, shape):
     value = parse(data, path)
     if not isinstance(value, shape):
         raise invalid(path, '$', f'expected {shape.__name__}')
-    return value
+    return data, value
+
+
+def read(path, shape):
+    return read_loaded(path, shape)[1]
 
 
 def field(value, key, shape, path):
@@ -78,9 +100,10 @@ def events(path):
 def verify_import(batch, imported, *, readiness=None):
     batch, imported = Path(batch), Path(imported)
     manifest_path = batch / 'manifest.json'
-    manifest = read(manifest_path, dict)
-    manifest_pin = digest(manifest_path)
+    manifest_data, manifest = read_loaded(manifest_path, dict)
+    manifest_pin = hashlib.sha256(manifest_data).hexdigest()
     manifest_files = hashes(manifest, manifest_path)
+    loaded = {manifest_path.name: manifest_data}
     readiness = readiness.resolve() if readiness is not None else batch / 'import-readiness.json'
     ready = read(readiness, dict)
     ready_files = hashes(ready, readiness)
@@ -94,13 +117,19 @@ def verify_import(batch, imported, *, readiness=None):
         if name in manifest_files and manifest_files[name] != expected:
             raise invalid(readiness, 'files.' + name, 'conflicting batch evidence hashes')
     for name, expected in (manifest_files | ready_files).items():
-        if digest(batch / name) != expected:
-            raise invalid(batch / name, 'sha256', 'Batch evidence changed')
+        path = batch / name
+        data = loaded.get(name)
+        if data is None:
+            data = path.read_bytes()
+        compare_loaded_digest(data, expected, lambda path=path: invalid(path, 'sha256', 'Batch evidence changed'))
     preparation_path = batch / 'source-record-preparation.json'
     preparation = read(preparation_path, dict)
-    if (field(preparation, 'unresolved', list, preparation_path)
-            or field(preparation, 'batch_manifest_sha256', str, preparation_path) != manifest_pin):
-        raise invalid(preparation_path, 'batch_manifest_sha256/unresolved', 'Source records do not cover the sealed batch')
+    field(preparation, 'unresolved', list, preparation_path)
+    field(preparation, 'batch_manifest_sha256', str, preparation_path)
+    compare_source_preparation(
+        preparation, manifest_pin,
+        lambda: invalid(preparation_path, 'batch_manifest_sha256/unresolved',
+                        'Source records do not cover the sealed batch'))
     result_path = imported / 'payloads/import-complete.json'
     result = read(result_path, dict)
     if (field(result, 'complete', bool, result_path) is not True

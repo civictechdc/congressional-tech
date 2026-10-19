@@ -15,6 +15,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'packages/congress_api/src'))
 from import_corpus_recovery_batch import import_batch
+from publication_import_evidence import compare_loaded_digest, compare_source_preparation
 from recovery_guards import RecoveryGuard, active_cloud_writers
 from congress_api.retention.raw_archive import CAPTURES_KEY, STATE_KEY, decode_table
 from congress_api.retention.r2 import R2Store
@@ -30,7 +31,8 @@ def cloud_clear():
 
 
 def verify_batch(batch, readiness_path=None):
-    manifest = json.loads((batch / 'manifest.json').read_text())
+    manifest_bytes = (batch / 'manifest.json').read_bytes()
+    manifest = json.loads(manifest_bytes)
     readiness = json.loads((readiness_path or batch / 'import-readiness.json').read_text())
     if not readiness.get('ready', True):
         raise ValueError('Body reconciliation is not ready')
@@ -39,12 +41,21 @@ def verify_batch(batch, readiness_path=None):
         if name in expected and expected[name] != value:
             raise ValueError('Conflicting batch hashes')
         expected[name] = value
+    loaded = {'manifest.json': manifest_bytes}
     for name, value in expected.items():
-        if Path(name).name != name or digest(batch / name) != value:
+        if Path(name).name != name:
             raise ValueError(f'Batch changed: {name}')
-    source = json.loads((batch / 'source-record-preparation.json').read_text())
-    if source['unresolved'] or source['batch_manifest_sha256'] != digest(batch / 'manifest.json'):
-        raise ValueError('Incomplete or mismatched source preparation')
+        data = loaded.get(name)
+        if data is None:
+            data = (batch / name).read_bytes()
+            loaded[name] = data
+        compare_loaded_digest(data, value, lambda name=name: ValueError(f'Batch changed: {name}'))
+    source_bytes = loaded.get('source-record-preparation.json')
+    if source_bytes is None:
+        source_bytes = (batch / 'source-record-preparation.json').read_bytes()
+    compare_source_preparation(
+        json.loads(source_bytes), hashlib.sha256(manifest_bytes).hexdigest(),
+        lambda: ValueError('Incomplete or mismatched source preparation'))
     return expected
 
 
