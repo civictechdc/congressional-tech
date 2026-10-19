@@ -29,9 +29,8 @@ from congress_api.models.content import RawContent
 from congress_api.parsers.congress import meeting_from_xml, parse_congress_xml
 from congress_api.retention.meetings import read, write, write_pending
 from congress_api.retention.rejected_pages import retain_rejected_page
+from congress_api.transport.congress import API, get
 from congress_api.transport.http import HttpRequestError, get_with_retry
-
-API = "https://api.congress.gov/v3"
 
 
 FIRST_CONGRESS = 112  # Congress.gov's committee meeting records start here
@@ -149,7 +148,3 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
     if failures:
         logging.error(f"{len(failures)} meeting(s) failed:\n  " + "\n  ".join(failures[:50]))
         sys.exit(1)
-
-
-def get(session, url, api_key, params=None, attempts=5):
-    return get_with_retry(session, url, params={**(params or {}), "api_key": api_key, "format": "json"}, attempts=attempts).json()

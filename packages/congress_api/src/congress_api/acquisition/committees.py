@@ -8,12 +8,12 @@ from urllib.parse import urlsplit
 
 import requests
 
-from congress_api.acquisition.meetings import API, get
 from congress_api.models.congress import CommitteeDetail, CommitteeRecord
 from congress_api.retention.committees import read as read_committees
 from congress_api.retention.committees import write as write_committees
 from congress_api.retention.meetings import read as read_meetings
 from congress_api.retention.rejected_pages import retain_rejected_page
+from congress_api.transport.congress import API, get
 
 
 def detail_url(committee):
