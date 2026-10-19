@@ -61,3 +61,8 @@ def archive_url(comm: str, fn: str) -> str:
 
 def live_url(comm: str, fn: str) -> str:
     return LIVE.format(sid=LIVE_ID[comm], comm=comm, fn=fn)
+
+
+def recording_urls(comm: str, fn: str) -> list[str]:
+    """Live-first recording candidates, or archive-only without a live mapping."""
+    return ([live_url(comm, fn)] if comm in LIVE_ID else []) + [archive_url(comm, fn)]
