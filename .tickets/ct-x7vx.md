@@ -28,3 +28,7 @@ The original rebuild and automatic downstream publisher completed at remote revi
 **2026-10-18T21:24:34Z**
 
 The current goal explicitly requests testing, review, squash and merge through all remaining tickets. Original rebuild and live verification are complete. Preparing the reviewed implementation for a squash PR, then hosted checks and merge; observe ordinary scheduled publication afterward. Raw-source pushes select validation only. No manual dispatch, automatic retry, resource change, or source acquisition. Before/after qualification remains open until real receipts pass.
+
+**2026-10-19T01:49:33Z**
+
+Ordinary scheduled run 39179688133 is naturally queued behind publisher run 39176607378 at deployed revision 744edd6. Preparing bounded artifact inspection and exact unchanged-run receipt validation locally in parallel. No hosted cost result yet; older 76/69-second recovery_updated runs have no download counters. Keep in_progress until the actual scheduled unchanged receipt passes.

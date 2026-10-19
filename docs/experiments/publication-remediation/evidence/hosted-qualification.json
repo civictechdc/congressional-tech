@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "status": "pending_hosted_and_live_verification",
+  "recorded_at": "2026-10-19T01:49:05.885637+00:00",
+  "implementation_revision": "744edd6078cbe56a86b997a40badfc9d197b0e85",
+  "implementation_pr": "https://github.com/civictechdc/congressional-tech/pull/115",
+  "inputs": [
+    {
+      "path": "docs/experiments/publication-remediation/evidence/current-catalog-qualification-20261018.json",
+      "bytes": 13563,
+      "sha256": "aac2f5628b2dd1c7f1a09dece81703750c722e32177928957ee977c67ace2bfb"
+    },
+    {
+      "path": "docs/experiments/publication-remediation/evidence/browser-metadata-reuse.json",
+      "bytes": 11767,
+      "sha256": "bf1617da7150a30f5992bca9623c49fe882574e2e5399aea2f5a705fd009f147"
+    },
+    {
+      "path": "output/publication-remediation-20261018/rollout/pr115-final-ci-39176588962.json",
+      "bytes": 4855,
+      "sha256": "08d42cf2b1bb32b6cd0474f88d9b2e7d2f705ac851d18ef5c2bb600bc34421ae"
+    },
+    {
+      "path": "output/publication-remediation-20261018/rollout/pages-success-39176607496-summary.json",
+      "bytes": 1794,
+      "sha256": "76dfb85d1034103c958cca323bacf4e82399e7773ff45ceed1bb9fece93b4468"
+    },
+    {
+      "path": "output/publication-remediation-20261018/rollout/baseline-comparison.json",
+      "bytes": 4223,
+      "sha256": "5c7fb700386e6ea3f789e690f3b7276574f6e53228fde483545642e511b21d8c"
+    }
+  ],
+  "ci": {
+    "status": "success",
+    "run_id": 39176588962,
+    "revision": "0eedd6065ba2e661c2b51ca7c146c7acfabdf6da",
+    "url": "https://github.com/civictechdc/congressional-tech/actions/runs/39176588962"
+  },
+  "pages": {
+    "status": "success",
+    "run_id": 39176607496,
+    "revision": "744edd6078cbe56a86b997a40badfc9d197b0e85",
+    "url": "https://github.com/civictechdc/congressional-tech/actions/runs/39176607496",
+    "completed_jobs": [
+      {
+        "name": "build",
+        "conclusion": "success",
+        "url": "https://github.com/civictechdc/congressional-tech/actions/runs/39176607496/job/117820472233",
+        "completed_at": "2026-10-18T23:30:42Z"
+      },
+      {
+        "name": "revision-mismatch",
+        "conclusion": "skipped",
+        "url": "https://github.com/civictechdc/congressional-tech/actions/runs/39176607496/job/117820473165",
+        "completed_at": "2026-10-18T23:27:40Z"
+      },
+      {
+        "name": "deploy",
+        "conclusion": "success",
+        "url": "https://github.com/civictechdc/congressional-tech/actions/runs/39176607496/job/117821090958",
+        "completed_at": "2026-10-18T23:31:19Z"
+      }
+    ],
+    "log_sha256": "0ee6206919c910673b84df882350fe4a7bc0b4f1d4f803831741458d00dc8a66"
+  },
+  "local_backend": {
+    "status": "complete_local_preparation",
+    "frozen_revision": "2feb8c75c69f5fc6a5c33ae6ad25197722590f3f",
+    "counts": {
+      "documents": 1241157,
+      "filenames": 1683430,
+      "browse": 1241157,
+      "observation_serializations": 7246240,
+      "verification_lookups": 7246240,
+      "dedup_entries": 4307909,
+      "inventory_files": 270,
+      "review_bound": 86,
+      "review_withdrawn": 0
+    },
+    "source_selector_sha256": "94a327cf82a32dd119bca84395578569cc3b9261fb5b3d7f911c9838a508d5d9",
+    "watchdog": {
+      "success": true,
+      "exit_code": 0,
+      "stop": null,
+      "sampled_peak_tree_rss_bytes": 7310491648,
+      "worker_highwater_rss_bytes": 7310491648,
+      "seconds": 3155.7071252079913,
+      "sample_interval_seconds": 0.05,
+      "ceiling_bytes": 7516192768,
+      "deadline_seconds": 10800,
+      "disk_floor_bytes": 8589934592,
+      "automatic_retry": false,
+      "limitations": "macOS local preparation qualification, not Linux/GitHub deployment proof. Process-tree RSS is sampled; worker highwater covers spikes in the primary publisher process. No product resource limits changed."
+    },
+    "scope": "Complete local macOS preparation; not hosted Linux qualification"
+  },
+  "local_browser": {
+    "status": "complete",
+    "runtime_commit": "592480c19f44d5a2cb2c667dd69aac11badc27b1",
+    "reader_sha256": "e2adfaf0d0c618d61ca3d23e31f4d2143f53d383e049a589ed266e3f93aaafc3",
+    "receipt_sha256": "6f2e71519900ce480cf1cf12b4afafbe85c678e1fa5f9f4237267bdafcbe5413",
+    "comparison_sha256": "1c845de52b83321b207380ed839e354c4b93b6b629e4443cdbf65b1273d9dc95",
+    "scope": "single authorized frontend-only local probe, not exhaustive or deployed performance"
+  },
+  "hosted_publication": {
+    "status": "pending",
+    "run_id": 39176607378,
+    "receipt": null
+  },
+  "live_verification": {
+    "status": "pending",
+    "receipt": null
+  },
+  "scheduled_cost": {
+    "status": "pending",
+    "run_id": 39179688133,
+    "receipt": null,
+    "baseline_scope": "two scheduled old-publisher runs; unchanged catalog/recovery output but both report recovery_updated, not true no-op",
+    "baseline_jobs": [
+      {
+        "run_id": 39147082128,
+        "job_seconds": 76.0,
+        "status": "recovery_updated",
+        "catalog_id": "90001c4ced354875b950e9b19051482b",
+        "host_received_bytes": null
+      },
+      {
+        "run_id": 39158657315,
+        "job_seconds": 69.0,
+        "status": "recovery_updated",
+        "catalog_id": "90001c4ced354875b950e9b19051482b",
+        "host_received_bytes": null
+      }
+    ],
+    "comparison_limit": "Old workflow did not retain host byte counters; historical download bytes remain unavailable, not zero."
+  },
+  "closure": {
+    "ct-hnxb": "in_progress",
+    "ct-x7vx": "in_progress",
+    "ct-d8z3": "open",
+    "requires": [
+      "Successful hosted preparation and publication",
+      "Maintained live loaders and deployed browser verification",
+      "Ordinary scheduled unchanged-job evidence",
+      "Review and merge final evidence and ticket closures"
+    ]
+  }
+}

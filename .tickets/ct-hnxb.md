@@ -80,3 +80,7 @@ Complete retained-catalog local preparation passed at frozen 2feb8c7: 1,241,157 
 **2026-10-18T23:20:03Z**
 
 Full backend qualification passed. The focused browser probe then found 45 repeated metadata parses per technical read (19.09 s cold, 17.44 s warm) and a 120 s source_url search timeout. Reopened cache ticket ct-lvvr is now a release prerequisite. Preserve the qualified backend artifacts; fix browser operation ownership under unchanged cache limits, then repeat only the changed browser path.
+
+**2026-10-19T01:49:33Z**
+
+PR 115 merged as 744edd6. Final branch CI run 39176588962 and Pages run 39176607496 passed. Full local preparation and corrected browser qualification remain accepted; hosted publisher run 39176607378 is still preparing. Reviewed live verifier requires all 86 explicit bindings, 81 applied groups plus 5 annotations, and matching deployed browser counts. Keep in_progress until hosted publication and live checks pass; no expensive local rerun or workflow retry.
