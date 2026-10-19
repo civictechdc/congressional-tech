@@ -1,6 +1,6 @@
 ---
 id: ct-5jqd
-status: open
+status: in_progress
 deps: [ct-2d3k]
 links: [ct-d3un]
 created: 2026-10-19T16:40:42Z
@@ -26,3 +26,7 @@ Continuation.reconcile 236-256 performs complete current-byte verification but e
 **2026-10-19T16:40:42Z**
 
 Review evidence: scripts/recovery_publication_continuation.py:102:Continuation.reconcile. See docs/package-overlap-rescore-20261019.md for the full grade map.
+
+**2026-10-19T19:59:18Z**
+
+Implemented bounded latest per-object reconciliation observations, input-bound scan identity/timestamp, fixed next checks and outcome states; full body/size/digest/version checks and fresh-client proof unchanged. Complete emitted only after existing checkpoint, observation failures cannot replace outcomes. Read-only status labels last recorded observation and never claims public proof. Focused progress/status58 tests passed; exact-source bounded before/after and full affected package checks pending review.
