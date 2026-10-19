@@ -1,6 +1,6 @@
 ---
 id: ct-u7gg
-status: in_progress
+status: closed
 deps: [ct-2d3k]
 links: []
 created: 2026-10-19T16:35:49Z
@@ -31,3 +31,7 @@ Independent review requested the exact R2 read-to-retain_verified_file boundary 
 **2026-10-19T16:44:45Z**
 
 Retain-test correction: the first added run had 165 passes and one assertion failure because plain restored-facts retention has always recomputed hash/size without version enrichment. The fixture now asserts the unchanged plain-facts semantics and issued-proof metadata separately. That initial failure is retained in storage-retain-first.log; final actual run passed all 166 tests in 4.11 seconds. No runtime behavior was changed for this fixture correction.
+
+**2026-10-19T16:46:29Z**
+
+Independent review approved 941a45c. All 166 focused local checks passed; source and log hashes match the retained receipt. Merging this reviewed code; integrated offline verification follows in ct-us67.
