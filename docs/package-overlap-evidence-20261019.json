@@ -1,0 +1,86 @@
+{
+  "code_revision": "f438264f791956abd37177e9d334d00eb010e169",
+  "local_evidence_root": "output/package-overlap-rescore-20261019",
+  "qualification": "local only; no new hosted or full-catalog run",
+  "ticket_counts": {
+    "closed": 65,
+    "open": 12
+  },
+  "files": [
+    {
+      "name": "scope.json",
+      "bytes": 800,
+      "sha256": "88529ad254d6e36be4339b05601302bd924202a2a976ac83d1d9a84b93d4d2b0"
+    },
+    {
+      "name": "seed-review.json",
+      "bytes": 6578,
+      "sha256": "478a78afd550ffdf727ac17fa57c9b4d2fccb6018adbe8b6c4da82f8515695a7"
+    },
+    {
+      "name": "initial-rescore.json",
+      "bytes": 309038,
+      "sha256": "a265f29b555536d645b3a8e5f140114b0d5f3f6f707c1bbbf32de3054c6552bf"
+    },
+    {
+      "name": "final-rescore.json",
+      "bytes": 353094,
+      "sha256": "3bd5848e7616c1ec1a74bd3b6ee02224497fc45b0931ff6beac1ae1fb06477bf"
+    },
+    {
+      "name": "finding-tickets.json",
+      "bytes": 31052,
+      "sha256": "c371a31891ab9974ea47a2d01ff1153d5a31af7ea425d38395e7a2e29226ec08"
+    },
+    {
+      "name": "architecture-synthesis.json",
+      "bytes": 13968,
+      "sha256": "1d36c83cd05a9039294827149da02c12c5a9d24f19f4cd943c21976924dba6d5"
+    },
+    {
+      "name": "storage-receipt.json",
+      "bytes": 5180,
+      "sha256": "d93374d8fe7822d3e86c8fe71937c61e2fd83c866ff2593b0c5a1be59dde9f0b"
+    },
+    {
+      "name": "storage-review.json",
+      "bytes": 12890,
+      "sha256": "638558efc5de87b28094fa70cba4f8119d6acd75d8c75b9369019ce7b251c7d1"
+    },
+    {
+      "name": "control-implementation.json",
+      "bytes": 3709,
+      "sha256": "38f920bcad1a2aaa37eb4e38d0566660cdb9ae4d88d7fc0ae9132c47b6a93b93"
+    },
+    {
+      "name": "control-review.json",
+      "bytes": 15713,
+      "sha256": "046ea8d0f16764e35982276de391567fc31152a3967705c97cec84cac7cc3b36"
+    },
+    {
+      "name": "browser-package-receipt.json",
+      "bytes": 8474,
+      "sha256": "fe70060e49d2c81bb0b0eb521221feda593fd5615ac9c7ebd6864cb6812f78fb"
+    },
+    {
+      "name": "browser-package-review.json",
+      "bytes": 13602,
+      "sha256": "176b640ccf5f835e0e80456c4696bc14d2319c79e2c1b5e434768cb0255d1714"
+    },
+    {
+      "name": "integration-equivalence.json",
+      "bytes": 4974,
+      "sha256": "25210fe7a826844bd251bbdb71e79c592396427afed180c7f0281d47426e97f3"
+    },
+    {
+      "name": "local-qualification.json",
+      "bytes": 7605,
+      "sha256": "944636b3c3b6c14b8f7985ea680099c4b5a8329ea3a04e8cd0aee3a53f5b8d1f"
+    },
+    {
+      "name": "production-offline.log",
+      "bytes": 14032,
+      "sha256": "c540b8fa79dae5f2abb66f013f89a54e986bb069719106982ae659833fb5e669"
+    }
+  ]
+}

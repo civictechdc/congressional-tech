@@ -1,6 +1,6 @@
 {
   "review_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
-  "scope": "Independent reassessment before this batch; later changes require narrow review updates.",
+  "scope": "All 168 original entries; 11 narrow reviewed updates after eight scoped fixes. Each location refers to its reviewed_revision. Integrated equivalence checked; no new hosted/full-corpus qualification.",
   "entries": [
     {
       "entry_id": ".github/scripts/publication-budget.py:7:check",
@@ -38,7 +38,9 @@
       "original_ticket_ids": [
         "ct-dpks"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": ".github/workflows/deploy-pages.yml:1:Pages build and deploy workflow",
@@ -83,7 +85,9 @@
       ],
       "keep_decisions": [
         "Explorer verification/staging is required by the current shared-site product. Frozen setup and emitted-bootstrap checks already landed. No independent filename-site requirement exists, so a ticket to split deployment or remove verification would invent scope."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": ".github/workflows/deploy-pages.yml:54:inline Explorer stage prerequisite",
@@ -123,7 +127,9 @@
       ],
       "keep_decisions": [
         "Explorer verification/staging is required by the current shared-site product. Frozen setup and emitted-bootstrap checks already landed. No independent filename-site requirement exists, so a ticket to split deployment or remove verification would invent scope."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/stage-document-reviews.py:8:module build entry",
@@ -166,7 +172,9 @@
         "ct-vp92",
         "ct-hbxu"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-bootstrap.mjs:8:worker.onmessage",
@@ -179,26 +187,31 @@
         "overall": "B+"
       },
       "current_grades": {
-        "correctness": "B",
+        "correctness": "B+",
         "efficiency": "B+",
         "dx": "B+",
         "thoughtfulness": "B+",
-        "debt": "B",
-        "overall": "B"
+        "debt": "B+",
+        "overall": "B+"
       },
       "current_locations": [
         "apps/site/src/components/filename-bootstrap.mjs:10",
-        "apps/site/src/components/filename-client.mjs:15",
-        "apps/site/src/components/filename-client.mjs:58"
+        "apps/site/src/components/filename-client.mjs:5",
+        "apps/site/src/components/filename-client.mjs:16",
+        "apps/site/src/components/filename-client.mjs:33",
+        "apps/site/src/components/filename-client.mjs:48"
       ],
       "evidence_tests_read": [
+        "apps/site/scripts/built-filenames.test.mjs:72",
         "apps/site/src/components/filename-client.test.mjs:14",
-        "apps/site/scripts/built-filenames.test.mjs:72"
+        "apps/site/src/components/filename-client.test.mjs:26",
+        "apps/site/src/components/filename-client.test.mjs:53",
+        "apps/site/src/components/filename-client.test.mjs:80"
       ],
-      "remediation_status": "partial",
-      "reason": "Response settlement and one watcher ownership are extracted and tested. Successful ordinary info never pins its catalog ID into the unchanged restart context, so a later worker restart can select a newer mutable pointer while UI info remains old.",
-      "remaining_action": "Pin the first accepted catalog ID into retry request context, preserving any explicit URL catalog; cover ordinary info, pointer change, worker failure and retry.",
-      "confidence": "high",
+      "remediation_status": "resolved",
+      "reason": "Response acceptance now validates a lowercase 32-hex info/entry catalog ID before result/lifecycle callbacks, pins the first accepted catalog, and rejects conflicting later IDs. Current-worker and pending-request checks precede the pin, so stale/aborted replies cannot establish or change it. Caller context remains unchanged; private client snapshot governs subsequent requests. This resolves the original ordinary-reader identity drift without changing watcher ownership.",
+      "remaining_action": null,
+      "confidence": "high for scoped static code and fixture assertions; author-retained execution inspected, no hosted qualification",
       "baseline_ticket_ids": [
         "ct-hfrv",
         "ct-l3s4"
@@ -210,7 +223,18 @@
         "ct-hfrv",
         "ct-l3s4"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "0a9d0d5d574cab1802c7890ea3373fd68b156164",
+      "pre_cleanup_grades": {
+        "correctness": "B",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B"
+      },
+      "review_receipt": "browser-package-review.json",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-bootstrap.mjs:20:(closure)",
@@ -249,7 +273,9 @@
       "original_ticket_ids": [
         "ct-l3s4"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-bootstrap.mjs:21:worker.onerror",
@@ -262,27 +288,31 @@
         "overall": "C+"
       },
       "current_grades": {
-        "correctness": "B",
+        "correctness": "B+",
         "efficiency": "B+",
-        "dx": "B",
+        "dx": "B+",
         "thoughtfulness": "B+",
-        "debt": "B",
-        "overall": "B"
+        "debt": "B+",
+        "overall": "B+"
       },
       "current_locations": [
-        "apps/site/src/components/filename-bootstrap.mjs:5",
-        "apps/site/src/components/filename-bootstrap.mjs:12",
-        "apps/site/src/components/filename-client.mjs:6",
-        "apps/site/src/components/filename-client.mjs:25"
+        "apps/site/src/components/filename-bootstrap.mjs:10",
+        "apps/site/src/components/filename-client.mjs:5",
+        "apps/site/src/components/filename-client.mjs:16",
+        "apps/site/src/components/filename-client.mjs:33",
+        "apps/site/src/components/filename-client.mjs:48"
       ],
       "evidence_tests_read": [
+        "apps/site/scripts/built-filenames.test.mjs:72",
         "apps/site/src/components/filename-client.test.mjs:14",
-        "apps/site/scripts/built-filenames.test.mjs:72"
+        "apps/site/src/components/filename-client.test.mjs:26",
+        "apps/site/src/components/filename-client.test.mjs:53",
+        "apps/site/src/components/filename-client.test.mjs:80"
       ],
-      "remediation_status": "partial",
-      "reason": "Terminal failure now terminates the old worker and settles every pending call; subsequent calls create a worker. For ordinary unpinned startup its original snapshot remains null, allowing reader identity to change after pointer advancement.",
-      "remaining_action": "Retain the accepted immutable catalog for recreated workers and test pointer advancement between initial success and retry.",
-      "confidence": "high",
+      "remediation_status": "resolved",
+      "reason": "Worker failure still terminates the current reader and settles pending requests exactly once. Recreated workers now receive the first accepted catalog rather than the original null startup context, so pointer advancement cannot silently switch catalogs under existing UI metadata. Explicit URL selections remain fixed and conflicting successful replies reject; old worker replies remain ignored.",
+      "remaining_action": null,
+      "confidence": "high for scoped static code and fixture assertions; author-retained execution inspected, no hosted qualification",
       "baseline_ticket_ids": [
         "ct-hfrv"
       ],
@@ -292,7 +322,18 @@
       "original_ticket_ids": [
         "ct-hfrv"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "0a9d0d5d574cab1802c7890ea3373fd68b156164",
+      "pre_cleanup_grades": {
+        "correctness": "B",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B"
+      },
+      "review_receipt": "browser-package-review.json",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-bootstrap.mjs:22:(closure)",
@@ -330,7 +371,9 @@
       "original_ticket_ids": [
         "ct-hfrv"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-bootstrap.mjs:22:window.filenameViewerApi",
@@ -343,27 +386,31 @@
         "overall": "C+"
       },
       "current_grades": {
-        "correctness": "B",
+        "correctness": "B+",
         "efficiency": "B+",
-        "dx": "B",
+        "dx": "B+",
         "thoughtfulness": "B+",
-        "debt": "B",
-        "overall": "B"
+        "debt": "B+",
+        "overall": "B+"
       },
       "current_locations": [
-        "apps/site/src/components/filename-bootstrap.mjs:12",
-        "apps/site/src/components/filename-bootstrap.mjs:18",
-        "apps/site/src/components/filename-client.mjs:11",
-        "apps/site/src/components/filename-client.mjs:40"
+        "apps/site/src/components/filename-bootstrap.mjs:10",
+        "apps/site/src/components/filename-client.mjs:5",
+        "apps/site/src/components/filename-client.mjs:16",
+        "apps/site/src/components/filename-client.mjs:33",
+        "apps/site/src/components/filename-client.mjs:48"
       ],
       "evidence_tests_read": [
+        "apps/site/scripts/built-filenames.test.mjs:72",
         "apps/site/src/components/filename-client.test.mjs:14",
-        "apps/site/scripts/built-filenames.test.mjs:72"
+        "apps/site/src/components/filename-client.test.mjs:26",
+        "apps/site/src/components/filename-client.test.mjs:53",
+        "apps/site/src/components/filename-client.test.mjs:80"
       ],
-      "remediation_status": "partial",
-      "reason": "One cleanup owner fixes pending leaks and supports retry, but the worker recreation context does not adopt initial info.catalog_id. Ordinary retries can silently move to a different reader while the current UI retains old catalog metadata.",
-      "remaining_action": "Pin ordinary reader identity after accepted info and add a failed-worker retry fixture with a changed mutable pointer.",
-      "confidence": "high",
+      "remediation_status": "resolved",
+      "reason": "The public request API retains one pending/abort cleanup owner and now sends the private accepted snapshot on every later request and recreated worker. Valid info/entry replies establish/confirm the pin only while pending on the current worker; missing/malformed/conflicting identities reject before UI callbacks. Emitted bootstrap smoke proves ordinary first request is null then later requests pin, while explicit deep links remain fixed.",
+      "remaining_action": null,
+      "confidence": "high for scoped static code and fixture assertions; author-retained execution inspected, no hosted qualification",
       "baseline_ticket_ids": [
         "ct-hfrv"
       ],
@@ -373,7 +420,18 @@
       "original_ticket_ids": [
         "ct-hfrv"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "0a9d0d5d574cab1802c7890ea3373fd68b156164",
+      "pre_cleanup_grades": {
+        "correctness": "B",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B"
+      },
+      "review_receipt": "browser-package-review.json",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-bootstrap.mjs:25:abort",
@@ -414,7 +472,9 @@
         "ct-hfrv",
         "ct-9at7"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:10:text",
@@ -458,7 +518,11 @@
         "ct-p6aq",
         "ct-lvvr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-4zer"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:11:normalized",
@@ -500,7 +564,9 @@
         "ct-zika",
         "ct-lvvr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:47:sourceContext",
@@ -539,7 +605,9 @@
       "original_ticket_ids": [
         "ct-qyey"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:69:rangeFile",
@@ -581,7 +649,9 @@
         "ct-lvvr",
         "ct-bs70"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:71:slice",
@@ -622,7 +692,9 @@
         "ct-bs70",
         "ct-lvvr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:95:createFilenameCatalog",
@@ -665,7 +737,9 @@
         "ct-lvvr",
         "ct-p6ns"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:104:binary",
@@ -704,7 +778,9 @@
       "original_ticket_ids": [
         "ct-bs70"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:124:membersOf",
@@ -744,7 +820,9 @@
       ],
       "keep_decisions": [
         "Whole membership arrays serve retained immutable publications without modern detail navigation. Modern detail already avoids them and parity fixtures pass. Removing supported archive behavior merely to raise efficiency would change required behavior."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:163:table",
@@ -785,7 +863,9 @@
       "original_ticket_ids": [
         "ct-lvvr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:176:prefetchColumns",
@@ -825,7 +905,9 @@
         "ct-bs70",
         "ct-lvvr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:194:read",
@@ -868,7 +950,11 @@
         "ct-bs70",
         "ct-zika"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-4zer"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:202:observationStore",
@@ -906,7 +992,9 @@
       "original_ticket_ids": [
         "ct-lvvr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:214:scalarRecord",
@@ -946,7 +1034,9 @@
         "ct-zika",
         "ct-bs70"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:225:sourceRecord",
@@ -989,7 +1079,11 @@
       "original_ticket_ids": [
         "ct-zika"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-o6d1"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:231:selected",
@@ -1027,7 +1121,9 @@
       "original_ticket_ids": [
         "ct-bs70"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:242:column",
@@ -1071,7 +1167,11 @@
         "ct-lvvr",
         "ct-p6aq"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-4zer"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:245:(closure)",
@@ -1108,7 +1208,9 @@
       "original_ticket_ids": [
         "ct-lvvr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:255:search",
@@ -1157,7 +1259,11 @@
         "ct-lvvr",
         "ct-rckw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-4zer"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:278:matches",
@@ -1198,7 +1304,9 @@
         "ct-p6aq",
         "ct-9at7"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-catalog.mjs:319:resolve",
@@ -1237,7 +1345,9 @@
         "ct-bs70",
         "ct-lvvr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-observations.mjs:16:decode",
@@ -1277,7 +1387,11 @@
       "original_ticket_ids": [
         "ct-zika"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-o6d1"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-observations.mjs:35:refsFor",
@@ -1318,7 +1432,9 @@
         "ct-lvvr",
         "ct-zika"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-observations.mjs:63:read",
@@ -1359,7 +1475,11 @@
       "original_ticket_ids": [
         "ct-zika"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-o6d1"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-observations.mjs:67:scan",
@@ -1401,7 +1521,11 @@
         "ct-bs70",
         "ct-zika"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-4zer"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-observations.mjs:81:matchingSources",
@@ -1444,7 +1568,11 @@
         "ct-p6aq",
         "ct-9at7"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-4zer"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-observations.mjs:85:(closure)",
@@ -1483,7 +1611,9 @@
       "original_ticket_ids": [
         "ct-p6aq"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-publication.mjs:4:read",
@@ -1520,7 +1650,9 @@
       "original_ticket_ids": [
         "ct-bs70"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-publication.mjs:37:watchPublication",
@@ -1559,7 +1691,9 @@
       "original_ticket_ids": [
         "ct-l3s4"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-recoveries.mjs:2:loadRecoveries",
@@ -1599,7 +1733,11 @@
       "original_ticket_ids": [
         "ct-p6ns"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-tdsx"
+      ]
     },
     {
       "entry_id": "apps/site/src/components/filename-reviews.mjs:1:verifiedJson",
@@ -1638,7 +1776,9 @@
       "original_ticket_ids": [
         "ct-p6ns"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/components/filename-worker.mjs:4:self.onmessage",
@@ -1680,7 +1820,9 @@
         "ct-9at7",
         "ct-hfrv"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/src/pages/filenames.astro:1:template extraction frontmatter",
@@ -1719,7 +1861,9 @@
       "original_ticket_ids": [
         "ct-kde5"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:6:display",
@@ -1759,7 +1903,9 @@
       "original_ticket_ids": [
         "ct-15wc"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:19:filenameDate",
@@ -1797,7 +1943,9 @@
       "original_ticket_ids": [
         "ct-rckw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:23:api",
@@ -1839,7 +1987,9 @@
         "ct-kde5",
         "ct-hfrv"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:140:openDetail",
@@ -1882,7 +2032,9 @@
         "ct-15wc",
         "ct-hfrv"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:167:renderSources",
@@ -1920,7 +2072,9 @@
       "original_ticket_ids": [
         "ct-15wc"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:226:evidenceUrl",
@@ -1960,7 +2114,9 @@
       "original_ticket_ids": [
         "ct-kde5"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:303:renderOrigin",
@@ -2000,7 +2156,9 @@
       "original_ticket_ids": [
         "ct-qyey"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:422:renderFilename",
@@ -2039,7 +2197,9 @@
       "original_ticket_ids": [
         "ct-kde5"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:568:renderCurrentOrigin",
@@ -2080,7 +2240,9 @@
       ],
       "keep_decisions": [
         "New provenance can connect prior ancestors or make titles ambiguous; complete redraw preserves evidence meaning. Keyed deduplication and linear graph work are already measured, so no incremental DOM refactor is justified by the remaining proportional cost."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:575:(closure)",
@@ -2121,7 +2283,9 @@
         "ct-qyey",
         "ct-l3s4"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:611:renderDetails",
@@ -2161,7 +2325,9 @@
       "original_ticket_ids": [
         "ct-15wc"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:635:goToPage",
@@ -2202,7 +2368,9 @@
       "original_ticket_ids": [
         "ct-rckw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:654:(closure)",
@@ -2247,7 +2415,11 @@
         "ct-zika",
         "ct-15wc"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-o6d1"
+      ]
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:656:(closure)",
@@ -2287,7 +2459,9 @@
         "ct-l3s4",
         "ct-hfrv"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/filename-viewer.mjs:657:initialization block",
@@ -2332,7 +2506,9 @@
         "ct-kde5",
         "ct-p6ns"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2392,18 +2568,22 @@
         "ct-zb9y",
         "ct-1mbc"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-h73z"
+      ]
     },
     {
       "current_grades": {
-        "correctness": "B+",
+        "correctness": "A-",
         "efficiency": "B+",
-        "dx": "B",
+        "dx": "B+",
         "thoughtfulness": "A-",
-        "debt": "B",
+        "debt": "B+",
         "overall": "B+"
       },
-      "remediation_status": "partial",
+      "remediation_status": "resolved",
       "current_locations": [
         "apps/site/scripts/publish-viewer-r2.py:35",
         "apps/site/scripts/publish-viewer-r2.py:86"
@@ -2413,9 +2593,9 @@
         "tests/test_publication_control_reads.py:16",
         "tests/test_publication_control_reads.py:22"
       ],
-      "reason": "Opening retries remain bounded to four attempts and body failures explicitly propagate outside retry. Intermediate retryable HTTPError responses close, but non-transient and final retry errors raise before error.close. Existing transient test uses HTTPError with no body and does not assert final/non-transient closure or a failing body read.",
-      "remaining_action": "At apps/site/scripts/publish-viewer-r2.py:39-42, close HTTPError before every terminal/non-transient raise; retain four opening attempts and backoff 1+2+4 seconds. Cover final/non-transient body closure and response-body failure without adding write or body retries.",
-      "confidence": "high",
+      "reason": "HTTPError closes before either terminal propagation or retry classification. The same exception object, status set, four opening attempts and 1/2/4-second delays remain; returned response-body failures stay outside retry. New assertions cover 404, exhausted 503 and one failing body read.",
+      "remaining_action": null,
+      "confidence": "high for changed branches and inspected tests; focused execution logs verified, no independent test rerun",
       "entry_id": "apps/site/scripts/publish-viewer-r2.py:38:open_public",
       "old_grades": {
         "correctness": "B+",
@@ -2444,7 +2624,22 @@
       "original_ticket_ids": [
         "ct-hm4b"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "e9b5483c493e8afa0377d69994953f55063737e0",
+      "pre_cleanup_grades": {
+        "correctness": "B+",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "review_receipt": "control-review.json",
+      "evidence_tests_read": [
+        "tests/test_publication_control_reads.py:12",
+        "tests/test_publication_control_reads.py:27"
+      ],
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2496,7 +2691,9 @@
         "ct-ylaw",
         "ct-hm4b"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2545,7 +2742,9 @@
       "original_ticket_ids": [
         "ct-o24q"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2596,7 +2795,9 @@
       "original_ticket_ids": [
         "ct-o24q"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2647,7 +2848,9 @@
       "original_ticket_ids": [
         "ct-o24q"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2697,7 +2900,9 @@
       "original_ticket_ids": [
         "ct-hm4b"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2752,7 +2957,9 @@
       ],
       "keep_decisions": [
         "The false pointer-last transaction claim is removed. Separate source/mapping/viewer reads provide an explicit freshness observation; final viewer IfMatch fences that pointer only. The interleaving test deliberately demonstrates source advancement after its read. A later poll discovers later inputs; this bounded consistency choice does not require another coordinator."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2804,7 +3011,9 @@
         "ct-1dsp",
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2855,7 +3064,9 @@
       "original_ticket_ids": [
         "ct-m59w"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -2909,7 +3120,11 @@
       "original_ticket_ids": [
         "ct-zkzt"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-bpyj"
+      ]
     },
     {
       "current_grades": {
@@ -2963,7 +3178,11 @@
         "ct-zkzt",
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-bpyj"
+      ]
     },
     {
       "current_grades": {
@@ -3013,7 +3232,9 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3071,7 +3292,11 @@
         "ct-1dsp",
         "ct-zkzt"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-bpyj"
+      ]
     },
     {
       "current_grades": {
@@ -3125,7 +3350,9 @@
         "ct-1dsp",
         "ct-m59w"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3175,7 +3402,9 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3224,7 +3453,9 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3282,7 +3513,9 @@
         "ct-zkzt",
         "ct-zb9y"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3336,7 +3569,9 @@
         "ct-ylaw",
         "ct-o24q"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3390,7 +3625,9 @@
         "ct-1mbc",
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3443,7 +3680,9 @@
       ],
       "keep_decisions": [
         "Wrapper delegates to capture-only active inventory; docs identify all maintained writer mechanisms and deny lease semantics. Guard policy caches only immutable-write observations and refreshes shared commits. Initial dispatcher cloud observation plus guarded boundary is conservative repeated metadata work; condition authority remains per object."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3495,7 +3734,9 @@
       "original_ticket_ids": [
         "ct-4r1c"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3546,7 +3787,9 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3598,7 +3841,11 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-piku"
+      ]
     },
     {
       "current_grades": {
@@ -3646,7 +3893,9 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3702,7 +3951,11 @@
         "ct-ylaw",
         "ct-fw0m"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-bpyj"
+      ]
     },
     {
       "current_grades": {
@@ -3757,7 +4010,11 @@
         "ct-ylaw",
         "ct-idhg"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-2ut4"
+      ]
     },
     {
       "current_grades": {
@@ -3810,7 +4067,9 @@
       ],
       "keep_decisions": [
         "Protected checks remain individual fresh HEAD versions, followed by original conditional writes. Documentation correctly states their non-atomic cut point, and shared commits force fresh inventory/protected checks. Local ownership and pins are checked around remote observations. This bounded race policy is deliberate; it is not a multi-object lease."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3861,7 +4120,9 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -3875,14 +4136,14 @@
       "remediation_status": "unresolved",
       "current_locations": [
         "scripts/dispatch_corpus_recovery_publication.py:169",
-        "scripts/dispatch_corpus_recovery_publication.py:209"
+        "scripts/dispatch_corpus_recovery_publication.py:212"
       ],
       "tests_read": [
         "tests/test_dispatch_corpus_recovery_publication.py:81"
       ],
-      "reason": "Store.read still saves the selected raw selector into source/indexes/catalog.json as a hidden side effect of storage retrieval. Saved bytes support later phases and retained evidence, but the proposed explicit source-custody owner was not introduced. Phase tests exercise existence through a stubbed catalog path.",
-      "remaining_action": "Move retained selected-source custody into an explicit result/admission step, with exact selected bytes/version and lifecycle visible to callers.",
-      "confidence": "medium",
+      "reason": "Unchanged code still saves source selector bytes as a hidden read side effect. The new guarded Store test establishes that a complete current selector is retained before the proposal and remains unchanged until verified commit, but it does not introduce a named custody/result owner. No grade increase is supported for this architectural row.",
+      "remaining_action": "Retain the existing explicit accepted-plan/source-custody ownership followup; do not claim this read adapter was refactored by ct-du3e.",
+      "confidence": "high for changed branches and inspected tests; focused execution logs verified, no independent test rerun",
       "entry_id": "scripts/dispatch_corpus_recovery_publication.py:209:run.Store.read",
       "old_grades": {
         "correctness": "B+",
@@ -3907,35 +4168,54 @@
       "baseline_action": "Make saved source custody explicit rather than a hidden storage-read side effect.",
       "baseline_acceptance": "Selected bytes and their identity are retained once; failure evidence remains available.",
       "followup_ticket_ids": [
+        "ct-bpyj",
         "ct-du3e"
       ],
       "original_ticket_ids": [
         "ct-ylaw",
         "ct-fw0m"
       ],
-      "keep_decisions": []
-    },
-    {
-      "current_grades": {
-        "correctness": "B",
+      "keep_decisions": [],
+      "reviewed_revision": "e9b5483c493e8afa0377d69994953f55063737e0",
+      "pre_cleanup_grades": {
+        "correctness": "B+",
         "efficiency": "B",
         "dx": "B-",
         "thoughtfulness": "B+",
         "debt": "C+",
         "overall": "B"
       },
-      "remediation_status": "unresolved",
+      "review_receipt": "control-review.json",
+      "evidence_tests_read": [
+        "tests/test_dispatch_corpus_recovery_publication.py:274"
+      ],
+      "open_ticket_ids": [
+        "ct-bpyj"
+      ]
+    },
+    {
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "C+",
+        "overall": "B"
+      },
+      "remediation_status": "partial",
       "current_locations": [
+        "scripts/dispatch_corpus_recovery_publication.py:154",
         "scripts/dispatch_corpus_recovery_publication.py:174",
-        "scripts/dispatch_corpus_recovery_publication.py:189"
+        "scripts/guarded_recovery_publication_client.py:153",
+        "packages/congress_api/src/congress_api/retention/r2.py:242"
       ],
       "tests_read": [
         "tests/test_dispatch_corpus_recovery_publication.py:81",
         "tests/test_catalog_publication.py:36"
       ],
-      "reason": "Store.put replaces source/indexes/catalog.json before the remote conditional write. A refused or uncertain commit can therefore leave an unselected candidate at the locally named source-selector path. Existing guards/phase acceptance and incomplete-build refusal fail closed, so no stale public selection is demonstrated; retained selected-versus-proposed evidence is still wrong or ambiguous.",
-      "remaining_action": "At scripts/dispatch_corpus_recovery_publication.py:174-177, retain a distinct proposed-selector receipt, call super().put and install source/indexes/catalog.json only after verified success. Preserve previous selected bytes on conditional failure and retain candidate evidence; test failure and successful installation. R2Store.put at r2.py:219-245 returns after verification and ETag update.",
-      "confidence": "medium",
+      "reason": "The proposed/selected evidence defect is fixed: proposed/indexes/catalog.json is saved before the original conditional call; source/indexes/catalog.json advances only after super().put returns. On this actual route the client is ContinuedPublicationClient, whose guarded write performs complete readback before returning; MD5/ETag validation and the saved version also remain. Five outcomes assert one PUT and preservation through readback. The nested Store adapter and implicit source-custody ownership remain, so structural debt and overall B are retained.",
+      "remaining_action": "Keep the existing control_local_accepted_plan followup for explicit source/plan ownership; ct-du3e scoped proposed-versus-selected acceptance is satisfied.",
+      "confidence": "high for changed branches and inspected tests; focused execution logs verified, no independent test rerun",
       "entry_id": "scripts/dispatch_corpus_recovery_publication.py:214:run.Store.put",
       "old_grades": {
         "correctness": "B+",
@@ -3960,12 +4240,29 @@
       "baseline_acceptance": "An interrupted write never labels an unselected candidate as selected; resume uses the original condition.",
       "finding_severity": "P2 evidence correctness and operator diagnosis",
       "followup_ticket_ids": [
+        "ct-bpyj",
         "ct-du3e"
       ],
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "e9b5483c493e8afa0377d69994953f55063737e0",
+      "pre_cleanup_grades": {
+        "correctness": "B",
+        "efficiency": "B",
+        "dx": "B-",
+        "thoughtfulness": "B+",
+        "debt": "C+",
+        "overall": "B"
+      },
+      "review_receipt": "control-review.json",
+      "evidence_tests_read": [
+        "tests/test_dispatch_corpus_recovery_publication.py:274"
+      ],
+      "open_ticket_ids": [
+        "ct-bpyj"
+      ]
     },
     {
       "current_grades": {
@@ -4014,30 +4311,32 @@
       "original_ticket_ids": [
         "ct-fw0m"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
         "correctness": "A-",
-        "efficiency": "B",
-        "dx": "B",
+        "efficiency": "B+",
+        "dx": "B+",
         "thoughtfulness": "B+",
-        "debt": "B",
-        "overall": "B"
+        "debt": "B+",
+        "overall": "B+"
       },
-      "remediation_status": "partial",
+      "remediation_status": "resolved",
       "current_locations": [
-        "scripts/dispatch_corpus_recovery_publication.py:181",
         "packages/congress_api/src/congress_api/retention/r2.py:332",
+        "scripts/dispatch_corpus_recovery_publication.py:181",
         "packages/congress_api/src/congress_api/retention/derived_files.py:67"
       ],
       "tests_read": [
         "tests/test_catalog_files.py:134",
         "tests/test_catalog_files.py:226"
       ],
-      "reason": "Acquired catalog files are linked into durable source ownership rather than copied again. However R2Store.read_derived_file spreads copy_checked VerifiedFile into a plain dict with version, discarding issued custody. retain_verified_file then rehashes the full file. The isolated retained-link test passes an issued proof and does not cover this actual read-to-retain handoff.",
-      "remaining_action": "At packages/congress_api/src/congress_api/retention/r2.py:332-333, retain issued VerifiedFile together with remote version through scripts/dispatch_corpus_recovery_publication.py:181-185. Count zero additional SHA bytes at retain_verified_file for this real acquisition handoff; preserve exact declared-size/hash and fresh-process checking.",
-      "confidence": "high",
+      "reason": "R2 read now returns the issued VerifiedFile itself with remote version added, so unchanged acquired-file custody reaches dispatcher retention without another SHA pass. Exact real read-to-retain test counts zero extra hash bytes for issued custody versus 26 for serialized facts; changed issued/serialized bytes refuse before retention. Snapshot-to-history test similarly counts zero versus 1052 bytes and retains complete MD5 transport checks. Local retention still links immutable owned files and falls back to checked copy across filesystems. This resolves the dropped-proof handoff only; other dispatcher plan/phase scores remain unchanged.",
+      "remaining_action": null,
+      "confidence": "high for static implementation and read test assertions; fixture execution is author-retained evidence",
       "entry_id": "scripts/dispatch_corpus_recovery_publication.py:223:run.Store.read_derived_file",
       "old_grades": {
         "correctness": "A-",
@@ -4066,7 +4365,26 @@
       "original_ticket_ids": [
         "ct-fw0m"
       ],
-      "keep_decisions": []
+      "keep_decisions": [
+        "Serialization remains data only; a plain dictionary must rehash and cannot manufacture issued proof.",
+        "Fresh process/file custody changes continue to require independent verification or refusal."
+      ],
+      "reviewed_revision": "941a45c3b851003489d62dc3b04a928fad208d63",
+      "pre_cleanup_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B"
+      },
+      "review_receipt": "storage-review.json",
+      "evidence_tests_read": [
+        "tests/test_catalog_files.py:226",
+        "tests/test_catalog_files.py:282",
+        "tests/test_catalog_files.py:330"
+      ],
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4117,7 +4435,9 @@
       "original_ticket_ids": [
         "ct-fw0m"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4170,7 +4490,9 @@
         "ct-ylaw",
         "ct-3djs"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4223,7 +4545,11 @@
         "ct-ylaw",
         "ct-fcxg"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-76n5"
+      ]
     },
     {
       "current_grades": {
@@ -4276,7 +4602,11 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-2uwd"
+      ]
     },
     {
       "current_grades": {
@@ -4331,7 +4661,11 @@
         "ct-ylaw",
         "ct-3djs"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-bpyj"
+      ]
     },
     {
       "current_grades": {
@@ -4384,7 +4718,11 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-bpyj"
+      ]
     },
     {
       "current_grades": {
@@ -4434,7 +4772,9 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4487,7 +4827,9 @@
       "original_ticket_ids": [
         "ct-m59w"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4540,7 +4882,9 @@
         "ct-pd8n",
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4592,31 +4936,33 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
         "correctness": "A-",
         "efficiency": "B+",
-        "dx": "B",
+        "dx": "B+",
         "thoughtfulness": "A-",
-        "debt": "B",
+        "debt": "B+",
         "overall": "B+"
       },
-      "remediation_status": "partial",
+      "remediation_status": "resolved",
       "current_locations": [
         "scripts/pipeline_status.py:113",
         "scripts/pipeline_status.py:127",
-        "scripts/pipeline_status.py:166"
+        "scripts/pipeline_status.py:135"
       ],
       "tests_read": [
         "tests/test_pipeline_status.py:118",
         "tests/test_pipeline_status.py:156",
         "tests/test_pipeline_status.py:168"
       ],
-      "reason": "Status now separates recorded phase acceptance, current remote reconciliation and public readback; bound journals retain exact preparation/chain and later failure precedence. Unbound local recovery exposes the next phase, but returns before gathering uncertain keys/verified-write counts. Dispatcher bindings lack GitHub identity, so precisely those local uncertain writes are omitted. Existing unbound-local test checks only phase.",
-      "remaining_action": "At scripts/pipeline_status.py:127-129 and :166-170, gather local uncertain keys and recorded verification before returning unbound. Retain at most 8192 writes, empty accepted_outputs for unbound runs and remote_reconciliation=not_performed.",
-      "confidence": "high",
+      "reason": "The bounded write summary now precedes run attribution; unbound local attempts expose uncertain keys and recorded verification counts. At most8192 writes with nonempty <=2048-character keys and actual boolean flags are accepted. Unbound accepted_outputs stays empty and integrity/remote/public checks remain explicitly unperformed. Bound journal checks are unchanged.",
+      "remaining_action": null,
+      "confidence": "high for changed branches and inspected tests; focused execution logs verified, no independent test rerun",
       "entry_id": "scripts/pipeline_status.py:113:continuation",
       "old_grades": {
         "correctness": "A-",
@@ -4645,7 +4991,22 @@
       "original_ticket_ids": [
         "ct-fcxg"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "e9b5483c493e8afa0377d69994953f55063737e0",
+      "pre_cleanup_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "review_receipt": "control-review.json",
+      "evidence_tests_read": [
+        "tests/test_pipeline_status.py:168",
+        "tests/test_pipeline_status.py:188"
+      ],
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4700,7 +5061,11 @@
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-2uwd"
+      ]
     },
     {
       "current_grades": {
@@ -4752,7 +5117,9 @@
       ],
       "keep_decisions": [
         "Capture-only inventory is now explicit and malformed, unknown, incomplete or timed-out scans fail closed. Five active-status queries and bounded pagination avoid scanning complete historical runs. The separate viewer/local/mapping writer mechanisms are documented and guarded by original conditions. Discovery remains an advisory observation, not a lease."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4802,7 +5169,9 @@
       "original_ticket_ids": [
         "ct-jl1m"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4854,7 +5223,9 @@
         "ct-jl1m",
         "ct-1dsp"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4904,7 +5275,9 @@
       "original_ticket_ids": [
         "ct-atjy"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -4961,7 +5334,11 @@
         "ct-idhg",
         "ct-atjy"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-v6ao"
+      ]
     },
     {
       "current_grades": {
@@ -5012,22 +5389,24 @@
       ],
       "keep_decisions": [
         "Saved names reject absolute/traversal/noncanonical paths and resolved symlink escape; complete file bytes are fsynced before atomic replacement and existing immutable evidence must match. Parent directory is deliberately not fsynced here, and docs explicitly distinguish this from power-loss durability. Cloud artifact/journal custody remains the restart authority. This is an acknowledged guarantee limit."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
-        "correctness": "B",
+        "correctness": "A-",
         "efficiency": "B+",
-        "dx": "B",
-        "thoughtfulness": "B+",
-        "debt": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
         "overall": "B+"
       },
-      "remediation_status": "partial",
+      "remediation_status": "resolved",
       "current_locations": [
         "scripts/recovery_publication_continuation.py:167",
         "scripts/recovery_publication_continuation.py:180",
-        "scripts/viewer_publication_attempt.py:158"
+        "scripts/viewer_publication_attempt.py:159"
       ],
       "tests_read": [
         "tests/test_publication_state_bounds.py:116",
@@ -5035,9 +5414,9 @@
         "tests/test_recovery_publication_continuation.py:54",
         "tests/test_viewer_publication_attempt.py:449"
       ],
-      "reason": "Issued same-process inventories avoid redundant full hashing and persisted phase fields/counts are validated. Fresh files reject symlinks/escape and fresh processes rehash accepted bytes. The restored non-inventory branch hashes self.root/relative without repeating resolved-path/symlink confinement; an externally redirected saved phase path can be followed. Existing path-escape test covers new phases only.",
-      "remaining_action": "At scripts/recovery_publication_continuation.py:180-182, repeat the saved-file symlink/resolved-root checks used at :199-201 before hashing restored phases; retain MAX_PHASE_FILES=32768 and the issued-proof fast path.",
-      "confidence": "high",
+      "reason": "Restored non-inventory paths repeat file-symlink/resolved-root confinement before hashing, matching new-phase admission. Same-byte outside files cannot satisfy owned custody. A valid owned resume returns the saved result; changed bytes still refuse. The issued inventory fast path and count limits are unchanged.",
+      "remaining_action": null,
+      "confidence": "high for changed branches and inspected tests; focused execution logs verified, no independent test rerun",
       "entry_id": "scripts/recovery_publication_continuation.py:60:Continuation.phase",
       "old_grades": {
         "correctness": "B+",
@@ -5070,7 +5449,23 @@
         "ct-1dsp",
         "ct-atjy"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "e9b5483c493e8afa0377d69994953f55063737e0",
+      "pre_cleanup_grades": {
+        "correctness": "B",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "review_receipt": "control-review.json",
+      "evidence_tests_read": [
+        "tests/test_publication_state_bounds.py:116",
+        "tests/test_publication_state_bounds.py:137",
+        "tests/test_publication_state_bounds.py:158"
+      ],
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5127,7 +5522,11 @@
         "ct-atjy",
         "ct-idhg"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-v6ao"
+      ]
     },
     {
       "current_grades": {
@@ -5183,7 +5582,11 @@
         "ct-1mbc",
         "ct-atjy"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-5jqd"
+      ]
     },
     {
       "current_grades": {
@@ -5233,7 +5636,9 @@
       "original_ticket_ids": [
         "ct-m59w"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5284,7 +5689,9 @@
       "original_ticket_ids": [
         "ct-atjy"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5340,7 +5747,9 @@
         "ct-atjy",
         "ct-idhg"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5402,6 +5811,10 @@
       ],
       "keep_decisions": [
         "Per-write intent/verified events, complete readback and nonce/conditional append are deliberate crash authority. Optimize compact checkpoint representation only with equivalent uncertainty/restart proof; no independent terminal anchor for deleted suffixes is promised."
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-v6ao"
       ]
     },
     {
@@ -5453,7 +5866,9 @@
       "original_ticket_ids": [
         "ct-o24q"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5513,7 +5928,9 @@
         "ct-1dsp",
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5566,7 +5983,9 @@
         "ct-zkzt",
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5620,7 +6039,9 @@
         "ct-1dsp",
         "ct-atjy"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5673,7 +6094,9 @@
       "original_ticket_ids": [
         "ct-1mbc"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5735,7 +6158,11 @@
         "ct-idhg",
         "ct-1mbc"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-bpyj"
+      ]
     },
     {
       "current_grades": {
@@ -5790,7 +6217,9 @@
       ],
       "keep_decisions": [
         "Fresh shared-commit guard compares original source/mapping values and tracked versions, permitting its own reconciled viewer selection. Read-only interleaving test and docs explicitly deny cross-object atomicity. Final viewer condition fences competing pointer writers; later input movement needs the next poll. Some boundary dict/tuple conversion remains, but the correctness claim is now accurate."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "current_grades": {
@@ -5847,7 +6276,11 @@
         "ct-idhg",
         "ct-atjy"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-v6ao"
+      ]
     },
     {
       "current_grades": {
@@ -5900,7 +6333,9 @@
         "ct-ylaw",
         "ct-m59w"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_aliases.py:47:catalog_aliases",
@@ -5947,7 +6382,9 @@
       "original_ticket_ids": [
         "ct-rrfm"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_details.py:45:publish_details",
@@ -5993,7 +6430,9 @@
       "original_ticket_ids": [
         "ct-hnxb"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_details.py:58:publish_details.observation_counts",
@@ -6037,7 +6476,9 @@
       "original_ticket_ids": [
         "ct-hnxb"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_details.py:70:publish_details.encode",
@@ -6080,7 +6521,9 @@
       "original_ticket_ids": [
         "ct-hnxb"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_navigation.py:7:publish_navigation",
@@ -6124,7 +6567,9 @@
       "original_ticket_ids": [
         "ct-gubr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_observations.py:15:json_bytes",
@@ -6167,7 +6612,9 @@
       ],
       "keep_decisions": [
         "Bytes-returning deterministic serialization necessarily allocates output bytes; its B efficiency does not justify replacing the helper."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_observations.py:20:Blocks.__init__",
@@ -6210,7 +6657,9 @@
       "original_ticket_ids": [
         "ct-gesp"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_observations.py:26:Blocks.append",
@@ -6258,7 +6707,9 @@
       ],
       "keep_decisions": [
         "Declared single-value/native decoder costs and complete source readback remain deliberate. Current admission and incremental parsing resolve the scoped defects; no measured lookup bottleneck supports weakening verification or speculative batching."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_observations.py:34:Blocks.flush",
@@ -6303,7 +6754,9 @@
         "ct-hnxb",
         "ct-gesp"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_observations.py:49:Blocks.close",
@@ -6345,7 +6798,9 @@
       "original_ticket_ids": [
         "ct-gesp"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_observations.py:55:publish_observations",
@@ -6396,7 +6851,9 @@
       ],
       "keep_decisions": [
         "Declared single-value/native decoder costs and complete source readback remain deliberate. Current admission and incremental parsing resolve the scoped defects; no measured lookup bottleneck supports weakening verification or speculative batching."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_observations.py:80:verify_observations",
@@ -6445,7 +6902,9 @@
       ],
       "keep_decisions": [
         "Declared single-value/native decoder costs and complete source readback remain deliberate. Current admission and incremental parsing resolve the scoped defects; no measured lookup bottleneck supports weakening verification or speculative batching."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_observations.py:90:verify_observations.read_block",
@@ -6491,7 +6950,9 @@
       ],
       "keep_decisions": [
         "Declared single-value/native decoder costs and complete source readback remain deliberate. Current admission and incremental parsing resolve the scoped defects; no measured lookup bottleneck supports weakening verification or speculative batching."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_recoveries.py:15:accepted_rows",
@@ -6534,7 +6995,9 @@
       "original_ticket_ids": [
         "ct-qspb"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_recoveries.py:35:index_recoveries",
@@ -6587,7 +7050,9 @@
         "ct-1dsp",
         "ct-rrfm"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_review_binding.py:20:load_identities",
@@ -6629,7 +7094,9 @@
       "original_ticket_ids": [
         "ct-d2lk"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_review_binding.py:30:bind",
@@ -6673,7 +7140,9 @@
       "original_ticket_ids": [
         "ct-gubr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_review_binding.py:56:identities_from",
@@ -6721,7 +7190,9 @@
       ],
       "keep_decisions": [
         "The offline identities helper still materializes catalog order. Its broader heavy initialization is covered by preparation_catalog_memory_profile; no separate order-list micro-optimization is justified."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_review_binding.py:72:main",
@@ -6769,7 +7240,11 @@
         "ct-d2lk",
         "ct-gubr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-m9ry"
+      ]
     },
     {
       "entry_id": "apps/site/scripts/filename_reviews.py:12:export_reviews",
@@ -6815,7 +7290,9 @@
         "ct-qxpa",
         "ct-gesp"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/filename_reviews.py:81:extract_archive",
@@ -6861,7 +7338,9 @@
       "original_ticket_ids": [
         "ct-vp92"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/publish-filename-viewer.py:51:verify",
@@ -6906,7 +7385,9 @@
       "original_ticket_ids": [
         "ct-3djs"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/publish-filename-viewer.py:73:fetch",
@@ -6951,7 +7432,9 @@
         "ct-fw0m",
         "ct-gesp"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/publish-filename-viewer.py:96:write_u32",
@@ -6991,7 +7474,9 @@
       "original_ticket_ids": [
         "ct-gubr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/publish-filename-viewer.py:109:repack_and_verify",
@@ -7042,7 +7527,9 @@
       ],
       "keep_decisions": [
         "Declared single-value/native decoder costs and complete source readback remain deliberate. Current admission and incremental parsing resolve the scoped defects; no measured lookup bottleneck supports weakening verification or speculative batching."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "apps/site/scripts/publish-filename-viewer.py:132:publish",
@@ -7098,7 +7585,11 @@
         "ct-eauq",
         "ct-gesp"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-m9ry"
+      ]
     },
     {
       "entry_id": "docs/youtube-coverage/research/scripts/view_document_filenames.py:270:Catalog.__init__",
@@ -7148,7 +7639,11 @@
         "ct-gubr",
         "ct-gesp"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": [
+        "ct-m9ry"
+      ]
     },
     {
       "entry_id": "docs/youtube-coverage/research/scripts/view_document_filenames.py:393:Catalog.source_mask",
@@ -7189,7 +7684,9 @@
       "original_ticket_ids": [
         "ct-gubr"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/scripts/view_document_filenames.py:516:Catalog.record",
@@ -7234,7 +7731,9 @@
       ],
       "keep_decisions": [
         "Complete physical row-group decoding is needed for full evidence access; the explicit retained cache and batched reads fix prior amplification. The 32 MiB logical cache is not a universal native-memory bound."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/scripts/view_document_filenames.py:546:Catalog.document",
@@ -7279,7 +7778,9 @@
       ],
       "keep_decisions": [
         "Complete physical row-group decoding is needed for full evidence access; the explicit retained cache and batched reads fix prior amplification. The 32 MiB logical cache is not a universal native-memory bound."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "docs/youtube-coverage/research/scripts/view_document_filenames.py:552:Catalog.review_rows",
@@ -7322,7 +7823,9 @@
       "original_ticket_ids": [
         "ct-qxpa"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/catalog_cache.py:53:LocalStore.keys",
@@ -7362,7 +7865,9 @@
       "original_ticket_ids": [
         "ct-lu4i"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/catalog_cache.py:57:LocalStore.put",
@@ -7404,7 +7909,9 @@
       "original_ticket_ids": [
         "ct-lu4i"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/catalog_publication.py:132:publish_catalog",
@@ -7453,7 +7960,9 @@
         "ct-3djs",
         "ct-lu4i"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/catalog_validation.py:23:_validator_identity",
@@ -7495,7 +8004,9 @@
       "original_ticket_ids": [
         "ct-3djs"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/catalog_validation.py:52:validate_catalog_pair",
@@ -7539,7 +8050,9 @@
       "original_ticket_ids": [
         "ct-3djs"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/document_index.py:681:validate_document_indexes",
@@ -7554,15 +8067,15 @@
       "current_grades": {
         "correctness": "A-",
         "efficiency": "B",
-        "dx": "B",
-        "thoughtfulness": "B+",
-        "debt": "B",
-        "overall": "B"
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
       },
       "current_locations": [
-        "packages/congress_api/src/congress_api/retention/document_index.py:681",
-        "packages/congress_api/src/congress_api/retention/document_index.py:692",
-        "packages/congress_api/src/congress_api/retention/catalog_staging.py:565"
+        "packages/congress_api/src/congress_api/retention/document_index.py:685",
+        "packages/congress_api/src/congress_api/retention/document_index.py:703",
+        "packages/congress_api/src/congress_api/retention/document_index.py:717"
       ],
       "tests_read": [
         "tests/test_catalog_publication.py:93",
@@ -7574,10 +8087,10 @@
       "ticket_ids": [
         "ct-3djs"
       ],
-      "remediation_status": "partial",
-      "reason": "The checker still enforces unique IDs, both reference directions and preferred-source membership with narrow batches and SQLite. Caller proof propagation removes repeated normal raw scans. Both ParquetFile readers at line 685 lack explicit close/context ownership, including second-open/schema/SQLite failures; SQLite alone has finally cleanup. Existing read tests establish semantics, not deterministic reader closure.",
-      "remaining_action": "Own both ParquetFile readers with an ExitStack or nested contexts; add focused second-open and validation-failure close assertions, preserving the primary error and reference checks.",
-      "confidence": "high for source and inspected assertions; retained execution is historical, not rerun",
+      "remediation_status": "resolved",
+      "reason": "Both Parquet readers now have deterministic ExitStack ownership, including second-open, catalog mismatch, count/reference and duplicate-ID refusal paths. Reader cleanup cannot replace an existing validation refusal; both readers are attempted even if cleanup raises, and success-path close errors surface. SQLite uniqueness and both reference-direction checks remain unchanged. Forwarding the existing CatalogBuildResult proof in publish_local_result removes a direct-local second semantic scan; serialized results still perform the full scan and changed issued proofs refuse. The checker efficiency grade stays B because its 4096-row batches and SQLite scan cost are unchanged; no checker runtime saving was measured.",
+      "remaining_action": null,
+      "confidence": "high for static implementation and read test assertions; fixture execution is author-retained evidence",
       "followup_ticket_ids": [
         "ct-3g69",
         "ct-u7gg"
@@ -7585,7 +8098,26 @@
       "original_ticket_ids": [
         "ct-3djs"
       ],
-      "keep_decisions": []
+      "keep_decisions": [
+        "Complete disk-backed reference validation is retained; this patch measures removed duplicate caller work, not a faster validation algorithm."
+      ],
+      "reviewed_revision": "941a45c3b851003489d62dc3b04a928fad208d63",
+      "pre_cleanup_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B"
+      },
+      "review_receipt": "storage-review.json",
+      "evidence_tests_read": [
+        "tests/test_catalog_pair_validation.py:120",
+        "tests/test_catalog_pair_validation.py:138",
+        "tests/test_catalog_validation_readers.py:11",
+        "tests/test_catalog_validation_readers.py:41"
+      ],
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/document_index.py:2659:selected_filename_path",
@@ -7600,14 +8132,15 @@
       "current_grades": {
         "correctness": "B+",
         "efficiency": "B",
-        "dx": "B",
+        "dx": "B+",
         "thoughtfulness": "B+",
-        "debt": "C+",
-        "overall": "B-"
+        "debt": "B+",
+        "overall": "B+"
       },
       "current_locations": [
-        "packages/congress_api/src/congress_api/retention/document_index.py:2661",
-        "packages/congress_api/src/congress_api/retention/catalog_publication.py:171"
+        "packages/congress_api/src/congress_api/retention/catalog_publication.py:98",
+        "packages/congress_api/src/congress_api/retention/catalog_publication.py:171",
+        "packages/congress_api/src/congress_api/retention/document_index.py:2663"
       ],
       "tests_read": [
         "tests/test_catalog_publication.py:22",
@@ -7619,17 +8152,35 @@
       "ticket_ids": [
         "ct-ylaw"
       ],
-      "remediation_status": "unresolved",
-      "reason": "Repository-wide caller search finds only this definition. It still exposes a filename-only legacy fallback while the maintained snapshot/local_catalog_paths routes validate the selected pair. There is no evidence this unused migration helper remains a supported operator route; ticket closure did not remove it.",
-      "remaining_action": "Remove selected_filename_path after confirming no supported external API commitment; retain historical migration tests/evidence and the actual selected-pair route.",
-      "confidence": "high for repository caller inventory; external consumers are outside repository evidence",
+      "remediation_status": "resolved",
+      "reason": "Unused filename-only legacy helper is removed after repository caller inventory. Its replacement responsibility belongs to read_catalog/local_catalog_paths, which validate the selected pair, and publish_local_result, which returns selected durable paths. Historical migration and selected-corruption refusal tests remain. Grades describe the maintained replacement responsibility; no dead-function execution improvement or unknown external-consumer guarantee is claimed. Pair read/hash work remains intentional and its efficiency grade remains B.",
+      "remaining_action": null,
+      "confidence": "high for static implementation and read test assertions; fixture execution is author-retained evidence",
       "followup_ticket_ids": [
         "ct-3g69"
       ],
       "original_ticket_ids": [
         "ct-ylaw"
       ],
-      "keep_decisions": []
+      "keep_decisions": [
+        "Historical migration evidence remains; no unsupported filename-only publication route is added."
+      ],
+      "reviewed_revision": "941a45c3b851003489d62dc3b04a928fad208d63",
+      "pre_cleanup_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "review_receipt": "storage-review.json",
+      "evidence_tests_read": [
+        "tests/test_catalog_pair_validation.py:120",
+        "tests/test_catalog_publication.py:22",
+        "tests/test_catalog_publication.py:71"
+      ],
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/r2.py:53:_configure_retries",
@@ -7675,7 +8226,9 @@
       ],
       "keep_decisions": [
         "Explicit SDK budgets, fresh mutable byte reads, dedicated pinned file reads and namespace-specific archive writes retain useful distinctions. B efficiency/DX/debt alone is not evidence of an actionable correctness defect."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/r2.py:58:_configure_retries.retry",
@@ -7721,7 +8274,9 @@
       ],
       "keep_decisions": [
         "Explicit SDK budgets, fresh mutable byte reads, dedicated pinned file reads and namespace-specific archive writes retain useful distinctions. B efficiency/DX/debt alone is not evidence of an actionable correctness defect."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/r2.py:164:R2Store.read",
@@ -7767,7 +8322,9 @@
       ],
       "keep_decisions": [
         "Explicit SDK budgets, fresh mutable byte reads, dedicated pinned file reads and namespace-specific archive writes retain useful distinctions. B efficiency/DX/debt alone is not evidence of an actionable correctness defect."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/r2.py:192:R2Store.put",
@@ -7813,7 +8370,9 @@
       ],
       "keep_decisions": [
         "Explicit SDK budgets, fresh mutable byte reads, dedicated pinned file reads and namespace-specific archive writes retain useful distinctions. B efficiency/DX/debt alone is not evidence of an actionable correctness defect."
-      ]
+      ],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/r2.py:313:R2Store.put_derived_file",
@@ -7857,7 +8416,9 @@
       "original_ticket_ids": [
         "ct-fw0m"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     },
     {
       "entry_id": "packages/congress_api/src/congress_api/retention/raw_catalog.py:349:_publish_result",
@@ -7905,7 +8466,88 @@
         "ct-3djs",
         "ct-fw0m"
       ],
-      "keep_decisions": []
+      "keep_decisions": [],
+      "reviewed_revision": "90982181ad95366c12bb08d2b9789ea4f9042216",
+      "open_ticket_ids": []
     }
-  ]
+  ],
+  "integrated_code_revision": "f438264f791956abd37177e9d334d00eb010e169",
+  "summary": {
+    "entries": 168,
+    "dispositions": {
+      "resolved": 116,
+      "intentional_tradeoff": 30,
+      "partial": 20,
+      "unresolved": 2
+    },
+    "overall_grades": {
+      "A-": 25,
+      "B+": 130,
+      "B": 9,
+      "B-": 4
+    },
+    "entries_with_remaining_action": 23,
+    "open_followup_tickets": 12
+  },
+  "architecture_grades": {
+    "correctness": {
+      "grade": "B+",
+      "meaning": "Strong integrity and conditional-write behavior with a remaining runtime ownership gap.",
+      "evidence": [
+        "control-review.json: restored phase confinement, terminal response cleanup and proposed/selected separation approved",
+        "storage-review.json: issued proof custody, reader cleanup and stale proof refusal approved",
+        "browser-package-review.json: accepted catalog pin correction independently approved",
+        "ct-piku: alternate runtime imports can still depend on ambient modules; ct-2uwd retains bounded mapping/readback work"
+      ]
+    },
+    "efficiency": {
+      "grade": "C+",
+      "meaning": "The system works with substantial avoidable cost on central preparation, local publication and success paths.",
+      "evidence": [
+        "preparation-rescore.md: Catalog loading reached 5.085GB highwater and whole local preparation 7.310GB; general tables/maps remain",
+        "control-rescore.md: fresh publication fixture was 7.5% slower and retained 1,929 modeled requests/2,199 fsyncs despite resume gains",
+        "consumer-rescore.md: exact-current-catalog source-URL search completed in27.523s; retained cache limits do not bound active columns/JSON",
+        "storage-review.json: direct local reference pass2->1 and issued read-to-retain zero extra hashes are real, narrowly measured improvements"
+      ]
+    },
+    "dx": {
+      "grade": "B-",
+      "meaning": "Receipts and recovery behavior help, while local restart/runtime setup and manual workflow resume still require too much operator interpretation.",
+      "evidence": [
+        "ct-bpyj and ct-piku: local accepted plan/runtime ownership remains split",
+        "ct-h73z: workflow still needs original-attempt descriptor handling instead of manual five-field transcription",
+        "ct-5jqd and ct-76n5: bounded reconciliation progress and retained incomplete-build next steps remain open",
+        "control-review.json: unbound local uncertainty is now visible without invented remote acceptance"
+      ]
+    },
+    "thoughtfulness": {
+      "grade": "A-",
+      "meaning": "The design consistently preserves evidence, ambiguity, exact values and uncertain-write recovery.",
+      "evidence": [
+        "all three initial rescores preserve nulls, duplicates/order, source byte identity and review withdrawal behavior",
+        "storage-review.json: restored dictionaries cannot manufacture issued custody",
+        "control-review.json: original conditions and one mutation attempt remain; proposed evidence survives failures",
+        "consumer findings: mandatory recovery failure, optional review failure and exact-value policy remain deliberate distinctions"
+      ]
+    },
+    "debt": {
+      "grade": "C+",
+      "meaning": "Small shared rules now have clearer owners; central local/cloud state, runtime loading and duplicate checkpoint ownership still add material complexity.",
+      "evidence": [
+        "ct-bpyj: accepted-plan and nested Store/phase ownership remains spread across local and cloud paths",
+        "ct-piku: dynamic loading/sys.path and ambient imports remain",
+        "ct-v6ao and ct-2ut4: durable events, local JSONL and growing checkpoints still overlap",
+        "ct-m9ry: publication continues to construct the general research Catalog rather than a measured smaller required view"
+      ]
+    },
+    "overall": {
+      "grade": "B-",
+      "meaning": "A careful, working publication system with improved failure handling and unresolved composition costs in its most important paths.",
+      "evidence": [
+        "Central Catalog construction, local recovery entry point and durable publication success path outweigh the count of small improved helpers.",
+        "Neither a new serializer/reader abstraction nor blanket grade promotion is justified; each larger change has an open measured follow-up."
+      ]
+    }
+  },
+  "concurrent_work": "User confirmed Grok/Cursor refactoring /scripts in primary checkout; excluded from this f438264 qualification."
 }
