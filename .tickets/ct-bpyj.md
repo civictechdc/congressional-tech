@@ -1,6 +1,6 @@
 ---
 id: ct-bpyj
-status: open
+status: in_progress
 deps: [ct-2d3k, ct-piku, ct-u7gg, ct-3g69, ct-du3e, ct-tenb]
 links: [ct-d3un, ct-esm4]
 created: 2026-10-19T16:40:41Z
@@ -40,3 +40,7 @@ Prioritized for efficiency and architectural debt per user direction. Require me
 **2026-10-19T17:00:42Z**
 
 Related reshape ct-esm4 packages corpus recovery and pins the files that execute. Related only. It does not close this ticket.
+
+**2026-10-19T20:15:20Z**
+
+Local implementation ready for independent review at refreshed 014303e baseline. One AcceptedViewerPlan reuses issued inventory/status for local/cloud; artifact checks stay cloud-only. Original input/release conditions remain in the existing continuation before upload; a fresh process rehashes 271 files once. Domain Store/phases moved to corpus_recovery.publication; runtime admission/lock/pins/guard stay in the dispatcher. Real seven-source builder/upload comparison: 269 payloads and manifests/status/results/original conditions match; observed output helper hash passes fall 823 to 270, bytes 279,129 to 50,688. Total recovery scans remain one, moved into preparation. Adds three GETs and three fsyncs; no speed/memory gain claimed, and the tiny arm is slower. 222 distinct focused checks plus seven subtests verified after isolated PyYAML environment repair. Primary accepted-plan evidence and committed report/JSON retain limitations. Remain in_progress pending independent review.
