@@ -1,0 +1,743 @@
+{
+  "reviewed_revision": "075779041f2d56fcdf138ee44ba6fa1d2a153e4c",
+  "base_revision": "014303ed0a292bc418e38070776734ce0feaae07",
+  "measurement_baseline_revision": "dfeed08aa87afb1e481a5ee52de7409e4470745c",
+  "state": "Frozen source independently reviewed and locally integrated; final publication/merge is parent-owned, not claimed here",
+  "scope": "ct-bpyj nine historical rows plus scoped current publication/consumer architecture across12followups; not a rerun/regrade of all168functions",
+  "method": "Independent static source/caller/assertion review and retained source/raw receipt hash validation. No tests or experiments repeated. Parent validates actual payload hashes; this review pins and reads the comparison claims.",
+  "independent_implementation_review": {
+    "owner": "Catalog agent",
+    "verdict": "APPROVE",
+    "source_revision": "075779041f2d56fcdf138ee44ba6fa1d2a153e4c",
+    "certificate": "accepted-plan/catalog-review.json",
+    "note": "Attributed to the actual independently issued certificate, not an approval inferred or issued on its behalf."
+  },
+  "historical_assessment_sha256": "76fe0b92100e80c9b51fe21ebb10e9d681873b7b9e8a4d84ed5ae5b48ac144ae",
+  "historical_markdown_sha256": "307b8b54de18dd86c1d238ab5c607926a926540c4a0eb0dbdff6b4be48052611",
+  "summary": {
+    "affected_rows": 9,
+    "changed_rows": 6,
+    "retained_rows": 3,
+    "historical_rows": 168,
+    "historical_rows_modified": 0
+  },
+  "entries": [
+    {
+      "historical_index": 67,
+      "entry_id": "apps/site/scripts/publish-viewer-r2.py:198:recovery_for_publication",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "A-",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "before": "B+",
+          "after": "A-"
+        },
+        "dx": {
+          "before": "B+",
+          "after": "A-"
+        },
+        "thoughtfulness": {
+          "before": "B+",
+          "after": "A-"
+        },
+        "debt": {
+          "before": "B",
+          "after": "B+"
+        }
+      },
+      "current_locations": [
+        "apps/site/scripts/publish-viewer-r2.py:272:recovery_for_publication",
+        "packages/viewer_publication/src/viewer_publication/plan.py:35:accept_viewer_plan"
+      ],
+      "dimension_reasons": {
+        "correctness": "A-: accepted status and current complete accepted-mapping identity now meet at one plan; changed mappings still refuse before its status can be used.",
+        "efficiency": "Retain B: one recovery scan moves from upload to preparation; it is not removed from total work. No independent function speed result.",
+        "dx": "A-: named plan makes accepted status/protected inputs inspectable for both maintained local/cloud routes.",
+        "thoughtfulness": "A-: accepted derivation remains separate from fresh mapping identity and original conditional selection.",
+        "debt": "B+: supported callers use one issued plan; the helper still retains validation/no-plan fallback branches.",
+        "overall": "Retain B+: clearer ownership and correctness improve several dimensions, but optional fallback derivation remains; no all-dimension promotion."
+      }
+    },
+    {
+      "historical_index": 68,
+      "entry_id": "apps/site/scripts/publish-viewer-r2.py:204:select_recoveries",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "B+",
+        "efficiency": "B+",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "apps/site/scripts/publish-viewer-r2.py:285:select_recoveries",
+        "packages/viewer_publication/src/viewer_publication/attempt.py:246:publish"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain: select_recoveries body and positional protected-record API are unchanged. The cloud caller now obtains its index from verified.plan, but it already passed prepared status before this patch. Optional index derivation and public verification/conditional selection still live in this helper. Do not credit caller typing as removal of its internal structural debt.",
+        "efficiency": "Retain: select_recoveries body and positional protected-record API are unchanged. The cloud caller now obtains its index from verified.plan, but it already passed prepared status before this patch. Optional index derivation and public verification/conditional selection still live in this helper. Do not credit caller typing as removal of its internal structural debt.",
+        "dx": "Retain: select_recoveries body and positional protected-record API are unchanged. The cloud caller now obtains its index from verified.plan, but it already passed prepared status before this patch. Optional index derivation and public verification/conditional selection still live in this helper. Do not credit caller typing as removal of its internal structural debt.",
+        "thoughtfulness": "Retain: select_recoveries body and positional protected-record API are unchanged. The cloud caller now obtains its index from verified.plan, but it already passed prepared status before this patch. Optional index derivation and public verification/conditional selection still live in this helper. Do not credit caller typing as removal of its internal structural debt.",
+        "debt": "Retain: select_recoveries body and positional protected-record API are unchanged. The cloud caller now obtains its index from verified.plan, but it already passed prepared status before this patch. Optional index derivation and public verification/conditional selection still live in this helper. Do not credit caller typing as removal of its internal structural debt.",
+        "overall": "Retain: select_recoveries body and positional protected-record API are unchanged. The cloud caller now obtains its index from verified.plan, but it already passed prepared status before this patch. Optional index derivation and public verification/conditional selection still live in this helper. Do not credit caller typing as removal of its internal structural debt."
+      }
+    },
+    {
+      "historical_index": 70,
+      "entry_id": "apps/site/scripts/publish-viewer-r2.py:285:upload",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "B",
+        "overall": "B"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "before": "B+",
+          "after": "A-"
+        },
+        "efficiency": {
+          "before": "B",
+          "after": "B+"
+        },
+        "dx": {
+          "before": "B",
+          "after": "B+"
+        },
+        "thoughtfulness": {
+          "before": "B+",
+          "after": "A-"
+        },
+        "debt": {
+          "before": "B",
+          "after": "B+"
+        },
+        "overall": {
+          "before": "B",
+          "after": "B+"
+        }
+      },
+      "current_locations": [
+        "apps/site/scripts/publish-viewer-r2.py:341:upload",
+        "packages/viewer_publication/src/viewer_publication/plan.py:28:AcceptedViewerPlan.require"
+      ],
+      "dimension_reasons": {
+        "correctness": "A-: issued custody, complete full-mode gate, original conditions and release match are required before a plan enters upload; immutable-first readback/probe/final selection remain.",
+        "efficiency": "B+: supported plan route reuses accepted files/proofs instead of rehashing them. Credit known duplicate output-hash work only; extra GETs/syncs/context checks and slower tiny sample prevent a speed or total CPU claim.",
+        "dx": "B+: named accepted input replaces several independent optional inputs on maintained callers, but the uploader still combines transfer/probe/locator/selection responsibilities.",
+        "thoughtfulness": "A-: valid recovery-only plan refuses full upload before any PUT; exact transfer receipt/readback and original selector semantics remain.",
+        "debt": "B+: plan.files/status centralize supported-route ownership; optional no-plan behavior, thread transfer closure and final pointer logic remain.",
+        "overall": "B+: materially clearer and less duplicate work, while the broad uploader and its explicit durability costs remain."
+      }
+    },
+    {
+      "historical_index": 82,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:94:run",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "C+",
+        "dx": "B-",
+        "thoughtfulness": "A-",
+        "debt": "C+",
+        "overall": "B-"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B-",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "before": "B+",
+          "after": "A-"
+        },
+        "efficiency": {
+          "before": "C+",
+          "after": "B-"
+        },
+        "dx": {
+          "before": "B-",
+          "after": "B+"
+        },
+        "debt": {
+          "before": "C+",
+          "after": "B"
+        },
+        "overall": {
+          "before": "B-",
+          "after": "B+"
+        }
+      },
+      "current_locations": [
+        "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py:144:run",
+        "packages/corpus_recovery/src/corpus_recovery/publication.py:71:publish_imported"
+      ],
+      "dimension_reasons": {
+        "correctness": "A-: dispatcher retains admission, runtime closure, SDK policy, lock/pins/guard/diagnostics; domain entry preserves sealed-body coverage and original-condition resume.",
+        "efficiency": "B-: local accepted preparation removes observed repeat output helper hash passes, but real Catalog work, custody checks, protected reads and payload readbacks still dominate this route. Tiny elapsed time worsens; no speed credit.",
+        "dx": "B+: domain phases have an explicit package entry point and returned accepted plan; runtime/operator responsibilities remain visible in the dispatcher.",
+        "thoughtfulness": "Retain A-: distinct local custody and explicit refusal stay deliberate; closing a ticket is not additional evidence.",
+        "debt": "B: separate domain adapter and common accepted-plan handoff reduce overlapping controller ownership. Nested Store/phase closures and direct continuation dictionaries still remain inside the domain module.",
+        "overall": "B+: central ownership is now inspectable and tested with real builder/upload; the remaining cost and nested adapter state prevent an A."
+      }
+    },
+    {
+      "historical_index": 86,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:209:run.Store.read",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B-",
+        "thoughtfulness": "B+",
+        "debt": "C+",
+        "overall": "B"
+      },
+      "current_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B-",
+        "thoughtfulness": "B+",
+        "debt": "C+",
+        "overall": "B"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "packages/corpus_recovery/src/corpus_recovery/publication.py:103:publish_imported.Store.read"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain: Store.read is moved behind the domain entry point but still retains source/indexes/catalog.json as a read side effect. No named source-custody result replaces it, and no read-cost measurement or behavior change supports a higher grade.",
+        "efficiency": "Retain: Store.read is moved behind the domain entry point but still retains source/indexes/catalog.json as a read side effect. No named source-custody result replaces it, and no read-cost measurement or behavior change supports a higher grade.",
+        "dx": "Retain: Store.read is moved behind the domain entry point but still retains source/indexes/catalog.json as a read side effect. No named source-custody result replaces it, and no read-cost measurement or behavior change supports a higher grade.",
+        "thoughtfulness": "Retain: Store.read is moved behind the domain entry point but still retains source/indexes/catalog.json as a read side effect. No named source-custody result replaces it, and no read-cost measurement or behavior change supports a higher grade.",
+        "debt": "Retain: Store.read is moved behind the domain entry point but still retains source/indexes/catalog.json as a read side effect. No named source-custody result replaces it, and no read-cost measurement or behavior change supports a higher grade.",
+        "overall": "Retain: Store.read is moved behind the domain entry point but still retains source/indexes/catalog.json as a read side effect. No named source-custody result replaces it, and no read-cost measurement or behavior change supports a higher grade."
+      }
+    },
+    {
+      "historical_index": 87,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:214:run.Store.put",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "C+",
+        "overall": "B"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "B+",
+        "debt": "C+",
+        "overall": "B"
+      },
+      "changed_dimensions": {},
+      "current_locations": [
+        "packages/corpus_recovery/src/corpus_recovery/publication.py:108:publish_imported.Store.put"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain: proposed bytes still save before the conditional PUT and selected source advances only after the verified guarded return. This correctness was already credited. Relocation leaves the same nested adapter and implicit custody responsibility; no new structural or efficiency grade follows.",
+        "efficiency": "Retain: proposed bytes still save before the conditional PUT and selected source advances only after the verified guarded return. This correctness was already credited. Relocation leaves the same nested adapter and implicit custody responsibility; no new structural or efficiency grade follows.",
+        "dx": "Retain: proposed bytes still save before the conditional PUT and selected source advances only after the verified guarded return. This correctness was already credited. Relocation leaves the same nested adapter and implicit custody responsibility; no new structural or efficiency grade follows.",
+        "thoughtfulness": "Retain: proposed bytes still save before the conditional PUT and selected source advances only after the verified guarded return. This correctness was already credited. Relocation leaves the same nested adapter and implicit custody responsibility; no new structural or efficiency grade follows.",
+        "debt": "Retain: proposed bytes still save before the conditional PUT and selected source advances only after the verified guarded return. This correctness was already credited. Relocation leaves the same nested adapter and implicit custody responsibility; no new structural or efficiency grade follows.",
+        "overall": "Retain: proposed bytes still save before the conditional PUT and selected source advances only after the verified guarded return. This correctness was already credited. Relocation leaves the same nested adapter and implicit custody responsibility; no new structural or efficiency grade follows."
+      }
+    },
+    {
+      "historical_index": 94,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:267:run.prepared_phase",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "A-",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "A-"
+      },
+      "changed_dimensions": {
+        "efficiency": {
+          "before": "B",
+          "after": "B+"
+        },
+        "dx": {
+          "before": "B",
+          "after": "A-"
+        },
+        "debt": {
+          "before": "B",
+          "after": "B+"
+        },
+        "overall": {
+          "before": "B+",
+          "after": "A-"
+        }
+      },
+      "current_locations": [
+        "packages/corpus_recovery/src/corpus_recovery/publication.py:16:prepare_viewer",
+        "packages/viewer_publication/src/viewer_publication/plan.py:35:accept_viewer_plan"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain A-: real source-pair proof/coverage remains; fresh restore verifies every accepted file and refuses changed binding or same-size corruption.",
+        "efficiency": "B+: issued builder inventory avoids local accepted-phase/uploader duplicate output hashes. One recovery scan is now part of preparation and protected-fact checkpoints add work; no elapsed/heap claim.",
+        "dx": "A-: prepare_viewer returns a named plan with inventory/status/original conditions rather than an unqualified manifest.",
+        "thoughtfulness": "Retain A-: capacity admission precedes new proof hashing; local plan does not manufacture cloud artifact or resume authority.",
+        "debt": "B+: local/cloud share accept_viewer_plan and existing inventory issuance; local input/phase persistence and nested build closure remain distinct.",
+        "overall": "A- for the narrow accepted-preparation function: precise inputs/outputs, real integration and independent fresh-process restoration; not a full local/catalog qualification."
+      }
+    },
+    {
+      "historical_index": 95,
+      "entry_id": "scripts/dispatch_corpus_recovery_publication.py:274:run.publication_phase",
+      "historical_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B+",
+        "dx": "A-",
+        "thoughtfulness": "A-",
+        "debt": "A-",
+        "overall": "A-"
+      },
+      "changed_dimensions": {
+        "efficiency": {
+          "before": "B",
+          "after": "B+"
+        },
+        "dx": {
+          "before": "B",
+          "after": "A-"
+        },
+        "debt": {
+          "before": "B",
+          "after": "A-"
+        },
+        "overall": {
+          "before": "B+",
+          "after": "A-"
+        }
+      },
+      "current_locations": [
+        "packages/corpus_recovery/src/corpus_recovery/publication.py:164:publish_imported.publication_phase"
+      ],
+      "dimension_reasons": {
+        "correctness": "Retain A-: original release and selector conditions flow through the plan, and only published/unchanged outcomes accept the phase.",
+        "efficiency": "B+: narrow transfer handoff reuses accepted inventory/status and does not initiate another recovery scan. Full remote transfer/readback cost remains.",
+        "dx": "A-: a small phase consumes one inspectable plan instead of reconstructing accepted inputs and release state.",
+        "thoughtfulness": "Retain A-: local journal/phase custody stays local and fresh reconciliation remains mandatory; no artifact-service requirement is added.",
+        "debt": "A- for this small wrapper: domain entry constructs the accepted plan and the phase passes it directly through the common uploader; larger uploader debt is graded separately.",
+        "overall": "A-: the narrow duplicated handoff is removed; this does not imply A-grade whole-publication efficiency."
+      }
+    },
+    {
+      "historical_index": 120,
+      "entry_id": "scripts/viewer_publication_attempt.py:153:publish",
+      "historical_grades": {
+        "correctness": "B+",
+        "efficiency": "B",
+        "dx": "B",
+        "thoughtfulness": "A-",
+        "debt": "B",
+        "overall": "B+"
+      },
+      "current_grades": {
+        "correctness": "A-",
+        "efficiency": "B",
+        "dx": "B+",
+        "thoughtfulness": "A-",
+        "debt": "B+",
+        "overall": "B+"
+      },
+      "changed_dimensions": {
+        "correctness": {
+          "before": "B+",
+          "after": "A-"
+        },
+        "dx": {
+          "before": "B",
+          "after": "B+"
+        },
+        "debt": {
+          "before": "B",
+          "after": "B+"
+        }
+      },
+      "current_locations": [
+        "packages/viewer_publication/src/viewer_publication/attempt.py:137:verify_prepared",
+        "packages/viewer_publication/src/viewer_publication/attempt.py:246:publish",
+        "packages/viewer_publication/src/viewer_publication/plan.py:10:AcceptedViewerPlan"
+      ],
+      "dimension_reasons": {
+        "correctness": "A-: existing runtime/result/phase/artifact checks precede common plan acceptance and publication. Plan contents and changed file custody invalidate issued proof; full/recovery modes stay distinct.",
+        "efficiency": "Retain B: no equivalent cloud publication measurement shows reduced remote journal/request work. Local hash-pass savings cannot be assigned to this cloud controller.",
+        "dx": "B+: verified.plan names the transfer input; artifact identity, supersession and original attempt outcomes remain explicit.",
+        "thoughtfulness": "Retain A-: no automatic restart; uncertain requests, current proof, original conditions and diagnostic failure behavior remain.",
+        "debt": "B+: common plan removes repeated file/status handoff, but controller still manipulates continuation dictionaries and special committed-recovery branches.",
+        "overall": "Retain B+: stronger accepted handoff is real, but the broad lifecycle and durable remote protocol remain complex."
+      }
+    }
+  ],
+  "architecture_grades": {
+    "correctness": {
+      "grade": "A-",
+      "meaning": "Strong source, file and write authority boundaries with inspectable failure/resume behavior.",
+      "reason": "Runtime ownership refuses mixed cached code; one issued plan binds protected facts and original conditions; local events own durable state; fresh-client full readback and conditional selection remain. Static traces and retained focused receipts support this judgment; they do not establish current public/production correctness.",
+      "historical_grade": "B+"
+    },
+    "efficiency": {
+      "grade": "C+",
+      "meaning": "Selected duplicate work is removed, but central memory/scan and remote durability costs remain substantial.",
+      "reason": "General Catalog construction, exact broad search/export allocation and cloud per-event readback remain. Rejected candidates did not justify replacement. Local event serialization/sync savings and accepted output-hash reuse are real scoped work reductions; no common end-to-end workload establishes aggregate throughput, RSS or CPU improvement.",
+      "historical_grade": "C+"
+    },
+    "dx": {
+      "grade": "B+",
+      "meaning": "Supported operation and recovery are clearer, with remaining setup and lifecycle complexity.",
+      "reason": "One original-attempt descriptor, explicit selected-runtime refusal, retained incomplete-build next checks, observation-only reconciliation and a common plan reduce operator guesswork. Local/cloud custody is intentionally different; historical attempts do not auto-migrate, progress may be stale, and remote/public qualification still requires its own evidence.",
+      "historical_grade": "B-"
+    },
+    "thoughtfulness": {
+      "grade": "A-",
+      "meaning": "The design consistently protects exact evidence and states its limits.",
+      "reason": "Exact nested/null/Unicode/order and original values remain; proposed/selected bytes, mandatory/optional failures and uncertain requests stay distinct. Failed performance candidates are retained without shipping regressions. Added assurance costs are measured and disclosed; completion counts add no grade.",
+      "historical_grade": "A-"
+    },
+    "debt": {
+      "grade": "B-",
+      "meaning": "Core responsibilities now have clearer owners, but important composition debt remains.",
+      "reason": "Shared bounded reads, descriptors, runtime admission, local event authority, progress validation and AcceptedViewerPlan remove overlapping control ownership. General research Catalog use, optional no-plan/positional status helpers, nested source-custody Store, mutable dictionaries, direct-file loading and durable remote journal complexity remain.",
+      "historical_grade": "C+"
+    },
+    "overall": {
+      "grade": "B",
+      "meaning": "A careful and more maintainable publication system whose resource-heavy central paths keep it below excellent.",
+      "reason": "Integrity and operating clarity deserve higher marks than whole-flow efficiency. Coherent ownership improves the architecture, but large data preparation/consumer work and remote durability protocol dominate practical cost. This is a scoped professor-style judgment, not a numerical average of 168 functions or 12 tickets.",
+      "historical_grade": "B-"
+    }
+  },
+  "function_traces": [
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/plan.py:28:AcceptedViewerPlan.require",
+      "inputs": "root/manifest plus current nested plan facts",
+      "outputs": "issued inventory check or refusal",
+      "verified_behavior": "Root, manifest, context and all file custody must still match. A copied/serialized dictionary cannot issue inventory."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/plan.py:35:accept_viewer_plan",
+      "inputs": "verified inventory, protected inputs, pins, release and original conditions",
+      "outputs": "one accepted plan",
+      "verified_behavior": "Checks manifest/protected source/conditions, accepts file list once, loads accepted recovery, reissues existing proofs under complete plan context."
+    },
+    {
+      "location": "packages/corpus_recovery/src/corpus_recovery/publication.py:16:prepare_viewer",
+      "inputs": "source-pair proof, real builder, local continuation/protected inputs",
+      "outputs": "accepted local plan",
+      "verified_behavior": "Stores original inputs/release before build; capacity admission and status acceptance precede common plan; fresh restore verifies complete file set once."
+    },
+    {
+      "location": "packages/corpus_recovery/src/corpus_recovery/publication.py:71:publish_imported",
+      "inputs": "admitted client/guard/local state and source batch",
+      "outputs": "domain phase outcomes",
+      "verified_behavior": "Owns Store/catalog/mapping/prepared/publication; preserves incomplete build, coverage, proposed-versus-selected and final supported result."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/attempt.py:137:verify_prepared",
+      "inputs": "cloud receipt/runtime/result/file inventory",
+      "outputs": "PreparedVerification with plan",
+      "verified_behavior": "Existing preparation/artifact prerequisites remain; common plan binds original protected facts and mode."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/attempt.py:246:publish",
+      "inputs": "accepted cloud artifact, plan and explicit resume",
+      "outputs": "published/recovery/no-op/superseded/failure outcome",
+      "verified_behavior": "Consumes plan files/status; journal restore, fresh reconcile, guards and public-selection checks remain independent."
+    },
+    {
+      "location": "apps/site/scripts/publish-viewer-r2.py:341:upload",
+      "inputs": "plan or legacy validation inputs",
+      "outputs": "immutable payloads then conditional selected pointer",
+      "verified_behavior": "Full-mode/conditions gate before PUT; plan file proofs avoid known rehashes; exact readback/probe/current-input checks still precede selection."
+    },
+    {
+      "location": "apps/site/scripts/publish-viewer-r2.py:272:recovery_for_publication",
+      "inputs": "accepted plan status plus freshly read mappings",
+      "outputs": "stored status descriptor and accepted record",
+      "verified_behavior": "Same complete accepted record required; plan.recovery reused. No-plan derivation remains optional."
+    },
+    {
+      "location": "apps/site/scripts/publish-viewer-r2.py:285:select_recoveries",
+      "inputs": "positional protected records, optional prepared status",
+      "outputs": "conditional recovery pointer/result",
+      "verified_behavior": "Existing public status and current-input verification remain; API/body unchanged."
+    },
+    {
+      "location": "packages/corpus_recovery/src/corpus_recovery/guards.py:85:RecoveryGuard._pins",
+      "inputs": "source pin digests and cached device/inode/size/mtime/ctime",
+      "outputs": "custody observation or hash/refusal",
+      "verified_behavior": "Every boundary stats pins; hashing only initial/changed custody when full=False."
+    },
+    {
+      "location": "packages/corpus_recovery/src/corpus_recovery/guards.py:115:RecoveryGuard.boundary",
+      "inputs": "local/cloud/protected callbacks",
+      "outputs": "fresh phase/mutable clearance",
+      "verified_behavior": "Fresh cloud/protected checks and local/custody comparisons; not an exclusion lease."
+    },
+    {
+      "location": "packages/viewer_publication/src/viewer_publication/continuation.py:441:DurableJournal.record",
+      "inputs": "event fact and continuation",
+      "outputs": "conditionally remote retained event plus local checkpoint state",
+      "verified_behavior": "Intent event gets own conditional remote write/readback and retained receipts; compact JSON does not remove this request protocol."
+    }
+  ],
+  "test_assertions_read": [
+    "packages/corpus_recovery/tests/test_accepted_viewer_plan.py:80:test_real_local_preparation_upload_reuses_pair_inventory_and_status",
+    "packages/corpus_recovery/tests/test_accepted_viewer_plan.py:117:test_restore_verifies_once_and_plan_refuses_changed_custody_or_conditions",
+    "packages/corpus_recovery/tests/test_accepted_viewer_plan.py:145:test_real_local_probe_failure_resumes_original_plan_without_rebuild",
+    "packages/corpus_recovery/tests/test_accepted_viewer_plan.py:163:test_fresh_process_restore_hashes_complete_inventory_and_refuses_corruption",
+    "packages/corpus_recovery/tests/test_accepted_viewer_plan.py:199:test_real_domain_entry_preserves_coverage_pair_proof_and_publication",
+    "packages/corpus_recovery/tests/test_accepted_viewer_plan.py:239:test_plan_context_cannot_change_protected_inputs_or_status",
+    "packages/corpus_recovery/tests/test_accepted_viewer_plan.py:248:test_recovery_plan_cannot_enter_full_upload_before_any_put"
+  ],
+  "accepted_plan_work": {
+    "known_output_hash_passes": {
+      "before": 823,
+      "after": 270
+    },
+    "known_output_hash_bytes": {
+      "before": 279129,
+      "after": 50688
+    },
+    "recovery_scans": {
+      "before": "one during upload",
+      "after": "one during preparation; none added during upload/restore"
+    },
+    "GETs": {
+      "before": 278,
+      "after": 281
+    },
+    "HEADs": {
+      "before": 270,
+      "after": 270
+    },
+    "PUTs": {
+      "before": 273,
+      "after": 273
+    },
+    "fsyncs": {
+      "before": 554,
+      "after": 557
+    },
+    "json_characters": {
+      "before": 825186,
+      "after": 927970
+    },
+    "tiny_elapsed_seconds": {
+      "before": 0.4955,
+      "after": 1.0469
+    },
+    "sampled_RSS_bytes": {
+      "before": 128843776,
+      "after": 129957888
+    },
+    "restore_known_file_hashes": {
+      "passes": 271,
+      "bytes": 76027
+    },
+    "limits": "Known helpers only, not incremental transfer/decoder/native hashes or physical disk I/O. One successful arm each; baseline overlapped tests. No speed/memory/total CPU or production claim."
+  },
+  "aggregate_efficiency": {
+    "conclusion": "Real selected work reductions, no defensible single aggregate throughput/RSS/CPU percentage. Efficiency grade remainsC+ because central costs remain; do not sum non-equivalent experiments.",
+    "method": "Bottleneck-weighted qualitative judgment, not arithmetic averaging of grades/percentages.",
+    "evidence": [
+      {
+        "area": "Catalog",
+        "decision": "Retained general Catalog; packed candidate rejected",
+        "evidence": "Constructor peak about1.4%lower and publication peak3.2%lower missed target; small publication time5.4058\u21925.4796s. General Arrow/Python maps remain; historical5.085GB Catalog/7.310GB preparation is dated pressure evidence, not current measurement."
+      },
+      {
+        "area": "Search",
+        "decision": "Retained exact scan; row-group candidate rejected",
+        "evidence": "Warm broad median0.1%slower; cold broad/AND27.0%/30.7%slower, decoded estimates19,101,790\u219234,512,864bytes and RSS171,622,400\u2192179,617,792. Historical27.523s broad query is not a current guarantee."
+      },
+      {
+        "area": "Exact export",
+        "decision": "Retained exact values; Blob candidate rejected",
+        "evidence": "Modeled known storage+25.9%; parse/clone/format/clipboard allocation remains. Diagnostic/cache ceilings do not bound native heap."
+      },
+      {
+        "area": "Cloud checkpoints/journal",
+        "decision": "Compact serialization and shared verified-version checkpoint shipped",
+        "evidence": "Retained local checkpoint encoding median0.566\u21920.142s; full remote journal counts833GET/821PUT/270HEAD unchanged on that fixture. Whole growing state and full remote readback remain."
+      },
+      {
+        "area": "Local events",
+        "decision": "One synced authority with derived checkpoints shipped",
+        "evidence": "128writes/fourphases:783\u2192276syncs,5,493,025\u2192511,187JSON characters; scratch117,247\u2192245,262bytes and JSONcalls652\u2192923. This fixture is not the cloud fixture."
+      },
+      {
+        "area": "Admission/mapping/workflow/visibility",
+        "decision": "Bounded reads, descriptor, runtime/diagnostics and progress shipped",
+        "evidence": "Resource refusal/clarity gains do not imply average latency gains. Descriptor validator12.15\u219219.73ms and progress adds17local replacements on a three-object scan; current remote byte work unchanged."
+      },
+      {
+        "area": "Accepted plan",
+        "decision": "Shared issued plan and local domain entry frozen",
+        "evidence": "Known output helper passes823\u2192270,bytes279129\u219250688; scan moved not removed; three extraGET/syncs and tiny time0.4955\u21921.0469s. Not an aggregate speed or memory result."
+      }
+    ]
+  },
+  "guard_cost_clarification": "Clarification of prior retained runtime rescore wording: +58files/+330,101bytes is larger initial pin/hash work and repeated stat/ownership comparisons. RecoveryGuard._pins(full=False) caches custody identity at immutable AND phase/shared boundaries; unchanged payloads do not trigger complete rehash of those bytes. Historical pinned reports/receipt hashes are retained unchanged; this corrects interpretation only.",
+  "evidence_validation": {
+    "frozen_clean_worktree": true,
+    "frozen_path_hashes_verified": 16,
+    "accepted_raw_hashes_verified": 7,
+    "comparison_flags": {
+      "files": true,
+      "prepared": true,
+      "result": true,
+      "pointer": true,
+      "release_manifest": true,
+      "recovery": true,
+      "mutation_key_conditions": true
+    },
+    "recorded_payload_parity_count": 269,
+    "parent_owns_actual_payload_hash_validation": true,
+    "test_owner_results": "222distinct focused checks +7subtests across initial221pass/one environment failure and exact PyYAML repair1pass logs; no single all-green full-suite claim",
+    "parent_actual_payload_validation": {
+      "verdict": "APPROVE_EVIDENCE",
+      "source_revision": "075779041f2d56fcdf138ee44ba6fa1d2a153e4c",
+      "payloads_verified_per_arm": 269,
+      "source_files_verified": {
+        "before": 228,
+        "after": 231
+      },
+      "certificate": "accepted-plan/root-evidence-review.json"
+    },
+    "integration_source_equal_to_frozen_for_all_reviewed_source_files": true,
+    "final_combined_local_tests": {
+      "revision": "e9b18a9699af34b52742c3e9ca3658cb71ab8f20",
+      "result": "251 passed, 7 subtests passed in 47.43s",
+      "log": "accepted-plan/final-integration-tests.log",
+      "scope": "Affected combined local checks; no full system/live/held-out qualification implied"
+    },
+    "original_test_history_retained": "Original focused run:221 passed +7subtests and one missing-PyYAML failure. Exact repaired test:1passed. Preserved separately; not rewritten as an originally clean run."
+  },
+  "limits": [
+    "One accepted arm each, tiny seven-source/six-group fixture, no representative speed break-even or full catalog run.",
+    "No current public/hosted/source acquisition/held-out qualification, live remote writes or complete memory budget.",
+    "Known output hash helper passes exclude incremental transfer/decoder/native hashing and physical disk reads.",
+    "Historical Catalog/search resource observations remain dated; rejected candidates leave maintained production data routes unchanged.",
+    "Correctness/architecture grades are scope-limited judgments based on source and retained evidence, not closed-ticket counts or whole-system reexecution."
+  ],
+  "findings": [],
+  "retained_architectural_limits": [
+    "select_recoveries keeps positional records and optional derivation; unchanged grades.",
+    "Store.read/put remain nested implicit custody adapters; unchanged debtC+ despite maintained domain entry.",
+    "General Catalog/materialized metadata, exact consumer scans/large-value allocation and cloud remote event protocol remain central costs."
+  ],
+  "conclusion": {
+    "verdict": "Scoped rescore complete: six row changes, three retained structural rows; architecture overallB with efficiencyC+. Catalog code approval and parent evidence validation are separately attributed and pinned.",
+    "confidence": "High for pinned source/work-count interpretation; medium for qualitative aggregate-efficiency/current architecture grade without full workload rerun."
+  },
+  "source_sha256": {
+    "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py": "00dada0c7dcdd93d49ea9ccbe3716a319eea66004f86ed7d9f0a4a7734b771a5",
+    "packages/corpus_recovery/src/corpus_recovery/publication.py": "7a22ce383ea51bec637275074f8b037f5bf791f926425f78981d7e0e04274f4f",
+    "packages/viewer_publication/src/viewer_publication/attempt.py": "7b9ce2cffc1d7fbc199d78806ac8a471c1d316df6c86cacc46995724708af9ba",
+    "packages/viewer_publication/src/viewer_publication/plan.py": "6f50c50a3f28ab143f7f5cc93dcc909c01bcfe42d0a77f66e8088f8ac3be9cd3",
+    "apps/site/scripts/publish-viewer-r2.py": "a7410c9880afaf66c507387028e13aaec415e287395501c47e5a455eb5a253b7",
+    "packages/congress_api/src/congress_api/retention/viewer_inventory.py": "1d380e5437cc68040b077b834ecbd8975aacd1d1a8a33d8e01b6d9d98a0fe39d",
+    "packages/corpus_recovery/src/corpus_recovery/guards.py": "f7d0932c5aaa80d3dbd25b5f610728dd4b2c7db9833bf439eef9e9a7aab4d25d",
+    "packages/viewer_publication/src/viewer_publication/continuation.py": "2e6efcce8ed0b19ede2d6988db82d0fd7fba9ce7f728212a05c262e8a842bff0",
+    "packages/viewer_publication/src/viewer_publication/client.py": "f2052c5e6e256f0eebf87575ee374a1b7c1fc6ffffc66fc71ec00f20dc05817e",
+    "packages/corpus_recovery/tests/test_accepted_viewer_plan.py": "3632ab2285020ed86e74d50aa3cdc9bcde98e1ea2fad7a1c356fce8102f264a9",
+    "packages/viewer_publication/tests/test_viewer_publication_attempt.py": "fe0c2cbe1353cb916c19d4ff07b999b6ea9a07049dab1b56590b4d85dc3932af",
+    "scripts/corpus_recovery/tests/test_dispatch_corpus_recovery_publication.py": "53a805a781c8068890512b9e7df68bae789803941b27343f34103ebadeb3ef0c",
+    "scripts/viewer_release_identity.py": "4ecdc6db0ec44e64d2882718198d07c906c5fa0c9245ab0f6388796a0ca5cb3c"
+  },
+  "evidence_sha256": {
+    "docs/experiments/efficiency-debt/accepted-plan.md": "7e5455998be697799394cf5d13c22324b44aaa691a179b354dffaed1d626ec3d",
+    "docs/experiments/efficiency-debt/accepted-plan-evidence.json": "a0085d14958cb690159630226b48177fe90990dcafc6eadc87a8c230d1c633fe",
+    "docs/experiments/efficiency-debt/catalog-evidence.json": "fb0d2c79b401aa10210660f09c41754981a6bd452344f11af48875a1b42decb8",
+    "docs/experiments/efficiency-debt/search-evidence.json": "6b7c9a742c1a68ce5ff606002db0620a90420886f982ebecc0821f690a9514cd",
+    "docs/experiments/efficiency-debt/complete-export-evidence.json": "dd94aac77979ab8236cafc6fae65a2f655fe02f4ce4dce87f94944f2ad723357",
+    "docs/experiments/efficiency-debt/checkpoint-evidence.json": "4060c36e7a4236e5f33636a3a6c9c3b16ed53bc9b908d662f40628334ff80319",
+    "docs/experiments/efficiency-debt/local-events-evidence.json": "e03e3c8083d517f5586a3fdd69ff4c81f09ae29d2994365ddda2b68260509048",
+    "docs/experiments/efficiency-debt/reconciliation-evidence.json": "1633c54fb650a08072e32c5c5c29e5aec76b12ac4ab8a7f21a4c42ce0f151cd8",
+    "docs/package-overlap-rescore-20261019.json": "76fe0b92100e80c9b51fe21ebb10e9d681873b7b9e8a4d84ed5ae5b48ac144ae",
+    "docs/package-overlap-rescore-20261019.md": "307b8b54de18dd86c1d238ab5c607926a926540c4a0eb0dbdff6b4be48052611"
+  },
+  "primary_receipt_sha256": "92c26fa2550f5579161158c531409626bda47d04fe5ae14dd88b8ca464d9e1a9",
+  "accepted_raw_sha256": {
+    "baseline-accepted/receipt.json": "3f2dafc1ed428dd3d9eb97583ae3bee9a0db3851eb788e87dfc822406edb5efb",
+    "candidate-frozen-source/receipt.json": "775e740006eabe2e0339fa1feed7d5f384af90af912ccce7f17d5786295952a8",
+    "comparison.json": "6efb0e5a4753989dac7875b933b8bb720e6a10a5f9ed15e85f7f46877d792a4a",
+    "measurement-plan.json": "e74e44740f9ef03bde24bc0e8b076803d51ab28f4629817f0aa75fb7563127fe",
+    "measure.py": "a0fc7becd67599b90071b65892bea8ecca54298a49cce32f92ac0f8124d3dafa",
+    "tests.log": "1780b429dc923fafdae12b535f52165f31465284c6c5ef021ca8283edaa0ae28",
+    "dependency-repair-test.log": "4237eb8d30ab4e25d028ca343d50bfba364b7f76a907b73390b9601a16e46fe1"
+  },
+  "prior_supplement_sha256": {
+    "completed-eight.json": "1be0ede7c0f3ff0a892b1d2de70e615e02779cb30baf8e39ff04265cf8a1fe82",
+    "runtime-local-events.json": "0a89f6a319f32c64c1943328a4e7c00f6baf871b5c7624a3e779c308096be868",
+    "reconciliation-progress.json": "8af6610e6964b756ab4503037d01f4255afce8d580dc006730798f90fa239b47"
+  },
+  "integrated_revision": "e9b18a9699af34b52742c3e9ca3658cb71ab8f20",
+  "additional_evidence_sha256": {
+    "catalog-review.json": "b2d8a1a588490bc147e18bb22e367445145be114a6405748d0af5ab88d49688d",
+    "catalog-review.md": "cf80db5f9b361712a46be4f45b733423526866dac501dd4ab556aced7e06a7d7",
+    "root-evidence-review.json": "103242ac2f1924a14f6b6b26c054e4ab26bee69af382306aacdb4c1b2efe521d",
+    "root-evidence-review.md": "bfa6ed8006ddce01cb6142fe8322a3a0c1c184a1615c64028784c4962913472e",
+    "final-integration-tests.log": "5802c12f982334bfe1d0cfa38c31dcaccdf277d07ac17794b825b0e16dd2eda5"
+  }
+}
