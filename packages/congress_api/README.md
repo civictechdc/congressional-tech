@@ -785,7 +785,7 @@ Install the optional extra, then run targeted suites (paths from package docs):
 ```bash
 uv pip install -e "packages/congress_api[test]"
 uv pip install -e "packages/house-naming[test]"
-python -m pytest packages/house-naming/tests tests/test_filename_patterns.py -q
+python -m pytest packages/house-naming/tests -q
 python -m pytest -q -m 'not loopback'
 ```
 

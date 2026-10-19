@@ -11,7 +11,7 @@ import pytest
 from congress_api.models.content import RawContent
 from congress_api.retention.bundles import restore
 
-spec = importlib.util.spec_from_file_location('assemble_raw_archive', Path(__file__).parents[1]/'docs/youtube-coverage/research/scripts/assemble_raw_archive.py')
+spec = importlib.util.spec_from_file_location('assemble_raw_archive', Path(__file__).resolve().parent / 'assemble_raw_archive.py')
 archive = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(archive)
 

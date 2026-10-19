@@ -80,7 +80,7 @@ def test_old_publication_field_filter_uses_canonical_column(tmp_path):
         table = pq.read_table(selected_path(target))
         if 'publication_code_code' in table.column_names:
             pq.write_table(table.drop(['publication_code_code']), target)
-    script = Path(__file__).parents[1] / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
+    script = Path(__file__).resolve().parent / 'view_document_filenames.py'
     spec = importlib.util.spec_from_file_location('experiment_viewer', script)
     viewer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(viewer)

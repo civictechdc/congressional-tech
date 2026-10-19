@@ -531,8 +531,7 @@ literal short years and unknown publisher abbreviations.
 Run focused tests from the repository root:
 
 ```bash
-.venv/bin/python -m pytest packages/house-naming/tests \
-  tests/test_filename_patterns.py -q
+.venv/bin/python -m pytest packages/house-naming/tests -q
 ```
 
 Tests exercise source definitions and examples, exact fields and offsets, and

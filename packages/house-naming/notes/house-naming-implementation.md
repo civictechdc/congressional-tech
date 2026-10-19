@@ -115,7 +115,7 @@ original population. No new downloads, commits, or pushes were made.
 ## Reproduction and evidence
 
 ```sh
-.venv/bin/python -m pytest -q packages/house-naming/tests tests/test_filename*.py
+.venv/bin/python -m pytest -q packages/house-naming/tests
 .venv/bin/python packages/house-naming/tools/build.py --check
 node packages/house-naming/tools/check_ecmascript.mjs
 .venv/bin/python packages/house-naming/tools/compare_filename_engines.py \

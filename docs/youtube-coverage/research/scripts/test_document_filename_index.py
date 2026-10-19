@@ -10,7 +10,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-SCRIPT = Path(__file__).parents[1] / 'docs/youtube-coverage/research/scripts/index_document_filenames.py'
+SCRIPT = Path(__file__).resolve().parent / 'index_document_filenames.py'
 from congress_api.retention import document_index as index
 
 

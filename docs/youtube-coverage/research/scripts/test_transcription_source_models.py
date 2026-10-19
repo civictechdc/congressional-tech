@@ -10,7 +10,7 @@ from congress_api.transcripts.render import TRANSCRIPT_JSON_SCHEMA
 from congress_api.transport import gemini
 from pydantic import ValidationError
 
-RESEARCH = Path(__file__).parents[1] / 'docs/youtube-coverage/research/data/transcribe_compare'
+RESEARCH = Path(__file__).resolve().parents[1] / 'data' / 'transcribe_compare'
 
 
 @pytest.mark.parametrize('filename', ['routeA_text.json', 'routeA_video.json', 'gpo.json',

@@ -85,7 +85,7 @@ unless a test/workflow path is stated.
 | Capture can resume before publication | `tests/test_raw_capture_only.py:47` | Receipts/retry state persist; selected pair stays unchanged; later explicit publication includes capture; passes |
 | Update-only never starts acquisition | `tests/test_raw_capture_only.py:124` | Missing worker path is never opened; unchanged catalog and capture state survive; passes |
 | Failed or competing publication preserves selected pair | `tests/test_catalog_publication.py:36`, `:54`; `tests/test_standalone_catalog_publication.py:44` | Failed upload/selection cannot replace manifest; passes |
-| New metadata columns survive without a whitelist | `tests/test_document_filename_index.py:161` | Schema follows consumed stream and metadata types; passes |
+| New metadata columns survive without a whitelist | `docs/youtube-coverage/research/scripts/test_document_filename_index.py:161` | Schema follows consumed stream and metadata types; passes |
 | Workflow event/mode boundary | `.github/tests/test_raw_source_workflow.py:69` | Executed shell routing produces capture-only, update-only, or explicit rebuild arguments; passes |
 
 The final offline suite passed **6,652 tests and 31 subtests**, with five native
