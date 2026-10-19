@@ -67,3 +67,19 @@ def test_control_read_hash_and_length_are_complete_and_bounded(tmp_path):
     assert verification.control(path,limit=8,expected=expected)==b'complete'
     with pytest.raises(ValueError,match='byte budget'):verification.control(path,limit=7)
     with pytest.raises(ValueError,match='pinned'):verification.control(path,expected=dict(expected,sha256='wrong'))
+
+
+def test_live_observation_uses_explicit_checkout_for_node_verifier(tmp_path, monkeypatch):
+    checkout = tmp_path / 'checkout'
+    descriptor = checkout / 'apps/site/document-review-publication.json'
+    expected = {'fixture': 'verified'}
+    def run(command, **options):
+        assert command[:2] == ['fixture-node', str(checkout / 'apps/site/scripts/verify-live-publication.mjs')]
+        assert command[2:8] == ['--viewer-url', 'https://viewer.test/', '--pages-url',
+                                'https://pages.test/', '--review-descriptor', str(descriptor)]
+        assert command[8] == '--output'
+        assert options == {'check': True, 'timeout': 180, 'capture_output': True}
+        Path(command[9]).write_text(json.dumps(expected))
+    monkeypatch.setattr(verification.subprocess, 'run', run)
+    assert verification.live_observation('https://viewer.test/', 'https://pages.test/', descriptor,
+                                         root=checkout, node='fixture-node') == expected

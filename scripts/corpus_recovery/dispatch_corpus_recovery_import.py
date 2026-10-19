@@ -102,13 +102,14 @@ def run(args):
     for name in ['dispatch_corpus_recovery_import.py', 'reconcile_corpus_recovery_bodies.py']:
         path = ROOT / 'scripts/corpus_recovery' / name
         code[path] = digest(path)
+    import corpus_recovery
     import corpus_recovery.acknowledge as acknowledgment_module
     import corpus_recovery.admission as admission_module
     import corpus_recovery.assemble as assemble_module
     import corpus_recovery.guards as guards_module
     import corpus_recovery.inventory as inventory_module
     import corpus_recovery.transfer as import_batch_module
-    for executing in (import_batch_module, assemble_module, inventory_module, guards_module,
+    for executing in (corpus_recovery, import_batch_module, assemble_module, inventory_module, guards_module,
                       admission_module, acknowledgment_module):
         path = Path(executing.__file__).resolve()
         code[path] = digest(path)

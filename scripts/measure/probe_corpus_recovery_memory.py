@@ -20,31 +20,55 @@ import types
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def implementation(ref):
+    """Load selected recovery modules and their local dependencies from one ref.
+
+    Older receipts name the pre-package scripts. Those sources retain their
+    original import names; current measurements use the maintained package.
+    Every arm runs in a fresh child process.
+    """
+    if not ref:
+        from corpus_recovery import preservation, transfer
+        return transfer, preservation
+    package_path = 'packages/corpus_recovery/src/corpus_recovery'
+    packaged = subprocess.run(['git', 'cat-file', '-e', f'{ref}:{package_path}/transfer.py'],
+                              cwd=ROOT, capture_output=True).returncode == 0
+    if packaged:
+        package = types.ModuleType('corpus_recovery')
+        package.__path__ = []
+        sys.modules['corpus_recovery'] = package
+        modules = [(f'corpus_recovery.{name}', f'{package_path}/{name}.py')
+                   for name in ('acknowledge', 'inventory', 'assemble', 'preservation', 'transfer')]
+    else:
+        modules = [(name, f'scripts/{name}.py') for name in (
+            'assemble_corpus_recovery_import', 'reconcile_corpus_recovery_bodies',
+            'verify_corpus_recovery_import_preservation', 'import_corpus_recovery_batch')]
+    loaded = {}
+    for name, path in modules:
+        source = subprocess.check_output(['git', 'show', f'{ref}:{path}'], cwd=ROOT, text=True)
+        module = types.ModuleType(name)
+        module.__file__ = str(ROOT / path)
+        # Imports inside the selected source must see the selected dependencies.
+        sys.modules[name] = module
+        if packaged:
+            setattr(package, name.rsplit('.', 1)[-1], module)
+        exec(compile(source, module.__file__, 'exec'), module.__dict__)
+        loaded[name] = module
+    names = ('corpus_recovery.transfer', 'corpus_recovery.preservation') if packaged else (
+        'import_corpus_recovery_batch', 'verify_corpus_recovery_import_preservation')
+    return tuple(loaded[name] for name in names)
+
+
 def child(args):
     import pyarrow as pa
     from congress_api.retention.raw_archive import STATE_SCHEMA, CAPTURE_SCHEMA
-    from corpus_recovery import assemble, preservation, transfer
-    if args.ref:
-        for module_name, path in (
-            ('corpus_recovery.assemble', 'packages/corpus_recovery/src/corpus_recovery/assemble.py'),
-            ('corpus_recovery.transfer', 'packages/corpus_recovery/src/corpus_recovery/transfer.py'),
-            ('corpus_recovery.preservation', 'packages/corpus_recovery/src/corpus_recovery/preservation.py'),
-        ):
-            source = subprocess.check_output(['git', 'show', f'{args.ref}:{path}'], cwd=ROOT, text=True)
-            module = types.ModuleType(module_name.rsplit('.', 1)[-1])
-            module.__file__ = str(ROOT / path)
-            exec(compile(source, module.__file__, 'exec'), module.__dict__)
-            parent = sys.modules.setdefault('corpus_recovery', types.ModuleType('corpus_recovery'))
-            setattr(parent, module_name.rsplit('.', 1)[-1], module)
-        importer = sys.modules['corpus_recovery'].transfer
-    else:
-        importer = transfer
+    importer, verifier = implementation(args.ref)
     # Generate Arrow columns directly so Python input-row allocation does not
     # conceal the cost of converting the entire baseline back to dictionaries.
     state = pa.table({field.name: pa.array((f'https://example.test/{i}' for i in range(args.rows)), type=field.type)
                       if field.name == 'url' else pa.nulls(args.rows, type=field.type) for field in STATE_SCHEMA}, schema=STATE_SCHEMA)
     if args.mode == 'preservation':
-        return preservation_probe(args, state)
+        return preservation_probe(args, state, verifier)
     raw = b'offline synthetic body'
     sha = hashlib.sha256(raw).hexdigest()
     key = f'bodies/sha256/{sha[:2]}/{sha}.gz'
@@ -79,7 +103,7 @@ def child(args):
                 states_preserved=result['existing_download_states_preserved'], new_pending_states=result['new_pending_states'])
 
 
-def preservation_probe(args, state):
+def preservation_probe(args, state, verifier):
     import pyarrow as pa
     import pyarrow.parquet as pq
     from congress_api.retention.raw_archive import CAPTURE_SCHEMA
@@ -109,7 +133,7 @@ def preservation_probe(args, state):
         (root / 'events.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in events))
         del state, pending, captures
         started = time.monotonic()
-        result = (preservation if not args.ref else sys.modules['corpus_recovery'].preservation).verify(root)
+        result = verifier.verify(root)
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return dict(ref=args.ref or 'worktree', mode=args.mode, rows=args.rows, additions=args.additions,
                 peak_rss_bytes=rss if sys.platform == 'darwin' else rss*1024,

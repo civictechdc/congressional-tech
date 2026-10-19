@@ -1,9 +1,11 @@
 """The benchmark must not qualify changed values or mismatched browser evidence."""
 from copy import deepcopy
 import importlib.util
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts/measure'))
 spec = importlib.util.spec_from_file_location('viewer_benchmark', ROOT / 'scripts/measure/benchmark_viewer_publication.py')
 benchmark = importlib.util.module_from_spec(spec); spec.loader.exec_module(benchmark)
 
@@ -76,3 +78,53 @@ def test_exact_gate_requires_source_archive_bytes_and_filename_value_verificatio
         if missing: del candidate['inventory']['docs.parquet']
         else: candidate['inventory']['docs.parquet']['sha256'] = 'altered'
         assert not benchmark.exact_table_verification(candidate)
+
+
+def test_moved_browser_runner_resolves_loaders_and_server_before_browser_launch(tmp_path):
+    import json
+    import os
+    import shutil
+    import subprocess
+
+    import pytest
+
+    node = shutil.which('node')
+    if not node:
+        pytest.skip('Node is required for the browser runner path check')
+    # Replace only third-party browser/build dependencies. Execute the real JS
+    # entrypoint, loader hashing, path resolution, spawn, and receipt handling.
+    preload = tmp_path / 'dependencies.cjs'
+    preload.write_text('''
+const Module = require('node:module');
+const original = Module._load;
+Module._load = function(name, ...rest) {
+  if (name === 'esbuild') return {version: 'fixture', build: async options => {
+    if (!require('node:fs').existsSync(options.stdin.resolveDir + '/filename-catalog.mjs')) throw Error('bad resolveDir');
+    require('node:fs').writeFileSync(options.outfile, 'fixture');
+  }};
+  if (name === 'playwright/package.json') return {version: 'fixture'};
+  if (name === 'playwright') return {chromium: {launch: async () => {throw Error('PATHS_REACHED_BROWSER');}}};
+  return original.call(this, name, ...rest);
+};
+''')
+    python = tmp_path / 'server-check'
+    python.write_text(f'''#!{sys.executable}
+from pathlib import Path
+import json,sys
+expected=Path({str(ROOT)!r})/'scripts/measure/viewer_benchmark_server.py'
+assert Path(sys.argv[1]) == expected and expected.is_file(), sys.argv
+print(json.dumps({{"server_path_verified":True}}),flush=True)
+''')
+    python.chmod(0o755)
+    output = tmp_path / 'output'
+    result = subprocess.run([node, '--require', str(preload),
+                             str(ROOT / 'scripts/measure/benchmark_viewer_browser.mjs'),
+                             '--publication', str(tmp_path), '--output', str(output),
+                             '--review-data', str(tmp_path / 'reviews.json'), '--repeats', '2',
+                             '--python', str(python)], cwd=tmp_path,
+                            env={**os.environ, 'NODE_OPTIONS': ''}, capture_output=True, text=True)
+    receipt = json.loads((output / 'browser-receipt.json').read_text())
+    assert result.returncode == 1  # Deliberate stop before any browser launch.
+    assert 'PATHS_REACHED_BROWSER' in receipt['error'], receipt
+    assert len(receipt['loader_hashes']) == 5
+    assert receipt['inputs']['server_path_verified']

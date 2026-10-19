@@ -157,6 +157,10 @@ class DispatcherContinuationTests(unittest.TestCase):
                     pins = json.loads((args.destination/'pins.json').read_text())
                     import corpus_recovery.mappings as merge_module
                     self.assertIn(str(Path(merge_module.__file__).resolve()), pins)
+                    import corpus_recovery
+                    import corpus_recovery.inventory as inventory_module
+                    for executing in (corpus_recovery, inventory_module):
+                        self.assertIn(str(Path(executing.__file__).resolve()), pins)
                     args.resume = True
                     if failed_phase == 'incomplete_catalog':
                         with self.assertRaisesRegex(RuntimeError, 'Incomplete catalog build retained'):
@@ -356,3 +360,63 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
         assert selected_path.read_bytes() == before
     assert proposed_path.read_bytes() == proposed
     assert client.puts == 1 and client.readbacks == 1
+
+
+def test_preflight_keeps_catalog_imports_available_for_selected_runtime(tmp_path):
+    """The read-only batch check must not cache another checkout's catalog code."""
+    import subprocess
+    import sys
+    batch, imported, _ = sealed_import_fixture(tmp_path)
+    runtime = tmp_path / 'runtime' / 'packages' / 'congress_api' / 'src'
+    retention = runtime / 'congress_api' / 'retention'
+    retention.mkdir(parents=True)
+    (runtime / 'congress_api' / '__init__.py').write_text('')
+    (retention / '__init__.py').write_text('')
+    (retention / 'raw_archive.py').write_text("selected_runtime = True\n")
+    command = '''
+import importlib.util
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+spec = importlib.util.spec_from_file_location('publication_dispatch', sys.argv[1])
+dispatch = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(dispatch)
+result = dispatch.run(SimpleNamespace(batch=Path(sys.argv[2]), imported=Path(sys.argv[3]),
+    runtime=Path(sys.argv[4]), execute=False))
+assert result['import_verified']
+assert not any(name == 'congress_api' or name.startswith('congress_api.') for name in sys.modules), 'preflight bound congress_api before --runtime'
+sys.path.insert(0, sys.argv[4])
+from congress_api.retention import raw_archive
+assert raw_archive.selected_runtime
+print('fresh preflight leaves catalog runtime unbound; selected runtime imported')
+'''
+    completed = subprocess.run([sys.executable, '-B', '-c', command, module.__file__,
+                                str(batch), str(imported), str(runtime)],
+                               text=True, capture_output=True, check=False)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+
+
+def test_oversized_prepared_evidence_is_hashed_without_unbounded_allocation(tmp_path, monkeypatch):
+    import corpus_recovery.admission as evidence
+    import pytest
+    batch, imported, _ = sealed_import_fixture(tmp_path)
+    prepared = batch / 'prepared-source-records.json'
+    rows = json.loads(prepared.read_text())
+    rows[0]['padding'] = 'x' * 2048
+    prepared.write_text(json.dumps(rows))
+    manifest = batch / 'manifest.json'
+    value = json.loads(manifest.read_text())
+    value['files'][prepared.name] = module.digest(prepared)
+    manifest.write_text(json.dumps(value))
+    preparation = batch / 'source-record-preparation.json'
+    preparation.write_text(json.dumps(dict(unresolved=[], batch_manifest_sha256=module.digest(manifest))))
+    readiness = batch / 'import-readiness.json'
+    readiness.write_text(json.dumps(dict(files=value['files'], capture_rows=1, distinct_capture_bodykeys=1)))
+    original = Path.read_bytes
+    def bounded_only(path):
+        assert path != prepared, 'prepared evidence was fully allocated before its byte check'
+        return original(path)
+    monkeypatch.setattr(Path, 'read_bytes', bounded_only)
+    monkeypatch.setattr(evidence, 'JSON_BYTES', 512)
+    with pytest.raises(ValueError, match='prepared-source-records.json.*byte budget'):
+        module.verify_import(batch, imported)

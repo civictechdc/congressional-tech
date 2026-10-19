@@ -505,3 +505,23 @@ def test_parallel_admission_respects_finite_request_grant(tmp_path, monkeypatch)
     monkeypatch.setattr(recovery, 'fetch', fetch)
     result = recovery.acquire(dump(tmp_path / 'queue.json', rows), config, tmp_path / 'run')
     assert len(calls) == result['completed'] == result['downloads_started'] == 2
+
+
+def test_frozen_classifier_preserves_printed_transcript_and_historical_snapshots(tmp_path):
+    import webharvest_validation as validation
+    raw = ('<html><title>Committee on Veterans Affairs hearing</title><body>'
+           'HEARING BEFORE HOUSE OF REPRESENTATIVES SERIAL No. 112-11 '
+           'Printed for the use of the committee ' + 'testimony ' * 500 + '</body></html>').encode()
+    snapshot = tmp_path / 'snapshot'
+    validator = validation.freeze(snapshot, {})
+    content, _ = validation.classify_cached(raw, tmp_path / 'cache', snapshot, validator)
+    assert content['category'] == 'substantial_document_body'
+    assert content['subtype'] == 'printed_hearing_transcript'
+    # Already-retained snapshots used classify as the public wrapper name.
+    historical = tmp_path / 'historical'
+    historical.mkdir()
+    source = b'def classify(raw):\n    return {"category":"substantial_document_body","subtype":"historical"}\n'
+    (historical / 'classifier.py').write_bytes(source)
+    prior = dict(validator, classifier_sha256=validation.digest(source), validator_sha256='historical')
+    original, _ = validation.classify_cached(raw, tmp_path / 'cache', historical, prior)
+    assert original['subtype'] == 'historical'

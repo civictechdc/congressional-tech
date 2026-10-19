@@ -9,7 +9,7 @@ import {resolve, dirname, delimiter, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import os from 'node:os';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const options = {};
 for (let i = 2; i < process.argv.length; i += 2) {
   if (!process.argv[i].startsWith('--') || process.argv[i + 1] === undefined) throw new Error('Arguments require --name value');
@@ -53,7 +53,7 @@ try {
     export {loadRecoveries} from './filename-recoveries.mjs';`, resolveDir: join(root, 'apps/site/src/components')},
     bundle: true, format: 'iife', globalName: 'ViewerBenchmark', outfile: bundle, platform: 'browser', nodePaths: modulePaths, tsconfigRaw: {}});
   receipt.bundle_sha256 = hash(await readFile(bundle));
-  const serverArgs = [join(root, 'scripts/viewer_benchmark_server.py'), '--publication', resolve(options.publication),
+  const serverArgs = [join(root, 'scripts/measure/viewer_benchmark_server.py'), '--publication', resolve(options.publication),
     '--output', output, '--bundle', bundle, '--review-data', resolve(options['review-data'])];
   for (const name of ['review-descriptor', 'review-identities', 'accepted', 'cases']) {
     if (options[name]) serverArgs.push('--' + name, resolve(options[name]));

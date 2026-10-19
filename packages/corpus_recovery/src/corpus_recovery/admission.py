@@ -103,9 +103,12 @@ def verify_import(batch, imported, *, readiness=None):
     for name, expected in (manifest_files | ready_files).items():
         path = batch / name
         data = loaded.get(name)
-        if data is None:
-            data = path.read_bytes()
-        compare_loaded_digest(data, expected, lambda path=path: invalid(path, 'sha256', 'Batch evidence changed'))
+        if data is not None:
+            compare_loaded_digest(data, expected, lambda path=path: invalid(path, 'sha256', 'Batch evidence changed'))
+        elif digest(path) != expected:
+            # Named evidence can be large. Hash it as a stream; JSON consumers
+            # apply their own byte admission before allocating parsed input.
+            raise invalid(path, 'sha256', 'Batch evidence changed')
     preparation_path = batch / 'source-record-preparation.json'
     preparation = read(preparation_path, dict)
     field(preparation, 'unresolved', list, preparation_path)

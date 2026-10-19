@@ -107,6 +107,8 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(verified, result)
         events = [json.loads(row) for row in (self.destination/'events.jsonl').read_text().splitlines()]
         pins = next(row['value'] for row in events if row['event']=='pins')
+        import corpus_recovery
+        self.assertIn(str(Path(corpus_recovery.__file__).resolve()), pins)
         import corpus_recovery.acknowledge as acknowledgment
         self.assertIn(str(Path(acknowledgment.__file__).resolve()), pins)
         self.assertIn(str(self.readiness_path), pins)

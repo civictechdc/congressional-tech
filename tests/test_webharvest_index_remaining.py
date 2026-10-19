@@ -1,11 +1,13 @@
 """Index audit must not turn rejected or partial responses into absence."""
 import importlib.util
+import sys
 from pathlib import Path
 import re
 from urllib.parse import urlencode
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts/webharvest'))
 SPEC = importlib.util.spec_from_file_location('index_audit', Path(__file__).resolve().parents[1] / 'scripts/webharvest/webharvest_index_remaining.py')
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)

@@ -5,8 +5,10 @@ Python library that checks recovered committee documents and adds them to the ra
 Committee sites and the Library of Congress Web Harvest sometimes hold a hearing PDF or HTML page that the archive does not. This package is the code that turns a reviewed local copy into archive rows and, later, into a catalog update. The commands you actually run are in [`scripts/corpus_recovery`](../../scripts/corpus_recovery/README.md). Import this package when you are calling that logic from another command or a test.
 
 ```python
-import corpus_recovery
+from corpus_recovery.admission import verify_import
 ```
+
+Import each operation from its owning module. Importing this package or its admission checks leaves the catalog implementation unselected so the publication command can load its named `--runtime`.
 
 The package is installed with the rest of the workspace (`uv sync --locked`). It does not download documents. Fetching from Web Harvest is [`scripts/webharvest`](../../scripts/webharvest/README.md).
 

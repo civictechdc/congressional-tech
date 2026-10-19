@@ -84,13 +84,17 @@ def run(args):
                 'apps/site/scripts', 'docs/youtube-coverage/research/scripts']
              for p in (runtime / folder).rglob('*') if p.is_file() and '__pycache__' not in str(p)]
     paths += list(batch.glob('*.json')) + list((ROOT/'scripts/corpus_recovery').glob('*.py'))
+    import corpus_recovery
+    import corpus_recovery.inventory as inventory_module
     import corpus_recovery.acknowledge as acknowledgment_module
     import corpus_recovery.admission as admission_module
     import corpus_recovery.guards as recovery_guard_module
     import corpus_recovery.mappings as mapping_module
     import viewer_publication.client as publication_client
     import viewer_publication.continuation as publication_continuation
-    paths += [Path(publication_client.__file__).resolve(),
+    paths += [Path(corpus_recovery.__file__).resolve(),
+              Path(inventory_module.__file__).resolve(),
+              Path(publication_client.__file__).resolve(),
               Path(publication_continuation.__file__).resolve(),
               Path(acknowledgment_module.__file__).resolve(),
               Path(recovery_guard_module.__file__).resolve(),

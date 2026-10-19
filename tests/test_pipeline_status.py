@@ -198,12 +198,17 @@ def test_continuation_rejects_malformed_or_excessive_local_writes_before_attribu
 
 
 def test_read_only_publication_command_emits_durable_pending_receipt(tmp_path,monkeypatch,capsys):
+    monkeypatch.syspath_prepend(str(ROOT / 'scripts/publication'))
     import viewer_publication.verify as publication_verification
     run_path=write(tmp_path/'run.json',github('success'))
     heartbeat_path=write(tmp_path/'heartbeat.json',progress())
     raw_path=write(tmp_path/'raw.json',{'catalog_id':'raw'})
     receipt_path=tmp_path/'verification.json'
-    monkeypatch.setattr(publication_verification,'live_observation',lambda *a, **kwargs:{'fixture':True})
+    def live_observation(viewer_url, pages_url, descriptor, *, root):
+        assert root == ROOT
+        assert descriptor == ROOT / 'apps/site/document-review-publication.json'
+        return {'fixture': True}
+    monkeypatch.setattr(publication_verification,'live_observation',live_observation)
     monkeypatch.setattr(publication_verification,'verify',lambda *a,**kw:{'version':1,'status':'pending','checks':[{'check':'live_worker','state':'pending','detail':'fixture'}],'read_only':True})
     assert status.main(['--run','123','--github-json',str(run_path),'--progress',str(heartbeat_path),'--verify-publication','--raw-manifest',str(raw_path),'--verification-receipt',str(receipt_path),'--json'])==0
     durable=json.loads(receipt_path.read_text())

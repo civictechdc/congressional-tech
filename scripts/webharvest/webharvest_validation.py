@@ -99,8 +99,10 @@ def _classify_cached(raw, directory, snapshot, validator):
             raise ValueError('Frozen classifier changed')
         namespace = {}
         exec(compile(source, str(snapshot / 'classifier.py'), 'exec'), namespace)
+        # Retained pre-package snapshots define the transcript wrapper as classify.
+        classify = namespace.get('classify_transcripts', namespace['classify'])
         value = {'body_sha256': digest(raw), 'validator_sha256': validator['validator_sha256'],
-                 'content': namespace['classify'](raw)}
+                 'content': classify(raw)}
         try:
             immutable(path, value)
         except FileExistsError:

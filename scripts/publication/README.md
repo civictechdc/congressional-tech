@@ -6,7 +6,7 @@ The day-to-day publisher is `apps/site/scripts/publish-viewer-r2.py`. It imports
 
 ## `publication_cli.py`
 
-One interface for a viewer publish attempt. The publisher calls it; you can also run it directly when you need the same steps.
+One interface for a viewer publish attempt. Run these commands through `apps/site/scripts/publish-viewer-r2.py`.
 
 | Command | What it does |
 | --- | --- |
