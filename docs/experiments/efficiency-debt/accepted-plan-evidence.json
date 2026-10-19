@@ -1,0 +1,97 @@
+{
+  "comparison": {
+    "baseline": "dfeed08aa87afb1e481a5ee52de7409e4470745c",
+    "candidate_parent": "014303ed0a292bc418e38070776734ce0feaae07",
+    "baseline_receipt": "baseline-accepted/receipt.json",
+    "candidate_receipt": "candidate-frozen-source/receipt.json",
+    "checks": {
+      "files": true,
+      "prepared": true,
+      "result": true,
+      "pointer": true,
+      "release_manifest": true,
+      "recovery": true,
+      "mutation_key_conditions": true
+    },
+    "verified_payload_files": 269,
+    "before": {
+      "output_named_hash_passes": 554,
+      "output_named_hash_bytes": 229623,
+      "output_issued_hash_passes": 269,
+      "output_issued_hash_bytes": 49506,
+      "GETs": 278,
+      "HEADs": 270,
+      "PUTs": 273,
+      "scans": {
+        "upload": 1
+      },
+      "fsyncs": 554,
+      "json_serialized_characters": 825186,
+      "seconds": 0.4954965829383582,
+      "rss": 128843776
+    },
+    "after": {
+      "output_named_hash_passes": 0,
+      "output_named_hash_bytes": 0,
+      "output_issued_hash_passes": 270,
+      "output_issued_hash_bytes": 50688,
+      "GETs": 281,
+      "HEADs": 270,
+      "PUTs": 273,
+      "scans": {
+        "preparation": 1
+      },
+      "fsyncs": 557,
+      "json_serialized_characters": 927970,
+      "seconds": 1.0468612499535084,
+      "rss": 129957888
+    },
+    "candidate_restoration": {
+      "stage": "restore",
+      "status": "complete",
+      "seconds": 0.24048745795153081,
+      "sampled_process_tree_rss_peak_bytes": 129957888,
+      "memory_samples": 4,
+      "scratch_bytes": 397324,
+      "counts": {
+        "json_dumps_calls": 12,
+        "json_serialized_characters": 339899,
+        "json_serialization_seconds": 0.0010078293271362782,
+        "state_json_dump_calls": 6,
+        "state_json_serialized_characters": 194927,
+        "state_json_serialization_seconds": 0.00057208351790905,
+        "output_issued_hash_passes": 271,
+        "output_issued_hash_bytes": 76027
+      }
+    },
+    "payload_inventory_sha256": "656f1035e8edefe5358ac460b2be8245a3340a93114a19c16a26316807baa81c",
+    "release_identity_change_expected": true,
+    "normalization": "Prepared manifest published_at only. Fixed release/published_at at upload. Pointer full_release_inputs and nested recovery_inputs.full_release_inputs compared separately as intentionally changed code provenance; all remaining pointer fields equal.",
+    "limitations": [
+      "One successful arm each is not a latency qualification. Draft runs and telemetry corrections remain retained and excluded. Baseline accepted arm overlapped focused test execution; wall times are diagnostic only and do not support a comparative speed claim.",
+      "Counts cover actual file_identity passes and hashlib.file_digest calls for prepared output. They exclude incremental hash updates in transfer/decoder/native code and do not claim total hashing.",
+      "Candidate adds protected-input GETs, a status artifact, checkpoints and inventory custody/context work. These are not free; no process-memory or total CPU improvement claimed.",
+      "No actual S3/public request, source acquisition, full-catalog or held-out qualification. Size/RSS/timeout ceilings apply to tiny local experiment only."
+    ]
+  },
+  "source_sha256": {
+    "apps/site/scripts/publish-viewer-r2.py": "a7410c9880afaf66c507387028e13aaec415e287395501c47e5a455eb5a253b7",
+    "packages/viewer_publication/src/viewer_publication/attempt.py": "7b9ce2cffc1d7fbc199d78806ac8a471c1d316df6c86cacc46995724708af9ba",
+    "packages/viewer_publication/src/viewer_publication/plan.py": "6f50c50a3f28ab143f7f5cc93dcc909c01bcfe42d0a77f66e8088f8ac3be9cd3",
+    "packages/corpus_recovery/src/corpus_recovery/publication.py": "7a22ce383ea51bec637275074f8b037f5bf791f926425f78981d7e0e04274f4f",
+    "packages/corpus_recovery/pyproject.toml": "73fe4efcbfe2b63eee4ea49f7d6c005aca18562c323b7959d3f79d11b0f2e77b",
+    "scripts/corpus_recovery/dispatch_corpus_recovery_publication.py": "00dada0c7dcdd93d49ea9ccbe3716a319eea66004f86ed7d9f0a4a7734b771a5",
+    "scripts/viewer_release_identity.py": "4ecdc6db0ec44e64d2882718198d07c906c5fa0c9245ab0f6388796a0ca5cb3c",
+    "uv.lock": "73b373ac90023582edbf0e04ada4ab4ae62e075abb59b4c8fee859623dc8c99c"
+  },
+  "raw_evidence_sha256": {
+    "measurement-plan.json": "e74e44740f9ef03bde24bc0e8b076803d51ab28f4629817f0aa75fb7563127fe",
+    "measure.py": "a0fc7becd67599b90071b65892bea8ecca54298a49cce32f92ac0f8124d3dafa",
+    "baseline-accepted/receipt.json": "3f2dafc1ed428dd3d9eb97583ae3bee9a0db3851eb788e87dfc822406edb5efb",
+    "candidate-frozen-source/receipt.json": "775e740006eabe2e0339fa1feed7d5f384af90af912ccce7f17d5786295952a8",
+    "comparison.json": "6efb0e5a4753989dac7875b933b8bb720e6a10a5f9ed15e85f7f46877d792a4a",
+    "tests.log": "1780b429dc923fafdae12b535f52165f31465284c6c5ef021ca8283edaa0ae28",
+    "dependency-repair-test.log": "4237eb8d30ab4e25d028ca343d50bfba364b7f76a907b73390b9601a16e46fe1"
+  },
+  "python": "Python 3.12.13"
+}

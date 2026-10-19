@@ -269,10 +269,16 @@ def load_prepared_recovery(root, manifest, accepted_record, *, validation):
     return value
 
 
-def recovery_for_publication(client, root, manifest, *, validation=None):
+def recovery_for_publication(client, root, manifest, *, validation=None, plan=None):
     accepted_record = read_identity(client, ACCEPTED_KEY, optional=True)
-    index = (load_prepared_recovery(root, manifest, accepted_record, validation=validation)
-             if validation is not None else index_recoveries(root, manifest, validated_accepted(accepted_record[0])))
+    if plan is not None:
+        # upload already required complete plan custody before any write.
+        if tuple(accepted_record) != tuple(plan.protected['accepted']):
+            raise ValueError('Accepted recovery mappings changed after viewer preparation')
+        index = plan.recovery
+    else:
+        index = (load_prepared_recovery(root, manifest, accepted_record, validation=validation)
+                 if validation is not None else index_recoveries(root, manifest, validated_accepted(accepted_record[0])))
     return store_recovery_index(client, index), accepted_record
 
 
@@ -333,31 +339,41 @@ def public_probe(base, pointer, manifest):
 
 
 def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=PUBLIC_URL,
-           probe=public_probe, publication_plan=None, validation=None):
+           probe=public_probe, publication_plan=None, validation=None, plan=None):
     from viewer_publication.client import require_publication_client
     require_publication_client(client)
     if not all(callable(getattr(client,name,None)) for name in ('get_object','put_object','download_file')):
         raise TypeError('Viewer publication client requires conditional writes and complete file upload/readback')
-    validate_prepared_output(root, manifest)
-    files = prepared_files(root, manifest, **({'validation': validation} if validation is not None else {}))
+    if plan is not None:
+        if plan.mode != 'full':
+            raise ValueError('Full upload requires an accepted full viewer plan')
+        plan.require(root, manifest)
+        if (plan.conditions != dict(previous_etag=previous_etag, selected_etag=selected_etag)
+                or plan.release_plan != publication_plan):
+            raise ValueError('Upload differs from accepted original viewer plan')
+        validation = plan.validation
+        files = plan.files
+    else:
+        validate_prepared_output(root, manifest)
+        files = prepared_files(root, manifest, **({'validation': validation} if validation is not None else {}))
     # Bind accepted status to the unmodified prepared manifest. Presentation-only
     # publication timestamps below do not change the accepted indexing inputs.
     recovery_manifest = manifest
     print(f"Uploading and reading back {len(files)} viewer objects for {manifest['info']['catalog_id']}", flush=True)
-    plan = publication_plan or dict(release='releases/' + uuid.uuid4().hex + '/',
+    release_plan = publication_plan or dict(release='releases/' + uuid.uuid4().hex + '/',
                                     published_at=datetime.now(timezone.utc).isoformat())
-    release = plan['release']
+    release = release_plan['release']
     if (not release.startswith('releases/') or not release.endswith('/')
             or len(release.split('/')) != 3 or len(release.split('/')[1]) != 32
             or any(c not in '0123456789abcdef' for c in release.split('/')[1])):
         raise ValueError('Invalid persisted publication release')
-    manifest = dict(manifest, published_at=plan['published_at'])
+    manifest = dict(manifest, published_at=release_plan['published_at'])
     manifest['info'] = dict(manifest['info'], publication_version=PUBLISHER_VERSION)
     pointer = {'version': 1, 'publisher_version': PUBLISHER_VERSION, 'catalog_id': manifest['info']['catalog_id'],
                'source_manifest': manifest['source_manifest'], 'published_at': manifest['published_at'],
                'manifest': release + 'manifest.json', 'full_release_inputs': full_release_identity()}
     recovery, accepted_record = recovery_for_publication(client, root, recovery_manifest,
-        **({'validation': validation} if validation is not None else {}))
+        **({'plan': plan} if plan is not None else {'validation': validation} if validation is not None else {}))
     pointer['recovery'] = recovery
     selected_record = read_identity(client, 'indexes/catalog.json')
     pointer['recovery_inputs'] = recovery_inputs(

@@ -20,6 +20,7 @@ Install it with the workspace (`uv sync --locked`).
 | `continuation` | `Continuation` and `DurableJournal` record each accepted phase. Resume returns the recorded result when the artifacts still match. A changed file is a refusal, not a silent rerun. |
 | `local` | `LocalContinuation` owns deliberately local recovery through synced `events.jsonl` records. `read_local_journal` inspects the same bounded history without changing files or granting current readback proof. |
 | `reconciliation` | Records the latest bounded per-object read observation, outcome, and next check during explicit reconciliation. Its file never supplies readback proof or write authority. |
+| `plan` | `AcceptedViewerPlan` binds protected source/mapping/viewer identities, code pins, accepted recovery status, exact file inventory and original release/selector conditions using the existing issued inventory proof. Both local and cloud routes consume it; cloud artifact custody remains separately required. |
 | `attempt` | Identifies one publish attempt (run, revision, artifact digest) so a later publish cannot claim a different attempt. |
 | `verify` | Read-only checks that a published viewer object matches the attempt that was prepared. |
 
@@ -58,3 +59,12 @@ Only the latest file is retained, capped at 16 KiB. These observations add no
 `fsync` calls, durable journal events, remote requests, or retries. Observation
 write failures cannot replace the original reconciliation outcome. Diagnostics
 use fixed messages and do not copy transport exception text or credentials.
+
+The plan adds no file format or resume authority. Cloud preparation keeps its
+existing receipts and required GitHub artifact acceptance. Local preparation
+keeps its existing prepared phase and files, adding the accepted recovery status
+file and retaining original input/release facts in the same continuation state.
+A same-process transfer reuses file proofs only under unchanged custody; a fresh
+process independently hashes every restored file once. Recovery-only plans cannot
+enter full upload. Capacity admission precedes fresh hashing, and changed pins,
+conditions or file custody remain refusals.
