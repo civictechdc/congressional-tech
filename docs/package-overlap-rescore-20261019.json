@@ -974,7 +974,7 @@
       "evidence_tests_read": [
         "apps/site/src/components/filename-catalog.test.mjs:72",
         "apps/site/src/components/filename-catalog.test.mjs:533",
-        "tests/test_filename_viewer_ui.mjs:633"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:633"
       ],
       "remediation_status": "intentional_tradeoff",
       "reason": "Complete source reconstruction remains an explicit full request with original field order, nulls and duplicates; scalar/full estimates are separate. Complete logical values, structured clone and formatted JSON inherently allocate whole results in the present format.",
@@ -1344,7 +1344,7 @@
       ],
       "evidence_tests_read": [
         "apps/site/src/components/filename-catalog.test.mjs:533",
-        "tests/test_filename_viewer_ui.mjs:633"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:633"
       ],
       "remediation_status": "intentional_tradeoff",
       "reason": "Full observations intentionally use Infinity only on explicit complete-record reconstruction; ordinary APIs normalize limits to at most 100. Whole-result memory remains unavoidable in the current complete-copy interface.",
@@ -1824,7 +1824,7 @@
       "evidence_tests_read": [
         "apps/site/src/components/filename-adapter.test.mjs:5",
         "apps/site/src/components/filename-adapter.test.mjs:15",
-        "tests/test_filename_viewer_ui.mjs:987"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:987"
       ],
       "remediation_status": "resolved",
       "reason": "Explicit published/local adapter selection replaces implicit fallback. Published mode requires worker and direct evidence URLs; local server comparisons and error behavior remain supported and independently tested.",
@@ -1865,9 +1865,9 @@
         "docs/youtube-coverage/research/filename-viewer.mjs:155"
       ],
       "evidence_tests_read": [
-        "tests/test_filename_viewer_ui.mjs:145",
-        "tests/test_filename_viewer_ui.mjs:796",
-        "tests/test_filename_viewer_ui.mjs:839"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:145",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:796",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:839"
       ],
       "remediation_status": "resolved",
       "reason": "Reset/release phases share current-detail cleanup; source/saved links render before optional provenance. Close invalidates the controller and releases heavy DOM/cache, while stale responses cannot mutate the new detail.",
@@ -1906,8 +1906,8 @@
         "docs/youtube-coverage/research/filename-viewer.mjs:178"
       ],
       "evidence_tests_read": [
-        "tests/test_filename_viewer_ui.mjs:84",
-        "tests/test_filename_viewer_ui.mjs:145"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:84",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:145"
       ],
       "remediation_status": "resolved",
       "reason": "At most twenty source buttons render; all 1001 fixture sources remain reachable across 51 pages, with selected state, role labels and focus surviving late provenance redraw.",
@@ -1946,8 +1946,8 @@
       ],
       "evidence_tests_read": [
         "apps/site/src/components/filename-adapter.test.mjs:5",
-        "tests/test_filename_viewer_ui.mjs:955",
-        "tests/test_filename_viewer_ui.mjs:987"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:955",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:987"
       ],
       "remediation_status": "resolved",
       "reason": "Review evidence URL ownership moved to the explicit adapter: published links stay direct/lazy and missing links error; local evidence serving remains an explicit branch.",
@@ -1987,7 +1987,7 @@
       "evidence_tests_read": [
         "apps/site/src/components/filename-provenance.test.mjs:10",
         "apps/site/src/components/filename-provenance.test.mjs:41",
-        "tests/test_filename_viewer_ui.mjs:162"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:162"
       ],
       "remediation_status": "resolved",
       "reason": "Pure graph construction now uses one reverse BFS, exact recorded protocols and keyed evidence grouping; 2000-edge fixture makes zero partial-path copies versus 1999000. DOM remains proportional to actual displayed path evidence.",
@@ -2025,8 +2025,8 @@
         "docs/youtube-coverage/research/filename-adapter.mjs:9"
       ],
       "evidence_tests_read": [
-        "tests/test_filename_viewer_ui.mjs:395",
-        "tests/test_filename_viewer_ui.mjs:987"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:395",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:987"
       ],
       "remediation_status": "resolved",
       "reason": "Adapter gates comparison payloads to local mode; published output uses stored naming results and retains unverified-clue labels, opaque technical fields and version caveats.",
@@ -2064,7 +2064,7 @@
         "docs/youtube-coverage/research/filename-provenance.mjs:6"
       ],
       "evidence_tests_read": [
-        "tests/test_filename_viewer_ui.mjs:122",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:122",
         "apps/site/src/components/filename-provenance.test.mjs:41"
       ],
       "remediation_status": "intentional_tradeoff",
@@ -2105,8 +2105,8 @@
         "docs/youtube-coverage/research/filename-provenance.mjs:6"
       ],
       "evidence_tests_read": [
-        "tests/test_filename_viewer_ui.mjs:122",
-        "tests/test_filename_viewer_ui.mjs:839"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:122",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:839"
       ],
       "remediation_status": "resolved",
       "reason": "Controller guard precedes origin mutation. Page failure retains prior context and retries the same offset; successful merge deduplicates exact pages/redirects without erasing competing observations.",
@@ -2148,7 +2148,7 @@
       "evidence_tests_read": [
         "apps/site/src/components/filename-detail-state.test.mjs:5",
         "apps/site/src/components/filename-detail-state.test.mjs:15",
-        "tests/test_filename_viewer_ui.mjs:633"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:633"
       ],
       "remediation_status": "resolved",
       "reason": "Field filtering reuses at most 2MiB of current-detail formatted text; keys/labels/categories and complete values remain searchable. The focused fixture reduces 200 formats to 10 plus 190 hits; oversized formatting remains synchronous exact work.",
@@ -2228,8 +2228,8 @@
         "apps/site/src/components/filename-observations.mjs:81"
       ],
       "evidence_tests_read": [
-        "tests/test_filename_viewer_ui.mjs:110",
-        "tests/test_filename_viewer_ui.mjs:633",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:110",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:633",
         "apps/site/src/components/filename-catalog.test.mjs:533"
       ],
       "remediation_status": "intentional_tradeoff",
@@ -2272,7 +2272,7 @@
         "docs/youtube-coverage/research/filename-viewer.mjs:674"
       ],
       "evidence_tests_read": [
-        "tests/test_filename_viewer_ui.mjs:969"
+        "apps/site/src/components/filename-viewer-ui.test.mjs:969"
       ],
       "remediation_status": "resolved",
       "reason": "History notifications return while info is pending; readiness restores the latest actual URL and current request identities suppress stale result/detail completion. Failed info retains reload recovery.",
@@ -2313,7 +2313,7 @@
       ],
       "evidence_tests_read": [
         "apps/site/scripts/built-filenames.test.mjs:10",
-        "tests/test_filename_viewer_ui.mjs:969",
+        "apps/site/src/components/filename-viewer-ui.test.mjs:969",
         "apps/site/src/components/filename-reviews.test.mjs:78",
         "docs/experiments/publication-remediation/hosted-qualification.md:55"
       ],
@@ -2351,9 +2351,9 @@
         "scripts/publication_cli.py:45"
       ],
       "tests_read": [
-        "tests/test_publication_preflight.py:131",
-        "tests/test_publication_cli.py:47",
-        "tests/test_publication_cli.py:61"
+        "scripts/tests/test_publication_preflight.py:131",
+        "scripts/publication/tests/test_publication_cli.py:47",
+        "scripts/publication/tests/test_publication_cli.py:61"
       ],
       "reason": "Trigger paths now include review, builder and runtime inputs; standard-library preflight skips full setup and tests for unchanged schedules. Retained real normal and unchanged runs passed at 744edd6; unchanged job was 20 s with zero table reads/writes. CLI discovery emits one original-attempt descriptor, but workflow_dispatch still asks operators to copy five separate fields. Hosted normal/unchanged qualification is stronger than the old static-only evidence; no hosted explicit-resume qualification is claimed.",
       "remaining_action": "Accept or generate the validated original-attempt descriptor at the workflow boundary so operators do not manually transcribe five fields.",
@@ -2410,8 +2410,8 @@
       ],
       "tests_read": [
         ".github/tests/test_viewer_r2.py:206",
-        "tests/test_publication_control_reads.py:16",
-        "tests/test_publication_control_reads.py:22"
+        "apps/site/tests/test_publication_control_reads.py:16",
+        "apps/site/tests/test_publication_control_reads.py:22"
       ],
       "reason": "Opening retries remain bounded to four attempts and body failures explicitly propagate outside retry. Intermediate retryable HTTPError responses close, but non-transient and final retry errors raise before error.close. Existing transient test uses HTTPError with no body and does not assert final/non-transient closure or a failing body read.",
       "remaining_action": "At apps/site/scripts/publish-viewer-r2.py:39-42, close HTTPError before every terminal/non-transient raise; retain four opening attempts and backoff 1+2+4 seconds. Cover final/non-transient body closure and response-body failure without adding write or body retries.",
@@ -2461,9 +2461,9 @@
         "apps/site/scripts/publish-viewer-r2.py:111"
       ],
       "tests_read": [
-        "tests/test_publication_control_reads.py:16",
-        "tests/test_publication_control_reads.py:22",
-        "tests/test_viewer_publication_attempt.py:190"
+        "apps/site/tests/test_publication_control_reads.py:16",
+        "apps/site/tests/test_publication_control_reads.py:22",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:190"
       ],
       "reason": "ProtectedIdentity names value, ETag, modified time and raw SHA256. Optional absence remains distinct. Declared and streamed limits apply before JSON parsing, context management closes malformed/oversized/truncated bodies, and stale protected inputs still refuse. Existing tuple-compatible boundaries remain explicit.",
       "remaining_action": null,
@@ -2513,8 +2513,8 @@
         "scripts/viewer_release_identity.py:20"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:354",
-        "tests/test_publication_preflight.py:96"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:354",
+        "scripts/tests/test_publication_preflight.py:96"
       ],
       "reason": "Implementation identity now hashes maintained working-tree source bytes, review identities/descriptor, dependency pins and helper code instead of Git HEAD. Dirty transitive source edits invalidate; unrelated README edits do not. In-process cache checks device/inode/size/mtime/ctime and refuses changes during hashing. This is a maintained source list, not proof of arbitrary ambient modules.",
       "remaining_action": null,
@@ -2563,9 +2563,9 @@
         "scripts/viewer_release_identity.py:69"
       ],
       "tests_read": [
-        "tests/test_publication_preflight.py:108",
-        "tests/test_publication_preflight.py:210",
-        "tests/test_viewer_publication_attempt.py:391"
+        "scripts/tests/test_publication_preflight.py:108",
+        "scripts/tests/test_publication_preflight.py:210",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:391"
       ],
       "reason": "One helper fingerprints seven relevant installed/locked package versions plus Python implementation/version and OS/architecture; lock bytes are separately in source identity. ijson participates. Runtime mismatch rejects accepted artifacts. Package-version identity still does not attest native build or editable dependency bytes; the implementation makes no such claim.",
       "remaining_action": null,
@@ -2614,7 +2614,7 @@
         "scripts/viewer_publication_attempt.py:55"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:384",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:384",
         ".github/tests/test_viewer_r2.py:144",
         ".github/tests/test_viewer_r2.py:152"
       ],
@@ -2664,7 +2664,7 @@
         "apps/site/scripts/publish-viewer-r2.py:64"
       ],
       "tests_read": [
-        "tests/test_publication_control_reads.py:16",
+        "apps/site/tests/test_publication_control_reads.py:16",
         ".github/tests/test_viewer_r2.py:169",
         ".github/tests/test_viewer_r2.py:221"
       ],
@@ -2715,8 +2715,8 @@
         "docs/experiments/publication-remediation/control.md:75"
       ],
       "tests_read": [
-        "tests/test_publication_control_reads.py:38",
-        "tests/test_viewer_publication_attempt.py:341",
+        "apps/site/tests/test_publication_control_reads.py:38",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:341",
         ".github/tests/test_viewer_r2.py:110"
       ],
       "reason": "The false pointer-last transaction claim is removed. Separate source/mapping/viewer reads provide an explicit freshness observation; final viewer IfMatch fences that pointer only. The interleaving test deliberately demonstrates source advancement after its read. A later poll discovers later inputs; this bounded consistency choice does not require another coordinator.",
@@ -2770,8 +2770,8 @@
         "scripts/viewer_publication_attempt.py:145"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:101",
-        "tests/test_viewer_publication_attempt.py:449"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:101",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:449"
       ],
       "reason": "New publications accept only manifest version 5; dead version-2 write support was retired while historical readers remain separate. Structural file/path/shard counts consume issued inventory/file proofs instead of repeating hashes. Parent verify_prepared compares the complete actual inventory so missing/extra files cannot bypass accepted preparation; fresh processes rehash every file.",
       "remaining_action": null,
@@ -2822,9 +2822,9 @@
         "scripts/guarded_recovery_publication_client.py:95"
       ],
       "tests_read": [
-        "tests/test_recovery_viewer_transfers.py:124",
-        "tests/test_recovery_viewer_transfers.py:91",
-        "tests/test_recovery_viewer_transfers.py:137"
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:124",
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:91",
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:137"
       ],
       "reason": "Content-named status writes consume the exact issuing-client/current-version receipt. Successful guarded status writes now need one complete readback; plain clients and receipt rejection retain full verification. Weak receipt ownership avoids growth for ignored JSON results. Existing-object collision bytes still receive independent checking.",
       "remaining_action": null,
@@ -2874,9 +2874,9 @@
         "scripts/dispatch_corpus_recovery_publication.py:245"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:475",
-        "tests/test_viewer_publication_attempt.py:227",
-        "tests/test_viewer_publication_attempt.py:480"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:475",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:227",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:480"
       ],
       "reason": "Cloud preparation accepts recovery-prepared.json with exact source/table/catalog and accepted mapping presence/raw digest. Cloud publish/resume consumes it with no second index scan and later mappings refuse. Local dispatcher calls upload without validation, retaining the fallback that derives status during publication. The cloud fix is complete; the shared public responsibility remains split.",
       "remaining_action": "Give the local accepted preparation a verified recovery result and issued inventory so every supported route consumes accepted status.",
@@ -2926,8 +2926,8 @@
         "scripts/viewer_publication_attempt.py:336"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:227",
-        "tests/test_viewer_publication_attempt.py:480",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:227",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:480",
         ".github/tests/test_viewer_r2.py:179"
       ],
       "reason": "Controller passes the accepted status; selection preserves public full-byte verification, original viewer ETag and final source/mapping checks. Ordinary changed mappings still prepare normally. The helper retains many positional tuple records plus optional index derivation instead of one named accepted recovery result, so ownership remains harder to inspect.",
@@ -2981,7 +2981,7 @@
         "docs/experiments/publication-remediation/control.md:176"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:480",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:480",
         "tests/test_publish_corpus_recovery_mappings.py:99"
       ],
       "reason": "Retired viewer accept_recoveries has no maintained caller. Local mapping admission belongs to publish_mappings under domain guards, and accepted status publication belongs to prepare/publish. Grades apply to that replacement responsibility, not a nonexistent function. Canonical validation still precedes mapping writes; historical locators remain.",
@@ -3033,8 +3033,8 @@
       "tests_read": [
         ".github/tests/test_viewer_r2.py:241",
         ".github/tests/test_viewer_r2.py:250",
-        "tests/test_viewer_publication_attempt.py:488",
-        "tests/test_recovery_viewer_transfers.py:62"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:488",
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:62"
       ],
       "reason": "Unsupported archive/migration branches are gone. Upload preflights capabilities/limits, streams conditional one-attempt payloads, consumes local/remote proofs when supplied, probes before final original-condition selection, and retains supersession. It still combines status derivation, transfer, locators, mutable selection and public proof. Local dispatcher omits accepted inventory/status and pays fallback hashing/indexing.",
       "remaining_action": "Use one accepted local/cloud upload plan with explicit status/file proof ownership; retain separate admission evidence and final fresh conditions.",
@@ -3089,10 +3089,10 @@
         "scripts/guarded_recovery_publication_client.py:95"
       ],
       "tests_read": [
-        "tests/test_recovery_viewer_transfers.py:62",
-        "tests/test_recovery_viewer_transfers.py:91",
-        "tests/test_recovery_viewer_transfers.py:137",
-        "tests/test_viewer_publication_attempt.py:449"
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:62",
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:91",
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:137",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:449"
       ],
       "reason": "Transfer accepts checked local file identity and exact single-use remote receipt, with HEAD current-version confirmation. Same-size changes invalidate issued custody; forged/foreign/wrong request facts refuse. Plain clients use one conditional streamed PUT plus complete independent readback. The local dispatcher failing to supply proof is graded at its caller.",
       "remaining_action": null,
@@ -3143,8 +3143,8 @@
         "docs/experiments/publication-remediation/control.md:176"
       ],
       "tests_read": [
-        "tests/test_publication_cli.py:27",
-        "tests/test_viewer_publication_attempt.py:112"
+        "scripts/publication/tests/test_publication_cli.py:27",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:112"
       ],
       "reason": "Inactive Pages migration and its product entry branch are removed after caller inventory. Supported commands are prepare, verify-prepared, describe-attempt and explicit publish/resume; ordinary initial publication uses accepted preparation. Historical immutable catalog locators remain in upload. Grades describe the replacement responsibility.",
       "remaining_action": null,
@@ -3192,8 +3192,8 @@
         "docs/experiments/publication-remediation/control.md:196"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:101",
-        "tests/test_viewer_publication_attempt.py:112"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:101",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:112"
       ],
       "reason": "Migration-only nested download was retired with bootstrap_pages. Current source retrieval belongs to accepted full preparation, with immutable path checks and builder verification. No residual production bootstrap caller was found; the old helper receives replacement-owner grades.",
       "remaining_action": null,
@@ -3244,8 +3244,8 @@
       "tests_read": [
         ".github/tests/test_viewer_r2.py:144",
         ".github/tests/test_viewer_r2.py:152",
-        "tests/test_publication_preflight.py:54",
-        "tests/test_viewer_publication_attempt.py:354"
+        "scripts/tests/test_publication_preflight.py:54",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:354"
       ],
       "reason": "refresh_recoveries was replaced by read-only check_selected_publication plus controller preparation. Changed mappings request accepted preparation instead of mutating in the poll. Captured protected inputs and source/runtime identity are shared. Absent/empty no-op checks read no tables or writes and verify complete current status/public pointer. Early preflight is separately qualified on a real scheduled no-op.",
       "remaining_action": null,
@@ -3301,7 +3301,7 @@
         "docs/experiments/publication-remediation/control.md:188"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:375",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:375",
         "tests/test_dispatch_corpus_recovery_publication.py:81",
         "tests/test_dispatch_corpus_recovery_publication.py:262"
       ],
@@ -3354,10 +3354,10 @@
         "scripts/publication_cli.py:99"
       ],
       "tests_read": [
-        "tests/test_publication_cli.py:27",
-        "tests/test_publication_cli.py:37",
-        "tests/test_publication_cli.py:101",
-        "tests/test_publication_cli.py:77"
+        "scripts/publication/tests/test_publication_cli.py:27",
+        "scripts/publication/tests/test_publication_cli.py:37",
+        "scripts/publication/tests/test_publication_cli.py:101",
+        "scripts/publication/tests/test_publication_cli.py:77"
       ],
       "reason": "Thin CLI entry delegates to one command interface. Invalid combinations fail before SDK client construction; descriptor fields retain original run/revision and reject explicit conflicts. Error paths atomically replace stale prepared success with failed command receipts while retaining the original exception. SDK mutation attempts remain exactly one.",
       "remaining_action": null,
@@ -3720,7 +3720,7 @@
       ],
       "tests_read": [
         "tests/test_dispatch_corpus_recovery_publication.py:81",
-        "tests/test_recovery_publication_continuation.py:45"
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:45"
       ],
       "reason": "Local journal still updates continuation state and fsyncs a separate events.jsonl for every event. This preserves the explicitly local recovery evidence, but leaves two progress representations and lacks a measured local-dispatch reduction. Cloud bounded event restore improvements do not automatically apply to this JSONL owner.",
       "remaining_action": "Choose one local event owner with a derived checkpoint and measure serialization/fsync cost while preserving uncertain-write and phase evidence.",
@@ -3828,8 +3828,8 @@
         "scripts/viewer_publication_attempt.py:325"
       ],
       "tests_read": [
-        "tests/test_guarded_recovery_publication_client.py:144",
-        "tests/test_recovery_publication_continuation.py:106",
+        "packages/viewer_publication/tests/test_guarded_recovery_publication_client.py:144",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:106",
         "tests/test_dispatch_corpus_recovery_publication.py:262"
       ],
       "reason": "Both nested ContinuedClient implementations were replaced by one ContinuedPublicationClient. Original condition fields must match before replay; exact body/client/current-version proof controls reuse. Cloud/local controllers share this transfer boundary while retaining their distinct admission mechanisms.",
@@ -4188,7 +4188,7 @@
       ],
       "tests_read": [
         "tests/test_dispatch_corpus_recovery_publication.py:81",
-        "tests/test_pipeline_status.py:168"
+        "scripts/publication/tests/test_pipeline_status.py:168"
       ],
       "reason": "Incomplete build/SQLite evidence is retained and explicit continuation refuses silent rebuild with its exact path. Status now reports the next unbound local phase. It still offers a generic inspect/reconcile failure rather than an actionable per-build reconciliation receipt, and the large phase closure remains coupled to dispatcher state.",
       "remaining_action": "Expose the incomplete build path and exact read-only reconciliation checks in status/receipt, preserving refusal to auto-rebuild and accepted prior phases.",
@@ -4296,7 +4296,7 @@
       "tests_read": [
         "tests/test_catalog_pair_validation.py:74",
         "tests/test_dispatch_corpus_recovery_publication.py:81",
-        "tests/test_viewer_publication_attempt.py:449"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:449"
       ],
       "reason": "Local builder reuses pair validation and accepts resulting files under its phase checkpoint; selected raw LastModified is checked before preparation. It does not call the common accepted viewer preparation API, retain accepted recovery status or issue/share a viewer inventory proof. Therefore local hashes/state still overlap cloud ownership.",
       "remaining_action": "Introduce a local accepted-preparation entry point that accepts the existing catalog proof and returns accepted status plus inventory without requiring GitHub artifact custody.",
@@ -4351,7 +4351,7 @@
       "tests_read": [
         "tests/test_dispatch_corpus_recovery_publication.py:262",
         "tests/test_dispatch_corpus_recovery_publication.py:81",
-        "tests/test_viewer_publication_attempt.py:163"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:163"
       ],
       "reason": "Local phase now calls shared upload directly with persisted original release plan and original selector conditions, so its own later selector version cannot corrupt replay. It requires published/unchanged result before accepting completion. It still bypasses accepted inventory/status transfer and uses local progress rather than the cloud attempt plan. Distinct local durable custody is valid; duplicated derivation/proofs remain.",
       "remaining_action": "Pass an accepted local plan/inventory/status through the same transfer API; preserve local admission and original conditions instead of adding cloud-only artifact requirements.",
@@ -4402,8 +4402,8 @@
         "scripts/guarded_recovery_publication_client.py:85"
       ],
       "tests_read": [
-        "tests/test_guarded_recovery_publication_client.py:129",
-        "tests/test_recovery_viewer_transfers.py:110"
+        "packages/viewer_publication/tests/test_guarded_recovery_publication_client.py:129",
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:110"
       ],
       "reason": "Wrong guard/client capabilities and SDK retry policy fail at construction before journaling or mutation. Explicit check/shared_commit methods distinguish immutable writes from shared selection; deliberate callable injection goes through named CallbackPublicationGuard. Dispatch and attempt use explicit guard objects.",
       "remaining_action": null,
@@ -4453,10 +4453,10 @@
         "scripts/guarded_recovery_publication_client.py:95"
       ],
       "tests_read": [
-        "tests/test_guarded_recovery_publication_client.py:92",
-        "tests/test_guarded_recovery_publication_client.py:101",
-        "tests/test_recovery_viewer_transfers.py:91",
-        "tests/test_recovery_viewer_transfers.py:137"
+        "packages/viewer_publication/tests/test_guarded_recovery_publication_client.py:92",
+        "packages/viewer_publication/tests/test_guarded_recovery_publication_client.py:101",
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:91",
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:137"
       ],
       "reason": "Weak receipt registry releases ignored JSON/journal results; exact issuing object/client/request and current ETag/length are required before reuse. Confirmation consumes the receipt once. Per-key lock cleanup tracks waiters, preventing split same-key exclusion while allowing independent immutable concurrency.",
       "remaining_action": null,
@@ -4505,9 +4505,9 @@
         "scripts/guarded_recovery_publication_client.py:193"
       ],
       "tests_read": [
-        "tests/test_guarded_recovery_publication_client.py:69",
-        "tests/test_guarded_recovery_publication_client.py:59",
-        "tests/test_viewer_publication_attempt.py:275"
+        "packages/viewer_publication/tests/test_guarded_recovery_publication_client.py:69",
+        "packages/viewer_publication/tests/test_guarded_recovery_publication_client.py:59",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:275"
       ],
       "reason": "Central writer persists intent before one conditional PUT, fully hashes readback and records verification only afterward. Dual PUT/reconciliation failures preserve both exception objects, original cause and credential-free failure types. No automatic resend or receipt occurs on failure. Strict conditional journal conflicts and nonce-based ambiguous ownership remain explicit.",
       "remaining_action": null,
@@ -4559,8 +4559,8 @@
         "scripts/viewer_publication_attempt.py:140"
       ],
       "tests_read": [
-        "tests/test_guarded_recovery_publication_client.py:33",
-        "tests/test_viewer_publication_attempt.py:488",
+        "packages/viewer_publication/tests/test_guarded_recovery_publication_client.py:33",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:488",
         ".github/tests/test_viewer_r2.py:250"
       ],
       "reason": "One streamed create-only PUT and exact readback remain. Oversized files are rejected before cloud artifact acceptance and again on restoration/direct upload before status or payload writes. Client metadata must declare one mutation attempt. Supported single-PUT capacity is deliberate, not a silent multipart fallback.",
@@ -4610,9 +4610,9 @@
         "scripts/pipeline_status.py:166"
       ],
       "tests_read": [
-        "tests/test_pipeline_status.py:118",
-        "tests/test_pipeline_status.py:156",
-        "tests/test_pipeline_status.py:168"
+        "scripts/publication/tests/test_pipeline_status.py:118",
+        "scripts/publication/tests/test_pipeline_status.py:156",
+        "scripts/publication/tests/test_pipeline_status.py:168"
       ],
       "reason": "Status now separates recorded phase acceptance, current remote reconciliation and public readback; bound journals retain exact preparation/chain and later failure precedence. Unbound local recovery exposes the next phase, but returns before gathering uncertain keys/verified-write counts. Dispatcher bindings lack GitHub identity, so precisely those local uncertain writes are omitted. Existing unbound-local test checks only phase.",
       "remaining_action": "At scripts/pipeline_status.py:127-129 and :166-170, gather local uncertain keys and recorded verification before returning unbound. Retain at most 8192 writes, empty accepted_outputs for unbound runs and remote_reconciliation=not_performed.",
@@ -4872,8 +4872,8 @@
         "scripts/recovery_publication_continuation.py:123"
       ],
       "tests_read": [
-        "tests/test_publication_state_bounds.py:54",
-        "tests/test_recovery_publication_continuation.py:54"
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:54",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:54"
       ],
       "reason": "Resume bounds state input to 32 MiB and validates version, required shapes, write/phase/file counts, digests, conditions and exact binding before reconciliation. Fresh attempts own a new directory. Unknown/malformed persisted state fails before any remote mutation; serialized JSON cannot provide ephemeral readback proof.",
       "remaining_action": null,
@@ -4922,9 +4922,9 @@
         "scripts/recovery_publication_continuation.py:412"
       ],
       "tests_read": [
-        "tests/test_publication_state_bounds.py:100",
-        "tests/test_viewer_publication_attempt.py:163",
-        "tests/test_recovery_publication_continuation.py:85"
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:100",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:163",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:85"
       ],
       "reason": "Atomic replacement fsyncs file and directory. Remote journal restoration now rebuilds state and flushes once, cutting retained fixture resume serialization/fsync substantially. Successful intent/verified records still serialize the growing whole state; prior controlled success receipt has 548 dumps and 61.4M serialized characters. No success-path checkpoint reduction is established.",
       "remaining_action": "Profile a compact derived checkpoint/update representation for normal writes while preserving intent-before-write and crash boundaries; measure rather than promise latency savings.",
@@ -4978,8 +4978,8 @@
         "docs/experiments/publication-remediation/control.md:43"
       ],
       "tests_read": [
-        "tests/test_publication_state_bounds.py:38",
-        "tests/test_recovery_publication_continuation.py:54"
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:38",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:54"
       ],
       "reason": "Saved names reject absolute/traversal/noncanonical paths and resolved symlink escape; complete file bytes are fsynced before atomic replacement and existing immutable evidence must match. Parent directory is deliberately not fsynced here, and docs explicitly distinguish this from power-loss durability. Cloud artifact/journal custody remains the restart authority. This is an acknowledged guarantee limit.",
       "remaining_action": null,
@@ -5030,10 +5030,10 @@
         "scripts/viewer_publication_attempt.py:158"
       ],
       "tests_read": [
-        "tests/test_publication_state_bounds.py:116",
-        "tests/test_publication_state_bounds.py:126",
-        "tests/test_recovery_publication_continuation.py:54",
-        "tests/test_viewer_publication_attempt.py:449"
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:116",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:126",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:54",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:449"
       ],
       "reason": "Issued same-process inventories avoid redundant full hashing and persisted phase fields/counts are validated. Fresh files reject symlinks/escape and fresh processes rehash accepted bytes. The restored non-inventory branch hashes self.root/relative without repeating resolved-path/symlink confinement; an externally redirected saved phase path can be followed. Existing path-escape test covers new phases only.",
       "remaining_action": "At scripts/recovery_publication_continuation.py:180-182, repeat the saved-file symlink/resolved-root checks used at :199-201 before hashing restored phases; retain MAX_PHASE_FILES=32768 and the issued-proof fast path.",
@@ -5088,9 +5088,9 @@
         "scripts/recovery_publication_continuation.py:376"
       ],
       "tests_read": [
-        "tests/test_publication_state_bounds.py:61",
-        "tests/test_publication_state_bounds.py:100",
-        "tests/test_recovery_publication_continuation.py:85"
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:61",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:100",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:85"
       ],
       "reason": "Named event transition validator now rejects verified-before-intent, changed write facts and illegal transitions while preserving informational events. Full remote restore applies events in memory and checkpoints once. Normal write events still flush complete state and local/cloud event owners remain distinct; the event model is validated but not compact.",
       "remaining_action": "Reduce normal derived-state serialization under measured crash-safe checkpoints; keep validated transitions and informational evidence.",
@@ -5145,10 +5145,10 @@
         "scripts/pipeline_status.py:166"
       ],
       "tests_read": [
-        "tests/test_recovery_publication_continuation.py:62",
-        "tests/test_recovery_publication_continuation.py:70",
-        "tests/test_recovery_publication_continuation.py:76",
-        "tests/test_recovery_publication_continuation.py:106"
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:62",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:70",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:76",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:106"
       ],
       "reason": "Complete streamed current-byte reconciliation distinguishes committed/uncommitted/conflicting outcomes; only exact client/object/bytes/ETag produce ephemeral proof and tracked versions advance afterward. Serialized receipts never grant current authority. Status exposes aggregate recorded facts, but bounded per-object reconciliation progress requested by the row is not emitted during the loop.",
       "remaining_action": "Emit bounded per-object read/reconciled/conflict progress as observational receipt data; never mark verified before full body and version checks.",
@@ -5200,9 +5200,9 @@
         "scripts/guarded_recovery_publication_client.py:241"
       ],
       "tests_read": [
-        "tests/test_recovery_publication_continuation.py:106",
-        "tests/test_recovery_publication_continuation.py:133",
-        "tests/test_guarded_recovery_publication_client.py:144"
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:106",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:133",
+        "packages/viewer_publication/tests/test_guarded_recovery_publication_client.py:144"
       ],
       "reason": "Replay uses exact local accepted body/file proof and original conditional fields, then current-client reconciliation proof plus HEAD, or complete GET fallback. Different body/client/version/size refuses. Shared ContinuedPublicationClient owns replay consistently; stat/file custody prevents skipping local verification from serialized facts. Two cheap HEAD confirmations remain conservative but no duplicate full GET is needed.",
       "remaining_action": null,
@@ -5251,9 +5251,9 @@
         "scripts/recovery_publication_continuation.py:323"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:214",
-        "tests/test_viewer_publication_attempt.py:297",
-        "tests/test_publication_state_bounds.py:89"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:214",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:297",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:89"
       ],
       "reason": "Attempt identity is bounded, existing first events require explicit resume, and event count/individual/aggregate byte budgets are enforced for restore and append. A missing journal can start only through the controller after fresh protected checks. Conditional event creation and nonce prevent concurrent ownership confusion.",
       "remaining_action": null,
@@ -5301,11 +5301,11 @@
         "docs/experiments/publication-remediation/control.md:43"
       ],
       "tests_read": [
-        "tests/test_publication_state_bounds.py:73",
-        "tests/test_publication_state_bounds.py:89",
-        "tests/test_publication_state_bounds.py:100",
-        "tests/test_viewer_publication_attempt.py:219",
-        "tests/test_viewer_publication_attempt.py:307"
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:73",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:89",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:100",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:219",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:307"
       ],
       "reason": "Restore validates the entire bounded key sequence, exact lengths, version, nonce, chain, binding and legal transitions before changing accepted state. It reconstructs writes in memory, preserves event evidence and checkpoints once. This measured resume improvement is substantial; deleting an arbitrary suffix remains undetectable without an independent terminal anchor and is explicitly documented.",
       "remaining_action": null,
@@ -5358,10 +5358,10 @@
         "scripts/guarded_recovery_publication_client.py:153"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:119",
-        "tests/test_viewer_publication_attempt.py:252",
-        "tests/test_viewer_publication_attempt.py:275",
-        "tests/test_viewer_publication_attempt.py:320"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:119",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:252",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:275",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:320"
       ],
       "reason": "Append now bounds growth and validates transitions before remote mutation; nonce, conditional create, exact readback and retained local intents preserve runner-loss/concurrent-append proof. Weak receipts avoid accumulation. Normal success still has two journal PUT/full readbacks per payload plus full continuation checkpoints. Retained combined fixture fresh publication became 7.5% slower with unchanged request count; restore gains are separate. The durability boundary is deliberate, but cost remains below B+.",
       "remaining_action": "If further efficiency is required, measure a smaller durable event/checkpoint shape against every crash boundary before reducing requests or fsyncs.",
@@ -5420,9 +5420,9 @@
         "scripts/viewer_release_identity.py:20"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:354",
-        "tests/test_viewer_publication_attempt.py:375",
-        "tests/test_publication_preflight.py:96"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:354",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:375",
+        "scripts/tests/test_publication_preflight.py:96"
       ],
       "reason": "One maintained full-release identity replaces duplicate Git/package inventory. Transitive builder/review source bytes, locked pins and relevant runtime versions govern full preparation. Unchanged custody avoids duplicate source hashing within a command; unrelated README changes preserve no-op. Exact restored runtime identity remains mandatory.",
       "remaining_action": null,
@@ -5471,10 +5471,10 @@
         "scripts/viewer_publication_attempt.py:118"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:375",
-        "tests/test_viewer_publication_attempt.py:227",
-        "tests/test_viewer_publication_attempt.py:480",
-        "tests/test_viewer_publication_attempt.py:449"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:375",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:227",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:480",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:449"
       ],
       "reason": "Full-build versus recovery decision now compares complete code/runtime/review identity rather than manual publisher version alone. Unchanged returns read-only with captured protected inputs; changed mappings accept their status once; full work retains exact source output and an issued inventory. Fresh verification and original protected conditions still gate writes. Retained hosted full publication establishes execution at 744edd6, not speed gain.",
       "remaining_action": null,
@@ -5531,9 +5531,9 @@
         "scripts/viewer_publication_attempt.py:115"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:227",
-        "tests/test_viewer_publication_attempt.py:475",
-        "tests/test_viewer_publication_attempt.py:449"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:227",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:475",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:449"
       ],
       "reason": "Recovery preparation computes and accepts exact status, then deletes large indexing inputs from the artifact. Full preparation likewise persists recovery status and builds one issued inventory. Publish/resume do not rescan recovery inputs. Duplicate source-download builder formerly in publisher.run is removed; immutable source path checks remain. Generic local fallback is assessed at its local caller.",
       "remaining_action": null,
@@ -5584,10 +5584,10 @@
         "scripts/recovery_publication_continuation.py:167"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:101",
-        "tests/test_viewer_publication_attempt.py:449",
-        "tests/test_viewer_publication_attempt.py:391",
-        "tests/test_publication_state_bounds.py:54"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:101",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:449",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:391",
+        "packages/viewer_publication/tests/test_publication_state_bounds.py:54"
       ],
       "reason": "Fresh restoration hashes each accepted file once and shares the issued proof across structural manifest/state validation. Same-process custody reuse does no new payload hashes; copied/plain proofs, missing/extra files, same-size shard edits and code/runtime/policy/source changes refuse. Separate workflow verify-prepared and publish processes each reverify by design, preserving independent custody boundaries.",
       "remaining_action": null,
@@ -5638,9 +5638,9 @@
         "scripts/viewer_publication_attempt.py:238"
       ],
       "tests_read": [
-        "tests/test_publication_cli.py:92",
-        "tests/test_publication_cli.py:112",
-        "tests/test_publication_cli.py:47"
+        "scripts/publication/tests/test_publication_cli.py:92",
+        "scripts/publication/tests/test_publication_cli.py:112",
+        "scripts/publication/tests/test_publication_cli.py:47"
       ],
       "reason": "Artifact ID/name/digest/original run/expiry each has precise credential-free diagnostic before journal/publication writes. Bounded read-only lookup resolves one original descriptor and requires explicit artifact ID on ambiguity. Hosted artifact acceptance and retained metadata now establish actual GitHub use; test service stubs remain the failure-branch evidence. Entire hosted artifact was not independently downloaded/rehashed.",
       "remaining_action": null,
@@ -5691,10 +5691,10 @@
         "scripts/publication_cli.py:127"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:133",
-        "tests/test_viewer_publication_attempt.py:163",
-        "tests/test_viewer_publication_attempt.py:275",
-        "tests/test_publication_cli.py:37"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:133",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:163",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:275",
+        "scripts/publication/tests/test_publication_cli.py:37"
       ],
       "reason": "Publication now uses shared ContinuedPublicationClient, bounded validated restore, one-checkpoint reconstruction, accepted inventory/status and reliable CLI failure receipt. Artifact/body/original conditions, explicit restart and superseded states remain strong. Controller still manipulates continuation internals and string-key dictionaries, with special committed-recovery handling; normal success durability cost remains. No explicit accepted-plan/lifecycle type has replaced those overlapping state models.",
       "remaining_action": "Represent accepted preparation/attempt outcomes through one inspectable plan and lifecycle API shared by local/cloud callers; retain distinct artifact/local custody and exact crash recovery.",
@@ -5753,9 +5753,9 @@
         "docs/experiments/publication-remediation/control.md:100"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:190",
-        "tests/test_viewer_publication_attempt.py:341",
-        "tests/test_publication_control_reads.py:38"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:190",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:341",
+        "apps/site/tests/test_publication_control_reads.py:38"
       ],
       "reason": "Fresh shared-commit guard compares original source/mapping values and tracked versions, permitting its own reconciled viewer selection. Read-only interleaving test and docs explicitly deny cross-object atomicity. Final viewer condition fences competing pointer writers; later input movement needs the next poll. Some boundary dict/tuple conversion remains, but the correctness claim is now accurate.",
       "remaining_action": null,
@@ -5808,9 +5808,9 @@
         "scripts/recovery_publication_continuation.py:236"
       ],
       "tests_read": [
-        "tests/test_viewer_publication_attempt.py:163",
-        "tests/test_viewer_publication_attempt.py:227",
-        "tests/test_recovery_publication_continuation.py:62"
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:163",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:227",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:62"
       ],
       "reason": "Tracked authority advances only after complete readback and before verified-event completion; explicit resume reconciles process loss in that gap. Restoring journal writes now checkpoints once. after_write still performs a full state flush for protected keys followed by the verified event state flush; no reduction of those normal authority checkpoints has been demonstrated.",
       "remaining_action": "Evaluate one crash-safe checkpoint owner for protected-version advancement and verified state; retain intent/readback ordering and pointer-commit interruption tests.",
@@ -5865,9 +5865,9 @@
         "scripts/dispatch_corpus_recovery_publication.py:154"
       ],
       "tests_read": [
-        "tests/test_guarded_recovery_publication_client.py:144",
-        "tests/test_recovery_publication_continuation.py:106",
-        "tests/test_recovery_viewer_transfers.py:91"
+        "packages/viewer_publication/tests/test_guarded_recovery_publication_client.py:144",
+        "packages/viewer_publication/tests/test_recovery_publication_continuation.py:106",
+        "packages/viewer_publication/tests/test_recovery_viewer_transfers.py:91"
       ],
       "reason": "Nested attempt writer is retired in favor of the same shared continuation-aware writer as local recovery. Before reuse, original condition/body and exact current-client object proof must agree. Shared selector writes invoke fresh guard; immutable replay may reuse only bounded current-version proof. This removes the duplicated transfer subclass without merging distinct admission evidence.",
       "remaining_action": null,
@@ -5926,9 +5926,9 @@
         "apps/site/scripts/filename_alias_index.py:137"
       ],
       "tests_read": [
-        "tests/test_filename_aliases.py:31",
-        "tests/test_filename_aliases.py:86",
-        "tests/test_filename_recoveries.py:235"
+        "apps/site/tests/test_filename_aliases.py:31",
+        "apps/site/tests/test_filename_aliases.py:86",
+        "apps/site/tests/test_filename_recoveries.py:235"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/preparation-aliases.md",
@@ -5974,9 +5974,9 @@
         "apps/site/scripts/publish-filename-viewer.py:281"
       ],
       "tests_read": [
-        "tests/test_filename_details.py:11",
-        "tests/test_filename_decoded_budget.py:176",
-        "tests/test_filename_decoded_budget.py:187"
+        "apps/site/tests/test_filename_details.py:11",
+        "apps/site/tests/test_filename_decoded_budget.py:176",
+        "apps/site/tests/test_filename_decoded_budget.py:187"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/decoded-memory.md",
@@ -6019,9 +6019,9 @@
         "apps/site/scripts/filename_details.py:70"
       ],
       "tests_read": [
-        "tests/test_filename_decoded_budget.py:163",
-        "tests/test_filename_decoded_budget.py:176",
-        "tests/test_filename_decoded_budget.py:187"
+        "apps/site/tests/test_filename_decoded_budget.py:163",
+        "apps/site/tests/test_filename_decoded_budget.py:176",
+        "apps/site/tests/test_filename_decoded_budget.py:187"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/decoded-memory.md"
@@ -6062,8 +6062,8 @@
         "apps/site/scripts/filename_budget.py:191"
       ],
       "tests_read": [
-        "tests/test_filename_decoded_budget.py:187",
-        "tests/test_filename_decoded_budget.py:211"
+        "apps/site/tests/test_filename_decoded_budget.py:187",
+        "apps/site/tests/test_filename_decoded_budget.py:211"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/decoded-memory.md",
@@ -6149,7 +6149,7 @@
         "apps/site/scripts/filename_observations.py:177"
       ],
       "tests_read": [
-        "tests/test_filename_decoded_budget.py:211"
+        "apps/site/tests/test_filename_decoded_budget.py:211"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/decoded-memory.md"
@@ -6193,8 +6193,8 @@
         "apps/site/scripts/filename_observations.py:146"
       ],
       "tests_read": [
-        "tests/test_filename_observations.py:86",
-        "tests/test_filename_observations.py:121"
+        "apps/site/tests/test_filename_observations.py:86",
+        "apps/site/tests/test_filename_observations.py:121"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/preparation-readers.md"
@@ -6236,9 +6236,9 @@
         "apps/site/scripts/filename_budget.py:191"
       ],
       "tests_read": [
-        "tests/test_filename_decoded_budget.py:150",
-        "tests/test_filename_decoded_budget.py:211",
-        "tests/test_filename_observations.py:86"
+        "apps/site/tests/test_filename_decoded_budget.py:150",
+        "apps/site/tests/test_filename_decoded_budget.py:211",
+        "apps/site/tests/test_filename_observations.py:86"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/decoded-memory.md"
@@ -6283,9 +6283,9 @@
         "apps/site/scripts/filename_observations.py:84"
       ],
       "tests_read": [
-        "tests/test_filename_observations.py:30",
-        "tests/test_filename_observations.py:86",
-        "tests/test_filename_decoded_budget.py:211"
+        "apps/site/tests/test_filename_observations.py:30",
+        "apps/site/tests/test_filename_observations.py:86",
+        "apps/site/tests/test_filename_decoded_budget.py:211"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/decoded-memory.md"
@@ -6328,8 +6328,8 @@
         "apps/site/scripts/filename_observations.py:121"
       ],
       "tests_read": [
-        "tests/test_filename_observations.py:86",
-        "tests/test_filename_observations.py:121"
+        "apps/site/tests/test_filename_observations.py:86",
+        "apps/site/tests/test_filename_observations.py:121"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/preparation-readers.md"
@@ -6371,10 +6371,10 @@
         "apps/site/scripts/filename_observations.py:28"
       ],
       "tests_read": [
-        "tests/test_filename_observations.py:133",
-        "tests/test_filename_observations.py:162",
-        "tests/test_filename_observations.py:189",
-        "tests/test_filename_decoded_budget.py:237"
+        "apps/site/tests/test_filename_observations.py:133",
+        "apps/site/tests/test_filename_observations.py:162",
+        "apps/site/tests/test_filename_observations.py:189",
+        "apps/site/tests/test_filename_decoded_budget.py:237"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/observation-units.md",
@@ -6422,9 +6422,9 @@
         "apps/site/scripts/filename_observations.py:225"
       ],
       "tests_read": [
-        "tests/test_filename_observations.py:37",
-        "tests/test_filename_observations.py:64",
-        "tests/test_filename_observations.py:133"
+        "apps/site/tests/test_filename_observations.py:37",
+        "apps/site/tests/test_filename_observations.py:64",
+        "apps/site/tests/test_filename_observations.py:133"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/decoded-memory.md",
@@ -6471,9 +6471,9 @@
         "apps/site/scripts/filename_json_stream.py:95"
       ],
       "tests_read": [
-        "tests/test_filename_decoded_budget.py:211",
-        "tests/test_filename_decoded_budget.py:225",
-        "tests/test_filename_decoded_budget.py:349"
+        "apps/site/tests/test_filename_decoded_budget.py:211",
+        "apps/site/tests/test_filename_decoded_budget.py:225",
+        "apps/site/tests/test_filename_decoded_budget.py:349"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/decoded-memory.md"
@@ -6516,7 +6516,7 @@
         "apps/site/scripts/filename_aliases.py:38"
       ],
       "tests_read": [
-        "tests/test_filename_recoveries.py:228"
+        "apps/site/tests/test_filename_recoveries.py:228"
       ],
       "evidence_read": [
         ".tickets/ct-qspb.md"
@@ -6561,10 +6561,10 @@
         "apps/site/scripts/publish-viewer-r2.py:286"
       ],
       "tests_read": [
-        "tests/test_filename_recoveries.py:235",
-        "tests/test_filename_recoveries.py:271",
-        "tests/test_viewer_publication_attempt.py:239",
-        "tests/test_viewer_publication_attempt.py:475"
+        "apps/site/tests/test_filename_recoveries.py:235",
+        "apps/site/tests/test_filename_recoveries.py:271",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:239",
+        "packages/viewer_publication/tests/test_viewer_publication_attempt.py:475"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/preparation-aliases.md",
@@ -7018,9 +7018,9 @@
         "apps/site/scripts/filename_budget.py:136"
       ],
       "tests_read": [
-        "tests/test_filename_decoded_budget.py:249",
-        "tests/test_filename_decoded_budget.py:260",
-        "tests/test_filename_decoded_budget.py:292",
+        "apps/site/tests/test_filename_decoded_budget.py:249",
+        "apps/site/tests/test_filename_decoded_budget.py:260",
+        "apps/site/tests/test_filename_decoded_budget.py:292",
         ".github/tests/test_filename_publication.py:134"
       ],
       "evidence_read": [
@@ -7071,8 +7071,8 @@
       "tests_read": [
         "tests/test_catalog_pair_validation.py:95",
         "tests/test_catalog_pair_validation.py:74",
-        "tests/test_filename_decoded_budget.py:187",
-        "tests/test_filename_observations.py:133"
+        "apps/site/tests/test_filename_decoded_budget.py:187",
+        "apps/site/tests/test_filename_observations.py:133"
       ],
       "evidence_read": [
         "docs/experiments/publication-remediation/current-catalog-qualification-20261018.md",

@@ -186,8 +186,8 @@ data, then saves `pipeline-data/committee-explorer/{public,state,attempts.json}`
 Only that verified publication dispatches `deploy-pages.yml`. Collection success
 alone is not a claim of successful publication.
 
-`tests/test_congress_api_boundaries.py` freezes script names, checks source purity
-and the workflow's explore exclusion. `tests/test_congress_api_imports.py` enforces
+`packages/congress_api/tests/test_congress_api_boundaries.py` freezes script names, checks source purity
+and the workflow's explore exclusion. `packages/congress_api/tests/test_congress_api_imports.py` enforces
 the allowed folder imports declared in `pyproject.toml`, including relative and
 nested imports. This is a local/CI
 regression gate, not evidence that a new workflow has run on GitHub.

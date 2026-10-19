@@ -532,7 +532,7 @@ Run focused tests from the repository root:
 
 ```bash
 .venv/bin/python -m pytest packages/house-naming/tests \
-  tests/test_filename_patterns.py tests/test_filename_audit_fixes.py -q
+  tests/test_filename_patterns.py -q
 ```
 
 Tests exercise source definitions and examples, exact fields and offsets, and
@@ -565,12 +565,12 @@ Neither date order, year, yes/no allocation nor outcome is inferred. The origina
 filename and all captured substrings remain unchanged.
 
 The repository's
-[comparison tool](../../tests/compare_filename_families.py) replays a frozen
+[comparison tool](tools/compare_filename_families.py) replays a frozen
 baseline against current code, distinguishing new useful fields from new layout
 matches. Keep the baseline reader, vocabulary, dependencies and input hashes
 together; replacing any of them invalidates the comparison. Historical setup and
 results are recorded in the
-[filename-family experiment](../../tests/filename-family-experiment.md).
+[filename-family experiment](notes/filename-family-experiment.md).
 
 For deliberate interpretation corrections, `--expected-changes` accepts reviewed
 exact before/after match hashes keyed by filename. Undeclared changes are first

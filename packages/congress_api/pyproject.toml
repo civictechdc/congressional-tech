@@ -52,7 +52,7 @@ where = ["src"]
 
 
 # Direct imports between responsibility folders. Same-folder imports are allowed.
-# tests/test_congress_api_imports.py checks absolute, relative and function-local imports.
+# packages/congress_api/tests/test_congress_api_imports.py checks absolute, relative and function-local imports.
 [tool.congress-api.import-fences]
 models = []
 parsers = ["models"]
