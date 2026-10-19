@@ -88,6 +88,40 @@ including missing dates, dated and undated absence, committee scope, literal
 document codes and provider URL boundaries. Import-fence tests prevent source
 helpers from depending on application adapters or normalized record models.
 
+## Document category mapping owners
+
+Each mapping serves a different output. Maintain it with its consumer:
+
+| Owner | Input → output | Preserved distinction |
+| --- | --- | --- |
+| `parsers.document_types.DOCUMENT_TYPE_MEANINGS` | Publisher codes/labels → literal meanings | `TC` means `table-of-contents`; titles and filenames supply no evidence here. `document_label_kind` separately interprets explicit document-link labels. |
+| `parsers.house_documents.COLLECTOR_KINDS` / `XML_KINDS` | Literal meanings / House XML codes → historical collection kinds | `TC` becomes `hearing record`; `SD` stays `support document` and permits description-based refinement. `summary` and `questionnaire` have no collector mapping. |
+| `adapters.documents.DOCUMENT_CATEGORIES` / `HOUSE_DOCUMENT_CATEGORIES` | Literal meanings / House XML codes → Explorer categories | `committee-vote` becomes `vote`; `TC` becomes `hearing_record`. `questionnaire` has no direct mapping. The House code map omits `SD` so its description can refine the result. |
+| `house_naming.categories._FAMILY_MEMBERS` | Selected document kinds → browsing families | `committee-vote` belongs to `vote-record`; `table-of-contents` keeps its own family. Unknown kinds retain their names; multiple kinds produce sorted, distinct families. |
+| `committee_meeting.materials.DocumentDetails.category` | Explorer category → model validation | The allowed values describe broad document uses; they do not define publisher meanings or filename rules. |
+
+`adapters.documents.category` owns Explorer label priority and ordered title
+fallback. The `documentType` field takes precedence over `kind` when selecting
+an explicit label. Only its existing specific label set outranks title wording;
+other labels retain the historical keyword fallback. House XML uses its code map
+first. Meeting, House and Senate adapters share this policy; the existing
+`adapters.meetings.category`, `adapters.meetings.DOCUMENT_CATEGORIES` and
+`adapters.house.DOCUMENT_CATEGORIES` import names remain available.
+
+The retained index selects publisher and filename claims separately, preserving
+the source values and the selected evidence. A family groups the selected kind;
+it does not reclassify a filename, a source label or document contents.
+
+`tests/fixtures/document_category_mapping_baseline.json` records the complete
+mapping sets and every publisher alias's neutral/conflicting-title outputs from
+unmodified commit `b191fc8`, captured before this extraction.
+`tests/test_document_category_mappings.py` checks those outputs, intentional
+mapping omissions, model compatibility, family membership, unknown values,
+multiple-kind order/deduplication, all title-keyword priority pairs and retained
+source claims. Existing filename and adapter tests check literal fields and
+evidence. Changes to a mapping require a deliberate policy decision and an
+explicit baseline update.
+
 ## Commands and artifacts
 
 These twelve production console script names are stable. Default data paths are relative
