@@ -25,12 +25,12 @@ def digest(path):
 
 
 def cloud_clear():
-    from recovery_guards import active_cloud_writers
+    from corpus_recovery.recovery_guards import active_cloud_writers
     active_cloud_writers()
 
 
 def verify_import(batch, imported, *, readiness=None):
-    from publication_import_evidence import verify_import as verify
+    from corpus_recovery.publication_import_evidence import verify_import as verify
     return verify(batch, imported, readiness=readiness)
 
 
@@ -71,8 +71,8 @@ def run(args):
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     destination = args.destination.resolve()
     parent = os.getppid()
-    from recovery_publication_continuation import Continuation
-    from recovery_guards import RecoveryGuard
+    from viewer_publication.recovery_publication_continuation import Continuation
+    from corpus_recovery.recovery_guards import RecoveryGuard
     def report(name, value):
         continuation.save(name, (json.dumps(value, indent=2) + '\n').encode())
     def journal(event, value):
@@ -86,11 +86,19 @@ def run(args):
     paths += list(batch.glob('*.json')) + list((ROOT/'scripts').glob('*corpus_recovery*.py'))
     import viewer_publication.guarded_recovery_publication_client as publication_client
     import viewer_publication.recovery_publication_continuation as publication_continuation
+    import viewer_publication.lost_acknowledgment as acknowledgment_module
+    import corpus_recovery.recovery_guards as recovery_guard_module
+    import corpus_recovery.publication_import_evidence as evidence_module
+    import corpus_recovery.publish_corpus_recovery_mappings as mapping_module
     paths += [ROOT/'scripts/guarded_recovery_publication_client.py',
               ROOT/'scripts/recovery_publication_continuation.py', ROOT/'scripts/recovery_guards.py',
               ROOT/'scripts/publication_import_evidence.py',
               Path(publication_client.__file__).resolve(),
               Path(publication_continuation.__file__).resolve(),
+              Path(acknowledgment_module.__file__).resolve(),
+              Path(recovery_guard_module.__file__).resolve(),
+              Path(evidence_module.__file__).resolve(),
+              Path(mapping_module.__file__).resolve(),
               args.baseline.resolve(), args.config.resolve(),
               imported/'payloads/import-complete.json', imported/'events.jsonl']
     paths += [imported/'payloads'/key for key in ('indexes/captures.parquet', 'indexes/download-state.parquet')]
@@ -117,7 +125,7 @@ def run(args):
     from congress_api.retention.raw_catalog import rebuild_catalog_in_directory
     from filename_recoveries import accepted_rows
     from guarded_recovery_publication_client import ContinuedPublicationClient
-    from publish_corpus_recovery_mappings import publish_mappings
+    from corpus_recovery.publish_corpus_recovery_mappings import publish_mappings
     config = configparser.ConfigParser(); config.read(args.config); account = config['congressionalraw']
     client = boto3.client('s3', endpoint_url=account['endpoint'], region_name='auto',
         aws_access_key_id=account['access_key_id'], aws_secret_access_key=account['secret_access_key'],

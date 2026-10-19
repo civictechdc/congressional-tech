@@ -10,6 +10,7 @@ dependencies = [
     "congress-api[archive,test]",
     "congress-youtube",
     "viewer-publication",
+    "corpus-recovery",
 ]
 
 [dependency-groups]
@@ -27,6 +28,7 @@ members = [
     "packages/youtube_api",
     "packages/congress_api",
     "packages/viewer_publication",
+    "packages/corpus_recovery",
     "apps/committee_youtube",
 ]
 
@@ -38,3 +40,4 @@ youtube-api = { workspace = true }
 congress-api = { workspace = true }
 congress-youtube = { workspace = true }
 viewer-publication = { workspace = true }
+corpus-recovery = { workspace = true }

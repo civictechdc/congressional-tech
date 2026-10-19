@@ -14,6 +14,7 @@ members = [
     "congress-shared",
     "congress-youtube",
     "congressional-tech-workspace",
+    "corpus-recovery",
     "house-naming-guide",
     "viewer-publication",
     "youtube-api",
@@ -487,6 +488,7 @@ dependencies = [
     { name = "congress-api", extra = ["archive", "test"] },
     { name = "congress-shared" },
     { name = "congress-youtube" },
+    { name = "corpus-recovery" },
     { name = "house-naming-guide", extra = ["test"] },
     { name = "viewer-publication" },
     { name = "youtube-api" },
@@ -503,6 +505,7 @@ requires-dist = [
     { name = "congress-api", extras = ["archive", "test"], editable = "packages/congress_api" },
     { name = "congress-shared", editable = "packages/congress_shared" },
     { name = "congress-youtube", editable = "apps/committee_youtube" },
+    { name = "corpus-recovery", editable = "packages/corpus_recovery" },
     { name = "house-naming-guide", extras = ["test"], editable = "packages/house-naming" },
     { name = "viewer-publication", editable = "packages/viewer_publication" },
     { name = "youtube-api", editable = "packages/youtube_api" },
@@ -510,6 +513,21 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [{ name = "pyyaml", specifier = ">=6,<7" }]
+
+[[package]]
+name = "corpus-recovery"
+version = "0.1.0"
+source = { editable = "packages/corpus_recovery" }
+dependencies = [
+    { name = "congress-api", extra = ["archive"] },
+    { name = "viewer-publication" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "congress-api", extras = ["archive"], editable = "packages/congress_api" },
+    { name = "viewer-publication", editable = "packages/viewer_publication" },
+]
 
 [[package]]
 name = "cryptography"

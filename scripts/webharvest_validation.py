@@ -37,6 +37,11 @@ def immutable(path, value):
         temporary.unlink()
 
 
+def classifier_directory():
+    """Real classifier sources. A frozen snapshot must not exec the command shims."""
+    return Path(__file__).resolve().parents[1] / 'packages/corpus_recovery/src/corpus_recovery'
+
+
 def freeze(directory, config):
     """Resume using retained classifier bytes, even after maintained code changes."""
     directory.mkdir(parents=True, exist_ok=True)
@@ -52,10 +57,12 @@ def freeze(directory, config):
         if digest(implementation) != value['implementation_sha256']:
             raise ValueError('Frozen validator implementation changed')
         return value
-    scripts = Path(__file__).resolve().parent
-    first = (scripts / 'classify_recovery_html.py').read_text()
-    second = (scripts / 'classify_recovery_html_transcripts.py').read_text()
-    second = second.replace('from classify_recovery_html import classify as classify_drupal', 'classify_drupal = classify')
+    source_dir = classifier_directory()
+    first = (source_dir / 'classify_recovery_html.py').read_text()
+    second = (source_dir / 'classify_recovery_html_transcripts.py').read_text()
+    second = second.replace(
+        'from corpus_recovery.classify_recovery_html import classify as classify_drupal',
+        'classify_drupal = classify')
     source = (first + '\n' + second).encode()
     classifier = directory / 'classifier.py'
     # This directory belongs exclusively to the caller's locked run.

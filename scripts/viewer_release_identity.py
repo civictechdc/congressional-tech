@@ -34,6 +34,7 @@ def source_files(root):
         'scripts/recovery_publication_continuation.py','scripts/guarded_recovery_publication_client.py',
         'scripts/publication_verification.py','scripts/viewer_release_identity.py','scripts/publication_preflight.py',
         'packages/viewer_publication/src/viewer_publication/__init__.py',
+        'packages/viewer_publication/src/viewer_publication/lost_acknowledgment.py',
         'packages/viewer_publication/src/viewer_publication/guarded_recovery_publication_client.py',
         'packages/viewer_publication/src/viewer_publication/recovery_publication_continuation.py',
         'packages/viewer_publication/src/viewer_publication/viewer_publication_attempt.py',

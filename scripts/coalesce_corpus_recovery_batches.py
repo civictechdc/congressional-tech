@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
-from reconcile_corpus_recovery_bodies import digest, sealed_inputs
+from corpus_recovery.reconcile_corpus_recovery_bodies import digest, sealed_inputs
 
 
 def canonical(value):

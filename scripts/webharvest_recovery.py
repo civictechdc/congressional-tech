@@ -24,7 +24,7 @@ from urllib.parse import urlsplit
 
 import requests
 
-from classify_recovery_html_transcripts import classify
+from corpus_recovery.classify_recovery_html_transcripts import classify
 from webharvest_validation import immutable, freeze, classify_cached, validate_pdf_frozen
 
 DISPOSITIONS = {'qualified', 'terminal-content', 'review-required',

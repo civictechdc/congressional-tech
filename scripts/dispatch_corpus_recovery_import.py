@@ -14,9 +14,9 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'packages/congress_api/src'))
-from import_corpus_recovery_batch import import_batch
-from publication_import_evidence import compare_loaded_digest, compare_source_preparation
-from recovery_guards import RecoveryGuard, active_cloud_writers
+from corpus_recovery.import_corpus_recovery_batch import import_batch
+from corpus_recovery.publication_import_evidence import compare_loaded_digest, compare_source_preparation
+from corpus_recovery.recovery_guards import RecoveryGuard, active_cloud_writers
 from congress_api.retention.raw_archive import CAPTURES_KEY, STATE_KEY, decode_table
 from congress_api.retention.r2 import R2Store
 
@@ -104,6 +104,14 @@ def run(args):
                  'assemble_corpus_recovery_import.py', 'reconcile_corpus_recovery_bodies.py',
                  'recovery_guards.py']:
         path = ROOT / 'scripts' / name
+        code[path] = digest(path)
+    import corpus_recovery.import_corpus_recovery_batch as import_batch_module
+    import corpus_recovery.assemble_corpus_recovery_import as assemble_module
+    import corpus_recovery.reconcile_corpus_recovery_bodies as reconcile_module
+    import corpus_recovery.recovery_guards as guards_module
+    import corpus_recovery.publication_import_evidence as evidence_module
+    for executing in (import_batch_module, assemble_module, reconcile_module, guards_module, evidence_module):
+        path = Path(executing.__file__).resolve()
         code[path] = digest(path)
     inputs = {batch / name: value for name, value in expected.items()}
     inputs[readiness_path] = digest(readiness_path)
