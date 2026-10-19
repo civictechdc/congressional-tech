@@ -1,0 +1,554 @@
+{
+  "version": 1,
+  "ticket": "ct-v6ao",
+  "baseline_revision": "6855f37ba98acec4b113f211650c0cee62319cec",
+  "candidate_runtime_revision": "5ef925157e7d3990526855ca51b058d92d050d38",
+  "trials_per_arm": 3,
+  "shared_inputs": {
+    "source_manifest_sha256": "b74045a6dbddaab6a3a53a75071d36c1098a1bacd3da26f3ea361709a89ba6d1",
+    "source_files": {
+      "expected.json": {
+        "bytes": 23056,
+        "sha256": "362ebb996ed48cdd85f309f779f75d6b47a9cf795efb41440b18d9e2d1f911f9"
+      },
+      "source-records.json": {
+        "bytes": 6210,
+        "sha256": "8715f725d1850ee92e2dbd2cd06f89ff3009834fc5fa8ff22e7a98956eaee17d"
+      },
+      "indexes/catalog.json": {
+        "bytes": 536,
+        "sha256": "b74045a6dbddaab6a3a53a75071d36c1098a1bacd3da26f3ea361709a89ba6d1"
+      },
+      "catalog-generations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/documents.parquet": {
+        "bytes": 25339,
+        "sha256": "412d476561bd70d77058d439a3edb8578c9fc14e24d7c21c5a8ae1a737a58940"
+      },
+      "catalog-generations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/document-filenames.parquet": {
+        "bytes": 31137,
+        "sha256": "add665a5eb6f06b09fe8c7ecea88e48590671b0e4a65dc05034468ea2cb8b4d7"
+      }
+    },
+    "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+    "executable": "/Users/mikewolfd/.codex/worktrees/efficiency-catalog/congressional-tech/.venv-catalog/bin/python",
+    "maximum_source_bytes": 1048576,
+    "controlled_request_latency_ms": 1.0,
+    "measurement_sources": {
+      "publication_costs.py": "24d8d1efae858fb91daf21e43730b39910a8380afcc9e9d3c1d278430b93a16a",
+      "measure_publication_control.py": "9cb39c09ba403393ed45d7bbdd13c57279d5e88801580e63fdd1bf296dbdd633",
+      "process_rss.py": "d998bdfb02a3eed8491fe6a7203a3c1efdbf854fbc0f11b7c55592d1c5e079d5",
+      "benchmark_viewer_publication.py": "4a8b88c7cb5112e06875514b8c25fc6a98ccefa19fba9d0468a5343ebd9cbc93"
+    },
+    "command_process_model": "source identity cache starts cold for each timed command; interpreter/import startup excluded",
+    "runtime": {
+      "implementation": "CPython",
+      "platform": "macOS-26.6-arm64-arm-64bit",
+      "machine": "arm64",
+      "packages": {
+        "pyarrow": "25.0.1",
+        "boto3": "1.43.106",
+        "botocore": "1.43.106",
+        "lxml": "6.0.2",
+        "duckdb": null,
+        "zstandard": null,
+        "ijson": "3.6.0"
+      }
+    }
+  },
+  "before": {
+    "accepted_preparation": {
+      "status": "complete",
+      "seconds_median": 0.51701012509875,
+      "seconds_range": [
+        0.5168050839565694,
+        0.7262198750395328
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 123748352,
+      "maximum_stage_end_scratch_bytes": 167815,
+      "median_counts": {
+        "decode_iterator_passes": 23,
+        "decode_read_passes": 2,
+        "decoded_batches": 23,
+        "decoded_rows": 56,
+        "download_bytes": 56476,
+        "download_requests": 2,
+        "fsync_calls": 8,
+        "fsync_seconds": 0.00034987623803317547,
+        "get_requests": 3,
+        "hash_helper_bytes": 2417702,
+        "hash_helper_passes": 229,
+        "json_dumps_calls": 20,
+        "json_serialization_seconds": 0.0010446659289300442,
+        "json_serialized_characters": 139088,
+        "largest_decoded_batch_bytes": 2131,
+        "remote_body_bytes_read": 536,
+        "sqlite_selects": 19,
+        "state_json_dump_calls": 2,
+        "state_json_serialization_seconds": 0.0005657488945871592,
+        "state_json_serialized_characters": 49252
+      }
+    },
+    "successful_publication": {
+      "status": "complete",
+      "seconds_median": 3.046883209142834,
+      "seconds_range": [
+        3.0218389998190105,
+        3.2404614170081913
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 126386176,
+      "maximum_stage_end_scratch_bytes": 769461,
+      "median_counts": {
+        "fsync_calls": 2193,
+        "fsync_seconds": 0.0939945806749165,
+        "get_requests": 833,
+        "hash_helper_bytes": 2361226,
+        "hash_helper_passes": 227,
+        "head_requests": 270,
+        "json_dumps_calls": 567,
+        "json_serialization_seconds": 0.0086914983112365,
+        "json_serialized_characters": 348852,
+        "put_body_bytes": 315587,
+        "put_requests": 821,
+        "remote_body_bytes_read": 319614,
+        "state_json_dump_calls": 548,
+        "state_json_serialization_seconds": 0.5656466796062887,
+        "state_json_serialized_characters": 61665612
+      }
+    },
+    "explicit_resume_failure": {
+      "status": "failed",
+      "seconds_median": 1.714063874911517,
+      "seconds_range": [
+        1.7123920409940183,
+        1.7874294170178473
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 127385600,
+      "maximum_stage_end_scratch_bytes": 769991,
+      "median_counts": {
+        "fsync_calls": 6,
+        "fsync_seconds": 0.0003864578902721405,
+        "get_requests": 827,
+        "hash_helper_bytes": 2361226,
+        "hash_helper_passes": 227,
+        "head_requests": 541,
+        "json_dumps_calls": 17,
+        "json_serialization_seconds": 0.0008048752788454294,
+        "json_serialized_characters": 108358,
+        "put_body_bytes": 265,
+        "put_requests": 1,
+        "remote_body_bytes_read": 318807,
+        "state_json_dump_calls": 2,
+        "state_json_serialization_seconds": 0.0033479160629212856,
+        "state_json_serialized_characters": 350690
+      }
+    },
+    "explicit_resume": {
+      "status": "complete",
+      "seconds_median": 1.7285348330624402,
+      "seconds_range": [
+        1.7153247080277652,
+        1.730128875002265
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 127352832,
+      "maximum_stage_end_scratch_bytes": 770701,
+      "median_counts": {
+        "fsync_calls": 7,
+        "fsync_seconds": 0.0006353345233947039,
+        "get_requests": 834,
+        "hash_helper_bytes": 2361226,
+        "hash_helper_passes": 227,
+        "head_requests": 543,
+        "json_dumps_calls": 20,
+        "json_serialization_seconds": 0.0008473775815218687,
+        "json_serialized_characters": 112379,
+        "put_body_bytes": 355,
+        "put_requests": 1,
+        "remote_body_bytes_read": 324000,
+        "state_json_dump_calls": 2,
+        "state_json_serialization_seconds": 0.003160458756610751,
+        "state_json_serialized_characters": 350690
+      }
+    },
+    "complete_success_path": {
+      "seconds_median": 3.5636882930994034,
+      "seconds_range": [
+        3.5388491249177605,
+        3.966681292047724
+      ],
+      "critical_path": [
+        "accepted_preparation",
+        "successful_publication"
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 126386176,
+      "maximum_stage_end_scratch_bytes": 769461,
+      "median_total_counts": {
+        "decode_iterator_passes": 23,
+        "decode_read_passes": 2,
+        "decoded_batches": 23,
+        "decoded_rows": 56,
+        "download_bytes": 56476,
+        "download_requests": 2,
+        "fsync_calls": 2201,
+        "fsync_seconds": 0.09434445691294968,
+        "get_requests": 836,
+        "hash_helper_bytes": 4778928,
+        "hash_helper_passes": 456,
+        "head_requests": 270,
+        "json_dumps_calls": 587,
+        "json_serialization_seconds": 0.009736164240166545,
+        "json_serialized_characters": 487940,
+        "largest_decoded_batch_bytes": 2131,
+        "put_body_bytes": 315587,
+        "put_requests": 821,
+        "remote_body_bytes_read": 320150,
+        "sqlite_selects": 19,
+        "state_json_dump_calls": 550,
+        "state_json_serialization_seconds": 0.5661717215552926,
+        "state_json_serialized_characters": 61714864
+      }
+    }
+  },
+  "after": {
+    "accepted_preparation": {
+      "status": "complete",
+      "seconds_median": 0.49880204093642533,
+      "seconds_range": [
+        0.486327167134732,
+        0.5111187919974327
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 121274368,
+      "maximum_stage_end_scratch_bytes": 162438,
+      "median_counts": {
+        "decode_iterator_passes": 23,
+        "decode_read_passes": 2,
+        "decoded_batches": 23,
+        "decoded_rows": 56,
+        "download_bytes": 56476,
+        "download_requests": 2,
+        "fsync_calls": 8,
+        "fsync_seconds": 0.00036841724067926407,
+        "get_requests": 3,
+        "hash_helper_bytes": 2417850,
+        "hash_helper_passes": 229,
+        "json_dumps_calls": 22,
+        "json_serialization_seconds": 0.0012001649010926485,
+        "json_serialized_characters": 182517,
+        "largest_decoded_batch_bytes": 2131,
+        "remote_body_bytes_read": 536,
+        "sqlite_selects": 19,
+        "state_json_dump_calls": 2,
+        "state_json_serialization_seconds": 0.00026504090055823326,
+        "state_json_serialized_characters": 43429
+      }
+    },
+    "successful_publication": {
+      "status": "complete",
+      "seconds_median": 2.4260545410215855,
+      "seconds_range": [
+        2.4113872919697315,
+        2.432516915956512
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 123322368,
+      "maximum_stage_end_scratch_bytes": 745769,
+      "median_counts": {
+        "fsync_calls": 2191,
+        "fsync_seconds": 0.07661017356440425,
+        "get_requests": 833,
+        "hash_helper_bytes": 2361374,
+        "hash_helper_passes": 227,
+        "head_requests": 270,
+        "json_dumps_calls": 1114,
+        "json_serialization_seconds": 0.14788269507698715,
+        "json_serialized_characters": 53841077,
+        "put_body_bytes": 315587,
+        "put_requests": 821,
+        "remote_body_bytes_read": 319614,
+        "state_json_dump_calls": 547,
+        "state_json_serialization_seconds": 0.14232958853244781,
+        "state_json_serialized_characters": 53492225
+      }
+    },
+    "explicit_resume_failure": {
+      "status": "failed",
+      "seconds_median": 1.572038291953504,
+      "seconds_range": [
+        1.5565856250468642,
+        1.6511126670520753
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 124059648,
+      "maximum_stage_end_scratch_bytes": 746299,
+      "median_counts": {
+        "fsync_calls": 6,
+        "fsync_seconds": 0.0004176250658929348,
+        "get_requests": 827,
+        "hash_helper_bytes": 2361374,
+        "hash_helper_passes": 227,
+        "head_requests": 541,
+        "json_dumps_calls": 19,
+        "json_serialization_seconds": 0.0018264157697558403,
+        "json_serialized_characters": 411664,
+        "put_body_bytes": 265,
+        "put_requests": 1,
+        "remote_body_bytes_read": 318807,
+        "state_json_dump_calls": 2,
+        "state_json_serialization_seconds": 0.0010750412475317717,
+        "state_json_serialized_characters": 303306
+      }
+    },
+    "explicit_resume": {
+      "status": "complete",
+      "seconds_median": 1.6440457918215543,
+      "seconds_range": [
+        1.569628082914278,
+        1.7346717088948935
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 124190720,
+      "maximum_stage_end_scratch_bytes": 747009,
+      "median_counts": {
+        "fsync_calls": 7,
+        "fsync_seconds": 0.000641791382804513,
+        "get_requests": 834,
+        "hash_helper_bytes": 2361374,
+        "hash_helper_passes": 227,
+        "head_requests": 543,
+        "json_dumps_calls": 22,
+        "json_serialization_seconds": 0.002030415227636695,
+        "json_serialized_characters": 415685,
+        "put_body_bytes": 355,
+        "put_requests": 1,
+        "remote_body_bytes_read": 324000,
+        "state_json_dump_calls": 2,
+        "state_json_serialization_seconds": 0.0010881249327212572,
+        "state_json_serialized_characters": 303306
+      }
+    },
+    "complete_success_path": {
+      "seconds_median": 2.9313189568929374,
+      "seconds_range": [
+        2.8977144591044635,
+        2.937173333019018
+      ],
+      "critical_path": [
+        "accepted_preparation",
+        "successful_publication"
+      ],
+      "maximum_sampled_process_tree_rss_bytes": 123322368,
+      "maximum_stage_end_scratch_bytes": 745769,
+      "median_total_counts": {
+        "decode_iterator_passes": 23,
+        "decode_read_passes": 2,
+        "decoded_batches": 23,
+        "decoded_rows": 56,
+        "download_bytes": 56476,
+        "download_requests": 2,
+        "fsync_calls": 2199,
+        "fsync_seconds": 0.07842014846391976,
+        "get_requests": 836,
+        "hash_helper_bytes": 4779224,
+        "hash_helper_passes": 456,
+        "head_requests": 270,
+        "json_dumps_calls": 1136,
+        "json_serialization_seconds": 0.14908181852661073,
+        "json_serialized_characters": 54023594,
+        "largest_decoded_batch_bytes": 2131,
+        "put_body_bytes": 315587,
+        "put_requests": 821,
+        "remote_body_bytes_read": 320150,
+        "sqlite_selects": 19,
+        "state_json_dump_calls": 549,
+        "state_json_serialization_seconds": 0.14258088055066764,
+        "state_json_serialized_characters": 53535654
+      }
+    }
+  },
+  "exact_output_check": [
+    {
+      "files": 269,
+      "review_binding": {
+        "sha256": "2f5185e6de5983a0610eb7a171c56709011b327ba0fe4cafa3715a38c7e5b1d7",
+        "bound": 0,
+        "withdrawn": 86,
+        "withdrawn_reasons": {
+          "document_missing": 86
+        }
+      },
+      "recovery_prepared": {
+        "before": {
+          "sha256": "f21407d86ef595d79721e5e960631ca642d9088f3c510a3e920796d22845804e",
+          "bytes": 1182
+        },
+        "after": {
+          "sha256": "f21407d86ef595d79721e5e960631ca642d9088f3c510a3e920796d22845804e",
+          "bytes": 1182
+        },
+        "before_required": true,
+        "after_required": true,
+        "published_value_verified": true,
+        "exact_value_and_normalized_inputs": true
+      },
+      "published_recovery": {
+        "before": {
+          "sha256": "d0a71ed2cd9cfd4532f61cc3a42d8eef6b4cd4687227d7fd44eaa3f6b271f27e",
+          "bytes": 123,
+          "pointer_sha256": "c0713767cf7d3ffdf5aebc3fe7b06e27171d141f389802ec3e1a734bf19d5573"
+        },
+        "after": {
+          "sha256": "d0a71ed2cd9cfd4532f61cc3a42d8eef6b4cd4687227d7fd44eaa3f6b271f27e",
+          "bytes": 123,
+          "pointer_sha256": "f6c2127acba302f3821c7cdbcd0dccdaff00f614428d8fbb8bd6956771961804"
+        },
+        "byte_identical": true
+      }
+    },
+    {
+      "files": 269,
+      "review_binding": {
+        "sha256": "2f5185e6de5983a0610eb7a171c56709011b327ba0fe4cafa3715a38c7e5b1d7",
+        "bound": 0,
+        "withdrawn": 86,
+        "withdrawn_reasons": {
+          "document_missing": 86
+        }
+      },
+      "recovery_prepared": {
+        "before": {
+          "sha256": "f21407d86ef595d79721e5e960631ca642d9088f3c510a3e920796d22845804e",
+          "bytes": 1182
+        },
+        "after": {
+          "sha256": "f21407d86ef595d79721e5e960631ca642d9088f3c510a3e920796d22845804e",
+          "bytes": 1182
+        },
+        "before_required": true,
+        "after_required": true,
+        "published_value_verified": true,
+        "exact_value_and_normalized_inputs": true
+      },
+      "published_recovery": {
+        "before": {
+          "sha256": "d0a71ed2cd9cfd4532f61cc3a42d8eef6b4cd4687227d7fd44eaa3f6b271f27e",
+          "bytes": 123,
+          "pointer_sha256": "8d88bf187de1dc7a09e7456b79b9fe24a81b0fcee804ac573c42b687f984e0bc"
+        },
+        "after": {
+          "sha256": "d0a71ed2cd9cfd4532f61cc3a42d8eef6b4cd4687227d7fd44eaa3f6b271f27e",
+          "bytes": 123,
+          "pointer_sha256": "4d9d8f7888e8cf06a8cb77ed0437410f6c1660ab96875f8fd01a60dc5991e165"
+        },
+        "byte_identical": true
+      }
+    },
+    {
+      "files": 269,
+      "review_binding": {
+        "sha256": "2f5185e6de5983a0610eb7a171c56709011b327ba0fe4cafa3715a38c7e5b1d7",
+        "bound": 0,
+        "withdrawn": 86,
+        "withdrawn_reasons": {
+          "document_missing": 86
+        }
+      },
+      "recovery_prepared": {
+        "before": {
+          "sha256": "f21407d86ef595d79721e5e960631ca642d9088f3c510a3e920796d22845804e",
+          "bytes": 1182
+        },
+        "after": {
+          "sha256": "f21407d86ef595d79721e5e960631ca642d9088f3c510a3e920796d22845804e",
+          "bytes": 1182
+        },
+        "before_required": true,
+        "after_required": true,
+        "published_value_verified": true,
+        "exact_value_and_normalized_inputs": true
+      },
+      "published_recovery": {
+        "before": {
+          "sha256": "d0a71ed2cd9cfd4532f61cc3a42d8eef6b4cd4687227d7fd44eaa3f6b271f27e",
+          "bytes": 123,
+          "pointer_sha256": "48fcb785fd90e347894d8e8461d6e27f1a76110e709cd71c3ebd850ff75665b8"
+        },
+        "after": {
+          "sha256": "d0a71ed2cd9cfd4532f61cc3a42d8eef6b4cd4687227d7fd44eaa3f6b271f27e",
+          "bytes": 123,
+          "pointer_sha256": "5664607ad21a9e2de1444c2b5feefc08954a0b40b8595e8927d381b01218ee18"
+        },
+        "byte_identical": true
+      }
+    }
+  ],
+  "raw_comparison": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/output/efficiency-debt-20261019/checkpoint/comparison.json",
+    "sha256": "940e2019d3680d1e7f012ecde44219e461cd50c083962f95659461a49e0bc143"
+  },
+  "proposal": {
+    "baseline": "6855f37ba98acec4b113f211650c0cee62319cec",
+    "fixture": "maintained filename-test-fixture,7 sources6 groups; in-memory Remote and explicit custody adapter only",
+    "maximum_source_bytes": 1048576,
+    "rss_watchdog_bytes": 2147483648,
+    "deadline_per_arm_seconds": 120,
+    "scratch_ceiling_bytes": 1073741824,
+    "controlled_request_latency_ms": 1,
+    "repeats_per_arm": 3,
+    "metrics": [
+      "request counts/bytes",
+      "serialization calls/chars",
+      "fsyncs",
+      "controlled-latency wall",
+      "scratch",
+      "normal versus resume separated"
+    ],
+    "no_network_or_acquisition": true
+  },
+  "raw_receipts": {
+    "baseline-0/costs.json": {
+      "bytes": 8573,
+      "sha256": "06c3640f7ff25f1af447d68bed6a7bdfeb18d48151cb7f4304559f0a5e0ec0e9"
+    },
+    "baseline-1/costs.json": {
+      "bytes": 8576,
+      "sha256": "eb767d7ea26effeb95e05ad416a50babacecc7df67d29b322e03a750cf897c12"
+    },
+    "baseline-parity-1/costs.json": {
+      "bytes": 8576,
+      "sha256": "d31987d209c2efc65fd7b7938b963a41aae0af636854324cea7028b74a0cb66b"
+    },
+    "candidate-2/costs.json": {
+      "bytes": 8578,
+      "sha256": "9939a7e69a690341bd805e6fe4b3d5c7ae6ea163353462142e56642c51596902"
+    },
+    "baseline-parity-0/costs.json": {
+      "bytes": 8572,
+      "sha256": "4194fc5e8873b37052684f3669da979fb878984a75af6801bdf2f9346d29c151"
+    },
+    "baseline-2/costs.json": {
+      "bytes": 8577,
+      "sha256": "35849361e837a27c00b133ffaee2724ebe2f3554b7867cee2e591f49ff1ddd20"
+    },
+    "candidate-1/costs.json": {
+      "bytes": 8578,
+      "sha256": "fd9af23daf982c2b66b674515c846944cd4b2bca6b4592aada46b95bc881cb5c"
+    },
+    "baseline-parity-2/costs.json": {
+      "bytes": 8570,
+      "sha256": "61963e9933ef57ee0e6eb83c02e8d80c534c4bab45cac3f04274767a0c37272a"
+    },
+    "candidate-0/costs.json": {
+      "bytes": 8580,
+      "sha256": "7868ef842f3034ccb2032998797ab0dac0e909d5cf62025da67c2e78ae7a24a8"
+    }
+  },
+  "instrumentation": "Baseline-parity arms use a managed worktree at6855f37 with only the current non-runtime publication_costs telemetry helper copied in. Strict compare requires all four telemetry hashes and shared inputs identical. Original baseline diagnostic arms retained but excluded from accepted comparison.",
+  "baseline_worktree": "/Users/mikewolfd/.codex/worktrees/efficiency-checkpoint-baseline/congressional-tech",
+  "runtime_ownership": "One locked interpreter/third-party dependency set; explicit baseline PYTHONPATH selects its own package source owners. No venv links or sibling editable-install mutations. baseline-selected-imports.txt retained.",
+  "verification": {
+    "new_bounds_and_measurement": "74 passed in4.62s",
+    "existing_state_attempt_continuation": "60 passed in30.70s",
+    "strict_comparison": "3before/3after arms accepted;269 payload files, prepared recovery and published recovery normalization verified for each pair"
+  },
+  "limits": [
+    "Small generated fixture/in-memory Remote only;1ms modeled latency; no cloud throughput claim.",
+    "Compact serialization materializes JSON text plus encoded bytes before admission/write;32MiB is accepted state file limit, not process allocation limit.",
+    "All existing file/directory fsync boundaries and per-event checkpoints remain; only one redundant protected-version checkpoint removed.",
+    "Resume time not improved; normal and resume counts reported separately. No full-catalog/native-budget/deployed proof."
+  ]
+}
