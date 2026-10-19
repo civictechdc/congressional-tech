@@ -1,6 +1,6 @@
 ---
 id: ct-v6ao
-status: in_progress
+status: closed
 deps: [ct-2d3k, ct-tenb]
 links: [ct-d3un]
 created: 2026-10-19T16:40:41Z
@@ -35,3 +35,7 @@ Prioritized for efficiency and architectural debt per user direction. Require me
 **2026-10-19T19:42:42Z**
 
 Measured exact baseline6855f37 vs implementation5ef9251 with3 fresh matched fixture arms each and identical telemetry hashes,1ms controlled request latency. Strict comparison accepts269payload files, review/prepared/published recovery values. Complete normal median3.5637→2.9313s; state chars61,714,864→53,535,654 and fsync2201→2199; request/transfer/decode work unchanged. Per-event intent/readback/journal persistence preserved; compact JSON plus one verified-version owner. Resume has no speed improvement.60 existing +74 focused checks passed. Tracked checkpoints.md/evidence; ticket remainsin_progress for independent review.
+
+**2026-10-19T19:45:04Z**
+
+Independent review approved 1879546 with matched instrumentation and all 269 actual payload hashes per arm. Three normal-path fixture medians improve 3.564 to 2.931 seconds; no production or consistent resume speed claim. 60 existing plus 74 focused checks pass; durability boundaries retained.
