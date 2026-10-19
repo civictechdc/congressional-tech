@@ -268,3 +268,91 @@ def test_local_publication_keeps_original_conditions_after_own_selector_advance(
     continuation.flush()
     restored=Continuation(continuation.root,{},resume=True)
     assert module.publication_conditions(restored)==original=={'previous_etag':'before-viewer','selected_etag':'selected-source'}
+
+
+@__import__('pytest').mark.parametrize('outcome', ['refused', 'uncommitted', 'readback_failed', 'success', 'lost_ack'])
+def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_path, monkeypatch, outcome):
+    import hashlib
+    import io
+    import shutil
+    from types import SimpleNamespace
+    import pytest
+    from botocore.exceptions import ClientError
+    import congress_api.retention.raw_catalog as catalog_module
+    import congress_api.retention.r2 as storage
+
+    control = tmp_path / 'control'; (control / '.cache').mkdir(parents=True)
+    (control / 'scripts').mkdir()
+    for name in ('dispatch_corpus_recovery_publication.py', 'guarded_recovery_publication_client.py',
+                 'recovery_publication_continuation.py', 'recovery_guards.py', 'publication_import_evidence.py'):
+        shutil.copyfile(module.ROOT / 'scripts' / name, control / 'scripts' / name)
+    batch = tmp_path / 'batch'; batch.mkdir(); (batch / 'bodies.json').write_text('[]')
+    imported = tmp_path / 'imported'; (imported / 'payloads/indexes').mkdir(parents=True)
+    for name in ('captures.parquet', 'download-state.parquet'):
+        (imported / 'payloads/indexes' / name).write_bytes(b'imported')
+    (imported / 'payloads/import-complete.json').write_text('{}')
+    (imported / 'events.jsonl').write_text('')
+    baseline = tmp_path / 'baseline.json'; baseline.write_text('{}')
+    config = tmp_path / 'config.ini'
+    config.write_text('[congressionalraw]\nendpoint=https://invalid.test\naccess_key_id=fake\nsecret_access_key=fake\n')
+    destination = tmp_path / 'attempt'
+    selector = 'indexes/catalog.json'
+    before, proposed = b'{"catalog_id":"before"}', b'{"catalog_id":"proposed"}'
+    selected_path, proposed_path = destination / 'source' / selector, destination / 'proposed' / selector
+    objects = {selector: before, 'indexes/captures.parquet': b'imported', 'indexes/download-state.parquet': b'imported',
+               'viewer-publications/recoveries/accepted.json': b'{}', 'viewer-publications/manifest.json': b'{}'}
+    etag = lambda raw: hashlib.md5(raw).hexdigest()
+    class Client:
+        meta = SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts': 1}))
+        puts = 0
+        readbacks = 0
+        def get_object(self, *, Bucket, Key):
+            if Key == selector and self.puts:
+                self.readbacks += 1
+                assert selected_path.read_bytes() == before
+                assert proposed_path.read_bytes() == proposed
+                if outcome == 'readback_failed':
+                    raise OSError('readback unavailable')
+            raw = objects[Key]
+            return dict(Body=io.BytesIO(raw), ContentLength=len(raw), ETag=etag(raw))
+        def head_object(self, *, Bucket, Key):
+            return {'ETag': etag(objects[Key]), 'ContentLength': len(objects[Key])}
+        def put_object(self, **kwargs):
+            self.puts += 1
+            assert kwargs['Key'] == selector and kwargs['IfMatch'] == etag(before)
+            assert selected_path.read_bytes() == before and proposed_path.read_bytes() == proposed
+            if outcome == 'refused':
+                raise ClientError({'Error': {'Code': 'PreconditionFailed'}}, 'PutObject')
+            if outcome == 'uncommitted':
+                raise TimeoutError('commit unknown')
+            objects[selector] = kwargs['Body']
+            if outcome == 'lost_ack':
+                raise TimeoutError('committed acknowledgment lost')
+            return {'ETag': etag(objects[selector])}
+    client = Client()
+    class StoppedAfterSelection(RuntimeError):
+        pass
+    def build(store, **kwargs):
+        assert store.read(selector) == before
+        assert store.put(selector, proposed)
+        assert selected_path.read_bytes() == proposed
+        raise StoppedAfterSelection('verified selector installed')
+    monkeypatch.setattr(module, 'ROOT', control)
+    monkeypatch.setattr(module, 'verify_import', lambda *a, **kw: {})
+    monkeypatch.setattr(module, 'cloud_clear', lambda: None)
+    monkeypatch.setattr(module.shutil, 'disk_usage', lambda *_: SimpleNamespace(free=100 * 1024**3))
+    monkeypatch.setattr(storage, '_configure_retries', lambda *_: None)
+    monkeypatch.setattr(catalog_module, 'rebuild_catalog_in_directory', build)
+    monkeypatch.setattr('boto3.client', lambda *a, **kw: client)
+    args = SimpleNamespace(batch=batch, imported=imported, runtime=tmp_path / 'runtime', execute=True,
+        destination=destination, baseline=baseline, config=config, resume=False)
+    if outcome in ('success', 'lost_ack'):
+        with pytest.raises(StoppedAfterSelection):
+            module.run(args)
+        assert selected_path.read_bytes() == proposed
+    else:
+        with pytest.raises((RuntimeError, OSError)):
+            module.run(args)
+        assert selected_path.read_bytes() == before
+    assert proposed_path.read_bytes() == proposed
+    assert client.puts == 1 and client.readbacks == 1
