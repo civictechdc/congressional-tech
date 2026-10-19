@@ -46,6 +46,7 @@ LIST_COLUMNS = ('filename', 'source_url', 'body_key', 'congress', 'document_kind
                 'recovered_filename', 'recovered_source_url', 'source_congress',
                 'source_record_type', 'capture_outcome', 'state_outcome')
 FILTERS = ('congress', 'document_family', 'document_kind', 'format')
+GROUP_COLUMNS = ('filename', 'source_url', 'source_id', 'document_id', *FILTERS)
 
 
 def positive_integer(value, fallback=1, maximum=9007199254740991):
@@ -336,7 +337,8 @@ class Catalog:
         if not catalog_id or catalog_id != (self.document_file.schema_arrow.metadata or {}).get(b'catalog_id'):
             raise ValueError('The document indexes are from different builds. Rebuild them together.')
         self.fields = self.file.schema_arrow.names
-        self.table = self.file.read(columns=[c for c in LIST_COLUMNS if c in self.fields])
+        columns = LIST_COLUMNS if search_indexes else GROUP_COLUMNS
+        self.table = self.file.read(columns=[c for c in columns if c in self.fields])
         self.documents = self.document_file.read(columns=[c for c in LIST_COLUMNS if c in self.fields])
         entries = {key: i for i, key in enumerate(self.documents['document_id'].to_pylist())}
         self.document_id_entries = entries
@@ -348,7 +350,10 @@ class Catalog:
             self.members[entry].append(row_id)
         self.saved_responses = bytearray(len(self.documents))
         row_id = 0
-        for batch in self.table.select([name for name in SAVED_FIELDS if name in self.fields]).to_batches(max_chunksize=8192):
+        saved_columns = [name for name in SAVED_FIELDS if name in self.fields]
+        saved_batches = (self.table.select(saved_columns).to_batches(max_chunksize=8192) if search_indexes
+                         else self.file.iter_batches(batch_size=8192, columns=saved_columns))
+        for batch in saved_batches:
             for row in batch.to_pylist():
                 if saved_response(row):
                     self.saved_responses[self.entry_ids[row_id]] = 1
@@ -464,6 +469,14 @@ class Catalog:
                 joined = pc.utf8_lower(joined)
             self.filter_text[field] = pc.binary_join_element_wise('\0', joined, '\0', '')
 
+    def _ensure_list_columns(self):
+        """Load list rows for interactive use while this Catalog remains open."""
+        columns = [name for name in LIST_COLUMNS if name in self.fields]
+        if self.table.column_names != columns:
+            with self.read_lock:
+                if self.table.column_names != columns:
+                    self.table = self.file.read(columns=columns)
+
     def resolve(self, identity, catalog_id=None):
         if catalog_id and catalog_id != self.info['catalog_id']:
             raise SnapshotChanged('This link belongs to a different catalog snapshot. Close this panel and select the document in the current results.')
@@ -479,7 +492,7 @@ class Catalog:
     def searchable(self, field):
         if field not in self.fields:
             raise ValueError('Unknown search column.')
-        if field in LIST_COLUMNS:
+        if field in self.table.column_names:
             column = self.table[field]
         else:
             with self.read_lock:
@@ -490,6 +503,7 @@ class Catalog:
         return pc.binary_join(column, ' | ') if pa.types.is_list(column.type) else column
 
     def search(self, query):
+        self._ensure_list_columns()
         self._ensure_search_indexes()
         mode = query.get('classification', '')
         if mode not in ('', 'reviewed'):
@@ -616,6 +630,7 @@ class Catalog:
         return self._complete_rows(list(row_ids))
 
     def entry(self, row_id):
+        self._ensure_list_columns()
         record = self.record(row_id)
         ids = self.members[self.entry_ids[row_id]]
         sources = self.table.take(pa.array(ids, type=pa.int64())).to_pylist()

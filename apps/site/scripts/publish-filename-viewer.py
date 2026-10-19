@@ -324,7 +324,7 @@ def _publish(root, target, modified, *, validation, review_identities, compressi
     stage('review_binding', 'browse')
     # IDs are resolved when a row is opened; carrying both hashes on every
     # list row would duplicate tens of megabytes without displaying them.
-    browse = catalog.documents.take(catalog.order).drop([name for name in ['body_key', 'source_id', 'document_id', 'extension', 'recovered_filename', 'response_result'] if name in catalog.documents.column_names])
+    browse = catalog.documents.drop([name for name in ['body_key', 'source_id', 'document_id', 'extension', 'recovered_filename', 'response_result'] if name in catalog.documents.column_names]).take(catalog.order)
     basis = document_file.read(columns=['document_kind_source']).take(catalog.order) if 'document_kind_source' in document_file.schema_arrow.names else pa.table({'document_kind_source': pa.nulls(len(browse), type=pa.list_(pa.string()))})
     browse = browse.append_column('document_kind_source', basis.column(0))
     browse = browse.append_column('source_count', pa.array([len(catalog.members[value]) for value in order], type=pa.uint32()))
