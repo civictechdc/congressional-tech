@@ -15,6 +15,7 @@ from pathlib import Path
 from congress_api.models.content import RawContent
 from congress_api.models.gpo import GpoEvidenceObservation, GpoEvidenceRecord
 from congress_api.parsers.gpo_hearings import GpoHearing
+from congress_api.retention import tables
 
 
 def read_csv(path: Path) -> dict[str, dict]:
@@ -26,19 +27,11 @@ def read_csv(path: Path) -> dict[str, dict]:
 
 def write_csv(rows: dict[str, dict], path: Path) -> None:
     field_names = [field.name for field in fields(GpoHearing)]
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + '.tmp')
-    try:
-        with open(temporary, "w", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=field_names)
-            writer.writeheader()
-            ## sort so weekly diffs only show real changes
-            for package_id in sorted(rows):
-                writer.writerow(rows[package_id])
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    def ordered_rows():
+        # Keep sorting inside the writer's temporary-file cleanup boundary.
+        for package_id in sorted(rows):
+            yield rows[package_id]
+    tables.write_csv(path, ordered_rows(), field_names)
 
 
 def write_pending(values, path):
