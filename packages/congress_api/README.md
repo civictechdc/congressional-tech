@@ -762,7 +762,7 @@ lives in `transcripts.render`; generated responses are retained before interpret
 ## Import fences
 
 `[tool.congress-api.import-fences]` in `pyproject.toml` lists which responsibility
-folders each folder may import. `tests/test_congress_api_imports.py` enforces the
+folders each folder may import. `packages/congress_api/tests/test_congress_api_imports.py` enforces the
 list in the normal test/CI run, including absolute, relative, aliased and
 function-local imports. A new folder requires an explicit policy.
 
@@ -775,7 +775,7 @@ of these dependencies. No source module may depend on the explorer application.
 Run the focused boundary checks with:
 
 ```bash
-python -m pytest tests/test_congress_api_imports.py tests/test_congress_api_boundaries.py -q
+python -m pytest packages/congress_api/tests/test_congress_api_imports.py packages/congress_api/tests/test_congress_api_boundaries.py -q
 ```
 
 ## Tests
@@ -785,8 +785,8 @@ Install the optional extra, then run targeted suites (paths from package docs):
 ```bash
 uv pip install -e "packages/congress_api[test]"
 uv pip install -e "packages/house-naming[test]"
-python -m pytest packages/house-naming/tests tests/test_filename_patterns.py -q
-python -m pytest tests packages/committee_meeting/tests -q
+python -m pytest packages/house-naming/tests -q
+python -m pytest -q -m 'not loopback'
 ```
 
 See [source verification](SOURCE_MODELS.md#verification-and-limits) for fixture coverage,

@@ -48,7 +48,7 @@ accepted preparation or historical publication result does not prove that the
 public selection still matches. The next action identifies the evidence to
 inspect; it never authorizes or performs a resume.
 
-`tests/test_pipeline_status.py` covers expired/wrong-run heartbeats, revision and
+`scripts/publication/tests/test_pipeline_status.py` covers expired/wrong-run heartbeats, revision and
 attempt mismatches, decreasing counters, stage transitions, failed children with
 accepted preparation, successful children without public readback, unbound
 receipts, damaged journals and offline inspection with no network or writes.
