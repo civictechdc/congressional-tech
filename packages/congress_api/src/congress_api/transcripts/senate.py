@@ -36,7 +36,7 @@ from congress_api.parsers.captions import (
     merge_rollup,
     parsed_cues,
 )
-from congress_api.parsers.senate_player import LIVE_ID, STREAM, archive_url, live_url, parse_player_url
+from congress_api.parsers.senate_player import STREAM, parse_player_url, recording_urls
 from congress_api.retention.captions import RECEIPTS, _write_receipt, _write_text, receipt_path
 from congress_api.transport.senate import get_source
 
@@ -80,7 +80,7 @@ def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, st
         master_checks = []
         candidate_errors = []
         selected = None
-        master_urls = ([live_url(comm, fn)] if comm in LIVE_ID else []) + [archive_url(comm, fn)]
+        master_urls = recording_urls(comm, fn)
         for master_url in master_urls:
             receipt["scope"]["master_url"] = master_url
             try:

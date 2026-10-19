@@ -19,7 +19,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from congress_api.parsers.senate_player import LIVE_ID, STREAM, archive_url, live_url, parse_player_url
+from congress_api.parsers.senate_player import STREAM, parse_player_url, recording_urls
 
 FFMPEG_AUDIO = ["-vn", "-ac", "1", "-ar", "16000", "-c:a", "libmp3lame", "-b:a", "48k"]
 
@@ -64,7 +64,7 @@ def get_audio(out_dir: Path, video_id: str = "", senate_url: str = "", local: st
         comm, fn = parsed
         out = out_dir / f"{fn}.mp3"
         if not out.exists():
-            urls = ([live_url(comm, fn)] if comm in LIVE_ID else []) + [archive_url(comm, fn)]
+            urls = recording_urls(comm, fn)
             tmp = out.with_name(out.name + ".tmp")
             try:
                 tmp.unlink(missing_ok=True)

@@ -96,6 +96,48 @@ def test_senate_audio_skips_live_when_comm_lacks_live_id(tmp_path, monkeypatch):
     assert urls == [archive_url('intlnarc', 'intlnarc010126')]
 
 
+@pytest.mark.parametrize('live_available', [True, False])
+def test_senate_audio_preserves_candidate_order_and_cached_bytes(tmp_path, monkeypatch, live_available):
+    live = 'https://www-senate-gov-media-srs.akamaized.net/hls/live/2036783/epw/epw120623/master.m3u8'
+    archive = 'https://www-senate-gov-msl3archive.akamaized.net/environment/epw120623_1/master.m3u8'
+    urls = []
+
+    def capture(cmd, check=True):
+        url = cmd[cmd.index('-i') + 1]
+        urls.append(url)
+        if url == live and not live_available:
+            Path(cmd[-1]).write_bytes(b'partial live audio')
+            return 1
+        Path(cmd[-1]).write_bytes(b'complete audio')
+        return 0
+
+    monkeypatch.setattr(audio, 'run', capture)
+    player = 'https://www.senate.gov/isvp/?comm=epw&filename=epw120623'
+    path = audio.get_audio(tmp_path, senate_url=player)
+    assert urls == ([live] if live_available else [live, archive])
+    assert path.read_bytes() == b'complete audio'
+    monkeypatch.setattr(audio, 'run', lambda *a, **k: pytest.fail('cached audio must not download again'))
+    assert audio.get_audio(tmp_path, senate_url=player) == path
+    assert path.read_bytes() == b'complete audio'
+    assert not list(tmp_path.glob('*.tmp'))
+
+
+def test_senate_audio_exhausted_candidates_leave_no_cacheable_bytes(tmp_path, monkeypatch):
+    urls = []
+
+    def fail(cmd, check=True):
+        urls.append(cmd[cmd.index('-i') + 1])
+        Path(cmd[-1]).write_bytes(b'partial audio')
+        return 1
+
+    monkeypatch.setattr(audio, 'run', fail)
+    with pytest.raises(RuntimeError, match='no stream answered for epw120623'):
+        audio.get_audio(tmp_path, senate_url='https://www.senate.gov/isvp/?comm=epw&filename=epw120623')
+    assert len(urls) == 2
+    assert not (tmp_path / 'epw120623.mp3').exists()
+    assert not list(tmp_path.glob('*.tmp'))
+
+
 def test_senate_audio_rejects_unknown_committee(tmp_path):
     with pytest.raises(ValueError, match='Unsupported Senate player URL or committee'):
         audio.get_audio(tmp_path, senate_url='https://www.senate.gov/isvp/?comm=notacommittee&filename=x010126')
