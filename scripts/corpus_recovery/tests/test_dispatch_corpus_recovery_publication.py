@@ -166,8 +166,14 @@ class DispatcherContinuationTests(unittest.TestCase):
                         with self.assertRaisesRegex(RuntimeError, 'Incomplete catalog build retained'):
                             module.run(args)
                         self.assertEqual((args.destination/'build/diagnostic.txt').read_text(), 'Preserve incomplete build evidence')
+                        diagnostic = json.loads((args.destination/'incomplete-catalog.json').read_text())
+                        self.assertEqual(diagnostic['retained_build_path'], str(args.destination.resolve()/'build'))
+                        self.assertIsNone(diagnostic['last_recorded_accepted_phase'])
+                        self.assertFalse(diagnostic['resume_authorized'])
+                        self.assertEqual(len(diagnostic['next_read_only_checks']), 4)
                     else:
                         self.assertEqual(module.run(args), {'status': 'published'})
+                        self.assertFalse((args.destination/'incomplete-catalog.json').exists())
                 expected_calls = (dict(catalog=1, mappings=0, prepared=0, publication=0)
                                   if failed_phase == 'incomplete_catalog'
                                   else dict(catalog=1, mappings=1, prepared=1, publication=1))

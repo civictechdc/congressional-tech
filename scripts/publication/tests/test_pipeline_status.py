@@ -181,6 +181,25 @@ def test_unbound_local_recovery_phases_are_inspectable_without_run_attribution(t
     assert observed['public_readback'] == 'not_checked'
 
 
+def test_incomplete_catalog_status_names_retained_evidence_without_mutation(tmp_path):
+    path = receipt(tmp_path); value = json.loads(path.read_text())
+    value.update(binding={'batch': 'local'}, phases={})
+    write(path, value)
+    build = tmp_path / 'build'; build.mkdir()
+    (build / 'working.sqlite').write_bytes(b'retained incomplete SQLite')
+    before = {str(p): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
+    observed = status.continuation(path, ('123', '2', REVISION))
+    local = observed['local_phase_observation']
+    assert local['next_incomplete_phase'] == 'catalog'
+    assert local['catalog_build']['last_recorded_accepted_phase'] is None
+    assert local['catalog_build']['retained_build_path'] == str(build)
+    assert observed['state'] == 'unbound' and observed['accepted_outputs'] == []
+    summary = status.summarize('123', github('failure'), progress(), now=NOW, receipt=path)
+    assert str(build / 'working.sqlite') in status.format_status(summary)
+    assert 'Last recorded accepted phase: none' in status.format_status(summary)
+    assert before == {str(p): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
+
+
 @pytest.mark.parametrize('bound', [False, True])
 @pytest.mark.parametrize('writes', [[], {'key': None}, {'key': {}}, {'key': {'verified': 'false'}},
     {'key': {'verified': 0}}, {'': {'verified': False}}, {'x' * 2049: {'verified': False}},

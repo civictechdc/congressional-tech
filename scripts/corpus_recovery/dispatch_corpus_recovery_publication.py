@@ -88,6 +88,7 @@ def run(args):
     import corpus_recovery.inventory as inventory_module
     import corpus_recovery.acknowledge as acknowledgment_module
     import corpus_recovery.admission as admission_module
+    import corpus_recovery.diagnostics as diagnostics_module
     import corpus_recovery.guards as recovery_guard_module
     import corpus_recovery.mappings as mapping_module
     import viewer_publication.client as publication_client
@@ -99,6 +100,7 @@ def run(args):
               Path(acknowledgment_module.__file__).resolve(),
               Path(recovery_guard_module.__file__).resolve(),
               Path(admission_module.__file__).resolve(),
+              Path(diagnostics_module.__file__).resolve(),
               Path(mapping_module.__file__).resolve(),
               args.baseline.resolve(), args.config.resolve(),
               imported/'payloads/import-complete.json', imported/'events.jsonl']
@@ -269,6 +271,12 @@ def run(args):
                                     publication=publication, imported=result))
         return publication
     except BaseException as error:
+        observation = diagnostics_module.catalog_build_observation(destination, continuation.value['phases'])
+        if observation and observation['state'] == 'incomplete_catalog_requires_reconciliation':
+            try:
+                report('incomplete-catalog.json', observation)
+            except (OSError, ValueError) as diagnostic_error:
+                error.add_note('Incomplete catalog diagnostic could not be saved: ' + type(diagnostic_error).__name__)
         journal('publication_failed_requires_reconciliation', dict(error_type=type(error).__name__, error=str(error)))
         raise
     finally: lock.close()

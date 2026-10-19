@@ -1,0 +1,9 @@
+# Incomplete catalog diagnostics (ct-76n5)
+
+A failed local catalog build now retains a small `incomplete-catalog.json` receipt naming the exact build directory, last recorded accepted phase and four specific read-only checks. The existing pipeline status command exposes the same description, including for local attempts that have no GitHub run binding. Empty local phase state correctly reports `catalog` as the next incomplete phase.
+
+The shared description does not open SQLite, scan catalog files, rehash payloads, contact a remote service, authorize resume or claim publication completion. It names the source-pin check, SQLite diagnostic set, saved catalog identity/body-coverage check, and full-byte reconciliation of recorded remote writes. Existing incomplete-build refusal and accepted-phase reuse remain unchanged. Diagnostic-save failure adds a note without replacing the original build error.
+
+The practical improvement is one shared explanation in status and the failure receipt: previously the receipt was absent and status gave only the next phase. It now exposes the exact retained path and four checks without reading the build. The focused test forbids file opens and recursive scans while describing retained SQLite files. No runtime speed claim is made.
+
+Local qualification: 65 checks and five subtests pass across diagnostics, pipeline status and the dispatcher. The injected incomplete build stays intact and performs no new build or PUT on explicit continuation; accepted prior phases are reused once. Status inspection leaves all fixture bytes unchanged. An initial assertion compared macOS `/var` and `/private/var` aliases; the corrected assertion uses the dispatcher's resolved destination. The failure log remains alongside the final passing log under `output/efficiency-debt-20261019/incomplete-build/`.
