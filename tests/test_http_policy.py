@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 import requests
-from congress_api.acquisition import meetings
-from congress_api.transport import http
+from congress_api.acquisition import committees, meetings
+from congress_api.transport import congress, http
 from congress_api.transport.senate import HDR as captions_HDR
 from congress_api.transport.senate import get_source as captions_get_source
 from congress_api.transport.senate import sess as captions_sess
@@ -26,15 +26,53 @@ def unpaced(monkeypatch):
     monkeypatch.setattr(http, '_next', defaultdict(float))
 
 
-def test_production_wrapper_retries_five_times_and_preserves_parameters(unpaced):
+@pytest.mark.parametrize('collector', [meetings, committees])
+def test_production_wrapper_retries_five_times_and_preserves_parameters(unpaced, collector):
     calls = []
     def request(method, url, **kwargs):
         calls.append((method, url, kwargs))
         return response(503 if len(calls) < 5 else 200)
-    assert meetings.get(SimpleNamespace(request=request), URL, 'test-key', {'offset': 250}) == {'committees': []}
+    assert collector.get(SimpleNamespace(request=request), URL, 'test-key', {'offset': 250}) == {'committees': []}
     assert len(calls) == 5
     assert calls[-1] == ('GET', URL, {'params': {'offset': 250, 'api_key': 'test-key', 'format': 'json'},
                                      'timeout': 60, 'headers': http.UA})
+
+
+def test_congress_wrapper_preserves_existing_collector_imports():
+    assert meetings.API == committees.API == congress.API == 'https://api.congress.gov/v3'
+    assert meetings.get is committees.get is congress.get
+
+
+def test_congress_wrapper_overrides_credentials_and_format_without_changing_caller_params(unpaced):
+    params = {'offset': 250, 'limit': 100, 'api_key': 'discarded-key', 'format': 'xml'}
+    original = params.copy()
+    calls = []
+    def request(method, url, **kwargs):
+        calls.append(kwargs)
+        return response()
+    assert congress.get(SimpleNamespace(request=request), URL, 'test-key', params) == {'committees': []}
+    assert calls[0]['params'] == {'offset': 250, 'limit': 100, 'api_key': 'test-key', 'format': 'json'}
+    assert params == original
+
+
+def test_congress_wrapper_preserves_explicit_attempt_budget(unpaced):
+    calls = []
+    def request(*args, **kwargs):
+        calls.append(kwargs)
+        return response(503)
+    with pytest.raises(http.HttpRequestError) as failure:
+        congress.get(SimpleNamespace(request=request), URL, 'test-key', attempts=2)
+    assert len(calls) == failure.value.details['attempts'] == 2
+
+
+def test_congress_json_failure_propagates_without_retrying_http_success(unpaced):
+    calls = []
+    def request(*args, **kwargs):
+        calls.append(kwargs)
+        return response(200, b'not JSON')
+    with pytest.raises(requests.exceptions.JSONDecodeError):
+        congress.get(SimpleNamespace(request=request), URL, 'test-key')
+    assert len(calls) == 1
 
 
 def test_gateway_default_is_three_attempts_and_redacts_query_secrets(unpaced):
