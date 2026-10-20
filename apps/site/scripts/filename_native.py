@@ -272,6 +272,29 @@ class BrowsePages:
         return None
 
 
+def typed_observations(schema, identities, occurrences):
+    """Adapt selected typed occurrence parts to the maintained browser publisher."""
+    from types import SimpleNamespace
+    from filename_observations import ObservationSequence
+    class Source:
+        schema_arrow = schema
+        metadata = SimpleNamespace(num_rows=len(identities))
+        def observation_rows(self):
+            for identity in identities:
+                values = occurrences(identity.as_py())
+                yield None if values is None else ObservationSequence(len(values), lambda values=values: iter(values))
+    return Source()
+
+
+def publish_occurrence_assets(source, folder, assets, *, policy, metrics, counts=None):
+    from filename_observations import publish_observations
+    publish_observations(source, folder, counts=counts, policy=policy, metrics=metrics)
+    return {name: assets.put_file(folder / filename, name=name + suffix)
+            for name, filename, suffix in [('observations', 'observations.bin', '.bin'),
+                ('observation_rows', 'observation-rows.bin', '.bin'),
+                ('observation_index', 'observation-index.json', '.json')]}
+
+
 class NativeSourceAssets:
     """Render only changed hash-routed source leaves through maintained helpers."""
     def __init__(self, snapshot, assets, *, policy, metrics, compression_policy=DEFAULT_COMPRESSION_POLICY):
@@ -332,14 +355,14 @@ class NativeSourceAssets:
         import pyarrow.parquet as pq
         from filename_budget import bounded_batches
         from filename_json_stream import ObservationCounts
-        from filename_observations import publish_observations
         from filename_details import publish_details
         schema = self.snapshot.schemas['filenames']
-        values = self.dependencies.read_source_leaf(self.snapshot.selection['dependency'], release)
+        core_schema = pa.schema([field for field in schema if field.name != 'source_occurrences'], metadata=schema.metadata)
+        values = self.dependencies.read_source_leaf(self.snapshot.selection['dependency'], release, source_columns=core_schema.names)
         if values.nbytes > self.max_bytes or len(values) > self.max_rows:
             raise ValueError('Selected native source leaf exceeds its retained bounds')
         records = values['source_values'].combine_chunks()
-        table = pa.Table.from_arrays([records.field(name) for name in schema.names], schema=schema)
+        table = pa.Table.from_arrays([records.field(name) for name in core_schema.names], schema=core_schema)
         if (table['source_id'].to_pylist() != values['source_id'].to_pylist()
                 or len(set(table['source_id'].to_pylist())) != len(table)):
             raise ValueError('Selected native source leaf identity differs')
@@ -355,19 +378,17 @@ class NativeSourceAssets:
             # pretend Parquet metadata is introduced at the consumer boundary.
             with pq.ParquetFile(path) as source, ObservationCounts(source) as counts:
                 if 'source_occurrences' in schema.names:
-                    publish_observations(source, folder, counts=counts, policy=self.policy, metrics=self.metrics)
-                    observation_files = [('observations', 'observations.bin'),
-                        ('observation_rows', 'observation-rows.bin'), ('observation_index', 'observation-index.json')]
+                    observations = typed_observations(schema, table['source_id'], lambda identity:
+                        self.dependencies.source_occurrences(self.snapshot.selection['dependency'], release, identity))
+                    files.update(publish_occurrence_assets(observations, folder, self.assets, counts=counts,
+                        policy=self.policy, metrics=self.metrics))
                 else:
                     for _ in range(len(table)):
                         counts.append(0)
                     counts.seal(len(table))
-                    observation_files = []
                 result = publish_details(source, folder / 'details.parquet', observation_counts=counts,
                                          policy=self.policy, metrics=self.metrics, compression_policy=self.compression)
-                for name, filename in [*observation_files, ('details', 'details.parquet')]:
-                    files[name] = self.assets.put_file(folder / filename, name=name +
-                        ('.parquet' if name == 'details' else '.json' if name == 'observation_index' else '.bin'))
+                files['details'] = self.assets.put_file(folder / 'details.parquet', name='details.parquet')
                 files['details']['rows'] = result['rows']
                 facets = {field: {} for field in ('congress', 'document_family', 'document_kind', 'format')}
                 columns = [field for field in facets if field in schema.names]
@@ -524,19 +545,22 @@ class NativeComponents:
         schema = _component_schema(dict(schema=schema_text))
         members = list(self.db.execute('SELECT component,rows FROM views WHERE name=? ORDER BY component', (name,)))
         physical = schema.append(pa.field('_catalog_order', pa.int64(), nullable=False))
-        table = CatalogTable(physical, [(name, json.loads(raw_pin))], native=self.snapshot.native,
+        pin = json.loads(raw_pin)
+        table = CatalogTable(physical, [(name, pin)], native=self.snapshot.native, store=self.snapshot.store,
             views={name: dict(components=[key for key, _ in members], rows=sum(count for _, count in members))})
         self.metrics['native_component_chunks_read'] = self.metrics.get('native_component_chunks_read', 0) + 1
         columns = (list(dict.fromkeys(['source_id', 'document_id', 'source_url', '_catalog_order', *[field for field in FIELDS
             if field in schema.names]])) if label == 'filenames' else
             [field for field in dict.fromkeys([*self.viewer.LIST_COLUMNS, 'document_kind_source']) if field in schema.names])
+        core_schema = pa.schema([field for field in schema if field.name != 'source_occurrences'], metadata=schema.metadata)
+        requested = columns if label == 'filenames' else [*core_schema.names, '_catalog_order']
         size, document_batches = 0, []
-        for batch in table.iter_batches():
+        for batch in table.iter_batches(columns=requested):
             size += batch.nbytes
             if size > self.policy.row_arrow_bytes:
-                raise ValueError('Native viewer component chunk exceeds its Arrow byte bound')
+                raise ValueError('Native viewer component core chunk exceeds its Arrow byte bound')
             if label == 'documents':
-                document_batches.append(batch.select(schema.names))
+                document_batches.append(batch.select(core_schema.names))
             for row in batch.select(columns).to_pylist():
                 component = row['document_id']
                 if label == 'filenames':
@@ -550,11 +574,19 @@ class NativeComponents:
         if label == 'documents':
             import pyarrow.parquet as pq
             with tempfile.TemporaryDirectory(prefix='viewer-document-chunk-') as folder:
-                path = Path(folder) / 'documents.parquet'
-                exported = pa.Table.from_batches(document_batches, schema=schema)
+                folder = Path(folder)
+                path = folder / 'documents.parquet'
+                exported = pa.Table.from_batches(document_batches, schema=core_schema)
                 pq.write_table(exported, path, compression=self.compression.codec, compression_level=self.compression.level,
                                row_group_size=self.compression.row_group_size)
-                reference = dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported))
+                reference = dict(document_file=dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported)))
+                if 'source_occurrences' in schema.names:
+                    from congress_api.retention.catalog_rows import CatalogRows
+                    owner = CatalogRows(native=self.snapshot.native, store=self.snapshot.store)
+                    source = typed_observations(schema, exported['document_id'], lambda identity:
+                        owner.occurrences(pin, schema=physical, owner_id=identity))
+                    reference['document_observations'] = dict(rows=len(exported), files=publish_occurrence_assets(
+                        source, folder, self.assets, policy=self.policy, metrics=self.metrics))
                 self.db.execute('INSERT INTO chunk_assets VALUES (?,?)', (name, encoded(reference).decode()))
     def _prepare_entries(self):
         for component, raw_reference, raw_proof, raw_record in self.db.execute(
@@ -572,7 +604,7 @@ class NativeComponents:
                                              (component,)).fetchall()
             if len(document_files) != 1:
                 raise ValueError('Selected component must have one exact document row partition')
-            entry = dict(document_file=json.loads(document_files[0][0]), native_ref=json.loads(raw_reference), key=browse_key(row), source_id=row['source_id'],
+            entry = dict(**json.loads(document_files[0][0]), native_ref=json.loads(raw_reference), key=browse_key(row), source_id=row['source_id'],
                          body_key=row.get('body_key'), source_ids_sha256=proof['validation']['source_ids_sha256'],
                          source_rows=count, flags=flags, members=self._members(component, count))
             browse = {key: value for key, value in row.items() if key not in
@@ -667,14 +699,14 @@ def native_requirements(viewer, policy, compression=DEFAULT_COMPRESSION_POLICY):
     from dataclasses import asdict
     import inspect
     import pyarrow
-    from congress_api.retention import saved_responses, docspec, catalog_partitions
+    from congress_api.retention import saved_responses, docspec, catalog_partitions, catalog_rows
     files = [Path(__file__).with_name(name) for name in
              ('filename_observations.py', 'filename_details.py', 'filename_budget.py', 'filename_json_stream.py', 'filename_compression.py', 'filename_renderer_state.py')]
-    files += [Path(__file__), *[Path(module.__file__) for module in (saved_responses, docspec, catalog_partitions)]]
-    return dict(renderer='native-viewer-v1', policy=asdict(policy), compression=compression._asdict(), pyarrow=pyarrow.__version__,
+    files += [Path(__file__), *[Path(module.__file__) for module in (saved_responses, docspec, catalog_partitions, catalog_rows)]]
+    return dict(renderer='native-viewer-v2', policy=asdict(policy), compression=compression._asdict(), pyarrow=pyarrow.__version__,
         implementation=sha256(encoded(dict(
             owners=[inspect.getsource(owner) for owner in (NativeSourceAssets, NativeComponents, BrowsePages,
-                                                           browse_key, build_page_levels,
+                                                           browse_key, build_page_levels, typed_observations, publish_occurrence_assets,
                                                            viewer.api_reference, viewer.video_reference)],
             files={str(path.name): sha256(path.read_bytes()).hexdigest() for path in files}))).hexdigest())
 

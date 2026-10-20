@@ -37,6 +37,16 @@ if os.environ.get('FILENAME_FIXTURE_SCHEMA_ADDITION'):
     index.write_document_indexes(seed_path,sources.to_pylist(),sources.schema,
         catalog_id='b'*32,preserve_columns=True)
     sources=pq.read_table(seed_path);documents=pq.read_table(seed_path.with_name('documents.parquet'))
+if os.environ.get('FILENAME_FIXTURE_GIANT_DOCUMENT'):
+    # Document observations are saved document values, distinct from every
+    # source's occurrence sequence. No grouping or canonicalization is replayed.
+    values = documents['source_occurrences'].to_pylist()
+    occurrence = {'source_page_title': ['document-only José 🏛️' + 'é' * 1100, '', None],
+                  'source_page_url': []}
+    values[0] = [None, occurrence, occurrence] * 6000
+    documents = documents.set_column(documents.schema.get_field_index('source_occurrences'),
+        documents.schema.field('source_occurrences'), pa.array(values, type=documents.schema.field('source_occurrences').type))
+    assert documents.slice(0, 1).nbytes > 16 * 1024 * 1024
 store, native = LocalStore(folder / 'native-store'), Native()
 orders = lambda table: table.append_column(pa.field('_catalog_order', pa.int64(), nullable=False), pa.array(range(len(table)), type=pa.int64()))
 prepared = prepare_native_catalog_components(store, native, candidate='browser-fixture',

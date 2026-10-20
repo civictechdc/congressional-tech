@@ -140,3 +140,50 @@ test('nullable schema additions preserve reused document assets and declare miss
     const matches=await reader.search({q:'new',field:'source_new_literal',scope:'all'});assert.equal(matches.total,1);
   }finally{await rm(folder,{recursive:true,force:true});}
 });
+
+
+test('split giant document occurrences preserve full values and stay separate from source details',async()=>{
+  const folder=await mkdtemp(join(tmpdir(),'stable-giant-document-'));
+  try {
+    execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../../../tests/native_viewer_fixture.py',import.meta.url)),folder],
+      {env:{...process.env,FILENAME_FIXTURE_GIANT_DOCUMENT:'1'},maxBuffer:1024*1024});
+    const sourceRecords=JSON.parse(await readFile(join(folder,'source-records.json')));
+    const documentRecords=JSON.parse(await readFile(join(folder,'document-records.json')));
+    const expected=documentRecords[0],source=sourceRecords.find(row=>row.document_id===expected.document_id),requests=[];
+    const manifestUrl=pathToFileURL(join(folder,'native-public/manifest.json'));
+    const reader=await createFilenameCatalog(manifestUrl,(url,options)=>{requests.push(String(url));return localFetch(url,options);});
+    await reader.search({scope:'all',limit:'2'});
+    await reader.entry(source.source_id);
+    assert(!requests.some(path=>path.includes('/documents.parquet')),'ordinary details do not read the complete document');
+    const document=await reader.documentRecord(source.source_id);
+    assert.deepEqual(document,expected);
+    assert.deepEqual(Object.keys(document),Object.keys(expected),'original field order survives reconstruction');
+    assert.equal(document.source_occurrences.length,18000);
+    assert.deepEqual(await reader.technical(source.source_id,undefined,undefined,true),source);
+    const manifest=JSON.parse(await readFile(join(folder,'native-public/manifest.json')));
+    const nodes=[];
+    async function visit(ref) {
+      const node=JSON.parse(await readFile(join(folder,'native-public',ref.path)));
+      if(node.kind==='component-leaf')nodes.push(...Object.values(node.members));
+      else for(const child of Object.values(node.children??{}))await visit(child);
+    }
+    await visit(manifest.roots.components);
+    const entry=nodes.find(value=>value.key[2]===expected.document_id),files=entry.document_observations.files;
+    assert(files.observation_index && files.observations && files.observation_rows);
+    const before=requests.length;await reader.documentRecord(source.source_id);
+    assert.equal(requests.length,before,'complete repeat reads reuse immutable observation data');
+    for(const mode of ['missing','corrupt']) {
+      const broken=await createFilenameCatalog(manifestUrl,async(url,options)=>{
+        if(String(url).endsWith(files.observations.path)) {
+          if(mode==='missing')return new Response('',{status:404});
+          return new Response(new Uint8Array(files.observations.bytes),{status:206,
+            headers:{'Content-Range':`bytes 0-${files.observations.bytes-1}/${files.observations.bytes}`}});
+        }
+        return localFetch(url,options);
+      });
+      await assert.rejects(broken.documentRecord(source.source_id));
+      assert((await broken.search({scope:'all'})).rows.length>0,'failed complete read leaves browse usable');
+      assert.deepEqual(await broken.technical(source.source_id,undefined,undefined,true),source,'document part failures do not poison source records');
+    }
+  } finally { await rm(folder,{recursive:true,force:true}); }
+});

@@ -130,7 +130,8 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       return {bundle,row,documentId:ids[row].document_id};
     },signal);
   }
-  async function observations(bundle,signal) {
+  async function observations(bundle,signal,required=false) {
+    if(!bundle.files.observation_index && required)throw new Error('Complete occurrence assets are missing.');
     if(!bundle.files.observation_index)return {read:async()=>null,page:async(_,{offset=0}={})=>({items:[],total:0,offset,next:null,is_null:true}),matchingSources:async function*(){}};
     return cached(`observations:${bundle.files.observation_index.path}`,async()=>{
       const index=await withVerifiedJson({deadlineMs:30_000,maxBytes:1024*1024},'Observation index',async verified=>{
@@ -147,7 +148,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
   async function technical(id,catalog,signal,full=false) {
     const {bundle,row}=await resolve(id,catalog,signal), fields=info.fields.filter(k=>k!=='source_occurrences'), record={};
     for(let offset=0;offset<fields.length;offset+=8)Object.assign(record,(await read(bundle.files.filenames,row,row+1,fields.slice(offset,offset+8),signal))[0]);
-    if(full && info.fields.includes('source_occurrences'))record.source_occurrences=await(await observations(bundle,signal)).read(row,signal);
+    if(full && info.fields.includes('source_occurrences'))record.source_occurrences=await(await observations(bundle,signal,true)).read(row,signal);
     const output=Object.fromEntries(info.fields.filter(k=>full || k!=='source_occurrences').map(k=>[k,record[k]]));
     if(recovery.sources.has(id))output.recovery=recovery.sources.get(id);
     return output;
@@ -328,9 +329,16 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     // A physical document asset can be shared with unselected historical members.
     // Only the exact current logical member escapes this bounded read.
     const rows=await read(member.document_file,0,member.document_file.rows,undefined,signal);
-    const selected=rows.filter(row=>row.document_id===documentId);
-    if(selected.length!==1)throw new Error('Document is not present uniquely in its selected partition.');
-    return Object.fromEntries(info.document_fields.map(name=>[name,selected[0][name]??null]));
+    const positions=rows.flatMap((row,index)=>row.document_id===documentId?[index]:[]);
+    if(positions.length!==1)throw new Error('Document is not present uniquely in its selected partition.');
+    const row=positions[0],record=rows[row];
+    if(member.document_observations) {
+      if(member.document_observations.rows!==rows.length)throw new Error('Document observation partition counts disagree.');
+      record.source_occurrences=await(await observations(member.document_observations,signal,true)).read(row,signal);
+    } else if(info.document_fields.includes('source_occurrences') && !Object.hasOwn(record,'source_occurrences')) {
+      throw new Error('Complete document occurrence assets are missing.');
+    }
+    return Object.fromEntries(info.document_fields.map(name=>[name,record[name]??null]));
   }
   async function review(id,catalog,signal,withdrawn=false) {
     if(info.review_error)throw new Error(info.review_error);if(!info.complete_body_reviews)throw new Error('Document reviews are not configured.');
