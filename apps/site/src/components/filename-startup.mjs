@@ -74,3 +74,10 @@ export async function withVerifiedJson(policy, label, run, callerSignal) {
     controller.abort();
   }
 }
+
+// Compare parsed control data independently of object key insertion order.
+export function canonicalJson(value) {
+  const ordered = value => Array.isArray(value) ? value.map(ordered) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.keys(value).sort().map(key=>[key,ordered(value[key])])) : value;
+  return JSON.stringify(ordered(value));
+}

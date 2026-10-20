@@ -58,6 +58,12 @@ if os.environ.get('FILENAME_FIXTURE_ROWS'):
     rows = [{**original[i % len(original)],
              'source_id': hashlib.sha256(str(i).encode()).hexdigest(),
              'document_id': str(i)} for i in range(int(os.environ['FILENAME_FIXTURE_ROWS']))]
+if os.environ.get('FILENAME_FIXTURE_NATIVE_IDENTITIES'):
+    from congress_api.retention.document_index import source_identity
+    for index, row in enumerate(rows):
+        if os.environ.get('FILENAME_FIXTURE_ROWS'):
+            row['filename'] = f"{row['filename']} {index:05d}"
+        row['source_id'] = source_identity(row)
 files = {}
 for name, subset in [('filenames', rows), ('documents', rows if os.environ.get('FILENAME_FIXTURE_ROWS') else [rows[i] for i in [1,2,3,4,5,6]])]:
     path = folder / ('document-filenames.parquet' if name == 'filenames' else 'documents.parquet')

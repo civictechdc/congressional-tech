@@ -131,3 +131,14 @@ test('the real worker reports mandatory recovery initialization failure', {timeo
     assert.equal(result.id,1);assert.match(result.error,/failed verification/);assert.equal('result' in result,false);
   } finally {await worker.terminate();}
 });
+
+test('stable recovery maps bind exact selection and complete source/document membership',async()=>{
+  const identity={selector_sha256:'a'.repeat(64),selected_ref:{key:'selected',sha256:'b'.repeat(64),bytes:50}},source='c'.repeat(64);
+  const stable={...fixture(),version:2,source_identity:identity,sources:[[source,'document',0]],groups:[['document',[0]]]};
+  const value=input(stable),result=await load(value,undefined,{sourceIdentity:{selected_ref:identity.selected_ref,selector_sha256:identity.selector_sha256}});
+  assert.deepEqual([...result.sources.keys()],[source]);assert.deepEqual([...result.groups.keys()],['document']);
+  for(const damage of [data=>data.source_identity={...identity,selector_sha256:'wrong'},data=>data.sources[0][1]='other',data=>data.sources.push(data.sources[0]),data=>data.groups[0][1]=[0,0]]){
+    const data=structuredClone(stable);damage(data);await assert.rejects(load(input(data),undefined,{sourceIdentity:identity}),/snapshot|membership|position|group/);
+  }
+  await assert.rejects(load(value),/different catalog/,'historical publications require their positional v1 status');
+});
