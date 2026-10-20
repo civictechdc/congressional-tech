@@ -77,6 +77,8 @@ def prepare_native_output(publisher, builder, client, snapshot, target, *, accep
         from congress_api.retention.viewer_inventory import PreparedManifest
         from filename_native import ViewerAssets, validate_publication
         target = Path(target)
+        if target.is_symlink() or target.exists() and (not target.is_dir() or any(target.iterdir())):
+            raise ValueError('Viewer output must be a fresh empty directory')
         assets = ViewerAssets(target, read_asset=read_asset)
         validate_publication(assets, previous)
         for reference in (previous['proof'], previous['source_selection']):
