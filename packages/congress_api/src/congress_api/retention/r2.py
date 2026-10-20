@@ -302,8 +302,14 @@ class R2Store:
     def put_catalog_manifest(self, data, *, expected_version):
         """Use the selector version captured before this catalog build."""
         from congress_api.retention.catalog_publication import MANIFEST_KEY
-        self.index_etags[MANIFEST_KEY] = expected_version
-        return self.put(MANIFEST_KEY, data)
+        return self.put_index_selector(MANIFEST_KEY, data, expected_version=expected_version)
+
+    def put_index_selector(self, key, data, *, expected_version):
+        """Compare against the exact selector version captured before preparation."""
+        from congress_api.retention.index_selector import require_selector_key
+        require_selector_key(key)
+        self.index_etags[key] = expected_version
+        return self.put(key, data)
 
     def read_derived_file(self, key, path, *, expected=None):
         """Stream only catalog tables, pinning the object version across retries."""

@@ -60,3 +60,100 @@ def split_partition(table, *, key, prefix, max_rows, max_bytes):
                 for leaf in divide(members, child)]
 
     return divide(list(range(len(table))), prefix)
+
+
+class RoutingPages:
+    """Immutable delivery routing; leaves name caller-owned exact native pins.
+
+    Branches contain at most sixteen child references. A missing child denotes
+    an empty route, so future insertions never require a global repartition.
+    Only the application selector chooses which immutable routing root is public.
+    """
+    def __init__(self, store, namespace):
+        from congress_api.retention.immutable_metadata import MetadataObjects
+        self.objects = MetadataObjects(store, namespace)
+
+    def _read(self, reference, prefix):
+        page = self.objects.read(reference)
+        if page.get('version') != 1 or page.get('prefix') != prefix:
+            raise ValueError('Routing page basis mismatch')
+        if ('value' in page) == ('children' in page):
+            raise ValueError('Routing page must name one leaf or branch')
+        if 'children' in page:
+            children = page['children']
+            if (len(prefix) >= 64 or not 0 < len(children) <= 16
+                    or any(char not in '0123456789abcdef' or len(char) != 1 for char in children)):
+                raise ValueError('Invalid routing child references')
+        elif not isinstance(page['value'], dict):
+            raise ValueError('Routing leaf must name exact native metadata')
+        return page
+
+    def lookup(self, root, key):
+        digest, prefix, reference = key_hash(key), '', root
+        while reference is not None:
+            page = self._read(reference, prefix)
+            if 'value' in page:
+                return prefix, page['value']
+            char = digest[len(prefix)]
+            prefix += char
+            reference = page['children'].get(char)
+        return prefix, None
+
+    def replace(self, root, prefix, leaves):
+        """Replace exactly one selected leaf, sharing every untouched branch."""
+        if (not isinstance(prefix, str) or len(prefix) > 64
+                or any(char not in '0123456789abcdef' for char in prefix)):
+            raise ValueError('Invalid routing prefix')
+        if not leaves or any(not leaf.startswith(prefix) or len(leaf) > 64
+                             or any(c not in '0123456789abcdef' for c in leaf) for leaf in leaves):
+            raise ValueError('Replacement leaves fall outside the affected prefix')
+
+        def build(current, values):
+            if current in values:
+                if len(values) != 1:
+                    raise ValueError('Replacement leaf prefixes overlap')
+                value = values[current]
+                if value is None:
+                    return None
+                if not isinstance(value, dict):
+                    raise ValueError('Routing leaf must name exact native metadata')
+                return self.objects.put(dict(version=1, prefix=current, value=value))
+            children = {}
+            for char in '0123456789abcdef':
+                subset = {leaf: value for leaf, value in values.items() if leaf.startswith(current + char)}
+                if subset:
+                    reference = build(current + char, subset)
+                    if reference is not None:
+                        children[char] = reference
+            return self.objects.put(dict(version=1, prefix=current, children=children)) if children else None
+
+        def replace_at(reference, current):
+            page = self._read(reference, current) if reference is not None else None
+            if current == prefix:
+                if page is not None and 'children' in page:
+                    raise ValueError('Replace a selected leaf, not an unrelated branch')
+                return build(current, leaves)
+            if page is None or 'children' not in page:
+                raise ValueError('Replacement prefix is not a selected leaf')
+            children = dict(page['children'])
+            char = prefix[len(current)]
+            replacement = replace_at(children.get(char), current + char)
+            if replacement is None:
+                children.pop(char, None)
+            else:
+                children[char] = replacement
+            return self.objects.put(dict(version=1, prefix=current, children=children)) if children else None
+
+        return replace_at(root, '')
+
+    def leaf_items(self, root):
+        def walk(reference, prefix):
+            if reference is None:
+                return
+            page = self._read(reference, prefix)
+            if 'value' in page:
+                yield prefix, page['value']
+            else:
+                for char, child in sorted(page['children'].items()):
+                    yield from walk(child, prefix + char)
+        yield from walk(root, '')

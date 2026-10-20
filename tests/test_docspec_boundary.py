@@ -96,3 +96,14 @@ def test_raw_values_roundtrip_native_source_without_losing_occurrences(native, t
     with native.source_batches(pin) as reader:
         restored = ordered_captures(reader.read_all())
     assert restored.equals(original)
+
+
+def test_source_table_candidate_replays_with_a_fresh_input_locator(native):
+    table = pa.table({'key': ['one', 'two'], 'values': [None, ['same', 'same']]})
+    first = native.run_table(table, dataset='table-candidate', operation='initial', definition='table-v1')
+    before = inventory(native.workspace)
+    again = native.run_table(table, dataset='table-candidate', operation='initial', definition='table-v1')
+    assert again == first
+    assert inventory(native.workspace) == before
+    with native.source_batches(first) as reader:
+        assert reader.read_all().to_pylist() == table.to_pylist()
