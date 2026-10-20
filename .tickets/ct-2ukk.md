@@ -52,3 +52,7 @@ Final normalized-format local measurement passed at 3a03125a for 4 and 40 unrela
 **2026-10-20T08:33:51Z**
 
 Initial qualification alias rereads resolved by closed ct-7e7q; full fixed-change measurements preserve data, IDs, mappings and existing assets. Documented operational order: adopt catalog, pin its returned selected_identity in raw receipt v2, adopt raw, qualify retained source contributions, then ordinary updates. Keep one native workspace owner and inactive legacy writers during cutover. Production import/readback remains pending.
+
+**2026-10-20T16:02:11Z**
+
+Five implementation lanes are now locally closed after independent acceptance review. This ticket retains all production obligations: exact current catalog/raw import and complete readback; full retained-source qualification; one operational writer; guarded v6 release with live review/recovery/browser preservation; recorded production costs and post-cutover removal of superseded internal routes. Finish ct-9vtu and ct-y32m before import. Accepted provider, corpus scan and browser fixtures must not be repeated merely to claim new coverage.

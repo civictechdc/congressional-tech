@@ -1,6 +1,6 @@
 ---
 id: ct-ihve
-status: in_progress
+status: closed
 deps: [ct-v5kb]
 links: []
 created: 2026-10-20T02:20:21Z
@@ -47,3 +47,7 @@ Committed dashboard integration is merged locally without primary uncommitted UI
 **2026-10-20T08:26:58Z**
 
 Final typed-occurrence browser check passed in fresh Chrome 155: exact 29-field complete source and 29,041,079-byte document JSON, 18,000 ordered occurrences, distinct source/document lists, stable links/reload, reviews and original values. 51 Python and 6 Node tests passed; typecheck clean and 29 pages built. All seven qualified implementation hashes match integration 26bbda7d. Receipt: adoption-survey/viewer-occurrence-browser-verification.json. Production v6 cutover remains pending.
+
+**2026-10-20T16:02:11Z**
+
+Implemented and independently reviewed: stable v6 routing/assets, retained review decisions and complete typed exports. Accepted fresh Chrome evidence preserves all 29 fixture fields and 18,000 ordered occurrences. Production deployment, live reviews/recovery/links and exact release browser verification remain required under ct-2ukk. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.

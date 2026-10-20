@@ -1,6 +1,6 @@
 ---
 id: ct-dat9
-status: open
+status: closed
 deps: [ct-si9g, ct-v5kb, ct-ihve, ct-365w]
 links: []
 created: 2026-10-20T02:20:21Z
@@ -31,3 +31,7 @@ Keep the current writer ownership, conditional publication, intent/readback jour
 **2026-10-20T07:41:04Z**
 
 Explicit adoption, resume, rule-upgrade and renderer-upgrade CLI paths are integrated locally. Final45 CLI checks and68 runtime/workflow checks pass. Private Linux executable is pinned to source91eb44f, copied/read back from private runtime storage, and downloaded successfully through the maintained installer. GitHub descriptor and engine secret are configured; no workflow was dispatched. Hosted execution and production selection remain unverified.
+
+**2026-10-20T16:02:11Z**
+
+Implemented and independently reviewed: capture, recovery, adoption, source qualification, explicit upgrades and ordinary updates use the maintained native owners; operational rebuild/repair routes refuse. Resumable update and failure tests passed. Initial adoption fixes ct-9vtu/ct-y32m and actual production cutover/retirement remain required under ct-2ukk. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.

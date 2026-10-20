@@ -1,6 +1,6 @@
 ---
 id: ct-si9g
-status: in_progress
+status: closed
 deps: [ct-l5q1, ct-rcs8, ct-upte]
 links: []
 created: 2026-10-20T02:20:21Z
@@ -55,3 +55,7 @@ Normal raw-to-catalog dispatch now retains source-observation proofs in the same
 **2026-10-20T07:20:03Z**
 
 Reviewed source replay/closure checkpoints, paged20,000-deletion proofs, additive-schema retry and completed grouping summaries are integrated. Combined backend/viewer suite:118 passed123.11s; root bounded-input suite35 passed11.06s. Scratch grouping and final row emission still repeat; a single document must fit the existing byte limit. Full production table qualification remains open.
+
+**2026-10-20T16:02:11Z**
+
+Implemented and independently reviewed: affected dependency closure, disk-backed receipt replay, bounded native chunks and completed group summaries preserve every source/document field and ID. Fixed-change reads are 18 for both measured 4/40 fixtures; affected leaf bytes still grow. Full current-corpus source qualification remains required under ct-2ukk. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.
