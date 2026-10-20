@@ -33,6 +33,15 @@ export function recordingEmbedUrl(row, now = new Date()) {
   return undefined;
 }
 
+/** Root-relative route served by the viewer-data worker: /saved/<sha256>/<filename>. */
+export function savedCopyHref(file) {
+  const hash = file && file.saved_copy_sha256;
+  if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash)) return undefined;
+  const name = typeof file.saved_filename === 'string' ? file.saved_filename : '';
+  const filename = name && !/[/\\]/.test(name) && !/[\u0000-\u001f\u007f]/.test(name) ? name : 'saved-copy';
+  return `/saved/${hash}/${encodeURIComponent(filename)}`;
+}
+
 export function documentSourceLabel(row) {
   const labels = { meetingDocuments: 'Meeting document', witnessDocuments: 'Witness document' };
   return (row.source_document_groups || []).map(group => labels[group] || group).join(' · ');

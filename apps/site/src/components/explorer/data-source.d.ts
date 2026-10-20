@@ -9,7 +9,7 @@ export interface BrowserRecord extends QueryRow {
   meeting_ids: readonly string[];
   appearance_ids: readonly string[];
   source_ids: readonly string[];
-  files: readonly { url: string; label?: string | null; role?: string | null; media_type?: string | null; version?: string | null; published_at?: string | null; sha256?: string | null }[];
+  files: readonly { url: string; label?: string | null; role?: string | null; media_type?: string | null; version?: string | null; published_at?: string | null; sha256?: string | null; saved_copy_sha256?: string | null; saved_filename?: string | null }[];
   facts: readonly { label: string; value: string }[];
   subject_kind?: string | null;
   subject_id?: string | null;

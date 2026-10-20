@@ -1,11 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { committeeTypeLabel, documentSourceLabel, presentRecord, recordingEmbedUrl, recordingVisible } from './record-presentation.js';
+import { committeeTypeLabel, documentSourceLabel, presentRecord, recordingEmbedUrl, recordingVisible, savedCopyHref } from './record-presentation.js';
 import { matches } from './query-utils.js';
 
 const now = new Date('2026-09-27T15:00:00Z');
 const meeting = {kind: 'meeting', status: 'scheduled', date: '2026-09-27', evidence_states: {recording: 'reported', captions: 'inferred', documents: 'reported'}};
 const recording = {kind: 'material', type: 'recording', recording_url: 'https://example.org/player', meeting_status: 'scheduled', files: [{url: 'https://example.org/player'}]};
+
+test('saved copies use the viewer-data content route', () => {
+  const hash = 'ab'.repeat(32);
+  assert.equal(savedCopyHref({saved_copy_sha256: hash, saved_filename: 'Witness statement.pdf'}), `/saved/${hash}/Witness%20statement.pdf`);
+  assert.equal(savedCopyHref({saved_copy_sha256: hash}), `/saved/${hash}/saved-copy`);
+  assert.equal(savedCopyHref({saved_copy_sha256: hash, saved_filename: '../secret'}), `/saved/${hash}/saved-copy`);
+  assert.equal(savedCopyHref({saved_copy_sha256: 'short', saved_filename: 'a.pdf'}), undefined);
+  assert.equal(savedCopyHref(null), undefined);
+});
 
 test('supported YouTube and Senate recordings embed without autoplay', () => {
   for (const url of ['https://www.youtube.com/watch?v=PRXQf-CSnoo&t=0', 'https://youtu.be/PRXQf-CSnoo', 'https://www.youtube.com/embed/PRXQf-CSnoo', 'https://m.youtube.com/shorts/PRXQf-CSnoo', 'https://www.youtube.com/live/PRXQf-CSnoo']) {

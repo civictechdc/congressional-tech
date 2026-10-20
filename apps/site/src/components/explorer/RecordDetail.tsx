@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { committeeTypeLabel, documentSourceLabel, recordingEmbedUrl, sourcePageUrl } from './record-presentation.js';
+import { committeeTypeLabel, documentSourceLabel, recordingEmbedUrl, savedCopyHref, sourcePageUrl } from './record-presentation.js';
 import type { ExplorerRecord, ExplorerRecordRef, ExplorerSourceRecord } from './data-source';
 
 export type DetailRecord = ExplorerRecord | ExplorerSourceRecord;
@@ -49,7 +49,15 @@ export function recordFiles(record: unknown): Fields[] {
 export function FileLinks({ record }: { record: unknown }) {
   const files = recordFiles(record);
   if (!files.length) return null;
-  return <div className="explorer-file-links">{files.map(file => <a key={String(file.url)} href={publicUrl(file.url)} target="_blank" rel="noreferrer">{file.role === 'player' || file.role === 'stream' ? 'Watch recording' : (file.label !== 'unknown' && words(file.label)) || 'Open file'} ↗</a>)}</div>;
+  return <div className="explorer-file-links">{files.map(file => {
+    const saved = savedCopyHref(file);
+    const label = file.role === 'player' || file.role === 'stream' ? 'Watch recording' : (file.label !== 'unknown' && words(file.label)) || 'Open file';
+    const savedLabel = file.label && file.label !== 'unknown' ? ` (${words(file.label)})` : '';
+    return <span key={String(file.url)}>
+      <a href={publicUrl(file.url)} target="_blank" rel="noreferrer">{label} ↗</a>
+      {saved ? <> <a href={saved}>Open saved copy{savedLabel}</a></> : null}
+    </span>;
+  })}</div>;
 }
 export function RecordingPlayer({ record }: { record: unknown }) {
   const url = recordingEmbedUrl(fields(record));
