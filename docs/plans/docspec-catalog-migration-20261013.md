@@ -2,6 +2,24 @@
 
 Status: **postponed** on 16 October 2026 in favor of repository cleanup and branch integration. Do not start implementation until it is explicitly resumed. The links below to the `catalog-hearing-relations` worktree no longer resolve, because that worktree has since been removed. Re-pin the reference executable from the integrated branch when this plan resumes.
 
+## Updated requirement — 19 October 2026
+
+The user requires incremental updates across raw storage, catalog processing, delivery and the viewer, with no operational full-rebuild requirement. This supersedes the full-rebuild fallback and the assumption below that complete-file exports can remain on the routine update path. A global rule change can affect every record, but must proceed in bounded resumable batches that retain completed work. Unknown dependency scope must produce a specific error, not a reset of the corpus.
+
+The implementation work is tracked in [ct-czsd](../../.tickets/ct-czsd.md). These tickets apply evolutionary refactoring: preserve domain behavior, replace only representations that prevent incremental work, reuse maintained owners, measure the complete changed path, and remove superseded internal routes after migration.
+
+- [ct-l5q1](../../.tickets/ct-l5q1.md): prove a maintained change-storage boundary on one retained package.
+- [ct-365w](../../.tickets/ct-365w.md): append raw changes without rewriting history.
+- [ct-si9g](../../.tickets/ct-si9g.md): recompute affected catalog records and groups.
+- [ct-v5kb](../../.tickets/ct-v5kb.md): publish reusable partitions and migrate readers.
+- [ct-ihve](../../.tickets/ct-ihve.md): update viewer assets and reviews by stable identity.
+- [ct-dat9](../../.tickets/ct-dat9.md): integrate one resumable update path and retire rebuild routing.
+- [ct-2ukk](../../.tickets/ct-2ukk.md): qualify snapshot adoption and complete-path costs.
+
+This updates the requirement and work plan; it does not resume the postponed DocSpec migration, establish that its historical capability gaps are resolved, or start a production cutover. The first ticket must recheck the maintained capabilities against current code before choosing an implementation owner.
+
+## Original proposal and historical evidence
+
 Original status: planning only, 13 October 2026. Migration implementation and qualifying benchmarks wait for the current recovery to finish and pass its final checks. The user subsequently authorized one small isolated benchmark during recovery; its [results](../experiments/docspec-catalog-benchmark-20261013.md) are recorded separately. It found equal elapsed time at 8,197 rows, lower CPU/disk use and higher sampled memory for DocSpec, with exact selected-value parity. It does not establish a full-rebuild speedup or authorize migration.
 
 ## Decision and intended result
