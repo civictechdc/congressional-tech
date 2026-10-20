@@ -76,6 +76,9 @@ def validate_prepared_output(root, manifest):
             raise ValueError('Prepared publication exceeds single-PUT limit: ' + str(path.relative_to(root)))
     if len(encoded(manifest)) > CONTROL_LIMITS['manifest']:
         raise ValueError('Prepared manifest exceeds control byte limit')
+    if manifest.get('version') == 6:
+        from filename_native import ViewerAssets, validate_publication
+        validate_publication(ViewerAssets(root), manifest)
     recovery = root / 'recovery-prepared.json'
     if recovery.exists() and recovery.stat().st_size > CONTROL_LIMITS['recovery']:
         raise ValueError('Prepared recovery status exceeds control byte limit')
@@ -179,6 +182,20 @@ def recovery_result(pointer, index, rows, *, status):
 
 def prepared_files(root, manifest, *, validation=None):
     """Allow only manifest-declared files and the bounded source-ID shards."""
+    if manifest.get('version') == 6:
+        from filename_native import ViewerAssets, iterator_inventory, validate_publication
+        assets = ViewerAssets(root)
+        validate_publication(assets, manifest)
+        files = {}
+        for item in iterator_inventory(assets, manifest['inventory']):
+            name, path = item['path'], root / item['path']
+            if validation is not None:
+                validation.file(path, expected=item)
+            if (path.is_symlink() or not path.is_file() or path.stat().st_size != item['bytes']
+                    or validation is None and digest(path) != item['sha256']):
+                raise ValueError('Prepared publication differs from its inventory: ' + name)
+            files[name] = path
+        return files
     if manifest.get('version') != 5:
         raise ValueError('Unsupported viewer manifest version.')
     selected = manifest['source_manifest']
@@ -351,6 +368,8 @@ def public_probe(base, pointer, manifest):
             if (len(payload) != descriptor['bytes'] or hashlib.sha256(payload).hexdigest() != descriptor['sha256']
                     or response.headers.get('Access-Control-Allow-Origin') != '*'):
                 raise ValueError('Public recovery status failed verification.')
+    if manifest.get('version') == 6:
+        return public_probe_selected(base, manifest)
     # Detail views need the navigation and observation files as well as Parquet.
     def check_file(item):
         request = public_request(urllib.parse.urljoin(manifest_url, item['path']), {
@@ -372,6 +391,46 @@ def public_probe(base, pointer, manifest):
                     or response.read() != b'PAR1' or response.headers.get('Access-Control-Allow-Origin') != '*'
                     or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
                 raise ValueError('Public Parquet range validation failed: ' + name)
+
+
+def public_probe_selected(base, manifest):
+    """Verify root custody and sample one selected partition's public ranges.
+
+    Every newly uploaded object already receives complete private readback. This
+    bounded sample checks the browser gateway without fetching all reused data.
+    """
+    from filename_native import ViewerAssets, validate_publication
+    def read_asset(path):
+        with open_public(public_request(base + path, {'Origin': 'https://civictechdc.github.io'})) as response:
+            if response.headers.get('Access-Control-Allow-Origin') != '*':
+                raise ValueError('Public catalog metadata browser access differs')
+            return public_control(response)
+    with tempfile.TemporaryDirectory(prefix='viewer-public-probe-') as directory:
+        assets = ViewerAssets(directory, read_asset=read_asset)
+        validate_publication(assets, manifest)
+        current = manifest['roots']['sources']
+        while current:
+            node = assets.read_node(current)
+            if node['kind'] == 'source-leaf':
+                for item in node['source']['files'].values():
+                    is_parquet = item['path'].endswith('.parquet')
+                    request = public_request(base + item['path'], dict(Origin='https://civictechdc.github.io',
+                        **({'Range': 'bytes=0-3'} if is_parquet else {})))
+                    if not is_parquet:
+                        request.method = 'HEAD'
+                    with open_public(request) as response:
+                        if response.headers.get('Access-Control-Allow-Origin') != '*':
+                            raise ValueError('Public partition browser access differs')
+                        if is_parquet:
+                            if (response.status != 206 or response.headers.get('Content-Range') != f"bytes 0-3/{item['bytes']}"
+                                    or response.read() != b'PAR1' or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
+                                raise ValueError('Public selected Parquet range differs')
+                        elif response.status != 200 or int(response.headers.get('Content-Length', -1)) != item['bytes']:
+                            raise ValueError('Public selected supporting file length differs')
+                break
+            if node['kind'] != 'source-branch':
+                raise ValueError('Invalid public source partition route')
+            current = next(iter(node['children'].values()), None)
 
 
 def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=PUBLIC_URL,
@@ -408,6 +467,8 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     pointer = {'version': 1, 'publisher_version': PUBLISHER_VERSION, 'catalog_id': manifest['info']['catalog_id'],
                'source_manifest': manifest['source_manifest'], 'published_at': manifest['published_at'],
                'manifest': release + 'manifest.json', 'full_release_inputs': full_release_identity()}
+    if manifest.get('version') == 6:
+        pointer['source_identity'] = manifest['source_identity']
     recovery, accepted_record = recovery_for_publication(client, root, recovery_manifest,
         **({'plan': plan} if plan is not None else {'validation': validation} if validation is not None else {}))
     pointer['recovery'] = recovery
@@ -420,7 +481,7 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
 
     def transfer(item):
         name, path = item
-        key = PREFIX + release + name
+        key = PREFIX + (name if manifest.get('version') == 6 else release + name)
         local = validation.file(path) if validation is not None else None
         expected = local['sha256'] if local is not None else digest(path)
         content_type = ('application/vnd.apache.parquet' if name.endswith('.parquet') else
@@ -433,9 +494,14 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
         else:
             # Plain SDK adapters also get one explicitly conditional single PUT.
             # Managed upload_file can retry/multipart without this condition.
-            with path.open('rb') as stream:
-                response = client.put_object(Bucket=BUCKET, Key=key, Body=stream,
-                    ContentLength=path.stat().st_size, IfNoneMatch='*', **options)
+            try:
+                with path.open('rb') as stream:
+                    response = client.put_object(Bucket=BUCKET, Key=key, Body=stream,
+                        ContentLength=path.stat().st_size, IfNoneMatch='*', **options)
+            except ClientError as error:
+                if error.response['Error']['Code'] not in ('PreconditionFailed', '412'):
+                    raise
+                response = None  # Verify the existing immutable bytes; never resend.
             receipt = response.get('_verified_transfer') if isinstance(response, dict) else None
         confirm = getattr(client, 'confirm_transfer', None)
         verified = confirm is not None and confirm(receipt, bucket=BUCKET, key=key,
