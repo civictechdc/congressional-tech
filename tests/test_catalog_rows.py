@@ -384,6 +384,19 @@ def test_actual_native_large_logical_row_roundtrip(tmp_path):
         pytest.skip("Set DOCSPEC_BINARY to maintained local CLI")
     native = native_test_client(binary, tmp_path / "native")
     owner = CatalogRows(native=native, store=MemoryStore())
+    edge = values().slice(0, 3)
+    edge_pin = owner.write(
+        edge,
+        dataset="native-edge",
+        operation="initial",
+        definition="test",
+        owner_column="document_id",
+        max_rows=8192,
+        max_bytes=4 << 20,
+    )
+    assert pa.Table.from_batches(list(owner.read(edge_pin, schema=SCHEMA))).equals(
+        edge, check_metadata=True
+    )
     table = values().slice(3, 1)
     pin = owner.write(
         table,
