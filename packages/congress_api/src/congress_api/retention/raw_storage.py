@@ -146,9 +146,14 @@ class RawStorage:
         return table
 
     def _read_states(self, reference):
-        return self._read_table(reference['release'], reference['rows'],
+        table = self._read_table(reference['release'], reference['rows'],
             schema=STATE_NATIVE_SCHEMA, max_rows=self.max_state_rows,
             max_bytes=self.max_state_bytes, decoded_bytes=reference['decoded_bytes'])
+        order = table[STATE_ORDER]
+        if (order.null_count or pc.count_distinct(order).as_py() != len(table)
+                or pc.min(order).as_py() < 0):
+            raise ValueError('Invalid selected URL-state ordinals')
+        return table.take(pc.sort_indices(order))
 
     def _capture_batches(self, table):
         offset = 0

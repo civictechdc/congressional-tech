@@ -171,3 +171,20 @@ def test_capture_single_row_over_byte_budget_refuses_before_native(storage):
     with pytest.raises(ValueError, match='single capture'):
         storage.prepare(storage.snapshot(), operation='large', captures=captures('a'))
     assert calls == []
+
+
+def test_unchanged_state_with_reversed_native_order_has_zero_writes(storage):
+    selected = storage.publish(storage.prepare(storage.snapshot(), operation='ordered', states=states('a', 'b')))
+    original_batches = storage.native.source_batches
+    @contextmanager
+    def reversed_batches(pin):
+        with original_batches(pin) as reader:
+            table = reader.read_all()
+        yield pa.RecordBatchReader.from_batches(table.schema, table.take(pa.array(list(reversed(range(len(table)))))).to_batches())
+    storage.native.source_batches = reversed_batches
+    storage._candidate = lambda *args, **kwargs: pytest.fail('Identical state caused native write')
+    before = list(storage.store.writes)
+    prepared = storage.prepare(selected, operation='identical', states=states('a', 'b'))
+    assert not prepared['changed']
+    storage.publish(prepared)
+    assert storage.store.writes == before
