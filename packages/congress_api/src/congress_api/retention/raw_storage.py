@@ -194,7 +194,7 @@ class RawStorage:
                 or pin['id'] != pin['dataset']['version']):
             raise ValueError('Native raw source pin count or identity mismatch')
         batches, count, size = [], 0, 0
-        with self.native.source_batches(pin) as reader:
+        with self.native.source_batches(pin, schema=schema) as reader:
             if not reader.schema.equals(schema, check_metadata=False):
                 raise ValueError('Unexpected native raw source schema')
             for batch in reader:

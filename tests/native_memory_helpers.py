@@ -19,10 +19,12 @@ class MemoryNative:
                     dataset=dict(dataset=dataset, version=dataset, groups=dict(source=dict(rows=len(table)))))
 
     @contextmanager
-    def source_batches(self, pin):
+    def source_batches(self, pin, *, schema=None):
         dataset = pin['dataset']['dataset']
         self.reads.append(dataset)
         table = self.tables[dataset]
+        if schema is not None:
+            table = table.cast(schema)
         yield pa.RecordBatchReader.from_batches(table.schema, table.to_batches(max_chunksize=2))
 
 

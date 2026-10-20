@@ -117,7 +117,7 @@ def test_selected_state_and_capture_bounds_refuse_before_or_during_accumulation(
     class Native:
         opened = yielded = 0
         @contextmanager
-        def source_batches(self, pin):
+        def source_batches(self, pin, *, schema=None):
             self.opened += 1
             table = capture_table(captures('a'), first_order=0)
             owner = self
@@ -177,7 +177,7 @@ def test_unchanged_state_with_reversed_native_order_has_zero_writes(storage):
     selected = storage.publish(storage.prepare(storage.snapshot(), operation='ordered', states=states('a', 'b')))
     original_batches = storage.native.source_batches
     @contextmanager
-    def reversed_batches(pin):
+    def reversed_batches(pin, *, schema=None):
         with original_batches(pin) as reader:
             table = reader.read_all()
         yield pa.RecordBatchReader.from_batches(table.schema, table.take(pa.array(list(reversed(range(len(table)))))).to_batches())
@@ -200,3 +200,20 @@ def test_body_lookup_and_count_do_not_read_capture_history(storage):
     assert selected.body_count == 2
     updated = storage.publish(storage.prepare(selected, operation='body-repeat', captures=captures('a')))
     assert updated.body_count == 2
+
+
+def test_richer_state_schema_and_null_url_survive_native_selection(storage):
+    schema = STATE_SCHEMA.append(pa.field('extra', pa.struct([
+        pa.field('large', pa.uint64()), pa.field('nested', pa.list_(pa.binary()))])))
+    owner = RawStorage(storage.store, storage.native, state_schema=schema)
+    original = pa.Table.from_pylist([
+        dict(url='untouched', outcome='failed', attempts=7,
+             extra=dict(large=2**64-1, nested=[None, b'exact'])),
+        dict(url=None, outcome=None)], schema=schema)
+    first = owner.publish(owner.prepare(owner.snapshot(), operation='rich-seed', states=original))
+    assert first.states().equals(original)
+    changed = owner.publish(owner.prepare(first, operation='rich-append',
+        states=pa.Table.from_pylist([dict(url='new', outcome='pending')], schema=schema)))
+    assert changed.states().slice(0, 2).equals(original)
+    assert changed.states().schema.equals(schema)
+    assert changed.state(None) == original.to_pylist()[1]
