@@ -70,12 +70,14 @@ def test_mixed_native_generation_refuses_existing_validation_binding(tmp_path):
         read_catalog_component(store, forged)
 
 
-def test_stale_validator_requirement_refuses_without_payload_revalidation(tmp_path, monkeypatch):
+def test_upgrade_preserves_historical_read_but_refuses_new_admission_without_revalidation(tmp_path, monkeypatch):
     store, native = LocalStore(tmp_path), NativeRecorder()
     reference = prepare(store, native)
+    historical = read_catalog_component(store, reference)
     monkeypatch.setattr(catalog_validation, 'catalog_reference_requirements', lambda: {'validator': 'changed'})
+    assert read_catalog_component(store, reference) == historical
     with pytest.raises(ValueError, match='validator requirements'):
-        read_catalog_component(store, reference)
+        read_catalog_component(store, reference, requirements=catalog_validation.catalog_reference_requirements())
     assert len(native.calls) == 3
 
 

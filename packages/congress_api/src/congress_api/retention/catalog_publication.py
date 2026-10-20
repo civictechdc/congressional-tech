@@ -242,15 +242,17 @@ def _component_schema(item):
         raise ValueError('Invalid catalog component application schema') from error
 
 
-def _require_component(component):
+def _require_component(component, *, requirements=None):
     from congress_api.retention.catalog_partitions import CatalogTable
-    from congress_api.retention.catalog_validation import CatalogReferenceCheck, catalog_reference_requirements
+    from congress_api.retention.catalog_validation import CatalogReferenceCheck
     if (not isinstance(component, dict) or component.get('version') != 1
             or not isinstance(component.get('component'), str) or not component['component']
             or not isinstance(component.get('candidate'), str) or not component['candidate']):
         raise ValueError('Invalid native catalog component')
     validation = component.get('validation', {})
-    if validation.get('requirements') != catalog_reference_requirements():
+    if not isinstance(validation.get('requirements'), dict) or not validation['requirements']:
+        raise ValueError('Catalog component validator requirements are missing')
+    if requirements is not None and validation['requirements'] != requirements:
         raise ValueError('Catalog component validator requirements changed')
     if validation.get('binding') != _component_binding(component):
         raise ValueError('Catalog component validation binding differs')
@@ -290,6 +292,7 @@ def prepare_native_catalog_component(store, native, *, component, candidate, sou
     from congress_api.retention.catalog_validation import CatalogReferenceCheck, catalog_reference_requirements
     from congress_api.retention.immutable_metadata import MetadataObjects
     tables = {}
+    requirements = catalog_reference_requirements()
     with CatalogReferenceCheck(source_schema, document_schema) as check:
         def check_documents(table):
             if any(value != component for value in table['document_id'].to_pylist()):
@@ -305,17 +308,22 @@ def prepare_native_catalog_component(store, native, *, component, candidate, sou
         counts = check.finish()
         source_ids_sha256 = check.source_ids_digest()
     result = dict(version=1, component=component, candidate=candidate, tables=tables,
-                  validation=dict(requirements=catalog_reference_requirements(), counts=counts,
+                  validation=dict(requirements=requirements, counts=counts,
                                   source_ids_sha256=source_ids_sha256))
     result['validation']['binding'] = _component_binding(result)
-    _require_component(result)
+    _require_component(result, requirements=requirements)
     return MetadataObjects(store, 'catalog-components-v1').put(result)
 
 
-def read_catalog_component(store, reference):
-    """Reuse exact immutable component evidence without reopening native payloads."""
+def read_catalog_component(store, reference, *, requirements=None):
+    """Read historical evidence; new-selection admission supplies current requirements.
+
+    The admission owner computes requirements once for the entire selection.
+    An installed validator upgrade never makes an older exact snapshot unreadable.
+    """
     from congress_api.retention.immutable_metadata import MetadataObjects
-    return _require_component(MetadataObjects(store, 'catalog-components-v1').read(reference))
+    return _require_component(MetadataObjects(store, 'catalog-components-v1').read(reference),
+                              requirements=requirements)
 
 
 def local_catalog_paths(root):
