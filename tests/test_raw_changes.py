@@ -40,3 +40,34 @@ def test_receipt_only_operation_replay_is_bound_and_namespaced():
     assert replay['already_applied']
     storage.publish(replay)
     assert storage.store.writes == before
+
+
+def test_open_restores_frozen_state_schema_without_adopting_or_writing():
+    import pyarrow as pa
+    from congress_api.retention.raw_archive import STATE_SCHEMA
+    schema = STATE_SCHEMA.append(pa.field('extra', pa.list_(pa.binary())))
+    store = SelectorStore()
+    native = MemoryNative()
+    first_owner = RawStorage(store, native, state_schema=schema)
+    table = pa.Table.from_pylist([dict(url=None, extra=[None, b'exact'])], schema=schema)
+    first_owner.publish(first_owner.prepare(first_owner.snapshot(), operation='seed', states=table))
+    before = list(store.writes)
+    reopened = RawStorage.open(store, native)
+    assert reopened.state_schema.equals(schema)
+    assert reopened.snapshot().states().equals(table)
+    assert store.writes == before
+    empty = RawStorage.open(SelectorStore(), MemoryNative())
+    assert empty.snapshot().version is None
+
+
+def test_body_lookups_reuse_one_bounded_native_leaf():
+    import pyarrow as pa
+    from congress_api.retention.raw_archive import CAPTURE_SCHEMA
+    storage = memory_raw_storage(SelectorStore())
+    table = pa.Table.from_pylist([dict(body_key='bodies/a', sha256='a'),
+                                 dict(body_key='bodies/b', sha256='b')], schema=CAPTURE_SCHEMA)
+    selected = storage.publish(storage.prepare(storage.snapshot(), operation='body-cache', captures=table))
+    storage.native.reads.clear()
+    assert selected.body_info('a')['body_key'] == 'bodies/a'
+    assert selected.body_info('b')['body_key'] == 'bodies/b'
+    assert len(storage.native.reads) == 1

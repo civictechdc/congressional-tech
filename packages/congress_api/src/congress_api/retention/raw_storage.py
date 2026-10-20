@@ -44,6 +44,7 @@ class RawSnapshot:
     def __init__(self, owner, manifest, version, delivery=None):
         self.owner, self.manifest, self.version = owner, manifest, version
         self.delivery = delivery
+        self._body_leaf = None
 
     def capture_batch(self, entry):
         """Read one exact changed batch, retaining stable observation ordinals."""
@@ -75,7 +76,10 @@ class RawSnapshot:
         _, reference = self.owner.body_routes.lookup(self.manifest['bodies']['root'], 'sha:' + digest)
         if reference is None:
             return None
-        table = self.owner._read_bodies(reference)
+        identity = reference['release']['id']
+        if self._body_leaf is None or self._body_leaf[0] != identity:
+            self._body_leaf = identity, self.owner._read_bodies(reference)
+        table = self._body_leaf[1]
         selected = table.filter(pc.equal(table['key'], 'sha:' + digest)).select(BODY_FIELDS)
         return selected.to_pylist()[0] if len(selected) else None
 
@@ -161,6 +165,26 @@ class RawStorage:
                           max_state_rows=max_state_rows, max_state_bytes=max_state_bytes,
                           max_capture_rows=max_capture_rows, max_capture_bytes=max_capture_bytes,
                           state_schema=base64.b64encode(state_schema.serialize()).decode("ascii"))
+
+    @classmethod
+    def open(cls, store, native):
+        """Reopen an exact selected logical schema; never infer legacy adoption.
+
+        Resource budgets remain the maintained defaults. A selected archive with
+        different budgets requires explicit construction with that frozen basis.
+        """
+        raw = store.read(RAW_KEY)
+        if raw is None:
+            return cls(store, native)
+        if len(raw) > SELECTOR_BYTES:
+            raise ValueError('Raw selector exceeds the byte budget')
+        manifest = json.loads(raw)
+        schema_bytes = base64.b64decode(manifest['basis']['state_schema'], validate=True)
+        schema = pa.ipc.read_schema(pa.BufferReader(schema_bytes))
+        owner = cls(store, native, state_schema=schema)
+        if manifest['version'] != 1 or manifest['basis'] != owner.basis:
+            raise ValueError('Raw selector basis changed; explicit adoption is required')
+        return owner
 
     def _empty(self):
         return dict(version=1, basis=deepcopy(self.basis), captures=dict(head=None, rows=0),

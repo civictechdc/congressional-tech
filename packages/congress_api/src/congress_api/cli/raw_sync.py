@@ -270,7 +270,7 @@ def run(args, log, *, store=None, raw_storage=None):
     if store is None:
         store = connect_storage(args, log)
     if raw_storage is None:
-        raw_storage = RawStorage(store, native)
+        raw_storage = RawStorage.open(store, native)
     metadata_only = args.rebuild_only or args.update_only
     if not args.plan_only and not metadata_only and not args.reinspect_retained and args.transport in {"auto", "zyte"}:
         zyte.token()
