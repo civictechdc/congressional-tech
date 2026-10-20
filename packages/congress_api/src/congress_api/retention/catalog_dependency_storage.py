@@ -4,6 +4,11 @@ DocSpec owns each bounded typed leaf. The application's coherent catalog selecto
 owns the returned roots; preparing a candidate never selects it for readers.
 """
 from copy import deepcopy
+from contextlib import closing
+from pathlib import Path
+import pickle
+import sqlite3
+from tempfile import TemporaryDirectory
 from hashlib import sha256
 
 import pyarrow as pa
@@ -36,10 +41,11 @@ class CatalogDependencyStorage:
 
     def _selection(self, selection):
         if selection is None:
-            return dict(format='catalog-dependencies-v2', schema_hash=self.schema_hash,
+            return dict(format='catalog-dependencies-v2', ownership_edges='document-id-v1', schema_hash=self.schema_hash,
                         max_rows=self.max_rows, max_arrow_bytes=self.max_bytes,
                         source_root=None, alias_root=None, next_source_order=0)
         if (selection.get('format') != 'catalog-dependencies-v2'
+                or selection.get('ownership_edges') != 'document-id-v1'
                 or selection.get('schema_hash') != self.schema_hash
                 or selection.get('max_rows') != self.max_rows
                 or selection.get('max_arrow_bytes') != self.max_bytes
@@ -134,6 +140,60 @@ class CatalogDependencyStorage:
             expected_rows=lambda pin: pin_counts.get(index.compact(pin)),
             max_rows=self.max_rows, max_bytes=self.max_bytes)
 
+    def adopt(self, chunks):
+        """Import exact selected source values without replaying grouping policy.
+
+        Adoption enumerates the prior table once. Temporary hash indexes bound
+        native leaf construction even when a whole historical component shares
+        one body or endpoint. This path never selects the resulting roots.
+        """
+        from .partition_routing import key_hash
+        with TemporaryDirectory(prefix='catalog-dependency-adoption-') as directory, closing(
+                sqlite3.connect(Path(directory) / 'sources.sqlite')) as db:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                'CREATE TABLE sources(identity TEXT PRIMARY KEY,digest TEXT,body BLOB); '
+                'CREATE INDEX source_hashes ON sources(digest); '
+                'CREATE TABLE aliases(alias TEXT,member TEXT,PRIMARY KEY(alias,member));')
+            count = 0
+            for chunk in chunks:
+                if not chunk.schema.equals(self.source_schema, check_metadata=True):
+                    raise DependencyGap('Adoption source schema differs from the selected table')
+                for row in chunk.to_pylist():
+                    identity = index.source_identity(row)
+                    if row.get('source_id') != identity:
+                        raise DependencyGap('Adoption source identity differs from its saved key')
+                    sources, aliases = dependency_tables([row], self.source_schema, first_order=count)
+                    try:
+                        db.execute('INSERT INTO sources VALUES (?,?,?)',
+                            (identity, key_hash(identity), pickle.dumps(sources.to_pylist()[0])))
+                    except sqlite3.IntegrityError as error:
+                        raise DependencyGap('Repeated selected source identity during adoption') from error
+                    db.executemany('INSERT INTO aliases VALUES (?,?)',
+                        ((edge['alias'], edge['source_id']) for edge in aliases.to_pylist()))
+                    count += 1
+            def leaves(prefix):
+                rows = [pickle.loads(body) for body, in db.execute(
+                    'SELECT body FROM sources WHERE digest>=? AND digest<? ORDER BY identity LIMIT ?',
+                    (prefix, prefix + 'g', self.max_rows + 1))]
+                table = pa.Table.from_pylist(rows, schema=dependency_schema(self.source_schema))
+                if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
+                    if len(table):
+                        yield prefix, self._write(table, 'sources')
+                    return
+                if len(table) == 1 or len(prefix) == 64:
+                    raise DependencyGap('One selected source cannot fit its adoption leaf budget')
+                for char in '0123456789abcdef':
+                    yield from leaves(prefix + char)
+            source_root = self.sources.replace_stream(None, '', leaves('')) if count else None
+            class Aliases:
+                def __iter__(self):
+                    return (row[0] for row in db.execute('SELECT DISTINCT alias FROM aliases ORDER BY alias'))
+                def __getitem__(self, alias):
+                    return (row[0] for row in db.execute('SELECT member FROM aliases WHERE alias=? ORDER BY member', (alias,)))
+            alias_root = self.memberships.replace(None, Aliases())
+            return dict(self._selection(None), source_root=source_root, alias_root=alias_root,
+                        next_source_order=count)
+
     def prepare(self, selection, *, replacements=(), deletions=(), source_orders=None):
         """Prepare complete changed scope; the caller later CAS-selects roots.
 
@@ -166,8 +226,8 @@ class CatalogDependencyStorage:
                 raise DependencyGap('Existing source order changed during candidate preparation')
             table, _ = dependency_tables([row], self.source_schema, first_order=position)
             source_rows[key] = table.to_pylist()[0]
-            for alias in index.group_aliases(row, key):
-                new_aliases.setdefault(_encoded_alias(alias), set()).add(key)
+            for alias in source_rows[key]['aliases']:
+                new_aliases.setdefault(alias, set()).add(key)
         source_root = self._replace_rows(basis['source_root'], self.sources,
             key='source_id', schema=dependency_schema(self.source_schema), replacements=source_rows,
             deletions=set(scope.before) - set(scope.after), kind='sources')

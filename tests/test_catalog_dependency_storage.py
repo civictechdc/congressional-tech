@@ -200,3 +200,36 @@ def test_actual_native_dependency_values_retain_unsigned_binary_and_field_metada
     row = source('unsigned.pdf', 'A', saved_native_evidence=dict(maximum=2**64 - 1, bytes=b'\x00\xff'))
     selection = owner.prepare(None, replacements=[row])
     assert owner.selected(selection).source(identity(row)) == pa.Table.from_pylist([row], schema=schema).to_pylist()[0]
+
+
+def test_bulk_adoption_streams_large_shared_component_without_closure_replays():
+    native, store = MemoryNative(), MemoryStore()
+    rows = [source(f'bulk-{i}.pdf', 'shared-body') for i in range(1000)]
+    old_rows, schema, _, _ = index.prepare_document_indexes(rows, SCHEMA)
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='bulk-adopt',
+                                     source_schema=schema, max_rows=64, max_bytes=1 << 20)
+    table = pa.Table.from_pylist(old_rows, schema=schema)
+    selection = owner.adopt(pa.Table.from_batches([batch]) for batch in table.to_batches(max_chunksize=32))
+    assert all(len(part) <= 64 and part.nbytes <= 1 << 20 for part in native.tables.values())
+    assert not native.reads  # Initial import has no previous component to close.
+    selected = owner.selected(selection)
+    for position in (0, 499, 999):
+        row = old_rows[position]
+        assert selected.source(identity(row)) == table.slice(position, 1).to_pylist()[0]
+        assert selected.order(identity(row)) == position
+    assert selection['next_source_order'] == 1000
+    assert len(set(owner.memberships.values(selection['alias_root'], '["body","shared-body"]'))) == 1000
+
+
+def test_saved_document_ownership_closes_old_component_after_group_policy_changes():
+    schema = SCHEMA.append(pa.field('document_id', pa.string()))
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='old-component',
+                                     source_schema=schema, max_rows=8, max_bytes=1 << 20)
+    # Historical grouping may have different eligibility/alias rules. Exact
+    # selected document ownership is an old edge independent of current policy.
+    a = source('a.pdf', 'A', document_id='historical-component')
+    b = source('b.pdf', 'B', document_id='historical-component')
+    initial = owner.prepare(None, replacements=[a, b])
+    scope = affected_sources(owner.selected(initial), replacements=[{**a, 'http_status': ['404']}])
+    assert set(scope.before) == {identity(a), identity(b)}
