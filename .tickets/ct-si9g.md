@@ -51,3 +51,7 @@ Reviewed native adoption, exact source change cursors, directed receipt dependen
 **2026-10-20T05:34:22Z**
 
 Normal raw-to-catalog dispatch now retains source-observation proofs in the same conditional catalog selection. Nullable logical additions preserve old native pins and exact old types. Exact deletion-set regression fixed. Package membership, contribution adoption, bounded large-scope resume and explicit upgrades remain open.
+
+**2026-10-20T07:20:03Z**
+
+Reviewed source replay/closure checkpoints, paged20,000-deletion proofs, additive-schema retry and completed grouping summaries are integrated. Combined backend/viewer suite:118 passed123.11s; root bounded-input suite35 passed11.06s. Scratch grouping and final row emission still repeat; a single document must fit the existing byte limit. Full production table qualification remains open.

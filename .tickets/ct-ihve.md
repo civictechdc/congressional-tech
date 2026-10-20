@@ -39,3 +39,7 @@ Implementation is active in the isolated incremental-viewer worktree against the
 **2026-10-20T05:34:22Z**
 
 Stable v6 reader, historical v5 links and full typed document download are integrated with the primary session committed UI relocation. Local native Catalog analysis and existing portable review policy now consume logical tables. Nullable reuse and final integrated browser evidence remain open.
+
+**2026-10-20T07:20:03Z**
+
+Committed dashboard integration is merged locally without primary uncommitted UI changes.186 Node checks,29-page build,2 built-page checks and fresh Chromium passed; complete source/document downloads preserved all29 fixture fields, stable links survived reload and reviews retained original document values. Receipt:review-merge/merged-browser-verification.json. Production v6 cutover remains pending.

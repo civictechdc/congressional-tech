@@ -47,3 +47,7 @@ Stable viewer builder and retained withdrawal safeguards integrated; joint build
 **2026-10-20T05:34:22Z**
 
 Shared native preparation now serves cloud and local recovery publication; recovery-only mode preserves exact prior manifest bytes. Native runtime input custody and low-compression policy are integrated locally. Hosted native distribution is still absent; no deployment/adoption claimed.
+
+**2026-10-20T07:20:03Z**
+
+Renderer interruption fixes and maintained caller upgrade/resume are reviewed and merged locally in0fc67e5f. Atomic files keep partials outside accepted assets; worker loss around immutable linking is covered. Combined suite118 passed. Hosted runtime installation and production adoption remain separate pending work.
