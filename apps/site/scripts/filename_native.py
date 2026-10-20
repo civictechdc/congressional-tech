@@ -15,11 +15,11 @@ class ViewerAssets:
         self.root, self.read_asset = Path(root), read_asset
         self.max_node_bytes = max_node_bytes
         self.identities = {}
-        self.reads = 0
+        self.reads = self.writes = self.written_bytes = self.metadata_writes = 0
         self._nodes = OrderedDict()
 
     def put_file(self, source, *, name):
-        if name not in ('filenames.parquet', 'details.parquet', 'observations.bin',
+        if name not in ('filenames.parquet', 'documents.parquet', 'details.parquet', 'observations.bin',
                         'observation_rows.bin', 'observation_index.json'):
             raise ValueError('Unknown bounded viewer asset kind')
         identity = file_identity(source)
@@ -30,6 +30,9 @@ class ViewerAssets:
         with Path(source).open('rb') as stream:
             proof = copy_checked(stream, self.root / relative, size=identity['bytes'],
                                  expected=identity, key=relative, exclusive=True)
+        self.writes += 1
+        self.written_bytes += proof['bytes']
+        self.metadata_writes += int(name.endswith('.json'))
         self.identities[relative] = proof
         return dict(path=relative, sha256=digest, bytes=proof['bytes'])
 
@@ -44,6 +47,9 @@ class ViewerAssets:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open('xb') as stream:
                 stream.write(raw)
+            self.writes += 1
+            self.metadata_writes += 1
+            self.written_bytes += len(raw)
         proof = file_identity(path)
         if proof['sha256'] != digest or proof['bytes'] != len(raw):
             raise ValueError('Conflicting immutable viewer metadata page')
@@ -380,6 +386,7 @@ class NativeComponents:
             CREATE TABLE views(name TEXT,component TEXT,rows INTEGER,PRIMARY KEY(name,component));
             CREATE TABLE stats(id TEXT PRIMARY KEY,n INTEGER,saved INTEGER,api INTEGER,video INTEGER);
             CREATE TABLE plans(id INTEGER PRIMARY KEY,body TEXT NOT NULL);
+            CREATE TABLE chunk_assets(name TEXT PRIMARY KEY,reference TEXT NOT NULL);
             CREATE TABLE member_ids(id TEXT,source_order INTEGER,source_id TEXT UNIQUE,
                                     PRIMARY KEY(id,source_order));
         ''')
@@ -495,11 +502,13 @@ class NativeComponents:
             columns = (list(dict.fromkeys(['source_id', 'document_id', 'source_url', '_catalog_order', *[field for field in FIELDS
                 if field in schema.names]])) if label == 'filenames' else
                 [field for field in dict.fromkeys([*self.viewer.LIST_COLUMNS, 'document_kind_source']) if field in schema.names])
-            size = 0
+            size, document_batches = 0, []
             for batch in table.iter_batches():
                 size += batch.nbytes
                 if size > self.policy.row_arrow_bytes:
                     raise ValueError('Native viewer component chunk exceeds its Arrow byte bound')
+                if label == 'documents':
+                    document_batches.append(batch.select(schema.names))
                 for row in batch.select(columns).to_pylist():
                     component = row['document_id']
                     if label == 'filenames':
@@ -510,6 +519,15 @@ class NativeComponents:
                              int(bool(self.viewer.video_reference(row.get('source_url')))), component))
                     else:
                         self.db.execute('UPDATE components SET record=? WHERE id=?', (encoded(row).decode(), component))
+            if label == 'documents':
+                import pyarrow.parquet as pq
+                with tempfile.TemporaryDirectory(prefix='viewer-document-chunk-') as folder:
+                    path = Path(folder) / 'documents.parquet'
+                    exported = pa.Table.from_batches(document_batches, schema=schema)
+                    pq.write_table(exported, path, compression='zstd', compression_level=9,
+                                   row_group_size=self.policy.native_batch_rows)
+                    reference = dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported))
+                    self.db.execute('INSERT INTO chunk_assets VALUES (?,?)', (name, encoded(reference).decode()))
         for component, raw_reference, raw_proof, raw_record in self.db.execute(
                 'SELECT id,reference,proof,record FROM components ORDER BY id'):
             if raw_record is None:
@@ -521,7 +539,11 @@ class NativeComponents:
             api_only, video_only = api == count, video == count
             document = row.get('record_role') == ['document'] and not api_only and not video_only
             flags = dict(document=document, api=api_only, video=video_only, retained=bool(saved))
-            entry = dict(native_ref=json.loads(raw_reference), key=browse_key(row), source_id=row['source_id'],
+            document_files = self.db.execute('SELECT reference FROM chunk_assets JOIN views USING(name) WHERE component=?',
+                                             (component,)).fetchall()
+            if len(document_files) != 1:
+                raise ValueError('Selected component must have one exact document row partition')
+            entry = dict(document_file=json.loads(document_files[0][0]), native_ref=json.loads(raw_reference), key=browse_key(row), source_id=row['source_id'],
                          body_key=row.get('body_key'), source_ids_sha256=proof['validation']['source_ids_sha256'],
                          source_rows=count, flags=flags, members=self._members(component, count))
             browse = {key: value for key, value in row.items() if key not in
@@ -715,7 +737,7 @@ def iterator_inventory(assets, inventory):
             path, digest = ref['path'], ref['sha256']
             if (not isinstance(digest, str) or len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest)
                     or path not in [f'releases/{digest[:32]}/{digest[32:]}/viewer-v2/{name}' for name in
-                        ('page.json', 'filenames.parquet', 'details.parquet', 'observations.bin',
+                        ('page.json', 'filenames.parquet', 'documents.parquet', 'details.parquet', 'observations.bin',
                          'observation_rows.bin', 'observation_index.json')]
                     or type(ref['bytes']) is not int or ref['bytes'] < 0 or path in visited):
                 raise ValueError('Invalid or repeated viewer inventory asset')
@@ -838,6 +860,9 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
         metrics['new_asset_bytes'] = sum(assets.identities[path]['bytes'] for path in uploads)
         metrics['retained_control_bytes'] = sum(proof['bytes'] for path, proof in assets.identities.items()
                                                 if path not in uploads and path != 'manifest.json')
+        metrics['output_writes'] = assets.writes + 1  # Includes the final manifest.
+        metrics['output_bytes_written'] = assets.written_bytes + (target / 'manifest.json').stat().st_size
+        metrics['output_metadata_writes'] = assets.metadata_writes + 1
         metrics['metadata_reads'] = assets.reads
         return PreparedManifest(manifest, assets.identities)
 
