@@ -249,6 +249,7 @@ def main(args):
         operation_scope='Includes local CLI startup/hash/run or delta Parquet preparation/hash/update. Omits application old-leaf read; complete Build input preparation and independent readback are separately timed. Update does not prepare a complete input.',
         source_files_scope='Initial selected source files, proven unchanged throughout the history preparation axis.',
         observer_interval_seconds=1,
+        stop_observation_scope='Fixture byte/free-space limits are sampled; a native call may overshoot between observations. Elapsed deadline is checked on each 100ms subprocess poll and generated batch.',
         temporary_observation_scope='Sampled native scratch and client request paths only; short-lived files between samples may be missed. Protected native attempt files remain retained, not scratch.',
         stop_bounds=dict(seconds=args.seconds, fixture_bytes=args.max_bytes, free_bytes=8 << 30),
         application_leaf_policy=dict(max_rows=8192, max_decoded_bytes=16 << 20))
