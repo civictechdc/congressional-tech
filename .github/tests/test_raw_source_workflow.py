@@ -56,13 +56,13 @@ def recording_command(tmp_path):
         "GITHUB_WORKSPACE": str(tmp_path),
         "CAPTURE_LIMIT": "31",
         "CAPTURE_TRANSPORT": "direct",
+        "DOCSPEC_RUNTIME_CONFIG": str(tmp_path / "native-runtime.json"),
     }
 
 
 @pytest.mark.parametrize(
     ("event", "requested", "schedule", "expected"),
     [
-        ("workflow_dispatch", "rebuild", "", "rebuild"),
         ("workflow_dispatch", "update", "", "update"),
         ("workflow_dispatch", "capture", "", "capture"),
         ("schedule", "", "23 3 * * *", "update"),
@@ -97,8 +97,9 @@ def test_events_execute_one_command_in_the_selected_mode(
         "raw-capture-summary.json",
     ]
     assert args[-2:] == ["--seed", "pipeline-data/meeting-inventory/senate.json.gz"]
-    if expected in {"update", "rebuild"}:
-        assert args[6:-2] == [f"--{expected}-only"]
+    assert args[6:8] == ["--native-config", str(tmp_path / "native-runtime.json")]
+    if expected == "update":
+        assert args[8:-2] == ["--update-only"]
     else:
         assert "--rebuild-only" not in args
         assert "--capture-only" in args
@@ -121,7 +122,7 @@ def test_events_execute_one_command_in_the_selected_mode(
         assert parsed.max_seconds == 18000
 
 
-def test_rebuild_workflow_arguments_execute_without_acquisition(
+def test_update_workflow_arguments_execute_without_acquisition(
     tmp_path, recording_command, monkeypatch
 ):
     """Argument parsing alone cannot detect a later CLI mode/seed rejection."""
@@ -133,20 +134,22 @@ def test_rebuild_workflow_arguments_execute_without_acquisition(
     seed.write_bytes(
         gzip.compress(b'{"documents": [{"url": "https://example.gov/report.pdf"}]}')
     )
-    result = run_step(PUBLISH, tmp_path, SYNC_MODE="rebuild", **recording_command)
+    result = run_step(PUBLISH, tmp_path, SYNC_MODE="update", **recording_command)
     assert result.returncode == 0, result.stderr
     args = json.loads((tmp_path / "invocation.json").read_text())
     summary = tmp_path / "raw-capture-summary.json"
     summary.unlink()
     calls = []
     store = object()
+    owner = object()
 
     def forbidden(*args, **kwargs):
         pytest.fail("The workflow's rebuild invocation entered acquisition")
 
-    def rebuild(actual_store, *, seeds=(), workers, repair=False, inspect_bodies=False):
+    def rebuild(actual_store, *, seeds=(), workers, repair=False, inspect_bodies=False, raw_storage=None):
         assert inspect_bodies is False
-        assert repair
+        assert not repair
+        assert raw_storage is owner
         assert actual_store is store
         calls.append((workers, list(seeds)))
         return {"catalog_id": "rebuilt"}
@@ -160,12 +163,16 @@ def test_rebuild_workflow_arguments_execute_without_acquisition(
     for name in ("CLOUDFLARE_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"):
         monkeypatch.setenv(name, "workflow-test")
     monkeypatch.chdir(tmp_path)
-    raw_sync.main(args)
+    from congress_api.cli.raw_progress import ProgressLog
+    from io import StringIO
+    parsed = raw_sync.parser().parse_args(args)
+    with ProgressLog(parsed.summary.with_suffix('.progress.json'), stream=StringIO()) as log:
+        raw_sync.run(parsed, log, store=store, raw_storage=owner)
     assert len(calls) == 1
     workers, seeds = calls[0]
     assert workers == 2
     assert [row["url"] for row in seeds] == ["https://example.gov/report.pdf"]
-    assert json.loads(summary.read_text())["mode"] == "rebuild"
+    assert json.loads(summary.read_text())["mode"] == "update"
 
 
 @pytest.mark.parametrize(
@@ -174,6 +181,7 @@ def test_rebuild_workflow_arguments_execute_without_acquisition(
         ("pull_request", "rebuild"),
         ("workflow_dispatch", ""),
         ("workflow_dispatch", "typo"),
+        ("workflow_dispatch", "rebuild"),
         ("schedule", ""),
     ],
 )
@@ -198,7 +206,7 @@ def test_failed_command_or_missing_receipt_fails_the_step(
     tmp_path, recording_command, failure
 ):
     result = run_step(
-        PUBLISH, tmp_path, SYNC_MODE="rebuild", **recording_command, **{failure: "1"}
+        PUBLISH, tmp_path, SYNC_MODE="update", **recording_command, **{failure: "1"}
     )
     assert result.returncode != 0
     if failure == "FAIL_SYNC":
@@ -407,20 +415,27 @@ def test_loopback_tests_run_in_a_native_step():
     assert native_steps[0]['env']['SOURCE_FETCH_BINARY'].endswith('/packages/source-fetch/target/release/source-fetch')
 
 
-def test_explicit_repair_uses_same_command(tmp_path, recording_command):
-    result = run_step(PUBLISH, tmp_path, SYNC_MODE='rebuild', REPAIR='true', **recording_command)
-    assert result.returncode == 0, result.stderr
-    args = json.loads((tmp_path / 'invocation.json').read_text())
-    assert '--repair' in args
+def test_full_rebuild_and_global_reprocessing_are_not_workflow_operations():
+    inputs = WORKFLOW['on']['workflow_dispatch']['inputs']
+    assert inputs['mode']['options'] == ['update', 'capture']
+    assert 'repair' not in inputs and 'inspect_bodies' not in inputs
+    assert '--rebuild-only' not in PUBLISH['run']
+    assert '--repair' not in PUBLISH['run'] and '--inspect-bodies' not in PUBLISH['run']
 
 
-def test_body_inspection_requires_explicit_dispatch_input(tmp_path, recording_command):
-    from congress_api.cli.raw_sync import parser
-    assert WORKFLOW['on']['workflow_dispatch']['inputs']['inspect_bodies']['default'] == 'false'
-    result = run_step(PUBLISH, tmp_path, SYNC_MODE='rebuild', INSPECT_BODIES='true', **recording_command)
-    assert result.returncode == 0, result.stderr
-    args = json.loads((tmp_path / 'invocation.json').read_text())
-    assert parser().parse_args(args).inspect_bodies is True
+def test_native_runtime_is_required_before_archive_data_steps(tmp_path):
+    preflight = next(step for step in STEPS if step.get('name') == 'Require an approved native runtime before archive access')
+    assert STEPS.index(preflight) < STEPS.index(PUBLISH)
+    assert preflight['if'] == "steps.operation.outputs.mode != 'validate'"
+    result = run_step(preflight, tmp_path)
+    assert result.returncode != 0 and 'qualified native runtime' in result.stderr
+    for step in STEPS:
+        if 'verify-capture-run.py' in step.get('run', ''):
+            assert '--native-config "$DOCSPEC_RUNTIME_CONFIG"' in step['run']
+    update = WORKFLOW['jobs']['update_catalog_after_capture']
+    assert any('check-native-runtime.py' in step.get('run','') for step in update['steps'])
+    command = next(step['run'] for step in update['steps'] if step.get('name') == 'Update catalog from the verified capture')
+    assert '--native-config "$DOCSPEC_RUNTIME_CONFIG"' in command
 
 
 @pytest.mark.parametrize('limit', ['0', '-1', '20001', '1.5', 'oops', '18446744073709571616', '020000'])

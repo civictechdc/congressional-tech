@@ -63,7 +63,7 @@ def parser():
     p.add_argument("--files-per-second", "--requests-per-second", type=positive, default=60,
                    help="Maximum new file starts per second; redirects and fallback share the file slot")
     p.add_argument("--seed", action="append", type=Path, default=[],
-                   help="Saved JSON/JSONL link metadata; rebuild mode reads it without acquiring URLs")
+                   help="Saved JSON/JSONL link metadata; catalog updates do not acquire URLs")
     p.add_argument(
         "--limit",
         type=positive,
@@ -98,11 +98,11 @@ def parser():
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--plan-only", action="store_true")
     mode.add_argument("--capture-only", action="store_true",
-                      help="Save captures, receipts and retry state without rebuilding document tables")
+                      help="Save captures, receipts and retry state without updating document tables")
     mode.add_argument("--update-only", action="store_true",
                       help="Add retained evidence to document tables, preserving existing metadata; no acquisition")
     mode.add_argument("--rebuild-only", action="store_true",
-                      help="Explicitly reinterpret retained metadata with current rules; no acquisition")
+                      help=argparse.SUPPRESS)
     p.add_argument(
         "--local-mirror",
         type=Path,
@@ -111,9 +111,9 @@ def parser():
     p.add_argument('--native-config', type=Path,
                    help='Explicit native runtime settings; existing raw data requires one-time adoption')
     p.add_argument("--repair", action="store_true",
-                   help="Reconstruct saved state and replay all source evidence")
+                   help=argparse.SUPPRESS)
     p.add_argument("--inspect-bodies", action="store_true",
-                   help="Also inspect retained document contents; normal updates use receipts and filenames")
+                   help=argparse.SUPPRESS)
     p.add_argument("--summary", type=Path, default=Path("raw-capture-summary.json"))
     return p
 
@@ -127,7 +127,7 @@ def main(argv=None):
 def capture_sources(args, store, run_id, *, raw_storage):
     """Finish collection and release its working state before catalog processing."""
     progress.report('load_capture_state')
-    archive = Archive(store, run_id, storage=raw_storage, repair=args.repair)
+    archive = Archive(store, run_id, storage=raw_storage)
     stop = threading.Event()
     previous_handlers = {sig: signal.signal(sig, lambda *_: stop.set())
                          for sig in (signal.SIGTERM, signal.SIGINT)}
@@ -220,7 +220,7 @@ def connect_storage(args, log):
             response_checksum_validation="when_required",
         )
         async_options = {}
-        if not (args.plan_only or args.rebuild_only or args.update_only):
+        if not (args.plan_only or args.update_only):
             from aiobotocore.session import get_session
             async_options['async_client'] = lambda: get_session().create_client(
                 's3', **client_args, config=storage_config)
@@ -259,8 +259,10 @@ def run(args, log, *, store=None, raw_storage=None):
         raise SystemExit("--retry-outcome requires --capture-only without --initial-only, --repair or --seed")
     if args.initial_only and (args.repair or args.rebuild_only or args.update_only or args.plan_only):
         raise SystemExit("--initial-only requires acquisition without --repair")
-    if args.capture_only and args.inspect_bodies:
-        raise SystemExit("--inspect-bodies requires a catalog rebuild; omit --capture-only")
+    if args.inspect_bodies:
+        raise SystemExit("--inspect-bodies requires scoped native reprocessing; use explicit retained URL reinspection")
+    if args.rebuild_only or args.repair:
+        raise SystemExit("Full rebuild and repair are not operational routes; use --update-only or explicit reviewed adoption")
     if raw_storage is None:
         if args.native_config is None:
             raise SystemExit('--native-config is required; raw archive adoption is explicit')
@@ -271,13 +273,13 @@ def run(args, log, *, store=None, raw_storage=None):
         store = connect_storage(args, log)
     if raw_storage is None:
         raw_storage = RawStorage.open(store, native)
-    metadata_only = args.rebuild_only or args.update_only
+    metadata_only = args.update_only
     if not args.plan_only and not metadata_only and not args.reinspect_retained and args.transport in {"auto", "zyte"}:
         zyte.token()
     run_id = (
         datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:12]
     )
-    mode = 'rebuild' if args.rebuild_only else 'update' if args.update_only else 'plan' if args.plan_only else 'capture'
+    mode = 'update' if args.update_only else 'plan' if args.plan_only else 'capture'
     with log.lock:
         log.state.update(run_id=run_id, mode=mode)
     summary = dict(mode=mode,
@@ -288,7 +290,7 @@ def run(args, log, *, store=None, raw_storage=None):
         if args.plan_only:
             summary["planning_status"] = "running"
             progress.report('load_capture_state')
-            archive = Archive(store, run_id, storage=raw_storage, repair=args.repair)
+            archive = Archive(store, run_id, storage=raw_storage)
             for item in seed_files(args.seed):
                 archive.seed_links(item)
             archive.admit_pending_urls()
@@ -308,7 +310,6 @@ def run(args, log, *, store=None, raw_storage=None):
                 save_summary(args.summary, summary)
                 summary['catalog'] = rebuild_catalog(
                     store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers,
-                    repair=args.repair or args.rebuild_only, inspect_bodies=args.inspect_bodies,
                     raw_storage=raw_storage,
                 )
                 summary['catalog_status'] = 'completed'
