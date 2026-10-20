@@ -35,6 +35,7 @@ SURVIVOR_ITEMS_SCHEMA = pa.schema([
     pa.field('effective_pub_date', pa.date32(), nullable=True),
     pa.field('story_id', pa.string(), nullable=True),
     pa.field('text_group_id', pa.string(), nullable=True),
+    pa.field('identical_text_group_id', pa.string(), nullable=True),
 ])
 
 SPAN_STRUCT_TYPE = pa.struct([
@@ -52,6 +53,18 @@ SELECTED_MENTIONS_SCHEMA = pa.schema([
     pa.field('aboutness', pa.string(), nullable=False),
     pa.field('occurrences', pa.list_(pa.field('element', SPAN_STRUCT_TYPE, nullable=False)), nullable=False),
 ])
+
+BRIDGE_KEYS = {
+    'entity_roots': 'entity_id',
+    'selected_mentions': 'mention_id',
+    'survivor_items': 'item_id',
+}
+
+BRIDGE_SCHEMAS = {
+    'entity_roots': ENTITY_ROOTS_SCHEMA,
+    'selected_mentions': SELECTED_MENTIONS_SCHEMA,
+    'survivor_items': SURVIVOR_ITEMS_SCHEMA,
+}
 
 
 def _unwrap_records_and_selections(records, selections=None):
@@ -126,6 +139,16 @@ def survivor_items_rows(records, selections=None):
             survivors.append(survivor)
     survivors.sort(key=lambda item: item['id'])
 
+    text_group_counts = {}
+    text_group_by_item = {}
+    for item in survivors:
+        version_id = item.get('current_version_id')
+        version = versions.get(version_id) if version_id is not None else None
+        if version is not None and isinstance(version.get('text'), str):
+            group_id = text_group_key(version['text'])
+            text_group_by_item[item['id']] = group_id
+            text_group_counts[group_id] = text_group_counts.get(group_id, 0) + 1
+
     rows = []
     for item in survivors:
         version_id = item.get('current_version_id')
@@ -141,9 +164,10 @@ def survivor_items_rows(records, selections=None):
                 pub_date_str = discovery_dates.pop()
         effective_pub_date = date.fromisoformat(pub_date_str) if pub_date_str is not None else None
         story_id = story_by_version.get(version['id']) if version is not None else None
-        text_group_id = (
-            text_group_key(version['text'])
-            if version is not None and isinstance(version.get('text'), str)
+        text_group_id = text_group_by_item.get(item['id'])
+        identical_text_group_id = (
+            text_group_id
+            if text_group_id is not None and text_group_counts.get(text_group_id, 0) > 1
             else None
         )
         rows.append({
@@ -153,6 +177,7 @@ def survivor_items_rows(records, selections=None):
             'effective_pub_date': effective_pub_date,
             'story_id': story_id,
             'text_group_id': text_group_id,
+            'identical_text_group_id': identical_text_group_id,
         })
     return rows
 

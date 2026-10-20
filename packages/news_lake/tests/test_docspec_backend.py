@@ -19,11 +19,15 @@ from news_lake.contract import check_corpus
 from news_lake.contract.records import KIND_TABLES
 from news_lake.storage.coordinator import _merge_upsert
 from news_lake.storage.docspec_backend import (
+    AppendCollisionError,
     DocSpecClient,
+    DocSpecFailure,
     DocSpecLake,
     DocSpecNewsViews,
+    _ArrowHttpStream,
     dataset_id_for,
     merge_upsert_batch,
+    restore_application_schema,
     table_records,
     version_ref,
 )
@@ -389,10 +393,25 @@ def test_incremental_join_politician_articles(tmp_path):
     views = DocSpecNewsViews(client)
     views.materialize(before)
 
+    mentions_arrow = lake.read_dataset('selected_mentions')
+    assert pa.types.is_list(mentions_arrow.schema.field('occurrences').type)
+    assert pa.types.is_struct(mentions_arrow.schema.field('occurrences').type.value_type)
+
     got_full = views.politician_articles(before, mode='full')
+    joined_arrow = lake.read_dataset('politician_articles')
+    assert pa.types.is_list(joined_arrow.schema.field('occurrences').type)
+    assert pa.types.is_struct(joined_arrow.schema.field('occurrences').type.value_type)
     assert got_full == politician_articles_views(before)  # parity with the Python view
     assert sorted((row['person_root_id'], row['item_id']) for row in got_full) == sorted(
         [(P1['id'], I1['id']), (P1B['id'], I1['id']), (P2['id'], I5['id'])])
+
+    cov_full = views.coverage_daily(before, mode='full')
+    cov_arrow = lake.read_dataset('coverage_daily')
+    assert pa.types.is_list(cov_arrow.schema.field('identical_text_group_ids').type)
+    assert cov_full == coverage_daily(before)
+    cov_by_date = {row['date']: row for row in cov_full}
+    assert len(cov_by_date['2026-10-18']['identical_text_group_ids']) == 1
+    assert cov_by_date['2026-10-19']['identical_text_group_ids'] == []
 
     # Apply the same_as decision: admit it, rebuild the roots bridge with it,
     # and update the native entity_roots dataset by key.
@@ -497,3 +516,389 @@ def test_serve_loopback_http(tmp_path):
     assert _records_of(lake, 'news_versions') == sorted(
         (record for record in CORPUS if record['kind'] == 'version'),
         key=lambda record: record['id'])
+
+
+# -- Test 6 (ct-qkvr): multi-batch append preservation, replay, and collision refusal ---
+
+
+def test_multi_batch_append_preserves_prior_records_and_files(tmp_path):
+    """Append commits across distinct polls preserve earlier rows and Parquet files."""
+    client = DocSpecClient(tmp_path / 'ws')
+    lake = DocSpecLake(client)
+
+    batch1 = [
+        _capture('b1'),
+        _extract_run('b1', _id('capture:b1')),
+        _version('b1', title='First batch article',
+                 publication={'precision': 'day', 'date': '2026-10-18', 'basis': 'publisher'},
+                 text='Alex Doe spoke first.'),
+        _mention('b1', version_key='b1', surface='Alex Doe', resolution='resolved',
+                 occurrences=[{'field': 'title', 'start': 0, 'end': 8}], entity_key='p1'),
+    ]
+    batch2 = [
+        _capture('b2'),
+        _extract_run('b2', _id('capture:b2')),
+        _version('b2', title='Second batch article',
+                 publication={'precision': 'day', 'date': '2026-10-19', 'basis': 'publisher'},
+                 text='Robin Roe spoke second.'),
+        _mention('b2', version_key='b2', surface='Robin Roe', resolution='resolved',
+                 occurrences=[{'field': 'title', 'start': 0, 'end': 9}], entity_key='p2'),
+    ]
+
+    pins1 = lake.commit_records(batch1)
+    pins2 = lake.commit_records(batch2)
+
+    for dataset, kind in (
+        ('news_captures', 'capture'),
+        ('news_versions', 'version'),
+        ('news_mentions', 'mention'),
+    ):
+        assert pins2[dataset]['dataset']['version'] != pins1[dataset]['dataset']['version']
+        # Unchanged Parquet files from batch 1 are preserved in batch 2's manifest.
+        files1 = {
+            entry['path']
+            for entry in pins1[dataset]['dataset']['groups']['source']['objects']
+            if entry['path'].endswith('.parquet')
+        }
+        files2 = {
+            entry['path']
+            for entry in pins2[dataset]['dataset']['groups']['source']['objects']
+            if entry['path'].endswith('.parquet')
+        }
+        assert files1 and files1.issubset(files2)
+        expected = sorted(
+            [r for r in batch1 + batch2 if r['kind'] == kind],
+            key=lambda r: r['id'],
+        )
+        assert _records_of(lake, dataset) == expected
+
+    # Replaying an already-committed append batch is an idempotent no-op.
+    pins_replay = lake.commit_records(batch1)
+    assert (pins_replay['news_captures']['dataset']['version']
+            == pins2['news_captures']['dataset']['version'])
+
+    # Reusing an existing append id with altered content raises AppendCollisionError.
+    colliding_capture = dict(_capture('b1'), http_status=404)
+    with pytest.raises(AppendCollisionError, match='append-only news_captures'):
+        lake.commit_records([colliding_capture])
+
+
+# -- Test 7 (ct-nloa): bounded upsert via update_table and key-filtered reads ----------
+
+
+def test_bounded_upsert_updates_only_changed_rows_across_unrelated_records(tmp_path):
+    """Upsert reads only incoming keys and updates only changed rows via update_table."""
+    client = DocSpecClient(tmp_path / 'ws')
+    lake = DocSpecLake(client)
+
+    # Seed 50 unrelated outlets across two initial batches so the dataset has multiple files.
+    initial_a = [
+        {'kind': 'outlet', 'id': _id(f'outlet:bulk-{i}'), 'recorded_at': AT,
+         'name': f'Outlet {i}', 'domains': [f'o{i}.example']}
+        for i in range(25)
+    ]
+    initial_b = [
+        {'kind': 'outlet', 'id': _id(f'outlet:bulk-{i}'), 'recorded_at': AT,
+         'name': f'Outlet {i}', 'domains': [f'o{i}.example']}
+        for i in range(25, 50)
+    ]
+    lake.commit_records(initial_a)
+    pin_before = lake.commit_records(initial_b)['news_outlets']
+
+    # Spy on update_table and _existing_by_ids to prove work is bounded to incoming IDs.
+    observed_updates = []
+    orig_update_table = client.update_table
+
+    def spy_update_table(dataset, operation, base_version, keys, table, **kwargs):
+        observed_updates.append((dataset, len(table), keys))
+        return orig_update_table(dataset, operation, base_version, keys, table, **kwargs)
+
+    client.update_table = spy_update_table
+
+    target_id = _id('outlet:bulk-7')
+    existing_subset = lake._existing_by_ids(pin_before, 'outlet', {target_id})
+    assert list(existing_subset.keys()) == [target_id]
+
+    updated_outlet = {
+        'kind': 'outlet', 'id': target_id, 'recorded_at': '2026-10-21T09:00:00Z',
+        'name': 'Outlet 7 Renamed', 'domains': ['o7-new.example'],
+    }
+    pin_after = lake.commit_records([updated_outlet])['news_outlets']
+
+    assert observed_updates == [('news_outlets', 1, ['id'])]
+    # Unchanged Parquet file from the second batch (indices 25..49) is reused without rewrite.
+    files_before = {
+        entry['path']
+        for entry in pin_before['dataset']['groups']['source']['objects']
+    }
+    files_after = {
+        entry['path']
+        for entry in pin_after['dataset']['groups']['source']['objects']
+    }
+    assert len(files_before & files_after) >= 1
+
+    all_outlets = _records_of(lake, 'news_outlets')
+    assert len(all_outlets) == 50
+    by_id = {row['id']: row for row in all_outlets}
+    assert by_id[target_id]['name'] == 'Outlet 7 Renamed'
+    assert by_id[target_id]['domains'] == ['o7.example', 'o7-new.example']
+
+
+# -- Test 8 (ct-egpe): schema restoration, retained producer inputs, IPC EOS check -----
+
+
+def test_boundary_hardening_schema_retention_and_ipc_framing(tmp_path):
+    """Explicit schema restoration, retained inputs on indeterminate error, and IPC EOS."""
+    import io
+
+    # 1. restore_application_schema restores UInt64 only when declared, preserving Decimal128.
+    declared = pa.schema([
+        pa.field('u64_col', pa.uint64()),
+        pa.field('dec_col', pa.decimal128(20, 0)),
+    ])
+    stored = pa.Table.from_pylist(
+        [{'u64_col': 42, 'dec_col': 99}],
+        schema=pa.schema([
+            pa.field('u64_col', pa.decimal128(20, 0)),
+            pa.field('dec_col', pa.decimal128(20, 0)),
+        ]),
+    )
+    restored = restore_application_schema(stored, declared)
+    assert restored.schema.field('u64_col').type == pa.uint64()
+    assert restored.schema.field('dec_col').type == pa.decimal128(20, 0)
+
+    # 2. _ArrowHttpStream rejects truncated IPC streams missing the 8-byte EOS marker.
+    sink = pa.BufferOutputStream()
+    with pa.ipc.new_stream(sink, pa.schema([pa.field('x', pa.int64())])) as writer:
+        writer.write_table(pa.Table.from_pylist([{'x': 1}]))
+    valid_bytes = sink.getvalue().to_pybytes()
+    assert valid_bytes.endswith(b'\xff\xff\xff\xff\x00\x00\x00\x00')
+
+    stream_ok = _ArrowHttpStream(io.BytesIO(valid_bytes))
+    assert pa.ipc.open_stream(stream_ok).read_all().to_pylist() == [{'x': 1}]
+    stream_ok.verify_eos()
+
+    truncated_bytes = valid_bytes[:-8]
+    stream_bad = _ArrowHttpStream(io.BytesIO(truncated_bytes))
+    assert pa.ipc.open_stream(stream_bad).read_all().to_pylist() == [{'x': 1}]
+    with pytest.raises(OSError, match='lacks a complete stream terminator'):
+        stream_bad.verify_eos()
+
+    # 3. Producer input staging retains files on indeterminate ('worker') errors
+    # and cleans them up on deterministic ('validation') refusals.
+    client = DocSpecClient(tmp_path / 'ws')
+    table = pa.Table.from_pylist([{'id': '1'}])
+    orig_call = client._call
+
+    def fake_worker_call(*args, dispatch=None):
+        if args and args[0] == 'hash':
+            return orig_call(*args, dispatch=dispatch)
+        if dispatch is not None:
+            dispatch['submitted'] = True
+        raise DocSpecFailure(
+            args, 500, 'worker: simulated crash', status_code=500, code='worker'
+        )
+
+    client._call = fake_worker_call
+    with pytest.raises(DocSpecFailure):
+        client.run_table(table, 'news_outlets', 'op-crash')
+    retained = client.retained_producer_inputs()
+    assert len(retained) == 1
+    assert Path(retained[0]['input']).exists()
+    assert Path(retained[0]['request']).exists()
+
+    def fake_validation_call(*args, dispatch=None):
+        if args and args[0] == 'hash':
+            return orig_call(*args, dispatch=dispatch)
+        if dispatch is not None:
+            dispatch['submitted'] = True
+        raise DocSpecFailure(
+            args, 422, 'validation: bad schema', status_code=422, code='validation'
+        )
+
+    client._call = fake_validation_call
+    with pytest.raises(DocSpecFailure):
+        client.run_table(table, 'news_outlets', 'op-invalid')
+    # The deterministic validation refusal cleans up its staging dir; only op-crash remains.
+    assert client.retained_producer_inputs() == retained
+
+
+# -- Test 9 (ct-jo8n, ct-gf8i): update_bridges, pin isolation, cross-day syndication ---
+
+
+def test_update_bridges_pin_isolation_and_cross_day_syndication(tmp_path):
+    """views.update_bridges diffs bridges, pins exact versions, and tracks cross-day stories."""
+    from news_lake.analysis.cluster import text_group_key
+
+    # Make V2 publish on 2026-10-19 while sharing identical text with V1 (2026-10-18).
+    v2_next_day = _version(
+        'v2', title='Council roundup next day',
+        publication={'precision': 'day', 'date': '2026-10-19', 'basis': 'publisher'},
+        text='Council member Alex Doe and Alex Doe spoke.',
+    )
+    corpus_initial = [
+        (v2_next_day if r['id'] == V2['id'] else r)
+        for r in CORPUS
+        if r['id'] != MERGE_P1B_INTO_P1['id']
+    ]
+    check_corpus(corpus_initial)
+    before = release_read_of(corpus_initial, SELECTIONS)
+
+    client = DocSpecClient(tmp_path / 'ws')
+    lake = DocSpecLake(client)
+    lake.commit_records(corpus_initial)
+
+    views = DocSpecNewsViews(client)
+    views.materialize(before)
+
+    pa_before = views.politician_articles(before, mode='full')
+    assert pa_before == politician_articles_views(before)
+    cov_before = views.coverage_daily(before, mode='full')
+    assert cov_before == coverage_daily(before)
+    cov_by_date = {row['date']: row for row in cov_before}
+    # Cross-day syndication: identical text group spans 2026-10-18 (V1) and 2026-10-19 (V2),
+    # so both days carry the shared text_group_key in identical_text_group_ids.
+    expected_group = text_group_key(V1['text'])
+    assert cov_by_date['2026-10-18']['identical_text_group_ids'] == [expected_group]
+    assert cov_by_date['2026-10-19']['identical_text_group_ids'] == [expected_group]
+
+    # Now apply MERGE_P1B_INTO_P1 via views.update_bridges(...) instead of manual update_table.
+    lake.commit_records([MERGE_P1B_INTO_P1])
+    after_corpus = corpus_initial + [MERGE_P1B_INTO_P1]
+    after = release_read_of(after_corpus, SELECTIONS)
+
+    roots_v_before = views.pins['entity_roots']['dataset']['version']
+    mentions_v_before = views.pins['selected_mentions']['dataset']['version']
+    items_v_before = views.pins['survivor_items']['dataset']['version']
+
+    views.update_bridges(after)
+    assert views.pins['entity_roots']['dataset']['version'] != roots_v_before
+    # Unchanged bridges are not rewritten.
+    assert views.pins['selected_mentions']['dataset']['version'] == mentions_v_before
+    assert views.pins['survivor_items']['dataset']['version'] == items_v_before
+
+    # Simulate an unpinned concurrent advance on entity_roots AFTER views.update_bridges
+    # pinned the release: views.politician_articles(mode='incremental') must use views.pins,
+    # not unpinned client.latest.
+    rogue_root = [{'entity_id': P1['id'], 'person_root_id': P2['id'],
+                   'entity_type': 'person', 'name': 'Rogue Override'}]
+    client.update_table(
+        'entity_roots', 'rogue-advance',
+        views.pins['entity_roots']['dataset']['version'], ['entity_id'],
+        pa.Table.from_pylist(rogue_root, schema=bridges.ENTITY_ROOTS_SCHEMA),
+    )
+    assert (client.latest('entity_roots')['dataset']['version']
+            != views.pins['entity_roots']['dataset']['version'])
+
+    got_inc = views.politician_articles(after, mode='incremental')
+    assert got_inc == politician_articles_views(after)
+
+
+# -- Test 10 (ct-4nyy): C5 rights and capture expiry enforcement on native export ------
+
+
+def test_export_authorized_enforces_c5_rights_and_capture_expiry(tmp_path):
+    """views.export_authorized scrubs restricted/expired payloads before native export."""
+    cap_pub_ok = dict(
+        _capture('pub-ok'),
+        access='redistributable',
+        retain_until='2026-10-25T00:00:00Z',
+    )
+    cap_pub_expired = dict(
+        _capture('pub-exp'),
+        access='redistributable',
+        retain_until='2026-10-19T00:00:00Z',
+    )
+    cap_restricted = dict(
+        _capture('rest'),
+        access='restricted',
+        retain_until='2026-10-25T00:00:00Z',
+    )
+
+    ver_pub_ok = dict(
+        _version('pub-ok', title='Public OK',
+                 publication={'precision': 'day', 'date': '2026-10-18', 'basis': 'publisher'},
+                 text='Redistributable body text.'),
+        access='redistributable',
+    )
+    ver_pub_expired = dict(
+        _version('pub-exp', title='Public Expired Capture',
+                 publication={'precision': 'day', 'date': '2026-10-18', 'basis': 'publisher'},
+                 text='Body text whose capture expired.'),
+        access='redistributable',
+    )
+    ver_restricted = _version(
+        'rest', title='Restricted Article',
+        publication={'precision': 'day', 'date': '2026-10-18', 'basis': 'publisher'},
+        text='Restricted body text.',
+    )
+
+    export_corpus = [
+        OUTLET_A,
+        cap_pub_ok, _extract_run('pub-ok', cap_pub_ok['id']),
+        _item('pub-ok', version_key='pub-ok'), ver_pub_ok,
+        cap_pub_expired, _extract_run('pub-exp', cap_pub_expired['id']),
+        _item('pub-exp', version_key='pub-exp'), ver_pub_expired,
+        cap_restricted, _extract_run('rest', cap_restricted['id']),
+        _item('rest', version_key='rest'), ver_restricted,
+    ]
+    check_corpus(export_corpus)
+    read = release_read_of(export_corpus, [])
+
+    client = DocSpecClient(tmp_path / 'ws')
+    lake = DocSpecLake(client)
+    lake.commit_records(export_corpus)
+    views = DocSpecNewsViews(client)
+
+    as_of = '2026-10-20T12:00:00Z'
+    public_dir = tmp_path / 'export-public'
+    receipts_pub = views.export_authorized(
+        read, public_dir, as_of=as_of, authorized=False,
+    )
+    assert 'news_captures' in receipts_pub
+    assert 'news_versions' in receipts_pub
+    assert (public_dir / 'news_captures.parquet').exists()
+    assert (public_dir / 'news_versions.parquet').exists()
+
+    exported_captures = {
+        r['id']: r
+        for r in table_records(pa.parquet.read_table(public_dir / 'news_captures.parquet'))
+    }
+    exported_versions = {
+        r['id']: r
+        for r in table_records(pa.parquet.read_table(public_dir / 'news_versions.parquet'))
+    }
+
+    # Public export: only non-expired redistributable keeps payload/text.
+    assert exported_captures[cap_pub_ok['id']]['access'] == 'redistributable'
+    assert 'payload_uri' in exported_captures[cap_pub_ok['id']]
+    assert exported_captures[cap_pub_expired['id']]['access'] == 'metadata_only'
+    assert 'payload_uri' not in exported_captures[cap_pub_expired['id']]
+    assert exported_captures[cap_restricted['id']]['access'] == 'metadata_only'
+    assert 'payload_uri' not in exported_captures[cap_restricted['id']]
+
+    assert exported_versions[ver_pub_ok['id']]['access'] == 'redistributable'
+    assert exported_versions[ver_pub_ok['id']]['text'] == 'Redistributable body text.'
+    # Version referencing an expired capture is scrubbed to metadata_only even if redistributable!
+    assert exported_versions[ver_pub_expired['id']]['access'] == 'metadata_only'
+    assert 'text' not in exported_versions[ver_pub_expired['id']]
+    assert exported_versions[ver_restricted['id']]['access'] == 'metadata_only'
+    assert 'text' not in exported_versions[ver_restricted['id']]
+
+    # Re-exporting the same release/channel reuses the admitted export dataset version.
+    receipts_pub_again = views.export_authorized(
+        read, tmp_path / 'export-public-2', as_of=as_of, authorized=False,
+    )
+    assert (receipts_pub_again['news_versions']['source']['version']
+            == receipts_pub['news_versions']['source']['version'])
+
+    # Authorized export: preserves restricted payload/text for privileged consumers.
+    auth_dir = tmp_path / 'export-auth'
+    views.export_authorized(read, auth_dir, as_of=as_of, authorized=True, channel='authorized')
+    auth_versions = {
+        r['id']: r
+        for r in table_records(pa.parquet.read_table(auth_dir / 'news_versions.parquet'))
+    }
+    assert auth_versions[ver_restricted['id']]['access'] == 'restricted'
+    assert auth_versions[ver_restricted['id']]['text'] == 'Restricted body text.'
+
