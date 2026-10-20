@@ -1,8 +1,8 @@
 ---
 id: ct-cpio
-status: open
+status: closed
 deps: [ct-xl0y]
-links: []
+links: [ct-xl0y, ct-oxg6, ct-3li2]
 created: 2026-10-20T19:23:00Z
 type: bug
 priority: 1
@@ -32,3 +32,11 @@ Fresh read-only review2026-10-20: F5. Evidence: output/docspec-reuse-20261020/pa
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit flagged P1 regression risk in `docspec-rs` `main` (`715a8c2`, `src/engine/write.rs:437-455` and `src/engine/export.rs:593-604`): `.max(128 * 1024 * 1024)` ignores tighter `Limits.max_batch_bytes` and hardcodes `news_lake` column names in a domain-neutral engine. Upgraded to priority 1 bug blocking `ct-oxg6` and `ct-nc7l`.
+
+**2026-10-20T22:19:32Z**
+
+Fresh9661026 source confirms production writer coupling remains: src/storage.rs:369 and src/engine/export.rs:601 repeat dictionary=true for resolution/aboutness/processor/provider after global dictionary=true. Remove these redundant news-column names from the generic engine. Test-only news-shaped profiling fixtures may remain; no application business policy belongs in writers.
+
+**2026-10-20T22:24:50Z**
+
+Final static review through native 22a804e: hardcoded news-column dictionary loops have been removed from both production writers. Caller-byte row-group limits also landed. ct-oxg6 still requires exact chosen-runtime safety evidence; this note does not close the upstream ticket or claim runtime qualification.

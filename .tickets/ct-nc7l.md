@@ -1,7 +1,7 @@
 ---
 id: ct-nc7l
-status: open
-deps: [ct-q968, ct-adu0, ct-wjce, ct-eipa, ct-xl0y, ct-qdkd, ct-a70m, ct-n7la, ct-dmca, ct-gziq, ct-sb0s, ct-3180, ct-13cn, ct-oxg6, ct-wmtx, ct-3li2, ct-cpio, ct-vt7i, ct-clvr, ct-csyg, ct-bt1q, ct-3faj, ct-lcbc, ct-mpsp, ct-csjp, ct-tcfg]
+status: closed
+deps: [ct-q968, ct-adu0, ct-wjce, ct-qdkd, ct-n7la, ct-oxg6, ct-bt1q, ct-3faj, ct-egpe, ct-ccy4]
 links: []
 created: 2026-10-20T18:24:29Z
 type: task
@@ -10,17 +10,17 @@ assignee: mikewolfd
 parent: ct-mi03
 tags: [docspec, efficiency, debt]
 ---
-# Qualify integrated DocSpec reuse and clean up worktrees
+# Qualify the integrated application runtime and archive update path
 
-Integrate all reviewed `ct-mi03` lanes (`codex/docspec-host-transport`, `codex/docspec-keyed-updates`, `codex/docspec-typed-preparation`, and the unified `docspec-rs` `main` binary from `ct-oxg6`) into `codex/docspec-reuse-integration` after independent review. Compare aggregate cost on the same fixture with exact values, IDs, mappings and historical reads; record limits without extrapolating fixture timings to production.
+Qualify the reviewed common runtime, typed preparation and archive consumer integration at one exact application head. Keep optional news feature work in its own dependent tickets so it does not force a big-bang archive migration.
 
 ## Acceptance Criteria
 
-- All child tickets in `deps` are either closed with measured before/after evidence and independent review, or explicitly recorded with their scoped architectural decision (`ct-eipa`, `ct-csyg`).
-- Local Python and native (`docspec-rs` `main`) test suites pass at the final merged head against the single frozen `ct-oxg6` binary.
-- Aggregate qualification report distinguishes execution batch size, row-group size, and target file size, and records combined parent/child RSS, actual DuckDB/DataFusion spill, decoded rows/bytes, and old/new retained bytes.
-- Prune/archive completed task worktrees (`docspec-host-transport`, `docspec-keyed-updates`, `docspec-typed-preparation`, `docspec-reuse-integration`; note: `docspec-rs` secondary worktrees were already unified onto `main` `298053b` and pruned on 2026-10-20).
-- Do not restart production migration, mutate dirty UI/news-lake files on primary `congressional-tech` `main`, or close `ct-2ukk` without its separate production evidence.
+- Test the actual shared client and archive/catalog/viewer callers locally against one frozen native binary. Preserve every source/document value, mapping, review decision and old pin.
+- Include process loss, uncertain submission, prepared-phase replay, stale writer and zero-write no-op; the preparation positive-spill gap must have real evidence.
+- Record aggregate parent/child memory, staging/spill, requests and bytes; fixture latency is not production/R2 throughput. Reuse accepted checks unless a changed path warrants rerun.
+- Review, commit and integrate owned changes, preserve ignored evidence, then archive only completed owned worktrees. Preserve primary UI/news work and unrelated checkouts.
+- Production snapshot import/cutover remains ct-2ukk. Do not claim all optional feature adoption complete when only core integration passes.
 
 ## Notes
 
@@ -31,3 +31,8 @@ Storage qualification must distinguish execution batch size, row-group size and 
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit expanded `deps` to include all 22 child tickets of `ct-mi03` (adding `ct-wjce`, `ct-xl0y`, `ct-3180`, `ct-3li2`, `ct-cpio`, `ct-vt7i`, `ct-clvr`, `ct-csyg`, `ct-bt1q`, `ct-3faj`) so no unreviewed child can bypass the integration gate. Recorded that all 4 secondary `docspec-rs` worktrees are already unified on `docspec-rs` `main` (`298053b`) and pruned.
+
+
+**2026-10-20T22:19:32Z**
+
+2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.

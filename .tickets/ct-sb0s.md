@@ -1,7 +1,7 @@
 ---
 id: ct-sb0s
 status: open
-deps: [ct-eipa, ct-dmca]
+deps: [ct-egpe]
 links: []
 created: 2026-10-20T18:24:29Z
 type: task
@@ -10,15 +10,16 @@ assignee: mikewolfd
 parent: ct-mi03
 tags: [docspec, efficiency, debt]
 ---
-# Support R2-backed occurrence evidence updates
+# Attach provenance and review evidence through native receipt updates
 
-Evaluate native evidence updates (`UpdateEvidenceSpec`) for source provenance/annotations without rewriting source values. Current remote backend refuses this operation via `require_local()`. Preserve stable occurrence identity (`__docspec_occurrence_id`), duplicate multiplicity, and review ownership.
+Use native EvidenceSpec for a real occurrence-linked provenance or annotation consumer without rewriting source values. Source locators and document IDs remain application identities; map them explicitly to the exact native occurrence.
 
 ## Acceptance Criteria
 
-- Extend `docspec-rs` evidence updates to operate on configured R2/S3 object storage through the unified `Engine` remote capability boundary (shared with `ct-dmca`), preserving immutable `source`-group Parquet files untouched while writing/selecting only the updated evidence group.
-- Prove exact local and isolated R2 provider preservation and interrupted-phase recovery: zero rewritten source bytes, identical source object digests, preserved duplicate multiplicities and occurrence ordinals, and no reinstated or silently withdrawn review states.
-- Migrate a real congressional provenance/evidence consumer before closure.
+- Add receipts/plan and receipts/run plus exact evidence reads to the shared client only for the chosen caller; bind every request to exact source and evidence versions.
+- Preserve ordered duplicate receipts, nulls, original source bytes/locators/digests and source-document many-to-many mappings; receipt URLs do not retain external objects.
+- Test source replacement/deletion and occurrence remapping. Preserve existing review decisions and recorded withdrawal reasons; never infer review authority from native row positions.
+- Verify zero unchanged source rewrites, fresh-host replay and coherent application publication on the intended R2 profile. Keep unsupported groups explicit until engine qualification passes.
 
 ## Notes
 
@@ -29,3 +30,8 @@ User explicitly authorized extending DocSpec-rs itself for R2 support on2026-10-
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit linked `ct-sb0s` to `ct-dmca`'s unified `Engine` remote capability check and reinforced the zero-source-rewrite invariant.
+
+
+**2026-10-20T22:19:30Z**
+
+2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.

@@ -1,6 +1,6 @@
 ---
 id: ct-clvr
-status: open
+status: closed
 deps: []
 links: [ct-csyg]
 created: 2026-10-20T19:23:00Z

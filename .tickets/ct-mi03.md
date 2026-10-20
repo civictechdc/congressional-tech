@@ -32,3 +32,7 @@ Measured before/after evidence, failure-path tests and independent review for ea
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit validated the epic architecture (grade B+ conditional) and unified `docspec-rs` onto `main` (`298053b`). Updated all child tickets to track: (1) P1 fixes required in `docspec-rs` before `ct-oxg6` binary freeze (`ct-3li2` at `src/engine/export.rs:639-641,864-930`; `ct-cpio` at `src/engine/write.rs:429-456` and `src/engine/export.rs:588-605`), (2) P2 producer-input retention on HTTP 422 `"worker"` errors (`ct-3faj` at `docspec.py:233-238` and `src/engine/http.rs:442-454`), (3) committing and integrating the uncommitted `ordered.parquet` sequential-reader fix in `docspec-typed-preparation` (`ct-adu0`), and (4) tracking `ct-wjce` in the central ticket set.
+
+**2026-10-20T22:19:32Z**
+
+Current application plan: docs/plans/docspec-application-adoption-20261020.md. Eight new congressional-tech adoption tickets cover the shared client, cumulative news append, bounded upsert, coherent news releases, typed/incremental news views, policy-safe exports, runtime distribution and preparation spill qualification. Existing feature tickets now own application integration only. Engine upgrades are an upstream planning assumption, not observed deployment; actual9661026 local/R2 gaps are recorded. Different operations per consumer are appropriate; transport/custody/schema conversion have one owner. No implementation or production changes in this planning pass.

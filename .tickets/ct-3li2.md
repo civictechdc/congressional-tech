@@ -1,8 +1,8 @@
 ---
 id: ct-3li2
-status: open
+status: closed
 deps: []
-links: []
+links: [ct-4nyy, ct-cpio, ct-xl0y, ct-oxg6]
 created: 2026-10-20T19:17:09Z
 type: bug
 priority: 1

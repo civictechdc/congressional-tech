@@ -1,8 +1,8 @@
 ---
 id: ct-gziq
 status: open
-deps: [ct-eipa, ct-dmca]
-links: []
+deps: [ct-egpe]
+links: [ct-gf8i, ct-csjp, ct-vt7i]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -10,15 +10,16 @@ assignee: mikewolfd
 parent: ct-mi03
 tags: [docspec, efficiency, debt]
 ---
-# Support R2-backed incremental joins and summaries
+# Use native refresh for eligible congressional joins and summaries
 
-Evaluate one existing congressional dependency/count consumer against DocSpec incremental refresh (`src/engine/incremental.rs`, `src/engine/aggregation.rs`, `src/engine/join.rs`). Current remote backend refuses this operation via `require_local()`. Keep congressional grouping policy and coherent application selection outside native storage.
+Connect one real catalog dependency/count consumer to the upgraded native Refresh API when exact equality-join or supported aggregate semantics fit. Preserve transitive alias closure and document identity in the application; those are not ordinary joins.
 
 ## Acceptance Criteria
 
-- Extend `docspec-rs` incremental join/aggregate refresh to support configured remote object storage via the unified `Engine` remote capability boundary, retaining original occurrence locators on joins and bounded hot-group memory/spill (`ct-vt7i`) on aggregates.
-- Qualify locally and on an isolated R2 provider prefix with exact append, correction, delete, duplicate, null, and old/new dependency tests.
-- Prove unrelated partition/target files are reused without re-upload and measure the complete end-to-end refresh path; make no claim of arbitrary incremental SQL.
+- Reuse shared refresh plan/run request builders and exact accepted input pins; no independent latest lookups during a multi-stage result.
+- Characterize the chosen existing consumer and compare append, correction, delete, duplicate/null keys, join cardinality, affected old/new groups and unchanged-file reuse.
+- Measure full application path reads/writes, provider requests, spill and elapsed time at 1x/10x unrelated scale. Retain immutable Build for bounded leaves when it remains cheaper.
+- Qualify actual R2 support before enabling it and remove only the superseded computation. News bridge/view adoption has its separate linked ticket.
 
 ## Notes
 
@@ -29,3 +30,8 @@ User explicitly authorized extending DocSpec-rs itself for R2 support on2026-10-
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit linked `ct-gziq` to `ct-dmca` (unified remote capability boundary) and `ct-vt7i` (hot-group aggregate resource qualification).
+
+
+**2026-10-20T22:19:30Z**
+
+2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.

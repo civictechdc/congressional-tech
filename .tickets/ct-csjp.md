@@ -1,8 +1,8 @@
 ---
 id: ct-csjp
-status: open
+status: closed
 deps: [ct-vt7i]
-links: [ct-mi03, ct-a1aa]
+links: [ct-mi03, ct-a1aa, ct-gf8i, ct-vt7i, ct-gziq]
 created: 2026-10-20T20:37:00Z
 type: task
 priority: 2
@@ -27,3 +27,13 @@ Two native relational gaps in `docspec-rs` force Python-side workarounds in `pac
 
 - Full and incremental `Refresh` in `docspec-rs` pass with `AggregateFunction::CollectSet` (covering nulls, duplicates, empty groups, and deterministic element ordering) and with `Struct` / `List<Struct>` columns in `JoinField`.
 - `DocSpecNewsViews.politician_articles` and `DocSpecNewsViews.coverage_daily` in `packages/news_lake/tests/test_docspec_backend.py` pass without JSON string serialization of `occurrences` or a secondary Python scan for `identical_text_group_ids`.
+
+## Notes
+
+**2026-10-20T22:19:32Z**
+
+Fresh source review at engine9661026: CollectSet is still absent. Application adoption is ct-gf8i. Root nested JoinField payload copying already exists; qualify reader/refresh field-ID behavior before assuming a blanket projection gap. Preserve global distinct-item repetition across dates when listing coverage text groups; per-day CollectSet alone changes meaning.
+
+**2026-10-20T22:24:50Z**
+
+Final static review through native 22a804e: CollectSet is implemented for local Refresh with sorted unique non-null values and empty-list output. New tests were inspected, not run in this review. App ct-gf8i still needs intended-backend qualification and corpus-wide repeated-group parity; implementation presence is not adoption.

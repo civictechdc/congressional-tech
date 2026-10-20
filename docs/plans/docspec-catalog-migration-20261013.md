@@ -1,5 +1,7 @@
 # Move catalog processing to DocSpec Rust
 
+Current application feature adoption is tracked in [the 20 October plan](docspec-application-adoption-20261020.md), including shared archive/news runtime, exact release use and actual local/R2 capability limits. Older capability descriptions below are historical.
+
 Status: **postponed** on 16 October 2026 in favor of repository cleanup and branch integration. Do not start implementation until it is explicitly resumed. The links below to the `catalog-hearing-relations` worktree no longer resolve, because that worktree has since been removed. Re-pin the reference executable from the integrated branch when this plan resumes.
 
 ## Updated requirement — 19 October 2026

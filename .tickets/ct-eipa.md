@@ -2,7 +2,7 @@
 id: ct-eipa
 status: closed
 deps: [ct-xl0y]
-links: []
+links: [ct-nloa, ct-csyg]
 created: 2026-10-20T18:24:28Z
 type: task
 priority: 1

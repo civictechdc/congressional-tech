@@ -1,7 +1,7 @@
 ---
 id: ct-2ukk
 status: in_progress
-deps: [ct-dat9, ct-7e7q, ct-9vtu, ct-y32m, ct-pki9, ct-87n4, ct-5kb2, ct-i7j2, ct-jufk, ct-kkio, ct-omnp]
+deps: [ct-dat9, ct-7e7q, ct-9vtu, ct-y32m, ct-pki9, ct-87n4, ct-5kb2, ct-i7j2, ct-jufk, ct-kkio, ct-omnp, ct-nc7l, ct-ugqq]
 links: [ct-mi03, ct-czsd]
 created: 2026-10-20T02:20:22Z
 type: task
@@ -56,3 +56,7 @@ Initial qualification alias rereads resolved by closed ct-7e7q; full fixed-chang
 **2026-10-20T16:02:11Z**
 
 Five implementation lanes are now locally closed after independent acceptance review. This ticket retains all production obligations: exact current catalog/raw import and complete readback; full retained-source qualification; one operational writer; guarded v6 release with live review/recovery/browser preservation; recorded production costs and post-cutover removal of superseded internal routes. Finish ct-9vtu and ct-y32m before import. Accepted provider, corpus scan and browser fixtures must not be repeated merely to claim new coverage.
+
+**2026-10-20T22:19:32Z**
+
+Application capability review: production adoption follows ct-nc7l and ct-ugqq. Resume only after recorded capacity, runtime/input identity and remote reconciliation prerequisites pass. Do not refetch/reclassify retained sources, restart the failed operation automatically, or claim local integration as production adoption. Native optional news features do not block archive cutover unless an actual caller needs them.

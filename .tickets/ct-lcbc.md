@@ -1,8 +1,8 @@
 ---
 id: ct-lcbc
-status: open
+status: closed
 deps: [ct-wmtx]
-links: [ct-mi03, ct-a1aa]
+links: [ct-mi03, ct-a1aa, ct-wmtx, ct-mpsp, ct-a70m]
 created: 2026-10-20T20:37:00Z
 type: task
 priority: 1

@@ -1,8 +1,8 @@
 ---
 id: ct-xl0y
-status: in_progress
+status: closed
 deps: []
-links: [ct-eipa, ct-wmtx, ct-cpio, ct-csyg]
+links: [ct-eipa, ct-wmtx, ct-cpio, ct-csyg, ct-oxg6, ct-3li2]
 created: 2026-10-20T18:35:20Z
 type: task
 priority: 1

@@ -1,8 +1,8 @@
 ---
 id: ct-13cn
 status: open
-deps: [ct-q968, ct-3180]
-links: []
+deps: [ct-egpe]
+links: [ct-3180]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -10,15 +10,16 @@ assignee: mikewolfd
 parent: ct-mi03
 tags: [docspec, efficiency, debt]
 ---
-# Support native version comparisons for R2-backed data
+# Use native changes for catalog diagnostics and selective downstream work
 
-Reuse DocSpec `compare`/`changes` (`POST /datasets/{dataset}/changes` and CLI `compare`/`changes` added for remote `source` groups in `docspec-rs` commit `b240765`) for a concrete diagnostic consumer in `congressional-tech` after isolated R2 provider qualification (`ct-3180`) and persistent host transport (`ct-q968`) complete. Preserve duplicate multiplicities, null semantics and exact pinned versions.
+Expose the current POST /compare and POST /changes APIs through NativeDatasets and wire an actual catalog diagnostic/change consumer. Use exact versions and the maintained native change certificates instead of another full-population change ledger.
 
 ## Acceptance Criteria
 
-- Expose `compare` and streaming `changes` on `NativeDatasets` (`packages/congress_api/src/congress_api/retention/docspec.py`) using the persistent loopback host (`POST /datasets/{dataset}/changes` and `ArrowResponse` stream framing) without staging temporary Arrow files.
-- Wire one concrete diagnostic consumer and qualify against an independent multiset reference on both local and isolated R2 fixtures.
-- Report reads, returned IPC bytes, and elapsed time; never treat metadata equality as semantic equality.
+- Preserve duplicate-aware value versus occurrence identity, typed added/removed members, nulls and schema/evidence/coverage-only effects. Compare with a small independent multiset reference.
+- Consume one change stream and derive counts from it when rows are required; do not run compare and changes redundantly. Check stream completeness and exact source pins.
+- Feed only proven changed scope to existing dependency/viewer logic. Native value differences do not replace source identity, transitive grouping or review binding policy.
+- Test missing/invalid history and bounded fallback handling; incremental callers refuse unbounded fallback with an actionable reason. Report actual read/returned bytes and support separately for each field group/backend.
 
 ## Notes
 
@@ -29,3 +30,8 @@ User explicitly authorized extending DocSpec-rs itself for R2 support on2026-10-
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit note: native remote `source`-group comparison and change streaming landed on `docspec-rs` `main` (`b240765`). Once `ct-3180` completes isolated R2 provider qualification and `ct-q968` lands, wire the Python diagnostic consumer through `NativeDatasets` + `ArrowResponse`.
+
+
+**2026-10-20T22:19:31Z**
+
+2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.
