@@ -28,3 +28,7 @@ Implemented typed Parquet dependency preparation with metadata-only SQLite index
 **2026-10-20T18:47:14Z**
 
 Scale review found repeated whole-part decoding in preliminary75091e05: at16,384rows with64-row leaves,995,200rows were decoded (60.7x). Current production leaf bound is8192rows. The preliminary disk-saving implementation is not approved; correct read amplification and measure rows/decoded bytes, peak memory and retained bytes before closure.
+
+**2026-10-20T19:00:10Z**
+
+Independent storage advisor supports sorted Parquet plus one sequential Arrow reader under the existing preparation receipt. Keep source_order as data and exact original Arrow schema; qualify null/empty/duplicate lists, unsigned maximum, binary, giant rows, spill, scratch refusal and restart. Existing native CLI offers lifecycle Run/Export, not stateless sort; bounded optional DuckDB dependency is justified only after those checks.
