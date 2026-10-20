@@ -36,8 +36,9 @@ class ViewerAssets:
             if proof != identity:raise ValueError('Conflicting immutable viewer asset')
         else:
             with Path(source).open('rb') as stream:
-                proof = copy_checked(stream, destination, size=identity['bytes'],
-                                     expected=identity, key=relative, exclusive=True)
+                proof = (self.state.publish_asset(stream,destination,identity=identity,key=relative)
+                    if self.state else copy_checked(stream, destination, size=identity['bytes'],
+                                     expected=identity, key=relative, exclusive=True))
             self.writes += 1
             self.written_bytes += proof['bytes']
             self.metadata_writes += int(name.endswith('.json'))
@@ -55,8 +56,12 @@ class ViewerAssets:
         if path.is_symlink():raise ValueError('Immutable viewer assets cannot be symlinks')
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
-            with path.open('xb') as stream:
-                stream.write(raw)
+            if self.state:
+                from io import BytesIO
+                self.state.publish_asset(BytesIO(raw),path,identity=dict(bytes=len(raw),sha256=digest),key=relative)
+            else:
+                with path.open('xb') as stream:
+                    stream.write(raw)
             self.writes += 1
             self.metadata_writes += 1
             self.written_bytes += len(raw)
