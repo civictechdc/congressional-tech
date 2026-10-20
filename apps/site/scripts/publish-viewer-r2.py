@@ -579,6 +579,7 @@ def check_selected_publication(client, pointer, *, public_url=PUBLIC_URL, record
 
 if __name__ == '__main__':
     import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts'))
     sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts/publication'))
     from publication_cli import main
     raise SystemExit(main(sys.modules[__name__]))
