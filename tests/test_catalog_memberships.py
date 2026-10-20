@@ -72,7 +72,7 @@ def test_shared_leaf_aliases_read_once_and_old_selection_remains_exact():
     assert list(memberships.values(changed, 'event:7')) == ['corrected']
     assert list(memberships.values(changed, 'event:8')) == ['other']
     assert list(memberships.values(root, 'event:7')) == ['first']
-    assert len(reads) == 3
+    assert len(reads) == 2
 
 
 def test_leaf_reuse_revalidates_full_descriptor_and_exact_owner_schema():
@@ -104,7 +104,7 @@ def test_leaf_reuse_revalidates_full_descriptor_and_exact_owner_schema():
     assert groups['event:7'].schema.equals(memberships.schema, check_metadata=True)
 
 
-def test_leaf_cache_retains_one_leaf_and_returns_immutable_groups():
+def test_leaf_cache_reuses_alternating_pair_and_returns_immutable_groups():
     _, memberships = owner()
     a = memberships.replace(None, {'event:7': ['first']})
     b = memberships.replace(None, {'event:8': ['other']})
@@ -117,9 +117,10 @@ def test_leaf_cache_retains_one_leaf_and_returns_immutable_groups():
     rows = groups['event:7'].to_pylist()
     rows[0]['observation_id'] = 'caller mutation'
     assert list(memberships.values(a, 'event:7')) == ['first']
-    assert list(memberships.values(b, 'event:8')) == ['other']
-    assert list(memberships.values(a, 'event:7')) == ['first']
-    assert len(reads) == 3
+    for _ in range(4):
+        assert list(memberships.values(b, 'event:8')) == ['other']
+        assert list(memberships.values(a, 'event:7')) == ['first']
+    assert len(reads) == 2
 
 
 @pytest.mark.parametrize('failure', ['row count', 'Duplicate', 'read failure'])
@@ -156,7 +157,8 @@ def test_small_leaf_evicted_before_streaming_large_alias_and_on_missing_selectio
     original = memberships._read
     def read_large_without_retained_small(pin, schema):
         if pin != small_pin:
-            assert memberships._cached_leaf is None
+            assert not memberships._cached_leaves
+            assert memberships._cached_bytes == 0
         return original(pin, schema)
     memberships._read = read_large_without_retained_small
     assert set(memberships.values(large, 'event:8')) == set(large_members)
@@ -168,3 +170,47 @@ def test_small_leaf_evicted_before_streaming_large_alias_and_on_missing_selectio
     assert memberships._groups(None) == {}
     assert list(memberships.values(small, 'event:7')) == ['first']
     assert sum(pin == small_pin for pin, _ in reads) == 4
+
+
+def test_leaf_cache_evicts_lru_third_pin_and_honors_combined_arrow_budget():
+    _, memberships = owner()
+    roots = [memberships.replace(None, {f'event:{i}': [str(i)]}) for i in range(3)]
+    reads = counted_reads(memberships)
+    def value(i):
+        assert list(memberships.values(roots[i], f'event:{i}')) == [str(i)]
+    value(0)
+    value(1)
+    value(0)  # Protect A by using it; admitting C must evict B.
+    value(2)
+    value(0)
+    assert len(reads) == 3
+    value(1)
+    assert len(reads) == 4
+    assert len(memberships._cached_leaves) == 2
+    retained = sum(table.nbytes for groups, _ in memberships._cached_leaves.values()
+                   for table in groups.values())
+    assert retained == memberships._cached_bytes <= memberships.max_bytes
+    # Each leaf fits individually, but their combined bytes exceed this budget.
+    memberships._clear_leaf_cache()
+    memberships.max_bytes = retained - 1
+    before = len(reads)
+    value(0)
+    value(1)
+    value(0)
+    assert len(reads) == before + 3
+    assert len(memberships._cached_leaves) == 1
+    assert memberships._cached_bytes <= memberships.max_bytes
+
+
+def test_leaf_cache_does_not_retain_failed_schema_conversion():
+    _, memberships = owner()
+    root = memberships.replace(None, {'event:7': ['first']})
+    reads = counted_reads(memberships)
+    assert list(memberships.values(root, 'event:7')) == ['first']
+    memberships.schema = SCHEMA.set(1, pa.field('observation_id', pa.int64(), nullable=False))
+    with pytest.raises(pa.ArrowInvalid):
+        list(memberships.values(root, 'event:7'))
+    assert not memberships._cached_leaves
+    memberships.schema = SCHEMA
+    assert list(memberships.values(root, 'event:7')) == ['first']
+    assert len(reads) == 3
