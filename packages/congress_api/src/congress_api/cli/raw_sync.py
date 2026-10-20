@@ -84,7 +84,8 @@ def adoption_inputs(path):
         raise ValueError('Raw adoption input receipt exceeds its byte budget')
     value = json.loads(payload)
     if (not isinstance(value, dict) or set(value) != {'version', 'operation', 'inputs', 'filename_version'}
-            or value['version'] != 1 or not isinstance(value['operation'], str) or not value['operation'].strip()
+            or type(value['version']) is not int or value['version'] != 1
+            or not isinstance(value['operation'], str) or not value['operation'].strip()
             or not isinstance(value['inputs'], dict) or set(value['inputs']) != {'captures', 'state'}
             or not isinstance(value['filename_version'], dict)
             or set(value['filename_version']) != {'selector_sha256', 'selected_ref'}):
@@ -322,6 +323,8 @@ def connect_storage(args, log):
 def run(args, log, *, store=None, raw_storage=None):
     mode = operation_mode(args)
     metadata_only = mode not in {'capture', 'plan'}
+    if args.capture_only and metadata_only:
+        raise SystemExit('--capture-only cannot be combined with catalog or adoption modes')
     if args.upgrade_source_rules is not None and not args.upgrade_source_rules.strip():
         raise SystemExit('A source rule upgrade requires an explicit nonempty rule version')
     if args.adopt_catalog is not None and not args.adopt_catalog.strip():

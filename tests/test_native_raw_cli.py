@@ -178,3 +178,36 @@ def test_raw_adoption_constructs_complete_investigated_schema_from_explicit_runt
     reopened = RawStorage.open(store, fixture.native)
     assert reopened.state_schema.equals(states.schema, check_metadata=True)
     assert reopened.snapshot().states().equals(states, check_metadata=True)
+
+
+@pytest.mark.parametrize('flags', [
+    ['--update-only'], ['--qualify-sources'], ['--upgrade-source-rules', 'rules-2'],
+    ['--adopt-catalog', 'pair'], ['--adopt-raw', 'investigated.json'],
+])
+def test_capture_only_conflicts_refuse_at_parser_and_injected_run_boundary(tmp_path, monkeypatch, flags):
+    from congress_api.retention.docspec import NativeDatasets
+    with pytest.raises(SystemExit):
+        raw_sync.parser().parse_args(['--capture-only', *flags])
+    no_acquisition(monkeypatch)
+    monkeypatch.setattr(raw_sync, 'connect_storage', lambda *a, **k: pytest.fail('Archive storage accessed'))
+    monkeypatch.setattr(NativeDatasets, 'from_config', lambda *a, **k: pytest.fail('Native runtime accessed'))
+    monkeypatch.setattr(raw_sync, 'adoption_inputs', lambda *a: pytest.fail('Adoption inputs accessed'))
+    args = raw_sync.parser().parse_args(['--native-config', 'native.json', '--summary', str(tmp_path / 'summary.json'), *flags])
+    # Programmatic callers can bypass argparse's mutually exclusive group.
+    args.capture_only = True
+    with ProgressLog(args.summary.with_suffix('.progress.json'), stream=StringIO()) as log:
+        with pytest.raises(SystemExit, match='--capture-only cannot be combined'):
+            raw_sync.run(args, log)
+    assert not args.summary.exists()
+
+
+@pytest.mark.parametrize('version', [True, 1.0])
+def test_raw_adoption_requires_integer_receipt_version_before_input_access(tmp_path, monkeypatch, version):
+    from congress_api.retention import derived_files
+    monkeypatch.setattr(derived_files, 'file_identity', lambda *a: pytest.fail('Input files accessed'))
+    receipt = tmp_path / 'adopt.json'
+    receipt.write_text(json.dumps(dict(version=version, operation='adoption',
+        filename_version=dict(selector_sha256=None, selected_ref=None),
+        inputs={name: dict(path=name + '.parquet', sha256='a' * 64) for name in ('captures', 'state')})))
+    with pytest.raises(ValueError, match='Raw adoption requires exact input pins'):
+        raw_sync.adoption_inputs(receipt)
