@@ -30,4 +30,4 @@ Keep the maintained source-association, availability, filename and group-identit
 
 **2026-10-20T03:24:07Z**
 
-Reviewed dependency core6901878 merged asf7b2694. Shared grouping/source-ID policy and exact native dependency lookup preserve old aliases, nested values and source order; deletion closes both sides of an old bridge. Eleven independent tests passed1.26s. Fixed-change lookup counts stay equal with10/1000 unrelated fixture sources. Persisted routing writes, large-component resume and maintained callers remain in progress; no end-to-end speed claim. Review: output/incremental-updates-20261019/catalog/closure-review.md.
+Reviewed dependency core 6901878 merged as f7b2694. Shared grouping/source-ID policy and exact native dependency lookup preserve old aliases, nested values and source order; deletion closes both sides of an old bridge. Eleven independent tests passed in 1.26 s. Fixed-change lookup counts stay equal with 10 / 1,000 unrelated fixture sources. Persisted routing writes, large-component resume and maintained callers remain in progress; no end-to-end speed claim. Review: output/incremental-updates-20261019/catalog/closure-review.md.
