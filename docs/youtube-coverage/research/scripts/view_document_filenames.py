@@ -318,6 +318,12 @@ class Catalog:
         return pa.Table.from_batches(list(self.native_snapshot.table(label,
             max_ordered_bytes=self.max_ordered_bytes).iter_batches(columns=columns)), schema=output)
 
+    def _source_batches(self, columns):
+        if self.native_snapshot is None:
+            return self.file.iter_batches(batch_size=8192, columns=columns)
+        return self.native_snapshot.table('filenames', max_ordered_bytes=self.max_ordered_bytes).iter_batches(
+            columns=columns, batch_size=8192)
+
     def close(self):
         if hasattr(self, '_complete_groups'):
             self._complete_groups.clear()
@@ -384,7 +390,7 @@ class Catalog:
         row_id = 0
         saved_columns = [name for name in SAVED_FIELDS if name in self.fields]
         saved_batches = (self.table.select(saved_columns).to_batches(max_chunksize=8192) if search_indexes
-                         else self._read_table('filenames', saved_columns).to_batches(max_chunksize=8192))
+                         else self._source_batches(saved_columns))
         for batch in saved_batches:
             for row in batch.to_pylist():
                 if saved_response(row):
@@ -447,7 +453,7 @@ class Catalog:
             'capture_records': len(self.members) - len(self.document_entries),
             'api_reference_groups': len(self.api_entries),
             'video_reference_groups': len(self.video_entries),
-            'bytes': path.stat().st_size if self.native_snapshot is None else 0, 'fields': self.fields, 'facets': facets,
+            'bytes': path.stat().st_size if self.native_snapshot is None else None, 'fields': self.fields, 'facets': facets,
             'catalog_id': catalog_id.decode(),
             'house_naming_version': (source_schema.metadata or {}).get(b'house_naming_version', b'unknown').decode(),
         }
