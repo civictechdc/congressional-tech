@@ -11,7 +11,7 @@ import pytest
 from test_capture_verification import checkpoint, fixed_capture_clock, verifier
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, encode_table
 from congress_api.retention.catalog_cache import capture_digest
-from congress_api.retention.raw_storage import RawSnapshot
+from congress_api.retention.raw_storage import RawSnapshot, RawStorage
 
 HELPERS = Path(__file__).resolve().parents[2] / "tests/native_memory_helpers.py"
 SPEC = importlib.util.spec_from_file_location("capture_native_fixture", HELPERS)
@@ -142,6 +142,7 @@ def test_verification_cost_excludes_unrelated_payloads(checkpoint, unrelated, re
     summary["raw_selection"] = dict(before=before.identity, after=after.identity)
     del store.objects["indexes/captures.parquet"]
     del store.objects["indexes/download-state.parquet"]
+    owner = RawStorage(store, owner.native, max_state_rows=4)
     store.reads.clear()
     owner.native.reads.clear()
     started = perf_counter()
@@ -157,4 +158,4 @@ def test_verification_cost_excludes_unrelated_payloads(checkpoint, unrelated, re
         native_arrow_bytes=sum(owner.native.tables[key].nbytes for key in owner.native.reads),
         native_rows=native_rows, native_seconds=native_seconds,
         scope="In-memory native transport; application reads and logical Arrow bytes, not provider I/O",
-        test_state_leaf_rows=4, writes=0)))
+        fresh_domain_owner=True, test_state_leaf_rows=4, writes=0)))
