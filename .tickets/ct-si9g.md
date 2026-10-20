@@ -43,3 +43,7 @@ Coalesced dependency storage and closed grouping proofs are reviewed and locally
 **2026-10-20T04:22:09Z**
 
 Maintained native update caller and bounded reverse membership construction are reviewed and merged locally through 7b2d5f5. Independent 21 checks passed including actual native typed storage, bridge split and prepared-proof resume. Exact v1 adoption, retained receipt contributions and complete large-scope resume remain open.
+
+**2026-10-20T04:49:46Z**
+
+Reviewed native adoption, exact source change cursors, directed receipt dependencies and URL lookups integrated. Actual native catalog adoption/update: 21 tests; source observation/cursor: 13 tests. Integration exposed a fresh-host lookup schema restoration mismatch; fix underway. Complete receipt-derived contributions and normal update dispatch remain open.
