@@ -99,11 +99,13 @@ def _validate(path, item, catalog_id, *, identity=None):
     return properties
 
 
-def read_catalog(store, *, read=None, native=None):
+def read_catalog(store, *, read=None, native=None, retained_directory=None):
     """Own verified files until the caller closes the selected snapshot.
 
     A corrupt selection never falls back to root files. Failed reads preserve
     their owned partials and selector bytes, with the directory in the error.
+    Explicit retained inputs must match the live file selector byte-for-byte;
+    the maintained file owner checks each file before retaining an owned link.
     """
     read = read or store.read
     selected = read(MANIFEST_KEY)
@@ -125,11 +127,22 @@ def read_catalog(store, *, read=None, native=None):
         if selected is not None:
             (snapshot.directory / 'selected.json').write_bytes(selected)
             snapshot.manifest = _manifest(selected)
+        if retained_directory is not None:
+            retained_directory = Path(retained_directory)
+            with (retained_directory / 'catalog-selector.json').open('rb') as source:
+                retained_selector = source.read((1 << 20) + 1)
+            if snapshot.manifest is None or retained_selector != selected:
+                raise ValueError('Retained catalog selector differs from the current selected files')
         for label, legacy in [('filenames', FILENAMES), ('documents', DOCUMENTS)]:
             item = snapshot.manifest['files'][label] if snapshot.manifest else None
             key = item['key'] if item else legacy
             path = snapshot.directory / Path(legacy).name
-            identity = store.read_derived_file(key, path, expected=item)
+            if retained_directory is None:
+                identity = store.read_derived_file(key, path, expected=item)
+            else:
+                from .derived_files import retain_verified_file
+                identity = retain_verified_file(retained_directory / (label + '.parquet'),
+                                                path, expected=item, key=key)
             progress.advance('objects_read')
             progress.advance('bytes_read', identity['bytes'] if identity else 0)
             if item:

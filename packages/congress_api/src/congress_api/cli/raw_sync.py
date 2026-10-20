@@ -109,7 +109,7 @@ def adoption_inputs(path):
                 filename_version=value['filename_version'], source_pins=sources)
 
 
-def adopt_catalog(store, *, raw_storage, directory, candidate):
+def adopt_catalog(store, *, raw_storage, directory, candidate, retained_directory=None):
     """Use the maintained exact-value adoption owner without grouping replay."""
     import pyarrow.parquet as pq
     from congress_api.retention.catalog_publication import read_catalog
@@ -118,7 +118,7 @@ def adopt_catalog(store, *, raw_storage, directory, candidate):
     from congress_api.retention.catalog_adoption import adopt_native_catalog
     from congress_api.retention.catalog_raw_updates import MAX_ROWS, MAX_BYTES
     from congress_api.retention.immutable_metadata import encoded
-    with read_catalog(store, native=raw_storage.native) as previous:
+    with read_catalog(store, native=raw_storage.native, retained_directory=retained_directory) as previous:
         if isinstance(previous, NativeCatalogSnapshot):
             dependencies = CatalogDependencyStorage.for_snapshot(previous)
         elif previous.filenames_path is not None:
@@ -138,6 +138,8 @@ def adopt_catalog(store, *, raw_storage, directory, candidate):
 
 def parser():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--retained-catalog', type=Path, metavar='DIRECTORY',
+                   help='Explicit catalog adoption only: verified catalog-selector.json, filenames.parquet and documents.parquet')
     p.add_argument("--bucket", default="congressional-tech-raw")
     p.add_argument("--account-id", default=os.environ.get("CLOUDFLARE_ACCOUNT_ID"))
     p.add_argument("--transport", choices=("auto", "zyte", "direct"), default="auto")
@@ -327,6 +329,8 @@ def connect_storage(args, log):
 
 def run(args, log, *, store=None, raw_storage=None):
     mode = operation_mode(args)
+    if args.retained_catalog is not None and mode != 'adopt-catalog':
+        raise SystemExit('--retained-catalog requires --adopt-catalog')
     metadata_only = mode not in {'capture', 'plan'}
     if args.capture_only and metadata_only:
         raise SystemExit('--capture-only cannot be combined with catalog or adoption modes')
@@ -426,7 +430,8 @@ def run(args, log, *, store=None, raw_storage=None):
                 directory = (args.catalog_directory or args.summary.with_suffix('.catalog-update')) / candidate
                 options = dict(raw_storage=raw_storage, directory=directory, candidate=candidate)
                 if mode == 'adopt-catalog':
-                    summary['catalog'] = adopt_catalog(store, **options)
+                    summary['catalog'] = adopt_catalog(store, **options,
+                        retained_directory=args.retained_catalog)
                 else:
                     operation = update_from_raw
                     if mode in {'qualify-sources', 'upgrade-source-rules'}:

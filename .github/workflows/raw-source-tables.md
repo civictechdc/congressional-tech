@@ -126,6 +126,11 @@ it skips completed metadata combination. One document summary can exceed the
 Existing file catalogs require these separate, explicit steps:
 
 1. Adopt the exact existing catalog pair with `--adopt-catalog OPERATION`.
+   When the pair is already retained, add `--retained-catalog DIRECTORY`.
+   The directory contains `catalog-selector.json`, `filenames.parquet` and
+   `documents.parquet`. The saved selector must exactly match the live selection;
+   file hashes, sizes and row metadata are checked locally before native work.
+   Corrupt or missing retained files refuse without downloading replacements.
    This reads every selected source/document value back from native storage and
    verifies IDs, mappings and original row order; it does not regroup or classify.
 2. Adopt investigated capture/state files and the exact retained reading inventory
