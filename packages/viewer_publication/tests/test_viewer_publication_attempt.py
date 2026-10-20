@@ -565,3 +565,22 @@ def test_preparation_rechecks_exact_native_selector_before_payload_reads(source,
     with pytest.raises(ValueError,match='Catalog changed before'):
         attempts.prepare(publisher,remote,tmp_path/'refused',run_id='1',run_attempt='1',public_url=publisher.PUBLIC_URL)
     assert not (tmp_path/'refused').exists() and not remote.puts
+
+
+def test_recovery_preparation_keeps_noncanonical_retained_manifest_bytes(ready, tmp_path):
+    remote, _, _ = ready
+    assert publish(ready)['status'] == 'published'
+    key=publisher.PREFIX+'manifest.json'
+    pointer=json.loads(remote.objects[key])
+    manifest_key=publisher.PREFIX+pointer['manifest']
+    raw=json.dumps(json.loads(remote.objects[manifest_key]),indent=2,sort_keys=False).encode()+b'\n'
+    remote.objects[manifest_key]=raw;remote.versions[manifest_key]='noncanonical-release'
+    pointer['recovery_inputs']['viewer_manifest_sha256']=hashlib.sha256(raw).hexdigest()
+    remote.objects[key]=publisher.encoded(pointer);remote.versions[key]='retained-pointer'
+    remote.objects[publisher.ACCEPTED_KEY]=publisher.encoded(dict(version=1,recoveries=[]))
+    remote.versions[publisher.ACCEPTED_KEY]='explicit-empty-mapping'
+    target=tmp_path/'noncanonical-recovery'
+    result=attempts.prepare(publisher,remote,target,run_id='124',run_attempt='1',public_url=publisher.PUBLIC_URL)
+    assert result['mode']=='recovery'
+    assert (target/'publication/manifest.json').read_bytes()==raw
+    attempts.verify_prepared(publisher,target)
