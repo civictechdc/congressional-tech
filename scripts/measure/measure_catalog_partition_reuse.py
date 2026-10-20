@@ -94,6 +94,10 @@ def measure(output, *, rows=8):
     reused = [label for label in ('filenames', 'documents')
               if before_manifest['files'][label]['key'] == after_manifest['files'][label]['key']]
     failures = []
+    if not parity:
+        failures.append('Selected catalog changed the expected nested schema or ordered values')
+    if not old_preserved:
+        failures.append('Publication changed or removed a previously selected immutable payload')
     if 'documents' not in reused:
         failures.append('Unchanged documents table was uploaded under a new immutable key')
     if any(item['action'] == 'payload_read' and item['bytes'] for item in operations):
