@@ -466,3 +466,32 @@ def test_additive_row_sizes_match_arrow_with_hidden_null_struct_values():
         names=["hidden", "empty"],
     )
     assert row_bytes(batch) == [batch.slice(i, 1).nbytes for i in range(len(batch))]
+
+
+def test_single_chunk_occurrence_extraction_and_core_sizing_reuse_nested_buffers():
+    from congress_api.retention.catalog_dependencies import dependency_tables
+    from congress_api.retention.catalog_rows import COUNT, ROW, _layout, _occurrences
+    from test_catalog_dependency_preparation import SCHEMA as DEP_SCHEMA, values as dep_values
+
+    top_level = values()
+    assert top_level["source_occurrences"].num_chunks == 1
+    expected_top = [b.address if b else None for b in top_level["source_occurrences"].chunk(0).buffers()]
+    actual_top = [b.address if b else None for b in _occurrences(top_level, _layout(top_level.schema)).buffers()]
+    assert actual_top == expected_top
+
+    nested, _ = dependency_tables(dep_values(), DEP_SCHEMA, first_order=0)
+    assert nested["source_values"].num_chunks == 1
+    expected_nested = [
+        b.address if b else None
+        for b in nested["source_values"].chunk(0).field("source_occurrences").buffers()
+    ]
+    actual_nested = [b.address if b else None for b in _occurrences(nested, _layout(nested.schema)).buffers()]
+    assert actual_nested == expected_nested
+
+    core_single = core_table(nested)
+    multi = pa.concat_tables([nested.slice(0, 2), nested.slice(2)])
+    assert multi["source_values"].num_chunks == 2
+    core_multi = core_table(multi)
+    assert core_single.equals(core_multi, check_metadata=True)
+    assert core_single[COUNT].to_pylist() == [None, 0, 4, 2400, 2500, 1]
+    assert core_single[ROW].to_pylist() == list(range(len(nested)))

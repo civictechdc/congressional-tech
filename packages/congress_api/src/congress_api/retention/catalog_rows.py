@@ -31,12 +31,16 @@ def _layout(schema):
     return None
 
 
+def _single_chunk(column):
+    return column.chunk(0) if column.num_chunks == 1 else column.combine_chunks()
+
+
 def _occurrences(table, layout):
     parent, _ = layout
     array = (
-        table[parent].combine_chunks().field("source_occurrences")
+        _single_chunk(table[parent]).field("source_occurrences")
         if parent
-        else table["source_occurrences"].combine_chunks()
+        else _single_chunk(table["source_occurrences"])
     )
     return array
 
@@ -49,10 +53,10 @@ def core_table(table):
     if COUNT in table.schema.names or ROW in table.schema.names:
         raise ValueError("Catalog logical schema uses reserved occurrence fields")
     parent, _ = layout
-    original = _occurrences(table, layout)
     if parent:
         field = table.schema.field(parent)
-        values = table[parent].combine_chunks()
+        values = _single_chunk(table[parent])
+        original = values.field("source_occurrences")
         fields = [f for f in field.type if f.name != "source_occurrences"]
         reduced = pa.StructArray.from_arrays(
             [values.field(f.name) for f in fields], fields=fields, mask=values.is_null()
@@ -63,6 +67,7 @@ def core_table(table):
             reduced,
         )
     else:
+        original = _single_chunk(table["source_occurrences"])
         result = table.drop(["source_occurrences"])
     return result.append_column(
         COUNT, pc.list_value_length(original).cast(pa.int64())
