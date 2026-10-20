@@ -8,6 +8,11 @@ from pathlib import Path
 from tinydb import where
 from tinydb.table import Table
 
+from congress_api.models.transcription import (
+    YoutubeChannelItem,
+    YoutubePlaylistItem,
+    YoutubeVideoItem,
+)
 from youtube_api.tables import open_tinydb_for_committee
 
 ## re-check videos without captions for this long after publishing
@@ -294,7 +299,10 @@ class YoutubeEventFetcher:
                 logging.error(f"Video details check failed for {channel_handle}: {type(ex).__name__}")
                 ok = False
                 break
-            returned = {item["id"]: item for item in response.get("items", [])}
+            returned = {
+                item["id"]: YoutubeVideoItem.model_validate(item).source_dict()
+                for item in response.get("items", [])
+            }
             checked_at = timestamp()
             for doc in batch:
                 item = returned.get(doc["videoId"])
@@ -332,16 +340,17 @@ class YoutubeEventFetcher:
 
 def parse_channel_details(channel_details: dict) -> dict:
     """Extract relevant details from channel API response"""
-    uploads = channel_details["contentDetails"]["relatedPlaylists"]["uploads"]
+    validated = YoutubeChannelItem.model_validate(channel_details).source_dict()
+    uploads = validated["contentDetails"]["relatedPlaylists"]["uploads"]
 
     channel_data = {
-        key: channel_details["snippet"][key]
+        key: validated["snippet"][key]
         for key in ["title", "description", "publishedAt", "customUrl"]
-        if key in channel_details["snippet"]
+        if key in validated["snippet"]
     }
     channel_data["uploads"] = uploads
-    channel_data["channelId"] = channel_details["id"]
-    channel_data["upstream"] = observation(channel_details)
+    channel_data["channelId"] = validated["id"]
+    channel_data["upstream"] = observation(validated)
 
     return channel_data
 
@@ -366,14 +375,15 @@ def insert_videos_into_tb(items: list[dict], videos_tb: Table) -> tuple[bool, in
 
 def parse_video_details(video_details: dict) -> dict:
     """Extract relevant details from playlistItems API response"""
-    video_id = video_details["snippet"]["resourceId"]["videoId"]
+    validated = YoutubePlaylistItem.model_validate(video_details).source_dict()
+    video_id = validated["snippet"]["resourceId"]["videoId"]
 
     video_data = {
-        key: video_details["snippet"][key]
+        key: validated["snippet"][key]
         for key in ["title", "description", "publishedAt"]
     }
     video_data["videoId"] = video_id
-    video_data["upstream"] = {"playlist_item": observation(video_details)}
+    video_data["upstream"] = {"playlist_item": observation(validated)}
 
     return video_data
 

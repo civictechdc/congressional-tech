@@ -135,7 +135,7 @@ class YoutubeContentDetails(SourceModel):
 
     https://developers.google.com/youtube/v3/docs/videos#contentDetails
     """
-    duration: str
+    duration: str | None = None
     dimension: str | None = None
     definition: str | None = None
     caption: str | None = None
@@ -146,11 +146,69 @@ class YoutubeContentDetails(SourceModel):
     has_custom_thumbnail: bool | None = Field(default=None, alias='hasCustomThumbnail')
 
 
+class YoutubeResourceId(SourceModel):
+    kind: str | None = None
+    video_id: str = Field(alias='videoId')
+
+
+class YoutubePlaylistSnippet(SourceModel):
+    resource_id: YoutubeResourceId = Field(alias='resourceId')
+    title: str | None = None
+    description: str | None = None
+    published_at: str | None = Field(default=None, alias='publishedAt')
+
+
+class YoutubePlaylistItem(SourceModel):
+    id: str | None = None
+    etag: str | None = None
+    snippet: YoutubePlaylistSnippet
+
+
+class YoutubeVideoSnippet(SourceModel):
+    title: str | None = None
+    description: str | None = None
+    channel_id: str | None = Field(default=None, alias='channelId')
+    channel_title: str | None = Field(default=None, alias='channelTitle')
+    published_at: str | None = Field(default=None, alias='publishedAt')
+
+
+class YoutubeVideoStatus(SourceModel):
+    embeddable: bool | None = None
+
+
+class YoutubeLiveStreamingDetails(SourceModel):
+    actual_start_time: str | None = Field(default=None, alias='actualStartTime')
+
+
 class YoutubeVideoItem(SourceModel):
     kind: str | None = None
     etag: str | None = None
     id: str | None = None
-    content_details: YoutubeContentDetails = Field(alias='contentDetails')
+    snippet: YoutubeVideoSnippet | None = None
+    content_details: YoutubeContentDetails | None = Field(default=None, alias='contentDetails')
+    status: YoutubeVideoStatus | None = None
+    live_streaming_details: YoutubeLiveStreamingDetails | None = Field(default=None, alias='liveStreamingDetails')
+
+
+class YoutubeRelatedPlaylists(SourceModel):
+    uploads: str
+
+
+class YoutubeChannelContentDetails(SourceModel):
+    related_playlists: YoutubeRelatedPlaylists = Field(alias='relatedPlaylists')
+
+
+class YoutubeChannelSnippet(SourceModel):
+    title: str | None = None
+    description: str | None = None
+    published_at: str | None = Field(default=None, alias='publishedAt')
+    custom_url: str | None = Field(default=None, alias='customUrl')
+
+
+class YoutubeChannelItem(SourceModel):
+    id: str
+    snippet: YoutubeChannelSnippet
+    content_details: YoutubeChannelContentDetails = Field(alias='contentDetails')
 
 
 class YoutubePageInfo(SourceModel):

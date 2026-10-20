@@ -32,6 +32,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
+from congress_api.models.transcription import GeminiUsage
 from congress_api.parsers.gemini import parse_generated_response
 from congress_api.retention.transcripts import retain_response
 
@@ -123,11 +124,13 @@ def transcribe_window(roster: list[dict], meeting: dict, start: float, end: floa
             if (not r.text or "MAX_TOKENS" in reason or "RECITATION" in reason) and end - start > MIN_SPLIT_SECONDS:
                 logging.info(f"window {start:.0f}-{end:.0f}: {reason}, splitting")
                 return halves()
-            d = parse_generated_response(r.text).source_dict()
+            parsed = parse_generated_response(r.text)
             usage = getattr(r, "usage_metadata", None)
-            d["usage"] = {"in": getattr(usage, "prompt_token_count", None) or 0,
-                          "out": getattr(usage, "candidates_token_count", None) or 0}
-            return d
+            parsed.usage = GeminiUsage.model_validate({
+                "in": getattr(usage, "prompt_token_count", None) or 0,
+                "out": getattr(usage, "candidates_token_count", None) or 0,
+            })
+            return parsed.source_dict()
         except Exception as e:
             last_error = e
             logging.warning(f"window {start:.0f}-{end:.0f}: {str(e)[:200]}; retrying")
