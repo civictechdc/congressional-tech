@@ -689,40 +689,21 @@ def _legacy_write_document_indexes(destination, rows, schema):
 
 def validate_document_indexes(source_path, document_path, *, source_rows=None, document_rows=None):
     """Validate the actual paired files before either destination is replaced."""
-    from tempfile import TemporaryDirectory
-    import sqlite3
+    from congress_api.retention.catalog_validation import CatalogReferenceCheck
     readers = ExitStack()
     try:
         source_file = readers.enter_context(pq.ParquetFile(source_path))
         document_file = readers.enter_context(pq.ParquetFile(document_path))
-        source_meta, document_meta = source_file.schema_arrow.metadata or {}, document_file.schema_arrow.metadata or {}
-        if not source_meta.get(b"catalog_id") or source_meta[b"catalog_id"] != document_meta.get(b"catalog_id"):
-            raise ValueError("Document/source catalog_id values do not match")
+        check = CatalogReferenceCheck(source_file.schema_arrow, document_file.schema_arrow)
         if (source_rows is not None and source_file.metadata.num_rows != source_rows
                 or document_rows is not None and document_file.metadata.num_rows != document_rows):
             raise ValueError("Document/source index references do not match")
-        with TemporaryDirectory(prefix="validate-catalog-") as directory:
-            db = sqlite3.connect(Path(directory) / "references.sqlite")
-            try:
-                db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
-                                 'CREATE TABLE sources(source_id TEXT PRIMARY KEY NOT NULL,document_id TEXT NOT NULL); '
-                                 'CREATE INDEX source_groups ON sources(document_id); '
-                                 'CREATE TABLE documents(document_id TEXT PRIMARY KEY NOT NULL,source_id TEXT NOT NULL);')
-                for file, table in ((source_file, "sources"), (document_file, "documents")):
-                    for batch in file.iter_batches(columns=["source_id", "document_id"], batch_size=4096):
-                        records = batch.to_pylist()
-                        if table == "sources":
-                            db.executemany('INSERT INTO sources VALUES (?,?)', ((row['source_id'],row['document_id']) for row in records))
-                        else:
-                            db.executemany('INSERT INTO documents VALUES (?,?)', ((row['document_id'],row['source_id']) for row in records))
-                invalid = (db.execute('SELECT 1 FROM sources s LEFT JOIN documents d ON s.document_id=d.document_id WHERE d.document_id IS NULL LIMIT 1').fetchone()
-                           or db.execute('SELECT 1 FROM documents d LEFT JOIN sources s ON d.source_id=s.source_id AND d.document_id=s.document_id WHERE s.source_id IS NULL LIMIT 1').fetchone())
-                if invalid:
-                    raise ValueError("Document/source index references do not match")
-            except sqlite3.IntegrityError as error:
-                raise ValueError("Document/source index references do not match") from error
-            finally:
-                db.close()
+        with check:
+            for batch in source_file.iter_batches(columns=['source_id', 'document_id'], batch_size=4096):
+                check.add_sources(batch)
+            for batch in document_file.iter_batches(columns=['source_id', 'document_id'], batch_size=4096):
+                check.add_documents(batch)
+            check.finish()
     except BaseException as error:
         try:
             readers.close()

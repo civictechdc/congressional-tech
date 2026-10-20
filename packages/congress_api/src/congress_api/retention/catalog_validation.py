@@ -1,11 +1,14 @@
 """Reuse one in-process validation of an unchanged immutable catalog pair."""
 from dataclasses import dataclass
+from contextlib import ExitStack, closing
 import hashlib
 import inspect
 import json
 import os
 from pathlib import Path
 import sys
+import sqlite3
+from tempfile import TemporaryDirectory
 import weakref
 
 import pyarrow
@@ -14,6 +17,85 @@ import pyarrow.parquet as pq
 from .catalog_publication import _manifest
 
 _issued = weakref.WeakValueDictionary()
+
+
+class CatalogReferenceCheck:
+    """Check streamed catalog uniqueness and references with bounded SQLite state.
+
+    Finish all changed component chunks before publication. Completeness against
+    reused components belongs to the selected dependency-scope owner.
+    """
+    def __init__(self, source_schema, document_schema):
+        source_meta, document_meta = source_schema.metadata or {}, document_schema.metadata or {}
+        if not source_meta.get(b'catalog_id') or source_meta[b'catalog_id'] != document_meta.get(b'catalog_id'):
+            raise ValueError('Document/source catalog_id values do not match')
+        self.source_rows = self.document_rows = 0
+        self.failed = self.finished = False
+        self.resources = None
+        self._entered = False
+
+    def __enter__(self):
+        if self._entered:
+            raise ValueError('Catalog reference checks cannot be reopened')
+        self._entered = True
+        self.resources = ExitStack()
+        try:
+            directory = self.resources.enter_context(TemporaryDirectory(prefix='validate-catalog-'))
+            self.db = self.resources.enter_context(closing(sqlite3.connect(Path(directory) / 'references.sqlite')))
+            self.db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                'CREATE TABLE sources(source_id TEXT PRIMARY KEY NOT NULL,document_id TEXT NOT NULL); '
+                'CREATE INDEX source_groups ON sources(document_id); '
+                'CREATE TABLE documents(document_id TEXT PRIMARY KEY NOT NULL,source_id TEXT NOT NULL);')
+            return self
+        except BaseException:
+            self.resources.close()
+            self.resources = None
+            raise
+
+    def __exit__(self, kind, error, traceback):
+        try:
+            return self.resources.__exit__(kind, error, traceback)
+        finally:
+            self.resources = None
+
+    def _require_input(self):
+        if self.resources is None or self.failed or self.finished:
+            raise ValueError('Catalog reference check is not accepting input')
+
+    def _add(self, batch, *, sources):
+        self._require_input()
+        try:
+            records = batch.select(['source_id', 'document_id']).to_pylist()
+            if sources:
+                self.db.executemany('INSERT INTO sources VALUES (?,?)',
+                    ((row['source_id'], row['document_id']) for row in records))
+                self.source_rows += len(records)
+            else:
+                self.db.executemany('INSERT INTO documents VALUES (?,?)',
+                    ((row['document_id'], row['source_id']) for row in records))
+                self.document_rows += len(records)
+        except sqlite3.IntegrityError as error:
+            self.failed = True
+            raise ValueError('Document/source index references do not match') from error
+        except BaseException:
+            self.failed = True
+            raise
+
+    def add_sources(self, batch):
+        self._add(batch, sources=True)
+
+    def add_documents(self, batch):
+        self._add(batch, sources=False)
+
+    def finish(self):
+        self._require_input()
+        invalid = (self.db.execute('SELECT 1 FROM sources s LEFT JOIN documents d ON s.document_id=d.document_id WHERE d.document_id IS NULL LIMIT 1').fetchone()
+                   or self.db.execute('SELECT 1 FROM documents d LEFT JOIN sources s ON d.source_id=s.source_id AND d.document_id=s.document_id WHERE s.source_id IS NULL LIMIT 1').fetchone())
+        if invalid:
+            self.failed = True
+            raise ValueError('Document/source index references do not match')
+        self.finished = True
+        return dict(source_rows=self.source_rows, document_rows=self.document_rows)
 
 
 def _issue(proof):
