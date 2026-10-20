@@ -89,18 +89,23 @@ class LocalStore:
 
 
     def put_catalog_manifest(self, data, *, expected_version):
-        """Compare and replace the selector while holding a local writer lock."""
-        import fcntl
         from congress_api.retention.catalog_publication import MANIFEST_KEY
+        return self.put_index_selector(MANIFEST_KEY, data, expected_version=expected_version)
+
+    def put_index_selector(self, key, data, *, expected_version):
+        """Compare and replace an application selector under the local writer lock."""
+        import fcntl
+        from congress_api.retention.index_selector import require_selector_key
+        require_selector_key(key)
         lock = self.root / 'indexes/.catalog.lock'
         lock.parent.mkdir(parents=True, exist_ok=True)
         with lock.open('a+b') as stream:
             fcntl.flock(stream, fcntl.LOCK_EX)
-            current = self.read(MANIFEST_KEY)
+            current = self.read(key)
             version = sha256(current).hexdigest() if current is not None else None
             if version != expected_version:
                 raise RuntimeError('Concurrent catalog update; selected snapshot preserved')
-            self.put(MANIFEST_KEY, data)
+            return self.put(key, data)
 
 
 
