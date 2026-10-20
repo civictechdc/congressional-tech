@@ -28,6 +28,7 @@ This is a [Turborepo](https://turborepo.com) monorepo using npm workspaces, in t
 | **`committee_meeting`** | Committee meeting metadata helpers. |
 | **`corpus_recovery`** | Checks recovered committee documents and adds them to the raw archive. Commands are in [`scripts/corpus_recovery`](scripts/corpus_recovery/README.md). |
 | **`viewer_publication`** | Publishes the public filename viewer without rewriting archive objects. Commands are in [`scripts/publication`](scripts/publication/README.md). |
+| **`news_lake`** | Political news lake: record contract, Iceberg storage boundary, and offline adapter/identity/analysis cores from the [design packet](packages/news-lake/docs/packet.md) (proposed; see `docs/adr/news-lake-contract.md`). |
 
 ## Submodules
 

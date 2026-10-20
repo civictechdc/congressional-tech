@@ -15,8 +15,12 @@ SPEC.loader.exec_module(dev)
 
 def test_runtime_and_dependency_pins_trigger_validation():
     workflow = yaml.load((ROOT / '.github/workflows/validate-explorer.yml').read_text(), Loader=yaml.BaseLoader)
-    paths = workflow['on']['pull_request']['paths']
-    assert {'.python-version', 'pyproject.toml', 'uv.lock', 'test-suites.toml'} <= set(paths)
+    paths = set(workflow['on']['pull_request']['paths'])
+    assert {'.python-version', 'pyproject.toml', 'uv.lock', 'test-suites.toml'} <= paths
+    config = dev.declaration()
+    for import_root in config['environment']['imports'].values():
+        pkg_glob = '/'.join(Path(import_root).parts[:2]) + '/**'
+        assert pkg_glob in paths, f'{pkg_glob} missing from validate-explorer.yml pull_request.paths'
 
 
 def test_inventory_rejects_new_unassigned_test(monkeypatch):

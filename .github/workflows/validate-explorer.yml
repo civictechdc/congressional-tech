@@ -12,6 +12,8 @@ on:
       - "packages/congress_shared/**"
       - "packages/youtube_api/**"
       - "packages/corpus_recovery/**"
+      - "packages/news_lake/**"
+      - "packages/news-lake/**"
       - "packages/viewer_publication/**"
       - "packages/source-fetch/**"
       - "tests/**"
