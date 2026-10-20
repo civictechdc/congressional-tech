@@ -1,6 +1,6 @@
 ---
 id: ct-czsd
-status: open
+status: in_progress
 deps: [ct-2ukk]
 links: []
 created: 2026-10-20T02:20:21Z
