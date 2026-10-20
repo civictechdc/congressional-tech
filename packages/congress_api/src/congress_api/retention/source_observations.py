@@ -43,8 +43,13 @@ def dependency_id(kind, value):
 
 class SourceObservationTrace:
     """Spill exact parent dependencies while the maintained interpreter runs."""
-    def __init__(self, working):
+    def __init__(self, working, *, retained=False):
         self.working, self.db = working, working.connection
+        if retained:
+            for name in ('observation_inputs', 'observation_edges', 'observation_source_owners'):
+                if self.db.execute('SELECT 1 FROM sqlite_master WHERE type=? AND name=?', ('table', name)).fetchone() is None:
+                    raise ValueError('Retained source replay omits observation staging')
+            return
         self.db.executescript('CREATE TABLE observation_inputs(observation TEXT PRIMARY KEY); '
             'CREATE TABLE observation_edges(observation TEXT,dependency TEXT,access TEXT, '
             'PRIMARY KEY(observation,dependency,access)); '
