@@ -20,7 +20,7 @@ from congress_api.retention.immutable_metadata import encoded
 from congress_api.retention.partition_routing import key_hash
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA
 from congress_api.retention.raw_storage import BODY_FIELDS, BODY_SCHEMA, DELIVERY_ENTRIES, STATE_ORDER, STATE_KEY_FIELD, SELECTOR_BYTES, state_key
-from congress_api.retention.raw_values import NATIVE_CAPTURE_SCHEMA, capture_table
+from congress_api.retention.raw_values import NATIVE_CAPTURE_SCHEMA, ORDER as CAPTURE_ORDER, capture_table
 from congress_api.retention.raw_state_routes import summarize
 
 
@@ -70,6 +70,20 @@ def _leaves(db, kind, schema, max_rows, max_bytes, prefix=''):
     if canonical.nbytes > max_bytes:
         raise ValueError('Adoption leaf exceeds its decoded-byte budget')
     yield prefix, canonical
+
+
+def _qualified_candidate(storage, kind, table, *, operation, prefix, base_id):
+    """Compare each bounded native result before retaining it for selection."""
+    pin = storage._candidate(kind, table, operation=operation, prefix=prefix, base_id=base_id)
+    capture = kind == 'captures'
+    actual = storage._read_table(pin, len(table), schema=table.schema,
+        max_rows=storage.max_capture_rows if capture else storage.max_state_rows,
+        max_bytes=storage.max_capture_bytes if capture else storage.max_state_bytes,
+        decoded_bytes=table.nbytes)
+    order = CAPTURE_ORDER if capture else STATE_ORDER if kind == 'state' else 'key'
+    if not actual.sort_by(order).equals(table.sort_by(order), check_metadata=True):
+        raise ValueError(f'Adoption native values differ from investigated input: {kind}')
+    return pin
 
 
 def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None, before_publish=None):
@@ -140,8 +154,8 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None, b
                 incoming = capture_table(pa.Table.from_batches([source]), first_order=position)
                 for _, batch in storage._capture_batches(incoming):
                     canonical = pa.Table.from_pylist(batch.to_pylist(), schema=NATIVE_CAPTURE_SCHEMA)
-                    pin = storage._candidate('captures', canonical, operation=operation,
-                                             prefix=str(position), base_id=request)
+                    pin = _qualified_candidate(storage, 'captures', canonical, operation=operation,
+                                               prefix=str(position), base_id=request)
                     receipts = sorted({key for key in canonical['receipt_key'].to_pylist() if key})
                     pending.append(dict(release=pin, rows=len(canonical), decoded_bytes=canonical.nbytes,
                                         receipt_keys=receipts, first_order=position))
@@ -172,7 +186,8 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None, b
                     ('body', BODY_SCHEMA, storage.body_routes, 'bodies')):
                 def references():
                     for prefix, table in _leaves(db, kind, schema, storage.max_state_rows, storage.max_state_bytes):
-                        pin = storage._candidate(native_kind, table, operation=operation, prefix=prefix, base_id=request)
+                        pin = _qualified_candidate(storage, native_kind, table, operation=operation,
+                                                   prefix=prefix, base_id=request)
                         reference = dict(release=pin, rows=len(table), decoded_bytes=table.nbytes)
                         if kind == 'state':
                             reference['schedule'] = summarize(table.to_pylist())

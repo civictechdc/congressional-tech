@@ -181,3 +181,51 @@ def test_changed_input_during_adoption_never_selects_partial_archive(tmp_path):
     with pytest.raises(ValueError, match='digest'):
         adopt_tables(owner, paths=paths, sha256s=hashes, operation='seed')
     assert store.read(RAW_KEY) is None
+
+
+@pytest.mark.parametrize('kind', ['captures', 'state', 'bodies'])
+def test_changed_native_value_never_selects_adopted_archive(tmp_path, kind):
+    from contextlib import contextmanager
+    from congress_api.retention.raw_adoption import adopt_tables
+    paths, hashes, _, states = inputs(tmp_path)
+    store = SelectorStore()
+    owner = memory_raw_storage(store, state_schema=states.schema, max_state_rows=3, max_capture_rows=3)
+    read = owner.native.source_batches
+    @contextmanager
+    def changed(pin, *, schema=None):
+        with read(pin, schema=schema) as reader:
+            table = reader.read_all()
+        actual = ('captures' if '_capture_order' in table.column_names else
+                  'state' if '_state_order' in table.column_names else 'bodies')
+        if actual == kind:
+            field = 'attempts' if kind == 'state' else 'bytes'
+            values = table[field].to_pylist()
+            values[0] += 1
+            table = table.set_column(table.schema.get_field_index(field), table.schema.field(field),
+                                     pa.array(values, type=table.schema.field(field).type))
+        yield pa.RecordBatchReader.from_batches(table.schema, table.to_batches())
+    owner.native.source_batches = changed
+    with pytest.raises(ValueError, match='Adoption native values differ'):
+        adopt_tables(owner, paths=paths, sha256s=hashes, operation='seed')
+    assert RAW_KEY not in store.objects
+    assert owner.native.writes
+
+
+def test_adoption_value_check_accepts_native_reordering(tmp_path):
+    from contextlib import contextmanager
+    from congress_api.retention.raw_adoption import adopt_tables
+    paths, hashes, captures, states = inputs(tmp_path)
+    store = SelectorStore()
+    owner = memory_raw_storage(store, state_schema=states.schema, max_state_rows=3, max_capture_rows=3)
+    read = owner.native.source_batches
+    @contextmanager
+    def reordered(pin, *, schema=None):
+        with read(pin, schema=schema) as reader:
+            table = reader.read_all()
+        table = table.take(pa.array(list(reversed(range(len(table)))), type=pa.int64()))
+        yield pa.RecordBatchReader.from_batches(table.schema, table.to_batches())
+    owner.native.source_batches = reordered
+    selected = adopt_tables(owner, paths=paths, sha256s=hashes, operation='seed')
+    assert selected.captures().equals(captures, check_metadata=True)
+    assert selected.states().equals(states, check_metadata=True)
+    assert store.writes.count(RAW_KEY) == 1
