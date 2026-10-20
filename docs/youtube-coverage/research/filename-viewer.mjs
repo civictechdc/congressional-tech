@@ -660,7 +660,13 @@ window.addEventListener('popstate',()=>{if(!info)return;const row=restore();load
 try {
  info=await api('/api/info');
  $('search-form').inert=false; $('search-form').removeAttribute('inert');
- if(info.downloads) { document.querySelector('a[href="/data.parquet"]').href=info.downloads.documents; document.querySelector('a[href="/sources.parquet"]').href=info.downloads.filenames; }
+ if(info.downloads) {
+  const documents=document.querySelector('a[href="/data.parquet"]'),sources=document.querySelector('a[href="/sources.parquet"]');
+  if(info.downloads.catalog) {
+   documents.hidden=true;sources.hidden=true;
+   const index=link(info.downloads.catalog,'Catalog partitions · JSON ↗');index.className='download';document.querySelector('.downloads').append(index);
+  } else {documents.href=info.downloads.documents;sources.href=info.downloads.filenames;}
+ }
  if(info.downloads?.recoveries) { const a=link(info.downloads.recoveries,'Recovery status · JSON ↗');a.className='download';document.querySelector('.downloads').append(a,node('p','Recovery status is a separate update; Parquet downloads preserve the original catalog values.','section-note')); }
  $('summary').textContent=`${number(info.documents)} documents · ${number(info.capture_records)} source/capture entries`;
  $('summary').title=`${number(info.rows)} source rows · ${number(info.api_reference_groups||0)} API-only groups identified by URL`;

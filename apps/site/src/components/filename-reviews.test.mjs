@@ -118,3 +118,16 @@ test('review binding and publication share one total deadline', async () => {
  const result=await loadReviews(...parameters,{deadlineMs:15});
  assert.equal(requests,2);assert.equal(result.info.reviewed_search,false);assert.match(result.info.review_error,/startup deadline/);
 });
+
+test('stable review bindings use source/document IDs and keep withdrawn groups unplaced',async()=>{
+ const data=fixture();data.rows[0].document_id='reviewed';
+ const binding={version:2,review_sha256:'pin',catalog_id:'next',rows:[{index:0,document_id:'reviewed',source_ids:['a'.repeat(64),'b'.repeat(64)]}],withdrawn:[]};
+ const parameters=bound(binding,data);parameters[1].version=6;
+ const result=await loadReviews(...parameters);
+ assert.equal(result.info.reviewed_search,true);assert.deepEqual([...result.groups.keys()],['reviewed']);
+ assert.equal(result.sources.get('a'.repeat(64)),result.sources.get('b'.repeat(64)));
+ const withdrawn=bound({...binding,rows:[],withdrawn:[{index:0,document_id:'reviewed',reason:'sources_changed'}]},data);withdrawn[1].version=6;
+ assert.equal((await loadReviews(...withdrawn)).groups.size,0);
+ const wrong=bound({...binding,rows:[{...binding.rows[0],document_id:'wrong'}]},data);wrong[1].version=6;
+ assert.match((await loadReviews(...wrong)).info.review_error,/stable identity differs/);
+});
