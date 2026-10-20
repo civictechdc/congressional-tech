@@ -44,3 +44,7 @@ Current input bytes retained and verified for all4core tables. Complete721-part 
 **2026-10-20T08:00:34Z**
 
 Full current table scan complete:725Parquetfiles,8623851rows,1521719517storedbytes. All core identities/references and721reading-part validations pass. Exactly one43.8MB document requires ct-rcs8 lossless occurrence normalization. Native import/readback and production selection remain pending. Complete receipts:output/incremental-updates-20261019/adoption-survey/migration-scan-inventory.md and core-compatibility-scan.json. ct-upte repeated-membership read optimization is reviewed, measured and closed; remaining affected-leaf costs remain documented.
+
+**2026-10-20T08:26:58Z**
+
+Final normalized-format local measurement passed at 3a03125a for 4 and 40 unrelated records. Append catalog reads are 18 in both cases versus baseline 105; logical read bytes 79,279 / 609,583 versus 1,135,041 / 8,992,328. Typed parts add native submissions (12 to 16) and metadata bytes. All unrelated values, IDs and public records preserved. Initial setup still reads alias owners repeatedly (116 / 908 native reads); assess before production import. These are fixture counters, not cloud throughput. Receipts: end-to-end/typed-occurrences/measurement-summary.json and receipt.md.

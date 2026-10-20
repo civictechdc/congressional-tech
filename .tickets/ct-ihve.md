@@ -43,3 +43,7 @@ Stable v6 reader, historical v5 links and full typed document download are integ
 **2026-10-20T07:20:03Z**
 
 Committed dashboard integration is merged locally without primary uncommitted UI changes.186 Node checks,29-page build,2 built-page checks and fresh Chromium passed; complete source/document downloads preserved all29 fixture fields, stable links survived reload and reviews retained original document values. Receipt:review-merge/merged-browser-verification.json. Production v6 cutover remains pending.
+
+**2026-10-20T08:26:58Z**
+
+Final typed-occurrence browser check passed in fresh Chrome 155: exact 29-field complete source and 29,041,079-byte document JSON, 18,000 ordered occurrences, distinct source/document lists, stable links/reload, reviews and original values. 51 Python and 6 Node tests passed; typecheck clean and 29 pages built. All seven qualified implementation hashes match integration 26bbda7d. Receipt: adoption-survey/viewer-occurrence-browser-verification.json. Production v6 cutover remains pending.

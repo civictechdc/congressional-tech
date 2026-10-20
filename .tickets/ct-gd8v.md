@@ -1,6 +1,6 @@
 ---
 id: ct-gd8v
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-20T08:12:03Z
@@ -22,3 +22,9 @@ Carry exact capture/state source keys and versions through the existing adoption
 
 Local tests prove changed source versions refuse before any preparation or final selection, stable pins preserve all values and completed retry remains idempotent. Independently review. Record that legacy writers are inactive before production cutover; no new journal or workflow dispatch.
 
+
+## Notes
+
+**2026-10-20T08:26:58Z**
+
+Reviewed fe434180 integrated as 26bbda7d. Operational receipt v2 binds exact source bucket/key/version into the stable request, checks before preparation and immediately before existing publication. Nine independent root tests passed; owner suite 54 passed. Wrong/missing/drifted pins refuse and completed retries preserve later history. Review: review-merge/root-source-version-guard-review.md. Separate object checks do not atomically fence legacy writers; cutover must keep them inactive.
