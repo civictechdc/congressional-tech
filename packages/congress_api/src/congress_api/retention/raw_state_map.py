@@ -55,6 +55,14 @@ class RawStateMap(MutableMapping):
     def changed(self):
         return [row for key, row in self.rows.items() if self.original[key] != row]
 
+    def admit_selected(self, row):
+        """Keep an already verified selected row without a second native read."""
+        key = row['url']
+        if key not in self.rows:
+            self.rows[key] = row
+            self.original[key] = deepcopy(row)
+        return self.rows[key]
+
     def rebase(self, snapshot):
         self.snapshot = snapshot
         # Keep exposed row objects alive across saves, matching dict semantics.

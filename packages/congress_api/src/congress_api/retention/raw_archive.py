@@ -7,6 +7,8 @@ checkpoint reconstruction remains an explicit one-time adoption boundary.
 """
 
 from datetime import datetime, timedelta, timezone
+import heapq
+from itertools import islice
 import gzip
 import hashlib
 import json
@@ -492,7 +494,7 @@ class LegacyArchiveSeed:
         Historical attempts and retained bodies remain untouched.
         """
         observations = []
-        rejected = [state for state in self.state.values()
+        rejected = [state for state in self._admission_states(urls)
                     if (urls is None or state['url'] in urls)
                     and state['outcome'] in {'pending', 'repaired_url'} and not allowed_url(state['url'])]
         for state in rejected:
@@ -502,6 +504,9 @@ class LegacyArchiveSeed:
                 state['outcome'] = 'excluded_scope'
             observations.extend(links)
         return observations
+
+    def _admission_states(self, urls):
+        return self.state.values()
 
     def put_body(self, data):
         digest = hashlib.sha256(data).hexdigest()
@@ -802,6 +807,38 @@ class Archive(LegacyArchiveSeed):
     @property
     def retained_body_count(self):
         return self.selected.body_count
+
+    def scheduled_states(self, *, outcomes, now=None, urls=None, invalid_only=False):
+        """Merge changed working rows with exact selected candidates in old order."""
+        from congress_api.retention.raw_state_routes import due_time, invalid, priority
+        cached = set(self.state.rows)
+        deadline = due_time(now.isoformat()) if now is not None else None
+        working = sorted((row for row in self.state.rows.values()
+            if row['outcome'] in outcomes and (urls is None or row['url'] in urls)
+            and (not invalid_only or invalid(row))
+            and (deadline is None or due_time(row.get('next_attempt_at')) <= deadline)), key=priority)
+        selected = (row for row in self.selected.state_candidates(outcomes=outcomes,
+            now=now, urls=urls, invalid_only=invalid_only) if row['url'] not in cached)
+        for row in heapq.merge(working, selected, key=priority):
+            yield self.state.admit_selected(row)
+
+    def _admission_states(self, urls):
+        return self.scheduled_states(outcomes={'pending', 'repaired_url'}, urls=urls, invalid_only=True)
+
+    def capture_queue(self, *, now, limit, urls, retry_outcomes, initial_only, reinspect_retained, retry_now):
+        """Admit at most this run's attempt budget, retaining scheduler fairness."""
+        outcomes = (set(retry_outcomes) if retry_outcomes else {'pending'} if initial_only else
+                    (set(self.state_counts['url_outcomes']) |
+                     {row['outcome'] for row in self.state.rows.values()} | {None, ''}) - NON_DOWNLOAD_OUTCOMES)
+        if reinspect_retained:
+            outcomes = {self.state[url]['outcome'] for url in urls}
+        due = None if reinspect_retained or retry_now else now
+        options = dict(outcomes=outcomes, now=due, urls=urls)
+        refusals = []
+        for state in self.scheduled_states(**options, invalid_only=True):
+            refusals.append(dict(url=state['url'], previous_outcome=state['outcome'], reason='outside_capture_scope'))
+            state.update(outcome='excluded_scope', next_attempt_at=None)
+        return list(islice(self.scheduled_states(**options), limit)), refusals
 
     def _receipt_state(self, state):
         # Acquisition receipts describe download decisions in JSON. Opaque

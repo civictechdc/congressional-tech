@@ -18,6 +18,7 @@ from congress_api.retention.partition_routing import RoutingPages, split_partiti
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA
 from congress_api.retention.raw_capture_pages import CapturePages
 from congress_api.retention.raw_changes import RawChanges
+from congress_api.retention.raw_state_routes import StateRoutes, summarize, schedule_basis
 from congress_api.retention.raw_values import capture_table, ordered_captures, NATIVE_CAPTURE_SCHEMA
 from congress_api.retention.write_recovery import reconcile_lost_acknowledgment
 
@@ -106,6 +107,9 @@ class RawSnapshot:
         key, _, entries = self.owner._delivery(self.manifest['deliveries'], 'delivery:' + operation)
         return entries.get(key)
 
+    def state_candidates(self, *, outcomes, now=None, urls=None, invalid_only=False):
+        yield from self.owner.state_routes.candidates(self, outcomes=outcomes, now=now, urls=urls, invalid_only=invalid_only)
+
     def states_for(self, urls):
         groups = {}
         for url in dict.fromkeys(urls):
@@ -179,13 +183,13 @@ class RawStorage:
         if min(max_state_rows, max_state_bytes, max_capture_rows, max_capture_bytes) < 1:
             raise ValueError("Raw storage budgets must be positive")
         self.capture_pages = CapturePages(store)
-        self.state_routes = RoutingPages(store, 'raw-state-v1')
+        self.state_routes = StateRoutes(store)
         self.delivery_routes = RoutingPages(store, 'raw-deliveries-v1')
         self.changes = RawChanges(store)
         self.body_routes = RoutingPages(store, 'raw-bodies-v1')
         from congress_api.retention.raw_readings import RawReadings
         self.readings = RawReadings(store)
-        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1', state_keys='nullable-url-v1', counts='raw-state-counts-v1', readings='body-part-refs-v1',
+        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1', state_keys='nullable-url-v1', counts='raw-state-counts-v1', readings='body-part-refs-v1', schedule=schedule_basis(),
                           max_state_rows=max_state_rows, max_state_bytes=max_state_bytes,
                           max_capture_rows=max_capture_rows, max_capture_bytes=max_capture_bytes,
                           state_schema=base64.b64encode(state_schema.serialize()).decode("ascii"))
@@ -490,7 +494,8 @@ class RawStorage:
                         max_rows=self.max_state_rows, max_bytes=self.max_state_bytes):
                     leaves[child] = (dict(release=self._candidate('state', part, operation=operation,
                                           prefix=child, base_id=base_id), rows=len(part),
-                                          decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=self.state_native_schema).nbytes) if len(part) else None)
+                                          decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=self.state_native_schema).nbytes,
+                                          schedule=summarize(part.to_pylist())) if len(part) else None)
                 selected_root = self.state_routes.replace(selected_root, prefix, leaves)
             manifest['state'] = dict(root=selected_root, rows=next_order)
         delivery = dict(request=request, request_id=request_id,

@@ -20,6 +20,7 @@ from congress_api.retention.partition_routing import key_hash
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA
 from congress_api.retention.raw_storage import BODY_FIELDS, BODY_SCHEMA, DELIVERY_ENTRIES, STATE_ORDER, STATE_KEY_FIELD, SELECTOR_BYTES, state_key
 from congress_api.retention.raw_values import NATIVE_CAPTURE_SCHEMA, capture_table
+from congress_api.retention.raw_state_routes import summarize
 
 
 def _digest(path):
@@ -163,7 +164,10 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None):
                 def references():
                     for prefix, table in _leaves(db, kind, schema, storage.max_state_rows, storage.max_state_bytes):
                         pin = storage._candidate(native_kind, table, operation=operation, prefix=prefix, base_id=request)
-                        yield prefix, dict(release=pin, rows=len(table), decoded_bytes=table.nbytes)
+                        reference = dict(release=pin, rows=len(table), decoded_bytes=table.nbytes)
+                        if kind == 'state':
+                            reference['schedule'] = summarize(table.to_pylist())
+                        yield prefix, reference
                 root = routes.replace_stream(None, '', references())
                 if kind == 'state':
                     manifest['state']['root'] = root
