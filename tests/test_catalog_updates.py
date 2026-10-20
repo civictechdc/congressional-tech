@@ -67,3 +67,25 @@ def test_mid_native_chunk_failure_replays_same_completed_immutable_inputs(tmp_pa
     monkeypatch.setattr(native, 'run_table', replay)
     assert updates.update_native_catalog(store, **arguments)['counts'] == dict(source_rows=3, document_rows=3)
     assert all(native.tables[key].equals(table, check_metadata=True) for key, table in completed.items())
+
+
+from test_docspec_boundary import native
+
+
+def test_actual_native_caller_changes_only_closed_document_scope(tmp_path, native):
+    from copy import deepcopy
+    from congress_api.retention import document_index as index
+    store = LocalStore(tmp_path / 'store')
+    owner, rows = seed(tmp_path, store, native)
+    previous = read_catalog(store, native=native)
+    result = updates.update_native_catalog(store, native=native, previous=previous, dependencies=owner,
+        deletions=[identity(rows[2])], candidate='actual-caller-split', directory=tmp_path / 'update',
+        max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    current = read_catalog(LocalStore(store.root), native=native)
+    actual = pa.Table.from_batches(list(current.table('filenames', max_ordered_bytes=1 << 20).iter_batches()))
+    expected, _, documents, _ = index.prepare_document_indexes(deepcopy([rows[0], rows[1], rows[3]]), owner.source_schema)
+    assert sorted(actual.to_pylist(), key=identity) == sorted(pa.Table.from_pylist(expected, schema=actual.schema).to_pylist(), key=identity)
+    actual_docs = pa.Table.from_batches(list(current.table('documents', max_ordered_bytes=1 << 20).iter_batches()))
+    assert sorted(actual_docs.to_pylist(), key=lambda row: row['document_id']) == sorted(
+        pa.Table.from_pylist(documents, schema=actual_docs.schema).to_pylist(), key=lambda row: row['document_id'])
+    assert result['scope_reference'] == current.selection['scope']
