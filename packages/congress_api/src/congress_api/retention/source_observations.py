@@ -174,7 +174,8 @@ class SourceObservationStorage:
     def prepare(self, root, trace):
         """Replace complete observations; retain every unaffected owner edge."""
         db = trace.db
-        db.executescript('CREATE TABLE observation_changes(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
+        db.executescript('DROP TABLE IF EXISTS observation_changes; DROP TABLE IF EXISTS observation_changed_aliases; '
+            'CREATE TABLE observation_changes(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
             'CREATE TABLE observation_changed_aliases(alias TEXT PRIMARY KEY);')
         def add(alias, member):
             db.execute('INSERT OR IGNORE INTO observation_changed_aliases VALUES (?)', (alias,))

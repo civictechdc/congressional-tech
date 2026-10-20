@@ -77,3 +77,25 @@ def test_explicit_retained_body_readings_preserve_capture_facts_without_shared_c
     row, = pq.read_table(root / 'indexes/document-filenames.parquet').to_pylist()
     assert row['body_format'] == ['pdf']
     assert row['content_document_kind'] == ['testimony']
+
+
+def test_source_update_proof_refuses_dropping_unrelated_observation_routes(tmp_path):
+    from congress_api.retention.source_update_proof import retain_source_update, verify_source_update
+    from congress_api.retention.source_observations import observation_id
+    native, store = MemoryNative(), SelectorStore()
+    owner = SourceObservationStorage(native=native, store=store, namespace='route-proof', max_rows=4, max_bytes=4096)
+    def stage(path, keys):
+        with closing(WorkingCatalog(path)) as work:
+            trace = SourceObservationTrace(work)
+            for key, event in keys:
+                trace(dict(receipt_key=key, receipt_line=1, kind='event', value=event, access='read'))
+            return owner.prepare(None, trace)
+    root = stage(tmp_path / 'before.sqlite', [('changed', '1'), ('unrelated', '2')])
+    dropped = stage(tmp_path / 'invalid.sqlite', [('changed', '3')])
+    before = dict(root=root)
+    after = dict(root=dropped, namespace='route-proof', max_rows=4, max_bytes=4096)
+    base = dict(selector_sha256=None, selected_ref=None)
+    reference = retain_source_update(store, base=base, before=before, after=after,
+        schema=index.SOURCE_SCHEMA, replacements=[], deletions=[], observations=[observation_id('changed', 1)])
+    with pytest.raises(ValueError, match='unrelated observation routing'):
+        verify_source_update(store, reference, native=native, base=base, before=before, rows=[], deletions=[])

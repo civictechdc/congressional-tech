@@ -18,8 +18,21 @@ from .catalog_selection import NativeCatalogSnapshot, publish_native_catalog
 from .catalog_validation import catalog_reference_requirements
 
 
+def selected_body_coverage(previous, dependencies, expected_bodies):
+    """Verify specific already selected bodies through the non-grouping index."""
+    expected = sorted(set(expected_bodies))
+    basis = previous.selection['dependency'] if isinstance(previous, NativeCatalogSnapshot) else None
+    for body in expected:
+        source = next(iter(dependencies.sources_at_body(basis, body)), None)
+        if source is None or source['source_values'].get('body_key') != body:
+            raise ValueError('Selected catalog omits an expected retained body')
+    return dict(expected_count=len(expected), expected_sha256=sha256(encoded(expected)).hexdigest(),
+                selected_count=len(expected), selected_identity=deepcopy(previous.identity),
+                basis='selected-body-lookup-v1')
+
+
 def update_native_catalog(store, *, native, previous, dependencies, replacements=(), deletions=(),
-                          candidate, directory, max_chunk_rows, max_chunk_bytes, rules, expected_bodies=()):
+                          candidate, directory, max_chunk_rows, max_chunk_bytes, rules, expected_bodies=(), source_update=None):
     """Replace complete interpreted rows; preserve untouched components and pins.
 
     Raw receipt interpretation supplies complete replacements/deletions here.
@@ -34,10 +47,9 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
     if not native_previous and (previous.manifest is not None or previous.files):
         raise ValueError('Native catalog update requires explicit prior adoption')
     replacements, deletions = list(replacements), tuple(deletions)
-    if not replacements and not deletions:
-        if expected_bodies:
-            raise ValueError('Expected retained body coverage requires supplied affected source inputs')
-        return dict(unchanged=True, selected_identity=deepcopy(previous.identity), selection=deepcopy(previous.identity['selected_ref']),
+    if not replacements and not deletions and source_update is None:
+        coverage = selected_body_coverage(previous, dependencies, expected_bodies)
+        return dict(unchanged=True, body_coverage=coverage, selected_identity=deepcopy(previous.identity), selection=deepcopy(previous.identity['selected_ref']),
                     counts=deepcopy(previous.selection['counts']) if native_previous else dict(source_rows=0, document_rows=0))
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -45,15 +57,15 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
     input_hash = sha256()
     for row in replacements:
         sink = pa.BufferOutputStream()
-        with pa.ipc.new_stream(sink, dependencies.source_schema) as writer:
-            writer.write_table(pa.Table.from_pylist([row], schema=dependencies.source_schema))
+        with pa.ipc.new_stream(sink, dependencies.source_schema.remove_metadata()) as writer:
+            writer.write_table(pa.Table.from_pylist([row], schema=dependencies.source_schema.remove_metadata()))
         payload = sink.getvalue().to_pybytes()
         input_hash.update(len(payload).to_bytes(8, 'big'))
         input_hash.update(payload)
     input_digest = input_hash.hexdigest()
     request = dict(candidate=candidate, rules=rules, replacements_sha256=input_digest,
                    deletions=sorted(deletions), max_chunk_rows=max_chunk_rows,
-                   max_chunk_bytes=max_chunk_bytes, expected_bodies=expected_bodies)
+                   max_chunk_bytes=max_chunk_bytes, expected_bodies=expected_bodies, source_update=source_update)
     def receipt(result, reference, proof):
         result = dict(result, scope_reference=reference, body_coverage=proof['body_coverage'])
         result['selected_identity'] = dict(selected_ref=result['selection'],
@@ -97,7 +109,8 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
             prepared_components=iterator_prepared_components(store, components),
             read_component=CatalogComponentReader(store).read,
             read_new_component=CatalogComponentReader(store, requirements=catalog_reference_requirements()).read,
-            rules=rules, expected_bodies=expected_bodies)
+            rules=rules, expected_bodies=expected_bodies, source_update=source_update,
+            interpretation_before=previous.selection.get('interpretation') if native_previous else None)
         payload = encoded(dict(request=request, scope_reference=reference))
         staging = directory / 'prepared-scope.tmp'
         staging.write_bytes(payload)

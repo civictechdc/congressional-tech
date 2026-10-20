@@ -58,7 +58,8 @@ class CatalogDependencyStorage:
             raise ValueError('Catalog lookups require the configured native client')
         basis = snapshot.selection['dependency']
         return cls(native=snapshot.native, store=snapshot.store, namespace=basis['namespace'],
-            source_schema=pa.ipc.read_schema(pa.BufferReader(base64.b64decode(basis['source_schema']))), max_rows=basis['max_rows'],
+            source_schema=pa.ipc.read_schema(pa.BufferReader(base64.b64decode(basis['source_schema']))).with_metadata(
+                snapshot.schemas['filenames'].metadata), max_rows=basis['max_rows'],
             max_bytes=basis['max_arrow_bytes'])
 
     def _selection(self, selection, *, require_lookup_policy=False):

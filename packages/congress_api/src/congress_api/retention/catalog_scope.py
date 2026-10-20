@@ -188,7 +188,7 @@ def read_catalog_scope(store, reference, *, requirements=None):
 
 def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_after,
                          prepared, base, component_lookup, prepared_components,
-                         read_component, read_new_component=None, rules, expected_bodies=()):
+                         read_component, read_new_component=None, rules, expected_bodies=(), source_update=None, interpretation_before=None):
     """Prove closed old ownership, candidate membership and no unrelated ID reuse.
 
     Component readers must verify their immutable proof bindings. Historical old
@@ -257,6 +257,20 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
             raise DependencyGap('Candidate dependency values differ from grouped source outputs')
     if any(current.source(key) is not None for key in removed):
         raise DependencyGap('Deleted source survives in candidate dependency state')
+    interpretation_after = interpretation_before
+    if source_update is None and interpretation_before is not None:
+        from . import document_index as index
+        fields = set(index.SOURCE_SCHEMA.names) | index.SOURCE_CONTEXT_FIELDS | index.AVAILABILITY_FIELDS | {'capture_outcome'}
+        unchanged = set(before) == set(after)
+        for row in prepared.source_values():
+            old_row = before.get(row['source_id'])
+            unchanged = unchanged and old_row is not None and all(old_row.get(name) == row.get(name) for name in fields)
+        if not unchanged:
+            interpretation_after = None  # Complete interpreted replacements alone do not prove receipt attribution.
+    if source_update is not None:
+        from .source_update_proof import verify_source_update
+        interpretation_after = verify_source_update(store, source_update, native=dependencies.native, base=base, before=interpretation_before,
+            rows=prepared.source_values(), deletions=removed)
     expected_bodies = sorted(set(expected_bodies))
     bodies = sorted({row['body_key'] for row in prepared.source_values() if row.get('body_key')})
     if not set(expected_bodies) <= set(bodies):
@@ -270,6 +284,7 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
         retired=_component_pages(store, retired), prepared=_component_pages(store, incoming),
         counts=dict(retired_source_rows=len(before), prepared_source_rows=len(after),
                     retired_document_rows=len(old_members), prepared_document_rows=len(new_members)),
-        rules=deepcopy(rules), mapping=None, body_coverage=body_coverage, requirements=catalog_scope_requirements())
+        rules=deepcopy(rules), mapping=None, body_coverage=body_coverage, source_update=source_update,
+        interpretation_before=interpretation_before, interpretation_after=interpretation_after, requirements=catalog_scope_requirements())
     result['binding'] = sha256(encoded(result)).hexdigest()
     return MetadataObjects(store, 'catalog-scope-proofs-v1').put(result)

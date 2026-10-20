@@ -24,6 +24,8 @@ class PreparedSourceReplay:
     after: object
     observations: tuple
     old_source_ids: tuple
+    captures: pa.Table
+    trace: SourceObservationTrace
 
     def sources(self):
         return self.working.mapping('sources').values()
@@ -79,7 +81,7 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
                         kind, value = json.loads(dependency[len('dependency:'):])
                         if kind == 'source' and access == 'write':
                             old_sources.add(value)
-                return PreparedSourceReplay(work, root, after, closed, tuple(sorted(old_sources)))
+                return PreparedSourceReplay(work, root, after, closed, tuple(sorted(old_sources)), captures, trace)
             work.close()
             closed, candidate = complete, after
             iteration += 1
