@@ -2,7 +2,7 @@
 id: ct-adu0
 status: in_progress
 deps: []
-links: []
+links: [ct-wjce]
 created: 2026-10-20T18:24:28Z
 type: task
 priority: 1
@@ -12,12 +12,15 @@ tags: [docspec, efficiency, debt]
 ---
 # Replace whole-corpus pickle staging with resumable typed preparation
 
-Replace CatalogDependencyStorage.adopt whole-corpus SQLite payload staging with bounded typed partitions and reusable completed native work. Preserve source order, identity, aliases, duplicate/null/nested values and existing CatalogRows occurrence splitting. Reuse maintained storage and selection owners.
+Replace `CatalogDependencyStorage.adopt` whole-corpus SQLite payload staging with bounded typed Parquet partitions, one bounded external sort (`ordered.parquet`) for ordinary hash-ordered leaves, and reusable completed native work. Preserve source order, identity, aliases, duplicate/null/nested values and existing `CatalogRows` occurrence splitting. Reuse maintained storage and selection owners.
 
 ## Acceptance Criteria
 
-Record before/after wall time, staging bytes and memory on identical fixture including large occurrences. Exact source/document/mapping equivalence. Interrupted continuation reuses completed work and refuses changed inputs. Detect capacity failure before expensive staging; preserve original failed operation.
-
+- Eliminate the preliminary `75091e05` $60.7\times$ random-part read amplification by ordering non-giant prepared parts once into `ordered.parquet` (`_order_sources` in `catalog_dependency_preparation.py:318-440`) and consuming ordinary hash-ordered leaves via a single sequential Arrow batch reader (`_peek`/`_consume`), while keeping oversized `giant=1` singleton occurrences outside the sorter.
+- Enforce `staging_byte_budget` across both DuckDB sorter spill (`duckdb_temporary_files()`) and `ordered.parquet.tmp` output (`catalog_dependency_preparation.py:348-412`), and ensure `native_capacity.preparation_budget` (`ct-n7la`) accounts for the ordered derivative file.
+- Record before/after wall time, decoded rows/bytes, staging bytes, sort spill peak, and process RSS on the identical fixture (including 16,384 rows with 64-row leaves and giant occurrences).
+- Prove exact source/document/mapping equivalence, interrupted continuation reusing completed part/ordered receipts, refusal of changed inputs/schemas, and unsigned/binary/null/duplicate fidelity.
+- Commit the working tree in `codex/docspec-typed-preparation` and integrate into `codex/docspec-reuse-integration`.
 
 ## Notes
 
@@ -32,3 +35,7 @@ Scale review found repeated whole-part decoding in preliminary75091e05: at16,384
 **2026-10-20T19:00:10Z**
 
 Independent storage advisor supports sorted Parquet plus one sequential Arrow reader under the existing preparation receipt. Keep source_order as data and exact original Arrow schema; qualify null/empty/duplicate lists, unsigned maximum, binary, giant rows, spill, scratch refusal and restart. Existing native CLI offers lifecycle Run/Export, not stateless sort; bounded optional DuckDB dependency is justified only after those checks.
+
+**2026-10-20T20:18:00Z**
+
+CS 300 / evolutionary-refactoring audit inspected the uncommitted fix in `/Users/mikewolfd/.codex/worktrees/docspec-typed-preparation/congressional-tech` (`catalog_dependency_preparation.py:262-270,308-507` and `tests/test_catalog_dependency_preparation.py`). Grade: B+. The external sort (`_order_sources`) + sequential window (`_peek`/`_consume`) and single-chunk struct indexing (`table['source_values'].chunk(0)`) directly fix the $60.7\times$ read amplification while preserving `giant=1` isolation, `source_order` data checks, and combined spill+output byte budgets. Remaining action: run the test suite and scale measurement in `docspec-typed-preparation`, verify `native_capacity.preparation_budget` covers `ordered.parquet`, commit, and cherry-pick into `docspec-reuse-integration`.
