@@ -32,7 +32,7 @@ class NativeFixture:
         self.reads = []
 
     @contextmanager
-    def source_batches(self, selected):
+    def source_batches(self, selected, *, schema=None):
         self.reads.append(deepcopy(selected))
         table = pa.Table.from_pylist(self.rows, schema=self.schema)
         with pa.RecordBatchReader.from_batches(self.schema, table.to_batches()) as reader:
@@ -178,3 +178,23 @@ def test_actual_native_partition_preserves_original_application_schema(tmp_path)
     actual = pa.Table.from_batches(list(table.iter_batches()))
     assert actual.schema.equals(SCHEMA, check_metadata=True)
     assert actual.to_pylist() == [ROWS[1], ROWS[0], ROWS[2]]
+
+
+def test_actual_native_partition_restores_unsigned_binary_values_before_application_read(tmp_path):
+    binary = os.environ.get('DOCSPEC_BINARY') or shutil.which('docspec')
+    if not binary:
+        pytest.skip('Set DOCSPEC_BINARY to the qualified maintained CLI')
+    native = native_test_client(binary, tmp_path / 'native')
+    schema = pa.schema([('source_id', pa.string()), ('size', pa.uint64()), ('payload', pa.binary()),
+                        ('nested', pa.list_(pa.struct([('count', pa.uint64()), ('bytes', pa.binary())])))],
+                       metadata={b'catalog_id': b'unsigned-binary'})
+    physical = schema.append(pa.field('_catalog_order', pa.int64(), nullable=False))
+    rows = [dict(source_id='a', size=2**64 - 1, payload=b'\x00\xff',
+                 nested=[dict(count=2**63, bytes=b'\x80'), dict(count=2**63, bytes=b'\x80')], _catalog_order=0)]
+    release = native.run_table(pa.Table.from_pylist(rows, schema=physical), dataset='catalog-unsigned-reader',
+                               operation='initial', definition='source-v1')
+    table = CatalogTable(schema, [('typed', release)], native=native,
+                         order_column='_catalog_order', max_ordered_bytes=4096)
+    actual = pa.Table.from_batches(list(table.iter_batches()))
+    assert actual.schema.equals(schema, check_metadata=True)
+    assert actual.to_pylist() == [{key: value for key, value in rows[0].items() if key != '_catalog_order'}]

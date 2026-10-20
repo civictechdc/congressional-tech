@@ -43,7 +43,7 @@ class Native:
                     groups=dict(source=dict(rows=len(table)))))
 
     @contextmanager
-    def source_batches(self, release):
+    def source_batches(self, release, *, schema=None):
         key = release['dataset']['dataset']
         self.reads.append(key)
         table = self.tables[key]

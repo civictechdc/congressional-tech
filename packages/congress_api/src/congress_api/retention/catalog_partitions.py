@@ -127,7 +127,9 @@ class CatalogTable:
                 raise ValueError(f'Native catalog partition schema differs: {name}')
 
         count = 0
-        with self.native.source_batches(deepcopy(pin)) as reader:
+        native_schema = (self.schema_arrow.append(pa.field(self.order_column, pa.int64(), nullable=False))
+                         if self.order_column is not None else self.schema_arrow)
+        with self.native.source_batches(deepcopy(pin), schema=native_schema) as reader:
             require_schema(reader.schema)
             for batch in reader:
                 require_schema(batch.schema)
