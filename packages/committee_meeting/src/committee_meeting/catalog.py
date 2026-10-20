@@ -6,7 +6,7 @@ from pydantic import Field, model_validator
 from .assessments import Assessment
 from .committees import Channel, Committee, CommitteeTerm
 from .common import Model, Ref
-from .graph import CatalogGraph, Edge
+from .graph import CatalogGraph
 from .issues import DataIssue
 from .legislation import Amendment, AmendmentGroup, LegislativeItem, MeetingSubject, Vote
 from .materials import Material, MaterialLink, MaterialRelation, MaterialVersion, Representation
@@ -19,7 +19,7 @@ DomainRecord = Annotated[
     | Meeting | MeetingOccurrence | Panel | Person | Appearance
     | Material | MaterialVersion | Representation | MaterialLink | MaterialRelation
     | LegislativeItem | MeetingSubject | Amendment | AmendmentGroup | Vote
-    | Edge | Assessment | DataIssue,
+    | Assessment | DataIssue,
     Field(discriminator="kind"),
 ]
 
@@ -174,8 +174,6 @@ class Catalog(Model):
                     require(resolve(item.subject).meeting == item.meeting, f"{item.id}: vote subject belongs to another meeting")
             if isinstance(item, MaterialRelation):
                 require(item.subject != item.related, f"{item.id}: relationship cannot target itself")
-            if isinstance(item, Edge):
-                require(item.source != item.target, f"{item.id}: relationship cannot target itself")
 
         # Parent/revision/amendment chains must be finite.
         for cls, attribute in ((CommitteeTerm, "parent"), (MaterialVersion, "supersedes"), (Amendment, "target")):

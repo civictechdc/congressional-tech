@@ -11,7 +11,7 @@ IssueSubject = Literal[
     "meeting", "occurrence", "panel", "person", "appearance",
     "material", "material_version", "representation", "material_link", "material_relation",
     "legislative_item", "meeting_subject", "amendment", "amendment_group", "vote",
-    "edge", "assessment", "source_record",
+    "assessment", "source_record",
 ]
 
 

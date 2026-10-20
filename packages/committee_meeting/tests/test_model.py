@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 
 from pydantic import ValidationError
 
-from committee_meeting import Catalog, CatalogBuilder, CoverageMetric, MaterialFile, Provenance, PublicationManifest
+from committee_meeting import Catalog, CoverageMetric, PublicationManifest
 from committee_meeting.common import Ref, ReportedTime
 from committee_meeting.provenance import SourceRecord
 
@@ -189,7 +189,9 @@ class ModelTests(unittest.TestCase):
         records = schema["properties"]["records"]["items"]
         self.assertEqual(records["discriminator"]["propertyName"], "kind")
         self.assertIn("material_link", records["discriminator"]["mapping"])
-        self.assertIn("edge", records["discriminator"]["mapping"])
+        for kind in ("material_version", "representation", "occurrence"):
+            self.assertIn(kind, records["discriminator"]["mapping"])
+        self.assertNotIn("edge", records["discriminator"]["mapping"])
         self.assertFalse(schema["$defs"]["Meeting"]["additionalProperties"])
 
     def test_real_house_fixture_preserves_document_groups_and_all_format_urls(self):
@@ -219,74 +221,47 @@ class ModelTests(unittest.TestCase):
         self.assertTrue(all(f.retained is None for f in files))
         self.assertIsNone(catalog.sources[0].retrieved_at)
 
-    def test_builder_and_graph_traversal_support_viewer_data_and_edges(self):
-        builder = CatalogBuilder(provider="docs.house.gov", input_id="snap-1")
-        src = builder.source("106245", {"eventId": "106245"}, url="https://docs.house.gov/106245.xml")
-        term = builder.committee_term(
-            "hsru00", congress=119, chamber="house", name="Committee on Rules",
-            committee_code="hsru00", committee_level="full", source=src,
-        )
-        meeting = builder.meeting(
-            "house-119-106245", title="Hearing on Rules", congress=119, chamber="house",
-            meeting_type="hearing", status="held", access="open", committees=[term], source=src,
-        )
-        witness = builder.appearance(
-            "house-119-106245-w1", meeting=meeting, name="Jane Doe",
-            position="Director", organization_name="Policy Institute", source=src,
-        )
+    def test_identity_records_remain_the_catalog_and_the_link_is_the_association(self):
+        evidence = {"basis": "reported", "citations": [{"source": reference("source_record", "house")}]}
+        derived = {**evidence, "basis": "derived", "method": {"name": "example.transcribe", "version": "1"}}
         sha = "a" * 64
-        mat = builder.material(
-            "house-119-106245-doc1",
-            title="Testimony of Jane Doe",
-            material_type="document",
-            category="statement",
-            document_type="Witness Statement",
-            source_document_groups=("witnessDocuments",),
-            files=[MaterialFile(
-                url="https://docs.house.gov/testimony.pdf",
-                format_label="PDF",
-                media_type="application/pdf",
-                saved_copy_sha256=sha,
-                saved_filename="testimony.pdf",
-                recovery_status="captured",
-            )],
-            meetings=[meeting],
-            appearances=[witness],
-            source=src,
-        )
-        video = builder.material(
-            "youtube-vid1",
-            title="Hearing Video",
-            material_type="recording",
-            provider="youtube",
-            files=[MaterialFile(url="https://www.youtube.com/watch?v=vid12345678", role="player")],
-            meetings=[meeting],
-            source=src,
-        )
-        transcript_mat = builder.material(
-            "transcript-vid1",
-            title="Generated Transcript",
-            material_type="text",
-            category="transcript",
-            production="automatic",
-            meetings=[meeting],
-            source=Provenance.derived(src, "gemini.transcribe", "1"),
-        )
-        builder.edge(
-            "transcript-from-video",
-            source_node=transcript_mat,
-            target_node=video,
-            relation="derived_from",
-            source=Provenance.derived(src, "gemini.transcribe", "1"),
-        )
-        catalog = builder.build()
-        self.assertIn(meeting, catalog.neighbors(mat, relation="attaches_to"))
-        self.assertIn(witness, catalog.neighbors(mat, relation="attaches_to"))
-        self.assertEqual(catalog.ancestors(transcript_mat, relation="derived_from"), [video])
-        self.assertEqual(catalog.lineage(transcript_mat), [video])
-        mat_rec = catalog.graph.resolve(mat)
-        self.assertEqual(mat_rec.files[0].saved_copy_sha256, sha)
-        self.assertEqual(mat_rec.document_type, "Witness Statement")
+        catalog = Catalog.model_validate({"sources": [{"id": "house", "provider": "docs.house.gov",
+            "identifier": {"scheme": "house-meeting", "value": "106245"}, "payload": {"eventId": "106245"}}],
+            "records": [
+                {"kind": "committee_term", "id": "term", "congress": 119, "chamber": "house", "name": "Rules",
+                 "committee_code": "hsru00", "committee_level": "full", "provenance": evidence},
+                {"kind": "meeting", "id": "hearing", "title": "Hearing on Rules", "congress": 119, "chamber": "house",
+                 "meeting_type": "hearing", "status": "held", "access": "open", "provenance": evidence,
+                 "committees": [{"committee": reference("committee_term", "term"), "role": "host", "provenance": evidence}]},
+                {"kind": "occurrence", "id": "sitting", "meeting": reference("meeting", "hearing"), "status": "held", "provenance": evidence},
+                {"kind": "appearance", "id": "witness", "meeting": reference("meeting", "hearing"),
+                 "name": {"display": "Jane Doe"}, "provenance": evidence},
+                {"kind": "material", "id": "statement", "title": "Testimony of Jane Doe", "document_type": "Witness Statement",
+                 "details": {"type": "document", "category": "statement"}, "provenance": evidence},
+                {"kind": "material_version", "id": "edition", "material": reference("material", "statement"), "provenance": evidence},
+                {"kind": "representation", "id": "pdf", "version": reference("material_version", "edition"),
+                 "format_label": "PDF", "media_type": "application/pdf", "saved_copy_sha256": sha, "saved_filename": "testimony.pdf",
+                 "locations": [{"url": "https://docs.house.gov/testimony.pdf", "role": "download"}], "provenance": evidence},
+                {"kind": "material_link", "id": "statement-hearing", "material": reference("material", "statement"),
+                 "version": reference("material_version", "edition"), "subject": reference("meeting", "hearing"),
+                 "role": "statement", "provenance": evidence},
+                {"kind": "material_link", "id": "statement-witness", "material": reference("material", "statement"),
+                 "subject": reference("appearance", "witness"), "role": "statement", "provenance": evidence},
+                {"kind": "material", "id": "video", "title": "Hearing video", "details": {"type": "recording", "medium": "video"},
+                 "provenance": evidence},
+                {"kind": "material", "id": "transcript", "title": "Generated transcript",
+                 "details": {"type": "text", "category": "transcript"}, "provenance": derived},
+                {"kind": "material_relation", "id": "transcript-from-video", "subject": reference("material", "transcript"),
+                 "related": reference("material", "video"), "relation": "derived_from", "provenance": derived},
+            ]})
+        statement = Ref(kind="material", id="statement")
+        self.assertIn(Ref(kind="meeting", id="hearing"), catalog.neighbors(statement, relation="attaches_to"))
+        self.assertIn(Ref(kind="appearance", id="witness"), catalog.neighbors(statement, relation="attaches_to"))
+        self.assertEqual(catalog.ancestors(Ref(kind="material", id="transcript"), relation="derived_from"), [Ref(kind="material", id="video")])
+        pdf = next(record for record in catalog.records if record.kind == "representation")
+        self.assertEqual(pdf.saved_copy_sha256, sha)
+        self.assertEqual(next(record for record in catalog.records if record.id == "statement").document_type, "Witness Statement")
+        self.assertTrue(any(record.kind == "occurrence" for record in catalog.records))
 
     def test_manifest_and_coverage_state_the_population_and_input_identity(self):
         manifest = {"publication_id": "example", "generated_at": "2026-09-27T12:00:00Z",
