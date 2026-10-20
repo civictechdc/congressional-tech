@@ -174,7 +174,7 @@ def read_native_catalog(store, selected, *, version, native=None):
     return NativeCatalogSnapshot(store, selector, selected, version, native=native)
 
 
-def publish_native_catalog(store, scope_reference, *, previous):
+def publish_native_catalog(store, scope_reference, *, previous, adoption_reference=None):
     """Admit a durable scope proof, then select its exact combination once."""
     from .catalog_scope import read_catalog_scope, catalog_scope_requirements, iterator_scope_components
     proof = read_catalog_scope(store, scope_reference, requirements=catalog_scope_requirements())
@@ -188,7 +188,11 @@ def publish_native_catalog(store, scope_reference, *, previous):
         root, dependency, counts = base['components'], base['dependency'], base['counts']
     else:
         if previous.manifest is not None or previous.files:
-            raise ValueError('Existing file catalog requires qualified explicit native adoption')
+            if adoption_reference is None:
+                raise ValueError('Existing file catalog requires qualified explicit native adoption')
+            from .catalog_adoption import read_adoption_proof
+            read_adoption_proof(store, adoption_reference, previous=previous,
+                                scope_reference=scope_reference, scope=proof)
         root, dependency, counts = None, None, dict(source_rows=0, document_rows=0)
     if proof['dependency_before'] != dependency:
         raise ValueError('Catalog scope dependency basis differs')
@@ -215,8 +219,10 @@ def publish_native_catalog(store, scope_reference, *, previous):
                   + proof['counts']['prepared_' + label + '_rows'] for label in ('source', 'document')}
     if any(value < 0 for value in new_counts.values()):
         raise ValueError('Catalog scope produces negative selected counts')
+    retained_adoption = adoption_reference or (previous.selection.get('adoption') if isinstance(previous, NativeCatalogSnapshot) else None)
     value = dict(version=2, components=selected_root, dependency=proof['dependency_after'],
-                 schemas=proof['schemas'], counts=new_counts, requirements=requirements, scope=scope_reference)
+                 schemas=proof['schemas'], counts=new_counts, requirements=requirements, scope=scope_reference,
+                 adoption=retained_adoption)
     selected = MetadataObjects(store, 'catalog-selections-v2').put(value)
     payload = encoded(dict(version=2, selection=selected))
     reconcile_lost_acknowledgment(
