@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {loadPublication, watchPublication, latestReviewUrl} from './publication.mjs';
+import {loadPublication, watchPublication, latestReviewUrl} from './publication.ts';
 
 test('review links select an archived immutable publication and validate its identity', async () => {
   const old = 'a'.repeat(32), latest = 'b'.repeat(32), release = 'c'.repeat(32);
@@ -48,6 +48,18 @@ test('opening latest keeps filters and stable source identity but drops position
   assert.equal(new URL(latestReviewUrl(url)).searchParams.has('catalog'), false);
 });
 
+test('latest data keeps a stable explorer id and drops a positional one', () => {
+  const stableId = 'ab'.repeat(32);
+  const stable = new URL(latestReviewUrl(`https://site.test/dashboard/?view=materials&kind=filename_entry&id=${stableId}&catalog=old`, 'new'));
+  assert.equal(stable.searchParams.get('kind'), 'filename_entry');
+  assert.equal(stable.searchParams.get('id'), stableId);
+  assert.equal(stable.searchParams.get('catalog'), 'new');
+  const positional = new URL(latestReviewUrl('https://site.test/dashboard/?view=materials&kind=filename_entry&id=12&catalog=old', 'new'));
+  assert.equal(positional.searchParams.has('id'), false);
+  assert.equal(positional.searchParams.has('kind'), false);
+  assert.equal(positional.searchParams.has('catalog'), false);
+});
+
 test('a recovery-only update notifies an open viewer on the same catalog', async()=>{
   const win=new EventTarget(),doc=new EventTarget();let tick,sha='old';const updates=[];
   win.setInterval=fn=>{tick=fn;return 1;};win.clearInterval=()=>{};doc.visibilityState='visible';
@@ -60,7 +72,7 @@ test('a recovery-only update notifies an open viewer on the same catalog', async
 });
 
 test('review evidence uses the site base on project Pages and custom domains', async () => {
-  const {reviewPublicationUrl}=await import('./publication.mjs');
+  const {reviewPublicationUrl}=await import('./publication.ts');
   for(const base of ['/congressional-tech','/congressional-tech/']) assert.equal(reviewPublicationUrl(base,'https://viewer.test'),'https://viewer.test/congressional-tech/data/document-reviews/reviews.json');
   assert.equal(reviewPublicationUrl('/','https://viewer.test'),'https://viewer.test/data/document-reviews/reviews.json');
 });

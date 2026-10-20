@@ -1,4 +1,5 @@
-import {withVerifiedJson} from './startup.mjs';
+// @ts-nocheck
+import {withVerifiedJson} from './startup.ts';
 
 export const reviewStartupPolicy = Object.freeze({deadlineMs: 15_000, maxBytes: 16 * 1024 * 1024});
 

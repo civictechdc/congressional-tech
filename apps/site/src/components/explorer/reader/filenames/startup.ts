@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Both status loaders verify decoded JSON bytes. Their callers own whether a
 // failure is mandatory and choose independent byte and startup-time policies.
 function cancel(stream) {

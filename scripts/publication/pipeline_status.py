@@ -295,7 +295,7 @@ def main(argv=None):
     parser.add_argument('--raw-manifest', help='Current raw selector URL or explicitly saved raw selector')
     parser.add_argument('--expected-raw-manifest-sha256', help='Exact raw selector SHA256 retained as output of this run')
     parser.add_argument('--viewer-pointer', default='https://congressional-viewer-data.mdeeb.workers.dev/manifest.json')
-    parser.add_argument('--pages-url', default='https://civictechdc.github.io/congressional-tech/filenames/')
+    parser.add_argument('--pages-url', default='https://civictechdc.github.io/congressional-tech/dashboard/')
     parser.add_argument('--review-descriptor', type=Path, default=Path(__file__).resolve().parents[2]/'apps/site/document-review-publication.json')
     parser.add_argument('--verification-receipt', type=Path)
     args = parser.parse_args(argv)

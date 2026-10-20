@@ -1,14 +1,15 @@
-import { sourceContext } from '../../../../../docs/youtube-coverage/research/filename-provenance.mjs';
+// @ts-nocheck
+import { sourceContext, provenanceUrlKey } from '../../browse/provenance.ts';
 export { sourceContext };
-import { yieldToMessages, scanBatchRows } from './cooperative.mjs';
-import { byteCache, retainedBytes, sharedLoad } from './cache.mjs';
-import { positiveInteger } from '../../../../../docs/youtube-coverage/research/filename-rules.mjs';
+import { yieldToMessages, scanBatchRows } from './cooperative.ts';
+import { byteCache, retainedBytes, sharedLoad } from './cache.ts';
+import { positiveInteger } from '../../browse/filename-rules.ts';
 import { parquetMetadataAsync, parquetReadObjects, parquetRead } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
-import { observationReader } from './observations.mjs';
-import { loadPublication } from './publication.mjs';
-import { loadReviews, reviewedMode } from './reviews.mjs';
-import { loadRecoveries } from './recoveries.mjs';
+import { observationReader } from './observations.ts';
+import { loadPublication } from './publication.ts';
+import { loadReviews, reviewedMode } from './reviews.ts';
+import { loadRecoveries } from './recoveries.ts';
 
 const filters = ['congress', 'document_family', 'document_kind', 'format'];
 const sourceColumns = ['filename','source_url','source_id','body_key','format','record_role'];
@@ -375,6 +376,42 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     signal?.throwIfAborted();
     return { rows, total, page, pages, limit };
   }
+
+  function bodyDigest(key) {
+    const match = /^bodies\/sha256\/([a-f0-9]{2})\/([a-f0-9]{64})\.gz$/.exec(key || '');
+    return match && match[1] === match[2].slice(0, 2) ? match[2] : null;
+  }
+  async function matchUrls(query, signal) {
+    signal?.throwIfAborted();
+    const urls = new Set((query?.urls || []).map(provenanceUrlKey).filter(Boolean));
+    const digests = new Set((query?.sha256s || []).map(value => String(value || '').toLowerCase()).filter(value => /^[a-f0-9]{64}$/.test(value)));
+    if (!urls.size && !digests.size) return { matches: [], truncated: false };
+    const names = ['source_url', 'source_id'];
+    if (digests.size && info.fields.includes('body_key')) names.push('body_key');
+    if (urls.size && info.fields.includes('recovered_source_url')) names.push('recovered_source_url');
+    const loaded = new Map();
+    for (const name of names) loaded.set(name, await column(name, signal));
+    const matches = [], seen = new Set();
+    let truncated = false;
+    const sourceUrls = loaded.get('source_url'), sourceIds = loaded.get('source_id'), bodies = loaded.get('body_key'), recovered = loaded.get('recovered_source_url');
+    for (let source = 0; source < info.rows; source++) {
+      if (source && source % scanBatchRows === 0) await yieldToMessages(signal, metrics);
+      const url = sourceUrls?.[source];
+      const urlKey = provenanceUrlKey(url);
+      const recoveredHit = urls.size && values(recovered?.[source]).some(value => urls.has(provenanceUrlKey(value)));
+      const digest = digests.size ? bodyDigest(bodies?.[source]) : null;
+      const urlHit = !!(urlKey && urls.has(urlKey));
+      const shaHit = !!(digest && digests.has(digest));
+      if (!urlHit && !recoveredHit && !shaHit) continue;
+      const id = sourceIds?.[source];
+      if (id == null || seen.has(id)) continue;
+      seen.add(id);
+      matches.push({source_id: String(id), ...(urlHit ? {url: String(url)} : {}), ...(shaHit ? {sha256: digest} : {})});
+      if (matches.length >= 24) { truncated = true; break; }
+    }
+    signal?.throwIfAborted();
+    return { matches, truncated };
+  }
   const resolved = new Map();
   async function resolve(identity, catalog, signal) {
     signal?.throwIfAborted();
@@ -489,5 +526,5 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     if (!value) return {status: 'no_review'};
     return structuredClone({...value, status: withdrawn ? 'withdrawn' : value.status, selected: withdrawn ? value.baseline : value.selected});
   }
-  return { diagnostics: () => ({...metrics, compressed: compressedCache.stats, decoded: decodedCache.stats}), review, info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, entryOrigin, technical, technicalOrigin, observationPage, sourceContext };
+  return { diagnostics: () => ({...metrics, compressed: compressedCache.stats, decoded: decodedCache.stats}), review, info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, entryOrigin, technical, technicalOrigin, observationPage, matchUrls, sourceContext };
 }

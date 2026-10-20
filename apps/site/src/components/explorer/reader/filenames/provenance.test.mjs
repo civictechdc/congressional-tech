@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {evidenceGraph, mergeOrigin, sourceContext} from '../../../../../docs/youtube-coverage/research/filename-provenance.mjs';
+import {appendOriginPage, evidenceGraph, mergeOrigin, sourceContext} from '../../browse/provenance.ts';
 
 const url = name => 'https://committee.test/' + name;
 const page = (from, to, extra = {}) => ({urls: [url(from)], link_urls: [url(to)], titles: [],
@@ -27,6 +27,17 @@ test('duplicate pages collapse while competing titles and exact-protocol evidenc
   assert.equal(graph.references[0].pages.length, 2);
   const insecure = {...first, link_urls: ['http://committee.test/file']};
   assert.equal(evidenceGraph(origin([insecure])).paths.length, 0);
+});
+
+test('another source-page response advances the cursor and does not repeat a page', () => {
+  const first = origin([page('root', 'file')]);
+  const added = origin([page('root', 'file'), page('other', 'file')]);
+  const once = appendOriginPage({ origin: first, next: 20 }, { origin: added, next: 40 });
+  assert.equal(once.origin.pages.length, 2);
+  assert.equal(once.next, 40);
+  const again = appendOriginPage(once, { origin: added, next: null });
+  assert.equal(again.origin.pages.length, 2);
+  assert.equal(again.next, null);
 });
 
 test('redirect assembly is keyed and linked ancestors never become redirects', () => {

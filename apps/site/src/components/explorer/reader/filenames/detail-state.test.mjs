@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {fieldTextCache} from '../../../../../docs/youtube-coverage/research/filename-detail-state.mjs';
+import {fieldTextCache} from '../../../../../../../docs/youtube-coverage/research/filename-detail-state.mjs';
 
 test('repeated technical searches format each unchanged value once within a byte budget', () => {
   const cache = fieldTextCache(4096), format = value => JSON.stringify(value);

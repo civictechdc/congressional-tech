@@ -6,15 +6,15 @@ import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
-import {loadRecoveries} from './recoveries.mjs';
+import {loadRecoveries} from './recoveries.ts';
 import {createHash} from 'node:crypto';
 
 test('actual worker routes retain one catalog and serve lazy detail and complete values',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'filename-worker-'));
  let worker;
  try {
-  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
-  const moduleUrl=new URL('./worker.mjs',import.meta.url).href;
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
+  const moduleUrl=new URL('./worker.ts',import.meta.url).href;
   worker=new Worker(new URL('data:text/javascript,'+encodeURIComponent(`
    import {parentPort} from 'node:worker_threads';
    import {readFile} from 'node:fs/promises';
@@ -36,6 +36,9 @@ test('actual worker routes retain one catalog and serve lazy detail and complete
    worker.on('message',listen);worker.postMessage({id,url,manifest:pathToFileURL(join(folder,'public/manifest.json')).href});
   });
   const info=await call('/api/info');assert.equal(info.catalog_id,'b'.repeat(32));
+  const matched=await call('/api/match?payload='+encodeURIComponent(JSON.stringify({urls:['http://committee.test/final']})));
+  assert.equal(matched.matches.length,24);assert.equal(matched.truncated,true);
+  assert.equal(matched.matches[0].source_id,createHash('sha256').update('1').digest('hex'));
   const rows=await call('/api/rows?limit=1.9&page=Infinity');assert.equal(rows.page,1);assert.equal(rows.limit,1);
   const entry=await call('/api/entry/2?catalog='+info.catalog_id);assert.equal(entry.record_complete,false);
   assert.equal(entry.origin_pending,true);

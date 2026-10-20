@@ -1,5 +1,6 @@
-import { retainedBytes, sharedLoad } from './cache.mjs';
-import { yieldToMessages, scanBatchRows } from './cooperative.mjs';
+// @ts-nocheck
+import { retainedBytes, sharedLoad } from './cache.ts';
+import { yieldToMessages, scanBatchRows } from './cooperative.ts';
 import { decompressBrotli } from 'hyparquet-compressors';
 
 /** Decode only bounded blocks containing the selected source's observations. */
