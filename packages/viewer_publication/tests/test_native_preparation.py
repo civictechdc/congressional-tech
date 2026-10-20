@@ -113,6 +113,20 @@ def test_recovery_only_requires_same_native_selection_before_output(tmp_path, mi
     assert not native.reads and not (tmp_path / 'refused').exists()
 
 
+def test_recovery_only_preserves_unaccepted_existing_output(tmp_path):
+    snapshot, native, remote, _, _, previous = first(tmp_path)
+    root = tmp_path / 'occupied'
+    root.mkdir()
+    retained = root / 'manifest.json'
+    retained.write_bytes(b'unaccepted retained evidence')
+    native.reads.clear()
+    with pytest.raises(ValueError, match='fresh empty directory'):
+        prepare_native_output(publisher, None, remote, snapshot, root,
+            accepted_record=ABSENT, viewer_record=previous, recovery_only=True)
+    assert retained.read_bytes() == b'unaccepted retained evidence'
+    assert list(root.iterdir()) == [retained] and not native.reads
+
+
 @pytest.mark.parametrize('which', ['manifest', 'recovery', 'source_identity'])
 def test_prior_input_corruption_refuses_before_native_reads_or_output(tmp_path, which):
     snapshot, native, remote, _, _, previous = first(tmp_path)
