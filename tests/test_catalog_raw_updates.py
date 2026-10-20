@@ -448,3 +448,58 @@ def test_retained_interpretation_groups_respect_bytes_and_restore_nullable_field
     with pytest.raises(ValueError, match='source row exceeds'):
         dispatch._retain_rows(retained.path, [dict(source_url='x' * 200)], schema)
     assert list(retained) == rows  # Incomplete retry did not replace the retained input.
+
+
+def test_interrupted_source_interpretation_resumes_retained_replay_without_raw_payload(tmp_path, monkeypatch):
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    write = index.write_filename_metadata
+    monkeypatch.setattr(index, 'write_filename_metadata', lambda *a, **k: (_ for _ in ()).throw(OSError('interpreter stopped')))
+    options = dict(raw_storage=raw, directory=tmp_path / 'retained', candidate='first')
+    with pytest.raises(OSError, match='interpreter stopped'):
+        update_from_raw(store, **options)
+    assert store.read(MANIFEST_KEY) is None
+    assert (options['directory'] / 'source-replay/replay-complete.json').is_file()
+    monkeypatch.setattr(index, 'write_filename_metadata', write)
+    monkeypatch.setattr(RawSnapshot, 'capture_batch', lambda *a: (_ for _ in ()).throw(AssertionError('Completed source payload repeated')))
+    monkeypatch.setattr(RawSnapshot, 'states_for', lambda *a: (_ for _ in ()).throw(AssertionError('All state values collected')))
+    result = update_from_raw(store, **options)
+    assert result['counts'] == dict(source_rows=1, document_rows=1)
+
+
+def test_empty_raw_inventory_keeps_explicit_seed_sources(tmp_path, monkeypatch):
+    store, native = SelectorStore(), MemoryNative()
+    raw = RawStorage(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    result = update_from_raw(store, raw_storage=raw, directory=tmp_path / 'seeded', candidate='seeded',
+        seeds=iter([dict(url='https://example.gov/seed.pdf')]))
+    assert result['counts'] == dict(source_rows=1, document_rows=1)
+    with read_catalog(store, native=native) as selected:
+        row, = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+        assert row['source_url'] == 'https://example.gov/seed.pdf'
+
+
+@pytest.mark.parametrize('actual_native', [False, True])
+def test_schema_addition_retry_uses_the_retained_interpretation_schema(tmp_path, monkeypatch, native, actual_native):
+    from congress_api.retention import catalog_updates
+    store, native = SelectorStore(), native if actual_native else MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'initial', candidate='initial')
+    count = raw.snapshot().manifest['captures']['rows']
+    retain(store, {}, family='house/witness-xml', source_file='witness.xml', url='https://docs.house.gov/7.xml',
+        body=b'<witness-list meeting-id="HMKP7"><panel><witness><firstname>Jane</firstname><lastname>Doe</lastname><witness-documents><witness-document type="WS"><files><file doc-url="https://example.gov/paper.pdf" doc-type="PDF"/></files></witness-document></witness-documents></witness></panel></witness-list>')
+    raw.publish(raw.prepare(raw.snapshot(), operation='witness', captures=decode_table(store.read(CAPTURES_KEY)).slice(count)))
+    publish = catalog_updates.publish_native_catalog
+    monkeypatch.setattr(catalog_updates, 'publish_native_catalog', lambda *a, **k: (_ for _ in ()).throw(OSError('worker stopped')))
+    options = dict(raw_storage=raw, directory=tmp_path / 'witness', candidate='witness')
+    with pytest.raises(OSError, match='worker stopped'):
+        update_from_raw(store, **options)
+    monkeypatch.setattr(catalog_updates, 'publish_native_catalog', publish)
+    monkeypatch.setattr(native, 'run_table', lambda *a, **k: (_ for _ in ()).throw(AssertionError('Completed schema update repeated')))
+    update_from_raw(store, **options)
+    with read_catalog(store, native=native) as selected:
+        rows = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+        row = next(row for row in rows if row['source_url'] == 'https://example.gov/paper.pdf')
+        assert row['source_witness_name'] == ['Jane Doe']

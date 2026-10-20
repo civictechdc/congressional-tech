@@ -112,23 +112,26 @@ def annotate_availability(rows, state, *, hearing_records=(), working=None):
     from congress_api.retention.document_index import url_filename
 
     by_url = {} if working is None else working.mapping('availability_state')
-    resources = defaultdict(list)
-    for batch in state.to_batches(max_chunksize=4096):
-        for item in batch.to_pylist():
-            if not item.get('url'):
-                continue
-            if item['url'] in by_url:
-                raise ValueError('Duplicate download-state URL in catalog input')
-            by_url[item['url']] = item
-            package = package_from_format(item['url'])
-            kind = retained_format(item)
-            if package and kind:
-                resources[package].append(dict(package_id=package, url=item['url'],
-                    body_key=item['body_key'], format=kind,
-                    outcome=item['outcome']))
+    resources = defaultdict(list) if working is None else working.mapping('availability_resources')
+    # Normal dispatch supplies the raw owner's finite-leaf iterator; legacy
+    # full rebuild callers still supply an Arrow table.
+    states = (item for batch in state.to_batches(max_chunksize=4096) for item in batch.to_pylist()) if hasattr(state, 'to_batches') else state
+    for item in states:
+        if not item.get('url'):
+            continue
+        if item['url'] in by_url:
+            raise ValueError('Duplicate download-state URL in catalog input')
+        by_url[item['url']] = item
+        package = package_from_format(item['url'])
+        kind = retained_format(item)
+        if package and kind:
+            related = resources.get(package, [])
+            related.append(dict(package_id=package, url=item['url'],
+                body_key=item['body_key'], format=kind, outcome=item['outcome']))
+            resources[package] = related
     seen = {} if working is None else working.mapping('availability_seen')
-    package_cache = {}
-    authoritative = {}
+    package_cache = {} if working is None else working.mapping('availability_package_cache')
+    authoritative = {} if working is None else working.mapping('availability_authoritative')
     for record, captures in hearing_records:
         if not isinstance(record, dict) or record.get('http_status', 200) != 200:
             continue
@@ -139,8 +142,10 @@ def annotate_availability(rows, state, *, hearing_records=(), working=None):
                          and json.loads(item.get('pointer_json') or '[]') in [['content', 'body'], ['content'], []]), None)
             # Retain all observed package/format associations across receipts;
             # timestamps cannot prove that a later response invalidates a part.
-            authoritative.setdefault(urlsplit(url).path.rstrip('/'), []).extend(
-                (package, exact_url, body) for package, exact_url in formats)
+            path = urlsplit(url).path.rstrip('/')
+            declared = authoritative.get(path, [])
+            declared.extend((package, exact_url, body) for package, exact_url in formats)
+            authoritative[path] = declared
 
     def annotate(row):
         row = dict(row)

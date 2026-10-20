@@ -18,6 +18,7 @@ from .catalog_qualification import qualify_complete_values
 from .catalog_publication import CatalogSnapshot, MANIFEST_KEY, FILENAMES, DOCUMENTS
 from .catalog_selection import NativeCatalogSnapshot, read_native_catalog
 from .catalog_staging import WorkingCatalog, DiskRows
+from .catalog_inputs import CatalogKeys
 from .catalog_updates import update_native_catalog
 from .document_evidence import read_retained_body
 from .document_recovery import recover_sources
@@ -25,7 +26,7 @@ from .immutable_metadata import encoded
 from .raw_values import NATIVE_CAPTURE_SCHEMA
 from .raw_archive import STATE_KEY
 from .source_observations import SourceObservationStorage, dependency_id, hearing_records
-from .source_replay import prepare_source_replay
+from .source_replay import prepare_source_replay, retain_source_seeds
 from .source_update_proof import retain_source_update, read_source_update, source_update_requirements, SourceUpdateDeletions
 
 MAX_ROWS, MAX_BYTES = 8192, 16 << 20
@@ -122,15 +123,17 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
         raise ValueError('Raw/catalog dispatch must share one guarded store owner')
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    seeds = list(seeds)
-    seed_sha = sha256(encoded(seeds)).hexdigest()
     raw = raw_storage.snapshot()
-    request = dict(candidate=candidate, raw_identity=raw.identity, expected_bodies=sorted(set(expected_bodies)),
-                   seed_sha256=seed_sha, requirements=source_update_requirements(), purpose=purpose, rule_version=rule_version)
     full = purpose in {'qualification', 'rule-upgrade'}
     full_options = dict(full_update=True) if full else {}
     pending = directory / 'source-update.json'
     with ExitStack() as owners:
+        input_directory = owners.enter_context(TemporaryDirectory(prefix='source-inputs-', dir=directory))
+        input_work = owners.enter_context(_working(Path(input_directory) / 'inputs.sqlite'))
+        seeds, seed_sha = retain_source_seeds(input_work, seeds)
+        expected_bodies = CatalogKeys(input_work, 'expected_bodies', expected_bodies, 'Expected catalog body identities')
+        request = dict(candidate=candidate, raw_identity=raw.identity, expected_bodies=expected_bodies.identity(),
+                       seed_sha256=seed_sha, requirements=source_update_requirements(), purpose=purpose, rule_version=rule_version)
         selected = store.read(MANIFEST_KEY)
         if selected is None:
             if any(legacy in store.keys(legacy) for legacy in (FILENAMES, DOCUMENTS)):
@@ -164,34 +167,39 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                 raise ValueError('Raw catalog continuation inputs differ from the retained candidate')
             proof = read_source_update(store, retained['source_update'])
             rows = _RetainedSources(directory / 'interpreted-sources.parquet')
-            if dependencies is None:
-                dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
-                    namespace=proof['after']['catalog_namespace'], source_schema=rows.schema,
-                    max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
+            # The retained interpretation may add logical fields that the old
+            # selected schema does not contain yet. Resume that exact schema.
+            dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
+                namespace=proof['after']['catalog_namespace'], source_schema=rows.schema,
+                max_rows=proof['after']['max_rows'], max_bytes=proof['after']['max_bytes'])
             result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
                 replacements=rows, deletions=SourceUpdateDeletions(store, proof), candidate=candidate, directory=directory / 'catalog',
                 max_chunk_rows=MAX_ROWS, max_chunk_bytes=MAX_BYTES, rules=request['requirements'],
-                expected_bodies=request['expected_bodies'], source_update=retained['source_update'], **full_options)
+                expected_bodies=expected_bodies, source_update=retained['source_update'], **full_options)
             return dict(result, raw_identity=raw.identity)
         if not full and before is not None and before['raw_identity'] == raw.identity:
             result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
                 candidate=candidate, directory=directory / 'catalog', max_chunk_rows=MAX_ROWS,
-                max_chunk_bytes=MAX_BYTES, rules=request['requirements'], expected_bodies=request['expected_bodies'])
+                max_chunk_bytes=MAX_BYTES, rules=request['requirements'], expected_bodies=expected_bodies)
             return dict(result, raw_identity=raw.identity)
         prior_tables = _retain_previous_tables(previous, directory / 'previous') if full else None
         if prior_tables is not None:
             prior_tables = {label: owners.enter_context(pq.ParquetFile(path)) for label, path in prior_tables.items()}
-        changes = list(raw.changes_since(before['raw_identity'] if before and not full else raw_storage.empty_identity))
-        changed_urls = {url for change in changes for url in raw.changed_state_urls(change)}
-        changed_packages = {package for url in changed_urls for package in package_dependencies(dict(source_url=url))}
+        changes = DiskRows(input_work.connection, 'changes')
+        for change in raw.changes_since(before['raw_identity'] if before and not full else raw_storage.empty_identity):
+            changes.append(change)
+        changed_urls = _keys(input_work, 'changed_urls',
+            (url for change in changes for url in raw.changed_state_urls(change)))
+        changed_packages = _keys(input_work, 'changed_packages',
+            (package for url in changed_urls for package in package_dependencies(dict(source_url=url))))
         namespace = before['namespace'] if before else 'catalog-source-observations-v1'
         observations = SourceObservationStorage(native=raw_storage.native, store=store, namespace=namespace,
             max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
         with TemporaryDirectory(prefix='source-replay-', dir=directory) as attempt:
             prepared = prepare_source_replay(store, snapshot=raw, changes=changes, observations=observations,
-                root=before['root'] if before and not full else None, directory=Path(attempt),
+                root=before['root'] if before and not full else None, directory=directory / 'source-replay',
                 read_body=lambda key: read_retained_body(None, key, read_compressed=store.read), seeds=seeds,
-                changed_dependencies=tuple(dependency_id('package', value) for value in sorted(changed_packages)))
+                changed_dependencies=(dependency_id('package', value) for value in changed_packages))
             if prepared is not None:
                 owners.callback(prepared.close)
             stage = owners.enter_context(_working(Path(attempt) / 'dispatch.sqlite'))
@@ -207,21 +215,26 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             hearings = DiskRows(stage.connection, 'hearing_records')
             for hearing in hearing_records(captures, store.read):
                 hearings.append(hearing)
-            packages = changed_packages | {package for row in rows for package in package_dependencies(row)}
-            packages.update(package for record, _, _ in hearings for package in hearing_input_packages(record))
-            urls = set(changed_urls)
+            packages = _keys(stage, 'packages', changed_packages)
+            for row in rows:
+                for package in package_dependencies(row):
+                    packages[package] = True
+            for record, _, _ in hearings:
+                for package in hearing_input_packages(record):
+                    packages[package] = True
+            urls = _keys(stage, 'urls', changed_urls)
             if dependencies is not None:
                 selected = dependencies.selected(previous.selection['dependency'])
                 replayed = _keys(stage, 'replayed_ids', old_ids)
                 present = _keys(stage, 'present_ids', (index.source_identity(row) for row in rows))
                 records = (record for url in changed_urls
                            for record in dependencies.sources_at_url(previous.selection['dependency'], url))
-                package_records = (record for package in sorted(packages)
+                package_records = (record for package in packages
                     for record in dependencies.sources_at_package(previous.selection['dependency'], package))
                 for record in chain(records, package_records):
                     old_ids[record['source_id']] = True
                     if record['source_values'].get('source_url'):
-                        urls.add(record['source_values']['source_url'])
+                        urls[record['source_values']['source_url']] = True
                     state_backed = (record['source_values'].get('filename_origins') == ['download_state']
                                     and record['source_values'].get('source_paths') == [STATE_KEY])
                     # The API receipt owns availability associations, not these
@@ -241,8 +254,10 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                 old_rows = ()
             if prepared is not None:
                 rows = recover_sources(rows, captures, read_receipt=store.read, working=prepared.working, source_observer=prepared.trace)
-            urls.update(row['source_url'] for row in rows if row.get('source_url'))
-            state = pa.Table.from_pylist(list(raw.states_for(urls).values()), schema=raw_storage.state_schema)
+            for row in rows:
+                if row.get('source_url'):
+                    urls[row['source_url']] = True
+            state = raw.iter_states_for(urls)
             annotated = DiskRows(stage.connection, 'annotated_sources')
             for row in annotate_availability(rows, state, working=stage,
                     hearing_records=((record, captures) for record, captures, _ in hearings)):
@@ -321,7 +336,7 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
         result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
             replacements=values, deletions=deletions, candidate=candidate, directory=directory / 'catalog',
             max_chunk_rows=MAX_ROWS, max_chunk_bytes=MAX_BYTES, rules=request['requirements'],
-            expected_bodies=request['expected_bodies'], source_update=reference, **full_options)
+            expected_bodies=expected_bodies, source_update=reference, **full_options)
         return dict(result, raw_identity=raw.identity)
 
 
