@@ -167,8 +167,8 @@ def test_small_aliases_share_bounded_physical_native_tables():
                                      source_schema=SCHEMA, max_rows=1024, max_bytes=4 << 20)
     rows = [source(f'{i}.pdf', f'body-{i}') for i in range(100)]
     selected = owner.prepare(None, replacements=rows)
-    assert len(native.calls) == 2  # One source leaf and one shared reverse leaf.
-    assert sum(len(table) for table in native.tables.values()) == 300
+    assert len(native.calls) == 3  # Source, grouping membership and URL membership leaves.
+    assert sum(len(table) for table in native.tables.values()) == 400
     assert owner.selected(selected).source(identity(rows[50])) is not None
 
 
@@ -233,3 +233,30 @@ def test_saved_document_ownership_closes_old_component_after_group_policy_change
     initial = owner.prepare(None, replacements=[a, b])
     scope = affected_sources(owner.selected(initial), replacements=[{**a, 'http_status': ['404']}])
     assert set(scope.before) == {identity(a), identity(b)}
+
+
+def test_non_grouping_url_and_resolution_lookup_preserves_all_row_owners():
+    schema = SCHEMA.append(pa.field('source_resolved_url', pa.list_(pa.string())))
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='url-lookups',
+                                     source_schema=schema, max_rows=4, max_bytes=1 << 20)
+    target = 'https://example.gov/target.pdf'
+    original = 'https://example.gov/original'
+    a = source('a.pdf', 'A', source_url=original, source_resolved_url=[target, None])
+    b = source('b.pdf', 'B', source_url=original, source_resolved_url=[target])
+    wrapped = source('c.pdf', 'C', source_url='mailto:' + target, source_resolved_url=[])
+    initial = owner.prepare(None, replacements=[a, b, wrapped])
+    assert {row['source_id'] for row in owner.sources_at_url(initial, original)} == {identity(a), identity(b)}
+    assert {row['source_id'] for row in owner.originals_targeting(initial, target)} == {identity(a), identity(b), identity(wrapped)}
+    # Invalid/null values stay in the candidate index and source payloads until
+    # the maintained alias owner combines all observations and checks validity.
+    null_owner, = owner.originals_targeting(initial, None)
+    assert null_owner['source_id'] == identity(a)
+    corrected = {**a, 'source_resolved_url': ['https://example.gov/other.pdf']}
+    changed = owner.prepare(initial, replacements=[corrected], deletions=[identity(wrapped)])
+    assert {row['source_id'] for row in owner.originals_targeting(changed, target)} == {identity(b)}
+    assert {row['source_id'] for row in owner.originals_targeting(initial, target)} == {identity(a), identity(b), identity(wrapped)}
+    row, = owner.originals_targeting(changed, 'https://example.gov/other.pdf')
+    assert row['source_values']['source_resolved_url'] == ['https://example.gov/other.pdf']
+    assert row['source_order'] == 0
+    assert len(affected_sources(owner.selected(initial), replacements=[a]).before) == 1

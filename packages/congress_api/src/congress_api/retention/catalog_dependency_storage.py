@@ -7,6 +7,7 @@ from copy import deepcopy
 from contextlib import closing
 from pathlib import Path
 import pickle
+import json
 import sqlite3
 from tempfile import TemporaryDirectory
 from hashlib import sha256
@@ -20,6 +21,7 @@ from .catalog_dependencies import (
 )
 from .partition_routing import RoutingPages, split_partition
 from .catalog_memberships import CatalogMemberships
+from .source_aliases import resolution_candidates
 
 
 
@@ -28,23 +30,42 @@ class CatalogDependencyStorage:
     def __init__(self, *, native, store, namespace, source_schema, max_rows, max_bytes):
         if type(max_rows) is not int or max_rows < 1 or type(max_bytes) is not int or max_bytes < 1:
             raise ValueError('Catalog dependency partition budgets must be positive integers')
-        self.native, self.source_schema = native, source_schema
+        self.native, self.source_schema, self.namespace = native, source_schema, namespace
         self.max_rows, self.max_bytes = max_rows, max_bytes
         self.sources = RoutingPages(store, namespace + '-sources')
         self.memberships = CatalogMemberships(store=store, namespace=namespace, schema=alias_schema(),
             member_column='source_id', max_rows=max_rows, max_bytes=max_bytes,
             read=self._read, write=self._write, validate_alias=_decoded_alias)
         self.aliases, self.members = self.memberships.routes, self.memberships.members
+        lookup_options = dict(store=store, schema=alias_schema(), member_column='source_id',
+            max_rows=max_rows, max_bytes=max_bytes, read=self._read,
+            write=lambda table, kind: self._write(table, 'lookup-' + kind), validate_alias=lambda key: key)
+        self.urls = CatalogMemberships(namespace=namespace + '-source-url', **lookup_options)
+        self.targets = CatalogMemberships(namespace=namespace + '-resolved-target', **lookup_options)
+        from . import source_aliases
+        self.lookup_requirements = sha256(Path(source_aliases.__file__).read_bytes()).hexdigest()
         self.schema_hash = sha256(source_schema.remove_metadata().serialize().to_pybytes()).hexdigest()
         self.rows_read = self.bytes_read = 0
         self.candidate_rows_submitted = self.candidate_arrow_bytes = 0
 
-    def _selection(self, selection):
+    @classmethod
+    def for_snapshot(cls, snapshot):
+        """Restore the selected lookup owner on a fresh configured host."""
+        if snapshot.native is None:
+            raise ValueError('Catalog lookups require the configured native client')
+        basis = snapshot.selection['dependency']
+        return cls(native=snapshot.native, store=snapshot.store, namespace=basis['namespace'],
+            source_schema=snapshot.schemas['filenames'], max_rows=basis['max_rows'],
+            max_bytes=basis['max_arrow_bytes'])
+
+    def _selection(self, selection, *, require_lookup_policy=False):
         if selection is None:
-            return dict(format='catalog-dependencies-v2', ownership_edges='document-id-v1', schema_hash=self.schema_hash,
+            return dict(format='catalog-dependencies-v2', namespace=self.namespace, ownership_edges='document-id-v1', schema_hash=self.schema_hash,
                         max_rows=self.max_rows, max_arrow_bytes=self.max_bytes,
-                        source_root=None, alias_root=None, next_source_order=0)
+                        source_root=None, alias_root=None, url_root=None, target_root=None,
+                        lookup_requirements=self.lookup_requirements, next_source_order=0)
         if (selection.get('format') != 'catalog-dependencies-v2'
+                or selection.get('namespace') != self.namespace
                 or selection.get('ownership_edges') != 'document-id-v1'
                 or selection.get('schema_hash') != self.schema_hash
                 or selection.get('max_rows') != self.max_rows
@@ -52,6 +73,8 @@ class CatalogDependencyStorage:
                 or type(selection.get('next_source_order')) is not int
                 or selection['next_source_order'] < 0):
             raise DependencyGap('Catalog dependency selection schema or order basis differs')
+        if require_lookup_policy and selection.get('lookup_requirements') != self.lookup_requirements:
+            raise DependencyGap('Catalog URL lookup policy changed; qualify an explicit lookup adoption')
         return deepcopy(selection)
 
     def _read(self, pin, schema):
@@ -140,6 +163,62 @@ class CatalogDependencyStorage:
             expected_rows=lambda pin: pin_counts.get(index.compact(pin)),
             max_rows=self.max_rows, max_bytes=self.max_bytes)
 
+    @staticmethod
+    def _lookup_keys(row):
+        url = row.get('source_url')
+        urls = {'url:' + url} if isinstance(url, str) and url else set()
+        targets = {'target:' + index.compact(target) for target in resolution_candidates(row)}
+        return urls, targets
+
+    def _prepare_lookups(self, basis, before, after):
+        # Membership owners are source IDs, so removing one version cannot
+        # erase another version's URL or recorded resolution evidence.
+        with TemporaryDirectory(prefix='catalog-url-changes-') as directory, closing(
+                sqlite3.connect(Path(directory) / 'changes.sqlite')) as db:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                'CREATE TABLE changes(kind INTEGER,alias TEXT,source TEXT,old INTEGER,new INTEGER, '
+                'PRIMARY KEY(kind,alias,source)); '
+                'CREATE TABLE members(kind INTEGER,alias TEXT,source TEXT,PRIMARY KEY(kind,alias,source));')
+            for identity in set(before) | set(after):
+                old = self._lookup_keys(before[identity]) if identity in before else (set(), set())
+                new = self._lookup_keys(after[identity]) if identity in after else (set(), set())
+                for kind in (0, 1):
+                    for alias in old[kind] ^ new[kind]:
+                        db.execute('INSERT INTO changes VALUES (?,?,?,?,?)',
+                                   (kind, alias, identity, int(alias in old[kind]), int(alias in new[kind])))
+            roots = []
+            for kind, owner, label in [(0, self.urls, 'url_root'), (1, self.targets, 'target_root')]:
+                for alias, in db.execute('SELECT DISTINCT alias FROM changes WHERE kind=?', (kind,)):
+                    for identity in owner.values(basis[label], alias):
+                        if db.execute('SELECT 1 FROM changes WHERE kind=? AND alias=? AND source=? AND old=1',
+                                      (kind, alias, identity)).fetchone() is None:
+                            db.execute('INSERT OR IGNORE INTO members VALUES (?,?,?)', (kind, alias, identity))
+                    db.execute('INSERT OR IGNORE INTO members SELECT kind,alias,source FROM changes '
+                               'WHERE kind=? AND alias=? AND new=1', (kind, alias))
+                class Changes:
+                    def __iter__(self):
+                        return (row[0] for row in db.execute('SELECT DISTINCT alias FROM changes WHERE kind=? ORDER BY alias', (kind,)))
+                    def __getitem__(self, alias):
+                        return (row[0] for row in db.execute('SELECT source FROM members WHERE kind=? AND alias=? ORDER BY source', (kind, alias)))
+                roots.append(owner.replace(basis[label], Changes()))
+            return dict(url_root=roots[0], target_root=roots[1])
+
+    def _lookup_sources(self, selection, owner, root, alias):
+        selected = self.selected(selection)
+        for identity in owner.values(root, alias):
+            row = selected.source(identity)
+            if row is None:
+                raise DependencyGap('URL lookup refers to a missing selected source')
+            yield dict(source_id=identity, source_order=selected.order(identity), source_values=row)
+
+    def sources_at_url(self, selection, url):
+        basis = self._selection(selection)
+        return self._lookup_sources(basis, self.urls, basis['url_root'], 'url:' + url)
+
+    def originals_targeting(self, selection, target):
+        basis = self._selection(selection)
+        return self._lookup_sources(basis, self.targets, basis['target_root'], 'target:' + index.compact(target))
+
     def adopt(self, chunks):
         """Import exact selected source values without replaying grouping policy.
 
@@ -153,7 +232,8 @@ class CatalogDependencyStorage:
             db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
                 'CREATE TABLE sources(identity TEXT PRIMARY KEY,digest TEXT,body BLOB); '
                 'CREATE INDEX source_hashes ON sources(digest); '
-                'CREATE TABLE aliases(alias TEXT,member TEXT,PRIMARY KEY(alias,member));')
+                'CREATE TABLE aliases(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
+                'CREATE TABLE lookups(kind INTEGER,alias TEXT,member TEXT,PRIMARY KEY(kind,alias,member));')
             count = 0
             for chunk in chunks:
                 if not chunk.schema.equals(self.source_schema, check_metadata=True):
@@ -170,6 +250,9 @@ class CatalogDependencyStorage:
                         raise DependencyGap('Repeated selected source identity during adoption') from error
                     db.executemany('INSERT INTO aliases VALUES (?,?)',
                         ((edge['alias'], edge['source_id']) for edge in aliases.to_pylist()))
+                    for kind, keys in enumerate(self._lookup_keys(row)):
+                        db.executemany('INSERT OR IGNORE INTO lookups VALUES (?,?,?)',
+                                       ((kind, key, identity) for key in keys))
                     count += 1
             def leaves(prefix):
                 rows = [pickle.loads(body) for body, in db.execute(
@@ -191,8 +274,16 @@ class CatalogDependencyStorage:
                 def __getitem__(self, alias):
                     return (row[0] for row in db.execute('SELECT member FROM aliases WHERE alias=? ORDER BY member', (alias,)))
             alias_root = self.memberships.replace(None, Aliases())
+            lookup_roots = []
+            for kind, owner in [(0, self.urls), (1, self.targets)]:
+                class Lookups:
+                    def __iter__(self):
+                        return (row[0] for row in db.execute('SELECT DISTINCT alias FROM lookups WHERE kind=? ORDER BY alias', (kind,)))
+                    def __getitem__(self, alias):
+                        return (row[0] for row in db.execute('SELECT member FROM lookups WHERE kind=? AND alias=? ORDER BY member', (kind, alias)))
+                lookup_roots.append(owner.replace(None, Lookups()))
             return dict(self._selection(None), source_root=source_root, alias_root=alias_root,
-                        next_source_order=count)
+                        url_root=lookup_roots[0], target_root=lookup_roots[1], next_source_order=count)
 
     def prepare(self, selection, *, replacements=(), deletions=(), source_orders=None):
         """Prepare complete changed scope; the caller later CAS-selects roots.
@@ -201,7 +292,7 @@ class CatalogDependencyStorage:
         Native candidate datasets are immutable content-named Runs, so a losing
         attempt cannot strand a mutable native head ahead of selected app state.
         """
-        basis = self._selection(selection)
+        basis = self._selection(selection, require_lookup_policy=True)
         replacements, deletions = list(replacements), tuple(deletions)
         if not replacements and not deletions:
             return basis
@@ -239,4 +330,5 @@ class CatalogDependencyStorage:
             if old_members != new_members:
                 alias_changes[alias] = new_members
         alias_root = self.memberships.replace(basis['alias_root'], alias_changes)
-        return {**basis, 'source_root': source_root, 'alias_root': alias_root, 'next_source_order': order}
+        lookups = self._prepare_lookups(basis, scope.before, scope.after)
+        return {**basis, **lookups, 'source_root': source_root, 'alias_root': alias_root, 'next_source_order': order}

@@ -200,9 +200,9 @@ def test_actual_native_scope_proof_replay_calls_are_measured_separately(tmp_path
     record_property('adoption_native_run_table_calls', adoption_calls)
     record_property('correction_preparation_native_run_table_calls', preparation_calls)
     record_property('scope_proof_native_completed_replay_calls', replay_calls)
-    assert adoption_calls == 4
-    assert preparation_calls == 4
-    assert replay_calls == 2
+    assert adoption_calls == 5
+    assert preparation_calls == 5
+    assert replay_calls == 3
     # Replay calls name already prepared immutable dependency datasets, not new
     # versions. Their cost is still nonzero and reported separately.
-    assert calls[position:] == calls[adoption_calls:adoption_calls + 2]
+    assert calls[position:] == calls[adoption_calls:adoption_calls + 3]
