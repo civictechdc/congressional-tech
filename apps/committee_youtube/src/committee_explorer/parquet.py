@@ -27,7 +27,7 @@ STRINGS = ('id', 'kind', 'title', 'chamber', 'date', 'type', 'status', 'meeting_
            'provider', 'category', 'selection', 'search_text', 'position', 'organization',
            'participation', 'explanation', 'severity', 'subject_kind', 'subject_id', 'scheduled_at', 'meeting_status', 'recording_url', 'document_type', 'committee_level', 'parent_committee_id', 'access', 'committee_type', 'source_committee_type', 'committee_code')
 LISTS = ('committee_ids', 'roles', 'meeting_ids', 'appearance_ids', 'source_ids', 'source_document_groups', 'committee_types')
-LINK = pa.struct([(k, pa.string()) for k in ('url', 'label', 'role', 'media_type', 'version', 'published_at', 'sha256')])
+LINK = pa.struct([(k, pa.string()) for k in ('url', 'label', 'role', 'media_type', 'version', 'published_at', 'sha256', 'saved_copy_sha256', 'saved_filename')])
 NOTE = pa.struct([(k, pa.string()) for k in ('label', 'value')])
 SCHEMA = pa.schema([(k, pa.string()) for k in STRINGS] + [('congress', pa.int32()), ('issue_count', pa.int32())]
                    + [(k, pa.list_(pa.string())) for k in LISTS]
@@ -163,6 +163,8 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             yield _source_row(source)
     source_files = _write_sources(source_rows(), stage)
     rows = {kind: {} for kind in TABLES if kind != 'source_record'}
+    # Records assembled after the model carried these fields. Older publications
+    # still need the payload scan below; migrate() reads them without reassembly.
     for row in query_rows:
         rows[row['kind']][row['id']] = {**row, 'files': [], 'facts': [], 'meeting_ids': [],
                                       'appearance_ids': [], 'source_ids': []}
@@ -225,33 +227,58 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                         row['facts'].append({'label': 'Committee hierarchy', 'value': f'Congress.gov systemCode {code}: final two digits 00 identify a full committee; other digits identify a subcommittee.'})
                         row['facts'].append({'label': 'Hierarchy definition', 'value': HIERARCHY_SOURCE})
             if kind == 'meeting':
-                row['access'] = 'unknown'
+                row['access'] = record.get('access') if record.get('access') not in (None, 'unknown') else 'unknown'
+                explained = False
                 for source_id in row['source_ids']:
                     if source_id not in native_meetings: continue
                     native = native_meetings[source_id]
                     native_type, field = meeting_type(native)
                     assembled_type = record.get('meeting_type')
                     row['type'] = assembled_type if assembled_type not in (None, 'unknown', 'meeting') else native_type
-                    if native.get('type'): row['facts'].append({'label': 'Source type', 'value': native['type']})
+                    if native.get('type'):
+                        row['facts'].append({'label': 'Source type', 'value': native['type']})
+                        explained = True
                     if field == '/title' and row['type'] == native_type:
                         row['facts'].append({'label': 'Type based on', 'value': 'The source title explicitly identifies this meeting type.'})
-                    row['access'], access_field = meeting_access(native)
-                    if access_field == '/title': row['facts'].append({'label': 'Access based on', 'value': 'The source title explicitly identifies this access state.'})
+                    payload_access, access_field = meeting_access(native)
+                    if row['access'] == 'unknown': row['access'] = payload_access
+                    if access_field == '/title' and row['access'] == payload_access:
+                        row['facts'].append({'label': 'Access based on', 'value': 'The source title explicitly identifies this access state.'})
                     break
+                if record.get('source_type') and not explained:
+                    row['facts'].append({'label': 'Source type', 'value': record['source_type']})
             if kind == 'material':
                 dates = record.get('proceeding_dates') or []
                 if not row.get('date') and dates:
                     row['date'] = min(d['date'] for d in dates)
+                if record.get('document_type'): row['document_type'] = record['document_type']
+                if record.get('source_document_groups'): row['source_document_groups'] = list(record['source_document_groups'])
+                for file in record.get('files') or []:
+                    if not file.get('url'): continue
+                    version = file.get('version_label')
+                    if version and version.rstrip('.') in PLACEHOLDER_LABELS: version = None
+                    published_at = file.get('published_at') or {}
+                    if row.get('type') == 'recording' and not row.get('date') and published_at.get('date'):
+                        row['date'] = published_at['date']
+                    row['files'].append({'url': file['url'], 'label': file.get('format_label') or file.get('media_type') or file.get('role'),
+                                         'role': file.get('role'), 'media_type': file.get('media_type'), 'version': version,
+                                         'published_at': published_at.get('date'), 'sha256': file.get('sha256'),
+                                         'saved_copy_sha256': file.get('saved_copy_sha256'), 'saved_filename': file.get('saved_filename')})
+                carried = bool(record.get('document_type') or record.get('source_document_groups'))
                 documents = [native_documents[key] for citation in provenance.get('citations', [])
                              if (key := (citation['source']['id'], citation.get('selector'))) in native_documents]
-                row['source_document_groups'] = sorted({group for group, _ in documents})
-                row['document_type'] = next((reviewed_document_types[citation['source']['id']]
-                    for citation in provenance.get('citations', []) if citation['source']['id'] in reviewed_document_types), row.get('document_type'))
-                if documents:
-                    document = documents[0][1]
-                    row['title'] = document_title(document) or row['title']
-                    row['category'] = category(document)
-                    if isinstance(document.get('documentType'), str): row['document_type'] = document['documentType']
+                if not carried:
+                    row['source_document_groups'] = sorted({group for group, _ in documents})
+                    row['document_type'] = next((reviewed_document_types[citation['source']['id']]
+                        for citation in provenance.get('citations', []) if citation['source']['id'] in reviewed_document_types), row.get('document_type'))
+                    if documents:
+                        document = documents[0][1]
+                        row['title'] = document_title(document) or row['title']
+                        row['category'] = category(document)
+                        if isinstance(document.get('documentType'), str): row['document_type'] = document['documentType']
+                elif not row.get('document_type'):
+                    row['document_type'] = next((reviewed_document_types[citation['source']['id']]
+                        for citation in provenance.get('citations', []) if citation['source']['id'] in reviewed_document_types), None)
                 for citation in provenance.get('citations', []):
                     metadata = committee_documents.get((citation['source']['id'], citation.get('selector')))
                     if metadata:
@@ -286,7 +313,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         elif kind == 'representation':
             # Field disagreements and ownership were handled above. Retain
             # only the file fields and citation IDs needed to build links.
-            file_info = {key: record[key] for key in ('locations', 'format_label', 'media_type', 'sha256') if key in record}
+            file_info = {key: record[key] for key in ('locations', 'format_label', 'media_type', 'sha256', 'saved_copy_sha256', 'saved_filename') if key in record}
             file_info['source_ids'] = sources_of(record)
             formats[record['version']['id']].append(file_info)
         elif kind == 'material_link':
@@ -303,12 +330,16 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             row['date'] = published['date']
         # The routine placeholder is an implementation detail, not an edition label.
         if label and label.rstrip('.') in PLACEHOLDER_LABELS: label = None
+        # Assembled materials already carry these files, including saved copies.
+        embedded = bool(row['files'])
         for record in entries:
             row['source_ids'].extend(version_sources | record['source_ids'])
+            if embedded: continue
             for location in record.get('locations', []):
                 row['files'].append({'url': location['url'], 'label': record.get('format_label') or record.get('media_type') or location['role'],
                                      'role': location['role'], 'media_type': record.get('media_type'), 'version': label,
-                                     'published_at': (published or {}).get('date'), 'sha256': record.get('sha256')})
+                                     'published_at': (published or {}).get('date'), 'sha256': record.get('sha256'),
+                                     'saved_copy_sha256': record.get('saved_copy_sha256'), 'saved_filename': record.get('saved_filename')})
     del versions, formats
     amendment_groups = defaultdict(list)
     for record in context_records.values():

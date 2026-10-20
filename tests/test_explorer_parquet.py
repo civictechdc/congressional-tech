@@ -289,6 +289,21 @@ def test_file_link_building_does_not_retain_complete_representation_payloads(tmp
     assert row['source_ids'] == ['source']
 
 
+def test_saved_copy_fields_follow_the_file_into_the_browser_table(tmp_path):
+    from committee_explorer.parquet import write_tables
+    digest = 'ab' * 32
+    records = [dict(kind='material', id='statement'),
+               dict(kind='material_version', id='edition', material=dict(kind='material', id='statement')),
+               dict(kind='representation', id='pdf', version=dict(kind='material_version', id='edition'),
+                    format_label='PDF', media_type='application/pdf', saved_copy_sha256=digest, saved_filename='Witness statement.pdf',
+                    locations=[dict(url='https://example.org/statement.pdf', role='download')])]
+    write_tables(records, [], [dict(kind='material', id='statement', title='Statement', type='document')],
+                 tmp_path, lambda *args, **kwargs: None)
+    file, = pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]['files']
+    assert file['url'] == 'https://example.org/statement.pdf'
+    assert (file['saved_copy_sha256'], file['saved_filename']) == (digest, 'Witness statement.pdf')
+
+
 def test_direct_committee_material_links_preserve_scope_and_lifecycle_without_meetings(tmp_path):
     from committee_explorer.parquet import write_tables
     source = dict(kind='source_record', id='source', provider='official-archive', payload={'committeeTypeCode': 'Other'})

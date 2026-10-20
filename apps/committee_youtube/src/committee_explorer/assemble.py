@@ -1,10 +1,12 @@
 """Assemble source-owned records; retain disagreements and open issue history."""
+from collections import defaultdict
 from collections.abc import Mapping, MutableMapping
 import json
 
 from committee_meeting import Catalog
 from committee_meeting.catalog import DomainRecord, _references
 from committee_meeting.issues import DataIssue, IssueResolution
+from committee_meeting.materials import representation_files
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method, Provenance, SourceRecord
 from committee_meeting.common import Model, Ref
 from pydantic import TypeAdapter, ValidationError
@@ -14,6 +16,11 @@ from .history import RetainedSources
 
 
 _DOMAIN_RECORD = TypeAdapter(DomainRecord)
+# Several sources can each contribute files, links and collections to one
+# record. Their union is the record; differing members are not disagreements.
+_ACCUMULATED = frozenset({"identifiers", "source_document_groups"})
+_LINK_KINDS = {"appearance": "appearance_ids", "committee_term": "committee_ids", "amendment": "action_ids", "vote": "action_ids"}
+_LINK_FIELDS = ("meeting_ids", "appearance_ids", "committee_ids", "action_ids")
 _FIELD_NAMES = {}  # frozenset of names -> the one set every equal instance shares
 _SHARED = set()  # ids of those sets; they live as long as this module
 
@@ -120,10 +127,11 @@ class Assembly:
                         else:
                             fields.pop("/" + name, None)
                     elif before is not None and before != "" and before != ():
-                        if name == "identifiers":
-                            updates[name] = tuple({v.model_dump_json(): v for v in (*before, *after)}.values())
+                        if name in _ACCUMULATED:
+                            updates[name] = tuple({v if isinstance(v, str) else v.model_dump_json(): v
+                                                   for v in (*before, *after)}.values())
                         elif not isinstance(item, DataIssue):
-                            if item.kind == "occurrence" and name == "access" and before == "unknown":
+                            if item.kind in ("occurrence", "meeting") and name == "access" and before == "unknown":
                                 continue  # Filling absent access is not a source disagreement.
                             path = "/" + name
                             alternatives = list(fields[path].alternatives) if path in fields else []
@@ -168,6 +176,40 @@ class Assembly:
                                  explanation=field.selection_reason),
         )
         return issue.model_copy(update={"status": "dismissed", "resolution": resolution})
+
+    def _project_materials(self):
+        """Fold each material's links and representations into it.
+
+        Links, versions and representations remain the authorities; histories
+        cite their identities. The material's fields are their complete copy.
+        """
+        links = defaultdict(lambda: {name: set() for name in _LINK_FIELDS})
+        files = defaultdict(lambda: defaultdict(list))
+        for key in sorted(self.records):
+            record = self.records[key]
+            if record.kind == "material_link":
+                subject, fields = record.subject, links[record.material.id]
+                owner = self.records.get((subject.kind, subject.id))
+                meeting = subject if subject.kind == "meeting" else getattr(owner, "meeting", None)
+                if meeting is not None:
+                    fields["meeting_ids"].add(meeting.id)
+                if subject.kind in _LINK_KINDS:
+                    fields[_LINK_KINDS[subject.kind]].add(subject.id)
+            elif record.kind == "representation":
+                version = self.records.get(("material_version", record.version.id))
+                if version is not None:
+                    files[version.material.id][version.id].extend(representation_files(
+                        record, version_label=version.label, published_at=version.published_at,
+                        duration_seconds=version.duration_seconds))
+        for material_id in links.keys() | files.keys():
+            key = ("material", material_id)
+            material = self.records.get(key)
+            if material is None:
+                continue
+            values = {name: tuple(sorted(ids)) for name, ids in links[material_id].items()}
+            values["files"] = tuple(file for entries in files[material_id].values() for file in entries)
+            if any(getattr(material, name) != value for name, value in values.items()):
+                self.records[key] = material.model_copy(update=values)
 
     def finish(self):
         if self.ids:
@@ -229,6 +271,7 @@ class Assembly:
                             except KeyError:
                                 raise ValueError(f"Issue history is missing {reference.kind}/{reference.id}") from None
             self.retained = RetainedSources(previous, retained)
+        self._project_materials()
         # Every record crossed validated() individually. Constructing the tuples
         # must not ask Pydantic to copy the entire corpus a second time. The full
         # graph validator still checks all links, ownership rules and cycles.

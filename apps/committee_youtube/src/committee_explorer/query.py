@@ -72,6 +72,9 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         if record.kind == 'occurrence' and record.scheduled_start:
             dates.setdefault(record.meeting.id, record.scheduled_start.date.isoformat())
             statuses.setdefault(record.meeting.id, record.status)
+        if record.kind == 'meeting' and record.scheduled_start:
+            dates.setdefault(record.id, record.scheduled_start.date.isoformat())
+            if record.status != 'unknown': statuses.setdefault(record.id, record.status)
         if record.kind == 'appearance': witness_names[record.meeting.id].add(record.name.display)
         if record.kind == 'data_issue' and record.status == 'open': issue_counts[(record.subject.kind, record.subject.id)] += 1
         # Inverse links let views find appearances/materials/issues without
