@@ -372,26 +372,42 @@ class CatalogDependencyStorage:
             for chunk in chunks:
                 if not chunk.schema.equals(self.source_schema, check_metadata=True):
                     raise DependencyGap('Adoption source schema differs from the selected table')
-                for row in chunk.to_pylist():
+                rows, positions, identities, ordinals = chunk.to_pylist(), [], set(), set()
+                if not rows:
+                    continue
+                for offset, row in enumerate(rows, count):
                     identity = index.source_identity(row)
                     if row.get('source_id') != identity:
                         raise DependencyGap('Adoption source identity differs from its saved key')
-                    position = count if source_orders is None else source_orders[identity]
+                    position = offset if source_orders is None else source_orders[identity]
                     if type(position) is not int or position < 0:
                         raise DependencyGap('Source order must be a nonnegative integer')
+                    if identity in identities or position in ordinals:
+                        raise DependencyGap('Repeated selected source identity during adoption')
+                    identities.add(identity)
+                    ordinals.add(position)
+                    positions.append(position)
                     next_order = max(next_order, position + 1)
-                    sources, aliases = dependency_tables([row], self.source_schema, first_order=position)
+                # The caller supplies bounded typed input; normalize it once.
+                sources, aliases = dependency_tables(rows, self.source_schema, first_order=count)
+                if source_orders is not None:
+                    # Saved positions may be sparse or differ from input order.
+                    column = sources.schema.get_field_index('source_order')
+                    sources = sources.set_column(column, sources.schema.field(column),
+                                                 pa.array(positions, type=pa.int64()))
+                for row, stored in zip(rows, sources.to_pylist()):
+                    identity, position = stored['source_id'], stored['source_order']
                     try:
                         db.execute('INSERT INTO sources VALUES (?,?,?,?)',
-                            (identity, key_hash(identity), pickle.dumps(sources.to_pylist()[0]), position))
+                            (identity, key_hash(identity), pickle.dumps(stored), position))
                     except sqlite3.IntegrityError as error:
                         raise DependencyGap('Repeated selected source identity during adoption') from error
-                    db.executemany('INSERT INTO aliases VALUES (?,?)',
-                        ((edge['alias'], edge['source_id']) for edge in aliases.to_pylist()))
                     for kind, keys in enumerate(self._lookup_keys(row)):
                         db.executemany('INSERT OR IGNORE INTO lookups VALUES (?,?,?)',
                                        ((kind, key, identity) for key in keys))
-                    count += 1
+                db.executemany('INSERT INTO aliases VALUES (?,?)',
+                    ((edge['alias'], edge['source_id']) for edge in aliases.to_pylist()))
+                count += len(rows)
             def leaves(prefix):
                 rows = [pickle.loads(body) for body, in db.execute(
                     'SELECT body FROM sources WHERE digest>=? AND digest<? ORDER BY identity LIMIT ?',

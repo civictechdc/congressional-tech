@@ -228,7 +228,8 @@ def adopt_native_catalog(store, *, native, previous, dependencies, candidate, di
             _save_preparation(preparation, request)
         require_inputs()
         if dependency is None:
-            dependency = dependencies.adopt(pa.Table.from_batches([batch]) for batch in sources.iter_batches(batch_size=1))
+            dependency = dependencies.adopt(chunk.drop(['_catalog_order']) for chunk in ordered_chunks(
+                sources, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes))
             require_inputs()
             _save_preparation(preparation, request, dependency)
         prepared = prepare_native_catalog_components(store, native, candidate=candidate,
