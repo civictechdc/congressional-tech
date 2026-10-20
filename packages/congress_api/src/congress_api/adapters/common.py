@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Callable, Mapping
+from urllib.parse import urlsplit
 
 # Adapter meeting maps: (congress, chamber, event id). Not the congress.gov string id.
 MeetingLookupKey = tuple[int, str, str]
@@ -14,7 +15,7 @@ MeetingLookupKey = tuple[int, str, str]
 def meeting_lookup_key(congress: int, chamber: str, event_id: str) -> MeetingLookupKey:
     """Build the meeting-map key adapters already share. Values are not rewritten."""
     return (congress, chamber, event_id)
-from urllib.parse import urlsplit
+
 
 from congress_api.parsers.observations import observed_time as observed_time
 
@@ -28,6 +29,21 @@ from committee_meeting.materials import (
     Representation,
 )
 from committee_meeting.provenance import Citation, Method, Provenance, SourceRecord
+
+_SUFFIX_MEDIA = {
+    "pdf": "application/pdf",
+    "xml": "application/xml",
+    "html": "text/html",
+    "htm": "text/html",
+    "csv": "text/csv",
+    "txt": "text/plain",
+    "vtt": "text/vtt",
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "xls": "application/vnd.ms-excel",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "rtf": "application/rtf",
+}
 
 
 def digest(value):
@@ -65,8 +81,6 @@ def reported_time(value):
                         precision="second" if len(value.split("T")[-1].split("+")[0]) >= 8 else "minute", original=value)
 
 
-
-
 @dataclass
 class AdapterContext:
     now: datetime
@@ -90,7 +104,20 @@ class AdapterContext:
                                                selector=selector),), basis=basis, method=method)
 
 
-def material_records(context, evidence, key, *, title=None, urls=(), details=None, subject=None, role="supporting", identifiers=()):
+def material_records(
+    context,
+    evidence,
+    key,
+    *,
+    title=None,
+    urls=(),
+    details=None,
+    subject=None,
+    role="supporting",
+    identifiers=(),
+    document_type=None,
+    source_document_groups=(),
+):
     """Keep source identities unless an exact publisher file has a known identity."""
     urls = tuple(dict.fromkeys(urls))
     known = (getattr(context, 'known_materials', None) or {}).get(urls[0]) if len(urls) == 1 else None
@@ -101,24 +128,32 @@ def material_records(context, evidence, key, *, title=None, urls=(), details=Non
         # the source payload addressed by this additional citation.
         def cited(record):
             citations = {c.model_dump_json(): c for c in (*record.provenance.citations, *evidence.citations)}
-            return record.model_copy(update={'provenance': record.provenance.model_copy(
-                update={'citations': tuple(citations.values())})})
+            updates = {'provenance': record.provenance.model_copy(update={'citations': tuple(citations.values())})}
+            if isinstance(record, Material):
+                if source_document_groups:
+                    updates['source_document_groups'] = tuple(sorted({*record.source_document_groups, *source_document_groups}))
+                # The publisher's own record keeps its label; a listing's
+                # label only fills one it lacks.
+                if document_type and not record.document_type:
+                    updates['document_type'] = document_type
+            return record.model_copy(update=updates)
         out = [cited(material), cited(version)]
         if subject is not None:
             out.append(MaterialLink(id=context.ids('material_link', key + '|' + subject.kind + '|' + subject.id + '|' + role),
                 material=ref(material), version=ref(version), subject=subject, role=role, provenance=evidence))
         return out
+
     material = Material(id=context.ids("material", key), title=title or None,
-                        details=details or DocumentDetails(category="unknown"), identifiers=identifiers, provenance=evidence)
+                        details=details or DocumentDetails(category="unknown"), identifiers=identifiers,
+                        document_type=document_type, source_document_groups=tuple(source_document_groups), provenance=evidence)
     version = MaterialVersion(id=context.ids("material_version", key + "|reported-edition"), material=ref(material),
                               provenance=evidence)
     out = [material, version]
-    for url in dict.fromkeys(urls):
+    for url in urls:
         if not web_url(url):
             continue
         suffix = urlsplit(url).path.rsplit(".", 1)[-1].lower()
-        media = {"pdf": "application/pdf", "xml": "application/xml", "html": "text/html", "htm": "text/html", "csv": "text/csv", "txt": "text/plain", "vtt": "text/vtt", "doc": "application/msword", "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                 "xls": "application/vnd.ms-excel", "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "rtf": "application/rtf"}.get(suffix)
+        media = _SUFFIX_MEDIA.get(suffix)
         out.append(Representation(id=context.ids("representation", key + "|" + url), version=ref(version),
                                   locations=(MaterialLocation(url=url, role="player" if details and details.type == "recording" else "download"),),
                                   media_type=media, format_label=suffix if media else None, provenance=evidence))

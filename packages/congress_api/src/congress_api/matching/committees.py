@@ -55,3 +55,12 @@ def hierarchy_from_code(code):
     if not isinstance(code, str) or not re.fullmatch(r'[hsj][a-z0-9]{3}\d{2}', code, re.I):
         return 'unknown', None
     return ('full', None) if code.endswith('00') else ('subcommittee', native_parent(code))
+
+
+def committee_level(code, committee_type='unknown', parent=None):
+    """An explicit parent or classification outranks the systemCode convention."""
+    if parent or committee_type == 'subcommittee':
+        return 'subcommittee'
+    if committee_type not in (None, 'unknown'):
+        return 'full'
+    return hierarchy_from_code(code)[0]

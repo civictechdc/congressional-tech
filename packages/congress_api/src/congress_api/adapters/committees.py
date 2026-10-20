@@ -5,6 +5,7 @@ from committee_meeting.common import Identifier, Ref
 
 from congress_api.matching.committees import (
     HIERARCHY_SOURCE as HIERARCHY_SOURCE,
+    committee_level,
     hierarchy_from_code as hierarchy_from_code,
     source_committee_key as source_committee_key,
     source_committee_keys as source_committee_keys,
@@ -47,6 +48,7 @@ def ensure_committee_term(congress, code, name, context, provenance, existing):
     yield CommitteeTerm(
         id=term_id, committee=Ref(kind='committee', id=committee_id), congress=congress,
         name=name or code, chamber={'h': 'house', 's': 'senate', 'j': 'joint'}[code[0]],
+        committee_code=code, committee_level=committee_level(code),
         identifiers=(Identifier(scheme='congress.gov:committee', value=code, scope=str(congress)),),
         provenance=provenance,
     )

@@ -21,6 +21,7 @@ from committee_meeting.provenance import FieldEvidence
 
 from congress_api.adapters.common import digest, material_records, observed_time, ref, reported_time, web_url
 from congress_api.adapters.documents import DOCUMENT_CATEGORIES, category
+from congress_api.matching.committees import committee_level
 from congress_api.matching.meetings import meeting_access, meeting_type
 from congress_api.parsers import media
 from congress_api.adapters.recordings import normalized_reference
@@ -118,6 +119,7 @@ def records(rows, context, *, recording_keys=None):
             committee = Committee(id=context.ids("committee", ckey), label=c.get("name") or code, provenance=evidence)
             term = CommitteeTerm(id=context.ids("committee_term", ckey), committee=ref(committee), congress=congress,
                                  name=c.get("name") or None, chamber={"h": "house", "s": "senate", "j": "joint"}.get(code[:1].lower(), "unknown"),
+                                 committee_code=code, committee_level=committee_level(code),
                                  identifiers=(Identifier(scheme="congress.gov:committee", value=code, scope=str(congress)),), provenance=evidence)
             yield committee
             yield term
@@ -125,17 +127,14 @@ def records(rows, context, *, recording_keys=None):
         kind, type_field = meeting_type(row)
         type_evidence = (FieldEvidence(path='/meeting_type', selected=context.evidence(source, selector=type_field,
                          basis='derived', method='congress_api.meeting_type'), selection_reason='The source title explicitly identifies this meeting type.'),) if type_field == '/title' else ()
-        meeting = Meeting(id=context.ids("meeting", key), title=row.get("title") or None, congress=congress,
-                          chamber=chamber(row.get("chamber")), meeting_type=kind, committees=tuple(comms), provenance=evidence,
-                          field_evidence=type_evidence,
-                          identifiers=(Identifier(scheme="congress.gov:event", value=str(row["eventId"]), scope=f"{congress}/{chamber(row.get('chamber'))}"),))
-        yield meeting
         start = None
         try:
             start = reported_time(row.get("date"))
         except (ValueError, TypeError):
-            yield DataIssue(id=context.ids("data_issue", key + "|invalid-date"), subject=ref(source), category="unverified",
-                            summary="Meeting date could not be interpreted", detected_at=context.now, provenance=evidence)
+            start_issue = DataIssue(id=context.ids("data_issue", key + "|invalid-date"), subject=ref(source), category="unverified",
+                                    summary="Meeting date could not be interpreted", detected_at=context.now, provenance=evidence)
+        else:
+            start_issue = None
         loc = meeting_location(row.get("location"))
         status = {"Scheduled": "scheduled", "Rescheduled": "rescheduled", "Postponed": "postponed", "Canceled": "canceled", "Cancelled": "canceled", "Held": "held"}.get(row.get("meetingStatus"), "unknown")
         access, access_field = meeting_access(row)
@@ -144,6 +143,17 @@ def records(rows, context, *, recording_keys=None):
                            method='congress_api.meeting_access' if access_field == '/title' else None),
                            selection_reason='The source title explicitly describes access to the proceeding.' if access_field == '/title'
                                             else 'The source meeting type explicitly describes access to the proceeding.'),) if access_field else ()
+        # The first sitting's details are also the meeting's; the occurrence
+        # remains for continuations and for history that cites its identity.
+        meeting = Meeting(id=context.ids("meeting", key), title=row.get("title") or None, congress=congress,
+                          chamber=chamber(row.get("chamber")), meeting_type=kind, committees=tuple(comms), provenance=evidence,
+                          source_type=row.get("type") or None, status=status, source_status=row.get("meetingStatus") or None,
+                          access=access, scheduled_start=start, location=loc,
+                          field_evidence=type_evidence,
+                          identifiers=(Identifier(scheme="congress.gov:event", value=str(row["eventId"]), scope=f"{congress}/{chamber(row.get('chamber'))}"),))
+        yield meeting
+        if start_issue:
+            yield start_issue
         yield MeetingOccurrence(id=context.ids("occurrence", key + "|sitting"), meeting=ref(meeting), status=status,
                                 scheduled_start=start, location=loc, access=access, provenance=evidence, field_evidence=access_evidence)
         for i, continuation in enumerate(row.get("continuations") or []):
@@ -196,7 +206,9 @@ def records(rows, context, *, recording_keys=None):
                         dkey = (recording_keys or {}).get(source_key, dkey)
                 yield from material_records(context, ev, dkey, title=document_title(d), urls=[url] if url else [],
                                              subject=ref(meeting), role="recording" if recording else "vote_record" if cat == "vote" else cat if cat in ("transcript", "statement", "biography", "disclosure", "amendment", "questions_for_record") else "supporting",
-                                             details=RecordingDetails(medium="video", provider=provider) if recording else DocumentDetails(category=cat), identifiers=identifiers)
+                                             details=RecordingDetails(medium="video", provider=provider) if recording else DocumentDetails(category=cat), identifiers=identifiers,
+                                             document_type=None if recording or not isinstance(d.get("documentType"), str) else d["documentType"] or None,
+                                             source_document_groups=() if recording else (group,))
         for family, items in (row.get("relatedItems") or {}).items():
             for i, item in enumerate(items or []):
                 identity = related_item_identity(family, item, congress)

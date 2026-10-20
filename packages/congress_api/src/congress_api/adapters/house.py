@@ -12,6 +12,7 @@ from committee_meeting.meetings import Affiliation, Appearance, Panel, Person, R
 from congress_api.adapters.common import digest, material_records, observed_time, ref, web_url, witness_roles
 from congress_api.adapters.documents import HOUSE_DOCUMENT_CATEGORIES as DOCUMENT_CATEGORIES, category
 from congress_api.models.house import HouseParsedRecord
+from congress_api.parsers.house_documents import XML_KINDS
 
 
 def value(meta, path):
@@ -174,7 +175,11 @@ def records(state, context, *, meetings):
                 cat = "supporting"
             subject = owners.get(group.get("owning_witness_selector")) or meeting
             role = "vote_record" if cat == "vote" else cat if cat in ("amendment", "transcript", "statement", "biography", "disclosure", "questions_for_record", "notice", "agenda") else "supporting"
-            mapped = material_records(context, ev, dkey, title=group.get("description"), urls=urls, details=DocumentDetails(category=cat), subject=subject, role=role)
+            label = XML_KINDS.get(code, code) if rich.get("document_groups") is not None else None
+            origin = {"meeting_xml": "Meeting documents", "witness_xml": "Witness documents"}.get(group.get("source"))
+            mapped = material_records(context, ev, dkey, title=group.get("description"), urls=urls, details=DocumentDetails(category=cat), subject=subject, role=role,
+                                      document_type=label[:1].upper() + label[1:] if label else None,
+                                      source_document_groups=(origin,) if origin else ())
             yield from mapped
             for url in urls:
                 document_materials[url] = mapped[:2]
