@@ -117,6 +117,8 @@ def dependency_tables(rows, source_schema, *, first_order=0):
     sources, aliases, seen = [], [], set()
     for order, original in enumerate(rows, first_order):
         row = deepcopy(original)
+        if set(row) - set(source_schema.names):
+            raise ValueError('Source row fields are not declared in the application schema')
         key = index.source_identity(row)
         if key in seen:
             raise ValueError(f'Duplicate dependency source identity: {key}')
@@ -136,22 +138,30 @@ class NativeCatalogDependencies:
     pins, possibly empty for proved absence. Unknown routing must raise, rather
     than returning absence. This reader owns no latest pointer or routing engine.
     """
-    def __init__(self, *, native, source_schema, locate_source, locate_alias):
+    def __init__(self, *, native, source_schema, locate_source, locate_alias, expected_members=None, max_rows=None, max_bytes=None):
         self.native = native
         self.source_schema = source_schema
         self.locate_source = locate_source
         self.locate_alias = locate_alias
+        self.expected_members = expected_members
+        self.max_rows, self.max_bytes = max_rows, max_bytes
         self.native_rows_read = self.native_bytes_read = 0
         self._sources, self._aliases = {}, {}
         self._source_pins, self._alias_pins = set(), set()
 
     def _rows(self, pin, schema):
+        count = size = 0
         with self.native.source_batches(deepcopy(pin)) as reader:
             if not reader.schema.equals(schema, check_metadata=False):
                 raise DependencyGap('Native dependency schema differs from selected application schema')
             for batch in reader:
                 if not batch.schema.equals(schema, check_metadata=False):
                     raise DependencyGap('Native dependency batch schema differs')
+                count += len(batch)
+                size += batch.nbytes
+                if ((self.max_rows is not None and count > self.max_rows)
+                        or (self.max_bytes is not None and size > self.max_bytes)):
+                    raise DependencyGap('Selected dependency partition exceeds its row or byte budget')
                 self.native_rows_read += len(batch)
                 self.native_bytes_read += batch.nbytes
                 yield from batch.to_pylist()
@@ -222,4 +232,7 @@ class NativeCatalogDependencies:
             for value, members in pending.items():
                 self._aliases.setdefault(value, set()).update(members)
             self._alias_pins.add(pin_key)
-        return tuple(sorted(self._aliases.get(encoded, ())))
+        result = tuple(sorted(self._aliases.get(encoded, ())))
+        if self.expected_members is not None and len(result) != self.expected_members(encoded):
+            raise DependencyGap('Reverse dependency member count differs from selected directory')
+        return result

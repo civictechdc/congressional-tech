@@ -118,3 +118,42 @@ implemented and measured before this ticket can claim bounded resumable updates.
 Native tests use the shared finite local fixture limits, independently of
 production configuration. The primary checkout retains test results under
 `output/incremental-updates-20261019/catalog/closure-increment-final-tests.xml`.
+
+## Persisted routing increment
+
+`CatalogDependencyStorage` now prepares source leaves and alias member leaves
+through the shared `RoutingPages` and maintained native `run_table` API. A routed
+alias directory points to another bounded routing root for its members, so one
+large alias cannot become an oversized list inside a single stored row. Each
+native dataset name binds exact typed content; the application later selects the
+complete source/alias root pair. This path has no mutable per-partition head.
+
+The native fixture retains old and new roots, reads them with a fresh domain
+owner, preserves imported source order, and repeats the deletion with identical
+retained file hashes. No-change and identical-replacement tests perform no native
+or metadata writes. Missing reverse-directory counts, undeclared source fields,
+wrong schema/budget bases and oversized leaves refuse explicitly. Source schema
+evolution and changing partition budgets are not implemented by this increment;
+it never drops unknown fields or responds with a global rebuild.
+
+The retained local proof is
+`output/incremental-updates-20261019/catalog/routed-dependencies-1/summary.json`.
+For the same bridge deletion with 10 and 1,000 unrelated sources, a cold routing
+owner made 16 partition calls in both cases and consumed 26 versus 22 Arrow rows.
+It submitted 5 versus 4 Arrow rows. Metadata reads grew from 13 / 6,616 bytes to
+26 / 43,371 bytes as the routing depth increased. These growth measurements use
+an Arrow transport recorder and measure application lookup scope, excluding
+native execution and physical I/O costs. All source fields matched an exhaustive
+offline reference after the measured path. A separate three-source case executes
+the actual local native lifecycle and retains its workspace and metadata roots.
+No throughput improvement or production custody result is inferred from it.
+
+Reproduce with the configured native binary and a new output directory:
+
+```sh
+PYTHONPATH="$PWD/packages/congress_api/src" python docs/experiments/incremental-catalog-20261019/measure_routed.py --binary /absolute/path/docspec --output /new/routed/evidence
+```
+
+This still prepares dependency state only. Grouped source/document candidate
+integration, complete retired-component ownership proof and resumable processing
+inside a large component remain required before replacing maintained callers.
