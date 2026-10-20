@@ -200,6 +200,11 @@ class RawStorage:
                     deliveries=None, filename_version=None, change=None,
                     state_counts=dict(url_outcomes={}, urls_by_source_family={}, excluded_media_urls=0))
 
+    @property
+    def empty_identity(self):
+        """Identity of the proven empty archive under this frozen raw basis."""
+        return sha256(encoded(self._empty())).hexdigest()
+
     def _read_selector(self):
         raw = self.store.read(RAW_KEY)
         version = (getattr(self.store, 'index_etags', {}).get(RAW_KEY)
