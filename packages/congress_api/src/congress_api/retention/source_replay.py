@@ -29,10 +29,11 @@ class PreparedSourceReplay:
     working: WorkingCatalog
     before: object
     after: object
-    observations: tuple
-    old_source_ids: tuple
+    observations: object
+    old_source_ids: object
     captures: pq.ParquetFile
     trace: SourceObservationTrace
+    metadata: WorkingCatalog
 
     def sources(self):
         return self.working.mapping('sources').values()
@@ -40,6 +41,7 @@ class PreparedSourceReplay:
     def close(self):
         self.captures.close()
         self.working.close()
+        self.metadata.close()
 
     def __enter__(self):
         return self
@@ -58,12 +60,35 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
     """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
+    metadata = WorkingCatalog(directory / 'scope-keys.sqlite')
+    try:
+        result = _prepare(store, snapshot=snapshot, changes=changes, observations=observations,
+            root=root, directory=directory, read_body=read_body, seeds=seeds,
+            changed_dependencies=changed_dependencies, metadata=metadata)
+        if result is None:
+            metadata.close()
+        return result
+    except BaseException:
+        metadata.close()
+        raise
+
+
+def _names(metadata, name, values):
+    result = metadata.mapping(name)
+    result.clear()
+    for value in values:
+        result[value] = True
+    return result
+
+
+def _prepare(store, *, snapshot, changes, observations, root, directory, read_body, seeds,
+             changed_dependencies, metadata):
     inputs = SourceCaptureInputs(store)
     with closing(WorkingCatalog(directory / 'incoming.sqlite')) as work:
         trace = SourceObservationTrace(work)
         incoming = _capture_file(directory / 'incoming.parquet',
             (table for change in changes for table in inputs.changed(snapshot, change, trace)))
-        changed = tuple(trace.observations())
+        changed = _names(metadata, 'changed_observations', trace.observations())
         if not changed and not changed_dependencies:
             incoming.close()
             return None
@@ -71,8 +96,8 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
             trace.replay(incoming, store.read, read_body, seeds=seeds, retained_capture_inputs=True)
         candidate = observations.prepare(root, trace)
     with closing(WorkingCatalog(directory / 'closure-initial.sqlite')) as work:
-        closed = tuple(observations.affected(root, candidate, changed, working=work,
-                                            changed_dependencies=changed_dependencies))
+        closed = _names(metadata, 'closed_0', observations.affected(root, candidate, changed, working=work,
+            changed_dependencies=changed_dependencies))
     iteration = 0
     while True:
         work = WorkingCatalog(directory / f'replay-{iteration}.sqlite')
@@ -85,17 +110,21 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
             trace.replay(captures, store.read, read_body, seeds=seeds, retained_capture_inputs=True)
             after = observations.prepare(root, trace)
             with closing(WorkingCatalog(directory / f'closure-{iteration}.sqlite')) as closure_work:
-                complete = tuple(observations.affected(root, after, changed, working=closure_work,
-                                                       changed_dependencies=changed_dependencies))
-            if complete == closed:
-                old_sources = set()
+                complete = _names(metadata, f'closed_{(iteration + 1) % 2}',
+                    observations.affected(root, after, changed, working=closure_work,
+                                          changed_dependencies=changed_dependencies))
+            if len(complete) == len(closed) and all(value in complete for value in closed):
+                old_sources = metadata.mapping('old_source_ids')
+                old_sources.clear()
                 for observation in closed:
                     for edge in observations.members.values(root, observation):
                         dependency, access = json.loads(edge)
                         kind, value = json.loads(dependency[len('dependency:'):])
                         if kind == 'source' and access == 'write':
-                            old_sources.add(value)
-                return PreparedSourceReplay(work, root, after, closed, tuple(sorted(old_sources)), captures, trace)
+                            old_sources[value] = True
+                complete.clear()
+                changed.clear()
+                return PreparedSourceReplay(work, root, after, closed, old_sources, captures, trace, metadata)
             work.close()
             captures.close()
             closed, candidate = complete, after

@@ -42,5 +42,8 @@ def test_complete_receipt_replay_spools_capture_payloads_without_concatenating_a
     with prepare_source_replay(store, snapshot=selected, changes=selected.changes_since(empty.identity),
             observations=owner, root=None, directory=tmp_path / 'replay', read_body=read_body) as prepared:
         assert isinstance(prepared.captures, pq.ParquetFile)
+        assert not isinstance(prepared.observations, (list, tuple, set, dict))
+        assert len(prepared.observations) == 12
+        assert list(prepared.observations) == list(prepared.observations)
         assert max(len(batch) for batch in index.capture_batches(prepared.captures)) <= 2
         assert {index.source_identity(row): row for row in prepared.sources()} == expected
