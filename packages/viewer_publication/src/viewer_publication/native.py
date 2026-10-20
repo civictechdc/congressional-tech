@@ -1,7 +1,7 @@
 """Prepare native viewer output through the maintained builder and recovery policy."""
 from hashlib import sha256
 import json
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 from congress_api.retention.control_documents import bounded_control_read
 
@@ -22,7 +22,8 @@ def _read(client, publisher, path, *, kind, expected=None, digest=None):
     return raw
 
 
-def prepare_native_output(publisher, builder, client, snapshot, target, *, accepted_record, viewer_record):
+def prepare_native_output(publisher, builder, client, snapshot, target, *, accepted_record, viewer_record,
+                          recovery_only=False):
     """Reuse only a hash-verified prior release; leave selection to the caller.
 
     Local and hosted callers retain their existing input pins, accepted phase,
@@ -39,8 +40,8 @@ def prepare_native_output(publisher, builder, client, snapshot, target, *, accep
         expected_digest = pointer.get('recovery_inputs', {}).get('viewer_manifest_sha256')
         if not isinstance(expected_digest, str) or len(expected_digest) != 64:
             raise ValueError('Prior viewer release lacks its exact retained manifest digest')
-        previous_value = json.loads(_read(client, publisher, pointer['manifest'], kind='manifest',
-                                         digest=expected_digest))
+        previous_raw = _read(client, publisher, pointer['manifest'], kind='manifest', digest=expected_digest)
+        previous_value = json.loads(previous_raw)
         if (previous_value['info']['catalog_id'] != pointer['catalog_id']
                 or previous_value['source_manifest'] != pointer['source_manifest']):
             raise ValueError('Prior viewer release differs from its selected pointer')
@@ -67,10 +68,27 @@ def prepare_native_output(publisher, builder, client, snapshot, target, *, accep
     def read_asset(path):
         return _read(client, publisher, path, kind='manifest')
 
-    options = dict(previous=previous, read_asset=read_asset)
-    if prior_binding is not None:
-        options['prior_review_binding'] = prior_binding
-    manifest = builder.publish_selected(snapshot, target, **options)
+    if recovery_only:
+        # A recovery-only publication changes the sidecar, not the release it
+        # describes. Retain its exact bytes and enough proof for offline restore.
+        if previous is None or previous['source_identity'] != snapshot.identity:
+            raise ValueError('Recovery-only preparation requires the same selected native catalog')
+        from congress_api.retention.derived_files import file_identity
+        from congress_api.retention.viewer_inventory import PreparedManifest
+        from filename_native import ViewerAssets, validate_publication
+        target = Path(target)
+        assets = ViewerAssets(target, read_asset=read_asset)
+        validate_publication(assets, previous)
+        for reference in (previous['proof'], previous['source_selection']):
+            assets.put_node(assets.read_node(reference))
+        (target / 'manifest.json').write_bytes(previous_raw)
+        assets.identities['manifest.json'] = file_identity(target / 'manifest.json')
+        manifest = PreparedManifest(previous, assets.identities)
+    else:
+        options = dict(previous=previous, read_asset=read_asset)
+        if prior_binding is not None:
+            options['prior_review_binding'] = prior_binding
+        manifest = builder.publish_selected(snapshot, target, **options)
     recovery = index_catalog_recoveries(snapshot, publisher.validated_accepted(accepted_record[0]),
         previous=previous_recovery, max_ordered_bytes=64 << 20)
     publisher.require_native_recovery(recovery, manifest)

@@ -83,6 +83,36 @@ def test_same_native_selection_reuses_payloads_and_exact_recovery_without_source
     assert not list(root.rglob('*.parquet'))
 
 
+def test_recovery_only_preserves_exact_release_without_builder_or_payload_reads(tmp_path):
+    snapshot, native, remote, old, recovery, previous = first(tmp_path)
+    native.reads.clear()
+    remote.reads.clear()
+    root = tmp_path / 'recovery-only'
+    manifest, status = prepare_native_output(publisher, None, remote, snapshot, root,
+        accepted_record=ABSENT, viewer_record=previous, recovery_only=True)
+    assert manifest == old and status == recovery
+    assert (root / 'manifest.json').read_bytes() == remote.objects[publisher.PREFIX + previous[0]['manifest']]
+    assert set(manifest.identities) == {'manifest.json', old['proof']['path'], old['source_selection']['path']}
+    issue_inventory(root, manifest.identities, context={})
+    publisher.validate_prepared_output(root, manifest)
+    assert not native.reads and not list(root.rglob('*.parquet'))
+    assert len(remote.reads) == 4  # Exact manifest/status and two bounded controls.
+
+
+@pytest.mark.parametrize('missing', [False, True])
+def test_recovery_only_requires_same_native_selection_before_output(tmp_path, missing):
+    snapshot, native, remote, _, _, previous = first(tmp_path)
+    if missing:
+        previous = ABSENT
+    else:
+        snapshot.identity = dict(snapshot.identity, selector_sha256='0' * 64)
+    native.reads.clear()
+    with pytest.raises(ValueError, match='same selected native catalog'):
+        prepare_native_output(publisher, None, remote, snapshot, tmp_path / 'refused',
+            accepted_record=ABSENT, viewer_record=previous, recovery_only=True)
+    assert not native.reads and not (tmp_path / 'refused').exists()
+
+
 @pytest.mark.parametrize('which', ['manifest', 'recovery', 'source_identity'])
 def test_prior_input_corruption_refuses_before_native_reads_or_output(tmp_path, which):
     snapshot, native, remote, _, _, previous = first(tmp_path)
