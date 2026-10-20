@@ -76,14 +76,20 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     return cached(`table:${part.path}`,async()=>{
       metrics.tableLoads++; const buffer=ranged(part), metadata=await parquetMetadataAsync(buffer.file());
       if (Number(metadata.num_rows)!==part.rows) throw new Error('Parquet row count differs from its selected partition.');
-      return {buffer,metadata};
+      const fields=[];let cursor=1;
+      function skip(){const field=metadata.schema[cursor++];for(let i=0;i<(field.num_children??0);i++)skip();}
+      for(let i=0;i<(metadata.schema[0].num_children??0);i++){fields.push(metadata.schema[cursor].name);skip();}
+      return {buffer,metadata,fields};
     },signal);
   }
   async function read(part,start,end,columns,signal) {
-    const {buffer,metadata}=await table(part,signal);
+    const {buffer,metadata,fields}=await table(part,signal);
     if (columns?.length===0) return Array.from({length:end-start},()=>({}));
-    const rows=await parquetReadObjects({file:buffer.file(signal),metadata,compressors,columns,rowStart:start,rowEnd:end});
-    signal?.throwIfAborted(); metrics.decodedRows+=rows.length; return rows.map(normalize);
+    const physical=columns?.filter(name=>fields.includes(name));
+    const rows=physical?.length===0?Array.from({length:end-start},()=>({})):
+      await parquetReadObjects({file:buffer.file(signal),metadata,compressors,columns:physical,rowStart:start,rowEnd:end});
+    signal?.throwIfAborted();metrics.decodedRows+=rows.length;
+    return rows.map(row=>normalize(columns?Object.fromEntries(columns.map(name=>[name,row[name]??null])):row));
   }
   async function route(root,id,kind,signal) {
     let current=root,prefix=''; const digest=await hash(id);

@@ -261,6 +261,8 @@ class NativeSourceAssets:
     """Render only changed hash-routed source leaves through maintained helpers."""
     def __init__(self, snapshot, assets, *, policy, metrics, compression_policy=DEFAULT_COMPRESSION_POLICY):
         from congress_api.retention.partition_routing import RoutingPages
+        from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+        self.dependencies = CatalogDependencyStorage.for_snapshot(snapshot)
         self.snapshot, self.assets = snapshot, assets
         self.policy, self.metrics = policy, metrics
         self.compression = validate_compression(compression_policy)
@@ -307,24 +309,16 @@ class NativeSourceAssets:
     def render_source(self, release):
         import pyarrow as pa
         import pyarrow.parquet as pq
-        from congress_api.retention.catalog_dependencies import dependency_schema
-        from congress_api.retention.catalog_partitions import CatalogTable
         from filename_budget import bounded_batches
         from filename_json_stream import ObservationCounts
         from filename_observations import publish_observations
         from filename_details import publish_details
         schema = self.snapshot.schemas['filenames']
-        selected = CatalogTable(dependency_schema(schema), [('source-leaf', release)], native=self.snapshot.native)
-        retained, size, rows = [], 0, 0
-        for batch in selected.iter_batches():
-            size += batch.nbytes
-            rows += len(batch)
-            if size > self.max_bytes or rows > self.max_rows:
-                raise ValueError('Selected native source leaf exceeds its retained bounds')
-            retained.append(batch)
-        values = pa.Table.from_batches(retained, schema=dependency_schema(schema))
+        values = self.dependencies.read_source_leaf(self.snapshot.selection['dependency'], release)
+        if values.nbytes > self.max_bytes or len(values) > self.max_rows:
+            raise ValueError('Selected native source leaf exceeds its retained bounds')
         records = values['source_values'].combine_chunks()
-        table = pa.Table.from_arrays(records.flatten(), schema=schema)
+        table = pa.Table.from_arrays([records.field(name) for name in schema.names], schema=schema)
         if (table['source_id'].to_pylist() != values['source_id'].to_pylist()
                 or len(set(table['source_id'].to_pylist())) != len(table)):
             raise ValueError('Selected native source leaf identity differs')

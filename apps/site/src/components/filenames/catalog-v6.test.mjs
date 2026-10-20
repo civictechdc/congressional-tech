@@ -111,3 +111,22 @@ test('stable filename order follows Arrow code points, including supplementary U
   assert(compareBrowseKeys([false,'A.pdf','a'],[false,'a.pdf','b'])<0);
   assert(compareBrowseKeys([false,'a.pdf','a'],[true,'','b'])<0);
 });
+
+test('nullable schema additions preserve reused document assets and declare missing values as null',async()=>{
+  const folder=await mkdtemp(join(tmpdir(),'stable-schema-'));
+  try{
+    execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../tests/native_viewer_fixture.py',import.meta.url)),folder],
+      {env:{...process.env,FILENAME_FIXTURE_SCHEMA_ADDITION:'1'}});
+    const metrics=JSON.parse(await readFile(join(folder,'nullable-metrics.json')));
+    assert.equal(metrics.native_source_leaves_read,1);assert(metrics.source_subtrees_reused>0);
+    const reader=await createFilenameCatalog(pathToFileURL(join(folder,'native-expanded/manifest.json')),async(url,options)=>{
+      try{return await localFetch(url,options);}catch(error){if(error.code!=='ENOENT')throw error;return localFetch(String(url).replace('/native-expanded/','/native-public/'),options);}
+    });
+    const sources=JSON.parse(await readFile(join(folder,'expanded-source-records.json'))),documents=JSON.parse(await readFile(join(folder,'expanded-document-records.json')));
+    for(const source of sources){
+      assert.deepEqual(await reader.technical(source.source_id,undefined,undefined,true),source);
+      assert.deepEqual(await reader.documentRecord(source.source_id),documents.find(doc=>doc.document_id===source.document_id));
+    }
+    const matches=await reader.search({q:'new',field:'source_new_literal',scope:'all'});assert.equal(matches.total,1);
+  }finally{await rm(folder,{recursive:true,force:true});}
+});
