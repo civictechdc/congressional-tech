@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 
 import pytest
+import httpx
 
 from congress_api.retention.docspec import NativeDatasets
 
@@ -38,11 +39,27 @@ def test_configuration_is_side_effect_free_and_scopes_credentials_to_child(tmp_p
     assert native.limits == tmp_path / "limits.json"
     calls = []
 
-    def run(command, **kwargs):
-        calls.append((command, kwargs))
-        return subprocess.CompletedProcess(command, 0, stdout='{"configured":true}', stderr="")
+    class Process:
+        returncode = None
+        def poll(self):
+            return self.returncode
+        def send_signal(self, signal):
+            self.returncode = 0
+        def wait(self, **kwargs):
+            return self.returncode
 
-    monkeypatch.setattr(subprocess, "run", run)
+    def start(command, **kwargs):
+        calls.append((command, kwargs))
+        return Process()
+
+    client_class = httpx.Client
+    def client(**kwargs):
+        return client_class(**kwargs, transport=httpx.MockTransport(
+            lambda request: httpx.Response(404 if request.url.path == '/__docspec_ready__' else 200,
+                                           json={'configured': True})))
+
+    monkeypatch.setattr(subprocess, 'Popen', start)
+    monkeypatch.setattr('congress_api.retention.docspec_host.httpx.Client', client)
     assert native.latest("fixture") == {"configured": True}
     command, kwargs = calls[0]
     assert "fixture-private-value" not in repr(command)
@@ -50,6 +67,7 @@ def test_configuration_is_side_effect_free_and_scopes_credentials_to_child(tmp_p
     assert kwargs["env"]["PATH"] == original["PATH"]
     assert dict(os.environ) == original
     assert not native.workspace.exists()
+    native.close()
 
 
 def test_local_hash_does_not_receive_remote_credentials(tmp_path, monkeypatch):

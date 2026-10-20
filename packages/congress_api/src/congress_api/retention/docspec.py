@@ -1,4 +1,4 @@
-"""Thin CLI transport for maintained DocSpec source-only dataset operations.
+"""Thin persistent-host transport for maintained DocSpec source-only dataset operations.
 
 Callers supply exact native requests, stable operation identities, and partition
 routing. DocSpec owns admission, versions, completion, concurrency and recovery.
@@ -12,10 +12,16 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import threading
+import time
+import weakref
+from urllib.parse import quote
 from tempfile import TemporaryDirectory
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+
+from .docspec_host import ArrowResponse, DocSpecFailure, acquire_host
 
 
 def native_storage_schema(schema):
@@ -51,16 +57,6 @@ def native_storage_schema(schema):
     return pa.schema([field(value) for value in schema], metadata=schema.metadata)
 
 
-class DocSpecFailure(RuntimeError):
-    """The maintained CLI refused or failed; its original diagnostic is retained."""
-
-    def __init__(self, command, result):
-        self.command = tuple(command)
-        self.returncode = result.returncode
-        self.stderr = result.stderr
-        super().__init__(result.stderr.strip() or f'DocSpec exited {result.returncode}')
-
-
 class NativeDatasets:
     """Invoke the configured native owner; do not duplicate lifecycle decisions."""
 
@@ -71,6 +67,11 @@ class NativeDatasets:
         self.limits = Path(limits).resolve() if limits is not None else None
         self.timeout = timeout
         self._remote_secrets = {}
+        self._host = None
+        self._finalizer = None
+        self._closed = False
+        self._host_lock = threading.RLock()
+        self._responses = set()
         self._configuration_path = None
 
     @classmethod
@@ -134,20 +135,57 @@ class NativeDatasets:
         return tuple(dict.fromkeys(value for value in (self._configuration_path,
             Path(self.binary), self.remote, self.limits) if value is not None))
 
-    def _call(self, *args, remote=True):
+    def _command(self, *, remote=True):
         command = [self.binary, '--workspace', str(self.workspace)]
         if self.limits is not None:
             command += ['--limits', str(self.limits)]
         if remote and self.remote is not None:
             command += ['--remote', str(self.remote)]
-        command += list(map(str, args))
-        environment = ({**os.environ, **self._remote_secrets}
-                       if remote and self.remote is not None and self._remote_secrets else None)
+        return command
+
+    def _call(self, *args, remote=False):
+        """Only local file hashing needs a separate native process."""
+        if self._closed:
+            raise RuntimeError('DocSpec client is closed')
+        command = [*self._command(remote=remote), *map(str, args)]
         result = subprocess.run(command, capture_output=True, text=True,
-                                timeout=self.timeout, env=environment)
+                                timeout=self.timeout)
         if result.returncode:
             raise DocSpecFailure(command, result)
         return json.loads(result.stdout) if result.stdout.strip() else None
+
+    def _execution_host(self):
+        with self._host_lock:
+            return self._acquire_host()
+
+    def _acquire_host(self):
+        if self._closed:
+            raise RuntimeError('DocSpec client is closed')
+        if self._host is None:
+            environment = ({**os.environ, **self._remote_secrets}
+                           if self.remote is not None and self._remote_secrets else None)
+            self._host = acquire_host(self._command(), environment,
+                                      self.workspace, self.timeout)
+            self._finalizer = weakref.finalize(self, self._host.release)
+        return self._host
+
+    def close(self):
+        """Cancel this client's reads; its last owner also stops the native host."""
+        with self._host_lock:
+            self._closed = True
+            for response in tuple(self._responses):
+                response.close()
+            self._responses.clear()
+            if self._finalizer is not None:
+                self._finalizer()
+
+    def __enter__(self):
+        if self._closed:
+            raise RuntimeError('DocSpec client is closed')
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
 
     @contextmanager
     def _scratch(self):
@@ -155,18 +193,18 @@ class NativeDatasets:
         with TemporaryDirectory(prefix='request-', dir=self.workspace) as directory:
             yield Path(directory)
 
-    def _request(self, command, request):
-        with self._scratch() as directory:
-            path = directory / 'request.json'
-            path.write_text(json.dumps(request, ensure_ascii=False, separators=(',', ':'), allow_nan=False))
-            return self._call(command, path)
+    def _request(self, path, request):
+        # Match CLI JSON validation before any host startup or native work.
+        payload = json.dumps(request, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+        return self._execution_host().request('POST', path, content=payload,
+                                              headers={'content-type': 'application/json'})
 
     def hash_input(self, path):
         """Hash a local producer file without opening the configured remote host."""
         return self._call('hash', Path(path).resolve(), remote=False)
 
     def run(self, request):
-        return self._request('run', request)
+        return self._request('/run', request)
 
     def run_table(self, table, *, dataset, operation, definition):
         """Pass one caller-bounded Arrow source table to the native Run API.
@@ -184,43 +222,71 @@ class NativeDatasets:
                 input=str(source), expected_digest=digest, sql='SELECT * FROM input'))
 
     def plan(self, request):
-        return self._request('plan', request)
+        return self._request('/plan', request)
 
     def update(self, request):
-        return self._request('update', request)
+        return self._request('/updates/run', request)
 
     def plan_update(self, request):
-        return self._request('plan-update', request)
+        return self._request('/updates/plan', request)
 
     def latest(self, dataset):
-        return self._call('latest', dataset)
+        return self._execution_host().request('GET', f'/datasets/{quote(dataset, safe="")}/latest')
 
     def release(self, dataset, operation):
-        return self._call('release', dataset, operation)
+        return self._execution_host().request('GET',
+            f'/datasets/{quote(dataset, safe="")}/versions/{quote(operation, safe="")}')
+
+    def inspect(self, dataset):
+        return self._execution_host().request('GET', f'/datasets/{quote(dataset, safe="")}')
+
+    def inspect_retention(self, request):
+        return self._request('/retention/inspect', request)
+
+    def plan_removal(self, request):
+        return self._request('/retention/removal/plan', request)
 
     @contextmanager
     def source_batches(self, pin, *, schema=None):
-        """Read one exact bounded partition pin through the configured native host.
+        """Stream one exact pin, retaining HTTP custody for the reader's lifetime.
 
-        Native reading supplies the logical source fields, including nested
-        values. Callers retain any application Arrow schema metadata separately;
-        the native representation replaces application field metadata with native IDs.
-        An explicit application schema restores losslessly mapped storage types.
-        Other native types must match it exactly; arbitrary coercion is refused.
-        The temporary Arrow IPC file remains alive while the reader is open.
+        Resolve and compare the complete pin before reading; stream headers bind
+        the body to that same version and manifest. Application schema restoration
+        remains a checked cast from the lossless native storage representation.
+        Leaving early cancels the response instead of draining it to a scratch file.
+        A wall deadline is checked between network chunks; an in-flight socket
+        read can extend it by at most the configured HTTPX read timeout.
         """
-        with self._scratch() as directory:
-            release, output = directory / 'release.json', directory / 'source.arrow'
-            release.write_text(json.dumps(pin, ensure_ascii=False, separators=(',', ':'), allow_nan=False))
-            self._call('read', release, output, '--group', 'source')
-            with output.open('rb') as stream:
-                with pa.ipc.open_stream(stream) as reader:
-                    if schema is None:
-                        yield reader
-                    else:
-                        physical = native_storage_schema(schema)
-                        if not reader.schema.equals(physical, check_metadata=False):
-                            raise ValueError('Native source storage schema differs from the selected application schema')
-                        with pa.RecordBatchReader.from_batches(
-                                schema, (batch.cast(schema, safe=True) for batch in reader)) as restored:
-                            yield restored
+        dataset, version = pin['dataset']['dataset'], pin['id']
+        if self.release(dataset, version) != pin:
+            raise ValueError('Native release differs from the selected exact pin')
+        host = self._execution_host()
+        path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}/arrow/source'
+        started = time.monotonic()
+        with host.client.stream('GET', path) as response:
+            host.responses.add(response)
+            self._responses.add(response)
+            try:
+                host.check_response(response)
+                expected = {'docspec-dataset': dataset, 'docspec-version': version,
+                            'docspec-manifest-blake3': pin['manifest']['digest'],
+                            'content-type': 'application/vnd.apache.arrow.stream'}
+                if any(response.headers.get(key) != value for key, value in expected.items()):
+                    raise ValueError('Native stream differs from the selected exact pin')
+                with ArrowResponse(response, deadline=started + self.timeout) as stream, \
+                        pa.ipc.open_stream(stream) as reader:
+                    physical = native_storage_schema(schema) if schema is not None else None
+                    if physical is not None and not reader.schema.equals(physical, check_metadata=False):
+                        raise ValueError('Native source storage schema differs from the selected application schema')
+
+                    def batches():
+                        for batch in reader:
+                            yield batch if schema is None else batch.cast(schema, safe=True)
+                        stream.finish()
+
+                    with pa.RecordBatchReader.from_batches(
+                            reader.schema if schema is None else schema, batches()) as restored:
+                        yield restored
+            finally:
+                host.responses.discard(response)
+                self._responses.discard(response)
