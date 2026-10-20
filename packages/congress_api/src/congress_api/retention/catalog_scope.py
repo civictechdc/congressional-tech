@@ -119,7 +119,7 @@ def catalog_scope_requirements():
 
 def _component_pages(store, values):
     from .immutable_metadata import MetadataObjects
-    objects, pending, head, count = MetadataObjects(store, 'catalog-scope-components-v1'), [], None, 0
+    objects, pending, head, count = MetadataObjects(store, 'catalog-scope-components-v1', max_cache_entries=1), [], None, 0
     for name, reference in sorted(values, reverse=True):
         pending.append(dict(component=name, reference=reference))
         count += 1
@@ -136,7 +136,7 @@ def iterator_scope_components(store, proof, label):
     from .immutable_metadata import MetadataObjects
     if label not in {'retired', 'prepared'}:
         raise ValueError('Unknown catalog scope component set')
-    objects = MetadataObjects(store, 'catalog-scope-components-v1')
+    objects = MetadataObjects(store, 'catalog-scope-components-v1', max_cache_entries=1)
     item, count, previous = proof[label], 0, None
     current = item['head']
     while current is not None:
@@ -230,6 +230,12 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
         incoming.append((component, reference))
     if seen != set(new_members):
         raise DependencyGap('Missing prepared component for the closed source scope')
+    # Only the maintained affected-leaf preparation may determine new roots.
+    # Checking changed rows alone would allow silently dropping unrelated leaves.
+    expected = dependencies.prepare(dependency_before, replacements=prepared.source_values(),
+        deletions=removed, source_orders=prepared.source_orders)
+    if expected != dependency_after:
+        raise DependencyGap('Candidate changed unrelated or unaffected dependency routing')
     current = dependencies.selected(dependency_after)
     for row in prepared.source_values():
         key = row['source_id']

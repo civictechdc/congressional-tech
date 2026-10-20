@@ -129,6 +129,11 @@ def test_scope_proof_binds_complete_old_new_membership_and_rejects_missing_outpu
         rules=dict(grouping='maintained-v1'))
     with pytest.raises(DependencyGap, match='Missing prepared component'):
         verify_catalog_scope(store, prepared_components=[], **arguments)
+    # Candidate source rows alone cannot authorize an arbitrary routing root.
+    # Dropping the entire reverse directory used to pass the per-row checks.
+    with pytest.raises(DependencyGap, match='unaffected dependency'):
+        verify_catalog_scope(store, prepared_components=refs.items(),
+                             **{**arguments, 'dependency_after': {**changed, 'alias_root': None}})
     reference = verify_catalog_scope(store, prepared_components=refs.items(), **arguments)
     proof = read_catalog_scope(store, reference)
     assert proof['counts'] == dict(retired_source_rows=3, prepared_source_rows=2,
