@@ -83,3 +83,20 @@ def test_empty_child_insertion_and_fresh_reader_verify_exact_metadata():
     store.objects[root['key']] = b'corrupt'
     with pytest.raises(ValueError, match='identity'):
         RoutingPages(store, 'catalog-sources-v1').lookup(root, key)
+
+
+def test_metadata_reference_is_rejected_before_any_object_read():
+    from congress_api.retention.immutable_metadata import MetadataObjects
+    from test_raw_capture_pages import Store
+
+    store = Store()
+    objects = MetadataObjects(store, 'raw-state-v1', max_bytes=1024)
+    good = objects.put({'value': 'one'})
+    store.reads.clear()
+    with pytest.raises(ValueError, match='identity'):
+        objects.read({**good, 'key': 'bodies/large.gz'})
+    with pytest.raises(ValueError, match='identity'):
+        objects.read({**good, 'bytes': 1025})
+    with pytest.raises(ValueError, match='identity'):
+        objects.read({**good, 'sha256': '../not-a-digest'})
+    assert store.reads == []
