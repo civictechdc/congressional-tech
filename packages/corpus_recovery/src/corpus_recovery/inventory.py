@@ -160,7 +160,7 @@ def run(args):
         report.update(prior_evidence_sha256=args.prior_sha256)
     # State the versions expected at the next guarded dispatch, without admitting writes.
     versions = {key: client.head_object(Bucket=store.bucket, Key=key)['ETag'] for key in
-                ('indexes/captures.parquet', 'indexes/download-state.parquet', 'indexes/catalog.json',
+                ('indexes/raw.json', 'indexes/catalog.json',
                  'viewer-publications/recoveries/accepted.json')}
     args.destination.mkdir(parents=True, exist_ok=False)
     report_path = args.destination / 'remote-body-readback.json'

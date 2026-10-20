@@ -177,7 +177,11 @@ class RawStorage:
         Resource budgets remain the maintained defaults. A selected archive with
         different budgets requires explicit construction with that frozen basis.
         """
-        raw = store.read(RAW_KEY)
+        return cls.from_selection(store, native, store.read(RAW_KEY))
+
+    @classmethod
+    def from_selection(cls, store, native, raw):
+        """Construct a reader for captured exact selector bytes without rereading latest."""
         if raw is None:
             return cls(store, native)
         if len(raw) > SELECTOR_BYTES:

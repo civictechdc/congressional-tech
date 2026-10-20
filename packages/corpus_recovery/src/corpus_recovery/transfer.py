@@ -15,9 +15,10 @@ import pyarrow.compute as pc
 from corpus_recovery.assemble import assemble, index_rows
 from corpus_recovery.acknowledge import reconcile_lost_acknowledgment
 from corpus_recovery.inventory import head_body, reusable_result
-from congress_api.retention.catalog_cache import capture_digest
+from congress_api.retention.immutable_metadata import encoded
+from congress_api.retention.raw_storage import RawStorage, RawSnapshot, RAW_KEY
 from congress_api.retention.raw_archive import (
-    CAPTURE_SCHEMA, CAPTURES_KEY, STATE_KEY, body_payload, encode_table,
+    CAPTURE_SCHEMA, body_payload,
 )
 
 
@@ -44,19 +45,75 @@ def checked_put(store, key, payload, *, immutable, guard, journal):
     return remote
 
 
-def import_batch(store, *, prepared, body_paths, captures, state, source_file,
+def import_batch(store, *, prepared, body_paths, raw_storage, operation, source_file,
                  receipt_prefix, guard, journal, save_payload, body_readback=None,
-                 commit_guard=None):
-    """Retain bodies and receipts, then conditionally replace the raw index pair.
+                 commit_guard=None, base=None):
+    """Retain bodies/receipts, then select native captures and state in one CAS.
 
-Use R2Store after reading both indexes to establish conditional versions.
-save_payload must durably save each proposed index or receipt before its PUT.
-Any failure requires evidence reconciliation, not automatic restart.
-body_readback, when supplied, must have its file digest pinned by the caller.
-"""
+    The caller supplies the exact baseline and stable delivery identity. Guards
+    precede every application object write, native candidate Run, and final raw
+    selector CAS. DocSpec owns its internal object writes and completion.
+    """
     commit_guard = commit_guard or guard
-    if pc.count_distinct(state['url'], mode='all').as_py() != len(state):
-        raise ValueError('Duplicate URLs in baseline download state')
+    if raw_storage.store is not store:
+        raise ValueError('Recovery raw storage belongs to another object store')
+    if not isinstance(operation, str) or not operation:
+        raise ValueError('A stable recovery operation identity is required')
+    current = raw_storage.snapshot()
+    base = base or current
+    if base.owner is not raw_storage:
+        raise ValueError('Recovery baseline belongs to another raw owner')
+    if current.version is None:
+        raise RuntimeError('Explicit raw archive seed adoption is required before recovery import')
+    request_id = hashlib.sha256(encoded([prepared, sorted(body_paths), source_file, receipt_prefix])).hexdigest()
+    completed = current.completed_delivery(operation)
+    if completed is not None:
+        if completed['request_id'] != request_id:
+            raise ValueError('Completed recovery operation has a different request')
+        result = dict(completed['result'], already_applied=True, raw_identity=current.identity)
+        save_payload(RAW_KEY, encoded(current.manifest))
+        journal('raw_selection_reused', dict(key=RAW_KEY, sha256=current.identity))
+        journal('import_complete', result)
+        return result
+    if base.version != current.version or base.identity != current.identity:
+        raise ValueError('Stale recovery raw selection')
+
+    class GuardedStore:
+        def __getattr__(self, name):
+            return getattr(store, name)
+
+        def put(self, key, payload, *, immutable=False):
+            save_payload(key, payload)
+            return checked_put(store, key, payload, immutable=immutable,
+                               guard=guard, journal=journal)
+
+        def put_index_selector(self, key, payload, *, expected_version):
+            save_payload(key, payload)
+            commit_guard()
+            journal('write_intent', dict(key=key, sha256=hashlib.sha256(payload).hexdigest()))
+            reconcile_lost_acknowledgment(
+                lambda: store.put_index_selector(key, payload, expected_version=expected_version),
+                lambda: store.read(key), payload)
+            if store.read(key) != payload:
+                raise ValueError('Raw selector readback mismatch')
+            journal('write_verified', dict(key=key))
+
+    class GuardedNative:
+        def __getattr__(self, name):
+            return getattr(raw_storage.native, name)
+
+        def run_table(self, table, **kwargs):
+            guard()
+            journal('native_candidate_intent', dict(dataset=kwargs['dataset'], rows=len(table)))
+            pin = raw_storage.native.run_table(table, **kwargs)
+            journal('native_candidate_complete', dict(release=pin))
+            return pin
+
+    selected_owner = RawStorage(GuardedStore(), GuardedNative(),
+        max_state_rows=raw_storage.max_state_rows, max_state_bytes=raw_storage.max_state_bytes,
+        max_capture_rows=raw_storage.max_capture_rows, max_capture_bytes=raw_storage.max_capture_bytes,
+        state_schema=raw_storage.state_schema)
+    selected_base = RawSnapshot(selected_owner, base.manifest, base.version)
     # Reject changed local bytes before the first remote write.
     for key, path in body_paths.items():
         with Path(path).open('rb') as stream:
@@ -88,10 +145,7 @@ body_readback, when supplied, must have its file digest pinned by the caller.
             raise ValueError(f'Retained body conflict: {key}')
         info.update(stored_sha256=hashlib.sha256(remote).hexdigest(), stored_bytes=len(remote))
         body_info[key] = info
-    requested_urls = pa.array(list(dict.fromkeys(item['record']['url'] for item in prepared)),
-                              type=state.schema.field('url').type)
-    selected = state.filter(pc.is_in(state['url'], value_set=requested_urls))
-    original_states = {r['url']: r for r in selected.to_pylist()}
+    original_states = base.states_for(item['record']['url'] for item in prepared)
     receipts, states = assemble(prepared, original_states, body_info, source_file)
     additions = []
     for offset in range(0, len(receipts), 100):
@@ -102,28 +156,21 @@ body_readback, when supplied, must have its file digest pinned by the caller.
         save_payload(key, payload)
         checked_put(store, key, payload, immutable=True, guard=guard, journal=journal)
         additions.extend(index_rows(batch, key))
-    combined = pa.concat_tables([captures, pa.Table.from_pylist(additions, schema=CAPTURE_SCHEMA)])
     if any(states[u] != old for u, old in original_states.items()):
         raise ValueError('Existing download state changed')
-    metadata = dict(state.schema.metadata or {})
-    metadata.update({b'capture_rows': str(len(combined)).encode(),
-                     b'capture_digest': capture_digest(combined).encode()})
-    appended = pa.Table.from_pylist(list(states.added.values()), schema=state.schema)
-    newstate = pa.concat_tables([state, appended]).replace_schema_metadata(metadata)
-    payloads = {STATE_KEY: encode_table(newstate), CAPTURES_KEY: encode_table(combined)}
-    for key, payload in payloads.items():
-        save_payload(key, payload)
-    for key, payload in payloads.items():
-        checked_put(store, key, payload, immutable=False, guard=commit_guard, journal=journal)
-    # Recheck the pair after both updates; never report completion for a partial pair.
-    commit_guard()
-    if any(store.read(key) != payload for key, payload in payloads.items()):
-        raise ValueError('Final raw index pair mismatch')
-    result = dict(complete=True, receipt_records=len(receipts), added_capture_rows=len(additions),
+    result = dict(complete=True, operation=operation, receipt_records=len(receipts), added_capture_rows=len(additions),
                   distinct_bodies=len(body_info), body_objects_missing_before_put=uploaded,
-                  previous_capture_rows=len(captures), capture_rows=len(combined),
-                  existing_download_states_preserved=len(state),
-                  new_pending_states=len(states.added),
+                  previous_capture_rows=base.manifest['captures']['rows'],
+                  capture_rows=base.manifest['captures']['rows'] + len(additions),
+                  existing_download_states_preserved=base.manifest['state']['rows'],
+                  new_pending_states=len(states.added), already_applied=False,
                   catalog_and_viewer_publication_complete=False)
+    candidate = selected_owner.prepare(selected_base, operation=operation,
+        captures=pa.Table.from_pylist(additions, schema=CAPTURE_SCHEMA),
+        states=pa.Table.from_pylist(list(states.added.values()), schema=raw_storage.state_schema),
+        indexed_receipts={row['receipt_key'] for row in additions},
+        request_id=request_id, delivery_result=result)
+    selected = selected_owner.publish(candidate)
+    result['raw_identity'] = selected.identity
     journal('import_complete', result)
     return result

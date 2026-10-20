@@ -10,13 +10,13 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
-import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
 from corpus_recovery.guards import RecoveryGuard, active_cloud_writers
 from corpus_recovery.inventory import compare_loaded_digest, compare_source_preparation
 from corpus_recovery.transfer import import_batch
-from congress_api.retention.raw_archive import CAPTURES_KEY, STATE_KEY, decode_table
+from congress_api.retention.raw_storage import RawStorage, RAW_KEY
+from congress_api.retention.docspec import NativeDatasets
 from congress_api.retention.r2 import R2Store
 
 
@@ -58,7 +58,7 @@ def verify_batch(batch, readiness_path=None):
     return expected
 
 
-def run(args):
+def run(args, *, native=None):
     batch = args.batch.resolve()
     readiness_path = (getattr(args, 'readiness', None) or batch / 'import-readiness.json').resolve()
     expected = verify_batch(batch, readiness_path)
@@ -74,6 +74,10 @@ def run(args):
     cloud_clear()
     if not args.execute:
         return dict(preflight=True, inputs_verified=True, cloud_clear=True, writes=False)
+    if native is None:
+        if getattr(args, 'native_config', None) is None:
+            raise ValueError('--native-config is required for an executing recovery import')
+        native = NativeDatasets.from_config(args.native_config)
     control_root = (getattr(args, 'control_root', None) or ROOT).resolve()
     lock_path = control_root / '.cache/local-recovery.lock'
     lock = lock_path.open('a')
@@ -92,6 +96,8 @@ def run(args):
             os.fsync(stream.fileno())
 
     def journal(event, value):
+        if event == 'write_verified' and value.get('key') == RAW_KEY:
+            protected_versions[RAW_KEY] = store.index_etags[RAW_KEY]
         with (destination / 'events.jsonl').open('a') as stream:
             stream.write(json.dumps(dict(at=datetime.now(timezone.utc).isoformat(),
                                          event=event, value=value)) + '\n')
@@ -130,7 +136,7 @@ def run(args):
                           request_checksum_calculation='when_required', response_checksum_validation='when_required'))
         store = R2Store(client, 'congressional-tech-raw')
         baseline = {}
-        for key in [CAPTURES_KEY, STATE_KEY, 'indexes/catalog.json',
+        for key in [RAW_KEY, 'indexes/catalog.json',
                     'viewer-publications/recoveries/accepted.json']:
             response = client.get_object(Bucket=store.bucket, Key=key)
             with response['Body'] as stream:
@@ -143,7 +149,12 @@ def run(args):
                 store.index_etags[key] = response['ETag']
         if any(baseline.get(key) != value for key, value in readiness.get('expected_remote_versions', {}).items()):
             raise RuntimeError('Reconciliation baseline changed; reconcile again')
+        protected_versions = dict(baseline)
         journal('baseline', baseline)
+        raw_storage = RawStorage.open(store, native)
+        raw_base = raw_storage.snapshot()
+        if raw_base.version != baseline[RAW_KEY]:
+            raise RuntimeError('Raw selection changed while capturing recovery baseline')
 
         def local_check():
             if os.getppid() != parent or shutil.disk_usage(destination).free < 12 * 1024**3:
@@ -154,8 +165,7 @@ def run(args):
                 raise RuntimeError('Recovery lock file was replaced')
 
         def protected_check():
-            for key, version in baseline.items():
-                expected_version = store.index_etags.get(key, version)
+            for key, expected_version in protected_versions.items():
                 if client.head_object(Bucket=store.bucket, Key=key)['ETag'] != expected_version:
                     raise RuntimeError(f'Protected input changed: {key}')
 
@@ -165,13 +175,13 @@ def run(args):
         inventory = json.loads((batch / 'bodies.json').read_text())
         prepared = json.loads((batch / 'prepared-source-records.json').read_text())
         prepared += json.loads((batch / 'zip-receipts.json').read_text())
-        run_id = 'corpus-recovery-' + uuid.uuid4().hex
+        # The sealed batch owns delivery identity, even across process restarts.
+        run_id = 'corpus-recovery-' + digest(batch / 'manifest.json')
         result = import_batch(store, prepared=prepared,
             body_paths={key: info['path'] for key, info in inventory.items()},
-            captures=decode_table((destination / 'payloads/baseline' / CAPTURES_KEY).read_bytes()),
-            state=decode_table((destination / 'payloads/baseline' / STATE_KEY).read_bytes()),
+            raw_storage=raw_storage, base=raw_base, operation=run_id,
             source_file='ci/' + run_id,
-            receipt_prefix='receipts/documents/' + datetime.now(timezone.utc).date().isoformat() + '/' + run_id,
+            receipt_prefix='receipts/documents/import/' + run_id,
             guard=guard.check, commit_guard=guard.shared_commit, body_readback=body_readback,
             journal=journal, save_payload=save_payload)
         guard.boundary()
@@ -194,5 +204,6 @@ if __name__ == '__main__':
     parser.add_argument('--config', type=Path, default=ROOT / '.cache/r2-admin/rclone.conf')
     parser.add_argument('--connect-timeout', type=int, choices=range(15, 181), default=15,
                         help='Socket connection/write timeout for retained body uploads (seconds).')
+    parser.add_argument('--native-config', type=Path, help='Explicit configured native runtime; no default namespace.')
     parser.add_argument('--execute', action='store_true')
     print(json.dumps(run(parser.parse_args()), indent=2))
