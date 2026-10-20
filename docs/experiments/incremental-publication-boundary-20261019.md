@@ -1,10 +1,36 @@
 # Incremental catalog publication boundary
 
-`ct-v5kb` remains unimplemented. The bounded local DocSpec proof does not yet
+`ct-v5kb` remains incomplete. The bounded local DocSpec proof does not yet
 provide qualified transport and custody for the existing R2 catalog publication
 path. The current conditional selector and every runtime reader remain unchanged.
 This note preserves a reproducible failing acceptance case and the affected
 consumer inventory; it does not claim production adoption or incremental delivery.
+
+## Candidate partition reader
+
+`retention/catalog_partitions.py:CatalogTable` now reads exact selected
+source-only native pins through the shared `NativeDatasets` adapter. It accepts
+the original application Arrow schema, checks logical field types and
+nullability before restoring that schema's metadata, and verifies each consumed
+partition's row count. Requested partition/column scopes must name distinct
+selected values; unknown scopes refuse before payload reads. It does not resolve
+native latest heads, approve source/document references or select publication.
+
+Twelve focused tests passed, including a real local native source build/read,
+exact nested values/schema metadata, skipped unrelated partitions, scope
+refusals, schema/nullability mismatch and row-count mismatch. Together with the
+29 existing publication/pair/consumer checks, 41 tests passed in 2.14 seconds.
+The receipt is `publication/reader-core-final.xml`. The two diagnostic acceptance
+failures for value fidelity and old-snapshot preservation were also exercised by
+focused fault injection; `publication/review-correction-verification.json`
+records their rejection. An earlier injection targeted the wrong temporary path;
+its failed assertion remains in the local evidence directory.
+
+The candidate reader follows the selector's partition order and the native
+stream's row order inside each partition. Native updates do not establish stable
+application row offsets. Catalog computation and viewer preparation must retain
+explicit ordering before deriving mappings. No maintained consumer has switched
+to this candidate API, and no v2 publication selector has been introduced.
 
 ## Measured current behavior
 
