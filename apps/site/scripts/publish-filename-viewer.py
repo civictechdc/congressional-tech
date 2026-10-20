@@ -202,6 +202,17 @@ def publish(root, target, modified=None, *, validation=None, review_identities=r
         raise
 
 
+def publish_selected(snapshot, target, *, previous=None, read_asset=None,
+                     review_identities=review_binding.IDENTITIES,
+                     decoded_policy=DEFAULT_DECODED_POLICY, stage_timings=None,
+                     stage_event=None, memory_metrics=None):
+    """Prepare the maintained stable viewer directly from exact native tables."""
+    from filename_native import publish_selected as prepare
+    return prepare(snapshot, target, viewer=viewer, previous=previous, read_asset=read_asset,
+        review_identities=review_identities, decoded_policy=decoded_policy,
+        stage_timings=stage_timings, stage_event=stage_event, memory_metrics=memory_metrics)
+
+
 def _publish(root, target, modified, *, validation, review_identities, compression_policy, stage_timings, stage_event, owned, decoded_policy, memory_metrics):
     target = Path(target)
     if target.exists() and (not target.is_dir() or target.is_symlink() or any(target.iterdir())):
