@@ -72,6 +72,50 @@ class Provenance(Model):
             raise ValueError("derived/inferred values require a named, versioned method")
         return self
 
+    @classmethod
+    def reported(
+        cls,
+        source_id: str | SourceRecord | Ref[Literal["source_record"]],
+        selector: str | None = None,
+        *,
+        selector_type: Literal["json_pointer", "xpath", "css", "row_key", "page", "time", "text"] | None = None,
+        explanation: str | None = None,
+    ) -> Provenance:
+        source_ref = (
+            source_id if isinstance(source_id, Ref)
+            else Ref(kind="source_record", id=source_id.id if isinstance(source_id, SourceRecord) else source_id)
+        )
+        sel_type = selector_type or ("json_pointer" if selector else None)
+        return cls(
+            citations=(Citation(source=source_ref, selector_type=sel_type, selector=selector),),
+            basis="reported",
+            explanation=explanation,
+        )
+
+    @classmethod
+    def derived(
+        cls,
+        source_id: str | SourceRecord | Ref[Literal["source_record"]],
+        method_name: str,
+        version: str = "1",
+        *,
+        selector: str | None = None,
+        selector_type: Literal["json_pointer", "xpath", "css", "row_key", "page", "time", "text"] | None = None,
+        basis: Literal["derived", "inferred"] = "derived",
+        explanation: str | None = None,
+    ) -> Provenance:
+        source_ref = (
+            source_id if isinstance(source_id, Ref)
+            else Ref(kind="source_record", id=source_id.id if isinstance(source_id, SourceRecord) else source_id)
+        )
+        sel_type = selector_type or ("json_pointer" if selector else None)
+        return cls(
+            citations=(Citation(source=source_ref, selector_type=sel_type, selector=selector),),
+            basis=basis,
+            method=Method(name=method_name, version=version),
+            explanation=explanation,
+        )
+
 
 class AlternativeValue(Model):
     value: JsonValue

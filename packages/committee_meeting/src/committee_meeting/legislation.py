@@ -58,29 +58,6 @@ class AmendmentGroup(Record):
     members: tuple[Ref[Literal["amendment"]], ...] = ()
 
 
-class VoteTally(Model):
-    """Absent counts stay unknown; no implicit zero or assumed full roll call."""
-
-    yeas: Count | None = None
-    nays: Count | None = None
-    present: Count | None = None
-    not_voting: Count | None = None
-
-
-class Ballot(Model):
-    person: Ref[Literal["person"]] | None = None
-    recorded_name: Text | None = None
-    choice: Literal["yea", "nay", "present", "not_voting", "other", "unknown"] = "unknown"
-    raw_choice: str | None = None
-    provenance: Provenance
-
-    @model_validator(mode="after")
-    def identified_or_named(self):
-        if self.person is None and self.recorded_name is None:
-            raise ValueError("a ballot needs a person or recorded name")
-        return self
-
-
 class Vote(Record):
     """A recorded committee action; a vote attachment need not include a tally."""
 
@@ -94,5 +71,5 @@ class Vote(Record):
     method: Literal["roll_call", "voice", "unanimous_consent", "division", "other", "unknown"] = "unknown"
     outcome: Literal["agreed", "rejected", "tied", "other", "unknown"] = "unknown"
     held_at: ReportedTime | None = None
-    tally: VoteTally | None = None
-    ballots: tuple[Ballot, ...] = ()
+    tally: dict[str, Count] | None = None
+    ballots: tuple[dict[str, str], ...] = ()

@@ -68,11 +68,18 @@ relationships. A document's existence does not establish its associations.
 A full committee and subcommittee can both convene a meeting. Parent committee
 references are scoped to the same Congress. A term represents one committee in
 one Congress; selected metadata and its source observations may change during
-that term. This draft does not build a complete historical membership directory. Records
-and fields such as `CommitteeRelation`, `CommitteeMembership`, `Organization`,
-`CommitteeChannel`, `MeetingRelation`, `SpeakerAttribution`, `VoteTally`,
-`Ballot`, `MaterialLink.extent` and `Representation.xml_root` stay in the schema
-until a source states them.
+that term. `CommitteeTerm.committee_code` and `committee_level` carry the
+Congress.gov system code and whether that code is a full committee or a
+subcommittee. This draft does not build a complete historical membership directory.
+
+A single-sitting meeting carries its status, access, schedule and location
+directly. `MeetingOccurrence` remains when a proceeding has another sitting or
+when an existing export cites that sitting's identity. `Material.files` is the
+browser copy of the material's representations, including a viewer-data saved
+copy (`saved_copy_sha256`, `saved_filename`). `document_type` and
+`source_document_groups` are the publisher label and collection. Links,
+versions and representations stay in the catalog because their identities and
+provenance are cited independently.
 
 A rescheduled notice changes the scheduled time of the same occurrence unless
 evidence identifies a distinct sitting. Keep earlier observations; do not count

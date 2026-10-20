@@ -12,11 +12,16 @@ class Committee(Record):
 
 class CommitteeTerm(Record):
     kind: Literal["committee_term"] = "committee_term"
-    committee: Ref[Literal["committee"]]
+    committee: Ref[Literal["committee"]] | None = None
     congress: PositiveInt
     name: Text | None = None
     chamber: Chamber
-    committee_type: Literal["standing", "select", "special", "joint", "subcommittee", "commission_or_caucus", "task_force", "other", "unknown"] = "unknown"
+    committee_code: Text | None = None
+    committee_level: Literal["full", "subcommittee", "unknown"] = "unknown"
+    committee_type: Literal[
+        "standing", "select", "special", "joint", "subcommittee",
+        "commission_or_caucus", "task_force", "other", "unknown",
+    ] = "unknown"
     source_committee_type: Text | None = None
     parent: Ref[Literal["committee_term"]] | None = None
     active: DateRange | None = None
@@ -24,35 +29,8 @@ class CommitteeTerm(Record):
     website: WebUrl | None = None
 
 
-class CommitteeRelation(Record):
-    kind: Literal["committee_relation"] = "committee_relation"
-    predecessor: Ref[Literal["committee"]]
-    successor: Ref[Literal["committee"]]
-    relation: Literal["renamed", "replaced", "split", "merged"]
-    effective: DateRange | None = None
-
-
 class Channel(Record):
     kind: Literal["channel"] = "channel"
     provider: Text  # Open provider namespace, e.g. youtube or senate-isvp.
     title: str | None = None
     url: WebUrl
-
-
-class CommitteeChannel(Record):
-    kind: Literal["committee_channel"] = "committee_channel"
-    committee: Ref[Literal["committee_term"]]
-    channel: Ref[Literal["channel"]]
-    role: Literal["official", "majority", "minority", "member", "archive", "other", "unknown"] = "unknown"
-    active: DateRange | None = None
-
-
-class CommitteeMembership(Record):
-    kind: Literal["committee_membership"] = "committee_membership"
-    committee: Ref[Literal["committee_term"]]
-    person: Ref[Literal["person"]]
-    roles: tuple[Literal["chair", "ranking_member", "member", "ex_officio", "staff", "other"], ...] = ()
-    active: DateRange | None = None
-    party: str | None = None
-    state: str | None = None
-    district: str | None = None

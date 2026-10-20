@@ -1,4 +1,4 @@
-"""Proceedings, dated occurrences and participants' meeting-specific roles."""
+"""Proceedings, sitting details and participants' meeting-specific roles."""
 from typing import Literal
 
 from .common import Chamber, Count, Location, Model, PositiveInt, Ref, ReportedTime, Text
@@ -11,8 +11,21 @@ class ConveningCommittee(Model):
     provenance: Provenance
 
 
+class MeetingSitting(Model):
+    """Additional sitting/day when a proceeding spans multiple sittings."""
+
+    label: str | None = None
+    status: Literal["scheduled", "rescheduled", "postponed", "canceled", "held", "not_held", "unknown"] = "unknown"
+    access: Literal["open", "closed", "partly_closed", "unknown"] = "unknown"
+    scheduled_start: ReportedTime | None = None
+    scheduled_end: ReportedTime | None = None
+    actual_start: ReportedTime | None = None
+    actual_end: ReportedTime | None = None
+    location: Location | None = None
+
+
 class Meeting(Record):
-    """A proceeding, retaining its provider IDs even when another entry describes it."""
+    """A proceeding, retaining its provider IDs and sitting details directly."""
 
     kind: Literal["meeting"] = "meeting"
     title: Text | None = None
@@ -20,14 +33,24 @@ class Meeting(Record):
     congress_session: Literal[1, 2, 3] | None = None
     chamber: Chamber = "unknown"
     meeting_type: Literal["meeting", "hearing", "markup", "business", "briefing", "field_hearing", "roundtable", "other", "unknown"] = "unknown"
+    source_type: str | None = None
+    status: Literal["scheduled", "rescheduled", "postponed", "canceled", "held", "not_held", "unknown"] = "unknown"
+    source_status: str | None = None
+    access: Literal["open", "closed", "partly_closed", "unknown"] = "unknown"
+    scheduled_start: ReportedTime | None = None
+    scheduled_end: ReportedTime | None = None
+    actual_start: ReportedTime | None = None
+    actual_end: ReportedTime | None = None
+    location: Location | None = None
+    occurrences: tuple[MeetingSitting, ...] = ()
     committees: tuple[ConveningCommittee, ...] = ()
 
 
 class MeetingOccurrence(Record):
     """One scheduled sitting/day; changes to its schedule remain in source versions.
 
-    A rescheduled notice alone is not proof that a second sitting took place.
-    Multi-day proceedings may have several occurrences under one meeting.
+    Retained for multi-sitting or separate sitting provenance when needed; single-sitting
+    proceedings fold sitting fields directly into Meeting.
     """
 
     kind: Literal["occurrence"] = "occurrence"
@@ -40,13 +63,6 @@ class MeetingOccurrence(Record):
     actual_start: ReportedTime | None = None
     actual_end: ReportedTime | None = None
     location: Location | None = None
-
-
-class MeetingRelation(Record):
-    kind: Literal["meeting_relation"] = "meeting_relation"
-    subject: Ref[Literal["meeting"]]
-    related: Ref[Literal["meeting"]]
-    relation: Literal["same_proceeding", "continuation_of", "rescheduled_to", "related"]
 
 
 class Panel(Record):
@@ -64,11 +80,6 @@ class Person(Record):
     name: str | None = None  # An authoritative ID can be known before the name.
 
 
-class Organization(Record):
-    kind: Literal["organization"] = "organization"
-    name: Text
-
-
 class RecordedName(Model):
     display: Text
     honorific: str | None = None
@@ -80,7 +91,6 @@ class RecordedName(Model):
 
 
 class Affiliation(Model):
-    organization: Ref[Literal["organization"]] | None = None
     organization_name: str | None = None
     position: str | None = None
     on_behalf_of: str | None = None
@@ -98,9 +108,16 @@ class Appearance(Record):
     meeting: Ref[Literal["meeting"]]
     occurrence: Ref[Literal["occurrence"]] | None = None
     panel: Ref[Literal["panel"]] | None = None
+    panel_label: str | None = None
+    panel_order: Count | None = None
     person: Ref[Literal["person"]] | None = None
+    person_bioguide_id: str | None = None
     name: RecordedName
     roles: tuple[Literal["witness", "nominee", "chair", "ranking_member", "member", "staff", "clerk", "other", "unknown"], ...] = ()
     participation: Literal["listed", "invited", "present", "testified", "absent", "withdrawn", "unknown"] = "unknown"
     affiliation: Affiliation | None = None
+    position: str | None = None
+    organization_name: str | None = None
+    on_behalf_of: str | None = None
+    location: str | None = None
     order: Count | None = None

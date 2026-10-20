@@ -86,22 +86,3 @@ class Location(Model):
     country: str | None = None
     mode: Literal["in_person", "remote", "hybrid", "unknown"] = "unknown"
     access_url: WebUrl | None = None
-
-
-class Extent(Model):
-    """A portion of an exact file/stream, not interchangeable PDF/HTML pagination."""
-
-    representation: Ref[Literal["representation"]]
-    first_page: PositiveInt | None = None
-    last_page: PositiveInt | None = None
-    start_seconds: Seconds | None = None
-    end_seconds: Seconds | None = None
-    label: str | None = None  # Printed page labels, chapter or part names.
-
-    @model_validator(mode="after")
-    def ordered(self):
-        if self.last_page is not None and (self.first_page is None or self.last_page < self.first_page):
-            raise ValueError("last_page requires an earlier/equal first_page")
-        if self.end_seconds is not None and (self.start_seconds is None or self.end_seconds < self.start_seconds):
-            raise ValueError("end_seconds requires an earlier/equal start_seconds")
-        return self

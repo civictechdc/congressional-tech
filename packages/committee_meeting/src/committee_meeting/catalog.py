@@ -4,20 +4,22 @@ from typing import Annotated, Literal
 from pydantic import Field, model_validator
 
 from .assessments import Assessment
-from .committees import Channel, Committee, CommitteeChannel, CommitteeMembership, CommitteeRelation, CommitteeTerm
+from .committees import Channel, Committee, CommitteeTerm
 from .common import Model, Ref
-from .legislation import Amendment, AmendmentGroup, LegislativeItem, MeetingSubject, Vote
+from .graph import CatalogGraph, Edge
 from .issues import DataIssue
-from .materials import Material, MaterialLink, MaterialRelation, MaterialVersion, Representation, SpeakerAttribution
-from .meetings import Appearance, Meeting, MeetingOccurrence, MeetingRelation, Organization, Panel, Person
+from .legislation import Amendment, AmendmentGroup, LegislativeItem, MeetingSubject, Vote
+from .materials import Material, MaterialLink, MaterialRelation, MaterialVersion, Representation
+from .meetings import Appearance, Meeting, MeetingOccurrence, Panel, Person
 from .provenance import SourceRecord
 from .publication import SCHEMA_VERSION, SchemaVersion
 
 DomainRecord = Annotated[
-    Committee | CommitteeTerm | CommitteeRelation | Channel | CommitteeChannel | CommitteeMembership
-    | Meeting | MeetingOccurrence | MeetingRelation | Panel | Person | Organization | Appearance
-    | Material | MaterialVersion | Representation | MaterialLink | MaterialRelation | SpeakerAttribution
-    | LegislativeItem | MeetingSubject | Amendment | AmendmentGroup | Vote | Assessment | DataIssue,
+    Committee | CommitteeTerm | Channel
+    | Meeting | MeetingOccurrence | Panel | Person | Appearance
+    | Material | MaterialVersion | Representation | MaterialLink | MaterialRelation
+    | LegislativeItem | MeetingSubject | Amendment | AmendmentGroup | Vote
+    | Edge | Assessment | DataIssue,
     Field(discriminator="kind"),
 ]
 
@@ -29,6 +31,13 @@ def _references(value):
     elif isinstance(value, Model):
         for name in type(value).model_fields:
             yield from _references(getattr(value, name))
+        if isinstance(value, Material):
+            for m_id in value.meeting_ids:
+                yield Ref(kind="meeting", id=m_id)
+            for a_id in value.appearance_ids:
+                yield Ref(kind="appearance", id=a_id)
+            for c_id in value.committee_ids:
+                yield Ref(kind="committee_term", id=c_id)
     elif isinstance(value, (tuple, list)):
         for item in value:
             yield from _references(item)
@@ -58,6 +67,30 @@ class Catalog(Model):
     scope: Literal["complete"] = "complete"
     sources: tuple[SourceRecord, ...] = ()
     records: tuple[DomainRecord, ...] = ()
+
+    @property
+    def graph(self) -> CatalogGraph:
+        return CatalogGraph(self)
+
+    def neighbors(
+        self,
+        node: Ref | tuple[str, str],
+        *,
+        relation: str | None = None,
+        direction: Literal["out", "in", "both"] = "both",
+    ) -> list[Ref]:
+        return self.graph.neighbors(node, relation=relation, direction=direction)
+
+    def ancestors(
+        self,
+        node: Ref | tuple[str, str],
+        *,
+        relation: str | None = "derived_from",
+    ) -> list[Ref]:
+        return self.graph.ancestors(node, relation=relation)
+
+    def lineage(self, node: Ref | tuple[str, str]) -> list[Ref]:
+        return self.graph.lineage(node)
 
     @model_validator(mode="after")
     def check_graph(self):
@@ -126,14 +159,6 @@ class Catalog(Model):
                 require(previous.material == item.material, f"{item.id}: superseded version belongs to another material")
             if isinstance(item, MaterialLink) and item.version:
                 require(resolve(item.version).material == item.material, f"{item.id}: linked version belongs to another material")
-                if item.extent:
-                    require(resolve(item.extent.representation).version == item.version,
-                            f"{item.id}: extent file belongs to another version")
-            if isinstance(item, MaterialRelation):
-                for extent, version in ((item.subject_extent, item.subject), (item.related_extent, item.related)):
-                    if extent:
-                        require(resolve(extent.representation).version == version,
-                                f"{item.id}: extent file belongs to another version")
             if isinstance(item, Amendment) and item.target and item.target.kind == "amendment":
                 require(resolve(item.target).meeting == item.meeting, f"{item.id}: target amendment belongs to another meeting")
             if isinstance(item, AmendmentGroup):
@@ -147,15 +172,12 @@ class Catalog(Model):
                             f"{item.id}: voting committee Congress differs")
                 if item.subject and item.subject.kind in ("amendment", "amendment_group"):
                     require(resolve(item.subject).meeting == item.meeting, f"{item.id}: vote subject belongs to another meeting")
-                people = [b.person.id for b in item.ballots if b.person]
-                require(len(people) == len(set(people)), f"{item.id}: duplicate ballot for person")
-            if isinstance(item, (MeetingRelation, MaterialRelation)):
+            if isinstance(item, MaterialRelation):
                 require(item.subject != item.related, f"{item.id}: relationship cannot target itself")
-            if isinstance(item, CommitteeRelation):
-                require(item.predecessor != item.successor, f"{item.id}: committee relationship cannot target itself")
+            if isinstance(item, Edge):
+                require(item.source != item.target, f"{item.id}: relationship cannot target itself")
 
-        # Parent/revision/amendment chains must be finite. Uncertain equivalence
-        # relations are deliberately not interpreted as transitive identity merges.
+        # Parent/revision/amendment chains must be finite.
         for cls, attribute in ((CommitteeTerm, "parent"), (MaterialVersion, "supersedes"), (Amendment, "target")):
             completed = set()
             for item in self.records:

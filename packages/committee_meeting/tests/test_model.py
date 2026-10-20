@@ -7,8 +7,8 @@ import xml.etree.ElementTree as ET
 
 from pydantic import ValidationError
 
-from committee_meeting import Catalog, CoverageMetric, PublicationManifest
-from committee_meeting.common import ReportedTime
+from committee_meeting import Catalog, CatalogBuilder, CoverageMetric, MaterialFile, Provenance, PublicationManifest
+from committee_meeting.common import Ref, ReportedTime
 from committee_meeting.provenance import SourceRecord
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
@@ -34,8 +34,10 @@ class ModelTests(unittest.TestCase):
         self.assertIsNone(self.row("witness-a")["person"])
         self.assertNotEqual(self.row("witness-a")["affiliation"], self.row("witness-b")["affiliation"])
 
-    def test_standalone_transcript_versions_formats_and_shared_links(self):
+    def test_standalone_transcript_embedded_files_and_shared_links(self):
         self.assertEqual(self.row("print")["details"]["category"], "transcript")
+        self.assertEqual(len(self.row("print")["files"]), 3)
+        self.assertEqual(self.row("print")["meeting_ids"], ["hearing", "markup"])
         versions = [r for r in self.data["records"] if r["kind"] == "material_version" and r["material"]["id"] == "print"]
         files = [r for r in self.data["records"] if r["kind"] == "representation" and r["version"]["id"] == "print-v2"]
         links = [r for r in self.data["records"] if r["kind"] == "material_link" and r["material"]["id"] == "print"]
@@ -70,6 +72,7 @@ class ModelTests(unittest.TestCase):
     def test_exact_urls_and_unmapped_source_fields_survive(self):
         url = "http://docs.house.gov/billsthisweek/20170710/BILLS%20-115HR2810-RCP115-23.xml"
         self.row("print-xml")["locations"][0]["url"] = url
+        self.row("print")["files"][2]["url"] = url
         self.data["sources"][0]["payload"]["unmodeled"] = {"raw-code": "NA", "future": [1, None]}
         catalog = Catalog.model_validate(self.data)
         output = json.loads(catalog.model_dump_json())
@@ -96,7 +99,6 @@ class ModelTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing source_record"):
             partial.check_graph()
         self.assertIs(partial.check_graph_with(external), partial)
-        # An issue about a source reads that stored source's fields.
         from committee_meeting.issues import DataIssue
         source = catalog.sources[0]
         issue = {"kind": "data_issue", "id": "source-issue", "subject": reference("source_record", source.id),
@@ -131,12 +133,9 @@ class ModelTests(unittest.TestCase):
         self.row("term-b")["congress"] = 118
         self.invalid("committee Congress differs")
 
-    def test_version_and_exact_file_must_belong_to_linked_material(self):
+    def test_version_must_belong_to_linked_material(self):
         self.row("print-hearing")["version"] = reference("material_version", "archive-v1")
         self.invalid("linked version belongs to another material")
-        self.row("print-hearing")["version"] = reference("material_version", "print-v2")
-        self.row("print-hearing")["extent"]["representation"] = reference("representation", "archive-player")
-        self.invalid("extent file belongs to another version")
 
     def test_cycles_in_revision_hierarchy_and_amendments_are_rejected(self):
         for id, key, value in (
@@ -190,10 +189,10 @@ class ModelTests(unittest.TestCase):
         records = schema["properties"]["records"]["items"]
         self.assertEqual(records["discriminator"]["propertyName"], "kind")
         self.assertIn("material_link", records["discriminator"]["mapping"])
+        self.assertIn("edge", records["discriminator"]["mapping"])
         self.assertFalse(schema["$defs"]["Meeting"]["additionalProperties"])
 
     def test_real_house_fixture_preserves_document_groups_and_all_format_urls(self):
-        # Retained, trimmed source fixture from main 3108a6d; no network probe.
         xml = Path(__file__).with_name("house-formats.xml").read_text()
         root = ET.fromstring(xml)
         records, expected_urls = [], []
@@ -201,25 +200,93 @@ class ModelTests(unittest.TestCase):
             evidence = {"basis": "reported", "citations": [{"source": reference("source_record", "house"),
                 "selector_type": "xpath", "selector": f"./meeting-documents/meeting-document[{index + 1}]"}]}
             id = f"document-{index}"
-            records += [
-                {"kind": "material", "id": id, "provenance": evidence, "title": document.findtext("description"),
-                 "congress": int(root.attrib["congress-num"]), "chamber": "house", "details": {"type": "document"}},
-                {"kind": "material_version", "id": id, "provenance": evidence, "material": reference("material", id)},
-            ]
-            for file_index, file in enumerate(document.findall("files/file")):
+            files = []
+            for file in document.findall("files/file"):
                 url = file.attrib["doc-url"]
                 expected_urls.append(url)
-                records.append({"kind": "representation", "id": f"{id}-{file_index}", "provenance": evidence,
-                    "version": reference("material_version", id), "format_label": file.attrib["doc-type"],
-                    "locations": [{"url": url, "role": "download"}]})
+                files.append({"url": url, "role": "download", "format_label": file.attrib["doc-type"]})
+            records.append(
+                {"kind": "material", "id": id, "provenance": evidence, "title": document.findtext("description"),
+                 "congress": int(root.attrib["congress-num"]), "chamber": "house",
+                 "details": {"type": "document"}, "files": files},
+            )
         catalog = Catalog.model_validate({"sources": [{"id": "house", "provider": "docs.house.gov",
             "identifier": {"scheme": "house-meeting", "value": root.attrib["meeting-id"]}, "payload": xml}], "records": records})
         materials = [r for r in catalog.records if r.kind == "material"]
-        files = [r for r in catalog.records if r.kind == "representation"]
+        files = [f for r in materials for f in r.files]
         self.assertEqual((len(materials), len(files)), (3, 6))
-        self.assertEqual([r.locations[0].url for r in files], expected_urls)
-        self.assertTrue(all(r.xml_root is None and r.retained is None for r in files))
+        self.assertEqual([f.url for f in files], expected_urls)
+        self.assertTrue(all(f.retained is None for f in files))
         self.assertIsNone(catalog.sources[0].retrieved_at)
+
+    def test_builder_and_graph_traversal_support_viewer_data_and_edges(self):
+        builder = CatalogBuilder(provider="docs.house.gov", input_id="snap-1")
+        src = builder.source("106245", {"eventId": "106245"}, url="https://docs.house.gov/106245.xml")
+        term = builder.committee_term(
+            "hsru00", congress=119, chamber="house", name="Committee on Rules",
+            committee_code="hsru00", committee_level="full", source=src,
+        )
+        meeting = builder.meeting(
+            "house-119-106245", title="Hearing on Rules", congress=119, chamber="house",
+            meeting_type="hearing", status="held", access="open", committees=[term], source=src,
+        )
+        witness = builder.appearance(
+            "house-119-106245-w1", meeting=meeting, name="Jane Doe",
+            position="Director", organization_name="Policy Institute", source=src,
+        )
+        sha = "a" * 64
+        mat = builder.material(
+            "house-119-106245-doc1",
+            title="Testimony of Jane Doe",
+            material_type="document",
+            category="statement",
+            document_type="Witness Statement",
+            source_document_groups=("witnessDocuments",),
+            files=[MaterialFile(
+                url="https://docs.house.gov/testimony.pdf",
+                format_label="PDF",
+                media_type="application/pdf",
+                saved_copy_sha256=sha,
+                saved_filename="testimony.pdf",
+                recovery_status="captured",
+            )],
+            meetings=[meeting],
+            appearances=[witness],
+            source=src,
+        )
+        video = builder.material(
+            "youtube-vid1",
+            title="Hearing Video",
+            material_type="recording",
+            provider="youtube",
+            files=[MaterialFile(url="https://www.youtube.com/watch?v=vid12345678", role="player")],
+            meetings=[meeting],
+            source=src,
+        )
+        transcript_mat = builder.material(
+            "transcript-vid1",
+            title="Generated Transcript",
+            material_type="text",
+            category="transcript",
+            production="automatic",
+            meetings=[meeting],
+            source=Provenance.derived(src, "gemini.transcribe", "1"),
+        )
+        builder.edge(
+            "transcript-from-video",
+            source_node=transcript_mat,
+            target_node=video,
+            relation="derived_from",
+            source=Provenance.derived(src, "gemini.transcribe", "1"),
+        )
+        catalog = builder.build()
+        self.assertIn(meeting, catalog.neighbors(mat, relation="attaches_to"))
+        self.assertIn(witness, catalog.neighbors(mat, relation="attaches_to"))
+        self.assertEqual(catalog.ancestors(transcript_mat, relation="derived_from"), [video])
+        self.assertEqual(catalog.lineage(transcript_mat), [video])
+        mat_rec = catalog.graph.resolve(mat)
+        self.assertEqual(mat_rec.files[0].saved_copy_sha256, sha)
+        self.assertEqual(mat_rec.document_type, "Witness Statement")
 
     def test_manifest_and_coverage_state_the_population_and_input_identity(self):
         manifest = {"publication_id": "example", "generated_at": "2026-09-27T12:00:00Z",
