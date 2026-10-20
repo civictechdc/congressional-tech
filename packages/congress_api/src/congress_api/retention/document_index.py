@@ -26,13 +26,13 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Mapping
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from concurrent.futures import ProcessPoolExecutor
 from hashlib import sha256
 from uuid import uuid4
 from email.message import Message
 from email.utils import collapse_rfc2231_value
-from functools import lru_cache
+from functools import lru_cache, wraps
 import gzip
 from io import BytesIO
 from itertools import groupby
@@ -1029,6 +1029,14 @@ class SourceFilters(Mapping):
         return values
 
 
+def _observed_parent(method):
+    @wraps(method)
+    def observed(self, record, receipt=None, **options):
+        with self.observation(receipt):
+            return method(self, record, receipt, **options)
+    return observed
+
+
 class DocumentSources:
     """Interpret supplied parent records; join by exact URL or scoped event ID.
 
@@ -1038,7 +1046,8 @@ class DocumentSources:
     matching supplies provenance or document identity.
     """
 
-    def __init__(self, urls=None, *, working=None):
+    def __init__(self, urls=None, *, working=None, observe=None):
+        self.observe, self._observation = observe, None
         self.working = working
         self.statistics = Counter()
         self.urls = {http_url(url) or url for url in urls} if urls is not None else None
@@ -1055,6 +1064,23 @@ class DocumentSources:
             self.meetings = working.mapping("meetings")
             self.events = working.mapping("events", set)
             self.by_url = SourceFilters(self.occurrences, self.extra_filters)
+
+    @contextmanager
+    def observation(self, receipt):
+        """Associate reads and writes without adding locators to inherited facts."""
+        previous = self._observation
+        keys = (receipt or {}).get('source_receipt_key') or []
+        lines = (receipt or {}).get('source_receipt_line') or []
+        if self.observe is not None and len(keys) == len(lines) == 1:
+            self._observation = dict(receipt_key=next(iter(keys)), receipt_line=int(next(iter(lines))))
+        try:
+            yield
+        finally:
+            self._observation = previous
+
+    def _depend(self, kind, value, access):
+        if self.observe is not None and self._observation is not None:
+            self.observe(dict(self._observation, kind=kind, value=value, access=access))
 
     def report_statistics(self):
         for name, amount in self.statistics.items():
@@ -1085,6 +1111,10 @@ class DocumentSources:
         return any(occurrence.get('source_link_url') for occurrence in self._sorted_occurrences(url))
 
     def add_url(self, url, values):
+        with self.observation(values):
+            self._add_url(url, values)
+
+    def _add_url(self, url, values):
         if isinstance(url, str):
             url = http_url(url) or url
         if not isinstance(url, str) or not url or self.urls is not None and url not in self.urls:
@@ -1120,6 +1150,7 @@ class DocumentSources:
                           if key in SOURCE_OCCURRENCE_FIELDS and items}
             if not occurrence:
                 continue
+            self._depend('url', destination, 'write')
             occurrence.setdefault("source_occurrence_scope", ["source_record"])
             # Repeated retained copies of the same observation need one exact
             # representative locator. The captures index retains every receipt.
@@ -1185,6 +1216,10 @@ class DocumentSources:
         return result
 
     def add_transfer(self, requested, final, values):
+        with self.observation(values):
+            self._add_transfer(requested, final, values)
+
+    def _add_transfer(self, requested, final, values):
         requested = (http_url(requested) or requested) if isinstance(requested, str) else requested
         final = (http_url(final) or final) if isinstance(final, str) else final
         if not all(isinstance(url, str) and url for url in (requested, final)) or requested == final:
@@ -1192,6 +1227,8 @@ class DocumentSources:
         if ('linked_page' in values.get('source_association_basis', [])
                 and any(self.collection_url(url) for url in (requested, final))):
             return
+        self._depend('url', requested, 'read')
+        self._depend('url', final, 'write')
         association = {key: sorted(items) for key, items in values.items() if items}
         edge = (final, association)
         if any(target == final and {k: v for k, v in previous.items() if not k.startswith("source_receipt_")}
@@ -1245,6 +1282,7 @@ class DocumentSources:
             result['source_occurrences'] = observations
         return result
 
+    @_observed_parent
     def add_link(self, link, receipt=None):
         """Read a native seed or discovered link retained by recurring capture."""
         for occurrence in link.get('publisher_occurrences') or []:
@@ -1327,6 +1365,9 @@ class DocumentSources:
                 source_association_basis=link['url_repair'], source_associated_url=original)})
 
     def event_context(self, event, chamber=None, congress=None):
+        # Absence and ambiguity are dependencies too: later meeting writes can
+        # change either result. Broad event IDs cover scoped and unscoped reads.
+        self._depend('event', str(event), 'read')
         keys = self.events.get(str(event), set())
         keys = [
             k
@@ -1347,7 +1388,8 @@ class DocumentSources:
                 congresses = occurrence.get('source_congress') or []
                 if len(events) != 1 or len(chambers) != 1 or len(congresses) > 1:
                     continue
-                meeting = self.event_context(events[0], chambers[0], congresses[0] if congresses else None)
+                with self.observation(occurrence):
+                    meeting = self.event_context(events[0], chambers[0], congresses[0] if congresses else None)
                 if not meeting:
                     continue
                 expanded = dict(occurrence)
@@ -1358,6 +1400,7 @@ class DocumentSources:
                 if expanded != occurrence:
                     self.add_url(url, expanded)
 
+    @_observed_parent
     def add_meeting(self, record, receipt=None):
         if not isinstance(record, dict):
             return
@@ -1392,6 +1435,7 @@ class DocumentSources:
                         source_committee_url=committee.get("url"),
                     ),
                 )
+        self._depend('event', key[2], 'write')
         events = self.events[key[2]]
         events.add(key)
         self.events[key[2]] = events
@@ -1419,12 +1463,14 @@ class DocumentSources:
                     )
                     self.add_url(document.get("url"), context)
 
+    @_observed_parent
     def add_senate(self, state, receipt=None, *, read_body=None):
         from congress_api.parsers.senate import parsed
         from congress_api.parsers.senate_page import SITE
         self._add_committee_pages(state, receipt, read_body=read_body, parse_page=lambda raw, url: parsed(raw.decode("utf-8", "replace"), url),
             publishers={host: [code] for code, host in SITE.items()}, chamber='senate')
 
+    @_observed_parent
     def add_house_sites(self, state, receipt=None, *, read_body=None):
         from congress_api.parsers.committee_pages import parse_event_page
         publishers = {host: sorted({row['code'] for row in site.get('committees', [])})
@@ -1530,6 +1576,7 @@ class DocumentSources:
                             self.add_url(href, {**values, "source_link_href": {href},
                                                "source_resolved_url": {document_url}})
 
+    @_observed_parent
     def add_house(self, state, receipt=None):
         """Retain saved House parser labels separately from literal XML metadata."""
         if not isinstance(state, dict):
@@ -1548,6 +1595,7 @@ class DocumentSources:
                     source_document_type_basis="house_parser_inference" if kind else None)})
             self.add_house_evidence(page.get("evidence") or {}, values)
 
+    @_observed_parent
     def add_house_evidence(self, evidence, receipt=None):
         """Read the existing House evidence model without flattening file ownership."""
         witnesses = {w.get("selector"): w for w in evidence.get("witness_observations") or []}
@@ -1571,6 +1619,7 @@ class DocumentSources:
                     source_document_added_at=attributes.get("add-date"),
                     source_document_published_at=attributes.get("publish-date"))})
 
+    @_observed_parent
     def add_inventory(self, record, receipt=None):
         if not isinstance(record, dict) or not isinstance(
             record.get("observations"), list
@@ -1638,6 +1687,7 @@ class DocumentSources:
                     self.add_url(url, {**context, **context_values(source_document_type=kind,
                                                                   source_document_type_basis=basis)})
 
+    @_observed_parent
     def add_redirect(self, record, receipt=None):
         """Transfer observed relationships, including failed responses, not identity."""
         if not isinstance(record, dict):
@@ -1648,6 +1698,7 @@ class DocumentSources:
             self.add_transfer(requested, final, {**(receipt or {}), **context_values(
                 source_association_basis="publisher_redirect", source_associated_url=requested)})
 
+    @_observed_parent
     def add_associations(self, record, receipt=None):
         """Retain collector recovery lineage without calling it a redirect."""
         if not isinstance(record, dict):
@@ -1776,8 +1827,11 @@ def add_retained_house_documents(context, captures, read_body):
         except (ValueError, ParseError):
             continue
         event = root.get("meeting-id", "").removeprefix("HMKP")
+        with context.observation(context_values(source_receipt_key=row.get('receipt_key'),
+                                                source_receipt_line=row.get('receipt_line'))):
+            meeting = context.event_context(event, "house")
         values = {**context_values(source_meeting_id=event, source_chamber="House"),
-                  **context.event_context(event, "house"), **context_values(
+                  **meeting, **context_values(
             source_page_url=url, source_original_page_url=url, source_page_sha256=sha256(body).hexdigest(),
             source_receipt_key=row.get("receipt_key"), source_receipt_line=row.get("receipt_line"))}
         context.add_house_evidence(evidence, values)
