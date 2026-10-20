@@ -31,3 +31,7 @@ Use the maintained versioned-table mechanism qualified in ct-l5q1 to select chan
 **2026-10-20T03:15:53Z**
 
 Reviewed exact-partition reader merged as 4f056c2; 9c1b965 removes quadratic partition membership checks while retaining selector order. Twelve independent core tests and two ordering cases passed. Coherent writer selection, durable semantic proof and consumer migration remain in progress; this is not a production switch. Review: output/incremental-updates-20261019/publication/reader-core-review.md.
+
+**2026-10-20T03:35:36Z**
+
+Independent review found that per-document native datasets would multiply fixed provider work across the archive. Coalesce physical storage across document components before runtime integration. Also separate current-proof admission from historical snapshot reads; old selected versions must remain readable after validator upgrades. Five focused checks passed, but this checkpoint is not approved for adoption. Review: output/incremental-updates-20261019/publication/component-proof-review.md.

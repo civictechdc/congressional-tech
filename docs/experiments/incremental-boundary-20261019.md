@@ -1,5 +1,9 @@
 # Local incremental storage boundary proof
 
+The local proof below is retained as its original capability result. A subsequent
+remote qualification passed on the existing `congressional-tech-raw` Basin
+catalog. Application migration and production adoption remain separate work.
+
 The maintained DocSpec local API can own **bounded dataset versions and completed
 changes**. This proof uses one retained GovInfo package. Its exact-base update
 preserves nested values, duplicate observations, original receipt bytes and old
@@ -173,3 +177,32 @@ receipt locator; the earlier cases remain historical development evidence.
 Sibling `capability-audit.md` and `consumer-inventory.md` record the inspected
 native limits and maintained/dynamic reader inventory. No remote mutations,
 production migration, operational rebuild, classifier change or new source ran.
+
+## Subsequent qualification on the existing R2 bucket
+
+The remote-enabled binary from the same DocSpec source revision passed the
+source-only lifecycle using the seven retained/constructed fixture rows. It
+created a version, applied a correction and deletion, read every old/new nested
+value, and recovered the completed operation from a fresh local host directory
+after the original inputs were made unavailable. Stale bases and conflicting
+requests refused. The native inspection records before and after completed
+replay were identical.
+
+All 14 selected S3 locations belonged to the isolated qualification prefix in
+`congressional-tech-raw`. A bounded complete inventory found 110 objects totaling
+487,980 bytes under that prefix. No production writer changed. Credentials remain
+in an ignored local file; no credential values belong in retained evidence.
+
+The Build took 65.03 seconds, the Update 100.72 seconds and completed replay
+6.18 seconds. These small provider observations expose fixed setup costs; they
+are not throughput measurements or evidence of a speed improvement. Production
+partitions must batch records rather than create native datasets per document
+or alias. Full-path cost, concurrency, interrupted processing and adoption
+qualification remain open.
+
+The first OAuth-based attempt failed catalog-side storage authentication and
+remains retained separately. The successful result is
+`output/incremental-updates-20261019/catalog-setup/raw-provider-2/verification-receipt.json`;
+it binds exact input, request, release, readback, inventory and command-log hashes.
+The configuration targets catalog `4df78c4c-cc22-11f1-8000-a79b86c85faf`.
+Its qualification prefix must not become a production default.
