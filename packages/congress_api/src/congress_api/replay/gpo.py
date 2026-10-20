@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 
 from congress_api.acquisition.gpo import GOVINFO_CONTENT
 from congress_api.matching.gpo_committees import merge_cached_row
+from congress_api.parsers.gpo import parse_mods_document
 from congress_api.parsers.gpo_hearings import PARSER_VERSION, parse_mods
 from congress_api.parsers.xml import MODS_NS, parse_xml
 from congress_api.retention import gpo as evidence
@@ -47,10 +48,15 @@ def replay(input_path, mods_dir, output_path, evidence_path, *, html_dir=None, r
                 continue
             data = path.read_bytes()
             root = parse_xml(data)
-            parsed = asdict(parse_mods(package, data, old['last_modified']))
+            mods_doc = parse_mods_document(data)
+            parsed = asdict(parse_mods(package, mods_doc, old['last_modified']))
             merged = merge_cached_row(old, parsed)
-            captured.update(package_id=package, parser_version=PARSER_VERSION,
-                mods=evidence.observation(data, f'{GOVINFO_CONTENT}/metadata/pkg/{package}/mods.xml', 'application/xml'))
+            captured.update(
+                package_id=package,
+                parser_version=PARSER_VERSION,
+                mods=evidence.observation(data, f'{GOVINFO_CONTENT}/metadata/pkg/{package}/mods.xml', 'application/xml'),
+                mods_document=mods_doc.record_dict(),
+            )
             transcripts = dict(captured.get('transcripts', {}))
             if html_dir:
                 for url in merged['html_urls'].split(';'):

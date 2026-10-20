@@ -252,6 +252,7 @@ def records(
             provenance=evidence,
         )
         file_metadata = json.loads(row.get('file_metadata') or '{}')
+        known_urls = set()
         for field, media_type, label in (
             ("html_url", "text/html", "HTML"),
             ("pdf_url", "application/pdf", "PDF"),
@@ -265,6 +266,7 @@ def records(
                         explanation=f"The original {field} value remains in the source row; no replacement URL was guessed.",
                     ))
                     continue
+                known_urls.add(url)
                 # Keep the original first-representation identity; additional
                 # constituent files are identified by their exact provided URL.
                 suffix = field if index == 0 else f'{field}:{url}'
@@ -277,6 +279,55 @@ def records(
                     media_type=media_type, format_label=f'{label} — {part_label}' if part_label else label,
                     provenance=context.evidence(source, selector=f"/{field + 's' if row.get(field + 's') else field}"),
                 )
+
+        upstream_rec = payload.get("upstream") if isinstance(payload.get("upstream"), Mapping) else None
+        if upstream_rec:
+            for file_idx, mfile in enumerate(upstream_rec.get("manifest_files") or ()):
+                if not isinstance(mfile, Mapping):
+                    continue
+                mime_type = (mfile.get("attributes") or {}).get("MIMETYPE") or None
+                for loc_idx, loc in enumerate(mfile.get("locations") or ()):
+                    if not isinstance(loc, Mapping):
+                        continue
+                    url = web_url(loc.get("href"))
+                    if not url or url in known_urls:
+                        continue
+                    known_urls.add(url)
+                    yield Representation(
+                        id=context.ids("representation", f"{key}:{url}"),
+                        version=version_ref,
+                        locations=(MaterialLocation(url=url, role="download"),),
+                        media_type=mime_type,
+                        provenance=context.evidence(source, selector=f"/upstream/manifest_files/{file_idx}/locations/{loc_idx}/href"),
+                    )
+            mods_doc = upstream_rec.get("mods_document")
+            if isinstance(mods_doc, Mapping):
+                scopes = [
+                    (mods_doc.get("root"), "/upstream/mods_document/root"),
+                    *(
+                        (item, f"/upstream/mods_document/related_items/{item_idx}")
+                        for item_idx, item in enumerate(mods_doc.get("related_items") or ())
+                        if isinstance(item, Mapping) and item.get("relation_type") == "constituent"
+                    ),
+                ]
+                for scope, selector_prefix in scopes:
+                    if not isinstance(scope, Mapping):
+                        continue
+                    for r_idx, rend in enumerate(scope.get("renditions") or ()):
+                        if not isinstance(rend, Mapping):
+                            continue
+                        url = web_url(rend.get("url"))
+                        if not url or url in known_urls:
+                            continue
+                        known_urls.add(url)
+                        label = rend.get("displayLabel") or rend.get("display_label") or None
+                        yield Representation(
+                            id=context.ids("representation", f"{key}:{url}"),
+                            version=version_ref,
+                            locations=(MaterialLocation(url=url, role="download"),),
+                            format_label=label,
+                            provenance=context.evidence(source, selector=f"{selector_prefix}/renditions/{r_idx}/url"),
+                        )
 
         event_id = str(row.get("event_id") or "").strip()
         for identity in _committee_keys(row, review_context):

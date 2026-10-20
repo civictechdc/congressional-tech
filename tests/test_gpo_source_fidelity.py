@@ -111,7 +111,10 @@ def test_unchanged_rows_refresh_by_parser_version_with_a_bound_and_no_transcript
     assert rows[package]['hearing_dates'] == row['hearing_dates']
     assert rows[package]['title'] == 'Reviewed title'
     assert int(rows[package]['witness_count']) == parsed(package)['witness_count']
-    assert calls == [f'https://www.govinfo.gov/metadata/pkg/{package}/mods.xml']
+    assert calls == [
+        f'https://www.govinfo.gov/metadata/pkg/{package}/mods.xml',
+        f'https://www.govinfo.gov/metadata/pkg/{package}/mets.xml',
+    ]
     observation = evidence.read(retained)[package]['mods']
     assert observation['acquisition'] == 'http' and observation['retrieved_at']
     calls.clear()

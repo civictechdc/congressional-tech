@@ -45,7 +45,12 @@ from congress_shared.resources import CONGRESS_METADATA
 from congress_shared.paths import DEFAULT_GPO_HEARINGS_FILE
 
 from congress_api.matching.gpo_committees import clean_rows, merge_cached_row
-from congress_api.models.gpo import GpoCollectionPage, GpoTranscriptDates
+from congress_api.models.gpo import (
+    GpoCollectionPage,
+    GpoListingObservation,
+    GpoTranscriptDates,
+)
+from congress_api.parsers.gpo import parse_mods_document, parse_package_manifest
 from congress_api.parsers.gpo_hearings import (
     PACKAGE_ID_REGEX,
     PARSER_VERSION,
@@ -119,10 +124,10 @@ def main(
             continue
         if int(match[1]) < min_congress:
             continue
-        listings[package['packageId']] = {
+        listings[package['packageId']] = GpoListingObservation.model_validate({
             'payload': package, 'retrieved_at': datetime.now(timezone.utc).isoformat(),
             'url': f'{GOVINFO_API}/collections/CHRG/{since}',
-        }
+        }).source_dict()
         old = existing.get(package["packageId"])
         if old is None or old["last_modified"] != package["lastModified"]:
             to_fetch[package["packageId"]] = package["lastModified"]
@@ -130,7 +135,10 @@ def main(
                     if (match := PACKAGE_ID_REGEX.match(row["package_id"]))
                     and match[2] in chambers
                     and (row.get("parser_version") != PARSER_VERSION
-                         or (evidence_path is not None and not upstream.get(row["package_id"], {}).get("mods")))
+                         or (evidence_path is not None and (
+                             not upstream.get(row["package_id"], {}).get("mods")
+                             or not upstream.get(row["package_id"], {}).get("manifest")
+                         )))
                     and int(row["congress"]) >= min_congress
                     and row["package_id"] not in to_fetch),
                    key=lambda row: (-int(row["congress"]), row["package_id"]))
@@ -164,14 +172,41 @@ def main(
             if package_id in listings:
                 captured['listing'] = listings[package_id]
             try:
-                hearing = parse_mods(package_id, mods, last_modified)
+                mods_doc = parse_mods_document(mods)
+                hearing = parse_mods(package_id, mods_doc, last_modified)
             except Exception as ex:
                 # Keep rejected response bytes without replacing the last valid
                 # MODS record or marking its CSV row freshly parsed.
                 captured['failed_mods'] = {**observation, 'error': str(ex)}
                 raise
-            captured.update(parser_version=PARSER_VERSION, mods=observation)
+            captured.update(
+                parser_version=PARSER_VERSION,
+                mods=observation,
+                mods_document=mods_doc.record_dict(),
+            )
             captured.pop('failed_mods', None)
+            if evidence_path is not None:
+                mets_url = f"{GOVINFO_CONTENT}/metadata/pkg/{package_id}/mets.xml"
+                try:
+                    mets_bytes = get_with_retry(session, mets_url).content
+                    manifest_obs = upstream_evidence.observation(
+                        mets_bytes, mets_url, "application/xml",
+                        retrieved_at=datetime.now(timezone.utc).isoformat(),
+                    )
+                    try:
+                        parsed_manifest = parse_package_manifest(mets_bytes)
+                        captured['manifest'] = manifest_obs
+                        captured['manifest_files'] = [f.source_dict() for f in parsed_manifest.files]
+                    except Exception as mets_ex:
+                        captured['manifest'] = {**manifest_obs, 'error': str(mets_ex)}
+                except Exception as mets_ex:
+                    captured['manifest'] = {
+                        **upstream_evidence.observation(
+                            b"", mets_url, "application/xml",
+                            retrieved_at=datetime.now(timezone.utc).isoformat(),
+                        ),
+                        'error': str(mets_ex),
+                    }
             captured['transcripts'] = dict(captured.get('transcripts', {}))
             old = existing.get(package_id)
             # Parser repairs must not discard transcript-derived corrections or

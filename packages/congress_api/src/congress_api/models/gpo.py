@@ -122,11 +122,18 @@ class ModsScope(SourceModel):
         return (values[0] or '').strip() if values else ''
 
 
-class ModsDocument(SourceModel):
+class ModsRecord(SourceModel):
     root: ModsScope
     related_items: list[ModsScope] = Field(default_factory=list)
     members: list[ModsMember] = Field(default_factory=list)
     witnesses: list[str] = Field(default_factory=list)
+
+    @property
+    def constituents(self) -> list[ModsScope]:
+        return [part for part in self.related_items if part.relation_type == 'constituent']
+
+
+class ModsDocument(ModsRecord):
     xml: XmlElement
     content: RawContent
 
@@ -134,9 +141,8 @@ class ModsDocument(SourceModel):
     def raw_xml(self) -> bytes:
         return self.content.body_bytes()
 
-    @property
-    def constituents(self) -> list[ModsScope]:
-        return [part for part in self.related_items if part.relation_type == 'constituent']
+    def record_dict(self) -> dict:
+        return self.model_dump(mode='json', by_alias=True, exclude_unset=True, exclude={'xml', 'content'})
 
 
 class GpoCollectionPackage(SourceModel):
@@ -173,7 +179,10 @@ class GpoEvidenceRecord(SourceModel):
     package_id: str
     parser_version: str | None = None
     mods: GpoEvidenceObservation | None = None
+    mods_document: ModsRecord | None = None
     failed_mods: GpoEvidenceObservation | None = None
+    manifest: GpoEvidenceObservation | None = None
+    manifest_files: list["MetsFile"] = Field(default_factory=list)
     transcripts: dict[str, GpoEvidenceObservation] = Field(default_factory=dict)
     listing: GpoListingObservation | None = None
 

@@ -196,3 +196,44 @@ def test_real_addendum_part_name_reaches_rendition_metadata_without_changing_tit
     assert all(f['part_name'] == 'Addendum 1' for f in supplement)
     assert all('part_name' not in f for f in primary)
     assert {f['title'] for f in files.values()} == {'OVERSIGHT OF THE CROSSFIRE HURRICANE INVESTIGATION: DAY 2'}
+
+
+def test_mets_manifest_files_and_representations_without_new_csv_columns_or_file_urls(tmp_path, monkeypatch):
+    from congress_api.acquisition import gpo as fetch
+    from congress_api.adapters import gpo as gpo_adapter
+    from congress_api.retention.gpo import read_csv as fetch_read_csv, write_csv as fetch_write_csv
+    from test_explorer_material_adapters import context
+
+    package = 'CHRG-116hhrg43625'
+    mods_bytes = (FIXTURES / 'CHRG-113hhrg21122.xml').read_bytes()
+    mets_bytes = (FIXTURES / 'package_manifests' / f'{package}-dip.xml').read_bytes()
+    row = asdict(fetch_parse_mods(package, mods_bytes, '2026-09-01T00:00:00Z'))
+    row.update(parser_version='', text_read='yes')
+    csv_path, evidence_path = tmp_path / 'rows.csv', tmp_path / 'evidence.jsonl.gz'
+    fetch_write_csv({package: row}, csv_path)
+    original_columns = list(fetch_read_csv(csv_path)[package].keys())
+
+    def get(session, url):
+        if url.endswith('/mets.xml'):
+            return SimpleNamespace(content=mets_bytes)
+        return SimpleNamespace(content=mods_bytes)
+
+    monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
+    monkeypatch.setattr(fetch, 'list_collection', lambda since, key: [])
+    monkeypatch.setattr(fetch, 'get_with_retry', get)
+    fetch.main(csv_path, min_congress=113, nthreads=1, refresh_limit=1, evidence_path=evidence_path)
+
+    updated_rows = fetch_read_csv(csv_path)
+    assert list(updated_rows[package].keys()) == original_columns
+    retained = evidence.read(evidence_path)[package]
+    assert len(retained['manifest_files']) == 2
+    assert retained['mods_document']['root']['serials'][0]['number'] == 'FC09'
+    assert 'xml' not in retained['mods_document'] and 'content' not in retained['mods_document']
+
+    adapted = list(gpo_adapter.records([updated_rows[package]], context(), evidence_by_package={package: retained}))
+    reps = [r for r in adapted if r.kind == 'representation']
+    rep_urls = {loc.url for r in reps for loc in r.locations}
+    assert f'https://www.govinfo.gov/content/pkg/{package}/html/{package}-add2.htm' in rep_urls
+    assert f'https://www.govinfo.gov/content/pkg/{package}/pdf/{package}-add2.pdf' in rep_urls
+    assert not any(url.startswith('file://') for url in rep_urls)
+    assert not any(r.kind in ('appearance', 'committee_membership', 'legislative_item', 'meeting') for r in adapted)
