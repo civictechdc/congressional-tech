@@ -89,3 +89,85 @@ def test_only_full_state_leaf_splits_and_duplicate_captures_keep_order(storage):
     assert len(first.states()) == 2
     assert selected.manifest['state']['rows'] == 3
     assert len(list(storage.state_routes.leaf_items(selected.manifest['state']['root']))) >= 2
+from contextlib import contextmanager
+from copy import deepcopy
+
+from congress_api.retention.raw_values import NATIVE_CAPTURE_SCHEMA, capture_table
+from congress_api.retention.raw_storage import STATE_NATIVE_SCHEMA
+
+
+def test_delivery_retry_after_later_publication_does_not_append(storage):
+    first = storage.publish(storage.prepare(storage.snapshot(), operation='delivery', captures=captures('a'), states=states('a')))
+    later = storage.publish(storage.prepare(first, operation='later', captures=captures('b'), states=states('b')))
+    writes = list(storage.store.writes)
+    restarted = RawStorage(storage.store, storage.native, max_state_rows=2)
+    replay = restarted.prepare(restarted.snapshot(), operation='delivery', captures=captures('a'), states=states('a'))
+    result = restarted.publish(replay)
+    assert result.manifest == later.manifest
+    assert len(result.captures()) == 2
+    assert result.delivery['capture_rows'] == 1
+    assert result.delivery['first_order'] == 0
+    assert replay['already_applied']
+    assert storage.store.writes == writes
+    with pytest.raises(ValueError, match='request'):
+        restarted.prepare(result, operation='delivery', captures=captures('different'), states=states('a'))
+
+
+def test_selected_state_and_capture_bounds_refuse_before_or_during_accumulation():
+    class Native:
+        opened = yielded = 0
+        @contextmanager
+        def source_batches(self, pin):
+            self.opened += 1
+            table = capture_table(captures('a'), first_order=0)
+            owner = self
+            class Reader:
+                schema = table.schema
+                def __iter__(self):
+                    for _ in range(3):
+                        owner.yielded += 1
+                        yield table.to_batches()[0]
+            yield Reader()
+    native = Native()
+    owner = RawStorage(SelectorStore(), native, max_state_rows=2, max_state_bytes=1024)
+    pin = dict(verified=True, id='v', dataset=dict(version='v', groups=dict(source=dict(rows=1))))
+    with pytest.raises(ValueError, match='budget'):
+        owner._read_states(dict(release=pin, rows=3, decoded_bytes=50))
+    with pytest.raises(ValueError, match='budget'):
+        owner._read_states(dict(release=pin, rows=1, decoded_bytes=1025))
+    assert native.opened == 0
+    with pytest.raises(ValueError, match='row count'):
+        owner._read_table(pin, 1, schema=NATIVE_CAPTURE_SCHEMA, max_rows=1, max_bytes=1024, decoded_bytes=None)
+    assert native.yielded == 2
+
+
+def test_publish_returns_verified_selection_if_another_writer_advances(storage):
+    prepared = storage.prepare(storage.snapshot(), operation='race', captures=captures('a'))
+    original_read = storage.store.read
+    selected_reads = 0
+    def read(key):
+        nonlocal selected_reads
+        value = original_read(key)
+        if key == RAW_KEY and value == prepared['data']:
+            selected_reads += 1
+            if selected_reads == 1:
+                # This is the successful readback; advance immediately after it.
+                newer = deepcopy(prepared['manifest'])
+                newer['unrelated'] = 'newer writer'
+                from congress_api.retention.immutable_metadata import encoded
+                storage.store.objects[key] = encoded(newer)
+        return value
+    storage.store.read = read
+    result = storage.publish(prepared)
+    assert result.manifest == prepared['manifest']
+    assert result.version == sha256(prepared['data']).hexdigest()
+    assert storage.snapshot().manifest != result.manifest
+
+
+def test_capture_single_row_over_byte_budget_refuses_before_native(storage):
+    calls = []
+    storage._candidate = lambda *args, **kwargs: calls.append(args)
+    storage.max_capture_bytes = 1
+    with pytest.raises(ValueError, match='single capture'):
+        storage.prepare(storage.snapshot(), operation='large', captures=captures('a'))
+    assert calls == []
