@@ -81,6 +81,14 @@ splitting, and actual native scope preparation/selection/read. The receipt is
 `publication/native-selection-final.xml`. Maintained catalog computation and
 viewer/recovery preparation entry points have not yet adopted this path.
 
+The maintained link probe now reads selected logical source batches when given
+an explicit native client/configuration and decoded chunk bound. Its existing
+small inspection columns remain in memory; it creates no whole-pair export.
+Recovery publication dispatch now pins the completed import's exact `raw.json`
+selector and protects its remote version, replacing capture/state export pins.
+These narrow consumers have local tests; the coupled viewer publisher/browser
+and complete v1 adoption remain open.
+
 The fixture contains two logical tables, each with unique source/document IDs,
 nested provenance, ordered duplicate values, Unicode, null lists, empty lists,
 null reviews and empty reviews. A correction changes one filename review.

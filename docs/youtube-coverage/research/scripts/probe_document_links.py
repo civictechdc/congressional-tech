@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 import pyarrow.compute as pc
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.acquisition.documents import resolve_document
@@ -20,10 +21,20 @@ from congress_api.transport.document_probe import DEFAULT_LIMIT, get_prefix
 ROOT = Path(__file__).resolve().parents[4]
 
 
-def archive_reader(root, *, live=False):
-    from congress_api.retention.catalog_publication import local_catalog_paths
-    table = None if live else pq.read_table(local_catalog_paths(root)[0],
-        columns=['source_url', 'body_key', 'media_type', 'http_status'])
+def archive_reader(root, *, live=False, native=None, max_ordered_bytes=None):
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog
+    columns = ['source_url', 'body_key', 'media_type', 'http_status']
+    table = None
+    if not live:
+        with read_catalog(LocalStore(root), native=native) as selected:
+            if hasattr(selected, 'selection'):
+                source = selected.table('filenames', max_ordered_bytes=max_ordered_bytes)
+                schema = pa.schema([source.schema_arrow.field(name) for name in columns],
+                                   metadata=source.schema_arrow.metadata)
+                table = pa.Table.from_batches(list(source.iter_batches(columns=columns)), schema=schema)
+            else:
+                table = pq.read_table(selected.filenames_path, columns=columns)
 
     def read(url, *, max_bytes):
         if table is not None:
@@ -56,11 +67,20 @@ def main():
     parser.add_argument('--max-bytes', type=int, default=DEFAULT_LIMIT)
     parser.add_argument('--max-steps', type=int, default=5)
     parser.add_argument('--live', action='store_true')
+    parser.add_argument('--native-config', type=Path, help='Explicit maintained DocSpec runtime configuration.')
+    parser.add_argument('--native-chunk-bytes', type=int, help='Maximum decoded Arrow bytes for one selected native chunk.')
     parser.add_argument('--output', type=Path)
     args = parser.parse_args()
     now = datetime.now(timezone.utc)
     output = args.output or ROOT / '.cache/document-probes' / (now.strftime('%Y%m%dT%H%M%S%fZ') + '.json')
-    get = archive_reader(args.archive, live=args.live)
+    if args.native_config and (args.native_chunk_bytes is None or args.native_chunk_bytes < 1):
+        parser.error('--native-config requires a positive --native-chunk-bytes')
+    if args.native_config:
+        from congress_api.retention.docspec import NativeDatasets
+        native = NativeDatasets.from_config(args.native_config)
+    else:
+        native = None
+    get = archive_reader(args.archive, live=args.live, native=native, max_ordered_bytes=args.native_chunk_bytes)
     results = []
     for url in args.urls:
         result = resolve_document(url, get=get, max_bytes=args.max_bytes, max_steps=args.max_steps)
