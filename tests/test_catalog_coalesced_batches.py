@@ -50,13 +50,13 @@ class Native:
         yield pa.RecordBatchReader.from_batches(table.schema, table.to_batches())
 
 
-def prepare(store, native, count):
-    physical = SCHEMA.append(pa.field('_catalog_order', pa.int64(), nullable=False))
+def prepare(store, native, count, *, schema=SCHEMA):
+    physical = schema.append(pa.field('_catalog_order', pa.int64(), nullable=False))
     records = [dict(source_id=f'source-{index}', document_id=f'doc-{index:04}',
                     aliases=['same', 'same'], _catalog_order=index) for index in range(count)]
     table = pa.Table.from_pylist(records, schema=physical)
     return prepare_native_catalog_components(store, native, candidate=f'coalesced-{count}',
-        source_chunks=[table], document_chunks=[table], source_schema=SCHEMA, document_schema=SCHEMA,
+        source_chunks=[table], document_chunks=[table], source_schema=schema, document_schema=schema,
         max_chunk_rows=256, max_chunk_bytes=1 << 20)
 
 
@@ -108,11 +108,13 @@ def test_selected_table_reads_shared_pin_once_and_excludes_retired_member(tmp_pa
     from congress_api.retention.catalog_batches import SelectedCatalogTable
     store, native = Store(tmp_path), Native()
     original = list(iterator_prepared_components(store, prepare(store, native, 130)))
+    old_physical = {key: table.to_pylist() for key, table in native.tables.items()}
     # Keep all original members except doc-0000 and select its changed candidate.
-    replacement = list(iterator_prepared_components(store, prepare(store, native, 1)))
+    new_schema = SCHEMA.with_metadata({b'catalog_id': b'next-logical-catalog'})
+    replacement = list(iterator_prepared_components(store, prepare(store, native, 1, schema=new_schema)))
     selected = original[1:] + replacement
     consumer = Store(tmp_path)
-    table = SelectedCatalogTable(SCHEMA, lambda: iter(selected), store=consumer, native=native,
+    table = SelectedCatalogTable(new_schema, lambda: iter(selected), store=consumer, native=native,
                                  label='filenames', rows=130, max_ordered_bytes=1 << 20)
     batches = list(table.iter_batches(columns=['source_id', 'document_id'], batch_size=7))
     assert all(batch.num_rows <= 7 for batch in batches)
@@ -121,6 +123,10 @@ def test_selected_table_reads_shared_pin_once_and_excludes_retired_member(tmp_pa
     assert len({row['document_id'] for row in rows}) == 130
     assert len(native.reads) == 2
     assert len(consumer.reads) == len(set(consumer.reads))
+    assert batches[0].schema.metadata == new_schema.metadata
+    assert {key: native.tables[key].to_pylist() for key in old_physical} == old_physical
+    historical = CatalogComponentReader(consumer).read(original[0][1])
+    assert historical['tables']['filenames']['schema'] != CatalogComponentReader(consumer).read(replacement[0][1])['tables']['filenames']['schema']
 
 
 def test_selected_table_rejects_duplicate_component_before_reading_native(tmp_path):

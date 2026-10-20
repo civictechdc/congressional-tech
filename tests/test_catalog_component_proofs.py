@@ -64,10 +64,14 @@ def test_reference_failure_never_issues_a_component_proof(tmp_path):
 def test_mixed_native_generation_refuses_existing_validation_binding(tmp_path):
     store, native = LocalStore(tmp_path), NativeRecorder()
     reference = prepare(store, native)
-    component = read_catalog_component(store, reference)
-    changed = deepcopy(component)
-    changed['tables']['documents']['chunks'][0]['release']['id'] = 'different-native-version'
-    forged = MetadataObjects(store, 'catalog-components-v1').put(changed)
+    pages = MetadataObjects(store, 'catalog-component-pages-v1')
+    physical = MetadataObjects(store, 'catalog-physical-chunks-v1')
+    page = pages.read(reference['page'])
+    name = page['components']['doc']['tables']['documents']['chunks'][0]['name']
+    changed = deepcopy(physical.read(page['chunks'][name]))
+    changed['release']['id'] = 'different-native-version'
+    page['chunks'][name] = physical.put(changed)
+    forged = dict(page=pages.put(page), component='doc')
     with pytest.raises(ValueError, match='validation binding'):
         read_catalog_component(store, forged)
 

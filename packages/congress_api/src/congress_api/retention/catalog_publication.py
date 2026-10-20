@@ -295,12 +295,10 @@ def read_catalog_component(store, reference, *, requirements=None):
     The admission owner computes requirements once for the entire selection.
     An installed validator upgrade never makes an older exact snapshot unreadable.
     """
-    if isinstance(reference, dict) and 'page' in reference:
-        from congress_api.retention.catalog_batches import CatalogComponentReader
-        return CatalogComponentReader(store, requirements=requirements).read(reference)
-    from congress_api.retention.immutable_metadata import MetadataObjects
-    return _require_component(MetadataObjects(store, 'catalog-components-v1').read(reference),
-                              requirements=requirements)
+    if not isinstance(reference, dict) or 'page' not in reference:
+        raise ValueError('Catalog components require an exact proof page member')
+    from congress_api.retention.catalog_batches import CatalogComponentReader
+    return CatalogComponentReader(store, requirements=requirements).read(reference)
 
 
 def local_catalog_paths(root):

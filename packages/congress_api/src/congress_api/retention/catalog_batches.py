@@ -20,6 +20,14 @@ from congress_api.retention.immutable_metadata import MetadataObjects, encoded
 PROOF_PAGE_ENTRIES = 64
 
 
+def same_logical_catalog_schema(left, right):
+    """Only the root-selected logical catalog identity may change on reuse."""
+    def without_catalog_id(schema):
+        return schema.with_metadata({key: value for key, value in (schema.metadata or {}).items()
+                                     if key != b'catalog_id'})
+    return without_catalog_id(left).equals(without_catalog_id(right), check_metadata=True)
+
+
 class CatalogComponentReader:
     """Share page/schema/pin reads across components during one admission or read."""
     def __init__(self, store, *, requirements=None):
@@ -123,7 +131,12 @@ class SelectedCatalogTable:
                 for component, in db.execute('SELECT component FROM members WHERE page=? ORDER BY component', (raw_page,)):
                     proof = reader.read(dict(page=page_ref, component=component), page=page, read_chunk=read_chunk)
                     table = proof['tables'][self.label]
-                    if not _component_schema(table).equals(self.schema_arrow, check_metadata=True):
+                    physical_schema = _component_schema(table)
+                    # catalog_id names the selected logical pair. Reused pins
+                    # retain their original exact schema/proof, while the root
+                    # explicitly selects the new logical pair identity. Other
+                    # application and field metadata must match exactly.
+                    if not same_logical_catalog_schema(physical_schema, self.schema_arrow):
                         raise ValueError('Selected catalog application schemas differ')
                     for view in table['chunks']:
                         name, identity = view['name'], encoded(page['chunks'][view['name']]).decode()
