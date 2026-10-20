@@ -1,9 +1,8 @@
-"""Offline synthetic RSS comparison; no network, credentials, or retained inputs.
+"""Historical Parquet import RSS comparison; no network or retained inputs.
 
-The parent command requires --baseline-ref because no saved receipt records
-that revision. Each measurement uses a fresh child process, and the parent
-passes the revision to that child. This measures end-to-end import memory,
-including required encoded index payloads.
+Both revisions must be explicit pre-native references. Each arm runs in a fresh
+child process. This diagnostic measures the historical whole-index importer,
+including encoded index payloads; it does not measure native raw selection.
 """
 import argparse
 import gzip
@@ -24,12 +23,11 @@ def implementation(ref):
     """Load selected recovery modules and their local dependencies from one ref.
 
     Older receipts name the pre-package scripts. Those sources retain their
-    original import names; current measurements use the maintained package.
+    original import names; later historical revisions use the package.
     Every arm runs in a fresh child process.
     """
     if not ref:
-        from corpus_recovery import preservation, transfer
-        return transfer, preservation
+        raise ValueError('An explicit historical revision is required')
     package_path = 'packages/corpus_recovery/src/corpus_recovery'
     packaged = subprocess.run(['git', 'cat-file', '-e', f'{ref}:{package_path}/transfer.py'],
                               cwd=ROOT, capture_output=True).returncode == 0
@@ -63,6 +61,9 @@ def child(args):
     import pyarrow as pa
     from congress_api.retention.raw_archive import STATE_SCHEMA, CAPTURE_SCHEMA
     importer, verifier = implementation(args.ref)
+    import inspect
+    if 'raw_storage' in inspect.signature(importer.import_batch).parameters:
+        raise ValueError('This diagnostic requires pre-native Parquet import revisions')
     # Generate Arrow columns directly so Python input-row allocation does not
     # conceal the cost of converting the entire baseline back to dictionaries.
     state = pa.table({field.name: pa.array((f'https://example.test/{i}' for i in range(args.rows)), type=field.type)
@@ -142,9 +143,9 @@ def preservation_probe(args, state, verifier):
 
 def run(args):
     results = []
-    for ref in (args.baseline_ref, ''):
+    for ref in (args.baseline_ref, args.candidate_ref):
         command = [sys.executable, str(Path(__file__).resolve()), '--child',
-                   '--baseline-ref', args.baseline_ref, '--mode', args.mode,
+                   '--baseline-ref', args.baseline_ref, '--candidate-ref', args.candidate_ref, '--mode', args.mode,
                    '--rows', str(args.rows), '--additions', str(args.additions)]
         if ref:
             command += ['--ref', ref]
@@ -156,6 +157,7 @@ def run(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--baseline-ref', required=True)
+    parser.add_argument('--candidate-ref', required=True, help='Explicit pre-native Parquet revision.')
     parser.add_argument('--rows', type=int, default=200000)
     parser.add_argument('--additions', type=int, default=1525)
     parser.add_argument('--mode', choices=('import', 'preservation'), default='import')
