@@ -2,7 +2,7 @@
 id: ct-czsd
 status: in_progress
 deps: [ct-2ukk]
-links: []
+links: [ct-2ukk, ct-mi03]
 created: 2026-10-20T02:20:21Z
 type: epic
 priority: 1
