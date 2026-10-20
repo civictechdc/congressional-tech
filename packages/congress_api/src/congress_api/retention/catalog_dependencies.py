@@ -138,12 +138,13 @@ class NativeCatalogDependencies:
     pins, possibly empty for proved absence. Unknown routing must raise, rather
     than returning absence. This reader owns no latest pointer or routing engine.
     """
-    def __init__(self, *, native, source_schema, locate_source, locate_alias, expected_members=None, max_rows=None, max_bytes=None):
+    def __init__(self, *, native, source_schema, locate_source, locate_alias, expected_members=None, expected_rows=None, max_rows=None, max_bytes=None):
         self.native = native
         self.source_schema = source_schema
         self.locate_source = locate_source
         self.locate_alias = locate_alias
         self.expected_members = expected_members
+        self.expected_rows = expected_rows
         self.max_rows, self.max_bytes = max_rows, max_bytes
         self.native_rows_read = self.native_bytes_read = 0
         self._sources, self._aliases = {}, {}
@@ -165,6 +166,9 @@ class NativeCatalogDependencies:
                 self.native_rows_read += len(batch)
                 self.native_bytes_read += batch.nbytes
                 yield from batch.to_pylist()
+        expected = self.expected_rows(pin) if self.expected_rows is not None else None
+        if expected is not None and count != expected:
+            raise DependencyGap('Reverse dependency leaf row count differs')
 
     def _load_source(self, key):
         pin = self.locate_source(key)
@@ -233,6 +237,7 @@ class NativeCatalogDependencies:
                 self._aliases.setdefault(value, set()).update(members)
             self._alias_pins.add(pin_key)
         result = tuple(sorted(self._aliases.get(encoded, ())))
-        if self.expected_members is not None and len(result) != self.expected_members(encoded):
+        expected = self.expected_members(encoded) if self.expected_members is not None else None
+        if expected is not None and len(result) != expected:
             raise DependencyGap('Reverse dependency member count differs from selected directory')
         return result

@@ -157,3 +157,32 @@ PYTHONPATH="$PWD/packages/congress_api/src" python docs/experiments/incremental-
 This still prepares dependency state only. Grouped source/document candidate
 integration, complete retired-component ownership proof and resumable processing
 inside a large component remain required before replacing maintained callers.
+
+## Coalesced alias storage correction
+
+The first routed implementation above is historical. Its per-alias native Runs
+multiply the provider's fixed operation costs and are unsuitable for runtime
+adoption. The replacement groups small aliases into shared bounded native leaves.
+Only an alias larger than one leaf gets secondary source-ID routing. The new
+selection format is `catalog-dependencies-v2`; the earlier candidate and its
+retained native roots remain available as evidence of the rejected layout.
+
+Actual local native calls on the same 13-source fixture are retained under
+`output/incremental-updates-20261019/catalog/coalesced-native-calls-1/`:
+
+| Diagnostic limits | Adoption Runs before / after | Bridge-deletion Runs before / after |
+| --- | ---: | ---: |
+| 4 rows / 1 MiB | 47 / 23 | 4 / 2 |
+| 8,192 rows / 64 MiB | 26 / 2 | 4 / 2 |
+
+Every retained source field matched in all four cases. The baseline executes the
+storage implementation from `2a45bca`; both arms use the same current native
+binary and typed fixture. These are actual local CLI calls, not estimates from
+in-memory transport. No remote timing or throughput claim follows from them.
+
+A 100-source unit fixture with broad bounds creates exactly two physical native
+tables, rather than one per alias. A 40-source shared-body fixture uses only
+member leaves at or below its four-row limit, and its old member roots remain
+readable after a correction. This correction bounds each physical leaf but does
+not yet remove the affected-component membership sets held by the scope walker;
+resumable traversal and grouping integration remain required.

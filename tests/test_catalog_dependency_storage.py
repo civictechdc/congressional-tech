@@ -16,8 +16,9 @@ SCHEMA = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS)])
 
 class MemoryNative:
     def __init__(self):
-        self.tables, self.reads, self.writes = {}, [], []
+        self.tables, self.reads, self.writes, self.calls = {}, [], [], []
     def run_table(self, table, *, dataset, operation, definition):
+        self.calls.append(dataset)
         if dataset not in self.tables:
             self.tables[dataset] = table
             self.writes.append(dataset)
@@ -105,7 +106,6 @@ def test_fixed_delta_native_payload_reads_are_bounded_in_larger_unrelated_corpus
 
 def test_incomplete_reverse_directory_count_refuses():
     import pytest
-    from congress_api.retention.catalog_dependency_storage import DIRECTORY_SCHEMA
     from congress_api.retention.catalog_dependencies import DependencyGap, _encoded_alias
     native, store = MemoryNative(), MemoryStore()
     owner = CatalogDependencyStorage(native=native, store=store, namespace='count',
@@ -113,12 +113,11 @@ def test_incomplete_reverse_directory_count_refuses():
     a = source('a.pdf', 'A')
     initial = owner.prepare(None, replacements=[a])
     alias = index.group_aliases(a, identity(a))[0]
-    _, pin = owner.aliases.lookup(initial['alias_root'], _encoded_alias(alias))
-    rows = native.tables[pin['dataset_key']].to_pylist()
-    next(row for row in rows if row['alias'] == _encoded_alias(alias))['member_count'] += 1
-    native.tables[pin['dataset_key']] = pa.Table.from_pylist(rows, schema=DIRECTORY_SCHEMA)
-    with pytest.raises(DependencyGap, match='member count differs'):
-        affected_sources(owner.selected(initial), replacements=[a])
+    prefix, leaf = owner.aliases.lookup(initial['alias_root'], _encoded_alias(alias))
+    leaf = {**leaf, 'rows': leaf['rows'] + 1}
+    broken = {**initial, 'alias_root': owner.aliases.replace(initial['alias_root'], prefix, {prefix: leaf})}
+    with pytest.raises(DependencyGap, match='leaf row count differs'):
+        affected_sources(owner.selected(broken), replacements=[a])
 
 
 def test_source_evidence_and_state_edits_preserve_all_fields_and_other_rows(monkeypatch):
@@ -160,3 +159,30 @@ def test_schema_change_refuses_instead_of_dropping_new_source_fields():
         owner.prepare(None, replacements=[source('a.pdf', 'A', unknown_field=['preserve-me'])])
     assert not native.writes
     assert store.objects == before
+
+
+def test_small_aliases_share_bounded_physical_native_tables():
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='coalesced',
+                                     source_schema=SCHEMA, max_rows=1024, max_bytes=4 << 20)
+    rows = [source(f'{i}.pdf', f'body-{i}') for i in range(100)]
+    selected = owner.prepare(None, replacements=rows)
+    assert len(native.calls) == 2  # One source leaf and one shared reverse leaf.
+    assert sum(len(table) for table in native.tables.values()) == 300
+    assert owner.selected(selected).source(identity(rows[50])) is not None
+
+
+def test_large_alias_uses_only_bounded_secondary_member_leaves():
+    from congress_api.retention.catalog_dependencies import _encoded_alias
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='large-alias',
+                                     source_schema=SCHEMA, max_rows=4, max_bytes=1 << 20)
+    rows = [source(f'{i}.pdf', 'shared-body') for i in range(40)]
+    selected = owner.prepare(None, replacements=rows)
+    _, leaf = owner.aliases.lookup(selected['alias_root'], _encoded_alias(('body', 'shared-body')))
+    assert leaf['kind'] == 'members' and leaf['count'] == 40
+    assert all(len(table) <= 4 for table in native.tables.values())
+    assert len(owner.selected(selected).members(('body', 'shared-body'))) == 40
+    changed = owner.prepare(selected, replacements=[{**rows[0], 'http_status': ['404']}])
+    assert len(owner.selected(changed).members(('body', 'shared-body'))) == 39
+    assert len(owner.selected(selected).members(('body', 'shared-body'))) == 40

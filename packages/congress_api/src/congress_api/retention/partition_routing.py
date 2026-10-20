@@ -24,7 +24,7 @@ def route_prefix(key, prefixes):
     return matches[0]
 
 
-def split_partition(table, *, key, prefix, max_rows, max_bytes):
+def split_partition(table, *, key, prefix, max_rows, max_bytes, allow_duplicate_keys=False):
     """Split only this full leaf, preserving typed rows and order within leaves.
 
     The byte bound counts decoded Arrow buffers, not compressed objects or total
@@ -37,7 +37,7 @@ def split_partition(table, *, key, prefix, max_rows, max_bytes):
     if max_rows < 1 or max_bytes < 1:
         raise ValueError('Partition budgets must be positive')
     keys = table[key].to_pylist()
-    if len(set(keys)) != len(keys):
+    if not allow_duplicate_keys and len(set(keys)) != len(keys):
         raise ValueError('Duplicate partition keys')
     hashes = [key_hash(value) for value in keys]
     if any(not value.startswith(prefix) for value in hashes):

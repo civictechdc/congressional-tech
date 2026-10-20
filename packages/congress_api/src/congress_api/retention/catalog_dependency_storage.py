@@ -5,7 +5,6 @@ owns the returned roots; preparing a candidate never selects it for readers.
 """
 from copy import deepcopy
 from hashlib import sha256
-import json
 
 import pyarrow as pa
 
@@ -14,14 +13,8 @@ from .catalog_dependencies import (
     affected_sources, alias_schema, dependency_schema, dependency_tables,
     DependencyGap, NativeCatalogDependencies, _encoded_alias, _decoded_alias,
 )
-from .immutable_metadata import encoded
-from .partition_routing import RoutingPages, split_partition
+from .partition_routing import RoutingPages, split_partition, key_hash
 
-DIRECTORY_SCHEMA = pa.schema([
-    pa.field('alias', pa.string(), nullable=False),
-    pa.field('members_root', pa.string(), nullable=False),
-    pa.field('member_count', pa.int64(), nullable=False),
-])
 
 
 class CatalogDependencyStorage:
@@ -40,10 +33,10 @@ class CatalogDependencyStorage:
 
     def _selection(self, selection):
         if selection is None:
-            return dict(format='catalog-dependencies-v1', schema_hash=self.schema_hash,
+            return dict(format='catalog-dependencies-v2', schema_hash=self.schema_hash,
                         max_rows=self.max_rows, max_arrow_bytes=self.max_bytes,
                         source_root=None, alias_root=None, next_source_order=0)
-        if (selection.get('format') != 'catalog-dependencies-v1'
+        if (selection.get('format') != 'catalog-dependencies-v2'
                 or selection.get('schema_hash') != self.schema_hash
                 or selection.get('max_rows') != self.max_rows
                 or selection.get('max_arrow_bytes') != self.max_bytes
@@ -73,8 +66,8 @@ class CatalogDependencyStorage:
         with pa.ipc.new_stream(sink, table.schema) as writer:
             writer.write_table(table)
         identity = sha256(sink.getvalue().to_pybytes()).hexdigest()
-        pin = self.native.run_table(table, dataset=f'catalog-dep-{kind}-{identity}',
-                                   operation='initial', definition='catalog-dependencies-storage-v1')
+        pin = self.native.run_table(table, dataset=f'catalog-dep-v2-{kind}-{identity}',
+                                   operation='initial', definition='catalog-dependencies-storage-v2')
         self.candidate_rows_submitted += len(table)
         self.candidate_arrow_bytes += table.nbytes
         return pin
@@ -104,43 +97,113 @@ class CatalogDependencyStorage:
             root = pages.replace(root, prefix, leaves)
         return root
 
+    def _alias_groups(self, value):
+        if value is None:
+            return {}
+        if value.get('kind') == 'members':
+            if (not isinstance(value.get('alias'), str) or type(value.get('count')) is not int
+                    or value['count'] < 1 or value.get('root') is None):
+                raise DependencyGap('Invalid large-alias dependency metadata')
+            return {value['alias']: value}
+        if value.get('kind') != 'rows':
+            raise DependencyGap('Unknown alias dependency leaf format')
+        table = self._read(value['release'], alias_schema())
+        if len(table) != value.get('rows'):
+            raise DependencyGap('Alias dependency leaf row count differs')
+        groups, seen = {}, set()
+        for row in table.to_pylist():
+            pair = row['alias'], row['source_id']
+            if pair in seen:
+                raise DependencyGap('Duplicate reverse dependency membership')
+            seen.add(pair)
+            _decoded_alias(row['alias'])
+            groups.setdefault(row['alias'], []).append(row)
+        return {alias: pa.Table.from_pylist(rows, schema=alias_schema()) for alias, rows in groups.items()}
+
+    def _alias_leaves(self, groups, prefix):
+        # Common aliases share physical native leaves. Only one alias whose
+        # members exceed a leaf budget gets secondary source-ID routing.
+        groups = dict(groups)
+        for alias, value in groups.items():
+            if isinstance(value, pa.Table) and (len(value) > self.max_rows or value.nbytes > self.max_bytes):
+                leaves = {child: self._write(part, 'members') if len(part) else None
+                    for child, part in split_partition(value, key='source_id', prefix='',
+                        max_rows=self.max_rows, max_bytes=self.max_bytes)}
+                groups[alias] = dict(kind='members', alias=alias, count=len(value),
+                                     root=self.members.replace(None, '', leaves))
+        if not groups:
+            return {prefix: None}
+        heavy = {alias: value for alias, value in groups.items() if not isinstance(value, pa.Table)}
+        if heavy:
+            if len(groups) == 1:
+                return {prefix: next(iter(heavy.values()))}
+            if len(prefix) == 64:
+                raise DependencyGap('Alias hash collision cannot fit the dependency budget')
+            leaves = {}
+            for char in '0123456789abcdef':
+                child = prefix + char
+                subset = {alias: value for alias, value in groups.items() if key_hash(alias).startswith(child)}
+                if subset:
+                    leaves.update(self._alias_leaves(subset, child))
+            return leaves
+        table = pa.concat_tables([groups[alias] for alias in sorted(groups)])
+        leaves = {}
+        for child, part in split_partition(table, key='alias', prefix=prefix,
+                max_rows=self.max_rows, max_bytes=self.max_bytes, allow_duplicate_keys=True):
+            leaves[child] = (dict(kind='rows', release=self._write(part, 'aliases'),
+                                 rows=len(part), arrow_bytes=part.nbytes) if len(part) else None)
+        return leaves
+
+    def _replace_aliases(self, root, replacements):
+        changes = {}
+        for alias in sorted(replacements):
+            prefix, value = self.aliases.lookup(root, alias)
+            changes.setdefault(prefix, (value, []))[1].append(alias)
+        for prefix, (value, aliases) in sorted(changes.items()):
+            groups = self._alias_groups(value)
+            for alias in aliases:
+                members = replacements[alias]
+                if members:
+                    groups[alias] = pa.Table.from_pylist([dict(alias=alias, source_id=key)
+                        for key in sorted(members)], schema=alias_schema())
+                else:
+                    groups.pop(alias, None)
+            root = self.aliases.replace(root, prefix, self._alias_leaves(groups, prefix))
+        return root
+
     def selected(self, selection):
         basis = self._selection(selection)
-        directory_cache, member_counts = {}, {}
+        member_counts, pin_counts = {}, {}
 
         def source_pin(key):
             return self.sources.lookup(basis['source_root'], key)[1]
 
         def alias_pins(value):
-            _, pin = self.aliases.lookup(basis['alias_root'], value)
-            if pin is None:
+            _, leaf = self.aliases.lookup(basis['alias_root'], value)
+            if leaf is None:
                 member_counts[value] = 0
                 return ()
-            pin_key = index.compact(pin)
-            if pin_key not in directory_cache:
-                rows = self._read(pin, DIRECTORY_SCHEMA).to_pylist()
-                directory_cache[pin_key] = {row['alias']: row for row in rows}
-                if len(directory_cache[pin_key]) != len(rows):
-                    raise DependencyGap('Duplicate reverse dependency directory keys')
-            row = directory_cache[pin_key].get(value)
-            if row is None:
+            if leaf.get('kind') == 'rows':
+                pin_counts[index.compact(leaf['release'])] = leaf['rows']
+                # The exact complete native leaf proves all aliases it stores;
+                # no separate per-alias directory or native Run is necessary.
+                member_counts[value] = None
+                return (leaf['release'],)
+            if leaf.get('kind') != 'members':
+                raise DependencyGap('Unknown alias dependency leaf format')
+            if value != leaf.get('alias'):
                 member_counts[value] = 0
                 return ()
-            if type(row['member_count']) is not int or row['member_count'] < 1:
-                raise DependencyGap('Invalid reverse dependency member count')
-            member_counts[value] = row['member_count']
-            try:
-                root = json.loads(row['members_root'])
-            except (TypeError, ValueError) as error:
-                raise DependencyGap('Invalid reverse dependency member root') from error
-            pins = [pin for _, pin in self.members.leaf_items(root)]
+            member_counts[value] = leaf['count']
+            pins = [pin for _, pin in self.members.leaf_items(leaf['root'])]
             if not pins:
                 raise DependencyGap('Missing reverse dependency member partitions')
             return pins
 
         return NativeCatalogDependencies(native=self.native, source_schema=self.source_schema,
-            locate_source=source_pin, locate_alias=alias_pins,
-            expected_members=member_counts.__getitem__, max_rows=self.max_rows, max_bytes=self.max_bytes)
+            locate_source=source_pin, locate_alias=alias_pins, expected_members=member_counts.__getitem__,
+            expected_rows=lambda pin: pin_counts.get(index.compact(pin)),
+            max_rows=self.max_rows, max_bytes=self.max_bytes)
 
     def prepare(self, selection, *, replacements=(), deletions=()):
         """Prepare complete changed scope; the caller later CAS-selects roots.
@@ -175,25 +238,12 @@ class CatalogDependencyStorage:
         source_root = self._replace_rows(basis['source_root'], self.sources,
             key='source_id', schema=dependency_schema(self.source_schema), replacements=source_rows,
             deletions=set(scope.before) - set(scope.after), kind='sources')
-        directories, removed_aliases = {}, set()
+        alias_changes = {}
         for alias in sorted(old_aliases.keys() | new_aliases.keys()):
             old_members, new_members = old_aliases.get(alias, set()), new_aliases.get(alias, set())
             if set(selected.members(_decoded_alias(alias))) != old_members:
                 raise DependencyGap('Affected reverse dependency scope is incomplete')
-            if old_members == new_members:
-                continue
-            if not new_members:
-                removed_aliases.add(alias)
-                continue
-            table = pa.Table.from_pylist([dict(alias=alias, source_id=key)
-                for key in sorted(new_members)], schema=alias_schema())
-            leaves = {prefix: self._write(part, 'members') if len(part) else None
-                for prefix, part in split_partition(table, key='source_id', prefix='',
-                    max_rows=self.max_rows, max_bytes=self.max_bytes)}
-            root = self.members.replace(None, '', leaves)
-            directories[alias] = dict(alias=alias, members_root=encoded(root).decode(),
-                                      member_count=len(new_members))
-        alias_root = self._replace_rows(basis['alias_root'], self.aliases,
-            key='alias', schema=DIRECTORY_SCHEMA, replacements=directories,
-            deletions=removed_aliases, kind='aliases')
+            if old_members != new_members:
+                alias_changes[alias] = new_members
+        alias_root = self._replace_aliases(basis['alias_root'], alias_changes)
         return {**basis, 'source_root': source_root, 'alias_root': alias_root, 'next_source_order': order}

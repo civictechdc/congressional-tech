@@ -100,3 +100,13 @@ def test_metadata_reference_is_rejected_before_any_object_read():
     with pytest.raises(ValueError, match='identity'):
         objects.read({**good, 'sha256': '../not-a-digest'})
     assert store.reads == []
+
+
+def test_group_routing_can_keep_duplicate_aliases_without_weakening_strict_default():
+    import pytest
+    table = pa.table({'alias': ['shared', 'shared'], 'source_id': ['a', 'b']})
+    with pytest.raises(ValueError, match='Duplicate partition keys'):
+        split_partition(table, key='alias', prefix='', max_rows=4, max_bytes=4096)
+    parts = split_partition(table, key='alias', prefix='', max_rows=4, max_bytes=4096,
+                            allow_duplicate_keys=True)
+    assert len(parts) == 1 and parts[0][1].equals(table)
