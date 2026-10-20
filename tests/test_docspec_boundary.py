@@ -1,6 +1,5 @@
 """The application calls the maintained source-only lifecycle with exact requests."""
 from hashlib import sha256
-import json
 import os
 from pathlib import Path
 import shutil
@@ -9,7 +8,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from congress_api.retention.docspec import NativeDatasets, DocSpecFailure
+from congress_api.retention.docspec import DocSpecFailure
+from native_test_helpers import native_test_client
 
 
 @pytest.fixture
@@ -17,11 +17,7 @@ def native(tmp_path):
     binary = os.environ.get('DOCSPEC_BINARY') or shutil.which('docspec')
     if not binary:
         pytest.skip('Set DOCSPEC_BINARY to the qualified maintained CLI')
-    limits = tmp_path / 'limits.json'
-    limits.write_text(json.dumps(dict(compute_threads=2, memory_bytes=512 << 20,
-        scratch_bytes=256 << 20, batch_rows=2, max_batch_bytes=4 << 20,
-        max_metadata_bytes=8 << 20)))
-    return NativeDatasets(binary, tmp_path / 'workspace', limits=limits)
+    return native_test_client(binary, tmp_path / 'workspace')
 
 
 def inventory(root):
