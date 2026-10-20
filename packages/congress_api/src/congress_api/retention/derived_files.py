@@ -109,16 +109,18 @@ def check_identity(actual, expected, key):
         raise ValueError(f'Catalog history digest does not match its key: {key}')
 
 
-def copy_checked(source, destination, *, size, expected=None, key='catalog', exclusive=False):
+def copy_checked(source, destination, *, size, expected=None, key='catalog', exclusive=False, partial_directory=None):
     """Publish an owned partial only after exact size/hash checks and fsync.
 
     On any failure the partial remains named in the exception for diagnosis.
+    Callers may retain partials in a private directory on the same filesystem.
     Exclusive publication uses a hard link, so concurrent immutable writers
     cannot replace one another between an existence check and a rename.
     """
     destination = Path(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    fd, partial_name = tempfile.mkstemp(prefix=destination.name + '.', suffix='.partial', dir=destination.parent)
+    fd, partial_name = tempfile.mkstemp(prefix=destination.name + '.', suffix='.partial',
+                                         dir=partial_directory if partial_directory is not None else destination.parent)
     partial = Path(partial_name)
     digest, count = sha256(), 0
     try:

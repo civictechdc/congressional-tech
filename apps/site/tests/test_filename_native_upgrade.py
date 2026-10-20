@@ -145,12 +145,13 @@ assert manifest['source_identity']==previous['source_identity']
 
 
 @pytest.mark.parametrize('kind',['node','file'])
-def test_abrupt_exit_inside_asset_copy_keeps_partials_outside_publication(tmp_path,kind):
+@pytest.mark.parametrize('window',['copy','before_link','after_link'])
+def test_abrupt_exit_inside_asset_copy_keeps_partials_outside_publication(tmp_path,kind,window):
     import subprocess
     script=r'''
 import json,os,sys
 from pathlib import Path
-repo,folder,kind,mode=sys.argv[1:]
+repo,folder,kind,window,mode=sys.argv[1:]
 sys.path.insert(0,str(Path(repo)/'apps/site/scripts'))
 from filename_native import ViewerAssets
 import filename_renderer_state as stages
@@ -158,7 +159,7 @@ folder=Path(folder);target=folder/'publication';target.mkdir(exist_ok=True)
 assets=ViewerAssets(target)
 with stages.RendererState(target,{'fixture':'write-loss'},resume=mode=='resume') as state:
  assets.state=state;state.restore(assets)
- if mode=='stop':
+ if mode=='stop' and window=='copy':
   original=stages.copy_checked
   def interrupted(source,*args,**options):
    class LostWorker:
@@ -169,6 +170,13 @@ with stages.RendererState(target,{'fixture':'write-loss'},resume=mode=='resume')
      return source.read(min(size,5))
    return original(LostWorker(),*args,**options)
   stages.copy_checked=interrupted
+ if mode=='stop' and window!='copy':
+  original_link=os.link
+  def interrupted_link(source,destination,*args,**options):
+   if window=='before_link':os._exit(73)
+   original_link(source,destination,*args,**options)
+   os._exit(73)
+  os.link=interrupted_link
  def render():
   if kind=='node':return assets.put_node({'version':1,'fixture':'complete-metadata'})
   source=folder/'input.bin';source.write_bytes(b'complete bounded payload')
@@ -179,10 +187,12 @@ with stages.RendererState(target,{'fixture':'write-loss'},resume=mode=='resume')
  for relative,identity in assets.identities.items():identity.require(target/relative)
  (folder/'result.json').write_text(json.dumps(reference))
 '''
-    args=[sys.executable,'-c',script,str(ROOT),str(tmp_path),kind]
+    args=[sys.executable,'-c',script,str(ROOT),str(tmp_path),kind,window]
     stopped=subprocess.run([*args,'stop'],capture_output=True,text=True,timeout=30)
     assert stopped.returncode==73,stopped.stderr
-    assert not [p for p in (tmp_path/'publication').rglob('*') if p.is_file()]
+    assert not list((tmp_path/'publication').rglob('*.partial'))
+    if window!='after_link':
+        assert not [p for p in (tmp_path/'publication').rglob('*') if p.is_file()]
     assert list((tmp_path/'publication.renderer-upgrade').rglob('*.partial'))
     resumed=subprocess.run([*args,'resume'],capture_output=True,text=True,timeout=30)
     assert resumed.returncode==0,resumed.stderr

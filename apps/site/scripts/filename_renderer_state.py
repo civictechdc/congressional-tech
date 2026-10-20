@@ -3,9 +3,8 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path, PurePosixPath
 import sqlite3
-import tempfile
 
-from congress_api.retention.derived_files import file_identity, copy_checked, retain_verified_file
+from congress_api.retention.derived_files import file_identity, copy_checked
 from congress_api.retention.immutable_metadata import encoded
 
 
@@ -59,15 +58,10 @@ class RendererState:
         return path
 
     def publish_asset(self,source,destination,*,identity,key):
-        # Interrupted copies belong to private upgrade staging, never the
-        # accepted publication inventory. Publish only a complete checked inode.
-        with tempfile.TemporaryDirectory(prefix='asset-',dir=self.root) as folder:
-            staged=Path(folder)/'complete'
-            proof=copy_checked(source,staged,size=identity['bytes'],expected=identity,key=key,exclusive=True)
-            retain_verified_file(staged,destination,expected=proof,key=key)
-        # Removing the private hard link changes ctime. Issue custody only after
-        # that unlink, so inventory validation receives the final owned file.
-        return file_identity(destination)
+        # The maintained copier links only complete bytes into publication.
+        # Its diagnostic partial stays private across every worker-loss window.
+        return copy_checked(source,destination,size=identity['bytes'],expected=identity,
+                            key=key,exclusive=True,partial_directory=self.root)
 
     def remember(self,relative,identity):
         self._path(relative,identity)
