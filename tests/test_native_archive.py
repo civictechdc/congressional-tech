@@ -153,13 +153,13 @@ def test_archive_preserves_richer_adopted_state_on_correction_and_restart():
     assert restarted.selected.states().schema.equals(schema)
 
 
-def test_changed_native_catalog_seeds_urls_through_bounded_logical_batches(monkeypatch, archive_factory):
+def test_changed_native_catalog_seeds_only_scope_sources_and_retains_cursor(monkeypatch, archive_factory):
     from contextlib import contextmanager
     from congress_api.retention import catalog_publication
     from congress_api.retention.catalog_publication import MANIFEST_KEY
     store = policy.MemoryStore()
     archive_factory(store, 'initial')
-    store.objects[MANIFEST_KEY] = b'changed native selector'
+    store.objects[MANIFEST_KEY] = b'{"version":2,"selection":{}}'
     table = pa.table(dict(source_url=['https://example.gov/queued.pdf'], body_key=[None],
         format=[['pdf']], http_status=[['200']], media_type=[['application/pdf']]))
     calls = []
@@ -171,17 +171,106 @@ def test_changed_native_catalog_seeds_urls_through_bounded_logical_batches(monke
             yield from table.select(columns).to_batches()
     class NativeCatalog:
         version = store.version(MANIFEST_KEY)
+        identity = dict(selector_sha256='current', selected_ref={'scope': 'current'})
+        def changed_sources_since(self, previous, *, max_ordered_bytes):
+            assert previous == dict(selector_sha256=None, selected_ref=None) and max_ordered_bytes == 64 << 20
+            return LogicalTable()
+        def changes_since(self, previous):
+            pytest.fail('Payload replay across obsolete scopes attempted')
         @property
         def filenames_path(self):
             pytest.fail('Native catalog path export attempted')
         def table(self, label, *, max_ordered_bytes):
-            assert label == 'filenames' and max_ordered_bytes == 64 << 20
-            return LogicalTable()
+            pytest.fail('Full native source scan attempted')
     @contextmanager
-    def read(store, *, native):
+    def read(store, *, native, read=None):
         assert native is store._native_raw.native
         yield NativeCatalog()
     monkeypatch.setattr(catalog_publication, 'read_catalog', read)
     archive = archive_factory(store, 'changed-catalog')
     assert calls
     assert archive.state['https://example.gov/queued.pdf']['outcome'] == 'pending'
+    archive.save()
+    assert archive.selected.manifest['filename_version'] == NativeCatalog.identity
+    calls.clear()
+    NativeCatalog.changes_since = lambda *args: pytest.fail('Unchanged cursor traversed')
+    restarted = archive_factory(store, 'same-catalog')
+    assert restarted.filename_version == NativeCatalog.identity and calls == []
+
+
+def test_archive_consumes_real_retained_catalog_scope_chain_and_unchanged_reads_no_catalog_payload(tmp_path, monkeypatch):
+    from congress_api.retention.catalog_publication import read_catalog
+    from congress_api.retention.catalog_selection import NativeCatalogSnapshot
+    from congress_api.retention.catalog_updates import update_native_catalog
+    from test_native_catalog_selection import seed
+    from test_catalog_dependencies import identity, source
+    from test_raw_storage import SelectorStore
+    store = SelectorStore()
+    owner = memory_raw_storage(store, max_state_rows=3)
+    adopt_legacy_archive(store, owner, operation='explicit-empty')
+    dependencies, rows = seed(tmp_path, store, owner.native)
+    initial = Archive(store, 'initial-catalog', storage=owner)
+    initial.save()
+    cursor = initial.filename_version
+    with read_catalog(store, native=owner.native) as previous:
+        update_native_catalog(store, native=owner.native, previous=previous, dependencies=dependencies,
+            deletions=[identity(rows[2])], candidate='split', directory=tmp_path / 'split',
+            max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    with read_catalog(store, native=owner.native) as previous:
+        update_native_catalog(store, native=owner.native, previous=previous, dependencies=dependencies,
+            replacements=[source('newly-discovered.pdf', 'N')], candidate='new-url', directory=tmp_path / 'new-url',
+            max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    with read_catalog(store, native=owner.native) as previous:
+        update_native_catalog(store, native=owner.native, previous=previous, dependencies=dependencies,
+            deletions=[identity(source('newly-discovered.pdf', 'N'))], replacements=[source('newly-discovered.pdf', 'N2')],
+            candidate='newer-body', directory=tmp_path / 'newer-body',
+            max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    with read_catalog(store, native=owner.native) as previous:
+        update_native_catalog(store, native=owner.native, previous=previous, dependencies=dependencies,
+            replacements=[source('removed-before-startup.pdf', 'D')], candidate='temporary-url', directory=tmp_path / 'temporary-url',
+            max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    with read_catalog(store, native=owner.native) as previous:
+        update_native_catalog(store, native=owner.native, previous=previous, dependencies=dependencies,
+            deletions=[identity(source('removed-before-startup.pdf', 'D'))], candidate='removed-url', directory=tmp_path / 'removed-url',
+            max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    owner.native.reads.clear()
+    monkeypatch.setattr(NativeCatalogSnapshot, 'table', lambda *a, **k: pytest.fail('Full selected catalog scanned'))
+    caught_up = Archive(store, 'catch-up', storage=owner)
+    assert caught_up.state['https://example.gov/newly-discovered.pdf']['outcome'] == 'retained'
+    assert caught_up.state['https://example.gov/newly-discovered.pdf']['body_key'] == 'N2'
+    assert 'https://example.gov/removed-before-startup.pdf' not in caught_up.state
+    assert caught_up.filename_version != cursor
+    assert len([dataset for dataset in owner.native.reads if dataset.startswith('catalog-filenames-')]) == 2
+    caught_up.save()
+    owner.native.reads.clear()
+    writes = list(store.writes)
+    again = Archive(store, 'unchanged', storage=owner)
+    again.save()
+    assert again.filename_version == caught_up.filename_version
+    assert not [dataset for dataset in owner.native.reads if dataset.startswith('catalog-filenames-')]
+    assert store.writes == writes
+
+
+def test_native_catalog_missing_cursor_refuses_without_full_scan(tmp_path, monkeypatch):
+    from congress_api.retention.catalog_selection import NativeCatalogSnapshot
+    from test_native_catalog_selection import seed
+    from test_raw_storage import SelectorStore
+    store = SelectorStore()
+    owner = memory_raw_storage(store)
+    owner.publish(owner.prepare(owner.snapshot(), operation='unseeded-catalog-cursor', filename_version='old-etag'))
+    seed(tmp_path, store, owner.native)
+    monkeypatch.setattr(NativeCatalogSnapshot, 'table', lambda *a, **k: pytest.fail('Full selected catalog scanned'))
+    owner.native.reads.clear()
+    with pytest.raises(ValueError, match='explicit initial cursor'):
+        Archive(store, 'must-adopt-cursor', storage=owner)
+    assert not [dataset for dataset in owner.native.reads if dataset.startswith('catalog-filenames-')]
+
+
+def test_changed_file_catalog_requires_explicit_adoption_before_payload_read(monkeypatch, archive_factory):
+    from congress_api.retention.catalog_publication import MANIFEST_KEY
+    store = policy.MemoryStore()
+    archive_factory(store, 'empty')
+    store.objects[MANIFEST_KEY] = b'{"version":1,"changed":true}'
+    monkeypatch.setattr(store, 'read_derived_file', lambda *a, **k: pytest.fail('Legacy catalog payload read'))
+    with pytest.raises(ValueError, match='explicit catalog adoption'):
+        archive_factory(store, 'changed-file-catalog')

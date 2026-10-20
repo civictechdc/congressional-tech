@@ -359,61 +359,91 @@ class LegacyArchiveSeed:
             source = None
             if repair or version is None or saved_metadata.get(b'filename_version') != str(version).encode():
                 options = dict(native=self.storage.native) if hasattr(self, 'storage') else {}
+                if hasattr(self, 'selected'):
+                    selector = store.read(MANIFEST_KEY)
+                    if selector is not None:
+                        if json.loads(selector).get('version') != 2:
+                            raise ValueError('Changed file catalog requires explicit catalog adoption')
+                    else:
+                        from congress_api.retention.catalog_publication import DOCUMENTS
+                        if any(object_version(key) != 'missing' for key in (FILENAMES, DOCUMENTS)):
+                            raise ValueError('Legacy catalog files require explicit catalog adoption')
+                    options['read'] = lambda key: selector if key == MANIFEST_KEY else store.read(key)
                 snapshot = owners.enter_context(read_catalog(store, **options))
-                if callable(getattr(snapshot, 'table', None)):
-                    source = snapshot.table('filenames', max_ordered_bytes=64 << 20)
+                if callable(getattr(snapshot, 'changes_since', None)):
+                    self.filename_version = snapshot.identity
+                    if hasattr(self, 'selected'):
+                        cursor = self.selected.manifest['filename_version']
+                        if not isinstance(cursor, dict):
+                            raise ValueError('Native catalog acquisition requires an explicit initial cursor seed')
+                        if cursor != snapshot.identity:
+                            self._seed_catalog_source(snapshot.changed_sources_since(cursor, max_ordered_bytes=64 << 20))
+                    else:
+                        # Full native enumeration belongs only to the explicit
+                        # investigated LegacyArchiveSeed/adoption boundary.
+                        source = snapshot.table('filenames', max_ordered_bytes=64 << 20)
+                elif callable(getattr(snapshot, 'table', None)):
+                    raise ValueError('Native catalog lacks retained source changes')
                 elif snapshot.filenames_path:
                     source = owners.enter_context(pq.ParquetFile(snapshot.filenames_path))
-                self.filename_version = snapshot.version if snapshot.version is not None else version
+                    self.filename_version = snapshot.version if snapshot.version is not None else version
+                elif not snapshot.files and snapshot.manifest is None:
+                    # This token proves that neither a selector nor legacy pair
+                    # existed; bare None must never stand for a legacy catalog.
+                    self.filename_version = snapshot.identity
             if source is not None:
-                from congress_api.retention.capture_url_admission import (
-                    PROVENANCE_COLUMNS, publisher_download_candidate, independent_publisher_link,
+                self._seed_catalog_source(source)
+
+    def _seed_catalog_source(self, source):
+        from congress_api.retention.capture_url_admission import (
+            PROVENANCE_COLUMNS, publisher_download_candidate, independent_publisher_link,
+        )
+        columns = ['source_url', 'body_key', 'format', 'http_status', 'media_type']
+        columns.extend(name for name in PROVENANCE_COLUMNS if name in source.schema_arrow.names)
+        rows = (row for batch in source.iter_batches(batch_size=256, columns=columns)
+                for row in batch.to_pylist())
+        for row in rows:
+            if not publisher_download_candidate(row):
+                continue  # Retain probe evidence without scheduling new guesses.
+            links = self.seed_links({"url": row["source_url"]},
+                                    publisher_link=independent_publisher_link(row))
+            # An aggregate catalog body cannot be assigned to a recovered URL.
+            url = links[0]['url'] if len(links) == 1 and not links[0].get('url_repair') else None
+            if (
+                not url
+                or self.state[url]['outcome'] == 'excluded_probe'
+                or not row["body_key"]
+                or self.state[url].get("body_key")
+                or self.state[url].get("checked_at")
+                or "200" not in (row["http_status"] or [])
+            ):
+                continue
+            formats = set(row["format"] or [])
+            # A claimed format is not proof of a usable file. Inspect retained
+            # bytes once before treating it as a successful document.
+            if formats and formats <= {
+                "pdf",
+                "doc",
+                "docx",
+                "xls",
+                "xlsx",
+                "ppt",
+                "pptx",
+                "zip",
+                "rtf",
+            }:
+                self.state[url].update(
+                    body_key=row["body_key"],
+                    sha256=row["body_key"].rsplit("/", 1)[-1].removesuffix(".gz"),
+                    media_type=next(iter(row["media_type"] or []), None),
+                    # The filename index aggregates observations; it does not
+                    # associate one HTTP status with this particular body.
+                    http_status=None,
+                    fidelity="retained-file",
+                    outcome="retained",
+                    links_scanned=False,
                 )
-                columns = ['source_url', 'body_key', 'format', 'http_status', 'media_type']
-                columns.extend(name for name in PROVENANCE_COLUMNS if name in source.schema_arrow.names)
-                rows = (row for batch in source.iter_batches(batch_size=256, columns=columns)
-                        for row in batch.to_pylist())
-                for row in rows:
-                    if not publisher_download_candidate(row):
-                        continue  # Retain probe evidence without scheduling new guesses.
-                    links = self.seed_links({"url": row["source_url"]},
-                                            publisher_link=independent_publisher_link(row))
-                    # An aggregate catalog body cannot be assigned to a recovered URL.
-                    url = links[0]['url'] if len(links) == 1 and not links[0].get('url_repair') else None
-                    if (
-                        not url
-                        or self.state[url]['outcome'] == 'excluded_probe'
-                        or not row["body_key"]
-                        or self.state[url].get("body_key")
-                        or self.state[url].get("checked_at")
-                        or "200" not in (row["http_status"] or [])
-                    ):
-                        continue
-                    formats = set(row["format"] or [])
-                    # A claimed format is not proof of a usable file. Inspect retained
-                    # bytes once before treating it as a successful document.
-                    if formats and formats <= {
-                        "pdf",
-                        "doc",
-                        "docx",
-                        "xls",
-                        "xlsx",
-                        "ppt",
-                        "pptx",
-                        "zip",
-                        "rtf",
-                    }:
-                        self.state[url].update(
-                            body_key=row["body_key"],
-                            sha256=row["body_key"].rsplit("/", 1)[-1].removesuffix(".gz"),
-                            media_type=next(iter(row["media_type"] or []), None),
-                            # The filename index aggregates observations; it does not
-                            # associate one HTTP status with this particular body.
-                            http_status=None,
-                            fidelity="retained-file",
-                            outcome="retained",
-                            links_scanned=False,
-                        )
+
     def seed(self, item, *, publisher_link=False):
         url = allowed_url(item.get("url"))
         if url:
