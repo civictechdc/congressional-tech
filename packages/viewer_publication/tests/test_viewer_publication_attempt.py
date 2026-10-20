@@ -605,3 +605,36 @@ def test_native_runtime_change_during_preparation_refuses_before_acceptance(sour
             attempts.prepare(publisher,Remote(source),root,run_id='runtime',run_attempt='1',public_url=publisher.PUBLIC_URL)
         assert not (root/'preparation.json').exists()
     finally:path.write_bytes(before)
+
+
+def test_explicit_renderer_upgrade_resumes_existing_preparation_with_exact_original_conditions(ready,source,tmp_path,monkeypatch):
+    import filename_native
+    remote,_,_=ready
+    publish(ready)
+    remote.puts.clear()
+    original_requirements=filename_native.native_requirements
+    monkeypatch.setattr(filename_native,'native_requirements',lambda *a,**k:{**original_requirements(*a,**k),'renderer':'fixture-qualified-upgrade'})
+    original=filename_native.publish_selected
+    native=_NATIVE_FIXTURES[str(source)]
+    stopped=[]
+    def stop(value):
+        if value['event']=='renderer_task_completed' and value.get('task','').startswith('component-chunk:'):
+            stopped.extend(native.reads);raise RuntimeError('worker stopped')
+    def interrupted(*args,**kwargs):
+        kwargs['stage_event']=stop
+        return original(*args,**kwargs)
+    monkeypatch.setattr(filename_native,'publish_selected',interrupted)
+    root=tmp_path/'upgrade';native.reads.clear()
+    with pytest.raises(RuntimeError,match='worker stopped'):
+        attempts.prepare(publisher,remote,root,run_id='upgrade',run_attempt='1',public_url=publisher.PUBLIC_URL,renderer_upgrade=True)
+    assert not remote.puts
+    native.reads.clear();monkeypatch.setattr(filename_native,'publish_selected',original)
+    result=attempts.prepare(publisher,remote,root,run_id='upgrade',run_attempt='1',public_url=publisher.PUBLIC_URL,
+        renderer_upgrade=True,resume_preparation=True)
+    assert not set(stopped)&set(native.reads) and not remote.puts
+    receipt,manifest,_=attempts.verify_prepared(publisher,root)
+    assert receipt['binding']['renderer_upgrade'] and manifest['requirements']['renderer']=='fixture-qualified-upgrade'
+    native.reads.clear()
+    assert attempts.prepare(publisher,remote,root,run_id='upgrade',run_attempt='1',public_url=publisher.PUBLIC_URL,
+        renderer_upgrade=True,resume_preparation=True)==result
+    assert not native.reads and not remote.puts

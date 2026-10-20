@@ -99,7 +99,7 @@ const Module = require('node:module');
 const original = Module._load;
 Module._load = function(name, ...rest) {
   if (name === 'esbuild') return {version: 'fixture', build: async options => {
-    if (!require('node:fs').existsSync(options.stdin.resolveDir + '/catalog.mjs')) throw Error('bad resolveDir');
+    if (!require('node:fs').existsSync(options.stdin.resolveDir + '/catalog.ts')) throw Error('bad resolveDir');
     require('node:fs').writeFileSync(options.outfile, 'fixture');
   }};
   if (name === 'playwright/package.json') return {version: 'fixture'};
@@ -126,5 +126,5 @@ print(json.dumps({{"server_path_verified":True}}),flush=True)
     receipt = json.loads((output / 'browser-receipt.json').read_text())
     assert result.returncode == 1  # Deliberate stop before any browser launch.
     assert 'PATHS_REACHED_BROWSER' in receipt['error'], receipt
-    assert len(receipt['loader_hashes']) == 5
+    assert len(receipt['loader_hashes']) == 8
     assert receipt['inputs']['server_path_verified']

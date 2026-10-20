@@ -33,6 +33,40 @@ Read-only no-op checks and restoring an accepted artifact skip this prerequisite
 The remote source-only storage boundary has separate qualification evidence;
 that evidence does not provision a production runtime or select a live catalog.
 
+## Explicit renderer upgrades
+
+A normal update refuses changed rendering rules. After qualifying new rules,
+prepare a separate local upgrade from the current native catalog and prior v6
+viewer release:
+
+```bash
+.venv/bin/python apps/site/scripts/publish-viewer-r2.py prepare \
+  --directory output/renderer-upgrade --run-id upgrade-20261020 --run-attempt 1 \
+  --native-config /absolute/path/runtime.json --renderer-upgrade
+```
+
+If preparation stops, repeat that command with `--resume-preparation`, the same
+directory, run identity, code, configuration, source selection and prior release.
+The existing preparation continuation checks those inputs. Its private sibling
+`publication.renderer-upgrade/stages.sqlite` retains completed bounded rendering
+tasks. Restart verifies every completed asset hash before reusing those tasks.
+Missing or changed assets refuse; they are not accepted as completed work.
+
+An upgrade intentionally renders all selected chunks under the new rules. It
+keeps the exact native catalog pins, creates no replacement native datasets, and
+makes no publication write during preparation. The selected viewer stays in place
+until the ordinary accepted-artifact upload and conditional selection succeed.
+Completed preparation retries reuse the accepted output. The staging database
+is retained locally for diagnosis and restart; it is not a viewer upload asset.
+Its disk use grows with selected metadata, while native reads and Arrow memory
+remain bounded by the existing chunk limits. This does not make total process
+memory constant: the accepted file inventory still grows with new assets.
+
+The guarded local recovery dispatcher exposes the same `--renderer-upgrade`
+option; its existing `--resume` continues that exact retained operation. It keeps
+its original catalog, mapping and publication guards. Changing a source/grouping
+rule requires the separate catalog upgrade path, not this rendering option.
+
 ## Resume through GitHub Actions
 
 Run `describe-attempt` with the original run ID and save its JSON report. If that

@@ -39,8 +39,11 @@ def record_input(publisher, client, key, optional=False):
     return {'value': value, 'etag': etag, 'modified': modified, 'sha256': digest}
 
 
-def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=None):
+def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=None,
+            renderer_upgrade=False, resume_preparation=False):
     """Read inputs and accept complete local output; perform no publication writes."""
+    if resume_preparation and not renderer_upgrade:
+        raise ValueError('Preparation resume requires an explicit renderer upgrade')
     selected = record_input(publisher, client, 'indexes/catalog.json')
     previous = record_input(publisher, client, publisher.PREFIX + 'manifest.json', optional=True)
     accepted = record_input(publisher, client, publisher.ACCEPTED_KEY, optional=True)
@@ -51,7 +54,7 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=
     binding['provenance_revision'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'],
         cwd=Path(publisher.__file__).resolve().parents[3], text=True, timeout=10).strip()
     mode = 'full'
-    if (previous['value'] and previous['value'].get('source_manifest') == selected['value']
+    if (not renderer_upgrade and previous['value'] and previous['value'].get('source_manifest') == selected['value']
             and previous['value'].get('publisher_version') == publisher.PUBLISHER_VERSION
             and previous['value'].get('full_release_inputs') == binding['code_runtime']):
         result = publisher.check_selected_publication(client, previous['value'], public_url=public_url,
@@ -79,7 +82,8 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=
     native_inputs = {str(Path(path).resolve()): file_identity(path) for path in native.execution_files()}
     binding['native_execution'] = {path: dict(identity) for path, identity in native_inputs.items()}
     binding['mode'] = mode
-    continuation = Continuation(root, binding)
+    if renderer_upgrade:binding['renderer_upgrade']=True
+    continuation = Continuation(root, binding, resume=resume_preparation)
     publication = root / 'publication'
     inventory_proof = None
     def build():
@@ -89,10 +93,11 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=
         from viewer_publication.native import prepare_native_output
         spec = importlib.util.spec_from_file_location('prepared_viewer_builder', Path(publisher.__file__).with_name('publish-filename-viewer.py'))
         builder = importlib.util.module_from_spec(spec); spec.loader.exec_module(builder)
+        upgrade_options = dict(renderer_upgrade=True,resume_upgrade=resume_preparation) if renderer_upgrade else {}
         manifest, recovery = prepare_native_output(publisher, builder, client, snapshot, publication,
             accepted_record=tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')),
             viewer_record=tuple(previous[k] for k in ('value', 'etag', 'modified', 'sha256')),
-            recovery_only=mode == 'recovery')
+            recovery_only=mode == 'recovery', **upgrade_options)
         for path, identity in native_inputs.items():
             identity.require(path)
         identities = dict(manifest.identities)
@@ -105,9 +110,19 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=
         inventory_proof = issue_inventory(root,
             {'publication/' + relative: proof for relative, proof in identities.items()}, context=binding)
         return manifest
+    saved=continuation.value['phases'].get('prepared')
+    if saved is not None:
+        inventory_proof=verify_inventory(root,{name:dict(bytes=(root/name).stat().st_size,sha256=digest)
+            for name,digest in saved['files'].items()},context=binding)
     manifest = continuation.phase('prepared', build, files=lambda: [], inventory=lambda: inventory_proof)
     inventory = inventory_proof.files
-    plan = {'release': 'releases/' + uuid.uuid4().hex + '/', 'published_at': datetime.now(timezone.utc).isoformat()}
+    if (root/'preparation.json').is_file():
+        accepted_receipt=json.loads((root/'preparation.json').read_bytes())
+        if accepted_receipt['binding']!=binding or accepted_receipt['files']!=inventory:
+            raise ValueError('Accepted preparation inputs or inventory changed')
+        plan=accepted_receipt['release_plan']
+    else:
+        plan = {'release': 'releases/' + uuid.uuid4().hex + '/', 'published_at': datetime.now(timezone.utc).isoformat()}
     receipt = {'version': 1, 'binding': binding, 'files': inventory, 'release_plan': plan,
                'compression_policy': manifest.get('compression_policy'), 'manifest_sha256': inventory['publication/manifest.json']['sha256']}
     receipt_bytes = publisher.encoded(receipt)

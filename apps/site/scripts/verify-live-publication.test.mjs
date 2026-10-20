@@ -10,8 +10,8 @@ function fixture(withdrawn=false){
  const review=JSON.stringify(data),binding=JSON.stringify({version:1,catalog_id:catalog,review_sha256:'review',rows:withdrawn?[]:[{index:0,group:0,sources:[0]}],withdrawn:withdrawn?[{index:0,document_id:'d'.repeat(64),reason:'body_changed'}]:[]});
  const manifest={version:5,info:{catalog_id:catalog,rows:1,entries:1,facets:{document_kind:[],document_family:[]}},source_manifest:source,files:{review_binding:{path:'binding.json',bytes:Buffer.byteLength(binding),sha256:hash(binding)}}};
  const pointer={version:1,catalog_id:catalog,source_manifest:source,manifest:'releases/'+'a'.repeat(32)+'/manifest.json'};
- const responses=new Map([['https://data.test/manifest.json',JSON.stringify(pointer)],['https://data.test/'+pointer.manifest,JSON.stringify(manifest)],['https://data.test/releases/'+'a'.repeat(32)+'/binding.json',binding],['https://pages.test/project/data/document-reviews/reviews.json',review],['https://pages.test/project/filenames/','<script type="module" src="/project/bootstrap.js"></script>'],['https://pages.test/project/bootstrap.js','export const runtime=5;']]);
- return {viewerUrl:'https://data.test/manifest.json',pagesUrl:'https://pages.test/project/filenames/',descriptor:{catalog_id:catalog,review_sha256:'review',bytes:Buffer.byteLength(review),sha256:hash(review)},fetcher:async url=>{assert(responses.has(String(url)),String(url));return new Response(responses.get(String(url)),{headers:{'Access-Control-Allow-Origin':'*'}});}};
+ const responses=new Map([['https://data.test/manifest.json',JSON.stringify(pointer)],['https://data.test/'+pointer.manifest,JSON.stringify(manifest)],['https://data.test/releases/'+'a'.repeat(32)+'/binding.json',binding],['https://pages.test/project/data/document-reviews/reviews.json',review],['https://pages.test/project/dashboard/','<script type="module" src="/project/bootstrap.js"></script>'],['https://pages.test/project/bootstrap.js','export const runtime=5;']]);
+ return {viewerUrl:'https://data.test/manifest.json',pagesUrl:'https://pages.test/project/dashboard/',descriptor:{catalog_id:catalog,review_sha256:'review',bytes:Buffer.byteLength(review),sha256:hash(review)},fetcher:async url=>{assert(responses.has(String(url)),String(url));return new Response(responses.get(String(url)),{headers:{'Access-Control-Allow-Origin':'*'}});}};
 }
 
 test('live verification runs maintained review loader and pins pages assets without overstating execution',async()=>{
@@ -35,7 +35,7 @@ test('runtime compatibility uses explicit deployed-worker evidence and oversized
 test('deployed worker proof compares catalog, review and recovery identities and closes browser',async()=>{
  const {browserRuntimeProbe}=await import('./verify-live-publication.mjs');
  let closed=0;
- const inputs={pagesUrl:'https://pages.test/project/filenames/',pointer:{catalog_id:'catalog',recovery:{sha256:'recovery'}},reviewInfo:{review_sha256:'review'}};
+ const inputs={pagesUrl:'https://pages.test/project/dashboard/',pointer:{catalog_id:'catalog',recovery:{sha256:'recovery'}},reviewInfo:{review_sha256:'review'}};
  const info={catalog_id:'catalog',review_sha256:'review',recovery_sha256:'recovery',reviewed_search:true};
  const chromium={launch:async()=>({version:()=> 'fixture-browser',close:async()=>closed++,newPage:async()=>({goto:async()=>{},waitForFunction:async()=>{},evaluate:async()=>info})})};
  assert.equal((await browserRuntimeProbe(inputs,chromium)).state,'passed');

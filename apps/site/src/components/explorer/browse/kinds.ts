@@ -29,3 +29,13 @@ export const isView = (value: string): value is View => viewSet.has(value);
 export const isAccessState = (value: string): value is AccessState => accessSet.has(value);
 export const isCommitteeType = (value: string): value is CommitteeType => committeeTypeSet.has(value);
 export const isEvidenceState = (value: string): value is EvidenceState => evidenceSet.has(value);
+
+export const filenameScopes = ['', 'documents', 'capture-records', 'all'] as const;
+export type FilenameScope = (typeof filenameScopes)[number];
+const filenameScopeSet: ReadonlySet<string> = new Set(filenameScopes);
+export const isFilenameScope = (value: string): value is FilenameScope => filenameScopeSet.has(value);
+
+export const retainedFilters = ['', 'yes', 'no'] as const;
+export type RetainedFilter = (typeof retainedFilters)[number];
+const retainedSet: ReadonlySet<string> = new Set(retainedFilters);
+export const isRetainedFilter = (value: string): value is RetainedFilter => retainedSet.has(value);
