@@ -37,6 +37,10 @@ if os.environ.get('FILENAME_FIXTURE_SCHEMA_ADDITION'):
     index.write_document_indexes(seed_path,sources.to_pylist(),sources.schema,
         catalog_id='b'*32,preserve_columns=True)
     sources=pq.read_table(seed_path);documents=pq.read_table(seed_path.with_name('documents.parquet'))
+if os.environ.get('FILENAME_FIXTURE_OCCURRENCE_ADDITION'):
+    occurrence_kind = sources.schema.field('source_occurrences').type
+    sources = sources.drop(['source_occurrences'])
+    documents = documents.drop(['source_occurrences'])
 if os.environ.get('FILENAME_FIXTURE_GIANT_DOCUMENT'):
     # Document observations are saved document values, distinct from every
     # source's occurrence sequence. No grouping or canonicalization is replayed.
@@ -75,10 +79,14 @@ if os.environ.get('FILENAME_FIXTURE_SCHEMA_ADDITION'):
     # claim columns; declare them with the new optional field for real updates.
     for name in ('document_kind_source','filename_document_kind','source_new_literal'):
         if name not in expanded.names:expanded=expanded.append(pa.field(name,pa.list_(pa.string())))
+    if os.environ.get('FILENAME_FIXTURE_OCCURRENCE_ADDITION'):
+        expanded=expanded.append(pa.field('source_occurrences',occurrence_kind))
     current=CatalogDependencyStorage(native=native,store=store,namespace='browser-fixture',source_schema=expanded,
         max_rows=1,max_bytes=1<<24)
     row=current.selected(snapshot.selection['dependency']).source(sources['source_id'][0].as_py())
     row['source_new_literal']=['new','new',None]
+    if os.environ.get('FILENAME_FIXTURE_OCCURRENCE_ADDITION'):
+        row['source_occurrences']=[{'source_page_title':['added occurrence']}]
     update_native_catalog(store,native=native,previous=snapshot,dependencies=current,replacements=[row],
         candidate='schema-addition',directory=folder/'schema-update',max_chunk_rows=1024,max_chunk_bytes=1<<24,rules={'grouping':'maintained-v1'})
     after=read_catalog(store,native=native)

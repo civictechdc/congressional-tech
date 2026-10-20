@@ -406,7 +406,7 @@ class NativeSourceAssets:
                     policy=self.policy, metrics=self.metrics, stage='native source leaf verification'))
                 if counted != len(table):
                     raise ValueError('Viewer source leaf row count differs')
-            return dict(rows=len(table), files=files, facets=facets)
+            return dict(rows=len(table), files=files, facets=facets, occurrences_split='source_occurrences' in schema.names)
 
 
 class NativeComponents:
@@ -579,7 +579,8 @@ class NativeComponents:
                 exported = pa.Table.from_batches(document_batches, schema=core_schema)
                 pq.write_table(exported, path, compression=self.compression.codec, compression_level=self.compression.level,
                                row_group_size=self.compression.row_group_size)
-                reference = dict(document_file=dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported)))
+                reference = dict(document_file=dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported)),
+                    document_occurrences_split='source_occurrences' in schema.names)
                 if 'source_occurrences' in schema.names:
                     from congress_api.retention.catalog_rows import CatalogRows
                     owner = CatalogRows(native=self.snapshot.native, store=self.snapshot.store)

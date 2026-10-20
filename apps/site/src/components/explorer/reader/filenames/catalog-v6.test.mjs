@@ -122,11 +122,11 @@ test('stable filename order follows Arrow code points, including supplementary U
   assert(compareBrowseKeys([false,'a.pdf','a'],[true,'','b'])<0);
 });
 
-test('nullable schema additions preserve reused document assets and declare missing values as null',async()=>{
+for(const occurrences of [false,true])test(`nullable schema additions preserve reused assets${occurrences?' including an absent occurrence field':''}`,async()=>{
   const folder=await mkdtemp(join(tmpdir(),'stable-schema-'));
   try{
     execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../../../tests/native_viewer_fixture.py',import.meta.url)),folder],
-      {env:{...process.env,FILENAME_FIXTURE_SCHEMA_ADDITION:'1'}});
+      {env:{...process.env,FILENAME_FIXTURE_SCHEMA_ADDITION:'1',...(occurrences?{FILENAME_FIXTURE_OCCURRENCE_ADDITION:'1'}:{})}});
     const metrics=JSON.parse(await readFile(join(folder,'nullable-metrics.json')));
     assert.equal(metrics.native_source_leaves_read,1);assert(metrics.source_subtrees_reused>0);
     const reader=await createFilenameCatalog(pathToFileURL(join(folder,'native-expanded/manifest.json')),async(url,options)=>{
