@@ -69,6 +69,14 @@ def test_projection_preserves_requested_field_order_and_metadata():
     assert actual.schema.field('source_id').metadata == SCHEMA.field('source_id').metadata
 
 
+@pytest.mark.parametrize('requested', [None, ['second', 'first']])
+def test_partition_reads_follow_selector_order_for_default_and_requested_scope(requested):
+    native = NativeFixture()
+    table = CatalogTable(SCHEMA, [('first', pin('one', 3)), ('second', pin('two', 3))], native=native)
+    list(table.iter_batches(partitions=requested))
+    assert [selected['id'] for selected in native.reads] == ['one', 'two']
+
+
 def test_native_schema_mismatch_refuses_before_rows_escape():
     wrong = pa.schema([('source_id', pa.string()), SCHEMA.field('observations')])
     table = CatalogTable(SCHEMA, [('first', pin('selected', 3))], native=NativeFixture(wrong))

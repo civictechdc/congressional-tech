@@ -50,7 +50,8 @@ class CatalogTable:
         logical-table file is exported or materialized by this reader.
         """
         requested = self.partition_names if partitions is None else tuple(partitions)
-        if len(set(requested)) != len(requested) or set(requested) - set(self.partition_names):
+        requested_set = set(requested)
+        if len(requested_set) != len(requested) or requested_set - set(self.partition_names):
             raise ValueError('Requested catalog partitions must be distinct selected names')
         columns = self.schema_arrow.names if columns is None else list(columns)
         if not columns or len(set(columns)) != len(columns) or set(columns) - set(self.schema_arrow.names):
@@ -58,7 +59,7 @@ class CatalogTable:
         output_schema = pa.schema([self.schema_arrow.field(name) for name in columns],
                                   metadata=self.schema_arrow.metadata)
         for name, pin, rows in self._partitions:
-            if name not in requested:
+            if name not in requested_set:
                 continue
             count = 0
             with self.native.source_batches(deepcopy(pin)) as reader:
