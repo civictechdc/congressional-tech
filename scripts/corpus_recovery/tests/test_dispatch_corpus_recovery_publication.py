@@ -92,7 +92,7 @@ class DispatcherContinuationTests(unittest.TestCase):
         from viewer_publication.continuation import Continuation
         sys.path.insert(0, str(RUNTIME/'apps/site/scripts'))
         scripts = Path(__file__).resolve().parents[3]/'scripts/corpus_recovery'
-        for failed_phase in ('catalog', 'mappings', 'prepared', 'publication', 'incomplete_catalog'):
+        for failed_phase in ('catalog', 'mappings', 'prepared', 'publication', 'interrupted_update'):
             with self.subTest(phase=failed_phase), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder); repo = root/'repo'; (repo/'.cache').mkdir(parents=True)
                 (repo/'scripts/corpus_recovery').mkdir(parents=True)
@@ -121,42 +121,46 @@ class DispatcherContinuationTests(unittest.TestCase):
                     def put_object(self, **kwargs): raise AssertionError('Unexpected fixture mutation')
                 calls = dict(catalog=0, mappings=0, prepared=0, publication=0)
                 build_error = RuntimeError('Injected incomplete catalog failure')
+                native = SimpleNamespace(execution_files=lambda: [config])
+                raw = SimpleNamespace(snapshot=lambda: SimpleNamespace(identity=RAW_IDENTITY))
+                selected = SimpleNamespace(identity={'selection': 'fixture'}, manifest=self.manifest)
+                class Snapshot:
+                    def __enter__(self): return selected
+                    def __exit__(self, *_): pass
                 def catalog(store, **kwargs):
                     calls['catalog'] += 1
-                    if failed_phase == 'incomplete_catalog':
-                        (kwargs['root']/'diagnostic.txt').write_text('Preserve incomplete build evidence')
+                    directory = kwargs['directory']
+                    directory.mkdir(exist_ok=True)
+                    assert kwargs['raw_storage'] is raw and kwargs['candidate'] == RAW_IDENTITY[:32]
+                    if failed_phase == 'interrupted_update' and calls['catalog'] == 1:
+                        (directory/'diagnostic.txt').write_text('Preserve interrupted update evidence')
                         raise build_error
-                    from congress_api.retention.catalog_publication import read_catalog
-                    with read_catalog(store) as snapshot:
-                        self.assertTrue(snapshot.filenames_path.is_file())
-                        self.assertTrue(snapshot.documents_path.is_file())
-                    return {'unchanged': True}
+                    self.assertEqual(json.loads(store.read('indexes/catalog.json')), self.manifest)
+                    return dict(unchanged=True, selected_identity=selected.identity,
+                        body_coverage=dict(expected_bodies=2, missing_bodies=0))
                 def mapping(*args, **kwargs): calls['mappings'] += 1; return {'complete': True}
-                def prepare(source, target, modified=None, *, validation=None):
-                    self.assertIsNotNone(validation)
+                def prepare(snapshot, target):
                     calls['prepared'] += 1
-                    self.assertEqual(json.loads((source/'indexes/catalog.json').read_text()), self.manifest)
-                    for item in self.manifest['files'].values(): self.assertTrue((source/item['key']).is_file())
+                    self.assertIs(snapshot, selected)
                     target.mkdir(); (target/'manifest.json').write_text('{}')
                     return {'prepared': True}
                 def publish(*args, **kwargs):
                     calls['publication'] += 1
                     self.assertTrue(kwargs['publication_plan']['release'].startswith('releases/'))
                     return {'status': 'published'}
-                def accepted_plan(publisher, builder, client, continuation, source,
-                                  validate_pair, pair_proof, conditions):
+                def accepted_plan(publisher, builder, client, continuation, snapshot, conditions):
                     # This fixture tests phase acceptance/reuse only. Real builder,
                     # inventory and upload integration has its own focused fixture.
-                    validate_pair(json.loads((source/'indexes/catalog.json').read_text()))
+                    self.assertIs(snapshot, selected)
                     continuation.value.setdefault('release_plan', dict(release='releases/'+'a'*32+'/', published_at='fixed'))
-                    manifest = continuation.phase('prepared', lambda: builder.publish(source, continuation.root/'prepared',
-                        validation=pair_proof()), files=lambda: [continuation.root/'prepared/manifest.json'])
+                    manifest = continuation.phase('prepared', lambda: builder.publish_selected(snapshot, continuation.root/'prepared'),
+                        files=lambda: [continuation.root/'prepared/manifest.json'])
                     return SimpleNamespace(root=continuation.root/'prepared', manifest=manifest,
                         conditions=conditions(continuation), release_plan=continuation.value['release_plan'])
                 def load(path, name):
                     from types import ModuleType
                     stub = ModuleType(name); stub.__file__ = str(path)
-                    if 'builder' in name: stub.publish = prepare
+                    if 'builder' in name: stub.publish_selected = prepare
                     else: stub.upload = publish
                     return stub
                 original = Continuation.phase
@@ -165,9 +169,12 @@ class DispatcherContinuationTests(unittest.TestCase):
                     if name == failed_phase: raise RuntimeError('Injected after accepted phase')
                     return result
                 args = SimpleNamespace(batch=batch, imported=imported, runtime=RUNTIME, baseline=baseline,
-                                       config=config, destination=root/'publication', execute=True, resume=False)
+                                       config=config, native_config=config, destination=root/'publication', execute=True, resume=False)
                 with patch.object(module, 'ROOT', repo), patch.object(module, 'verify_import', return_value={'complete': True, 'raw_identity': RAW_IDENTITY}), \
-                     patch.object(module, 'cloud_clear'), patch('congress_api.retention.raw_catalog.rebuild_catalog_in_directory', side_effect=catalog), \
+                     patch.object(module, 'cloud_clear'), patch('congress_api.retention.raw_catalog.update_from_raw', side_effect=catalog), \
+                     patch('congress_api.retention.docspec.NativeDatasets.from_config', return_value=native), \
+                     patch('congress_api.retention.raw_storage.RawStorage.open', return_value=raw), \
+                     patch('congress_api.retention.catalog_publication.read_catalog', side_effect=lambda *a, **k: Snapshot()), \
                      patch.object(module, 'load', side_effect=load), patch('boto3.client', return_value=Client()), \
                      patch('corpus_recovery.publication.prepare_viewer', side_effect=accepted_plan), \
                      patch('congress_api.retention.r2._configure_retries'), \
@@ -177,10 +184,10 @@ class DispatcherContinuationTests(unittest.TestCase):
                     with patch.object(Continuation, 'phase', fail_after_accept):
                         failed_diagnostic = (patch('corpus_recovery.diagnostics.catalog_build_observation',
                             side_effect=PermissionError('private diagnostic transport detail'))
-                            if failed_phase == 'incomplete_catalog' else nullcontext())
+                            if failed_phase == 'interrupted_update' else nullcontext())
                         with failed_diagnostic, self.assertRaisesRegex(RuntimeError, 'Injected') as failure:
                             module.run(args)
-                        if failed_phase == 'incomplete_catalog':
+                        if failed_phase == 'interrupted_update':
                             self.assertIs(failure.exception, build_error)
                             self.assertEqual(build_error.__notes__, ['Incomplete catalog diagnostic could not be saved: PermissionError'])
                             events = [json.loads(line) for line in (args.destination/'events.jsonl').read_text().splitlines()]
@@ -193,21 +200,14 @@ class DispatcherContinuationTests(unittest.TestCase):
                     for executing in (corpus_recovery, inventory_module):
                         self.assertIn(str(Path(executing.__file__).resolve()), pins)
                     args.resume = True
-                    if failed_phase == 'incomplete_catalog':
-                        with self.assertRaisesRegex(RuntimeError, 'Incomplete catalog build retained'):
-                            module.run(args)
-                        self.assertEqual((args.destination/'build/diagnostic.txt').read_text(), 'Preserve incomplete build evidence')
-                        diagnostic = json.loads((args.destination/'incomplete-catalog.json').read_text())
-                        self.assertEqual(diagnostic['retained_build_path'], str(args.destination.resolve()/'build'))
-                        self.assertIsNone(diagnostic['last_recorded_accepted_phase'])
-                        self.assertFalse(diagnostic['resume_authorized'])
-                        self.assertEqual(len(diagnostic['next_read_only_checks']), 4)
+                    self.assertEqual(module.run(args), {'status': 'published'})
+                    if failed_phase == 'interrupted_update':
+                        self.assertEqual((args.destination/'catalog-update/diagnostic.txt').read_text(),
+                                         'Preserve interrupted update evidence')
                     else:
-                        self.assertEqual(module.run(args), {'status': 'published'})
                         self.assertFalse((args.destination/'incomplete-catalog.json').exists())
-                expected_calls = (dict(catalog=1, mappings=0, prepared=0, publication=0)
-                                  if failed_phase == 'incomplete_catalog'
-                                  else dict(catalog=1, mappings=1, prepared=1, publication=1))
+                expected_calls = dict(catalog=2 if failed_phase == 'interrupted_update' else 1,
+                                      mappings=1, prepared=1, publication=1)
                 self.assertEqual(calls, expected_calls)
 
 
@@ -375,7 +375,7 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
         pass
     def build(store, **kwargs):
         assert store.read(selector) == before
-        assert store.put(selector, proposed)
+        assert store.put_catalog_manifest(proposed, expected_version=etag(before))
         assert selected_path.read_bytes() == proposed
         raise StoppedAfterSelection('verified selector installed')
     monkeypatch.setattr(module, 'ROOT', control)
@@ -383,10 +383,14 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
     monkeypatch.setattr(module, 'cloud_clear', lambda: None)
     monkeypatch.setattr(module.shutil, 'disk_usage', lambda *_: SimpleNamespace(free=100 * 1024**3))
     monkeypatch.setattr(storage, '_configure_retries', lambda *_: None)
-    monkeypatch.setattr(catalog_module, 'rebuild_catalog_in_directory', build)
+    monkeypatch.setattr(catalog_module, 'update_from_raw', build)
+    monkeypatch.setattr('congress_api.retention.docspec.NativeDatasets.from_config',
+                        lambda _: SimpleNamespace(execution_files=lambda: [config]))
+    monkeypatch.setattr('congress_api.retention.raw_storage.RawStorage.open',
+                        lambda *a: SimpleNamespace(snapshot=lambda: SimpleNamespace(identity=RAW_IDENTITY)))
     monkeypatch.setattr('boto3.client', lambda *a, **kw: client)
     args = SimpleNamespace(batch=batch, imported=imported, runtime=RUNTIME, execute=True,
-        destination=destination, baseline=baseline, config=config, resume=False)
+        destination=destination, baseline=baseline, config=config, native_config=config, resume=False)
     if outcome in ('success', 'lost_ack'):
         with pytest.raises(StoppedAfterSelection):
             module.run(args)
