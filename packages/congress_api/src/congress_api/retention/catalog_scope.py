@@ -188,7 +188,8 @@ def read_catalog_scope(store, reference, *, requirements=None):
 
 def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_after,
                          prepared, base, component_lookup, prepared_components,
-                         read_component, read_new_component=None, rules, expected_bodies=(), source_update=None, interpretation_before=None):
+                         read_component, read_new_component=None, rules, expected_bodies=(), source_update=None,
+                         interpretation_before=None, complete_counts=None):
     """Prove closed old ownership, candidate membership and no unrelated ID reuse.
 
     Component readers must verify their immutable proof bindings. Historical old
@@ -220,6 +221,20 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
         if key not in before and old.source(key) is not None:
             raise DependencyGap('Candidate source ID collides with an unaffected selected source')
         new_members.setdefault(component, []).append(key)
+    if complete_counts is not None:
+        from .source_update_proof import read_source_update
+        purpose = read_source_update(store, source_update).get('purpose') if source_update else None
+        if purpose not in {'qualification', 'rule-upgrade'}:
+            raise DependencyGap('Complete dependency replacement requires retained source qualification')
+        if complete_counts != dict(source_rows=len(before), document_rows=len(old_members)):
+            raise DependencyGap('Complete source replacement omits selected source or document ownership')
+        if purpose == 'qualification':
+            if set(before) != set(after):
+                raise DependencyGap('Source qualification changed selected source identities')
+            for row in prepared.source_values():
+                old_row = before[row['source_id']]
+                if any(old_row.get(name) != row.get(name) for name in prepared.source_schema.names):
+                    raise DependencyGap('Source qualification changed selected values or document mappings')
     retired = []
     for component, members in sorted(old_members.items()):
         reference = component_lookup(component)
@@ -229,6 +244,16 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
                 or value['validation']['source_ids_sha256'] != catalog_source_ids_digest(iter(sorted(members)))):
             raise DependencyGap('Retired component ownership is incomplete: ' + component)
         retired.append((component, reference))
+    if complete_counts is not None and purpose == 'qualification':
+        from .catalog_batches import SelectedCatalogTable
+        from .catalog_qualification import qualify_complete_values
+        selected = MetadataObjects(store, 'catalog-selections-v2').read(base['selected_ref'])
+        schema = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(selected['schemas']['documents'], validate=True)))
+        old_documents = SelectedCatalogTable(schema, lambda: iter(retired), store=store,
+            native=dependencies.native, label='documents', rows=len(old_members),
+            max_ordered_bytes=dependencies.max_bytes)
+        with pq.ParquetFile(prepared.documents_path) as documents:
+            qualify_complete_values(old_documents, documents, 'documents')
     read_new_component = read_new_component or read_component
     incoming, seen = [], set()
     for component, reference in prepared_components:
@@ -246,8 +271,10 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
         raise DependencyGap('Missing prepared component for the closed source scope')
     # Only the maintained affected-leaf preparation may determine new roots.
     # Checking changed rows alone would allow silently dropping unrelated leaves.
-    expected = dependencies.prepare(dependency_before, replacements=prepared.source_values(),
-        deletions=removed, source_orders=prepared.source_orders)
+    expected = (dependencies.prepare_full(dependency_before, replacements=prepared.source_values(),
+                                         source_orders=prepared.source_orders)
+                if complete_counts is not None else dependencies.prepare(dependency_before,
+                    replacements=prepared.source_values(), deletions=removed, source_orders=prepared.source_orders))
     if expected != dependency_after:
         raise DependencyGap('Candidate changed unrelated or unaffected dependency routing')
     current = dependencies.selected(dependency_after)
@@ -285,6 +312,7 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
         counts=dict(retired_source_rows=len(before), prepared_source_rows=len(after),
                     retired_document_rows=len(old_members), prepared_document_rows=len(new_members)),
         rules=deepcopy(rules), mapping=None, body_coverage=body_coverage, source_update=source_update,
+        complete_replacement=complete_counts is not None,
         interpretation_before=interpretation_before, interpretation_after=interpretation_after, requirements=catalog_scope_requirements())
     result['binding'] = sha256(encoded(result)).hexdigest()
     return MetadataObjects(store, 'catalog-scope-proofs-v1').put(result)

@@ -32,7 +32,8 @@ def selected_body_coverage(previous, dependencies, expected_bodies):
 
 
 def update_native_catalog(store, *, native, previous, dependencies, replacements=(), deletions=(),
-                          candidate, directory, max_chunk_rows, max_chunk_bytes, rules, expected_bodies=(), source_update=None):
+                          candidate, directory, max_chunk_rows, max_chunk_bytes, rules, expected_bodies=(), source_update=None,
+                          full_update=False):
     """Replace complete interpreted rows; preserve untouched components and pins.
 
     Raw receipt interpretation supplies complete replacements/deletions here.
@@ -46,6 +47,15 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
     native_previous = isinstance(previous, NativeCatalogSnapshot)
     if not native_previous and (previous.manifest is not None or previous.files):
         raise ValueError('Native catalog update requires explicit prior adoption')
+    if full_update:
+        from .source_update_proof import read_source_update
+        if not native_previous or source_update is None:
+            raise ValueError('Full source update requires a selected native base and retained source proof')
+        purpose = read_source_update(store, source_update)
+        if (purpose.get('purpose') not in {'qualification', 'rule-upgrade'}
+                or purpose['base'] != previous.identity
+                or purpose.get('purpose') == 'rule-upgrade' and not purpose.get('rule_version')):
+            raise ValueError('Full source update requires explicit complete qualification or versioned rules')
     replacements, deletions = list(replacements), tuple(deletions)
     if not replacements and not deletions and source_update is None:
         coverage = selected_body_coverage(previous, dependencies, expected_bodies)
@@ -65,7 +75,15 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
     input_digest = input_hash.hexdigest()
     request = dict(candidate=candidate, rules=rules, replacements_sha256=input_digest,
                    deletions=sorted(deletions), max_chunk_rows=max_chunk_rows,
-                   max_chunk_bytes=max_chunk_bytes, expected_bodies=expected_bodies, source_update=source_update)
+                   max_chunk_bytes=max_chunk_bytes, expected_bodies=expected_bodies, source_update=source_update,
+                   full_update=full_update)
+    from .derived_files import file_identity
+    native_inputs = {str(Path(path).resolve()): file_identity(path)
+        for path in native.execution_files()} if hasattr(native, 'execution_files') else {}
+    request['native_execution'] = native_inputs
+    def require_runtime():
+        for path, identity in native_inputs.items():
+            identity.require(path)
     def receipt(result, reference, proof):
         result = dict(result, scope_reference=reference, body_coverage=proof['body_coverage'])
         result['selected_identity'] = dict(selected_ref=result['selection'],
@@ -82,8 +100,21 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
                         counts=previous.selection['counts']), reference, proof)
         if proof['base'] != previous.identity:
             raise ValueError('Catalog continuation base changed')
+        require_runtime()
         result = publish_native_catalog(store, reference, previous=previous)
         return receipt(dict(result, unchanged=False), reference, proof)
+    preparation_request = directory / 'preparation-request.json'
+    # Coverage is an admission assertion, not a chunk input. A failed assertion
+    # may be corrected before admission; the final scope receipt binds it exactly.
+    preparation_inputs = {key: value for key, value in request.items() if key != 'expected_bodies'}
+    binding = dict(request=preparation_inputs, base=previous.identity, requirements=catalog_scope_requirements())
+    if preparation_request.exists():
+        if json.loads(preparation_request.read_bytes()) != binding:
+            raise ValueError('Catalog continuation inputs or selected base differ from the retained preparation')
+    else:
+        staging = preparation_request.with_suffix('.tmp')
+        staging.write_bytes(encoded(binding))
+        staging.replace(preparation_request)
     basis = previous.selection['dependency'] if native_previous else None
     selected = dependencies.selected(basis)
     scope = affected_sources(selected, replacements=replacements, deletions=deletions)
@@ -96,13 +127,16 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
     with TemporaryDirectory(prefix='catalog-grouped-', dir=directory) as group_directory:
         prepared = prepare_catalog_scope(Path(group_directory) / 'scope', scope, schema=dependencies.source_schema,
                                          source_orders=orders, candidate=candidate)
-        after = dependencies.prepare(basis, replacements=prepared.source_values(), deletions=deletions,
-                                     source_orders=orders)
+        after = (dependencies.prepare_full(basis, replacements=prepared.source_values(), source_orders=orders)
+                 if full_update else dependencies.prepare(basis, replacements=prepared.source_values(),
+                                                         deletions=deletions, source_orders=orders))
+        require_runtime()
         components = prepare_native_catalog_components(store, native, candidate=candidate,
             source_chunks=prepared.source_chunks(max_rows=max_chunk_rows, max_bytes=max_chunk_bytes),
             document_chunks=prepared.document_chunks(max_rows=max_chunk_rows, max_bytes=max_chunk_bytes),
             source_schema=prepared.source_schema, document_schema=prepared.document_schema,
-            max_chunk_rows=max_chunk_rows, max_chunk_bytes=max_chunk_bytes)
+            max_chunk_rows=max_chunk_rows, max_chunk_bytes=max_chunk_bytes,
+            checkpoint_directory=directory / 'prepared-chunks')
         reference = verify_catalog_scope(store, dependencies=dependencies, dependency_before=basis,
             dependency_after=after, prepared=prepared, base=previous.identity,
             component_lookup=previous.component_ref if native_previous else lambda key: None,
@@ -110,10 +144,12 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
             read_component=CatalogComponentReader(store).read,
             read_new_component=CatalogComponentReader(store, requirements=catalog_reference_requirements()).read,
             rules=rules, expected_bodies=expected_bodies, source_update=source_update,
-            interpretation_before=previous.selection.get('interpretation') if native_previous else None)
+            interpretation_before=previous.selection.get('interpretation') if native_previous else None,
+            complete_counts=previous.selection['counts'] if full_update else None)
         payload = encoded(dict(request=request, scope_reference=reference))
         staging = directory / 'prepared-scope.tmp'
         staging.write_bytes(payload)
         staging.replace(checkpoint)
+    require_runtime()
     result = publish_native_catalog(store, reference, previous=previous)
     return receipt(dict(result, unchanged=False), reference, read_catalog_scope(store, reference))

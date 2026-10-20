@@ -283,7 +283,7 @@ class CatalogDependencyStorage:
         basis = self._selection(selection, require_lookup_policy=True)
         return self._lookup_sources(basis, self.packages, basis['package_root'], 'package:' + package)
 
-    def adopt(self, chunks):
+    def adopt(self, chunks, *, source_orders=None, first_unused_order=0):
         """Import exact selected source values without replaying grouping policy.
 
         Adoption enumerates the prior table once. Temporary hash indexes bound
@@ -294,11 +294,11 @@ class CatalogDependencyStorage:
         with TemporaryDirectory(prefix='catalog-dependency-adoption-') as directory, closing(
                 sqlite3.connect(Path(directory) / 'sources.sqlite')) as db:
             db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
-                'CREATE TABLE sources(identity TEXT PRIMARY KEY,digest TEXT,body BLOB); '
+                'CREATE TABLE sources(identity TEXT PRIMARY KEY,digest TEXT,body BLOB,ordinal INTEGER UNIQUE); '
                 'CREATE INDEX source_hashes ON sources(digest); '
                 'CREATE TABLE aliases(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
                 'CREATE TABLE lookups(kind INTEGER,alias TEXT,member TEXT,PRIMARY KEY(kind,alias,member));')
-            count = 0
+            count, next_order = 0, first_unused_order
             for chunk in chunks:
                 if not chunk.schema.equals(self.source_schema, check_metadata=True):
                     raise DependencyGap('Adoption source schema differs from the selected table')
@@ -306,10 +306,14 @@ class CatalogDependencyStorage:
                     identity = index.source_identity(row)
                     if row.get('source_id') != identity:
                         raise DependencyGap('Adoption source identity differs from its saved key')
-                    sources, aliases = dependency_tables([row], self.source_schema, first_order=count)
+                    position = count if source_orders is None else source_orders[identity]
+                    if type(position) is not int or position < 0:
+                        raise DependencyGap('Source order must be a nonnegative integer')
+                    next_order = max(next_order, position + 1)
+                    sources, aliases = dependency_tables([row], self.source_schema, first_order=position)
                     try:
-                        db.execute('INSERT INTO sources VALUES (?,?,?)',
-                            (identity, key_hash(identity), pickle.dumps(sources.to_pylist()[0])))
+                        db.execute('INSERT INTO sources VALUES (?,?,?,?)',
+                            (identity, key_hash(identity), pickle.dumps(sources.to_pylist()[0]), position))
                     except sqlite3.IntegrityError as error:
                         raise DependencyGap('Repeated selected source identity during adoption') from error
                     db.executemany('INSERT INTO aliases VALUES (?,?)',
@@ -347,7 +351,38 @@ class CatalogDependencyStorage:
                         return (row[0] for row in db.execute('SELECT member FROM lookups WHERE kind=? AND alias=? ORDER BY member', (kind, alias)))
                 lookup_roots.append(owner.replace(None, Lookups()))
             return dict(self._selection(None), source_root=source_root, alias_root=alias_root,
-                        url_root=lookup_roots[0], target_root=lookup_roots[1], body_root=lookup_roots[2], package_root=lookup_roots[3], next_source_order=count)
+                        url_root=lookup_roots[0], target_root=lookup_roots[1], body_root=lookup_roots[2], package_root=lookup_roots[3], next_source_order=next_order)
+
+    def prepare_full(self, selection, *, replacements, source_orders):
+        """Prepare a complete reviewed inventory using the bounded adoption owner.
+
+        Scope admission separately proves that every selected source and document
+        is accounted for before these immutable candidates can be selected.
+        """
+        basis = self._selection(selection)
+        selected = self.selected(basis)
+        next_order = basis['next_source_order']
+
+        def chunks():
+            nonlocal next_order
+            pending = []
+            for row in replacements:
+                key = index.source_identity(row)
+                if selected.source(key) is not None:
+                    if source_orders[key] != selected.order(key):
+                        raise DependencyGap('Full replacement changed an existing source order')
+                else:
+                    if source_orders[key] != next_order:
+                        raise DependencyGap('New source orders must extend the selected contiguous ordinal range')
+                    next_order += 1
+                pending.append(row)
+                if len(pending) == 256:
+                    yield pa.Table.from_pylist(pending, schema=self.source_schema)
+                    pending = []
+            if pending:
+                yield pa.Table.from_pylist(pending, schema=self.source_schema)
+
+        return self.adopt(chunks(), source_orders=source_orders, first_unused_order=next_order)
 
     def prepare(self, selection, *, replacements=(), deletions=(), source_orders=None):
         """Prepare complete changed scope; the caller later CAS-selects roots.

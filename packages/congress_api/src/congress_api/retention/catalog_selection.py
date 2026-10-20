@@ -263,8 +263,6 @@ def publish_native_catalog(store, scope_reference, *, previous, adoption_referen
     requirements = catalog_reference_requirements()
     if isinstance(previous, NativeCatalogSnapshot):
         base = previous.selection
-        if base['requirements'] != requirements:
-            raise ValueError('Selected catalog validator requirements changed; revalidation is required')
         root, dependency, counts = base['components'], base['dependency'], base['counts']
     else:
         if previous.manifest is not None or previous.files:
@@ -289,8 +287,17 @@ def publish_native_catalog(store, scope_reference, *, previous, adoption_referen
         raise ValueError('Catalog scope dependency basis differs')
     schemas = {label: _schema(proof['schemas'][label]) for label in ('filenames', 'documents')}
     CatalogReferenceCheck(schemas['filenames'], schemas['documents'])
+    complete = proof.get('complete_replacement') is True
+    if complete:
+        if (proof.get('source_update') is None or source_update.get('purpose') not in {'qualification', 'rule-upgrade'}
+                or counts != dict(source_rows=proof['counts']['retired_source_rows'],
+                                  document_rows=proof['counts']['retired_document_rows'])):
+            raise ValueError('Complete catalog replacement omits selected ownership or source qualification')
+    if (isinstance(previous, NativeCatalogSnapshot)
+            and base['requirements'] != requirements and not complete):
+        raise ValueError('Selected catalog validator requirements changed; revalidation is required')
     if isinstance(previous, NativeCatalogSnapshot) and any(
-            not can_read_catalog_schema(previous.schemas[label], schemas[label]) for label in schemas):
+            not can_read_catalog_schema(previous.schemas[label], schemas[label]) for label in schemas) and not complete:
         raise ValueError('Catalog schema change requires complete semantic revalidation')
     reader = CatalogComponentReader(store, requirements=requirements)
 

@@ -189,7 +189,8 @@ class SelectedCatalogTable:
 
 
 def prepare_native_catalog_components(store, native, *, candidate, source_chunks, document_chunks,
-                                      source_schema, document_schema, max_chunk_rows, max_chunk_bytes):
+                                      source_schema, document_schema, max_chunk_rows, max_chunk_bytes,
+                                      checkpoint_directory=None):
     """Validate changed rows once, coalesce native Runs, and page logical proofs.
 
     Physical chunks may contain many document components. Logical proofs retain
@@ -235,6 +236,7 @@ def prepare_native_catalog_components(store, native, *, candidate, source_chunks
             prepare_native_catalog_chunks(native, chunks, label=label, component='mixed-components',
                 candidate=candidate, schema=schema, max_chunk_rows=max_chunk_rows,
                 max_chunk_bytes=max_chunk_bytes, check_references=references, ordered_chunks=False,
+                checkpoint_directory=checkpoint_directory,
                 on_prepared=lambda table, descriptor, label=label: record_chunk(label, table, descriptor))
         counts = check.finish()
         if not counts['document_rows']:

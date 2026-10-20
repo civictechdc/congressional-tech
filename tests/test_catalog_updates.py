@@ -62,11 +62,65 @@ def test_mid_native_chunk_failure_replays_same_completed_immutable_inputs(tmp_pa
     assert not (tmp_path / 'update' / 'prepared-scope.json').exists()
     def replay(table, **request):
         if request['dataset'] in completed:
-            assert table.equals(completed[request['dataset']], check_metadata=True)
+            pytest.fail('A completed native chunk was submitted again')
         return original(table, **request)
     monkeypatch.setattr(native, 'run_table', replay)
     assert updates.update_native_catalog(store, **arguments)['counts'] == dict(source_rows=3, document_rows=3)
     assert all(native.tables[key].equals(table, check_metadata=True) for key, table in completed.items())
+
+
+@pytest.mark.parametrize('damage', ['changed-input', 'corrupt-chunk'])
+def test_interrupted_native_preparation_refuses_changed_or_corrupt_resume(tmp_path, monkeypatch, damage):
+    import json
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    owner, rows = seed(tmp_path, store, native)
+    previous = read_catalog(store, native=native)
+    original, calls = native.run_table, []
+    def interrupted(table, **request):
+        if request['dataset'].startswith('catalog-filenames-'):
+            calls.append(request['dataset'])
+            if len(calls) == 2:
+                raise OSError('interrupted')
+        return original(table, **request)
+    monkeypatch.setattr(native, 'run_table', interrupted)
+    arguments = dict(native=native, previous=previous, dependencies=owner,
+        deletions=[identity(rows[2])], candidate='bound-resume', directory=tmp_path / 'update',
+        max_chunk_rows=1, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    selector = store.read(MANIFEST_KEY)
+    with pytest.raises(OSError, match='interrupted'):
+        updates.update_native_catalog(store, **arguments)
+    if damage == 'changed-input':
+        arguments['deletions'] = [identity(rows[3])]
+        message = 'continuation inputs'
+    else:
+        checkpoint, = (tmp_path / 'update' / 'prepared-chunks').glob('*.json')
+        saved = json.loads(checkpoint.read_bytes())
+        saved['release']['dataset']['dataset'] = 'unrelated'
+        checkpoint.write_text(json.dumps(saved))
+        message = 'chunk differs'
+    with pytest.raises(ValueError, match=message):
+        updates.update_native_catalog(store, **arguments)
+    assert store.read(MANIFEST_KEY) == selector
+
+
+def test_runtime_change_during_first_preparation_cannot_select_catalog(tmp_path, monkeypatch):
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    owner, rows = seed(tmp_path, store, native)
+    previous = read_catalog(store, native=native)
+    runtime = tmp_path / 'runtime'
+    runtime.write_bytes(b'qualified-runtime')
+    monkeypatch.setattr(native, 'execution_files', lambda: (runtime,), raising=False)
+    original = native.run_table
+    def changed(table, **request):
+        runtime.write_bytes(b'changed-runtime')
+        return original(table, **request)
+    monkeypatch.setattr(native, 'run_table', changed)
+    selector = store.read(MANIFEST_KEY)
+    with pytest.raises(ValueError, match='custody changed'):
+        updates.update_native_catalog(store, native=native, previous=previous, dependencies=owner,
+            deletions=[identity(rows[2])], candidate='changed-runtime', directory=tmp_path / 'update',
+            max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    assert store.read(MANIFEST_KEY) == selector
 
 
 from test_docspec_boundary import native

@@ -185,13 +185,14 @@ def publish_catalog(store, filenames_path, documents_path, *, previous, validati
 
 def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate,
                                   schema, max_chunk_rows, max_chunk_bytes, check_references=None,
-                                  on_prepared=None, ordered_chunks=True):
+                                  on_prepared=None, ordered_chunks=True, checkpoint_directory=None):
     """Retain rewritten bounded chunks as independent native candidates.
 
     The caller binds ``candidate`` to its exact base, semantic change, application
     rule versions and chunking requirements. Reusing that identity with different
     bytes refuses through native operation conflict. Completed chunks survive a
-    later preparation failure; repeating the same candidate reuses native Run.
+    later preparation failure. An optional caller-bound local checkpoint skips
+    submitting completed chunks again; missing checkpoints retain native replay.
 
     These descriptors establish neither complete dependency scope nor source /
     document reference validity. The catalog owner supplies those checks before
@@ -231,10 +232,34 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
         if check_references is not None:
             check_references(table)
         dataset = 'catalog-' + label + '-' + sha256(encoded([candidate, component, index])).hexdigest()
-        release = native.run_table(table, dataset=dataset, operation='initial', definition='catalog-chunk-v1')
+        checkpoint, input_digest = None, None
+        if checkpoint_directory is not None:
+            checkpoint = Path(checkpoint_directory) / (dataset + '.json')
+            sink = pa.BufferOutputStream()
+            with pa.ipc.new_stream(sink, table.schema) as writer:
+                writer.write_table(table)
+            input_digest = sha256(sink.getvalue()).hexdigest()
+        if checkpoint is not None and checkpoint.exists():
+            if checkpoint.stat().st_size > 1 << 20:
+                raise ValueError('Retained native catalog chunk exceeds its metadata bound')
+            saved = json.loads(checkpoint.read_bytes())
+            binding = saved.pop('binding', None)
+            if (binding != sha256(encoded(saved)).hexdigest()
+                    or saved['input_sha256'] != input_digest or saved['dataset'] != dataset):
+                raise ValueError('Retained native catalog chunk differs from its prepared input')
+            release = saved['release']
+        else:
+            release = native.run_table(table, dataset=dataset, operation='initial', definition='catalog-chunk-v1')
         checked = CatalogTable(schema, [(dataset, release)], native=native)
-        if checked.rows != table.num_rows:
+        if checked.rows != table.num_rows or release['dataset'].get('dataset') != dataset:
             raise ValueError('Prepared native catalog chunk row count differs')
+        if checkpoint is not None and not checkpoint.exists():
+            saved = dict(dataset=dataset, input_sha256=input_digest, release=release)
+            saved['binding'] = sha256(encoded(saved)).hexdigest()
+            checkpoint.parent.mkdir(parents=True, exist_ok=True)
+            staging = checkpoint.with_suffix('.tmp')
+            staging.write_bytes(encoded(saved))
+            staging.replace(checkpoint)
         descriptor = dict(name=dataset, release=release, rows=table.num_rows,
                           arrow_bytes=table.nbytes, order_min=extrema['min'], order_max=extrema['max'])
         prepared.append(descriptor)

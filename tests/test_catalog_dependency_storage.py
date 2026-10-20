@@ -221,6 +221,27 @@ def test_bulk_adoption_streams_large_shared_component_without_closure_replays():
     assert len(set(owner.memberships.values(selection['alias_root'], '["body","shared-body"]'))) == 1000
 
 
+def test_full_dependency_refresh_preserves_sparse_ordinals_and_rejects_reassignment():
+    import pytest
+    native, store = MemoryNative(), MemoryStore()
+    originals, schema, _, _ = index.prepare_document_indexes(
+        [source(f'{i}.pdf', str(i)) for i in range(3)], SCHEMA)
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='full-refresh',
+                                     source_schema=schema, max_rows=2, max_bytes=1 << 20)
+    selected = owner.adopt([pa.Table.from_pylist(originals, schema=schema)])
+    added, _, _, _ = index.prepare_document_indexes([source('new.pdf', 'new')], SCHEMA)
+    rows = [originals[1], added[0]]
+    orders = {identity(rows[0]): 1, identity(rows[1]): 3}
+    refreshed = owner.prepare_full(selected, replacements=rows, source_orders=orders)
+    assert refreshed['next_source_order'] == 4
+    assert owner.selected(refreshed).order(identity(rows[0])) == 1
+    assert owner.selected(refreshed).order(identity(rows[1])) == 3
+    assert owner.selected(refreshed).source(identity(originals[0])) is None
+    assert owner.selected(selected).source(identity(originals[0])) is not None
+    with pytest.raises(ValueError, match='existing source order'):
+        owner.prepare_full(selected, replacements=rows, source_orders={**orders, identity(rows[0]): 0})
+
+
 def test_saved_document_ownership_closes_old_component_after_group_policy_changes():
     schema = SCHEMA.append(pa.field('document_id', pa.string()))
     native, store = MemoryNative(), MemoryStore()
