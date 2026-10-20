@@ -187,7 +187,7 @@ class PreparedCatalogScope:
                 yield from batch.to_pylist()
 
 
-def prepare_catalog_scope(directory, scope, *, schema, source_orders, candidate):
+def prepare_catalog_scope(directory, scope, *, schema, source_orders, candidate, checkpoint_directory=None):
     """Use the current grouping owner; never reconstruct unrelated catalog rows.
 
     The caller first establishes complete old/new closure through selected
@@ -218,10 +218,11 @@ def prepare_catalog_scope(directory, scope, *, schema, source_orders, candidate)
             if key not in scope.before:
                 add(key, True)
         directory = Path(directory)
-        directory.mkdir(parents=True, exist_ok=False)
+        directory.mkdir(parents=True, exist_ok=checkpoint_directory is not None)
         filename_path, document_path = directory / 'document-filenames.parquet', directory / 'documents.parquet'
         rows = (deepcopy(scope.after[key]) for key, in db.execute('SELECT identity FROM sources WHERE current=1 ORDER BY ordinal'))
-        index.write_document_indexes(filename_path, rows, schema, catalog_id=candidate, preserve_columns=True)
+        index.write_document_indexes(filename_path, rows, schema, catalog_id=candidate, preserve_columns=True,
+                                     checkpoint_directory=checkpoint_directory)
         with pq.ParquetFile(filename_path) as sources, pq.ParquetFile(document_path) as documents:
             source_schema, document_schema = sources.schema_arrow, documents.schema_arrow
             for batch in sources.iter_batches(columns=['source_id', 'document_id'], batch_size=256):

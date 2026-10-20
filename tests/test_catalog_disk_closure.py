@@ -99,3 +99,24 @@ def test_prepared_scope_keeps_orders_and_mappings_on_disk_and_preserves_every_fi
     assert list(prepared.document_chunks(max_rows=4, max_bytes=1 << 20))[0]['_catalog_order'].to_pylist() == [0]
     prepared.close()
     scope.close()
+
+
+def test_retained_scope_can_reopen_with_exact_orders_and_completed_components(tmp_path):
+    from copy import deepcopy
+    from congress_api.retention.catalog_scope import prepare_catalog_scope
+    rows = [source(f'{i}.pdf', f'body-{i}') for i in range(3)]
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS)])
+    old, logical, _, _ = index.prepare_document_indexes(deepcopy(rows), schema)
+    scope = affected_sources(SelectedDependencies(old), replacements=old)
+    orders = {identity(row): position * 7 for position, row in enumerate(old)}
+    options = dict(schema=logical, source_orders=orders, candidate='retained-scope',
+                   checkpoint_directory=tmp_path / 'completed-components')
+    first = prepare_catalog_scope(tmp_path / 'scope', scope, **options)
+    expected, links = list(first.source_values()), list(first.source_links())
+    first.close()
+    reopened = prepare_catalog_scope(tmp_path / 'scope', scope, **options)
+    assert list(reopened.source_values()) == expected
+    assert list(reopened.source_links()) == links
+    assert len(reopened.document_ids) == 3
+    reopened.close()
+    scope.close()

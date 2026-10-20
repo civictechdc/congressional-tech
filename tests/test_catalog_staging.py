@@ -1,4 +1,5 @@
 """Temporary disk grouping agrees with the reference and isolates changed groups."""
+from copy import deepcopy
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -550,3 +551,76 @@ def test_redundant_publication_code_does_not_invalidate_group_reuse(tmp_path):
     result=index.write_document_indexes(path,rows,schema,previous=pq.ParquetFile(path),
         previous_documents=pq.ParquetFile(path.with_name('documents.parquet')))
     assert result['reused_document_groups']==1
+
+
+def test_grouping_resume_keeps_completed_components_and_rejects_changed_inputs(tmp_path, monkeypatch):
+    import pytest
+    rows = [source(f'{letter}.pdf', f'https://example.gov/{letter}.pdf', f'body-{letter}') for letter in 'abc']
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS)])
+    output = tmp_path / 'document-filenames.parquet'
+    checkpoint = tmp_path / 'components'
+    mapping = WorkingCatalog.mapping
+    calls = []
+    def interrupt(self, name, *args):
+        if name == 'combined_occurrences':
+            calls.append(name)
+            if len(calls) == 2:
+                raise RuntimeError('Group worker lost')
+        return mapping(self, name, *args)
+    monkeypatch.setattr(WorkingCatalog, 'mapping', interrupt)
+    with pytest.raises(RuntimeError, match='Group worker lost'):
+        index.write_document_indexes(output, deepcopy(rows), schema, catalog_id='resume', checkpoint_directory=checkpoint)
+    assert len(list(checkpoint.glob('component-*.json'))) == 1
+    calls.clear()
+    def record(self, name, *args):
+        if name == 'combined_occurrences':
+            calls.append(name)
+        return mapping(self, name, *args)
+    monkeypatch.setattr(WorkingCatalog, 'mapping', record)
+    index.write_document_indexes(output, deepcopy(rows), schema, catalog_id='resume', checkpoint_directory=checkpoint)
+    assert len(calls) == 2
+    expected_sources, _, expected_documents, _ = index.prepare_document_indexes(deepcopy(rows), schema)
+    assert semantic(pq.read_table(output)) == semantic(pa.Table.from_pylist(expected_sources, schema=pq.read_schema(output)))
+    assert pq.read_table(tmp_path / 'documents.parquet').to_pylist() == pa.Table.from_pylist(
+        expected_documents, schema=pq.read_schema(tmp_path / 'documents.parquet')).to_pylist()
+    changed = deepcopy(rows)
+    changed[0]['http_status'] = ['404']
+    with pytest.raises(ValueError, match='grouping inputs differ'):
+        index.write_document_indexes(output, changed, schema, catalog_id='resume', checkpoint_directory=checkpoint)
+    assert semantic(pq.read_table(output)) == semantic(pa.Table.from_pylist(expected_sources, schema=pq.read_schema(output)))
+
+
+def test_grouping_resume_refuses_corrupt_completed_summary(tmp_path):
+    import pytest
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS)])
+    rows = [source('a.pdf', 'https://example.gov/a.pdf', 'body-a')]
+    path = tmp_path / 'document-filenames.parquet'
+    checkpoint = tmp_path / 'components'
+    index.write_document_indexes(path, deepcopy(rows), schema, catalog_id='corruption', checkpoint_directory=checkpoint)
+    next(checkpoint.glob('*.arrow')).write_bytes(b'corrupt')
+    with pytest.raises(ValueError, match='completed grouping summary'):
+        index.write_document_indexes(path, deepcopy(rows), schema, catalog_id='corruption', checkpoint_directory=checkpoint)
+
+
+def test_grouping_resume_preserves_previous_group_reuse_and_complete_values(tmp_path):
+    rows = [source('a.pdf', 'https://example.gov/a.pdf', 'body-a'),
+            source('b.pdf', 'https://example.gov/b.pdf', 'body-b')]
+    rows[0]['source_occurrences'] = [dict(source_page_url=['https://example.gov/context'],
+                                         source_link_label=['Exact publisher wording'])]
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS),
+                        ('source_occurrences', index.metadata_type('source_occurrences'))])
+    old = tmp_path / 'old'; old.mkdir()
+    index.write_document_indexes(old / 'document-filenames.parquet', deepcopy(rows), schema, catalog_id='old')
+    output = tmp_path / 'document-filenames.parquet'
+    options = dict(catalog_id='reused', checkpoint_directory=tmp_path / 'components')
+    def run():
+        with pq.ParquetFile(old / 'document-filenames.parquet') as before, pq.ParquetFile(old / 'documents.parquet') as documents:
+            return index.write_document_indexes(output, deepcopy(rows), schema,
+                previous=before, previous_documents=documents, **options)
+    first = run()
+    sources, documents = pq.read_table(output), pq.read_table(tmp_path / 'documents.parquet')
+    second = run()
+    assert first['reused_document_groups'] == second['reused_document_groups'] == 2
+    assert first['recomputed_document_groups'] == second['recomputed_document_groups'] == 0
+    assert pq.read_table(output).equals(sources, check_metadata=True)
+    assert pq.read_table(tmp_path / 'documents.parquet').equals(documents, check_metadata=True)
