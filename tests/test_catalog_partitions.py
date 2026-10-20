@@ -9,7 +9,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from congress_api.retention.catalog_partitions import CatalogTable
-from congress_api.retention.docspec import NativeDatasets
+from native_test_helpers import native_test_client
 
 
 SCHEMA = pa.schema([
@@ -143,12 +143,15 @@ def test_actual_native_partition_preserves_original_application_schema(tmp_path)
     binary = os.environ.get('DOCSPEC_BINARY') or shutil.which('docspec')
     if not binary:
         pytest.skip('Set DOCSPEC_BINARY to the qualified maintained CLI')
-    native = NativeDatasets(binary, tmp_path / 'native')
+    native = native_test_client(binary, tmp_path / 'native')
     source = tmp_path / 'source.parquet'
-    pq.write_table(pa.Table.from_pylist(ROWS, schema=SCHEMA), source)
+    physical = SCHEMA.append(pa.field('_catalog_order', pa.int64(), nullable=False))
+    rows = [{**row, '_catalog_order': order} for row, order in zip(ROWS, [20, 10, 30], strict=True)]
+    pq.write_table(pa.Table.from_pylist(rows, schema=physical), source)
     release = native.run(dict(dataset='catalog-reader', operation='initial', definition='source-v1',
         sql='SELECT * FROM input', input=str(source), expected_digest=native.hash_input(source)['digest']))
-    table = CatalogTable(SCHEMA, [('component', release)], native=native)
+    table = CatalogTable(SCHEMA, [('component', release)], native=native,
+                         order_column='_catalog_order', max_ordered_bytes=4096)
     actual = pa.Table.from_batches(list(table.iter_batches()))
     assert actual.schema.equals(SCHEMA, check_metadata=True)
-    assert actual.to_pylist() == ROWS
+    assert actual.to_pylist() == [ROWS[1], ROWS[0], ROWS[2]]
