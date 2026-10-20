@@ -464,3 +464,132 @@ work.close()
     assert after.returncode==0,after.stderr
     assert preserved=={path.name:sha256(path.read_bytes()).hexdigest() for path in directory.glob('part-*.parquet')}
     assert (directory/'ordered.json').exists()
+
+
+def test_preparation_external_spill_and_recovery_within_staging_budget(tmp_path):
+    from congress_api.retention.catalog_dependency_preparation import (
+        SORT_MEMORY_BYTES,
+        DependencyPreparation,
+    )
+    assert SORT_MEMORY_BYTES == 128 << 20
+    row_count = 46080
+    payload = b'\x00\xff' + b'x' * 2055
+    filenames = [f'{i}.pdf' for i in range(row_count)]
+    urls = [f'https://example.gov/{i}' for i in range(row_count)]
+    bodies = [f'body-{i}' for i in range(row_count)]
+    sids = [
+        index.source_identity(dict(filename=filenames[i], source_url=urls[i], body_key=bodies[i]))
+        for i in range(row_count)
+    ]
+    arrays = []
+    for field in SCHEMA:
+        if field.name == 'source_id':
+            arrays.append(pa.array(sids, type=pa.string()))
+        elif field.name == 'filename':
+            arrays.append(pa.array(filenames, type=pa.string()))
+        elif field.name == 'source_url':
+            arrays.append(pa.array(urls, type=pa.string()))
+        elif field.name == 'body_key':
+            arrays.append(pa.array(bodies, type=pa.string()))
+        elif field.name == 'evidence':
+            arrays.append(pa.StructArray.from_arrays([
+                pa.array([2**64 - 1 - i for i in range(row_count)], type=pa.uint64()),
+                pa.array([payload] * row_count, type=pa.binary()),
+            ], fields=list(field.type)))
+        else:
+            arrays.append(pa.nulls(row_count, type=field.type))
+    table = pa.Table.from_arrays(arrays, schema=SCHEMA)
+
+    # 1. Verify deterministic refusal when combined parts + index + ordered.tmp + spill exceeds staging_byte_budget.
+    tight_dir = tmp_path / 'spill-tight-budget'
+    tight_owner = owner(rows=2048, size=16 << 20)
+    tight_work = DependencyPreparation(
+        tight_owner,
+        directory=tight_dir,
+        preparation_key='spill-qualification-tight',
+        first_unused_order=0,
+        source_orders=None,
+        staging_byte_budget=80 << 20,
+    )
+    try:
+        tight_work.prepare([table])
+        assert (tight_dir / 'complete.json').exists()
+        with pytest.raises(OSError, match='staging byte budget'):
+            tight_work.prepare_order()
+        assert not (tight_dir / 'ordered.json').exists()
+    finally:
+        tight_work.close()
+
+    # 2. Verify positive external spill within budget, exact value/order/lookup fidelity, and receipt reuse on resume.
+    qual_dir = tmp_path / 'spill-qualified'
+    qual_owner = owner(rows=2048, size=16 << 20)
+    qual_work = DependencyPreparation(
+        qual_owner,
+        directory=qual_dir,
+        preparation_key='spill-qualification-v1',
+        first_unused_order=0,
+        source_orders=None,
+        staging_byte_budget=160 << 20,
+    )
+    try:
+        qual_work.prepare([table])
+        qual_work.prepare_order()
+        assert qual_owner.preparation_reads['sort_runs'] == 1
+        assert qual_owner.preparation_reads['sort_input_rows'] == row_count
+        assert qual_owner.preparation_reads['sort_spill_peak_bytes'] > 0
+        assert (qual_dir / 'complete.json').exists()
+        assert (qual_dir / 'ordered.json').exists()
+        assert qual_owner.preparation_metrics['staging_bytes'] <= 160 << 20
+        for sample_idx in (0, row_count // 2, row_count - 1):
+            ordinal_row = qual_work.db.execute(
+                'SELECT ordinal FROM sources WHERE identity=?',
+                (sids[sample_idx],),
+            ).fetchone()
+            assert ordinal_row == (sample_idx,)
+            lookup_keys = qual_owner._lookup_keys(
+                dict(
+                    filename=filenames[sample_idx],
+                    source_url=urls[sample_idx],
+                    body_key=bodies[sample_idx],
+                )
+            )
+            for kind, keys in enumerate(lookup_keys):
+                for key in keys:
+                    members = {
+                        member for member, in qual_work.db.execute(
+                            'SELECT member FROM lookups WHERE kind=? AND alias=?',
+                            (kind, key),
+                        )
+                    }
+                    assert members == {sids[sample_idx]}
+    finally:
+        qual_work.close()
+
+    # 3. Resume from retained cache without re-enumerating inputs or re-running external sort.
+    resumed_owner = owner(rows=2048, size=16 << 20)
+    resumed_work = DependencyPreparation(
+        resumed_owner,
+        directory=qual_dir,
+        preparation_key='spill-qualification-v1',
+        first_unused_order=0,
+        source_orders=None,
+        staging_byte_budget=160 << 20,
+    )
+    try:
+        resumed_work.prepare(lambda start: pytest.fail('Completed cache must not re-enumerate inputs'))
+        resumed_work.prepare_order()
+        assert resumed_owner.preparation_reads['sort_runs'] == 0
+        first_bucket = resumed_work.source_table('00')
+        assert first_bucket is not None and len(first_bucket) > 0
+        sample_row = first_bucket.slice(0, 1).to_pylist()[0]
+        ordinal = sample_row['source_order']
+        assert sample_row['source_id'] == sids[ordinal]
+        assert sample_row['source_values']['filename'] == filenames[ordinal]
+        assert sample_row['source_values']['source_url'] == urls[ordinal]
+        assert sample_row['source_values']['body_key'] == bodies[ordinal]
+        assert sample_row['source_values']['evidence'] == dict(
+            maximum=2**64 - 1 - ordinal,
+            bytes=payload,
+        )
+    finally:
+        resumed_work.close()

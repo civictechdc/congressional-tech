@@ -413,14 +413,24 @@ class DependencyPreparation:
                     if rows != count:
                         raise DependencyGap('Ordered dependency preparation row count differs')
                     statistics = json.loads(connection.get_profiling_information())
-                    self.owner.preparation_reads['sort_spill_peak_bytes'] = max(
-                        self.owner.preparation_reads['sort_spill_peak_bytes'], statistics['system_peak_temp_dir_size'])
+                    spill_peak = max(
+                        self.owner.preparation_reads['sort_spill_peak_bytes'],
+                        statistics['system_peak_temp_dir_size'],
+                    )
+                    self.owner.preparation_reads['sort_spill_peak_bytes'] = spill_peak
                     self.owner.preparation_reads['sort_buffer_peak_bytes'] = statistics['system_peak_buffer_memory']
                     self.owner.preparation_reads['sort_reported_bytes_read'] = statistics['total_bytes_read']
                     self.owner.preparation_reads['sort_reported_rows_scanned'] = statistics['cumulative_rows_scanned']
                     writer.close()
                     stream.flush()
                     os.fsync(stream.fileno())
+                    self.live_bytes = stream.written + spill_peak
+                    self._check_budget(extra=4096)
+            except duckdb.OutOfMemoryException as error:
+                if (self.budget is not None and scratch_limit < SORT_SCRATCH_BYTES
+                        and ('temp_directory_size' in str(error) or 'offload data block' in str(error))):
+                    raise OSError('Dependency preparation exceeds its staging byte budget') from error
+                raise
             finally:
                 monitor.close()
                 connection.close()

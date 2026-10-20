@@ -29,8 +29,15 @@ The hosted workflow installs one approved private Linux AMD64 runtime through
 `.github/scripts/setup-native-runtime.py` before new preparation. The repository
 variable `DOCSPEC_RUNTIME_ARTIFACT` supplies JSON with `version: 1`,
 `platform: "linux-amd64"`, the exact 40-character `source_revision`, private R2
-`bucket`, immutable `key`, positive `bytes` and complete `sha256`. The key must be
-`runtime/docspec/<source_revision>/linux-amd64/<sha256>/docspec`.
+`bucket`, immutable `key`, positive `bytes`, complete `sha256`, required
+`build_features` (defaulting to `["remote"]`) and `required_capabilities`
+(`["request-deadline", "owned-stdin-eof"]`). The key must be
+`runtime/docspec/<source_revision>/linux-amd64/<sha256>/docspec`. Both setup and
+`.github/scripts/check-native-runtime.py` bind `source_revision`, `platform`,
+`build_features`, `binary_sha256` and `required_capabilities` into `runtime.json`
+and fail fast before any source or catalog access if the binary is missing,
+non-executable, wrong digest, wrong platform, or missing required features or
+loopback protocol 1 capabilities.
 
 The `DOCSPEC_ENGINE_CREDENTIALS` secret is a JSON object containing
 `DOCSPEC_CATALOG_TOKEN`, `DOCSPEC_S3_ACCESS_KEY_ID` and

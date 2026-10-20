@@ -1,8 +1,8 @@
 ---
 id: ct-csyg
-status: open
+status: closed
 deps: [ct-xl0y, ct-clvr, ct-cpio]
-links: []
+links: [ct-nloa, ct-eipa]
 created: 2026-10-20T19:23:00Z
 type: task
 priority: 3
@@ -30,3 +30,7 @@ Fresh read-only review2026-10-20: F6. Evidence: output/docspec-reuse-20261020/pa
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit confirmed that `715a8c2` on `docspec-rs` `main` added projection pushdown verification (`ParquetSource` projected columns in `src/engine/aggregation.rs`), while `src/query.rs` native table provider filter pushdown remains unimplemented. Keep sequenced behind `ct-xl0y`, `ct-clvr`, and `ct-cpio`.
+
+**2026-10-20T22:19:32Z**
+
+Current API has no public exact-version column/filter read; internal native projection is not an application read endpoint. ct-nloa is a concrete bounded-values consumer. Qualify a maintained scoped-read API before expecting application savings; preserve occurrence positions and do not materialize exports merely to emulate lookups.

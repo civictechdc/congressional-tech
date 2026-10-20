@@ -1,8 +1,8 @@
 ---
 id: ct-a70m
-status: open
+status: closed
 deps: [ct-qdkd]
-links: []
+links: [ct-wmtx, ct-lcbc, ct-mpsp]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -10,18 +10,24 @@ assignee: mikewolfd
 parent: ct-mi03
 tags: [docspec, efficiency, debt]
 ---
-# Use protected native retention and restore planning
+# Protect application releases in native retention and restore planning
 
-Expose safe inspection/planning of native-owned retained data and restore prerequisites using maintained APIs (`NativeDatasets.inspect_retention` -> `POST /retention/inspect` and `NativeDatasets.plan_removal` -> `POST /retention/removal/plan` in `packages/congress_api/src/congress_api/retention/docspec.py:290-295`, backed by `docspec-rs/src/engine/retention.rs`). Keep filesystem caches (`catalog-dependency-preparation-v1`) and non-native archive data outside native retention ownership. No automatic deletion or expiration.
+Wire native inspection/removal planning and restore prerequisites to application-selected catalogs, news releases and exports. Keep non-native caches, original captures and the application availability registry under their existing owners.
 
 ## Acceptance Criteria
 
-- Read-only operator planning surfaces native `RetentionInspection` / removal plans listing protected vs. reclaimable native ownership and remote quiescence requirements alongside application-selected pins.
-- Tests prove application-selected releases, active-reader pins, and incomplete-operation data cannot be proposed as unprotected or reclaimable.
-- No live removal, automatic compaction/expiration, or restoration side effects in this ticket.
+- Translate supported old/current release pins, active readers, incomplete operations, pending producer inputs and export pins into protected native references. Never infer safety from an unreferenced local path alone.
+- Present exact reclaimable/protected bytes and quiescence/restore prerequisites through the operator path; no automatic expiration or live deletion.
+- If measured small-file pressure justifies compaction, qualify exact logical identity and old-reader preservation on an isolated fixture through the maintained API. Keep small tables unpartitioned until actual selective workload justifies supported date transforms.
+- Exercise isolated restore/readback with retained locators and wrong namespace/generation refusals. Current R2 maintenance limitations remain explicit; no deployment or restore mutation is implied by planning.
 
 ## Notes
 
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit verified that `NativeDatasets.inspect_retention` and `plan_removal` are already wired on the persistent host adapter in `codex/docspec-host-transport` (`docspec.py:290-295`). Once `ct-q968` and `ct-qdkd` land, bind application-selected pins into the read-only operator retention planner and test protection invariants.
+
+
+**2026-10-20T22:19:31Z**
+
+2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.

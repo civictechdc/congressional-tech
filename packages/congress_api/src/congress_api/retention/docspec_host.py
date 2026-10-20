@@ -48,9 +48,11 @@ class DocSpecFailure(RuntimeError):
 
 _hosts = weakref.WeakValueDictionary()
 _lock = threading.RLock()
+REQUIRED_LOOPBACK_CAPABILITIES = ('request-deadline', 'owned-stdin-eof')
 
 
-def acquire_host(command, environment, workspace, timeout):
+def acquire_host(command, environment, workspace, timeout, *,
+                 required_capabilities=REQUIRED_LOOPBACK_CAPABILITIES):
     """Share custody only within this process and identical explicit settings."""
     def identity(path, *, contents=False):
         try:
@@ -61,14 +63,19 @@ def acquire_host(command, environment, workspace, timeout):
         except FileNotFoundError:
             return None  # Let native startup retain its missing-file diagnostic.
 
+    capabilities = tuple(dict.fromkeys(required_capabilities))
+    if not set(REQUIRED_LOOPBACK_CAPABILITIES).issubset(capabilities):
+        raise ValueError('DocSpec loopback protocol 1 with request-deadline '
+                         'and owned-stdin-eof support is required')
     inputs = tuple((option, identity(command[command.index(option) + 1], contents=True))
                    for option in ('--limits', '--remote') if option in command)
-    settings = (tuple(command), environment, timeout, identity(command[0]), inputs)
+    settings = (tuple(command), environment, timeout, identity(command[0]), inputs, capabilities)
     key = (os.getpid(), str(workspace))
     with _lock:
         host = _hosts.get(key)
         if host is None:
-            host = Host(command, environment, timeout, settings)
+            host = Host(command, environment, timeout, settings,
+                        required_capabilities=capabilities)
             _hosts[key] = host
         elif host.settings != settings:
             raise ValueError('DocSpec workspace already has a host with different settings')
@@ -78,9 +85,11 @@ def acquire_host(command, environment, workspace, timeout):
 
 
 class Host:
-    def __init__(self, command, environment, timeout, settings):
+    def __init__(self, command, environment, timeout, settings, *,
+                 required_capabilities=REQUIRED_LOOPBACK_CAPABILITIES):
         self.settings = settings
         self.timeout = timeout
+        self.required_capabilities = tuple(required_capabilities)
         self.owners = 0
         self.pid = os.getpid()
         self.closed = False
@@ -125,12 +134,13 @@ class Host:
 
     def _ready_address(self, value):
         """Trust only the private record written by the owned native child."""
+        required = set(REQUIRED_LOOPBACK_CAPABILITIES) | set(self.required_capabilities)
         if (not isinstance(value, dict) or value.get('protocol') != 'docspec-loopback'
                 or type(value.get('version')) is not int or value['version'] != 1
                 or type(value.get('pid')) is not int or value['pid'] != self.process.pid
                 or not isinstance(value.get('capabilities'), list)
                 or any(not isinstance(item, str) for item in value['capabilities'])
-                or not {'request-deadline', 'owned-stdin-eof'}.issubset(value['capabilities'])):
+                or not required.issubset(value['capabilities'])):
             raise ValueError('DocSpec loopback protocol 1 with request-deadline '
                              'and owned-stdin-eof support is required')
         address = value.get('address')

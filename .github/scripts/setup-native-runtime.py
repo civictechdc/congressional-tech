@@ -10,7 +10,7 @@ import re
 import sys
 
 from congress_api.retention.derived_files import copy_checked
-from congress_api.retention.docspec import NativeDatasets
+from congress_api.retention.docspec import REQUIRED_LOOPBACK_CAPABILITIES, NativeDatasets
 
 MAX_BINARY_BYTES = 1024**3
 SECRET_NAMES = {'DOCSPEC_CATALOG_TOKEN', 'DOCSPEC_S3_ACCESS_KEY_ID', 'DOCSPEC_S3_SECRET_ACCESS_KEY'}
@@ -29,18 +29,31 @@ def document(raw, label):
 
 def artifact_descriptor(raw):
     value = document(raw, 'Runtime artifact descriptor')
-    fields = {'version', 'platform', 'source_revision', 'bucket', 'key', 'bytes', 'sha256'}
-    if (not isinstance(value, dict) or set(value) != fields or type(value['version']) is not int
+    required = {'version', 'platform', 'source_revision', 'bucket', 'key', 'bytes', 'sha256'}
+    optional = {'build_features', 'required_capabilities'}
+    if (not isinstance(value, dict) or not required.issubset(value) or set(value) - (required | optional)
+            or type(value['version']) is not int
             or value['version'] != 1 or value['platform'] != 'linux-amd64'
             or not isinstance(value['source_revision'], str) or not re.fullmatch('[0-9a-f]{40}', value['source_revision'])
             or not isinstance(value['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', value['sha256'])
             or type(value['bytes']) is not int or not 0 < value['bytes'] <= MAX_BINARY_BYTES
             or not isinstance(value['bucket'], str) or not re.fullmatch('[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]', value['bucket'])):
         raise SetupFailure('Runtime artifact descriptor requires exact version, platform, revision, location and bounded byte identity')
+    features = value.get('build_features', ['remote'])
+    if (not isinstance(features, list) or not features
+            or any(not isinstance(item, str) or not item.strip() for item in features)
+            or 'remote' not in features):
+        raise SetupFailure('Runtime artifact descriptor requires the remote build feature')
+    capabilities = value.get('required_capabilities', list(REQUIRED_LOOPBACK_CAPABILITIES))
+    if (not isinstance(capabilities, list) or not capabilities
+            or any(not isinstance(item, str) or not item.strip() for item in capabilities)
+            or not set(REQUIRED_LOOPBACK_CAPABILITIES).issubset(capabilities)):
+        raise SetupFailure('Runtime artifact descriptor requires loopback protocol 1 capabilities')
     expected = f"runtime/docspec/{value['source_revision']}/linux-amd64/{value['sha256']}/docspec"
     if value['key'] != expected:
         raise SetupFailure('Runtime artifact key differs from its revision, platform or digest')
-    return value
+    return {**value, 'build_features': list(dict.fromkeys(features)),
+            'required_capabilities': list(dict.fromkeys(capabilities))}
 
 
 def engine_credentials(raw):
@@ -76,8 +89,21 @@ def install(artifact, credentials, remote, directory, *, client):
     directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     private_write(directory / 'credentials.json', json.dumps(credentials).encode())
     private_write(directory / 'remote.json', remote_raw)
-    configuration = dict(version=1, binary='docspec', workspace='workspace', remote='remote.json',
-                         credentials='credentials.json', timeout_seconds=120)
+    build_features = list(artifact.get('build_features', ['remote']))
+    required_capabilities = list(artifact.get('required_capabilities', REQUIRED_LOOPBACK_CAPABILITIES))
+    configuration = dict(
+        version=1,
+        binary='docspec',
+        workspace='workspace',
+        remote='remote.json',
+        credentials='credentials.json',
+        timeout_seconds=120,
+        source_revision=artifact['source_revision'],
+        platform=artifact['platform'],
+        build_features=build_features,
+        binary_sha256=artifact['sha256'],
+        required_capabilities=required_capabilities,
+    )
     config = directory / 'runtime.json'
     private_write(config, (json.dumps(configuration, indent=2) + '\n').encode())
     NativeDatasets.from_config(config)  # Existing runtime format and secret validation own this boundary.
@@ -93,8 +119,16 @@ def install(artifact, credentials, remote, directory, *, client):
     spec = importlib.util.spec_from_file_location('installed_native_check', Path(__file__).with_name('check-native-runtime.py'))
     checker = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(checker)
-    report = checker.check(config, artifact['sha256'])
+    report = checker.check(
+        config,
+        artifact['sha256'],
+        expected_platform=artifact['platform'],
+        expected_source_revision=artifact['source_revision'],
+        required_features=build_features,
+        required_capabilities=required_capabilities,
+    )
     report.update(platform=artifact['platform'], source_revision=artifact['source_revision'],
+                  build_features=build_features, required_capabilities=required_capabilities,
                   artifact_bytes=artifact['bytes'], artifact_downloaded=True, native_provider_accessed=False,
                   remote_sha256=sha256(remote_raw).hexdigest())
     return config, report
