@@ -1,6 +1,6 @@
 /** Generated from committee_meeting.Catalog. Do not edit. Run npm run generate:explorer-types. */
 
-export type SchemaVersion = '0.1.0-draft.2';
+export type SchemaVersion = '0.1.0-draft.2' | '0.1.0-draft.3';
 export type Scope = 'complete';
 export type Kind = 'source_record';
 export type Id = string;
@@ -369,51 +369,10 @@ export type Ballots = {
 export type Id35 = string;
 export type Identifiers18 = Identifier[];
 export type FieldEvidence19 = FieldEvidence1[];
-export type Kind35 = 'edge';
+export type Kind35 = 'assessment';
 export type Kind36 =
-  | 'committee'
-  | 'committee_term'
-  | 'channel'
-  | 'meeting'
-  | 'occurrence'
-  | 'panel'
-  | 'person'
-  | 'appearance'
-  | 'material'
-  | 'material_version'
-  | 'representation'
-  | 'legislative_item'
-  | 'amendment'
-  | 'amendment_group'
-  | 'vote'
-  | 'source_record';
-export type Id36 = string;
-export type Relation1 =
-  | 'convenes'
-  | 'attends'
-  | 'considers'
-  | 'attaches_to'
-  | 'transcribes'
-  | 'derived_from'
-  | 'supersedes'
-  | 'redirected_to'
-  | 'recovered_from'
-  | 'linked_ancestor'
-  | 'same_proceeding'
-  | 'translation_of'
-  | 'corrects'
-  | 'part_of'
-  | 'alternate_of'
-  | 'related';
-export type Role5 = string | null;
-export type Coverage2 = 'full' | 'partial' | 'unknown';
-export type Id37 = string;
-export type Identifiers19 = Identifier[];
-export type FieldEvidence20 = FieldEvidence1[];
-export type Kind37 = 'assessment';
-export type Kind38 =
   'meeting' | 'occurrence' | 'committee_term' | 'channel' | 'material' | 'representation';
-export type Id38 = string;
+export type Id36 = string;
 export type Aspect =
   | 'recording'
   | 'transcript'
@@ -430,14 +389,14 @@ export type ObservedAt = string | ReportedTime | null;
 export type Provider3 = string | null;
 export type Scope2 = string | null;
 export type Explanation1 = string | null;
-export type Kind39 = 'material' | 'representation' | 'appearance';
-export type Id39 = string;
+export type Kind37 = 'material' | 'representation' | 'appearance';
+export type Id37 = string;
 export type Results = RefLiteralMaterialRepresentationAppearance[];
-export type Id40 = string;
-export type Identifiers20 = Identifier[];
-export type FieldEvidence21 = FieldEvidence1[];
-export type Kind40 = 'data_issue';
-export type Kind41 =
+export type Id38 = string;
+export type Identifiers19 = Identifier[];
+export type FieldEvidence20 = FieldEvidence1[];
+export type Kind38 = 'data_issue';
+export type Kind39 =
   | 'committee'
   | 'committee_term'
   | 'channel'
@@ -456,10 +415,9 @@ export type Kind41 =
   | 'amendment'
   | 'amendment_group'
   | 'vote'
-  | 'edge'
   | 'assessment'
   | 'source_record';
-export type Id41 = string;
+export type Id39 = string;
 export type FieldPath = string | null;
 export type Category2 =
   'missing' | 'unverified' | 'conflicting' | 'incorrect' | 'stale' | 'unlinked' | 'duplicate';
@@ -491,7 +449,6 @@ export type Records = (
   | Amendment
   | AmendmentGroup
   | Vote
-  | Edge
   | Assessment
   | DataIssue
 )[];
@@ -1059,35 +1016,12 @@ export interface RefLiteralLegislativeItemAmendmentAmendmentGroup {
   kind: Kind34;
   id: Id34;
 }
-/**
- * A directed relationship with independent provenance and optional coverage/metadata.
- */
-export interface Edge {
+export interface Assessment {
   id: Id35;
   identifiers?: Identifiers18;
   provenance: Provenance;
   field_evidence?: FieldEvidence19;
   kind?: Kind35;
-  source: RefLiteralCommitteeCommitteeTermChannelMeetingOccurrencePanelPersonAppearanceMaterialMaterialVersionRepresentationLegislativeItemAmendmentAmendmentGroupVoteSourceRecord;
-  target: RefLiteralCommitteeCommitteeTermChannelMeetingOccurrencePanelPersonAppearanceMaterialMaterialVersionRepresentationLegislativeItemAmendmentAmendmentGroupVoteSourceRecord;
-  relation?: Relation1;
-  role?: Role5;
-  coverage?: Coverage2;
-  metadata?: Metadata;
-}
-export interface RefLiteralCommitteeCommitteeTermChannelMeetingOccurrencePanelPersonAppearanceMaterialMaterialVersionRepresentationLegislativeItemAmendmentAmendmentGroupVoteSourceRecord {
-  kind: Kind36;
-  id: Id36;
-}
-export interface Metadata {
-  [k: string]: string | number | boolean | null;
-}
-export interface Assessment {
-  id: Id37;
-  identifiers?: Identifiers19;
-  provenance: Provenance;
-  field_evidence?: FieldEvidence20;
-  kind?: Kind37;
   subject: RefLiteralMeetingOccurrenceCommitteeTermChannelMaterialRepresentation;
   aspect: Aspect;
   status: Status3;
@@ -1099,12 +1033,12 @@ export interface Assessment {
   results?: Results;
 }
 export interface RefLiteralMeetingOccurrenceCommitteeTermChannelMaterialRepresentation {
-  kind: Kind38;
-  id: Id38;
+  kind: Kind36;
+  id: Id36;
 }
 export interface RefLiteralMaterialRepresentationAppearance {
-  kind: Kind39;
-  id: Id39;
+  kind: Kind37;
+  id: Id37;
 }
 /**
  * A known limitation, supported expectation or documented correction.
@@ -1114,12 +1048,12 @@ export interface RefLiteralMaterialRepresentationAppearance {
  * Closing an issue retains its original evidence and a separate decision.
  */
 export interface DataIssue {
-  id: Id40;
-  identifiers?: Identifiers20;
+  id: Id38;
+  identifiers?: Identifiers19;
   provenance: Provenance;
-  field_evidence?: FieldEvidence21;
-  kind?: Kind40;
-  subject: RefLiteralCommitteeCommitteeTermChannelMeetingOccurrencePanelPersonAppearanceMaterialMaterialVersionRepresentationMaterialLinkMaterialRelationLegislativeItemMeetingSubjectAmendmentAmendmentGroupVoteEdgeAssessmentSourceRecord;
+  field_evidence?: FieldEvidence20;
+  kind?: Kind38;
+  subject: RefLiteralCommitteeCommitteeTermChannelMeetingOccurrencePanelPersonAppearanceMaterialMaterialVersionRepresentationMaterialLinkMaterialRelationLegislativeItemMeetingSubjectAmendmentAmendmentGroupVoteAssessmentSourceRecord;
   field_path?: FieldPath;
   category: Category2;
   impact?: Impact;
@@ -1131,9 +1065,9 @@ export interface DataIssue {
   last_checked_at?: LastCheckedAt;
   resolution?: IssueResolution | null;
 }
-export interface RefLiteralCommitteeCommitteeTermChannelMeetingOccurrencePanelPersonAppearanceMaterialMaterialVersionRepresentationMaterialLinkMaterialRelationLegislativeItemMeetingSubjectAmendmentAmendmentGroupVoteEdgeAssessmentSourceRecord {
-  kind: Kind41;
-  id: Id41;
+export interface RefLiteralCommitteeCommitteeTermChannelMeetingOccurrencePanelPersonAppearanceMaterialMaterialVersionRepresentationMaterialLinkMaterialRelationLegislativeItemMeetingSubjectAmendmentAmendmentGroupVoteAssessmentSourceRecord {
+  kind: Kind39;
+  id: Id39;
 }
 export interface IssueResolution {
   decided_at: DecidedAt;

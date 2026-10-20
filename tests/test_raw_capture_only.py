@@ -9,7 +9,7 @@ import pytest
 from congress_api.cli import raw_sync
 from congress_api.cli.raw_progress import ProgressLog
 from congress_api.retention.catalog_publication import MANIFEST_KEY
-from congress_api.retention.raw_archive import Archive, CAPTURES_KEY, STATE_KEY
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, CAPTURES_KEY, STATE_KEY
 from test_raw_catalog import table
 from test_raw_source_sync import MemoryStore
 
@@ -94,7 +94,7 @@ def test_capture_only_is_mutually_exclusive(other):
 
 
 def test_capture_only_rejects_body_inspection_before_storage_access(tmp_path):
-    with pytest.raises(SystemExit, match='--inspect-bodies requires a catalog rebuild'):
+    with pytest.raises(SystemExit, match='--inspect-bodies requires scoped native reprocessing'):
         execute(tmp_path, object(), '--capture-only', '--inspect-bodies')
 
 

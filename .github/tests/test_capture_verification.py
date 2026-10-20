@@ -15,7 +15,7 @@ import pytest
 from congress_api.models.content import RawContent
 from congress_api.retention.capture_metadata import MetadataWriter, PREFIX
 from congress_api.retention.catalog_cache import capture_digest, legacy_capture_digest
-from congress_api.retention.raw_archive import Archive, CAPTURE_SCHEMA, encode_table
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, CAPTURE_SCHEMA, encode_table
 from congress_api.retention.derived_files import copy_checked, require_derived_key
 
 
@@ -110,7 +110,7 @@ def test_completed_run_matches_latest_receipt_without_any_storage_writes(checkpo
     store, summary = checkpoint
     before = dict(store.objects)
     writes = list(store.writes)
-    result = verifier.verify_run(store, summary)
+    result = verifier.verify_legacy_run(store, summary)
     assert result['verified']
     assert result['receipts'] == 3 and result['latest_urls'] == 2
     assert result['outcomes'] == {'timeout': 1, 'saved': 1, 'request_failed': 1}
@@ -134,7 +134,7 @@ def test_invalid_summary_is_rejected_before_reads(checkpoint, damage):
     elif damage == 'count': summary['attempted'] = True
     else: summary['accounting']['urls_by_source_family'] = {'../../other': 1}
     with pytest.raises(verifier.VerificationError):
-        verifier.verify_run(store, summary)
+        verifier.verify_legacy_run(store, summary)
     assert store.reads == []
 
 
@@ -149,14 +149,14 @@ def test_complete_checkpoint_digest_is_checked_including_other_runs(checkpoint):
     metadata[b'capture_rows'] = str(len(rows)).encode()  # Only the full digest can detect this.
     store.objects['indexes/download-state.parquet'] = encode_table(state.replace_schema_metadata(metadata))
     with pytest.raises(verifier.VerificationError, match='checkpoint digest'):
-        verifier.verify_run(store, summary)
+        verifier.verify_legacy_run(store, summary)
 
 
 def test_expected_attempt_count_must_include_all_run_receipts(checkpoint):
     store, summary = checkpoint
     summary['attempted'] = summary['accounting']['capture_tasks_completed'] = 4
     with pytest.raises(verifier.VerificationError, match='Expected attempt count mismatch'):
-        verifier.verify_run(store, summary)
+        verifier.verify_legacy_run(store, summary)
 
 
 def test_latest_state_not_an_older_same_url_receipt_is_required(checkpoint):
@@ -167,7 +167,7 @@ def test_latest_state_not_an_older_same_url_receipt_is_required(checkpoint):
     store.objects['indexes/download-state.parquet'] = encode_table(
         pa.Table.from_pylist(rows, schema=table.schema))
     with pytest.raises(verifier.VerificationError, match='Saved-state outcome accounting|latest run receipt'):
-        verifier.verify_run(store, summary)
+        verifier.verify_legacy_run(store, summary)
 
 
 def test_sample_checks_stored_body_hash(checkpoint):
@@ -175,7 +175,7 @@ def test_sample_checks_stored_body_hash(checkpoint):
     key = next(key for key in store.objects if key.startswith('bodies/'))
     store.objects[key] = gzip.compress(b'corrupted', mtime=0)
     with pytest.raises(verifier.VerificationError, match='Stored body hash/length'):
-        verifier.verify_run(store, summary)
+        verifier.verify_legacy_run(store, summary)
 
 
 def test_receipt_index_body_correspondence_is_checked(checkpoint):
@@ -186,7 +186,7 @@ def test_receipt_index_body_correspondence_is_checked(checkpoint):
     store.objects['indexes/captures.parquet'] = encode_table(pa.Table.from_pylist(rows, schema=CAPTURE_SCHEMA))
     rehash_checkpoint(store)
     with pytest.raises(verifier.VerificationError, match='body correspondence'):
-        verifier.verify_run(store, summary)
+        verifier.verify_legacy_run(store, summary)
 
 
 @pytest.mark.parametrize('damage', ['hash', 'status', 'body'])
@@ -206,7 +206,7 @@ def test_every_metadata_part_is_verified(checkpoint, damage):
         store.objects[key.rsplit('-', 1)[0] + '-' + sha256(payload).hexdigest() + '.parquet'] = payload
         expected = 'Metadata status/count mismatch' if damage == 'status' else 'outside this run'
     with pytest.raises(verifier.VerificationError, match=expected):
-        verifier.verify_run(store, summary)
+        verifier.verify_legacy_run(store, summary)
 
 
 def test_body_sample_is_deterministic_and_includes_largest_and_failed():
@@ -232,7 +232,7 @@ def test_body_sample_is_deterministic_and_includes_largest_and_failed():
                    accounting=dict(capture_tasks_completed=280, known_urls=280, urls_by_source_family={'external/provider-responses': 280},
                                    url_outcomes={'saved': 250, 'timeout': 30}),
                    body_metadata={'reused': 250})
-    result = verifier.verify_run(store, summary)
+    result = verifier.verify_legacy_run(store, summary)
     selected = set(result['verified_body_keys'])
     hashed = sorted(keys, key=lambda key: sha256(key.encode()).hexdigest())[:200]
     failed_sample = sorted(failed, key=lambda key: sha256(key.encode()).hexdigest())[:25]
@@ -241,7 +241,7 @@ def test_body_sample_is_deterministic_and_includes_largest_and_failed():
     assert result['unique_bodies_retained'] == 280
     # Hash selection stays independent of storage/list order.
     store.objects = dict(reversed(list(store.objects.items())))
-    assert verifier.verify_run(store, summary)['verified_body_keys'] == result['verified_body_keys']
+    assert verifier.verify_legacy_run(store, summary)['verified_body_keys'] == result['verified_body_keys']
 
 
 @pytest.mark.parametrize('damage', ['pending', 'known_urls', 'families'])
@@ -251,7 +251,7 @@ def test_saved_state_accounting_must_match_actual_checkpoint(checkpoint, damage)
     elif damage == 'known_urls': summary['accounting']['known_urls'] += 1
     else: summary['accounting']['urls_by_source_family']['external/provider-responses'] += 1
     with pytest.raises(verifier.VerificationError, match='Saved-state .* accounting mismatch'):
-        verifier.verify_run(store, summary)
+        verifier.verify_legacy_run(store, summary)
 
 
 def test_sample_checks_raw_hash_even_when_stored_facts_agree(checkpoint):
@@ -275,7 +275,7 @@ def test_sample_checks_raw_hash_even_when_stored_facts_agree(checkpoint):
                 ''.join(json.dumps(receipt) + '\n' for receipt in receipts).encode(), mtime=0)
     rehash_checkpoint(store)
     with pytest.raises(verifier.VerificationError, match='Raw body hash/length'):
-        verifier.verify_run(store, summary)
+        verifier.verify_legacy_run(store, summary)
 
 
 
@@ -298,7 +298,7 @@ def test_legacy_checkpoint_verifies_without_migration(checkpoint):
     store.objects['indexes/download-state.parquet'] = encode_table(state.replace_schema_metadata(metadata))
     before = dict(store.objects)
     writes = list(store.writes)
-    assert verifier.verify_run(store, summary)['verified']
+    assert verifier.verify_legacy_run(store, summary)['verified']
     assert store.objects == before and store.writes == writes
 
 
@@ -319,7 +319,7 @@ def test_repaired_pending_inputs_verify_without_counting_repairs_as_attempts():
     summary = run_sync(Archive(store, RUN), [], fetch=fetch, initial_only=True)
     summary.update(mode='capture', acquisition_status='completed', run_id=RUN)
     before = dict(store.objects)
-    report = verifier.verify_run(store, summary)
+    report = verifier.verify_legacy_run(store, summary)
     assert report['verified'] and report['state_matches_receipts']
     assert report['capture_index_checkpoint_matches']
     assert report['receipts'] == summary['attempted'] == 2

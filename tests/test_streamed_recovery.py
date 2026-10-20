@@ -18,7 +18,7 @@ from congress_api.acquisition.streamed_recovery import (
     recover_zip,
     retain_file,
 )
-from congress_api.retention.raw_archive import Archive
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
 from test_raw_source_sync import MemoryStore
 
 URL = "https://www.govinfo.gov/content/pkg/CHRG-118hhrg56269.zip"

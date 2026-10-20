@@ -50,6 +50,7 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         return result
     def committee_level(record):
         if not record: return 'unknown'
+        if record.committee_level not in (None, 'unknown'): return record.committee_level
         if record.parent or record.committee_type == 'subcommittee': return 'subcommittee'
         return 'full' if record.committee_type != 'unknown' else 'unknown'
     def committee_type(id, seen=()):
@@ -118,7 +119,7 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         row['committee_level'] = 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown'
         if record.kind == 'appearance': row['roles'] = list(record.roles)
         if record.kind == 'committee_term':
-            row['committee_code'] = next((i.value for i in record.identifiers if i.scheme == 'congress.gov:committee'), None)
+            row['committee_code'] = record.committee_code or next((i.value for i in record.identifiers if i.scheme == 'congress.gov:committee'), None)
             row['parent_committee_id'] = record.parent.id if record.parent else None
             row['committee_type'] = record.committee_type
             row['source_committee_type'] = record.source_committee_type

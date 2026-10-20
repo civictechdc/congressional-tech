@@ -1,3 +1,5 @@
+import { filenameManifestUrl } from '../filename-publication.mjs';
+
 /** Date-aware display rules, shared by search, detail and coverage. */
 const calendar = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });
 
@@ -33,13 +35,14 @@ export function recordingEmbedUrl(row, now = new Date()) {
   return undefined;
 }
 
-/** Root-relative route served by the viewer-data worker: /saved/<sha256>/<filename>. */
-export function savedCopyHref(file) {
+/** Absolute viewer-data route: {origin}/saved/<sha256>/<filename>. */
+export function savedCopyHref(file, manifestUrl = filenameManifestUrl) {
   const hash = file && file.saved_copy_sha256;
   if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash)) return undefined;
   const name = typeof file.saved_filename === 'string' ? file.saved_filename : '';
   const filename = name && !/[/\\]/.test(name) && !/[\u0000-\u001f\u007f]/.test(name) ? name : 'saved-copy';
-  return `/saved/${hash}/${encodeURIComponent(filename)}`;
+  try { return new URL(`/saved/${hash}/${encodeURIComponent(filename)}`, manifestUrl).href; }
+  catch { return undefined; }
 }
 
 export function documentSourceLabel(row) {

@@ -15,12 +15,43 @@ from .collector_labels import collector_placeholder_conflict
 from .history import RetainedSources
 
 
+def saved_copy_from_body_key(key, filename=None):
+    """Digest and filename for a retained bodies/sha256 object, or nothing."""
+    from congress_api.retention.body_keys import body_key_digest
+    if not isinstance(key, str):
+        return None
+    digest = body_key_digest(key)
+    if not digest:
+        return None
+    name = filename if isinstance(filename, str) and filename and not any(
+        character in filename for character in "/\\") and not any(ord(character) < 32 or ord(character) == 127 for character in filename) else None
+    return digest, name
+
+
+def apply_saved_copies(assembly, filenames_path):
+    """Set saved-copy fields from a document-filenames table before files are projected."""
+    import pyarrow.parquet as pq
+    by_url = {}
+    for row in pq.read_table(filenames_path, columns=["source_url", "body_key", "filename"]).to_pylist():
+        found = saved_copy_from_body_key(row.get("body_key"), row.get("filename"))
+        url = row.get("source_url")
+        if url and found and url not in by_url:
+            by_url[url] = found
+    for key in list(assembly.records):
+        record = assembly.records[key]
+        if record.kind != "representation" or record.saved_copy_sha256:
+            continue
+        match = next((by_url[location.url] for location in record.locations if location.url in by_url), None)
+        if match is None:
+            continue
+        digest, name = match
+        assembly.records[key] = record.model_copy(update={"saved_copy_sha256": digest, "saved_filename": name or record.saved_filename})
+
+
 _DOMAIN_RECORD = TypeAdapter(DomainRecord)
-# Several sources can each contribute files, links and collections to one
-# record. Their union is the record; differing members are not disagreements.
-_ACCUMULATED = frozenset({"identifiers", "source_document_groups"})
-_LINK_KINDS = {"appearance": "appearance_ids", "committee_term": "committee_ids", "amendment": "action_ids", "vote": "action_ids"}
-_LINK_FIELDS = ("meeting_ids", "appearance_ids", "committee_ids", "action_ids")
+# Several sources can each contribute identifiers, document groups, and files.
+# Their union is the record; differing members are not disagreements.
+_ACCUMULATED = frozenset({"identifiers", "source_document_groups", "files"})
 _FIELD_NAMES = {}  # frozenset of names -> the one set every equal instance shares
 _SHARED = set()  # ids of those sets; they live as long as this module
 
@@ -178,38 +209,36 @@ class Assembly:
         return issue.model_copy(update={"status": "dismissed", "resolution": resolution})
 
     def _project_materials(self):
-        """Fold each material's links and representations into it.
+        """Copy representations onto Material.files.
 
-        Links, versions and representations remain the authorities; histories
-        cite their identities. The material's fields are their complete copy.
+        Versions and representations remain the authorities. MaterialLink remains
+        the association, so this does not copy link targets onto the material.
+        A material that already has files keeps them when it has no representation.
         """
-        links = defaultdict(lambda: {name: set() for name in _LINK_FIELDS})
-        files = defaultdict(lambda: defaultdict(list))
+        files = defaultdict(list)
         for key in sorted(self.records):
             record = self.records[key]
-            if record.kind == "material_link":
-                subject, fields = record.subject, links[record.material.id]
-                owner = self.records.get((subject.kind, subject.id))
-                meeting = subject if subject.kind == "meeting" else getattr(owner, "meeting", None)
-                if meeting is not None:
-                    fields["meeting_ids"].add(meeting.id)
-                if subject.kind in _LINK_KINDS:
-                    fields[_LINK_KINDS[subject.kind]].add(subject.id)
-            elif record.kind == "representation":
-                version = self.records.get(("material_version", record.version.id))
-                if version is not None:
-                    files[version.material.id][version.id].extend(representation_files(
-                        record, version_label=version.label, published_at=version.published_at,
-                        duration_seconds=version.duration_seconds))
-        for material_id in links.keys() | files.keys():
+            if record.kind != "representation":
+                continue
+            version = self.records.get(("material_version", record.version.id))
+            if version is None:
+                continue
+            if record.retained is not None and not record.saved_copy_sha256:
+                saved = saved_copy_from_body_key(record.retained.uri, record.saved_filename)
+                if saved:
+                    digest, name = saved
+                    record = record.model_copy(update={"saved_copy_sha256": digest, "saved_filename": name or record.saved_filename})
+            files[version.material.id].extend(representation_files(
+                record, version_label=version.label, published_at=version.published_at,
+                duration_seconds=version.duration_seconds))
+        for material_id, projected in files.items():
             key = ("material", material_id)
             material = self.records.get(key)
             if material is None:
                 continue
-            values = {name: tuple(sorted(ids)) for name, ids in links[material_id].items()}
-            values["files"] = tuple(file for entries in files[material_id].values() for file in entries)
-            if any(getattr(material, name) != value for name, value in values.items()):
-                self.records[key] = material.model_copy(update=values)
+            merged = tuple({item.model_dump_json(): item for item in (*material.files, *projected)}.values())
+            if merged != material.files:
+                self.records[key] = material.model_copy(update={"files": merged})
 
     def finish(self):
         if self.ids:

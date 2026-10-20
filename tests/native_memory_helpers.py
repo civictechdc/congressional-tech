@@ -9,6 +9,9 @@ class MemoryNative:
     def __init__(self):
         self.tables, self.writes, self.reads = {}, [], []
 
+    def execution_files(self):
+        return ()
+
     def run_table(self, table, *, dataset, operation, definition):
         if dataset in self.tables and not self.tables[dataset].equals(table):
             raise ValueError('Conflicting test native request')

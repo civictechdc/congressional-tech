@@ -9,9 +9,10 @@ const recording = {kind: 'material', type: 'recording', recording_url: 'https://
 
 test('saved copies use the viewer-data content route', () => {
   const hash = 'ab'.repeat(32);
-  assert.equal(savedCopyHref({saved_copy_sha256: hash, saved_filename: 'Witness statement.pdf'}), `/saved/${hash}/Witness%20statement.pdf`);
-  assert.equal(savedCopyHref({saved_copy_sha256: hash}), `/saved/${hash}/saved-copy`);
-  assert.equal(savedCopyHref({saved_copy_sha256: hash, saved_filename: '../secret'}), `/saved/${hash}/saved-copy`);
+  const origin = 'https://congressional-viewer-data.mdeeb.workers.dev';
+  assert.equal(savedCopyHref({saved_copy_sha256: hash, saved_filename: 'Witness statement.pdf'}), `${origin}/saved/${hash}/Witness%20statement.pdf`);
+  assert.equal(savedCopyHref({saved_copy_sha256: hash}), `${origin}/saved/${hash}/saved-copy`);
+  assert.equal(savedCopyHref({saved_copy_sha256: hash, saved_filename: '../secret'}), `${origin}/saved/${hash}/saved-copy`);
   assert.equal(savedCopyHref({saved_copy_sha256: 'short', saved_filename: 'a.pdf'}), undefined);
   assert.equal(savedCopyHref(null), undefined);
 });

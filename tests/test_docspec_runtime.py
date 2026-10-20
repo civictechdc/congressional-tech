@@ -110,3 +110,13 @@ def test_non_docspec_environment_override_refuses(tmp_path):
     (tmp_path / "remote.json").write_text(json.dumps(remote))
     with pytest.raises(ValueError, match="DOCSPEC_"):
         NativeDatasets.from_config(path)
+
+
+def test_execution_files_name_only_frozen_inputs_and_exclude_workspace_and_secrets(tmp_path):
+    path = settings(tmp_path)
+    native = NativeDatasets.from_config(path)
+    assert native.execution_files() == (path, tmp_path / 'bin/docspec', tmp_path / 'remote.json', tmp_path / 'limits.json')
+    assert not native.workspace.exists()
+    direct = NativeDatasets(tmp_path / 'direct', tmp_path / 'scratch')
+    assert direct.execution_files() == (tmp_path / 'direct',)
+    assert 'fixture-private-value' not in repr(native.execution_files())

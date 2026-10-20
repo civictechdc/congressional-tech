@@ -333,12 +333,12 @@ def test_direct_committee_material_links_preserve_scope_and_lifecycle_without_me
 
 
 def test_assembled_roundtable_keeps_native_hearing_as_source_evidence(tmp_path):
-    from committee_explorer.parquet import write_tables
+    from committee_explorer.parquet import legacy_payloads, write_tables
     source = dict(kind='source_record', id='source', provider='congress.gov', payload={'type': 'Hearing', 'title': 'Hearings to examine prediction markets'})
     meeting = dict(kind='meeting', id='meeting', meeting_type='roundtable',
                    provenance={'citations': [{'source': {'id': 'source'}}]})
     write_tables([meeting], [source], [dict(kind='meeting', id='meeting', type='roundtable', title='Prediction markets roundtable')],
-                 tmp_path, lambda *a, **k: None)
+                 tmp_path, lambda *a, **k: None, legacy=legacy_payloads([source]))
     row = pq.read_table(tmp_path/'meetings.parquet').to_pylist()[0]
     assert row['type'] == 'roundtable'
     assert {'label': 'Source type', 'value': 'Hearing'} in row['facts']
@@ -362,7 +362,7 @@ def test_issue_resolution_evidence_is_available_inline(tmp_path):
 
 
 def test_committee_scope_uses_explicit_hierarchy_and_keeps_unknowns(tmp_path):
-    from committee_explorer.parquet import write_tables
+    from committee_explorer.parquet import legacy_payloads, write_tables
     terms = [dict(kind='committee_term', id='full', committee_type='standing'),
              dict(kind='committee_term', id='child', parent={'kind': 'committee_term', 'id': 'full'}),
              dict(kind='committee_term', id='other-child', committee_type='subcommittee'),
@@ -378,7 +378,7 @@ def test_committee_scope_uses_explicit_hierarchy_and_keeps_unknowns(tmp_path):
                 dict(kind='material', id='document', title='Full committee document', type='document', committee_ids=['full']),
                 dict(kind='appearance', id='witness', title='Witness', committee_ids=['other-child']),
                 dict(kind='data_issue', id='issue', title='Issue', committee_ids=['unknown'], status='open')]
-    write_tables(records, [], queries, tmp_path, lambda *a, **k: None)
+    write_tables(records, [], queries, tmp_path, lambda *a, **k: None, legacy=legacy_payloads([]))
     committees = {r['id']: r for r in pq.read_table(tmp_path/'committees.parquet').to_pylist()}
     assert {id: r['committee_level'] for id, r in committees.items()} == {
         'full': 'full', 'child': 'subcommittee', 'other-child': 'subcommittee', 'unknown': 'unknown',
@@ -559,13 +559,13 @@ def test_folded_connections_keep_action_context_witness_ownership_and_all_format
 
 
 def test_retained_native_payload_repairs_old_untitled_rows_without_reassembly(tmp_path):
-    from committee_explorer.parquet import write_tables
+    from committee_explorer.parquet import legacy_payloads, write_tables
     citation = {'source': {'id': 'source'}, 'selector': '/witnessDocuments/0'}
     records = [{'kind': 'material', 'id': 'statement', 'provenance': {'citations': [citation]}}]
     sources = [{'kind': 'source_record', 'id': 'source', 'provider': 'congress.gov',
                 'payload': {'witnessDocuments': [{'documentType': 'Witness Truth in Testimony'}]}}]
     queries = [{'kind': 'material', 'id': 'statement', 'title': '(Untitled source record)', 'type': 'document', 'category': 'statement'}]
-    write_tables(records, sources, queries, tmp_path, lambda *args, **kwargs: None)
+    write_tables(records, sources, queries, tmp_path, lambda *args, **kwargs: None, legacy=legacy_payloads(sources))
     material = pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
     assert material['title'] == 'Witness Truth in Testimony'
     assert material['category'] == 'disclosure'
@@ -574,14 +574,14 @@ def test_retained_native_payload_repairs_old_untitled_rows_without_reassembly(tm
 
 
 def test_shared_document_keeps_every_source_collection_without_inventing_witness_ownership(tmp_path):
-    from committee_explorer.parquet import write_tables
+    from committee_explorer.parquet import legacy_payloads, write_tables
     document = {'documentType': 'Witness Statement', 'url': 'https://example.org/statement.pdf'}
     citations = [{'source': {'id': 'source'}, 'selector': f'/{group}/0'} for group in ('meetingDocuments', 'witnessDocuments')]
     records = [dict(kind='material', id='statement', provenance=dict(citations=citations + citations))]
     sources = [dict(kind='source_record', id='source', provider='congress.gov',
                     payload=dict(meetingDocuments=[document], witnessDocuments=[document]))]
     queries = [dict(kind='material', id='statement', title='Statement', type='document')]
-    write_tables(records, sources, queries, tmp_path, lambda *args, **kwargs: None)
+    write_tables(records, sources, queries, tmp_path, lambda *args, **kwargs: None, legacy=legacy_payloads(sources))
     row = pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
     assert row['source_document_groups'] == ['meetingDocuments', 'witnessDocuments']
     assert row['document_type'] == 'Witness Statement'
@@ -589,7 +589,7 @@ def test_shared_document_keeps_every_source_collection_without_inventing_witness
 
 
 def test_shared_bill_does_not_attach_other_meetings_as_source_evidence(tmp_path):
-    from committee_explorer.parquet import write_tables
+    from committee_explorer.parquet import legacy_payloads, write_tables
     def evidence(source): return dict(citations=[dict(source=dict(id=source))])
     records = [dict(kind='meeting', id='meeting', provenance=evidence('own')),
                dict(kind='legislative_item', id='bill', item_type='bill', designation='H.R. 10', provenance=evidence('other')),
@@ -597,7 +597,7 @@ def test_shared_bill_does_not_attach_other_meetings_as_source_evidence(tmp_path)
                     item=dict(kind='legislative_item', id='bill'), provenance=evidence('own'))]
     sources = [dict(kind='source_record', id='other', provider='congress.gov', payload=dict(type='Markup')),
                dict(kind='source_record', id='own', provider='congress.gov', payload=dict(type='Meeting'))]
-    write_tables(records, sources, [dict(kind='meeting', id='meeting', title='Current meeting')], tmp_path, lambda *args, **kwargs: None)
+    write_tables(records, sources, [dict(kind='meeting', id='meeting', title='Current meeting')], tmp_path, lambda *args, **kwargs: None, legacy=legacy_payloads(sources))
     row = pq.read_table(tmp_path/'meetings.parquet').to_pylist()[0]
     assert row['type'] == 'meeting'
     assert row['source_ids'] == ['own']
@@ -723,7 +723,7 @@ def test_each_browser_table_has_its_own_schema_and_rejects_silent_data_loss(tmp_
 
 
 def test_committee_source_types_and_witness_ownership_survive_parquet(tmp_path):
-    from committee_explorer.parquet import write_tables
+    from committee_explorer.parquet import legacy_payloads, write_tables
     url = 'https://example.org/testimony'
     selector = '/document_metadata/' + url.replace('~', '~0').replace('/', '~1')
     sources = [dict(kind='source_record', id='house', provider='docs.house.gov', payload={
@@ -735,7 +735,7 @@ def test_committee_source_types_and_witness_ownership_survive_parquet(tmp_path):
         dict(kind='material', id='senate-doc', details={'type': 'document', 'category': 'statement'},
         provenance={'citations': [{'source': {'id': 'senate'}, 'selector': selector}]})]
     queries = [dict(kind='material', id=r['id'], title=r['id'], type='document') for r in records]
-    write_tables(records, sources, queries, tmp_path, lambda *a, **k: None)
+    write_tables(records, sources, queries, tmp_path, lambda *a, **k: None, legacy=legacy_payloads(sources))
     rows = {r['id']: r for r in pq.read_table(tmp_path/'materials.parquet').to_pylist()}
     assert rows['house-doc']['document_type'] == 'Truth in testimony'
     assert rows['house-doc']['source_document_groups'] == ['Witness documents']
@@ -743,3 +743,55 @@ def test_committee_source_types_and_witness_ownership_survive_parquet(tmp_path):
     assert rows['senate-doc']['document_type'] is None  # A link label is not a reported document type.
     assert rows['senate-doc']['source_document_groups'] == ['Witness documents']
     assert {'label': 'Source link label', 'value': 'Download Testimony'} in rows['senate-doc']['facts']
+
+
+def test_carried_house_fields_are_copied_once(tmp_path):
+    from committee_explorer.parquet import legacy_payloads, write_tables
+    sources = [dict(kind='source_record', id='house', provider='docs.house.gov', payload={
+        'evidence': {'document_groups': [{'type': 'WT', 'source': 'witness_xml'}]}})]
+    records = [dict(kind='material', id='house-doc', document_type='Truth in testimony',
+                     source_document_groups=['Witness documents'],
+                     provenance={'citations': [{'source': {'id': 'house'}, 'selector': '/evidence/document_groups/0'}]})]
+    queries = [dict(kind='material', id='house-doc', title='Form', type='document')]
+    write_tables(records, sources, queries, tmp_path, lambda *args, **kwargs: None, legacy=legacy_payloads(sources))
+    row = pq.read_table(tmp_path / 'materials.parquet').to_pylist()[0]
+    assert row['document_type'] == 'Truth in testimony'
+    assert row['source_document_groups'] == ['Witness documents']
+    assert not any(fact['label'] == 'Source document type code' for fact in row['facts'])
+
+
+def test_meeting_start_wins_over_an_earlier_occurrence(tmp_path):
+    from committee_explorer.parquet import write_tables
+    records = [
+        dict(kind='meeting', id='meeting', scheduled_start={'date': '2026-09-02', 'original': '2026-09-02T15:00:00Z'}),
+        dict(kind='occurrence', id='earlier', meeting={'kind': 'meeting', 'id': 'meeting'},
+             scheduled_start={'date': '2026-09-01', 'original': '2026-09-01T15:00:00Z'}),
+    ]
+    write_tables(records, [], [dict(kind='meeting', id='meeting', title='Hearing')], tmp_path, lambda *args, **kwargs: None)
+    assert pq.read_table(tmp_path / 'meetings.parquet').to_pylist()[0]['scheduled_at'] == '2026-09-02T15:00:00Z'
+
+
+def test_stored_committee_code_and_level_are_copied(tmp_path):
+    from committee_explorer.parquet import write_tables
+    records = [dict(kind='committee_term', id='coded', committee_code='hsif03', committee_level='full',
+                    identifiers=[{'scheme': 'congress.gov:committee', 'value': 'hsif00'}])]
+    write_tables(records, [], [dict(kind='committee_term', id='coded', title='Coded')], tmp_path, lambda *args, **kwargs: None)
+    row = pq.read_table(tmp_path / 'committees.parquet').to_pylist()[0]
+    assert (row['committee_code'], row['committee_level']) == ('hsif03', 'full')
+    assert row['parent_committee_id'] is None
+
+
+def test_carried_senate_witness_group_keeps_an_empty_document_type(tmp_path):
+    from committee_explorer.parquet import legacy_payloads, write_tables
+    url = 'https://example.org/testimony'
+    selector = '/document_metadata/' + url.replace('~', '~0').replace('/', '~1')
+    sources = [dict(kind='source_record', id='senate', provider='senate.committees', payload={
+        'document_metadata': {url: {'labels': ['Download Testimony'], 'witness_indexes': [0]}}})]
+    records = [dict(kind='material', id='senate-doc', source_document_groups=['Witness documents'],
+                     provenance={'citations': [{'source': {'id': 'senate'}, 'selector': selector}]})]
+    write_tables(records, sources, [dict(kind='material', id='senate-doc', title='Testimony', type='document')],
+                 tmp_path, lambda *args, **kwargs: None, legacy=legacy_payloads(sources))
+    row = pq.read_table(tmp_path / 'materials.parquet').to_pylist()[0]
+    assert row['document_type'] is None
+    assert row['source_document_groups'] == ['Witness documents']
+    assert not any(fact['label'] == 'Source link label' for fact in row['facts'])

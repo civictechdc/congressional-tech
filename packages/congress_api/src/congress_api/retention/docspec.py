@@ -71,6 +71,7 @@ class NativeDatasets:
         self.limits = Path(limits).resolve() if limits is not None else None
         self.timeout = timeout
         self._remote_secrets = {}
+        self._configuration_path = None
 
     @classmethod
     def from_config(cls, path):
@@ -121,7 +122,17 @@ class NativeDatasets:
             client._remote_secrets = credentials
         elif 'credentials' in settings:
             raise ValueError('DocSpec credentials require an explicit remote configuration')
+        client._configuration_path = path
         return client
+
+    def execution_files(self):
+        """Name immutable executable/configuration inputs for caller guards.
+
+        Workspace/request files are mutable native state. Credentials are loaded
+        once into the private child environment and are never returned here.
+        """
+        return tuple(dict.fromkeys(value for value in (self._configuration_path,
+            Path(self.binary), self.remote, self.limits) if value is not None))
 
     def _call(self, *args, remote=True):
         command = [self.binary, '--workspace', str(self.workspace)]

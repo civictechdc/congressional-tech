@@ -112,7 +112,7 @@ def test_tracking_counts_completed_items_not_yielded_items(caplog):
 
 
 def test_rebuild_reports_real_stages_and_preserves_output(tmp_path):
-    from congress_api.retention.raw_archive import Archive
+    from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
     from congress_api.retention.raw_catalog import rebuild_catalog
     from test_raw_catalog import initialize, table
 

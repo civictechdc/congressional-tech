@@ -6,7 +6,7 @@ import pytest
 
 from congress_api.acquisition.raw_sync import run_sync
 from congress_api.parsers.archive_links import allowed_url
-from congress_api.retention.raw_archive import Archive
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
 from congress_api.retention.capture_metadata import saved_readings
 from test_async_capture import receipts
 from test_raw_source_sync import MemoryStore, response

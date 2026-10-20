@@ -330,7 +330,7 @@ def test_disk_recovery_matches_resident_and_missing_line_errors(tmp_path):
 
 def test_raw_releases_context_before_recovery_and_consumed_output_before_grouping(tmp_path,monkeypatch):
     from congress_api.retention import raw_catalog
-    from congress_api.retention.raw_archive import Archive
+    from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
     from test_raw_catalog import initialize
     store=initialize(tmp_path)
     Archive(store,'lifecycle').save()

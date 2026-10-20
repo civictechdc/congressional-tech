@@ -14,9 +14,6 @@ from urllib.parse import urlsplit
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from congress_api.matching.committees import HIERARCHY_SOURCE, hierarchy_from_code
-from congress_api.adapters.meetings import category, document_title, event_page
-from congress_api.matching.meetings import meeting_access, meeting_type
 
 from .collector_labels import PLACEHOLDER_LABELS, collector_placeholder_conflict
 
@@ -124,42 +121,68 @@ def _write_sources(rows, stage):
     return [(path.name, count) for path, count in files]
 
 
-def write_tables(records, sources, query_rows, stage, descriptor):
+def _event_page(url):
+    """Same host and /event/ rule as congress_api.adapters.meetings.event_page."""
+    parsed = urlsplit(url or '')
+    return parsed.hostname in ('congress.gov', 'www.congress.gov') and parsed.path.startswith('/event/')
+
+
+def legacy_payloads(sources):
+    """Index raw payloads for a publication that predates stored Explorer fields.
+
+    Only migrate() calls this. A current export copies fields the adapters stored.
+    """
+    from congress_api.adapters.meetings import category, document_title
+    from congress_api.matching.committees import HIERARCHY_SOURCE, hierarchy_from_code
+    from congress_api.matching.meetings import meeting_access, meeting_type
+    from congress_api.parsers.house_documents import XML_KINDS
+    native_documents, native_meetings, reviewed_document_types, committee_documents = {}, {}, {}, {}
+    for source in sources:
+        if source['provider'] == 'congress.gov' and isinstance(source.get('payload'), dict):
+            native_meetings[source['id']] = {k: source['payload'].get(k) for k in ('type', 'title')}
+            for group in ('meetingDocuments', 'witnessDocuments'):
+                for i, document in enumerate(source['payload'].get(group) or []):
+                    native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
+        payload = source.get('payload') or {}
+        if source['provider'] == 'docs.house.gov':
+            for i, group in enumerate((payload.get('evidence') or {}).get('document_groups', [])):
+                code = group.get('type')
+                label = XML_KINDS.get(code, code)
+                if label: label = label[:1].upper() + label[1:]
+                origin = {'meeting_xml': 'Meeting documents', 'witness_xml': 'Witness documents'}.get(group.get('source'))
+                committee_documents[source['id'], f'/evidence/document_groups/{i}'] = (label, origin, code, [])
+        if source['provider'] == 'senate.committees':
+            for url, metadata in (payload.get('document_metadata') or {}).items():
+                selector = '/document_metadata/' + url.replace('~', '~0').replace('/', '~1')
+                labels = metadata.get('labels') or []
+                committee_documents[source['id'], selector] = (
+                    None, 'Witness documents' if metadata.get('witness_indexes') else None, None, labels)
+        if source['provider'] == 'gpo.committee-review' and isinstance(source.get('payload'), dict):
+            label = source['payload'].get('source_document_type')
+            if isinstance(label, str) and label: reviewed_document_types[source['id']] = label
+    return {'native_documents': native_documents, 'native_meetings': native_meetings,
+            'reviewed_document_types': reviewed_document_types, 'committee_documents': committee_documents,
+            'hierarchy_from_code': hierarchy_from_code, 'HIERARCHY_SOURCE': HIERARCHY_SOURCE,
+            'category': category, 'document_title': document_title, 'meeting_access': meeting_access, 'meeting_type': meeting_type}
+
+
+def write_tables(records, sources, query_rows, stage, descriptor, legacy=None):
     """Accept iterables so a retained JSON publication can migrate without reassembly.
 
-    Sources must arrive in ascending ID order. They stream to Parquet while the
-    small lookups the records need are collected in the same pass.
+    Sources must arrive in ascending ID order. Pass legacy_payloads(sources) only
+    when repairing a publication that lacks the stored Explorer fields.
     """
-    native_documents, native_meetings, reviewed_document_types, committee_documents = {}, {}, {}, {}
+    repair = legacy or {}
+    native_documents = repair.get('native_documents', {})
+    native_meetings = repair.get('native_meetings', {})
+    reviewed_document_types = repair.get('reviewed_document_types', {})
+    committee_documents = repair.get('committee_documents', {})
     def source_rows():
         previous = None
         for source in sources:
             if previous is not None and source['id'] <= previous:
                 raise ValueError(f"Sources must be unique and in ascending ID order: {source['id']} follows {previous}")
             previous = source['id']
-            if source['provider'] == 'congress.gov' and isinstance(source.get('payload'), dict):
-                native_meetings[source['id']] = {k: source['payload'].get(k) for k in ('type', 'title')}
-                for group in ('meetingDocuments', 'witnessDocuments'):
-                    for i, document in enumerate(source['payload'].get(group) or []):
-                        native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
-            payload = source.get('payload') or {}
-            if source['provider'] == 'docs.house.gov':
-                from congress_api.parsers.house_documents import XML_KINDS
-                for i, group in enumerate((payload.get('evidence') or {}).get('document_groups', [])):
-                    code = group.get('type')
-                    label = XML_KINDS.get(code, code)
-                    if label: label = label[:1].upper() + label[1:]
-                    origin = {'meeting_xml': 'Meeting documents', 'witness_xml': 'Witness documents'}.get(group.get('source'))
-                    committee_documents[source['id'], f'/evidence/document_groups/{i}'] = (label, origin, code, [])
-            if source['provider'] == 'senate.committees':
-                for url, metadata in (payload.get('document_metadata') or {}).items():
-                    selector = '/document_metadata/' + url.replace('~', '~0').replace('/', '~1')
-                    labels = metadata.get('labels') or []
-                    committee_documents[source['id'], selector] = (
-                        None, 'Witness documents' if metadata.get('witness_indexes') else None, None, labels)
-            if source['provider'] == 'gpo.committee-review' and isinstance(source.get('payload'), dict):
-                label = source['payload'].get('source_document_type')
-                if isinstance(label, str) and label: reviewed_document_types[source['id']] = label
             yield _source_row(source)
     source_files = _write_sources(source_rows(), stage)
     rows = {kind: {} for kind in TABLES if kind != 'source_record'}
@@ -212,41 +235,56 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                     if value: row['facts'].append({'label': label, 'value': value})
                 if record.get('website'):
                     row['facts'].append({'label': 'Official website or archive', 'value': record['website']})
-                row['committee_level'] = ('subcommittee' if parent or committee_type == 'subcommittee' else
-                                          'full' if committee_type not in (None, 'unknown') else 'unknown')
-                code = next((i['value'] for i in record.get('identifiers', []) if i['scheme'] == 'congress.gov:committee'), None)
+                stored_level = record.get('committee_level')
+                if stored_level not in (None, 'unknown'):
+                    row['committee_level'] = stored_level
+                else:
+                    row['committee_level'] = ('subcommittee' if parent or committee_type == 'subcommittee' else
+                                              'full' if committee_type not in (None, 'unknown') else 'unknown')
+                code = record.get('committee_code') or next((i['value'] for i in record.get('identifiers', []) if i['scheme'] == 'congress.gov:committee'), None)
                 row['committee_code'] = code
-                level, parent_code = hierarchy_from_code(code)
-                if level != 'unknown':
-                    committee_codes[(row.get('congress'), code.lower())] = id
-                    if row['committee_level'] == 'unknown': row['committee_level'] = level
-                    if parent_code: committee_parents[id] = (row.get('congress'), parent_code.lower())
-                    if parent:
-                        row['facts'].append({'label': 'Committee hierarchy', 'value': 'The source identifies a parent committee.'})
-                    elif row['committee_level'] == level:
-                        row['facts'].append({'label': 'Committee hierarchy', 'value': f'Congress.gov systemCode {code}: final two digits 00 identify a full committee; other digits identify a subcommittee.'})
-                        row['facts'].append({'label': 'Hierarchy definition', 'value': HIERARCHY_SOURCE})
+                if legacy is not None and stored_level in (None, 'unknown'):
+                    level, parent_code = repair['hierarchy_from_code'](code)
+                    if level != 'unknown':
+                        committee_codes[(row.get('congress'), code.lower())] = id
+                        if row['committee_level'] == 'unknown': row['committee_level'] = level
+                        if parent_code: committee_parents[id] = (row.get('congress'), parent_code.lower())
+                        if parent:
+                            row['facts'].append({'label': 'Committee hierarchy', 'value': 'The source identifies a parent committee.'})
+                        elif row['committee_level'] == level:
+                            row['facts'].append({'label': 'Committee hierarchy', 'value': f'Congress.gov systemCode {code}: final two digits 00 identify a full committee; other digits identify a subcommittee.'})
+                            row['facts'].append({'label': 'Hierarchy definition', 'value': repair['HIERARCHY_SOURCE']})
+                elif parent:
+                    row['facts'].append({'label': 'Committee hierarchy', 'value': 'The source identifies a parent committee.'})
             if kind == 'meeting':
                 row['access'] = record.get('access') if record.get('access') not in (None, 'unknown') else 'unknown'
-                explained = False
-                for source_id in row['source_ids']:
-                    if source_id not in native_meetings: continue
-                    native = native_meetings[source_id]
-                    native_type, field = meeting_type(native)
-                    assembled_type = record.get('meeting_type')
-                    row['type'] = assembled_type if assembled_type not in (None, 'unknown', 'meeting') else native_type
-                    if native.get('type'):
-                        row['facts'].append({'label': 'Source type', 'value': native['type']})
-                        explained = True
-                    if field == '/title' and row['type'] == native_type:
-                        row['facts'].append({'label': 'Type based on', 'value': 'The source title explicitly identifies this meeting type.'})
-                    payload_access, access_field = meeting_access(native)
-                    if row['access'] == 'unknown': row['access'] = payload_access
-                    if access_field == '/title' and row['access'] == payload_access:
-                        row['facts'].append({'label': 'Access based on', 'value': 'The source title explicitly identifies this access state.'})
-                    break
-                if record.get('source_type') and not explained:
+                start = record.get('scheduled_start') or {}
+                if start:
+                    row['scheduled_at'] = start.get('original') or start.get('date')
+                assembled_type = record.get('meeting_type')
+                if assembled_type not in (None, 'unknown', 'meeting'):
+                    row['type'] = assembled_type
+                if record.get('source_type'):
                     row['facts'].append({'label': 'Source type', 'value': record['source_type']})
+                for field in record.get('field_evidence') or []:
+                    if field.get('path') == '/meeting_type' and field.get('selection_reason'):
+                        row['facts'].append({'label': 'Type based on', 'value': field['selection_reason']})
+                if legacy is not None and (assembled_type in (None, 'unknown', 'meeting') or not record.get('source_type') or row['access'] == 'unknown'):
+                    for source_id in row['source_ids']:
+                        if source_id not in native_meetings: continue
+                        native = native_meetings[source_id]
+                        native_type, field = repair['meeting_type'](native)
+                        if assembled_type in (None, 'unknown', 'meeting'):
+                            row['type'] = native_type
+                        if native.get('type') and not record.get('source_type'):
+                            row['facts'].append({'label': 'Source type', 'value': native['type']})
+                        if field == '/title' and row['type'] == native_type:
+                            row['facts'].append({'label': 'Type based on', 'value': 'The source title explicitly identifies this meeting type.'})
+                        payload_access, access_field = repair['meeting_access'](native)
+                        if row['access'] == 'unknown': row['access'] = payload_access
+                        if access_field == '/title' and row['access'] == payload_access:
+                            row['facts'].append({'label': 'Access based on', 'value': 'The source title explicitly identifies this access state.'})
+                        break
             if kind == 'material':
                 dates = record.get('proceeding_dates') or []
                 if not row.get('date') and dates:
@@ -265,28 +303,25 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                                          'published_at': published_at.get('date'), 'sha256': file.get('sha256'),
                                          'saved_copy_sha256': file.get('saved_copy_sha256'), 'saved_filename': file.get('saved_filename')})
                 carried = bool(record.get('document_type') or record.get('source_document_groups'))
-                documents = [native_documents[key] for citation in provenance.get('citations', [])
-                             if (key := (citation['source']['id'], citation.get('selector'))) in native_documents]
-                if not carried:
+                if legacy is not None and not carried:
+                    documents = [native_documents[key] for citation in provenance.get('citations', [])
+                                 if (key := (citation['source']['id'], citation.get('selector'))) in native_documents]
                     row['source_document_groups'] = sorted({group for group, _ in documents})
                     row['document_type'] = next((reviewed_document_types[citation['source']['id']]
                         for citation in provenance.get('citations', []) if citation['source']['id'] in reviewed_document_types), row.get('document_type'))
                     if documents:
                         document = documents[0][1]
-                        row['title'] = document_title(document) or row['title']
-                        row['category'] = category(document)
+                        row['title'] = repair['document_title'](document) or row['title']
+                        row['category'] = repair['category'](document)
                         if isinstance(document.get('documentType'), str): row['document_type'] = document['documentType']
-                elif not row.get('document_type'):
-                    row['document_type'] = next((reviewed_document_types[citation['source']['id']]
-                        for citation in provenance.get('citations', []) if citation['source']['id'] in reviewed_document_types), None)
-                for citation in provenance.get('citations', []):
-                    metadata = committee_documents.get((citation['source']['id'], citation.get('selector')))
-                    if metadata:
-                        label, origin, code, labels = metadata
-                        if label and not row.get('document_type'): row['document_type'] = label
-                        if origin: row['source_document_groups'].append(origin)
-                        if code: row['facts'].append({'label': 'Source document type code', 'value': code})
-                        for source_label in labels: row['facts'].append({'label': 'Source link label', 'value': source_label})
+                    for citation in provenance.get('citations', []):
+                        metadata = committee_documents.get((citation['source']['id'], citation.get('selector')))
+                        if metadata:
+                            label, origin, code, labels = metadata
+                            if label and not row.get('document_type'): row['document_type'] = label
+                            if origin: row['source_document_groups'].append(origin)
+                            if code: row['facts'].append({'label': 'Source document type code', 'value': code})
+                            for source_label in labels: row['facts'].append({'label': 'Source link label', 'value': source_label})
                 if not row.get('title') or row['title'] == '(Untitled source record)':
                     row['title'] = (row.get('category') if row.get('category') not in (None, 'unknown') else row.get('type') or 'Document').replace('_', ' ').capitalize()
             if kind == 'appearance':
@@ -403,6 +438,10 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 if isinstance(value, str) and value: row['facts'].append({'label': key.replace('_', ' '), 'value': value})
             if row['access'] == 'unknown' and record.get('access') not in (None, 'unknown'):
                 row['access'] = record['access']
+            for field in record.get('field_evidence') or []:
+                if field.get('path') == '/access' and field.get('selection_reason') and row.get('access') not in (None, 'unknown'):
+                    if not any(fact['label'] == 'Access based on' for fact in row['facts']):
+                        row['facts'].append({'label': 'Access based on', 'value': field['selection_reason']})
     del occurrences
     for row in rows['material'].values():
         if len(set(row['meeting_ids'])) == 1: row['meeting_id'] = row['meeting_ids'][0]
@@ -417,7 +456,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 url = urlsplit(file['url'])
                 return (0 if url.hostname in ('www.senate.gov', 'senate.gov') and url.path.startswith('/isvp') else
                         1 if url.hostname in ('www.youtube.com', 'youtube.com', 'youtu.be') else 2, file['url'])
-            candidates = sorted((f for f in row['files'] if not event_page(f['url'])), key=preference)
+            candidates = sorted((f for f in row['files'] if not _event_page(f['url'])), key=preference)
             row['recording_url'] = candidates[0]['url'] if candidates else None
     for entries in rows.values():
         for row in entries.values(): row['issue_count'] = 0
@@ -527,9 +566,9 @@ def migrate(input_dir, output_dir):
         partitions.append(ExportPartition(path=path, role=role, schema_name=schema_name, schema_version=manifest.schema_version,
             record_count=count, byte_size=dest.stat().st_size, sha256=file_sha(dest), media_type=media_type))
     try:
-        write_tables(values('committee_explorer.records', 'records'),
-                     sorted(values('committee_explorer.sources', 'sources'), key=itemgetter('id')),
-                     values('committee_explorer.query-rows', 'rows'), stage, descriptor)
+        retained_sources = sorted(values('committee_explorer.sources', 'sources'), key=itemgetter('id'))
+        write_tables(values('committee_explorer.records', 'records'), retained_sources,
+                     values('committee_explorer.query-rows', 'rows'), stage, descriptor, legacy=legacy_payloads(retained_sources))
         info = read(next(p for p in manifest.partitions if p.schema_name == 'committee_explorer.queries'))
         info.pop('partitions', None)
         info.update(storage='parquet', query_columns=QUERY_COLUMNS)

@@ -26,7 +26,7 @@ class MemoryNative:
             assert self.tables[dataset].equals(table)
         return {'dataset_key': dataset}
     @contextmanager
-    def source_batches(self, pin):
+    def source_batches(self, pin, *, schema=None):
         self.reads.append(pin['dataset_key'])
         yield self.tables[pin['dataset_key']].to_reader()
 
@@ -167,8 +167,8 @@ def test_small_aliases_share_bounded_physical_native_tables():
                                      source_schema=SCHEMA, max_rows=1024, max_bytes=4 << 20)
     rows = [source(f'{i}.pdf', f'body-{i}') for i in range(100)]
     selected = owner.prepare(None, replacements=rows)
-    assert len(native.calls) == 2  # One source leaf and one shared reverse leaf.
-    assert sum(len(table) for table in native.tables.values()) == 300
+    assert len(native.calls) == 3  # Source, grouping membership and URL membership leaves.
+    assert sum(len(table) for table in native.tables.values()) == 400
     assert owner.selected(selected).source(identity(rows[50])) is not None
 
 
@@ -186,3 +186,92 @@ def test_large_alias_uses_only_bounded_secondary_member_leaves():
     changed = owner.prepare(selected, replacements=[{**rows[0], 'http_status': ['404']}])
     assert len(owner.selected(changed).members(('body', 'shared-body'))) == 39
     assert len(owner.selected(selected).members(('body', 'shared-body'))) == 40
+
+
+def test_actual_native_dependency_values_retain_unsigned_binary_and_field_metadata(native):
+    evidence = pa.field('saved_native_evidence', pa.struct([
+        pa.field('maximum', pa.uint64(), metadata={b'publisher': b'exact'}),
+        pa.field('bytes', pa.binary()),
+    ]), metadata={b'meaning': b'untouched evidence'})
+    schema = SCHEMA.append(evidence)
+    store = MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='exact-typed-evidence',
+                                     source_schema=schema, max_rows=8, max_bytes=1 << 20)
+    row = source('unsigned.pdf', 'A', saved_native_evidence=dict(maximum=2**64 - 1, bytes=b'\x00\xff'))
+    selection = owner.prepare(None, replacements=[row])
+    assert owner.selected(selection).source(identity(row)) == pa.Table.from_pylist([row], schema=schema).to_pylist()[0]
+
+
+def test_bulk_adoption_streams_large_shared_component_without_closure_replays():
+    native, store = MemoryNative(), MemoryStore()
+    rows = [source(f'bulk-{i}.pdf', 'shared-body') for i in range(1000)]
+    old_rows, schema, _, _ = index.prepare_document_indexes(rows, SCHEMA)
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='bulk-adopt',
+                                     source_schema=schema, max_rows=64, max_bytes=1 << 20)
+    table = pa.Table.from_pylist(old_rows, schema=schema)
+    selection = owner.adopt(pa.Table.from_batches([batch]) for batch in table.to_batches(max_chunksize=32))
+    assert all(len(part) <= 64 and part.nbytes <= 1 << 20 for part in native.tables.values())
+    assert not native.reads  # Initial import has no previous component to close.
+    selected = owner.selected(selection)
+    for position in (0, 499, 999):
+        row = old_rows[position]
+        assert selected.source(identity(row)) == table.slice(position, 1).to_pylist()[0]
+        assert selected.order(identity(row)) == position
+    assert selection['next_source_order'] == 1000
+    assert len(set(owner.memberships.values(selection['alias_root'], '["body","shared-body"]'))) == 1000
+
+
+def test_saved_document_ownership_closes_old_component_after_group_policy_changes():
+    schema = SCHEMA.append(pa.field('document_id', pa.string()))
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='old-component',
+                                     source_schema=schema, max_rows=8, max_bytes=1 << 20)
+    # Historical grouping may have different eligibility/alias rules. Exact
+    # selected document ownership is an old edge independent of current policy.
+    a = source('a.pdf', 'A', document_id='historical-component')
+    b = source('b.pdf', 'B', document_id='historical-component')
+    initial = owner.prepare(None, replacements=[a, b])
+    scope = affected_sources(owner.selected(initial), replacements=[{**a, 'http_status': ['404']}])
+    assert set(scope.before) == {identity(a), identity(b)}
+
+
+def test_non_grouping_url_and_resolution_lookup_preserves_all_row_owners():
+    schema = SCHEMA.append(pa.field('source_resolved_url', pa.list_(pa.string())))
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='url-lookups',
+                                     source_schema=schema, max_rows=4, max_bytes=1 << 20)
+    target = 'https://example.gov/target.pdf'
+    original = 'https://example.gov/original'
+    a = source('a.pdf', 'A', source_url=original, source_resolved_url=[target, None])
+    b = source('b.pdf', 'B', source_url=original, source_resolved_url=[target])
+    wrapped = source('c.pdf', 'C', source_url='mailto:' + target, source_resolved_url=[])
+    initial = owner.prepare(None, replacements=[a, b, wrapped])
+    assert {row['source_id'] for row in owner.sources_at_url(initial, original)} == {identity(a), identity(b)}
+    assert {row['source_id'] for row in owner.originals_targeting(initial, target)} == {identity(a), identity(b), identity(wrapped)}
+    # Invalid/null values stay in the candidate index and source payloads until
+    # the maintained alias owner combines all observations and checks validity.
+    null_owner, = owner.originals_targeting(initial, None)
+    assert null_owner['source_id'] == identity(a)
+    corrected = {**a, 'source_resolved_url': ['https://example.gov/other.pdf']}
+    changed = owner.prepare(initial, replacements=[corrected], deletions=[identity(wrapped)])
+    assert {row['source_id'] for row in owner.originals_targeting(changed, target)} == {identity(b)}
+    assert {row['source_id'] for row in owner.originals_targeting(initial, target)} == {identity(a), identity(b), identity(wrapped)}
+    row, = owner.originals_targeting(changed, 'https://example.gov/other.pdf')
+    assert row['source_values']['source_resolved_url'] == ['https://example.gov/other.pdf']
+    assert row['source_order'] == 0
+    assert len(affected_sources(owner.selected(initial), replacements=[a]).before) == 1
+
+
+def test_url_lookups_refuse_stale_resolution_policy_without_payload_reads():
+    import pytest
+    from congress_api.retention.catalog_dependencies import DependencyGap
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='stale-lookups',
+                                     source_schema=SCHEMA, max_rows=4, max_bytes=1 << 20)
+    initial = owner.prepare(None, replacements=[source('a.pdf', 'A')])
+    initial['lookup_requirements'] = 'old-resolution-policy'
+    native.reads.clear()
+    for lookup in (owner.sources_at_url, owner.originals_targeting):
+        with pytest.raises(DependencyGap, match='lookup policy changed'):
+            list(lookup(initial, 'https://example.gov/a.pdf'))
+    assert not native.reads

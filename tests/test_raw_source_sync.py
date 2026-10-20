@@ -9,7 +9,7 @@ import pytest
 
 from congress_api.acquisition.raw_sync import run_sync
 from congress_api.parsers.archive_links import related_links, allowed_url
-from congress_api.retention.raw_archive import Archive, CAPTURE_SCHEMA, encode_table
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, CAPTURE_SCHEMA, encode_table
 from congress_api.models.content import RawContent
 
 

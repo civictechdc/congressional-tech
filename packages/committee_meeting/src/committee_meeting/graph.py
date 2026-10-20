@@ -1,50 +1,17 @@
-"""Explicit directed graph edges and traversal helpers for committee proceedings."""
+"""Traversal over the catalog's existing relationship records."""
 from __future__ import annotations
 
 from collections import deque
 from typing import Literal
 
-from pydantic import model_validator
-
-from .common import Ref, Text
-from .provenance import Record
-
-DomainKind = Literal[
-    "committee", "committee_term", "channel",
-    "meeting", "occurrence", "panel", "person", "appearance",
-    "material", "material_version", "representation",
-    "legislative_item", "amendment", "amendment_group", "vote",
-    "source_record",
-]
-
-EdgeRelation = Literal[
-    "convenes", "attends", "considers", "attaches_to",
-    "transcribes", "derived_from", "supersedes",
-    "redirected_to", "recovered_from", "linked_ancestor", "same_proceeding",
-    "translation_of", "corrects", "part_of", "alternate_of", "related",
-]
-
-
-class Edge(Record):
-    """A directed relationship with independent provenance and optional coverage/metadata."""
-
-    kind: Literal["edge"] = "edge"
-    source: Ref[DomainKind]
-    target: Ref[DomainKind]
-    relation: EdgeRelation = "attaches_to"
-    role: str | None = None
-    coverage: Literal["full", "partial", "unknown"] = "unknown"
-    metadata: dict[str, str | int | float | bool | None] = {}
-
-    @model_validator(mode="after")
-    def not_self_referential(self):
-        if self.source == self.target:
-            raise ValueError(f"{self.id}: relationship cannot target itself")
-        return self
+from .common import Ref
 
 
 class CatalogGraph:
-    """Index-backed traversal over a Catalog's records and edges."""
+    """Index MaterialLink, material relations, meetings, and appearances.
+
+    MaterialLink is the association. Id tuples on Material are not a second one.
+    """
 
     def __init__(self, catalog):
         self.catalog = catalog
@@ -69,9 +36,7 @@ class CatalogGraph:
     def _index_record(self, rec):
         kind = rec.kind
         ref = Ref(kind=kind, id=rec.id)
-        if kind == "edge":
-            self._add_edge(rec.source, rec.target, rec.relation, rec)
-        elif kind == "material_link":
+        if kind == "material_link":
             self._add_edge(rec.material, rec.subject, "attaches_to", rec)
         elif kind == "material_relation":
             self._add_edge(rec.subject, rec.related, rec.relation, rec)
@@ -82,18 +47,6 @@ class CatalogGraph:
                 self._add_edge(conv.committee, ref, "convenes", rec)
         elif kind == "appearance":
             self._add_edge(ref, rec.meeting, "attends", rec)
-        elif kind == "material":
-            for m_id in rec.meeting_ids:
-                self._add_edge(ref, Ref(kind="meeting", id=m_id), "attaches_to", rec)
-            for a_id in rec.appearance_ids:
-                self._add_edge(ref, Ref(kind="appearance", id=a_id), "attaches_to", rec)
-            for c_id in rec.committee_ids:
-                self._add_edge(ref, Ref(kind="committee_term", id=c_id), "attaches_to", rec)
-            for act_id in rec.action_ids:
-                for act_kind in ("amendment", "vote", "legislative_item", "amendment_group"):
-                    if (act_kind, act_id) in self._by_ref:
-                        self._add_edge(ref, Ref(kind=act_kind, id=act_id), "attaches_to", rec)
-                        break
 
     def resolve(self, node: Ref | tuple[str, str]):
         key = (node.kind, node.id) if isinstance(node, Ref) else node

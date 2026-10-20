@@ -5,7 +5,10 @@ import { selectRelatedMaterials } from './related-materials.js';
  * not need storage paths or decoding libraries. See data-source.d.ts for the
  * injected interfaces.
  */
-const SCHEMA_VERSION = '0.1.0-draft.2';
+const SUPPORTED_SCHEMA_VERSIONS = new Set(['0.1.0-draft.2', '0.1.0-draft.3']);
+function supportedSchema(version) {
+  return SUPPORTED_SCHEMA_VERSIONS.has(version);
+}
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 export function decodeJson(bytes) {
@@ -18,7 +21,7 @@ export async function decodeGzipJson(bytes) {
 }
 
 export function normalizeCatalog(document) {
-  if (!isObject(document) || document.schema_version !== SCHEMA_VERSION) {
+  if (!isObject(document) || !supportedSchema(document.schema_version)) {
     throw new Error('Unsupported explorer schema version. Refresh the application or use a compatible publication.');
   }
   if (document.scope !== 'complete' || !Array.isArray(document.records) || !Array.isArray(document.sources)) {
@@ -84,7 +87,7 @@ async function openVerifiedPublication({ pointerUrl, fetcher = globalThis.fetch,
   const available = { 'application/json': decodeJson, 'application/vnd.committee-explorer+json+gzip': decodeGzipJson, ...decoders };
   const pointerLocation = new URL(pointerUrl, globalThis.location?.href);
   const pointer = decodeJson(await readBytes(fetcher, pointerLocation, signal));
-  if (!isObject(pointer) || pointer.schema_version !== SCHEMA_VERSION || typeof pointer.manifest_path !== 'string'
+  if (!isObject(pointer) || !supportedSchema(pointer.schema_version) || typeof pointer.manifest_path !== 'string'
     || typeof pointer.publication_id !== 'string') {
     throw new Error('The explorer release pointer does not identify a manifest.');
   }
@@ -92,7 +95,7 @@ async function openVerifiedPublication({ pointerUrl, fetcher = globalThis.fetch,
   const manifestBytes = await readBytes(fetcher, manifestUrl, signal);
   await checkDigest(manifestBytes, pointer.manifest_sha256, 'manifest');
   const manifest = decodeJson(manifestBytes);
-  if (!isObject(manifest) || manifest.schema_version !== SCHEMA_VERSION || !Array.isArray(manifest.partitions)) {
+  if (!isObject(manifest) || !supportedSchema(manifest.schema_version) || !Array.isArray(manifest.partitions)) {
     throw new Error('Unsupported explorer publication manifest.');
   }
   if (pointer.publication_id !== manifest.publication_id) {
@@ -107,7 +110,7 @@ async function openVerifiedPublication({ pointerUrl, fetcher = globalThis.fetch,
     const mediaType = part.media_type || 'application/json'; // draft.2 predates explicit media_type
     const decode = Object.hasOwn(available, mediaType) ? available[mediaType] : undefined;
     if (typeof decode !== 'function') throw new Error(`No explorer decoder is configured for ${mediaType}.`);
-    if (typeof part.path !== 'string' || part.schema_version !== SCHEMA_VERSION
+    if (typeof part.path !== 'string' || !supportedSchema(part.schema_version)
       || !Number.isSafeInteger(part.byte_size) || part.byte_size < 0
       || !Number.isSafeInteger(part.record_count) || part.record_count < 0
       || !/^[0-9a-f]{64}$/.test(part.sha256 || '')) {
@@ -168,7 +171,7 @@ export async function openPublicationReader(options) {
   }
   async function checked(part, signal) {
     const value = await read(part, signal);
-    if (!isObject(value) || value.schema_version !== SCHEMA_VERSION) throw new Error('Unsupported explorer index or detail schema.');
+    if (!isObject(value) || !supportedSchema(value.schema_version)) throw new Error('Unsupported explorer index or detail schema.');
     return value;
   }
   async function getQueryInfo({ signal } = {}) {

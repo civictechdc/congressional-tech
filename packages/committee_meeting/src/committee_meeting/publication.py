@@ -6,8 +6,8 @@ from pydantic import AwareDatetime, Field, model_validator
 from .common import Count, DateRange, Model, PositiveInt, Sha256, Text
 from .provenance import Method, RetainedContent
 
-SCHEMA_VERSION = "0.1.0-draft.2"
-SchemaVersion = Literal["0.1.0-draft.2"]
+SCHEMA_VERSION = "0.1.0-draft.3"
+SchemaVersion = Literal["0.1.0-draft.2", "0.1.0-draft.3"]
 
 
 class InputSnapshot(Model):

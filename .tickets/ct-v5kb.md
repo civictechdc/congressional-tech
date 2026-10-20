@@ -39,3 +39,7 @@ Independent review found that per-document native datasets would multiply fixed 
 **2026-10-20T04:07:17Z**
 
 Shared physical batches, paged component proofs, historical readers and one conditional native catalog selector are reviewed and merged locally. 47 preparation/proof checks and 25 selector/routing/publication checks passed. In the 130-document stub comparison, native Run calls fell from 260 to 2 and metadata PUTs from 130 to 6; this is not production latency. Maintained callers and viewer migration remain required.
+
+**2026-10-20T04:49:46Z**
+
+Stable viewer builder and retained withdrawal safeguards integrated; joint builder, review, cursor and lookup tests: 42 passed. Recovery preparation: 34 baseline checks and 8 review-fix checks passed. Browser/uploader migration and native operational phase connection remain open; existing published viewer is unchanged.

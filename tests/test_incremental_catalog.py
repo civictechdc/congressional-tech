@@ -7,7 +7,7 @@ import pyarrow as pa
 import pytest
 
 from congress_api.retention import document_index as index
-from congress_api.retention.raw_archive import Archive, STATE_KEY, decode_table
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, STATE_KEY, decode_table
 from congress_api.retention.raw_catalog import rebuild_catalog
 from test_raw_catalog import table
 from test_raw_rebuild import retain

@@ -139,17 +139,33 @@ def verify_import(batch, imported, *, readiness=None):
             raise invalid(readiness, key, 'Readiness counts differ from sealed source records')
     if result['added_capture_rows'] != capture_rows or result['distinct_bodies'] != len(bodykeys):
         raise invalid(result_path, 'counts', 'Import completion does not cover the sealed batch')
+    raw_identity = result.get('raw_identity')
+    if raw_identity is not None:
+        raw_path = imported / 'payloads/indexes/raw.json'
+        raw, selected = read_loaded(raw_path, dict)
+        if (len(raw) > 1 << 20 or not isinstance(raw_identity, str)
+                or hashlib.sha256(raw).hexdigest() != raw_identity or selected.get('version') != 1):
+            raise invalid(raw_path, 'raw_identity', 'Imported raw selection differs from completion')
     event_path = imported / 'events.jsonl'
-    pins, completed = None, False
+    pins, completed, raw_intent, raw_verified = None, False, None, False
     for event in events(event_path):
         if event['event'] == 'pins':
             if pins is not None:
                 raise invalid(event_path, 'pins', 'duplicate pins event')
             pins = field(event, 'value', dict, event_path)
+        elif event['event'] == 'write_intent' and event.get('value', {}).get('key') == 'indexes/raw.json':
+            raw_intent = event['value'].get('sha256')
+        elif event['event'] == 'write_verified' and event.get('value', {}).get('key') == 'indexes/raw.json':
+            raw_verified = raw_intent == raw_identity
+        elif event['event'] == 'raw_selection_reused':
+            value = field(event, 'value', dict, event_path)
+            raw_verified = value.get('key') == 'indexes/raw.json' and value.get('sha256') == raw_identity
         elif event['event'] == 'import_complete':
             if completed or field(event, 'value', dict, event_path) != result:
                 raise invalid(event_path, 'import_complete', 'duplicate or conflicting completion')
             completed = True
+    if raw_identity is not None and not raw_verified:
+        raise invalid(event_path, 'raw_identity', 'Missing exact selected raw readback evidence')
     if pins is None or not completed:
         raise invalid(event_path, 'pins/import_complete', 'missing required event')
     for path in (manifest_path, batch / 'prepared-source-records.json', readiness):

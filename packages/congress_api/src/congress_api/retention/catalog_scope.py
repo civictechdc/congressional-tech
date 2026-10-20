@@ -119,15 +119,29 @@ def catalog_scope_requirements():
 
 def _component_pages(store, values):
     from .immutable_metadata import MetadataObjects
-    objects, pending, head, count = MetadataObjects(store, 'catalog-scope-components-v1', max_cache_entries=1), [], None, 0
-    for name, reference in sorted(values, reverse=True):
-        pending.append(dict(component=name, reference=reference))
-        count += 1
-        if len(pending) == 64:
+    from contextlib import closing
+    import json
+    import sqlite3
+    from tempfile import TemporaryDirectory
+    objects = MetadataObjects(store, 'catalog-scope-components-v1', max_cache_entries=1)
+    pending, head, count = [], None, 0
+    with TemporaryDirectory(prefix='scope-members-') as directory, closing(
+            sqlite3.connect(Path(directory) / 'members.sqlite')) as db:
+        db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                         'CREATE TABLE members(name TEXT PRIMARY KEY,reference TEXT);')
+        try:
+            db.executemany('INSERT INTO members VALUES (?,?)', ((name, json.dumps(reference))
+                                                               for name, reference in values))
+        except sqlite3.IntegrityError as error:
+            raise ValueError('Repeated catalog scope component') from error
+        for name, reference in db.execute('SELECT name,reference FROM members ORDER BY name DESC'):
+            pending.append(dict(component=name, reference=json.loads(reference)))
+            count += 1
+            if len(pending) == 64:
+                head = objects.put(dict(version=1, previous=head, components=list(reversed(pending))))
+                pending = []
+        if pending:
             head = objects.put(dict(version=1, previous=head, components=list(reversed(pending))))
-            pending = []
-    if pending:
-        head = objects.put(dict(version=1, previous=head, components=list(reversed(pending))))
     return dict(head=head, count=count)
 
 
@@ -174,7 +188,7 @@ def read_catalog_scope(store, reference, *, requirements=None):
 
 def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_after,
                          prepared, base, component_lookup, prepared_components,
-                         read_component, read_new_component=None, rules):
+                         read_component, read_new_component=None, rules, expected_bodies=()):
     """Prove closed old ownership, candidate membership and no unrelated ID reuse.
 
     Component readers must verify their immutable proof bindings. Historical old
@@ -243,6 +257,12 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
             raise DependencyGap('Candidate dependency values differ from grouped source outputs')
     if any(current.source(key) is not None for key in removed):
         raise DependencyGap('Deleted source survives in candidate dependency state')
+    expected_bodies = sorted(set(expected_bodies))
+    bodies = sorted({row['body_key'] for row in prepared.source_values() if row.get('body_key')})
+    if not set(expected_bodies) <= set(bodies):
+        raise ValueError('Catalog affected outputs omit an expected retained body')
+    body_coverage = dict(expected_count=len(expected_bodies), expected_sha256=sha256(encoded(expected_bodies)).hexdigest(),
+                         prepared_count=len(bodies), prepared_sha256=sha256(encoded(bodies)).hexdigest())
     result = dict(version=1, base=deepcopy(base), dependency_before=deepcopy(dependency_before),
         dependency_after=deepcopy(dependency_after), candidate=prepared.candidate,
         schemas=dict(filenames=base64.b64encode(prepared.source_schema.serialize().to_pybytes()).decode(),
@@ -250,6 +270,6 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
         retired=_component_pages(store, retired), prepared=_component_pages(store, incoming),
         counts=dict(retired_source_rows=len(before), prepared_source_rows=len(after),
                     retired_document_rows=len(old_members), prepared_document_rows=len(new_members)),
-        rules=deepcopy(rules), mapping=None, requirements=catalog_scope_requirements())
+        rules=deepcopy(rules), mapping=None, body_coverage=body_coverage, requirements=catalog_scope_requirements())
     result['binding'] = sha256(encoded(result)).hexdigest()
     return MetadataObjects(store, 'catalog-scope-proofs-v1').put(result)

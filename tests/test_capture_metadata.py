@@ -9,7 +9,7 @@ import pytest
 
 from congress_api.acquisition.raw_sync import run_sync
 from congress_api.retention.capture_metadata import CaptureMetadata, MetadataWriter, PREFIX
-from congress_api.retention.raw_archive import Archive
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
 from congress_api.retention.raw_catalog import rebuild_catalog
 from test_raw_catalog import table
 from test_raw_source_sync import MemoryStore, response

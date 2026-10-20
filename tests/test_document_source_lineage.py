@@ -118,7 +118,7 @@ def test_sitewide_feed_does_not_connect_unrelated_hearings():
 
 def test_catalog_update_backfills_old_receipts_without_refetching_bodies(tmp_path, monkeypatch):
     from congress_api.retention import raw_catalog
-    from congress_api.retention.raw_archive import Archive
+    from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
     from test_raw_catalog import initialize, table
     from test_raw_source_sync import response
     store = initialize(tmp_path)
@@ -162,7 +162,7 @@ def test_catalog_update_backfills_old_receipts_without_refetching_bodies(tmp_pat
 
 def test_later_download_batches_inherit_old_and_new_parent_evidence(tmp_path):
     from congress_api.retention.raw_catalog import rebuild_catalog
-    from congress_api.retention.raw_archive import Archive
+    from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
     from test_raw_catalog import initialize, table
     from test_raw_source_sync import response
     store = initialize(tmp_path)
@@ -193,7 +193,7 @@ def test_later_download_batches_inherit_old_and_new_parent_evidence(tmp_path):
 
 def test_missing_retained_receipt_cannot_mark_backfill_complete(tmp_path, monkeypatch):
     from congress_api.retention import raw_catalog
-    from congress_api.retention.raw_archive import Archive
+    from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
     from test_raw_catalog import initialize
     from test_raw_source_sync import response
     store = initialize(tmp_path)

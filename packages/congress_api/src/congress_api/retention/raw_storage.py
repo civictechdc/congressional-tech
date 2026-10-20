@@ -44,6 +44,7 @@ class RawSnapshot:
     def __init__(self, owner, manifest, version, delivery=None):
         self.owner, self.manifest, self.version = owner, manifest, version
         self.delivery = delivery
+        self._body_leaf = None
 
     def capture_batch(self, entry):
         """Read one exact changed batch, retaining stable observation ordinals."""
@@ -68,6 +69,10 @@ class RawSnapshot:
         return sha256(encoded(self.manifest)).hexdigest()
 
     @property
+    def state_counts(self):
+        return deepcopy(self.manifest['state_counts'])
+
+    @property
     def body_count(self):
         return self.manifest['bodies']['count']
 
@@ -75,7 +80,10 @@ class RawSnapshot:
         _, reference = self.owner.body_routes.lookup(self.manifest['bodies']['root'], 'sha:' + digest)
         if reference is None:
             return None
-        table = self.owner._read_bodies(reference)
+        identity = reference['release']['id']
+        if self._body_leaf is None or self._body_leaf[0] != identity:
+            self._body_leaf = identity, self.owner._read_bodies(reference)
+        table = self._body_leaf[1]
         selected = table.filter(pc.equal(table['key'], 'sha:' + digest)).select(BODY_FIELDS)
         return selected.to_pylist()[0] if len(selected) else None
 
@@ -157,15 +165,40 @@ class RawStorage:
         self.delivery_routes = RoutingPages(store, 'raw-deliveries-v1')
         self.changes = RawChanges(store)
         self.body_routes = RoutingPages(store, 'raw-bodies-v1')
-        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1', state_keys='nullable-url-v1',
+        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1', state_keys='nullable-url-v1', counts='raw-state-counts-v1',
                           max_state_rows=max_state_rows, max_state_bytes=max_state_bytes,
                           max_capture_rows=max_capture_rows, max_capture_bytes=max_capture_bytes,
                           state_schema=base64.b64encode(state_schema.serialize()).decode("ascii"))
 
+    @classmethod
+    def open(cls, store, native):
+        """Reopen an exact selected logical schema; never infer legacy adoption.
+
+        Resource budgets remain the maintained defaults. A selected archive with
+        different budgets requires explicit construction with that frozen basis.
+        """
+        return cls.from_selection(store, native, store.read(RAW_KEY))
+
+    @classmethod
+    def from_selection(cls, store, native, raw):
+        """Construct a reader for captured exact selector bytes without rereading latest."""
+        if raw is None:
+            return cls(store, native)
+        if len(raw) > SELECTOR_BYTES:
+            raise ValueError('Raw selector exceeds the byte budget')
+        manifest = json.loads(raw)
+        schema_bytes = base64.b64decode(manifest['basis']['state_schema'], validate=True)
+        schema = pa.ipc.read_schema(pa.BufferReader(schema_bytes))
+        owner = cls(store, native, state_schema=schema)
+        if manifest['version'] != 1 or manifest['basis'] != owner.basis:
+            raise ValueError('Raw selector basis changed; explicit adoption is required')
+        return owner
+
     def _empty(self):
         return dict(version=1, basis=deepcopy(self.basis), captures=dict(head=None, rows=0),
                     state=dict(root=None, rows=0), bodies=dict(root=None, count=0),
-                    deliveries=None, filename_version=None, change=None)
+                    deliveries=None, filename_version=None, change=None,
+                    state_counts=dict(url_outcomes={}, urls_by_source_family={}, excluded_media_urls=0))
 
     def _read_selector(self):
         raw = self.store.read(RAW_KEY)
@@ -315,6 +348,21 @@ class RawStorage:
             return result
         return self.delivery_routes.replace(root, prefix, split(prefix, entries))
 
+    @staticmethod
+    def _adjust_state_counts(counts, row, delta):
+        outcome = row.get('outcome')
+        values = dict(url_outcomes='null' if outcome is None else outcome,
+                      urls_by_source_family=row.get('family') or 'unknown')
+        for name, key in values.items():
+            counters = counts[name]
+            counters[key] = counters.get(key, 0) + delta
+            if counters[key] == 0:
+                del counters[key]
+            elif counters[key] < 0:
+                raise ValueError('Selected raw state counter mismatch')
+        if outcome == 'excluded_media':
+            counts['excluded_media_urls'] += delta
+
     def _candidate(self, kind, table, *, operation, prefix, base_id):
         identity = sha256(encoded([operation, kind, prefix, base_id])).hexdigest()
         dataset = 'raw-' + kind + '-' + identity
@@ -386,6 +434,9 @@ class RawStorage:
                     next_order += 1
                 if original is None or {name: original[name] for name in self.state_schema.names} != row:
                     changed_state_urls.append(row['url'])
+                    if original is not None:
+                        self._adjust_state_counts(manifest['state_counts'], original, -1)
+                    self._adjust_state_counts(manifest['state_counts'], row, 1)
                 replacement[row['url']] = {STATE_ORDER: ordinal, STATE_KEY_FIELD: state_key(row['url']), **row}
             selected_root = manifest['state']['root']
             grouped = {prefix: [] for prefix in affected}

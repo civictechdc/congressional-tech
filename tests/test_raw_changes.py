@@ -40,3 +40,47 @@ def test_receipt_only_operation_replay_is_bound_and_namespaced():
     assert replay['already_applied']
     storage.publish(replay)
     assert storage.store.writes == before
+
+
+def test_open_restores_frozen_state_schema_without_adopting_or_writing():
+    import pyarrow as pa
+    from congress_api.retention.raw_archive import STATE_SCHEMA
+    schema = STATE_SCHEMA.append(pa.field('extra', pa.list_(pa.binary())))
+    store = SelectorStore()
+    native = MemoryNative()
+    first_owner = RawStorage(store, native, state_schema=schema)
+    table = pa.Table.from_pylist([dict(url=None, extra=[None, b'exact'])], schema=schema)
+    first_owner.publish(first_owner.prepare(first_owner.snapshot(), operation='seed', states=table))
+    before = list(store.writes)
+    reopened = RawStorage.open(store, native)
+    assert reopened.state_schema.equals(schema)
+    assert reopened.snapshot().states().equals(table)
+    assert store.writes == before
+    empty = RawStorage.open(SelectorStore(), MemoryNative())
+    assert empty.snapshot().version is None
+
+
+def test_body_lookups_reuse_one_bounded_native_leaf():
+    import pyarrow as pa
+    from congress_api.retention.raw_archive import CAPTURE_SCHEMA
+    storage = memory_raw_storage(SelectorStore())
+    table = pa.Table.from_pylist([dict(body_key='bodies/a', sha256='a'),
+                                 dict(body_key='bodies/b', sha256='b')], schema=CAPTURE_SCHEMA)
+    selected = storage.publish(storage.prepare(storage.snapshot(), operation='body-cache', captures=table))
+    storage.native.reads.clear()
+    assert selected.body_info('a')['body_key'] == 'bodies/a'
+    assert selected.body_info('b')['body_key'] == 'bodies/b'
+    assert len(storage.native.reads) == 1
+
+
+def test_state_counts_follow_only_changed_rows_and_old_snapshot_remains_exact():
+    storage = memory_raw_storage(SelectorStore())
+    first = storage.publish(storage.prepare(storage.snapshot(), operation='counts-seed', states=states('a', 'b')))
+    import pyarrow as pa
+    changed = states('a').to_pylist()[0]
+    changed.update(outcome='excluded_media', family='documents')
+    second = storage.publish(storage.prepare(first, operation='counts-change', states=[changed]))
+    assert first.state_counts == dict(url_outcomes={'saved': 2}, urls_by_source_family={'unknown': 2}, excluded_media_urls=0)
+    assert second.state_counts == dict(url_outcomes={'saved': 1, 'excluded_media': 1},
+        urls_by_source_family={'unknown': 1, 'documents': 1}, excluded_media_urls=1)
+    assert len(list(second.changed_state_urls(next(second.changes_since(first.identity))))) == 1

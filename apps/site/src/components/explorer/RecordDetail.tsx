@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { filenameManifestUrl } from '../filename-publication.mjs';
 import { committeeTypeLabel, documentSourceLabel, recordingEmbedUrl, savedCopyHref, sourcePageUrl } from './record-presentation.js';
 import type { ExplorerRecord, ExplorerRecordRef, ExplorerSourceRecord } from './data-source';
 
@@ -46,11 +47,13 @@ export function recordFiles(record: unknown): Fields[] {
     seen.add(url); return true;
   });
 }
+const savedCopyManifest = import.meta.env.PUBLIC_FILENAME_MANIFEST_URL || filenameManifestUrl;
+
 export function FileLinks({ record }: { record: unknown }) {
   const files = recordFiles(record);
   if (!files.length) return null;
   return <div className="explorer-file-links">{files.map(file => {
-    const saved = savedCopyHref(file);
+    const saved = savedCopyHref(file, savedCopyManifest);
     const label = file.role === 'player' || file.role === 'stream' ? 'Watch recording' : (file.label !== 'unknown' && words(file.label)) || 'Open file';
     const savedLabel = file.label && file.label !== 'unknown' ? ` (${words(file.label)})` : '';
     return <span key={String(file.url)}>

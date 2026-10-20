@@ -4,7 +4,7 @@ from congress_api.parsers.archive_links import related_links
 from congress_api.retention.capture_inspection import inspect_capture
 from congress_api.parsers.senate import parse_page
 from congress_api.acquisition.raw_sync import run_sync
-from congress_api.retention.raw_archive import Archive
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
 from test_raw_source_sync import MemoryStore, response
 
 

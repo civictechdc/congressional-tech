@@ -157,6 +157,86 @@ class NativeCatalogSnapshot:
             store=self.store, native=client, label=label, rows=self.selection['counts'][count],
             max_ordered_bytes=max_ordered_bytes)
 
+    def changes_since(self, identity):
+        """Yield exact old/new scopes since a retained selection identity.
+
+        Only immutable selection/proof metadata is read. A disposable position
+        index reverses the ancestry walk without retaining history in memory.
+        """
+        from .catalog_scope import read_catalog_scope
+        objects = MetadataObjects(self.store, 'catalog-selections-v2', max_cache_entries=4)
+        with TemporaryDirectory(prefix='catalog-changes-') as directory, closing(
+                sqlite3.connect(Path(directory) / 'changes.sqlite')) as db:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                'CREATE TABLE changes(position INTEGER PRIMARY KEY,body TEXT); '
+                'CREATE TABLE seen(identity TEXT PRIMARY KEY);')
+            current, selected, position = self.identity, self.selection, 0
+            while current != identity:
+                marker = encoded(current).decode()
+                try:
+                    db.execute('INSERT INTO seen VALUES (?)', (marker,))
+                except sqlite3.IntegrityError as error:
+                    raise ValueError('Catalog scope ancestry contains a cycle') from error
+                reference = selected['scope']
+                proof = read_catalog_scope(self.store, reference)
+                if proof['dependency_after'] != selected['dependency'] or proof['schemas'] != selected['schemas']:
+                    raise ValueError('Catalog scope differs from the selected dependency/schema basis')
+                before = proof['base']
+                body = dict(before=before, after=current, scope_reference=reference, scope=proof)
+                db.execute('INSERT INTO changes VALUES (?,?)', (position, encoded(body).decode()))
+                position += 1
+                if before == identity:
+                    break
+                if before.get('selected_ref') is None:
+                    raise ValueError('Catalog cursor is not an ancestor of this native selection')
+                expected_selector = encoded(dict(version=2, selection=before['selected_ref']))
+                if before.get('selector_sha256') != sha256(expected_selector).hexdigest():
+                    raise ValueError('Catalog scope ancestry selector binding differs')
+                selected = objects.read(before['selected_ref'])
+                current = before
+            for body, in db.execute('SELECT body FROM changes ORDER BY position DESC'):
+                yield json.loads(body)
+
+    def _surviving_changed_components(self, identity):
+        from .catalog_scope import iterator_scope_components
+        with TemporaryDirectory(prefix='catalog-changed-members-') as directory, closing(
+                sqlite3.connect(Path(directory) / 'members.sqlite')) as db:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                             'CREATE TABLE members(component TEXT PRIMARY KEY,reference TEXT);')
+            for change in self.changes_since(identity):
+                for component, _ in iterator_scope_components(self.store, change['scope'], 'retired'):
+                    db.execute('DELETE FROM members WHERE component=?', (component,))
+                for component, reference in iterator_scope_components(self.store, change['scope'], 'prepared'):
+                    db.execute('INSERT OR REPLACE INTO members VALUES (?,?)', (component, encoded(reference).decode()))
+            for component, reference in db.execute('SELECT component,reference FROM members ORDER BY component'):
+                reference = json.loads(reference)
+                if self.component_ref(component) != reference:
+                    raise ValueError('Folded catalog change differs from the current component selection')
+                yield component, reference
+
+    def changed_sources_since(self, identity, *, max_ordered_bytes):
+        """Read only latest surviving changed components, not obsolete versions."""
+        reader = CatalogComponentReader(self.store)
+        rows = sum(reader.read(reference)['validation']['counts']['source_rows']
+                   for _, reference in self._surviving_changed_components(identity))
+        return SelectedCatalogTable(self.schemas['filenames'],
+            lambda: self._surviving_changed_components(identity), store=self.store, native=self.native,
+            label='filenames', rows=rows, max_ordered_bytes=max_ordered_bytes)
+
+    def changed_sources(self, change, *, which='prepared', max_ordered_bytes):
+        """Read one scope's exact selected or retired source members only."""
+        from .catalog_scope import read_catalog_scope, iterator_scope_components
+        if which not in {'prepared', 'retired'}:
+            raise ValueError('Catalog source changes must be prepared or retired')
+        proof = read_catalog_scope(self.store, change['scope_reference'])
+        if proof != change['scope'] or proof['base'] != change['before']:
+            raise ValueError('Catalog source change differs from its retained scope')
+        label = 'filenames'
+        return SelectedCatalogTable(_schema(proof['schemas'][label]),
+            lambda: iterator_scope_components(self.store, proof, which), store=self.store,
+            native=self.native, label=label, rows=proof['counts'][which + '_source_rows'],
+            max_ordered_bytes=max_ordered_bytes)
+
     def __enter__(self):
         return self
 
@@ -174,7 +254,7 @@ def read_native_catalog(store, selected, *, version, native=None):
     return NativeCatalogSnapshot(store, selector, selected, version, native=native)
 
 
-def publish_native_catalog(store, scope_reference, *, previous):
+def publish_native_catalog(store, scope_reference, *, previous, adoption_reference=None):
     """Admit a durable scope proof, then select its exact combination once."""
     from .catalog_scope import read_catalog_scope, catalog_scope_requirements, iterator_scope_components
     proof = read_catalog_scope(store, scope_reference, requirements=catalog_scope_requirements())
@@ -188,7 +268,11 @@ def publish_native_catalog(store, scope_reference, *, previous):
         root, dependency, counts = base['components'], base['dependency'], base['counts']
     else:
         if previous.manifest is not None or previous.files:
-            raise ValueError('Existing file catalog requires qualified explicit native adoption')
+            if adoption_reference is None:
+                raise ValueError('Existing file catalog requires qualified explicit native adoption')
+            from .catalog_adoption import read_adoption_proof
+            read_adoption_proof(store, adoption_reference, previous=previous,
+                                scope_reference=scope_reference, scope=proof)
         root, dependency, counts = None, None, dict(source_rows=0, document_rows=0)
     if proof['dependency_before'] != dependency:
         raise ValueError('Catalog scope dependency basis differs')
@@ -215,8 +299,10 @@ def publish_native_catalog(store, scope_reference, *, previous):
                   + proof['counts']['prepared_' + label + '_rows'] for label in ('source', 'document')}
     if any(value < 0 for value in new_counts.values()):
         raise ValueError('Catalog scope produces negative selected counts')
+    retained_adoption = adoption_reference or (previous.selection.get('adoption') if isinstance(previous, NativeCatalogSnapshot) else None)
     value = dict(version=2, components=selected_root, dependency=proof['dependency_after'],
-                 schemas=proof['schemas'], counts=new_counts, requirements=requirements, scope=scope_reference)
+                 schemas=proof['schemas'], counts=new_counts, requirements=requirements, scope=scope_reference,
+                 adoption=retained_adoption)
     selected = MetadataObjects(store, 'catalog-selections-v2').put(value)
     payload = encoded(dict(version=2, selection=selected))
     reconcile_lost_acknowledgment(

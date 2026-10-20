@@ -446,28 +446,28 @@ async def run_async(
         raise InterruptedError('Capture stopped; completed receipts and state were saved.')
     if fatal:
         raise RuntimeError('Zyte authorization failed; in-flight captures were retained before stopping.')
+    state_counts = archive.state_counts
     return dict(
         counts,
         body_metadata=dict(metadata.counts),
         stage_seconds=dict(timings),
         peak_body_payload_reservation_bytes=memory.peak,
         peak_spool_reservation_bytes=spool.peak,
+        raw_selection=archive.raw_selection,
         accounting={
             "known_urls": len(archive.state),
             "known_urls_basis": "distinct source URL values in download state; includes repaired originals, excluded values, source pages and retryable failures",
-            "urls_by_source_family": dict(Counter(row.get("family") or "unknown" for row in archive.state.values())),
+            "urls_by_source_family": state_counts["urls_by_source_family"],
             "usable_capture_results_basis": "this run's completed tasks classified saved; includes linked source pages",
             "unique_retained_body_keys_basis": "distinct nonempty body keys referenced by the saved capture index; includes error/provider bytes and does not check storage existence",
-            "excluded_media_urls": sum(row["outcome"] == "excluded_media" for row in archive.state.values()),
+            "excluded_media_urls": state_counts["excluded_media_urls"],
             "capture_tasks_submitted": submitted,
             "capture_tasks_completed": counts["fetch"] + counts["replay"],
             "fetch_tasks_completed": counts["fetch"],
             "retained_replays_completed": counts["replay"],
             "usable_capture_results": counts["saved"],
-            "unique_retained_body_keys": pc.count_distinct(pc.filter(
-                archive.captures["body_key"], pc.not_equal(archive.captures["body_key"], "")
-            )).as_py(),
-            "url_outcomes": dict(Counter(row["outcome"] for row in archive.state.values())),
+            "unique_retained_body_keys": archive.retained_body_count,
+            "url_outcomes": state_counts["url_outcomes"],
         },
         attempted=submitted,
         initial_only=initial_only,

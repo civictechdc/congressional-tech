@@ -169,7 +169,7 @@ def test_native_dependency_reader_refuses_schema_and_duplicate_source_rows():
         def __init__(self, table):
             self.table = table
         @contextmanager
-        def source_batches(self, pin):
+        def source_batches(self, pin, *, schema=None):
             yield self.table.to_reader()
 
     for table, message in [(pa.table({'wrong': ['field']}), 'schema differs'),

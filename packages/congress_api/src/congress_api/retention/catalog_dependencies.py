@@ -83,7 +83,7 @@ def _decoded_alias(value):
         result = kind, tuple(key)
         hash(result)
         return result
-    if kind == 'body' and isinstance(key, str) and key:
+    if kind in {'body', 'component'} and isinstance(key, str) and key:
         return kind, key
     raise ValueError('Invalid group alias')
 
@@ -123,7 +123,10 @@ def dependency_tables(rows, source_schema, *, first_order=0):
         if key in seen:
             raise ValueError(f'Duplicate dependency source identity: {key}')
         seen.add(key)
-        encoded = [_encoded_alias(alias) for alias in index.group_aliases(row, key)]
+        aliases_for_row = list(index.group_aliases(row, key))
+        if row.get('document_id'):
+            aliases_for_row.append(('component', row['document_id']))
+        encoded = [_encoded_alias(alias) for alias in aliases_for_row]
         sources.append(dict(source_id=key, source_order=order, source_values=row, aliases=encoded))
         aliases.extend(dict(alias=value, source_id=key) for value in encoded)
     return (pa.Table.from_pylist(sources, schema=dependency_schema(source_schema)),
@@ -152,7 +155,7 @@ class NativeCatalogDependencies:
 
     def _rows(self, pin, schema):
         count = size = 0
-        with self.native.source_batches(deepcopy(pin)) as reader:
+        with self.native.source_batches(deepcopy(pin), schema=schema) as reader:
             if not reader.schema.equals(schema, check_metadata=False):
                 raise DependencyGap('Native dependency schema differs from selected application schema')
             for batch in reader:
@@ -191,7 +194,7 @@ class NativeCatalogDependencies:
             try:
                 for value in row['aliases']:
                     alias = _decoded_alias(value)
-                    if alias[0] not in {'body', 'endpoint'} or _encoded_alias(alias) != value:
+                    if alias[0] not in {'body', 'endpoint', 'component'} or _encoded_alias(alias) != value:
                         raise ValueError('Invalid group alias')
             except (ValueError, TypeError) as error:
                 raise DependencyGap('Invalid stored dependency alias') from error
