@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 
-import pyarrow as pa
+import pyarrow.parquet as pq
 
 from . import document_index as index
 from .catalog_staging import WorkingCatalog
@@ -13,8 +13,15 @@ from .source_capture_inputs import SourceCaptureInputs
 from .source_observations import SourceObservationTrace
 
 
-def _captures(tables):
-    return pa.concat_tables(tables) if tables else pa.Table.from_pylist([], schema=NATIVE_CAPTURE_SCHEMA)
+def _capture_file(path, tables):
+    """Keep raw native batch boundaries as bounded Parquet row groups."""
+    with pq.ParquetWriter(path, NATIVE_CAPTURE_SCHEMA, compression='zstd') as writer:
+        for table in tables:
+            if not table.schema.equals(NATIVE_CAPTURE_SCHEMA, check_metadata=True):
+                raise ValueError('Source replay requires exact retained capture schema')
+            if len(table):
+                writer.write_table(table, row_group_size=len(table))
+    return pq.ParquetFile(path)
 
 
 @dataclass
@@ -24,13 +31,14 @@ class PreparedSourceReplay:
     after: object
     observations: tuple
     old_source_ids: tuple
-    captures: pa.Table
+    captures: pq.ParquetFile
     trace: SourceObservationTrace
 
     def sources(self):
         return self.working.mapping('sources').values()
 
     def close(self):
+        self.captures.close()
         self.working.close()
 
     def __enter__(self):
@@ -53,13 +61,14 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
     inputs = SourceCaptureInputs(store)
     with closing(WorkingCatalog(directory / 'incoming.sqlite')) as work:
         trace = SourceObservationTrace(work)
-        incoming = []
-        for change in changes:
-            incoming.extend(inputs.changed(snapshot, change, trace))
+        incoming = _capture_file(directory / 'incoming.parquet',
+            (table for change in changes for table in inputs.changed(snapshot, change, trace)))
         changed = tuple(trace.observations())
         if not changed and not changed_dependencies:
+            incoming.close()
             return None
-        trace.replay(_captures(incoming), store.read, read_body, seeds=seeds, retained_capture_inputs=True)
+        with incoming:
+            trace.replay(incoming, store.read, read_body, seeds=seeds, retained_capture_inputs=True)
         candidate = observations.prepare(root, trace)
     with closing(WorkingCatalog(directory / 'closure-initial.sqlite')) as work:
         closed = tuple(observations.affected(root, candidate, changed, working=work,
@@ -67,10 +76,12 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
     iteration = 0
     while True:
         work = WorkingCatalog(directory / f'replay-{iteration}.sqlite')
+        captures = None
         try:
             trace = SourceObservationTrace(work)
             inputs.copy(observations, candidate, closed, trace)
-            captures = _captures(list(inputs.tables(observations, candidate, closed, snapshot)))
+            captures = _capture_file(directory / f'captures-{iteration}.parquet',
+                inputs.tables(observations, candidate, closed, snapshot))
             trace.replay(captures, store.read, read_body, seeds=seeds, retained_capture_inputs=True)
             after = observations.prepare(root, trace)
             with closing(WorkingCatalog(directory / f'closure-{iteration}.sqlite')) as closure_work:
@@ -86,8 +97,11 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
                             old_sources.add(value)
                 return PreparedSourceReplay(work, root, after, closed, tuple(sorted(old_sources)), captures, trace)
             work.close()
+            captures.close()
             closed, candidate = complete, after
             iteration += 1
         except BaseException:
+            if captures is not None:
+                captures.close()
             work.close()
             raise

@@ -46,15 +46,19 @@ def collect_source_inputs(sources, context, captures, read, *, working, seeds=()
         link_names(link)
     # First build/repair includes migration receipts; routine updates use new rows.
     # Historical Senate download routing is interpreted by the current owner.
-    selected = pc.is_in(captures["family"], value_set=pa.array(index.FAMILIES))
-    senate = captures.filter(pc.equal(captures["family"], "senate/pages"))
-    downloads = pa.array(sorted({url for url in senate["context_url"].to_pylist()
-                                 if url and source_family(url=url) == "documents"}), type=pa.string())
-    selected = pc.or_(selected, pc.and_(pc.equal(captures["family"], "senate/pages"),
-                                      pc.is_in(captures["context_url"], value_set=downloads)))
-    recurring = pc.fill_null(pc.match_substring(captures["receipt_key"], "/download-"), False)
-    selected = pc.or_(selected, recurring)
-    for record, rows, receipt in index.retained_records(captures.filter(selected), read):
+    def selected_captures():
+        for batch in index.capture_batches(captures):
+            table = pa.Table.from_batches([batch])
+            selected = pc.is_in(table['family'], value_set=pa.array(index.FAMILIES))
+            senate = table.filter(pc.equal(table['family'], 'senate/pages'))
+            downloads = pa.array(sorted({url for url in senate['context_url'].to_pylist()
+                if url and source_family(url=url) == 'documents'}), type=pa.string())
+            selected = pc.or_(selected, pc.and_(pc.equal(table['family'], 'senate/pages'),
+                                               pc.is_in(table['context_url'], value_set=downloads)))
+            selected = pc.or_(selected, pc.fill_null(pc.match_substring(table['receipt_key'], '/download-'), False))
+            if len(result := table.filter(selected)):
+                yield result
+    for record, rows, receipt in index.retained_records(selected_captures(), read):
         active_receipt = receipt
         if isinstance(record, dict):
             for link in record.get("source_context", {}).get("observations", []):

@@ -35,8 +35,8 @@ from email.utils import collapse_rfc2231_value
 from functools import lru_cache, wraps
 import gzip
 from io import BytesIO
-from itertools import groupby
 import json
+import pickle
 from multiprocessing import get_context
 from pathlib import Path
 import re
@@ -1715,6 +1715,37 @@ class DocumentSources:
                     source_association_basis=basis, source_associated_url=original)})
 
 
+def capture_schema(captures):
+    return captures.schema_arrow if isinstance(captures, pq.ParquetFile) else captures.schema
+
+
+def capture_batches(captures, columns=None):
+    """Repeat a selected receipt input without collecting all capture payloads.
+
+    Native replay writes one already bounded raw batch per Parquet row group.
+    Read each group separately so the row-count API cannot combine many wide
+    native batches into a larger decoded allocation.
+    """
+    if isinstance(captures, pq.ParquetFile):
+        for group in range(captures.num_row_groups):
+            yield from captures.iter_batches(columns=columns, row_groups=[group], batch_size=256)
+    else:
+        yield from (captures.select(columns) if columns is not None else captures).to_batches(max_chunksize=256)
+
+
+def _capture_tables(captures, *, family=None, suffix=None):
+    for batch in capture_batches(captures):
+        table = pa.Table.from_batches([batch])
+        if family is not None:
+            table = table.filter(pc.equal(table['family'], family))
+        if suffix:
+            if 'source_file' not in table.column_names:
+                continue
+            table = table.filter(pc.ends_with(table['source_file'], suffix))
+        if len(table):
+            yield table
+
+
 def add_retained_senate_pages(context, captures, read_body):
     """Read independent HTML observations without replacing older saved state."""
     from congress_api.models.content import RawContent
@@ -1722,12 +1753,13 @@ def add_retained_senate_pages(context, captures, read_body):
     from congress_api.parsers.senate_page import SITE
 
     required = {"family", "http_status", "body_key", "context_url", "receipt_key", "receipt_line"}
-    if not required <= set(captures.column_names):
+    if not required <= set(capture_schema(captures).names):
         return
-    selected = captures.filter(pc.and_(pc.equal(captures["family"], "senate/pages"),
-                                      pc.equal(captures["http_status"], 200)))
-    observations = {}
-    for row in selected.select(sorted(required)).to_pylist():
+    observations = {} if context.working is None else context.working.mapping('senate_capture_observations')
+    observations.clear()
+    rows = (row for table in _capture_tables(captures, family='senate/pages')
+            for row in table.filter(pc.equal(table['http_status'], 200)).select(sorted(required)).to_pylist())
+    for row in rows:
         url, key = row["context_url"], row["body_key"]
         if not url or not key:
             continue
@@ -1740,7 +1772,10 @@ def add_retained_senate_pages(context, captures, read_body):
         digest = key.rsplit("/", 1)[-1].removesuffix(".gz")
         if digest in context.by_url.get(url, {}).get("source_page_sha256", set()):
             continue  # This exact page observation was already replayed above.
-        observations.setdefault((url, key, host), set()).add((row["receipt_key"], row["receipt_line"]))
+        identity = url, key, host
+        receipts = observations.get(identity, set())
+        receipts.add((row['receipt_key'], row['receipt_line']))
+        observations[identity] = receipts
     for (url, key, host), receipts in progress.track(
             observations.items(), 'read_senate_html', unit='pages'):
         raw = read_body(key)
@@ -1755,26 +1790,30 @@ def add_retained_senate_pages(context, captures, read_body):
                 source_receipt_key=receipt, source_receipt_line=line))
 
 
-def retained_records(captures, read_receipt, *, stage='replay_capture_receipts'):
+def retained_records(captures, read_receipt, *, stage='replay_capture_receipts', family=None, suffix=None):
     """Read referenced receipt lines with an indexed, disposable position map."""
     from tempfile import TemporaryDirectory
     import sqlite3
-    progress.report(stage, completed=0, total=len(captures), unit='capture_rows')
+    progress.report(stage, completed=0, unit='capture_rows')
     completed = reported = 0
-    batches = captures.to_batches(max_chunksize=65536)
     with TemporaryDirectory(prefix="receipt-positions-") as directory:
         db = sqlite3.connect(Path(directory) / "positions.sqlite")
         try:
             db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
-                             'CREATE TABLE positions(receipt TEXT,line INTEGER,batch INTEGER,position INTEGER); '
-                             'CREATE INDEX receipt_lines ON positions(receipt,line,batch,position);')
-            for batch_number,batch in enumerate(batches):
+                             'CREATE TABLE positions(receipt TEXT,line INTEGER,position INTEGER,value BLOB); '
+                             'CREATE INDEX receipt_lines ON positions(receipt,line,position);')
+            tables = (_capture_tables(captures, family=family, suffix=suffix)
+                      if isinstance(captures, (pa.Table, pq.ParquetFile)) else captures)
+            position = total = 0
+            for table in tables:
                 records = []
-                for position,row in enumerate(batch.select(["receipt_key","receipt_line"]).to_pylist()):
+                for row in table.to_pylist():
                     if not row.get('receipt_key') or type(row.get('receipt_line')) is not int or row['receipt_line'] < 1:
                         raise ValueError("Invalid capture receipt locator")
-                    records.append((row['receipt_key'],row['receipt_line'],batch_number,position))
+                    records.append((row['receipt_key'],row['receipt_line'],position,pickle.dumps(row)))
+                    position += 1
                 db.executemany('INSERT INTO positions VALUES (?,?,?,?)',records)
+                total += len(records)
             for key, in db.execute('SELECT DISTINCT receipt FROM positions ORDER BY receipt'):
                 payload = read_receipt(key)
                 if payload is None:
@@ -1782,17 +1821,14 @@ def retained_records(captures, read_receipt, *, stage='replay_capture_receipts')
                 remaining, = db.execute('SELECT count(*) FROM positions WHERE receipt=?',(key,)).fetchone()
                 with gzip.open(BytesIO(payload),"rt",encoding="utf-8") as stream:
                     for number,line in enumerate(stream,1):
-                        positions = db.execute('SELECT batch,position FROM positions WHERE receipt=? AND line=? ORDER BY batch,position',(key,number))
-                        rows = []
-                        for batch_number,group in groupby(positions,key=lambda item:item[0]):
-                            selected = pa.array([position for _,position in group],type=pa.int64())
-                            rows.extend(batches[batch_number].take(selected).to_pylist())
+                        rows = [pickle.loads(value) for value, in db.execute(
+                            'SELECT value FROM positions WHERE receipt=? AND line=? ORDER BY position',(key,number))]
                         if rows:
                             yield json.loads(line)['record'],rows,context_values(source_receipt_key=key,source_receipt_line=number)
                             completed += len(rows)
                             remaining -= len(rows)
                             if completed-reported >= 1000:
-                                progress.report(stage,completed=completed,total=len(captures),unit='capture_rows')
+                                progress.report(stage,completed=completed,total=total,unit='capture_rows')
                                 reported = completed
                         if not remaining:
                             break
@@ -1800,7 +1836,7 @@ def retained_records(captures, read_receipt, *, stage='replay_capture_receipts')
                     raise ValueError(f"Capture index references missing receipt lines: {key}")
         finally:
             db.close()
-    progress.report(stage,completed=completed,total=len(captures),unit='capture_rows')
+    progress.report(stage,completed=completed,total=total,unit='capture_rows')
 
 
 def add_retained_house_documents(context, captures, read_body):
@@ -1809,10 +1845,11 @@ def add_retained_house_documents(context, captures, read_body):
     from congress_api.parsers.xml import parse_xml
     from xml.etree.ElementTree import ParseError
 
-    selected = captures.filter(pc.is_in(captures["family"], value_set=pa.array(
-        ["house/meeting-xml", "house/witness-xml"])))
+    rows = (row for table in _capture_tables(captures)
+            for row in table.filter(pc.is_in(table['family'], value_set=pa.array(
+                ['house/meeting-xml', 'house/witness-xml']))).to_pylist())
     seen = set()
-    for row in progress.track(selected.to_pylist(), 'read_house_xml', unit='capture_rows'):
+    for row in progress.track(rows, 'read_house_xml', unit='capture_rows'):
         key, url = row.get("body_key"), row.get("context_url")
         if not key or (key, url) in seen or row.get("http_status") not in (None, 200):
             continue
@@ -1849,21 +1886,9 @@ def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=N
         captures = pq.read_table(path)
     read_receipt = read_receipt or (lambda key: (root / key).read_bytes())
     read_body = read_body or (lambda key: read_retained_body(root, key))
-    columns = [
-        name
-        for name in ("family", "source_file", "receipt_key", "receipt_line", "body_key", "context_url", "http_status")
-        if name in captures.column_names
-    ]
-    captures = captures.select(columns)
-
     def records(family, suffix=None):
-        selected = captures if family is None else captures.filter(pc.equal(captures["family"], family))
-        if suffix:
-            if "source_file" not in selected.column_names:
-                return
-            selected = selected.filter(pc.ends_with(selected["source_file"], suffix))
         stage = 'read_' + (suffix or family).replace('/', '_').replace('.', '_')
-        for record, _, receipt in retained_records(selected, read_receipt, stage=stage):
+        for record, _, receipt in retained_records(captures, read_receipt, stage=stage, family=family, suffix=suffix):
             yield record, receipt
 
     for record, receipt in records("congress/meetings"):
@@ -1883,12 +1908,16 @@ def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=N
     add_retained_senate_pages(context, captures, read_body)
     # Download receipts can refer to an HTML landing page whose exact anchor
     # supplies the later requested URL. Read only those retained page bodies.
-    body_references = defaultdict(set)
-    if {"body_key", "context_url"} <= set(captures.column_names):
-        selected = captures.filter(pc.is_in(captures["context_url"], value_set=pa.array(sorted(context.by_url), type=pa.string())))
-        for row in selected.select(["receipt_key", "receipt_line", "body_key", "context_url"]).to_pylist():
-            if row["body_key"]:
-                body_references[(row["receipt_key"], row["receipt_line"])].add((row["body_key"], row["context_url"]))
+    body_references = defaultdict(set) if context.working is None else context.working.mapping('source_body_references')
+    body_references.clear()
+    if {"body_key", "context_url"} <= set(capture_schema(captures).names):
+        for batch in capture_batches(captures, ['receipt_key', 'receipt_line', 'body_key', 'context_url']):
+            for row in batch.to_pylist():
+                if row['context_url'] in context.by_url and row['body_key']:
+                    identity = row['receipt_key'], row['receipt_line']
+                    references = body_references.get(identity, set())
+                    references.add((row['body_key'], row['context_url']))
+                    body_references[identity] = references
     for record, receipt in records(None, "/receipts.jsonl"):
         context.add_redirect(record, receipt)
         context.add_associations(record, receipt)

@@ -119,8 +119,8 @@ class SourceObservationTrace:
 
     def replay(self, captures, read, read_body, *, seeds=(), retained_capture_inputs=False):
         columns = [name for name in ['receipt_key', 'receipt_line', '_capture_order', 'context_url', 'body_key']
-                   if name in captures.column_names]
-        for batch in captures.select(columns).to_batches(max_chunksize=256):
+                   if name in index.capture_schema(captures).names]
+        for batch in index.capture_batches(captures, columns):
             for row in batch.to_pylist():
                 self.register(row['receipt_key'], row['receipt_line'])
                 for kind, value, access in [('capture', str(row['_capture_order']) if '_capture_order' in row and not retained_capture_inputs else None, 'write'),
@@ -146,9 +146,7 @@ class SourceObservationTrace:
 
 
 def hearing_records(captures, read):
-    import pyarrow.compute as pc
-    selected = captures.filter(pc.equal(captures['family'], 'congress/hearings'))
-    return index.retained_records(selected, read)
+    return index.retained_records(captures, read, family='congress/hearings')
 
 
 class SourceObservationStorage:
