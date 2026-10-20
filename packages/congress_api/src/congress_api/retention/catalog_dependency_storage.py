@@ -13,7 +13,8 @@ from .catalog_dependencies import (
     affected_sources, alias_schema, dependency_schema, dependency_tables,
     DependencyGap, NativeCatalogDependencies, _encoded_alias, _decoded_alias,
 )
-from .partition_routing import RoutingPages, split_partition, key_hash
+from .partition_routing import RoutingPages, split_partition
+from .catalog_memberships import CatalogMemberships
 
 
 
@@ -25,8 +26,10 @@ class CatalogDependencyStorage:
         self.native, self.source_schema = native, source_schema
         self.max_rows, self.max_bytes = max_rows, max_bytes
         self.sources = RoutingPages(store, namespace + '-sources')
-        self.aliases = RoutingPages(store, namespace + '-aliases')
-        self.members = RoutingPages(store, namespace + '-members')
+        self.memberships = CatalogMemberships(store=store, namespace=namespace, schema=alias_schema(),
+            member_column='source_id', max_rows=max_rows, max_bytes=max_bytes,
+            read=self._read, write=self._write, validate_alias=_decoded_alias)
+        self.aliases, self.members = self.memberships.routes, self.memberships.members
         self.schema_hash = sha256(source_schema.remove_metadata().serialize().to_pybytes()).hexdigest()
         self.rows_read = self.bytes_read = 0
         self.candidate_rows_submitted = self.candidate_arrow_bytes = 0
@@ -46,7 +49,7 @@ class CatalogDependencyStorage:
         return deepcopy(selection)
 
     def _read(self, pin, schema):
-        with self.native.source_batches(pin) as reader:
+        with self.native.source_batches(pin, schema=schema) as reader:
             if not reader.schema.equals(schema, check_metadata=False):
                 raise DependencyGap('Native dependency leaf schema differs')
             batches = []
@@ -95,80 +98,6 @@ class CatalogDependencyStorage:
                     max_rows=self.max_rows, max_bytes=self.max_bytes):
                 leaves[child] = self._write(part, kind) if len(part) else None
             root = pages.replace(root, prefix, leaves)
-        return root
-
-    def _alias_groups(self, value):
-        if value is None:
-            return {}
-        if value.get('kind') == 'members':
-            if (not isinstance(value.get('alias'), str) or type(value.get('count')) is not int
-                    or value['count'] < 1 or value.get('root') is None):
-                raise DependencyGap('Invalid large-alias dependency metadata')
-            return {value['alias']: value}
-        if value.get('kind') != 'rows':
-            raise DependencyGap('Unknown alias dependency leaf format')
-        table = self._read(value['release'], alias_schema())
-        if len(table) != value.get('rows'):
-            raise DependencyGap('Alias dependency leaf row count differs')
-        groups, seen = {}, set()
-        for row in table.to_pylist():
-            pair = row['alias'], row['source_id']
-            if pair in seen:
-                raise DependencyGap('Duplicate reverse dependency membership')
-            seen.add(pair)
-            _decoded_alias(row['alias'])
-            groups.setdefault(row['alias'], []).append(row)
-        return {alias: pa.Table.from_pylist(rows, schema=alias_schema()) for alias, rows in groups.items()}
-
-    def _alias_leaves(self, groups, prefix):
-        # Common aliases share physical native leaves. Only one alias whose
-        # members exceed a leaf budget gets secondary source-ID routing.
-        groups = dict(groups)
-        for alias, value in groups.items():
-            if isinstance(value, pa.Table) and (len(value) > self.max_rows or value.nbytes > self.max_bytes):
-                leaves = {child: self._write(part, 'members') if len(part) else None
-                    for child, part in split_partition(value, key='source_id', prefix='',
-                        max_rows=self.max_rows, max_bytes=self.max_bytes)}
-                groups[alias] = dict(kind='members', alias=alias, count=len(value),
-                                     root=self.members.replace(None, '', leaves))
-        if not groups:
-            return {prefix: None}
-        heavy = {alias: value for alias, value in groups.items() if not isinstance(value, pa.Table)}
-        if heavy:
-            if len(groups) == 1:
-                return {prefix: next(iter(heavy.values()))}
-            if len(prefix) == 64:
-                raise DependencyGap('Alias hash collision cannot fit the dependency budget')
-            leaves = {}
-            for char in '0123456789abcdef':
-                child = prefix + char
-                subset = {alias: value for alias, value in groups.items() if key_hash(alias).startswith(child)}
-                if subset:
-                    leaves.update(self._alias_leaves(subset, child))
-            return leaves
-        table = pa.concat_tables([groups[alias] for alias in sorted(groups)])
-        leaves = {}
-        for child, part in split_partition(table, key='alias', prefix=prefix,
-                max_rows=self.max_rows, max_bytes=self.max_bytes, allow_duplicate_keys=True):
-            leaves[child] = (dict(kind='rows', release=self._write(part, 'aliases'),
-                                 rows=len(part), arrow_bytes=part.nbytes) if len(part) else None)
-        return leaves
-
-    def _replace_aliases(self, root, replacements):
-        changes = {}
-        for alias in sorted(replacements):
-            prefix, value = self.aliases.lookup(root, alias)
-            changes.setdefault(prefix, (value, []))[1].append(alias)
-        for prefix, (value, aliases) in sorted(changes.items()):
-            groups = self._alias_groups(value)
-            for alias in aliases:
-                members = replacements[alias]
-                if members:
-                    groups[alias] = pa.Table.from_pylist([dict(alias=alias, source_id=key)
-                        for key in sorted(members)], schema=alias_schema())
-                else:
-                    groups.pop(alias, None)
-            root = self.aliases.replace(root, prefix, self._alias_leaves(groups, prefix))
         return root
 
     def selected(self, selection):
@@ -249,5 +178,5 @@ class CatalogDependencyStorage:
                 raise DependencyGap('Affected reverse dependency scope is incomplete')
             if old_members != new_members:
                 alias_changes[alias] = new_members
-        alias_root = self._replace_aliases(basis['alias_root'], alias_changes)
+        alias_root = self.memberships.replace(basis['alias_root'], alias_changes)
         return {**basis, 'source_root': source_root, 'alias_root': alias_root, 'next_source_order': order}

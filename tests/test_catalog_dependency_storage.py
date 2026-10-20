@@ -26,7 +26,7 @@ class MemoryNative:
             assert self.tables[dataset].equals(table)
         return {'dataset_key': dataset}
     @contextmanager
-    def source_batches(self, pin):
+    def source_batches(self, pin, *, schema=None):
         self.reads.append(pin['dataset_key'])
         yield self.tables[pin['dataset_key']].to_reader()
 
@@ -186,3 +186,17 @@ def test_large_alias_uses_only_bounded_secondary_member_leaves():
     changed = owner.prepare(selected, replacements=[{**rows[0], 'http_status': ['404']}])
     assert len(owner.selected(changed).members(('body', 'shared-body'))) == 39
     assert len(owner.selected(selected).members(('body', 'shared-body'))) == 40
+
+
+def test_actual_native_dependency_values_retain_unsigned_binary_and_field_metadata(native):
+    evidence = pa.field('saved_native_evidence', pa.struct([
+        pa.field('maximum', pa.uint64(), metadata={b'publisher': b'exact'}),
+        pa.field('bytes', pa.binary()),
+    ]), metadata={b'meaning': b'untouched evidence'})
+    schema = SCHEMA.append(evidence)
+    store = MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='exact-typed-evidence',
+                                     source_schema=schema, max_rows=8, max_bytes=1 << 20)
+    row = source('unsigned.pdf', 'A', saved_native_evidence=dict(maximum=2**64 - 1, bytes=b'\x00\xff'))
+    selection = owner.prepare(None, replacements=[row])
+    assert owner.selected(selection).source(identity(row)) == pa.Table.from_pylist([row], schema=schema).to_pylist()[0]

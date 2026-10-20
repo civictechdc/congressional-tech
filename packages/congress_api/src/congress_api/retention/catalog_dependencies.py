@@ -152,7 +152,7 @@ class NativeCatalogDependencies:
 
     def _rows(self, pin, schema):
         count = size = 0
-        with self.native.source_batches(deepcopy(pin)) as reader:
+        with self.native.source_batches(deepcopy(pin), schema=schema) as reader:
             if not reader.schema.equals(schema, check_metadata=False):
                 raise DependencyGap('Native dependency schema differs from selected application schema')
             for batch in reader:
