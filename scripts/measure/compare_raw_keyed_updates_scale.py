@@ -322,13 +322,16 @@ def main(args):
                     after = footprint(directory)
                     processing = None if arm == 'build' and case == 'empty' else metrics(native, result)
                     new_tables = registrations(native) - registered
+                    readback_counters = native.counts.copy()
                     _, readback = budget.stage(lambda: (validate(native, result, count, case),
                         validate(native, original_pin, count, 'original')))
+                    readback_commands = dict(native.counts - readback_counters)
                     assert all(digest(path) == expected for path, expected in original_objects.items())
                     entry = dict(axis=axis, rows=count, history=history, seed_target_file_bytes=file_bytes,
                         repeat=repeat, arm=arm, case=case, fixture_generation=generation, seed=seed,
                         complete_input_preparation=preparation, operation=timing, readback=readback,
-                        commands=observed, processing=processing, native_table_registrations=new_tables,
+                        commands=observed, readback_commands=readback_commands,
+                        processing=processing, native_table_registrations=new_tables,
                         source_files=sum(obj['path'].endswith('.parquet') for obj in source_pin['objects']),
                         new_retained_files=after['files'] - before['files'],
                         new_retained_bytes=after['bytes'] - before['bytes'],
