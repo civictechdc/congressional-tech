@@ -4,6 +4,7 @@ Retained receipts remain authoritative. The manifest only selects immutable
 Parquet files; root files are accepted as migration inputs when it is absent.
 """
 from dataclasses import dataclass, field
+import base64
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -171,7 +172,7 @@ def publish_catalog(store, filenames_path, documents_path, *, previous, validati
 
 
 def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate,
-                                  schema, max_chunk_rows, max_chunk_bytes):
+                                  schema, max_chunk_rows, max_chunk_bytes, check_references=None):
     """Retain rewritten bounded chunks as independent native candidates.
 
     The caller binds ``candidate`` to its exact base, semantic change, application
@@ -214,6 +215,8 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
         if last_order is not None and extrema['min'] <= last_order:
             raise ValueError('Catalog chunk order ranges overlap or are out of order')
         last_order = extrema['max']
+        if check_references is not None:
+            check_references(table)
         dataset = 'catalog-' + label + '-' + sha256(encoded([candidate, component, index])).hexdigest()
         release = native.run_table(table, dataset=dataset, operation='initial', definition='catalog-chunk-v1')
         checked = CatalogTable(schema, [(dataset, release)], native=native)
@@ -222,6 +225,97 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
         prepared.append(dict(name=dataset, release=release, rows=table.num_rows,
                              arrow_bytes=table.nbytes, order_min=extrema['min'], order_max=extrema['max']))
     return prepared
+
+
+def _component_binding(component):
+    from congress_api.retention.immutable_metadata import encoded
+    material = {**component, 'validation': {key: value for key, value in component['validation'].items()
+                                          if key != 'binding'}}
+    return sha256(encoded(material)).hexdigest()
+
+
+def _component_schema(item):
+    try:
+        raw = base64.b64decode(item['schema'], validate=True)
+        return pa.ipc.read_schema(pa.BufferReader(raw))
+    except (KeyError, TypeError, ValueError, pa.ArrowException) as error:
+        raise ValueError('Invalid catalog component application schema') from error
+
+
+def _require_component(component):
+    from congress_api.retention.catalog_partitions import CatalogTable
+    from congress_api.retention.catalog_validation import CatalogReferenceCheck, catalog_reference_requirements
+    if (not isinstance(component, dict) or component.get('version') != 1
+            or not isinstance(component.get('component'), str) or not component['component']
+            or not isinstance(component.get('candidate'), str) or not component['candidate']):
+        raise ValueError('Invalid native catalog component')
+    validation = component.get('validation', {})
+    if validation.get('requirements') != catalog_reference_requirements():
+        raise ValueError('Catalog component validator requirements changed')
+    if validation.get('binding') != _component_binding(component):
+        raise ValueError('Catalog component validation binding differs')
+    membership = validation.get('source_ids_sha256')
+    if (not isinstance(membership, str) or len(membership) != 64
+            or any(char not in '0123456789abcdef' for char in membership)):
+        raise ValueError('Catalog component membership proof is missing')
+    counts, schemas = {}, {}
+    for label, count in [('filenames', 'source_rows'), ('documents', 'document_rows')]:
+        table = component['tables'][label]
+        schemas[label] = _component_schema(table)
+        checked = CatalogTable(schemas[label], [(chunk['name'], chunk['release']) for chunk in table['chunks']], native=None)
+        last_order = None
+        for chunk in table['chunks']:
+            minimum, maximum = chunk['order_min'], chunk['order_max']
+            if (type(minimum) is not int or type(maximum) is not int or minimum < 0 or maximum < minimum
+                    or last_order is not None and minimum <= last_order
+                    or chunk['rows'] != chunk['release']['dataset']['groups']['source']['rows']):
+                raise ValueError('Catalog component chunk counts or order differ')
+            last_order = maximum
+        counts[count] = checked.rows
+    CatalogReferenceCheck(schemas['filenames'], schemas['documents'])
+    if counts != validation.get('counts') or not counts['source_rows'] or counts['document_rows'] != 1:
+        raise ValueError('Catalog component reference counts differ')
+    return component
+
+
+def prepare_native_catalog_component(store, native, *, component, candidate, source_chunks, document_chunks,
+                                     source_schema, document_schema, max_chunk_rows, max_chunk_bytes):
+    """Persist a reference proof for changed chunks, without selecting publication.
+
+    The immutable proof binds exact native releases, original schemas, counts and
+    validator/runtime requirements. Its reuse assumes the same qualified store
+    custody as the application selector. It does not prove complete dependency
+    scope or uniqueness against other selected components.
+    """
+    from congress_api.retention.catalog_validation import CatalogReferenceCheck, catalog_reference_requirements
+    from congress_api.retention.immutable_metadata import MetadataObjects
+    tables = {}
+    with CatalogReferenceCheck(source_schema, document_schema) as check:
+        def check_documents(table):
+            if any(value != component for value in table['document_id'].to_pylist()):
+                raise ValueError('Catalog component name differs from its document ID')
+            check.add_documents(table)
+        for label, chunks, schema, references in [
+                ('filenames', source_chunks, source_schema, check.add_sources),
+                ('documents', document_chunks, document_schema, check_documents)]:
+            prepared = prepare_native_catalog_chunks(native, chunks, label=label, component=component,
+                candidate=candidate, schema=schema, max_chunk_rows=max_chunk_rows,
+                max_chunk_bytes=max_chunk_bytes, check_references=references)
+            tables[label] = dict(schema=base64.b64encode(schema.serialize().to_pybytes()).decode(), chunks=prepared)
+        counts = check.finish()
+        source_ids_sha256 = check.source_ids_digest()
+    result = dict(version=1, component=component, candidate=candidate, tables=tables,
+                  validation=dict(requirements=catalog_reference_requirements(), counts=counts,
+                                  source_ids_sha256=source_ids_sha256))
+    result['validation']['binding'] = _component_binding(result)
+    _require_component(result)
+    return MetadataObjects(store, 'catalog-components-v1').put(result)
+
+
+def read_catalog_component(store, reference):
+    """Reuse exact immutable component evidence without reopening native payloads."""
+    from congress_api.retention.immutable_metadata import MetadataObjects
+    return _require_component(MetadataObjects(store, 'catalog-components-v1').read(reference))
 
 
 def local_catalog_paths(root):

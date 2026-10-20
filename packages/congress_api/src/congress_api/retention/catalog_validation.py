@@ -98,6 +98,35 @@ class CatalogReferenceCheck:
         return dict(source_rows=self.source_rows, document_rows=self.document_rows)
 
 
+    def source_ids_digest(self):
+        if self.resources is None or not self.finished or self.failed:
+            raise ValueError('Catalog reference check has not finished')
+        return catalog_source_ids_digest(row[0] for row in self.db.execute('SELECT source_id FROM sources ORDER BY source_id'))
+
+
+def catalog_source_ids_digest(sorted_source_ids):
+    """Hash an ordered unique membership set without retaining another ID list."""
+    from congress_api.retention.immutable_metadata import encoded
+    digest, previous = hashlib.sha256(b'['), None
+    for source_id in sorted_source_ids:
+        if not isinstance(source_id, str) or previous is not None and source_id <= previous:
+            raise ValueError('Catalog membership IDs must be unique sorted strings')
+        if previous is not None:
+            digest.update(b',')
+        digest.update(encoded(source_id))
+        previous = source_id
+    digest.update(b']')
+    return digest.hexdigest()
+
+
+def catalog_reference_requirements():
+    """Portable current requirements for reusing an immutable reference proof."""
+    implementation = inspect.getsource(CatalogReferenceCheck) + inspect.getsource(catalog_source_ids_digest)
+    return dict(validator='catalog-references-v1',
+                implementation_sha256=hashlib.sha256(implementation.encode()).hexdigest(),
+                python=sys.version, pyarrow=pyarrow.__version__, sqlite=sqlite3.sqlite_version)
+
+
 def _issue(proof):
     _issued[id(proof)] = proof
     return proof

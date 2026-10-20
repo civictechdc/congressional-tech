@@ -1,8 +1,8 @@
 # Incremental catalog publication boundary
 
-`ct-v5kb` remains incomplete. The bounded local DocSpec proof does not yet
-provide qualified transport and custody for the existing R2 catalog publication
-path. The current conditional selector and every runtime reader remain unchanged.
+`ct-v5kb` remains incomplete. The source-only native storage boundary now has an
+isolated-prefix remote proof; application publication and consumer migration are
+still in progress. The live conditional selector and runtime consumers remain unchanged.
 This note preserves a reproducible failing acceptance case and the affected
 consumer inventory; it does not claim production adoption or incremental delivery.
 
@@ -110,9 +110,14 @@ before opening a workspace (`src/main.rs:1096`). A direct local attempt returned
 without creating the requested workspace or Arrow output. This checks the
 supplied binary's compiled capability; it does not test remote provider access.
 The later remote-enabled build removes that compiled-capability blocker. The
-actual existing-bucket native Build instead failed catalog-side HTTP 424/401
-authentication; provider qualification remains incomplete. Catalog setup retains
-that separate evidence under `output/incremental-updates-20261019/catalog-setup/`.
+first existing-bucket native Build then failed catalog-side HTTP 424/401
+authentication. A subsequent credential-qualified run passed nested Build/Update,
+exact old/new reads, fresh-host completed replay and stale/conflicting refusals.
+Its receipt is
+`output/incremental-updates-20261019/catalog-setup/raw-provider-2/verification-receipt.json`.
+All 110 objects / 487,980 bytes belong to the new isolated qualification prefix;
+the existing archive remained untouched. This qualifies the source-only storage
+boundary, not application publication, concurrent writers or throughput.
 Congressional-tech's existing R2 object client is not an Iceberg REST catalog.
 The parallel raw-custody work owns the new native custody proof.
 No alternate importer, rewritten native metadata, copied lifecycle catalog,
