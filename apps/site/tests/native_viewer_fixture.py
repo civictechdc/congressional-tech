@@ -53,8 +53,15 @@ if os.environ.get('FILENAME_FIXTURE_GIANT_DOCUMENT'):
     assert documents.slice(0, 1).nbytes > 16 * 1024 * 1024
 store, native = LocalStore(folder / 'native-store'), Native()
 orders = lambda table: table.append_column(pa.field('_catalog_order', pa.int64(), nullable=False), pa.array(range(len(table)), type=pa.int64()))
+document_chunks = [orders(documents)]
+if os.environ.get('FILENAME_FIXTURE_GIANT_DOCUMENT'):
+    from congress_api.retention.catalog_adoption import ordered_chunks
+    path = folder / 'native-document-input.parquet'
+    pq.write_table(documents, path)
+    with pq.ParquetFile(path) as file:
+        document_chunks = list(ordered_chunks(file, max_rows=1024, max_bytes=1 << 24))
 prepared = prepare_native_catalog_components(store, native, candidate='browser-fixture',
-    source_chunks=[orders(sources)], document_chunks=[orders(documents)], source_schema=sources.schema,
+    source_chunks=[orders(sources)], document_chunks=document_chunks, source_schema=sources.schema,
     document_schema=documents.schema, max_chunk_rows=1024, max_chunk_bytes=1 << 24)
 components = CatalogComponents(store).apply(None, retired=[], prepared=iterator_prepared_components(store, prepared))
 owner = CatalogDependencyStorage(native=native, store=store, namespace='browser-fixture', source_schema=sources.schema,

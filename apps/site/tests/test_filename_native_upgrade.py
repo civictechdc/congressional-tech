@@ -199,3 +199,45 @@ with stages.RendererState(target,{'fixture':'write-loss'},resume=mode=='resume')
     from congress_api.retention.derived_files import file_identity
     reference=json.loads((tmp_path/'result.json').read_bytes())
     assert file_identity(tmp_path/'publication'/reference['path'])=={k:reference[k] for k in ('bytes','sha256')}
+
+
+def test_split_document_upgrade_resumes_after_an_occurrence_asset_write(tmp_path, monkeypatch):
+    import runpy
+    from filename_native import ViewerAssets, public_component, iterator_inventory
+    folder = tmp_path / 'fixture'
+    folder.mkdir()
+    monkeypatch.setenv('FILENAME_FIXTURE_GIANT_DOCUMENT', '1')
+    monkeypatch.setattr(sys, 'argv', [str(ROOT / 'apps/site/tests/native_viewer_fixture.py'), str(folder)])
+    fixture = runpy.run_path(sys.argv[0])
+    snapshot, native = fixture['snapshot'], fixture['native']
+    previous = builder.publish_selected(snapshot, tmp_path / 'old', review_identities=None,
+        compression_policy=builder.DEFAULT_COMPRESSION_POLICY._replace(level=9))
+    native_tables = set(native.tables)
+    original = ViewerAssets.put_file
+    stopped = []
+    def stop(self, source, *, name):
+        result = original(self, source, name=name)
+        if name == 'observations.bin' and not stopped:
+            stopped.append(result)
+            raise RuntimeError('stopped after split occurrence asset')
+        return result
+    options = dict(previous=previous, read_asset=lambda path: (tmp_path / 'old' / path).read_bytes(),
+                   review_identities=None, renderer_upgrade=True)
+    monkeypatch.setattr(ViewerAssets, 'put_file', stop)
+    with pytest.raises(RuntimeError, match='stopped after split occurrence'):
+        builder.publish_selected(snapshot, tmp_path / 'upgrade', **options)
+    assert stopped and not (tmp_path / 'upgrade' / 'manifest.json').exists()
+    monkeypatch.setattr(ViewerAssets, 'put_file', original)
+    complete = builder.publish_selected(snapshot, tmp_path / 'upgrade', resume_upgrade=True, **options)
+    assets = ViewerAssets(tmp_path / 'upgrade')
+    document = fixture['documents']['document_id'][0].as_py()
+    component = public_component(assets, complete['roots']['components'], document)
+    assert component['document_occurrences_split'] is True
+    files = component['document_observations']['files']
+    inventory = {item['path'] for item in iterator_inventory(assets, complete['inventory'])}
+    assert {component['document_file']['path'], *[item['path'] for item in files.values()]} <= inventory
+    assert all((assets.root / path).is_file() for path in inventory)
+    assert set(native.tables) == native_tables  # Rendering never creates native candidates.
+    native.reads.clear()
+    assert builder.publish_selected(snapshot, tmp_path / 'upgrade', resume_upgrade=True, **options) == complete
+    assert not native.reads
