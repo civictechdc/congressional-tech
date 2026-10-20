@@ -3,9 +3,15 @@
 The selected dependency owner supplies exact keyed source and alias membership
 lookups. This module never enumerates the corpus or falls back to old table scans.
 """
-from collections import deque
 from copy import deepcopy
+from collections.abc import Collection
 from dataclasses import dataclass
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from weakref import finalize
+import pickle
+
+from .catalog_staging import WorkingCatalog
 
 from . import document_index as index
 
@@ -14,62 +20,98 @@ class DependencyGap(ValueError):
     """The selected lookup cannot establish a complete affected component."""
 
 
+class DependencyWorkingSet:
+    """Disposable SQL indexes; retained native selections remain authoritative."""
+    def __init__(self):
+        directory = TemporaryDirectory(prefix='catalog-dependency-work-')
+        self.work = WorkingCatalog(Path(directory.name) / 'working.sqlite')
+        self._cleanup = finalize(self, self._close, self.work, directory)
+
+    @staticmethod
+    def _close(work, directory):
+        work.close()
+        directory.cleanup()
+
+    def close(self):
+        self._cleanup()
+
+
 @dataclass
 class AffectedSources:
-    before: dict
-    after: dict
+    before: object
+    after: object
     sources_read: int
     aliases_read: int
+    _working: object = None
+
+    def close(self):
+        if self._working is not None:
+            self._working.close()
 
 
 def affected_sources(selected, *, replacements=(), deletions=()):
-    """Return complete old components and new neighbors for explicit row edits.
+    """Close old/new components with row values and the frontier staged on disk.
 
-    Replacements are complete interpreted source inputs. A changed identity is
-    represented by deleting the old ID and adding the new row. Missing aliases
-    mean an empty membership only when the selected owner proves that absence.
-    Unknown routing or missing partitions must raise from that owner.
+    The returned mappings own their disposable working directory. Missing aliases
+    mean absence only when the selected owner proves it; missing routing raises.
+    Replacements remain complete interpreted rows, with exact typed Python values
+    preserved by the existing WorkingCatalog pickle storage policy.
     """
-    replacements = list(replacements)
-    changed = {index.source_identity(row): deepcopy(row) for row in replacements}
-    removed = set(deletions)
-    if len(changed) != len(replacements):
-        raise ValueError('Duplicate replacement source identity')
-    if removed & changed.keys():
-        raise ValueError('Replacement and deletion source IDs overlap')
-    pending = deque(sorted(removed | changed.keys()))
-    queued = set(pending)
-    before, after, aliases = {}, {}, {}
-    reads = 0
-    while pending:
-        key = pending.popleft()
-        previous = selected.source(key)
-        reads += 1
-        if previous is None and key not in changed:
-            reason = 'Missing changed source' if key in removed else 'Missing dependency source'
-            raise DependencyGap(f'{reason}: {key}')
-        if previous is not None:
-            if index.source_identity(previous) != key:
-                raise DependencyGap(f'Dependency source identity mismatch: {key}')
-            before[key] = previous
-        current = None if key in removed else changed.get(key, previous)
-        if current is not None:
-            after[key] = deepcopy(current)
-        old_aliases = tuple(selected.aliases(key)) if previous is not None else ()
-        new_aliases = index.group_aliases(current, key) if current is not None else ()
-        for alias in dict.fromkeys((*old_aliases, *new_aliases)):
-            if alias not in aliases:
-                aliases[alias] = set(selected.members(alias))
-            members = aliases[alias]
-            # Old aliases are stored values, so explicit upgrades can change
-            # the current policy without losing the selected old components.
-            if alias in old_aliases and key not in members:
-                raise DependencyGap(f'Missing reverse dependency membership: {key} {alias}')
-            for member in sorted(members):
-                if member not in queued:
-                    queued.add(member)
-                    pending.append(member)
-    return AffectedSources(before, after, reads, len(aliases))
+    working = DependencyWorkingSet()
+    db = working.work.connection
+    before, after = working.work.mapping('before_rows'), working.work.mapping('after_rows')
+    # A caller may retain an individual mapping after releasing the scope.
+    before.working_owner = after.working_owner = working
+    db.executescript('CREATE TABLE changes(identity TEXT PRIMARY KEY,value BLOB); '
+        'CREATE TABLE removed(identity TEXT PRIMARY KEY); '
+        'CREATE TABLE frontier(position INTEGER PRIMARY KEY,identity TEXT UNIQUE,processed INTEGER DEFAULT 0); '
+        'CREATE INDEX frontier_pending ON frontier(processed,position); '
+        'CREATE TABLE aliases(alias TEXT PRIMARY KEY); '
+        'CREATE TABLE edges(alias TEXT,identity TEXT,PRIMARY KEY(alias,identity));')
+    try:
+        for row in replacements:
+            key = index.source_identity(row)
+            if db.execute('SELECT 1 FROM changes WHERE identity=?', (key,)).fetchone():
+                raise ValueError('Duplicate replacement source identity')
+            db.execute('INSERT INTO changes VALUES (?,?)', (key, pickle.dumps(row)))
+        db.executemany('INSERT OR IGNORE INTO removed VALUES (?)', ((key,) for key in deletions))
+        if db.execute('SELECT 1 FROM changes JOIN removed USING(identity) LIMIT 1').fetchone():
+            raise ValueError('Replacement and deletion source IDs overlap')
+        db.execute('INSERT INTO frontier(identity) SELECT identity FROM changes UNION '
+                   'SELECT identity FROM removed ORDER BY identity')
+        reads = 0
+        while entry := db.execute('SELECT position,identity FROM frontier WHERE processed=0 ORDER BY position LIMIT 1').fetchone():
+            position, key = entry
+            previous = selected.source(key)
+            reads += 1
+            changed = db.execute('SELECT value FROM changes WHERE identity=?', (key,)).fetchone()
+            removed = db.execute('SELECT 1 FROM removed WHERE identity=?', (key,)).fetchone() is not None
+            if previous is None and changed is None:
+                reason = 'Missing changed source' if removed else 'Missing dependency source'
+                raise DependencyGap(f'{reason}: {key}')
+            if previous is not None:
+                if index.source_identity(previous) != key:
+                    raise DependencyGap(f'Dependency source identity mismatch: {key}')
+                before[key] = previous
+            current = None if removed else pickle.loads(changed[0]) if changed is not None else previous
+            if current is not None:
+                after[key] = current
+            old_aliases = tuple(selected.aliases(key)) if previous is not None else ()
+            new_aliases = index.group_aliases(current, key) if current is not None else ()
+            for alias in dict.fromkeys((*old_aliases, *new_aliases)):
+                encoded = _encoded_alias(alias)
+                if db.execute('INSERT OR IGNORE INTO aliases VALUES (?)', (encoded,)).rowcount:
+                    db.executemany('INSERT OR IGNORE INTO edges VALUES (?,?)',
+                                   ((encoded, member) for member in selected.members(alias)))
+                    db.execute('INSERT OR IGNORE INTO frontier(identity) SELECT identity FROM edges WHERE alias=? ORDER BY identity', (encoded,))
+                if alias in old_aliases and not db.execute('SELECT 1 FROM edges WHERE alias=? AND identity=?', (encoded, key)).fetchone():
+                    raise DependencyGap(f'Missing reverse dependency membership: {key} {alias}')
+            db.execute('UPDATE frontier SET processed=1 WHERE position=?', (position,))
+        return AffectedSources(before, after, reads,
+            db.execute('SELECT count(*) FROM aliases').fetchone()[0], working)
+    except BaseException:
+        working.close()
+        raise
 
 
 def _encoded_alias(alias):
@@ -133,6 +175,24 @@ def dependency_tables(rows, source_schema, *, first_order=0):
             pa.Table.from_pylist(aliases, schema=alias_schema()))
 
 
+class NativeAliasMembers(Collection):
+    """Ordered membership view; keep its disposable SQL owner alive."""
+    def __init__(self, working, alias):
+        self.working, self.alias = working, alias
+
+    def __iter__(self):
+        return (row[0] for row in self.working.work.connection.execute(
+            'SELECT identity FROM native_aliases WHERE alias=? ORDER BY identity', (self.alias,)))
+
+    def __len__(self):
+        return self.working.work.connection.execute(
+            'SELECT count(*) FROM native_aliases WHERE alias=?', (self.alias,)).fetchone()[0]
+
+    def __contains__(self, key):
+        return self.working.work.connection.execute(
+            'SELECT 1 FROM native_aliases WHERE alias=? AND identity=?', (self.alias, key)).fetchone() is not None
+
+
 class NativeCatalogDependencies:
     """Read only routed exact dependency partitions selected by the application.
 
@@ -143,7 +203,7 @@ class NativeCatalogDependencies:
     schema when a routing value wraps a release pin and shared schema reference.
     This reader owns no latest pointer or routing engine.
     """
-    def __init__(self, *, native, source_schema, locate_source, locate_alias, expected_members=None, expected_rows=None, max_rows=None, max_bytes=None, source_leaf_schema=None):
+    def __init__(self, *, native, source_schema, locate_source, locate_alias, expected_members=None, expected_rows=None, max_rows=None, max_bytes=None, source_leaf_schema=None, working=None):
         self.native = native
         self.source_schema = source_schema
         self.locate_source = locate_source
@@ -153,8 +213,14 @@ class NativeCatalogDependencies:
         self.expected_rows = expected_rows
         self.max_rows, self.max_bytes = max_rows, max_bytes
         self.native_rows_read = self.native_bytes_read = 0
-        self._sources, self._aliases = {}, {}
-        self._source_pins, self._alias_pins = set(), set()
+        self._working = working or DependencyWorkingSet()
+        self._sources = self._working.work.mapping('native_sources')
+        self._source_pins = self._working.work.mapping('native_source_pins')
+        self._alias_pins = self._working.work.mapping('native_alias_pins')
+        self._working.work.connection.execute('CREATE TABLE native_aliases(alias TEXT,identity TEXT,PRIMARY KEY(alias,identity))')
+
+    def close(self):
+        self._working.close()
 
     def _rows(self, pin, schema):
         count = size = 0
@@ -208,7 +274,7 @@ class NativeCatalogDependencies:
                 raise DependencyGap('Invalid stored dependency alias') from error
             pending[identity] = row
         self._sources.update(pending)
-        self._source_pins.add(pin_key)
+        self._source_pins[pin_key] = True
 
     def source(self, key):
         if key not in self._sources:
@@ -232,6 +298,7 @@ class NativeCatalogDependencies:
 
     def members(self, alias):
         encoded = _encoded_alias(alias)
+        db = self._working.work.connection
         for pin in self.locate_alias(encoded):
             pin_key = index.compact(pin)
             if pin_key in self._alias_pins:
@@ -241,14 +308,14 @@ class NativeCatalogDependencies:
                 value, key = row['alias'], row['source_id']
                 members = pending.setdefault(value, set())
                 if (not value or not key or key in members
-                        or key in self._aliases.get(value, ())):
+                        or db.execute('SELECT 1 FROM native_aliases WHERE alias=? AND identity=?', (value, key)).fetchone()):
                     raise DependencyGap('Invalid or repeated reverse dependency membership')
                 members.add(key)
-            for value, members in pending.items():
-                self._aliases.setdefault(value, set()).update(members)
-            self._alias_pins.add(pin_key)
-        result = tuple(sorted(self._aliases.get(encoded, ())))
+            db.executemany('INSERT INTO native_aliases VALUES (?,?)',
+                           ((value, key) for value, members in pending.items() for key in members))
+            self._alias_pins[pin_key] = True
+        count = db.execute('SELECT count(*) FROM native_aliases WHERE alias=?', (encoded,)).fetchone()[0]
         expected = self.expected_members(encoded) if self.expected_members is not None else None
-        if expected is not None and len(result) != expected:
+        if expected is not None and count != expected:
             raise DependencyGap('Reverse dependency member count differs from selected directory')
-        return result
+        return NativeAliasMembers(self._working, encoded)

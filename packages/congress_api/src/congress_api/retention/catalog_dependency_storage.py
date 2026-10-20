@@ -18,7 +18,7 @@ import pyarrow as pa
 from . import document_index as index
 from .catalog_dependencies import (
     affected_sources, alias_schema, dependency_schema, dependency_tables,
-    DependencyGap, NativeCatalogDependencies, _encoded_alias, _decoded_alias,
+    DependencyGap, DependencyWorkingSet, NativeCatalogDependencies, _encoded_alias, _decoded_alias,
 )
 from .partition_routing import RoutingPages, split_partition
 from .catalog_memberships import CatalogMemberships
@@ -37,6 +37,7 @@ class CatalogDependencyStorage:
         self.native, self.source_schema, self.namespace = native, source_schema, namespace
         self.max_rows, self.max_bytes = max_rows, max_bytes
         self.sources = RoutingPages(store, namespace + '-sources')
+        self.sources.objects.max_cache_entries = 16
         self.schemas = MetadataObjects(store, namespace + '-source-schemas', max_cache_entries=4)
         self.memberships = CatalogMemberships(store=store, namespace=namespace, schema=alias_schema(),
             member_column='source_id', max_rows=max_rows, max_bytes=max_bytes,
@@ -185,7 +186,9 @@ class CatalogDependencyStorage:
 
     def selected(self, selection):
         basis = self._selection(selection)
-        member_counts, pin_counts = {}, {}
+        working = DependencyWorkingSet()
+        member_counts = working.work.mapping('expected_members')
+        pin_counts = working.work.mapping('expected_pin_rows')
 
         def source_pin(key):
             return self._source_reference(self.sources.lookup(basis['source_root'], key)[1], basis)
@@ -207,15 +210,19 @@ class CatalogDependencyStorage:
                 member_counts[value] = 0
                 return ()
             member_counts[value] = leaf['count']
-            pins = [pin for _, pin in self.members.leaf_items(leaf['root'])]
-            if not pins:
-                raise DependencyGap('Missing reverse dependency member partitions')
-            return pins
+            def pins():
+                count = 0
+                for _, pin in self.members.leaf_items(leaf['root']):
+                    count += 1
+                    yield pin
+                if not count:
+                    raise DependencyGap('Missing reverse dependency member partitions')
+            return pins()
 
         return NativeCatalogDependencies(native=self.native, source_schema=self.source_schema,
             locate_source=source_pin, locate_alias=alias_pins, source_leaf_schema=self._source_leaf_schema, expected_members=member_counts.__getitem__,
             expected_rows=lambda pin: pin_counts.get(index.compact(pin)),
-            max_rows=self.max_rows, max_bytes=self.max_bytes)
+            max_rows=self.max_rows, max_bytes=self.max_bytes, working=working)
 
     @staticmethod
     def _lookup_keys(row):
