@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 from congress_api.retention.derived_files import file_identity, copy_checked
 from congress_api.retention.immutable_metadata import encoded
+from filename_compression import DEFAULT_COMPRESSION_POLICY, validate_compression
 
 
 class ViewerAssets:
@@ -258,10 +259,11 @@ class BrowsePages:
 
 class NativeSourceAssets:
     """Render only changed hash-routed source leaves through maintained helpers."""
-    def __init__(self, snapshot, assets, *, policy, metrics):
+    def __init__(self, snapshot, assets, *, policy, metrics, compression_policy=DEFAULT_COMPRESSION_POLICY):
         from congress_api.retention.partition_routing import RoutingPages
         self.snapshot, self.assets = snapshot, assets
         self.policy, self.metrics = policy, metrics
+        self.compression = validate_compression(compression_policy)
         selected = snapshot.selection['dependency']
         self.max_rows, self.max_bytes = selected['max_rows'], selected['max_arrow_bytes']
         root = selected['source_root']
@@ -331,8 +333,8 @@ class NativeSourceAssets:
         with tempfile.TemporaryDirectory(prefix='viewer-source-leaf-') as folder:
             folder = Path(folder)
             path = folder / 'filenames.parquet'
-            pq.write_table(table, path, compression='zstd', compression_level=9,
-                           row_group_size=self.policy.native_batch_rows)
+            pq.write_table(table, path, compression=self.compression.codec, compression_level=self.compression.level,
+                           row_group_size=self.compression.row_group_size)
             files = {'filenames': dict(self.assets.put_file(path, name='filenames.parquet'), rows=len(table))}
             # These are real bounded physical files. No logical-table export or
             # pretend Parquet metadata is introduced at the consumer boundary.
@@ -347,7 +349,7 @@ class NativeSourceAssets:
                     counts.seal(len(table))
                     observation_files = []
                 result = publish_details(source, folder / 'details.parquet', observation_counts=counts,
-                                         policy=self.policy, metrics=self.metrics)
+                                         policy=self.policy, metrics=self.metrics, compression_policy=self.compression)
                 for name, filename in [*observation_files, ('details', 'details.parquet')]:
                     files[name] = self.assets.put_file(folder / filename, name=name +
                         ('.parquet' if name == 'details' else '.json' if name == 'observation_index' else '.bin'))
@@ -373,10 +375,11 @@ class NativeSourceAssets:
 
 class NativeComponents:
     """Stage changed component metadata, then read each changed physical pin once."""
-    def __init__(self, snapshot, assets, browse, db, *, viewer, policy, metrics):
+    def __init__(self, snapshot, assets, browse, db, *, viewer, policy, metrics, compression_policy=DEFAULT_COMPRESSION_POLICY):
         from congress_api.retention.partition_routing import RoutingPages
         self.snapshot, self.assets, self.browse, self.db = snapshot, assets, browse, db
         self.viewer, self.policy, self.metrics = viewer, policy, metrics
+        self.compression = validate_compression(compression_policy)
         self.routes = RoutingPages(snapshot.store, 'catalog-component-selection-v2')
         self.routes.objects.max_cache_entries = 4
         db.executescript('''
@@ -524,8 +527,8 @@ class NativeComponents:
                 with tempfile.TemporaryDirectory(prefix='viewer-document-chunk-') as folder:
                     path = Path(folder) / 'documents.parquet'
                     exported = pa.Table.from_batches(document_batches, schema=schema)
-                    pq.write_table(exported, path, compression='zstd', compression_level=9,
-                                   row_group_size=self.policy.native_batch_rows)
+                    pq.write_table(exported, path, compression=self.compression.codec, compression_level=self.compression.level,
+                                   row_group_size=self.compression.row_group_size)
                     reference = dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported))
                     self.db.execute('INSERT INTO chunk_assets VALUES (?,?)', (name, encoded(reference).decode()))
         for component, raw_reference, raw_proof, raw_record in self.db.execute(
@@ -633,16 +636,16 @@ def public_component(assets, root, document_id):
     return None
 
 
-def native_requirements(viewer, policy):
+def native_requirements(viewer, policy, compression=DEFAULT_COMPRESSION_POLICY):
     """Compute reuse requirements once, separately from native operation names."""
     from dataclasses import asdict
     import inspect
     import pyarrow
     from congress_api.retention import saved_responses, docspec, catalog_partitions
     files = [Path(__file__).with_name(name) for name in
-             ('filename_observations.py', 'filename_details.py', 'filename_budget.py', 'filename_json_stream.py')]
+             ('filename_observations.py', 'filename_details.py', 'filename_budget.py', 'filename_json_stream.py', 'filename_compression.py')]
     files += [Path(__file__), *[Path(module.__file__) for module in (saved_responses, docspec, catalog_partitions)]]
-    return dict(renderer='native-viewer-v1', policy=asdict(policy), pyarrow=pyarrow.__version__,
+    return dict(renderer='native-viewer-v1', policy=asdict(policy), compression=compression._asdict(), pyarrow=pyarrow.__version__,
         implementation=sha256(encoded(dict(
             owners=[inspect.getsource(owner) for owner in (NativeSourceAssets, NativeComponents, BrowsePages,
                                                            browse_key, build_page_levels,
@@ -752,7 +755,7 @@ def iterator_inventory(assets, inventory):
 
 
 def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None, review_identities=None,
-                     prior_review_binding=None,
+                     prior_review_binding=None, compression_policy=DEFAULT_COMPRESSION_POLICY,
                      decoded_policy, stage_timings=None, stage_event=None, memory_metrics=None):
     """Prepare stable assets from one selected snapshot; never select publication."""
     from contextlib import closing
@@ -762,13 +765,14 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
     from congress_api.retention.viewer_inventory import PreparedManifest
     if previous is not None and prior_review_binding is not None:
         raise ValueError('Prior review binding is only for initial file-catalog adoption')
-    requirements = native_requirements(viewer, decoded_policy)
+    validate_compression(compression_policy)
+    requirements = native_requirements(viewer, decoded_policy, compression_policy)
     if previous is not None and previous.get('version') != 6:
         raise ValueError('Native viewer reuse requires a qualified stable publication')
     if previous is not None and previous.get('requirements') != requirements:
         raise ValueError('Viewer rendering rules changed; an explicit qualified upgrade is required')
     target = Path(target)
-    if target.exists() and (target.is_symlink() or not target.is_dir() or any(target.iterdir())):
+    if target.is_symlink() or target.exists() and (not target.is_dir() or any(target.iterdir())):
         raise ValueError('Viewer output must be a fresh empty directory')
     target.mkdir(parents=True, exist_ok=True)
     assets = ViewerAssets(target, read_asset=read_asset)
@@ -793,12 +797,12 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
         db.executescript(f'PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; '
                          f'PRAGMA cache_size=-{decoded_policy.sqlite_cache_kib};')
         components = NativeComponents(snapshot, assets, pages, db, viewer=viewer,
-                                      policy=decoded_policy, metrics=metrics)
+                                      policy=decoded_policy, metrics=metrics, compression_policy=compression_policy)
         planned = stage('component_scope', lambda: components.plan(snapshot.selection['components'], old.get('components')))
         stage('component_preparation', components.prepare)
         component_root = stage('component_metadata', lambda: components.finish(planned))
         source_root = stage('source_preparation', lambda: NativeSourceAssets(snapshot, assets,
-            policy=decoded_policy, metrics=metrics).render(snapshot.selection['dependency']['source_root'], old.get('sources')))
+            policy=decoded_policy, metrics=metrics, compression_policy=compression_policy).render(snapshot.selection['dependency']['source_root'], old.get('sources')))
         changed, = db.execute('SELECT count(*) FROM components').fetchone()
         retired, = db.execute('SELECT count(*) FROM retired').fetchone()
         def browse():

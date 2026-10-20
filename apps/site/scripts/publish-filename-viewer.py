@@ -6,8 +6,8 @@ its source bytes; filename repacking preserves schema and ordered values.
 from __future__ import annotations
 
 import argparse
+from filename_compression import CompressionPolicy, DEFAULT_COMPRESSION_POLICY, validate_compression
 from array import array
-from collections import namedtuple
 from dataclasses import asdict
 from contextlib import ExitStack
 from datetime import datetime, timezone
@@ -132,9 +132,6 @@ def write_u32(path, values):
 
 
 
-CompressionPolicy = namedtuple('CompressionPolicy', 'codec level batch_size row_group_size',
-                               defaults=('zstd', 9, 8192, 8192))
-DEFAULT_COMPRESSION_POLICY = CompressionPolicy()
 
 
 def repack_and_verify(source, destination, policy=DEFAULT_COMPRESSION_POLICY, *, decoded_policy=DEFAULT_DECODED_POLICY, metrics=None):
@@ -149,8 +146,7 @@ def repack_and_verify(source, destination, policy=DEFAULT_COMPRESSION_POLICY, *,
 
 def _repack_and_verify(source, destination, policy, owned, decoded_policy, metrics):
     """Repack one complete table and compare its exact schema and ordered values."""
-    if policy.codec != 'zstd' or not 1 <= policy.level <= 22 or min(policy.batch_size, policy.row_group_size) < 1:
-        raise ValueError('Invalid viewer compression policy.')
+    validate_compression(policy)
     # A borrowed reader keeps its original file/metadata pairing.
     if not isinstance(source, ParquetFile):
         source = owned.enter_context(open_parquet(source))
@@ -203,13 +199,14 @@ def publish(root, target, modified=None, *, validation=None, review_identities=r
 
 
 def publish_selected(snapshot, target, *, previous=None, read_asset=None, prior_review_binding=None,
+                     compression_policy=DEFAULT_COMPRESSION_POLICY,
                      review_identities=review_binding.IDENTITIES,
                      decoded_policy=DEFAULT_DECODED_POLICY, stage_timings=None,
                      stage_event=None, memory_metrics=None):
     """Prepare the maintained stable viewer directly from exact native tables."""
     from filename_native import publish_selected as prepare
     return prepare(snapshot, target, viewer=viewer, previous=previous, read_asset=read_asset,
-        prior_review_binding=prior_review_binding,
+        prior_review_binding=prior_review_binding, compression_policy=compression_policy,
         review_identities=review_identities, decoded_policy=decoded_policy,
         stage_timings=stage_timings, stage_event=stage_event, memory_metrics=memory_metrics)
 
@@ -298,7 +295,7 @@ def _publish(root, target, modified, *, validation, review_identities, compressi
     stage('observations', 'details')
     document_file = catalog.document_file
     detail_path = output / 'details.parquet'
-    detail_info = details.publish_details(source, detail_path, observation_counts=counts, policy=decoded_policy, metrics=memory_metrics)
+    detail_info = details.publish_details(source, detail_path, observation_counts=counts, policy=decoded_policy, metrics=memory_metrics, compression_policy=compression_policy)
     describe('details', detail_path, detail_info['rows'])
 
     stage('details', 'navigation')
@@ -342,7 +339,7 @@ def _publish(root, target, modified, *, validation, review_identities, compressi
     browse = browse.append_column('source_count', pa.array([len(catalog.members[value]) for value in order], type=pa.uint32()))
     browse = browse.append_column('retained', pa.array([bool(catalog.saved_responses[value]) for value in order]))
     path = output / 'browse.parquet'
-    pq.write_table(browse, path, row_group_size=1024, compression='zstd', compression_level=9)
+    pq.write_table(browse, path, row_group_size=1024, compression=compression_policy.codec, compression_level=compression_policy.level)
     describe('browse', path, len(browse))
 
     stage('browse', 'ids')
@@ -382,7 +379,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', type=Path, default=ROOT / 'apps/site/public/data/filenames')
     parser.add_argument('--fetch', action='store_true')
     parser.add_argument('--compression-level', type=int, choices=(3, 9, 19), default=DEFAULT_COMPRESSION_POLICY.level,
-                        help='Viewer Zstandard compression level (maintained default: 9).')
+                        help='Viewer Zstandard compression level (maintained default: 3).')
     args = parser.parse_args()
     publish(args.source, args.output, fetch(args.source) if args.fetch else None,
             compression_policy=DEFAULT_COMPRESSION_POLICY._replace(level=args.compression_level))
