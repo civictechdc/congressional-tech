@@ -204,6 +204,17 @@ def mutate(native, base, count, case, directory):
     return native.update(request)
 
 
+def prepare_history(native, base, steps, directory):
+    source_pin = base['dataset']['groups']['source']
+    for step in range(steps):
+        empty = directory / 'history.parquet'
+        pq.write_table(pa.Table.from_pylist([], schema=SCHEMA).cast(PHYSICAL), empty)
+        base = native.update(dict(dataset='target', operation=f'history-{step}', definition='raw-native-v1',
+            base=base['id'], keys=[STATE_KEY_FIELD], replacements=source_spec(native, empty)))
+        assert base['dataset']['groups']['source'] == source_pin
+    return base
+
+
 def validate(native, pin, count, case):
     target, maximum = max(1, count // 2), count + (case == 'append')
     seen = bytearray(maximum)
@@ -296,16 +307,7 @@ def main(args):
                     history_counters = native.counts.copy()
                     history_preparation = None
                     if history:
-                        def prepare_history():
-                            selected = base
-                            for step in range(history):
-                                empty = directory / 'history.parquet'
-                                pq.write_table(pa.Table.from_pylist([], schema=SCHEMA).cast(PHYSICAL), empty)
-                                selected = native.update(dict(dataset='target', operation=f'history-{step}', definition='raw-native-v1',
-                                    base=selected['id'], keys=[STATE_KEY_FIELD], replacements=source_spec(native, empty)))
-                                assert selected['dataset']['groups']['source'] == source_pin
-                            return selected
-                        base, history_preparation = budget.stage(prepare_history)
+                        base, history_preparation = budget.stage(lambda: prepare_history(native, base, history, directory))
                     history_commands = dict(native.counts - history_counters)
                     original_objects = {obj['path']: digest(obj['path'])
                         for obj in source_pin['objects']}

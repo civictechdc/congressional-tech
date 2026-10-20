@@ -77,3 +77,28 @@ def test_input_count_and_experiment_bounds_are_enforced(changes):
 
 def test_allowed_boundary_input_counts():
     assert experiment.checked_arguments(arguments(rows='2,1000000')) == [2, 1000000]
+
+
+def test_history_preparation_chains_operations_but_preserves_exact_source_pin(tmp_path):
+    source = {'objects': [{'path': 'exact-original-file', 'digest': 'original-digest'}]}
+    base = dict(id='initial', dataset={'groups': {'source': source}})
+
+    class Native:
+        requests = []
+
+        def hash_input(self, path):
+            assert pq.read_table(path).num_rows == 0
+            return {'digest': 'empty-input'}
+
+        def update(self, request):
+            self.requests.append(request)
+            return dict(id=request['operation'], dataset={'groups': {'source': source}})
+
+    native = Native()
+    result = experiment.prepare_history(native, base, 3, tmp_path)
+    assert [request['base'] for request in native.requests] == ['initial', 'history-0', 'history-1']
+    assert result['id'] == 'history-2'
+    assert result['dataset']['groups']['source'] == source
+    native.update = lambda request: dict(id='wrong', dataset={'groups': {'source': {'objects': []}}})
+    with pytest.raises(AssertionError):
+        experiment.prepare_history(native, base, 1, tmp_path)
