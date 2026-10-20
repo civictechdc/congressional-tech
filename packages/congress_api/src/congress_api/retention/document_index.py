@@ -1367,7 +1367,8 @@ class DocumentSources:
     def event_context(self, event, chamber=None, congress=None):
         # Absence and ambiguity are dependencies too: later meeting writes can
         # change either result. Broad event IDs cover scoped and unscoped reads.
-        self._depend('event', str(event), 'read')
+        if event is not None and str(event):
+            self._depend('event', str(event), 'read')
         keys = self.events.get(str(event), set())
         keys = [
             k
