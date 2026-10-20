@@ -1,19 +1,36 @@
-"""Materials, their editions and files, and supported links to proceedings."""
+"""Materials, their embedded files, and supported links to proceedings."""
 from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
-from .common import Chamber, Count, Extent, Model, PositiveInt, Ref, ReportedTime, Seconds, Sha256, Text, WebUrl
+from .common import Chamber, Count, Model, PositiveInt, Ref, ReportedTime, Seconds, Sha256, Text, WebUrl
 from .provenance import Record, RetainedContent
+
+DocumentCategory = Literal[
+    "transcript", "statement", "biography", "disclosure", "questions_for_record",
+    "responses_for_record", "notice", "agenda", "amendment", "vote", "report",
+    "bill_text", "witness_list", "hearing_record", "committee_print", "supporting", "errata", "other", "unknown",
+]
+
+TextCategory = Literal["transcript", "captions", "translation", "summary", "other", "unknown"]
+
+MaterialCategory = Literal[
+    "transcript", "statement", "biography", "disclosure", "questions_for_record",
+    "responses_for_record", "notice", "agenda", "amendment", "vote", "report",
+    "bill_text", "witness_list", "hearing_record", "committee_print", "supporting", "errata",
+    "captions", "translation", "summary", "other", "unknown",
+]
+
+MaterialRole = Literal[
+    "recording", "transcript", "captions", "statement", "biography", "disclosure",
+    "questions_for_record", "responses_for_record", "notice", "agenda", "amendment",
+    "vote_record", "supporting", "other", "unknown",
+]
 
 
 class DocumentDetails(Model):
     type: Literal["document"] = "document"
-    category: Literal[
-        "transcript", "statement", "biography", "disclosure", "questions_for_record",
-        "responses_for_record", "notice", "agenda", "amendment", "vote", "report",
-        "bill_text", "witness_list", "hearing_record", "committee_print", "supporting", "errata", "other", "unknown",
-    ] = "unknown"
+    category: DocumentCategory = "unknown"
 
 
 class RecordingDetails(Model):
@@ -28,23 +45,72 @@ class TextDetails(Model):
     """A distinct text product, including captions and generated transcripts."""
 
     type: Literal["text"] = "text"
-    category: Literal["transcript", "captions", "translation", "summary", "other", "unknown"] = "unknown"
+    category: TextCategory = "unknown"
     production: Literal["publisher", "human", "automatic", "mixed", "unknown"] = "unknown"
 
 
+class ContentSchema(Model):
+    name: Text
+    version: Text
+    url: WebUrl | None = None
+
+
+class MaterialFile(Model):
+    """An embedded file/encoding of a material, including viewer-data saved copies."""
+
+    url: WebUrl | None = None
+    resolved_url: WebUrl | None = None
+    role: Literal["landing", "download", "player", "stream", "api", "other", "unknown"] = "unknown"
+    format_label: str | None = None
+    media_type: str | None = None
+    encoding: str | None = None
+    byte_size: Count | None = None
+    sha256: Sha256 | None = None
+    saved_copy_sha256: Sha256 | None = None
+    saved_filename: str | None = None
+    usable: bool | None = None
+    recovery_status: Literal["captured", "recovered", "group_recovered", "error_page", "unverified"] | None = None
+    version_label: str | None = None
+    published_at: ReportedTime | None = None
+    duration_seconds: Seconds | None = None
+    retained: RetainedContent | None = None
+    content_schema: ContentSchema | None = None
+
+    @model_validator(mode="after")
+    def retained_digest_matches(self):
+        if self.retained and self.sha256 and self.retained.sha256 != self.sha256:
+            raise ValueError("file and retained content must have the same digest")
+        return self
+
+
 class Material(Record):
-    """One described work/recording/track; it may have no accessible file or meeting."""
+    """One described work/recording/track with embedded files and Explorer/Viewer metadata."""
 
     kind: Literal["material"] = "material"
     title: str | None = None
     congress: PositiveInt | None = None
     chamber: Chamber = "unknown"
     proceeding_dates: tuple[ReportedTime, ...] = ()
-    details: Annotated[DocumentDetails | RecordingDetails | TextDetails, Field(discriminator="type")]
+    # Type, category, provider and channel live only here; a copy beside it
+    # could disagree after source records are merged field by field.
+    details: Annotated[DocumentDetails | RecordingDetails | TextDetails, Field(discriminator="type")] = DocumentDetails()
+    document_type: str | None = None
+    source_document_groups: tuple[str, ...] = ()
+    published_at: ReportedTime | None = None
+    source_modified_at: ReportedTime | None = None
+    generated_at: ReportedTime | None = None
+    languages: tuple[Text, ...] = ()
+    duration_seconds: Seconds | None = None
+    page_count: Count | None = None
+    files: tuple[MaterialFile, ...] = ()
+    meeting_ids: tuple[Text, ...] = ()
+    appearance_ids: tuple[Text, ...] = ()
+    committee_ids: tuple[Text, ...] = ()
+    action_ids: tuple[Text, ...] = ()
 
 
 class MaterialVersion(Record):
-    """An edition or revision of a material, not a new version on every crawl."""
+    """An edition or revision of a material, retained when distinct editions require separate identity."""
 
     kind: Literal["material_version"] = "material_version"
     material: Ref[Literal["material"]]
@@ -53,7 +119,7 @@ class MaterialVersion(Record):
     published_at: ReportedTime | None = None
     source_modified_at: ReportedTime | None = None
     generated_at: ReportedTime | None = None
-    languages: tuple[Text, ...] = ()  # BCP 47 tags when known; preserve raw labels in evidence.
+    languages: tuple[Text, ...] = ()
     duration_seconds: Seconds | None = None
     page_count: Count | None = None
 
@@ -63,26 +129,8 @@ class MaterialLocation(Model):
     role: Literal["landing", "download", "player", "stream", "api", "other", "unknown"] = "unknown"
 
 
-class XmlRoot(Model):
-    """Actual XML root metadata; amendment-doc is not an amendment identifier."""
-
-    local_name: Text
-    namespace: str | None = None
-
-
-class ContentSchema(Model):
-    name: Text
-    version: Text
-    url: WebUrl | None = None
-
-
 class Representation(Record):
-    """A file/encoding of one version; a reported URL does not prove fetched bytes.
-
-    Different formats can encode the same version. Share a representation across
-    source listings only with evidence of identity; identical basenames do not
-    establish it. Locations retain exact provider URLs, never guessed suffixes.
-    """
+    """A standalone file/encoding record when tracked independently of Material.files."""
 
     kind: Literal["representation"] = "representation"
     version: Ref[Literal["material_version"]]
@@ -92,8 +140,9 @@ class Representation(Record):
     encoding: str | None = None
     byte_size: Count | None = None
     sha256: Sha256 | None = None
+    saved_copy_sha256: Sha256 | None = None
+    saved_filename: str | None = None
     retained: RetainedContent | None = None
-    xml_root: XmlRoot | None = None
     content_schema: ContentSchema | None = None
 
     @model_validator(mode="after")
@@ -101,6 +150,21 @@ class Representation(Record):
         if self.retained and self.sha256 and self.retained.sha256 != self.sha256:
             raise ValueError("representation and retained content must have the same digest")
         return self
+
+
+def representation_files(representation, *, version_label=None, published_at=None, duration_seconds=None):
+    """The embedded files equivalent to a standalone representation, one per location.
+
+    A retained body without a public location is still a file of the material.
+    """
+    values = dict(media_type=representation.media_type, format_label=representation.format_label,
+                  encoding=representation.encoding, byte_size=representation.byte_size, sha256=representation.sha256,
+                  saved_copy_sha256=representation.saved_copy_sha256, saved_filename=representation.saved_filename,
+                  retained=representation.retained, content_schema=representation.content_schema,
+                  version_label=version_label, published_at=published_at, duration_seconds=duration_seconds)
+    if not representation.locations:
+        return (MaterialFile(**values),)
+    return tuple(MaterialFile(url=location.url, role=location.role, **values) for location in representation.locations)
 
 
 class MaterialLink(Record):
@@ -113,44 +177,14 @@ class MaterialLink(Record):
         "meeting", "occurrence", "appearance", "committee_term", "legislative_item",
         "amendment", "amendment_group", "vote",
     ]]
-    role: Literal[
-        "recording", "transcript", "captions", "statement", "biography", "disclosure",
-        "questions_for_record", "responses_for_record", "notice", "agenda", "amendment",
-        "vote_record", "supporting", "other", "unknown",
-    ] = "unknown"
-    coverage: Literal["full", "partial", "unknown"] = "unknown"  # For this subject, not the whole file.
-    extent: Extent | None = None
-
-    @model_validator(mode="after")
-    def locate_exact_version(self):
-        if self.extent is not None and self.version is None:
-            raise ValueError("a page/time extent requires an exact material version")
-        return self
+    role: MaterialRole = "unknown"
+    coverage: Literal["full", "partial", "unknown"] = "unknown"
 
 
 class MaterialRelation(Record):
-    """A directed relationship between particular material versions.
-
-    Example: generated transcript subject -> recording related, derived_from.
-    Standalone printed transcripts do not require this relationship.
-    """
+    """A directed relationship between particular materials or material versions."""
 
     kind: Literal["material_relation"] = "material_relation"
-    subject: Ref[Literal["material_version"]]
-    related: Ref[Literal["material_version"]]
+    subject: Ref[Literal["material", "material_version"]]
+    related: Ref[Literal["material", "material_version"]]
     relation: Literal["derived_from", "transcribes", "translation_of", "corrects", "part_of", "alternate_of"]
-    subject_extent: Extent | None = None
-    related_extent: Extent | None = None
-
-
-class SpeakerAttribution(Record):
-    """Optional bridge from a transcript's local speaker key to an appearance.
-
-    Transcript turns and text remain in the existing body schema. A local speaker
-    can be unresolved; do not allocate a Person just to fill this reference.
-    """
-
-    kind: Literal["speaker_attribution"] = "speaker_attribution"
-    representation: Ref[Literal["representation"]]
-    speaker_key: Text
-    appearance: Ref[Literal["appearance"]]

@@ -17,7 +17,8 @@ from botocore.exceptions import ClientError
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
+sys.path[:0] = [str(ROOT / 'apps/site/scripts'), str(ROOT / 'tests')]
+_NATIVE_FIXTURES = {}
 import viewer_publication.attempt as attempts
 from viewer_publication.continuation import Continuation, DurableJournal
 
@@ -30,6 +31,8 @@ class Remote:
         self.objects = {str(path.relative_to(source)): path.read_bytes() for path in source.rglob('*')
                         if path.is_file() and not path.is_relative_to(source / 'public')}
         self.versions = {key: 'v0-' + hashlib.sha256(raw).hexdigest() for key, raw in self.objects.items()}
+        self.meta = SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts':1}),
+                                    events=SimpleNamespace(register_first=lambda *args, **kwargs: None))
         self.gets = Counter(); self.heads = Counter()
         self.puts = []; self.after_put = None; self.reject_journal = False
     def get_object(self, *, Bucket, Key):
@@ -65,9 +68,22 @@ class Remote:
 @pytest.fixture(scope='module')
 def source(tmp_path_factory):
     root = tmp_path_factory.mktemp('attempt-source')
-    subprocess.run([sys.executable, str(ROOT / 'apps/site/scripts/filename-test-fixture.py'), str(root)],
-                   capture_output=True, check=True)
+    from congress_api.retention.catalog_cache import LocalStore
+    from test_catalog_coalesced_batches import Native
+    from test_native_catalog_selection import seed
+    native = Native()
+    runtime=root/'native-runtime-input';runtime.write_bytes(b'explicit fixture native runtime')
+    native.execution_files=lambda: (runtime,)
+    seed(root, LocalStore(root), native)
+    _NATIVE_FIXTURES[str(root)] = native
     return root
+
+
+@pytest.fixture(autouse=True)
+def configured_native_fixture(source, monkeypatch):
+    from congress_api.retention.docspec import NativeDatasets
+    monkeypatch.setenv('DOCSPEC_CONFIG', 'explicit-test-native-runtime.json')
+    monkeypatch.setattr(NativeDatasets, 'from_config', classmethod(lambda cls, path: _NATIVE_FIXTURES[str(source)]))
 
 
 @pytest.fixture
@@ -98,11 +114,14 @@ def publish(ready, **kwargs):
                             verify_artifact=custody, probe=lambda *args: None, **kwargs)
 
 
-def test_preparation_hashes_every_id_shard_and_rejects_same_size_corruption(ready):
+def test_preparation_hashes_every_partition_and_rejects_same_size_corruption(ready,source):
     _, root, _ = ready
     receipt, manifest, _ = attempts.verify_prepared(publisher, root)
-    shards = [relative for relative in receipt['files'] if '/ids/' in relative]
-    assert len(shards) == 256
+    native_inputs=receipt['binding']['native_execution']
+    runtime=source/'native-runtime-input'
+    assert native_inputs=={str(runtime.resolve()):dict(bytes=runtime.stat().st_size,sha256=hashlib.sha256(runtime.read_bytes()).hexdigest())}
+    shards = [relative for relative in receipt['files'] if relative.endswith('.parquet')]
+    assert shards and not any('/ids/' in relative for relative in receipt['files'])
     path = next(root / relative for relative in shards if (root / relative).stat().st_size)
     raw = bytearray(path.read_bytes()); raw[5] ^= 1; path.write_bytes(raw)
     with pytest.raises(ValueError, match='file changed'):
@@ -240,7 +259,9 @@ def test_recovery_only_preparation_and_runner_loss_never_rebuild_catalog(ready, 
     root = tmp_path / 'recovery-prepared'
     prepared = attempts.prepare(publisher, remote, root, run_id='123', run_attempt='2', public_url=publisher.PUBLIC_URL)
     assert prepared['mode'] == 'recovery'
-    assert set(json.loads((root / 'preparation.json').read_text())['files']) == {'publication/manifest.json', 'publication/recovery-prepared.json'}
+    files = json.loads((root / 'preparation.json').read_text())['files']
+    assert len(files) == 4 and {'publication/manifest.json', 'publication/recovery-prepared.json'} <= files.keys()
+    assert not any(path.endswith('.parquet') for path in files)
     monkeypatch.setattr(publisher, 'index_recoveries', lambda *a, **kw: pytest.fail('Second recovery scan during publish/resume'))
     saved = tmp_path / 'artifact-recovery'; shutil.copytree(root, saved)
     def die(key):
@@ -487,7 +508,7 @@ def test_each_restored_inventory_file_hashes_once_and_reuses_only_issued_proof(r
         attempts.verify_prepared(publisher, root, validation=copy(verified.validation))
     with pytest.raises(ValueError, match='issued proof'):
         attempts.verify_prepared(publisher, root, validation=receipt['files'])
-    path = root / next(relative for relative, item in receipt['files'].items() if '/ids/' in relative and item['bytes'])
+    path = root / next(relative for relative, item in receipt['files'].items() if relative.endswith('.parquet') and item['bytes'])
     raw = path.read_bytes(); path.write_bytes(raw[:-1] + bytes([raw[-1] ^ 1]))
     with pytest.raises(ValueError, match='custody'):
         attempts.verify_prepared(publisher, root, validation=verified.validation)
@@ -518,3 +539,102 @@ def test_oversized_output_refuses_before_artifact_acceptance_or_remote_write(sou
         attempts.prepare(publisher,remote,root,run_id='123',run_attempt='1',public_url=publisher.PUBLIC_URL)
     assert remote.puts==[] and not (root/'preparation.json').exists()
     assert json.loads((root/'continuation.json').read_text())['phases']=={}
+
+
+def test_preparation_refuses_unadopted_file_catalog_without_rebuilding(source, tmp_path):
+    remote=Remote(source)
+    remote.objects['indexes/catalog.json']=publisher.encoded(dict(version=1,catalog_id='old'))
+    remote.versions['indexes/catalog.json']='old'
+    with pytest.raises(ValueError,match='explicitly adopted native'):
+        attempts.prepare(publisher,remote,tmp_path/'refused',run_id='1',run_attempt='1',public_url=publisher.PUBLIC_URL)
+    assert not (tmp_path/'refused').exists() and not remote.puts
+    assert not any(key.endswith('.parquet') for key in remote.gets)
+
+
+def test_preparation_requires_explicit_native_runtime_before_creating_output(source, tmp_path, monkeypatch):
+    remote=Remote(source);monkeypatch.delenv('DOCSPEC_CONFIG')
+    with pytest.raises(ValueError,match='explicit DOCSPEC_CONFIG'):
+        attempts.prepare(publisher,remote,tmp_path/'refused',run_id='1',run_attempt='1',public_url=publisher.PUBLIC_URL)
+    assert not (tmp_path/'refused').exists() and not remote.puts
+
+
+def test_preparation_rechecks_exact_native_selector_before_payload_reads(source, tmp_path, monkeypatch):
+    remote=Remote(source);original=remote.get_object;count=0
+    def read(**request):
+        nonlocal count
+        if request['Key']=='indexes/catalog.json':
+            count+=1
+            if count==2:remote.versions[request['Key']]='advanced'
+        return original(**request)
+    monkeypatch.setattr(remote,'get_object',read)
+    with pytest.raises(ValueError,match='Catalog changed before'):
+        attempts.prepare(publisher,remote,tmp_path/'refused',run_id='1',run_attempt='1',public_url=publisher.PUBLIC_URL)
+    assert not (tmp_path/'refused').exists() and not remote.puts
+
+
+def test_recovery_preparation_keeps_noncanonical_retained_manifest_bytes(ready, tmp_path):
+    remote, _, _ = ready
+    assert publish(ready)['status'] == 'published'
+    key=publisher.PREFIX+'manifest.json'
+    pointer=json.loads(remote.objects[key])
+    manifest_key=publisher.PREFIX+pointer['manifest']
+    raw=json.dumps(json.loads(remote.objects[manifest_key]),indent=2,sort_keys=False).encode()+b'\n'
+    remote.objects[manifest_key]=raw;remote.versions[manifest_key]='noncanonical-release'
+    pointer['recovery_inputs']['viewer_manifest_sha256']=hashlib.sha256(raw).hexdigest()
+    remote.objects[key]=publisher.encoded(pointer);remote.versions[key]='retained-pointer'
+    remote.objects[publisher.ACCEPTED_KEY]=publisher.encoded(dict(version=1,recoveries=[]))
+    remote.versions[publisher.ACCEPTED_KEY]='explicit-empty-mapping'
+    target=tmp_path/'noncanonical-recovery'
+    result=attempts.prepare(publisher,remote,target,run_id='124',run_attempt='1',public_url=publisher.PUBLIC_URL)
+    assert result['mode']=='recovery'
+    assert (target/'publication/manifest.json').read_bytes()==raw
+    attempts.verify_prepared(publisher,target)
+
+
+def test_native_runtime_change_during_preparation_refuses_before_acceptance(source,tmp_path,monkeypatch):
+    import viewer_publication.native as preparation
+    native=_NATIVE_FIXTURES[str(source)]
+    path=Path(native.execution_files()[0]);before=path.read_bytes()
+    original=preparation.prepare_native_output
+    def changed(*args,**kwargs):
+        result=original(*args,**kwargs);path.write_bytes(before+b'changed');return result
+    monkeypatch.setattr(preparation,'prepare_native_output',changed)
+    root=tmp_path/'refused'
+    try:
+        with pytest.raises(ValueError,match='custody changed'):
+            attempts.prepare(publisher,Remote(source),root,run_id='runtime',run_attempt='1',public_url=publisher.PUBLIC_URL)
+        assert not (root/'preparation.json').exists()
+    finally:path.write_bytes(before)
+
+
+def test_explicit_renderer_upgrade_resumes_existing_preparation_with_exact_original_conditions(ready,source,tmp_path,monkeypatch):
+    import filename_native
+    remote,_,_=ready
+    publish(ready)
+    remote.puts.clear()
+    original_requirements=filename_native.native_requirements
+    monkeypatch.setattr(filename_native,'native_requirements',lambda *a,**k:{**original_requirements(*a,**k),'renderer':'fixture-qualified-upgrade'})
+    original=filename_native.publish_selected
+    native=_NATIVE_FIXTURES[str(source)]
+    stopped=[]
+    def stop(value):
+        if value['event']=='renderer_task_completed' and value.get('task','').startswith('component-chunk:'):
+            stopped.extend(native.reads);raise RuntimeError('worker stopped')
+    def interrupted(*args,**kwargs):
+        kwargs['stage_event']=stop
+        return original(*args,**kwargs)
+    monkeypatch.setattr(filename_native,'publish_selected',interrupted)
+    root=tmp_path/'upgrade';native.reads.clear()
+    with pytest.raises(RuntimeError,match='worker stopped'):
+        attempts.prepare(publisher,remote,root,run_id='upgrade',run_attempt='1',public_url=publisher.PUBLIC_URL,renderer_upgrade=True)
+    assert not remote.puts
+    native.reads.clear();monkeypatch.setattr(filename_native,'publish_selected',original)
+    result=attempts.prepare(publisher,remote,root,run_id='upgrade',run_attempt='1',public_url=publisher.PUBLIC_URL,
+        renderer_upgrade=True,resume_preparation=True)
+    assert not set(stopped)&set(native.reads) and not remote.puts
+    receipt,manifest,_=attempts.verify_prepared(publisher,root)
+    assert receipt['binding']['renderer_upgrade'] and manifest['requirements']['renderer']=='fixture-qualified-upgrade'
+    native.reads.clear()
+    assert attempts.prepare(publisher,remote,root,run_id='upgrade',run_attempt='1',public_url=publisher.PUBLIC_URL,
+        renderer_upgrade=True,resume_preparation=True)==result
+    assert not native.reads and not remote.puts

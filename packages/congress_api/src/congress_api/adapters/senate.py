@@ -66,6 +66,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
     The producer's page match is derived evidence; a listing date is not used.
     """
     committee_terms, meeting_records = committee_terms or {}, meeting_records or {}
+    emitted_meetings = dict(meeting_records)  # The latest emission of each meeting.
     occurrences = dict(occurrence_records or {})
     state = prepared_state(state)
     events = {event["url"]: event for event in official_events(state)}
@@ -188,9 +189,12 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                                 explanation=f"Committee {official['committee_code']} in Congress {official['congress']} is missing.", selector="/event")
                 else:
                     kind = meeting_type(event)[0]
+                    access, _ = meeting_access(event)
                     native_key = f"senate.committee|{url}"
                     meeting = Meeting(id=context.ids("meeting", native_key), title=event["title"], congress=official["congress"],
                                       chamber="joint" if official["committee_code"].startswith("j") else "senate", meeting_type=kind,
+                                      source_type=event.get("type") or None, access=access,
+                                      scheduled_start=reported_time(selected_date(url, event)),
                                       committees=(ConveningCommittee(committee=term, role="host", provenance=event_evidence),),
                                       identifiers=(Identifier(scheme="senate.committee:page", value=url),), provenance=event_evidence)
                     yield meeting
@@ -205,6 +209,7 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     yield MeetingOccurrence(id=context.ids("occurrence", native_key + "|sitting"), meeting=ref(meeting),
                                             scheduled_start=reported_time(selected_date(url, event)), access=access,
                                             provenance=occurrence_evidence, field_evidence=date_fields)
+                    emitted_meetings[meeting.id] = meeting
                     matched[meeting.id] = (ref(meeting), event_evidence)
             elif event:
                 for meeting_ref, match_evidence in matched.values():
@@ -224,7 +229,8 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                                               selection_reason="The convening committee explicitly describes its proceeding as a Roundtable.")
                         fields = tuple(field for field in fields if field.path != "/meeting_type") + (field,)
                         kind = "roundtable"
-                    yield original.model_copy(update={"meeting_type": kind, "field_evidence": fields, "identifiers": identifiers, "provenance": evidence})
+                    emitted_meetings[meeting_ref.id] = original.model_copy(update={"meeting_type": kind, "field_evidence": fields, "identifiers": identifiers, "provenance": evidence})
+                    yield emitted_meetings[meeting_ref.id]
             if not matched and record.get("candidate_events"):
                 yield issue("possible-native-event", "unlinked", "The official event may already have a Congress.gov meeting.",
                             explanation="The same committee has a retained meeting on this date, but the page match is not established; a duplicate meeting was not created.",
@@ -265,6 +271,11 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     updated = updated.model_copy(update={"field_evidence": tuple(f for f in original.field_evidence if f.path != "/access") + (field,)})
                     occurrences[updated.id] = updated
                     yield updated
+                    proceeding = emitted_meetings.get(meeting.id)
+                    if (proceeding is not None and proceeding.access == "unknown" and updated.access != "unknown"
+                            and proceeding.scheduled_start and proceeding.scheduled_start.date == access_observation.day):
+                        emitted_meetings[meeting.id] = proceeding.model_copy(update={"access": updated.access})
+                        yield emitted_meetings[meeting.id]
 
             for message_index, message in no_broadcast_notices(page):
                 notice_evidence = context.evidence(source, selector=f"/page_metadata/video_messages/{message_index}")
@@ -352,7 +363,8 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                         if owner:
                             label = kind.capitalize() if kind != "other" else "Document"
                             title = f"{owner} — {label}"
-                built = material_records(context, ev, document_key, title=title, urls=urls, details=DocumentDetails(category=cat))
+                built = material_records(context, ev, document_key, title=title, urls=urls, details=DocumentDetails(category=cat),
+                                         source_document_groups=("Witness documents",) if metadata.get("witness_indexes") else ())
                 media_types = {attributes.get("type") for attributes in metadata.get("attributes", []) if isinstance(attributes, dict) and attributes.get("type")}
                 if len(media_types) == 1:
                     built = [item.model_copy(update={"media_type": next(iter(media_types))})

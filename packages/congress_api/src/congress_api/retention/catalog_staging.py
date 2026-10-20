@@ -1,8 +1,8 @@
 """Disposable working state for derived catalogs.
 
 Parquet streams filename rows; SQLite indexes shared facts and document groups.
-Both live in temporary directories. Retained receipts and published Parquet
-remain the authorities; staging never survives publication.
+The working indexes are temporary. An explicitly retained preparation may keep
+completed component summaries for retry; published tables remain authoritative.
 """
 from collections.abc import ItemsView, Mapping, MutableMapping, ValuesView
 import json
@@ -10,6 +10,73 @@ import pickle
 import sqlite3
 
 _MISSING = object()
+
+
+def _seal_group_file(path, data):
+    """Keep a completed local grouping value atomically and durably."""
+    import os
+    from pathlib import Path
+    from tempfile import NamedTemporaryFile
+    with NamedTemporaryFile(prefix='group-', suffix='.partial', dir=path.parent, delete=False) as pending:
+        pending.write(data)
+        pending.flush()
+        os.fsync(pending.fileno())
+    try:
+        try:
+            os.link(pending.name, path)
+        except FileExistsError:
+            if path.read_bytes() != data:
+                raise ValueError('Retained grouping inputs differ from completed preparation')
+        folder = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(folder)
+        finally:
+            os.close(folder)
+    finally:
+        Path(pending.name).unlink(missing_ok=True)
+
+
+def _read_group_summary(directory, component, count, schema):
+    import pyarrow as pa
+    from .derived_files import file_identity, check_identity
+    receipt = directory / f'component-{component}.json'
+    if not receipt.exists():
+        return None
+    with receipt.open('rb') as saved:
+        payload = saved.read(65537)
+    if len(payload) > 65536:
+        raise ValueError('Invalid completed grouping summary receipt')
+    value = json.loads(payload)
+    if not isinstance(value, dict):
+        raise ValueError('Invalid completed grouping summary receipt')
+    digest = value.get('sha256')
+    if (value.get('component') != component or value.get('source_rows') != count
+            or type(value.get('reused')) is not bool or not isinstance(digest, str)
+            or len(digest) != 64 or any(char not in '0123456789abcdef' for char in digest)):
+        raise ValueError('Invalid completed grouping summary receipt')
+    path = directory / (digest + '.arrow')
+    check_identity(file_identity(path), value, 'completed grouping summary')
+    with pa.memory_map(str(path), 'r') as source, pa.ipc.open_file(source) as reader:
+        if not reader.schema.equals(schema, check_metadata=True) or reader.num_record_batches != 1:
+            raise ValueError('Invalid completed grouping summary schema')
+        batch = reader.get_batch(0)
+        if len(batch) != 1:
+            raise ValueError('Invalid completed grouping summary row count')
+        return batch.to_pylist()[0], value['reused']
+
+
+def _retain_group_summary(directory, component, count, schema, document, reused):
+    from hashlib import sha256
+    import pyarrow as pa
+    from .immutable_metadata import encoded
+    sink = pa.BufferOutputStream()
+    with pa.ipc.new_file(sink, schema) as writer:
+        writer.write_table(pa.Table.from_pylist([document], schema=schema))
+    data = sink.getvalue().to_pybytes()
+    digest = sha256(data).hexdigest()
+    _seal_group_file(directory / (digest + '.arrow'), data)
+    _seal_group_file(directory / f'component-{component}.json', encoded(dict(
+        component=component, source_rows=count, reused=reused, bytes=len(data), sha256=digest)))
 
 
 def sparse_row(row):
@@ -261,7 +328,7 @@ class ParquetRows:
             yield from batch
 
 
-def write_grouped_indexes(destination, rows, schema, *, working, previous=None, previous_documents=None, reuse_groups=True):
+def write_grouped_indexes(destination, rows, schema, *, working, previous=None, previous_documents=None, reuse_groups=True, catalog_id=None, preserve_columns=False, checkpoint_directory=None):
     """Compute alias components on disk; combine only affected components.
 
     Every current endpoint/body edge participates, including transitive bridges.
@@ -284,6 +351,10 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
     policy.update(Path(__file__).read_bytes())
     policy.update(inspect.getsource(index.fill_document_kind).encode())
     grouping_fingerprint = policy.hexdigest()
+    checkpoint = Path(checkpoint_directory) if checkpoint_directory is not None else None
+    if checkpoint is not None and (not isinstance(catalog_id, str) or not catalog_id):
+        raise ValueError('Resumable grouping requires an explicit stable catalog identity')
+    input_digest = sha256() if checkpoint is not None else None
     previous_schema = (previous.schema_arrow if hasattr(previous,'schema_arrow') else previous.schema) if previous is not None else None
     reusable = reuse_groups and previous_schema is not None
 
@@ -303,7 +374,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
     def normalize(row):
         index.apply_capture_record_role(row)
         index.restore_filename_kind(row)
-        row['source_id'] = sha256(index.compact([row.get(k) for k in ('body_key','filename','source_url')]).encode()).hexdigest()
+        row['source_id'] = index.source_identity(row)
         row['record_role'] = row.get('record_role') or ['document']
         row['format'] = (None if row['record_role'] == ['capture-state'] else
                          row.get('body_format') or index.file_formats(row.get('media_type'), row.get('extension')))
@@ -331,11 +402,15 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                 # representation consistent with the signature, without
                 # reselecting the cached kind or its provenance.
                 original['filename_document_kind'] = row.get('filename_document_kind')
+                if input_digest is not None:
+                    input_digest.update(pickle.dumps(('prior-source', original)))
                 db.execute('INSERT OR REPLACE INTO prior_sources VALUES (?,?,?,?)',
                            (row['source_id'], original.get('document_id'), signature(row), pickle.dumps(original)))
         documents = previous_documents
         for batch in documents.iter_batches(batch_size=256):
             for row in batch.to_pylist():
+                if input_digest is not None:
+                    input_digest.update(pickle.dumps(('prior-document', row)))
                 db.execute('INSERT OR REPLACE INTO prior_documents VALUES (?,?)', (row['document_id'], pickle.dumps(sparse_row(row))))
 
     # Only integer parent pointers are resident: eight bytes per source row.
@@ -365,19 +440,15 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
     index.progress.report('group_documents', completed=0, unit='source_rows')
     for key, row in enumerate(rows, 1):
         normalize(row)
-        staged.append(sparse_row(row))
+        stored = sparse_row(row)
+        staged.append(stored)
+        if input_digest is not None:
+            input_digest.update(pickle.dumps(('source', stored)))
         parents.append(key)
         if reusable and previous_documents is not None:
             db.execute('INSERT INTO current_sources VALUES (?,?,?)', (key,row['source_id'],signature(row)))
-        endpoint = index.entry_key(row.get('filename'), row.get('source_url'), key)
-        resolved = row.get('source_resolved_url')
-        if endpoint == ('row', key) and row.get('source_url') and resolved and len(resolved) == 1:
-            endpoint = index.entry_key(row.get('filename'), resolved[0], key)
-        join('endpoint', endpoint, key)
-        body = index.document_body(row.get('body_key'), row.get('media_type'), row.get('http_status'),
-                                   row.get('capture_outcome'), row.get('body_format'), row)
-        if body:
-            join('body', body, key)
+        for kind, alias in index.group_aliases(row, key):
+            join(kind, alias, key)
         if key % 4096 == 0:
             index.progress.report('group_documents', completed=key, unit='source_rows')
     db.executemany('INSERT INTO members VALUES (?,?)', ((root(key),key) for key in range(1,len(parents))))
@@ -388,7 +459,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
 
     # Determine the final schema once, then write bounded source batches. The
     # old assembler remains the semantic oracle for one connected component.
-    if 'publication_code_code' in schema.names:
+    if 'publication_code_code' in schema.names and not preserve_columns:
         redundant = all(not row.get('publication_code_code') or row['publication_code_code'] == row.get('publication_type') for row in staged)
         if redundant:
             schema = pa.schema([field for field in schema if field.name != 'publication_code_code'], metadata=schema.metadata)
@@ -402,11 +473,19 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
             schema = schema.append(pa.field(field,index.STRINGS))
     fields = [*[field for field in schema if field.name not in {'document_id','source_id','format'}],
               pa.field('source_id',pa.string()),pa.field('document_id',pa.string()),pa.field('format',index.STRINGS)]
-    metadata = {**(schema.metadata or {}),b'catalog_id':uuid4().hex.encode(),b'format_version':b'10',
+    metadata = {**(schema.metadata or {}),b'catalog_id':(catalog_id or uuid4().hex).encode(),b'format_version':b'10',
                 b'document_grouping_fingerprint':grouping_fingerprint.encode()}
     source_schema = pa.schema(fields,metadata=metadata)
     document_schema = pa.schema([*fields,*[(field,index.STRINGS) for field in ('filenames','source_urls','body_keys')]],
                                 metadata={**metadata,b'format_version':b'5'})
+    if checkpoint is not None:
+        from .immutable_metadata import encoded
+        checkpoint.mkdir(parents=True, exist_ok=True)
+        _seal_group_file(checkpoint / 'grouping-input.json', encoded(dict(version=1,
+            input_sha256=input_digest.hexdigest(), source_schema_sha256=sha256(source_schema.serialize()).hexdigest(),
+            document_schema_sha256=sha256(document_schema.serialize()).hexdigest(),
+            grouping_fingerprint=grouping_fingerprint, reuse_groups=reuse_groups,
+            preserve_columns=preserve_columns, catalog_id=catalog_id)))
     reused = recomputed = document_count = 0
     pending = []
     temporary_source = destination.with_suffix('.parquet.tmp')
@@ -468,7 +547,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         document = {field:preferred.get(field) for field in ('source_id','body_key','filename','source_url')}
         document.update(document_id=document_id,
             filename=index.display_filename((preferred.get('recovered_filename') or [preferred.get('filename')])[0]))
-        document.update({field:sorted(items) for field,items in values.items() if items})
+        document.update({field:index.merge_values(field, items) for field,items in values.items() if items})
         paired = index.merge_values('source_occurrences', list(occurrences.values()))
         if paired:
             document['source_occurrences'] = paired
@@ -509,11 +588,12 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                     SELECT c.component,c.source_count,p.value FROM components c
                     LEFT JOIN prior_documents p ON p.document_id=c.previous_document ORDER BY c.component'''):
                 resident_rows = None
-                document = pickle.loads(previous_payload) if previous_payload is not None else None
-                is_reused = document is not None
+                completed = _read_group_summary(checkpoint, component, count, document_schema) if checkpoint is not None else None
+                document = completed[0] if completed is not None else pickle.loads(previous_payload) if previous_payload is not None else None
+                is_reused = completed[1] if completed is not None else document is not None
                 if is_reused:
                     reused += 1
-                else:
+                elif completed is None:
                     # Most components are small. Decode those rows once while
                     # retaining the streaming path for large evidence groups.
                     if count <= 128:
@@ -528,6 +608,8 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                             resident_rows = [pickle.loads(payload) for payload in payloads]
                         del payloads
                     document = combine(component)
+                    recomputed += 1
+                else:
                     recomputed += 1
                 document_count += 1
                 if document_count % 1000 == 0:
@@ -548,6 +630,8 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                         pending = []
                 if is_reused:
                     document['filename_document_kind'] = sorted(filename_claims) or None
+                if checkpoint is not None and completed is None:
+                    _retain_group_summary(checkpoint, component, count, document_schema, document, is_reused)
                 db.execute('INSERT INTO output_documents VALUES (?,?,?)', ((document.get('filename') or '').casefold(), document['document_id'], pickle.dumps(document)))
             if pending:
                 writer.write_table(pa.Table.from_pylist(pending,schema=source_schema))

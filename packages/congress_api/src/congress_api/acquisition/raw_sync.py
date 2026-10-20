@@ -125,14 +125,20 @@ async def run_async(
         if link not in context.get(link['url'], []):
             context.setdefault(link['url'], []).append(link)
     now = datetime.now(timezone.utc)
-    queue = deque(sorted(
-        (s for s in archive.state.values()
-         if (urls is None or s['url'] in urls)
-         and (True if reinspect_retained else s['outcome'] in retry_outcomes if retry_outcomes else
-             s['outcome'] == 'pending' if initial_only else s['outcome'] not in NON_DOWNLOAD_OUTCOMES)
-         and (reinspect_retained or retry_now or not s.get('next_attempt_at') or datetime.fromisoformat(s['next_attempt_at']) <= now)),
-        key=lambda s: (s['outcome'] == 'retained', s.get('checked_at') or '', s['url'])))
-    refusals = []
+    if hasattr(archive, 'capture_queue'):
+        candidates, refusals = archive.capture_queue(now=now, limit=limit, urls=urls,
+            retry_outcomes=retry_outcomes, initial_only=initial_only,
+            reinspect_retained=reinspect_retained, retry_now=retry_now)
+        queue = deque(candidates)
+    else:
+        queue = deque(sorted(
+            (s for s in archive.state.values()
+             if (urls is None or s['url'] in urls)
+             and (True if reinspect_retained else s['outcome'] in retry_outcomes if retry_outcomes else
+                 s['outcome'] == 'pending' if initial_only else s['outcome'] not in NON_DOWNLOAD_OUTCOMES)
+             and (reinspect_retained or retry_now or not s.get('next_attempt_at') or datetime.fromisoformat(s['next_attempt_at']) <= now)),
+            key=lambda s: (s['outcome'] == 'retained', s.get('checked_at') or '', s['url'])))
+        refusals = []
     for state in queue:
         if not archive_links.allowed_url(state['url']):
             refusals.append(dict(url=state['url'], previous_outcome=state['outcome'],
@@ -151,8 +157,12 @@ async def run_async(
     spool = _ByteBudget(max_spool_bytes, changed)
     submitted = downloading = 0
     fatal, collector_error = False, None
+    refresh_body_keys = {state['body_key'] for state in queue} if reinspect_retained else ()
+    reading_options = (dict(selected_readings=archive.selected,
+        on_part=partial(archive.register_reading_part, replace=refresh_body_keys))
+        if hasattr(archive, 'selected') else {})
     metadata = CaptureMetadata(archive.store, archive.run_id,
-        refresh_body_keys={state['body_key'] for state in queue} if reinspect_retained else ())
+        refresh_body_keys=refresh_body_keys, **reading_options)
     archive.metadata = metadata
     loop = asyncio.get_running_loop()
     reader_slots = asyncio.Semaphore(metadata_workers)
@@ -446,28 +456,28 @@ async def run_async(
         raise InterruptedError('Capture stopped; completed receipts and state were saved.')
     if fatal:
         raise RuntimeError('Zyte authorization failed; in-flight captures were retained before stopping.')
+    state_counts = archive.state_counts
     return dict(
         counts,
         body_metadata=dict(metadata.counts),
         stage_seconds=dict(timings),
         peak_body_payload_reservation_bytes=memory.peak,
         peak_spool_reservation_bytes=spool.peak,
+        raw_selection=archive.raw_selection,
         accounting={
             "known_urls": len(archive.state),
             "known_urls_basis": "distinct source URL values in download state; includes repaired originals, excluded values, source pages and retryable failures",
-            "urls_by_source_family": dict(Counter(row.get("family") or "unknown" for row in archive.state.values())),
+            "urls_by_source_family": state_counts["urls_by_source_family"],
             "usable_capture_results_basis": "this run's completed tasks classified saved; includes linked source pages",
             "unique_retained_body_keys_basis": "distinct nonempty body keys referenced by the saved capture index; includes error/provider bytes and does not check storage existence",
-            "excluded_media_urls": sum(row["outcome"] == "excluded_media" for row in archive.state.values()),
+            "excluded_media_urls": state_counts["excluded_media_urls"],
             "capture_tasks_submitted": submitted,
             "capture_tasks_completed": counts["fetch"] + counts["replay"],
             "fetch_tasks_completed": counts["fetch"],
             "retained_replays_completed": counts["replay"],
             "usable_capture_results": counts["saved"],
-            "unique_retained_body_keys": pc.count_distinct(pc.filter(
-                archive.captures["body_key"], pc.not_equal(archive.captures["body_key"], "")
-            )).as_py(),
-            "url_outcomes": dict(Counter(row["outcome"] for row in archive.state.values())),
+            "unique_retained_body_keys": archive.retained_body_count,
+            "url_outcomes": state_counts["url_outcomes"],
         },
         attempted=submitted,
         initial_only=initial_only,
@@ -478,10 +488,8 @@ async def run_async(
         reinspect_retained=reinspect_retained,
         admission_refusals=refusals,
         known_urls=len(archive.state),
-        remaining=sum(
-            s["outcome"] not in NON_DOWNLOAD_OUTCOMES
-            for s in archive.state.values()
-        ),
+        remaining=sum(count for outcome, count in state_counts['url_outcomes'].items()
+                      if outcome not in NON_DOWNLOAD_OUTCOMES),
         limit=limit,
         transport_budget_seconds=max_seconds,
     )

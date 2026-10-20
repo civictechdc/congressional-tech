@@ -73,17 +73,60 @@ def bind(catalog, identities):
     rows, withdrawn = [], []
     for item in identities['rows']:
         entry = entries.get(item['document_id'])
-        if entry is None:
-            reason = 'document_missing'
-        elif sorted(source_ids[row].as_py() for row in catalog.members[entry]) != sorted(item['source_ids']):
-            reason = 'sources_changed'
-        elif body_keys[entry].as_py() != item['body_key']:
-            reason = 'body_changed'
-        else:
+        reason = withdrawal_reason(exists=entry is not None,
+            sources_match=entry is not None and sorted(source_ids[row].as_py() for row in catalog.members[entry]) == sorted(item['source_ids']),
+            body_matches=entry is not None and body_keys[entry].as_py() == item['body_key'])
+        if reason is None:
             rows.append(dict(index=item['index'], group=position[entry], sources=list(catalog.members[entry])))
             continue
         withdrawn.append(dict(index=item['index'], document_id=item['document_id'], reason=reason))
     return dict(version=1, review_sha256=identities['review_sha256'], catalog_id=catalog.info['catalog_id'],
+                rows=rows, withdrawn=withdrawn)
+
+
+def withdrawal_reason(*, exists, sources_match, body_matches):
+    """The maintained document/member/body policy, independent of placement."""
+    if not exists:
+        return 'document_missing'
+    if not sources_match:
+        return 'sources_changed'
+    if not body_matches:
+        return 'body_changed'
+    return None
+
+
+def bind_selected(catalog_id, identities, component_lookup, *, previous=None):
+    """Place reviews by stable IDs using retained exact membership proofs."""
+    from congress_api.retention.catalog_validation import catalog_source_ids_digest
+    validate_identities(identities)
+    prior = {}
+    if previous is not None:
+        if previous.get('version') not in (1, 2) or previous.get('review_sha256') != identities['review_sha256']:
+            raise ValueError('Changed review input requires an explicit new review policy')
+        expected = {item['index']: item for item in identities['rows']}
+        for item in previous['withdrawn']:
+            original = expected.get(item['index'])
+            if (original is None or item['index'] in prior or item['document_id'] != original['document_id']
+                    or previous['version'] == 2 and item['source_ids'] != original['source_ids']
+                    or item['reason'] not in ('document_missing', 'sources_changed', 'body_changed')):
+                raise ValueError('Invalid retained review withdrawal')
+            prior[item['index']] = dict(item, source_ids=original['source_ids'])
+    rows, withdrawn = [], []
+    for item in identities['rows']:
+        if item['index'] in prior:
+            withdrawn.append(dict(prior[item['index']]))
+            continue
+        component = component_lookup(item['document_id'])
+        reason = withdrawal_reason(exists=component is not None,
+            sources_match=component is not None and component['source_ids_sha256'] ==
+                catalog_source_ids_digest(iter(sorted(item['source_ids']))),
+            body_matches=component is not None and component['body_key'] == item['body_key'])
+        if reason is None:
+            rows.append(dict(index=item['index'], document_id=item['document_id'], source_ids=item['source_ids']))
+        else:
+            withdrawn.append(dict(index=item['index'], document_id=item['document_id'], reason=reason,
+                                  source_ids=item['source_ids']))
+    return dict(version=2, review_sha256=identities['review_sha256'], catalog_id=catalog_id,
                 rows=rows, withdrawn=withdrawn)
 
 

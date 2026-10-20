@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 
 const [fixture, destination, repeats = '3'] = process.argv.slice(2);
 if (!fixture || !destination) throw new Error('Usage: node search-benchmark.mjs FIXTURE OUTPUT [REPEATS]');
-const moduleUrl = new URL('../../../apps/site/src/components/filename-catalog.mjs', import.meta.url);
+const moduleUrl = new URL('../../../apps/site/src/components/explorer/reader/filenames/catalog.ts', import.meta.url);
 const {createFilenameCatalog} = await import(moduleUrl);
 const manifest = pathToFileURL(resolve(fixture, 'public/manifest.json'));
 let transferMs = 0, transferred = 0;

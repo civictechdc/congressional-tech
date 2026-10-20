@@ -87,7 +87,7 @@ def test_legacy_remote_only_facts_are_archived_without_inventing_native_basis(tm
     assert row.get('document_kind') is None
 
 
-def test_rebuild_only_cli_skips_acquisition_and_preserves_newer_state(tmp_path, monkeypatch):
+def test_unscoped_rebuild_cli_refuses_and_preserves_newer_state(tmp_path, monkeypatch):
     from congress_api.cli import raw_sync
     store = initialize(tmp_path)
     store.objects[STATE_KEY] = encode_table(pa.Table.from_pylist([
@@ -96,7 +96,7 @@ def test_rebuild_only_cli_skips_acquisition_and_preserves_newer_state(tmp_path, 
     # Include a capture absent from the old derived tables.
     retain(store, {'url': 'https://example.gov/new.pdf'}, family='documents', source_file='receipts.jsonl',
            url='https://example.gov/new.pdf', body=b'%PDF-1.7\n%%EOF')
-    before = {k: v for k, v in store.objects.items() if k not in (FILENAMES, DOCUMENTS)}
+    before, writes = dict(store.objects), list(store.writes)
     def forbidden(*a, **kw):
         pytest.fail('rebuild-only entered acquisition')
     monkeypatch.setattr(raw_sync, 'Archive', forbidden)
@@ -109,11 +109,11 @@ def test_rebuild_only_cli_skips_acquisition_and_preserves_newer_state(tmp_path, 
     for name in ('CLOUDFLARE_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'):
         monkeypatch.setenv(name, 'test')
     summary = tmp_path / 'summary.json'
-    raw_sync.main(['--rebuild-only', '--index-workers', '1', '--summary', str(summary)])
-    assert all(store.objects[k] == v for k, v in before.items())
-    assert not any(k in {CAPTURES_KEY, STATE_KEY} or k.startswith(('bodies/', 'receipts/')) for k in store.writes)
-    assert any(r['filename'] == 'new.pdf' for r in table(store).to_pylist())
-    assert json.loads(summary.read_text())['mode'] == 'rebuild'
+    with pytest.raises(SystemExit, match='not operational routes'):
+        raw_sync.main(['--rebuild-only', '--index-workers', '1', '--summary', str(summary)])
+    assert store.objects == before and store.writes == writes
+    assert not summary.exists()
+    assert json.loads(summary.with_suffix('.progress.json').read_text())['status'] == 'failed'
 
 
 def test_paired_validation_rejects_mismatched_catalog_before_writes(tmp_path, monkeypatch):
@@ -308,12 +308,15 @@ def test_capture_role_requires_one_matching_receipt_and_pointer(tmp_path):
     assert row.get('source_record_type') is None
 
 
-def test_capture_state_is_released_and_summary_saved_before_rebuild(tmp_path, monkeypatch):
+def test_capture_state_is_released_and_summary_saved_before_incremental_update(tmp_path, monkeypatch):
     import gc
     import signal
     import weakref
     import boto3
     from congress_api.cli import raw_sync
+    from congress_api.retention.docspec import NativeDatasets
+    from congress_api.retention.raw_storage import RawStorage
+    from types import SimpleNamespace
     references = []
     class Collection:
         def __init__(self, store, *_args, **_kwargs):
@@ -331,7 +334,7 @@ def test_capture_state_is_released_and_summary_saved_before_rebuild(tmp_path, mo
         def put(self, *_args): pass
     summary = tmp_path / 'summary.json'
     handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
-    def rebuild(*_args, **_kwargs):
+    def update(*_args, **_kwargs):
         gc.collect()
         assert references[0]() is None, 'Acquisition state remains live during the catalog join'
         assert {sig: signal.getsignal(sig) for sig in handlers} == handlers
@@ -342,12 +345,15 @@ def test_capture_state_is_released_and_summary_saved_before_rebuild(tmp_path, mo
     monkeypatch.setattr(raw_sync, 'RustFetcher', Fetcher)
     monkeypatch.setattr(raw_sync, 'R2Store', Store)
     monkeypatch.setattr(raw_sync, 'run_sync', lambda *a, **k: {'attempted': 2})
-    monkeypatch.setattr(raw_sync, 'rebuild_catalog', rebuild)
+    monkeypatch.setattr(raw_sync, 'update_from_raw', update)
+    monkeypatch.setattr(NativeDatasets, 'from_config', lambda _: object())
+    monkeypatch.setattr(RawStorage, 'open', lambda store, native: SimpleNamespace(
+        store=store, native=native, snapshot=lambda: SimpleNamespace(identity='a' * 64)))
     monkeypatch.setattr(boto3, 'client', lambda *a, **k: object())
     for key in ('CLOUDFLARE_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'):
         monkeypatch.setenv(key, 'fixture')
     with pytest.raises(OSError, match='catalog interrupted'):
-        raw_sync.main(['--transport', 'direct', '--summary', str(summary)])
+        raw_sync.main(['--transport', 'direct', '--native-config', 'explicit.json', '--summary', str(summary)])
     saved = json.loads(summary.read_text())
     assert saved['attempted'] == 2
     assert saved['acquisition_status'] == 'completed'

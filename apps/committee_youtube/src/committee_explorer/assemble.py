@@ -1,10 +1,12 @@
 """Assemble source-owned records; retain disagreements and open issue history."""
+from collections import defaultdict
 from collections.abc import Mapping, MutableMapping
 import json
 
 from committee_meeting import Catalog
 from committee_meeting.catalog import DomainRecord, _references
 from committee_meeting.issues import DataIssue, IssueResolution
+from committee_meeting.materials import representation_files
 from committee_meeting.provenance import AlternativeValue, FieldEvidence, Method, Provenance, SourceRecord
 from committee_meeting.common import Model, Ref
 from pydantic import TypeAdapter, ValidationError
@@ -13,7 +15,43 @@ from .collector_labels import collector_placeholder_conflict
 from .history import RetainedSources
 
 
+def saved_copy_from_body_key(key, filename=None):
+    """Digest and filename for a retained bodies/sha256 object, or nothing."""
+    from congress_api.retention.body_keys import body_key_digest
+    if not isinstance(key, str):
+        return None
+    digest = body_key_digest(key)
+    if not digest:
+        return None
+    name = filename if isinstance(filename, str) and filename and not any(
+        character in filename for character in "/\\") and not any(ord(character) < 32 or ord(character) == 127 for character in filename) else None
+    return digest, name
+
+
+def apply_saved_copies(assembly, filenames_path):
+    """Set saved-copy fields from a document-filenames table before files are projected."""
+    import pyarrow.parquet as pq
+    by_url = {}
+    for row in pq.read_table(filenames_path, columns=["source_url", "body_key", "filename"]).to_pylist():
+        found = saved_copy_from_body_key(row.get("body_key"), row.get("filename"))
+        url = row.get("source_url")
+        if url and found and url not in by_url:
+            by_url[url] = found
+    for key in list(assembly.records):
+        record = assembly.records[key]
+        if record.kind != "representation" or record.saved_copy_sha256:
+            continue
+        match = next((by_url[location.url] for location in record.locations if location.url in by_url), None)
+        if match is None:
+            continue
+        digest, name = match
+        assembly.records[key] = record.model_copy(update={"saved_copy_sha256": digest, "saved_filename": name or record.saved_filename})
+
+
 _DOMAIN_RECORD = TypeAdapter(DomainRecord)
+# Several sources can each contribute identifiers, document groups, and files.
+# Their union is the record; differing members are not disagreements.
+_ACCUMULATED = frozenset({"identifiers", "source_document_groups", "files"})
 _FIELD_NAMES = {}  # frozenset of names -> the one set every equal instance shares
 _SHARED = set()  # ids of those sets; they live as long as this module
 
@@ -120,10 +158,11 @@ class Assembly:
                         else:
                             fields.pop("/" + name, None)
                     elif before is not None and before != "" and before != ():
-                        if name == "identifiers":
-                            updates[name] = tuple({v.model_dump_json(): v for v in (*before, *after)}.values())
+                        if name in _ACCUMULATED:
+                            updates[name] = tuple({v if isinstance(v, str) else v.model_dump_json(): v
+                                                   for v in (*before, *after)}.values())
                         elif not isinstance(item, DataIssue):
-                            if item.kind == "occurrence" and name == "access" and before == "unknown":
+                            if item.kind in ("occurrence", "meeting") and name == "access" and before == "unknown":
                                 continue  # Filling absent access is not a source disagreement.
                             path = "/" + name
                             alternatives = list(fields[path].alternatives) if path in fields else []
@@ -168,6 +207,38 @@ class Assembly:
                                  explanation=field.selection_reason),
         )
         return issue.model_copy(update={"status": "dismissed", "resolution": resolution})
+
+    def _project_materials(self):
+        """Copy representations onto Material.files.
+
+        Versions and representations remain the authorities. MaterialLink remains
+        the association, so this does not copy link targets onto the material.
+        A material that already has files keeps them when it has no representation.
+        """
+        files = defaultdict(list)
+        for key in sorted(self.records):
+            record = self.records[key]
+            if record.kind != "representation":
+                continue
+            version = self.records.get(("material_version", record.version.id))
+            if version is None:
+                continue
+            if record.retained is not None and not record.saved_copy_sha256:
+                saved = saved_copy_from_body_key(record.retained.uri, record.saved_filename)
+                if saved:
+                    digest, name = saved
+                    record = record.model_copy(update={"saved_copy_sha256": digest, "saved_filename": name or record.saved_filename})
+            files[version.material.id].extend(representation_files(
+                record, version_label=version.label, published_at=version.published_at,
+                duration_seconds=version.duration_seconds))
+        for material_id, projected in files.items():
+            key = ("material", material_id)
+            material = self.records.get(key)
+            if material is None:
+                continue
+            merged = tuple({item.model_dump_json(): item for item in (*material.files, *projected)}.values())
+            if merged != material.files:
+                self.records[key] = material.model_copy(update={"files": merged})
 
     def finish(self):
         if self.ids:
@@ -229,6 +300,7 @@ class Assembly:
                             except KeyError:
                                 raise ValueError(f"Issue history is missing {reference.kind}/{reference.id}") from None
             self.retained = RetainedSources(previous, retained)
+        self._project_materials()
         # Every record crossed validated() individually. Constructing the tuples
         # must not ask Pydantic to copy the entire corpus a second time. The full
         # graph validator still checks all links, ownership rules and cycles.

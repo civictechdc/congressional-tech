@@ -1,0 +1,65 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readNavigation, viewNavigation, drillNavigation } from './navigation.ts';
+import { sourcePageUrl } from './record-presentation.ts';
+
+test('chart drill-down preserves the counted population and reloadable chart settings', () => {
+  const nav = readNavigation('?view=coverage&congress=119&type=business&chamber=senate&q=budget&from=2025-01-01&measure=recording&grouping=month&committeeLevel=full&access=closed&committeeType=standing', 119);
+  const drilled = drillNavigation(nav, {month:'2025-01', aspect:'recording', evidence:'reported'});
+  for (const key of ['type','chamber','q','from','measure','grouping','committeeLevel','committeeType','access']) assert.equal(drilled[key], nav[key]);
+  assert.equal(drilled.month, '2025-01'); assert.equal(drilled.aspect, 'recording'); assert.equal(drilled.view, 'meetings');
+  assert.deepEqual(readNavigation(new URLSearchParams(Object.entries(nav)), 119), nav);
+  assert.equal(viewNavigation(drilled, 'coverage').type, 'business');
+  for (const view of ['meetings', 'committees', 'materials', 'witnesses', 'coverage', 'gaps']) {
+    assert.equal(viewNavigation(drilled, view).committeeLevel, 'full');
+    assert.equal(viewNavigation(drilled, view).committeeType, 'standing');
+    assert.equal(viewNavigation(drilled, view).access, ['meetings', 'coverage'].includes(view) ? 'closed' : '');
+  }
+});
+
+test('workspace transitions retain compatible filters and remove meaningless filters', () => {
+  const nav = readNavigation('?view=meetings&congress=119&type=business&from=2026-10-01&to=2026-10-02&month=2026-10&aspect=recording&evidence=reported',119);
+  const committees = viewNavigation(nav, 'committees');
+  for (const key of ['type','from','to','month','aspect','evidence']) assert.equal(committees[key], '');
+  const materials = viewNavigation(nav, 'materials');
+  assert.equal(materials.from, '2026-10-01'); assert.equal(materials.type, ''); assert.equal(materials.congress, '119');
+});
+
+test('legacy filename links open captured documents inside recordings and documents', () => {
+  const pinned = readNavigation('?source=deep-source&catalog=' + 'a'.repeat(32) + '&page=2&document_kind=statement&retained=yes', 119);
+  assert.equal(pinned.view, 'materials');
+  assert.equal(pinned.scope, 'documents');
+  assert.equal(pinned.kind, 'filename_entry');
+  assert.equal(pinned.id, 'deep-source');
+  assert.equal(pinned.page, 1);
+  assert.equal(pinned.document_kind, 'statement');
+  assert.equal(pinned.retained, 'yes');
+  assert.equal(pinned.catalog, 'a'.repeat(32));
+  assert.equal(pinned.congress, 'all');
+  assert.equal(readNavigation('?source=deep-source&congress=118', 119).congress, '118');
+  assert.deepEqual(readNavigation(new URLSearchParams(Object.entries(pinned)), 119), pinned);
+  const explicit = readNavigation('?view=materials&page=2', 119);
+  assert.equal(explicit.scope, '');
+  assert.equal(explicit.page, 2);
+  assert.equal(explicit.kind, '');
+  const capture = viewNavigation(pinned, 'meetings');
+  assert.equal(capture.scope, '');
+  assert.equal(capture.document_kind, '');
+  assert.equal(viewNavigation(capture, 'materials').scope, '');
+});
+
+test('malformed routing values recover to usable defaults', () => {
+  for (const page of ['Infinity','NaN','-3','1e99']) assert.equal(readNavigation(`?page=${page}`,119).page,0);
+  const nav = readNavigation('?view=missing&congress=garbage&measure=missing&grouping=missing&committeeLevel=missing&access=garbage',119);
+  assert.equal(nav.view,'meetings'); assert.equal(nav.congress,'119');
+  assert.equal(nav.measure,'transcript'); assert.equal(nav.grouping,'congress');
+  assert.equal(nav.committeeLevel, '');
+  assert.equal(nav.access, '');
+});
+
+test('source links use public Congress event pages and preserve other source URLs', () => {
+  assert.equal(sourcePageUrl('https://api.congress.gov/v3/committee-meeting/113/house/100240'), 'https://www.congress.gov/event/113th-congress/house-event/100240');
+  assert.equal(sourcePageUrl('https://api.congress.gov/v3/committee-meeting/119/senate/123?format=json'), 'https://www.congress.gov/event/119th-congress/senate-event/123');
+  assert.equal(sourcePageUrl('https://docs.house.gov/meeting/meetingdocs.aspx'), 'https://docs.house.gov/meeting/meetingdocs.aspx');
+  assert.equal(sourcePageUrl(null), undefined);
+});

@@ -50,6 +50,7 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         return result
     def committee_level(record):
         if not record: return 'unknown'
+        if record.committee_level not in (None, 'unknown'): return record.committee_level
         if record.parent or record.committee_type == 'subcommittee': return 'subcommittee'
         return 'full' if record.committee_type != 'unknown' else 'unknown'
     def committee_type(id, seen=()):
@@ -72,6 +73,9 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         if record.kind == 'occurrence' and record.scheduled_start:
             dates.setdefault(record.meeting.id, record.scheduled_start.date.isoformat())
             statuses.setdefault(record.meeting.id, record.status)
+        if record.kind == 'meeting' and record.scheduled_start:
+            dates.setdefault(record.id, record.scheduled_start.date.isoformat())
+            if record.status != 'unknown': statuses.setdefault(record.id, record.status)
         if record.kind == 'appearance': witness_names[record.meeting.id].add(record.name.display)
         if record.kind == 'data_issue' and record.status == 'open': issue_counts[(record.subject.kind, record.subject.id)] += 1
         # Inverse links let views find appearances/materials/issues without
@@ -115,7 +119,7 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         row['committee_level'] = 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown'
         if record.kind == 'appearance': row['roles'] = list(record.roles)
         if record.kind == 'committee_term':
-            row['committee_code'] = next((i.value for i in record.identifiers if i.scheme == 'congress.gov:committee'), None)
+            row['committee_code'] = record.committee_code or next((i.value for i in record.identifiers if i.scheme == 'congress.gov:committee'), None)
             row['parent_committee_id'] = record.parent.id if record.parent else None
             row['committee_type'] = record.committee_type
             row['source_committee_type'] = record.source_committee_type

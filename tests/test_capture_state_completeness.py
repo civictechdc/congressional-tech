@@ -4,7 +4,7 @@ import json
 import pyarrow as pa
 import pytest
 from congress_api.retention.raw_archive import (
-    Archive,
+    LegacyArchiveSeed as Archive,
     CAPTURE_SCHEMA,
     STATE_KEY,
     encode_table,

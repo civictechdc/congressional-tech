@@ -38,7 +38,7 @@ from congress_api.adapters.committees import committee_lookup, ensure_committee_
 from congress_api.adapters.common import AdapterContext
 from congress_api.matching import reviewed_committees
 
-from .assemble import Assembly
+from .assemble import Assembly, apply_saved_copies
 from .coverage import build as coverage
 from .history import RetainedSources, load_history, migrate_history, save_history
 from .ids import IdRegistry
@@ -192,7 +192,8 @@ def _recording_urls(records):
 
 def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=None, house_state=None, senate_state=None,
            youtube_dir=None, inventory_state=None, recovered_witnesses=None, video_matches_path=None, recordings_path=None,
-           transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="json", reuse_from=None, committees_path=None):
+           transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="json", reuse_from=None, committees_path=None,
+           document_filenames=None):
     if format not in ("json", "parquet"):
         raise ValueError("format must be json or parquet")
     now = as_of or datetime.now(timezone.utc)
@@ -529,6 +530,8 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
             return print_decisions
 
         print_decisions = assemble_inputs()
+        if document_filenames:
+            apply_saved_copies(assembly, document_filenames)
         LOGGER.info('Validating %d records and %d source observations', len(assembly.records), len(assembly.sources))
         catalog = assembly.finish()
         # The catalog holds current sources; sources only old issues cite stay in
@@ -716,6 +719,7 @@ def main():
     p.add_argument("--as-of", type=datetime.fromisoformat)
     p.add_argument("--revision", help="Revision of supplied native/House/Senate/YouTube/inventory state. Separate CSV/body inputs are pinned by digest.")
     p.add_argument("--reuse-from", type=Path, help="Reuse an unchanged verified Parquet publication from this directory or the local output. Changed inputs, options, code or state rebuild it.")
+    p.add_argument("--document-filenames", type=Path, help="Optional document-filenames table. Matching representation URLs receive a viewer-data saved copy.")
     args = p.parse_args()
     manifest, catalog = export(**vars(args))
     if catalog is None:

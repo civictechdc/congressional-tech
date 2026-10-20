@@ -150,3 +150,15 @@ def test_resume_validator_and_bootstrap_are_in_release_identity():
     files = source_files(ROOT)
     assert 'packages/viewer_publication/src/viewer_publication/resume.py' in files
     assert 'scripts/publication/prepare_workflow_resume.py' in files
+
+
+def test_new_preparation_requires_native_runtime_while_resume_and_noop_skip_it(tmp_path):
+    steps=workflow()['jobs']['publish']['steps']
+    guard=next(step for step in steps if step.get('name')=='Require approved native runtime for preparation')
+    prepare=next(step for step in steps if step.get('id')=='prepare')
+    assert guard['if']==prepare['if']
+    assert '--native-config "$DOCSPEC_RUNTIME_CONFIG"' in prepare['run']
+    result=subprocess.run(['bash','-e','-c',guard['run']],cwd=tmp_path,
+        env={k:v for k,v in os.environ.items() if not k.startswith('DOCSPEC_')},capture_output=True,text=True,timeout=10)
+    assert result.returncode!=0 and 'hosted installation is not configured' in result.stderr
+    assert not list(tmp_path.iterdir())

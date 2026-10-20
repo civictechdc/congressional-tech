@@ -7,10 +7,11 @@ from .common import Model, Ref, ReportedTime, Text
 from .provenance import Provenance, Record
 
 IssueSubject = Literal[
-    "committee", "committee_term", "committee_relation", "channel", "committee_channel", "committee_membership",
-    "meeting", "occurrence", "meeting_relation", "panel", "person", "organization", "appearance",
-    "material", "material_version", "representation", "material_link", "material_relation", "speaker_attribution",
-    "legislative_item", "meeting_subject", "amendment", "amendment_group", "vote", "assessment", "source_record",
+    "committee", "committee_term", "channel",
+    "meeting", "occurrence", "panel", "person", "appearance",
+    "material", "material_version", "representation", "material_link", "material_relation",
+    "legislative_item", "meeting_subject", "amendment", "amendment_group", "vote",
+    "assessment", "source_record",
 ]
 
 

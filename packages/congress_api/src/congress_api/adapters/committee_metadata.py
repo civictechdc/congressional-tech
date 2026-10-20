@@ -5,6 +5,7 @@ from committee_meeting.common import DateRange, Identifier, Ref
 from committee_meeting.provenance import AlternativeValue, FieldEvidence
 
 from congress_api.matching.committee_adjustments import reviewed_adjustments
+from congress_api.matching.committees import committee_level
 from congress_api.adapters.committees import committee_lookup
 from congress_api.adapters.meetings import chamber
 
@@ -60,9 +61,10 @@ def adjustment_records(context, existing, *, congresses=None):
             term = old.model_copy(update={**values, 'provenance': provenance, 'field_evidence': tuple(fields)})
         else:
             term = CommitteeTerm(id=term_id, committee=Ref(kind='committee', id=committee_id), congress=congress,
-                                 chamber={'h': 'house', 's': 'senate', 'j': 'joint'}[code[0]],
+                                 chamber={'h': 'house', 's': 'senate', 'j': 'joint'}[code[0]], committee_code=code,
                                  identifiers=(Identifier(scheme='congress.gov:committee', value=code, scope=str(congress)),),
                                  provenance=provenance, field_evidence=tuple(fields), **values)
+        term = term.model_copy(update={'committee_level': committee_level(code, term.committee_type, term.parent)})
         yield old_committee or Committee(id=committee_id, label=term.name or code, provenance=provenance)
         yield term
 
@@ -88,7 +90,8 @@ def records(rows, context, existing):
         kind = TYPES.get(native.get('committeeTypeCode'), 'unknown')
         parent_code = (native.get('parent') or {}).get('systemCode')
         parent = Ref(kind='committee_term', id=context.ids('committee_term', f'congress.gov|{congress}|{parent_code}')) if parent_code else None
-        values = dict(committee_type=kind, source_committee_type=native.get('committeeTypeCode'), parent=parent)
+        values = dict(committee_type=kind, source_committee_type=native.get('committeeTypeCode'), parent=parent,
+                      committee_code=code, committee_level=committee_level(code, kind, parent))
         if old:
             citations = {c.model_dump_json(): c for c in (*old.provenance.citations, *evidence.citations)}
             provenance = evidence.model_copy(update={'citations': tuple(citations.values())})

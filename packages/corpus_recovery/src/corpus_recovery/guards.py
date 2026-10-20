@@ -16,6 +16,22 @@ from typing import Callable, Mapping
 ACTIVE_STATUSES = ('queued', 'in_progress', 'requested', 'waiting', 'pending')
 
 
+class GuardedNative:
+    """Check the admitted runtime before each immutable native candidate Run."""
+    def __init__(self, native, *, guard, journal):
+        self.native, self.guard, self.journal = native, guard, journal
+
+    def __getattr__(self, name):
+        return getattr(self.native, name)
+
+    def run_table(self, table, **kwargs):
+        self.guard()
+        self.journal('native_candidate_intent', dict(dataset=kwargs['dataset'], rows=len(table)))
+        pin = self.native.run_table(table, **kwargs)
+        self.journal('native_candidate_complete', dict(release=pin))
+        return pin
+
+
 def active_cloud_writers(*, run=subprocess.check_output, max_pages=10):
     """Observe capture runs only; this is not an exclusion lease.
 

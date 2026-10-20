@@ -2,7 +2,7 @@ name: Publish filename viewer data to R2
 
 on:
   workflow_run:
-    workflows: ["Capture raw sources and rebuild document tables"]
+    workflows: ["Capture raw sources and update document tables"]
     types: [completed]
     branches: [main]
   schedule:
@@ -48,6 +48,11 @@ on:
       - '.github/tests/test_filename_publication.py'
       - '.github/tests/test_viewer_r2.py'
       - '.github/workflows/publish-filename-viewer.yml'
+      - '.github/scripts/check-native-runtime.py'
+      - '.github/scripts/setup-native-runtime.py'
+      - '.github/docspec-remote.json'
+      - '.github/tests/test_native_runtime_setup.py'
+      - '.github/tests/test_native_runtime_preflight.py'
 
 permissions:
   contents: read
@@ -107,6 +112,8 @@ jobs:
         if: github.event_name == 'push' || steps.resume.outputs.resume == 'true' || steps.preflight.outputs.status == 'preparation_required'
         run: |
           tests=(
+            .github/tests/test_native_runtime_setup.py
+            .github/tests/test_native_runtime_preflight.py
             .github/tests/test_filename_publication.py
             .github/tests/test_viewer_r2.py
             apps/site/tests/test_filename_recoveries.py
@@ -128,6 +135,16 @@ jobs:
             fi
           done
           PYTHONPATH=apps/site/scripts:scripts/publication:scripts python -m pytest -q "${tests[@]}"
+      - name: Require approved native runtime for preparation
+        if: steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+        run: >-
+          python .github/scripts/setup-native-runtime.py
+          --directory "$RUNNER_TEMP/docspec-runtime" --output native-runtime-check.json
+          --github-env "$GITHUB_ENV"
       - name: Prepare a changed catalog or recovery index
         id: prepare
         if: steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required'
@@ -135,7 +152,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: python apps/site/scripts/publish-viewer-r2.py prepare --directory viewer-preparation --report viewer-publication.json
+        run: python apps/site/scripts/publish-viewer-r2.py prepare --native-config "$DOCSPEC_RUNTIME_CONFIG" --directory viewer-preparation --report viewer-publication.json
       - name: Accept preparation before any publication write
         id: accepted
         if: steps.prepare.outputs.status == 'prepared'
@@ -211,6 +228,7 @@ jobs:
             viewer-publication.json
             viewer-preflight.json
             viewer-job-cost.json
+            native-runtime-check.json
             viewer-preparation/continuation.json
             viewer-preparation/journal/
             viewer-preparation/journal-intents/

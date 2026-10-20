@@ -116,10 +116,20 @@ def saved_readings(store, *, columns=None):
 
 def restore_body_results(store, cache):
     """Adapt new capture readings to the existing shared body-result cache."""
-    for row in saved_readings(store):
+    restore_readings(saved_readings(store), cache)
+
+
+def restore_readings(readings, cache):
+    """Restore explicitly selected capture facts through the same field rules."""
+    for row in readings:
         key = row['body_key']
         fields = {field: value for field, value in row.items()
-                  if field not in RESULT_COLUMNS and value is not None}
+                  if field not in (*RESULT_COLUMNS, 'reader') and value is not None}
+        if row.get('reader') is not None:
+            # An explicitly adopted reader result includes completed negatives.
+            # Its provenance remains in the selected immutable part.
+            cache.setdefault((row['reader'], key), fields)
+            continue
         pdf = fields.get('body_format') == ['pdf']
         # These are byte-derived facts. HTTP outcomes and source labels are
         # applied separately for each occurrence by the existing catalog reader.
@@ -142,12 +152,14 @@ class MetadataWriter:
     """
 
     def __init__(self, store, run_id, *, max_rows=1000, max_bytes=4 * 1024**2,
-                 interval=300, clock=time.monotonic):
+                 interval=300, clock=time.monotonic, on_part=None):
         self.store, self.run_id = store, run_id
         self.max_rows, self.max_bytes, self.interval = max_rows, max_bytes, interval
         self.clock = clock
+        self.on_part = on_part
         self.sequence = 0
         self.buffer = []
+        self.body_keys = set()
         self.count = self.bytes = 0
         self.started = clock()
         self.file = self.writer = self.upload = None
@@ -160,6 +172,7 @@ class MetadataWriter:
             self.writer = pq.ParquetWriter(self.file, SCHEMA, compression='zstd')
             self.started = self.clock()
         self.buffer.append(row)
+        self.body_keys.add(row['body_key'])
         self.count += 1
         self.bytes += len(json.dumps(row, ensure_ascii=False).encode())
         if len(self.buffer) >= 64:
@@ -194,8 +207,11 @@ class MetadataWriter:
             self.upload = (key, payload)
         key, payload = self.upload
         self.store.put(key, payload, immutable=True)
+        if self.on_part is not None:
+            self.on_part(dict(key=key, bytes=len(payload), sha256=sha256(payload).hexdigest(), rows=self.count, body_keys=sorted(self.body_keys)))
         self.upload = None
         self.count = self.bytes = 0
+        self.body_keys.clear()
 
     def close(self):
         try:
@@ -213,20 +229,42 @@ class MetadataWriter:
         self.close()
 
 
+class SelectedReadingKeys(set):
+    """Remember this run's admitted keys; consult only exact selected metadata."""
+    def __init__(self, selected, refresh):
+        super().__init__()
+        self.selected, self.refresh = selected, frozenset(refresh)
+        # Refuse unqualified inventory even for an empty/no-change run.
+        tuple(selected.body_readings(()))
+
+    def __contains__(self, key):
+        if super().__contains__(key):
+            return True
+        if key in self.refresh:
+            return False
+        if self.selected.has_body_reading(key):
+            self.add(key)
+            return True
+        return False
+
+
 class CaptureMetadata:
     """Extract once per body, keeping only completed identities in memory."""
 
-    def __init__(self, store, run_id, *, inspect=inspect_document, refresh_body_keys=(), **writer_options):
+    def __init__(self, store, run_id, *, inspect=inspect_document, refresh_body_keys=(), selected_readings=None, **writer_options):
         self.inspect = inspect
         self.writer = MetadataWriter(store, run_id, **writer_options)
         self.fingerprint = sha256((evidence_fingerprint() + Path(__file__).read_text()).encode()).hexdigest()
-        self.seen = {row['body_key'] for row in saved_readings(store, columns=['body_key'])}
-        # Keep previously saved readings, including completed negative results.
-        legacy = store.read('indexes/processing/bodies.parquet')
-        if legacy:
-            file = pq.ParquetFile(pa.BufferReader(legacy))
-            for batch in file.iter_batches(columns=['body_key'], batch_size=4096):
-                self.seen.update(batch.column(0).to_pylist())
+        if selected_readings is not None:
+            self.seen = SelectedReadingKeys(selected_readings, refresh_body_keys)
+        else:
+            self.seen = {row['body_key'] for row in saved_readings(store, columns=['body_key'])}
+            # Keep previously saved readings, including completed negative results.
+            legacy = store.read('indexes/processing/bodies.parquet')
+            if legacy:
+                file = pq.ParquetFile(pa.BufferReader(legacy))
+                for batch in file.iter_batches(columns=['body_key'], batch_size=4096):
+                    self.seen.update(batch.column(0).to_pylist())
         self.counts = Counter()
         # Explicit retained-body validation appends a new reading without
         # deleting any old part or refreshing unrelated bodies.

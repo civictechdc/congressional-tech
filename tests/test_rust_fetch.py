@@ -13,7 +13,7 @@ from congress_api.models.content import RawContent
 from congress_api.models.content import CapturedBody
 from congress_api.retention.body_files import CapturedFile, content_bytes, close_capture_files
 from congress_api.retention.bundles import restore, separate
-from congress_api.retention.raw_archive import Archive
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
 from congress_api.transport.rust_fetch import RustFetcher, RustResponse
 from test_raw_source_sync import MemoryStore, response
 

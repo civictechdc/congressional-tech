@@ -1,6 +1,6 @@
 ---
 id: ct-ihve
-status: open
+status: closed
 deps: [ct-v5kb]
 links: []
 created: 2026-10-20T02:20:21Z
@@ -25,3 +25,29 @@ Replace positional addressing at the publisher/browser boundary with stable docu
 - Preserve unaffected reviews and prior withdrawals. Apply existing binding policy to changed groups and retain explicit reasons; do not silently change review decisions.
 - Test a fresh browser and mapping-only edits. Prove mixed-generation, missing-partition and stale-cache rejection through the maintained loaders.
 - Measure assets/bytes rebuilt, uploaded and downloaded for fixed changes. Reuse untouched files; remove superseded positional reader/writer paths after both sides migrate.
+
+## Notes
+
+**2026-10-20T04:07:17Z**
+
+The dependency now exposes a reviewed stable logical table reader and conditional selector (main c59322d). Browser baseline: 37 JavaScript tests and 29 review/recovery Python tests passed. Dynamic viewer Catalog, publisher and browser must migrate together against stable source/document IDs; no fake Parquet compatibility layer. Final integration depends on ct-v5kb completion. Production remains unchanged.
+
+**2026-10-20T04:22:09Z**
+
+Implementation is active in the isolated incremental-viewer worktree against the reviewed native catalog reader and selector. Final closure still requires ct-v5kb and integrated qualification. Preserve exact historical saved links with a read-only v5 decoder; recurring writes use stable IDs and reusable v6 assets.
+
+**2026-10-20T05:34:22Z**
+
+Stable v6 reader, historical v5 links and full typed document download are integrated with the primary session committed UI relocation. Local native Catalog analysis and existing portable review policy now consume logical tables. Nullable reuse and final integrated browser evidence remain open.
+
+**2026-10-20T07:20:03Z**
+
+Committed dashboard integration is merged locally without primary uncommitted UI changes.186 Node checks,29-page build,2 built-page checks and fresh Chromium passed; complete source/document downloads preserved all29 fixture fields, stable links survived reload and reviews retained original document values. Receipt:review-merge/merged-browser-verification.json. Production v6 cutover remains pending.
+
+**2026-10-20T08:26:58Z**
+
+Final typed-occurrence browser check passed in fresh Chrome 155: exact 29-field complete source and 29,041,079-byte document JSON, 18,000 ordered occurrences, distinct source/document lists, stable links/reload, reviews and original values. 51 Python and 6 Node tests passed; typecheck clean and 29 pages built. All seven qualified implementation hashes match integration 26bbda7d. Receipt: adoption-survey/viewer-occurrence-browser-verification.json. Production v6 cutover remains pending.
+
+**2026-10-20T16:02:11Z**
+
+Implemented and independently reviewed: stable v6 routing/assets, retained review decisions and complete typed exports. Accepted fresh Chrome evidence preserves all 29 fixture fields and 18,000 ordered occurrences. Production deployment, live reviews/recovery/links and exact release browser verification remain required under ct-2ukk. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.

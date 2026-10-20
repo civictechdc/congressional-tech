@@ -8,7 +8,7 @@ import pytest
 
 from congress_api.retention.body_files import content_bytes
 from congress_api.transport.rust_fetch import RustFetcher
-from congress_api.retention.raw_archive import Archive, metadata_body_keys, prepare_capture
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, metadata_body_keys, prepare_capture
 from test_raw_source_sync import MemoryStore
 
 BINARY = os.environ.get('SOURCE_FETCH_BINARY')

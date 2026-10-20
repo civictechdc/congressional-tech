@@ -27,7 +27,7 @@ schema = pa.schema([(key, observation if key == 'source_occurrences' else pa.str
 rows = []
 for i, (filename, url, body, group, role, kind) in enumerate([
     ('unfetched alias.pdf', 'https://committee.test/alias', None, 'A', 'document', None),
-    ('Saved statement.pdf', 'https://committee.test/final', 'bodies/sha256/aa/file.gz', 'A', 'document', ['witness-statement']),
+    ('Saved statement.pdf', 'https://committee.test/final', 'bodies/sha256/ab/' + ('ab' * 32) + '.gz', 'A', 'document', ['witness-statement']),
     ('Unfetched.pdf', 'https://committee.test/unfetched', None, 'B', 'document', None),
     ('1', 'https://api.congress.gov/v3/hearing/116/senate/1?format=json', None, 'C', 'document', None),
     ('Recovered', None, None, 'D', 'source-record', None),
@@ -47,6 +47,7 @@ for i, (filename, url, body, group, role, kind) in enumerate([
     if i == 1:
         row.update(http_status=['200'], response_usable=['true'], response_body_complete=['true','false'], state_checked_at=['2026-10-14T09:00:00-04:00'])
     if i == 2:
+        row['recovered_source_url'] = ['https://archive.test/recovered-unfetched.pdf']
         row['source_occurrences'] = [dict(source_page_url=['https://committee.test/hearing'], source_page_title=['Hearing page'], source_link_label=['Witness name'], source_occurrence_scope=['anchor'])]
         row['source_occurrences'].append(dict(row['source_occurrences'][0]))
         row['source_occurrences'].append(dict(source_page_url=None, source_page_title=[], source_link_label=['José 🏛️'], source_occurrence_scope=None))
@@ -58,6 +59,12 @@ if os.environ.get('FILENAME_FIXTURE_ROWS'):
     rows = [{**original[i % len(original)],
              'source_id': hashlib.sha256(str(i).encode()).hexdigest(),
              'document_id': str(i)} for i in range(int(os.environ['FILENAME_FIXTURE_ROWS']))]
+if os.environ.get('FILENAME_FIXTURE_NATIVE_IDENTITIES'):
+    from congress_api.retention.document_index import source_identity
+    for index, row in enumerate(rows):
+        if os.environ.get('FILENAME_FIXTURE_ROWS'):
+            row['filename'] = f"{row['filename']} {index:05d}"
+        row['source_id'] = source_identity(row)
 files = {}
 for name, subset in [('filenames', rows), ('documents', rows if os.environ.get('FILENAME_FIXTURE_ROWS') else [rows[i] for i in [1,2,3,4,5,6]])]:
     path = folder / ('document-filenames.parquet' if name == 'filenames' else 'documents.parquet')

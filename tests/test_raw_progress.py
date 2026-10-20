@@ -65,7 +65,10 @@ def test_status_upload_failure_does_not_fail_the_rebuild(tmp_path):
 
 def test_cli_publishes_status_with_run_identity_and_bounded_network_timeouts(tmp_path, monkeypatch):
     import boto3
+    from types import SimpleNamespace
     from congress_api.cli import raw_sync
+    from congress_api.retention.docspec import NativeDatasets
+    from congress_api.retention.raw_storage import RawStorage
 
     configs, uploads = [], []
     def client(_, **kwargs):
@@ -78,22 +81,25 @@ def test_cli_publishes_status_with_run_identity_and_bounded_network_timeouts(tmp
             uploads.append((key, json.loads(payload)))
     monkeypatch.setattr(boto3, 'client', client)
     monkeypatch.setattr(raw_sync, 'R2Store', Store)
-    def rebuild(*_, **kwargs):
+    def update(*_, **kwargs):
         progress.report('catalog_published', completed=2, total=2, unit='tables')
-        return {'rows': 7}
-    monkeypatch.setattr(raw_sync, 'rebuild_catalog', rebuild)
+        return dict(counts=dict(source_rows=7, document_rows=2))
+    monkeypatch.setattr(raw_sync, 'update_from_raw', update)
+    monkeypatch.setattr(NativeDatasets, 'from_config', lambda _: object())
+    monkeypatch.setattr(RawStorage, 'open', lambda store, native: SimpleNamespace(
+        store=store, native=native, snapshot=lambda: SimpleNamespace(identity='a' * 64)))
     monkeypatch.setenv('R2_ACCESS_KEY_ID', 'secret-id')
     monkeypatch.setenv('R2_SECRET_ACCESS_KEY', 'secret-key')
     monkeypatch.setenv('GITHUB_RUN_ID', '123')
     monkeypatch.setenv('GITHUB_RUN_ATTEMPT', '2')
     summary = tmp_path / 'summary.json'
-    raw_sync.main(['--rebuild-only', '--account-id', 'fixture', '--summary', str(summary)])
+    raw_sync.main(['--update-only', '--native-config', 'explicit.json', '--account-id', 'fixture', '--summary', str(summary)])
     assert configs[1].connect_timeout == 3 and configs[1].read_timeout == 5
     assert configs[1].retries['total_max_attempts'] == 1
     key, state = uploads[-1]
     assert key == 'status/raw-source-sync.json'
     assert state['github_run_id'] == '123' and state['github_run_attempt'] == '2'
-    assert state['mode'] == 'rebuild' and state['status'] == 'completed'
+    assert state['mode'] == 'update' and state['status'] == 'completed'
     assert state['run_id'] == json.loads(summary.read_text())['run_id']
     assert state == json.loads(summary.with_suffix('.progress.json').read_text())
     assert 'secret' not in json.dumps(state)
@@ -112,7 +118,7 @@ def test_tracking_counts_completed_items_not_yielded_items(caplog):
 
 
 def test_rebuild_reports_real_stages_and_preserves_output(tmp_path):
-    from congress_api.retention.raw_archive import Archive
+    from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
     from congress_api.retention.raw_catalog import rebuild_catalog
     from test_raw_catalog import initialize, table
 
@@ -187,12 +193,17 @@ def test_running_heartbeat_has_expiry_and_memory_measurement(tmp_path):
 
 def test_planning_failure_does_not_claim_acquisition_or_publication_ran(tmp_path, monkeypatch):
     from congress_api.cli import raw_sync
+    from congress_api.retention.docspec import NativeDatasets
+    from congress_api.retention.raw_storage import RawStorage
+    from types import SimpleNamespace
     def fail(*args, **kwargs):
         raise OSError('planning state unavailable')
     monkeypatch.setattr(raw_sync, 'Archive', fail)
+    monkeypatch.setattr(NativeDatasets, 'from_config', lambda _: object())
+    monkeypatch.setattr(RawStorage, 'open', lambda store, native: SimpleNamespace(store=store, native=native))
     summary = tmp_path / 'plan.json'
     with pytest.raises(OSError):
-        raw_sync.main(['--plan-only', '--local-mirror', str(tmp_path), '--summary', str(summary)])
+        raw_sync.main(['--plan-only', '--native-config', 'explicit.json', '--local-mirror', str(tmp_path), '--summary', str(summary)])
     result = json.loads(summary.read_text())
     assert result['planning_status'] == 'failed'
     assert result['acquisition_status'] == result['catalog_status'] == 'not_run'

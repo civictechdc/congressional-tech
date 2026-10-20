@@ -10,7 +10,7 @@ import pytest
 
 from congress_api.models.content import CapturedBody
 from congress_api.retention.raw_archive import (
-    Archive, BodyLimitExceeded, metadata_body_keys, prepare_capture,
+    LegacyArchiveSeed as Archive, BodyLimitExceeded, metadata_body_keys, prepare_capture,
 )
 from test_raw_source_sync import MemoryStore
 

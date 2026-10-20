@@ -76,6 +76,9 @@ def validate_prepared_output(root, manifest):
             raise ValueError('Prepared publication exceeds single-PUT limit: ' + str(path.relative_to(root)))
     if len(encoded(manifest)) > CONTROL_LIMITS['manifest']:
         raise ValueError('Prepared manifest exceeds control byte limit')
+    if manifest.get('version') == 6:
+        from filename_native import ViewerAssets, validate_publication
+        validate_publication(ViewerAssets(root), manifest)
     recovery = root / 'recovery-prepared.json'
     if recovery.exists() and recovery.stat().st_size > CONTROL_LIMITS['recovery']:
         raise ValueError('Prepared recovery status exceeds control byte limit')
@@ -129,9 +132,11 @@ def validated_accepted(value):
 
 def recovery_inputs(selected_digest, manifest_digest, manifest, accepted, *, release_identity=None):
     rows = validated_accepted(accepted)
-    return {'version': 1, 'raw_manifest_sha256': selected_digest,
+    basis = ({'version': 2, 'source_identity': manifest['source_identity'], 'roots': manifest['roots']}
+             if manifest.get('version') == 6 else
+             {'version': 1, 'files': {name: manifest['files'][name]['sha256'] for name in ('filenames', 'groups')}})
+    return {**basis, 'raw_manifest_sha256': selected_digest,
             'viewer_manifest_sha256': manifest_digest,
-            'files': {name: manifest['files'][name]['sha256'] for name in ('filenames', 'groups')},
             'accepted': {'present': accepted is not None, 'sha256': hashlib.sha256(encoded(rows)).hexdigest()},
             'full_release_inputs': release_identity or full_release_identity()}
 
@@ -146,7 +151,10 @@ def verify_recovery_status(client, descriptor, pointer, *, public_url):
     if len(payload) != descriptor['bytes'] or hashlib.sha256(payload).hexdigest() != descriptor['sha256']:
         raise ValueError('Selected recovery status hash mismatch.')
     index = json.loads(payload)
-    if index.get('version') != 1 or index.get('catalog_id') != pointer['catalog_id']:
+    version = 2 if pointer.get('source_manifest', {}).get('version') == 2 else 1
+    if (index.get('version') != version or index.get('catalog_id') != pointer['catalog_id']
+            or version == 2 and (not pointer.get('source_identity')
+                                 or index.get('source_identity') != pointer['source_identity'])):
         raise ValueError('Selected recovery status identity mismatch.')
     with open_public(public_request(public_url + descriptor['path'], {'Origin': 'https://civictechdc.github.io'})) as response:
         if public_control(response, kind='recovery', expected=descriptor['bytes']) != payload or response.headers.get('Access-Control-Allow-Origin') != '*':
@@ -174,6 +182,20 @@ def recovery_result(pointer, index, rows, *, status):
 
 def prepared_files(root, manifest, *, validation=None):
     """Allow only manifest-declared files and the bounded source-ID shards."""
+    if manifest.get('version') == 6:
+        from filename_native import ViewerAssets, iterator_inventory, validate_publication
+        assets = ViewerAssets(root)
+        validate_publication(assets, manifest)
+        files = {}
+        for item in iterator_inventory(assets, manifest['inventory']):
+            name, path = item['path'], root / item['path']
+            if validation is not None:
+                validation.file(path, expected=item)
+            if (path.is_symlink() or not path.is_file() or path.stat().st_size != item['bytes']
+                    or validation is None and digest(path) != item['sha256']):
+                raise ValueError('Prepared publication differs from its inventory: ' + name)
+            files[name] = path
+        return files
     if manifest.get('version') != 5:
         raise ValueError('Unsupported viewer manifest version.')
     selected = manifest['source_manifest']
@@ -239,15 +261,34 @@ def store_recovery_index(client, value):
 
 
 def recovery_preparation_inputs(manifest, accepted_record):
-    return dict(version=1, source_manifest=manifest['source_manifest'],
-        files={name: manifest['files'][name] for name in ('filenames', 'groups')},
+    basis = (dict(version=2, source_identity=manifest['source_identity'], roots=manifest['roots'])
+             if manifest.get('version') == 6 else
+             dict(version=1, files={name: manifest['files'][name] for name in ('filenames', 'groups')}))
+    return dict(basis, source_manifest=manifest['source_manifest'],
         catalog={key: manifest['info'][key] for key in ('catalog_id', 'rows', 'entries')},
         accepted_present=accepted_record[0] is not None, accepted_sha256=accepted_record[3])
 
 
-def prepare_recovery(root, manifest, accepted_record, *, validation=None):
-    value = index_recoveries(root, manifest, validated_accepted(accepted_record[0]),
-                             **({'validation': validation} if validation is not None else {}))
+def require_native_recovery(value, manifest):
+    if (not isinstance(value, dict) or value.get('version') != 2
+            or value.get('source_identity') != manifest['source_identity']
+            or any(value.get(key) != manifest['info'][key] for key in ('catalog_id', 'rows', 'entries'))):
+        raise ValueError('Stable recovery status identity differs from the selected catalog')
+
+
+def prepare_recovery(root, manifest, accepted_record, *, validation=None, index=None):
+    if manifest.get('version') == 6:
+        if index is None:
+            raise ValueError('Native publication requires an explicitly prepared stable recovery index')
+        require_native_recovery(index, manifest)
+        if index.get('accepted') != validated_accepted(accepted_record[0]):
+            raise ValueError('Stable recovery acceptance differs from its selected inputs')
+        value = index
+    else:
+        if index is not None:
+            raise ValueError('Historical recovery preparation requires verified source files')
+        value = index_recoveries(root, manifest, validated_accepted(accepted_record[0]),
+                                **({'validation': validation} if validation is not None else {}))
     prepared = dict(version=1, inputs=recovery_preparation_inputs(manifest, accepted_record), value=value)
     payload = encoded(prepared)
     if len(payload) > CONTROL_LIMITS['recovery']:
@@ -263,6 +304,10 @@ def load_prepared_recovery(root, manifest, accepted_record, *, validation):
     if prepared.get('version') != 1 or prepared.get('inputs') != recovery_preparation_inputs(manifest, accepted_record):
         raise ValueError('Prepared recovery inputs changed')
     value = prepared['value']
+    if manifest.get('version') == 6:
+        require_native_recovery(value, manifest)
+        if value.get('accepted') != validated_accepted(accepted_record[0]):
+            raise ValueError('Stable recovery acceptance differs from its selected inputs')
     if (value.get('catalog_id') != manifest['info']['catalog_id'] or value.get('rows') != manifest['info']['rows']
             or value.get('entries') != manifest['info']['entries']):
         raise ValueError('Prepared recovery status identity changed')
@@ -277,6 +322,8 @@ def recovery_for_publication(client, root, manifest, *, validation=None, plan=No
             raise ValueError('Accepted recovery mappings changed after viewer preparation')
         index = plan.recovery
     else:
+        if manifest.get('version') == 6 and validation is None:
+            raise ValueError('Native recovery publication requires verified prepared status')
         index = (load_prepared_recovery(root, manifest, accepted_record, validation=validation)
                  if validation is not None else index_recoveries(root, manifest, validated_accepted(accepted_record[0])))
     return store_recovery_index(client, index), accepted_record
@@ -287,7 +334,13 @@ def select_recoveries(client, root, manifest, selected_record, accepted_record, 
     pointer, pointer_etag = pointer_record[:2]
     accepted = validated_accepted(accepted_record[0])
     if index is None:
+        if manifest.get('version') == 6:
+            raise ValueError('Native publication requires an explicitly prepared stable recovery index')
         index = index_recoveries(root, manifest, accepted)
+    if manifest.get('version') == 6:
+        require_native_recovery(index, manifest)
+        if index.get('accepted') != accepted:
+            raise ValueError('Stable recovery acceptance differs from its selected inputs')
     descriptor = store_recovery_index(client, index)
     updated = dict(pointer, recovery=descriptor,
                    recovery_inputs=recovery_inputs(selected_record[3], manifest_digest, manifest, accepted_record[0]))
@@ -315,6 +368,8 @@ def public_probe(base, pointer, manifest):
             if (len(payload) != descriptor['bytes'] or hashlib.sha256(payload).hexdigest() != descriptor['sha256']
                     or response.headers.get('Access-Control-Allow-Origin') != '*'):
                 raise ValueError('Public recovery status failed verification.')
+    if manifest.get('version') == 6:
+        return public_probe_selected(base, manifest)
     # Detail views need the navigation and observation files as well as Parquet.
     def check_file(item):
         request = public_request(urllib.parse.urljoin(manifest_url, item['path']), {
@@ -336,6 +391,46 @@ def public_probe(base, pointer, manifest):
                     or response.read() != b'PAR1' or response.headers.get('Access-Control-Allow-Origin') != '*'
                     or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
                 raise ValueError('Public Parquet range validation failed: ' + name)
+
+
+def public_probe_selected(base, manifest):
+    """Verify root custody and sample one selected partition's public ranges.
+
+    Every newly uploaded object already receives complete private readback. This
+    bounded sample checks the browser gateway without fetching all reused data.
+    """
+    from filename_native import ViewerAssets, validate_publication
+    def read_asset(path):
+        with open_public(public_request(base + path, {'Origin': 'https://civictechdc.github.io'})) as response:
+            if response.headers.get('Access-Control-Allow-Origin') != '*':
+                raise ValueError('Public catalog metadata browser access differs')
+            return public_control(response)
+    with tempfile.TemporaryDirectory(prefix='viewer-public-probe-') as directory:
+        assets = ViewerAssets(directory, read_asset=read_asset)
+        validate_publication(assets, manifest)
+        current = manifest['roots']['sources']
+        while current:
+            node = assets.read_node(current)
+            if node['kind'] == 'source-leaf':
+                for item in node['source']['files'].values():
+                    is_parquet = item['path'].endswith('.parquet')
+                    request = public_request(base + item['path'], dict(Origin='https://civictechdc.github.io',
+                        **({'Range': 'bytes=0-3'} if is_parquet else {})))
+                    if not is_parquet:
+                        request.method = 'HEAD'
+                    with open_public(request) as response:
+                        if response.headers.get('Access-Control-Allow-Origin') != '*':
+                            raise ValueError('Public partition browser access differs')
+                        if is_parquet:
+                            if (response.status != 206 or response.headers.get('Content-Range') != f"bytes 0-3/{item['bytes']}"
+                                    or response.read() != b'PAR1' or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
+                                raise ValueError('Public selected Parquet range differs')
+                        elif response.status != 200 or int(response.headers.get('Content-Length', -1)) != item['bytes']:
+                            raise ValueError('Public selected supporting file length differs')
+                break
+            if node['kind'] != 'source-branch':
+                raise ValueError('Invalid public source partition route')
+            current = next(iter(node['children'].values()), None)
 
 
 def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=PUBLIC_URL,
@@ -372,6 +467,8 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     pointer = {'version': 1, 'publisher_version': PUBLISHER_VERSION, 'catalog_id': manifest['info']['catalog_id'],
                'source_manifest': manifest['source_manifest'], 'published_at': manifest['published_at'],
                'manifest': release + 'manifest.json', 'full_release_inputs': full_release_identity()}
+    if manifest.get('version') == 6:
+        pointer['source_identity'] = manifest['source_identity']
     recovery, accepted_record = recovery_for_publication(client, root, recovery_manifest,
         **({'plan': plan} if plan is not None else {'validation': validation} if validation is not None else {}))
     pointer['recovery'] = recovery
@@ -384,7 +481,7 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
 
     def transfer(item):
         name, path = item
-        key = PREFIX + release + name
+        key = PREFIX + (name if manifest.get('version') == 6 else release + name)
         local = validation.file(path) if validation is not None else None
         expected = local['sha256'] if local is not None else digest(path)
         content_type = ('application/vnd.apache.parquet' if name.endswith('.parquet') else
@@ -397,9 +494,14 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
         else:
             # Plain SDK adapters also get one explicitly conditional single PUT.
             # Managed upload_file can retry/multipart without this condition.
-            with path.open('rb') as stream:
-                response = client.put_object(Bucket=BUCKET, Key=key, Body=stream,
-                    ContentLength=path.stat().st_size, IfNoneMatch='*', **options)
+            try:
+                with path.open('rb') as stream:
+                    response = client.put_object(Bucket=BUCKET, Key=key, Body=stream,
+                        ContentLength=path.stat().st_size, IfNoneMatch='*', **options)
+            except ClientError as error:
+                if error.response['Error']['Code'] not in ('PreconditionFailed', '412'):
+                    raise
+                response = None  # Verify the existing immutable bytes; never resend.
             receipt = response.get('_verified_transfer') if isinstance(response, dict) else None
         confirm = getattr(client, 'confirm_transfer', None)
         verified = confirm is not None and confirm(receipt, bucket=BUCKET, key=key,
@@ -460,6 +562,10 @@ def check_selected_publication(client, pointer, *, public_url=PUBLIC_URL, record
     if (manifest['source_manifest'] != selected_record[0]
             or manifest['info']['catalog_id'] != pointer['catalog_id']):
         raise ValueError('Selected viewer manifest differs from the catalog.')
+    if (manifest.get('version') == 6 and
+            (pointer.get('source_identity') != manifest.get('source_identity')
+             or manifest['source_identity'].get('selector_sha256') != selected_record[3])):
+        raise ValueError('Selected viewer source identity differs from the exact catalog.')
     inputs = recovery_inputs(selected_record[3], manifest_digest, manifest, accepted_record[0], release_identity=release_identity)
     if pointer.get('recovery_inputs') == inputs:
         index = verify_recovery_status(client, pointer.get('recovery'), pointer, public_url=public_url)

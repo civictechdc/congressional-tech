@@ -42,6 +42,27 @@ class ReviewSnapshot:
         self.candidates = load_portable(self.manifest, pin)
         self.check()
 
+    @classmethod
+    def from_logical_groups(cls, manifest, pin, read_group):
+        """Admit the same portable review against complete selected typed rows.
+
+        The portable owner verifies retained baseline/evidence bytes. The existing
+        selection policy then checks every reviewed current group; unrelated
+        selected groups do not require a fabricated complete-file download.
+        """
+        result = cls.__new__(cls)
+        result.manifest, result.pin = Path(manifest), pin
+        result.paths = [result.manifest]
+        result.stamps = [_stamp(result.manifest)]
+        result.candidates = load_portable(result.manifest, pin)
+        for identity in result.candidates:
+            document, sources = read_group(identity)
+            if document.get('document_id') != identity:
+                raise ValueError('Review group differs from the selected document')
+            select_document(document, sources, result.candidates)
+        result.check()
+        return result
+
     def check(self):
         if [_stamp(path) for path in self.paths] != self.stamps:
             raise ValueError('The catalog or review snapshot changed. Restart the viewer to verify it again.')

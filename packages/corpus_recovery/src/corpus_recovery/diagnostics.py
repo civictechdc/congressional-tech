@@ -4,7 +4,8 @@ from pathlib import Path
 
 def catalog_build_observation(root, phases):
     root = Path(root).absolute()
-    build = root / 'build'
+    incremental = (root / 'catalog-update').exists()
+    build = root / ('catalog-update' if incremental else 'build')
     if not build.exists() and not build.is_symlink():
         return None
     order = ('catalog', 'mappings', 'prepared', 'publication')
@@ -23,10 +24,12 @@ def catalog_build_observation(root, phases):
         next_read_only_checks=[
             dict(path=str(root / 'continuation.json'),
                  check='Compare binding.pins and pins.json with the current code, configuration, batch and completed import; changed pins must remain a refusal.'),
-            dict(path=str(build / 'working.sqlite'),
-                 check='Inspect retained SQLite, working.sqlite-wal and working.sqlite-shm together on a separate copy; preserve the originals and diagnose the last failed catalog operation.'),
+            dict(path=str(build if incremental else build / 'working.sqlite'),
+                 check=('Inspect retained request, candidate results and native receipts; preserve originals and diagnose the last failed incremental operation.'
+                        if incremental else 'Inspect retained SQLite, working.sqlite-wal and working.sqlite-shm together on a separate copy; preserve the originals and diagnose the last failed catalog operation.')),
             dict(path=str(root / 'source/indexes/catalog.json'),
-                 check='If present, verify the saved catalog pair byte counts, SHA256, catalog_id and imported-body coverage with validate_catalog_pair; missing or incomplete outputs remain unaccepted.'),
+                 check=('Verify the saved native selector, selected_identity, exact scope proof and imported-body coverage; missing or incomplete outputs remain unaccepted.'
+                        if incremental else 'If present, verify the saved catalog pair byte counts, SHA256, catalog_id and imported-body coverage with validate_catalog_pair; missing or incomplete outputs remain unaccepted.')),
             dict(path=str(root / 'continuation.json'),
                  check='Read each recorded remote write in full and compare bytes and original conditions; HEAD or phase metadata alone cannot resolve an uncertain write.'),
         ],

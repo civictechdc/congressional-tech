@@ -302,15 +302,30 @@ class R2Store:
     def put_catalog_manifest(self, data, *, expected_version):
         """Use the selector version captured before this catalog build."""
         from congress_api.retention.catalog_publication import MANIFEST_KEY
-        self.index_etags[MANIFEST_KEY] = expected_version
-        return self.put(MANIFEST_KEY, data)
+        return self.put_index_selector(MANIFEST_KEY, data, expected_version=expected_version)
+
+    def put_index_selector(self, key, data, *, expected_version):
+        """Compare against the exact selector version captured before preparation."""
+        from congress_api.retention.index_selector import require_selector_key
+        require_selector_key(key)
+        self.index_etags[key] = expected_version
+        return self.put(key, data)
 
     def read_derived_file(self, key, path, *, expected=None):
         """Stream only catalog tables, pinning the object version across retries."""
-        from botocore.exceptions import ClientError
-        from congress_api.retention.derived_files import require_derived_key, copy_checked
+        from congress_api.retention.derived_files import require_derived_key
         require_derived_key(key)
-        etag = None
+        return self._read_checked_file(key, path, expected=expected)
+
+    def read_body_cache_file(self, path, *, expected_version):
+        """Retain the exact existing reader cache for explicit native adoption."""
+        if not expected_version or expected_version == 'missing':
+            raise ValueError('Reader cache download requires its selected source version')
+        return self._read_checked_file('indexes/processing/bodies.parquet', path, etag=expected_version, exclusive=True)
+
+    def _read_checked_file(self, key, path, *, expected=None, etag=None, exclusive=False):
+        from botocore.exceptions import ClientError
+        from congress_api.retention.derived_files import copy_checked
 
         def request():
             try:
@@ -329,7 +344,7 @@ class R2Store:
             size = response['ContentLength']
             if expected is not None and size != expected['bytes']:
                 raise ValueError(f'Selected catalog size mismatch: {key}')
-            result = copy_checked(source, path, size=size, expected=expected, key=key)
+            result = copy_checked(source, path, size=size, expected=expected, key=key, exclusive=exclusive)
             result['version'] = etag
             return result
 

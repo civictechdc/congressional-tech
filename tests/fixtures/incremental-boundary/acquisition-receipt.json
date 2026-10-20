@@ -1,0 +1,239 @@
+{
+  "original_url": "https://www.congress.gov/us/srpt/118/180",
+  "package_id": "CRPT-118srpt180",
+  "url": "https://www.govinfo.gov/content/pkg/CRPT-118srpt180.zip",
+  "record": {
+    "requested_url": "https://www.govinfo.gov/content/pkg/CRPT-118srpt180.zip",
+    "url": "https://www.govinfo.gov/content/pkg/CRPT-118srpt180.zip",
+    "retrieved_at": "2026-10-16T00:31:34.260495+00:00",
+    "transport": "direct",
+    "complete": true,
+    "http_status": 200,
+    "response_headers": {
+      "date": "Fri, 16 Oct 2026 00:31:34 GMT",
+      "content-type": "application/zip",
+      "content-length": "378505",
+      "server": "cloudflare",
+      "last-modified": "Thu, 15 Oct 2026 12:44:06 GMT",
+      "accept-ranges": "bytes",
+      "content-disposition": "attachment; filename=\"CRPT-118srpt180.zip\"",
+      "x-frame-options": "SAMEORIGIN",
+      "x-content-type-options": "nosniff",
+      "x-xss-protection": "1; mode=block",
+      "referrer-policy": "no-referrer-when-downgrade",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "content-security-policy": "default-src 'self'  https://analytics.govinfo.gov https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com; frame-ancestors 'self'; script-src 'unsafe-inline' 'unsafe-eval' 'self' *.videodelivery.net *.cloudflarestream.com  https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; object-src 'unsafe-inline' 'self' ; style-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com https://api.data.gov  https://stackpath.bootstrapcdn.com https://fonts.googleapis.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; img-src 'unsafe-inline' 'self' https://maxcdn.bootstrapcdn.com https://stackpath.bootstrapcdn.com  https://analytics.govinfo.gov data:; font-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://fonts.gstatic.com https://fonts.googleapis.com; connect-src 'self' *.videodelivery.net *.cloudflarestream.com https://cdn.jsdelivr.net  https://api.data.gov https://analytics.govinfo.gov; frame-src 'self'  https://stackpath.bootstrapcdn.com https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha;",
+      "cf-cache-status": "DYNAMIC",
+      "cf-ray": "a4b2f61f3ba31f89-IAD"
+    },
+    "response_header_items": [
+      {
+        "name": "date",
+        "value": "Fri, 16 Oct 2026 00:31:34 GMT"
+      },
+      {
+        "name": "content-type",
+        "value": "application/zip"
+      },
+      {
+        "name": "content-length",
+        "value": "378505"
+      },
+      {
+        "name": "server",
+        "value": "cloudflare"
+      },
+      {
+        "name": "last-modified",
+        "value": "Thu, 15 Oct 2026 12:44:06 GMT"
+      },
+      {
+        "name": "accept-ranges",
+        "value": "bytes"
+      },
+      {
+        "name": "accept-ranges",
+        "value": "bytes"
+      },
+      {
+        "name": "content-disposition",
+        "value": "attachment; filename=\"CRPT-118srpt180.zip\""
+      },
+      {
+        "name": "x-frame-options",
+        "value": "SAMEORIGIN"
+      },
+      {
+        "name": "x-content-type-options",
+        "value": "nosniff"
+      },
+      {
+        "name": "x-xss-protection",
+        "value": "1; mode=block"
+      },
+      {
+        "name": "referrer-policy",
+        "value": "no-referrer-when-downgrade"
+      },
+      {
+        "name": "strict-transport-security",
+        "value": "max-age=31536000; includeSubDomains"
+      },
+      {
+        "name": "content-security-policy",
+        "value": "default-src 'self'  https://analytics.govinfo.gov https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com; frame-ancestors 'self'; script-src 'unsafe-inline' 'unsafe-eval' 'self' *.videodelivery.net *.cloudflarestream.com  https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; object-src 'unsafe-inline' 'self' ; style-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com https://api.data.gov  https://stackpath.bootstrapcdn.com https://fonts.googleapis.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; img-src 'unsafe-inline' 'self' https://maxcdn.bootstrapcdn.com https://stackpath.bootstrapcdn.com  https://analytics.govinfo.gov data:; font-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://fonts.gstatic.com https://fonts.googleapis.com; connect-src 'self' *.videodelivery.net *.cloudflarestream.com https://cdn.jsdelivr.net  https://api.data.gov https://analytics.govinfo.gov; frame-src 'self'  https://stackpath.bootstrapcdn.com https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha;"
+      },
+      {
+        "name": "cf-cache-status",
+        "value": "DYNAMIC"
+      },
+      {
+        "name": "cf-ray",
+        "value": "a4b2f61f3ba31f89-IAD"
+      }
+    ],
+    "source_metadata": {
+      "final_url": "https://www.govinfo.gov/content/pkg/CRPT-118srpt180.zip",
+      "http_status": 200,
+      "http_version": "HTTP/2.0",
+      "response_header_fidelity": "repeated_fields",
+      "response_header_items": [
+        {
+          "name": "date",
+          "value": "Fri, 16 Oct 2026 00:31:34 GMT"
+        },
+        {
+          "name": "content-type",
+          "value": "application/zip"
+        },
+        {
+          "name": "content-length",
+          "value": "378505"
+        },
+        {
+          "name": "server",
+          "value": "cloudflare"
+        },
+        {
+          "name": "last-modified",
+          "value": "Thu, 15 Oct 2026 12:44:06 GMT"
+        },
+        {
+          "name": "accept-ranges",
+          "value": "bytes"
+        },
+        {
+          "name": "accept-ranges",
+          "value": "bytes"
+        },
+        {
+          "name": "content-disposition",
+          "value": "attachment; filename=\"CRPT-118srpt180.zip\""
+        },
+        {
+          "name": "x-frame-options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "name": "x-content-type-options",
+          "value": "nosniff"
+        },
+        {
+          "name": "x-xss-protection",
+          "value": "1; mode=block"
+        },
+        {
+          "name": "referrer-policy",
+          "value": "no-referrer-when-downgrade"
+        },
+        {
+          "name": "strict-transport-security",
+          "value": "max-age=31536000; includeSubDomains"
+        },
+        {
+          "name": "content-security-policy",
+          "value": "default-src 'self'  https://analytics.govinfo.gov https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com; frame-ancestors 'self'; script-src 'unsafe-inline' 'unsafe-eval' 'self' *.videodelivery.net *.cloudflarestream.com  https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; object-src 'unsafe-inline' 'self' ; style-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com https://api.data.gov  https://stackpath.bootstrapcdn.com https://fonts.googleapis.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; img-src 'unsafe-inline' 'self' https://maxcdn.bootstrapcdn.com https://stackpath.bootstrapcdn.com  https://analytics.govinfo.gov data:; font-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://fonts.gstatic.com https://fonts.googleapis.com; connect-src 'self' *.videodelivery.net *.cloudflarestream.com https://cdn.jsdelivr.net  https://api.data.gov https://analytics.govinfo.gov; frame-src 'self'  https://stackpath.bootstrapcdn.com https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha;"
+        },
+        {
+          "name": "cf-cache-status",
+          "value": "DYNAMIC"
+        },
+        {
+          "name": "cf-ray",
+          "value": "a4b2f61f3ba31f89-IAD"
+        }
+      ],
+      "response_metadata_version": 2,
+      "response_reason": "OK",
+      "response_headers": {
+        "date": "Fri, 16 Oct 2026 00:31:34 GMT",
+        "content-type": "application/zip",
+        "content-length": "378505",
+        "server": "cloudflare",
+        "last-modified": "Thu, 15 Oct 2026 12:44:06 GMT",
+        "accept-ranges": "bytes",
+        "content-disposition": "attachment; filename=\"CRPT-118srpt180.zip\"",
+        "x-frame-options": "SAMEORIGIN",
+        "x-content-type-options": "nosniff",
+        "x-xss-protection": "1; mode=block",
+        "referrer-policy": "no-referrer-when-downgrade",
+        "strict-transport-security": "max-age=31536000; includeSubDomains",
+        "content-security-policy": "default-src 'self'  https://analytics.govinfo.gov https://stackpath.bootstrapcdn.com https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com; frame-ancestors 'self'; script-src 'unsafe-inline' 'unsafe-eval' 'self' *.videodelivery.net *.cloudflarestream.com  https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; object-src 'unsafe-inline' 'self' ; style-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net https://maxcdn.bootstrapcdn.com https://api.data.gov  https://stackpath.bootstrapcdn.com https://fonts.googleapis.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha; img-src 'unsafe-inline' 'self' https://maxcdn.bootstrapcdn.com https://stackpath.bootstrapcdn.com  https://analytics.govinfo.gov data:; font-src 'unsafe-inline' 'self' https://cdn.jsdelivr.net  https://stackpath.bootstrapcdn.com https://api.data.gov https://maxcdn.bootstrapcdn.com https://fonts.gstatic.com https://fonts.googleapis.com; connect-src 'self' *.videodelivery.net *.cloudflarestream.com https://cdn.jsdelivr.net  https://api.data.gov https://analytics.govinfo.gov; frame-src 'self'  https://stackpath.bootstrapcdn.com https://maxcdn.bootstrapcdn.com https://www.google.com/recaptcha https://recaptcha.google.com/recaptcha;",
+        "cf-cache-status": "DYNAMIC",
+        "cf-ray": "a4b2f61f3ba31f89-IAD"
+      }
+    },
+    "redirects": [],
+    "content": {
+      "media_type": "application/zip",
+      "body": null,
+      "body_encoding": "base64",
+      "sha256": "8a67ee40e36853796f025f47e99ee1760212a063ad07dad447fb0056a1753f9f"
+    },
+    "local_body_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/8a67ee40e36853796f025f47e99ee1760212a063ad07dad447fb0056a1753f9f.body",
+    "body_sha256": "8a67ee40e36853796f025f47e99ee1760212a063ad07dad447fb0056a1753f9f"
+  },
+  "outcome": "saved",
+  "members": [
+    {
+      "name": "CRPT-118srpt180/dip.xml",
+      "status": "completed",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/5b0c6906afb758c8a7b594248a1f3cc1b580ed246b4f4335376ac9983a6752b1",
+      "sha256": "5b0c6906afb758c8a7b594248a1f3cc1b580ed246b4f4335376ac9983a6752b1",
+      "bytes": 2202,
+      "expected_pdf": false
+    },
+    {
+      "name": "CRPT-118srpt180/html/CRPT-118srpt180.htm",
+      "status": "completed",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/9ae6819a60267170b1d08dbfa2271dc1db8158050a5901f10ea8481ea0f2e18e",
+      "sha256": "9ae6819a60267170b1d08dbfa2271dc1db8158050a5901f10ea8481ea0f2e18e",
+      "bytes": 10438,
+      "expected_pdf": false
+    },
+    {
+      "name": "CRPT-118srpt180/pdf/CRPT-118srpt180.pdf",
+      "status": "completed",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/5028e461bf6dc87059304d42183ab67c73df4d7e521268295dd92aa0c3f46d8a",
+      "sha256": "5028e461bf6dc87059304d42183ab67c73df4d7e521268295dd92aa0c3f46d8a",
+      "bytes": 409949,
+      "expected_pdf": true
+    },
+    {
+      "name": "CRPT-118srpt180/premis.xml",
+      "status": "completed",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/8b40c27f9642fc29843c51a853e16fc9c3b56bf2670ecef8b7f0cfdf3039e993",
+      "sha256": "8b40c27f9642fc29843c51a853e16fc9c3b56bf2670ecef8b7f0cfdf3039e993",
+      "bytes": 116029,
+      "expected_pdf": false
+    },
+    {
+      "name": "CRPT-118srpt180/mods.xml",
+      "status": "completed",
+      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/6e91d6ac14d68ff77a169d9a861f5d116b928cb388213b780059f2bb0a02b449",
+      "sha256": "6e91d6ac14d68ff77a169d9a861f5d116b928cb388213b780059f2bb0a02b449",
+      "bytes": 9655,
+      "expected_pdf": false
+    }
+  ]
+}

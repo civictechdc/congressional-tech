@@ -18,7 +18,7 @@ const types = await compile(schema, 'Catalog', {
   bannerComment: '/** Generated from committee_meeting.Catalog. Do not edit. Run npm run generate:explorer-types. */',
   style: { singleQuote: true, printWidth: 100 },
 });
-const target = fileURLToPath(new URL('../src/components/explorer/catalog.generated.d.ts', import.meta.url));
+const target = fileURLToPath(new URL('../src/components/explorer/reader/catalog.generated.d.ts', import.meta.url));
 if (process.argv.includes('--check')) {
   if (!existsSync(target) || readFileSync(target, 'utf8') !== types) {
     throw new Error('Explorer types differ from the Python model. Run npm run generate:explorer-types.');

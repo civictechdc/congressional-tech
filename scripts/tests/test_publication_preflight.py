@@ -214,3 +214,54 @@ def test_locked_ijson_version_participates_in_runtime_identity(tmp_path,monkeypa
     before=identity.locked_runtime(tmp_path)
     lock.write_text(lock.read_text().replace('3.6.0','3.6.1'))
     assert before!=identity.locked_runtime(tmp_path)
+
+
+def native_fixture():
+    reader, full = fixture()
+    source = record(dict(version=2, selection=dict(key='indexes/native-manifests/selected.json', sha256='a'*64, bytes=50)))
+    selected_identity = dict(selector_sha256=source['sha256'], selected_ref=source['value']['selection'])
+    roots = dict(sources={'sha256':'source'},components={'sha256':'components'},browse={'sha256':'browse'})
+    pointer = reader.data[preflight.PREFIX+'manifest.json']['value']
+    pointer['source_manifest'], pointer['source_identity'] = source['value'], selected_identity
+    manifest = record(dict(version=6, source_manifest=source['value'],source_identity=selected_identity,roots=roots,
+                          info=dict(catalog_id='b'*32,rows=1,entries=1)))
+    reader.data['indexes/catalog.json'] = source
+    reader.data[preflight.PREFIX+pointer['manifest']] = manifest
+    recovery = record(dict(version=2,catalog_id='b'*32,rows=1,entries=1,source_identity=selected_identity,
+                           accepted=[],recoveries=[],sources=[],groups=[]))
+    reader.data[preflight.PREFIX+pointer['recovery']['path']] = recovery
+    pointer['recovery'].update(bytes=len(recovery['raw']),sha256=recovery['sha256'])
+    pointer['recovery_inputs'].update(version=2,raw_manifest_sha256=source['sha256'],
+        viewer_manifest_sha256=manifest['sha256'],source_identity=selected_identity,roots=roots)
+    del pointer['recovery_inputs']['files']
+    reader.data[preflight.PREFIX+'manifest.json'] = record(pointer)
+    return reader,full
+
+
+def test_native_noop_uses_only_control_reads_with_exact_stable_identity():
+    reader,full = native_fixture()
+    result = preflight.preflight(reader,full,publisher_version=10)
+    assert result['status']=='unchanged' and result['table_reads']==result['publication_writes']==0
+    assert len(reader.calls)==8 and len(reader.public_calls)==2
+
+
+@pytest.mark.parametrize('which',['selector_hash','pointer_identity','roots','recovery_identity'])
+def test_native_noop_refuses_mixed_control_bindings(which):
+    reader,full = native_fixture()
+    pointer = reader.data[preflight.PREFIX+'manifest.json']['value']
+    if which=='pointer_identity':
+        pointer['source_identity'] = dict(selector_sha256='wrong')
+    elif which=='roots':
+        pointer['recovery_inputs']['roots'] = {'different':True}
+    elif which=='recovery_identity':
+        key=preflight.PREFIX+pointer['recovery']['path']
+        value=reader.data[key]['value'];value['source_identity']={'different':True};reader.data[key]=record(value)
+        pointer['recovery'].update(bytes=len(reader.data[key]['raw']),sha256=reader.data[key]['sha256'])
+    else:
+        key=preflight.PREFIX+pointer['manifest'];value=deepcopy(reader.data[key]['value'])
+        value['source_identity']['selector_sha256']='wrong';reader.data[key]=record(value)
+        pointer['source_identity']=value['source_identity'];pointer['recovery_inputs']['source_identity']=value['source_identity']
+        pointer['recovery_inputs']['viewer_manifest_sha256']=reader.data[key]['sha256']
+    reader.data[preflight.PREFIX+'manifest.json']=record(pointer)
+    with pytest.raises(ValueError,match='identity|catalog differs'):
+        preflight.preflight(reader,full,publisher_version=10)

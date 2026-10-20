@@ -34,6 +34,23 @@ class LocalStore:
             raise ValueError('Catalog selector exceeds 1 MiB read budget')
         return data
 
+    def version(self, key):
+        from congress_api.retention.derived_files import file_identity
+        path = self.root / key
+        return file_identity(path)['sha256'] if path.is_file() else 'missing'
+
+    def read_body_cache_file(self, path, *, expected_version):
+        from congress_api.retention.derived_files import file_identity, copy_checked
+        key = 'indexes/processing/bodies.parquet'
+        source = self.root / key
+        expected = file_identity(source)
+        if expected['sha256'] != expected_version:
+            raise ValueError('Reader cache source version differs')
+        with source.open('rb') as stream:
+            result = copy_checked(stream, path, size=expected['bytes'], expected=expected, key=key, exclusive=True)
+        result['version'] = expected_version
+        return result
+
     def read_derived_file(self, key, path, *, expected=None):
         from congress_api.retention.derived_files import require_derived_key, copy_checked
         require_derived_key(key)
@@ -89,18 +106,23 @@ class LocalStore:
 
 
     def put_catalog_manifest(self, data, *, expected_version):
-        """Compare and replace the selector while holding a local writer lock."""
-        import fcntl
         from congress_api.retention.catalog_publication import MANIFEST_KEY
+        return self.put_index_selector(MANIFEST_KEY, data, expected_version=expected_version)
+
+    def put_index_selector(self, key, data, *, expected_version):
+        """Compare and replace an application selector under the local writer lock."""
+        import fcntl
+        from congress_api.retention.index_selector import require_selector_key
+        require_selector_key(key)
         lock = self.root / 'indexes/.catalog.lock'
         lock.parent.mkdir(parents=True, exist_ok=True)
         with lock.open('a+b') as stream:
             fcntl.flock(stream, fcntl.LOCK_EX)
-            current = self.read(MANIFEST_KEY)
+            current = self.read(key)
             version = sha256(current).hexdigest() if current is not None else None
             if version != expected_version:
                 raise RuntimeError('Concurrent catalog update; selected snapshot preserved')
-            self.put(MANIFEST_KEY, data)
+            return self.put(key, data)
 
 
 

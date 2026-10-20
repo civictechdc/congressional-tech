@@ -13,8 +13,8 @@ from congress_api.retention.viewer_inventory import issue_inventory, verify_inve
 from viewer_publication.plan import accept_viewer_plan
 
 
-def prepare_viewer(publisher, builder, client, continuation, source, validate_pair,
-                   pair_proof, publication_conditions):
+def prepare_viewer(publisher, builder, client, continuation, snapshot, publication_conditions, *,
+                   renderer_upgrade=False, resume_upgrade=False):
     """Accept the existing prepared phase once, including its recovery status."""
     root = continuation.root
     target = root / 'prepared'
@@ -39,16 +39,16 @@ def prepare_viewer(publisher, builder, client, continuation, source, validate_pa
 
     def build():
         nonlocal proof
-        selected = json.loads((source / 'indexes/catalog.json').read_text())
-        validate_pair(selected)
-        if selected != inputs['source'][0]:
-            raise ValueError('Retained source differs from accepted viewer input')
-        manifest = builder.publish(source, target, inputs['source'][2], validation=pair_proof())
+        from viewer_publication.native import prepare_native_output
+        if (snapshot is None or snapshot.manifest != inputs['source'][0]
+                or snapshot.identity['selector_sha256'] != inputs['source'][3]):
+            raise ValueError('Selected native source differs from accepted viewer input')
+        upgrade_options=dict(renderer_upgrade=True,resume_upgrade=resume_upgrade) if renderer_upgrade else {}
+        manifest, recovery = prepare_native_output(publisher, builder, client, snapshot, target,
+            accepted_record=inputs['accepted'], viewer_record=inputs['viewer'], **upgrade_options)
         publisher.validate_prepared_output(target, manifest)
-        identities = getattr(manifest, 'identities', None)
-        initial = (issue_inventory(target, identities, context=binding) if identities is not None else
-                   verify_inventory(target, {str(p.relative_to(target)): None for p in target.rglob('*') if p.is_file()}, context=binding))
-        publisher.prepare_recovery(target, manifest, inputs['accepted'], validation=initial)
+        initial = issue_inventory(target, manifest.identities, context=binding)
+        publisher.prepare_recovery(target, manifest, inputs['accepted'], validation=initial, index=recovery)
         identities = dict(initial.identities)
         identities['recovery-prepared.json'] = file_identity(target / 'recovery-prepared.json')
         proof = issue_inventory(root, {'prepared/' + key: value for key, value in identities.items()}, context=binding)
@@ -69,37 +69,24 @@ def prepare_viewer(publisher, builder, client, continuation, source, validate_pa
 
 
 def publish_imported(*, client, proxy, guard, continuation, destination, batch, baseline,
-                     bucket, imported, builder, publisher, publication_conditions):
+                     bucket, imported, builder, publisher, publication_conditions, native,
+                     renderer_upgrade=False, resume_upgrade=False):
     """Run domain work only after the dispatcher admits and guards its runtime."""
     from congress_api.retention.r2 import R2Store
-    from congress_api.retention.catalog_staging import WorkingCatalog
-    from congress_api.cli.raw_progress import ProgressLog
-    from congress_api.retention.document_index import validate_document_indexes
-    from congress_api.retention.catalog_validation import validate_catalog_pair
-    from congress_api.retention.raw_catalog import rebuild_catalog_in_directory
+    from congress_api.retention.catalog_publication import read_catalog
+    from congress_api.retention.raw_catalog import update_from_raw
+    from congress_api.retention.raw_storage import RawStorage
     from filename_recoveries import accepted_rows
     from corpus_recovery.mappings import publish_mappings
+    from corpus_recovery.guards import GuardedNative
 
     save = continuation.save
     def report(name, value):
-        save(name, (json.dumps(value, indent=2) + '\n').encode())
+        save(name, (json.dumps(value, indent=2, sort_keys=True) + '\n').encode())
     def journal(event, value):
         continuation.record(event, value)
-    versions = continuation.value['versions']
     source = destination/'source'; expected = set(json.loads((batch/'bodies.json').read_text()))
-    pair_validation = None
-    content_validation = None
-    def validate_pair(manifest):
-        nonlocal pair_validation
-        if pair_validation is not None:
-            return pair_validation.require(source, manifest, validator=validate_document_indexes, expected_bodies=expected)
-        pair_validation = validate_catalog_pair(source, manifest, validator=validate_document_indexes,
-                                               expected_bodies=expected, references=content_validation)
-        return pair_validation.coverage
     class Store(R2Store):
-        def accept_catalog_validation(self, validation):
-            nonlocal content_validation
-            content_validation = validation
         def read(self, key):
             body = super().read(key)
             if body is not None and key == 'indexes/catalog.json':
@@ -112,42 +99,20 @@ def publish_imported(*, client, proxy, guard, continuation, destination, batch, 
             if key == 'indexes/catalog.json':
                 save('source/'+key, body, replace=True)
             return result
-        def save_derived(self, key, path, identity):
-            from congress_api.retention.derived_files import retain_verified_file
-            return retain_verified_file(path, source / key, expected=identity, key=key)
-        def read_derived_file(self, key, path, *, expected=None):
-            identity = super().read_derived_file(key, path, expected=expected)
-            if identity is not None:
-                self.save_derived(key, path, identity)
-            return identity
-        def put_derived_file(self, key, path, *, expected):
-            self.save_derived(key, path, expected)
-            return super().put_derived_file(key, path, expected=expected)
-        def put_catalog_manifest(self, data, *, expected_version):
-            manifest = json.loads(data)
-            coverage = validate_pair(manifest)
-            report('coverage.json', coverage)
-            return super().put_catalog_manifest(data, expected_version=expected_version)
     guard.boundary()
+    store = Store(proxy, bucket)
+    guarded_native = GuardedNative(native, guard=guard.check, journal=journal)
+    raw = RawStorage.open(store, guarded_native)
+    if raw.snapshot().identity != imported['raw_identity']:
+        raise ValueError('Raw selection changed since the admitted recovery import')
+
     def catalog_phase():
-        build = destination/'build'
-        # An unaccepted build may contain the only diagnostic SQLite state.
-        # Explicit continuation reuses accepted phases; it never deletes or
-        # silently restarts incomplete catalog work.
-        if build.exists():
-            raise RuntimeError('Incomplete catalog build retained; reconcile before continuation: '+str(build))
-        build.mkdir(); (build/'indexes').mkdir()
-        working = WorkingCatalog(build/'working.sqlite')
-        try:
-            with ProgressLog(destination/'catalog-progress.json'):
-                catalog = rebuild_catalog_in_directory(Store(proxy,bucket), working=working, root=build)
-        finally: working.close()
-        manifest = json.loads((source/'indexes/catalog.json').read_text())
-        coverage = validate_pair(manifest)
-        report('coverage.json', coverage)
+        catalog = update_from_raw(store, raw_storage=raw, directory=destination/'catalog-update',
+            candidate=imported['raw_identity'][:32], expected_bodies=expected)
+        report('coverage.json', catalog['body_coverage'])
         return catalog
     catalog = continuation.phase('catalog', catalog_phase,
-        files=lambda: [*source.rglob('*parquet'), source/'indexes/catalog.json', destination/'coverage.json'])
+        files=lambda: [source/'indexes/catalog.json', destination/'coverage.json'])
     report('catalog-result.json', catalog)
     guard.boundary()
     def mapping_phase():
@@ -158,8 +123,11 @@ def publish_imported(*, client, proxy, guard, continuation, destination, batch, 
     mapping = continuation.phase('mappings', mapping_phase, files=lambda: [p for p in (destination/'accepted-proposed.json', destination/'accepted-before.json') if p.exists()])
     report('mapping-result.json', mapping)
     guard.boundary()
-    plan = prepare_viewer(publisher, builder, client, continuation, source,
-                          validate_pair, lambda: pair_validation, publication_conditions)
+    with read_catalog(store, native=guarded_native) as snapshot:
+        if snapshot.identity != catalog['selected_identity']:
+            raise ValueError('Selected catalog differs from the accepted recovery update')
+        upgrade_options=dict(renderer_upgrade=True,resume_upgrade=resume_upgrade) if renderer_upgrade else {}
+        plan = prepare_viewer(publisher, builder, client, continuation, snapshot, publication_conditions, **upgrade_options)
     guard.boundary()
     def publication_phase():
         publication = publisher.upload(proxy, plan.root, plan.manifest,

@@ -1,13 +1,14 @@
-"""Content-addressed bodies, immutable receipt batches, and replaceable indexes.
+"""Content-addressed bodies, immutable receipts, and coherent native selection.
 
-The caller supplies object storage. Receipts are the recovery log: bodies reach
-storage before receipts; state reaches storage before the capture index. With a
-valid checkpoint, the next run recovers unindexed receipts. An interrupted index
-pair or mismatching checkpoint requires explicit repair after investigation;
-receipts preserve the evidence needed to repair without refetching.
+The caller supplies configured native storage. Bodies precede immutable receipts;
+one conditional raw selector publishes exact completed capture and state pins.
+Unselected receipts recover interrupted acquisition without refetching. Legacy
+checkpoint reconstruction remains an explicit one-time adoption boundary.
 """
 
 from datetime import datetime, timedelta, timezone
+import heapq
+from itertools import islice
 import gzip
 import hashlib
 import json
@@ -240,7 +241,12 @@ def existing_body_info(payload, info):
     return {**info, 'stored_sha256': hashlib.sha256(payload).hexdigest(), 'stored_bytes': len(payload)}
 
 
-class Archive:
+class LegacyArchiveSeed:
+    """Explicit one-time legacy checkpoint reconstruction for adoption.
+
+    Recurring callers use Archive with injected native storage. This owner retains
+    the old snapshot format for checkpoint investigation and seed fixtures only.
+    """
     def __init__(self, store, run_id, *, repair=False):
         self.store, self.run_id = store, run_id
         data = store.read(CAPTURES_KEY)
@@ -324,78 +330,7 @@ class Archive:
                         fidelity=row["fidelity"],
                         retrieved_at=row["retrieved_at"],
                     )
-        # Add every known document URL, including files not yet downloaded.
-        # Only a changed catalog can introduce additional unqueued document URLs.
-        from congress_api.retention.catalog_publication import FILENAMES, MANIFEST_KEY, read_catalog
-        # The selector changes only after both immutable tables are uploaded.
-        object_version = getattr(store, 'version', lambda key: None)
-        version = object_version(MANIFEST_KEY)
-        if version == 'missing':
-            version = object_version(FILENAMES)
-        self.filename_version = version
-        from contextlib import ExitStack
-        with ExitStack() as owners:
-            names = None
-            if repair or version is None or saved_metadata.get(b'filename_version') != str(version).encode():
-                snapshot = owners.enter_context(read_catalog(store))
-                names = snapshot.filenames_path
-            if names:
-                from congress_api.retention.capture_url_admission import (
-                    PROVENANCE_COLUMNS, publisher_download_candidate, independent_publisher_link,
-                )
-                filename_file = pq.ParquetFile(names)
-                columns = [
-                    "source_url",
-                    "body_key",
-                    "format",
-                    "http_status",
-                    "media_type",
-                ]
-                columns.extend(name for name in PROVENANCE_COLUMNS
-                               if name in filename_file.schema_arrow.names)
-                rows = (row for batch in filename_file.iter_batches(batch_size=256, columns=columns)
-                        for row in batch.to_pylist())
-                for row in rows:
-                    if not publisher_download_candidate(row):
-                        continue  # Retain probe evidence without scheduling new guesses.
-                    links = self.seed_links({"url": row["source_url"]},
-                                            publisher_link=independent_publisher_link(row))
-                    # An aggregate catalog body cannot be assigned to a recovered URL.
-                    url = links[0]['url'] if len(links) == 1 and not links[0].get('url_repair') else None
-                    if (
-                        not url
-                        or self.state[url]['outcome'] == 'excluded_probe'
-                        or not row["body_key"]
-                        or self.state[url].get("body_key")
-                        or self.state[url].get("checked_at")
-                        or "200" not in (row["http_status"] or [])
-                    ):
-                        continue
-                    formats = set(row["format"] or [])
-                    # A claimed format is not proof of a usable file. Inspect retained
-                    # bytes once before treating it as a successful document.
-                    if formats and formats <= {
-                        "pdf",
-                        "doc",
-                        "docx",
-                        "xls",
-                        "xlsx",
-                        "ppt",
-                        "pptx",
-                        "zip",
-                        "rtf",
-                    }:
-                        self.state[url].update(
-                            body_key=row["body_key"],
-                            sha256=row["body_key"].rsplit("/", 1)[-1].removesuffix(".gz"),
-                            media_type=next(iter(row["media_type"] or []), None),
-                            # The filename index aggregates observations; it does not
-                            # associate one HTTP status with this particular body.
-                            http_status=None,
-                            fidelity="retained-file",
-                            outcome="retained",
-                            links_scanned=False,
-                        )
+        self._seed_catalog(saved_metadata, repair=repair)
         # Persisted attempts/validation take precedence over legacy bootstrap guesses.
         if not resumed:
             self.state.update(saved_state)
@@ -409,6 +344,107 @@ class Archive:
                 receipt = json.loads(line)
                 self.apply(receipt)
                 self.add_index(receipt, key, line_number)
+
+    def _seed_catalog(self, saved_metadata, *, repair=False):
+        store = self.store
+        # Add every known document URL, including files not yet downloaded.
+        # Only a changed catalog can introduce additional unqueued document URLs.
+        from congress_api.retention.catalog_publication import FILENAMES, MANIFEST_KEY, read_catalog
+        # The selector changes only after both immutable tables are uploaded.
+        object_version = getattr(store, 'version', lambda key: None)
+        version = object_version(MANIFEST_KEY)
+        if version == 'missing':
+            version = object_version(FILENAMES)
+        self.filename_version = version
+        from contextlib import ExitStack
+        with ExitStack() as owners:
+            source = None
+            if repair or version is None or saved_metadata.get(b'filename_version') != str(version).encode():
+                options = dict(native=self.storage.native) if hasattr(self, 'storage') else {}
+                if hasattr(self, 'selected'):
+                    selector = store.read(MANIFEST_KEY)
+                    if selector is not None:
+                        if json.loads(selector).get('version') != 2:
+                            raise ValueError('Changed file catalog requires explicit catalog adoption')
+                    else:
+                        from congress_api.retention.catalog_publication import DOCUMENTS
+                        if any(object_version(key) != 'missing' for key in (FILENAMES, DOCUMENTS)):
+                            raise ValueError('Legacy catalog files require explicit catalog adoption')
+                    options['read'] = lambda key: selector if key == MANIFEST_KEY else store.read(key)
+                snapshot = owners.enter_context(read_catalog(store, **options))
+                if callable(getattr(snapshot, 'changes_since', None)):
+                    self.filename_version = snapshot.identity
+                    if hasattr(self, 'selected'):
+                        cursor = self.selected.manifest['filename_version']
+                        if not isinstance(cursor, dict):
+                            raise ValueError('Native catalog acquisition requires an explicit initial cursor seed')
+                        if cursor != snapshot.identity:
+                            self._seed_catalog_source(snapshot.changed_sources_since(cursor, max_ordered_bytes=64 << 20))
+                    else:
+                        # Full native enumeration belongs only to the explicit
+                        # investigated LegacyArchiveSeed/adoption boundary.
+                        source = snapshot.table('filenames', max_ordered_bytes=64 << 20)
+                elif callable(getattr(snapshot, 'table', None)):
+                    raise ValueError('Native catalog lacks retained source changes')
+                elif snapshot.filenames_path:
+                    source = owners.enter_context(pq.ParquetFile(snapshot.filenames_path))
+                    self.filename_version = snapshot.version if snapshot.version is not None else version
+                elif not snapshot.files and snapshot.manifest is None:
+                    # This token proves that neither a selector nor legacy pair
+                    # existed; bare None must never stand for a legacy catalog.
+                    self.filename_version = snapshot.identity
+            if source is not None:
+                self._seed_catalog_source(source)
+
+    def _seed_catalog_source(self, source):
+        from congress_api.retention.capture_url_admission import (
+            PROVENANCE_COLUMNS, publisher_download_candidate, independent_publisher_link,
+        )
+        columns = ['source_url', 'body_key', 'format', 'http_status', 'media_type']
+        columns.extend(name for name in PROVENANCE_COLUMNS if name in source.schema_arrow.names)
+        rows = (row for batch in source.iter_batches(batch_size=256, columns=columns)
+                for row in batch.to_pylist())
+        for row in rows:
+            if not publisher_download_candidate(row):
+                continue  # Retain probe evidence without scheduling new guesses.
+            links = self.seed_links({"url": row["source_url"]},
+                                    publisher_link=independent_publisher_link(row))
+            # An aggregate catalog body cannot be assigned to a recovered URL.
+            url = links[0]['url'] if len(links) == 1 and not links[0].get('url_repair') else None
+            if (
+                not url
+                or self.state[url]['outcome'] == 'excluded_probe'
+                or not row["body_key"]
+                or self.state[url].get("body_key")
+                or self.state[url].get("checked_at")
+                or "200" not in (row["http_status"] or [])
+            ):
+                continue
+            formats = set(row["format"] or [])
+            # A claimed format is not proof of a usable file. Inspect retained
+            # bytes once before treating it as a successful document.
+            if formats and formats <= {
+                "pdf",
+                "doc",
+                "docx",
+                "xls",
+                "xlsx",
+                "ppt",
+                "pptx",
+                "zip",
+                "rtf",
+            }:
+                self.state[url].update(
+                    body_key=row["body_key"],
+                    sha256=row["body_key"].rsplit("/", 1)[-1].removesuffix(".gz"),
+                    media_type=next(iter(row["media_type"] or []), None),
+                    # The filename index aggregates observations; it does not
+                    # associate one HTTP status with this particular body.
+                    http_status=None,
+                    fidelity="retained-file",
+                    outcome="retained",
+                    links_scanned=False,
+                )
 
     def seed(self, item, *, publisher_link=False):
         url = allowed_url(item.get("url"))
@@ -458,7 +494,7 @@ class Archive:
         Historical attempts and retained bodies remain untouched.
         """
         observations = []
-        rejected = [state for state in self.state.values()
+        rejected = [state for state in self._admission_states(urls)
                     if (urls is None or state['url'] in urls)
                     and state['outcome'] in {'pending', 'repaired_url'} and not allowed_url(state['url'])]
         for state in rejected:
@@ -468,6 +504,9 @@ class Archive:
                 state['outcome'] = 'excluded_scope'
             observations.extend(links)
         return observations
+
+    def _admission_states(self, urls):
+        return self.state.values()
 
     def put_body(self, data):
         digest = hashlib.sha256(data).hexdigest()
@@ -575,12 +614,15 @@ class Archive:
             source_line=None,
             record=record,
             captures=captures,
-            download_state=state,
+            download_state=self._receipt_state(state),
         )
         self.pending.append(receipt)
         self.apply(receipt)
         if len(self.pending) >= (1000 if self.metadata is not None else 100):
             self.flush()
+        return state
+
+    def _receipt_state(self, state):
         return state
 
     def flush(self):
@@ -590,7 +632,7 @@ class Archive:
             self.metadata.flush()
         while self.pending:
             owner = self.pending[0]["download_state"]["family"]
-            batch = [r for r in self.pending if r["download_state"]["family"] == owner]
+            batch = [self._publication_receipt(r) for r in self.pending if r["download_state"]["family"] == owner]
             self.sequence += 1
             key = f"receipts/{owner}/{self.day}/download-{self.run_id}-{self.sequence:06d}.jsonl.gz"
             payload = "".join(
@@ -605,6 +647,9 @@ class Archive:
             self.pending = [
                 r for r in self.pending if r["download_state"]["family"] != owner
             ]
+
+    def _publication_receipt(self, receipt):
+        return receipt
 
     def apply(self, receipt):
         state = receipt["download_state"]
@@ -649,6 +694,23 @@ class Archive:
                 }
             )
 
+    @property
+    def raw_selection(self):
+        return None  # Historical seed/reference runs have no native selection.
+
+    @property
+    def state_counts(self):
+        from collections import Counter
+        return dict(url_outcomes=dict(Counter(row['outcome'] for row in self.state.values())),
+                    urls_by_source_family=dict(Counter(row.get('family') or 'unknown' for row in self.state.values())),
+                    excluded_media_urls=sum(row['outcome'] == 'excluded_media' for row in self.state.values()))
+
+    @property
+    def retained_body_count(self):
+        import pyarrow.compute as pc
+        keys = self.captures['body_key']
+        return pc.count_distinct(pc.filter(keys, pc.not_equal(keys, ''))).as_py()
+
     def save(self):
         from congress_api.retention.catalog_cache import capture_digest
         self.flush()
@@ -665,3 +727,220 @@ class Archive:
             self.store.put(CAPTURES_KEY, encode_table(combined))
             self.captures = combined
             self.additions.clear()
+
+
+class _BodyLookup:
+    """Fetch one bounded native body leaf on first use of a digest."""
+    def __init__(self, snapshot):
+        self.snapshot, self.cache = snapshot, {}
+
+    def get(self, digest, default=None):
+        if digest not in self.cache:
+            self.cache[digest] = self.snapshot.body_info(digest)
+        return self.cache[digest] if self.cache[digest] is not None else default
+
+    def __contains__(self, digest):
+        return self.get(digest) is not None
+
+    def __getitem__(self, digest):
+        value = self.get(digest)
+        if value is None:
+            raise KeyError(digest)
+        return value
+
+    def __setitem__(self, digest, value):
+        self.cache[digest] = value
+
+
+class Archive(LegacyArchiveSeed):
+    """Acquire bodies and receipts using one coherent native raw selection.
+
+    Construction reads current URL scheduling state, never historical captures.
+    Legacy reconstruction is an explicit seed step; missing native selection
+    refuses before acquisition so existing archives cannot be silently replaced.
+    """
+    def __init__(self, store, run_id, *, storage, repair=False):
+        if storage.store is not store:
+            raise ValueError('Archive storage belongs to another object store')
+        if repair:
+            raise ValueError('Legacy checkpoint repair belongs to explicit seed adoption')
+        self.store, self.run_id, self.storage = store, run_id, storage
+        self.selected = storage.snapshot()
+        self.initial_identity = self.selected.identity
+        if self.selected.version is None:
+            raise RuntimeError('Explicit raw archive seed adoption is required before recurring capture')
+        from congress_api.retention.raw_state_map import RawStateMap
+        self.state = RawStateMap(self.selected)
+        self.body_info = _BodyLookup(self.selected)
+        self.additions, self.pending = [], []
+        self._indexed_receipts = set()
+        self._reading_parts, self._reading_by_body, self._replace_readings = {}, {}, set()
+        self.sequence = self._save_sequence = 0
+        self.metadata = None
+        self.day = datetime.now(timezone.utc).date().isoformat()
+        version = self.selected.manifest['filename_version']
+        saved_metadata = {b'filename_version': str(version).encode()} if version is not None else {}
+        self._seed_catalog(saved_metadata)
+        # Receipts remain acquisition evidence after interruption. Membership is
+        # keyed publication metadata; no capture-table scan constructs this set.
+        for key in sorted(store.keys('receipts/')):
+            if '/download-' not in key or self.selected.has_receipt(key):
+                continue
+            for line_number, line in enumerate(gzip.decompress(store.read(key)).splitlines(), 1):
+                receipt = json.loads(line)
+                self.apply(receipt)
+                self.add_index(receipt, key, line_number)
+
+    @property
+    def captures(self):
+        """Explicit full export for investigation/adoption consumers."""
+        return self.selected.captures()
+
+    @property
+    def raw_selection(self):
+        return dict(before=self.initial_identity, after=self.selected.identity)
+
+    @property
+    def state_counts(self):
+        return self.selected.state_counts
+
+    @property
+    def retained_body_count(self):
+        return self.selected.body_count
+
+    def scheduled_states(self, *, outcomes, now=None, urls=None, invalid_only=False):
+        """Merge changed working rows with exact selected candidates in old order."""
+        from congress_api.retention.raw_state_routes import due_time, invalid, priority
+        cached = set(self.state.rows)
+        deadline = due_time(now.isoformat()) if now is not None else None
+        working = sorted((row for row in self.state.rows.values()
+            if row['outcome'] in outcomes and (urls is None or row['url'] in urls)
+            and (not invalid_only or invalid(row))
+            and (deadline is None or due_time(row.get('next_attempt_at')) <= deadline)), key=priority)
+        selected = (row for row in self.selected.state_candidates(outcomes=outcomes,
+            now=now, urls=urls, invalid_only=invalid_only) if row['url'] not in cached)
+        for row in heapq.merge(working, selected, key=priority):
+            yield self.state.admit_selected(row)
+
+    def _admission_states(self, urls):
+        return self.scheduled_states(outcomes={'pending', 'repaired_url'}, urls=urls, invalid_only=True)
+
+    def capture_queue(self, *, now, limit, urls, retry_outcomes, initial_only, reinspect_retained, retry_now):
+        """Admit at most this run's attempt budget, retaining scheduler fairness."""
+        outcomes = (set(retry_outcomes) if retry_outcomes else {'pending'} if initial_only else
+                    (set(self.state_counts['url_outcomes']) |
+                     {row['outcome'] for row in self.state.rows.values()} | {None, ''}) - NON_DOWNLOAD_OUTCOMES)
+        if reinspect_retained:
+            outcomes = {self.state[url]['outcome'] for url in urls}
+        due = None if reinspect_retained or retry_now else now
+        options = dict(outcomes=outcomes, now=due, urls=urls)
+        refusals = []
+        for state in self.scheduled_states(**options, invalid_only=True):
+            refusals.append(dict(url=state['url'], previous_outcome=state['outcome'], reason='outside_capture_scope'))
+            state.update(outcome='excluded_scope', next_attempt_at=None)
+        return list(islice(self.scheduled_states(**options), limit)), refusals
+
+    def _receipt_state(self, state):
+        # Acquisition receipts describe download decisions in JSON. Opaque
+        # adopted Arrow fields remain typed in the native state selection.
+        return {name: state.get(name) for name in STATE_SCHEMA.names}
+
+    def apply(self, receipt):
+        for reference in receipt.get('reading_parts', ()):
+            self.register_reading_part(reference, replace=receipt.get('replace_readings', ()))
+        url = receipt['download_state']['url']
+        previous = self.state.get(url, {})
+        super().apply(receipt)
+        self.state[url] = {**previous, **self.state[url]}
+
+    def add_index(self, receipt, key, line):
+        super().add_index(receipt, key, line)
+        self._indexed_receipts.add(key)
+
+    def register_reading_part(self, reference, *, replace=()):
+        selected = {name: reference[name] for name in ('key', 'bytes', 'sha256', 'rows')}
+        self._reading_parts[selected['key']] = selected
+        for body in reference.get('body_keys', ()):
+            self._reading_by_body[body] = selected
+        self._replace_readings.update(replace)
+
+    def _publication_receipt(self, receipt):
+        bodies = metadata_body_keys(receipt['record'], receipt['captures'])
+        parts = {self._reading_by_body[key]['key']: self._reading_by_body[key]
+                 for key in bodies
+                 if key in self._reading_by_body}
+        return dict(receipt, reading_parts=[parts[key] for key in sorted(parts)],
+                    replace_readings=sorted(set(bodies) & self._replace_readings)) if parts else receipt
+
+    def save(self):
+        self.flush()
+        updates = self.state.changed()
+        if (not self.additions and not updates and not self._indexed_receipts and not self._reading_parts
+                and self.filename_version == self.selected.manifest['filename_version']):
+            return self.selected
+        prepared = self.storage.prepare(self.selected,
+            operation=f'archive:{self.run_id}:{self._save_sequence}',
+            captures=pa.Table.from_pylist(self.additions, schema=CAPTURE_SCHEMA),
+            states=pa.Table.from_pylist(updates, schema=self.storage.state_schema),
+            indexed_receipts=self._indexed_receipts, filename_version=self.filename_version,
+            reading_parts=tuple(self._reading_parts.values()), replace_readings=self._replace_readings)
+        self.selected = self.storage.publish(prepared)
+        self.body_info.snapshot = self.selected
+        self.body_info.cache = {key: value for key, value in self.body_info.cache.items() if value is not None}
+        self.state.rebase(self.selected)
+        self._indexed_receipts.clear()
+        self._reading_parts.clear()
+        self._reading_by_body.clear()
+        self._replace_readings.clear()
+        self.additions.clear()
+        self._save_sequence += 1
+        return self.selected
+
+
+def adopt_legacy_archive(store, storage, *, operation, repair=False,
+                         directory=None):
+    """Explicitly select a complete investigated seed; never called at startup."""
+    base = storage.snapshot()
+    if base.version is not None:
+        raise ValueError('Raw archive adoption requires an unselected native root')
+    from congress_api.retention.capture_metadata import PREFIX
+    from congress_api.retention.raw_readings import PART_BYTES
+    cache_key = 'indexes/processing/bodies.parquet'
+    version = getattr(store, 'version', None)
+    if version is None:
+        if cache_key in store.keys('indexes/processing/'):
+            raise RuntimeError('Legacy body cache adoption requires version-aware source storage')
+        cache_version = 'missing'
+    else:
+        cache_version = version(cache_key)
+    if cache_version != 'missing' and (directory is None or not callable(getattr(store, 'read_body_cache_file', None))):
+        raise RuntimeError('Legacy per-reader body cache requires its exact source download and adoption directory')
+    parts = []
+    for key in sorted(store.keys(PREFIX)):
+        if key.endswith('.parquet'):
+            payload = store.read(key)
+            if payload is None or len(payload) > PART_BYTES:
+                raise ValueError('Retained reading part exceeds adoption bounds')
+            parts.append(dict(key=key, bytes=len(payload), sha256=hashlib.sha256(payload).hexdigest(),
+                              rows=pq.ParquetFile(pa.BufferReader(payload)).metadata.num_rows))
+    if cache_version != 'missing':
+        from congress_api.retention.raw_readings_adoption import adopt_body_readings
+        from pathlib import Path
+        body_cache_path = Path(directory) / 'reader-caches' / (hashlib.sha256(cache_version.encode()).hexdigest() + '.parquet')
+        body_cache_path.parent.mkdir(parents=True, exist_ok=True)
+        body_cache_identity = store.read_body_cache_file(body_cache_path, expected_version=cache_version)
+        if body_cache_identity['version'] != cache_version:
+            raise ValueError('Retained reader cache source version differs')
+        parts = adopt_body_readings(store, parts, cache_path=body_cache_path,
+                                   expected=body_cache_identity, directory=directory)
+    seed = LegacyArchiveSeed(store, 'seed-adoption', repair=repair)
+    captures = seed.captures
+    if seed.additions:
+        captures = pa.concat_tables([captures, pa.Table.from_pylist(seed.additions, schema=CAPTURE_SCHEMA)])
+    prepared = storage.prepare(base, operation=operation, captures=captures,
+        states=pa.Table.from_pylist(list(seed.state.values()), schema=storage.state_schema),
+        indexed_receipts={key for key in captures['receipt_key'].to_pylist() if key},
+        filename_version=seed.filename_version, reading_parts=parts, qualify_readings=True)
+    if version is not None and version(cache_key) != cache_version:
+        raise ValueError('Legacy reader cache changed during adoption; selection preserved')
+    return storage.publish(prepared)

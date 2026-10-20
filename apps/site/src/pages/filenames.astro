@@ -1,19 +1,22 @@
 ---
-import css from '../../../../docs/youtube-coverage/research/filename-viewer.css?raw';
-import body from '../../../../docs/youtube-coverage/research/filename-viewer-body.html?raw';
+import { withBase } from '../lib/paths';
+const destination = withBase('/dashboard/');
 ---
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/svg+xml" href={`${import.meta.env.BASE_URL}/favicon.svg`} />
-    <title>Document filenames · Congressional Tech</title>
-    <meta name="description" content="Review filename classifications, publisher provenance, and saved-response coverage across the congressional document archive." />
-    <style is:global set:html={css}></style>
-  </head>
-  <body data-filename-mode="published">
-    <Fragment set:html={body} />
-    <script>import '../components/filename-bootstrap.mjs';</script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <title>Document filenames</title>
+  <link rel="canonical" href={destination} />
+  <script is:inline define:vars={{ destination }}>
+    location.replace(destination + location.search + location.hash);
+  </script>
+</head>
+<body>
+  <p><a id="dashboard" href={destination}>Continue to Committee Explorer</a></p>
+  <script is:inline define:vars={{ destination }}>
+    const link = document.getElementById('dashboard');
+    if (link) link.href = destination + location.search + location.hash;
+  </script>
+</body>
 </html>

@@ -10,7 +10,7 @@ import pytest
 
 from congress_api.acquisition.raw_sync import run_async
 from congress_api.retention.capture_metadata import CaptureMetadata, inspect_document, saved_readings
-from congress_api.retention.raw_archive import Archive
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
 from test_raw_source_sync import MemoryStore, response
 from test_async_capture import AsyncMemoryStore, receipts
 

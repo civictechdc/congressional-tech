@@ -1,6 +1,6 @@
 # Committee Explorer data model
 
-**Status: executable model, schema `0.1.0-draft.2`.** These models validate
+**Status: executable model, schema `0.1.0-draft.3`.** Readers still accept `0.1.0-draft.2`. These models validate
 records and relationships. The application exporter and its IdRegistry are
 current policy ([adapter identity policy](../../../../docs/congress-api-contracts.md#adapter-identity-policy)); this package still does not replace transcript bodies.
 
@@ -54,25 +54,30 @@ relationships. A document's existence does not establish its associations.
 |---|---|
 | `Committee` | Continuing identity, display label and exact provider IDs. A reused code or name alone does not prove continuity. |
 | `CommitteeTerm` | Committee in a Congress: name, chamber, type, parent term, active dates, jurisdiction and website. Congress-scoped codes belong here. |
-| `CommitteeRelation` | Evidence-supported rename, replacement, split or merger; preserves predecessor and successor identities. |
-| `Channel` / `CommitteeChannel` | Provider-neutral channel and its committee association, including active dates and official/majority/minority/member/archive role. |
-| `CommitteeMembership` | Optional person/committee association with active dates, role, party, state and district; populate only from supporting inputs. |
+| `Channel` | Provider-neutral channel, including its URL and provider. |
 | `Meeting` | Proceeding identity, title, Congress/session, chamber, type and all convening committees with their roles/evidence. No required video or invented title. |
 | `MeetingOccurrence` | One sitting/day: scheduled and actual start/end, status, access and location. A multi-day proceeding can have several occurrences. |
-| `MeetingRelation` | Separate entries describing the same proceeding, a continuation or a rescheduled replacement. Does not automatically merge records. |
 | `Panel` | Meeting-scoped grouping with optional occurrence, label and display order. |
 | `Appearance` | Recorded name, roles, participation, affiliation, panel, occurrence and optional resolved person. |
-| `Person` / `Organization` | Optional supported identities. Names alone do not justify cross-meeting person joins. |
+| `Person` | A supported identity. A name alone does not justify a cross-meeting person join. |
 | `RecordedName` / `Affiliation` | Name components, honorific/suffix/retired text, position, organization, location and whom the person represents, as recorded for that appearance. |
 
 A full committee and subcommittee can both convene a meeting. Parent committee
 references are scoped to the same Congress. A term represents one committee in
 one Congress; selected metadata and its source observations may change during
-that term. This draft does not build a complete historical membership directory. Records
-and fields such as `CommitteeRelation`, `CommitteeMembership`, `Organization`,
-`CommitteeChannel`, `MeetingRelation`, `SpeakerAttribution`, `VoteTally`,
-`Ballot`, `MaterialLink.extent` and `Representation.xml_root` stay in the schema
-until a source states them.
+that term. `CommitteeTerm.committee_code` and `committee_level` carry the
+Congress.gov system code and whether that code is a full committee or a
+subcommittee. This draft does not build a complete historical membership directory.
+
+A single-sitting meeting carries its status, access, schedule and location
+directly. `MeetingOccurrence` remains when a proceeding has another sitting or
+when an existing export cites that sitting's identity. `MaterialLink` is the
+only association between a material and a meeting, appearance, or committee.
+`Material.files` is the browser copy Assembly writes from that material's
+representations, including a viewer-data saved copy (`saved_copy_sha256`,
+`saved_filename`). `document_type` and `source_document_groups` are the
+publisher label and collection. Versions and representations stay in the
+catalog because their identities and provenance are cited independently.
 
 A rescheduled notice changes the scheduled time of the same occurrence unless
 evidence identifies a distinct sitting. Keep earlier observations; do not count
@@ -98,9 +103,8 @@ every linked meeting.
 | `TextDetails` | Transcript, captions, translation, summary or other text; publisher/human/automatic/mixed production. |
 | `MaterialVersion` | Edition/revision, publication/modification/generation dates, language tags, duration/page count and optional superseded version. |
 | `Representation` | File/encoding: exact locations, media type, format label, encoding, optional size/digest/retained bytes, inspected XML root and content schema. |
-| `MaterialLink` | Material's role and full/partial/unknown coverage of a typed subject, optionally pinned to a version and a portion of an exact representation. |
+| `MaterialLink` | Material's role and full/partial/unknown coverage of a typed subject, optionally pinned to a version and a portion of an exact representation. This is the association readers use. |
 | `MaterialRelation` | Directed relationship between versions: transcribes, derived from, translation of, corrects, part of or alternate of. |
-| `SpeakerAttribution` | Optional bridge from a transcript representation's local speaker key to an appearance. |
 
 Apply these distinctions consistently:
 
@@ -314,7 +318,7 @@ and the retained inputs reviewed for the Explorer design. No importer is added.
 | GPO/video and curated recording matches | Recording materials and versioned material links/relations | Preserve match method and inputs; date coincidence is not identity. |
 | YouTube caches/channel table | Channels, committee-channel links, recordings and source observations | Other provider metadata remains in source details; member/archive roles stay distinct. |
 | Caption indexes/rules | Dated assessments; identified tracks become text materials | Inferred availability is distinct from captured text. |
-| Existing transcript JSON | Representation whose `content_schema` identifies `congress_api.transcribe.Transcript`, version `1.0` | Reuse header, local participants, turns and inserts. Optional `SpeakerAttribution` bridges to appearances. Body validation remains with its owner. |
+| Existing transcript JSON | Representation whose `content_schema` identifies `congress_api.transcribe.Transcript`, version `1.0` | Reuse header, local participants, turns and inserts. Local speaker keys stay on the transcript body. Body validation remains with its owner. |
 | Completeness/coverage tables | Reconciliation inputs and versioned coverage outputs | Counts cannot reconstruct discarded witness/document/location fields. Preferred-source reports remain derived views. |
 
 Some imports lack reliable observation dates, matching outputs lack enough

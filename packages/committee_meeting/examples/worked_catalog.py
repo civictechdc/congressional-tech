@@ -20,14 +20,17 @@ def worked_catalog() -> Catalog:
     for letter in ("a", "b"):
         add("committee", f"committee-{letter}", label=f"Example committee {letter.upper()}")
         add("committee_term", f"term-{letter}", committee=reference("committee", f"committee-{letter}"),
-            congress=119, name=f"Example committee {letter.upper()}", chamber="house")
+            congress=119, name=f"Example committee {letter.upper()}", chamber="house",
+            committee_code=f"hs{letter}00", committee_level="full")
 
     committees = [{"committee": reference("committee_term", f"term-{letter}"), "role": "cohost",
                    "provenance": evidence} for letter in ("a", "b")]
     add("meeting", "hearing", title="Example joint hearing", congress=119, chamber="house",
-        meeting_type="hearing", committees=committees)
+        meeting_type="hearing", status="held", actual_start={"date": "2026-09-01"},
+        occurrences=[{"status": "held", "actual_start": {"date": "2026-09-02"}}],
+        committees=committees)
     add("meeting", "markup", title="Example markup", congress=119, chamber="house",
-        meeting_type="markup", committees=committees[:1])
+        meeting_type="markup", status="held", committees=committees[:1])
     for day in (1, 2):
         add("occurrence", f"day-{day}", meeting=reference("meeting", "hearing"), status="held",
             actual_start={"date": f"2026-09-0{day}"})
@@ -35,27 +38,36 @@ def worked_catalog() -> Catalog:
         occurrence=reference("occurrence", "day-1"), label="Panel I")
     for letter in ("a", "b"):
         add("appearance", f"witness-{letter}", meeting=reference("meeting", "hearing"),
-            panel=reference("panel", "panel"), name={"display": "Alex Example"}, roles=["witness"],
-            participation="listed", affiliation={"organization_name": f"Organization {letter.upper()}"})
+            panel=reference("panel", "panel"), panel_label="Panel I",
+            name={"display": "Alex Example"}, roles=["witness"],
+            participation="listed", organization_name=f"Organization {letter.upper()}",
+            affiliation={"organization_name": f"Organization {letter.upper()}"})
 
     # A printed transcript is valid without any video. Two proceedings share it.
-    add("material", "print", title="Combined hearing record", details={"type": "document", "category": "transcript"})
+    files = [
+        {"url": f"https://example.org/record.{fmt}", "role": "download", "format_label": fmt.upper(), "media_type": media}
+        for fmt, media in (("pdf", "application/pdf"), ("html", "text/html"), ("xml", "application/xml"))
+    ]
+    add("material", "print", title="Combined hearing record",
+        document_type="CHRG",
+        details={"type": "document", "category": "transcript"},
+        files=files, meeting_ids=["hearing", "markup"])
     add("material_version", "print-v1", material=reference("material", "print"), label="First edition")
     add("material_version", "print-v2", material=reference("material", "print"),
         label="Corrected edition", supersedes=reference("material_version", "print-v1"))
-    for format, media in (("pdf", "application/pdf"), ("html", "text/html"), ("xml", "application/xml")):
-        add("representation", f"print-{format}", version=reference("material_version", "print-v2"),
-            format_label=format.upper(), media_type=media,
-            locations=[{"url": f"https://example.org/record.{format}", "role": "download"}])
-    for meeting, start, end in (("hearing", 1, 20), ("markup", 21, 35)):
+    for fmt, media in (("pdf", "application/pdf"), ("html", "text/html"), ("xml", "application/xml")):
+        add("representation", f"print-{fmt}", version=reference("material_version", "print-v2"),
+            format_label=fmt.upper(), media_type=media,
+            locations=[{"url": f"https://example.org/record.{fmt}", "role": "download"}])
+    for meeting in ("hearing", "markup"):
         add("material_link", f"print-{meeting}", material=reference("material", "print"),
             version=reference("material_version", "print-v2"), subject=reference("meeting", meeting),
-            role="transcript", extent={"representation": reference("representation", "print-pdf"),
-                                      "first_page": start, "last_page": end})
+            role="transcript")
 
     # Discoverable without a matched meeting, and without assuming downloadable media.
     add("material", "archive-video", title="Unlinked archival recording",
-        details={"type": "recording", "medium": "video", "provider": "senate-isvp"})
+        details={"type": "recording", "medium": "video", "provider": "senate-isvp"},
+        files=[{"url": "https://example.org/player", "role": "player"}])
     add("material_version", "archive-v1", material=reference("material", "archive-video"))
     add("representation", "archive-player", version=reference("material_version", "archive-v1"),
         locations=[{"url": "https://example.org/player", "role": "player"}])

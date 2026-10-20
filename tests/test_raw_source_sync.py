@@ -9,7 +9,7 @@ import pytest
 
 from congress_api.acquisition.raw_sync import run_sync
 from congress_api.parsers.archive_links import related_links, allowed_url
-from congress_api.retention.raw_archive import Archive, CAPTURE_SCHEMA, encode_table
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, CAPTURE_SCHEMA, encode_table
 from congress_api.models.content import RawContent
 
 
@@ -24,6 +24,17 @@ class MemoryStore:
 
     def read(self, key):
         return self.objects.get(key)
+
+    def read_body_cache_file(self, path, *, expected_version):
+        from io import BytesIO
+        from congress_api.retention.derived_files import copy_checked
+        key = 'indexes/processing/bodies.parquet'
+        if self.version(key) != expected_version:
+            raise ValueError('Reader cache source changed')
+        data = self.objects[key]
+        result = copy_checked(BytesIO(data), path, size=len(data), key=key, exclusive=True)
+        result['version'] = expected_version
+        return result
 
     def read_derived_file(self, key, path, *, expected=None):
         from io import BytesIO

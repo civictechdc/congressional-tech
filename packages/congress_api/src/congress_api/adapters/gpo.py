@@ -242,6 +242,7 @@ def records(
             identifiers=(Identifier(scheme="govinfo.package", value=package),),
             title=row.get("title") or None, congress=congress, chamber=chamber,
             proceeding_dates=dates, details=DocumentDetails(category=category),
+            document_type=(decision or {}).get('source_document_type') if review_source else None,
             provenance=evidence, field_evidence=date_evidence + category_evidence,
         )
         # A metadata refresh does not prove that the publisher issued a new edition.

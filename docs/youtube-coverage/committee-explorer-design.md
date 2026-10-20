@@ -18,7 +18,7 @@ reviewed on 2026-09-27 against main `3108a6d` and data snapshot `acc8108`.
 
 Companion artifacts:
 
-- [Data model and source mappings](../../packages/committee_meeting/src/committee_meeting/MODEL.md), schema `0.1.0-draft.2`.
+- [Data model and source mappings](../../packages/committee_meeting/src/committee_meeting/MODEL.md), schema `0.1.0-draft.3` (readers still accept `0.1.0-draft.2`).
 - [Congress API integration proposal](../../packages/committee_meeting/CONGRESS_API_INTEGRATION.md), including source-output repairs needed for trustworthy export.
 - [Python model definitions](../../packages/committee_meeting/src/committee_meeting/).
 - [Interactive design preview](committee-explorer-preview.html), using explicitly synthetic, model-validated records.
@@ -462,7 +462,7 @@ Inject the data source at page startup. The renderer consumes normalized domain
 records through `ExplorerReader` (or `ExplorerDataSource` for bounded previews);
 fetching, file discovery, decoding and
 format conversion belong to the adapter. The local implementation and interface
-are in `apps/site/src/components/explorer/data-source.js` and `.d.ts`, documented
+are in `apps/site/src/components/explorer/reader/data-source.ts` and `types.ts`, documented
 in that directory's README. The preview now calls `mountExplorer({ source })`.
 
 The JSON publication adapter follows `CURRENT` to the manifest, selects a

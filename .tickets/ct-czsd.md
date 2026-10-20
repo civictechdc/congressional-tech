@@ -17,7 +17,15 @@ Small updates should finish without reconstructing unrelated data. This changes 
 
 Keep acquisition, document interpretation, grouping policy and conditional publication with their existing owners. Replace only the whole-dataset storage and execution boundaries that prevent incremental updates. Reuse qualified maintained components; do not introduce a parallel dataset engine, generic scheduler or permanent dual writer.
 
-The postponed DocSpec plan is prior design evidence, not proof of capability or a resumed migration. This requirement supersedes its operational full-rebuild fallback and its assumption that complete-file exports can remain on the update path.
+The user selected `docspec-rs` and enabled Basin Catalog on the existing
+`congressional-tech-raw` bucket. DocSpec owns typed data versions and recovery;
+the existing application selector chooses one coherent set of completed versions.
+Prepare changed bounded partitions as immutable native runs and reuse unchanged
+pins. Keep application routing metadata bounded as the catalog grows.
+
+The earlier postponed plan remains historical evidence. Its full-rebuild fallback
+and complete-file exports are not part of the incremental update path. Local
+proofs and catalog configuration do not establish production adoption.
 
 ## Acceptance Criteria
 

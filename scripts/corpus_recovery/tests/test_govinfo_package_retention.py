@@ -21,6 +21,9 @@ from corpus_recovery.inventory import sealed_inputs
 from corpus_recovery.transfer import import_batch
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, CAPTURES_KEY, STATE_KEY, decode_table
 from congress_api.retention.document_index import DocumentSources
+from congress_api.retention.raw_storage import RAW_KEY
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tests"))
+from native_memory_helpers import memory_raw_storage
 
 
 def sha(raw):
@@ -126,23 +129,27 @@ def test_complete_package_import_preserves_mappings_and_existing_data(package):
             self.writes.append(name)
 
     store = Store()
+    owner = memory_raw_storage(store)
+    owner.publish(owner.prepare(owner.snapshot(), operation='explicit-fixture-seed',
+        captures=baseline_captures, states=old_state))
+    store.writes.clear()
     before = deepcopy(store.data)
     result = import_batch(store, prepared=records, body_paths={k:v['path'] for k,v in inventory.items()},
-                          captures=baseline_captures, state=old_state, source_file='fixture',
+                          raw_storage=owner, operation='govinfo-fixture', source_file='fixture',
                           receipt_prefix='receipts/documents/fixture', guard=lambda:None,
                           journal=lambda *args:None, save_payload=lambda *args:None)
     assert result['complete']
     assert result['body_objects_missing_before_put'] == 3
-    assert all(store.data[k] == v for k,v in before.items())
-    assert all(k not in store.writes for k in before)
+    assert all(store.data[k] == v for k,v in before.items() if k != RAW_KEY)
+    assert all(k not in store.writes for k in before if k != RAW_KEY)
     for body_key, info in inventory.items():
         assert gzip.decompress(store.data[body_key]) == Path(info['path']).read_bytes()
     imported = [json.loads(line) for line in gzip.decompress(store.data['receipts/documents/fixture-000001.jsonl.gz']).splitlines()]
     evidence = imported[-1]['record']['recovery_package']
     assert base64.b64decode(evidence['acquisition_receipt_base64'], validate=True) == package['receipt_path'].read_bytes()
     assert sha(package['receipt_path'].read_bytes()) == evidence['acquisition_receipt_sha256']
-    assert decode_table(store.data[STATE_KEY]).slice(0, len(old_state)).to_pylist() == old_state.to_pylist()
-    assert decode_table(store.data[CAPTURES_KEY]).slice(0, len(baseline_captures)).to_pylist() == baseline_captures.to_pylist()
+    assert owner.snapshot().states().slice(0, len(old_state)).to_pylist() == old_state.to_pylist()
+    assert owner.snapshot().captures().slice(0, len(baseline_captures)).to_pylist() == baseline_captures.to_pylist()
     assert json.loads((batch / 'accepted.json').read_text()) == package['accepted']
 
 

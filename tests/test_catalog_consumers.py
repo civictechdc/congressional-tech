@@ -6,7 +6,7 @@ from pathlib import Path
 from congress_api.retention import document_index as index
 from congress_api.retention.catalog_cache import LocalStore
 from congress_api.retention.catalog_publication import publish_catalog, read_catalog
-from congress_api.retention.raw_archive import Archive
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
 from test_raw_source_sync import MemoryStore
 
 
@@ -65,3 +65,29 @@ def test_probe_reads_selected_generation_with_stale_legacy_roots(tmp_path):
     assert result.from_cache and result.complete
     assert result.content.body_bytes() == content
     assert result.body_key == "bodies/fixture.gz"
+
+
+def test_probe_reads_native_selected_members_without_pair_export(tmp_path):
+    from test_catalog_coalesced_batches import Native
+    from test_native_catalog_selection import seed, scope_for
+    from test_catalog_dependencies import identity
+    from congress_api.retention.catalog_selection import publish_native_catalog
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(
+        'native_probe', root / 'docs/youtube-coverage/research/scripts/probe_document_links.py')
+    probe = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(probe)
+    store, native = LocalStore(tmp_path / 'archive'), Native()
+    owner, rows = seed(tmp_path, store, native)
+    selected = read_catalog(store, native=native)
+    changed = scope_for(tmp_path, store, owner, selected, [], name='probe-split', deletions=[identity(rows[2])])
+    publish_native_catalog(store, changed, previous=selected)
+    content = b'%PDF-1.7\nretained selected native body\n%%EOF'
+    (store.root / 'O').write_bytes(gzip.compress(content))
+    native.reads.clear()
+    reader = probe.archive_reader(store.root, native=native, max_ordered_bytes=1 << 20)
+    result = reader(rows[3]['source_url'], max_bytes=4096)
+    assert result.from_cache and result.content.body_bytes() == content
+    assert len(native.reads) == 2
+    assert not (store.root / 'indexes/document-filenames.parquet').exists()
+    assert not list(store.root.glob('catalog-generations/*/*.parquet'))
