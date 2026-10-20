@@ -28,7 +28,22 @@ class DocSpecFailure(RuntimeError):
         self.returncode = result.returncode
         self.stderr = result.stderr
         self.status_code = None
+        self.code = None
+        try:
+            payload = json.loads(result.stderr)
+        except (TypeError, ValueError):
+            payload = None
+        if isinstance(payload, dict) and isinstance(payload.get('code'), str) and payload['code']:
+            self.code = payload['code']
         super().__init__(result.stderr.strip() or f'DocSpec exited {result.returncode}')
+
+    @property
+    def status(self):
+        return self.status_code
+
+    @status.setter
+    def status(self, value):
+        self.status_code = value
 
 
 _hosts = weakref.WeakValueDictionary()

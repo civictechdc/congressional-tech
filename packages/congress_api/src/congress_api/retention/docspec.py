@@ -230,11 +230,17 @@ class NativeDatasets:
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
             return self._request('/run', request, dispatch=dispatch)
         except BaseException as error:
-            refused = (isinstance(error, DocSpecFailure)
-                       and error.status_code is not None and error.status_code != 504)
-            if dispatch.get('submitted') and not refused:
+            cleanup_safe = (
+                isinstance(error, DocSpecFailure)
+                and error.status is not None
+                and 400 <= error.status < 500
+                and bool(error.code)
+                and error.code not in {'worker', 'custody_quarantined', 'timeout', 'host_unavailable'}
+            )
+            if dispatch.get('submitted') and not cleanup_safe:
                 # The native task may still need this producer file. Neither a
-                # response timeout nor a later host exit proves durable admission.
+                # response timeout, worker/quarantine failure, nor a later host
+                # exit proves durable admission or producer independence.
                 retained = True
                 request_path = directory / 'request.json'
                 try:

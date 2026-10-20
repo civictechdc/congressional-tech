@@ -14,17 +14,34 @@ import pyarrow.parquet as pq
 import pytest
 
 from congress_api.retention.docspec import DocSpecFailure, NativeDatasets
+from docspec_transport_helpers import host_for_client
 from native_test_helpers import native_test_client
 
 
-def failure(status):
-    error = DocSpecFailure(['POST', '/run'], subprocess.CompletedProcess([], status or -9, stderr='fixture failure'))
+def failure(status, code=None):
+    stderr = (json.dumps({'code': code, 'message': 'fixture failure'})
+              if code is not None else 'fixture failure')
+    error = DocSpecFailure(['POST', '/run'], subprocess.CompletedProcess([], status or -9, stderr=stderr))
     error.status_code = status
     return error
 
 
-@pytest.mark.parametrize('error', [TimeoutError('deadline'), KeyboardInterrupt(),
-    httpx.ReadError('lost response'), ValueError('invalid response JSON'), failure(None), failure(504)])
+@pytest.mark.parametrize('error', [
+    TimeoutError('deadline'),
+    KeyboardInterrupt(),
+    httpx.ReadError('lost response'),
+    ValueError('invalid response JSON'),
+    failure(None),
+    failure(504),
+    failure(504, 'timeout'),
+    failure(500, 'worker'),
+    failure(503, 'custody_quarantined'),
+    failure(422),
+    failure(422, 'worker'),
+    failure(422, 'custody_quarantined'),
+    failure(422, 'timeout'),
+    failure(422, 'host_unavailable'),
+])
 def test_unknown_submission_retains_exact_replay_input_and_original_failure(tmp_path, monkeypatch, error):
     native = NativeDatasets('unused', tmp_path)
     table = pa.table({'key': ['one', 'two', 'one'], 'values': [['same', None, 'same'], None, []]})
@@ -48,7 +65,38 @@ def test_unknown_submission_retains_exact_replay_input_and_original_failure(tmp_
     assert any(saved['input'] in note for note in error.__notes__)
 
 
-@pytest.mark.parametrize('submitted,error', [(False, TimeoutError('not sent')), (True, failure(422))])
+@pytest.mark.parametrize('status,code', [
+    (422, 'worker'),
+    (422, 'custody_quarantined'),
+    (500, 'worker'),
+    (503, 'custody_quarantined'),
+])
+def test_http_worker_and_quarantined_responses_retain_producer_input(tmp_path, monkeypatch, status, code):
+    table = pa.table({'key': ['one', 'two'], 'values': [['same', None], []]})
+    payload = {'code': code, 'message': f'native {code} failure'}
+    with NativeDatasets('unused', tmp_path) as native, httpx.Client(
+            base_url='http://fixture',
+            transport=httpx.MockTransport(lambda request: httpx.Response(status, json=payload))) as client:
+        monkeypatch.setattr(native, 'hash_input', lambda path: {'digest': 'd' * 64})
+        monkeypatch.setattr(native, '_execution_host', lambda: host_for_client(client))
+        with pytest.raises(DocSpecFailure) as caught:
+            native.run_table(table, dataset='custody', operation='initial', definition='v1')
+        error = caught.value
+        assert error.status == status
+        assert error.code == code
+        saved = error.retained_input
+        assert Path(saved['input']).exists()
+        assert pq.read_table(saved['input']).equals(table)
+        assert native.retained_producer_inputs() == [saved]
+    with NativeDatasets('unused', tmp_path) as fresh:
+        assert fresh.retained_producer_inputs() == [saved]
+
+
+@pytest.mark.parametrize('submitted,error', [
+    (False, TimeoutError('not sent')),
+    (True, failure(422, 'invalid_input')),
+    (True, failure(409, 'operation_conflict')),
+])
 def test_before_dispatch_and_completed_native_refusal_cleanup(submitted, error, tmp_path, monkeypatch):
     with NativeDatasets('unused', tmp_path) as native:
         monkeypatch.setattr(native, 'hash_input', lambda path: {'digest': 'd' * 64})
