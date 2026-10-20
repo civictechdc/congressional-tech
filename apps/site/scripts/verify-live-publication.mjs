@@ -8,10 +8,14 @@ import {pathToFileURL} from 'node:url';
 import {loadPublication} from '../src/components/explorer/reader/filenames/publication.ts';
 import {loadRecoveries} from '../src/components/explorer/reader/filenames/recoveries.ts';
 import {loadReviews} from '../src/components/explorer/reader/filenames/reviews.ts';
+import {canonicalJson} from '../src/components/explorer/reader/filenames/startup.ts';
 
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+// The publisher hashes Python's ASCII JSON encoding of normalized mapping rows.
+const mappingHash=rows=>hash(canonicalJson(rows).replace(/[\u007f-\uffff]/g,char=>'\\u'+char.charCodeAt(0).toString(16).padStart(4,'0')));
 export async function verifyLivePublication({viewerUrl,pagesUrl,descriptor,fetcher=fetch,runtimeProbe}) {
   let requests=0,total=0;
+  let recoveryUrl,recoveryData,recoveryIdentity;
   const observations=[];
   const bounded=async(url,options={})=>{
     const target=new URL(url);
@@ -28,6 +32,7 @@ export async function verifyLivePublication({viewerUrl,pagesUrl,descriptor,fetch
     catch(error){await reader.cancel().catch(()=>{});throw error;}finally{reader.releaseLock();}
     if(identityLength&&declared!==null&&Number(declared)!==count)throw new Error('Incomplete public verification response');
     const bytes=Buffer.concat(chunks);
+    if(String(url)===recoveryUrl)recoveryData=JSON.parse(bytes);
     observations.push({url:String(url),bytes:count,sha256:hash(bytes),cors:response.headers.get('Access-Control-Allow-Origin')});
     // Fetch already decoded the body. Downstream maintained loaders receive
     // accurate normalized headers, including when CORS hid Content-Encoding.
@@ -35,18 +40,39 @@ export async function verifyLivePublication({viewerUrl,pagesUrl,descriptor,fetch
     return new Response(bytes,{status:response.status,headers});
   };
   const pointerResponse=await bounded(viewerUrl),pointer=await pointerResponse.json();
+  recoveryUrl=pointer.recovery?new URL(pointer.recovery.path,viewerUrl).href:undefined;
   // Pin the pointer just observed; do not permit a second mutable read to select
   // a different release inside this verification invocation.
   const publication=await loadPublication(viewerUrl,(url,opts)=>String(url)===String(viewerUrl)?Promise.resolve(Response.json(pointer)):bounded(url,opts));
   const {manifest,url:manifestUrl}=publication;
-  if(![2,5].includes(manifest.version))throw new Error('Maintained loader does not support selected manifest version');
+  if(![2,5,6].includes(manifest.version))throw new Error('Maintained loader does not support selected manifest version');
   const reviewDescriptor={...descriptor,url:new URL('data/document-reviews/reviews.json',new URL('../',pagesUrl)).href};
-  await loadRecoveries(publication.recovery,manifest.info,bounded);
-  const reviews=await loadReviews(reviewDescriptor,manifest,bounded,manifestUrl);
+  const native=manifest.version===6;
+  let reviews;
+  if(native){
+    if(canonicalJson(pointer.source_identity)!==canonicalJson(manifest.source_identity)||
+        canonicalJson(pointer.source_manifest)!==canonicalJson(manifest.source_manifest))throw new Error('Selected viewer pointer belongs to a different native snapshot');
+    if(!publication.recovery)throw new Error('Selected native recovery status is missing');
+    const {createStableFilenameCatalog}=await import('../src/components/explorer/reader/filenames/catalog-v6.ts');
+    const reader=await createStableFilenameCatalog(publication,bounded,reviewDescriptor);
+    reviews={info:reader.info};
+    const inputs=pointer.recovery_inputs,manifestHash=observations.find(item=>item.url===manifestUrl)?.sha256;
+    const acceptedDigest=Array.isArray(recoveryData?.accepted)?mappingHash(recoveryData.accepted):null;
+    if(inputs?.version!==2 || canonicalJson(inputs.source_identity)!==canonicalJson(manifest.source_identity)||
+        canonicalJson(inputs.roots)!==canonicalJson(manifest.roots)||inputs.raw_manifest_sha256!==manifest.source_identity.selector_sha256||
+        inputs.viewer_manifest_sha256!==manifestHash||!Array.isArray(recoveryData?.accepted)||typeof inputs.accepted?.present!=='boolean'||
+        inputs.accepted?.sha256!==acceptedDigest)throw new Error('Selected recovery inputs differ from the native publication');
+    recoveryIdentity={source_identity:recoveryData.source_identity,sha256:pointer.recovery.sha256,accepted_sha256:acceptedDigest};
+    recoveryData=undefined;
+  }else{
+    await loadRecoveries(publication.recovery,manifest.info,bounded);
+    reviews=await loadReviews(reviewDescriptor,manifest,bounded,manifestUrl);
+  }
   if(reviews.info.review_error)throw new Error(reviews.info.review_error);
   let binding=null;
   if(manifest.files?.review_binding){
-    const item=manifest.files.review_binding,response=await bounded(new URL(item.path,manifestUrl));
+    const base=native?new URL('../../',manifestUrl):manifestUrl;
+    const item=manifest.files.review_binding,response=await bounded(new URL(item.path,base));
     const bytes=new Uint8Array(await response.arrayBuffer());
     if(bytes.byteLength!==item.bytes||hash(bytes)!==item.sha256)throw new Error('Review binding readback differs');
     binding=JSON.parse(new TextDecoder().decode(bytes));
@@ -66,6 +92,7 @@ export async function verifyLivePublication({viewerUrl,pagesUrl,descriptor,fetch
     loader:{source:'maintained explorer/reader/filenames/reviews.ts',info:reviews.info,
       rows:reviewData.rows.map((row,index)=>({document_id:row.document_id,status:row.status,baseline:row.baseline,selected:row.selected,
         placement:binding?.withdrawn?.find(item=>item.index===index)||{state:'bound'},index}))},
+    ...(native?{recovery_identity:recoveryIdentity}:{}),
     withdrawn:binding?.withdrawn||[],requests,bytes:total,observations};
 }
 
@@ -76,10 +103,11 @@ export async function browserRuntimeProbe({pagesUrl,pointer,reviewInfo},chromium
     await page.goto(pagesUrl,{waitUntil:'domcontentloaded',timeout:30_000});
     await page.waitForFunction(()=>typeof window.filenameViewerApi==='function',null,{timeout:30_000});
     const info=await page.evaluate(()=>Promise.race([window.filenameViewerApi('/api/info'),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Live reader exceeded30second verification deadline')),30_000))]));
-    const observed={catalog_id:info.catalog_id,review_sha256:info.review_sha256,recovery_sha256:info.recovery_sha256,
+    const observed={catalog_id:info.catalog_id,generation:info.generation,review_sha256:info.review_sha256,recovery_sha256:info.recovery_sha256,
       reviewed_search:info.reviewed_search,reviewed_groups:info.reviewed_groups,review_error:info.review_error};
-    return {state:info.catalog_id!==pointer.catalog_id?'pending':info.review_error||info.review_sha256!==reviewInfo.review_sha256||info.recovery_sha256!==pointer.recovery?.sha256||!info.reviewed_search?'failed':'passed',
-      observed,expected:{catalog_id:pointer.catalog_id,review_sha256:reviewInfo.review_sha256,recovery_sha256:pointer.recovery?.sha256},browser:browser.version(),
+    const generation=pointer.source_identity?.selected_ref?.sha256?.slice(0,32);
+    return {state:info.catalog_id!==pointer.catalog_id?'pending':info.review_error||info.review_sha256!==reviewInfo.review_sha256||info.recovery_sha256!==pointer.recovery?.sha256||!info.reviewed_search||generation&&info.generation!==generation?'failed':'passed',
+      observed,expected:{catalog_id:pointer.catalog_id,...(generation?{generation}:{}),review_sha256:reviewInfo.review_sha256,recovery_sha256:pointer.recovery?.sha256},browser:browser.version(),
       method:'fresh Chromium executing deployed Pages bootstrap and worker; no UI mutation'};
   } finally {await browser.close();}
 }
