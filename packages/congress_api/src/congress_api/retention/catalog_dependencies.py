@@ -226,10 +226,10 @@ class NativeCatalogDependencies:
 
     def _rows(self, pin, schema):
         count = size = 0
-        from contextlib import nullcontext
         from .catalog_rows import core_bytes
-        context=(nullcontext(pa.RecordBatchReader.from_batches(schema,self.row_owner.read(deepcopy(pin),schema=schema)))
+        context=(pa.RecordBatchReader.from_batches(schema,self.row_owner.read(deepcopy(pin),schema=schema))
                  if self.row_owner is not None else self.native.source_batches(deepcopy(pin),schema=schema))
+        before=(self.row_owner.rows_read,self.row_owner.bytes_read) if self.row_owner is not None else None
         with context as reader:
             if not reader.schema.equals(schema, check_metadata=False):
                 raise DependencyGap('Native dependency schema differs from selected application schema')
@@ -241,8 +241,13 @@ class NativeCatalogDependencies:
                 if ((self.max_rows is not None and count > self.max_rows)
                         or (self.max_bytes is not None and size > self.max_bytes)):
                     raise DependencyGap('Selected dependency partition exceeds its row or byte budget')
-                self.native_rows_read += len(batch)
-                self.native_bytes_read += batch.nbytes
+                if self.row_owner is None:
+                    self.native_rows_read += len(batch)
+                    self.native_bytes_read += batch.nbytes
+                else:
+                    self.native_rows_read += self.row_owner.rows_read-before[0]
+                    self.native_bytes_read += self.row_owner.bytes_read-before[1]
+                    before=(self.row_owner.rows_read,self.row_owner.bytes_read)
                 yield from batch.to_pylist()
         expected = self.expected_rows(pin) if self.expected_rows is not None else None
         if expected is not None and count != expected:

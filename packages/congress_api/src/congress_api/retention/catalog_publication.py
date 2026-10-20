@@ -207,7 +207,7 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
             or type(max_chunk_rows) is not int or max_chunk_rows < 1
             or type(max_chunk_bytes) is not int or max_chunk_bytes < 1):
         raise ValueError('Native catalog preparation requires an explicit candidate, schema and chunk budget')
-    from .catalog_rows import CatalogRows, core_bytes, fits_chunk
+    from .catalog_rows import CatalogRows, core_bytes, fits_chunk, FORMAT
     row_owner = CatalogRows(native=native, store=store)
     prepared, last_order = [], None
     for index, table in enumerate(chunks):
@@ -247,7 +247,8 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
             saved = json.loads(checkpoint.read_bytes())
             binding = saved.pop('binding', None)
             if (binding != sha256(encoded(saved)).hexdigest()
-                    or saved['input_sha256'] != input_digest or saved['dataset'] != dataset):
+                    or saved['input_sha256'] != input_digest or saved['dataset'] != dataset
+                    or saved.get('row_format') != FORMAT):
                 raise ValueError('Retained native catalog chunk differs from its prepared input')
             release = saved['release']
         else:
@@ -258,7 +259,7 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
         if checked.rows != table.num_rows or release['dataset'].get('dataset') != dataset:
             raise ValueError('Prepared native catalog chunk row count differs')
         if checkpoint is not None and not checkpoint.exists():
-            saved = dict(dataset=dataset, input_sha256=input_digest, release=release)
+            saved = dict(dataset=dataset, input_sha256=input_digest, release=release, row_format=FORMAT)
             saved['binding'] = sha256(encoded(saved)).hexdigest()
             checkpoint.parent.mkdir(parents=True, exist_ok=True)
             staging = checkpoint.with_suffix('.tmp')

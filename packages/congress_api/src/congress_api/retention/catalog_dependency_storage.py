@@ -125,6 +125,7 @@ class CatalogDependencyStorage:
         stored_schema = (dependency_schema(self._source_leaf_schema(pin))
                          if 'source_schema' in pin else schema)
         release = pin['release'] if 'source_schema' in pin else pin
+        before=(self.row_owner.rows_read,self.row_owner.bytes_read)
         batches=[];rows=size=0
         from .catalog_rows import core_bytes
         for batch in self.row_owner.read(release, schema=stored_schema):
@@ -133,7 +134,8 @@ class CatalogDependencyStorage:
             if rows>self.max_rows or size>self.max_bytes:
                 raise DependencyGap('Selected dependency leaf exceeds its row or byte budget')
             batches.append(batch)
-        self.rows_read+=rows;self.bytes_read+=size
+        self.rows_read+=self.row_owner.rows_read-before[0]
+        self.bytes_read+=self.row_owner.bytes_read-before[1]
         table=pa.Table.from_batches(batches,schema=stored_schema)
         return (table.cast(schema) if stored_schema.equals(schema,check_metadata=True)
                 else pa.Table.from_pylist(table.to_pylist(),schema=schema))
@@ -143,11 +145,12 @@ class CatalogDependencyStorage:
         with pa.ipc.new_stream(sink, table.schema) as writer:
             writer.write_table(table)
         identity = sha256(sink.getvalue().to_pybytes()).hexdigest()
+        before=(self.row_owner.candidate_rows_submitted,self.row_owner.candidate_arrow_bytes)
         pin = self.row_owner.write(table, dataset=f'catalog-dep-v3-{kind}-{identity}',
             operation='initial', definition='catalog-dependencies-storage-v3',
             max_rows=self.max_rows, max_bytes=self.max_bytes)
-        self.candidate_rows_submitted += len(table)
-        self.candidate_arrow_bytes += table.nbytes
+        self.candidate_rows_submitted += self.row_owner.candidate_rows_submitted-before[0]
+        self.candidate_arrow_bytes += self.row_owner.candidate_arrow_bytes-before[1]
         if kind == 'sources':
             reference = self.schemas.put(dict(source_schema=base64.b64encode(self.schema_bytes).decode()))
             return dict(release=pin, source_schema=reference)
