@@ -550,7 +550,14 @@ class Catalog:
         if pa.types.is_list(column.type) and pa.types.is_struct(column.type.value_type):
             return pa.array([json.dumps(value, ensure_ascii=False) if value else None
                              for value in column.to_pylist()], type=pa.string())
-        return pc.binary_join(column, ' | ') if pa.types.is_list(column.type) else column
+        if pa.types.is_list(column.type):
+            # Null children do not hide the other literal search values. This
+            # derived text never replaces the complete original source column.
+            column = pa.chunked_array([pa.ListArray.from_arrays(chunk.offsets,
+                pc.fill_null(chunk.values, ''), mask=chunk.is_null())
+                if chunk.values.null_count else chunk for chunk in column.chunks])
+            return pc.binary_join(column, ' | ')
+        return column
 
     def search(self, query):
         self._ensure_list_columns()
