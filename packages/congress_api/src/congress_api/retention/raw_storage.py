@@ -124,6 +124,39 @@ class RawSnapshot:
                     result[row['url']] = row
         return result
 
+    def iter_states_for(self, urls):
+        """Stream exact selected native rows in their immutable state order.
+
+        Requested URLs, routed leaves and output ordering stay on disposable
+        SQLite. Only one qualified state leaf is decoded at a time. Native
+        order/key fields remain available to callers that stage logical rows.
+        """
+        from contextlib import closing
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        import pickle
+        from .catalog_staging import WorkingCatalog
+        with TemporaryDirectory(prefix='raw-requested-state-') as directory, closing(
+                WorkingCatalog(Path(directory) / 'states.sqlite')) as work:
+            db = work.connection
+            db.executescript('CREATE TABLE requested(identity TEXT PRIMARY KEY); '
+                'CREATE TABLE leaves(identity TEXT PRIMARY KEY,value BLOB); '
+                'CREATE TABLE rows(ordinal INTEGER PRIMARY KEY,value BLOB);')
+            for url in urls:
+                key = state_key(url)
+                if not db.execute('INSERT OR IGNORE INTO requested VALUES (?)', (key,)).rowcount:
+                    continue
+                _, reference = self.owner.state_routes.lookup(self.manifest['state']['root'], key)
+                if reference is not None:
+                    db.execute('INSERT OR IGNORE INTO leaves VALUES (?,?)',
+                               (reference['release']['id'], pickle.dumps(reference)))
+            for payload, in db.execute('SELECT value FROM leaves ORDER BY identity'):
+                for row in self.owner._read_states(pickle.loads(payload)).to_pylist():
+                    if db.execute('SELECT 1 FROM requested WHERE identity=?', (row[STATE_KEY_FIELD],)).fetchone():
+                        db.execute('INSERT INTO rows VALUES (?,?)', (row[STATE_ORDER], pickle.dumps(row)))
+            for payload, in db.execute('SELECT value FROM rows ORDER BY ordinal'):
+                yield pickle.loads(payload)
+
     def has_receipt(self, key):
         hashed, _, entries = self.owner._delivery(self.manifest['deliveries'], 'receipt:' + key)
         return hashed in entries
