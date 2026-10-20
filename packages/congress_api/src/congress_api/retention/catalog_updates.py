@@ -53,7 +53,6 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
             raise ValueError('Full source update requires a selected native base and retained source proof')
         purpose = read_source_update(store, source_update)
         if (purpose.get('purpose') not in {'qualification', 'rule-upgrade'}
-                or purpose['base'] != previous.identity
                 or purpose.get('purpose') == 'rule-upgrade' and not purpose.get('rule_version')):
             raise ValueError('Full source update requires explicit complete qualification or versioned rules')
     replacements, deletions = list(replacements), tuple(deletions)
@@ -103,6 +102,8 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
         require_runtime()
         result = publish_native_catalog(store, reference, previous=previous)
         return receipt(dict(result, unchanged=False), reference, proof)
+    if full_update and purpose['base'] != previous.identity:
+        raise ValueError('Full source update has a different selected base')
     preparation_request = directory / 'preparation-request.json'
     # Coverage is an admission assertion, not a chunk input. A failed assertion
     # may be corrected before admission; the final scope receipt binds it exactly.
