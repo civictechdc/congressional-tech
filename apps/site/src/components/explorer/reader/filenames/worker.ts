@@ -33,6 +33,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     else if (request.pathname === '/api/match') result = await reader.matchUrls(JSON.parse(query.payload || '{}'), controller.signal);
     else if (request.pathname.startsWith('/api/review/')) result = await reader.review(identity, query.catalog, controller.signal, query.selection === 'baseline');
     else if (request.pathname.startsWith('/api/entry-origin/')) result = await reader.entryOrigin(identity, query.catalog, controller.signal);
+    else if (request.pathname.startsWith('/api/source-identity/')) result = await reader.sourceIdentity(identity, query.catalog, controller.signal);
     else if (request.pathname.startsWith('/api/technical/') || request.pathname.startsWith('/api/full/')) result = await reader.technical(identity, query.catalog, controller.signal, request.pathname.startsWith('/api/full/'));
     else if (request.pathname.startsWith('/api/observations/') || request.pathname.startsWith('/api/origin/')) {
       const origin = request.pathname.startsWith('/api/origin/');

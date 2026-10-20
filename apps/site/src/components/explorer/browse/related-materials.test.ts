@@ -1,6 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { materialCategory, selectRelatedMaterials } from './related-materials.ts';
+import { materialCategory, relatedMaterialTitle, sameRecordedTitle, selectRelatedMaterials } from './related-materials.ts';
+
+test('a meeting title that differs only by quotation marks is the same title', () => {
+  assert.equal(sameRecordedTitle('"Child Care and the American Workforce"', '“Child Care and the American Workforce”'), true);
+  assert.equal(sameRecordedTitle('Benched: The Crisis in American Youth Sports', 'Child Care and the American Workforce'), false);
+});
+
+test('a related recording keeps a recorded title and a generic one stays an action', () => {
+  assert.equal(relatedMaterialTitle({ type: 'recording', title: 'Chairman Griffith Delivers Opening Statement' }, 'Recording'), 'Chairman Griffith Delivers Opening Statement');
+  assert.equal(relatedMaterialTitle({ type: 'recording', title: 'Recording' }, 'Recording'), 'Watch recording');
+  assert.equal(relatedMaterialTitle({ type: 'document', title: 'Witness Statement' }, 'Witness Statement', 'statement.pdf'), 'statement.pdf');
+});
 
 test('native types remain exact; legacy typed records use their normalized category', () => {
   assert.equal(materialCategory({document_type:'Witness Statement', category:'statement'}), 'Witness Statement');

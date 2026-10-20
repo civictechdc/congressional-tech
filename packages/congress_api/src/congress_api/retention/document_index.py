@@ -1923,6 +1923,54 @@ def capture_record_type(family, pointer_json):
     return None
 
 
+PAGE_RECORD_TYPES = {
+    'hearing': 'committee-hearing-page',
+    'field hearing': 'committee-hearing-page',
+    'meeting': 'committee-meeting-page',
+    'business meeting': 'committee-meeting-page',
+    'markup': 'committee-meeting-page',
+}
+
+
+def _page_key(value):
+    url = http_url(value)
+    if not url:
+        return None
+    parts = urlsplit(url)
+    path = parts.path[:-1] if len(parts.path) > 1 and parts.path.endswith('/') else parts.path
+    return urlunsplit(parts._replace(path=path, fragment=''))
+
+
+def recognize_publisher_page(row):
+    """A saved HTML response is a source page when that page was recorded for its URL.
+
+    A hearing path alone does not qualify. The file URL must be one recorded
+    source page, and the recorded title or meeting type must name the page.
+    """
+    if row.get('source_record_type') or row.get('record_role') not in (None, ['document']):
+        return
+    if row.get('document_kind') or response_failed(row):
+        return
+    signals = [*(row.get('format') or []), *(row.get('media_type') or []), *(row.get('body_format') or [])]
+    kinds = {str(value).split(';', 1)[0].strip().casefold() for value in signals}
+    if kinds and not ({'html', 'text/html'} & kinds):
+        return
+    file_url = _page_key(row.get('source_url'))
+    if not file_url or file_url not in {_page_key(value) for value in row.get('source_page_url') or []}:
+        return
+    titles = [' '.join(value.split()).casefold() for value in row.get('source_page_title') or [] if isinstance(value, str)]
+    types = [' '.join(value.split()).casefold() for value in row.get('source_meeting_type') or [] if isinstance(value, str)]
+    kind = next((PAGE_RECORD_TYPES[value] for value in titles if value in PAGE_RECORD_TYPES), None)
+    if kind is None and 'hearing' in types:
+        kind = 'committee-hearing-page'
+    if kind is None and {'meeting', 'markup'} & set(types):
+        kind = 'committee-meeting-page'
+    if kind is None:
+        return
+    row['source_record_type'] = [kind]
+    row['record_role'] = ['source-record']
+
+
 def apply_capture_record_role(row):
     """Keep receipt/pointer pairs together when recognizing embedded source HTML."""
     if row.get('source_record_type') == ['download-state']:
@@ -1947,6 +1995,7 @@ def apply_capture_record_role(row):
                     row["source_record_type"] = [kind]
                     row["record_role"] = ["source-record"]
                     return
+    recognize_publisher_page(row)
 
 
 def refresh_response_metadata(root, rows):

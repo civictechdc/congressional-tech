@@ -1,8 +1,9 @@
 // @ts-nocheck
 import { sourceContext, provenanceUrlKey } from '../../browse/provenance.ts';
+import { recordLabel } from '../../browse/filename-presentation.ts';
 export { sourceContext };
 import { yieldToMessages, scanBatchRows } from './cooperative.ts';
-import { byteCache, retainedBytes, sharedLoad } from './cache.ts';
+import { awaitShared, byteCache, retainedBytes, sharedLoad } from './cache.ts';
 import { positiveInteger } from '../../browse/filename-rules.ts';
 import { parquetMetadataAsync, parquetReadObjects, parquetRead } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
@@ -16,6 +17,25 @@ const sourceColumns = ['filename','source_url','source_id','body_key','format','
 const text = value => (Array.isArray(value) ? value.map(item => typeof item === 'object' ? JSON.stringify(item) : item).join(' | ') : value ?? '').toString().toLowerCase();
 const normalized = value => value == null ? null : value instanceof Date ? value.toISOString() : Array.isArray(value) ? value.map(normalized) : typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, normalized(item)])) : value;
 const values = value => Array.isArray(value) ? value : value == null ? [] : [value];
+const firstCongress = value => {
+  const number = values(value).map(item => String(item)).find(item => /^\d+$/.test(item));
+  return number ? number.padStart(3, '0') : '';
+};
+const identitySortKey = (group, columns, flags) => {
+  const url = columns.source_url?.[group];
+  const video = flags[group] & 32 ? videoReference(url) : null;
+  if (video) return `${video.provider} ${video.id}`.toLowerCase();
+  const api = flags[group] & 16 ? apiReference(url) : null;
+  if (api) return api.title.toLowerCase();
+  return columns.filename?.[group] ? text(columns.filename[group]) : '';
+};
+const kindSortRow = (group, columns, flags) => {
+  const url = columns.source_url?.[group];
+  return {
+    filename: columns.filename?.[group], document_kind: columns.document_kind?.[group], format: columns.format?.[group], source_url: url,
+    video_reference: flags[group] & 32 ? videoReference(url) : null, api_reference: flags[group] & 16 ? apiReference(url) : null,
+  };
+};
 const validUrl = value => { try { const url = new URL(value); return /^https?:$/.test(url.protocol) && !url.username && !url.password ? url : null; } catch { return null; } };
 
 export function savedCopyUrl(record, groupRecovery, manifestUrl) {
@@ -90,6 +110,8 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   Object.assign(info, reviews.info);
   const url = path => new URL(path, manifestUrl).href;
   const metrics = {sourceScanVisits: 0, groupScanVisits: 0, columnLoads: 0, tableLoads: 0, observationStoreLoads: 0, decodedRows: 0, normalizationValues: 0};
+  const pinnedColumns = new Map();
+  let matchCache = null, matchGeneration = 0, urlMatchCache = null;
   const compressedCache = byteCache(options.compressedBytes ?? 48 * 1024 * 1024, options.rangeEntryBytes ?? 32 * 1024 * 1024);
   const decodedCache = byteCache(options.decodedBytes ?? 64 * 1024 * 1024);
   const loads = new Map();
@@ -263,10 +285,15 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     if (cursor !== ordered.length) throw new Error('Invalid catalog row position.');
     return positions.map(position => result.get(position));
   }
-  function column(name, signal) {
-    return cached(`column:${name}`, async () => {
+  function loadColumn(tableName, name, length, signal) {
+    const key = `${tableName}:${name}`;
+    const retained = decodedCache.get(key);
+    if (retained) return Promise.resolve(retained);
+    const existing = pinnedColumns.get(key);
+    if (existing) return awaitShared(existing, signal);
+    const tracked = sharedLoad(loads, key, async () => {
       metrics.columnLoads++;
-      const handle = await table('filenames'), {spans} = handle, output = new Array(info.rows);
+      const handle = await table(tableName), {spans} = handle, output = new Array(length);
       let nextSpan = 0;
       await Promise.all(Array.from({length: Math.min(6,spans.length)}, async () => {
         while (nextSpan < spans.length) {
@@ -274,8 +301,67 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
           for (let i=0;i<rows.length;i++) output[span.start+i] = rows[i][name];
         }
       }));
+      if (!decodedCache.set(key, output) && !key.startsWith('browse:')) pinnedColumns.delete(key);
       return output;
-    }, signal);
+    }).then(value => value, error => { if (pinnedColumns.get(key) === tracked) pinnedColumns.delete(key); throw error; });
+    pinnedColumns.set(key, tracked);
+    while (pinnedColumns.size > 8) {
+      const oldest = pinnedColumns.keys().next().value;
+      if (oldest === key) break;
+      pinnedColumns.delete(oldest);
+    }
+    return awaitShared(tracked, signal);
+  }
+  async function warmTable(name, signal) {
+    const part = files[name];
+    if (!part || part.bytes > compressedCache.stats.maxEntryBytes) return;
+    const handle = await table(name, signal);
+    await handle.buffer.slice(0, part.bytes, signal);
+  }
+  function column(name, signal) { return loadColumn('filenames', name, info.rows, signal); }
+  function browseColumn(name, signal) { return loadColumn('browse', name, info.entries, signal); }
+  function selectionKey(query) {
+    return JSON.stringify([query.q || '', query.field || 'filename', query.scope || '', query.retained || '', query.document_family || '', query.document_kind || '', query.format || '', query.congress || '', query.classification || '', query.review || '']);
+  }
+  async function orderGroups(groups, query, flags, signal) {
+    const sort = ['record', 'kind', 'congress'].includes(query.sort) ? query.sort : '';
+    if (!sort || !groups.length) return groups;
+    const direction = query.dir === 'desc' ? 'desc' : 'asc';
+    const sortKey = `${selectionKey(query)}\n${sort}\n${direction}`;
+    if (matchCache?.sortKey === sortKey && matchCache.sorted) return matchCache.sorted;
+    await warmTable('browse', signal);
+    const columns = {};
+    if (sort === 'record' || sort === 'kind') {
+      columns.filename = await browseColumn('filename', signal);
+      columns.source_url = await browseColumn('source_url', signal);
+    }
+    if (sort === 'kind') {
+      columns.document_kind = await browseColumn('document_kind', signal);
+      columns.format = await browseColumn('format', signal);
+    }
+    if (sort === 'congress') {
+      columns.congress = await browseColumn('congress', signal);
+      columns.source_congress = await browseColumn('source_congress', signal);
+    }
+    signal?.throwIfAborted();
+    const dir = direction === 'desc' ? -1 : 1;
+    const decorated = new Array(groups.length);
+    for (let i = 0; i < groups.length; i++) {
+      if (i && i % scanBatchRows === 0) await yieldToMessages(signal, metrics);
+      const group = groups[i];
+      const value = sort === 'congress' ? firstCongress(columns.congress[group]) || firstCongress(columns.source_congress[group])
+        : sort === 'record' ? identitySortKey(group, columns, flags) : recordLabel(kindSortRow(group, columns, flags)).toLowerCase();
+      decorated[i] = { group, value, blank: value === '' };
+    }
+    decorated.sort((a, b) => {
+      if (a.blank || b.blank) return a.blank === b.blank ? a.group - b.group : a.blank ? 1 : -1;
+      if (a.value < b.value) return -dir;
+      if (a.value > b.value) return dir;
+      return a.group - b.group;
+    });
+    const sorted = Uint32Array.from(decorated, item => item.group);
+    if (matchCache?.key === selectionKey(query)) Object.assign(matchCache, { sortKey, sorted });
+    return sorted;
   }
   function searchTexts(name, source, signal) {
     const key = `search:${name}`, retained = decodedCache.get(key);
@@ -298,16 +384,18 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     signal?.throwIfAborted();
     const reviewed = reviewedMode(query, info);
     const limit = positiveInteger(query.limit,50,100), requestedPage = positiveInteger(query.page);
-    const firstWanted = (requestedPage-1)*limit;
     const field = query.field || 'filename', needle = (query.q || '').slice(0, 2000).toLowerCase();
     if (!info.fields.includes(field)) throw new Error('Unknown search field.');
     if (!['','yes','no'].includes(query.retained || '') || !['','all','capture-records'].includes(query.scope || '')) throw new Error('Unknown catalog filter.');
     const selectedFilters = filters.filter(key => query[key] && query[key] !== '__null__');
     for (const key of selectedFilters) if (!(info.review_facets?.[key] || info.facets[key]).includes(query[key])) throw new Error(`Unknown ${key} filter.`);
+    const generation = ++matchGeneration;
+    const key = selectionKey(query);
     const [preferred, flags] = await Promise.all(['preferred', 'flags'].map(index));
     signal?.throwIfAborted();
-    const mask = new Uint8Array(info.entries).fill(needle || selectedFilters.length ? 0 : 1);
-    if (needle || selectedFilters.length) {
+    let groups = matchCache?.key === key ? matchCache.groups : null;
+    const mask = groups ? null : new Uint8Array(info.entries).fill(needle || selectedFilters.length ? 0 : 1);
+    if (!groups && (needle || selectedFilters.length)) {
       const groups = await index('groups');
       signal?.throwIfAborted();
       // Search each unique observation once, then map matches to source groups.
@@ -339,26 +427,30 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
         if (matches(source, sourceValue(source, field))) mask[groups[source]] = 1;
       }
     }
-    let total=0, chosen=[], last=[];
-    for (let group = 0; group < mask.length; group++) {
-      if (group && group % scanBatchRows === 0) await yieldToMessages(signal, metrics);
-      metrics.groupScanVisits++;
-      let flag = flags[group] | (recovery.groups.has(group) ? 1 : 0);
-      const review = reviewed && reviews.groups.get(group);
-      if (review?.status === 'candidate_applied') {
-        flag = (flag & ~12) | (review.selected.document_kind?.length ? 0 : 4) | (review.selected.document_family?.length ? 0 : 8);
+    if (!groups) {
+      const found = [];
+      for (let group = 0; group < mask.length; group++) {
+        if (group && group % scanBatchRows === 0) await yieldToMessages(signal, metrics);
+        metrics.groupScanVisits++;
+        let flag = flags[group] | (recovery.groups.has(group) ? 1 : 0);
+        const review = reviewed && reviews.groups.get(group);
+        if (review?.status === 'candidate_applied') {
+          flag = (flag & ~12) | (review.selected.document_kind?.length ? 0 : 4) | (review.selected.document_family?.length ? 0 : 8);
+        }
+        if (!mask[group] || (query.retained && !!(flag & 1) !== (query.retained === 'yes')) ||
+            (!query.scope && !(flag & 2)) || (query.scope === 'capture-records' && (flag & 2)) ||
+            (query.document_kind === '__null__' && !(flag & 4)) || (query.document_family === '__null__' && !(flag & 8))) continue;
+        found.push(group);
       }
-      if (!mask[group] || (query.retained && !!(flag & 1) !== (query.retained === 'yes')) ||
-          (!query.scope && !(flag & 2)) || (query.scope === 'capture-records' && (flag & 2)) ||
-          (query.document_kind === '__null__' && !(flag & 4)) || (query.document_family === '__null__' && !(flag & 8))) continue;
-      if (total % limit === 0) last=[];
-      last.push(group);
-      if (total >= firstWanted && total < firstWanted+limit) chosen.push(group);
-      total++;
-      metrics.maxMatchedGroupsRetained = Math.max(metrics.maxMatchedGroupsRetained || 0,chosen.length+last.length);
+      signal?.throwIfAborted();
+      groups = Uint32Array.from(found);
+      metrics.maxMatchedGroupsRetained = Math.max(metrics.maxMatchedGroupsRetained || 0, groups.length);
+      if (generation === matchGeneration) matchCache = { key, groups };
     }
-    const pages=Math.max(1,Math.ceil(total/limit)), page=Math.min(requestedPage,pages);
-    if (page !== requestedPage) chosen=last;
+    const ordered = await orderGroups(groups, query, flags, signal);
+    const total = ordered.length, pages = Math.max(1, Math.ceil(total / limit)), page = Math.min(requestedPage, pages);
+    const start = (page - 1) * limit;
+    const chosen = [...ordered.subarray(start, Math.min(start + limit, total))];
     const rows = await selected('browse', chosen, undefined, signal);
     rows.forEach((row, i) => { row._row = preferred[chosen[i]]; row.api_reference = flags[chosen[i]] & 16 ? apiReference(row.source_url) : null; row.video_reference = flags[chosen[i]] & 32 ? videoReference(row.source_url) : null; });
     rows.forEach((row, i) => {
@@ -381,36 +473,70 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     const match = /^bodies\/sha256\/([a-f0-9]{2})\/([a-f0-9]{64})\.gz$/.exec(key || '');
     return match && match[1] === match[2].slice(0, 2) ? match[2] : null;
   }
+  async function browseUrlMatches(urls, signal) {
+    if (!urls.size || !files.browse) return [];
+    await warmTable('browse', signal);
+    const sourceUrls = await browseColumn('source_url', signal);
+    const groups = [];
+    for (let group = 0; group < sourceUrls.length; group++) {
+      if (group && group % (scanBatchRows * 16) === 0) await yieldToMessages(signal, metrics);
+      const key = provenanceUrlKey(sourceUrls[group]);
+      if (key && urls.has(key)) groups.push(group);
+      if (groups.length >= 24) break;
+    }
+    if (!groups.length) return [];
+    const preferred = await index('preferred');
+    const rows = await selected('filenames', groups.map(group => preferred[group]), ['source_id', 'source_url'], signal);
+    const matches = [], seen = new Set();
+    for (const row of rows) {
+      const key = provenanceUrlKey(row?.source_url);
+      const id = row?.source_id;
+      if (!key || !urls.has(key) || id == null || seen.has(id)) continue;
+      seen.add(id);
+      matches.push({ source_id: String(id), url: String(row.source_url) });
+    }
+    return matches;
+  }
   async function matchUrls(query, signal) {
     signal?.throwIfAborted();
     const urls = new Set((query?.urls || []).map(provenanceUrlKey).filter(Boolean));
     const digests = new Set((query?.sha256s || []).map(value => String(value || '').toLowerCase()).filter(value => /^[a-f0-9]{64}$/.test(value)));
     if (!urls.size && !digests.size) return { matches: [], truncated: false };
-    const names = ['source_url', 'source_id'];
-    if (digests.size && info.fields.includes('body_key')) names.push('body_key');
-    if (urls.size && info.fields.includes('recovered_source_url')) names.push('recovered_source_url');
-    const loaded = new Map();
-    for (const name of names) loaded.set(name, await column(name, signal));
-    const matches = [], seen = new Set();
-    let truncated = false;
-    const sourceUrls = loaded.get('source_url'), sourceIds = loaded.get('source_id'), bodies = loaded.get('body_key'), recovered = loaded.get('recovered_source_url');
-    for (let source = 0; source < info.rows; source++) {
-      if (source && source % scanBatchRows === 0) await yieldToMessages(signal, metrics);
-      const url = sourceUrls?.[source];
-      const urlKey = provenanceUrlKey(url);
-      const recoveredHit = urls.size && values(recovered?.[source]).some(value => urls.has(provenanceUrlKey(value)));
-      const digest = digests.size ? bodyDigest(bodies?.[source]) : null;
-      const urlHit = !!(urlKey && urls.has(urlKey));
-      const shaHit = !!(digest && digests.has(digest));
-      if (!urlHit && !recoveredHit && !shaHit) continue;
-      const id = sourceIds?.[source];
-      if (id == null || seen.has(id)) continue;
-      seen.add(id);
-      matches.push({source_id: String(id), ...(urlHit ? {url: String(url)} : {}), ...(shaHit ? {sha256: digest} : {})});
-      if (matches.length >= 24) { truncated = true; break; }
+    const key = JSON.stringify([[...urls].sort(), [...digests].sort()]);
+    if (urlMatchCache?.key === key) return urlMatchCache.result;
+    const browseMatches = digests.size ? [] : await browseUrlMatches(urls, signal);
+    const found = new Set(browseMatches.map(match => provenanceUrlKey(match.url)));
+    let matches = browseMatches, truncated = false;
+    if (digests.size || browseMatches.length >= 24 || [...urls].some(url => !found.has(url))) {
+      const names = ['source_url', 'source_id'];
+      if (digests.size && info.fields.includes('body_key')) names.push('body_key');
+      if (urls.size && info.fields.includes('recovered_source_url')) names.push('recovered_source_url');
+      const loaded = new Map();
+      for (const name of names) loaded.set(name, await column(name, signal));
+      const seen = new Set();
+      const sourceUrls = loaded.get('source_url'), sourceIds = loaded.get('source_id'), bodies = loaded.get('body_key'), recovered = loaded.get('recovered_source_url');
+      matches = [];
+      metrics.matchSourceScans = (metrics.matchSourceScans || 0) + 1;
+      for (let source = 0; source < info.rows; source++) {
+        if (source && source % (scanBatchRows * 16) === 0) await yieldToMessages(signal, metrics);
+        const url = sourceUrls?.[source];
+        const urlKey = provenanceUrlKey(url);
+        const recoveredHit = urls.size && values(recovered?.[source]).some(value => urls.has(provenanceUrlKey(value)));
+        const digest = digests.size ? bodyDigest(bodies?.[source]) : null;
+        const urlHit = !!(urlKey && urls.has(urlKey));
+        const shaHit = !!(digest && digests.has(digest));
+        if (!urlHit && !recoveredHit && !shaHit) continue;
+        const id = sourceIds?.[source];
+        if (id == null || seen.has(id)) continue;
+        seen.add(id);
+        matches.push({source_id: String(id), ...(urlHit ? {url: String(url)} : {}), ...(shaHit ? {sha256: digest} : {})});
+        if (matches.length >= 24) { truncated = true; break; }
+      }
     }
     signal?.throwIfAborted();
-    return { matches, truncated };
+    const result = { matches, truncated };
+    urlMatchCache = { key, result };
+    return result;
   }
   const resolved = new Map();
   async function resolve(identity, catalog, signal) {
@@ -459,6 +585,14 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     facts.completeness_conflict = new Set(record.response_body_complete || []).size > 1;
     return {record, facts, filename_field_count};
   }
+  const recordedSourceFields = ['source_chamber', 'source_committee_code', 'source_meeting_type', 'source_meeting_title', 'source_page_title', 'source_page_url', 'source_congress', 'source_committee_name'];
+  async function sourceIdentity(identity, catalog, signal) {
+    const row = await resolve(identity, catalog, signal);
+    const columns = recordedSourceFields.filter(name => info.fields.includes(name));
+    if (!columns.length) return {};
+    const [stored] = await read(await table('filenames', signal), row, row + 1, columns, signal, true);
+    return Object.fromEntries(columns.map(name => [name, stored?.[name] ?? null]));
+  }
   async function observationPage(identity, catalog, options = {}, signal) {
     const row = await resolve(identity, catalog, signal);
     const offset = positiveInteger(options.offset, 0);
@@ -480,6 +614,15 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     const row = await resolve(identity, catalog, signal);
     const {group, preferred, members} = await navigation(row, signal);
     const {record, facts, filename_field_count} = await detailRecord(row, signal);
+    const wordingFields = ['qualifier_wording', 'document_wording', 'subject_role_wording', 'context_role_wording', 'relation_wording'].filter(name => info.fields.includes(name) && record[name] == null);
+    if (wordingFields.length) {
+      const [stored] = await read(await table('filenames', signal), row, row + 1, wordingFields, signal, true);
+      for (const name of wordingFields) {
+        const value = stored?.[name];
+        if (value == null || (Array.isArray(value) && !value.length)) continue;
+        record[name] = value;
+      }
+    }
     if (recovery.sources.has(row)) record.recovery = recovery.sources.get(row);
     const [document] = files.document_summaries
       ? await selected('document_summaries', [(await index('document_rows'))[group]], undefined, signal)
@@ -526,5 +669,5 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
     if (!value) return {status: 'no_review'};
     return structuredClone({...value, status: withdrawn ? 'withdrawn' : value.status, selected: withdrawn ? value.baseline : value.selected});
   }
-  return { diagnostics: () => ({...metrics, compressed: compressedCache.stats, decoded: decodedCache.stats}), review, info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, entryOrigin, technical, technicalOrigin, observationPage, matchUrls, sourceContext };
+  return { diagnostics: () => ({...metrics, compressed: compressedCache.stats, decoded: decodedCache.stats}), review, info: { ...info, recovery_sha256: publication.recovery?.sha256, downloads: { documents: url(files.documents.path), filenames: url(files.filenames.path), recoveries: publication.recovery?.url }, published_at: manifest.published_at }, search, entry, entryOrigin, technical, technicalOrigin, observationPage, matchUrls, sourceContext, sourceIdentity };
 }

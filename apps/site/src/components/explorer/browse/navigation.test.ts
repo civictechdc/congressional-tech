@@ -46,6 +46,15 @@ test('legacy filename links open captured documents inside recordings and docume
   assert.equal(capture.scope, '');
   assert.equal(capture.document_kind, '');
   assert.equal(viewNavigation(capture, 'materials').scope, '');
+  const sorted = readNavigation('?view=materials&scope=all&sort=record&direction=desc', 119);
+  assert.equal(sorted.sort, 'record');
+  assert.equal(sorted.direction, 'desc');
+  assert.deepEqual(readNavigation(new URLSearchParams(Object.entries(sorted)), 119), sorted);
+  assert.equal(viewNavigation(sorted, 'meetings').sort, '');
+  assert.equal(viewNavigation(sorted, 'meetings').direction, '');
+  assert.equal(readNavigation('?sort=nope', 119).direction, '');
+  assert.equal(readNavigation('?view=meetings&sort=date&direction=desc', 119).sort, 'date');
+  assert.equal(viewNavigation(readNavigation('?view=meetings&sort=date&direction=desc', 119), 'materials').sort, 'date');
 });
 
 test('malformed routing values recover to usable defaults', () => {
@@ -55,6 +64,37 @@ test('malformed routing values recover to usable defaults', () => {
   assert.equal(nav.measure,'transcript'); assert.equal(nav.grouping,'congress');
   assert.equal(nav.committeeLevel, '');
   assert.equal(nav.access, '');
+  const issues = readNavigation('?view=gaps&category=conflicting&severity=informational', 119);
+  assert.equal(issues.category, 'conflicting');
+  assert.equal(issues.severity, 'informational');
+  assert.equal(viewNavigation(issues, 'meetings').category, '');
+  assert.equal(viewNavigation(issues, 'meetings').severity, '');
+  assert.equal(readNavigation('?category=nope&severity=nope', 119).category, '');
+  assert.equal(readNavigation('?category=nope&severity=nope', 119).severity, '');
+  const documents = readNavigation('?view=materials&materialCategory=statement', 119);
+  assert.equal(documents.materialCategory, 'statement');
+  assert.equal(viewNavigation(documents, 'meetings').materialCategory, '');
+  assert.equal(readNavigation('?materialCategory=hearing', 119).materialCategory, '');
+  const witnesses = readNavigation('?view=witnesses&participation=testified', 119);
+  assert.equal(witnesses.participation, 'testified');
+  assert.equal(viewNavigation(witnesses, 'meetings').participation, '');
+  assert.equal(readNavigation('?participation=attended', 119).participation, '');
+  const canceled = readNavigation('?view=meetings&status=canceled', 119);
+  assert.equal(canceled.status, 'canceled');
+  assert.equal(viewNavigation(canceled, 'coverage').status, 'canceled');
+  assert.equal(viewNavigation(canceled, 'witnesses').status, '');
+  assert.equal(readNavigation('?view=meetings&status=open', 119).status, '');
+  assert.equal(readNavigation('?view=gaps&status=open', 119).status, 'open');
+  assert.equal(readNavigation('?view=gaps&status=canceled', 119).status, '');
+  const youtube = readNavigation('?view=materials&provider=youtube', 119);
+  assert.equal(youtube.provider, 'youtube');
+  assert.equal(viewNavigation(youtube, 'meetings').provider, '');
+  assert.equal(readNavigation('?provider=vimeo', 119).provider, '');
+  const retained = readNavigation('?view=gaps&history=retained', 119);
+  assert.equal(retained.history, 'retained');
+  assert.equal(viewNavigation(retained, 'meetings').history, '');
+  assert.equal(readNavigation('?view=meetings&history=retained', 119).history, '');
+  assert.equal(readNavigation('?view=gaps&history=old', 119).history, '');
 });
 
 test('source links use public Congress event pages and preserve other source URLs', () => {

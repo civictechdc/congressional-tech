@@ -10,6 +10,25 @@ interface MaterialLike {
   details?: { type?: string | null; category?: string | null } | null;
 }
 
+function foldedTitle(value: string): string {
+  return value.toLowerCase().replaceAll(/[“”„«»"]/g, '').replaceAll(/[‘’']/g, '').replaceAll(/\s+/g, ' ').trim();
+}
+
+/** True when two recorded titles differ only by quotation marks or spacing. */
+export function sameRecordedTitle(left: string, right: string): boolean {
+  const folded = foldedTitle(left);
+  return Boolean(folded) && folded === foldedTitle(right);
+}
+
+/** The link text for a related recording or document. A recording keeps its recorded title. */
+export function relatedMaterialTitle(row: { title?: string | null; type?: string | null }, category: string, filename = ''): string {
+  const title = (row.title || '').trim();
+  const generic = !title || title.toLowerCase() === category.toLowerCase() || title.toLowerCase() === 'recording';
+  if (row.type === 'recording') return generic ? 'Watch recording' : title;
+  if (generic && filename) return filename;
+  return title || filename || category || 'Untitled record';
+}
+
 export function materialCategory(record: MaterialLike): string {
   if (record.document_type) return record.document_type;
   const details = record.details || record;

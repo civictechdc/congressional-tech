@@ -13,8 +13,12 @@ import pyarrow.parquet as pq
 
 CORE = '''source_id body_key filename source_url filename_origins format
 body_format media_type document_kind document_kind_source document_family congress
-source_congress source_committee_name source_document_type source_document_type_basis
+source_congress source_committee_name source_committee_code source_chamber
+source_meeting_type source_meeting_title
+source_document_type source_document_type_basis
 recovered_source_url state_outcome response_format'''.split()
+# These stay on the detail row. Observations still carry the full page graph.
+RETAINED_PAGE = set('source_page_title source_page_url'.split())
 TYPES = {'http_status': pa.uint16(), 'response_usable': pa.bool_(),
          'response_body_complete': pa.bool_(), 'record_role': pa.string(),
          'state_checked_at': pa.timestamp('ms', tz='UTC'),
@@ -85,7 +89,7 @@ def _publish_details(source, path, owned, observation_counts, policy, metrics):
                 value = next(counts, None)
                 if value is None: raise ValueError('Detail/source observation row counts differ')
                 has_observations = value > 0
-                record = {name: None if name in ORIGIN and has_observations else row[name] for name in core}
+                record = {name: None if name in ORIGIN and name not in RETAINED_PAGE and has_observations else row[name] for name in core}
                 # The full source export retains failed-response evidence.
                 # Only usable content receives a saved-copy link in the viewer.
                 if not saved_response(row):

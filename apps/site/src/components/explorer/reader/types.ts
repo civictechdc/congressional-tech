@@ -65,6 +65,8 @@ export interface QueryRow extends ExplorerRecordRef {
   subject_id?: string | null;
   explanation?: string | null;
   participation?: string | null;
+  severity?: string | null;
+  facts?: readonly { label: string; value: string }[] | null;
 }
 
 export interface BrowserRecord extends QueryRow {
@@ -120,12 +122,19 @@ export interface ExplorerQuery {
   month?: string;
   type?: string;
   status?: string;
+  category?: string;
+  severity?: string;
+  participation?: string;
+  provider?: string;
+  history?: '' | 'current' | 'retained';
   access?: string;
   committeeId?: string;
   committeeLevel?: 'full';
   committeeType?: string;
   aspect?: string;
   evidence?: string;
+  sort?: '' | 'record' | 'date' | 'congress' | 'kind';
+  direction?: '' | 'asc' | 'desc';
   offset?: number;
   limit?: number;
 }
@@ -199,6 +208,7 @@ export interface ExplorerReader {
   getCoverage(options: { filters: ExplorerQuery; signal?: AbortSignal }): Promise<CoverageSummary>;
   getRecord(ref: ExplorerRecordRef, options?: { signal?: AbortSignal }): Promise<LoadedRecord | undefined>;
   getRecords(refs: readonly ExplorerRecordRef[], options?: { signal?: AbortSignal }): Promise<readonly (LoadedRecord | undefined)[]>;
+  listWitnesses(meetingIds: readonly string[], options?: { signal?: AbortSignal }): Promise<readonly { meeting_id: string; title: string }[]>;
 }
 
 export interface ArtifactPart {

@@ -21,6 +21,10 @@ export function filenameSearchParams(nav: Navigation, info: FilenameCatalogInfo)
     const pin = nav.review || info.review_sha256 || '';
     if (pin) params.set('review', pin);
   }
+  if (nav.sort === 'record' || nav.sort === 'kind' || nav.sort === 'congress') {
+    params.set('sort', nav.sort);
+    params.set('dir', nav.direction === 'desc' ? 'desc' : 'asc');
+  }
   params.set('page', String(nav.page + 1));
   params.set('limit', String(PAGE_SIZE));
   return params.toString();

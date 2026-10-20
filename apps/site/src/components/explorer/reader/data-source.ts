@@ -1,5 +1,5 @@
 import { parentCommitteeId } from '../browse/record-presentation.ts';
-import { createSearchMemo, matches, pageBounds, selectSearchRows, summarizeCoverage } from '../browse/query-utils.ts';
+import { createSearchMemo, matches, orderSearchRows, pageBounds, selectSearchRows, summarizeCoverage } from '../browse/query-utils.ts';
 import { selectRelatedMaterials } from '../browse/related-materials.ts';
 import type { DisplayRow } from '../browse/record-presentation.ts';
 import type {
@@ -252,7 +252,8 @@ export async function openPublicationReader(options: OpenReaderOptions): Promise
     if (!selected) selected = preparedSearch.set(query, now, selectSearchRows(await queryRows(query, signal), query, now));
     signal?.throwIfAborted();
     const { offset, limit } = pageBounds(query);
-    return { rows: selected.rows.slice(offset, offset + limit), total: selected.rows.length, offset, limit };
+    const ordered = orderSearchRows(selected.rows, query.sort, query.direction);
+    return { rows: ordered.slice(offset, offset + limit), total: ordered.length, offset, limit };
   }
 
   async function getRecords(refs: readonly ExplorerRecordRef[], { signal }: { signal?: AbortSignal } = {}): Promise<(ExplorerRecord | undefined)[]> {
@@ -368,6 +369,12 @@ export async function openPublicationReader(options: OpenReaderOptions): Promise
       return summarizeCoverage(info, rows);
     },
     getRecords,
+    async listWitnesses(meetingIds: readonly string[], { signal }: { signal?: AbortSignal } = {}) {
+      const ids = new Set(meetingIds.map(id => id.trim()).filter(Boolean));
+      if (!ids.size) return [];
+      const rows = await queryRows({ kind: 'appearance', congress: 'all' }, signal);
+      return rows.flatMap(row => row.meeting_id && ids.has(row.meeting_id) && row.title ? [{ meeting_id: row.meeting_id, title: row.title }] : []);
+    },
     async getRecord(ref: ExplorerRecordRef, recordOptions?: { signal?: AbortSignal }) { return (await getRecords([ref], recordOptions))[0]; },
   };
   return Object.freeze(reader);

@@ -46,7 +46,7 @@ export async function filenameRequest<T = unknown>(url: string, signal?: AbortSi
   const cached = resultCache.get(url);
   if (cached !== undefined) return cached as T;
   const value = await callFilenameApi(url, signal);
-  if (url.startsWith('/api/rows') || url.startsWith('/api/match')) {
+  if (url.startsWith('/api/rows') || url.startsWith('/api/match') || url.startsWith('/api/source-identity')) {
     resultCache.set(url, value);
     while (resultCache.size > 8) resultCache.delete(resultCache.keys().next().value!);
   }

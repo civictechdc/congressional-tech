@@ -1,8 +1,8 @@
 import type { ExplorerQuery } from '../reader/types.ts';
 import type { CoverageAspect } from './kinds.ts';
-import { accessStates, committeeTypes, isAccessState, isCommitteeType, isCoverageAspect, isFilenameScope, isRetainedFilter, isView, type FilenameScope, type RetainedFilter, type View } from './kinds.ts';
+import { accessStates, committeeTypes, isAccessState, isCommitteeType, isCoverageAspect, isFilenameScope, isIssueCategory, isIssueHistory, isIssueSeverity, isIssueStatus, isMaterialCategory, isMaterialProvider, isMeetingStatus, isRetainedFilter, isView, isWitnessParticipation, materialCategories, materialProviders, type FilenameScope, type IssueHistory, type MaterialProvider, type RetainedFilter, type View, type WitnessParticipation } from './kinds.ts';
 
-export { accessStates, committeeTypes };
+export { accessStates, committeeTypes, materialCategories, materialProviders };
 export type { View };
 
 export interface Navigation {
@@ -14,6 +14,12 @@ export interface Navigation {
   to: string;
   type: string;
   status: string;
+  category: string;
+  severity: string;
+  materialCategory: string;
+  participation: '' | WitnessParticipation;
+  provider: '' | MaterialProvider;
+  history: '' | IssueHistory;
   access: string;
   page: number;
   kind: string;
@@ -35,6 +41,8 @@ export interface Navigation {
   classification: '' | 'reviewed';
   review: string;
   catalog: string;
+  sort: '' | 'record' | 'date' | 'kind' | 'congress';
+  direction: '' | 'asc' | 'desc';
 }
 
 const meetingViews: ReadonlySet<View> = new Set(['meetings', 'coverage']);
@@ -68,6 +76,9 @@ export function readNavigation(search: string, defaultCongress: number): Navigat
     ? (Number.isSafeInteger(page) && page >= 1 ? page - 1 : 0)
     : (Number.isSafeInteger(page) && page > 0 ? page : 0);
   const legacyId = params.get('source') || params.get('row') || '';
+  const sortValue = params.get('sort') || '';
+  const sort = sortValue === 'record' || sortValue === 'date' || sortValue === 'kind' || sortValue === 'congress' ? sortValue : '';
+  const directionValue = params.get('direction') || '';
   return {
     view: isView(requestedView) ? requestedView : legacyFilename ? 'materials' : 'meetings',
     congress: congress === 'all' || /^\d+$/.test(congress) ? congress : String(defaultCongress),
@@ -76,7 +87,13 @@ export function readNavigation(search: string, defaultCongress: number): Navigat
     from: params.get('from') || '',
     to: params.get('to') || '',
     type: params.get('type') || '',
-    status: params.get('status') || '',
+    status: readStatus(isView(requestedView) ? requestedView : legacyFilename ? 'materials' : 'meetings', params.get('status') || ''),
+    category: isIssueCategory(params.get('category') || '') ? params.get('category') || '' : '',
+    severity: isIssueSeverity(params.get('severity') || '') ? params.get('severity') || '' : '',
+    materialCategory: isMaterialCategory(params.get('materialCategory') || '') ? params.get('materialCategory') || '' : '',
+    participation: isWitnessParticipation(params.get('participation') || '') ? params.get('participation') as WitnessParticipation : '',
+    provider: isMaterialProvider(params.get('provider') || '') ? params.get('provider') as MaterialProvider : '',
+    history: requestedView === 'gaps' && isIssueHistory(params.get('history') || '') ? params.get('history') as IssueHistory : '',
     access: isAccessState(access) ? access : '',
     page: pageIndex,
     kind: legacyFilename && legacyId ? 'filename_entry' : params.get('kind') || '',
@@ -98,7 +115,21 @@ export function readNavigation(search: string, defaultCongress: number): Navigat
     classification: classificationValue === 'reviewed' ? 'reviewed' : '',
     review: params.get('review') || '',
     catalog: params.get('catalog') || '',
+    sort,
+    direction: sort ? directionValue === 'desc' ? 'desc' : 'asc' : '',
   };
+}
+
+function readStatus(view: View, value: string): string {
+  if (view === 'gaps') return isIssueStatus(value) ? value : '';
+  if (view === 'meetings' || view === 'coverage') return isMeetingStatus(value) ? value : '';
+  return '';
+}
+
+export function nextSort(nav: Navigation, column: Navigation['sort']): Pick<Navigation, 'sort' | 'direction'> {
+  if (!column || nav.sort !== column) return { sort: column, direction: 'asc' };
+  if (nav.direction !== 'desc') return { sort: column, direction: 'desc' };
+  return { sort: '', direction: '' };
 }
 
 export function viewNavigation(nav: Navigation, view: View): Navigation {
@@ -111,13 +142,19 @@ export function viewNavigation(nav: Navigation, view: View): Navigation {
     id: '',
     type: meetings || nav.view === view ? nav.type : '',
     access: meetings ? nav.access : '',
-    status: nav.view === view ? nav.status : '',
+    status: nav.view === view || (meetings && isMeetingStatus(nav.status)) ? nav.status : '',
+    category: nav.view === view ? nav.category : '',
+    severity: nav.view === view ? nav.severity : '',
+    materialCategory: nav.view === view ? nav.materialCategory : '',
+    participation: nav.view === view ? nav.participation : '',
+    provider: nav.view === view ? nav.provider : '',
+    history: nav.view === view ? nav.history : '',
     committee: meetings ? nav.committee : '',
     month: meetings ? nav.month : '',
     aspect: meetings ? nav.aspect : '',
     evidence: meetings ? nav.evidence : '',
     ...(view === 'committees' ? { from: '', to: '' } : {}),
-    ...(view === 'materials' ? {} : { scope: '', retained: '', document_family: '', document_kind: '', format: '', field: '', classification: '', review: '', catalog: '' }),
+    ...(view === 'materials' ? {} : { scope: '', retained: '', document_family: '', document_kind: '', format: '', field: '', classification: '', review: '', catalog: '', sort: '', direction: '' }),
   };
 }
 

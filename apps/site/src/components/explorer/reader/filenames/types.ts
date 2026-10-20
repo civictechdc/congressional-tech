@@ -57,8 +57,18 @@ export interface FilenameRecord {
   state_outcome?: string[] | null;
   state_checked_at?: string[] | null;
   source_committee_name?: string[] | null;
+  source_committee_code?: string[] | null;
+  source_chamber?: string[] | null;
+  source_page_url?: string[] | null;
+  source_page_title?: string[] | null;
+  source_meeting_type?: string[] | null;
+  source_meeting_title?: string[] | null;
+  source_record_type?: string[] | null;
   source_document_type?: string[] | null;
   source_document_type_basis?: string[] | null;
+  content_document_kind?: string[] | null;
+  content_congress?: string[] | null;
+  state_retrieved_at?: string[] | null;
   recovered_source_url?: string[] | null;
   api_reference?: { title: string; evidence?: string } | null;
   video_reference?: { provider: string; id: string } | null;

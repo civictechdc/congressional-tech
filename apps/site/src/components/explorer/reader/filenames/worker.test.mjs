@@ -19,7 +19,9 @@ test('actual worker routes retain one catalog and serve lazy detail and complete
    import {parentPort} from 'node:worker_threads';
    import {readFile} from 'node:fs/promises';
    globalThis.self=globalThis;self.postMessage=value=>parentPort.postMessage(value);
+   let pause=null,resume=()=>{};
    globalThis.fetch=async(url,options={})=>{
+    if(pause)await pause;
     options.signal?.throwIfAborted();const bytes=await readFile(new URL(url));
     const range=options.headers?.Range;
     if(!range)return new Response(bytes);
@@ -27,7 +29,11 @@ test('actual worker routes retain one catalog and serve lazy detail and complete
     return new Response(bytes.subarray(start,end+1),{status:206,headers:{'Content-Range':\`bytes \${start}-\${end}/\${bytes.length}\`}});
    };
    await import(${JSON.stringify(moduleUrl)});
-   parentPort.on('message',data=>self.onmessage({data}));parentPort.postMessage({ready:true});
+   parentPort.on('message',data=>{
+    if(data.pause){pause=new Promise(resolve=>{resume=resolve;});parentPort.postMessage({paused:true});return;}
+    if(data.resume){const done=resume;pause=null;done();return;}
+    self.onmessage({data});
+   });parentPort.postMessage({ready:true});
   `)),{type:'module'});
   await new Promise((resolve,reject)=>{worker.once('message',resolve);worker.once('error',reject);});
   let sequence=0;
@@ -49,17 +55,17 @@ test('actual worker routes retain one catalog and serve lazy detail and complete
   const origin=await call('/api/origin/2?catalog='+info.catalog_id);assert(origin.origin);
   await assert.rejects(call('/api/entry/2?catalog=wrong'),/different catalog snapshot/);
   await assert.rejects(call('/api/review/2?catalog='+info.catalog_id),/not configured/);
-  for(const query of ['q=warm','scope=all','q=Witness&field=source_occurrences']) {
-   await call('/api/rows?'+query);
-   const cancelledId=++sequence,replies=[];const listen=data=>replies.push(data.id);worker.on('message',listen);
-   worker.postMessage({id:cancelledId,url:'/api/rows?'+query,manifest:pathToFileURL(join(folder,'public/manifest.json')).href});
-   await new Promise(resolve=>setTimeout(resolve,1));
-   const started=performance.now();worker.postMessage({cancel:cancelledId});await call('/api/info');
-   const latencyMs=performance.now()-started;
-   await new Promise(resolve=>setTimeout(resolve,30));worker.off('message',listen);
-   assert(!replies.includes(cancelledId),'canceled worker result is suppressed');assert(latencyMs<1000);
-   console.log('actual worker cancellation',JSON.stringify({query,latencyMs}));
-  }
+  for(const query of ['q=warm','scope=all','q=Witness&field=source_occurrences']) await call('/api/rows?'+query);
+  const paused=new Promise(resolve=>{const listen=data=>{if(!data.paused)return;worker.off('message',listen);resolve();};worker.on('message',listen);});
+  worker.postMessage({pause:true});await paused;
+  const cancelledId=++sequence,replies=[];const listen=data=>replies.push(data);worker.on('message',listen);
+  const started=performance.now();
+  worker.postMessage({id:cancelledId,url:'/api/entry/'+matched.matches[0].source_id+'?catalog='+info.catalog_id,manifest:pathToFileURL(join(folder,'public/manifest.json')).href});
+  worker.postMessage({cancel:cancelledId});worker.postMessage({resume:true});
+  await call('/api/info');
+  const latencyMs=performance.now()-started;
+  await new Promise(resolve=>setTimeout(resolve,50));worker.off('message',listen);
+  assert(!replies.some(item => item.id === cancelledId),'canceled worker result is suppressed');assert(latencyMs<1000);
  } finally {await worker?.terminate();await rm(folder,{recursive:true,force:true});}
 });
 

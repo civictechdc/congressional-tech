@@ -79,6 +79,10 @@ test('static Parquet queries match the Python catalog and preserve complete sour
     }
     const matched = await reader.matchUrls({urls: ['http://committee.test/final']});
     assert.deepEqual(matched, {matches: [{source_id: sources[1].source_id, url: 'https://committee.test/final'}], truncated: false});
+    assert.equal(reader.diagnostics().matchSourceScans || 0, 0);
+    const scans = reader.diagnostics().matchSourceScans || 0;
+    assert.deepEqual(await reader.matchUrls({urls: ['http://committee.test/final']}), matched);
+    assert.equal(reader.diagnostics().matchSourceScans || 0, scans);
     assert.deepEqual(await reader.matchUrls({sha256s: ['ab'.repeat(32)]}), {matches: [{source_id: sources[1].source_id, sha256: 'ab'.repeat(32)}], truncated: false});
     assert.deepEqual(await reader.matchUrls({sha256s: ['cd'.repeat(32)]}), {matches: [], truncated: false});
     assert.deepEqual(await reader.matchUrls({urls: ['http://archive.test/recovered-unfetched.pdf']}), {matches: [{source_id: sources[2].source_id}], truncated: false});
@@ -380,7 +384,7 @@ test('concurrent column/table/store loads share work and wide columns use exact 
   const limited=await createFilenameCatalog(manifest,localFetch,undefined,undefined,{decodedBytes:64*1024,compressedBytes:128*1024});
   assert.deepEqual(await limited.search({q:'Wide',field:'content_document_kind'}),first);
   assert.deepEqual(await limited.search({q:'Wide',field:'content_document_kind'}),first);
-  const bounded=limited.diagnostics();assert(bounded.decoded.peak<=64*1024);assert(bounded.compressed.peak<=128*1024);assert.equal(bounded.columnLoads,2);
+  const bounded=limited.diagnostics();assert(bounded.decoded.peak<=64*1024);assert(bounded.compressed.peak<=128*1024);assert.equal(bounded.decoded.bytes,0);assert.equal(bounded.columnLoads,1,'a repeated filter reuses matched groups and does not retain the wide column');
   const simultaneous=await createFilenameCatalog(manifest,localFetch);
   const [one,two]=await Promise.all([simultaneous.observationPage('2'),simultaneous.observationPage('2')]);assert.deepEqual(one,two);assert.equal(simultaneous.diagnostics().observationStoreLoads,1);assert.equal(simultaneous.diagnostics().tableLoads,0);
   console.log('controlled cache metrics',JSON.stringify({cold,warm,bounded}));
@@ -429,7 +433,7 @@ manifest_path.write_text(json.dumps(manifest))
   assert.equal(scanned.tableLoads-before.tableLoads,2,'one metadata load for all column groups, one for selected browse rows');
   assert.deepEqual(await reader.search(query),result);
   const rescanned=reader.diagnostics();
-  assert.equal(rescanned.tableLoads-scanned.tableLoads,2);
+  assert.equal(rescanned.tableLoads-scanned.tableLoads,1,'a repeated filter reuses the matched groups and reads the requested page');
   assert.equal(rescanned.rangeRequests,scanned.rangeRequests);
   assert.equal(rescanned.decoded.bytes,0);assert.equal(rescanned.decoded.peak,0);
   assert(rescanned.compressed.peak<=rescanned.compressed.maxBytes);
@@ -505,7 +509,7 @@ test('wide scalar and group scans yield to cancellation after bounded completed 
   for(const query of [{q:'different'},{scope:'all'}]) {
    const before=reader.diagnostics(),controller=new AbortController();
    const started=performance.now(),pending=reader.search(query,controller.signal);
-   setTimeout(()=>controller.abort(),0);await assert.rejects(pending,{name:'AbortError'});
+   queueMicrotask(()=>controller.abort());await assert.rejects(pending,{name:'AbortError'});
    const after=reader.diagnostics();
    assert(after.sourceScanVisits-before.sourceScanVisits<=512);assert(after.groupScanVisits-before.groupScanVisits<=512);
    console.log('controlled scan cancellation',JSON.stringify({query,latencyMs:performance.now()-started,sourceVisits:after.sourceScanVisits-before.sourceScanVisits,groupVisits:after.groupScanVisits-before.groupScanVisits}));
@@ -514,7 +518,7 @@ test('wide scalar and group scans yield to cancellation after bounded completed 
 });
 
 
-test('repeated exact search reuses budgeted text and retains only requested plus last page',async()=>{
+test('repeated exact search reuses the matched groups for later pages and sorts',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'filename-search-'));
  try {
   execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
@@ -526,10 +530,27 @@ test('repeated exact search reuses budgeted text and retains only requested plus
   const original=await reader.search(obs),obsBefore=reader.diagnostics();assert.equal(original.total,1);assert.deepEqual(await reader.search(obs),original);const obsAfter=reader.diagnostics();
   assert.equal(obsAfter.observationNormalizations,obsBefore.observationNormalizations);
   const all=await reader.search({scope:'all',limit:1});
+  const visits=reader.diagnostics().groupScanVisits;
   const last=await reader.search({scope:'all',limit:1,page:999});assert.equal(last.page,all.pages);assert.equal(last.total,all.total);
-  assert.equal(reader.diagnostics().maxMatchedGroupsRetained,2);
+  assert.equal(reader.diagnostics().groupScanVisits,visits,'a later page reuses the matched groups');
+  assert.equal(reader.diagnostics().maxMatchedGroupsRetained,all.total);
+  const recordKey=row=>(row.video_reference?`${row.video_reference.provider} ${row.video_reference.id}`:row.api_reference?.title||row.filename||'').toLowerCase();
+  const assertRecordOrder=(rows,direction)=>{
+    const keys=rows.map(recordKey);let blank=false;
+    for(let i=0;i<keys.length;i++){
+      if(!keys[i]){blank=true;continue;}
+      assert.equal(blank,false,'blank record names stay last');
+      if(i&&keys[i-1]) assert.ok(direction==='asc'?keys[i-1]<=keys[i]:keys[i-1]>=keys[i]);
+    }
+  };
+  const ascending=await reader.search({scope:'all',sort:'record',dir:'asc',limit:50});
+  assertRecordOrder(ascending.rows,'asc');
+  assert.equal(reader.diagnostics().groupScanVisits,visits,'sorting reuses the matched groups');
+  assertRecordOrder((await reader.search({scope:'all',sort:'record',dir:'desc',limit:50})).rows,'desc');
+  assert.equal((await reader.search({scope:'all',sort:'kind',dir:'asc',limit:50})).rows.length,Math.min(50,all.total));
+  assert.equal((await reader.search({scope:'all',sort:'congress',dir:'desc',limit:50})).total,all.total);
   const fallback=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),localFetch,undefined,undefined,{searchNormalizationBytes:0});
-  assert.deepEqual(await fallback.search(query),cold);const once=fallback.diagnostics();assert.deepEqual(await fallback.search(query),cold);assert(fallback.diagnostics().searchNormalizations>once.searchNormalizations);
+  assert.deepEqual(await fallback.search(query),cold);const once=fallback.diagnostics();assert.deepEqual(await fallback.search(query),cold);assert.equal(fallback.diagnostics().searchNormalizations,once.searchNormalizations);
   console.log('controlled search metrics',JSON.stringify({cold:before,repeated:after,observationCold:obsBefore.observationNormalizations,observationRepeated:obsAfter.observationNormalizations,fallbackNormalizations:fallback.diagnostics().searchNormalizations}));
  } finally {await rm(folder,{recursive:true,force:true});}
 });

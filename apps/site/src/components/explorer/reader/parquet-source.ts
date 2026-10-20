@@ -1,6 +1,6 @@
 import { parquetMetadataAsync, parquetReadObjects, parquetScan, parquetSchema, rowIndex, type FileMetaData, type ParquetQueryFilter } from 'hyparquet';
 import { presentRecord, recordingDue, recordingVisible } from '../browse/record-presentation.ts';
-import { createSearchMemo, matches, pageBounds, selectSearchRows, summarizeCoverage } from '../browse/query-utils.ts';
+import { compareRecordedDate, createSearchMemo, matches, orderSearchRows, pageBounds, selectSearchRows, summarizeCoverage } from '../browse/query-utils.ts';
 import { selectRelatedMaterials } from '../browse/related-materials.ts';
 import type { ArtifactPart, ExplorerQuery, ExplorerReader, ExplorerRecordRef, Fetcher, PublicationHandle, QueryInfo, QueryKind, QueryRow, RelatedOptions } from './types.ts';
 
@@ -192,7 +192,7 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
     const cached = rowsCache.get(key);
     if (cached) return cached;
     return shared(`query/${key}`, signal, async sharedSignal => cacheRows(key, await read(kind, {
-      columns: queryInfo.query_columns ? [...queryInfo.query_columns] : undefined,
+      columns: queryInfo.query_columns ? [...queryInfo.query_columns, 'source_ids', ...(kind === 'material' ? ['files', 'facts', 'explanation', 'meeting_ids'] : kind === 'data_issue' ? ['severity', 'subject_kind', 'subject_id', 'explanation', 'facts'] : kind === 'meeting' ? ['facts'] : kind === 'appearance' ? ['participation', 'facts'] : kind === 'committee_term' ? ['explanation', 'facts'] : [])] : undefined,
       filter: congress === 'all' ? undefined : { congress: { $eq: Number(congress) } },
       signal: sharedSignal,
     })));
@@ -263,10 +263,32 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
     });
   }
 
+  let witnessIndex: Promise<Map<string, string[]>> | undefined;
+  async function listWitnesses(meetingIds: readonly string[]): Promise<{ meeting_id: string; title: string }[]> {
+    const ids = [...new Set(meetingIds.map(id => id.trim()).filter(Boolean))];
+    if (!ids.length) return [];
+    witnessIndex ??= read('appearance', { columns: ['title', 'meeting_id'] }).then(rows => {
+      const index = new Map<string, string[]>();
+      for (const row of rows) {
+        const meetingId = typeof row.meeting_id === 'string' ? row.meeting_id : '';
+        const title = typeof row.title === 'string' ? row.title.trim() : '';
+        if (!meetingId || !title) continue;
+        index.set(meetingId, [...(index.get(meetingId) || []), title]);
+      }
+      return index;
+    }).catch(error => {
+      witnessIndex = undefined;
+      throw error;
+    });
+    const index = await witnessIndex;
+    return ids.flatMap(meetingId => (index.get(meetingId) || []).map(title => ({ meeting_id: meetingId, title })));
+  }
+
   const reader: ExplorerReader = {
     publication: manifest as ExplorerReader['publication'],
     getQueryInfo,
     getRecords,
+    listWitnesses,
     async getRecord(ref: ExplorerRecordRef, recordOptions?: { signal?: AbortSignal }) { return (await getRecords([ref], recordOptions))[0]; },
     async search(query: ExplorerQuery = {}, { signal }: { signal?: AbortSignal } = {}) {
       const now = new Date();
@@ -274,7 +296,7 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
       if (!selected) selected = preparedSearch.set(query, now, selectSearchRows((await queryRows(query, signal)).map(asQueryRow), query, now, { present: presentRecord, hideRecordings: true }));
       signal?.throwIfAborted();
       const { offset, limit } = pageBounds(query);
-      const slice = selected.rows.slice(offset, offset + limit);
+      const slice = orderSearchRows(selected.rows, query.sort, query.direction).slice(offset, offset + limit);
       return { rows: selected.presentPage ? slice.map(row => presentRecord(row, now)) : slice, total: selected.rows.length, offset, limit };
     },
     async getCoverage({ filters, signal }: { filters?: ExplorerQuery; signal?: AbortSignal } = {}) {
@@ -318,14 +340,15 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
         if (ref.kind === 'committee_term' && (!options.kind || options.kind === 'committee_term')) {
           related.push(...(await queryRows({ kind: 'committee_term', congress }, signal)).filter(row => row.parent_committee_id === ref.id && row.congress === record.congress).map(asQueryRow));
         }
-      } else if (ref.kind === 'material' && (!options.kind || options.kind === 'meeting')) {
-        related = (await getRecords((record.meeting_ids || []).map(id => ({ kind: 'meeting', id })), { signal })).filter((row): row is QueryRow => Boolean(row));
+      } else if (ref.kind === 'material') {
+        if (!options.kind || options.kind === 'meeting') related.push(...(await getRecords((record.meeting_ids || []).map(id => ({ kind: 'meeting', id })), { signal })).filter((row): row is QueryRow => Boolean(row)));
+        if (!options.kind || options.kind === 'appearance') related.push(...(await getRecords((record.appearance_ids || []).map(id => ({ kind: 'appearance', id })), { signal })).filter((row): row is QueryRow => Boolean(row)));
       }
       if (options.kind) related = related.filter(row => row.kind === options.kind);
       if (!options.kind || options.kind === 'data_issue') {
         related.push(...(await read('data_issue', { columns: ['id', 'kind', 'title', 'date'], filter: { subject_kind: { $eq: ref.kind }, subject_id: { $eq: ref.id } }, signal })).map(asQueryRow));
       }
-      related.sort((a, b) => a.kind.localeCompare(b.kind) || (a.kind === 'meeting' ? (b.date || '').localeCompare(a.date || '') : 0) || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
+      related.sort((a, b) => a.kind.localeCompare(b.kind) || (a.kind === 'meeting' ? compareRecordedDate(a, b) : 0) || a.title.localeCompare(b.title) || a.id.localeCompare(b.id));
       let categories;
       if (options.kind === 'material') {
         const selected = selectRelatedMaterials(related, options);
