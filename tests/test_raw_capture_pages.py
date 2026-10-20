@@ -76,3 +76,12 @@ def test_page_rolls_on_bytes_before_entry_limit(monkeypatch):
     assert list(pages.entries(first)) == entries[:1]
     with pytest.raises(ValueError, match='budget'):
         pages.append(selected, [{**entry(3), 'oversized_single_pin': 'x' * 2000}])
+
+
+def test_entries_since_rejects_a_start_inside_the_final_batch():
+    from test_raw_source_sync import MemoryStore
+    pages = CapturePages(MemoryStore())
+    head = pages.append(None, [dict(first_order=0, rows=2, release={})])
+    with pytest.raises(ValueError, match='batch boundary'):
+        list(pages.entries_since(head, 1))
+    assert list(pages.entries_since(head, 2)) == []

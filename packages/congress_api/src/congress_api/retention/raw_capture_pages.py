@@ -97,7 +97,8 @@ class CapturePages:
         """Read only pages containing newly appended batch references."""
         if type(first_order) is not int or first_order < 0:
             raise ValueError('Invalid capture change start')
-        if first_order > (head['end_order'] if head else 0):
+        end_order = head['end_order'] if head else 0
+        if first_order > end_order:
             raise ValueError('Capture change start exceeds selected count')
         pages, seen = [], set()
         while head is not None and head['end_order'] > first_order:
@@ -108,6 +109,8 @@ class CapturePages:
             pages.append([entry for entry in page['batches'] if entry['first_order'] >= first_order])
             head = page['previous']
         selected = [entry for entries in reversed(pages) for entry in entries]
+        if not selected and first_order != end_order:
+            raise ValueError('Capture change start is not a batch boundary')
         if selected:
             self._check_order(selected, first_order)
         yield from selected
