@@ -25,3 +25,9 @@ Use the maintained versioned-table mechanism qualified in ct-l5q1 to select chan
 - Migrate catalog_publication, CLI/local readers, recovery custody/validation and viewer preparation. Inventory dynamic callers as well as imports. No active consumer forces full export on routine updates.
 - Prove coherent selection, competing writers, missing partitions and lost acknowledgments. Preserve old selected snapshots and reject partial or mixed generations.
 - Report rewritten/reused bytes and metadata costs. Remove superseded internal readers after migration; any full export is an explicit user operation, not an update dependency.
+
+## Notes
+
+**2026-10-20T03:15:53Z**
+
+Reviewed exact-partition reader merged as 4f056c2; 9c1b965 removes quadratic partition membership checks while retaining selector order. Twelve independent core tests and two ordering cases passed. Coherent writer selection, durable semantic proof and consumer migration remain in progress; this is not a production switch. Review: output/incremental-updates-20261019/publication/reader-core-review.md.

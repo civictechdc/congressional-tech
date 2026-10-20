@@ -26,3 +26,9 @@ Adopt verified current raw/catalog snapshots through the chosen owner in resumab
 - Kill/resume adoption and processing; test fresh-host restore, competing selection and lost replies. Confirm browser behavior, review state, source fidelity and existing identities.
 - If gains are absent, identify the measured bottleneck and reopen its owning ticket. No qualification claim from planned tests or local-only evidence; production qualification/cutover must be separately recorded.
 - After qualified cutover, remove superseded internal update routes while preserving source files, receipts and the prior immutable generation. Optional exports/compaction cannot be required to make updates correct.
+
+## Notes
+
+**2026-10-20T03:15:53Z**
+
+Basin target is the existing congressional-tech-raw bucket. Native qualification reached lifecycle table creation but failed with catalog-side storage authentication 424/401. The isolated test prefix has zero objects; existing archive data is unchanged. A token granting Basin and storage access is required; current OAuth and existing account token do not qualify. Retained evidence: output/incremental-updates-20261019/catalog-setup/SETUP.md. Local implementation continues; no production adoption claimed.
