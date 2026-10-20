@@ -236,6 +236,7 @@ def run(args):
     pins = {str(p): digest(p) for p in paths}
     binding = dict(pins=pins, batch=str(batch), imported=str(imported), runtime=str(runtime),
                    baseline=str(args.baseline.resolve()), control_root=str(control_root))
+    if getattr(args,'renderer_upgrade',False):binding['renderer_upgrade']=True
     # Include control modules imported while assembling their exact source pins.
     selected.check(builder, publisher)
     continuation = Continuation(destination, binding, resume=getattr(args, 'resume', False))
@@ -278,10 +279,12 @@ def run(args):
     proxy = ContinuedPublicationClient(client, continuation=continuation, guard=guard, journal=journal,
                                        after_write=lambda *args: None)
     try:
+        upgrade_options=(dict(renderer_upgrade=True,resume_upgrade=getattr(args,'resume',False))
+                         if getattr(args,'renderer_upgrade',False) else {})
         return publication_module.publish_imported(client=client, proxy=proxy, guard=guard,
             continuation=continuation, destination=destination, batch=batch,
             baseline=args.baseline, bucket=bucket, imported=result, builder=builder,
-            publisher=publisher, publication_conditions=publication_conditions, native=native)
+            publisher=publisher, publication_conditions=publication_conditions, native=native, **upgrade_options)
     except BaseException as error:
         try:
             observation = diagnostics_module.catalog_build_observation(destination, continuation.value['phases'])
@@ -303,6 +306,8 @@ if __name__ == '__main__':
     parser.add_argument('--native-config', type=Path,
                         help='Explicit DocSpec runtime; required for execution and pinned across continuation.')
     parser.add_argument('--readiness', type=Path, help='Reconciled readiness evidence pinned by the completed import.')
+    parser.add_argument('--renderer-upgrade', action='store_true',
+                        help='Explicitly rebuild viewer rendering with current rules; --resume reuses retained stages.')
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--resume', action='store_true', help='Explicitly reconcile and continue this destination; requires --execute.')
     print(json.dumps(run(parser.parse_args()), indent=2))

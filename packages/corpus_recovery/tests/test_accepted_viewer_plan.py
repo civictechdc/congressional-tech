@@ -259,3 +259,45 @@ def test_recovery_plan_cannot_enter_full_upload_before_any_put(source, tmp_path)
     with pytest.raises(ValueError, match='requires an accepted full viewer plan'):
         upload(remote, run, recovery)
     assert not remote.puts
+
+
+def test_local_renderer_upgrade_resumes_before_accepting_prepared_output(source,tmp_path,monkeypatch):
+    import filename_native
+    remote,run,prepare=local(source,tmp_path/'first')
+    plan=prepare();public_transport(monkeypatch,remote)
+    assert upload(remote,run,plan)['status']=='published'
+    remote.puts.clear()
+    target=tmp_path/'upgrade'
+    binding=dict(pins={'source':'fixture-source-pin'},renderer_upgrade=True)
+    continuation=LocalContinuation(target,binding)
+    continuation.value['versions']={key:remote.versions.get(key) for key in (
+        'indexes/catalog.json',publisher.ACCEPTED_KEY,publisher.PREFIX+'manifest.json')}
+    continuation.flush()
+    previous=remote.objects[publisher.PREFIX+'manifest.json']
+    original_requirements=filename_native.native_requirements
+    monkeypatch.setattr(filename_native,'native_requirements',lambda *a,**k:
+        {**original_requirements(*a,**k),'renderer':'fixture-local-upgrade'})
+    original=filename_native.publish_selected;completed=[]
+    def stop(value):
+        if value['event']=='renderer_task_completed' and value.get('task','').startswith('component-chunk:'):
+            completed.extend(source.native.reads);raise RuntimeError('worker stopped')
+    def interrupted(*args,**options):
+        return original(*args,**dict(options,stage_event=stop))
+    monkeypatch.setattr(filename_native,'publish_selected',interrupted)
+    source.native.reads.clear()
+    with pytest.raises(RuntimeError,match='worker stopped'):
+        prepare_viewer(publisher,builder,remote,continuation,source.snapshot,control.publication_conditions,
+            renderer_upgrade=True)
+    assert not continuation.value['phases'] and not remote.puts
+    monkeypatch.setattr(filename_native,'publish_selected',original);source.native.reads.clear()
+    resumed=LocalContinuation(target,binding,resume=True)
+    result=prepare_viewer(publisher,builder,remote,resumed,source.snapshot,control.publication_conditions,
+        renderer_upgrade=True,resume_upgrade=True)
+    assert not set(completed)&set(source.native.reads)
+    assert result.manifest['requirements']['renderer']=='fixture-local-upgrade'
+    assert result.conditions==resumed.value['publication_inputs'] and not remote.puts
+    assert remote.objects[publisher.PREFIX+'manifest.json']==previous
+    source.native.reads.clear()
+    again=prepare_viewer(publisher,None,remote,resumed,None,control.publication_conditions,
+        renderer_upgrade=True,resume_upgrade=True)
+    assert again.manifest==result.manifest and not source.native.reads

@@ -13,7 +13,8 @@ from congress_api.retention.viewer_inventory import issue_inventory, verify_inve
 from viewer_publication.plan import accept_viewer_plan
 
 
-def prepare_viewer(publisher, builder, client, continuation, snapshot, publication_conditions):
+def prepare_viewer(publisher, builder, client, continuation, snapshot, publication_conditions, *,
+                   renderer_upgrade=False, resume_upgrade=False):
     """Accept the existing prepared phase once, including its recovery status."""
     root = continuation.root
     target = root / 'prepared'
@@ -42,8 +43,9 @@ def prepare_viewer(publisher, builder, client, continuation, snapshot, publicati
         if (snapshot is None or snapshot.manifest != inputs['source'][0]
                 or snapshot.identity['selector_sha256'] != inputs['source'][3]):
             raise ValueError('Selected native source differs from accepted viewer input')
+        upgrade_options=dict(renderer_upgrade=True,resume_upgrade=resume_upgrade) if renderer_upgrade else {}
         manifest, recovery = prepare_native_output(publisher, builder, client, snapshot, target,
-            accepted_record=inputs['accepted'], viewer_record=inputs['viewer'])
+            accepted_record=inputs['accepted'], viewer_record=inputs['viewer'], **upgrade_options)
         publisher.validate_prepared_output(target, manifest)
         initial = issue_inventory(target, manifest.identities, context=binding)
         publisher.prepare_recovery(target, manifest, inputs['accepted'], validation=initial, index=recovery)
@@ -67,7 +69,8 @@ def prepare_viewer(publisher, builder, client, continuation, snapshot, publicati
 
 
 def publish_imported(*, client, proxy, guard, continuation, destination, batch, baseline,
-                     bucket, imported, builder, publisher, publication_conditions, native):
+                     bucket, imported, builder, publisher, publication_conditions, native,
+                     renderer_upgrade=False, resume_upgrade=False):
     """Run domain work only after the dispatcher admits and guards its runtime."""
     from congress_api.retention.r2 import R2Store
     from congress_api.retention.catalog_publication import read_catalog
@@ -123,7 +126,8 @@ def publish_imported(*, client, proxy, guard, continuation, destination, batch, 
     with read_catalog(store, native=guarded_native) as snapshot:
         if snapshot.identity != catalog['selected_identity']:
             raise ValueError('Selected catalog differs from the accepted recovery update')
-        plan = prepare_viewer(publisher, builder, client, continuation, snapshot, publication_conditions)
+        upgrade_options=dict(renderer_upgrade=True,resume_upgrade=resume_upgrade) if renderer_upgrade else {}
+        plan = prepare_viewer(publisher, builder, client, continuation, snapshot, publication_conditions, **upgrade_options)
     guard.boundary()
     def publication_phase():
         publication = publisher.upload(proxy, plan.root, plan.manifest,

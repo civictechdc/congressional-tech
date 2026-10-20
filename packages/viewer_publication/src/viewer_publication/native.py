@@ -23,13 +23,15 @@ def _read(client, publisher, path, *, kind, expected=None, digest=None):
 
 
 def prepare_native_output(publisher, builder, client, snapshot, target, *, accepted_record, viewer_record,
-                          recovery_only=False):
+                          recovery_only=False, renderer_upgrade=False, resume_upgrade=False):
     """Reuse only a hash-verified prior release; leave selection to the caller.
 
     Local and hosted callers retain their existing input pins, accepted phase,
     artifact checks, conditional writes and continuation. This function owns no
     remote write and never interprets a missing prior result as a rebuild request.
     """
+    if resume_upgrade and not renderer_upgrade:
+        raise ValueError('Renderer upgrade resume requires an explicit upgrade')
     from congress_api.retention.catalog_selection import NativeCatalogSnapshot
     from filename_native_recoveries import index_catalog_recoveries
     if not isinstance(snapshot, NativeCatalogSnapshot):
@@ -68,6 +70,8 @@ def prepare_native_output(publisher, builder, client, snapshot, target, *, accep
     def read_asset(path):
         return _read(client, publisher, path, kind='manifest')
 
+    if recovery_only and (renderer_upgrade or resume_upgrade):
+        raise ValueError('Renderer upgrades require full viewer preparation')
     if recovery_only:
         # A recovery-only publication changes the sidecar, not the release it
         # describes. Retain its exact bytes and enough proof for offline restore.
@@ -88,6 +92,9 @@ def prepare_native_output(publisher, builder, client, snapshot, target, *, accep
         manifest = PreparedManifest(previous, assets.identities)
     else:
         options = dict(previous=previous, read_asset=read_asset)
+        if renderer_upgrade:
+            staging=Path(target).with_name(Path(target).name+'.renderer-upgrade')
+            options.update(renderer_upgrade=True,resume_upgrade=resume_upgrade and staging.exists())
         if prior_binding is not None:
             options['prior_review_binding'] = prior_binding
         manifest = builder.publish_selected(snapshot, target, **options)
