@@ -225,6 +225,7 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             urls = _keys(stage, 'urls', changed_urls)
             if dependencies is not None:
                 selected = dependencies.selected(previous.selection['dependency'])
+                owners.callback(selected.close)
                 replayed = _keys(stage, 'replayed_ids', old_ids)
                 present = _keys(stage, 'present_ids', (index.source_identity(row) for row in rows))
                 records = (record for url in changed_urls
