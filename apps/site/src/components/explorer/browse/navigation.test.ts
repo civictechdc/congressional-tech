@@ -25,6 +25,29 @@ test('workspace transitions retain compatible filters and remove meaningless fil
   assert.equal(materials.from, '2026-10-01'); assert.equal(materials.type, ''); assert.equal(materials.congress, '119');
 });
 
+test('legacy filename links open captured documents inside recordings and documents', () => {
+  const pinned = readNavigation('?source=deep-source&catalog=' + 'a'.repeat(32) + '&page=2&document_kind=statement&retained=yes', 119);
+  assert.equal(pinned.view, 'materials');
+  assert.equal(pinned.scope, 'documents');
+  assert.equal(pinned.kind, 'filename_entry');
+  assert.equal(pinned.id, 'deep-source');
+  assert.equal(pinned.page, 1);
+  assert.equal(pinned.document_kind, 'statement');
+  assert.equal(pinned.retained, 'yes');
+  assert.equal(pinned.catalog, 'a'.repeat(32));
+  assert.equal(pinned.congress, 'all');
+  assert.equal(readNavigation('?source=deep-source&congress=118', 119).congress, '118');
+  assert.deepEqual(readNavigation(new URLSearchParams(Object.entries(pinned)), 119), pinned);
+  const explicit = readNavigation('?view=materials&page=2', 119);
+  assert.equal(explicit.scope, '');
+  assert.equal(explicit.page, 2);
+  assert.equal(explicit.kind, '');
+  const capture = viewNavigation(pinned, 'meetings');
+  assert.equal(capture.scope, '');
+  assert.equal(capture.document_kind, '');
+  assert.equal(viewNavigation(capture, 'materials').scope, '');
+});
+
 test('malformed routing values recover to usable defaults', () => {
   for (const page of ['Infinity','NaN','-3','1e99']) assert.equal(readNavigation(`?page=${page}`,119).page,0);
   const nav = readNavigation('?view=missing&congress=garbage&measure=missing&grouping=missing&committeeLevel=missing&access=garbage',119);
