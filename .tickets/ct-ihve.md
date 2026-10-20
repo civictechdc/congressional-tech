@@ -35,3 +35,7 @@ The dependency now exposes a reviewed stable logical table reader and conditiona
 **2026-10-20T04:22:09Z**
 
 Implementation is active in the isolated incremental-viewer worktree against the reviewed native catalog reader and selector. Final closure still requires ct-v5kb and integrated qualification. Preserve exact historical saved links with a read-only v5 decoder; recurring writes use stable IDs and reusable v6 assets.
+
+**2026-10-20T05:34:22Z**
+
+Stable v6 reader, historical v5 links and full typed document download are integrated with the primary session committed UI relocation. Local native Catalog analysis and existing portable review policy now consume logical tables. Nullable reuse and final integrated browser evidence remain open.

@@ -43,3 +43,7 @@ Shared physical batches, paged component proofs, historical readers and one cond
 **2026-10-20T04:49:46Z**
 
 Stable viewer builder and retained withdrawal safeguards integrated; joint builder, review, cursor and lookup tests: 42 passed. Recovery preparation: 34 baseline checks and 8 review-fix checks passed. Browser/uploader migration and native operational phase connection remain open; existing published viewer is unchanged.
+
+**2026-10-20T05:34:22Z**
+
+Shared native preparation now serves cloud and local recovery publication; recovery-only mode preserves exact prior manifest bytes. Native runtime input custody and low-compression policy are integrated locally. Hosted native distribution is still absent; no deployment/adoption claimed.

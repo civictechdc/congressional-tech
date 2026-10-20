@@ -47,3 +47,7 @@ Maintained native update caller and bounded reverse membership construction are 
 **2026-10-20T04:49:46Z**
 
 Reviewed native adoption, exact source change cursors, directed receipt dependencies and URL lookups integrated. Actual native catalog adoption/update: 21 tests; source observation/cursor: 13 tests. Integration exposed a fresh-host lookup schema restoration mismatch; fix underway. Complete receipt-derived contributions and normal update dispatch remain open.
+
+**2026-10-20T05:34:22Z**
+
+Normal raw-to-catalog dispatch now retains source-observation proofs in the same conditional catalog selection. Nullable logical additions preserve old native pins and exact old types. Exact deletion-set regression fixed. Package membership, contribution adoption, bounded large-scope resume and explicit upgrades remain open.
