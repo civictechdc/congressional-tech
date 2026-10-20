@@ -1,15 +1,127 @@
 """Run maintained grouping on a closed source scope and emit bounded chunks."""
 from copy import deepcopy
 from dataclasses import dataclass
+from collections.abc import Mapping, Collection
+from contextlib import ExitStack, closing
+import sqlite3
 from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from . import document_index as index
-from .catalog_dependencies import DependencyGap
+from .catalog_dependencies import DependencyGap, DependencyWorkingSet
 
 ORDER = '_catalog_order'
+
+
+class ScopeSourceIndex(Mapping):
+    """Exact ordinals or document mappings backed by the grouping scratch DB."""
+    def __init__(self, working, *, documents=False):
+        self.working, self.documents = working, documents
+        self.column = 'document' if documents else 'ordinal'
+        self.where = 'WHERE current=1' if documents else ''
+
+    def __getitem__(self, key):
+        row = self.working.work.connection.execute(
+            f'SELECT {self.column} FROM sources WHERE identity=?' + (' AND current=1' if self.documents else ''), (key,)).fetchone()
+        if row is None:
+            raise KeyError(key)
+        return row[0]
+
+    def __iter__(self):
+        return (row[0] for row in self.working.work.connection.execute(
+            f'SELECT identity FROM sources {self.where} ORDER BY ordinal'))
+
+    def __len__(self):
+        return self.working.work.connection.execute(f'SELECT count(*) FROM sources {self.where}').fetchone()[0]
+
+
+class ScopeDocumentIDs(Collection):
+    def __init__(self, working):
+        self.working = working
+
+    def __iter__(self):
+        return (row[0] for row in self.working.work.connection.execute('SELECT identity FROM documents ORDER BY ordinal'))
+
+    def __len__(self):
+        return self.working.work.connection.execute('SELECT count(*) FROM documents').fetchone()[0]
+
+    def __contains__(self, key):
+        return self.working.work.connection.execute('SELECT 1 FROM documents WHERE identity=?', (key,)).fetchone() is not None
+
+    def position(self, key):
+        row = self.working.work.connection.execute('SELECT ordinal FROM documents WHERE identity=?', (key,)).fetchone()
+        if row is None:
+            raise KeyError(key)
+        return row[0]
+
+
+class ScopeMembers(Mapping):
+    """Component ownership keys and counts, without per-component Python lists."""
+    def __init__(self, db, name):
+        self.db, self.name = db, name
+        db.execute(f'CREATE TABLE {name}(component TEXT,member TEXT,PRIMARY KEY(component,member))')
+
+    def add(self, component, member):
+        self.db.execute(f'INSERT INTO {self.name} VALUES (?,?)', (component, member))
+
+    def __iter__(self):
+        return (row[0] for row in self.db.execute(f'SELECT DISTINCT component FROM {self.name} ORDER BY component'))
+
+    def __len__(self):
+        return self.db.execute(f'SELECT count(DISTINCT component) FROM {self.name}').fetchone()[0]
+
+    def __getitem__(self, component):
+        count = self.db.execute(f'SELECT count(*) FROM {self.name} WHERE component=?', (component,)).fetchone()[0]
+        if not count:
+            raise KeyError(component)
+        return ScopeMemberIDs(self, component, count)
+
+
+class ScopeMemberIDs(Collection):
+    def __init__(self, owner, component, count):
+        self.owner, self.component, self.count = owner, component, count
+
+    def __iter__(self):
+        return (row[0] for row in self.owner.db.execute(
+            f'SELECT member FROM {self.owner.name} WHERE component=? ORDER BY member', (self.component,)))
+
+    def __len__(self):
+        return self.count
+
+    def __contains__(self, key):
+        return self.owner.db.execute(f'SELECT 1 FROM {self.owner.name} WHERE component=? AND member=?',
+                                     (self.component, key)).fetchone() is not None
+
+
+def _same_keys(left, right):
+    return len(left) == len(right) and all(key in right for key in left)
+
+
+def _body_coverage(db, prepared, expected, encoded):
+    from hashlib import sha256
+    db.execute('CREATE TABLE bodies(value TEXT PRIMARY KEY,expected INTEGER DEFAULT 0,prepared INTEGER DEFAULT 0)')
+    db.executemany('INSERT OR IGNORE INTO bodies(value,expected) VALUES (?,1)', ((value,) for value in expected))
+    for row in prepared.source_values():
+        if row.get('body_key'):
+            db.execute('INSERT INTO bodies(value,prepared) VALUES (?,1) ON CONFLICT(value) '
+                       'DO UPDATE SET prepared=1', (row['body_key'],))
+    if db.execute('SELECT 1 FROM bodies WHERE expected=1 AND prepared=0 LIMIT 1').fetchone():
+        raise ValueError('Catalog affected outputs omit an expected retained body')
+    def digest(label):
+        result, first = sha256(b'['), True
+        for value, in db.execute(f'SELECT value FROM bodies WHERE {label}=1 ORDER BY value'):
+            if not first:
+                result.update(b',')
+            first = False
+            result.update(encoded(value))
+        result.update(b']')
+        return result.hexdigest()
+    return dict(expected_count=db.execute('SELECT count(*) FROM bodies WHERE expected=1').fetchone()[0],
+                expected_sha256=digest('expected'),
+                prepared_count=db.execute('SELECT count(*) FROM bodies WHERE prepared=1').fetchone()[0],
+                prepared_sha256=digest('prepared'))
 
 
 @dataclass
@@ -19,10 +131,15 @@ class PreparedCatalogScope:
     documents_path: Path
     source_schema: pa.Schema
     document_schema: pa.Schema
-    source_orders: dict
+    source_orders: object
     candidate: str
-    source_document_ids: dict
-    document_ids: tuple
+    source_document_ids: object
+    document_ids: object
+    _working: object = None
+
+    def close(self):
+        if self._working is not None:
+            self._working.close()
 
     @property
     def source_rows(self):
@@ -54,14 +171,12 @@ class PreparedCatalogScope:
             lambda row: self.source_orders[row['source_id']], max_rows=max_rows, max_bytes=max_bytes)
 
     def document_chunks(self, *, max_rows, max_bytes):
-        positions = {key: i for i, key in enumerate(self.document_ids)}
         return self._chunks(self.documents_path, self.document_schema,
-            lambda row: positions[row['document_id']], max_rows=max_rows, max_bytes=max_bytes)
+            lambda row: self.document_ids.position(row['document_id']), max_rows=max_rows, max_bytes=max_bytes)
 
     def source_links(self):
         """Preserve imported source order and explain changed document mappings."""
-        for key in sorted(set(self.scope.before) | set(self.source_document_ids),
-                          key=self.source_orders.__getitem__):
+        for key in self.source_orders:
             yield dict(source_id=key, source_order=self.source_orders[key],
                        old_document_id=self.scope.before.get(key, {}).get('document_id'),
                        new_document_id=self.source_document_ids.get(key))
@@ -81,33 +196,61 @@ def prepare_catalog_scope(directory, scope, *, schema, source_orders, candidate)
     """
     if not isinstance(candidate, str) or not candidate or ORDER in schema.names:
         raise ValueError('Catalog scope requires a candidate and unreserved application schema')
-    keys = set(scope.before) | set(scope.after)
+    working = DependencyWorkingSet()
+    db = working.work.connection
+    db.executescript('CREATE TABLE sources(identity TEXT PRIMARY KEY,ordinal INTEGER UNIQUE,current INTEGER,document TEXT); '
+                     'CREATE TABLE documents(identity TEXT PRIMARY KEY,ordinal INTEGER UNIQUE);')
     try:
-        bounded_orders = {key: source_orders[key] for key in keys}
-    except KeyError as error:
-        raise DependencyGap('Missing immutable source order for the affected scope') from error
-    orders = list(bounded_orders.values())
-    if any(type(value) is not int or value < 0 for value in orders) or len(set(orders)) != len(orders):
-        raise DependencyGap('Affected source order must be nonnegative and unique')
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=False)
-    filename_path, document_path = directory / 'document-filenames.parquet', directory / 'documents.parquet'
-    rows = (deepcopy(scope.after[key]) for key in sorted(scope.after, key=source_orders.__getitem__))
-    index.write_document_indexes(filename_path, rows, schema, catalog_id=candidate, preserve_columns=True)
-    with pq.ParquetFile(filename_path) as sources, pq.ParquetFile(document_path) as documents:
-        source_schema, document_schema = sources.schema_arrow, documents.schema_arrow
-        mapping = {}
-        for batch in sources.iter_batches(columns=['source_id', 'document_id'], batch_size=256):
-            for row in batch.to_pylist():
-                if row['source_id'] in mapping:
-                    raise DependencyGap('Repeated grouped source identity')
-                mapping[row['source_id']] = row['document_id']
-        document_ids = tuple(row['document_id'] for batch in documents.iter_batches(
-            columns=['document_id'], batch_size=256) for row in batch.to_pylist())
-    if set(mapping) != set(scope.after):
-        raise DependencyGap('Grouped source identities differ from the closed affected scope')
-    return PreparedCatalogScope(scope, filename_path, document_path, source_schema, document_schema,
-                                bounded_orders, candidate, mapping, document_ids)
+        def add(key, current):
+            try:
+                position = source_orders[key]
+            except KeyError as error:
+                raise DependencyGap('Missing immutable source order for the affected scope') from error
+            if type(position) is not int or position < 0:
+                raise DependencyGap('Affected source order must be nonnegative and unique')
+            try:
+                db.execute('INSERT INTO sources VALUES (?,?,?,NULL)', (key, position, int(current)))
+            except sqlite3.IntegrityError as error:
+                raise DependencyGap('Affected source order must be nonnegative and unique') from error
+        for key in scope.before:
+            add(key, key in scope.after)
+        for key in scope.after:
+            if key not in scope.before:
+                add(key, True)
+        directory = Path(directory)
+        directory.mkdir(parents=True, exist_ok=False)
+        filename_path, document_path = directory / 'document-filenames.parquet', directory / 'documents.parquet'
+        rows = (deepcopy(scope.after[key]) for key, in db.execute('SELECT identity FROM sources WHERE current=1 ORDER BY ordinal'))
+        index.write_document_indexes(filename_path, rows, schema, catalog_id=candidate, preserve_columns=True)
+        with pq.ParquetFile(filename_path) as sources, pq.ParquetFile(document_path) as documents:
+            source_schema, document_schema = sources.schema_arrow, documents.schema_arrow
+            for batch in sources.iter_batches(columns=['source_id', 'document_id'], batch_size=256):
+                for row in batch.to_pylist():
+                    key = row['source_id']
+                    prior = db.execute('SELECT document FROM sources WHERE identity=? AND current=1', (key,)).fetchone()
+                    if prior is None:
+                        raise DependencyGap('Grouped source identities differ from the closed affected scope')
+                    if prior[0] is not None:
+                        raise DependencyGap('Repeated grouped source identity')
+                    if not row['document_id']:
+                        raise DependencyGap('Grouped source is missing its document identity')
+                    db.execute('UPDATE sources SET document=? WHERE identity=?', (row['document_id'], key))
+            ordinal = 0
+            for batch in documents.iter_batches(columns=['document_id'], batch_size=256):
+                for row in batch.to_pylist():
+                    try:
+                        db.execute('INSERT INTO documents VALUES (?,?)', (row['document_id'], ordinal))
+                    except sqlite3.IntegrityError as error:
+                        raise DependencyGap('Repeated grouped document identity') from error
+                    ordinal += 1
+        if db.execute('SELECT 1 FROM sources WHERE current=1 AND document IS NULL LIMIT 1').fetchone():
+            raise DependencyGap('Grouped source identities differ from the closed affected scope')
+        return PreparedCatalogScope(scope, filename_path, document_path, source_schema, document_schema,
+            ScopeSourceIndex(working), candidate, ScopeSourceIndex(working, documents=True),
+            ScopeDocumentIDs(working), working)
+    except BaseException:
+        working.close()
+        raise
 
 
 def catalog_scope_requirements():
@@ -203,116 +346,117 @@ def verify_catalog_scope(store, *, dependencies, dependency_before, dependency_a
     from .immutable_metadata import MetadataObjects, encoded
     if not isinstance(base, dict) or not isinstance(rules, dict) or not rules:
         raise ValueError('Scope admission requires an exact base identity and explicit rules')
-    old = dependencies.selected(dependency_before)
-    before, after = prepared.scope.before, prepared.source_document_ids
-    removed = set(before) - set(after)
-    closed = affected_sources(old, replacements=prepared.source_values(), deletions=removed)
-    if set(closed.before) != set(before) or set(closed.after) != set(after):
-        raise DependencyGap('Prepared source scope is not closed under old/new dependencies')
-    old_members, new_members = {}, {}
-    for key, row in before.items():
-        if old.source(key) != row or old.order(key) != prepared.source_orders[key]:
-            raise DependencyGap('Old source values or order differ from the selected dependency version')
-        component = row.get('document_id')
-        if not component:
-            raise DependencyGap('Missing selected document ownership for source ' + key)
-        old_members.setdefault(component, []).append(key)
-    for key, component in after.items():
-        if key not in before and old.source(key) is not None:
-            raise DependencyGap('Candidate source ID collides with an unaffected selected source')
-        new_members.setdefault(component, []).append(key)
-    if complete_counts is not None:
-        from .source_update_proof import read_source_update
-        purpose = read_source_update(store, source_update).get('purpose') if source_update else None
-        if purpose not in {'qualification', 'rule-upgrade'}:
-            raise DependencyGap('Complete dependency replacement requires retained source qualification')
-        if complete_counts != dict(source_rows=len(before), document_rows=len(old_members)):
-            raise DependencyGap('Complete source replacement omits selected source or document ownership')
-        if purpose == 'qualification':
-            if set(before) != set(after):
-                raise DependencyGap('Source qualification changed selected source identities')
-            for row in prepared.source_values():
-                old_row = before[row['source_id']]
-                if any(old_row.get(name) != row.get(name) for name in prepared.source_schema.names):
-                    raise DependencyGap('Source qualification changed selected values or document mappings')
-    retired = []
-    for component, members in sorted(old_members.items()):
-        reference = component_lookup(component)
-        value = read_component(reference)
-        if (value['component'] != component
-                or value['validation']['counts'] != dict(source_rows=len(members), document_rows=1)
-                or value['validation']['source_ids_sha256'] != catalog_source_ids_digest(iter(sorted(members)))):
-            raise DependencyGap('Retired component ownership is incomplete: ' + component)
-        retired.append((component, reference))
-    if complete_counts is not None and purpose == 'qualification':
-        from .catalog_batches import SelectedCatalogTable
-        from .catalog_qualification import qualify_complete_values
-        selected = MetadataObjects(store, 'catalog-selections-v2').read(base['selected_ref'])
-        schema = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(selected['schemas']['documents'], validate=True)))
-        old_documents = SelectedCatalogTable(schema, lambda: iter(retired), store=store,
-            native=dependencies.native, label='documents', rows=len(old_members),
-            max_ordered_bytes=dependencies.max_bytes)
-        with pq.ParquetFile(prepared.documents_path) as documents:
-            qualify_complete_values(old_documents, documents, 'documents')
-    read_new_component = read_new_component or read_component
-    incoming, seen = [], set()
-    for component, reference in prepared_components:
-        if component in seen or component not in new_members:
-            raise DependencyGap('Unexpected or repeated prepared component')
-        seen.add(component)
-        value = read_new_component(reference)
-        members = new_members[component]
-        if (value['component'] != component or value['candidate'] != prepared.candidate
-                or value['validation']['counts'] != dict(source_rows=len(members), document_rows=1)
-                or value['validation']['source_ids_sha256'] != catalog_source_ids_digest(iter(sorted(members)))):
-            raise DependencyGap('Prepared component membership differs from grouped source outputs')
-        incoming.append((component, reference))
-    if seen != set(new_members):
-        raise DependencyGap('Missing prepared component for the closed source scope')
-    # Only the maintained affected-leaf preparation may determine new roots.
-    # Checking changed rows alone would allow silently dropping unrelated leaves.
-    expected = (dependencies.prepare_full(dependency_before, replacements=prepared.source_values(),
-                                         source_orders=prepared.source_orders)
-                if complete_counts is not None else dependencies.prepare(dependency_before,
-                    replacements=prepared.source_values(), deletions=removed, source_orders=prepared.source_orders))
-    if expected != dependency_after:
-        raise DependencyGap('Candidate changed unrelated or unaffected dependency routing')
-    current = dependencies.selected(dependency_after)
-    for row in prepared.source_values():
-        key = row['source_id']
-        if (current.source(key) != row or current.order(key) != prepared.source_orders[key]):
-            raise DependencyGap('Candidate dependency values differ from grouped source outputs')
-    if any(current.source(key) is not None for key in removed):
-        raise DependencyGap('Deleted source survives in candidate dependency state')
-    interpretation_after = interpretation_before
-    if source_update is None and interpretation_before is not None:
-        from . import document_index as index
-        fields = set(index.SOURCE_SCHEMA.names) | index.SOURCE_CONTEXT_FIELDS | index.AVAILABILITY_FIELDS | {'capture_outcome'}
-        unchanged = set(before) == set(after)
+    with ExitStack() as stack:
+        working = stack.enter_context(closing(DependencyWorkingSet()))
+        old = stack.enter_context(closing(dependencies.selected(dependency_before)))
+        before, after = prepared.scope.before, prepared.source_document_ids
+        removed = working.work.mapping('removed')
+        for key in before:
+            if key not in after:
+                removed[key] = True
+        closed = stack.enter_context(closing(affected_sources(old, replacements=prepared.source_values(), deletions=removed)))
+        if not _same_keys(closed.before, before) or not _same_keys(closed.after, after):
+            raise DependencyGap('Prepared source scope is not closed under old/new dependencies')
+        old_members = ScopeMembers(working.work.connection, 'old_members')
+        new_members = ScopeMembers(working.work.connection, 'new_members')
+        for key, row in before.items():
+            if old.source(key) != row or old.order(key) != prepared.source_orders[key]:
+                raise DependencyGap('Old source values or order differ from the selected dependency version')
+            component = row.get('document_id')
+            if not component:
+                raise DependencyGap('Missing selected document ownership for source ' + key)
+            old_members.add(component, key)
+        for key, component in after.items():
+            if key not in before and old.source(key) is not None:
+                raise DependencyGap('Candidate source ID collides with an unaffected selected source')
+            new_members.add(component, key)
+        if complete_counts is not None:
+            from .source_update_proof import read_source_update
+            purpose = read_source_update(store, source_update).get('purpose') if source_update else None
+            if purpose not in {'qualification', 'rule-upgrade'}:
+                raise DependencyGap('Complete dependency replacement requires retained source qualification')
+            if complete_counts != dict(source_rows=len(before), document_rows=len(old_members)):
+                raise DependencyGap('Complete source replacement omits selected source or document ownership')
+            if purpose == 'qualification':
+                if not _same_keys(before, after):
+                    raise DependencyGap('Source qualification changed selected source identities')
+                for row in prepared.source_values():
+                    old_row = before[row['source_id']]
+                    if any(old_row.get(name) != row.get(name) for name in prepared.source_schema.names):
+                        raise DependencyGap('Source qualification changed selected values or document mappings')
+        retired = working.work.mapping('retired')
+        for component, members in old_members.items():
+            reference = component_lookup(component)
+            value = read_component(reference)
+            if (value['component'] != component
+                    or value['validation']['counts'] != dict(source_rows=len(members), document_rows=1)
+                    or value['validation']['source_ids_sha256'] != catalog_source_ids_digest(iter(members))):
+                raise DependencyGap('Retired component ownership is incomplete: ' + component)
+            retired[component] = reference
+        if complete_counts is not None and purpose == 'qualification':
+            from .catalog_batches import SelectedCatalogTable
+            from .catalog_qualification import qualify_complete_values
+            selected = MetadataObjects(store, 'catalog-selections-v2').read(base['selected_ref'])
+            schema = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(selected['schemas']['documents'], validate=True)))
+            old_documents = SelectedCatalogTable(schema, lambda: iter(retired.items()), store=store,
+                native=dependencies.native, label='documents', rows=len(old_members),
+                max_ordered_bytes=dependencies.max_bytes)
+            with pq.ParquetFile(prepared.documents_path) as documents:
+                qualify_complete_values(old_documents, documents, 'documents')
+        read_new_component = read_new_component or read_component
+        incoming, seen = working.work.mapping('incoming'), working.work.mapping('seen')
+        for component, reference in prepared_components:
+            if component in seen or component not in new_members:
+                raise DependencyGap('Unexpected or repeated prepared component')
+            seen[component] = True
+            value = read_new_component(reference)
+            members = new_members[component]
+            if (value['component'] != component or value['candidate'] != prepared.candidate
+                    or value['validation']['counts'] != dict(source_rows=len(members), document_rows=1)
+                    or value['validation']['source_ids_sha256'] != catalog_source_ids_digest(iter(members))):
+                raise DependencyGap('Prepared component membership differs from grouped source outputs')
+            incoming[component] = reference
+        if not _same_keys(seen, new_members):
+            raise DependencyGap('Missing prepared component for the closed source scope')
+        # Only the maintained affected-leaf preparation may determine new roots.
+        # Checking changed rows alone would allow silently dropping unrelated leaves.
+        expected = (dependencies.prepare_full(dependency_before, replacements=prepared.source_values(),
+                                             source_orders=prepared.source_orders)
+                    if complete_counts is not None else dependencies.prepare(dependency_before,
+                        replacements=prepared.source_values(), deletions=removed, source_orders=prepared.source_orders))
+        if expected != dependency_after:
+            raise DependencyGap('Candidate changed unrelated or unaffected dependency routing')
+        current = stack.enter_context(closing(dependencies.selected(dependency_after)))
         for row in prepared.source_values():
-            old_row = before.get(row['source_id'])
-            unchanged = unchanged and old_row is not None and all(old_row.get(name) == row.get(name) for name in fields)
-        if not unchanged:
-            interpretation_after = None  # Complete interpreted replacements alone do not prove receipt attribution.
-    if source_update is not None:
-        from .source_update_proof import verify_source_update
-        interpretation_after = verify_source_update(store, source_update, native=dependencies.native, base=base, before=interpretation_before,
-            rows=prepared.source_values(), deletions=removed)
-    expected_bodies = sorted(set(expected_bodies))
-    bodies = sorted({row['body_key'] for row in prepared.source_values() if row.get('body_key')})
-    if not set(expected_bodies) <= set(bodies):
-        raise ValueError('Catalog affected outputs omit an expected retained body')
-    body_coverage = dict(expected_count=len(expected_bodies), expected_sha256=sha256(encoded(expected_bodies)).hexdigest(),
-                         prepared_count=len(bodies), prepared_sha256=sha256(encoded(bodies)).hexdigest())
-    result = dict(version=1, base=deepcopy(base), dependency_before=deepcopy(dependency_before),
-        dependency_after=deepcopy(dependency_after), candidate=prepared.candidate,
-        schemas=dict(filenames=base64.b64encode(prepared.source_schema.serialize().to_pybytes()).decode(),
-                     documents=base64.b64encode(prepared.document_schema.serialize().to_pybytes()).decode()),
-        retired=_component_pages(store, retired), prepared=_component_pages(store, incoming),
-        counts=dict(retired_source_rows=len(before), prepared_source_rows=len(after),
-                    retired_document_rows=len(old_members), prepared_document_rows=len(new_members)),
-        rules=deepcopy(rules), mapping=None, body_coverage=body_coverage, source_update=source_update,
-        complete_replacement=complete_counts is not None,
-        interpretation_before=interpretation_before, interpretation_after=interpretation_after, requirements=catalog_scope_requirements())
-    result['binding'] = sha256(encoded(result)).hexdigest()
-    return MetadataObjects(store, 'catalog-scope-proofs-v1').put(result)
+            key = row['source_id']
+            if (current.source(key) != row or current.order(key) != prepared.source_orders[key]):
+                raise DependencyGap('Candidate dependency values differ from grouped source outputs')
+        if any(current.source(key) is not None for key in removed):
+            raise DependencyGap('Deleted source survives in candidate dependency state')
+        interpretation_after = interpretation_before
+        if source_update is None and interpretation_before is not None:
+            from . import document_index as index
+            fields = set(index.SOURCE_SCHEMA.names) | index.SOURCE_CONTEXT_FIELDS | index.AVAILABILITY_FIELDS | {'capture_outcome'}
+            unchanged = _same_keys(before, after)
+            for row in prepared.source_values():
+                old_row = before.get(row['source_id'])
+                unchanged = unchanged and old_row is not None and all(old_row.get(name) == row.get(name) for name in fields)
+            if not unchanged:
+                interpretation_after = None  # Complete interpreted replacements alone do not prove receipt attribution.
+        if source_update is not None:
+            from .source_update_proof import verify_source_update
+            interpretation_after = verify_source_update(store, source_update, native=dependencies.native, base=base, before=interpretation_before,
+                rows=prepared.source_values(), deletions=removed)
+        body_coverage = _body_coverage(working.work.connection, prepared, expected_bodies, encoded)
+        result = dict(version=1, base=deepcopy(base), dependency_before=deepcopy(dependency_before),
+            dependency_after=deepcopy(dependency_after), candidate=prepared.candidate,
+            schemas=dict(filenames=base64.b64encode(prepared.source_schema.serialize().to_pybytes()).decode(),
+                         documents=base64.b64encode(prepared.document_schema.serialize().to_pybytes()).decode()),
+            retired=_component_pages(store, retired.items()), prepared=_component_pages(store, incoming.items()),
+            counts=dict(retired_source_rows=len(before), prepared_source_rows=len(after),
+                        retired_document_rows=len(old_members), prepared_document_rows=len(new_members)),
+            rules=deepcopy(rules), mapping=None, body_coverage=body_coverage, source_update=source_update,
+            complete_replacement=complete_counts is not None,
+            interpretation_before=interpretation_before, interpretation_after=interpretation_after, requirements=catalog_scope_requirements())
+        result['binding'] = sha256(encoded(result)).hexdigest()
+        return MetadataObjects(store, 'catalog-scope-proofs-v1').put(result)

@@ -72,3 +72,30 @@ def test_dependency_preparation_never_assembles_the_complete_changed_scope_as_ar
     for order, row in enumerate(rows):
         assert selected.order(identity(row)) == order
         assert selected.source(identity(row)) == pa.Table.from_pylist([row], schema=schema).to_pylist()[0]
+
+
+def test_prepared_scope_keeps_orders_and_mappings_on_disk_and_preserves_every_field(tmp_path):
+    from copy import deepcopy
+    import pyarrow.parquet as pq
+    from congress_api.retention.catalog_scope import prepare_catalog_scope
+    rows = [source(f'{i}.pdf', 'shared') for i in range(300)]
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS)])
+    old, logical, _, _ = index.prepare_document_indexes(deepcopy(rows), schema)
+    scope = affected_sources(SelectedDependencies(old), deletions=[identity(old[0])])
+    orders = {identity(row): position * 7 for position, row in enumerate(old)}
+    prepared = prepare_catalog_scope(tmp_path / 'scope', scope, schema=logical,
+        source_orders=orders, candidate='disk-mapping')
+    assert not isinstance(prepared.source_orders, dict)
+    assert not isinstance(prepared.source_document_ids, dict)
+    assert not isinstance(prepared.document_ids, tuple)
+    expected_sources, _, expected_documents, _ = index.prepare_document_indexes(deepcopy(rows[1:]), logical)
+    by_id = lambda values: {row['source_id']: row for row in values}
+    normalize = lambda values, schema: pa.Table.from_pylist(values, schema=schema).to_pylist()
+    assert by_id(list(prepared.source_values())) == by_id(normalize(expected_sources, prepared.source_schema))
+    assert pq.read_table(prepared.documents_path).to_pylist() == normalize(expected_documents, prepared.document_schema)
+    assert [row['source_order'] for row in prepared.source_links()] == list(orders.values())
+    assert [value for chunk in prepared.source_chunks(max_rows=4, max_bytes=1 << 20)
+            for value in chunk['_catalog_order'].to_pylist()] == list(orders.values())[1:]
+    assert list(prepared.document_chunks(max_rows=4, max_bytes=1 << 20))[0]['_catalog_order'].to_pylist() == [0]
+    prepared.close()
+    scope.close()
