@@ -165,3 +165,44 @@ def test_scope_component_pages_stream_in_order_with_constant_page_reads():
     assert next(iterator) == values[0]
     assert list(iterator) == values[1:]
     assert len(store.objects) - baseline == 3
+
+
+from test_docspec_boundary import native
+
+
+def test_actual_native_scope_proof_replay_calls_are_measured_separately(tmp_path, native, record_property):
+    from test_raw_source_sync import MemoryStore
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+    from congress_api.retention.catalog_scope import verify_catalog_scope
+    from congress_api.retention.catalog_batches import CatalogComponentReader
+    rows = [source('a.pdf', 'A'), source('b.pdf', 'B'), source('a.pdf', 'B'), source('other.pdf', 'O')]
+    old_rows, schema, _, _ = index.prepare_document_indexes(deepcopy(rows),
+        pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS)]))
+    store, calls = MemoryStore(), []
+    original = native.run_table
+    def count(table, **options):
+        calls.append(options['dataset'])
+        return original(table, **options)
+    native.run_table = count
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='scope-native',
+                                     source_schema=schema, max_rows=64, max_bytes=1 << 20)
+    _, old, old_refs = grouped_candidate(tmp_path, store, owner, None, old_rows, name='adopt')
+    adoption_calls = len(calls)
+    prepared, changed, refs = grouped_candidate(tmp_path, store, owner, old, [], name='split',
+                                                deletions=[identity(rows[2])])
+    preparation_calls = len(calls) - adoption_calls
+    position = len(calls)
+    verify_catalog_scope(store, dependencies=owner, dependency_before=old, dependency_after=changed,
+        prepared=prepared, base=dict(selector_sha256='selected', selected_ref=None),
+        component_lookup=old_refs.get, prepared_components=refs.items(),
+        read_component=CatalogComponentReader(store).read, rules=dict(grouping='maintained-v1'))
+    replay_calls = len(calls) - position
+    record_property('adoption_native_run_table_calls', adoption_calls)
+    record_property('correction_preparation_native_run_table_calls', preparation_calls)
+    record_property('scope_proof_native_completed_replay_calls', replay_calls)
+    assert adoption_calls == 4
+    assert preparation_calls == 4
+    assert replay_calls == 2
+    # Replay calls name already prepared immutable dependency datasets, not new
+    # versions. Their cost is still nonzero and reported separately.
+    assert calls[position:] == calls[adoption_calls:adoption_calls + 2]
