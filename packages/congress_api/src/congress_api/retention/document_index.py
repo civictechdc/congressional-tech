@@ -2347,7 +2347,7 @@ def validated_body_readings(readings):
 def write_filename_metadata(
     root, source_rows, *, workers=4, previous=None, metadata=None, read_body=None,
     oversized_bodies=(), cache_store=None, reuse_results=True, inspect_bodies=False, working=None, previous_documents=None, publication_snapshot=None, output_root=None,
-    body_readings=(),
+    body_readings=(), retained_body_readings=None,
 ):
     """Interpret supplied source rows; optional body readings are explicit overrides."""
     body_readings = validated_body_readings(body_readings)
@@ -2367,7 +2367,7 @@ def write_filename_metadata(
                     metadata=metadata, read_body=read_body, oversized_bodies=oversized_bodies,
                     cache_store=cache_store, reuse_results=reuse_results,
                     inspect_bodies=inspect_bodies, working=working, previous_documents=previous_documents, output_root=staged,
-                    body_readings=body_readings.values())
+                    body_readings=body_readings.values(), retained_body_readings=retained_body_readings)
                 return publish_local_result(root, staged / "indexes/document-filenames.parquet", result, snapshot)
             finally:
                 working.close()
@@ -2403,7 +2403,7 @@ def write_filename_metadata(
             b'body_evidence_fingerprint', body_fingerprint.encode()).decode()
     reuse_bodies = reuse_results or not inspect_bodies
     body_cache = working.mapping("body_results")
-    payload = cache_store.read("indexes/processing/bodies.parquet") if reuse_results else None
+    payload = cache_store.read("indexes/processing/bodies.parquet") if reuse_results and retained_body_readings is None else None
     if payload:
         cached_file = pq.ParquetFile(pa.BufferReader(payload))
         for batch in cached_file.iter_batches(batch_size=4096):
@@ -2432,7 +2432,10 @@ def write_filename_metadata(
                 cached.setdefault((row['filename'], row['source_url']), {
                     key: row[key] for key in filename_fields if row[key] is not None
                 })
-    if reuse_results:
+    if retained_body_readings is not None:
+        from congress_api.retention.capture_metadata import restore_readings
+        restore_readings(retained_body_readings, body_cache)
+    elif reuse_results:
         # Capture already inspected these bytes before releasing them. Preserve
         # published/legacy readings first, then admit newly completed results.
         from congress_api.retention.capture_metadata import restore_body_results
@@ -2447,8 +2450,9 @@ def write_filename_metadata(
                                        if name not in COVER_FIELDS}
         body_cache[('cover', key)] = {name: value for name, value in fields.items()
                                     if name in COVER_FIELDS}
-    checkpoint_bodies = result_checkpoint(cache_store, 'bodies', body_fingerprint,
+    checkpoint_bodies = (result_checkpoint(cache_store, 'bodies', body_fingerprint,
                                          ('reader', 'body_key'), body_cache)
+                         if retained_body_readings is None else lambda **kwargs: None)
     columns = set()
     pending_count = 0
     progress.report('inspect_document_contents', completed=0, unit='distinct_body_attempts')

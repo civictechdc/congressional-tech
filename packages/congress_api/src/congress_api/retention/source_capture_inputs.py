@@ -14,7 +14,7 @@ import pyarrow as pa
 from .catalog_dependencies import DependencyGap
 from .immutable_metadata import MetadataObjects, encoded
 from .raw_values import NATIVE_CAPTURE_SCHEMA
-from .source_observations import observation_id
+from .source_observations import observation_id, receipt_locator
 
 
 def capture_input(reference, order):
@@ -56,6 +56,18 @@ class SourceCaptureInputs:
             self.attach(trace, entry, table)
             yield table
 
+    def copy(self, storage, root, observations, trace):
+        """Carry immutable raw input edges into a complete observation replay."""
+        for observation in observations:
+            key, line = receipt_locator(observation)
+            trace.register(key, line)
+            for edge in storage.members.values(root, observation):
+                dependency, access = json.loads(edge)
+                kind, value = json.loads(dependency[len('dependency:'):])
+                if kind == 'capture' and access == 'write':
+                    read_capture_input(value)
+                    trace(dict(receipt_key=key, receipt_line=line, kind=kind, value=value, access=access))
+
     def tables(self, storage, root, observations, snapshot):
         """Read each needed raw pin once, retaining only exact requested inputs.
 
@@ -81,7 +93,7 @@ class SourceCaptureInputs:
                         raise ValueError('One source capture ordinal names conflicting retained inputs')
                     db.execute('INSERT OR IGNORE INTO inputs VALUES (?,?,?)',
                                (body['order'], reference, observation))
-            for reference, in db.execute('SELECT DISTINCT batch FROM inputs ORDER BY batch'):
+            for reference, in db.execute('SELECT batch FROM inputs GROUP BY batch ORDER BY min(ordinal)'):
                 body = self.objects.read(json.loads(reference))
                 if body.get('version') != 1:
                     raise ValueError('Unknown retained source capture input format')

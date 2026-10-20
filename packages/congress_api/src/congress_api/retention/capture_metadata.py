@@ -116,7 +116,12 @@ def saved_readings(store, *, columns=None):
 
 def restore_body_results(store, cache):
     """Adapt new capture readings to the existing shared body-result cache."""
-    for row in saved_readings(store):
+    restore_readings(saved_readings(store), cache)
+
+
+def restore_readings(readings, cache):
+    """Restore explicitly selected capture facts through the same field rules."""
+    for row in readings:
         key = row['body_key']
         fields = {field: value for field, value in row.items()
                   if field not in RESULT_COLUMNS and value is not None}
