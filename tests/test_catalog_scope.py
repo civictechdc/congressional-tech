@@ -200,9 +200,29 @@ def test_actual_native_scope_proof_replay_calls_are_measured_separately(tmp_path
     record_property('adoption_native_run_table_calls', adoption_calls)
     record_property('correction_preparation_native_run_table_calls', preparation_calls)
     record_property('scope_proof_native_completed_replay_calls', replay_calls)
-    assert adoption_calls == 5
-    assert preparation_calls == 5
-    assert replay_calls == 3
+    assert adoption_calls == 6
+    assert preparation_calls == 6
+    assert replay_calls == 4
     # Replay calls name already prepared immutable dependency datasets, not new
     # versions. Their cost is still nonzero and reported separately.
-    assert calls[position:] == calls[adoption_calls:adoption_calls + 3]
+    assert calls[position:] == calls[adoption_calls:adoption_calls + 4]
+
+
+def test_nullable_list_members_preserve_exact_sources_and_match_full_document_summary(tmp_path):
+    rows = [source('a.pdf', 'A', source_new_literal=['new', 'new', None]),
+            source('b.pdf', 'A', source_new_literal=['second', None])]
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS),
+                        ('source_new_literal', index.STRINGS)])
+    expected_sources, _, expected_documents, _ = index.prepare_document_indexes(deepcopy(rows), schema)
+    scope = affected_sources(SelectedDependencies([]), replacements=rows)
+    result = prepare_catalog_scope(tmp_path / 'nullable-list', scope, schema=schema,
+        source_orders={identity(row): i for i, row in enumerate(rows)}, candidate='nullable-list')
+    actual_sources = list(result.source_values())
+    actual_documents = pq.read_table(result.documents_path).to_pylist()
+    assert {row['source_id']: row['source_new_literal'] for row in actual_sources} == {
+        identity(row): row['source_new_literal'] for row in rows}
+    assert actual_documents[0]['source_new_literal'] == ['new', 'second', None]
+    for actual, expected, logical in [(actual_sources, expected_sources, result.source_schema),
+                                     (actual_documents, expected_documents, result.document_schema)]:
+        normalize = lambda values: sorted(pa.Table.from_pylist(values, schema=logical).to_pylist(), key=lambda row: row['source_id'])
+        assert normalize(actual) == normalize(expected)
