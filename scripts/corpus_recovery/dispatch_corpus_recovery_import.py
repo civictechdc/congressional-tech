@@ -119,6 +119,8 @@ def run(args, *, native=None):
                       admission_module, acknowledgment_module):
         path = Path(executing.__file__).resolve()
         code[path] = digest(path)
+    for path in native.execution_files():
+        code[path] = digest(path)
     inputs = {batch / name: value for name, value in expected.items()}
     inputs[readiness_path] = digest(readiness_path)
     if body_readback is not None:

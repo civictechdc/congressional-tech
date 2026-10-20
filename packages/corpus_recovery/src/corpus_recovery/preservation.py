@@ -259,7 +259,7 @@ def verify(destination, *, raw_storage):
                    for row in captures)
     if seen != expected or receipt_count != complete['receipt_records']:
         raise ValueError('Receipt captures do not exactly match native delivery rows')
-    if after.states_for(receipt_states) != receipt_states:
+    if not complete['already_applied'] and after.states_for(receipt_states) != receipt_states:
         raise ValueError('Receipt state differs from preserved state')
     if not complete['already_applied']:
         changed_urls = list(after.changed_state_urls(changes[0]))

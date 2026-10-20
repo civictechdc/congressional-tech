@@ -108,3 +108,18 @@ def test_native_preservation_detects_missing_capture_payload(retained):
     owner.native.tables[dataset] = owner.native.tables[dataset].slice(0, 1)
     with pytest.raises(ValueError, match='row count|coverage'):
         verify(folder, raw_storage=owner)
+
+
+def test_completed_delivery_reuse_after_legitimate_download_does_not_compare_historical_state(retained, tmp_path):
+    owner, store, _, original, execute = retained
+    url = next(url for url in owner.snapshot().states()['url'].to_pylist() if url and url != 'https://example.org/old')
+    row = owner.snapshot().state(url)
+    row.update(outcome='saved', body_key='bodies/later-success.gz', attempts=2)
+    owner.publish(owner.prepare(owner.snapshot(), operation='later-download',
+        states=pa.Table.from_pylist([row], schema=owner.state_schema)))
+    writes, native_writes = list(store.writes), list(owner.native.writes)
+    folder = tmp_path / 'after-download'
+    replayed = execute(folder)
+    assert replayed['already_applied'] and replayed['capture_rows'] == original['capture_rows']
+    assert verify(folder, raw_storage=owner)['local_preservation_verified']
+    assert store.writes == writes and owner.native.writes == native_writes
