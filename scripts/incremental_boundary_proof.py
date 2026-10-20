@@ -20,6 +20,7 @@ import pyarrow.parquet as pq
 HEADER = pa.struct([('name', pa.string()), ('value', pa.string())])
 PROVENANCE = pa.struct([
     ('receipt_key', pa.string()), ('receipt_line', pa.int64()),
+    ('receipt_json_pointer', pa.string()),
     ('acquisition_path', pa.string()), ('acquisition_sha256', pa.string()),
     ('retrieved_at', pa.string()), ('headers', pa.list_(HEADER)),
     ('member_path', pa.string()),
@@ -47,7 +48,8 @@ def reference_rows(receipt_path):
     parent_key = package + '-zip'
     provenance = dict(
         receipt_key=f'audits/local-retention/20261019/sha256/{digest}/receipt.json',
-        receipt_line=1, acquisition_path=acquisition['local_body_path'].rsplit('/', 1)[0] + '/receipt.json',
+        receipt_line=None, receipt_json_pointer='',
+        acquisition_path=acquisition['local_body_path'].rsplit('/', 1)[0] + '/receipt.json',
         acquisition_sha256=digest, retrieved_at=acquisition['retrieved_at'],
         headers=acquisition['source_metadata']['response_header_items'], member_path=None,
         acquisition_receipt_base64=base64.b64encode(raw).decode())

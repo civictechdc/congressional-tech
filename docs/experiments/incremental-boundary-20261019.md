@@ -28,7 +28,9 @@ of every body. No source or document mappings changed.
 `scripts/incremental_boundary_proof.py` makes seven typed rows: the ZIP, five
 members and one **constructed duplicate observation**. Repeated HTTP headers,
 receipt paths/digests, member provenance and base64-encoded original receipt bytes
-remain nested. Constructed null/empty reviews and alias lists test their distinct
+remain nested. The acquisition receipt is a JSON object: its locator uses a null
+line and the empty JSON Pointer identifying the root, not a JSONL line number.
+Constructed null/empty reviews and alias lists test their distinct
 meanings. Occurrence keys differ from body digests; duplicate observations survive.
 
 The executable change example names changed record keys, a deletion, old/new
@@ -84,8 +86,8 @@ profile to create small native files and a 4 MiB update profile for joined rows:
 
 | Rows in the target dataset | Initial data files | Update file scans | Reused files / bytes | New data files / bytes |
 | --- | --- | --- | --- | --- |
-| 7 | 1 | 2 | 0 / 0 | 4 / 59,349 |
-| 70 | 4 | 5 | 3 / 233,631 | 4 / 117,156 |
+| 7 | 1 | 2 | 0 / 0 | 4 / 60,451 |
+| 70 | 4 | 5 | 3 / 236,929 | 4 / 118,866 |
 
 The extra rows are explicitly constructed unrelated copies, not newly acquired
 sources. `files_scanned` counts one key probe per existing file plus one full
@@ -138,7 +140,12 @@ independent lineages without computed groups/receipts. Full nested source rows
 here do not qualify that remote lifecycle or native EvidenceSpec associations.
 General incremental SQL and globally invalidated-source upgrades also remain
 unsupported; application dependency/group computation cannot assume otherwise.
-These limits must stay explicit while child lanes establish their actual paths.
+These are native engine limits. Application transforms can compute a changed
+partition and store the result as source-only rows, with explicit application
+rule versions, without using a native computed group or changing the active
+`RunSpec.definition`. Their completeness, lookup, remote readback and publication
+are downstream implementation and qualification work. This proof does not impose
+an additional child-start gate: ct-365w, ct-si9g and ct-v5kb own those changes.
 
 ## Reproduce locally
 
@@ -161,6 +168,8 @@ Detailed local evidence lives under
 `output/incremental-updates-20261019/foundation/`: `PROTOCOL.md`, `raw-baseline.json`,
 native requests, stdout/stderr, source/expected references, original pins, change
 certificates, full retained phase records and `summary.json` per completed case.
+`reviewed-1x` and `reviewed-10x` are the final cases with the corrected JSON-root
+receipt locator; the earlier cases remain historical development evidence.
 Sibling `capability-audit.md` and `consumer-inventory.md` record the inspected
 native limits and maintained/dynamic reader inventory. No remote mutations,
 production migration, operational rebuild, classifier change or new source ran.

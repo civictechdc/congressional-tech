@@ -3,6 +3,7 @@ from collections import Counter
 import base64
 from pathlib import Path
 import importlib.util
+from hashlib import sha256
 
 import pyarrow as pa
 
@@ -15,6 +16,9 @@ FIXTURE = Path(__file__).parent / 'fixtures/incremental-boundary/acquisition-rec
 
 def test_retained_reference_keeps_occurrences_nested_headers_and_null_empty_values():
     rows = proof.reference_rows(FIXTURE)
+    assert sha256(FIXTURE.read_bytes()).hexdigest() == 'cdeedf3059a62b81f77fd66215c8a8c7e7dc69e9322994a9164bb6507a659c86'
+    assert rows[0]['provenance']['receipt_line'] is None
+    assert rows[0]['provenance']['receipt_json_pointer'] == ''
     assert len(rows) == 7  # parent ZIP, five members, one constructed duplicate observation
     assert Counter(r['body_sha256'] for r in rows).most_common(1)[0][1] == 2
     assert rows[-1]['provenance'] == rows[1]['provenance']
