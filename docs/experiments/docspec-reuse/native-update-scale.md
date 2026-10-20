@@ -49,6 +49,8 @@ Seconds below are medians of three matched, interleaved repetitions. Full ranges
 observer costs, counters and individual results are in
 `native-update-scale-results.json`. Times include the same observer in each arm;
 observer time has not been subtracted.
+Files were just generated/seeded on local APFS, so these are warm local-workload
+observations. Cold-cache and R2 request latency are unmeasured.
 
 | Rows | Change | Build | Baseline Update | Candidate Update |
 | ---: | --- | ---: | ---: | ---: |
