@@ -206,3 +206,32 @@ remains retained separately. The successful result is
 it binds exact input, request, release, readback, inventory and command-log hashes.
 The configuration targets catalog `4df78c4c-cc22-11f1-8000-a79b86c85faf`.
 Its qualification prefix must not become a production default.
+
+## Explicit application runtime
+
+`NativeDatasets.from_config(path)` loads a versioned local configuration. Paths
+resolve relative to that file; construction performs no native operation,
+directory creation or remote write. For example:
+
+```json
+{
+  "version": 1,
+  "binary": "/absolute/path/docspec",
+  "workspace": "workspace",
+  "remote": "production-remote.json",
+  "credentials": "credentials.json",
+  "timeout_seconds": 120
+}
+```
+
+The remote file is the maintained native configuration, including an explicit
+object prefix and `secret_env` references using `DOCSPEC_` variable names. The
+credentials file maps precisely those variable names to values and must have
+private file permissions. Values are passed only to remote child processes;
+the parent environment and local hashing command receive no injected secrets.
+An optional `limits` path selects an explicit native limits file. Local runtime
+configuration omits `remote` and `credentials`.
+
+Archive and recovery receive the configured native client through their shared
+storage owner. A settings file is configuration evidence only: it neither adopts
+the old archive nor qualifies production resource limits or end-to-end behavior.

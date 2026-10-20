@@ -7,7 +7,10 @@ independent native latest results are preparation, not an application snapshot.
 """
 from contextlib import contextmanager
 import json
+import math
+import os
 from pathlib import Path
+import re
 import subprocess
 from tempfile import TemporaryDirectory
 
@@ -34,6 +37,58 @@ class NativeDatasets:
         self.remote = Path(remote).resolve() if remote is not None else None
         self.limits = Path(limits).resolve() if limits is not None else None
         self.timeout = timeout
+        self._remote_secrets = {}
+
+    @classmethod
+    def from_config(cls, path):
+        """Load explicit paths and remote secrets without connecting or writing.
+
+        Relative paths belong to the configuration directory. Credentials are a
+        separate private JSON file mapping the remote config's DOCSPEC_* secret
+        references to values. Only remote child processes receive these values;
+        constructing a client never selects a production namespace or dataset.
+        """
+        path = Path(path).resolve()
+        settings = json.loads(path.read_text())
+        fields = {'version', 'binary', 'workspace', 'remote', 'limits',
+                  'credentials', 'timeout_seconds'}
+        if (not isinstance(settings, dict) or settings.get('version') != 1
+                or type(settings.get('version')) is not int or set(settings) - fields):
+            raise ValueError('Invalid DocSpec runtime configuration')
+
+        def location(name):
+            value = settings.get(name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f'DocSpec runtime requires an explicit {name} path')
+            return (path.parent / value).resolve()
+
+        timeout = settings.get('timeout_seconds', 120)
+        if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError('DocSpec runtime timeout must be a positive finite number')
+        remote = location('remote') if 'remote' in settings else None
+        limits = location('limits') if 'limits' in settings else None
+        client = cls(location('binary'), location('workspace'),
+                     remote=remote, limits=limits, timeout=timeout)
+        if remote is not None:
+            configuration = json.loads(remote.read_text())
+            references = configuration.get('secret_env') if isinstance(configuration, dict) else None
+            if (not isinstance(references, dict) or not references
+                    or any(not isinstance(name, str)
+                           or re.fullmatch(r'DOCSPEC_[A-Z0-9_]+', name) is None
+                           for name in references.values())):
+                raise ValueError('Remote secrets require explicit DOCSPEC_ environment references')
+            credential_path = location('credentials')
+            if credential_path.stat().st_mode & 0o077:
+                raise ValueError('DocSpec credentials require private file permissions (0600)')
+            credentials = json.loads(credential_path.read_text())
+            if (not isinstance(credentials, dict) or set(credentials) != set(references.values())
+                    or any(not isinstance(value, str) or not value or '\0' in value
+                           for value in credentials.values())):
+                raise ValueError('DocSpec credentials must match all declared secret references')
+            client._remote_secrets = credentials
+        elif 'credentials' in settings:
+            raise ValueError('DocSpec credentials require an explicit remote configuration')
+        return client
 
     def _call(self, *args, remote=True):
         command = [self.binary, '--workspace', str(self.workspace)]
@@ -42,7 +97,10 @@ class NativeDatasets:
         if remote and self.remote is not None:
             command += ['--remote', str(self.remote)]
         command += list(map(str, args))
-        result = subprocess.run(command, capture_output=True, text=True, timeout=self.timeout)
+        environment = ({**os.environ, **self._remote_secrets}
+                       if remote and self.remote is not None and self._remote_secrets else None)
+        result = subprocess.run(command, capture_output=True, text=True,
+                                timeout=self.timeout, env=environment)
         if result.returncode:
             raise DocSpecFailure(command, result)
         return json.loads(result.stdout) if result.stdout.strip() else None
