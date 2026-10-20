@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "run_id": 39088417941,
+  "run_attempt": 1,
+  "head_sha": "ded1cbafb16414c67926f3f48d38fc64b93b04ae",
+  "run_url": "https://github.com/civictechdc/congressional-tech/actions/runs/39088417941",
+  "conclusion": "failure",
+  "completed_at": "2026-10-18T02:24:32Z",
+  "recorded_at": "2026-10-18T02:26:39.642375+00:00",
+  "jobs": {
+    "youtube": {
+      "result": "success",
+      "started_at": "2026-10-18T01:58:56Z",
+      "completed_at": "2026-10-18T02:05:35Z",
+      "providers": [
+        "youtube"
+      ]
+    },
+    "congress": {
+      "result": "success",
+      "started_at": "2026-10-18T02:05:37Z",
+      "completed_at": "2026-10-18T02:11:58Z",
+      "providers": [
+        "congress.gov",
+        "govinfo",
+        "gpo-video-matches"
+      ]
+    },
+    "meetings": {
+      "result": "failure",
+      "started_at": "2026-10-18T02:15:37Z",
+      "completed_at": "2026-10-18T02:24:31Z",
+      "providers": [
+        "docs.house.gov",
+        "senate.committees",
+        "meeting-inventory",
+        "recovered-witnesses"
+      ]
+    },
+    "committees": {
+      "result": "success",
+      "started_at": "2026-10-18T02:12:00Z",
+      "completed_at": "2026-10-18T02:15:34Z",
+      "providers": [
+        "congress.gov:committees"
+      ]
+    }
+  },
+  "limitation": "Job conclusions describe acquisition attempts, not per-source fetch times. Failed or cancelled jobs may leave prior saved inputs in use; CSV and raw-state inputs can have different ages."
+}
