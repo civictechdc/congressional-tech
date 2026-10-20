@@ -89,3 +89,46 @@ def test_actual_native_caller_changes_only_closed_document_scope(tmp_path, nativ
     assert sorted(actual_docs.to_pylist(), key=lambda row: row['document_id']) == sorted(
         pa.Table.from_pylist(documents, schema=actual_docs.schema).to_pylist(), key=lambda row: row['document_id'])
     assert result['scope_reference'] == current.selection['scope']
+
+
+def test_scope_cursor_reads_exact_old_new_sources_without_selected_corpus_scan(tmp_path):
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    owner, rows = seed(tmp_path, store, native)
+    previous = read_catalog(store, native=native)
+    result = updates.update_native_catalog(store, native=native, previous=previous, dependencies=owner,
+        deletions=[identity(rows[2])], candidate='cursor-split', directory=tmp_path / 'update',
+        max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    current = read_catalog(LocalStore(store.root), native=native)
+    native.reads.clear()
+    changes = list(current.changes_since(previous.identity))
+    assert len(changes) == 1 and not native.reads
+    assert changes[0]['before'] == previous.identity and changes[0]['after'] == current.identity
+    assert changes[0]['scope_reference'] == result['scope_reference']
+    old = pa.Table.from_batches(list(current.changed_sources(changes[0], which='retired', max_ordered_bytes=1 << 20).iter_batches()))
+    new = pa.Table.from_batches(list(current.changed_sources(changes[0], max_ordered_bytes=1 << 20).iter_batches()))
+    assert {identity(row) for row in old.to_pylist()} == {identity(row) for row in rows[:3]}
+    assert {identity(row) for row in new.to_pylist()} == {identity(row) for row in rows[:2]}
+    assert list(current.changes_since(current.identity)) == []
+    with pytest.raises(ValueError, match='not an ancestor'):
+        list(current.changes_since(dict(selector_sha256='unknown', selected_ref=None)))
+
+
+def test_scope_cursor_orders_multiple_changes_and_rejects_unrelated_identity(tmp_path):
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    owner, rows = seed(tmp_path, store, native)
+    first = read_catalog(store, native=native)
+    options = dict(native=native, dependencies=owner, max_chunk_rows=64,
+                   max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    updates.update_native_catalog(store, previous=first, deletions=[identity(rows[2])],
+        candidate='first-change', directory=tmp_path / 'first', **options)
+    second = read_catalog(store, native=native)
+    updates.update_native_catalog(store, previous=second, deletions=[identity(rows[3])],
+        candidate='second-change', directory=tmp_path / 'second', **options)
+    third = read_catalog(store, native=native)
+    native.reads.clear()
+    chain = list(third.changes_since(first.identity))
+    assert [change['scope']['candidate'] for change in chain] == ['first-change', 'second-change']
+    assert chain[0]['after'] == chain[1]['before'] == second.identity
+    assert not native.reads
+    with pytest.raises(ValueError, match='not an ancestor'):
+        list(third.changes_since(dict(selector_sha256='other-file-basis', selected_ref=None)))

@@ -157,6 +157,60 @@ class NativeCatalogSnapshot:
             store=self.store, native=client, label=label, rows=self.selection['counts'][count],
             max_ordered_bytes=max_ordered_bytes)
 
+    def changes_since(self, identity):
+        """Yield exact old/new scopes since a retained selection identity.
+
+        Only immutable selection/proof metadata is read. A disposable position
+        index reverses the ancestry walk without retaining history in memory.
+        """
+        from .catalog_scope import read_catalog_scope
+        objects = MetadataObjects(self.store, 'catalog-selections-v2', max_cache_entries=4)
+        with TemporaryDirectory(prefix='catalog-changes-') as directory, closing(
+                sqlite3.connect(Path(directory) / 'changes.sqlite')) as db:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                'CREATE TABLE changes(position INTEGER PRIMARY KEY,body TEXT); '
+                'CREATE TABLE seen(identity TEXT PRIMARY KEY);')
+            current, selected, position = self.identity, self.selection, 0
+            while current != identity:
+                marker = encoded(current).decode()
+                try:
+                    db.execute('INSERT INTO seen VALUES (?)', (marker,))
+                except sqlite3.IntegrityError as error:
+                    raise ValueError('Catalog scope ancestry contains a cycle') from error
+                reference = selected['scope']
+                proof = read_catalog_scope(self.store, reference)
+                if proof['dependency_after'] != selected['dependency'] or proof['schemas'] != selected['schemas']:
+                    raise ValueError('Catalog scope differs from the selected dependency/schema basis')
+                before = proof['base']
+                body = dict(before=before, after=current, scope_reference=reference, scope=proof)
+                db.execute('INSERT INTO changes VALUES (?,?)', (position, encoded(body).decode()))
+                position += 1
+                if before == identity:
+                    break
+                if before.get('selected_ref') is None:
+                    raise ValueError('Catalog cursor is not an ancestor of this native selection')
+                expected_selector = encoded(dict(version=2, selection=before['selected_ref']))
+                if before.get('selector_sha256') != sha256(expected_selector).hexdigest():
+                    raise ValueError('Catalog scope ancestry selector binding differs')
+                selected = objects.read(before['selected_ref'])
+                current = before
+            for body, in db.execute('SELECT body FROM changes ORDER BY position DESC'):
+                yield json.loads(body)
+
+    def changed_sources(self, change, *, which='prepared', max_ordered_bytes):
+        """Read one scope's exact selected or retired source members only."""
+        from .catalog_scope import read_catalog_scope, iterator_scope_components
+        if which not in {'prepared', 'retired'}:
+            raise ValueError('Catalog source changes must be prepared or retired')
+        proof = read_catalog_scope(self.store, change['scope_reference'])
+        if proof != change['scope'] or proof['base'] != change['before']:
+            raise ValueError('Catalog source change differs from its retained scope')
+        label = 'filenames'
+        return SelectedCatalogTable(_schema(proof['schemas'][label]),
+            lambda: iterator_scope_components(self.store, proof, which), store=self.store,
+            native=self.native, label=label, rows=proof['counts'][which + '_source_rows'],
+            max_ordered_bytes=max_ordered_bytes)
+
     def __enter__(self):
         return self
 
