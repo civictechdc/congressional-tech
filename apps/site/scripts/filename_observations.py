@@ -1,4 +1,4 @@
-"""Lossless, bounded reads of nested observations alongside the full Parquet.
+"""Lossless, bounded delivery of nested source and document observations.
 
 Repeated observations share a dictionary entry. Each block contains JSON with
 null struct fields omitted; the schema restores them on read. Large individual
@@ -54,7 +54,7 @@ def observation_rows(source, *, policy, metrics, stage):
         yield values
 
 
-def observation_values(values, *, policy, metrics, stage):
+def observation_values(values, *, policy, metrics, stage, kind):
     if values is None:
         return
     batches = values.batches() if isinstance(values, ObservationSequence) else (values,)
@@ -62,6 +62,8 @@ def observation_values(values, *, policy, metrics, stage):
     for batch in batches:
         if not isinstance(batch, pa.Array):
             raise TypeError('Observation parts must be typed Arrow arrays')
+        if not batch.type.equals(kind, check_metadata=True):
+            raise ValueError('Typed observation part schema differs')
         if batch.nbytes > policy.row_arrow_bytes:
             refuse(stage, 'observation part Arrow bytes', batch.nbytes, policy.row_arrow_bytes)
         maximum(metrics, 'max_observation_part_arrow_bytes', batch.nbytes)
@@ -172,7 +174,8 @@ def publish_observations(source, output, *, counts=None, policy=DEFAULT_DECODED_
 
 
 def _publish_observations(source, output, owned, counts, policy, metrics):
-    fields = [field.name for field in source.schema_arrow.field('source_occurrences').type.value_type]
+    kind = source.schema_arrow.field('source_occurrences').type.value_type
+    fields = [field.name for field in kind]
     observations = owned.enter_context(Blocks(output / 'observations.bin', policy=policy, metrics=metrics))
     references = owned.enter_context(Blocks(output / 'observation-rows.bin', row_limit=1024, policy=policy, metrics=metrics))
     temporary = owned.enter_context(tempfile.TemporaryDirectory(prefix='observation-identities-'))
@@ -183,7 +186,7 @@ def _publish_observations(source, output, owned, counts, policy, metrics):
     count = 0
     for values in observation_rows(source, policy=policy, metrics=metrics, stage='observations'):
         refs = None if values is None else []
-        for observation in observation_values(values, policy=policy, metrics=metrics, stage='observations'):
+        for observation in observation_values(values, policy=policy, metrics=metrics, stage='observations', kind=kind):
             compact = None if observation is None else {key: value for key, value in observation.items() if value is not None}
             encoded = b''.join(json_chunks(compact, policy=policy, metrics=metrics))
             metrics['observation_serializations'] = metrics.get('observation_serializations', 0) + 1
@@ -210,7 +213,8 @@ def _publish_observations(source, output, owned, counts, policy, metrics):
 def verify_observations(source, output, index, *, policy=DEFAULT_DECODED_POLICY, metrics=None):
     """Check every value using a disk dictionary, decoding each block once."""
     metrics = metrics if metrics is not None else {}
-    fields = [field.name for field in source.schema_arrow.field('source_occurrences').type.value_type]
+    kind = source.schema_arrow.field('source_occurrences').type.value_type
+    fields = [field.name for field in kind]
     if index['fields'] != fields:
         raise ValueError('Observation schema changed.')
 
@@ -259,7 +263,7 @@ def verify_observations(source, output, index, *, policy=DEFAULT_DECODED_POLICY,
                     if not isinstance(refs, list) or len(refs) != len(expected):
                         raise ValueError('Observation publication changed source values.')
                     for ref, value in zip(refs, observation_values(expected, policy=policy, metrics=metrics,
-                                                 stage='observation verification'), strict=True):
+                                                 stage='observation verification', kind=kind), strict=True):
                         if type(ref) is not int or ref < 0:
                             raise ValueError('Invalid observation reference.')
                         metrics['verification_lookups'] = metrics.get('verification_lookups', 0) + 1

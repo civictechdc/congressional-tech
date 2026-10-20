@@ -257,13 +257,16 @@ def test_typed_sequence_publishes_giant_logical_list_without_joining_parts(tmp_p
     observations.verify_observations(source, tmp_path, index)
 
 
-@pytest.mark.parametrize('mode', ['missing', 'extra', 'corrupt'])
+@pytest.mark.parametrize('mode', ['missing', 'extra', 'corrupt', 'schema'])
 def test_typed_sequence_rejects_missing_extra_or_corrupt_parts(tmp_path, mode):
     from types import SimpleNamespace
     kind = pa.struct([('label', pa.list_(pa.string()))])
     value = pa.array([{'label': ['exact']}], type=kind)
     def parts():
         if mode == 'missing': return
+        if mode == 'schema':
+            yield pa.array([{'other': ['lost']}], type=pa.struct([('other', pa.list_(pa.string()))]))
+            return
         yield value
         if mode == 'extra': yield value
         if mode == 'corrupt': raise ValueError('corrupt typed occurrence part')
@@ -272,6 +275,6 @@ def test_typed_sequence_rejects_missing_extra_or_corrupt_parts(tmp_path, mode):
         metadata = SimpleNamespace(num_rows=1)
         def observation_rows(self):
             yield observations.ObservationSequence(1, parts)
-    with pytest.raises(ValueError, match='length differs|corrupt typed occurrence'):
+    with pytest.raises(ValueError, match='length differs|corrupt typed occurrence|schema differs'):
         observations.publish_observations(Source(), tmp_path)
     assert not (tmp_path / 'observation-index.json').exists()
