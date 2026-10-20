@@ -32,3 +32,7 @@ Adopt verified current raw/catalog snapshots through the chosen owner in resumab
 **2026-10-20T03:15:53Z**
 
 Basin target is the existing congressional-tech-raw bucket. Native qualification reached lifecycle table creation but failed with catalog-side storage authentication 424/401. The isolated test prefix has zero objects; existing archive data is unchanged. A token granting Basin and storage access is required; current OAuth and existing account token do not qualify. Retained evidence: output/incremental-updates-20261019/catalog-setup/SETUP.md. Local implementation continues; no production adoption claimed.
+
+**2026-10-20T03:24:07Z**
+
+Credential blocker resolved. Actual raw-provider-2 source-only remote qualification passed on congressional-tech-raw: Build, correction/deletion, exact old/new nested reads, completed fresh-host retry without original inputs, and stale/conflicting request refusals. All selected S3 references are inside the isolated prefix; 110 objects/487980 bytes retained. Receipt: output/incremental-updates-20261019/catalog-setup/raw-provider-2/verification-receipt.json. Build65.03s, Update100.72s, completed retry6.18s are tiny provider timings, not throughput gains. Application adoption, race and end-to-end cost qualification remain open.
