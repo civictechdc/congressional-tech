@@ -70,7 +70,8 @@ export function sameRecordedTitle(left: string, right: string): boolean {
 /** The link text for a related recording or document. A recording keeps its recorded title. */
 export function relatedMaterialTitle(row: { title?: string | null; type?: string | null }, category: string, filename = ''): string {
   const title = (row.title || '').trim();
-  const generic = !title || title.toLowerCase() === category.toLowerCase() || title.toLowerCase() === 'recording';
+  const listedTitle = title ? listedDocumentType(title) : '';
+  const generic = !title || title.toLowerCase() === category.toLowerCase() || listedTitle.toLowerCase() === category.toLowerCase() || title.toLowerCase() === 'recording';
   if (row.type === 'recording') return generic ? 'Watch recording' : title;
   if (generic && filename) return filename;
   return title || filename || category || 'Untitled record';

@@ -1,4 +1,4 @@
-import { committeeSourceNote, committeeWebsite, documentSourceLabel, easternDate, filePartNote, detectedNote, issueNotes, landingPageNote, meetingStatusNote, nextScheduleChange, notableRoles, participationNote, providerLabel, publishedNote, recordedAction, recordedAmendments, recordedFileName, recordedMeasureValues, recordedPlace, recordedVotes, recordedWhen, recordingVisible, scheduleNote, sourceCountNote, sourceTypeNote, subjectKindLabel, witnessNotes } from './record-presentation.ts';
+import { committeeSourceNote, committeeWebsite, documentSourceLabel, easternDate, filePartNote, detectedNote, issueNotes, landingPageNote, meetingStatusNote, nextScheduleChange, notableRoles, participationNote, plainLegislativeNote, providerLabel, publishedNote, recordedAction, recordedAmendments, recordedFileName, recordedMeasureValues, recordedPlace, recordedVotes, recordedWhen, recordingVisible, scheduleNote, sourceCountNote, sourceTypeNote, subjectKindLabel, witnessNotes } from './record-presentation.ts';
 import { coverageAspects, evidenceStates, isEvidenceState } from './kinds.ts';
 import type { CoverageAspect, CoverageGroup, CoverageSummary, EvidenceCounts, EvidenceState, ExplorerQuery, QueryInfo, QueryRow } from '../reader/types.ts';
 
@@ -56,7 +56,7 @@ export function orderSearchRows(rows: readonly QueryRow[], sort: ExplorerQuery['
 function wordsOf(query: ExplorerQuery): string[] {
   const cached = wordsCache.get(query);
   if (cached) return cached;
-  const words = String(query.q || '').trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const words = plainLegislativeNote(String(query.q || '').trim()).toLocaleLowerCase().split(/\s+/).filter(Boolean);
   wordsCache.set(query, words);
   return words;
 }
@@ -236,7 +236,7 @@ export function summarizeCoverage(info: QueryInfo, rows: readonly QueryRow[]): C
       committee: [...groups.committee.values()].sort((a, b) => b.denominator - a.denominator || a.label.localeCompare(b.label)),
       month: [...groups.month.values()].sort((a, b) => a.key.localeCompare(b.key)),
     },
-    population: 'Meetings from Congress.gov and official committee sites that match the filters above, including every recorded status. This collection may leave some meetings out. The counts describe what was saved here. They do not say what should have been published.',
-    limitations: ['A statement from the source, or a likely match, does not mean the web address was checked, the text was saved, or the record is complete.', 'Not recorded and not checked do not mean the material is missing. A failed check stays visible even when another source has the material.', 'A joint meeting is listed under each committee that held it. Committee totals overlap.'],
+    population: 'Meetings from Congress.gov and official committee sites that match the filters above, including every recorded status. The counts describe what was saved here for this selection.',
+    limitations: ['A statement from the source, or a likely match, means the meeting was noted that way. It does not by itself mean the web address was checked, the text was saved, or the record is complete.', 'Not recorded and not checked leave the material unsettled in this collection. A failed check stays visible even when another source has the material.', 'A joint meeting is listed under each committee that held it. Committee totals overlap.'],
   };
 }

@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { ExternalIcon, ForwardIcon } from './icons';
 import type { ExplorerReader, ExplorerRecordRef, RelatedResult } from '../reader/data-source.ts';
 import { enumLabel, fields, FileLinks, publicUrl, recordFiles, recordTitle, RecordingPlayer, type DetailRecord } from './RecordDetail';
-import { categoryNote, documentSourceInContext, filePartNote, issueNotes, linkedMeetingIds, listedWhen, meetingStatusNote, publishedNote, recordedAddressNames, recordedFileNames, recordedTitlePreview, repeatsRecordedWhen, recordingIdentity, sourceCountNote } from '../browse/record-presentation.ts';
+import { categoryNote, documentSourceInContext, filePartNote, issueNotes, issueStatusLabel, linkedMeetingIds, listedWhen, meetingStatusNote, publishedNote, recordedAddressNames, recordedFileNames, recordedTitlePreview, repeatsRecordedWhen, recordingIdentity, sourceCountNote } from '../browse/record-presentation.ts';
 import { groupByMeeting, materialCategory, meetingGroupLabel, relatedMaterialTitle, sameRecordedTitle, sharedText, titleInContext } from '../browse/related-materials.ts';
 import { PAGE_SIZE, Pagination, RequestMessage, integer, useRequest } from './request-state';
 import './RelatedMaterials.css';
@@ -99,9 +99,9 @@ function recordedWhenLine(row: ReturnType<typeof fields>): string {
 /** The open-issue count expands to every saved issue, including dismissed ones. */
 export function OpenIssues({ reader, record, count, onSelect }: { reader: ExplorerReader; record: { kind: string; id: string }; count: number; onSelect: (ref: ExplorerRecordRef) => void }) {
   const [open, setOpen] = useState(false);
-  const label = `${integer(count)} open ${count === 1 ? 'issue' : 'issues'}`;
+  const label = `${integer(count)} ${count === 1 ? 'issue' : 'issues'} still open`;
   return <details className="explorer-row-meta" onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary title="Show each saved issue. Dismissed issues are included. The count is only the open ones.">{label}</summary>
+    <summary title="Show each saved issue. Dismissed issues are included. The count is only the ones still open.">{label}</summary>
     {open ? <OpenIssueList reader={reader} record={record} onSelect={onSelect} /> : null}
   </details>;
 }
@@ -111,9 +111,9 @@ function OpenIssueList({ reader, record, onSelect }: { reader: ExplorerReader; r
   if (state.status === 'error') return <RequestMessage state={state} retry={retry} noun="issues" />;
   if (state.status !== 'ready' || !state.value) return <p className="explorer-note">Loading the issues.</p>;
   return <>
-    <p className="explorer-field-reason">The count is the open issues. Dismissed issues are included here.</p>
+    <p className="explorer-field-reason">The count is the issues still open. Dismissed issues are included here.</p>
     <ul className="explorer-values">{state.value.records.map(issue => {
-      const status = fields(issue).status === 'open' ? 'Still open' : enumLabel(fields(issue).status);
+      const status = issueStatusLabel(fields(issue).status) || enumLabel(fields(issue).status);
       const notes = issueNotes(fields(issue)).slice(0, 2);
       return <li key={issue.id}><button className="explorer-text-button" aria-label={`Open the issue ${recordTitle(issue)}`} onClick={() => onSelect(issue)}>{recordTitle(issue)}</button>{status ? <span className="explorer-row-meta">{status}</span> : null}{notes.map(note => <span className="explorer-row-meta" key={note}>{note}</span>)}</li>;
     })}</ul>
@@ -150,7 +150,10 @@ function MaterialRow({ record, reader, onSelect, meetingTitles, currentMeetingId
     return [`${label}: ${value}`];
   }) : [];
   return <li>
-    {files.length ? <a className="explorer-recorded-lines" href={publicUrl(files[0].url)} target="_blank" rel="noreferrer" title={title}>{titlePreview.preview} <ExternalIcon /></a> : <span className="explorer-recorded-lines" title={title}>{titlePreview.preview}</span>}
+    <span className="explorer-related-lead">
+      {files.length ? <a className="explorer-recorded-lines" href={publicUrl(files[0].url)} target="_blank" rel="noreferrer" title={title}>{titlePreview.preview} <ExternalIcon /></a> : <span className="explorer-recorded-lines" title={title}>{titlePreview.preview}</span>}
+      <button className="explorer-icon-button" type="button" aria-label={`Open the full record for ${title}, including source evidence`} title="Open record" onClick={() => onSelect(record)}><ForwardIcon /></button>
+    </span>
     {titleRest.length ? <details className="explorer-row-meta"><summary>{titlePreview.continued ? 'Rest of the recorded title' : titleRest.length === 1 ? '1 more line of the recorded title' : `${titleRest.length} more lines of the recorded title`}<span className="explorer-field-reason">The rest of the title, in the order it was recorded.</span></summary>{titleRest.map(line => <span className="explorer-row-meta explorer-recorded-lines" key={line}>{line}</span>)}</details> : null}
     {when && when !== sharedWhen && !repeatsRecordedWhen(when, meetingWhen) ? <span className="explorer-row-meta">{when}</span> : null}
     {meetings.filter(meeting => meeting !== groupedMeeting).map(meeting => {
@@ -170,7 +173,6 @@ function MaterialRow({ record, reader, onSelect, meetingTitles, currentMeetingId
     {sourceCountNote(row) ? <span className="explorer-row-meta">{sourceCountNote(row)}</span> : null}
     {typeof row.issue_count === 'number' && row.issue_count > 0 ? <OpenIssues reader={reader} record={record} count={row.issue_count} onSelect={onSelect} /> : null}
     {recordedFacts.length ? <span className="explorer-evidence">{recordedFacts.map(fact => <span key={fact}>{fact}</span>)}</span> : null}
-    <button className="explorer-text-button" aria-label={`Open the full record for ${title}, including source evidence`} onClick={() => onSelect(record)}>Open record</button>
     <RecordingPlayer record={record} />
   </li>;
 }

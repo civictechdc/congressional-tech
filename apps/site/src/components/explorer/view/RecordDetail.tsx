@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { filenameManifestUrl } from '../reader/filenames/publication.ts';
 import { ExternalIcon, ForwardIcon } from './icons';
-import { categoryNote, collapseRepeatedFacts, committeeHierarchyNote, committeeLevelLabel, committeeTypeLabel, congressName, disagreementSummary, distinctRecordedFacts, documentSourceLabel, evidenceStateLabels, factLabel, severityLabel, fileLinkName, filePartNote, listedDocumentType, meetingStatusNote, orderRecordedFiles, parentCommitteeId, plainRecordedNote, providerLabel, recordedTitlePreview, recordedWhen, recordingEmbedUrl, recordingIdentity, savedCopyHref, scheduleNote, sourceFacts, sourceLinks, sourcePageUrl, sourceTypeNote, type SourceLink } from '../browse/record-presentation.ts';
+import { categoryNote, collapseRepeatedFacts, committeeHierarchyNote, committeeLevelLabel, committeeTypeLabel, congressName, disagreementSummary, distinctRecordedFacts, documentSourceLabel, evidenceStateLabels, factLabel, issueStatusLabel, severityLabel, fileLinkName, filePartNote, listedDocumentType, listTitle, meetingStatusNote, orderRecordedFiles, parentCommitteeId, plainRecordedNote, providerLabel, recordedTitlePreview, recordedWhen, recordingEmbedUrl, recordingIdentity, savedCopyHref, scheduleNote, sourceFacts, sourceLinks, sourcePageUrl, sourceTypeNote, type SourceLink } from '../browse/record-presentation.ts';
 import type { ExplorerRecordRef, LoadedRecord } from '../reader/data-source.ts';
 
 export type DetailRecord = LoadedRecord;
@@ -32,6 +32,10 @@ export function recordTitle(value: unknown): string {
     const filename = typeof row.url === 'string' ? decodeURIComponent(row.url.split('/').pop()?.split('?')[0] || '') : '';
     if (filename.includes('.')) return filename;
     return String(row.provider || 'Original source');
+  }
+  if (row.kind === 'material') {
+    const listed = listTitle(row);
+    if (listed) return listed;
   }
   const title = row.title || row.summary || fields(row.name).display || row.name;
   if (title && title !== '(Untitled source record)') return row.kind === 'data_issue' ? plainRecordedNote(String(title)) : String(title);
@@ -101,7 +105,7 @@ export function FileLinks({ record }: { record: unknown }) {
     const meta = [file.version && file.version !== 'unknown' ? words(file.version) : '', typeof file.published_at === 'string' ? `Published ${file.published_at.slice(0, 10)}` : '', fileTypeNote(typeof file.media_type === 'string' ? file.media_type : '')].filter(Boolean).join(' · ');
     return <span key={String(file.url)}>
       <a href={publicUrl(file.url)} target="_blank" rel="noreferrer">{label} <ExternalIcon /></a>
-      {saved ? <> <a href={saved}>Open saved copy{savedLabel}</a></> : null}
+      {saved ? <> <a href={saved} target="_blank" rel="noreferrer">Open saved copy{savedLabel} <ExternalIcon /></a></> : null}
       {meta ? <span className="explorer-row-meta">{meta}</span> : null}
     </span>;
   })}</div>;
@@ -206,7 +210,9 @@ function FactRow({ fact }: { fact: [unknown, unknown] }) {
   const inline = measureFacts.has(label) && value.includes('\n');
   return <div><dt>{readableLabel(label)}</dt><dd className={inline ? 'explorer-inline-values' : undefined}>{label === 'Official website or archive' && publicUrl(value)
     ? <a href={publicUrl(value)} target="_blank" rel="noreferrer">Visit website or archive <ExternalIcon /></a>
-    : label === 'How to read it' ? severityLabel(value) : ['Type', 'Status', 'At the source', 'Recorded here', 'Meeting status', 'Category', 'Chamber', 'Participation', 'medium', 'coverage', 'production', 'Access'].includes(label) ? enumLabel(value) : <FactLines label={label} value={value} />}</dd></div>;
+    : label === 'How to read it' ? severityLabel(value)
+    : label === 'Status' && value === 'open' ? issueStatusLabel(value)
+    : ['Type', 'Status', 'At the source', 'Recorded here', 'Meeting status', 'Category', 'Chamber', 'Participation', 'medium', 'coverage', 'production', 'Access'].includes(label) ? enumLabel(value) : <FactLines label={label} value={value} />}</dd></div>;
 }
 
 const measureNoun: Record<string, string> = {

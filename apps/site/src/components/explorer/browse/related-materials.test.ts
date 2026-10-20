@@ -23,11 +23,12 @@ test('a meeting title that differs only by quotation marks is the same title', (
 test('a related recording keeps a recorded title and a generic one stays an action', () => {
   assert.equal(relatedMaterialTitle({ type: 'recording', title: 'Chairman Griffith Delivers Opening Statement' }, 'Recording'), 'Chairman Griffith Delivers Opening Statement');
   assert.equal(relatedMaterialTitle({ type: 'recording', title: 'Recording' }, 'Recording'), 'Watch recording');
-  assert.equal(relatedMaterialTitle({ type: 'document', title: 'Witness Statement' }, 'Witness Statement', 'statement.pdf'), 'statement.pdf');
+  assert.equal(relatedMaterialTitle({ type: 'document', title: 'Witness Statement' }, 'Witness statement', 'statement.pdf'), 'statement.pdf');
+  assert.equal(relatedMaterialTitle({ type: 'document', title: 'Witness Truth in Testimony' }, 'Truth in testimony', 'form.pdf'), 'form.pdf');
 });
 
 test('native types remain exact; legacy typed records use their normalized category', () => {
-  assert.equal(materialCategory({document_type:'Witness Statement', category:'statement'}), 'Witness Statement');
+  assert.equal(materialCategory({document_type:'Witness Statement', category:'statement'}), 'Witness statement');
   assert.equal(materialCategory({document_type:'Hearing: Witness List'}), 'Witness list');
   assert.equal(materialCategory({details:{type:'document', category:'questions_for_record'}}), 'Questions for the record');
   assert.equal(materialCategory({details:{type:'document', category:'unknown'}}), 'Document');

@@ -253,7 +253,7 @@ export const evidenceStateLabels: Record<string, string> = {
   not_found_in_checked_scope: 'Not found where we looked',
   error: 'Check failed',
   blocked: 'Check blocked',
-  not_applicable: 'Does not apply',
+  not_applicable: 'Outside this meeting',
   unknown: 'Not recorded',
   unchecked: 'Not checked',
 };
@@ -264,7 +264,7 @@ export function evidenceParts(states: { [key: string]: string | null | undefined
   return evidenceAspects.flatMap(([key, label]) => {
     const state = states[key];
     if (!state) return [];
-    const word = state === 'not_applicable' ? 'not applicable' : evidenceStateLabels[state] || state.replaceAll('_', ' ');
+    const word = evidenceStateLabels[state] || state.replaceAll('_', ' ');
     return [`${label} ${word.charAt(0).toLowerCase()}${word.slice(1)}`];
   });
 }
@@ -920,9 +920,9 @@ function differenceLine(path: string, selected: string, alternative: string, ind
   const identifier = /^[0-9a-f-]{32,}$/i.test(selected) || /^[0-9a-f-]{32,}$/i.test(alternative);
   if (identifier) {
     const otherLabel = `${other[0].toUpperCase()}${other.slice(1)}`;
-    if (selected === 'none') return `${name}: not on this version. ${otherLabel} has it.`;
-    if (alternative === 'none') return `${name}: on this version. ${otherLabel} does not have it.`;
-    return `${name}: the two versions do not match.`;
+    if (selected === 'none') return `${name}: not recorded on this version. ${otherLabel} has one.`;
+    if (alternative === 'none') return `${name}: recorded on this version. ${otherLabel} does not have one.`;
+    return `${name}: the two versions name different values.`;
   }
   return `${name}: ${readableValue(selected)} on this record; ${readableValue(alternative)} on ${other}`;
 }
@@ -1197,7 +1197,7 @@ export function listTitle(row: { title?: string | null; document_type?: string |
   const title = typeof row.title === 'string' ? row.title.trim() : '';
   const filename = recordedFileNames(row.files)[0] || '';
   const type = typeof row.document_type === 'string' ? row.document_type.trim() : '';
-  if (filename && type && title.toLowerCase() === type.toLowerCase()) return filename;
+  if (filename && type && (title.toLowerCase() === type.toLowerCase() || listedDocumentType(title).toLowerCase() === listedDocumentType(type).toLowerCase())) return filename;
   return title;
 }
 
@@ -1420,6 +1420,15 @@ export function documentSourceLabel(row: DisplayRow): string {
 
 const documentTypeNames: Record<string, string> = {
   'Generic Document': 'Document',
+  'Support Document': 'Supporting document',
+  'Witness Biography': 'Witness biography',
+  'Witness Statement': 'Witness statement',
+  'Witness List': 'Witness list',
+  'Witness Support Document': 'Supporting document for a witness',
+  'Witness Truth in Testimony': 'Truth in testimony',
+  'Truth in Testimony': 'Truth in testimony',
+  'Bills and Resolutions': 'Bills and resolutions',
+  'Member Roster': 'Member roster',
   'Hearing: Transcript': 'Transcript',
   'Hearing: Witness List': 'Witness list',
   'Hearing: Questions for the Record': 'Questions for the record',
@@ -1480,6 +1489,13 @@ const severityLabels: Record<string, string> = {
 export function severityLabel(value: string | null | undefined): string {
   if (!value) return '';
   return severityLabels[value] || phrase(value);
+}
+
+/** Issue workflow status in ordinary words. */
+export function issueStatusLabel(value: string | null | undefined): string {
+  if (!value) return '';
+  if (value === 'open') return 'Still open';
+  return phrase(value);
 }
 
 export function providerLabel(value: string | null | undefined): string {
@@ -1615,7 +1631,7 @@ export function relatedParts(kind: string, value: object): RelatedPart[] {
     : kind === 'meeting'
       ? [typeText, sourceTypeNote(row), clock, scheduleNote(row), congress, phrase(row.chamber), place, status, recorded]
       : kind === 'data_issue'
-        ? [phrase(row.category), severityLabel(row.severity), phrase(row.status), when.date, detectedNote(row), ...notes]
+        ? [phrase(row.category), severityLabel(row.severity), issueStatusLabel(row.status), when.date, detectedNote(row), ...notes]
         : kind === 'committee_term'
           ? [committeeTypeLabel(row) === 'Type not recorded' ? '' : committeeTypeLabel(row), (row.title || '').toLowerCase().includes(committeeLevelLabel(row).toLowerCase()) ? '' : committeeLevelLabel(row), congress]
           : [clock, scheduleNote(row), status]
@@ -1702,12 +1718,12 @@ export function coverageDrillNote(limits: { committee?: string; month?: string; 
   return notes.length ? `These limits came from a coverage chart. ${notes.join(' ')}` : '';
 }
 
-/** Which day a date filter uses, and which records that day leaves out. */
+/** Which day a date filter uses, and which records stay in that range. */
 export function dateFilterReason(view: string, edge: 'from' | 'through'): string {
   const bound = edge === 'from' ? 'on or after' : 'on or before';
-  if (view === 'gaps') return `Keep issues ${bound} this day. This uses the issue date. The detected day shown on a row does not keep it in the range. An issue with no date drops out.`;
-  if (view === 'witnesses') return `Keep witnesses ${bound} this day. A witness with no date drops out.`;
-  return `Keep records ${bound} this day. A record with no date uses its scheduled day. Records with neither drop out.`;
+  if (view === 'gaps') return `Keep issues ${bound} this day. This uses the issue date, not the detected day shown on a row. Issues with a date in range stay in.`;
+  if (view === 'witnesses') return `Keep witnesses ${bound} this day. Witnesses with a date in range stay in.`;
+  return `Keep records ${bound} this day. A record with no date uses its scheduled day when it has one.`;
 }
 
 export function committeeTypeLabel(row: DisplayRow): string {

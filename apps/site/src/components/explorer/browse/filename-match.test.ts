@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { catalogMatchFiles } from './filename-match.ts';
-import { captureNotes, checkedAtNote, contentCongressLabel, contentCongressNote, contentKindNote, documentKindLabel, documentKindName, familyName, fileRoleLabel, formatLabel, httpStatusNote, kindBasis, plainFormat, pretty, recordLabel, recordRoleNote, recoveredSourceHost, recoveredSourceUrl, responseCheckNote, retrievedAtNote, savedBodyNote, savedResponseLabel, serverTypeNote, sourceDocumentBasis, sourceDocumentTypeNote, sourcePageLabel } from './filename-presentation.ts';
+import { captureNotes, checkedAtNote, contentCongressLabel, contentCongressNote, contentKindNote, documentKindLabel, documentKindName, familyName, fileRoleLabel, formatLabel, httpStatusNote, kindBasis, listedFamilyNames, listedKindLines, plainFormat, pretty, recordLabel, recordRoleNote, recoveredSourceHost, recoveredSourceUrl, repeatsShownRecord, responseCheckNote, retrievedAtNote, savedBodyNote, savedResponseLabel, serverTypeNote, sourceDocumentBasis, sourceDocumentTypeNote, sourcePageLabel } from './filename-presentation.ts';
 
 test('catalog matching keeps a recording file digest even when its URL is not public', () => {
   const files = catalogMatchFiles({
@@ -30,7 +30,10 @@ test('filename labels speak in words', () => {
   assert.equal(familyName('letter'), 'Letter');
   assert.equal(documentKindName('bill-untyped-numbered'), 'Numbered file, bill type not recorded');
   assert.equal(documentKindName('bill-numbered-described'), 'Numbered bill with a description in the name');
+  assert.equal(documentKindName('witness-support'), 'Supporting file for a witness');
+  assert.equal(documentKindName('chair-mark'), 'Chair’s mark');
   assert.equal(documentKindLabel({ document_kind: ['bill-numbered', 'witness-statement'] }), 'Bill or resolution with a number · Witness statement');
+  assert.equal(documentKindLabel({ document_kind: ['committee-amendment', 'committee-amendment-described'] }), 'Amendment named by its subject');
   assert.equal(formatLabel('application/pdf'), 'PDF');
   assert.equal(formatLabel('video/mp4'), 'MP4 video');
   assert.equal(formatLabel('text/vtt'), 'Captions');
@@ -68,11 +71,17 @@ test('filename labels speak in words', () => {
   assert.equal(recordRoleNote({ record_role: ['capture-state'] }), 'Note about the capture');
   assert.equal(recordRoleNote({ record_role: ['document'] }), '');
   assert.equal(recordRoleNote({ record_role: ['source-record'] }), '');
+  assert.deepEqual(listedKindLines({ document_kind: ['committee-amendment'], record_role: ['error-response'] }), ['Error page', 'Committee amendment']);
+  assert.deepEqual(listedKindLines({ document_kind: ['committee-amendment', 'committee-amendment-described'], record_role: ['error-response'] }), ['Error page', 'Amendment named by its subject']);
+  assert.deepEqual(listedFamilyNames(['committee-amendment-described'], ['Committee amendment']), []);
+  assert.deepEqual(listedFamilyNames(['legislation'], ['Bill or resolution with a number']), []);
+  assert.deepEqual(listedFamilyNames(['correspondence'], ['Document']), ['Correspondence']);
+  assert.deepEqual(listedFamilyNames(['correspondence'], ['Error page']), ['Correspondence']);
   assert.deepEqual(captureNotes({ capture_outcome: ['saved'], state_outcome: ['pending'], http_status: [404], format: ['html'] }), ['Still waiting to save a copy']);
   assert.deepEqual(captureNotes({ capture_outcome: ['http_error', 'saved'], state_outcome: ['retained'], http_status: [404] }), []);
   assert.deepEqual(captureNotes({ state_outcome: ['excluded_probe', 'request_failed'] }), ['Not downloaded; it was only a check', 'The request failed']);
   assert.equal(httpStatusNote({ http_status: ['200'], retained: true }), '');
-  assert.equal(httpStatusNote({ http_status: ['200'], retained: false }), 'The website answered, and no copy was saved');
+  assert.equal(httpStatusNote({ http_status: ['200'], retained: false }), 'The website answered');
   assert.equal(httpStatusNote({ http_status: ['404'] }), 'The website said this page was not found');
   assert.equal(httpStatusNote({ http_status: ['200', '503'], retained: true }), 'The website reported an error');
   assert.equal(serverTypeNote({ format: ['html'], media_type: ['application/pdf'] }), 'The website called this a PDF');
@@ -95,12 +104,15 @@ test('filename labels speak in words', () => {
   assert.equal(savedResponseLabel({ retained: true, response_usable: ['false'] }), 'Saved · Saved response marked unusable');
   assert.equal(savedResponseLabel({ retained: true, response_usable: ['false', 'true'], response_body_complete: ['false', 'true'] }), 'Saved · Usability readings disagree · Completeness readings disagree');
   assert.equal(savedResponseLabel({ retained: true, recovery: { recovery_status: 'recovered' }, response_usable: ['false', 'true'] }), 'Recovered · Usability readings disagree');
+  assert.equal(savedResponseLabel({ retained: false, recovery: { recovery_status: 'recovered', kind: 'pdf' }, format: ['html'] }), 'Recovered as a PDF');
   assert.equal(savedResponseLabel({ retained: true, response_usable: ['true'] }), 'Saved');
   assert.equal(sourceDocumentTypeNote({ document_kind: ['committee-report'], source_document_type: ['Committee Recorded Vote'] }), 'Committee Recorded Vote');
   assert.equal(sourceDocumentTypeNote({ document_kind: ['committee-transcript'], source_document_type: ['Hearing: Transcript'] }), '');
   assert.equal(sourceDocumentTypeNote({ document_kind: ['committee-report'], source_document_type: ['Hearing: Cover Page'] }), 'Cover page');
   assert.equal(sourceDocumentTypeNote({ document_kind: ['witness-statement'], source_document_type: ['WS', 'witness statement'] }), '');
   assert.equal(sourceDocumentTypeNote({ document_kind: ['committee-vote'], source_document_type: ['CV'] }), '');
+  assert.equal(sourceDocumentTypeNote({ document_kind: ['bill-numbered'], source_document_type: ['Other'] }), '');
+  assert.equal(sourceDocumentTypeNote({ document_kind: ['bill-numbered'], source_document_type: ['Generic Document'] }), '');
   assert.equal(sourceDocumentBasis({ source_document_type_basis: ['publisher'] }), 'Recorded on the source page');
   assert.equal(sourceDocumentBasis({ source_document_type_basis: ['house_parser_inference', 'publisher'] }), 'Includes a reading worked out from the page');
   assert.equal(sourceDocumentBasis({ source_document_type_basis: ['senate_parser_fallback'] }), 'Worked out from the source page');
@@ -114,4 +126,6 @@ test('filename labels speak in words', () => {
   assert.equal(contentCongressLabel({ congress: ['114'], content_congress: ['114'] }), '');
   assert.equal(contentCongressNote({ congress: ['113'], content_congress: ['114'] }), 'Saved contents record 114th Congress');
   assert.equal(contentCongressNote({ content_congress: ['114'] }), '');
+  assert.equal(repeatsShownRecord('Document kind', 'Witness biography', { documentKind: 'Witness biography' }), true);
+  assert.equal(repeatsShownRecord('Document kind', 'Error page · Witness biography', { documentKind: 'Witness biography' }), false);
 });

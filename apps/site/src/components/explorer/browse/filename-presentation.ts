@@ -64,6 +64,13 @@ const kindLabels: Record<string, string> = {
   'op-ed': 'Op-ed',
   'questions-for-record': 'Questions for the record',
   'questions-for-record-response': 'Answers for the record',
+  'chair-mark': 'Chair’s mark',
+  'witness-support': 'Supporting file for a witness',
+  'meeting-support': 'Supporting file for a meeting',
+  'nomination-support': 'Supporting file for a nomination',
+  'support-document': 'Supporting document',
+  'letter-of-support': 'Letter of support',
+  'error-page': 'Error page',
 };
 
 /** A broad category in words. Print is the group for committee prints. */
@@ -130,6 +137,37 @@ export function recordRoleNote(row: { record_role?: string[] | null }): string {
   return '';
 }
 
+/** Broad categories when the row has no more specific document kind yet. */
+export function listedFamilyNames(families: readonly string[] | null | undefined, kinds: readonly string[]): string[] {
+  const specific = kinds.some(kind => kind && !['Document', 'No category', 'Error page', 'Note about the capture'].includes(kind));
+  if (specific) return [];
+  return [...new Set((families || []).map(familyName).filter(Boolean))];
+}
+
+/** Prefer a longer kind when two recorded kinds name the same thing. */
+function preferSpecificKinds(kinds: readonly string[]): string[] {
+  const unique = [...new Set(kinds.filter(Boolean))];
+  return unique.filter(kind => {
+    const text = kind.toLowerCase();
+    return !unique.some(other => {
+      if (other === kind || other.length <= kind.length) return false;
+      const words = text.split(/\s+/).filter(word => word.length > 4);
+      return words.some(word => other.toLowerCase().includes(word));
+    });
+  });
+}
+
+/** Kind lines for a list row. An error page leads, because that is what was saved. */
+export function listedKindLines(row: { video_reference?: unknown; api_reference?: unknown; document_kind?: string[] | null; record_role?: string[] | null; filename?: string | null; source_record_type?: string[] | null; format?: string[] | null }): string[] {
+  const role = recordRoleNote(row);
+  const kind = recordLabel(row);
+  const kinds = preferSpecificKinds(!row.video_reference && !row.api_reference && row.document_kind?.length
+    ? row.document_kind.map(documentKindName)
+    : [kind === 'No category' ? 'Document' : kind]);
+  if (role && !kinds.some(line => line.toLowerCase().includes(role.toLowerCase()))) return [role, ...kinds];
+  return kinds;
+}
+
 /** A file with no document form can still have a recorded role. */
 export function fileRoleLabel(row: { filename?: string | null; format?: string[] | null; document_kind?: string[] | null }): string {
   if (row.document_kind?.length) return '';
@@ -144,7 +182,8 @@ export function fileRoleLabel(row: { filename?: string | null; format?: string[]
 export function documentKindLabel(row: { video_reference?: unknown; api_reference?: unknown; document_kind?: string[] | null }): string {
   if (row.video_reference) return 'Video link';
   if (row.api_reference) return 'Official record link';
-  return row.document_kind?.map(documentKindName).join(' · ') || 'No category';
+  if (!row.document_kind?.length) return 'No category';
+  return preferSpecificKinds(row.document_kind.map(documentKindName)).join(' · ') || 'No category';
 }
 
 const sourceRecordLabels: Record<string, string> = {
@@ -205,6 +244,7 @@ export interface ShownRecord {
   congress?: string;
   chamber?: string;
   committee?: string;
+  documentKind?: string;
 }
 
 /** True when a captured-file fact only repeats the record already open. */
@@ -213,8 +253,10 @@ export function repeatsShownRecord(label: string, value: string, shown: ShownRec
   const congress = (shown.congress || '').trim().toLowerCase();
   const chamber = (shown.chamber || '').trim().toLowerCase();
   const committee = (shown.committee || '').trim().toLowerCase();
+  const documentKind = (shown.documentKind || '').trim().toLowerCase();
   if (label === 'Congress' && congress && text === congress) return true;
   if (label === 'Chamber' && chamber && text === chamber) return true;
+  if (label === 'Document kind' && documentKind && (text === documentKind || text.split(' · ').every(part => !part.trim() || documentKind.includes(part.trim())))) return true;
   if (label === 'Committee' && committee) {
     const names = text.split(' · ').map(part => part.trim()).filter(part => part && !/^[a-z]{2,}\d{2,}$/i.test(part));
     return names.length > 0 && names.every(name => committee.includes(name) || name.includes(committee));
@@ -268,7 +310,7 @@ export function plainFormat(value: string): string {
 }
 
 function siteReply(code: string, saved: boolean): string {
-  if (code === '200') return saved ? '' : 'The website answered, and no copy was saved';
+  if (code === '200') return saved ? '' : 'The website answered';
   if (code === '404') return 'The website said this page was not found';
   if (code === '401' || code === '403') return 'The website refused the request';
   if (code.startsWith('3')) return 'The website sent the request somewhere else';
@@ -379,9 +421,11 @@ function reading(value: string): string {
 /** Source-page document types that the catalog kind does not already state. */
 export function sourceDocumentTypeNote(row: Pick<FilenameRecord, 'document_kind' | 'source_document_type'>): string {
   const kinds = (row.document_kind || []).map(reading).filter(Boolean);
+  const vague = /^(other|document|generic document|unknown|n\/?a|none)$/;
   const extras = (row.source_document_type || []).map(value => listedDocumentType(value.trim())).filter(value => {
     const text = reading(value);
     if (!text) return false;
+    if (vague.test(text)) return false;
     if (kinds.length && text.length <= 3) return false;
     return !kinds.some(kind => kind === text || kind.includes(text) || text.includes(kind));
   });
@@ -485,7 +529,10 @@ export function responseQualityNotes(row: Pick<FilenameRecord, 'response_usable'
 
 export function savedResponseLabel(row: FilenameRecord): string {
   const quality = row.retained || row.recovery?.recovery_status === 'recovered' ? responseQualityNotes(row) : [];
-  if (row.recovery?.recovery_status === 'recovered') return ['Recovered', ...quality].join(' · ');
+  if (row.recovery?.recovery_status === 'recovered') {
+    const as = row.recovery.kind && !row.format?.includes(row.recovery.kind) ? ` as ${plainFormat(row.recovery.kind)}` : '';
+    return [`Recovered${as}`, ...quality].join(' · ');
+  }
   if (!row.retained) return 'None saved';
   if (row.record_role?.includes('error-response')) return ['Saved failed response', ...quality].join(' · ');
   return ['Saved', ...quality].join(' · ');
@@ -664,7 +711,6 @@ export function filenameClues(row: FilenameRecord): string[] {
   const warning = congressWarning(row.congress, row.source_congress);
   return [
     row.congress?.length ? `Filename Congress ${row.congress.join(' · ')}${warning ? ' · Needs review' : ''}` : '',
-    row.committee_code?.length ? `Committee ${row.committee_code.join(' · ')}` : '',
     row.measure_references?.map(measureLabel).join(' · ') || '',
     row.date_token_candidates?.map(filenameDate).join(' · ') || '',
   ].filter(Boolean);

@@ -154,7 +154,7 @@ test('a source observation shows its identifier and place without the payload bl
   assert.deepEqual(recordedVotes({ facts: [{ label: 'Vote number', value: '12' }, { label: 'Vote 12', value: 'Later result' }, { label: 'Vote 1', value: 'H.R. 647 was ordered favorably reported by voice vote' }] }), ['H.R. 647 was ordered favorably reported by voice vote', 'Later result']);
   assert.deepEqual(recordedAmendments({ facts: [{ label: 'Amendment 1', value: 'HR 5415 ANS' }, { label: 'Amendment number', value: '1' }] }), ['Amendment 1: H.R. 5415 ANS']);
   assert.equal(evidenceLine({ recording: 'reported', transcript: 'unchecked', documents: 'reported', witnesses: 'reported', captions: 'unknown' }), 'Recording stated by the source · Transcript not checked · Documents stated by the source · Witness list stated by the source · Captions not recorded');
-  assert.equal(evidenceLine({ recording: 'not_applicable', captions: 'not_applicable' }), 'Recording not applicable · Captions not applicable');
+  assert.equal(evidenceLine({ recording: 'not_applicable', captions: 'not_applicable' }), 'Recording outside this meeting · Captions outside this meeting');
   assert.deepEqual(listedEvidence({ recording: 'reported', transcript: 'unchecked', documents: 'not_applicable', witnesses: 'inferred', captions: 'unknown' }), ['Recording stated by the source', 'Witness list likely match, needs a check']);
   assert.deepEqual(listedEvidence({ recording: 'not_applicable', captions: 'unchecked' }), []);
   assert.equal(factLabel('label', ['label', 'building', 'city']), 'Place');
@@ -246,11 +246,11 @@ test('related rows keep the recorded role, time, and issue severity', () => {
   assert.equal(relatedMeta('meeting', { type: 'hearing', congress: 113, facts: [{ label: 'Source type', value: 'Meeting' }] }), 'Hearing · Source type Meeting · 113th Congress');
   assert.equal(relatedMeta('meeting', { type: 'business', date: '2026-09-30', congress: 119, chamber: 'senate', status: 'past', facts: [{ label: 'building', value: 'Dirksen Senate Office Building' }, { label: 'room', value: '366' }, { label: 'Related bill', value: 'S 1254' }, { label: 'Vote 1', value: 'Agreed to' }, { label: 'Amendment 1', value: 'HR 5415 ANS' }] }), 'Business meeting · 2026-09-30 · 119th Congress · Senate · Dirksen Senate Office Building, room 366 · Past');
   assert.equal(relatedMeta('data_issue', { category: 'conflicting', title: 'Sources disagree about name', explanation: 'The retained name keeps the later source.' }), 'Conflicting · The retained name keeps the later source.');
-  assert.equal(relatedMeta('data_issue', { category: 'conflicting', severity: 'affects_interpretation', status: 'open', date: '2026-10-18' }), 'Conflicting · Changes how to read it · Open · 2026-10-18');
+  assert.equal(relatedMeta('data_issue', { category: 'conflicting', severity: 'affects_interpretation', status: 'open', date: '2026-10-18' }), 'Conflicting · Changes how to read it · Still open · 2026-10-18');
   const disagreement = relatedParts('data_issue', { category: 'conflicting', status: 'open', source_ids: ['a', 'b'], facts: [{ label: 'Selected value', value: '{"channel":"5dbb6c64-2f48-4364-86cc-68a38059ae57"}' }, { label: 'alternative 1', value: '{}' }] });
   assert.equal(disagreement.find(part => part.text === 'Built from 4 original pages'), undefined);
   assert.equal(disagreement[disagreement.findIndex(part => part.role === 'note') - 1]?.text, 'Built from 2 original pages');
-  assert.match(disagreement.find(part => part.role === 'note')?.text || '', /Channel: on this version\. Another recorded version does not have it/);
+  assert.match(disagreement.find(part => part.role === 'note')?.text || '', /Channel: recorded on this version\. Another recorded version does not have one/);
 });
 
 test('an issue list names the field and the recorded difference', () => {
@@ -306,7 +306,7 @@ test('a recorded disagreement names the fields that differ', () => {
   const selected = '{"type":"recording","medium":"video","coverage":"unknown","provider":"youtube","channel":{"kind":"channel","id":"30826b4e-9d56-48ec-a0f7-326a4440461f"}}';
   const alternative = '{"type":"recording","medium":"video","coverage":"unknown","provider":"youtube","channel":null}';
   assert.deepEqual(disagreementSummary(selected, [alternative]), [
-    'Channel: on this version. Another recorded version does not have it.',
+    'Channel: recorded on this version. Another recorded version does not have one.',
   ]);
   assert.deepEqual(disagreementSummary('{"type":"document","category":"statement"}', ['{"type":"document","category":"witness_list"}']), [
     'Category: Statement on this record; Witness list on another recorded version',
@@ -402,8 +402,13 @@ test('source document groups remain distinct and searchable alongside native doc
   assert.equal(listedDocumentType('Hearing: Transcript'), 'Transcript');
   assert.equal(listedDocumentType('Hearing: Questions for the Record'), 'Questions for the record');
   assert.equal(listedDocumentType('COMMITTEE PRINT'), 'Committee print');
-  assert.equal(listedDocumentType('Support Document'), 'Support Document');
-  assert.equal(listedSourcePile({ document_type: 'Support Document', source_document_groups: ['meetingDocuments'] }, 'Support Document'), '');
+  assert.equal(listedDocumentType('Support Document'), 'Supporting document');
+  assert.equal(listedDocumentType('Witness Biography'), 'Witness biography');
+  assert.equal(listedDocumentType('Witness Statement'), 'Witness statement');
+  assert.equal(listedDocumentType('Witness Truth in Testimony'), 'Truth in testimony');
+  assert.equal(listedDocumentType('Witness Support Document'), 'Supporting document for a witness');
+  assert.equal(listedDocumentType('Bills and Resolutions'), 'Bills and resolutions');
+  assert.equal(listedSourcePile({ document_type: 'Support Document', source_document_groups: ['meetingDocuments'] }, 'Supporting document'), '');
   assert.equal(listedSourcePile({ document_type: 'Witness Statement', source_document_groups: ['witnessDocuments'] }, 'Witness Statement'), '');
   assert.equal(listedSourcePile({ source_document_groups: ['meetingDocuments'] }, ''), 'Meeting document');
   assert.equal(listedSourcePile({ source_document_groups: ['meetingDocuments', 'witnessDocuments'] }, 'Support Document'), 'Witness document');
@@ -488,9 +493,9 @@ test('committee category is separate from level and preserves explicit child cat
     'House Education and the Workforce · 118th Congress',
     'Education and Workforce Committee · 115th–117th Congress',
   ]);
-  assert.equal(dateFilterReason('gaps', 'from'), 'Keep issues on or after this day. This uses the issue date. The detected day shown on a row does not keep it in the range. An issue with no date drops out.');
-  assert.equal(dateFilterReason('witnesses', 'through'), 'Keep witnesses on or before this day. A witness with no date drops out.');
-  assert.equal(dateFilterReason('meetings', 'from'), 'Keep records on or after this day. A record with no date uses its scheduled day. Records with neither drop out.');
+  assert.equal(dateFilterReason('gaps', 'from'), 'Keep issues on or after this day. This uses the issue date, not the detected day shown on a row. Issues with a date in range stay in.');
+  assert.equal(dateFilterReason('witnesses', 'through'), 'Keep witnesses on or before this day. Witnesses with a date in range stay in.');
+  assert.equal(dateFilterReason('meetings', 'from'), 'Keep records on or after this day. A record with no date uses its scheduled day when it has one.');
   assert.deepEqual(recordedTitleLines('Legislative Hearing on:H.R. 338\r\n\nH.R. 1514\nH.R. 3756'), ['Legislative Hearing on:H.R. 338', 'H.R. 1514', 'H.R. 3756']);
   const longTitle = `${'word '.repeat(70).trim()} ending`;
   const preview = recordedTitlePreview(longTitle);

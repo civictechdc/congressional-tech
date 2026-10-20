@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { captureNotes, checkedAtNote, congressLabel, contentAddressedFilename, contentCongressLabel, contentCongressNote, congressWarning, contentKindNote, documentKindLabel, documentKindName, fieldLabel, filenameIdentity, filenameOriginLabel, filenameReadings, formatLabel, httpStatusNote, kindBasis, measureLabel, plainFormat, pretty, readableValue, recordLabel, recordRoleNote, recoveredSourceHost, recoveredSourceUrl, repeatsShownRecord, responseCheckNote, retrievedAtNote, savedBodyNote, savedResponseLabel, serverTypeNote, sourceCommitteeNote, sourceCongressNote, sourceDocumentBasis, sourceDocumentTypeNote, type ShownRecord } from '../browse/filename-presentation.ts';
+import { captureNotes, checkedAtNote, congressLabel, contentAddressedFilename, contentCongressLabel, contentCongressNote, congressWarning, contentKindNote, documentKindLabel, documentKindName, fieldLabel, filenameIdentity, filenameOriginLabel, filenameReadings, formatLabel, httpStatusNote, kindBasis, listedKindLines, measureLabel, pretty, readableValue, recordLabel, recoveredSourceHost, recoveredSourceUrl, repeatsShownRecord, responseCheckNote, retrievedAtNote, savedBodyNote, savedResponseLabel, serverTypeNote, sourceCommitteeNote, sourceCongressNote, sourceDocumentBasis, sourceDocumentTypeNote, type ShownRecord } from '../browse/filename-presentation.ts';
 import { recordedTitlePreview } from '../browse/record-presentation.ts';
 import { filenameDate } from '../browse/filename-rules.ts';
 import { appendOriginPage, evidenceGraph, provenanceUrlKey, type ProvenancePage, type ProvenanceEdge, type SourceContext } from '../browse/provenance.ts';
@@ -67,15 +67,15 @@ function ReadyEntry({ entry, id, catalog, onOpen, embedded, namingVersion, alrea
   const [identity] = useRequest(signal => missingIdentity ? filenameRequest<FilenameRecord>(entryPath('source-identity', id, catalog), signal) : Promise.resolve({} as FilenameRecord), [id, catalog || '', missingIdentity]);
   const sourceRecord = { ...record, ...(identity.status === 'ready' ? identity.value : {}) };
   const saved = publicUrl(entry.saved_file_url);
-    const source = publicUrl(sourceRecord.source_url);
-    const recovered = publicUrl(recoveredSourceUrl(sourceRecord));
+  const source = publicUrl(sourceRecord.source_url);
+  const recovered = publicUrl(recoveredSourceUrl(sourceRecord));
   const title = filenameIdentity({ ...sourceRecord, filename: entry.filename || sourceRecord.filename, api_reference: entry.api_reference, video_reference: entry.video_reference });
   const kind = recordLabel({ ...sourceRecord, document_kind: entry.document.document_kind, video_reference: entry.video_reference, api_reference: entry.api_reference });
   const shownKind = documentKindLabel({ video_reference: entry.video_reference, api_reference: entry.api_reference, document_kind: entry.document.document_kind });
   return <>
     {embedded || kind === shownKind ? null : <p className="explorer-record-kind">{kind === 'No category' ? 'Document' : kind}</p>}
     <FilenameHeading title={title} embedded={embedded} />
-    {source || recovered || saved || !embedded ? <div className="explorer-actions">{source ? <a href={source} target="_blank" rel="noreferrer">{entry.video_reference ? 'Watch video' : entry.api_reference ? 'Open the official record' : 'Open original source'} <ExternalIcon /></a> : recovered ? <a href={recovered} target="_blank" rel="noreferrer">{recoveredSourceHost(sourceRecord)} <ExternalIcon /></a> : null}{saved ? <a href={saved} target="_blank" rel="noreferrer">Open saved copy <ExternalIcon /></a> : null}{embedded ? null : <EntryActions id={sourceRecord.source_id || id} catalog={entry.catalog_id} />}</div> : null}
+    {source || recovered || saved || !embedded ? <div className="explorer-actions">{saved ? <a href={saved} target="_blank" rel="noreferrer">Open saved copy <ExternalIcon /></a> : null}{source ? <a href={source} target="_blank" rel="noreferrer">{entry.video_reference ? 'Watch video' : entry.api_reference ? 'Open the official record' : 'Open original source'} <ExternalIcon /></a> : recovered ? <a href={recovered} target="_blank" rel="noreferrer">{recoveredSourceHost(sourceRecord)} <ExternalIcon /></a> : null}{embedded ? null : <EntryActions id={sourceRecord.source_id || id} catalog={entry.catalog_id} />}</div> : null}
     <Summary entry={{ ...entry, record: sourceRecord }} alreadyShown={embedded ? alreadyShown : undefined} />
     <ReviewSection id={record.source_id || id} catalog={entry.catalog_id} />
     <Clues entry={entry} namingVersion={namingVersion} />
@@ -112,8 +112,11 @@ function Summary({ entry, alreadyShown }: { entry: FilenameEntry; alreadyShown?:
   const kindLabel = documentKindLabel({ video_reference: entry.video_reference, api_reference: entry.api_reference, document_kind: row.document_kind }).toLowerCase();
   const summaryReadings = readings.filter(reading => ['Meeting wording', 'Draft', 'En bloc', 'Nomination', 'Subcommittee', 'Stage', 'Amendment degree', 'Abbreviation', 'Collection', 'Mark', 'Wording', 'Role', 'Context', 'Relation'].includes(reading.label) && !(reading.label === 'Meeting wording' && meetingType.includes(reading.value.toLowerCase())) && !(reading.label === 'Wording' && kindLabel.includes(reading.value.toLowerCase())));
   const measures = (source.measure_references || []).map(measureLabel).filter(Boolean);
+  const kindLines = listedKindLines({ video_reference: entry.video_reference, api_reference: entry.api_reference, document_kind: row.document_kind, record_role: source.record_role, filename: source.filename, source_record_type: source.source_record_type, format: source.format });
+  const kindText = kindLines.join(' · ');
+  const repeated = (label: string, value: string, extra = false) => Boolean(alreadyShown) && !extra && repeatsShownRecord(label, value, alreadyShown || {});
   const documentRows = [
-    <div key="kind"><dt>Document kind</dt><dd>{documentKindLabel({ video_reference: entry.video_reference, api_reference: entry.api_reference, document_kind: row.document_kind })}{kindBasis(row) ? <span className="explorer-row-meta">{kindBasis(row)}</span> : row.document_kind_source?.length ? <span className="explorer-row-meta">Based on the filename</span> : null}{recordRoleNote(source) ? <span className="explorer-row-meta">{recordRoleNote(source)}</span> : null}</dd></div>,
+    kindText && !repeated('Document kind', kindText) ? <div key="kind"><dt>Document kind</dt><dd>{kindText}{kindBasis(row) ? <span className="explorer-row-meta">{kindBasis(row)}</span> : row.document_kind_source?.length ? <span className="explorer-row-meta">Based on the filename</span> : null}</dd></div> : null,
     measures.length ? <div key="bill"><dt>Bill or resolution</dt><dd>{measures.join(' · ')}</dd></div> : null,
     <div key="format"><dt>Format</dt><dd>{source.format?.map(formatLabel).join(' · ') || 'Not recorded'}{savedBodyNote(source) ? <span className="explorer-row-meta">{savedBodyNote(source)}</span> : null}{serverTypeNote(source) ? <span className="explorer-row-meta">{serverTypeNote(source)}</span> : null}</dd></div>,
     version ? <div key="stage"><dt>Legislative stage</dt><dd>{version.value}</dd></div> : null,
@@ -121,8 +124,7 @@ function Summary({ entry, alreadyShown }: { entry: FilenameEntry; alreadyShown?:
   ];
   const congressValue = congressLabel(source.congress) || congressLabel(source.source_congress) || contentCongressLabel(source);
   const congressSource = sourceCongressNote(source.congress, source.source_congress);
-  const repeated = (label: string, value: string, extra = false) => Boolean(alreadyShown) && !extra && repeatsShownRecord(label, value, alreadyShown || {});
-  const chamberText = source.source_chamber?.join(' · ') || '';
+  const chamberText = (source.source_chamber || []).map(value => value === 'unknown' ? 'Chamber not recorded' : pretty(value)).filter(Boolean).join(' · ');
   const foundRows = [
     congressValue && !repeated('Congress', congressValue, Boolean(congressSource || warning || contentCongressNote(source) || contentCongressLabel(source))) ? <div key="congress"><dt>Congress</dt><dd>{congressValue}{congressSource ? <span className="explorer-row-meta">{congressSource}</span> : null}{!source.congress?.length && source.source_congress?.length ? <span className="explorer-row-meta">Recorded by the source</span> : null}{contentCongressLabel(source) ? <span className="explorer-row-meta">From the saved contents</span> : null}{contentCongressNote(source) ? <span className="explorer-row-meta">{contentCongressNote(source)}</span> : null}{warning ? <span className="explorer-row-meta">{warning}</span> : null}</dd></div> : null,
     chamberText && !repeated('Chamber', chamberText) ? <div key="chamber"><dt>Chamber</dt><dd>{chamberText}</dd></div> : null,
@@ -134,9 +136,11 @@ function Summary({ entry, alreadyShown }: { entry: FilenameEntry; alreadyShown?:
     source.source_record_type?.length ? <div key="source-type"><dt>Type at the source</dt><dd>{source.source_record_type.map(pretty).join(' · ')}</dd></div> : null,
     sourceDocumentTypeNote(source) ? <div key="page-type"><dt>Document type on the page</dt><dd>{sourceDocumentTypeNote(source)}{sourceDocumentBasis(source) ? <span className="explorer-row-meta">{sourceDocumentBasis(source)}</span> : null}</dd></div> : null,
   ];
+  const copyKept = Boolean(source.body_key || source.retained || recovery?.recovery_status === 'recovered');
+  const websiteReply = httpStatusNote({ http_status: source.http_status, retained: copyKept });
   const savedRows = [
-    <div key="saved"><dt>Status</dt><dd>{[savedResponseLabel({ ...source, retained: source.body_key ? true : source.retained, recovery }), responseCheckNote(source), ...captureNotes(source), checkedAtNote(source), retrievedAtNote(source)].filter(Boolean).map((note, index) => <span className={index ? 'explorer-row-meta' : undefined} key={`${index}-${note}`}>{note}</span>)}{recovery?.recovery_status === 'recovered' && recovery.kind ? <span className="explorer-row-meta">Recovered as {plainFormat(recovery.kind)}</span> : null}</dd></div>,
-    source.http_status?.length ? <div key="reply"><dt>Website reply</dt><dd>{httpStatusNote({ http_status: source.http_status, retained: source.body_key ? true : source.retained }) || 'The website answered'}</dd></div> : null,
+    <div key="saved"><dt>Status</dt><dd>{[savedResponseLabel({ ...source, retained: copyKept, recovery }), responseCheckNote(source), ...captureNotes(source), checkedAtNote(source), retrievedAtNote(source)].filter(Boolean).map((note, index) => <span className={index ? 'explorer-row-meta' : undefined} key={`${index}-${note}`}>{note}</span>)}</dd></div>,
+    websiteReply ? <div key="reply"><dt>Website reply</dt><dd>{websiteReply}</dd></div> : null,
     contentKindNote(source) ? <div key="contents"><dt>Saved contents</dt><dd>{contentKindNote(source)}</dd></div> : null,
   ];
   return <>
@@ -182,7 +186,7 @@ function EntryActions({ id, catalog }: { id: string; catalog: string }) {
     }
   }
   return <>
-    <button className="explorer-icon-button" type="button" aria-label="Copy the saved details for this file. This does not download the file itself." title="Copy the saved details" onClick={() => void copyJson()}><CopyIcon /></button>
+    <button className="explorer-icon-button" type="button" aria-label="Copy the saved details for this file. The file itself stays where it is." title="Copy the saved details" onClick={() => void copyJson()}><CopyIcon /></button>
     <button className="explorer-icon-button" type="button" aria-label="Copy a link that opens this file" title="Copy link to this file" onClick={() => void copyLink()}><LinkIcon /></button>
     {copyStatus ? <span className="explorer-row-meta">{copyStatus}</span> : null}
     {linkStatus ? <span className="explorer-row-meta">{linkStatus}</span> : null}
