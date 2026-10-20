@@ -7,6 +7,7 @@ schema. Native completion alone does not prove catalog reference consistency.
 from copy import deepcopy
 
 import pyarrow as pa
+import pyarrow.compute as pc
 
 
 class CatalogTable:
@@ -17,11 +18,18 @@ class CatalogTable:
     must supply and validate application ordering before deriving mappings.
     """
 
-    def __init__(self, schema, partitions, *, native):
+    def __init__(self, schema, partitions, *, native, order_column=None, max_ordered_bytes=None):
         if not isinstance(schema, pa.Schema):
             raise TypeError('A selected catalog table requires its application Arrow schema')
         self.schema_arrow = schema
         self.native = native
+        if order_column is not None:
+            if (not isinstance(order_column, str) or not order_column or order_column in schema.names
+                    or type(max_ordered_bytes) is not int or max_ordered_bytes < 1):
+                raise ValueError('Ordered catalog reads require a separate order field and explicit byte bound')
+        elif max_ordered_bytes is not None:
+            raise ValueError('An ordered read byte bound requires an order field')
+        self.order_column, self.max_ordered_bytes = order_column, max_ordered_bytes
         self._partitions = []
         names = set()
         for name, release in partitions:
@@ -61,17 +69,46 @@ class CatalogTable:
         for name, pin, rows in self._partitions:
             if name not in requested_set:
                 continue
-            count = 0
-            with self.native.source_batches(deepcopy(pin)) as reader:
-                if not reader.schema.equals(self.schema_arrow, check_metadata=False):
-                    raise ValueError(f'Native catalog partition schema differs: {name}')
-                for batch in reader:
-                    if not batch.schema.equals(self.schema_arrow, check_metadata=False):
-                        raise ValueError(f'Native catalog partition batch schema differs: {name}')
-                    count += batch.num_rows
-                    if count > rows:
-                        raise ValueError(f'Native catalog partition row count differs: {name}')
-                    selected = batch.select(columns)
-                    yield pa.RecordBatch.from_arrays(selected.columns, schema=output_schema)
-            if count != rows:
-                raise ValueError(f'Native catalog partition row count differs: {name}')
+            batches = self._partition_batches(name, pin, rows)
+            if self.order_column is not None:
+                # Only one caller-bounded native chunk is buffered. This caps
+                # admitted Arrow input bytes; sorting also allocates its output
+                # and indices, so it is not a whole-process memory guarantee.
+                retained, size = [], 0
+                for batch in batches:
+                    size += batch.nbytes
+                    if size > self.max_ordered_bytes:
+                        raise ValueError(f'Ordered catalog partition exceeds Arrow byte bound: {name}')
+                    retained.append(batch)
+                if not retained:
+                    continue
+                table = pa.Table.from_batches(retained)
+                order = table[self.order_column]
+                if order.null_count or len(pc.unique(order)) != table.num_rows:
+                    raise ValueError(f'Catalog order values must be nonnull and unique: {name}')
+                batches = table.sort_by([(self.order_column, 'ascending')]).to_batches()
+            for batch in batches:
+                selected = batch.select(columns)
+                yield pa.RecordBatch.from_arrays(selected.columns, schema=output_schema)
+
+    def _partition_batches(self, name, pin, rows):
+        def require_schema(schema):
+            if self.order_column is not None:
+                if (schema.names.count(self.order_column) != 1
+                        or not pa.types.is_int64(schema.field(self.order_column).type)):
+                    raise ValueError(f'Native catalog order field must be int64: {name}')
+                schema = pa.schema([field for field in schema if field.name != self.order_column])
+            if not schema.equals(self.schema_arrow, check_metadata=False):
+                raise ValueError(f'Native catalog partition schema differs: {name}')
+
+        count = 0
+        with self.native.source_batches(deepcopy(pin)) as reader:
+            require_schema(reader.schema)
+            for batch in reader:
+                require_schema(batch.schema)
+                count += batch.num_rows
+                if count > rows:
+                    raise ValueError(f'Native catalog partition row count differs: {name}')
+                yield batch
+        if count != rows:
+            raise ValueError(f'Native catalog partition row count differs: {name}')

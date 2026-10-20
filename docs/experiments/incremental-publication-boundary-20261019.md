@@ -26,10 +26,14 @@ focused fault injection; `publication/review-correction-verification.json`
 records their rejection. An earlier injection targeted the wrong temporary path;
 its failed assertion remains in the local evidence directory.
 
-The candidate reader follows the selector's partition order and the native
-stream's row order inside each partition. Native updates do not establish stable
-application row offsets. Catalog computation and viewer preparation must retain
-explicit ordering before deriving mappings. No maintained consumer has switched
+The candidate reader follows the selector's partition order. An explicit
+`order_column` enables sorting one bounded native chunk by nonnull unique int64
+positions, then removes that internal field from the logical result. Callers
+must provide `max_ordered_bytes`; the reader refuses larger observed Arrow input
+before sorting. Sorting also allocates output and index arrays, so this is not
+a whole-process memory guarantee. Without an explicit order column, rows follow
+the native stream. Catalog computation must retain application order and select
+chunks in the correct order before deriving mappings. No maintained consumer has switched
 to this candidate API, and no v2 publication selector has been introduced.
 
 ## Measured current behavior
@@ -99,15 +103,18 @@ reusable native partition delivery. Repacking both tables after every update
 would leave the failing acceptance case intact.
 
 The maintained remote source-only engine uses a configured Iceberg REST catalog
-and S3 object storage (`src/storage/remote.rs:108`). The foundation CLI build has
-no `remote` feature; remote CLI startup therefore refuses `remote_feature`
+and S3 object storage (`src/storage/remote.rs:108`). The original foundation CLI
+build had no `remote` feature; that binary's remote startup refused `remote_feature`
 before opening a workspace (`src/main.rs:1096`). A direct local attempt returned
 `Error: remote_feature: remote startup requires the remote feature`, exit 1,
 without creating the requested workspace or Arrow output. This checks the
 supplied binary's compiled capability; it does not test remote provider access.
-Congressional-tech's existing
-R2 object client is not an Iceberg REST catalog. The parallel raw-custody work
-owns the environment/configuration check and any new native custody proof.
+The later remote-enabled build removes that compiled-capability blocker. The
+actual existing-bucket native Build instead failed catalog-side HTTP 424/401
+authentication; provider qualification remains incomplete. Catalog setup retains
+that separate evidence under `output/incremental-updates-20261019/catalog-setup/`.
+Congressional-tech's existing R2 object client is not an Iceberg REST catalog.
+The parallel raw-custody work owns the new native custody proof.
 No alternate importer, rewritten native metadata, copied lifecycle catalog,
 new external service or second application persistence engine was introduced.
 

@@ -26,14 +26,15 @@ def pin(name, rows):
 
 
 class NativeFixture:
-    def __init__(self, schema=SCHEMA):
+    def __init__(self, schema=SCHEMA, rows=None):
         self.schema = schema.remove_metadata()
+        self.rows = ROWS if rows is None else rows
         self.reads = []
 
     @contextmanager
     def source_batches(self, selected):
         self.reads.append(deepcopy(selected))
-        table = pa.Table.from_pylist(ROWS, schema=self.schema)
+        table = pa.Table.from_pylist(self.rows, schema=self.schema)
         with pa.RecordBatchReader.from_batches(self.schema, table.to_batches()) as reader:
             yield reader
 
@@ -99,6 +100,43 @@ def test_uncompleted_or_computed_pins_are_not_source_partitions():
     for selected in (incomplete, computed):
         with pytest.raises(ValueError, match='completed source-only'):
             CatalogTable(SCHEMA, [('first', selected)], native=NativeFixture())
+
+
+def ordered_native(values, order_type=pa.int64()):
+    schema = SCHEMA.append(pa.field('_catalog_order', order_type))
+    return NativeFixture(schema, [{**row, '_catalog_order': value}
+                                 for row, value in zip(ROWS, values, strict=True)])
+
+
+def test_explicit_order_restores_positions_and_removes_internal_field():
+    table = CatalogTable(SCHEMA, [('first', pin('selected', 3))],
+                         native=ordered_native([20, 10, 30]),
+                         order_column='_catalog_order', max_ordered_bytes=4096)
+    actual = pa.Table.from_batches(list(table.iter_batches()))
+    assert actual.schema.equals(SCHEMA, check_metadata=True)
+    assert actual.to_pylist() == [ROWS[1], ROWS[0], ROWS[2]]
+
+
+@pytest.mark.parametrize('values', [[1, 1, 2], [1, None, 2]])
+def test_invalid_order_refuses_before_any_partition_rows_escape(values):
+    table = CatalogTable(SCHEMA, [('first', pin('selected', 3))], native=ordered_native(values),
+                         order_column='_catalog_order', max_ordered_bytes=4096)
+    with pytest.raises(ValueError, match='nonnull and unique'):
+        next(table.iter_batches())
+
+
+def test_ordered_read_refuses_wrong_order_type_and_exceeded_input_bound():
+    for native, bound, error in [(ordered_native(['1', '2', '3'], pa.string()), 4096, 'must be int64'),
+                                 (ordered_native([1, 2, 3]), 1, 'Arrow byte bound')]:
+        table = CatalogTable(SCHEMA, [('first', pin('selected', 3))], native=native,
+                             order_column='_catalog_order', max_ordered_bytes=bound)
+        with pytest.raises(ValueError, match=error):
+            next(table.iter_batches())
+
+
+def test_ordered_read_requires_explicit_bounded_application_order():
+    with pytest.raises(ValueError, match='explicit byte bound'):
+        CatalogTable(SCHEMA, [], native=NativeFixture(), order_column='_catalog_order')
 
 
 def test_actual_native_partition_preserves_original_application_schema(tmp_path):
