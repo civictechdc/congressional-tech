@@ -1,0 +1,36 @@
+jsonschema 4.26.0
+PASS schema: Draft 2020-12 metaschema
+PASS fixtures: 16 records / 13 record kinds
+PASS local references, output inputs, text hashes, offsets, intervals and release structure
+PASS reject: unknown property
+PASS reject: failed capture without error code
+PASS reject: non-finite numeric score
+PASS reject: unknown kind
+PASS reject: explicit null
+PASS reject: invalid UUID
+PASS reject: invalid calendar date
+PASS reject: local-time timestamp
+PASS reject: unknown date with invented timestamp
+PASS reject: date precision with timestamp
+PASS reject: metadata-only body
+PASS reject: unresolved mention with canonical entity
+PASS reject: out-of-range confidence
+PASS reject: two classification value types
+PASS reject: failed run without reason
+PASS reject: non-person tenure
+PASS reject: retraction with entity pair
+PASS reject: resolved mention without identity
+PASS alternative shapes: 8
+PASS reject: duplicate physical ID
+PASS reject: missing foreign key
+PASS reject: wrong text hash
+PASS reject: span beyond document
+PASS reject: span surface mismatch
+PASS reject: inverted run times
+PASS reject: cyclic item redirect
+PASS reject: wrong-kind reference
+SUMMARY: 16 fixture records; 8 positive variants; 18 shape rejections; 8 local semantic rejections.
+NOT RUN: provider APIs, real raw-object checks, Iceberg/catalog writes or snapshot reads,
+fault injection, identifier-conflict/retraction graph evaluation, selection/view execution,
+access/retention enforcement, schema-evolution round trips, throughput or coverage benchmarks.
+Fixture URLs, object URIs, people, hashes and snapshot references are illustrative, not deployed resources.
