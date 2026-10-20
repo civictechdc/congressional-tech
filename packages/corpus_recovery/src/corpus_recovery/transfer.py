@@ -15,6 +15,7 @@ import pyarrow.compute as pc
 from corpus_recovery.assemble import assemble, index_rows
 from corpus_recovery.acknowledge import reconcile_lost_acknowledgment
 from corpus_recovery.inventory import head_body, reusable_result
+from corpus_recovery.guards import GuardedNative
 from congress_api.retention.immutable_metadata import encoded
 from congress_api.retention.raw_storage import RawStorage, RawSnapshot, RAW_KEY
 from congress_api.retention.raw_archive import (
@@ -98,18 +99,7 @@ def import_batch(store, *, prepared, body_paths, raw_storage, operation, source_
                 raise ValueError('Raw selector readback mismatch')
             journal('write_verified', dict(key=key))
 
-    class GuardedNative:
-        def __getattr__(self, name):
-            return getattr(raw_storage.native, name)
-
-        def run_table(self, table, **kwargs):
-            guard()
-            journal('native_candidate_intent', dict(dataset=kwargs['dataset'], rows=len(table)))
-            pin = raw_storage.native.run_table(table, **kwargs)
-            journal('native_candidate_complete', dict(release=pin))
-            return pin
-
-    selected_owner = RawStorage(GuardedStore(), GuardedNative(),
+    selected_owner = RawStorage(GuardedStore(), GuardedNative(raw_storage.native, guard=guard, journal=journal),
         max_state_rows=raw_storage.max_state_rows, max_state_bytes=raw_storage.max_state_bytes,
         max_capture_rows=raw_storage.max_capture_rows, max_capture_bytes=raw_storage.max_capture_bytes,
         state_schema=raw_storage.state_schema)

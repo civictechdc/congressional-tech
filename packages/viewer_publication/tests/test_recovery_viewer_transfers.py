@@ -133,6 +133,24 @@ def test_guarded_json_consumes_one_exact_proof_and_plain_client_keeps_full_readb
             assert not proxy._key_locks
 
 
+def test_native_metadata_is_create_only_and_hash_addressed_before_any_write():
+    import pytest
+    remote, calls = Remote(), []
+    proxy = GuardedPublicationClient(remote, guard=lambda: calls.append('guard'),
+        journal=lambda *a: None, after_write=lambda *a: None)
+    raw = b'{"version":1}'
+    key = 'indexes/native-manifests/catalog-selection/' + hashlib.sha256(raw).hexdigest() + '.json'
+    proxy.put_object(Bucket='b', Key=key, Body=raw, IfNoneMatch='*')
+    assert remote.puts[key] == 1 and remote.gets[key] == 1 and calls == ['guard']
+    before = dict(remote.puts)
+    for options in [dict(Key=key, Body=raw, IfMatch='existing'),
+                    dict(Key=key, Body=b'changed', IfNoneMatch='*'),
+                    dict(Key='indexes/raw.json', Body=raw, IfNoneMatch='*')]:
+        with pytest.raises(ValueError, match='immutable|identity|raw/source'):
+            proxy.put_object(Bucket='b', **options)
+    assert dict(remote.puts) == before
+
+
 @__import__('pytest').mark.parametrize('field,wrong', [('bucket','other'), ('key','other'), ('size',6), ('sha256','f'*64)])
 def test_exact_proof_rejects_every_wrong_request_field(tmp_path, field, wrong):
     remote = Remote()
