@@ -10,6 +10,7 @@ import pyarrow as pa
 from congress_api.cli import raw_sync
 from congress_api.cli.raw_progress import ProgressLog
 from congress_api.retention.catalog_publication import MANIFEST_KEY
+from congress_api.retention.catalog_raw_updates import MAX_BYTES
 from congress_api.retention.raw_archive import Archive, LegacyArchiveSeed, adopt_legacy_archive
 from congress_api.retention.raw_storage import RAW_KEY
 from congress_api.retention.catalog_publication import read_catalog
@@ -47,7 +48,7 @@ def owner(store):
 
 def table(store):
     with read_catalog(store, native=owner(store).native) as snapshot:
-        logical = snapshot.table('filenames', max_ordered_bytes=1 << 20)
+        logical = snapshot.table('filenames', max_ordered_bytes=MAX_BYTES)
         return pa.Table.from_batches(list(logical.iter_batches()), schema=logical.schema_arrow)
 
 
