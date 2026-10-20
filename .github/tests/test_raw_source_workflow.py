@@ -142,7 +142,7 @@ def test_update_workflow_arguments_execute_without_acquisition(
     calls = []
     store = object()
     from types import SimpleNamespace
-    owner = SimpleNamespace(snapshot=lambda: SimpleNamespace(identity='a' * 64))
+    owner = SimpleNamespace(store=store, snapshot=lambda: SimpleNamespace(identity='a' * 64))
 
     def forbidden(*args, **kwargs):
         pytest.fail("The workflow's catalog update entered acquisition")
