@@ -69,6 +69,10 @@ class RawSnapshot:
         return sha256(encoded(self.manifest)).hexdigest()
 
     @property
+    def state_counts(self):
+        return deepcopy(self.manifest['state_counts'])
+
+    @property
     def body_count(self):
         return self.manifest['bodies']['count']
 
@@ -161,7 +165,7 @@ class RawStorage:
         self.delivery_routes = RoutingPages(store, 'raw-deliveries-v1')
         self.changes = RawChanges(store)
         self.body_routes = RoutingPages(store, 'raw-bodies-v1')
-        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1', state_keys='nullable-url-v1',
+        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1', state_keys='nullable-url-v1', counts='raw-state-counts-v1',
                           max_state_rows=max_state_rows, max_state_bytes=max_state_bytes,
                           max_capture_rows=max_capture_rows, max_capture_bytes=max_capture_bytes,
                           state_schema=base64.b64encode(state_schema.serialize()).decode("ascii"))
@@ -189,7 +193,8 @@ class RawStorage:
     def _empty(self):
         return dict(version=1, basis=deepcopy(self.basis), captures=dict(head=None, rows=0),
                     state=dict(root=None, rows=0), bodies=dict(root=None, count=0),
-                    deliveries=None, filename_version=None, change=None)
+                    deliveries=None, filename_version=None, change=None,
+                    state_counts=dict(url_outcomes={}, urls_by_source_family={}, excluded_media_urls=0))
 
     def _read_selector(self):
         raw = self.store.read(RAW_KEY)
@@ -339,6 +344,21 @@ class RawStorage:
             return result
         return self.delivery_routes.replace(root, prefix, split(prefix, entries))
 
+    @staticmethod
+    def _adjust_state_counts(counts, row, delta):
+        outcome = row.get('outcome')
+        values = dict(url_outcomes='null' if outcome is None else outcome,
+                      urls_by_source_family=row.get('family') or 'unknown')
+        for name, key in values.items():
+            counters = counts[name]
+            counters[key] = counters.get(key, 0) + delta
+            if counters[key] == 0:
+                del counters[key]
+            elif counters[key] < 0:
+                raise ValueError('Selected raw state counter mismatch')
+        if outcome == 'excluded_media':
+            counts['excluded_media_urls'] += delta
+
     def _candidate(self, kind, table, *, operation, prefix, base_id):
         identity = sha256(encoded([operation, kind, prefix, base_id])).hexdigest()
         dataset = 'raw-' + kind + '-' + identity
@@ -410,6 +430,9 @@ class RawStorage:
                     next_order += 1
                 if original is None or {name: original[name] for name in self.state_schema.names} != row:
                     changed_state_urls.append(row['url'])
+                    if original is not None:
+                        self._adjust_state_counts(manifest['state_counts'], original, -1)
+                    self._adjust_state_counts(manifest['state_counts'], row, 1)
                 replacement[row['url']] = {STATE_ORDER: ordinal, STATE_KEY_FIELD: state_key(row['url']), **row}
             selected_root = manifest['state']['root']
             grouped = {prefix: [] for prefix in affected}

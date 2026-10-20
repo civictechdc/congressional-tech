@@ -356,25 +356,22 @@ class LegacyArchiveSeed:
         self.filename_version = version
         from contextlib import ExitStack
         with ExitStack() as owners:
-            names = None
+            source = None
             if repair or version is None or saved_metadata.get(b'filename_version') != str(version).encode():
-                snapshot = owners.enter_context(read_catalog(store))
-                names = snapshot.filenames_path
-            if names:
+                options = dict(native=self.storage.native) if hasattr(self, 'storage') else {}
+                snapshot = owners.enter_context(read_catalog(store, **options))
+                if callable(getattr(snapshot, 'table', None)):
+                    source = snapshot.table('filenames', max_ordered_bytes=64 << 20)
+                elif snapshot.filenames_path:
+                    source = owners.enter_context(pq.ParquetFile(snapshot.filenames_path))
+                self.filename_version = snapshot.version if snapshot.version is not None else version
+            if source is not None:
                 from congress_api.retention.capture_url_admission import (
                     PROVENANCE_COLUMNS, publisher_download_candidate, independent_publisher_link,
                 )
-                filename_file = pq.ParquetFile(names)
-                columns = [
-                    "source_url",
-                    "body_key",
-                    "format",
-                    "http_status",
-                    "media_type",
-                ]
-                columns.extend(name for name in PROVENANCE_COLUMNS
-                               if name in filename_file.schema_arrow.names)
-                rows = (row for batch in filename_file.iter_batches(batch_size=256, columns=columns)
+                columns = ['source_url', 'body_key', 'format', 'http_status', 'media_type']
+                columns.extend(name for name in PROVENANCE_COLUMNS if name in source.schema_arrow.names)
+                rows = (row for batch in source.iter_batches(batch_size=256, columns=columns)
                         for row in batch.to_pylist())
                 for row in rows:
                     if not publisher_download_candidate(row):
@@ -582,12 +579,15 @@ class LegacyArchiveSeed:
             source_line=None,
             record=record,
             captures=captures,
-            download_state=state,
+            download_state=self._receipt_state(state),
         )
         self.pending.append(receipt)
         self.apply(receipt)
         if len(self.pending) >= (1000 if self.metadata is not None else 100):
             self.flush()
+        return state
+
+    def _receipt_state(self, state):
         return state
 
     def flush(self):
@@ -657,6 +657,17 @@ class LegacyArchiveSeed:
             )
 
     @property
+    def raw_selection(self):
+        return None  # Historical seed/reference runs have no native selection.
+
+    @property
+    def state_counts(self):
+        from collections import Counter
+        return dict(url_outcomes=dict(Counter(row['outcome'] for row in self.state.values())),
+                    urls_by_source_family=dict(Counter(row.get('family') or 'unknown' for row in self.state.values())),
+                    excluded_media_urls=sum(row['outcome'] == 'excluded_media' for row in self.state.values()))
+
+    @property
     def retained_body_count(self):
         import pyarrow.compute as pc
         keys = self.captures['body_key']
@@ -717,6 +728,7 @@ class Archive(LegacyArchiveSeed):
             raise ValueError('Legacy checkpoint repair belongs to explicit seed adoption')
         self.store, self.run_id, self.storage = store, run_id, storage
         self.selected = storage.snapshot()
+        self.initial_identity = self.selected.identity
         if self.selected.version is None:
             raise RuntimeError('Explicit raw archive seed adoption is required before recurring capture')
         self.state = {row['url']: row for row in self.selected.states().to_pylist()}
@@ -746,8 +758,27 @@ class Archive(LegacyArchiveSeed):
         return self.selected.captures()
 
     @property
+    def raw_selection(self):
+        return dict(before=self.initial_identity, after=self.selected.identity)
+
+    @property
+    def state_counts(self):
+        return self.selected.state_counts
+
+    @property
     def retained_body_count(self):
         return self.selected.body_count
+
+    def _receipt_state(self, state):
+        # Acquisition receipts describe download decisions in JSON. Opaque
+        # adopted Arrow fields remain typed in the native state selection.
+        return {name: state.get(name) for name in STATE_SCHEMA.names}
+
+    def apply(self, receipt):
+        url = receipt['download_state']['url']
+        previous = self.state.get(url, {})
+        super().apply(receipt)
+        self.state[url] = {**previous, **self.state[url]}
 
     def add_index(self, receipt, key, line):
         super().add_index(receipt, key, line)
@@ -762,7 +793,7 @@ class Archive(LegacyArchiveSeed):
         prepared = self.storage.prepare(self.selected,
             operation=f'archive:{self.run_id}:{self._save_sequence}',
             captures=pa.Table.from_pylist(self.additions, schema=CAPTURE_SCHEMA),
-            states=pa.Table.from_pylist(updates, schema=STATE_SCHEMA),
+            states=pa.Table.from_pylist(updates, schema=self.storage.state_schema),
             indexed_receipts=self._indexed_receipts, filename_version=self.filename_version)
         self.selected = self.storage.publish(prepared)
         self.body_info.snapshot = self.selected

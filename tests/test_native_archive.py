@@ -129,3 +129,59 @@ def test_cli_requires_explicit_native_configuration_before_storage_access(tmp_pa
     with ProgressLog(tmp_path / 'progress.json', stream=StringIO()) as log:
         with pytest.raises(SystemExit, match='--native-config is required'):
             raw_sync.run(args, log, store=object())
+
+
+def test_archive_preserves_richer_adopted_state_on_correction_and_restart():
+    from congress_api.retention.raw_archive import STATE_SCHEMA, STATE_KEY, encode_table
+    schema = STATE_SCHEMA.append(pa.field('extra', pa.struct([
+        pa.field('large', pa.uint64()), pa.field('nested', pa.list_(pa.binary()))])))
+    url = 'https://example.gov/richer.pdf'
+    extra = dict(large=2**64-1, nested=[None, b'exact'])
+    prior = pa.Table.from_pylist([dict(url=url, family='documents', outcome='failed',
+        attempts=7, extra=extra)], schema=schema)
+    store = policy.MemoryStore()
+    store.objects[STATE_KEY] = encode_table(prior)
+    owner = memory_raw_storage(store, state_schema=schema)
+    adopt_legacy_archive(store, owner, operation='explicit-rich-seed')
+    archive = Archive(store, 'correct-rich', storage=owner)
+    archive.record(policy.response(url, b'%PDF-1.7\n%%EOF'), outcome='saved', links=[])
+    archive.save()
+    restarted = Archive(store, 'restart-rich', storage=owner)
+    assert restarted.state[url]['extra'] == extra
+    assert restarted.state[url]['attempts'] == 8
+    assert restarted.state[url]['outcome'] == 'saved'
+    assert restarted.selected.states().schema.equals(schema)
+
+
+def test_changed_native_catalog_seeds_urls_through_bounded_logical_batches(monkeypatch, archive_factory):
+    from contextlib import contextmanager
+    from congress_api.retention import catalog_publication
+    from congress_api.retention.catalog_publication import MANIFEST_KEY
+    store = policy.MemoryStore()
+    archive_factory(store, 'initial')
+    store.objects[MANIFEST_KEY] = b'changed native selector'
+    table = pa.table(dict(source_url=['https://example.gov/queued.pdf'], body_key=[None],
+        format=[['pdf']], http_status=[['200']], media_type=[['application/pdf']]))
+    calls = []
+    class LogicalTable:
+        schema_arrow = table.schema
+        def iter_batches(self, *, batch_size, columns):
+            assert batch_size == 256
+            calls.append(columns)
+            yield from table.select(columns).to_batches()
+    class NativeCatalog:
+        version = store.version(MANIFEST_KEY)
+        @property
+        def filenames_path(self):
+            pytest.fail('Native catalog path export attempted')
+        def table(self, label, *, max_ordered_bytes):
+            assert label == 'filenames' and max_ordered_bytes == 64 << 20
+            return LogicalTable()
+    @contextmanager
+    def read(store, *, native):
+        assert native is store._native_raw.native
+        yield NativeCatalog()
+    monkeypatch.setattr(catalog_publication, 'read_catalog', read)
+    archive = archive_factory(store, 'changed-catalog')
+    assert calls
+    assert archive.state['https://example.gov/queued.pdf']['outcome'] == 'pending'
