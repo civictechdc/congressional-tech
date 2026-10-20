@@ -144,7 +144,7 @@ def fill_document_kind(row):
 
 def trusted_source_occurrences(row):
     """Only observed links/redirects establish a document's original context."""
-    return [o for o in row.get('source_occurrences') or [] if not any(
+    return [o for o in row.get('source_occurrences') or [] if o is not None and not any(
         basis not in {'publisher_redirect', 'retained_html_link'}
         for basis in o.get('source_association_basis') or [])]
 
@@ -740,6 +740,8 @@ def merge_values(field, *groups):
     values = {}
     for group in groups:
         for occurrence in group or []:
+            if occurrence is None:
+                continue  # A nullable struct element has no observed fields.
             normalized = {key: sorted(set(items)) for key, items in occurrence.items() if items}
             if normalized:
                 # Shared source observations are values: joins replace lists,
@@ -1967,6 +1969,8 @@ def apply_capture_record_role(row):
     if row.get("source_record_type"):
         return
     for occurrence in row.get("source_occurrences") or []:
+        if occurrence is None:
+            continue
         if occurrence.get("source_occurrence_scope") != ["capture"]:
             continue
         for receipt in occurrence.get("source_receipt_key") or []:

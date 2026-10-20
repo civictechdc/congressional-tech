@@ -6,7 +6,7 @@ import pyarrow.parquet as pq
 
 from test_catalog_dependencies import source, identity, SelectedDependencies
 from congress_api.retention import document_index as index
-from congress_api.retention.catalog_dependencies import affected_sources
+from congress_api.retention.catalog_dependencies import affected_sources, AffectedSources
 from congress_api.retention.catalog_scope import prepare_catalog_scope
 
 
@@ -226,3 +226,19 @@ def test_nullable_list_members_preserve_exact_sources_and_match_full_document_su
                                      (actual_documents, expected_documents, result.document_schema)]:
         normalize = lambda values: sorted(pa.Table.from_pylist(values, schema=logical).to_pylist(), key=lambda row: row['source_id'])
         assert normalize(actual) == normalize(expected)
+
+
+def test_nullable_occurrence_elements_remain_exact_source_values_and_supply_no_document_claim(tmp_path):
+    row = source('paper.pdf', 'A', source_occurrences=[None])
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS),
+                        ('source_occurrences', index.metadata_type('source_occurrences'))])
+    expected_sources, expected_schema, expected_documents, _ = index.prepare_document_indexes([row], schema)
+    scope = AffectedSources({}, {identity(row): row}, 0, 0)
+    prepared = prepare_catalog_scope(tmp_path / 'nullable-occurrence', scope, schema=schema,
+        source_orders={identity(row): 0}, candidate='nullable-occurrence')
+    assert list(prepared.source_values())[0]['source_occurrences'] == [None]
+    assert expected_sources[0]['source_occurrences'] == [None]
+    with pq.ParquetFile(prepared.documents_path) as documents:
+        document, = documents.read().to_pylist()
+    assert document.get('source_occurrences') is None
+    assert document == pa.Table.from_pylist(expected_documents, schema=documents.schema_arrow).to_pylist()[0]
