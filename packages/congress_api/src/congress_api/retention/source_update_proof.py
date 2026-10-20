@@ -9,13 +9,15 @@ from .immutable_metadata import MetadataObjects, encoded
 
 
 def source_update_requirements():
-    from . import source_inputs, source_observations, source_replay, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata
+    from . import source_inputs, source_observations, source_replay, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata, catalog_qualification
     digest = sha256()
-    for module in (source_inputs, source_observations, source_replay, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata):
+    for module in (source_inputs, source_observations, source_replay, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata, catalog_qualification):
         digest.update(Path(module.__file__).read_bytes())
     for path in (Path(__file__), Path(__file__).with_name('catalog_raw_updates.py')):
         digest.update(path.read_bytes())
-    return dict(implementation_sha256=digest.hexdigest(), format='retained-source-update-v1', pyarrow=pa.__version__)
+    from .catalog_cache import source_fingerprint
+    return dict(implementation_sha256=digest.hexdigest(), format='retained-source-update-v1', pyarrow=pa.__version__,
+                source_policy_sha256=source_fingerprint(), filename_rules_sha256=document_index.parser_fingerprint())
 
 
 def _digest(row, schema):
@@ -26,7 +28,12 @@ def _digest(row, schema):
     return sha256(sink.getvalue().to_pybytes()).hexdigest()
 
 
-def retain_source_update(store, *, base, before, after, schema, replacements, deletions, observations=()):
+def retain_source_update(store, *, base, before, after, schema, replacements, deletions, observations=(),
+                         purpose='update', rule_version=None):
+    if purpose not in {'update', 'qualification', 'rule-upgrade'}:
+        raise ValueError('Unknown retained source replay purpose')
+    if purpose == 'rule-upgrade' and (not isinstance(rule_version, str) or not rule_version.strip()):
+        raise ValueError('Source rule upgrade requires an explicit version')
     pages = MetadataObjects(store, 'source-update-rows-v1', max_cache_entries=4)
     head, pending, count = None, [], 0
     from .document_index import source_identity
@@ -48,6 +55,7 @@ def retain_source_update(store, *, base, before, after, schema, replacements, de
     if pending:
         observation_head = pages.put(dict(previous=observation_head, observations=pending))
     body = dict(version=1, base=base, before=before, after=after,
+        purpose=purpose, rule_version=rule_version,
         schema=base64.b64encode(schema.serialize().to_pybytes()).decode(),
         rows=dict(head=head, count=count), observations=dict(head=observation_head, count=observation_count),
         deletions=sorted(deletions), requirements=source_update_requirements())
@@ -58,6 +66,9 @@ def retain_source_update(store, *, base, before, after, schema, replacements, de
 def read_source_update(store, reference):
     body = MetadataObjects(store, 'source-updates-v1', max_cache_entries=1).read(reference)
     if (body.get('version') != 1 or body.get('requirements') != source_update_requirements()
+            or body.get('purpose') not in {'update', 'qualification', 'rule-upgrade'}
+            or body.get('rule_version') != body.get('after', {}).get('rule_version')
+            or body.get('after', {}).get('requirements', body.get('requirements')) != body.get('requirements')
             or body.get('binding') != sha256(encoded({k: v for k, v in body.items() if k != 'binding'})).hexdigest()):
         raise ValueError('Retained source update proof or requirements differ')
     return body

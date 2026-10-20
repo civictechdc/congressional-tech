@@ -265,3 +265,137 @@ def test_package_state_correction_replays_retained_api_receipt_and_complete_sibl
     assert api_row['document_id'] == old_api['document_id']
     assert [item['format'] for item in api_row['hearing_resources']] == ['html']
     assert receipt in reads
+
+
+def file_adopted_catalog(tmp_path, store, native):
+    from congress_api.retention.catalog_publication import publish_catalog
+    from congress_api.retention.catalog_adoption import adopt_native_catalog
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+    selected = read_catalog(store, native=native)
+    directory = tmp_path / 'exact-files'
+    directory.mkdir()
+    for label in ('filenames', 'documents'):
+        table = pa.Table.from_batches(list(selected.table(label, max_ordered_bytes=16 << 20).iter_batches()))
+        pq.write_table(table, directory / (label + '.parquet'))
+    # Explicit fixture transport: re-adopt these exact selected tables as files.
+    store.objects.pop(MANIFEST_KEY)
+    with read_catalog(store) as empty:
+        publish_catalog(store, directory / 'filenames.parquet', directory / 'documents.parquet', previous=empty)
+    with read_catalog(store) as files, pq.ParquetFile(files.filenames_path) as sources:
+        dependencies = CatalogDependencyStorage(native=native, store=store, namespace='file-adopted-sources',
+            source_schema=sources.schema_arrow, max_rows=8192, max_bytes=16 << 20)
+        adopt_native_catalog(store, native=native, previous=files, dependencies=dependencies,
+            candidate='file-adoption', directory=tmp_path / 'storage-adoption', max_chunk_rows=8192,
+            max_chunk_bytes=16 << 20, rules=dict(interpretations='preserved'))
+    return read_catalog(store, native=native)
+
+
+@pytest.mark.parametrize('actual_native', [False, True])
+def test_full_contribution_qualification_preserves_adopted_values_and_enables_recurring_replay(tmp_path, monkeypatch, native, actual_native):
+    from congress_api.retention.raw_catalog import qualify_source_contributions
+    store, native = SelectorStore(), native if actual_native else MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'normal', candidate='normal')
+    selected = file_adopted_catalog(tmp_path, store, native)
+    assert selected.selection['interpretation'] is None
+    expected = {label: pa.Table.from_batches(list(selected.table(label, max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+                for label in ('filenames', 'documents')}
+    options = dict(raw_storage=raw, directory=tmp_path / 'qualification', candidate='qualification')
+    result = qualify_source_contributions(store, **options)
+    qualified = read_catalog(store, native=native)
+    assert qualified.selection['interpretation']['raw_identity'] == raw.snapshot().identity
+    for label, rows in expected.items():
+        actual = pa.Table.from_batches(list(qualified.table(label, max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+        key = 'source_id' if label == 'filenames' else 'document_id'
+        assert sorted(actual, key=lambda row: row[key]) == sorted(rows, key=lambda row: row[key])
+    with monkeypatch.context() as retry:
+        retry.setattr(native, 'run_table', lambda *a, **k: (_ for _ in ()).throw(AssertionError('Completed native work repeated')))
+        retry.setattr(RawSnapshot, 'capture_batch', lambda *a, **k: (_ for _ in ()).throw(AssertionError('Completed receipt input reread')))
+        assert qualify_source_contributions(store, **options)['unchanged']
+    count = raw.snapshot().manifest['captures']['rows']
+    retain(store, dict(eventId=7, congress=119, chamber='House', meetingDocuments=[dict(
+        url='https://example.gov/paper.pdf', documentType='Statement', name='Later label')]),
+        family='congress/meetings', source_file='later.json')
+    raw.publish(raw.prepare(raw.snapshot(), operation='later', captures=decode_table(store.read(CAPTURES_KEY)).slice(count)))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'later', candidate='later')
+    latest = read_catalog(store, native=native)
+    row, = pa.Table.from_batches(list(latest.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+    assert row['source_document_label'] == ['Later label', 'Literal paper']
+
+
+def test_contribution_qualification_refuses_unreplayed_source_fact_before_publication(tmp_path, monkeypatch):
+    from congress_api.retention.raw_catalog import qualify_source_contributions
+    from congress_api.retention.catalog_updates import update_native_catalog
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'normal', candidate='normal')
+    selected = read_catalog(store, native=native)
+    row, = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+    row['source_document_label'] = ['Historical fact without matching retained receipt']
+    update_native_catalog(store, native=native, previous=selected,
+        dependencies=CatalogDependencyStorage.for_snapshot(selected), replacements=[row], candidate='historical',
+        directory=tmp_path / 'historical', max_chunk_rows=8192, max_chunk_bytes=16 << 20, rules=dict(explicit='replacement'))
+    before = store.read(MANIFEST_KEY)
+    with pytest.raises(ValueError, match='qualification changes selected filenames values'):
+        qualify_source_contributions(store, raw_storage=raw, directory=tmp_path / 'refused', candidate='refused')
+    assert store.read(MANIFEST_KEY) == before
+
+
+@pytest.mark.parametrize('actual_native', [False, True])
+def test_explicit_rule_upgrade_replays_all_sources_and_preserves_untouched_ids(tmp_path, monkeypatch, native, actual_native):
+    from congress_api.retention.raw_catalog import upgrade_source_rules
+    from congress_api.retention.source_update_proof import read_source_update
+    from congress_api.retention.catalog_scope import read_catalog_scope
+    store, native = SelectorStore(), native if actual_native else MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    old_seeds = [dict(url='https://example.gov/original.pdf')]
+    new_seeds = [dict(url='https://example.gov/revised.pdf')]
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'old', candidate='old', seeds=old_seeds)
+    previous = read_catalog(store, native=native)
+    old = pa.Table.from_batches(list(previous.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+    paper = next(row for row in old if row['source_url'].endswith('paper.pdf'))
+    before = store.read(MANIFEST_KEY)
+    with pytest.raises(ValueError, match='rules or seeds changed'):
+        update_from_raw(store, raw_storage=raw, directory=tmp_path / 'refuse', candidate='refuse', seeds=new_seeds)
+    assert store.read(MANIFEST_KEY) == before
+    options = dict(raw_storage=raw, directory=tmp_path / 'upgrade', candidate='upgrade',
+                   rule_version='source-rules-20261020', seeds=new_seeds)
+    result = upgrade_source_rules(store, **options)
+    selected = read_catalog(store, native=native)
+    values = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+    assert {row['source_url'] for row in values} == {'https://example.gov/paper.pdf', 'https://example.gov/revised.pdf'}
+    preserved = next(row for row in values if row['source_url'].endswith('paper.pdf'))
+    assert all(preserved[name] == value for name, value in paper.items())
+    assert all(value is None for name, value in preserved.items() if name not in paper)
+    proof = read_catalog_scope(store, result['scope_reference'])
+    source_proof = read_source_update(store, proof['source_update'])
+    assert source_proof['purpose'] == 'rule-upgrade'
+    assert source_proof['rule_version'] == 'source-rules-20261020'
+    assert selected.selection['interpretation']['rule_version'] == 'source-rules-20261020'
+    with monkeypatch.context() as retry:
+        retry.setattr(native, 'run_table', lambda *a, **k: (_ for _ in ()).throw(AssertionError('Completed native work repeated')))
+        retry.setattr(RawSnapshot, 'capture_batch', lambda *a, **k: (_ for _ in ()).throw(AssertionError('Completed receipt input reread')))
+        assert upgrade_source_rules(store, **options)['unchanged']
+
+
+def test_changed_maintained_filename_rules_require_explicit_global_upgrade(tmp_path, monkeypatch):
+    from congress_api.retention.raw_catalog import upgrade_source_rules
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'initial', candidate='initial')
+    selected = read_catalog(store, native=native)
+    before = store.read(MANIFEST_KEY)
+    original = selected.selection['interpretation']['requirements']['filename_rules_sha256']
+    monkeypatch.setattr(index, 'parser_fingerprint', lambda: original + '-changed')
+    with pytest.raises(ValueError, match='rules or seeds changed'):
+        update_from_raw(store, raw_storage=raw, directory=tmp_path / 'refuse', candidate='refuse')
+    assert store.read(MANIFEST_KEY) == before
+    upgrade_source_rules(store, raw_storage=raw, directory=tmp_path / 'upgrade', candidate='upgrade',
+                         rule_version='changed-filename-rules')
+    current = read_catalog(store, native=native)
+    assert current.selection['interpretation']['requirements']['filename_rules_sha256'] == original + '-changed'
