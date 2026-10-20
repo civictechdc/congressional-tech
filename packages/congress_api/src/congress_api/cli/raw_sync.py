@@ -17,7 +17,7 @@ from congress_api.cli.common import positive, nonnegative
 from congress_api.cli.raw_progress import ProgressLog
 from congress_api.parsers.archive_links import json_links
 from congress_api.retention.raw_archive import Archive
-from congress_api.retention.raw_catalog import rebuild_catalog
+from congress_api.retention.raw_catalog import update_from_raw
 from congress_api.retention import raw_progress as progress
 from congress_api.retention.r2 import R2Store
 from congress_api.transport.rust_fetch import RustFetcher
@@ -110,6 +110,8 @@ def parser():
     )
     p.add_argument('--native-config', type=Path,
                    help='Explicit native runtime settings; existing raw data requires one-time adoption')
+    p.add_argument('--catalog-directory', type=Path,
+                   help='Retain exact catalog continuation inputs here; defaults beside the summary')
     p.add_argument("--repair", action="store_true",
                    help=argparse.SUPPRESS)
     p.add_argument("--inspect-bodies", action="store_true",
@@ -308,14 +310,16 @@ def run(args, log, *, store=None, raw_storage=None):
                 active_stage = 'catalog_status'
                 summary['catalog_status'] = 'running'
                 save_summary(args.summary, summary)
-                summary['catalog'] = rebuild_catalog(
-                    store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers,
-                    raw_storage=raw_storage,
-                )
+                raw_identity = raw_storage.snapshot().identity
+                candidate = raw_identity[:32]
+                directory = (args.catalog_directory or args.summary.with_suffix('.catalog-update')) / candidate
+                summary['catalog'] = update_from_raw(store, raw_storage=raw_storage,
+                    directory=directory, candidate=candidate,
+                    seeds=seed_files(args.seed) if args.seed else ())
                 summary['catalog_status'] = 'completed'
                 summary.setdefault('accounting', {}).update(
-                    filename_rows=summary['catalog'].get('rows'),
-                    grouped_documents=summary['catalog'].get('document_rows'),
+                    filename_rows=summary['catalog']['counts']['source_rows'],
+                    grouped_documents=summary['catalog']['counts']['document_rows'],
                 )
     except BaseException as error:
         summary[active_stage] = 'failed'

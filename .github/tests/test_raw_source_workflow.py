@@ -141,25 +141,26 @@ def test_update_workflow_arguments_execute_without_acquisition(
     summary.unlink()
     calls = []
     store = object()
-    owner = object()
+    from types import SimpleNamespace
+    owner = SimpleNamespace(snapshot=lambda: SimpleNamespace(identity='a' * 64))
 
     def forbidden(*args, **kwargs):
-        pytest.fail("The workflow's rebuild invocation entered acquisition")
+        pytest.fail("The workflow's catalog update entered acquisition")
 
-    def rebuild(actual_store, *, seeds=(), workers, repair=False, inspect_bodies=False, raw_storage=None):
-        assert inspect_bodies is False
-        assert not repair
+    def update(actual_store, *, seeds=(), raw_storage, directory, candidate):
         assert raw_storage is owner
         assert actual_store is store
-        calls.append((workers, list(seeds)))
-        return {"catalog_id": "rebuilt"}
+        assert candidate == 'a' * 32
+        assert directory == Path('raw-capture-summary.catalog-update') / candidate
+        calls.append(list(seeds))
+        return dict(counts=dict(source_rows=1, document_rows=1))
 
     for name in ("Archive", "RustFetcher", "run_sync"):
         monkeypatch.setattr(raw_sync, name, forbidden)
     monkeypatch.setattr(raw_sync.zyte, "token", forbidden)
     monkeypatch.setattr(boto3, "client", lambda *a, **kw: object())
     monkeypatch.setattr(raw_sync, "R2Store", lambda *a: store)
-    monkeypatch.setattr(raw_sync, "rebuild_catalog", rebuild)
+    monkeypatch.setattr(raw_sync, "update_from_raw", update)
     for name in ("CLOUDFLARE_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"):
         monkeypatch.setenv(name, "workflow-test")
     monkeypatch.chdir(tmp_path)
@@ -169,8 +170,7 @@ def test_update_workflow_arguments_execute_without_acquisition(
     with ProgressLog(parsed.summary.with_suffix('.progress.json'), stream=StringIO()) as log:
         raw_sync.run(parsed, log, store=store, raw_storage=owner)
     assert len(calls) == 1
-    workers, seeds = calls[0]
-    assert workers == 2
+    seeds = calls[0]
     assert [row["url"] for row in seeds] == ["https://example.gov/report.pdf"]
     assert json.loads(summary.read_text())["mode"] == "update"
 

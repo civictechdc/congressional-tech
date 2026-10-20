@@ -401,6 +401,7 @@ jobs:
           path: |
             raw-capture-summary.json
             raw-capture-summary.progress.json
+            raw-capture-summary.catalog-update/
             core-benchmark-smoke.json
             raw-capture-source-manifest.json
             raw-capture-memory.json
@@ -466,6 +467,7 @@ jobs:
           name: catalog-update-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             catalog-update-summary*.json
+            catalog-update-summary.catalog-update/
             native-runtime-check.json
           if-no-files-found: ignore
       - name: Finalize catalog progress
