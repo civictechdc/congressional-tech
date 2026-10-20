@@ -62,7 +62,7 @@ for (const pinned of [false,true]) test(`built filename page runs its real boots
       await new Promise(resolve => setTimeout(resolve, 10));
     }
     assert.equal(workers.length, 1);
-    assert.ok(workers[0].startsWith(base + '_astro/filename-worker'));
+    assert.ok(workers[0].startsWith(base + '_astro/worker'));
     assert.ok(requests.some(r => r.url === '/api/info'));
     assert.ok(requests.some(r => r.url.startsWith('/api/rows')));
     assert.equal(window.document.getElementById('error').hidden, true);

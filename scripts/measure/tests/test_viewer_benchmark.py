@@ -99,7 +99,7 @@ const Module = require('node:module');
 const original = Module._load;
 Module._load = function(name, ...rest) {
   if (name === 'esbuild') return {version: 'fixture', build: async options => {
-    if (!require('node:fs').existsSync(options.stdin.resolveDir + '/filename-catalog.mjs')) throw Error('bad resolveDir');
+    if (!require('node:fs').existsSync(options.stdin.resolveDir + '/catalog.mjs')) throw Error('bad resolveDir');
     require('node:fs').writeFileSync(options.outfile, 'fixture');
   }};
   if (name === 'playwright/package.json') return {version: 'fixture'};

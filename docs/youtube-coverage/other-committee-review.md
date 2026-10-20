@@ -46,7 +46,7 @@ Relevant implementation points:
 - `packages/congress_api/src/congress_api/adapters/gpo.py`: currently associates packages through `event_id` only.
 - `apps/committee_youtube/src/committee_explorer/export.py`: supplies meeting lookups but no committee lookup to the GPO adapter.
 - `apps/committee_youtube/src/committee_explorer/parquet.py`: must carry direct committee associations into material `committee_ids` independently of meeting links.
-- `apps/site/src/components/explorer/parquet-source.js` and `Explorer.tsx`: committee details currently browse meetings/issues, not directly associated documents.
+- `apps/site/src/components/explorer/reader/parquet-source.ts` and `Explorer.tsx`: committee details currently browse meetings/issues, not directly associated documents.
 
 Concrete example: the Oversight Panel's two 112th Congress hearings are already published as materials with HTML/PDF files, but both have empty `committee_ids` and `meeting_ids`:
 

@@ -462,7 +462,7 @@ Inject the data source at page startup. The renderer consumes normalized domain
 records through `ExplorerReader` (or `ExplorerDataSource` for bounded previews);
 fetching, file discovery, decoding and
 format conversion belong to the adapter. The local implementation and interface
-are in `apps/site/src/components/explorer/data-source.js` and `.d.ts`, documented
+are in `apps/site/src/components/explorer/reader/data-source.ts` and `types.ts`, documented
 in that directory's README. The preview now calls `mountExplorer({ source })`.
 
 The JSON publication adapter follows `CURRENT` to the manifest, selects a

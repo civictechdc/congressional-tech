@@ -30,7 +30,7 @@ The live browser returned the expected eight search results and loaded the Linde
 
 **Highest priority: reliability as well as latency.** Opening `Xavier Becerra (1).pdf` (source row 262424) exhausted the Node process's approximately 4 GB heap in both the live-file and local-file probes. Its own record has eight observations. Its 8,192-row source block contains 1,375,000 observations. Reading one row still decodes neighboring nested lists before returning the selected row.
 
-The reader also loads all 337 document-table fields although the current detail UI uses only `filename`, `document_kind`, `document_kind_source`, and `source_id` from that document record. It loads the complete selected source record immediately, including technical evidence that is initially collapsed. Source-list reads request six columns but the custom prefetch still fetches the entire row group. See [catalog reads](../../../apps/site/src/components/filename-catalog.mjs) (`read`, `selected`, `entry`) and [detail rendering](filename-viewer.mjs) (`renderSummary`, `renderDetails`).
+The reader also loads all 337 document-table fields although the current detail UI uses only `filename`, `document_kind`, `document_kind_source`, and `source_id` from that document record. It loads the complete selected source record immediately, including technical evidence that is initially collapsed. Source-list reads request six columns but the custom prefetch still fetches the entire row group. See [catalog reads](../../../apps/site/src/components/filenames/catalog.mjs) (`read`, `selected`, `entry`) and [detail rendering](filename-viewer.mjs) (`renderSummary`, `renderDetails`).
 
 Experiments on the Becerra record:
 
