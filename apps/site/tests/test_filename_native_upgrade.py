@@ -1,0 +1,144 @@
+"""Explicit rendering upgrades resume existing stages without catalog rebuilds."""
+import importlib.util
+import json
+from pathlib import Path
+import sys
+
+import pytest
+
+ROOT=Path(__file__).resolve().parents[3]
+sys.path[:0]=[str(ROOT/'apps/site/scripts'),str(ROOT/'tests')]
+from congress_api.retention.catalog_cache import LocalStore
+from congress_api.retention.catalog_publication import read_catalog
+from test_catalog_coalesced_batches import Native
+from test_native_catalog_selection import seed
+
+spec=importlib.util.spec_from_file_location('upgrade_viewer_builder',ROOT/'apps/site/scripts/publish-filename-viewer.py')
+builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)
+
+
+def prepared(tmp_path):
+    store,native=LocalStore(tmp_path/'store'),Native()
+    seed(tmp_path,store,native)
+    snapshot=read_catalog(store,native=native)
+    previous=builder.publish_selected(snapshot,tmp_path/'old',review_identities=None,
+        compression_policy=builder.DEFAULT_COMPRESSION_POLICY._replace(level=9))
+    native.reads.clear()
+    return store,native,snapshot,previous
+
+
+@pytest.mark.parametrize('task_prefix',['component-chunk:','source-route:'])
+@pytest.mark.parametrize('event',['renderer_task_started','renderer_task_completed'])
+def test_upgrade_resumes_before_or_after_a_physical_chunk_without_reopening_completed_chunks(tmp_path,event,task_prefix):
+    store,native,snapshot,previous=prepared(tmp_path)
+    original=store.read('indexes/catalog.json')
+    old_files={str(p.relative_to(tmp_path/'old')):p.read_bytes() for p in (tmp_path/'old').rglob('*') if p.is_file()}
+    stopped=[]
+    def interrupt(value):
+        if value['event']==event and value.get('task','').startswith(task_prefix):
+            stopped.extend(native.reads)
+            raise RuntimeError('worker stopped')
+    options=dict(previous=previous,read_asset=lambda name:(tmp_path/'old'/name).read_bytes(),review_identities=None,
+                 renderer_upgrade=True)
+    with pytest.raises(RuntimeError,match='worker stopped'):
+        builder.publish_selected(snapshot,tmp_path/'new',stage_event=interrupt,**options)
+    native.reads.clear()
+    resumed=builder.publish_selected(snapshot,tmp_path/'new',resume_upgrade=True,**options)
+    if event=='renderer_task_completed':assert not set(stopped)&set(native.reads)
+    assert resumed['source_identity']==previous['source_identity']
+    assert resumed['requirements']['compression']['level']==3
+    assert store.read('indexes/catalog.json')==original
+    assert all((tmp_path/'old'/name).read_bytes()==raw for name,raw in old_files.items())
+    native.reads.clear()
+    again=builder.publish_selected(snapshot,tmp_path/'new',resume_upgrade=True,**options)
+    assert again==resumed and not native.reads
+    assert json.loads((tmp_path/'new/manifest.json').read_bytes())==resumed
+
+
+def test_upgrade_refuses_changed_inputs_and_corrupted_completed_assets(tmp_path):
+    store,native,snapshot,previous=prepared(tmp_path)
+    options=dict(previous=previous,read_asset=lambda name:(tmp_path/'old'/name).read_bytes(),review_identities=None,
+                 renderer_upgrade=True)
+    def stop(value):
+        if value['event']=='renderer_task_completed' and value.get('task','').startswith('component-chunk:'):
+            raise RuntimeError('worker stopped')
+    with pytest.raises(RuntimeError):builder.publish_selected(snapshot,tmp_path/'new',stage_event=stop,**options)
+    native.reads.clear()
+    with pytest.raises(ValueError,match='inputs changed'):
+        builder.publish_selected(snapshot,tmp_path/'new',resume_upgrade=True,
+            compression_policy=builder.DEFAULT_COMPRESSION_POLICY._replace(level=19),**options)
+    assert not native.reads
+    changed_previous=dict(previous,published_at='2026-10-20T00:00:00+00:00')
+    with pytest.raises(ValueError,match='inputs changed'):
+        builder.publish_selected(snapshot,tmp_path/'new',resume_upgrade=True,
+            **dict(options,previous=changed_previous))
+    assert not native.reads
+    # A real newly selected catalog cannot inherit the old operation.
+    from test_native_catalog_selection import scope_for, identity
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+    from congress_api.retention.catalog_selection import publish_native_catalog
+    from test_catalog_dependencies import source
+    owner=CatalogDependencyStorage.for_snapshot(snapshot)
+    proof=scope_for(tmp_path/'changed',store,owner,snapshot,[],name='changed',deletions=[identity(source('other.pdf','O'))])
+    publish_native_catalog(store,proof,previous=snapshot)
+    changed=read_catalog(store,native=native);native.reads.clear()
+    with pytest.raises(ValueError,match='inputs changed'):
+        builder.publish_selected(changed,tmp_path/'new',resume_upgrade=True,**options)
+    assert not native.reads
+    asset=next((tmp_path/'new').rglob('*.parquet'));raw=asset.read_bytes();asset.write_bytes(raw[:-1]+bytes([raw[-1]^1]))
+    with pytest.raises(ValueError,match='asset.*changed'):
+        builder.publish_selected(snapshot,tmp_path/'new',resume_upgrade=True,**options)
+    assert not native.reads
+
+
+from test_docspec_boundary import native
+
+
+@pytest.mark.parametrize('event',['renderer_task_started','renderer_task_completed'])
+def test_actual_native_upgrade_survives_abrupt_worker_exit_without_new_native_candidates(native,tmp_path,event):
+    import subprocess
+    store=LocalStore(tmp_path/'store')
+    seed(tmp_path,store,native)
+    snapshot=read_catalog(store,native=native)
+    previous=builder.publish_selected(snapshot,tmp_path/'old',review_identities=None,
+        compression_policy=builder.DEFAULT_COMPRESSION_POLICY._replace(level=9))
+    selector=store.read('indexes/catalog.json')
+    script=r'''
+from contextlib import contextmanager
+from hashlib import sha256
+import importlib.util,json,os,sys
+from pathlib import Path
+repo,folder,binary,workspace,limits,event,mode=map(str,sys.argv[1:])
+folder=Path(folder);sys.path[:0]=[str(Path(repo)/p) for p in ('apps/site/scripts','tests')]
+from congress_api.retention.docspec import NativeDatasets
+from congress_api.retention.catalog_cache import LocalStore
+from congress_api.retention.catalog_publication import read_catalog
+spec=importlib.util.spec_from_file_location('worker_upgrade',Path(repo)/'apps/site/scripts/publish-filename-viewer.py')
+builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)
+native=NativeDatasets(binary,workspace,limits=limits)
+original=native.source_batches;reads=[]
+@contextmanager
+def observed(pin,**options):
+ reads.append(sha256(json.dumps(pin,sort_keys=True).encode()).hexdigest())
+ (folder/(mode+'-reads.json')).write_text(json.dumps(reads))
+ with original(pin,**options) as stream:yield stream
+native.source_batches=observed
+native.run_table=lambda *a,**k:(_ for _ in ()).throw(AssertionError('Upgrade wrote a native dataset'))
+snapshot=read_catalog(LocalStore(folder/'store'),native=native)
+previous=json.loads((folder/'old/manifest.json').read_bytes())
+def interrupted(value):
+ if mode=='stop' and value['event']==event and value.get('task','').startswith('component-chunk:'):os._exit(73)
+manifest=builder.publish_selected(snapshot,folder/'new',previous=previous,
+ read_asset=lambda path:(folder/'old'/path).read_bytes(),review_identities=None,
+ renderer_upgrade=True,resume_upgrade=mode=='resume',stage_event=interrupted)
+assert manifest['source_identity']==previous['source_identity']
+'''
+    args=[sys.executable,'-c',script,str(ROOT),str(tmp_path),str(native.binary),str(native.workspace),str(native.limits),event]
+    stopped=subprocess.run([*args,'stop'],capture_output=True,text=True,timeout=60)
+    assert stopped.returncode==73,stopped.stderr
+    resumed=subprocess.run([*args,'resume'],capture_output=True,text=True,timeout=60)
+    assert resumed.returncode==0,resumed.stderr
+    before=json.loads((tmp_path/'stop-reads.json').read_bytes()) if (tmp_path/'stop-reads.json').is_file() else []
+    after=json.loads((tmp_path/'resume-reads.json').read_bytes())
+    if event=='renderer_task_completed':assert not set(before)&set(after)
+    assert store.read('indexes/catalog.json')==selector

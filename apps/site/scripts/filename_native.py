@@ -16,6 +16,7 @@ class ViewerAssets:
         self.root, self.read_asset = Path(root), read_asset
         self.max_node_bytes = max_node_bytes
         self.identities = {}
+        self.state = None
         self.reads = self.writes = self.written_bytes = self.metadata_writes = 0
         self._nodes = OrderedDict()
 
@@ -28,13 +29,20 @@ class ViewerAssets:
         relative = f'releases/{digest[:32]}/{digest[32:]}/viewer-v2/{name}'
         # The producer deletes its temporary source after this call. An owned
         # copy keeps the destination inode/custody independent of that unlink.
-        with Path(source).open('rb') as stream:
-            proof = copy_checked(stream, self.root / relative, size=identity['bytes'],
-                                 expected=identity, key=relative, exclusive=True)
-        self.writes += 1
-        self.written_bytes += proof['bytes']
-        self.metadata_writes += int(name.endswith('.json'))
+        destination = self.root / relative
+        if destination.is_symlink():raise ValueError('Immutable viewer assets cannot be symlinks')
+        if destination.exists():
+            proof = file_identity(destination)
+            if proof != identity:raise ValueError('Conflicting immutable viewer asset')
+        else:
+            with Path(source).open('rb') as stream:
+                proof = copy_checked(stream, destination, size=identity['bytes'],
+                                     expected=identity, key=relative, exclusive=True)
+            self.writes += 1
+            self.written_bytes += proof['bytes']
+            self.metadata_writes += int(name.endswith('.json'))
         self.identities[relative] = proof
+        if self.state:self.state.remember(relative,proof)
         return dict(path=relative, sha256=digest, bytes=proof['bytes'])
 
     def put_node(self, value):
@@ -44,6 +52,7 @@ class ViewerAssets:
         digest = sha256(raw).hexdigest()
         relative = f'releases/{digest[:32]}/{digest[32:]}/viewer-v2/page.json'
         path = self.root / relative
+        if path.is_symlink():raise ValueError('Immutable viewer assets cannot be symlinks')
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open('xb') as stream:
@@ -55,6 +64,7 @@ class ViewerAssets:
         if proof['sha256'] != digest or proof['bytes'] != len(raw):
             raise ValueError('Conflicting immutable viewer metadata page')
         self.identities[relative] = proof
+        if self.state:self.state.remember(relative,proof)
         return dict(path=relative, sha256=digest, bytes=len(raw))
 
     def read_node(self, reference):
@@ -277,6 +287,12 @@ class NativeSourceAssets:
             self.routes.objects.max_cache_entries = 4
 
     def render(self, root, previous=None, *, prefix=''):
+        if self.assets.state and root is not None:
+            return self.assets.state.run('source-route:'+root['sha256'],
+                lambda:self._render(root,previous,prefix=prefix))
+        return self._render(root,previous,prefix=prefix)
+
+    def _render(self, root, previous=None, *, prefix=''):
         if root is None:
             return None
         if previous is not None and previous.get('native_sha256') == root['sha256']:
@@ -377,14 +393,14 @@ class NativeComponents:
         self.routes = RoutingPages(snapshot.store, 'catalog-component-selection-v2')
         self.routes.objects.max_cache_entries = 4
         db.executescript('''
-            CREATE TABLE components(id TEXT PRIMARY KEY,reference TEXT,page TEXT,proof TEXT,record TEXT,entry TEXT);
-            CREATE TABLE retired(id TEXT PRIMARY KEY,record TEXT);
-            CREATE TABLE chunks(name TEXT PRIMARY KEY,label TEXT,pin TEXT,schema TEXT);
-            CREATE TABLE views(name TEXT,component TEXT,rows INTEGER,PRIMARY KEY(name,component));
-            CREATE TABLE stats(id TEXT PRIMARY KEY,n INTEGER,saved INTEGER,api INTEGER,video INTEGER);
-            CREATE TABLE plans(id INTEGER PRIMARY KEY,body TEXT NOT NULL);
-            CREATE TABLE chunk_assets(name TEXT PRIMARY KEY,reference TEXT NOT NULL);
-            CREATE TABLE member_ids(id TEXT,source_order INTEGER,source_id TEXT UNIQUE,
+            CREATE TABLE IF NOT EXISTS components(id TEXT PRIMARY KEY,reference TEXT,page TEXT,proof TEXT,record TEXT,entry TEXT);
+            CREATE TABLE IF NOT EXISTS retired(id TEXT PRIMARY KEY,record TEXT);
+            CREATE TABLE IF NOT EXISTS chunks(name TEXT PRIMARY KEY,label TEXT,pin TEXT,schema TEXT);
+            CREATE TABLE IF NOT EXISTS views(name TEXT,component TEXT,rows INTEGER,PRIMARY KEY(name,component));
+            CREATE TABLE IF NOT EXISTS stats(id TEXT PRIMARY KEY,n INTEGER,saved INTEGER,api INTEGER,video INTEGER);
+            CREATE TABLE IF NOT EXISTS plans(id INTEGER PRIMARY KEY,body TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS chunk_assets(name TEXT PRIMARY KEY,reference TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS member_ids(id TEXT,source_order INTEGER,source_id TEXT UNIQUE,
                                     PRIMARY KEY(id,source_order));
         ''')
 
@@ -464,12 +480,17 @@ class NativeComponents:
     def _old_members(self, prefix, members):
         return self.assets.put_node(dict(version=1, kind='component-leaf', prefix=prefix, members=members))
 
+    def _task(self,name,action):
+        return self.assets.state.run(name,action) if self.assets.state else action()
+
     def prepare(self):
+        self._task('component-registration',self._register_chunks)
+        for row in self.db.execute('SELECT * FROM chunks ORDER BY label,name'):
+            self._task('component-chunk:'+row[0],lambda row=row:self._prepare_chunk(*row))
+        self._task('component-entries',self._prepare_entries)
+
+    def _register_chunks(self):
         from congress_api.retention.catalog_batches import CatalogComponentReader
-        from congress_api.retention.catalog_partitions import CatalogTable
-        from congress_api.retention.catalog_publication import _component_schema
-        from congress_api.retention.saved_responses import FIELDS, saved_response
-        import pyarrow as pa
         reader = CatalogComponentReader(self.snapshot.store)
         for component, raw_reference in self.db.execute('SELECT id,reference FROM components ORDER BY page,id'):
             reference = json.loads(raw_reference)
@@ -489,42 +510,48 @@ class NativeComponents:
                     self.db.execute('INSERT OR IGNORE INTO chunks VALUES (?,?,?,?)',
                                     (chunk['name'], label, raw_pin, table['schema']))
                     self.db.execute('INSERT INTO views VALUES (?,?,?)', (chunk['name'], component, chunk['rows']))
-        for name, label, raw_pin, schema_text in self.db.execute('SELECT * FROM chunks ORDER BY label,name'):
-            schema = _component_schema(dict(schema=schema_text))
-            members = list(self.db.execute('SELECT component,rows FROM views WHERE name=? ORDER BY component', (name,)))
-            physical = schema.append(pa.field('_catalog_order', pa.int64(), nullable=False))
-            table = CatalogTable(physical, [(name, json.loads(raw_pin))], native=self.snapshot.native,
-                views={name: dict(components=[key for key, _ in members], rows=sum(count for _, count in members))})
-            self.metrics['native_component_chunks_read'] = self.metrics.get('native_component_chunks_read', 0) + 1
-            columns = (list(dict.fromkeys(['source_id', 'document_id', 'source_url', '_catalog_order', *[field for field in FIELDS
-                if field in schema.names]])) if label == 'filenames' else
-                [field for field in dict.fromkeys([*self.viewer.LIST_COLUMNS, 'document_kind_source']) if field in schema.names])
-            size, document_batches = 0, []
-            for batch in table.iter_batches():
-                size += batch.nbytes
-                if size > self.policy.row_arrow_bytes:
-                    raise ValueError('Native viewer component chunk exceeds its Arrow byte bound')
-                if label == 'documents':
-                    document_batches.append(batch.select(schema.names))
-                for row in batch.select(columns).to_pylist():
-                    component = row['document_id']
-                    if label == 'filenames':
-                        self.db.execute('INSERT INTO member_ids VALUES (?,?,?)',
-                                        (component, row['_catalog_order'], row['source_id']))
-                        self.db.execute('UPDATE stats SET n=n+1,saved=saved+?,api=api+?,video=video+? WHERE id=?',
-                            (int(saved_response(row)), int(bool(self.viewer.api_reference(row.get('source_url')))),
-                             int(bool(self.viewer.video_reference(row.get('source_url')))), component))
-                    else:
-                        self.db.execute('UPDATE components SET record=? WHERE id=?', (encoded(row).decode(), component))
+
+    def _prepare_chunk(self,name,label,raw_pin,schema_text):
+        from congress_api.retention.catalog_partitions import CatalogTable
+        from congress_api.retention.catalog_publication import _component_schema
+        from congress_api.retention.saved_responses import FIELDS,saved_response
+        import pyarrow as pa
+        schema = _component_schema(dict(schema=schema_text))
+        members = list(self.db.execute('SELECT component,rows FROM views WHERE name=? ORDER BY component', (name,)))
+        physical = schema.append(pa.field('_catalog_order', pa.int64(), nullable=False))
+        table = CatalogTable(physical, [(name, json.loads(raw_pin))], native=self.snapshot.native,
+            views={name: dict(components=[key for key, _ in members], rows=sum(count for _, count in members))})
+        self.metrics['native_component_chunks_read'] = self.metrics.get('native_component_chunks_read', 0) + 1
+        columns = (list(dict.fromkeys(['source_id', 'document_id', 'source_url', '_catalog_order', *[field for field in FIELDS
+            if field in schema.names]])) if label == 'filenames' else
+            [field for field in dict.fromkeys([*self.viewer.LIST_COLUMNS, 'document_kind_source']) if field in schema.names])
+        size, document_batches = 0, []
+        for batch in table.iter_batches():
+            size += batch.nbytes
+            if size > self.policy.row_arrow_bytes:
+                raise ValueError('Native viewer component chunk exceeds its Arrow byte bound')
             if label == 'documents':
-                import pyarrow.parquet as pq
-                with tempfile.TemporaryDirectory(prefix='viewer-document-chunk-') as folder:
-                    path = Path(folder) / 'documents.parquet'
-                    exported = pa.Table.from_batches(document_batches, schema=schema)
-                    pq.write_table(exported, path, compression=self.compression.codec, compression_level=self.compression.level,
-                                   row_group_size=self.compression.row_group_size)
-                    reference = dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported))
-                    self.db.execute('INSERT INTO chunk_assets VALUES (?,?)', (name, encoded(reference).decode()))
+                document_batches.append(batch.select(schema.names))
+            for row in batch.select(columns).to_pylist():
+                component = row['document_id']
+                if label == 'filenames':
+                    self.db.execute('INSERT INTO member_ids VALUES (?,?,?)',
+                                    (component, row['_catalog_order'], row['source_id']))
+                    self.db.execute('UPDATE stats SET n=n+1,saved=saved+?,api=api+?,video=video+? WHERE id=?',
+                        (int(saved_response(row)), int(bool(self.viewer.api_reference(row.get('source_url')))),
+                         int(bool(self.viewer.video_reference(row.get('source_url')))), component))
+                else:
+                    self.db.execute('UPDATE components SET record=? WHERE id=?', (encoded(row).decode(), component))
+        if label == 'documents':
+            import pyarrow.parquet as pq
+            with tempfile.TemporaryDirectory(prefix='viewer-document-chunk-') as folder:
+                path = Path(folder) / 'documents.parquet'
+                exported = pa.Table.from_batches(document_batches, schema=schema)
+                pq.write_table(exported, path, compression=self.compression.codec, compression_level=self.compression.level,
+                               row_group_size=self.compression.row_group_size)
+                reference = dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported))
+                self.db.execute('INSERT INTO chunk_assets VALUES (?,?)', (name, encoded(reference).decode()))
+    def _prepare_entries(self):
         for component, raw_reference, raw_proof, raw_record in self.db.execute(
                 'SELECT id,reference,proof,record FROM components ORDER BY id'):
             if raw_record is None:
@@ -637,7 +664,7 @@ def native_requirements(viewer, policy, compression=DEFAULT_COMPRESSION_POLICY):
     import pyarrow
     from congress_api.retention import saved_responses, docspec, catalog_partitions
     files = [Path(__file__).with_name(name) for name in
-             ('filename_observations.py', 'filename_details.py', 'filename_budget.py', 'filename_json_stream.py', 'filename_compression.py')]
+             ('filename_observations.py', 'filename_details.py', 'filename_budget.py', 'filename_json_stream.py', 'filename_compression.py', 'filename_renderer_state.py')]
     files += [Path(__file__), *[Path(module.__file__) for module in (saved_responses, docspec, catalog_partitions)]]
     return dict(renderer='native-viewer-v1', policy=asdict(policy), compression=compression._asdict(), pyarrow=pyarrow.__version__,
         implementation=sha256(encoded(dict(
@@ -669,9 +696,13 @@ def _reachable_assets(assets, roots):
             for item in value:
                 walk(item)
     walk(roots)
-    for path in set(assets.identities) - reached:
-        (assets.root / path).unlink()
-        del assets.identities[path]
+    discarded = set(assets.identities) - reached
+    if assets.state:
+        assets.state.discard(assets,discarded)
+    else:
+        for path in discarded:
+            (assets.root / path).unlink()
+            del assets.identities[path]
 
 
 def publication_basis(manifest):
@@ -750,9 +781,9 @@ def iterator_inventory(assets, inventory):
 
 def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None, review_identities=None,
                      prior_review_binding=None, compression_policy=DEFAULT_COMPRESSION_POLICY,
-                     decoded_policy, stage_timings=None, stage_event=None, memory_metrics=None):
+                     renderer_upgrade=False, resume_upgrade=False, decoded_policy, stage_timings=None, stage_event=None, memory_metrics=None):
     """Prepare stable assets from one selected snapshot; never select publication."""
-    from contextlib import closing
+    from contextlib import closing, ExitStack
     from datetime import datetime, timezone
     import sqlite3
     import time
@@ -763,10 +794,14 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
     requirements = native_requirements(viewer, decoded_policy, compression_policy)
     if previous is not None and previous.get('version') != 6:
         raise ValueError('Native viewer reuse requires a qualified stable publication')
-    if previous is not None and previous.get('requirements') != requirements:
+    if resume_upgrade and not renderer_upgrade:
+        raise ValueError('Renderer upgrade resume requires explicit renderer_upgrade')
+    if renderer_upgrade and (previous is None or previous.get('requirements') == requirements):
+        raise ValueError('Renderer upgrade requires a prior publication with changed rendering rules')
+    if previous is not None and previous.get('requirements') != requirements and not renderer_upgrade:
         raise ValueError('Viewer rendering rules changed; an explicit qualified upgrade is required')
     target = Path(target)
-    if target.is_symlink() or target.exists() and (not target.is_dir() or any(target.iterdir())):
+    if target.is_symlink() or target.exists() and (not target.is_dir() or any(target.iterdir()) and not resume_upgrade):
         raise ValueError('Viewer output must be a fresh empty directory')
     target.mkdir(parents=True, exist_ok=True)
     assets = ViewerAssets(target, read_asset=read_asset)
@@ -776,20 +811,36 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
     metrics = memory_metrics if memory_metrics is not None else {}
     timings = stage_timings if stage_timings is not None else {}
     started = time.perf_counter()
+    state = None
     def stage(name, operation):
         if stage_event:
             stage_event(dict(event='stage_started', stage=name))
         before = time.perf_counter()
-        result = operation()
+        result = state.run('stage:'+name,operation) if state else operation()
         timings[name] = time.perf_counter() - before
         if stage_event:
             stage_event(dict(event='stage_completed', stage=name, seconds=timings[name]))
         return result
-    old = previous.get('roots', {}) if previous else {}
-    with tempfile.TemporaryDirectory(prefix='native-viewer-') as directory, closing(
-            sqlite3.connect(Path(directory) / 'components.sqlite')) as db:
-        db.executescript(f'PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; '
-                         f'PRAGMA cache_size=-{decoded_policy.sqlite_cache_kib};')
+    old = previous.get('roots', {}) if previous and not renderer_upgrade else {}
+    with ExitStack() as owned:
+        if renderer_upgrade:
+            from filename_renderer_state import RendererState
+            import filename_review_binding as review_binding
+            review_inputs = review_binding.load_identities(review_identities) if review_identities is not None else None
+            binding = dict(version=1,source=snapshot.identity,previous=sha256(encoded(previous)).hexdigest(),
+                requirements=requirements,reviews=review_inputs)
+            state=owned.enter_context(RendererState(target,binding,resume=resume_upgrade,event=stage_event,
+                cache_kib=decoded_policy.sqlite_cache_kib))
+            assets.state=state;state.restore(assets);db=state.db
+            finished=state.result('finished')
+            if finished is not None:
+                manifest=json.loads(finished[0]);validate_publication(assets,manifest)
+                return PreparedManifest(manifest,assets.identities)
+        else:
+            directory=owned.enter_context(tempfile.TemporaryDirectory(prefix='native-viewer-'))
+            db=owned.enter_context(closing(sqlite3.connect(Path(directory)/'components.sqlite')))
+            db.executescript(f'PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; '
+                             f'PRAGMA cache_size=-{decoded_policy.sqlite_cache_kib};')
         components = NativeComponents(snapshot, assets, pages, db, viewer=viewer,
                                       policy=decoded_policy, metrics=metrics, compression_policy=compression_policy)
         planned = stage('component_scope', lambda: components.plan(snapshot.selection['components'], old.get('components')))
@@ -800,7 +851,7 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
         changed, = db.execute('SELECT count(*) FROM components').fetchone()
         retired, = db.execute('SELECT count(*) FROM retired').fetchone()
         def browse():
-            if not previous:
+            if not previous or renderer_upgrade:
                 return pages.build(components.ordered_records())
             if not changed and not retired:
                 return old.get('browse')
@@ -828,13 +879,13 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
         files = {}
         if review_identities is not None:
             import filename_review_binding as binding
-            identities = binding.load_identities(review_identities)
+            identities = review_inputs if state else binding.load_identities(review_identities)
             prior_binding = assets.read_node(previous['files']['review_binding']) if previous and previous['files'].get('review_binding') else prior_review_binding
             placement = binding.bind_selected(catalog_id, identities,
                 lambda document: public_component(assets, component_root, document), previous=prior_binding)
             files['review_binding'] = node(placement, previous['files'].get('review_binding') if previous else None)
         selection = node(snapshot.selection, previous.get('source_selection') if previous else None)
-        manifest = dict(version=6, published_at=datetime.now(timezone.utc).isoformat(),
+        manifest = dict(version=6, published_at=state.created if state else datetime.now(timezone.utc).isoformat(),
             info=info, source_manifest=snapshot.manifest, source_identity=snapshot.identity,
             requirements=requirements, roots=roots, files=files, source_selection=selection)
         manifest['proof'] = node(dict(version=1, kind='viewer-proof', publication=publication_basis(manifest)),
@@ -853,6 +904,9 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
                 manifest_identity=sha256(encoded(previous)).hexdigest(), source_identity=previous['source_identity'])
         (target / 'manifest.json').write_bytes(encoded(manifest))
         assets.identities['manifest.json'] = file_identity(target / 'manifest.json')
+        if state:
+            state.remember('manifest.json',assets.identities['manifest.json'])
+            state.run('finished',lambda:dict(manifest))
         timings['total_seconds'] = time.perf_counter() - started
         metrics['new_asset_files'] = len(uploads)
         metrics['new_asset_bytes'] = sum(assets.identities[path]['bytes'] for path in uploads)
