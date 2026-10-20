@@ -139,6 +139,29 @@ def test_ordered_read_requires_explicit_bounded_application_order():
         CatalogTable(SCHEMA, [], native=NativeFixture(), order_column='_catalog_order')
 
 
+def test_shared_physical_pin_filters_only_selected_membership_before_projection():
+    logical = SCHEMA.append(pa.field('document_id', pa.string()))
+    physical = logical.append(pa.field('_catalog_order', pa.int64()))
+    rows = [{**row, 'document_id': component, '_catalog_order': order}
+            for row, component, order in zip(ROWS, ['old', 'selected', 'selected'], [0, 2, 1], strict=True)]
+    native = NativeFixture(physical, rows)
+    table = CatalogTable(logical, [('shared', pin('physical', 3))], native=native,
+        order_column='_catalog_order', max_ordered_bytes=4096,
+        views={'shared': dict(components=['selected'], rows=2)})
+    actual = pa.Table.from_batches(list(table.iter_batches(columns=['source_id'])))
+    assert actual.to_pylist() == [dict(source_id='c'), dict(source_id='b')]
+    assert table.rows == 2 and len(native.reads) == 1
+
+
+def test_shared_pin_view_count_mismatch_refuses_stale_membership():
+    schema = SCHEMA.append(pa.field('document_id', pa.string()))
+    native = NativeFixture(schema, [{**row, 'document_id': 'doc'} for row in ROWS])
+    table = CatalogTable(schema, [('shared', pin('physical', 3))], native=native,
+                         views={'shared': dict(components=['doc'], rows=2)})
+    with pytest.raises(ValueError, match='view row count'):
+        list(table.iter_batches())
+
+
 def test_actual_native_partition_preserves_original_application_schema(tmp_path):
     binary = os.environ.get('DOCSPEC_BINARY') or shutil.which('docspec')
     if not binary:

@@ -18,7 +18,7 @@ class CatalogTable:
     must supply and validate application ordering before deriving mappings.
     """
 
-    def __init__(self, schema, partitions, *, native, order_column=None, max_ordered_bytes=None):
+    def __init__(self, schema, partitions, *, native, order_column=None, max_ordered_bytes=None, views=None):
         if not isinstance(schema, pa.Schema):
             raise TypeError('A selected catalog table requires its application Arrow schema')
         self.schema_arrow = schema
@@ -48,7 +48,20 @@ class CatalogTable:
             names.add(name)
             self._partitions.append((name, pin, rows))
         self.partition_names = tuple(name for name, _, _ in self._partitions)
-        self.rows = sum(rows for _, _, rows in self._partitions)
+        self._views = deepcopy(views) if views is not None else None
+        if self._views is not None:
+            if set(self._views) != names or 'document_id' not in schema.names:
+                raise ValueError('Catalog views must describe every selected pin and its document membership')
+            for name, _, rows in self._partitions:
+                view = self._views[name]
+                components = view.get('components', [])
+                if (not isinstance(components, list) or not components
+                        or any(not isinstance(value, str) or not value for value in components)
+                        or len(set(components)) != len(components)
+                        or type(view.get('rows')) is not int or not 0 < view['rows'] <= rows):
+                    raise ValueError('Invalid selected catalog membership view')
+        self.rows = sum(self._views[name]['rows'] if self._views is not None else rows
+                        for name, _, rows in self._partitions)
 
     def iter_batches(self, *, partitions=None, columns=None):
         """Read requested partitions only, checking types before restoring metadata.
@@ -87,9 +100,21 @@ class CatalogTable:
                 if order.null_count or len(pc.unique(order)) != table.num_rows:
                     raise ValueError(f'Catalog order values must be nonnull and unique: {name}')
                 batches = table.sort_by([(self.order_column, 'ascending')]).to_batches()
+            view = self._views[name] if self._views is not None else None
+            selected_rows = 0
             for batch in batches:
+                if view is not None:
+                    batch = batch.filter(pc.is_in(batch.column('document_id'),
+                        value_set=pa.array(view['components'], type=pa.string())))
+                    selected_rows += batch.num_rows
+                    if selected_rows > view['rows']:
+                        raise ValueError(f'Catalog view row count differs: {name}')
+                if not batch.num_rows:
+                    continue
                 selected = batch.select(columns)
                 yield pa.RecordBatch.from_arrays(selected.columns, schema=output_schema)
+            if view is not None and selected_rows != view['rows']:
+                raise ValueError(f'Catalog view row count differs: {name}')
 
     def _partition_batches(self, name, pin, rows):
         def require_schema(schema):
