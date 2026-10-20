@@ -12,6 +12,7 @@ import subprocess
 from tempfile import TemporaryDirectory
 
 import pyarrow as pa
+import pyarrow.parquet as pq
 
 
 class DocSpecFailure(RuntimeError):
@@ -64,6 +65,19 @@ class NativeDatasets:
 
     def run(self, request):
         return self._request('run', request)
+
+    def run_table(self, table, *, dataset, operation, definition):
+        """Pass one caller-bounded Arrow source table to the native Run API.
+
+        The caller owns candidate identity, schema and completeness. Input paths
+        are locators; native retained expected-digest identity controls replay.
+        """
+        with self._scratch() as directory:
+            source = directory / 'source.parquet'
+            pq.write_table(table, source, compression='zstd')
+            digest = self.hash_input(source)['digest']
+            return self.run(dict(dataset=dataset, operation=operation, definition=definition,
+                input=str(source), expected_digest=digest, sql='SELECT * FROM input'))
 
     def plan(self, request):
         return self._request('plan', request)
