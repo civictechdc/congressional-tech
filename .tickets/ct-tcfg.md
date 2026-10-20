@@ -1,6 +1,6 @@
 ---
 id: ct-tcfg
-status: open
+status: closed
 deps: []
 links: [ct-mi03]
 created: 2026-10-20T20:37:00Z

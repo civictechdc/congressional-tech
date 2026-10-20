@@ -18,6 +18,7 @@ from congress_api.retention.partition_routing import RoutingPages, split_partiti
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA
 from congress_api.retention.raw_capture_pages import CapturePages
 from congress_api.retention.raw_changes import RawChanges
+from congress_api.retention.raw_state_routes import StateRoutes, summarize, schedule_basis
 from congress_api.retention.raw_values import capture_table, ordered_captures, NATIVE_CAPTURE_SCHEMA
 from congress_api.retention.write_recovery import reconcile_lost_acknowledgment
 
@@ -87,9 +88,27 @@ class RawSnapshot:
         selected = table.filter(pc.equal(table['key'], 'sha:' + digest)).select(BODY_FIELDS)
         return selected.to_pylist()[0] if len(selected) else None
 
+    def _reading_inventory(self):
+        inventory = self.manifest.get('readings')
+        if inventory is not None and (not isinstance(inventory, dict)
+                or set(inventory) != {'root', 'qualified'} or type(inventory.get('qualified')) is not bool):
+            raise ValueError('Invalid retained reading qualification')
+        if inventory is None or not inventory['qualified']:
+            raise RuntimeError('Retained reading inventory requires explicit qualification')
+        return inventory
+
+    def has_body_reading(self, body_key):
+        return self.owner.readings.lookup(self._reading_inventory()['root'], body_key) is not None
+
+    def body_readings(self, body_keys):
+        yield from self.owner.readings.rows(self._reading_inventory()['root'], body_keys)
+
     def completed_delivery(self, operation):
         key, _, entries = self.owner._delivery(self.manifest['deliveries'], 'delivery:' + operation)
         return entries.get(key)
+
+    def state_candidates(self, *, outcomes, now=None, urls=None, invalid_only=False):
+        yield from self.owner.state_routes.candidates(self, outcomes=outcomes, now=now, urls=urls, invalid_only=invalid_only)
 
     def states_for(self, urls):
         groups = {}
@@ -105,6 +124,39 @@ class RawSnapshot:
                     result[row['url']] = row
         return result
 
+    def iter_states_for(self, urls):
+        """Stream exact selected native rows in their immutable state order.
+
+        Requested URLs, routed leaves and output ordering stay on disposable
+        SQLite. Only one qualified state leaf is decoded at a time. Native
+        order/key fields remain available to callers that stage logical rows.
+        """
+        from contextlib import closing
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        import pickle
+        from .catalog_staging import WorkingCatalog
+        with TemporaryDirectory(prefix='raw-requested-state-') as directory, closing(
+                WorkingCatalog(Path(directory) / 'states.sqlite')) as work:
+            db = work.connection
+            db.executescript('CREATE TABLE requested(identity TEXT PRIMARY KEY); '
+                'CREATE TABLE leaves(identity TEXT PRIMARY KEY,value BLOB); '
+                'CREATE TABLE rows(ordinal INTEGER PRIMARY KEY,value BLOB);')
+            for url in urls:
+                key = state_key(url)
+                if not db.execute('INSERT OR IGNORE INTO requested VALUES (?)', (key,)).rowcount:
+                    continue
+                _, reference = self.owner.state_routes.lookup(self.manifest['state']['root'], key)
+                if reference is not None:
+                    db.execute('INSERT OR IGNORE INTO leaves VALUES (?,?)',
+                               (reference['release']['id'], pickle.dumps(reference)))
+            for payload, in db.execute('SELECT value FROM leaves ORDER BY identity'):
+                for row in self.owner._read_states(pickle.loads(payload)).to_pylist():
+                    if db.execute('SELECT 1 FROM requested WHERE identity=?', (row[STATE_KEY_FIELD],)).fetchone():
+                        db.execute('INSERT INTO rows VALUES (?,?)', (row[STATE_ORDER], pickle.dumps(row)))
+            for payload, in db.execute('SELECT value FROM rows ORDER BY ordinal'):
+                yield pickle.loads(payload)
+
     def has_receipt(self, key):
         hashed, _, entries = self.owner._delivery(self.manifest['deliveries'], 'receipt:' + key)
         return hashed in entries
@@ -114,6 +166,9 @@ class RawSnapshot:
 
     def changed_capture_batches(self, change):
         return self.owner.capture_pages.entries_since(change['capture_head'], change['capture_start'])
+
+    def changed_reading_parts(self, change):
+        return self.owner.changes.reading_parts(change)
 
     def changed_state_urls(self, change):
         return self.owner.changes.state_urls(change)
@@ -161,11 +216,13 @@ class RawStorage:
         if min(max_state_rows, max_state_bytes, max_capture_rows, max_capture_bytes) < 1:
             raise ValueError("Raw storage budgets must be positive")
         self.capture_pages = CapturePages(store)
-        self.state_routes = RoutingPages(store, 'raw-state-v1')
+        self.state_routes = StateRoutes(store)
         self.delivery_routes = RoutingPages(store, 'raw-deliveries-v1')
         self.changes = RawChanges(store)
         self.body_routes = RoutingPages(store, 'raw-bodies-v1')
-        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1', state_keys='nullable-url-v1', counts='raw-state-counts-v1',
+        from congress_api.retention.raw_readings import RawReadings
+        self.readings = RawReadings(store)
+        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1', state_keys='nullable-url-v1', counts='raw-state-counts-v1', readings='body-part-refs-v1', schedule=schedule_basis(),
                           max_state_rows=max_state_rows, max_state_bytes=max_state_bytes,
                           max_capture_rows=max_capture_rows, max_capture_bytes=max_capture_bytes,
                           state_schema=base64.b64encode(state_schema.serialize()).decode("ascii"))
@@ -177,7 +234,11 @@ class RawStorage:
         Resource budgets remain the maintained defaults. A selected archive with
         different budgets requires explicit construction with that frozen basis.
         """
-        raw = store.read(RAW_KEY)
+        return cls.from_selection(store, native, store.read(RAW_KEY))
+
+    @classmethod
+    def from_selection(cls, store, native, raw):
+        """Construct a reader for captured exact selector bytes without rereading latest."""
         if raw is None:
             return cls(store, native)
         if len(raw) > SELECTOR_BYTES:
@@ -194,7 +255,13 @@ class RawStorage:
         return dict(version=1, basis=deepcopy(self.basis), captures=dict(head=None, rows=0),
                     state=dict(root=None, rows=0), bodies=dict(root=None, count=0),
                     deliveries=None, filename_version=None, change=None,
-                    state_counts=dict(url_outcomes={}, urls_by_source_family={}, excluded_media_urls=0))
+                    state_counts=dict(url_outcomes={}, urls_by_source_family={}, excluded_media_urls=0),
+                    readings=dict(root=None, qualified=False))
+
+    @property
+    def empty_identity(self):
+        """Identity of the proven empty archive under this frozen raw basis."""
+        return sha256(encoded(self._empty())).hexdigest()
 
     def _read_selector(self):
         raw = self.store.read(RAW_KEY)
@@ -360,12 +427,16 @@ class RawStorage:
             counts['excluded_media_urls'] += delta
 
     def _candidate(self, kind, table, *, operation, prefix, base_id):
+        # Keep candidates independent of a previous leaf's native latest. An
+        # unselected Update advances that dataset and can make the application's
+        # still-selected base stale, even when another raw leaf won publication.
         identity = sha256(encoded([operation, kind, prefix, base_id])).hexdigest()
         dataset = 'raw-' + kind + '-' + identity
         return self.native.run_table(table, dataset=dataset, operation='initial', definition='raw-native-v1')
 
     def prepare(self, base, *, operation, captures=None, states=None,
-                indexed_receipts=(), filename_version=None, request_id=None, delivery_result=None):
+                indexed_receipts=(), filename_version=None, request_id=None, delivery_result=None,
+                reading_parts=(), qualify_readings=False, replace_readings=()):
         """Prepare exact bounded candidates; expose no independent native latest."""
         if base.owner is not self:
             raise ValueError('Raw base belongs to another storage owner')
@@ -374,6 +445,10 @@ class RawStorage:
         indexed_receipts = tuple(sorted(set(indexed_receipts)))
         if any(not isinstance(key, str) or not key for key in indexed_receipts):
             raise ValueError('Indexed receipts require nonempty string keys')
+        if type(qualify_readings) is not bool:
+            raise ValueError('Reading qualification requires an explicit boolean')
+        reading_parts = tuple({name: part[name] for name in ('key', 'bytes', 'sha256', 'rows')} for part in reading_parts)
+        replace_readings = tuple(sorted(set(replace_readings)))
         changed_state_urls = []
         updates = None
         if states is not None and len(states):
@@ -384,7 +459,8 @@ class RawStorage:
             updates = updates.cast(self.state_schema)
         incoming = capture_table(captures, first_order=0) if captures is not None and len(captures) else None
         request = sha256(encoded([self._request_digest(incoming, updates),
-                                 sorted(indexed_receipts), filename_version, request_id])).hexdigest()
+                                 sorted(indexed_receipts), filename_version, request_id, reading_parts,
+                                 qualify_readings, replace_readings])).hexdigest()
         delivery_key, delivery_prefix, deliveries = self._delivery(base.manifest['deliveries'], 'delivery:' + operation)
         previous_delivery = deliveries.get(delivery_key)
         if previous_delivery:
@@ -394,6 +470,11 @@ class RawStorage:
                         changed=False, already_applied=True, delivery=previous_delivery)
         base_id = sha256(encoded(base.manifest)).hexdigest()
         manifest = deepcopy(base.manifest)
+        if reading_parts or qualify_readings:
+            manifest['readings']['root'] = self.readings.prepare(manifest['readings']['root'],
+                reading_parts, replace=replace_readings)
+            if qualify_readings:
+                manifest['readings']['qualified'] = True
         if captures is not None and len(captures):
             additions = capture_table(captures, first_order=manifest['captures']['rows'])
             entries = []
@@ -449,7 +530,8 @@ class RawStorage:
                         max_rows=self.max_state_rows, max_bytes=self.max_state_bytes):
                     leaves[child] = (dict(release=self._candidate('state', part, operation=operation,
                                           prefix=child, base_id=base_id), rows=len(part),
-                                          decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=self.state_native_schema).nbytes) if len(part) else None)
+                                          decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=self.state_native_schema).nbytes,
+                                          schedule=summarize(part.to_pylist())) if len(part) else None)
                 selected_root = self.state_routes.replace(selected_root, prefix, leaves)
             manifest['state'] = dict(root=selected_root, rows=next_order)
         delivery = dict(request=request, request_id=request_id,
@@ -466,7 +548,7 @@ class RawStorage:
             manifest['deliveries'] = self._select_delivery(manifest['deliveries'], delivery_prefix,
                                                           {**deliveries, delivery_key: delivery})
         if manifest != base.manifest:
-            manifest['change'] = self.changes.put(base, manifest, changed_state_urls)
+            manifest['change'] = self.changes.put(base, manifest, changed_state_urls, reading_parts=reading_parts)
         data = encoded(manifest)
         if len(data) > SELECTOR_BYTES:
             raise ValueError('Raw selector exceeds the byte budget')

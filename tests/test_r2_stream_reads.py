@@ -191,3 +191,28 @@ def test_index_write_authority_waits_for_body_close(tmp_path):
     with pytest.raises(OSError, match='close failed'):
         read(store, 'bytes', tmp_path / 'output')
     assert stream.closed and store.index_etags[KEYS['bytes']] == 'previous'
+
+
+def test_reader_cache_download_pins_source_before_first_read_and_retry(tmp_path, monkeypatch):
+    client = Client()
+    first = Interrupted(failure('ReadTimeoutError'))
+    final = io.BytesIO(DATA)
+    client.responses = [dict(Body=stream, ContentLength=len(DATA), ETag='selected')
+                        for stream in (first, final)]
+    monkeypatch.setattr('congress_api.retention.r2.time.sleep', lambda delay: None)
+    path = tmp_path / 'cache.parquet'
+    result = R2Store(client, 'bucket').read_body_cache_file(path, expected_version='selected')
+    assert path.read_bytes() == DATA
+    assert result == dict(bytes=len(DATA), sha256=hashlib.sha256(DATA).hexdigest(), version='selected')
+    assert all(request['Key'] == 'indexes/processing/bodies.parquet'
+               and request['IfMatch'] == 'selected' for request in client.reads)
+    assert first.closed and final.closed
+
+
+def test_reader_cache_download_refuses_different_returned_version(tmp_path):
+    client = Client()
+    stream = io.BytesIO(DATA)
+    client.responses = [dict(Body=stream, ContentLength=len(DATA), ETag='other')]
+    with pytest.raises(ValueError, match='changed during file read'):
+        R2Store(client, 'bucket').read_body_cache_file(tmp_path / 'cache', expected_version='selected')
+    assert stream.closed and not (tmp_path / 'cache').exists()

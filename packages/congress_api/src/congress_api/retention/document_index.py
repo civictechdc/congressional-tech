@@ -35,8 +35,8 @@ from email.utils import collapse_rfc2231_value
 from functools import lru_cache, wraps
 import gzip
 from io import BytesIO
-from itertools import groupby
 import json
+import pickle
 from multiprocessing import get_context
 from pathlib import Path
 import re
@@ -96,6 +96,12 @@ STRINGS = pa.list_(pa.string())
 RESPONSE_FIELDS = (
     "response_usable", "response_body_complete", "response_format", "response_result",
 )
+# The grouping policy reads these fields; consumers can keep large retained
+# evidence in Arrow while computing exact endpoint/body dependency keys.
+GROUP_ALIAS_FIELDS = (
+    'filename', 'source_url', 'body_key', 'media_type', 'http_status',
+    'source_resolved_url', 'capture_outcome', 'body_format', *RESPONSE_FIELDS,
+)
 SOURCE_SCHEMA = pa.schema(
     [
         ("body_key", pa.string()),
@@ -144,7 +150,7 @@ def fill_document_kind(row):
 
 def trusted_source_occurrences(row):
     """Only observed links/redirects establish a document's original context."""
-    return [o for o in row.get('source_occurrences') or [] if not any(
+    return [o for o in row.get('source_occurrences') or [] if o is not None and not any(
         basis not in {'publisher_redirect', 'retained_html_link'}
         for basis in o.get('source_association_basis') or [])]
 
@@ -428,8 +434,7 @@ def source_groups(table):
         return row
 
     aliases = {}
-    fields = ['filename', 'source_url', 'body_key', 'media_type', 'http_status',
-              'source_resolved_url', 'capture_outcome', 'body_format', *RESPONSE_FIELDS]
+    fields = GROUP_ALIAS_FIELDS
     for row_id, row in enumerate(table.select(list(dict.fromkeys(
             name for name in fields if name in table.column_names))).to_pylist()):
         for alias in group_aliases(row, row_id):
@@ -571,7 +576,7 @@ def prepare_document_indexes(rows, schema):
                 if isinstance(value, list):
                     if key not in {"source_occurrences", "hearing_resources"}:
                         values[key].update(value)
-        document.update({key: sorted(value) for key, value in values.items() if value})
+        document.update({key: merge_values(key, value) for key, value in values.items() if value})
         occurrences = merge_values("source_occurrences", *[row.get("source_occurrences") for row in sources])
         if occurrences:
             document["source_occurrences"] = occurrences
@@ -633,17 +638,17 @@ def prepare_document_indexes(rows, schema):
     return rows, source_schema, documents, document_schema
 
 
-def write_document_indexes(destination, rows, schema, *, working=None, previous=None, previous_documents=None, reuse_groups=True, catalog_id=None, preserve_columns=False):
+def write_document_indexes(destination, rows, schema, *, working=None, previous=None, previous_documents=None, reuse_groups=True, catalog_id=None, preserve_columns=False, checkpoint_directory=None):
     from congress_api.retention.catalog_staging import write_grouped_indexes, WorkingCatalog
     if working is not None:
         return write_grouped_indexes(destination, rows, schema, working=working,
-                                     previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups, catalog_id=catalog_id, preserve_columns=preserve_columns)
+                                     previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups, catalog_id=catalog_id, preserve_columns=preserve_columns, checkpoint_directory=checkpoint_directory)
     from tempfile import TemporaryDirectory
     with TemporaryDirectory(prefix="document-working-") as directory:
         state = WorkingCatalog(Path(directory) / "working.sqlite")
         try:
             return write_grouped_indexes(destination, rows, schema, working=state,
-                                         previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups, catalog_id=catalog_id, preserve_columns=preserve_columns)
+                                         previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups, catalog_id=catalog_id, preserve_columns=preserve_columns, checkpoint_directory=checkpoint_directory)
         finally:
             state.close()
 
@@ -733,12 +738,15 @@ def merge_values(field, *groups):
                   for group in groups for item in group or []}
         return [values[key] for key in sorted(values)]
     if field != "source_occurrences":
-        return sorted({value for group in groups if group for value in group})
+        return sorted({value for group in groups if group for value in group},
+                      key=lambda value: (value is None, value))
     # Arrow fills absent struct fields with null on readback. Normalize those
     # away before deduplication so repeated refreshes do not multiply origins.
     values = {}
     for group in groups:
         for occurrence in group or []:
+            if occurrence is None:
+                continue  # A nullable struct element has no observed fields.
             normalized = {key: sorted(set(items)) for key, items in occurrence.items() if items}
             if normalized:
                 # Shared source observations are values: joins replace lists,
@@ -1367,7 +1375,8 @@ class DocumentSources:
     def event_context(self, event, chamber=None, congress=None):
         # Absence and ambiguity are dependencies too: later meeting writes can
         # change either result. Broad event IDs cover scoped and unscoped reads.
-        self._depend('event', str(event), 'read')
+        if event is not None and str(event):
+            self._depend('event', str(event), 'read')
         keys = self.events.get(str(event), set())
         keys = [
             k
@@ -1713,6 +1722,37 @@ class DocumentSources:
                     source_association_basis=basis, source_associated_url=original)})
 
 
+def capture_schema(captures):
+    return captures.schema_arrow if isinstance(captures, pq.ParquetFile) else captures.schema
+
+
+def capture_batches(captures, columns=None):
+    """Repeat a selected receipt input without collecting all capture payloads.
+
+    Native replay writes one already bounded raw batch per Parquet row group.
+    Read each group separately so the row-count API cannot combine many wide
+    native batches into a larger decoded allocation.
+    """
+    if isinstance(captures, pq.ParquetFile):
+        for group in range(captures.num_row_groups):
+            yield from captures.iter_batches(columns=columns, row_groups=[group], batch_size=256)
+    else:
+        yield from (captures.select(columns) if columns is not None else captures).to_batches(max_chunksize=256)
+
+
+def _capture_tables(captures, *, family=None, suffix=None):
+    for batch in capture_batches(captures):
+        table = pa.Table.from_batches([batch])
+        if family is not None:
+            table = table.filter(pc.equal(table['family'], family))
+        if suffix:
+            if 'source_file' not in table.column_names:
+                continue
+            table = table.filter(pc.ends_with(table['source_file'], suffix))
+        if len(table):
+            yield table
+
+
 def add_retained_senate_pages(context, captures, read_body):
     """Read independent HTML observations without replacing older saved state."""
     from congress_api.models.content import RawContent
@@ -1720,12 +1760,13 @@ def add_retained_senate_pages(context, captures, read_body):
     from congress_api.parsers.senate_page import SITE
 
     required = {"family", "http_status", "body_key", "context_url", "receipt_key", "receipt_line"}
-    if not required <= set(captures.column_names):
+    if not required <= set(capture_schema(captures).names):
         return
-    selected = captures.filter(pc.and_(pc.equal(captures["family"], "senate/pages"),
-                                      pc.equal(captures["http_status"], 200)))
-    observations = {}
-    for row in selected.select(sorted(required)).to_pylist():
+    observations = {} if context.working is None else context.working.mapping('senate_capture_observations')
+    observations.clear()
+    rows = (row for table in _capture_tables(captures, family='senate/pages')
+            for row in table.filter(pc.equal(table['http_status'], 200)).select(sorted(required)).to_pylist())
+    for row in rows:
         url, key = row["context_url"], row["body_key"]
         if not url or not key:
             continue
@@ -1738,7 +1779,10 @@ def add_retained_senate_pages(context, captures, read_body):
         digest = key.rsplit("/", 1)[-1].removesuffix(".gz")
         if digest in context.by_url.get(url, {}).get("source_page_sha256", set()):
             continue  # This exact page observation was already replayed above.
-        observations.setdefault((url, key, host), set()).add((row["receipt_key"], row["receipt_line"]))
+        identity = url, key, host
+        receipts = observations.get(identity, set())
+        receipts.add((row['receipt_key'], row['receipt_line']))
+        observations[identity] = receipts
     for (url, key, host), receipts in progress.track(
             observations.items(), 'read_senate_html', unit='pages'):
         raw = read_body(key)
@@ -1753,26 +1797,30 @@ def add_retained_senate_pages(context, captures, read_body):
                 source_receipt_key=receipt, source_receipt_line=line))
 
 
-def retained_records(captures, read_receipt, *, stage='replay_capture_receipts'):
+def retained_records(captures, read_receipt, *, stage='replay_capture_receipts', family=None, suffix=None):
     """Read referenced receipt lines with an indexed, disposable position map."""
     from tempfile import TemporaryDirectory
     import sqlite3
-    progress.report(stage, completed=0, total=len(captures), unit='capture_rows')
+    progress.report(stage, completed=0, unit='capture_rows')
     completed = reported = 0
-    batches = captures.to_batches(max_chunksize=65536)
     with TemporaryDirectory(prefix="receipt-positions-") as directory:
         db = sqlite3.connect(Path(directory) / "positions.sqlite")
         try:
             db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
-                             'CREATE TABLE positions(receipt TEXT,line INTEGER,batch INTEGER,position INTEGER); '
-                             'CREATE INDEX receipt_lines ON positions(receipt,line,batch,position);')
-            for batch_number,batch in enumerate(batches):
+                             'CREATE TABLE positions(receipt TEXT,line INTEGER,position INTEGER,value BLOB); '
+                             'CREATE INDEX receipt_lines ON positions(receipt,line,position);')
+            tables = (_capture_tables(captures, family=family, suffix=suffix)
+                      if isinstance(captures, (pa.Table, pq.ParquetFile)) else captures)
+            position = total = 0
+            for table in tables:
                 records = []
-                for position,row in enumerate(batch.select(["receipt_key","receipt_line"]).to_pylist()):
+                for row in table.to_pylist():
                     if not row.get('receipt_key') or type(row.get('receipt_line')) is not int or row['receipt_line'] < 1:
                         raise ValueError("Invalid capture receipt locator")
-                    records.append((row['receipt_key'],row['receipt_line'],batch_number,position))
+                    records.append((row['receipt_key'],row['receipt_line'],position,pickle.dumps(row)))
+                    position += 1
                 db.executemany('INSERT INTO positions VALUES (?,?,?,?)',records)
+                total += len(records)
             for key, in db.execute('SELECT DISTINCT receipt FROM positions ORDER BY receipt'):
                 payload = read_receipt(key)
                 if payload is None:
@@ -1780,17 +1828,14 @@ def retained_records(captures, read_receipt, *, stage='replay_capture_receipts')
                 remaining, = db.execute('SELECT count(*) FROM positions WHERE receipt=?',(key,)).fetchone()
                 with gzip.open(BytesIO(payload),"rt",encoding="utf-8") as stream:
                     for number,line in enumerate(stream,1):
-                        positions = db.execute('SELECT batch,position FROM positions WHERE receipt=? AND line=? ORDER BY batch,position',(key,number))
-                        rows = []
-                        for batch_number,group in groupby(positions,key=lambda item:item[0]):
-                            selected = pa.array([position for _,position in group],type=pa.int64())
-                            rows.extend(batches[batch_number].take(selected).to_pylist())
+                        rows = [pickle.loads(value) for value, in db.execute(
+                            'SELECT value FROM positions WHERE receipt=? AND line=? ORDER BY position',(key,number))]
                         if rows:
                             yield json.loads(line)['record'],rows,context_values(source_receipt_key=key,source_receipt_line=number)
                             completed += len(rows)
                             remaining -= len(rows)
                             if completed-reported >= 1000:
-                                progress.report(stage,completed=completed,total=len(captures),unit='capture_rows')
+                                progress.report(stage,completed=completed,total=total,unit='capture_rows')
                                 reported = completed
                         if not remaining:
                             break
@@ -1798,7 +1843,7 @@ def retained_records(captures, read_receipt, *, stage='replay_capture_receipts')
                     raise ValueError(f"Capture index references missing receipt lines: {key}")
         finally:
             db.close()
-    progress.report(stage,completed=completed,total=len(captures),unit='capture_rows')
+    progress.report(stage,completed=completed,total=total,unit='capture_rows')
 
 
 def add_retained_house_documents(context, captures, read_body):
@@ -1807,10 +1852,11 @@ def add_retained_house_documents(context, captures, read_body):
     from congress_api.parsers.xml import parse_xml
     from xml.etree.ElementTree import ParseError
 
-    selected = captures.filter(pc.is_in(captures["family"], value_set=pa.array(
-        ["house/meeting-xml", "house/witness-xml"])))
+    rows = (row for table in _capture_tables(captures)
+            for row in table.filter(pc.is_in(table['family'], value_set=pa.array(
+                ['house/meeting-xml', 'house/witness-xml']))).to_pylist())
     seen = set()
-    for row in progress.track(selected.to_pylist(), 'read_house_xml', unit='capture_rows'):
+    for row in progress.track(rows, 'read_house_xml', unit='capture_rows'):
         key, url = row.get("body_key"), row.get("context_url")
         if not key or (key, url) in seen or row.get("http_status") not in (None, 200):
             continue
@@ -1847,21 +1893,9 @@ def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=N
         captures = pq.read_table(path)
     read_receipt = read_receipt or (lambda key: (root / key).read_bytes())
     read_body = read_body or (lambda key: read_retained_body(root, key))
-    columns = [
-        name
-        for name in ("family", "source_file", "receipt_key", "receipt_line", "body_key", "context_url", "http_status")
-        if name in captures.column_names
-    ]
-    captures = captures.select(columns)
-
     def records(family, suffix=None):
-        selected = captures if family is None else captures.filter(pc.equal(captures["family"], family))
-        if suffix:
-            if "source_file" not in selected.column_names:
-                return
-            selected = selected.filter(pc.ends_with(selected["source_file"], suffix))
         stage = 'read_' + (suffix or family).replace('/', '_').replace('.', '_')
-        for record, _, receipt in retained_records(selected, read_receipt, stage=stage):
+        for record, _, receipt in retained_records(captures, read_receipt, stage=stage, family=family, suffix=suffix):
             yield record, receipt
 
     for record, receipt in records("congress/meetings"):
@@ -1881,12 +1915,16 @@ def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=N
     add_retained_senate_pages(context, captures, read_body)
     # Download receipts can refer to an HTML landing page whose exact anchor
     # supplies the later requested URL. Read only those retained page bodies.
-    body_references = defaultdict(set)
-    if {"body_key", "context_url"} <= set(captures.column_names):
-        selected = captures.filter(pc.is_in(captures["context_url"], value_set=pa.array(sorted(context.by_url), type=pa.string())))
-        for row in selected.select(["receipt_key", "receipt_line", "body_key", "context_url"]).to_pylist():
-            if row["body_key"]:
-                body_references[(row["receipt_key"], row["receipt_line"])].add((row["body_key"], row["context_url"]))
+    body_references = defaultdict(set) if context.working is None else context.working.mapping('source_body_references')
+    body_references.clear()
+    if {"body_key", "context_url"} <= set(capture_schema(captures).names):
+        for batch in capture_batches(captures, ['receipt_key', 'receipt_line', 'body_key', 'context_url']):
+            for row in batch.to_pylist():
+                if row['context_url'] in context.by_url and row['body_key']:
+                    identity = row['receipt_key'], row['receipt_line']
+                    references = body_references.get(identity, set())
+                    references.add((row['body_key'], row['context_url']))
+                    body_references[identity] = references
     for record, receipt in records(None, "/receipts.jsonl"):
         context.add_redirect(record, receipt)
         context.add_associations(record, receipt)
@@ -1923,54 +1961,6 @@ def capture_record_type(family, pointer_json):
     return None
 
 
-PAGE_RECORD_TYPES = {
-    'hearing': 'committee-hearing-page',
-    'field hearing': 'committee-hearing-page',
-    'meeting': 'committee-meeting-page',
-    'business meeting': 'committee-meeting-page',
-    'markup': 'committee-meeting-page',
-}
-
-
-def _page_key(value):
-    url = http_url(value)
-    if not url:
-        return None
-    parts = urlsplit(url)
-    path = parts.path[:-1] if len(parts.path) > 1 and parts.path.endswith('/') else parts.path
-    return urlunsplit(parts._replace(path=path, fragment=''))
-
-
-def recognize_publisher_page(row):
-    """A saved HTML response is a source page when that page was recorded for its URL.
-
-    A hearing path alone does not qualify. The file URL must be one recorded
-    source page, and the recorded title or meeting type must name the page.
-    """
-    if row.get('source_record_type') or row.get('record_role') not in (None, ['document']):
-        return
-    if row.get('document_kind') or response_failed(row):
-        return
-    signals = [*(row.get('format') or []), *(row.get('media_type') or []), *(row.get('body_format') or [])]
-    kinds = {str(value).split(';', 1)[0].strip().casefold() for value in signals}
-    if kinds and not ({'html', 'text/html'} & kinds):
-        return
-    file_url = _page_key(row.get('source_url'))
-    if not file_url or file_url not in {_page_key(value) for value in row.get('source_page_url') or []}:
-        return
-    titles = [' '.join(value.split()).casefold() for value in row.get('source_page_title') or [] if isinstance(value, str)]
-    types = [' '.join(value.split()).casefold() for value in row.get('source_meeting_type') or [] if isinstance(value, str)]
-    kind = next((PAGE_RECORD_TYPES[value] for value in titles if value in PAGE_RECORD_TYPES), None)
-    if kind is None and 'hearing' in types:
-        kind = 'committee-hearing-page'
-    if kind is None and {'meeting', 'markup'} & set(types):
-        kind = 'committee-meeting-page'
-    if kind is None:
-        return
-    row['source_record_type'] = [kind]
-    row['record_role'] = ['source-record']
-
-
 def apply_capture_record_role(row):
     """Keep receipt/pointer pairs together when recognizing embedded source HTML."""
     if row.get('source_record_type') == ['download-state']:
@@ -1984,6 +1974,8 @@ def apply_capture_record_role(row):
     if row.get("source_record_type"):
         return
     for occurrence in row.get("source_occurrences") or []:
+        if occurrence is None:
+            continue
         if occurrence.get("source_occurrence_scope") != ["capture"]:
             continue
         for receipt in occurrence.get("source_receipt_key") or []:
@@ -1995,7 +1987,6 @@ def apply_capture_record_role(row):
                     row["source_record_type"] = [kind]
                     row["record_role"] = ["source-record"]
                     return
-    recognize_publisher_page(row)
 
 
 def refresh_response_metadata(root, rows):
@@ -2395,7 +2386,7 @@ def validated_body_readings(readings):
 def write_filename_metadata(
     root, source_rows, *, workers=4, previous=None, metadata=None, read_body=None,
     oversized_bodies=(), cache_store=None, reuse_results=True, inspect_bodies=False, working=None, previous_documents=None, publication_snapshot=None, output_root=None,
-    body_readings=(),
+    body_readings=(), retained_body_readings=None,
 ):
     """Interpret supplied source rows; optional body readings are explicit overrides."""
     body_readings = validated_body_readings(body_readings)
@@ -2415,7 +2406,7 @@ def write_filename_metadata(
                     metadata=metadata, read_body=read_body, oversized_bodies=oversized_bodies,
                     cache_store=cache_store, reuse_results=reuse_results,
                     inspect_bodies=inspect_bodies, working=working, previous_documents=previous_documents, output_root=staged,
-                    body_readings=body_readings.values())
+                    body_readings=body_readings.values(), retained_body_readings=retained_body_readings)
                 return publish_local_result(root, staged / "indexes/document-filenames.parquet", result, snapshot)
             finally:
                 working.close()
@@ -2451,7 +2442,7 @@ def write_filename_metadata(
             b'body_evidence_fingerprint', body_fingerprint.encode()).decode()
     reuse_bodies = reuse_results or not inspect_bodies
     body_cache = working.mapping("body_results")
-    payload = cache_store.read("indexes/processing/bodies.parquet") if reuse_results else None
+    payload = cache_store.read("indexes/processing/bodies.parquet") if reuse_results and retained_body_readings is None else None
     if payload:
         cached_file = pq.ParquetFile(pa.BufferReader(payload))
         for batch in cached_file.iter_batches(batch_size=4096):
@@ -2459,6 +2450,16 @@ def write_filename_metadata(
                 key = (row.pop("reader"), row.pop("body_key"))
                 body_cache[key] = {field: value for field, value in row.items() if value is not None}
     del payload
+    selected_capture_readings = working.mapping("selected_capture_readings")
+    if retained_body_readings is not None:
+        from congress_api.retention.capture_metadata import restore_readings
+        for reading in retained_body_readings:
+            if reading.get('reader') is not None:
+                # Legacy per-reader results precede old catalog fields, including
+                # completed negative readings. Capture facts fill remaining gaps.
+                restore_readings((reading,), body_cache)
+            else:
+                selected_capture_readings.setdefault(reading['body_key'], reading)
     source_fields = set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS | {'capture_outcome'}
     reuse_names = previous is not None and reuse_results and 'document_kind_source' in previous_schema.names
     filename_fields = (set(previous_schema.names) - source_fields
@@ -2480,7 +2481,10 @@ def write_filename_metadata(
                 cached.setdefault((row['filename'], row['source_url']), {
                     key: row[key] for key in filename_fields if row[key] is not None
                 })
-    if reuse_results:
+    if retained_body_readings is not None:
+        from congress_api.retention.capture_metadata import restore_readings
+        restore_readings(selected_capture_readings.values(), body_cache)
+    elif reuse_results:
         # Capture already inspected these bytes before releasing them. Preserve
         # published/legacy readings first, then admit newly completed results.
         from congress_api.retention.capture_metadata import restore_body_results
@@ -2495,8 +2499,9 @@ def write_filename_metadata(
                                        if name not in COVER_FIELDS}
         body_cache[('cover', key)] = {name: value for name, value in fields.items()
                                     if name in COVER_FIELDS}
-    checkpoint_bodies = result_checkpoint(cache_store, 'bodies', body_fingerprint,
+    checkpoint_bodies = (result_checkpoint(cache_store, 'bodies', body_fingerprint,
                                          ('reader', 'body_key'), body_cache)
+                         if retained_body_readings is None else lambda **kwargs: None)
     columns = set()
     pending_count = 0
     progress.report('inspect_document_contents', completed=0, unit='distinct_body_attempts')
@@ -2607,6 +2612,7 @@ def write_filename_metadata(
             progress.report('finalize_metadata', completed=completed, total=len(rows), unit='source_rows')
         cached.clear()
         body_cache.clear()
+        selected_capture_readings.clear()
         shared_body_fields.clear()
 
     def output_schema():

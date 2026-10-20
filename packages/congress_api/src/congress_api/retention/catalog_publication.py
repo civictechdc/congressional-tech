@@ -99,11 +99,13 @@ def _validate(path, item, catalog_id, *, identity=None):
     return properties
 
 
-def read_catalog(store, *, read=None, native=None):
+def read_catalog(store, *, read=None, native=None, retained_directory=None):
     """Own verified files until the caller closes the selected snapshot.
 
     A corrupt selection never falls back to root files. Failed reads preserve
     their owned partials and selector bytes, with the directory in the error.
+    Explicit retained inputs must match the live file selector byte-for-byte;
+    the maintained file owner checks each file before retaining an owned link.
     """
     read = read or store.read
     selected = read(MANIFEST_KEY)
@@ -125,11 +127,22 @@ def read_catalog(store, *, read=None, native=None):
         if selected is not None:
             (snapshot.directory / 'selected.json').write_bytes(selected)
             snapshot.manifest = _manifest(selected)
+        if retained_directory is not None:
+            retained_directory = Path(retained_directory)
+            with (retained_directory / 'catalog-selector.json').open('rb') as source:
+                retained_selector = source.read((1 << 20) + 1)
+            if snapshot.manifest is None or retained_selector != selected:
+                raise ValueError('Retained catalog selector differs from the current selected files')
         for label, legacy in [('filenames', FILENAMES), ('documents', DOCUMENTS)]:
             item = snapshot.manifest['files'][label] if snapshot.manifest else None
             key = item['key'] if item else legacy
             path = snapshot.directory / Path(legacy).name
-            identity = store.read_derived_file(key, path, expected=item)
+            if retained_directory is None:
+                identity = store.read_derived_file(key, path, expected=item)
+            else:
+                from .derived_files import retain_verified_file
+                identity = retain_verified_file(retained_directory / (label + '.parquet'),
+                                                path, expected=item, key=key)
             progress.advance('objects_read')
             progress.advance('bytes_read', identity['bytes'] if identity else 0)
             if item:
@@ -185,13 +198,14 @@ def publish_catalog(store, filenames_path, documents_path, *, previous, validati
 
 def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate,
                                   schema, max_chunk_rows, max_chunk_bytes, check_references=None,
-                                  on_prepared=None, ordered_chunks=True):
+                                  on_prepared=None, ordered_chunks=True, checkpoint_directory=None, store=None):
     """Retain rewritten bounded chunks as independent native candidates.
 
     The caller binds ``candidate`` to its exact base, semantic change, application
     rule versions and chunking requirements. Reusing that identity with different
     bytes refuses through native operation conflict. Completed chunks survive a
-    later preparation failure; repeating the same candidate reuses native Run.
+    later preparation failure. An optional caller-bound local checkpoint skips
+    submitting completed chunks again; missing checkpoints retain native replay.
 
     These descriptors establish neither complete dependency scope nor source /
     document reference validity. The catalog owner supplies those checks before
@@ -206,11 +220,13 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
             or type(max_chunk_rows) is not int or max_chunk_rows < 1
             or type(max_chunk_bytes) is not int or max_chunk_bytes < 1):
         raise ValueError('Native catalog preparation requires an explicit candidate, schema and chunk budget')
+    from .catalog_rows import CatalogRows, core_bytes, fits_chunk, FORMAT
+    row_owner = CatalogRows(native=native, store=store)
     prepared, last_order = [], None
     for index, table in enumerate(chunks):
         if not isinstance(table, pa.Table):
             raise TypeError('Catalog chunks must be typed Arrow tables')
-        if table.num_rows > max_chunk_rows or table.nbytes > max_chunk_bytes:
+        if not fits_chunk(table, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes):
             raise ValueError('Catalog table exceeds its native chunk budget')
         if (table.column_names.count('_catalog_order') != 1
                 or not pa.types.is_int64(table.schema.field('_catalog_order').type)):
@@ -231,12 +247,39 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
         if check_references is not None:
             check_references(table)
         dataset = 'catalog-' + label + '-' + sha256(encoded([candidate, component, index])).hexdigest()
-        release = native.run_table(table, dataset=dataset, operation='initial', definition='catalog-chunk-v1')
+        checkpoint, input_digest = None, None
+        if checkpoint_directory is not None:
+            checkpoint = Path(checkpoint_directory) / (dataset + '.json')
+            sink = pa.BufferOutputStream()
+            with pa.ipc.new_stream(sink, table.schema) as writer:
+                writer.write_table(table)
+            input_digest = sha256(sink.getvalue()).hexdigest()
+        if checkpoint is not None and checkpoint.exists():
+            if checkpoint.stat().st_size > 1 << 20:
+                raise ValueError('Retained native catalog chunk exceeds its metadata bound')
+            saved = json.loads(checkpoint.read_bytes())
+            binding = saved.pop('binding', None)
+            if (binding != sha256(encoded(saved)).hexdigest()
+                    or saved['input_sha256'] != input_digest or saved['dataset'] != dataset
+                    or saved.get('row_format') != FORMAT):
+                raise ValueError('Retained native catalog chunk differs from its prepared input')
+            release = saved['release']
+        else:
+            release = row_owner.write(table, dataset=dataset, operation='initial', definition='catalog-chunk-v1',
+                max_rows=max_chunk_rows, max_bytes=max_chunk_bytes,
+                owner_column='source_id' if label == 'filenames' else 'document_id')
         checked = CatalogTable(schema, [(dataset, release)], native=native)
-        if checked.rows != table.num_rows:
+        if checked.rows != table.num_rows or release['dataset'].get('dataset') != dataset:
             raise ValueError('Prepared native catalog chunk row count differs')
+        if checkpoint is not None and not checkpoint.exists():
+            saved = dict(dataset=dataset, input_sha256=input_digest, release=release, row_format=FORMAT)
+            saved['binding'] = sha256(encoded(saved)).hexdigest()
+            checkpoint.parent.mkdir(parents=True, exist_ok=True)
+            staging = checkpoint.with_suffix('.tmp')
+            staging.write_bytes(encoded(saved))
+            staging.replace(checkpoint)
         descriptor = dict(name=dataset, release=release, rows=table.num_rows,
-                          arrow_bytes=table.nbytes, order_min=extrema['min'], order_max=extrema['max'])
+                          arrow_bytes=core_bytes(table), order_min=extrema['min'], order_max=extrema['max'])
         prepared.append(descriptor)
         if on_prepared is not None:
             on_prepared(table, descriptor)

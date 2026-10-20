@@ -29,7 +29,7 @@ class NativeRecorder:
 
     def run_table(self, table, **request):
         self.calls.append((table, request))
-        return dict(id='initial', verified=True, dataset=dict(computed={}, related=None,
+        return dict(id='initial', verified=True, dataset=dict(dataset=request['dataset'], computed={}, related=None,
                     groups=dict(source=dict(rows=len(table)))))
 
 
@@ -96,3 +96,18 @@ def test_actual_native_candidate_replay_and_conflict_preserve_prepared_pin(tmp_p
     with pytest.raises(DocSpecFailure, match='operation_conflict'):
         prepare(native, [chunk(aliases=['correction-under-same-candidate'])])
     assert native.release(first[0]['name'], 'initial') == before[0]['release']
+
+
+def test_checkpoint_without_current_row_format_refuses_before_native_replay(tmp_path):
+    import json
+    from hashlib import sha256
+    from congress_api.retention.immutable_metadata import encoded
+    native=NativeRecorder()
+    prepare(native,[chunk()],checkpoint_directory=tmp_path)
+    path=next(tmp_path.glob('*.json'));saved=json.loads(path.read_bytes())
+    saved.pop('binding');saved.pop('row_format')
+    saved['binding']=sha256(encoded(saved)).hexdigest();path.write_bytes(encoded(saved))
+    before=len(native.calls)
+    with pytest.raises(ValueError,match='prepared input'):
+        prepare(native,[chunk()],checkpoint_directory=tmp_path)
+    assert len(native.calls)==before

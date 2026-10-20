@@ -89,6 +89,36 @@ def test_only_full_state_leaf_splits_and_duplicate_captures_keep_order(storage):
     assert len(first.states()) == 2
     assert selected.manifest['state']['rows'] == 3
     assert len(list(storage.state_routes.leaf_items(selected.manifest['state']['root']))) >= 2
+
+
+def test_unselected_native_update_does_not_block_independent_raw_candidate(storage, tmp_path):
+    """Native latest may advance while the coherent application pin stays old."""
+    import pyarrow.parquet as pq
+    from congress_api.retention.raw_storage import state_key, STATE_KEY_FIELD
+
+    first = storage.publish(storage.prepare(storage.snapshot(), operation='seed', states=states('a', 'b')))
+    _, reference = storage.state_routes.lookup(first.manifest['state']['root'], state_key('https://example.gov/a'))
+    base_pin = reference['release']
+    rows = storage._read_states(reference).to_pylist()
+    rows[0]['attempts'] = 99
+    replacement = tmp_path / 'unselected.parquet'
+    pq.write_table(pa.Table.from_pylist([rows[0]], schema=storage.state_native_schema), replacement)
+    request = dict(dataset=base_pin['dataset']['dataset'], operation='unselected', definition='raw-native-v1',
+        base=base_pin['id'], keys=[STATE_KEY_FIELD], replacements=dict(path=str(replacement),
+            digest=storage.native.hash_input(replacement)['digest']))
+    native_candidate = storage.native.update(request)
+    assert native_candidate != base_pin
+    assert storage.snapshot().manifest == first.manifest
+    assert first.states().equals(states('a', 'b'))
+    with pytest.raises(DocSpecFailure, match='stale_base'):
+        storage.native.update({**request, 'operation': 'next-candidate'})
+    correction = states('a').to_pylist()
+    correction[0]['attempts'] = 3
+    selected = storage.publish(storage.prepare(storage.snapshot(), operation='independent',
+        states=pa.Table.from_pylist(correction, schema=STATE_SCHEMA)))
+    assert selected.state('https://example.gov/a')['attempts'] == 3
+    assert selected.state('https://example.gov/b') == first.state('https://example.gov/b')
+    assert first.states().equals(states('a', 'b'))
 from contextlib import contextmanager
 from copy import deepcopy
 
@@ -217,3 +247,17 @@ def test_richer_state_schema_and_null_url_survive_native_selection(storage):
     assert changed.states().slice(0, 2).equals(original)
     assert changed.states().schema.equals(schema)
     assert changed.state(None) == original.to_pylist()[1]
+
+
+def test_iter_states_for_streams_requested_native_rows_in_original_order(tmp_path):
+    from native_memory_helpers import memory_raw_storage
+    from congress_api.retention.raw_storage import STATE_ORDER
+    owner = memory_raw_storage(SelectorStore(), max_state_rows=2)
+    selected = owner.publish(owner.prepare(owner.snapshot(), operation='ordered', states=states('b', 'a', 'c')))
+    rows = list(selected.iter_states_for(iter(['https://example.gov/c', 'https://example.gov/b',
+                                               'https://example.gov/c', 'https://example.gov/missing'])))
+    assert [row['url'] for row in rows] == ['https://example.gov/b', 'https://example.gov/c']
+    assert [row[STATE_ORDER] for row in rows] == [0, 2]
+    assert [{key: row[key] for key in owner.state_schema.names} for row in rows] == states('b', 'c').to_pylist()
+    owner.publish(owner.prepare(selected, operation='later', states=states('d')))
+    assert list(selected.iter_states_for(['https://example.gov/d'])) == []

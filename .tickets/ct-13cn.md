@@ -1,0 +1,37 @@
+---
+id: ct-13cn
+status: open
+deps: [ct-egpe]
+links: [ct-3180]
+created: 2026-10-20T18:24:29Z
+type: task
+priority: 2
+assignee: mikewolfd
+parent: ct-mi03
+tags: [docspec, efficiency, debt]
+---
+# Use native changes for catalog diagnostics and selective downstream work
+
+Expose the current POST /compare and POST /changes APIs through NativeDatasets and wire an actual catalog diagnostic/change consumer. Use exact versions and the maintained native change certificates instead of another full-population change ledger.
+
+## Acceptance Criteria
+
+- Preserve duplicate-aware value versus occurrence identity, typed added/removed members, nulls and schema/evidence/coverage-only effects. Compare with a small independent multiset reference.
+- Consume one change stream and derive counts from it when rows are required; do not run compare and changes redundantly. Check stream completeness and exact source pins.
+- Feed only proven changed scope to existing dependency/viewer logic. Native value differences do not replace source identity, transitive grouping or review binding policy.
+- Test missing/invalid history and bounded fallback handling; incremental callers refuse unbounded fallback with an actionable reason. Report actual read/returned bytes and support separately for each field group/backend.
+
+## Notes
+
+**2026-10-20T18:35:21Z**
+
+User explicitly authorized extending DocSpec-rs itself for R2 support on2026-10-20. Implement in isolated native worktrees, qualify locally before isolated provider tests, preserve production data and mappings. Backend refusal is a dependency to solve, not grounds for closing this ticket as deferred.
+
+**2026-10-20T20:18:00Z**
+
+CS 300 / evolutionary-refactoring audit note: native remote `source`-group comparison and change streaming landed on `docspec-rs` `main` (`b240765`). Once `ct-3180` completes isolated R2 provider qualification and `ct-q968` lands, wire the Python diagnostic consumer through `NativeDatasets` + `ArrowResponse`.
+
+
+**2026-10-20T22:19:31Z**
+
+2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.

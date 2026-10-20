@@ -138,3 +138,66 @@ def test_selected_table_rejects_duplicate_component_before_reading_native(tmp_pa
     with pytest.raises(ValueError, match='Duplicate selected catalog component'):
         list(table.iter_batches())
     assert not native.reads
+
+
+def test_selected_table_adds_nullable_fields_without_rewriting_or_coercing_old_pins(tmp_path):
+    from congress_api.retention.catalog_batches import SelectedCatalogTable
+    class ExactNative(Native):
+        @contextmanager
+        def source_batches(self, release, *, schema=None):
+            physical = self.tables[release['dataset']['dataset']].schema
+            assert schema.equals(physical, check_metadata=True)
+            with super().source_batches(release, schema=schema) as reader:
+                yield reader
+    store, native = Store(tmp_path), ExactNative()
+    old = list(iterator_prepared_components(store, prepare(store, native, 2)))
+    frozen = dict(native.tables)
+    added = pa.field('reading', pa.struct([('size', pa.uint64()), ('bytes', pa.binary())]),
+                     metadata={b'meaning': b'retained exact reading'})
+    schema = pa.schema([SCHEMA.field(0), added, *list(SCHEMA)[1:]],
+                       metadata={b'catalog_id': b'new'})
+    physical = schema.append(pa.field('_catalog_order', pa.int64(), nullable=False))
+    values = [dict(source_id='source-new', document_id='doc-new', aliases=['kept', 'kept'],
+                   reading=dict(size=2**64-1, bytes=b'exact'), _catalog_order=2)]
+    table = pa.Table.from_pylist(values, schema=physical)
+    new = list(iterator_prepared_components(store, prepare_native_catalog_components(
+        store, native, candidate='added-column', source_chunks=[table], document_chunks=[table],
+        source_schema=schema, document_schema=schema, max_chunk_rows=256, max_chunk_bytes=1 << 20)))
+    selected = old + new
+    reader = SelectedCatalogTable(schema, lambda: iter(selected), store=store, native=native,
+        label='filenames', rows=3, max_ordered_bytes=1 << 20)
+    actual = pa.Table.from_batches(list(reader.iter_batches(batch_size=1)))
+    assert actual.schema.equals(schema, check_metadata=True)
+    rows = actual.to_pylist()
+    assert [row['reading'] for row in rows] == [None, None, values[0]['reading']]
+    assert rows[0]['aliases'] == ['same', 'same']
+    assert len(native.reads) == 2
+    assert all(native.tables[key].equals(value, check_metadata=True) for key, value in frozen.items())
+    only_new = pa.Table.from_batches(list(reader.iter_batches(columns=['reading'])))
+    assert only_new.to_pylist() == [dict(reading=row['reading']) for row in rows]
+    assert only_new.schema.field(0).equals(added, check_metadata=True)
+
+
+@pytest.mark.parametrize('damage', ['required', 'type', 'removed', 'reordered', 'field_metadata', 'metadata'])
+def test_selected_nullable_adaptation_refuses_other_schema_changes_before_payloads(tmp_path, damage):
+    from congress_api.retention.catalog_batches import SelectedCatalogTable
+    store, native = Store(tmp_path), Native()
+    selected = list(iterator_prepared_components(store, prepare(store, native, 2)))
+    fields, metadata = list(SCHEMA), SCHEMA.metadata
+    if damage == 'required':
+        fields.append(pa.field('new', pa.string(), nullable=False))
+    elif damage == 'type':
+        fields[0] = pa.field('source_id', pa.int64())
+    elif damage == 'removed':
+        fields.pop()
+    elif damage == 'reordered':
+        fields.reverse()
+    elif damage == 'field_metadata':
+        fields[0] = fields[0].with_metadata({b'changed': b'meaning'})
+    else:
+        metadata = dict(metadata, policy=b'changed')
+    reader = SelectedCatalogTable(pa.schema(fields, metadata=metadata), lambda: iter(selected),
+        store=store, native=native, label='filenames', rows=2, max_ordered_bytes=1 << 20)
+    with pytest.raises(ValueError, match='application schemas differ'):
+        list(reader.iter_batches())
+    assert not native.reads

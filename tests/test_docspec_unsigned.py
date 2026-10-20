@@ -52,12 +52,23 @@ def test_schema_bound_read_refuses_out_of_range_unsigned_values(tmp_path, monkey
     physical = pa.Table.from_pylist([dict(unsigned=Decimal(value))],
                                    schema=pa.schema([('unsigned', pa.decimal128(20, 0))]))
 
-    def write_native_result(command, release, output, *options):
-        with output.open('wb') as target:
-            with pa.ipc.new_stream(target, physical.schema) as writer:
-                writer.write_table(physical)
-
-    monkeypatch.setattr(native, '_call', write_native_result)
-    with pytest.raises(pa.ArrowInvalid):
-        with native.source_batches({}, schema=schema) as reader:
-            reader.read_all()
+    import httpx
+    from docspec_transport_helpers import host_for_client
+    pin = dict(dataset=dict(dataset='unsigned'), id='initial', manifest=dict(digest='fixture'))
+    output = pa.BufferOutputStream()
+    with pa.ipc.new_stream(output, physical.schema) as writer:
+        writer.write_table(physical)
+    body = output.getvalue().to_pybytes()
+    def response(request):
+        if request.url.path.endswith('/arrow/source'):
+            return httpx.Response(200, stream=httpx.ByteStream(body), headers={
+                'content-type': 'application/vnd.apache.arrow.stream',
+                'docspec-dataset': 'unsigned', 'docspec-version': 'initial',
+                'docspec-manifest-blake3': 'fixture'})
+        return httpx.Response(200, json=pin)
+    with httpx.Client(base_url='http://fixture', transport=httpx.MockTransport(response)) as client:
+        host = host_for_client(client)
+        monkeypatch.setattr(native, '_execution_host', lambda: host)
+        with pytest.raises(pa.ArrowInvalid):
+            with native.source_batches(pin, schema=schema) as reader:
+                reader.read_all()

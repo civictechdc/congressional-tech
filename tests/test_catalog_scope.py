@@ -6,7 +6,7 @@ import pyarrow.parquet as pq
 
 from test_catalog_dependencies import source, identity, SelectedDependencies
 from congress_api.retention import document_index as index
-from congress_api.retention.catalog_dependencies import affected_sources
+from congress_api.retention.catalog_dependencies import affected_sources, AffectedSources
 from congress_api.retention.catalog_scope import prepare_catalog_scope
 
 
@@ -200,9 +200,45 @@ def test_actual_native_scope_proof_replay_calls_are_measured_separately(tmp_path
     record_property('adoption_native_run_table_calls', adoption_calls)
     record_property('correction_preparation_native_run_table_calls', preparation_calls)
     record_property('scope_proof_native_completed_replay_calls', replay_calls)
-    assert adoption_calls == 4
-    assert preparation_calls == 4
-    assert replay_calls == 2
+    assert adoption_calls == 6
+    assert preparation_calls == 6
+    assert replay_calls == 4
     # Replay calls name already prepared immutable dependency datasets, not new
     # versions. Their cost is still nonzero and reported separately.
-    assert calls[position:] == calls[adoption_calls:adoption_calls + 2]
+    assert calls[position:] == calls[adoption_calls:adoption_calls + 4]
+
+
+def test_nullable_list_members_preserve_exact_sources_and_match_full_document_summary(tmp_path):
+    rows = [source('a.pdf', 'A', source_new_literal=['new', 'new', None]),
+            source('b.pdf', 'A', source_new_literal=['second', None])]
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS),
+                        ('source_new_literal', index.STRINGS)])
+    expected_sources, _, expected_documents, _ = index.prepare_document_indexes(deepcopy(rows), schema)
+    scope = affected_sources(SelectedDependencies([]), replacements=rows)
+    result = prepare_catalog_scope(tmp_path / 'nullable-list', scope, schema=schema,
+        source_orders={identity(row): i for i, row in enumerate(rows)}, candidate='nullable-list')
+    actual_sources = list(result.source_values())
+    actual_documents = pq.read_table(result.documents_path).to_pylist()
+    assert {row['source_id']: row['source_new_literal'] for row in actual_sources} == {
+        identity(row): row['source_new_literal'] for row in rows}
+    assert actual_documents[0]['source_new_literal'] == ['new', 'second', None]
+    for actual, expected, logical in [(actual_sources, expected_sources, result.source_schema),
+                                     (actual_documents, expected_documents, result.document_schema)]:
+        normalize = lambda values: sorted(pa.Table.from_pylist(values, schema=logical).to_pylist(), key=lambda row: row['source_id'])
+        assert normalize(actual) == normalize(expected)
+
+
+def test_nullable_occurrence_elements_remain_exact_source_values_and_supply_no_document_claim(tmp_path):
+    row = source('paper.pdf', 'A', source_occurrences=[None])
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS),
+                        ('source_occurrences', index.metadata_type('source_occurrences'))])
+    expected_sources, expected_schema, expected_documents, _ = index.prepare_document_indexes([row], schema)
+    scope = AffectedSources({}, {identity(row): row}, 0, 0)
+    prepared = prepare_catalog_scope(tmp_path / 'nullable-occurrence', scope, schema=schema,
+        source_orders={identity(row): 0}, candidate='nullable-occurrence')
+    assert list(prepared.source_values())[0]['source_occurrences'] == [None]
+    assert expected_sources[0]['source_occurrences'] == [None]
+    with pq.ParquetFile(prepared.documents_path) as documents:
+        document, = documents.read().to_pylist()
+    assert document.get('source_occurrences') is None
+    assert document == pa.Table.from_pylist(expected_documents, schema=documents.schema_arrow).to_pylist()[0]

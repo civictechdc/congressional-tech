@@ -3,7 +3,6 @@
 This owner consumes an explicitly selected capture/receipt group. It does not
 acquire sources, classify document bodies, or choose a catalog version.
 """
-from functools import partial
 import json
 
 import pyarrow as pa
@@ -24,8 +23,14 @@ def add_source(sources, body_key, filename, source_url, **values):
     return row
 
 
-def collect_source_inputs(sources, context, captures, read, *, working, seeds=()):
-    add = partial(add_source, sources)
+def collect_source_inputs(sources, context, captures, read, *, working, seeds=(), source_observer=None):
+    active_receipt = None
+    def add(body_key, filename, source_url, *, _receipt=None, **values):
+        row = add_source(sources, body_key, filename, source_url, **values)
+        receipt = _receipt or active_receipt
+        if source_observer is not None and receipt:
+            source_observer.source(row, receipt)
+        return row
     def link_names(link, receipt=None):
         url = link.get("url")
         if not url:
@@ -35,21 +40,26 @@ def collect_source_inputs(sources, context, captures, read, *, working, seeds=()
         if not names and (name := index.url_filename(url)):
             names = [(name, "url_path")]
         for name, basis in names:
-            add(None, name, url, filename_origins=[basis])
+            add(None, name, url, filename_origins=[basis], _receipt=receipt)
 
     for link in progress.track(seeds, 'read_seed_links', unit='links'):
         link_names(link)
     # First build/repair includes migration receipts; routine updates use new rows.
     # Historical Senate download routing is interpreted by the current owner.
-    selected = pc.is_in(captures["family"], value_set=pa.array(index.FAMILIES))
-    senate = captures.filter(pc.equal(captures["family"], "senate/pages"))
-    downloads = pa.array(sorted({url for url in senate["context_url"].to_pylist()
-                                 if url and source_family(url=url) == "documents"}), type=pa.string())
-    selected = pc.or_(selected, pc.and_(pc.equal(captures["family"], "senate/pages"),
-                                      pc.is_in(captures["context_url"], value_set=downloads)))
-    recurring = pc.fill_null(pc.match_substring(captures["receipt_key"], "/download-"), False)
-    selected = pc.or_(selected, recurring)
-    for record, rows, receipt in index.retained_records(captures.filter(selected), read):
+    def selected_captures():
+        for batch in index.capture_batches(captures):
+            table = pa.Table.from_batches([batch])
+            selected = pc.is_in(table['family'], value_set=pa.array(index.FAMILIES))
+            senate = table.filter(pc.equal(table['family'], 'senate/pages'))
+            downloads = pa.array(sorted({url for url in senate['context_url'].to_pylist()
+                if url and source_family(url=url) == 'documents'}), type=pa.string())
+            selected = pc.or_(selected, pc.and_(pc.equal(table['family'], 'senate/pages'),
+                                               pc.is_in(table['context_url'], value_set=downloads)))
+            selected = pc.or_(selected, pc.fill_null(pc.match_substring(table['receipt_key'], '/download-'), False))
+            if len(result := table.filter(selected)):
+                yield result
+    for record, rows, receipt in index.retained_records(selected_captures(), read):
+        active_receipt = receipt
         if isinstance(record, dict):
             for link in record.get("source_context", {}).get("observations", []):
                 link_names(link, receipt)
@@ -85,7 +95,8 @@ def collect_source_inputs(sources, context, captures, read, *, working, seeds=()
         if (any(not row.get("body_key") for row in rows)
                 and not (isinstance(record, dict) and "xml_url" in record and "pdf_url" in record)):
             for name, basis, url in index.inventory_names(record):
-                add(None, name, url, filename_origins=[basis])
+                add(None, name, url, filename_origins=[basis], _receipt=receipt)
+    active_receipt = None
     context.refresh_meeting_context()
     # Metadata-only publisher records can list files with no capture yet.
     progress.report('prepare_source_associations')
@@ -121,7 +132,14 @@ def collect_source_inputs(sources, context, captures, read, *, working, seeds=()
                     if isinstance(items, list):
                         row[field] = index.merge_values(field, row.get(field), items)
                 sources[target] = row
+                if source_observer is not None:
+                    source_observer.merged(old, row)
     for key, row in progress.track(sources.items(), 'associate_source_metadata', unit='source_rows'):
         for field, values in context.for_url(row.get("source_url")).items():
             row[field] = index.merge_values(field, row.get(field), values)
         sources[key] = row
+        if source_observer is not None:
+            source_observer.context(row, context)
+
+    if source_observer is not None:
+        source_observer.finish(sources)

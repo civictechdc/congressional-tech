@@ -3,11 +3,13 @@
 Grouping aliases and retained-source dependency keys share only this physical
 member layout. Callers retain meanings, identities, typed schemas and selection.
 """
+from collections import OrderedDict
 from contextlib import closing
 from pathlib import Path
 import sqlite3
 import json
 from tempfile import TemporaryDirectory
+from types import MappingProxyType
 
 import pyarrow as pa
 
@@ -24,17 +26,37 @@ class CatalogMemberships:
         self.schema, self.member_column = schema, member_column
         self.max_rows, self.max_bytes = max_rows, max_bytes
         self._read, self._write, self.validate_alias = read, write, validate_alias
+        self._cached_leaves = OrderedDict()
+        self._cached_bytes = 0
+        self._cached_schema = schema
+
+    def _clear_leaf_cache(self):
+        self._cached_leaves.clear()
+        self._cached_bytes = 0
+        self._cached_schema = self.schema
 
     def _groups(self, value):
         if value is None:
+            self._clear_leaf_cache()
             return {}
         if value.get('kind') == 'members':
+            self._clear_leaf_cache()
             if (not isinstance(value.get('alias'), str) or type(value.get('count')) is not int
                     or value['count'] < 1 or value.get('root') is None):
                 raise DependencyGap('Invalid large-alias dependency metadata')
             return {value['alias']: value}
         if value.get('kind') != 'rows':
+            self._clear_leaf_cache()
             raise DependencyGap('Unknown alias dependency leaf format')
+        # Dependency closure alternates before/after roots. Reuse two validated
+        # leaves, with their combined Arrow bytes bounded by one selected leaf
+        # budget. Bind the full descriptors and exact metadata-bearing schema.
+        descriptor = json.dumps(value, sort_keys=True, separators=(',', ':'))
+        if not self._cached_schema.equals(self.schema, check_metadata=True):
+            self._clear_leaf_cache()
+        if descriptor in self._cached_leaves:
+            self._cached_leaves.move_to_end(descriptor)
+            return self._cached_leaves[descriptor][0]
         table = self._read(value['release'], self.schema)
         if len(table) != value.get('rows'):
             raise DependencyGap('Alias dependency leaf row count differs')
@@ -46,17 +68,33 @@ class CatalogMemberships:
             seen.add(pair)
             self.validate_alias(row['alias'])
             groups.setdefault(row['alias'], []).append(row)
-        return {alias: pa.Table.from_pylist(rows, schema=self.schema) for alias, rows in groups.items()}
+        groups = MappingProxyType({alias: pa.Table.from_pylist(rows, schema=self.schema)
+                                   for alias, rows in groups.items()})
+        size = sum(table.nbytes for table in groups.values())
+        if size <= self.max_bytes:
+            while self._cached_leaves and (len(self._cached_leaves) >= 2
+                    or self._cached_bytes + size > self.max_bytes):
+                _, (_, removed_bytes) = self._cached_leaves.popitem(last=False)
+                self._cached_bytes -= removed_bytes
+            self._cached_leaves[descriptor] = groups, size
+            self._cached_bytes += size
+        return groups
 
     def values(self, root, alias):
-        """Stream one alias's members with at most one native leaf resident."""
+        """Stream members; cache up to two leaves within one Arrow-byte budget.
+
+        Leaf decoding and Python grouping have separate transient allocations.
+        Large secondary membership streams clear the cache before reading.
+        """
         _, value = self.routes.lookup(root, alias)
         if value is None:
+            self._clear_leaf_cache()
             return
         if value.get('kind') == 'rows':
             yield from (row[self.member_column] for row in self._groups(value).get(
                 alias, pa.Table.from_pylist([], schema=self.schema)).to_pylist())
             return
+        self._clear_leaf_cache()
         if value.get('kind') != 'members':
             raise DependencyGap('Unknown alias dependency leaf format')
         if alias != value.get('alias'):

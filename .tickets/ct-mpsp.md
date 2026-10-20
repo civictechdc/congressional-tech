@@ -1,8 +1,8 @@
 ---
 id: ct-mpsp
-status: open
+status: closed
 deps: []
-links: [ct-mi03, ct-a1aa]
+links: [ct-mi03, ct-a1aa, ct-wmtx, ct-lcbc, ct-a70m]
 created: 2026-10-20T20:37:00Z
 type: task
 priority: 2
@@ -23,3 +23,9 @@ Extend `docspec-rs` table creation, replacement metadata validation, snapshot in
 - `fresh_metadata_at` and `replacement_metadata_at` (`src/storage/tables.rs`) support declared `Transform::Month` partition specs without weakening unencrypted v2/v3 metadata validation.
 - `write_batches` and `snapshot_files` (`src/storage.rs`, `src/engine/write.rs`) populate and verify partition values on written `DataFile` entries and preserve unchanged partition files during `Update` and incremental `Refresh`.
 - `news_lake` datasets with `I5` `MonthTransform` partitioning round-trip through native `Build`, `Update`, and `Refresh` with exact value and occurrence fidelity.
+
+## Notes
+
+**2026-10-20T22:19:32Z**
+
+Application I5 correction: packages/news-lake/docs/03-iceberg-profile.md:29 starts small tables unpartitioned and introduces date transforms only at measured volume; MonthTransform is not mandatory. Engine support remains upstream scope. App maintenance/qualification ct-a70m must demonstrate a real selective workload and typed date mapping before partition adoption.
