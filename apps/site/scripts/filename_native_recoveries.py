@@ -1,5 +1,10 @@
 """Update stable recovery links from affected URLs and retained row ownership."""
 import json
+from contextlib import closing
+from pathlib import Path
+import pickle
+import sqlite3
+from tempfile import TemporaryDirectory
 
 from congress_api.parsers.archive_links import allowed_url
 from congress_api.retention.saved_responses import saved_response
@@ -7,6 +12,58 @@ from congress_api.retention.source_aliases import resolution_candidates
 from filename_aliases import content_kind, valid_body
 from filename_alias_index import OUTPUT_BYTES
 from filename_recoveries import accepted_rows
+
+
+class CatalogRecoverySources:
+    """Adapt selected source lookups; preserve the original encounter ordering."""
+    def __init__(self, snapshot, *, max_ordered_bytes):
+        from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+        self.snapshot, self.max_ordered_bytes = snapshot, max_ordered_bytes
+        self.owner = CatalogDependencyStorage.for_snapshot(snapshot)
+        self.selection = snapshot.selection['dependency']
+
+    def urls(self):
+        # Initial adoption only. Subsequent updates use the exact change cursor.
+        for batch in self.snapshot.table('filenames', max_ordered_bytes=self.max_ordered_bytes).iter_batches(
+                columns=['source_url']):
+            yield from (url for url in batch.column(0).to_pylist() if url)
+
+    def at_url(self, url):
+        # URL membership is hash routed, while the historical content-kind rule
+        # uses the last encounter. Spill a prolific URL's rows before ordering.
+        with TemporaryDirectory(prefix='recovery-url-') as directory, closing(
+                sqlite3.connect(Path(directory) / 'sources.sqlite')) as db:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                             'CREATE TABLE sources(position INTEGER PRIMARY KEY,body BLOB);')
+            for record in self.owner.sources_at_url(self.selection, url):
+                db.execute('INSERT INTO sources VALUES (?,?)',
+                           (record['source_order'], pickle.dumps(record['source_values'])))
+            for body, in db.execute('SELECT body FROM sources ORDER BY position'):
+                yield pickle.loads(body)
+
+    def targeting(self, url):
+        for record in self.owner.originals_targeting(self.selection, url):
+            yield record['source_values']
+
+
+def index_catalog_recoveries(snapshot, rows, *, max_ordered_bytes, previous=None, metrics=None):
+    """Bind recovery updates to exact retained catalog ancestry and row values."""
+    source_identity = previous['source_identity'] if previous is not None else None
+
+    def changed_rows():
+        for change in snapshot.changes_since(source_identity):
+            for which in ('retired', 'prepared'):
+                table = snapshot.changed_sources(change, which=which, max_ordered_bytes=max_ordered_bytes)
+                for batch in table.iter_batches():
+                    yield from batch.to_pylist()
+
+    counts = snapshot.selection['counts']
+    info = dict(catalog_id=snapshot.schemas['filenames'].metadata[b'catalog_id'].decode(),
+                rows=counts['source_rows'], entries=counts['document_rows'])
+    return index_selected_recoveries(info, snapshot.identity,
+        CatalogRecoverySources(snapshot, max_ordered_bytes=max_ordered_bytes), rows,
+        previous=previous, previous_identity=source_identity,
+        changed_sources=changed_rows() if previous is not None else (), metrics=metrics)
 
 
 def _alias(original, sources, accepted, accepted_targets):
