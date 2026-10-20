@@ -15,11 +15,21 @@ from .catalog_partitions import CatalogTable
 from .catalog_scope import _component_pages, catalog_scope_requirements
 from .catalog_validation import catalog_reference_requirements
 from .immutable_metadata import MetadataObjects, encoded
+from .derived_files import VerifiedFile, check_identity, file_identity
 
 
 def adoption_requirements():
     return dict(validator='catalog-native-adoption-v1',
                 implementation_sha256=sha256(Path(__file__).read_bytes() + Path(__file__).with_name('catalog_rows.py').read_bytes()).hexdigest())
+
+
+def _save_preparation(path, request, dependency=None):
+    """Retain one completed preparation result, never native operation state."""
+    value = dict(request=request, dependency=dependency)
+    value['binding'] = sha256(encoded(value)).hexdigest()
+    staging = path.with_suffix('.tmp')
+    staging.write_bytes(encoded(value))
+    staging.replace(path)
 
 
 def ordered_chunks(file, *, max_rows, max_bytes):
@@ -148,10 +158,47 @@ def adopt_native_catalog(store, *, native, previous, dependencies, candidate, di
     directory.mkdir(parents=True, exist_ok=True)
     checkpoint = directory / 'qualified-adoption.json'
     inputs = dict(candidate=candidate, max_chunk_rows=max_chunk_rows, max_chunk_bytes=max_chunk_bytes, rules=rules)
+    native_files = {str(Path(path).resolve()): file_identity(path)
+                    for path in native.execution_files()} if hasattr(native, 'execution_files') else {}
+    def native_settings():
+        return dict(workspace=str(Path(native.workspace).resolve()) if hasattr(native, 'workspace') else None,
+                    timeout=getattr(native, 'timeout', None))
+    settings = native_settings()
+    inputs.update(native_execution=dict(files=native_files, **settings),
+        dependency_basis=dependencies._selection(None),
+        dependency_schema=base64.b64encode(dependencies.source_schema.serialize()).decode(),
+        requirements=dict(adoption=adoption_requirements(), scope=catalog_scope_requirements(),
+            references=catalog_reference_requirements(),
+            dependencies=sha256(b''.join(Path(__file__).with_name(name).read_bytes() for name in (
+                'catalog_dependency_storage.py', 'catalog_dependencies.py', 'catalog_memberships.py',
+                'partition_routing.py', 'document_index.py'))).hexdigest()))
+
+    def require_runtime():
+        current_files = tuple(str(Path(path).resolve()) for path in native.execution_files()) if hasattr(native, 'execution_files') else ()
+        if native_settings() != settings or current_files != tuple(native_files):
+            raise ValueError('Native adoption continuation runtime changed')
+        for path, identity in native_files.items():
+            identity.require(path)
+
+    input_files = {}
+    if not isinstance(previous, NativeCatalogSnapshot):
+        for label, path in [('filenames', previous.filenames_path), ('documents', previous.documents_path)]:
+            if path is not None:
+                identity = previous.files[label]
+                actual = identity.require(path) if isinstance(identity, VerifiedFile) else file_identity(path)
+                check_identity(actual, identity, label)
+                input_files[str(path)] = actual
+
+    def require_inputs():
+        require_runtime()
+        for path, identity in input_files.items():
+            identity.require(path)
+
     retained = json.loads(checkpoint.read_bytes()) if checkpoint.exists() else None
     if retained is not None:
         if retained['inputs'] != inputs:
             raise ValueError('Native adoption continuation inputs differ')
+        require_inputs()
         if isinstance(previous, NativeCatalogSnapshot):
             if previous.selection.get('adoption') != retained['adoption_reference']:
                 raise ValueError('Native adoption continuation selected another result')
@@ -165,16 +212,35 @@ def adopt_native_catalog(store, *, native, previous, dependencies, candidate, di
     with pq.ParquetFile(previous.filenames_path) as sources, pq.ParquetFile(previous.documents_path) as documents:
         schemas = dict(filenames=sources.schema_arrow, documents=documents.schema_arrow)
         files = dict(filenames=sources, documents=documents)
-        dependency = dependencies.adopt(pa.Table.from_batches([batch]) for batch in sources.iter_batches(batch_size=1))
+        if not schemas['filenames'].equals(dependencies.source_schema, check_metadata=True):
+            raise ValueError('Native adoption dependency schema differs from selected files')
+        schema_text = {key: base64.b64encode(schema.serialize()).decode() for key, schema in schemas.items()}
+        request = dict(version=1, inputs=inputs, base=previous.identity, files=previous.files, schemas=schema_text)
+        preparation = directory / 'preparation-request.json'
+        dependency = None
+        if preparation.exists():
+            saved = json.loads(preparation.read_bytes())
+            binding = saved.pop('binding', None)
+            if binding != sha256(encoded(saved)).hexdigest() or saved.get('request') != request:
+                raise ValueError('Native adoption continuation inputs or preparation differ')
+            dependency = saved['dependency']
+        else:
+            _save_preparation(preparation, request)
+        require_inputs()
+        if dependency is None:
+            dependency = dependencies.adopt(pa.Table.from_batches([batch]) for batch in sources.iter_batches(batch_size=1))
+            require_inputs()
+            _save_preparation(preparation, request, dependency)
         prepared = prepare_native_catalog_components(store, native, candidate=candidate,
             source_chunks=ordered_chunks(sources, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes),
             document_chunks=ordered_chunks(documents, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes),
             source_schema=schemas['filenames'], document_schema=schemas['documents'],
-            max_chunk_rows=max_chunk_rows, max_chunk_bytes=max_chunk_bytes)
+            max_chunk_rows=max_chunk_rows, max_chunk_bytes=max_chunk_bytes,
+            checkpoint_directory=directory / 'prepared-chunks')
+        require_inputs()
         readback = qualify_adoption_readback(store, native, prepared, files, max_bytes=max_chunk_bytes)
         body = dict(version=1, base=previous.identity, dependency_before=None, dependency_after=dependency,
-            candidate=candidate, schemas={key: base64.b64encode(schema.serialize().to_pybytes()).decode()
-                                         for key, schema in schemas.items()},
+            candidate=candidate, schemas=schema_text,
             retired=dict(head=None, count=0), prepared=_component_pages(store, iterator_prepared_components(store, prepared)),
             counts=dict(retired_source_rows=0, retired_document_rows=0,
                 prepared_source_rows=sources.metadata.num_rows, prepared_document_rows=documents.metadata.num_rows),
@@ -187,9 +253,11 @@ def adopt_native_catalog(store, *, native, previous, dependencies, candidate, di
         proof['binding'] = sha256(encoded(proof)).hexdigest()
         adoption_reference = MetadataObjects(store, 'catalog-adoption-v1').put(proof)
         pending = directory / 'qualified-adoption.tmp'
+        require_inputs()
         pending.write_bytes(encoded(dict(inputs=inputs, scope_reference=scope_reference,
                                          adoption_reference=adoption_reference)))
         pending.replace(checkpoint)
+        require_inputs()
         return dict(publish_native_catalog(store, scope_reference, previous=previous,
                                           adoption_reference=adoption_reference),
                     scope_reference=scope_reference, adoption_reference=adoption_reference)
