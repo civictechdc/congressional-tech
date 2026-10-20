@@ -88,3 +88,33 @@ PYTHONPATH="$PWD/packages/congress_api/src" python docs/experiments/incremental-
 The output directory must be new. `--require-bounded` returns 2 when the fixed
 change scans unrelated rows; `summary.json` names the failed acceptance boundary.
 A successful diagnostic run does not imply successful incremental acceptance.
+
+## First dependency implementation increment
+
+`catalog_dependencies.affected_sources` now accepts exact keyed source and
+reverse-alias lookups. It closes saved old aliases and current replacement aliases
+before returning source inputs. A bridge deletion reaches both former sides;
+a new bridge reaches existing neighbors. Unknown deleted sources, missing
+referenced sources and incomplete self-membership refuse with `DependencyGap`.
+No change performs no lookups. The maintained grouping implementations and this
+lookup now share `source_identity` and `group_aliases` in `document_index.py`;
+source/document ID and group eligibility rules remain the same.
+
+`NativeCatalogDependencies` reads explicitly routed native pins. Typed dependency
+rows retain nested source values, immutable source order and saved aliases from
+the prior rules. Reverse rows retain each alias/source pairing. It validates
+schemas and source identities; native schema metadata is not mistaken for the
+application schema. An actual local native test retains duplicate nested source
+observations and orders 37–39, then uses those exact stored rows to close the
+bridge deletion. A targeted rule-upgrade test verifies that saved old aliases
+remain available when the current grouping policy changes.
+
+This increment supplies the domain lookup and scope computation. It does not yet
+implement durable routing writes, resumable traversal within a large component,
+source/document candidate publication or maintained caller migration. The scope
+currently retains its affected source dictionaries and membership sets in memory;
+its total memory depends on affected-component size. Those boundaries must be
+implemented and measured before this ticket can claim bounded resumable updates.
+Native tests use the shared finite local fixture limits, independently of
+production configuration. The primary checkout retains test results under
+`output/incremental-updates-20261019/catalog/closure-increment-final-tests.xml`.

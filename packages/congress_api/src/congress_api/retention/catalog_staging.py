@@ -303,7 +303,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
     def normalize(row):
         index.apply_capture_record_role(row)
         index.restore_filename_kind(row)
-        row['source_id'] = sha256(index.compact([row.get(k) for k in ('body_key','filename','source_url')]).encode()).hexdigest()
+        row['source_id'] = index.source_identity(row)
         row['record_role'] = row.get('record_role') or ['document']
         row['format'] = (None if row['record_role'] == ['capture-state'] else
                          row.get('body_format') or index.file_formats(row.get('media_type'), row.get('extension')))
@@ -369,15 +369,8 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         parents.append(key)
         if reusable and previous_documents is not None:
             db.execute('INSERT INTO current_sources VALUES (?,?,?)', (key,row['source_id'],signature(row)))
-        endpoint = index.entry_key(row.get('filename'), row.get('source_url'), key)
-        resolved = row.get('source_resolved_url')
-        if endpoint == ('row', key) and row.get('source_url') and resolved and len(resolved) == 1:
-            endpoint = index.entry_key(row.get('filename'), resolved[0], key)
-        join('endpoint', endpoint, key)
-        body = index.document_body(row.get('body_key'), row.get('media_type'), row.get('http_status'),
-                                   row.get('capture_outcome'), row.get('body_format'), row)
-        if body:
-            join('body', body, key)
+        for kind, alias in index.group_aliases(row, key):
+            join(kind, alias, key)
         if key % 4096 == 0:
             index.progress.report('group_documents', completed=key, unit='source_rows')
     db.executemany('INSERT INTO members VALUES (?,?)', ((root(key),key) for key in range(1,len(parents))))

@@ -427,24 +427,13 @@ def source_groups(table):
             row = parents[row]
         return row
 
-    endpoints, bodies = {}, {}
-    columns = [
-        table[name].to_pylist()
-        for name in ("filename", "source_url", "body_key", "media_type", "http_status")
-    ]
-    for field in ("source_resolved_url", "capture_outcome", "body_format", *RESPONSE_FIELDS):
-        columns.append(table[field].to_pylist() if field in table.column_names else [None] * len(table))
-    for row_id, (filename, url, body, media, statuses, resolved, outcomes, body_format, *response) in enumerate(
-        zip(*columns)
-    ):
-        endpoint = entry_key(filename, url, row_id)
-        # An orphan href has no host of its own. Only an observed, unambiguous
-        # parent/anchor resolution can join it to an absolute endpoint.
-        if endpoint == ("row", row_id) and url and resolved and len(resolved) == 1:
-            endpoint = entry_key(filename, resolved[0], row_id)
-        parents[root(row_id)] = root(endpoints.setdefault(endpoint, row_id))
-        if document_body(body, media, statuses, outcomes, body_format, dict(zip(RESPONSE_FIELDS, response))):
-            parents[root(row_id)] = root(bodies.setdefault(body, row_id))
+    aliases = {}
+    fields = ['filename', 'source_url', 'body_key', 'media_type', 'http_status',
+              'source_resolved_url', 'capture_outcome', 'body_format', *RESPONSE_FIELDS]
+    for row_id, row in enumerate(table.select(list(dict.fromkeys(
+            name for name in fields if name in table.column_names))).to_pylist()):
+        for alias in group_aliases(row, row_id):
+            parents[root(row_id)] = root(aliases.setdefault(alias, row_id))
     groups, members, entry_ids = {}, [], []
     for row_id in range(len(table)):
         key = root(row_id)
@@ -455,6 +444,30 @@ def source_groups(table):
         entry_ids.append(entry)
         members[entry].append(row_id)
     return entry_ids, members
+
+
+def source_identity(row):
+    """Preserve the catalog's source ID independently of interpretation state."""
+    return sha256(compact([row.get(k) for k in ('body_key', 'filename', 'source_url')]).encode()).hexdigest()
+
+
+def group_aliases(row, unique_key):
+    """The one maintained endpoint/body policy used by grouping and lookup.
+
+    Isolated relative or missing endpoints use the caller's unique row key.
+    Failed or non-document bodies never form content aliases.
+    """
+    endpoint = entry_key(row.get('filename'), row.get('source_url'), unique_key)
+    resolved = row.get('source_resolved_url')
+    if (endpoint == ('row', unique_key) and row.get('source_url')
+            and resolved and len(resolved) == 1):
+        endpoint = entry_key(row.get('filename'), resolved[0], unique_key)
+    result = [('endpoint', endpoint)]
+    body = document_body(row.get('body_key'), row.get('media_type'), row.get('http_status'),
+                         row.get('capture_outcome'), row.get('body_format'), row)
+    if body:
+        result.append(('body', body))
+    return tuple(result)
 
 
 def document_body(body, media, statuses, outcomes=None, body_format=None, response=None):
@@ -499,11 +512,7 @@ def prepare_document_indexes(rows, schema):
         apply_capture_record_role(row)
         # Source/content readings can change without reparsing filenames.
         restore_filename_kind(row)
-        row["source_id"] = sha256(
-            compact(
-                [row.get(k) for k in ("body_key", "filename", "source_url")]
-            ).encode()
-        ).hexdigest()
+        row["source_id"] = source_identity(row)
         row["record_role"] = row.get("record_role") or ["document"]
         row["format"] = (None if row["record_role"] == ["capture-state"] else
                          row.get("body_format") or file_formats(row.get("media_type"), row.get("extension")))
