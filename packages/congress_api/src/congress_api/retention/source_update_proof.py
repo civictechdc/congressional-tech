@@ -65,7 +65,7 @@ def read_source_update(store, reference):
 
 def verify_source_update(store, reference, *, native, base, before, rows, deletions):
     body = read_source_update(store, reference)
-    if body['base'] != base or body['before'] != before or not set(body['deletions']) <= set(deletions):
+    if body['base'] != base or body['before'] != before or set(body['deletions']) != set(deletions):
         raise ValueError('Retained source update differs from its catalog basis/deletions')
     _verify_routing(store, native, body)
     schema = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(body['schema'], validate=True)))

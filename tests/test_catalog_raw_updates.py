@@ -141,3 +141,32 @@ def test_complete_interpreted_source_change_clears_unproven_receipt_cursor(tmp_p
     assert read_catalog(store, native=native).selection['interpretation'] is None
     with pytest.raises(ValueError, match='contribution adoption'):
         update_from_raw(store, raw_storage=raw, directory=tmp_path / 'next', candidate='next')
+
+
+def test_source_replay_proof_refuses_an_extra_selected_source_deletion(tmp_path, monkeypatch):
+    from congress_api.retention import catalog_raw_updates
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    count = raw.snapshot().manifest['captures']['rows']
+    retain(store, dict(eventId=8, congress=119, chamber='House', meetingDocuments=[dict(
+        url='https://example.gov/other.pdf', documentType='Statement', name='Other paper')]),
+        family='congress/meetings', source_file='other.json')
+    raw.publish(raw.prepare(raw.snapshot(), operation='other', captures=decode_table(store.read(CAPTURES_KEY)).slice(count)))
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()), raising=False)
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'initial', candidate='initial')
+    previous = read_catalog(store, native=native)
+    rows = pa.Table.from_batches(list(previous.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+    unrelated = next(row['source_id'] for row in rows if row['source_url'].endswith('other.pdf'))
+    count = raw.snapshot().manifest['captures']['rows']
+    retain(store, dict(eventId=7, congress=119, chamber='House', meetingDocuments=[dict(
+        url='https://example.gov/paper.pdf', documentType='Statement', name='Additional literal label')]),
+        family='congress/meetings', source_file='changed.json')
+    raw.publish(raw.prepare(raw.snapshot(), operation='changed', captures=decode_table(store.read(CAPTURES_KEY)).slice(count)))
+    before = store.read(MANIFEST_KEY)
+    update = catalog_raw_updates.update_native_catalog
+    def extra_deletion(store, **arguments):
+        return update(store, **{**arguments, 'deletions': [*arguments['deletions'], unrelated]})
+    monkeypatch.setattr(catalog_raw_updates, 'update_native_catalog', extra_deletion)
+    with pytest.raises(ValueError, match='basis/deletions'):
+        update_from_raw(store, raw_storage=raw, directory=tmp_path / 'invalid', candidate='invalid')
+    assert store.read(MANIFEST_KEY) == before
