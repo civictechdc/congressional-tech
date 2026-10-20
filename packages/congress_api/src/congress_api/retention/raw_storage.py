@@ -427,6 +427,9 @@ class RawStorage:
             counts['excluded_media_urls'] += delta
 
     def _candidate(self, kind, table, *, operation, prefix, base_id):
+        # Keep candidates independent of a previous leaf's native latest. An
+        # unselected Update advances that dataset and can make the application's
+        # still-selected base stale, even when another raw leaf won publication.
         identity = sha256(encoded([operation, kind, prefix, base_id])).hexdigest()
         dataset = 'raw-' + kind + '-' + identity
         return self.native.run_table(table, dataset=dataset, operation='initial', definition='raw-native-v1')

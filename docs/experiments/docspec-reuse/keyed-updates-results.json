@@ -1,0 +1,1423 @@
+{
+  "version": 1,
+  "binary": "/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec",
+  "rounds": 3,
+  "changed_leaf_rows": 16,
+  "unrelated_leaf_rows": 16,
+  "cases": [
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 0,
+      "case": "append",
+      "seconds": 0.39092116616666317,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4912,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 24560,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 17,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 193635,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 0,
+      "case": "correction",
+      "seconds": 0.39830208383500576,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4896,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22226,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 16,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191300,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 0,
+      "case": "delete",
+      "seconds": 0.4064631669316441,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4857,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22167,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 15,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191229,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 0,
+      "case": "noop",
+      "seconds": 0.022962666116654873,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 1,
+      "case": "noop",
+      "seconds": 0.023069457849487662,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 1,
+      "case": "delete",
+      "seconds": 0.4051875420846045,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4857,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22167,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 15,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191192,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 1,
+      "case": "correction",
+      "seconds": 0.40130341704934835,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4896,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22226,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 16,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191303,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 1,
+      "case": "append",
+      "seconds": 0.39542637509293854,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4912,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 24560,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 17,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 193618,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 2,
+      "case": "append",
+      "seconds": 0.3975522501859814,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4912,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 24560,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 17,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 193693,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 2,
+      "case": "correction",
+      "seconds": 0.4307775420602411,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4896,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22226,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 16,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191308,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 2,
+      "case": "delete",
+      "seconds": 0.3976413330528885,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4857,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22167,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 15,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191240,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "build",
+      "repeat": 2,
+      "case": "noop",
+      "seconds": 0.02221791702322662,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 0,
+      "case": "append",
+      "seconds": 0.7723367088474333,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4571,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 22211,
+        "bytes_written": 7439,
+        "data_files_written": 2,
+        "files_reused": 1,
+        "files_scanned": 1,
+        "rows_added": 1,
+        "rows_removed": 0
+      },
+      "new_retained_files": 60,
+      "new_retained_bytes": 373540,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 0,
+      "case": "correction",
+      "seconds": 0.7677937920670956,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4562,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 41998,
+        "data_files_written": 4,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 1,
+        "rows_removed": 1
+      },
+      "new_retained_files": 65,
+      "new_retained_bytes": 423486,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 0,
+      "case": "delete",
+      "seconds": 0.7407940421253443,
+      "commands": {
+        "cli_hash": 2,
+        "producer_hash_bytes": 3543,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 35473,
+        "data_files_written": 3,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 0,
+        "rows_removed": 1
+      },
+      "new_retained_files": 62,
+      "new_retained_bytes": 400102,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 0,
+      "case": "noop",
+      "seconds": 0.02727974997833371,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 1,
+      "case": "noop",
+      "seconds": 0.02791050006635487,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 1,
+      "case": "delete",
+      "seconds": 0.7836055001243949,
+      "commands": {
+        "cli_hash": 2,
+        "producer_hash_bytes": 3543,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 35473,
+        "data_files_written": 3,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 0,
+        "rows_removed": 1
+      },
+      "new_retained_files": 62,
+      "new_retained_bytes": 400179,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 1,
+      "case": "correction",
+      "seconds": 0.6667377080302685,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4562,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 42017,
+        "data_files_written": 4,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 1,
+        "rows_removed": 1
+      },
+      "new_retained_files": 65,
+      "new_retained_bytes": 423551,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 1,
+      "case": "append",
+      "seconds": 0.6289850829634815,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4571,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 22211,
+        "bytes_written": 7439,
+        "data_files_written": 2,
+        "files_reused": 1,
+        "files_scanned": 1,
+        "rows_added": 1,
+        "rows_removed": 0
+      },
+      "new_retained_files": 60,
+      "new_retained_bytes": 373569,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 2,
+      "case": "append",
+      "seconds": 0.6472609168849885,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4571,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 22211,
+        "bytes_written": 7439,
+        "data_files_written": 2,
+        "files_reused": 1,
+        "files_scanned": 1,
+        "rows_added": 1,
+        "rows_removed": 0
+      },
+      "new_retained_files": 60,
+      "new_retained_bytes": 373538,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 2,
+      "case": "correction",
+      "seconds": 0.7181608329992741,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4562,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 41998,
+        "data_files_written": 4,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 1,
+        "rows_removed": 1
+      },
+      "new_retained_files": 65,
+      "new_retained_bytes": 423621,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 2,
+      "case": "delete",
+      "seconds": 0.7555149591062218,
+      "commands": {
+        "cli_hash": 2,
+        "producer_hash_bytes": 3543,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 35473,
+        "data_files_written": 3,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 0,
+        "rows_removed": 1
+      },
+      "new_retained_files": 62,
+      "new_retained_bytes": 400101,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 1,
+      "arm": "update",
+      "repeat": 2,
+      "case": "noop",
+      "seconds": 0.023216541158035398,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 0,
+      "case": "append",
+      "seconds": 0.36143899988383055,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4912,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 24560,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 17,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 193850,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 0,
+      "case": "correction",
+      "seconds": 0.4096681249793619,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4896,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22226,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 16,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191495,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 0,
+      "case": "delete",
+      "seconds": 0.36725862487219274,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4857,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22167,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 15,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191392,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 0,
+      "case": "noop",
+      "seconds": 0.023187042213976383,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 1,
+      "case": "noop",
+      "seconds": 0.02309033297933638,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 1,
+      "case": "delete",
+      "seconds": 0.3753111669793725,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4857,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22167,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 15,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191409,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 1,
+      "case": "correction",
+      "seconds": 0.38376154098659754,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4896,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22226,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 16,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191513,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 1,
+      "case": "append",
+      "seconds": 0.36919583403505385,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4912,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 24560,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 17,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 193864,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 2,
+      "case": "append",
+      "seconds": 0.38103958405554295,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4912,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 24560,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 17,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 193814,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 2,
+      "case": "correction",
+      "seconds": 0.36212604213505983,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4896,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22226,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 16,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191489,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 2,
+      "case": "delete",
+      "seconds": 0.3811516249552369,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4857,
+        "cli_run": 1,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 22167,
+        "data_files_written": 1,
+        "files_reused": 0,
+        "files_scanned": 0,
+        "rows_added": 15,
+        "rows_removed": 0
+      },
+      "new_retained_files": 44,
+      "new_retained_bytes": 191425,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "build",
+      "repeat": 2,
+      "case": "noop",
+      "seconds": 0.02390316710807383,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 0,
+      "case": "append",
+      "seconds": 0.7841719170100987,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4571,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 22211,
+        "bytes_written": 7439,
+        "data_files_written": 2,
+        "files_reused": 1,
+        "files_scanned": 1,
+        "rows_added": 1,
+        "rows_removed": 0
+      },
+      "new_retained_files": 60,
+      "new_retained_bytes": 373987,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 0,
+      "case": "correction",
+      "seconds": 0.7841469999402761,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4562,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 42007,
+        "data_files_written": 4,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 1,
+        "rows_removed": 1
+      },
+      "new_retained_files": 65,
+      "new_retained_bytes": 424197,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 0,
+      "case": "delete",
+      "seconds": 0.8860611249692738,
+      "commands": {
+        "cli_hash": 2,
+        "producer_hash_bytes": 3543,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 35491,
+        "data_files_written": 3,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 0,
+        "rows_removed": 1
+      },
+      "new_retained_files": 62,
+      "new_retained_bytes": 400759,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 0,
+      "case": "noop",
+      "seconds": 0.02638754202052951,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 1,
+      "case": "noop",
+      "seconds": 0.022582541219890118,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 1,
+      "case": "delete",
+      "seconds": 0.6632075828965753,
+      "commands": {
+        "cli_hash": 2,
+        "producer_hash_bytes": 3543,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 35491,
+        "data_files_written": 3,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 0,
+        "rows_removed": 1
+      },
+      "new_retained_files": 62,
+      "new_retained_bytes": 400823,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 1,
+      "case": "correction",
+      "seconds": 0.8425008750054985,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4562,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 42026,
+        "data_files_written": 4,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 1,
+        "rows_removed": 1
+      },
+      "new_retained_files": 65,
+      "new_retained_bytes": 424139,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 1,
+      "case": "append",
+      "seconds": 0.793124167015776,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4571,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 22211,
+        "bytes_written": 7439,
+        "data_files_written": 2,
+        "files_reused": 1,
+        "files_scanned": 1,
+        "rows_added": 1,
+        "rows_removed": 0
+      },
+      "new_retained_files": 60,
+      "new_retained_bytes": 373971,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 2,
+      "case": "append",
+      "seconds": 0.7732308330014348,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4571,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 22211,
+        "bytes_written": 7439,
+        "data_files_written": 2,
+        "files_reused": 1,
+        "files_scanned": 1,
+        "rows_added": 1,
+        "rows_removed": 0
+      },
+      "new_retained_files": 60,
+      "new_retained_bytes": 374029,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 2,
+      "case": "correction",
+      "seconds": 0.7276337500661612,
+      "commands": {
+        "cli_hash": 1,
+        "producer_hash_bytes": 4562,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 42007,
+        "data_files_written": 4,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 1,
+        "rows_removed": 1
+      },
+      "new_retained_files": 65,
+      "new_retained_bytes": 424142,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 2,
+      "case": "delete",
+      "seconds": 0.7414363748393953,
+      "commands": {
+        "cli_hash": 2,
+        "producer_hash_bytes": 3543,
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352,
+        "cli_update": 1
+      },
+      "processing": {
+        "bytes_reused": 0,
+        "bytes_written": 35482,
+        "data_files_written": 3,
+        "files_reused": 0,
+        "files_scanned": 2,
+        "rows_added": 0,
+        "rows_removed": 1
+      },
+      "new_retained_files": 62,
+      "new_retained_bytes": 400768,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "completed_replay_without_inputs_zero_writes": true,
+        "unselected_native_candidate_blocks_old_base": true
+      }
+    },
+    {
+      "scale": 10,
+      "arm": "update",
+      "repeat": 2,
+      "case": "noop",
+      "seconds": 0.024797250051051378,
+      "commands": {
+        "cli_read": 1,
+        "source_ipc_bytes_returned": 33352
+      },
+      "processing": null,
+      "new_retained_files": 0,
+      "new_retained_bytes": 0,
+      "checks": {
+        "exact_result": true,
+        "old_pin_readable": true,
+        "old_objects_unchanged": true,
+        "unrelated_objects_unchanged": true,
+        "zero_writes": true
+      }
+    }
+  ],
+  "checks": {
+    "all_cases_passed": true,
+    "schema_types_restored": true,
+    "nested_duplicates_null_empty_binary_and_max_uint64_preserved": true,
+    "native_stale_base_refused": true,
+    "production_configuration_loaded": false,
+    "provider_calls": false
+  },
+  "measurement_scope": "Local CLI wall time and command counts; native processing metrics; returned Arrow IPC bytes and producer hash bytes. No physical disk/network read-byte counter is exposed.",
+  "deletion_scope": "Complete native state-leaf replacement only; RawStorage.prepare supports state upserts and capture append, not state/capture deletion."
+}
