@@ -4,7 +4,7 @@ import pyarrow as pa
 import pytest
 
 from congress_api.parsers.archive_links import allowed_url, capture_links, json_links, related_links
-from congress_api.retention.raw_archive import Archive, encode_table
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, encode_table
 from test_raw_source_sync import MemoryStore
 
 

@@ -108,6 +108,8 @@ def parser():
         type=Path,
         help="Read-only local planning; requires --plan-only",
     )
+    p.add_argument('--native-config', type=Path,
+                   help='Explicit native runtime settings; existing raw data requires one-time adoption')
     p.add_argument("--repair", action="store_true",
                    help="Reconstruct saved state and replay all source evidence")
     p.add_argument("--inspect-bodies", action="store_true",
@@ -122,10 +124,10 @@ def main(argv=None):
         return run(args, log)
 
 
-def capture_sources(args, store, run_id):
+def capture_sources(args, store, run_id, *, raw_storage):
     """Finish collection and release its working state before catalog processing."""
     progress.report('load_capture_state')
-    archive = Archive(store, run_id, repair=args.repair)
+    archive = Archive(store, run_id, storage=raw_storage, repair=args.repair)
     stop = threading.Event()
     previous_handlers = {sig: signal.signal(sig, lambda *_: stop.set())
                          for sig in (signal.SIGTERM, signal.SIGINT)}
@@ -238,7 +240,7 @@ def connect_storage(args, log):
     return store
 
 
-def run(args, log, *, store=None):
+def run(args, log, *, store=None, raw_storage=None):
     if args.retry_now and (not args.urls or not args.retry_outcome or not args.capture_only or args.reinspect_retained):
         raise SystemExit('--retry-now requires --capture-only, --urls and --retry-outcome')
     if set(args.retry_outcome) - {'retry_later', 'request_failed'} and not args.urls:
@@ -259,8 +261,16 @@ def run(args, log, *, store=None):
         raise SystemExit("--initial-only requires acquisition without --repair")
     if args.capture_only and args.inspect_bodies:
         raise SystemExit("--inspect-bodies requires a catalog rebuild; omit --capture-only")
+    if raw_storage is None:
+        if args.native_config is None:
+            raise SystemExit('--native-config is required; raw archive adoption is explicit')
+        from congress_api.retention.docspec import NativeDatasets
+        from congress_api.retention.raw_storage import RawStorage
+        native = NativeDatasets.from_config(args.native_config)
     if store is None:
         store = connect_storage(args, log)
+    if raw_storage is None:
+        raw_storage = RawStorage(store, native)
     metadata_only = args.rebuild_only or args.update_only
     if not args.plan_only and not metadata_only and not args.reinspect_retained and args.transport in {"auto", "zyte"}:
         zyte.token()
@@ -278,7 +288,7 @@ def run(args, log, *, store=None):
         if args.plan_only:
             summary["planning_status"] = "running"
             progress.report('load_capture_state')
-            archive = Archive(store, run_id, repair=args.repair)
+            archive = Archive(store, run_id, storage=raw_storage, repair=args.repair)
             for item in seed_files(args.seed):
                 archive.seed_links(item)
             archive.admit_pending_urls()
@@ -290,7 +300,7 @@ def run(args, log, *, store=None):
                 active_stage = 'acquisition_status'
                 summary['acquisition_status'] = 'running'
                 save_summary(args.summary, summary)
-                summary.update(capture_sources(args, store, run_id))
+                summary.update(capture_sources(args, store, run_id, raw_storage=raw_storage))
                 summary['acquisition_status'] = 'completed'
             if not args.capture_only:
                 active_stage = 'catalog_status'
@@ -299,6 +309,7 @@ def run(args, log, *, store=None):
                 summary['catalog'] = rebuild_catalog(
                     store, seeds=seed_files(args.seed) if args.seed else (), workers=args.index_workers,
                     repair=args.repair or args.rebuild_only, inspect_bodies=args.inspect_bodies,
+                    raw_storage=raw_storage,
                 )
                 summary['catalog_status'] = 'completed'
                 summary.setdefault('accounting', {}).update(

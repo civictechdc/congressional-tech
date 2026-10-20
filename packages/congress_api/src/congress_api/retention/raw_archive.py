@@ -1,10 +1,9 @@
-"""Content-addressed bodies, immutable receipt batches, and replaceable indexes.
+"""Content-addressed bodies, immutable receipts, and coherent native selection.
 
-The caller supplies object storage. Receipts are the recovery log: bodies reach
-storage before receipts; state reaches storage before the capture index. With a
-valid checkpoint, the next run recovers unindexed receipts. An interrupted index
-pair or mismatching checkpoint requires explicit repair after investigation;
-receipts preserve the evidence needed to repair without refetching.
+The caller supplies configured native storage. Bodies precede immutable receipts;
+one conditional raw selector publishes exact completed capture and state pins.
+Unselected receipts recover interrupted acquisition without refetching. Legacy
+checkpoint reconstruction remains an explicit one-time adoption boundary.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -240,7 +239,12 @@ def existing_body_info(payload, info):
     return {**info, 'stored_sha256': hashlib.sha256(payload).hexdigest(), 'stored_bytes': len(payload)}
 
 
-class Archive:
+class LegacyArchiveSeed:
+    """Explicit one-time legacy checkpoint reconstruction for adoption.
+
+    Recurring callers use Archive with injected native storage. This owner retains
+    the old snapshot format for checkpoint investigation and seed fixtures only.
+    """
     def __init__(self, store, run_id, *, repair=False):
         self.store, self.run_id = store, run_id
         data = store.read(CAPTURES_KEY)
@@ -324,6 +328,23 @@ class Archive:
                         fidelity=row["fidelity"],
                         retrieved_at=row["retrieved_at"],
                     )
+        self._seed_catalog(saved_metadata, repair=repair)
+        # Persisted attempts/validation take precedence over legacy bootstrap guesses.
+        if not resumed:
+            self.state.update(saved_state)
+        # Recover all published batches, including a run interrupted before save().
+        for key in sorted(store.keys("receipts/")):
+            if "/download-" not in key or key in indexed:
+                continue
+            for line_number, line in enumerate(
+                gzip.decompress(store.read(key)).splitlines(), 1
+            ):
+                receipt = json.loads(line)
+                self.apply(receipt)
+                self.add_index(receipt, key, line_number)
+
+    def _seed_catalog(self, saved_metadata, *, repair=False):
+        store = self.store
         # Add every known document URL, including files not yet downloaded.
         # Only a changed catalog can introduce additional unqueued document URLs.
         from congress_api.retention.catalog_publication import FILENAMES, MANIFEST_KEY, read_catalog
@@ -396,20 +417,6 @@ class Archive:
                             outcome="retained",
                             links_scanned=False,
                         )
-        # Persisted attempts/validation take precedence over legacy bootstrap guesses.
-        if not resumed:
-            self.state.update(saved_state)
-        # Recover all published batches, including a run interrupted before save().
-        for key in sorted(store.keys("receipts/")):
-            if "/download-" not in key or key in indexed:
-                continue
-            for line_number, line in enumerate(
-                gzip.decompress(store.read(key)).splitlines(), 1
-            ):
-                receipt = json.loads(line)
-                self.apply(receipt)
-                self.add_index(receipt, key, line_number)
-
     def seed(self, item, *, publisher_link=False):
         url = allowed_url(item.get("url"))
         if url:
@@ -649,6 +656,12 @@ class Archive:
                 }
             )
 
+    @property
+    def retained_body_count(self):
+        import pyarrow.compute as pc
+        keys = self.captures['body_key']
+        return pc.count_distinct(pc.filter(keys, pc.not_equal(keys, ''))).as_py()
+
     def save(self):
         from congress_api.retention.catalog_cache import capture_digest
         self.flush()
@@ -665,3 +678,112 @@ class Archive:
             self.store.put(CAPTURES_KEY, encode_table(combined))
             self.captures = combined
             self.additions.clear()
+
+
+class _BodyLookup:
+    """Fetch one bounded native body leaf on first use of a digest."""
+    def __init__(self, snapshot):
+        self.snapshot, self.cache = snapshot, {}
+
+    def get(self, digest, default=None):
+        if digest not in self.cache:
+            self.cache[digest] = self.snapshot.body_info(digest)
+        return self.cache[digest] if self.cache[digest] is not None else default
+
+    def __contains__(self, digest):
+        return self.get(digest) is not None
+
+    def __getitem__(self, digest):
+        value = self.get(digest)
+        if value is None:
+            raise KeyError(digest)
+        return value
+
+    def __setitem__(self, digest, value):
+        self.cache[digest] = value
+
+
+class Archive(LegacyArchiveSeed):
+    """Acquire bodies and receipts using one coherent native raw selection.
+
+    Construction reads current URL scheduling state, never historical captures.
+    Legacy reconstruction is an explicit seed step; missing native selection
+    refuses before acquisition so existing archives cannot be silently replaced.
+    """
+    def __init__(self, store, run_id, *, storage, repair=False):
+        if storage.store is not store:
+            raise ValueError('Archive storage belongs to another object store')
+        if repair:
+            raise ValueError('Legacy checkpoint repair belongs to explicit seed adoption')
+        self.store, self.run_id, self.storage = store, run_id, storage
+        self.selected = storage.snapshot()
+        if self.selected.version is None:
+            raise RuntimeError('Explicit raw archive seed adoption is required before recurring capture')
+        self.state = {row['url']: row for row in self.selected.states().to_pylist()}
+        self._saved_state = {url: dict(row) for url, row in self.state.items()}
+        self.body_info = _BodyLookup(self.selected)
+        self.additions, self.pending = [], []
+        self._indexed_receipts = set()
+        self.sequence = self._save_sequence = 0
+        self.metadata = None
+        self.day = datetime.now(timezone.utc).date().isoformat()
+        version = self.selected.manifest['filename_version']
+        saved_metadata = {b'filename_version': str(version).encode()} if version is not None else {}
+        self._seed_catalog(saved_metadata)
+        # Receipts remain acquisition evidence after interruption. Membership is
+        # keyed publication metadata; no capture-table scan constructs this set.
+        for key in sorted(store.keys('receipts/')):
+            if '/download-' not in key or self.selected.has_receipt(key):
+                continue
+            for line_number, line in enumerate(gzip.decompress(store.read(key)).splitlines(), 1):
+                receipt = json.loads(line)
+                self.apply(receipt)
+                self.add_index(receipt, key, line_number)
+
+    @property
+    def captures(self):
+        """Explicit full export for investigation/adoption consumers."""
+        return self.selected.captures()
+
+    @property
+    def retained_body_count(self):
+        return self.selected.body_count
+
+    def add_index(self, receipt, key, line):
+        super().add_index(receipt, key, line)
+        self._indexed_receipts.add(key)
+
+    def save(self):
+        self.flush()
+        updates = [row for url, row in self.state.items() if self._saved_state.get(url) != row]
+        if (not self.additions and not updates and not self._indexed_receipts
+                and self.filename_version == self.selected.manifest['filename_version']):
+            return self.selected
+        prepared = self.storage.prepare(self.selected,
+            operation=f'archive:{self.run_id}:{self._save_sequence}',
+            captures=pa.Table.from_pylist(self.additions, schema=CAPTURE_SCHEMA),
+            states=pa.Table.from_pylist(updates, schema=STATE_SCHEMA),
+            indexed_receipts=self._indexed_receipts, filename_version=self.filename_version)
+        self.selected = self.storage.publish(prepared)
+        self.body_info.snapshot = self.selected
+        self.body_info.cache = {key: value for key, value in self.body_info.cache.items() if value is not None}
+        self._saved_state = {url: dict(row) for url, row in self.state.items()}
+        self._indexed_receipts.clear()
+        self.additions.clear()
+        self._save_sequence += 1
+        return self.selected
+
+
+def adopt_legacy_archive(store, storage, *, operation, repair=False):
+    """Explicitly select a complete investigated seed; never called at startup."""
+    base = storage.snapshot()
+    if base.version is not None:
+        raise ValueError('Raw archive adoption requires an unselected native root')
+    seed = LegacyArchiveSeed(store, 'seed-adoption', repair=repair)
+    captures = seed.captures
+    if seed.additions:
+        captures = pa.concat_tables([captures, pa.Table.from_pylist(seed.additions, schema=CAPTURE_SCHEMA)])
+    return storage.publish(storage.prepare(base, operation=operation, captures=captures,
+        states=pa.Table.from_pylist(list(seed.state.values()), schema=storage.state_schema),
+        indexed_receipts={key for key in captures['receipt_key'].to_pylist() if key},
+        filename_version=seed.filename_version))

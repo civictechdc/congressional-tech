@@ -9,7 +9,7 @@ import pytest
 from congress_api.cli import raw_sync
 from congress_api.cli.raw_progress import ProgressLog
 from congress_api.retention.catalog_publication import MANIFEST_KEY
-from congress_api.retention.raw_archive import Archive, CAPTURES_KEY, STATE_KEY
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, CAPTURES_KEY, STATE_KEY
 from test_raw_catalog import table
 from test_raw_source_sync import MemoryStore
 

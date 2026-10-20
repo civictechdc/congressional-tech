@@ -99,7 +99,7 @@ def test_derived_input_snapshot_survives_proof_enrichment_but_detects_byte_chang
 
 
 def test_rebuild_qualification_pins_inputs_and_checks_real_output_pair(tmp_path, monkeypatch):
-    from congress_api.retention.raw_archive import Archive
+    from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
     from congress_api.retention.catalog_publication import read_catalog
     from test_raw_source_sync import MemoryStore, response
     store = MemoryStore()

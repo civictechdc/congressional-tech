@@ -464,9 +464,7 @@ async def run_async(
             "fetch_tasks_completed": counts["fetch"],
             "retained_replays_completed": counts["replay"],
             "usable_capture_results": counts["saved"],
-            "unique_retained_body_keys": pc.count_distinct(pc.filter(
-                archive.captures["body_key"], pc.not_equal(archive.captures["body_key"], "")
-            )).as_py(),
+            "unique_retained_body_keys": archive.retained_body_count,
             "url_outcomes": dict(Counter(row["outcome"] for row in archive.state.values())),
         },
         attempted=submitted,

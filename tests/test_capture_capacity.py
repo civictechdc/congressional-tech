@@ -10,7 +10,7 @@ import pytest
 
 from congress_api.acquisition.raw_sync import response_capacity, run_sync
 from congress_api.cli import raw_sync
-from congress_api.retention.raw_archive import Archive
+from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
 from congress_api.transport.rust_fetch import RustFetcher
 from test_archive_members import archive as zip_bytes
 from test_async_capture import receipts
