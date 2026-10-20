@@ -110,3 +110,18 @@ def test_group_routing_can_keep_duplicate_aliases_without_weakening_strict_defau
     parts = split_partition(table, key='alias', prefix='', max_rows=4, max_bytes=4096,
                             allow_duplicate_keys=True)
     assert len(parts) == 1 and parts[0][1].equals(table)
+
+
+def test_bulk_routing_consumes_ordered_leaf_stream_and_retains_exact_old_root():
+    from congress_api.retention.partition_routing import RoutingPages
+    from test_raw_capture_pages import Store
+    store = Store()
+    routes = RoutingPages(store, 'catalog-components-v2')
+    old = routes.replace(None, '', {'': {'old': True}})
+    expected = {f'{index:03x}': {'component': index} for index in range(1024)}
+    root = routes.replace_stream(old, '', iter(expected.items()))
+    assert dict(routes.leaf_items(root)) == expected
+    assert routes.lookup(old, 'any')[1] == {'old': True}
+    for bad in [[('0', {}), ('0a', {})], [('f', {}), ('0', {})], []]:
+        with pytest.raises(ValueError, match='overlap|ordered|empty'):
+            routes.replace_stream(old, '', iter(bad))

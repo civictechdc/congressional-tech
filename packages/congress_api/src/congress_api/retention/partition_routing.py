@@ -5,6 +5,7 @@ functions only route application keys and divide an affected bounded Arrow table
 they do not store values, select snapshots or manage operation recovery.
 """
 from hashlib import sha256
+from itertools import chain, groupby
 
 import pyarrow as pa
 
@@ -101,30 +102,46 @@ class RoutingPages:
 
     def replace(self, root, prefix, leaves):
         """Replace exactly one selected leaf, sharing every untouched branch."""
+        return self.replace_stream(root, prefix, sorted(leaves.items()))
+
+    def replace_stream(self, root, prefix, leaves):
+        """Replace one leaf from ordered leaves, retaining at most 16 child refs.
+
+        A bulk adopter may generate bounded leaf values from a disk index; this
+        method never collects the complete replacement leaf map in memory.
+        """
         if (not isinstance(prefix, str) or len(prefix) > 64
                 or any(char not in '0123456789abcdef' for char in prefix)):
             raise ValueError('Invalid routing prefix')
-        if not leaves or any(not leaf.startswith(prefix) or len(leaf) > 64
-                             or any(c not in '0123456789abcdef' for c in leaf) for leaf in leaves):
-            raise ValueError('Replacement leaves fall outside the affected prefix')
+
+        def checked():
+            previous = None
+            for leaf, value in leaves:
+                if (not isinstance(leaf, str) or not leaf.startswith(prefix) or len(leaf) > 64
+                        or any(c not in '0123456789abcdef' for c in leaf)):
+                    raise ValueError('Replacement leaves fall outside the affected prefix')
+                if previous is not None and (leaf <= previous or leaf.startswith(previous)):
+                    raise ValueError('Replacement leaf prefixes overlap or are not ordered')
+                if value is not None and not isinstance(value, dict):
+                    raise ValueError('Routing leaf must name exact native metadata')
+                previous = leaf
+                yield leaf, value
+            if previous is None:
+                raise ValueError('Replacement leaves must not be empty')
 
         def build(current, values):
-            if current in values:
-                if len(values) != 1:
+            values = iter(values)
+            first = next(values)
+            if first[0] == current:
+                if next(values, None) is not None:
                     raise ValueError('Replacement leaf prefixes overlap')
-                value = values[current]
-                if value is None:
-                    return None
-                if not isinstance(value, dict):
-                    raise ValueError('Routing leaf must name exact native metadata')
-                return self.objects.put(dict(version=1, prefix=current, value=value))
+                return (self.objects.put(dict(version=1, prefix=current, value=first[1]))
+                        if first[1] is not None else None)
             children = {}
-            for char in '0123456789abcdef':
-                subset = {leaf: value for leaf, value in values.items() if leaf.startswith(current + char)}
-                if subset:
-                    reference = build(current + char, subset)
-                    if reference is not None:
-                        children[char] = reference
+            for char, subset in groupby(chain([first], values), key=lambda item: item[0][len(current)]):
+                reference = build(current + char, subset)
+                if reference is not None:
+                    children[char] = reference
             return self.objects.put(dict(version=1, prefix=current, children=children)) if children else None
 
         def replace_at(reference, current):
@@ -132,7 +149,7 @@ class RoutingPages:
             if current == prefix:
                 if page is not None and 'children' in page:
                     raise ValueError('Replace a selected leaf, not an unrelated branch')
-                return build(current, leaves)
+                return build(current, checked())
             if page is None or 'children' not in page:
                 raise ValueError('Replacement prefix is not a selected leaf')
             children = dict(page['children'])
