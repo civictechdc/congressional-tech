@@ -19,7 +19,7 @@ from .catalog_validation import catalog_reference_requirements
 
 
 def update_native_catalog(store, *, native, previous, dependencies, replacements=(), deletions=(),
-                          candidate, directory, max_chunk_rows, max_chunk_bytes, rules):
+                          candidate, directory, max_chunk_rows, max_chunk_bytes, rules, expected_bodies=()):
     """Replace complete interpreted rows; preserve untouched components and pins.
 
     Raw receipt interpretation supplies complete replacements/deletions here.
@@ -27,12 +27,17 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
     interpretation policy. The returned scope_reference is durable evidence for
     retry/continuation and is bound to the exact prior application selection.
     """
+    expected_bodies = sorted(set(expected_bodies))
+    if any(not isinstance(body, str) or not body for body in expected_bodies):
+        raise ValueError('Expected catalog body identities must be nonempty strings')
     native_previous = isinstance(previous, NativeCatalogSnapshot)
     if not native_previous and (previous.manifest is not None or previous.files):
         raise ValueError('Native catalog update requires explicit prior adoption')
     replacements, deletions = list(replacements), tuple(deletions)
     if not replacements and not deletions:
-        return dict(unchanged=True, selection=deepcopy(previous.identity['selected_ref']),
+        if expected_bodies:
+            raise ValueError('Expected retained body coverage requires supplied affected source inputs')
+        return dict(unchanged=True, selected_identity=deepcopy(previous.identity), selection=deepcopy(previous.identity['selected_ref']),
                     counts=deepcopy(previous.selection['counts']) if native_previous else dict(source_rows=0, document_rows=0))
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -48,7 +53,12 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
     input_digest = input_hash.hexdigest()
     request = dict(candidate=candidate, rules=rules, replacements_sha256=input_digest,
                    deletions=sorted(deletions), max_chunk_rows=max_chunk_rows,
-                   max_chunk_bytes=max_chunk_bytes)
+                   max_chunk_bytes=max_chunk_bytes, expected_bodies=expected_bodies)
+    def receipt(result, reference, proof):
+        result = dict(result, scope_reference=reference, body_coverage=proof['body_coverage'])
+        result['selected_identity'] = dict(selected_ref=result['selection'],
+            selector_sha256=sha256(encoded(dict(version=2, selection=result['selection']))).hexdigest())
+        return result
     if checkpoint.exists():
         retained = json.loads(checkpoint.read_bytes())
         if retained['request'] != request:
@@ -56,12 +66,12 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
         reference = retained['scope_reference']
         proof = read_catalog_scope(store, reference, requirements=catalog_scope_requirements())
         if native_previous and previous.selection['scope'] == reference:
-            return dict(unchanged=True, selection=previous.identity['selected_ref'],
-                        counts=previous.selection['counts'], scope_reference=reference)
+            return receipt(dict(unchanged=True, selection=previous.identity['selected_ref'],
+                        counts=previous.selection['counts']), reference, proof)
         if proof['base'] != previous.identity:
             raise ValueError('Catalog continuation base changed')
         result = publish_native_catalog(store, reference, previous=previous)
-        return dict(result, scope_reference=reference, unchanged=False)
+        return receipt(dict(result, unchanged=False), reference, proof)
     basis = previous.selection['dependency'] if native_previous else None
     selected = dependencies.selected(basis)
     scope = affected_sources(selected, replacements=replacements, deletions=deletions)
@@ -87,10 +97,10 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
             prepared_components=iterator_prepared_components(store, components),
             read_component=CatalogComponentReader(store).read,
             read_new_component=CatalogComponentReader(store, requirements=catalog_reference_requirements()).read,
-            rules=rules)
+            rules=rules, expected_bodies=expected_bodies)
         payload = encoded(dict(request=request, scope_reference=reference))
         staging = directory / 'prepared-scope.tmp'
         staging.write_bytes(payload)
         staging.replace(checkpoint)
     result = publish_native_catalog(store, reference, previous=previous)
-    return dict(result, scope_reference=reference, unchanged=False)
+    return receipt(dict(result, unchanged=False), reference, read_catalog_scope(store, reference))

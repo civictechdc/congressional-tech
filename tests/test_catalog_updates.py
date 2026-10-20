@@ -194,3 +194,25 @@ def test_fresh_dependency_owner_restores_exact_selected_lookup_schema(tmp_path, 
     assert restored.schema_hash == owner.schema_hash
     assert {row['source_id'] for row in restored.sources_at_url(
         snapshot.selection['dependency'], rows[0]['source_url'])} == {identity(rows[0]), identity(rows[2])}
+
+
+def test_completion_receipt_binds_affected_body_coverage_before_selection(tmp_path):
+    from hashlib import sha256
+    from congress_api.retention.immutable_metadata import encoded
+    from congress_api.retention.catalog_scope import read_catalog_scope
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    owner, rows = seed(tmp_path, store, native)
+    previous = read_catalog(store, native=native)
+    options = dict(native=native, previous=previous, dependencies=owner,
+        deletions=[identity(rows[2])], candidate='covered', directory=tmp_path / 'update',
+        max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    selector = store.read(MANIFEST_KEY)
+    with pytest.raises(ValueError, match='expected retained body'):
+        updates.update_native_catalog(store, expected_bodies=['missing-body'], **options)
+    assert store.read(MANIFEST_KEY) == selector
+    result = updates.update_native_catalog(store, expected_bodies=['A', 'B'], **options)
+    selected = read_catalog(store, native=native)
+    assert result['selected_identity'] == selected.identity
+    assert result['body_coverage'] == read_catalog_scope(store, result['scope_reference'])['body_coverage']
+    assert result['body_coverage']['expected_count'] == 2
+    assert result['body_coverage']['expected_sha256'] == sha256(encoded(['A', 'B'])).hexdigest()
