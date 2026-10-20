@@ -141,6 +141,19 @@ def publication_conditions(continuation):
     return conditions
 
 
+def imported_raw_selection(imported, result):
+    """Pin the completed import's exact native raw selection, never an export."""
+    from congress_api.retention.raw_storage import RAW_KEY
+    path = imported / 'payloads' / RAW_KEY
+    if path.stat().st_size > 1 << 20:
+        raise ValueError('Imported raw selector exceeds the metadata budget')
+    raw = path.read_bytes()
+    if (hashlib.sha256(raw).hexdigest() != result.get('raw_identity')
+            or json.loads(raw).get('version') != 1):
+        raise ValueError('Imported raw selector differs from completed import')
+    return path, raw
+
+
 def run(args):
     batch, imported, runtime = args.batch.resolve(), args.imported.resolve(), args.runtime.resolve()
     if getattr(args, 'resume', False) and not args.execute:
@@ -207,7 +220,9 @@ def run(args):
               Path(mapping_module.__file__).resolve(),
               args.baseline.resolve(), args.config.resolve(),
               imported/'payloads/import-complete.json', imported/'events.jsonl']
-    paths += [imported/'payloads'/key for key in ('indexes/captures.parquet', 'indexes/download-state.parquet')]
+    from congress_api.retention.raw_storage import RAW_KEY
+    raw_path, imported_raw = imported_raw_selection(imported, result)
+    paths += [raw_path]
     if readiness is not None:
         paths += [readiness.resolve()]
         body_readback = readiness.resolve().with_name('remote-body-readback.json')
@@ -226,7 +241,7 @@ def run(args):
         config=Config(connect_timeout=15, read_timeout=180, retries={'total_max_attempts': 1},
                       request_checksum_calculation='when_required', response_checksum_validation='when_required'))
     bucket = 'congressional-tech-raw'
-    protected = ['indexes/captures.parquet', 'indexes/download-state.parquet', 'indexes/catalog.json',
+    protected = [RAW_KEY, 'indexes/catalog.json',
                  'viewer-publications/recoveries/accepted.json', 'viewer-publications/manifest.json']
     versions = continuation.value['versions']
     if not versions:
@@ -236,8 +251,8 @@ def run(args):
             with response['Body'] as stream: raw = stream.read()
             if len(raw) != response['ContentLength']: raise ValueError('Incomplete publication baseline')
             save('baseline/'+key, raw); baseline_versions[key] = response['ETag']
-            if key in protected[:2] and raw != (imported/'payloads'/key).read_bytes():
-                raise ValueError('Raw indexes changed since completed import; reconcile before publication')
+            if key == RAW_KEY and raw != imported_raw:
+                raise ValueError('Raw selection changed since completed import; reconcile before publication')
         versions.update(baseline_versions)
         continuation.flush()
     if getattr(args, 'resume', False):

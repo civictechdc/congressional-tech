@@ -1,6 +1,7 @@
 """Publication cannot select an incomplete or mismatched catalog pair."""
 import importlib.util
 import json
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -10,6 +11,8 @@ import pyarrow.parquet as pq
 spec=importlib.util.spec_from_file_location('publication_dispatch',Path(__file__).resolve().parents[3]/'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py')
 module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 RUNTIME = Path(__file__).resolve().parents[3]
+RAW_PAYLOAD = b'{"version":1,"selection":"fixture"}'
+RAW_IDENTITY = hashlib.sha256(RAW_PAYLOAD).hexdigest()
 
 def verify_coverage(root,manifest,expected):
     from congress_api.retention.catalog_validation import validate_catalog_pair
@@ -99,14 +102,14 @@ class DispatcherContinuationTests(unittest.TestCase):
                 (batch/'bodies.json').write_text('["pdf", "zip-member"]')
                 (batch/'accepted.json').write_text('[]')
                 imported = root/'imported'; (imported/'payloads/indexes').mkdir(parents=True)
-                for name in ('captures.parquet', 'download-state.parquet'):
-                    (imported/'payloads/indexes'/name).write_bytes(b'imported')
+                for name in ('raw.json',):
+                    (imported/'payloads/indexes'/name).write_bytes(RAW_PAYLOAD)
                 (imported/'payloads/import-complete.json').write_text('{}')
                 (imported/'events.jsonl').write_text('')
                 baseline = root/'baseline.json'; baseline.write_text('{}')
                 config = root/'r2.conf'; config.write_text('[congressionalraw]\nendpoint=https://invalid.test\naccess_key_id=fake\nsecret_access_key=fake\n')
                 remote = {'indexes/catalog.json': json.dumps(self.manifest).encode(),
-                          'indexes/captures.parquet': b'imported', 'indexes/download-state.parquet': b'imported',
+                          'indexes/raw.json': RAW_PAYLOAD,
                           'viewer-publications/recoveries/accepted.json': b'{}',
                           'viewer-publications/manifest.json': b'{}'}
                 remote.update({item['key']: (self.root/item['key']).read_bytes() for item in self.manifest['files'].values()})
@@ -163,7 +166,7 @@ class DispatcherContinuationTests(unittest.TestCase):
                     return result
                 args = SimpleNamespace(batch=batch, imported=imported, runtime=RUNTIME, baseline=baseline,
                                        config=config, destination=root/'publication', execute=True, resume=False)
-                with patch.object(module, 'ROOT', repo), patch.object(module, 'verify_import', return_value={'complete': True}), \
+                with patch.object(module, 'ROOT', repo), patch.object(module, 'verify_import', return_value={'complete': True, 'raw_identity': RAW_IDENTITY}), \
                      patch.object(module, 'cloud_clear'), patch('congress_api.retention.raw_catalog.rebuild_catalog_in_directory', side_effect=catalog), \
                      patch.object(module, 'load', side_effect=load), patch('boto3.client', return_value=Client()), \
                      patch('corpus_recovery.publication.prepare_viewer', side_effect=accepted_plan), \
@@ -326,8 +329,8 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
                     control / 'scripts/corpus_recovery' / 'dispatch_corpus_recovery_publication.py')
     batch = tmp_path / 'batch'; batch.mkdir(); (batch / 'bodies.json').write_text('[]')
     imported = tmp_path / 'imported'; (imported / 'payloads/indexes').mkdir(parents=True)
-    for name in ('captures.parquet', 'download-state.parquet'):
-        (imported / 'payloads/indexes' / name).write_bytes(b'imported')
+    for name in ('raw.json',):
+        (imported / 'payloads/indexes' / name).write_bytes(RAW_PAYLOAD)
     (imported / 'payloads/import-complete.json').write_text('{}')
     (imported / 'events.jsonl').write_text('')
     baseline = tmp_path / 'baseline.json'; baseline.write_text('{}')
@@ -337,7 +340,7 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
     selector = 'indexes/catalog.json'
     before, proposed = b'{"catalog_id":"before"}', b'{"catalog_id":"proposed"}'
     selected_path, proposed_path = destination / 'source' / selector, destination / 'proposed' / selector
-    objects = {selector: before, 'indexes/captures.parquet': b'imported', 'indexes/download-state.parquet': b'imported',
+    objects = {selector: before, 'indexes/raw.json': RAW_PAYLOAD,
                'viewer-publications/recoveries/accepted.json': b'{}', 'viewer-publications/manifest.json': b'{}'}
     etag = lambda raw: hashlib.md5(raw).hexdigest()
     class Client:
@@ -376,7 +379,7 @@ def test_local_selector_receipt_advances_only_after_guarded_verification(tmp_pat
         assert selected_path.read_bytes() == proposed
         raise StoppedAfterSelection('verified selector installed')
     monkeypatch.setattr(module, 'ROOT', control)
-    monkeypatch.setattr(module, 'verify_import', lambda *a, **kw: {})
+    monkeypatch.setattr(module, 'verify_import', lambda *a, **kw: {'raw_identity': RAW_IDENTITY})
     monkeypatch.setattr(module, 'cloud_clear', lambda: None)
     monkeypatch.setattr(module.shutil, 'disk_usage', lambda *_: SimpleNamespace(free=100 * 1024**3))
     monkeypatch.setattr(storage, '_configure_retries', lambda *_: None)
@@ -454,3 +457,16 @@ def test_oversized_prepared_evidence_is_hashed_without_unbounded_allocation(tmp_
     monkeypatch.setattr(evidence, 'JSON_BYTES', 512)
     with pytest.raises(ValueError, match='prepared-source-records.json.*byte budget'):
         module.verify_import(batch, imported)
+
+
+def test_publication_pins_exact_imported_raw_selector_without_legacy_exports(tmp_path):
+    import pytest
+    path = tmp_path / 'payloads/indexes/raw.json'
+    path.parent.mkdir(parents=True)
+    path.write_bytes(RAW_PAYLOAD)
+    assert module.imported_raw_selection(tmp_path, {'raw_identity': RAW_IDENTITY}) == (path, RAW_PAYLOAD)
+    assert not (path.parent / 'captures.parquet').exists()
+    assert not (path.parent / 'download-state.parquet').exists()
+    path.write_bytes(RAW_PAYLOAD + b' ')
+    with pytest.raises(ValueError, match='differs from completed import'):
+        module.imported_raw_selection(tmp_path, {'raw_identity': RAW_IDENTITY})
