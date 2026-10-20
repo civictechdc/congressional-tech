@@ -37,15 +37,26 @@ def test_assembled_fields_agree_with_the_published_tables(tmp_path):
     assert materials
     for material in materials:
         published = tables['materials'][material.id]
-        assert sorted(material.meeting_ids) == published['meeting_ids']
-        assert sorted(material.appearance_ids) == published['appearance_ids']
+        assert material.meeting_ids == () and material.appearance_ids == ()
+        assert sorted(published['meeting_ids']) == sorted({
+            link.subject.id if link.subject.kind == 'meeting' else next(
+                record.meeting.id for record in catalog.records
+                if (record.kind, record.id) == (link.subject.kind, link.subject.id) and getattr(record, 'meeting', None))
+            for link in catalog.records
+            if link.kind == 'material_link' and link.material.id == material.id and (
+                link.subject.kind == 'meeting' or any(
+                    (record.kind, record.id) == (link.subject.kind, link.subject.id) and getattr(record, 'meeting', None)
+                    for record in catalog.records))})
+        assert sorted(published['appearance_ids']) == sorted(
+            link.subject.id for link in catalog.records
+            if link.kind == 'material_link' and link.material.id == material.id and link.subject.kind == 'appearance')
         assert sorted({f.url for f in material.files}) == sorted({f['url'] for f in published['files']})
         assert material.document_type == published['document_type']
         assert sorted(set(material.source_document_groups)) == published['source_document_groups']
     assert {(m.document_type, m.source_document_groups) for m in materials if m.details.type == 'document'} == {
         ('Hearing Notice', ('meetingDocuments',)), ('Witness Statement', ('witnessDocuments',)),
         ('Statement', ('meetingDocuments',))}
-    assert all(m.meeting_ids for m in materials)
+    assert all(any(link.kind == 'material_link' and link.material.id == material.id for link in catalog.records) for material in materials)
     for meeting in (r for r in catalog.records if r.kind == 'meeting'):
         published = tables['meetings'][meeting.id]
         assert (meeting.access, meeting.status) == (published['access'], published['status'])
@@ -74,7 +85,8 @@ def test_repeated_material_collects_groups_files_and_links_without_conflicts():
     catalog = assembly.finish()
     material = next(r for r in catalog.records if r.kind == 'material')
     assert material.source_document_groups == ('meetingDocuments', 'witnessDocuments')
-    assert material.meeting_ids == ('meeting',)
+    assert material.meeting_ids == ()
+    assert any(link.kind == 'material_link' and link.material.id == material.id and link.subject.id == 'meeting' for link in catalog.records)
     assert not any(r.kind == 'data_issue' for r in catalog.records)
 
 
@@ -98,3 +110,33 @@ def test_reviewed_gpo_package_carries_its_reviewed_document_type(package, congre
     assert next(r for r in records if r.kind == 'material').document_type == source_type
     unreviewed = list(gpo.records([gpo_row()], context(), review_context=context('gpo.committee-review')))
     assert next(r for r in unreviewed if r.kind == 'material').document_type is None
+
+
+def _assembly():
+    return Assembly(ids=lambda kind, key: kind + ':' + key, now=datetime(2026, 10, 1, tzinfo=timezone.utc))
+
+
+def test_files_stay_when_a_link_has_no_representation():
+    from committee_meeting.materials import MaterialFile
+    source = SourceRecord(id='a', provider='test', identifier=Identifier(scheme='test', value='a'), payload={})
+    material = Material(id='doc', files=(MaterialFile(url='https://example.org/a.pdf', role='download'),), provenance=evidence('a'))
+    link = MaterialLink(id='link', material=Ref(kind='material', id='doc'), subject=Ref(kind='meeting', id='meeting'),
+                        role='statement', provenance=evidence('a'))
+    assembly = _assembly()
+    assembly.add([source, Meeting(id='meeting', provenance=evidence('a')), material, link])
+    catalog = assembly.finish()
+    kept = next(record for record in catalog.records if record.kind == 'material')
+    assert [file.url for file in kept.files] == ['https://example.org/a.pdf']
+    assert kept.meeting_ids == ()
+
+
+def test_two_nonempty_file_tuples_union():
+    from committee_meeting.materials import MaterialFile
+    sources = [SourceRecord(id=id, provider='test', identifier=Identifier(scheme='test', value=id), payload={}) for id in ('a', 'b')]
+    first = Material(id='doc', files=(MaterialFile(url='https://example.org/a.pdf', role='download'),), provenance=evidence('a'))
+    second = first.model_copy(update={'files': (MaterialFile(url='https://example.org/b.pdf', role='download'),), 'provenance': evidence('b')})
+    assembly = _assembly()
+    assembly.add([*sources, first, second])
+    catalog = assembly.finish()
+    material = next(record for record in catalog.records if record.kind == 'material')
+    assert {file.url for file in material.files} == {'https://example.org/a.pdf', 'https://example.org/b.pdf'}
