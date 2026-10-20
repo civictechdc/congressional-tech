@@ -1,13 +1,12 @@
 import { useId, useRef, useState } from 'react';
-import type { ExplorerReader, ExplorerRecordRef, RelatedResult } from './data-source';
+import type { ExplorerReader, ExplorerRecordRef, RelatedResult } from '../reader/data-source.ts';
 import { fields, FileLinks, publicUrl, recordFiles, recordTitle, RecordingPlayer, type DetailRecord } from './RecordDetail';
-import { documentSourceLabel } from './record-presentation.js';
-import { materialCategory } from './related-materials.js';
-import { PAGE_SIZE, Pagination, RequestMessage, useRequest } from './request-state';
+import { documentSourceLabel } from '../browse/record-presentation.ts';
+import { materialCategory } from '../browse/related-materials.ts';
+import { PAGE_SIZE, Pagination, RequestMessage, integer, useRequest } from './request-state';
 import './RelatedMaterials.css';
 
 type Props = { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void };
-const integer = (value: number) => value.toLocaleString('en-US');
 
 /** Recordings and documents keep independent filters and pages. */
 export default function RelatedMaterials(props: Props) {

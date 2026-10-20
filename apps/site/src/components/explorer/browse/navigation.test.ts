@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readNavigation, viewNavigation, drillNavigation } from './navigation.js';
-import { sourcePageUrl } from './record-presentation.js';
+import { readNavigation, viewNavigation, drillNavigation } from './navigation.ts';
+import { sourcePageUrl } from './record-presentation.ts';
 
 test('chart drill-down preserves the counted population and reloadable chart settings', () => {
   const nav = readNavigation('?view=coverage&congress=119&type=business&chamber=senate&q=budget&from=2025-01-01&measure=recording&grouping=month&committeeLevel=full&access=closed&committeeType=standing', 119);

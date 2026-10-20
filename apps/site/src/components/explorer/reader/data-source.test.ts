@@ -3,10 +3,10 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import test from 'node:test';
-import { committeeTypeLabel } from './record-presentation.js';
-import { createCatalogSource, createPublicationSource, decodeGzipJson, normalizeCatalog, openPublicationReader } from './data-source.js';
+import { committeeTypeLabel } from '../browse/record-presentation.ts';
+import { createCatalogSource, createPublicationSource, decodeGzipJson, normalizeCatalog, openPublicationReader } from './data-source.ts';
 
-const fixtureUrl = new URL('../../../../../docs/youtube-coverage/committee-explorer-preview.json', import.meta.url);
+const fixtureUrl = new URL('../../../../../../docs/youtube-coverage/committee-explorer-preview.json', import.meta.url);
 const fixture = JSON.parse(await readFile(fixtureUrl, 'utf8'));
 const encode = value => new TextEncoder().encode(JSON.stringify(value));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -163,13 +163,11 @@ function partitioned({ wrongRecord = false, wrongBucketCount = false, relatedMat
   return { ...result, meeting, source, paths, manifestUrl };
 }
 
-test('partition reader retrieves index, selected records and evidence without requesting the Catalog download', async () => {
+test('partition reader retrieves selected records and evidence without requesting the Catalog download', async () => {
   const files = partitioned();
   const reader = await openPublicationReader({ pointerUrl, fetcher: files.fetcher });
-  assert.equal((await reader.getMeetingIndex())[0].id, files.meeting.id);
   const requested = [files.meeting, files.source, files.meeting].map(({ kind, id }) => ({ kind, id }));
   assert.deepEqual(await reader.getRecords(requested), [files.meeting, files.source, files.meeting]);
-  assert.deepEqual(await reader.getCoverage(), { metrics: [] });
   const fetched = files.requests.length;
   assert.deepEqual(await reader.getRecords(requested), [files.meeting, files.source, files.meeting]);
   assert.equal(files.requests.length, fetched);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {groupCommitteeTerms, matches} from './query-utils.js';
+import {groupCommitteeTerms, matches} from './query-utils.ts';
 
 test('committee grouping uses explicit chamber/code, preserves exact term routes, and follows filters', () => {
   const rows = [

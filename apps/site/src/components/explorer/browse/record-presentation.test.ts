@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { committeeTypeLabel, documentSourceLabel, presentRecord, recordingEmbedUrl, recordingVisible, savedCopyHref } from './record-presentation.js';
-import { matches } from './query-utils.js';
+import { committeeTypeLabel, documentSourceLabel, presentRecord, recordingEmbedUrl, recordingVisible, savedCopyHref } from './record-presentation.ts';
+import { matches } from './query-utils.ts';
 
 const now = new Date('2026-09-27T15:00:00Z');
 const meeting = {kind: 'meeting', status: 'scheduled', date: '2026-09-27', evidence_states: {recording: 'reported', captions: 'inferred', documents: 'reported'}};

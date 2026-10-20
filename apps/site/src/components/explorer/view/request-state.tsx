@@ -1,7 +1,8 @@
 import { useEffect, useState, type DependencyList } from 'react';
+import { PAGE_SIZE } from '../browse/query-utils.ts';
 
-export const PAGE_SIZE = 25;
-const integer = (value: number) => value.toLocaleString('en-US');
+export { PAGE_SIZE };
+export const integer = (value: number) => value.toLocaleString('en-US');
 export type RequestState<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ready'; value: T };
 
 /** Each request owns cancellation so an older response cannot replace a new selection. */

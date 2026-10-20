@@ -1,7 +1,9 @@
-import { type CSSProperties } from 'react';
-import type { CoverageAspect, CoverageGroup, CoverageSummary, EvidenceCounts, EvidenceState, ExplorerQuery } from './data-source';
+import { useState, type CSSProperties, type ReactNode } from 'react';
+import type { CoverageAspect, CoverageGroup, CoverageSummary, EvidenceCounts, EvidenceState, ExplorerQuery } from '../reader/data-source.ts';
+import { integer } from './request-state';
+import { coverageAspects } from '../browse/query-utils.ts';
 
-const ASPECTS: readonly [CoverageAspect, string][] = [['recording', 'Recordings'], ['transcript', 'Transcripts'], ['documents', 'Documents'], ['witnesses', 'Witness lists'], ['captions', 'Captions']];
+const aspectLabels: Record<CoverageAspect, string> = { recording: 'Recordings', transcript: 'Transcripts', documents: 'Documents', witnesses: 'Witness lists', captions: 'Captions' };
 const STATES: readonly [EvidenceState, string][] = [['observed', 'Observed'], ['reported', 'Reported'], ['curated', 'Curated'], ['derived', 'Derived'], ['inferred', 'Inferred'], ['not_found_in_checked_scope', 'Not found in checked scope'], ['error', 'Check failed'], ['blocked', 'Check blocked'], ['not_applicable', 'Not applicable'], ['unknown', 'Unknown'], ['unchecked', 'Unchecked']];
 const BANDS: readonly { label: string; color: string; states: readonly EvidenceState[] }[] = [
   { label: 'Observed / reported / curated / derived', color: '#104378', states: ['observed', 'reported', 'curated', 'derived'] },
@@ -11,7 +13,6 @@ const BANDS: readonly { label: string; color: string; states: readonly EvidenceS
   { label: 'Unknown / unchecked', color: '#c7cdd4', states: ['unknown', 'unchecked'] },
   { label: 'Not applicable', color: '#eef0f3', states: ['not_applicable'] },
 ];
-const integer = (value: number) => value.toLocaleString('en-US');
 const bandCount = (counts: EvidenceCounts, states: readonly EvidenceState[]) => states.reduce((sum, state) => sum + (counts.states[state] || 0), 0);
 const colorStyle = (color: string): CSSProperties => ({ '--state-color': color } as CSSProperties);
 
@@ -50,11 +51,16 @@ function EvidenceTable({ counts, aspect, onDrill }: { counts: EvidenceCounts; as
   </table>;
 }
 
+function OpenDetails({ summary, children }: { summary: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return <details onToggle={event => setOpen(event.currentTarget.open)}><summary>{summary}</summary>{open ? children : null}</details>;
+}
+
 function GroupTable({ groups, aspect, onDrill, field }: { groups: readonly CoverageGroup[]; aspect: CoverageAspect; onDrill: (query: ExplorerQuery) => void; field: 'congress' | 'committeeId' | 'month' }) {
-  return <details><summary>Table of all {field === 'committeeId' ? 'committee' : field} counts</summary><div className="explorer-table-scroll"><table className="explorer-table">
+  return <OpenDetails summary={`Table of all ${field === 'committeeId' ? 'committee' : field} counts`}><div className="explorer-table-scroll"><table className="explorer-table">
     <thead><tr><th scope="col">Group</th>{STATES.map(([state, label]) => <th scope="col" key={state}>{label}</th>)}<th scope="col">Total</th></tr></thead>
     <tbody>{groups.map((group) => <tr key={group.key}><th scope="row">{group.label}</th>{STATES.map(([state]) => <td key={state}><button className="explorer-text-button" disabled={!group.state_breakdown[aspect].states[state]} onClick={() => onDrill({ [field]: field === 'congress' ? Number(group.key) : group.key, aspect, evidence: state })}>{integer(group.state_breakdown[aspect].states[state] || 0)}</button></td>)}<td>{integer(group.denominator)}</td></tr>)}</tbody>
-  </table></div></details>;
+  </table></div></OpenDetails>;
 }
 
 export default function Coverage({ summary, onDrill, aspect, grouping, onAspect, onGrouping }: { summary: CoverageSummary; onDrill: (query: ExplorerQuery) => void; aspect: CoverageAspect; grouping: 'congress' | 'month'; onAspect: (value: CoverageAspect) => void; onGrouping: (value: 'congress' | 'month') => void }) {
@@ -63,11 +69,11 @@ export default function Coverage({ summary, onDrill, aspect, grouping, onAspect,
   const unresolved = bandCount(counts, ['unknown', 'unchecked', 'error', 'blocked']);
   const committees = [...summary.groups.committee].sort((a, b) => b.denominator - a.denominator);
   return <section aria-labelledby="coverage-title">
-    <div className="explorer-subheading"><h2 id="coverage-title">Coverage of this selection</h2><label className="explorer-measure">Measure<select value={aspect} onChange={(event) => onAspect(event.target.value as CoverageAspect)}>{ASPECTS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
+    <div className="explorer-subheading"><h2 id="coverage-title">Coverage of this selection</h2><label className="explorer-measure">Measure<select value={aspect} onChange={(event) => onAspect(event.target.value as CoverageAspect)}>{coverageAspects.map(value => <option key={value} value={value}>{aspectLabels[value as CoverageAspect] ?? value}</option>)}</select></label></div>
     <p className="explorer-note">{summary.population}</p>
     <div className="explorer-stats"><div className="explorer-stat"><strong>{integer(counts.denominator)}</strong><span>meeting entries</span></div><div className="explorer-stat"><strong>{integer(positive)}</strong><span>with recorded evidence</span></div><div className="explorer-stat"><strong>{integer(counts.states.inferred || 0)}</strong><span>inferred matches</span></div><div className="explorer-stat"><strong>{integer(unresolved)}</strong><span>unchecked or unresolved</span></div></div>
     <div className="explorer-coverage-grid"><section><h3>Evidence states</h3><Donut counts={counts} /></section><section><div className="explorer-subheading"><h3>Meeting entries by {grouping === 'congress' ? 'Congress' : 'scheduled month'}</h3><label className="explorer-measure">Group by<select value={grouping} onChange={(event) => onGrouping(event.target.value as 'congress' | 'month')}><option value="congress">Congress</option><option value="month">Month</option></select></label></div><Bars groups={summary.groups[grouping]} aspect={aspect} onGroup={(key) => onDrill(grouping === 'congress' ? { congress: Number(key) } : { month: key })} /><p className="explorer-note">Counts use a common scale. Meeting dates do not measure improvement in collection over time.</p></section></div>
-    <details><summary>Detailed evidence counts</summary><div className="explorer-table-scroll"><EvidenceTable counts={counts} aspect={aspect} onDrill={onDrill} /></div></details>
+    <OpenDetails summary="Detailed evidence counts"><div className="explorer-table-scroll"><EvidenceTable counts={counts} aspect={aspect} onDrill={onDrill} /></div></OpenDetails>
     <GroupTable groups={summary.groups[grouping]} aspect={aspect} onDrill={onDrill} field={grouping} />
     <section className="explorer-detail-section"><h3>Meeting entries by committee</h3><p className="explorer-note">A jointly convened meeting appears under each associated committee. Committee totals overlap.</p><Bars groups={committees} aspect={aspect} onGroup={(key) => onDrill({ committeeId: key })} /><GroupTable groups={committees} aspect={aspect} onDrill={onDrill} field="committeeId" /></section>
     <details><summary>Counting rule and known limits</summary><p className="explorer-note">{counts.rule}</p><ul>{summary.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul></details>

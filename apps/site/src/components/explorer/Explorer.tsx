@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { openPublicationReader, type CoverageSummary, type ExplorerQuery, type ExplorerReader, type ExplorerRecordRef, type QueryInfo, type QueryResult } from './data-source';
-import { RecordDetail, documentType, enumLabel, fields, publicUrl, recordTitle, words, type DetailRecord } from './RecordDetail';
-import Coverage from './Coverage';
-import RelatedMaterials from './RelatedMaterials';
-import { PAGE_SIZE, Pagination, RequestMessage, useRequest } from './request-state';
-import { downloadJson } from './download';
-import { readNavigation, viewNavigation, drillNavigation } from './navigation.js';
-import { committeeTypeLabel, documentSourceLabel, sourcePageUrl } from './record-presentation.js';
+import { openPublicationReader, type CoverageSummary, type ExplorerQuery, type ExplorerReader, type ExplorerRecordRef, type QueryInfo, type QueryKind, type QueryResult } from './reader/data-source.ts';
+import { RecordDetail, documentType, enumLabel, fields, publicUrl, recordTitle, words, type DetailRecord } from './view/RecordDetail';
+import Coverage from './view/Coverage';
+import RelatedMaterials from './view/RelatedMaterials';
+import { PAGE_SIZE, Pagination, RequestMessage, integer, useRequest } from './view/request-state';
+import { downloadJson } from './view/download';
+import { accessStates, committeeTypes, readNavigation, viewNavigation, drillNavigation, type Navigation, type View } from './browse/navigation.ts';
+import { committeeLevelLabel, committeeTypeLabel, documentSourceLabel, sourcePageUrl } from './browse/record-presentation.ts';
 
 const VIEWS = [
   { key: 'meetings', label: 'Meetings', kind: 'meeting' },
@@ -15,9 +15,7 @@ const VIEWS = [
   { key: 'witnesses', label: 'Witnesses', kind: 'appearance' },
   { key: 'coverage', label: 'Coverage', kind: 'meeting' },
   { key: 'gaps', label: 'Gaps & issues', kind: 'data_issue' },
-] as const;
-type View = typeof VIEWS[number]['key'];
-const integer = (value: number) => value.toLocaleString('en-US');
+] as const satisfies readonly { key: View; label: string; kind: QueryKind }[];
 
 /** Composition root: only this adapter choice knows a publication URL. */
 export default function Explorer({ pointerUrl }: { pointerUrl: string }) {
@@ -31,12 +29,6 @@ export function CommitteeExplorer({ reader }: { reader: ExplorerReader }) {
   return state.status === 'ready' ? <Workspace reader={reader} info={state.value} /> : <div className="explorer"><RequestMessage state={state} retry={retry} noun="archive metadata" /></div>;
 }
 
-export interface Navigation {
-  view: View; congress: string; chamber: string; q: string; from: string; to: string;
-  type: string; status: string; access: string; page: number; kind: string; id: string;
-  committee: string; committeeLevel: '' | 'full'; committeeType: string; month: string; aspect: string; evidence: string;
-  measure: import('./data-source').CoverageAspect; grouping: 'congress' | 'month';
-}
 function writeNavigation(nav: Navigation, replace: boolean) {
   const url = new URL(window.location.href);
   url.search = '';
@@ -52,7 +44,7 @@ function toQuery(nav: Navigation, info: QueryInfo): ExplorerQuery {
     committeeLevel: info.supported_filters?.includes('committeeLevel') ? nav.committeeLevel || undefined : undefined,
     committeeType: info.supported_filters?.includes('committeeType') ? nav.committeeType || undefined : undefined,
     access: info.supported_filters?.includes('access') && (nav.view === 'meetings' || nav.view === 'coverage') ? nav.access || undefined : undefined,
-    aspect: nav.aspect as ExplorerQuery['aspect'] || undefined, evidence: nav.evidence as ExplorerQuery['evidence'] || undefined,
+    aspect: nav.aspect || undefined, evidence: nav.evidence || undefined,
     offset: nav.page * PAGE_SIZE, limit: PAGE_SIZE,
   };
   return query;
@@ -94,12 +86,12 @@ function Workspace({ reader, info }: { reader: ExplorerReader; info: QueryInfo }
       <label>Congress<select value={nav.congress} onChange={(event) => filter({ congress: event.target.value })}><option value="all">All Congresses</option>{info.congresses.map((value) => <option key={value} value={value}>{value}th Congress</option>)}</select></label>
       <label>Chamber<select value={nav.chamber} onChange={(event) => filter({ chamber: event.target.value })}><option value="">All chambers</option><option value="house">House</option><option value="senate">Senate</option><option value="joint">Joint</option><option value="unknown">Unknown</option></select></label>
       {info.supported_filters?.includes('committeeLevel') ? <label>Committee level<select value={nav.committeeLevel} onChange={event => filter({ committeeLevel: event.target.value === 'full' ? 'full' : '' })}><option value="">Include subcommittees</option><option value="full">Full committees only</option></select></label> : null}
-      {info.supported_filters?.includes('committeeType') ? <label>Committee type<select value={nav.committeeType} onChange={event => filter({committeeType: event.target.value})}><option value="">All committee types</option><option value="standing">Standing</option><option value="select">Select</option><option value="joint">Joint</option><option value="special">Special</option><option value="other">Other</option><option value="commission_or_caucus">Commission or caucus</option><option value="task_force">Task force</option><option value="unknown">Unknown</option></select></label> : null}
+      {info.supported_filters?.includes('committeeType') ? <label>Committee type<select value={nav.committeeType} onChange={event => filter({committeeType: event.target.value})}><option value="">All committee types</option>{committeeTypes.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}</select></label> : null}
       {nav.view !== 'committees' ? <><label>From date<input aria-label="From date" type="date" value={nav.from} onChange={(event) => filter({ from: event.target.value })} /></label>
       <label>Through date<input aria-label="Through date" type="date" value={nav.to} onChange={(event) => filter({ to: event.target.value })} /></label></> : null}
       {nav.view === 'materials' ? <label>Material type<select value={nav.type} onChange={(event) => filter({ type: event.target.value })}><option value="">All types</option><option value="document">Document</option><option value="recording">Recording</option><option value="text">Text product</option></select></label> : null}
       {nav.view === 'meetings' || nav.view === 'coverage' ? <label>Meeting type<select value={nav.type} onChange={event => filter({type: event.target.value})}><option value="">All types</option><option value="hearing">Hearing</option><option value="markup">Markup</option><option value="business">Business meeting</option><option value="meeting">Meeting</option><option value="briefing">Briefing</option><option value="roundtable">Roundtable</option><option value="field_hearing">Field hearing</option><option value="other">Other</option><option value="unknown">Unknown</option></select></label> : null}
-      {info.supported_filters?.includes('access') && (nav.view === 'meetings' || nav.view === 'coverage') ? <label>Access<select value={nav.access} onChange={event => filter({access: event.target.value})}><option value="">All access states</option><option value="open">Open</option><option value="closed">Closed</option><option value="partly_closed">Partly closed</option><option value="unknown">Unknown</option></select></label> : null}
+      {info.supported_filters?.includes('access') && (nav.view === 'meetings' || nav.view === 'coverage') ? <label>Access<select value={nav.access} onChange={event => filter({access: event.target.value})}><option value="">All access states</option>{accessStates.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}</select></label> : null}
       {nav.view === 'gaps' ? <label>Issue status<select value={nav.status} onChange={(event) => filter({ status: event.target.value })}><option value="">All statuses</option><option value="open">Open</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select></label> : null}
       <button type="button" className="explorer-text-button" onClick={reset}>Reset</button>
     </form>
@@ -166,7 +158,7 @@ function Listing({ reader, query, view, info, onSelect, onPage }: { reader: Expl
             <span className="explorer-row-meta">{[enumLabel(row.chamber), ...(view === 'committees' ? [] : row.committee_ids || []).map(id => info.committee_labels?.[id]).filter(Boolean), row.provider].filter(Boolean).join(' · ')}</span>
           </td>
           <td>{view !== 'committees' ? row.date || <span className="explorer-unknown">Date unrecorded</span> : null}<span className={view === 'committees' ? undefined : 'explorer-row-meta'}>{view === 'committees' && row.terms ? <span className="explorer-congress-terms">{row.terms.map(term => <button key={term.id} className="explorer-text-button" title={`${term.title} — ${term.congress}th Congress`} aria-label={`View ${term.title}, ${term.congress}th Congress`} onClick={() => onSelect(term)}>{term.congress}th</button>)}</span> : view === 'committees' || view === 'witnesses' ? row.congress ? `${row.congress}th Congress` : 'Congress unrecorded' : enumLabel(row.status)}</span></td>
-          <td>{view === 'committees' ? <>{committeeTypeLabel(row)}<span className="explorer-row-meta">{row.committee_level === 'full' ? 'Full committee' : row.committee_level === 'subcommittee' ? 'Subcommittee' : 'Level unrecorded'}</span></> : view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position unrecorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}</> : <>{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}<span className="explorer-row-meta">{[documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · '), documentSourceLabel(row)].filter(Boolean).join(' · ')}</span>{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}</>}</td>
+          <td>{view === 'committees' ? <>{committeeTypeLabel(row)}<span className="explorer-row-meta">{committeeLevelLabel(row) || 'Level unrecorded'}</span></> : view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position unrecorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}</> : <>{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}<span className="explorer-row-meta">{[documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · '), documentSourceLabel(row)].filter(Boolean).join(' · ')}</span>{row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained issue history · not present in latest inputs</span> : null}</>}</td>
         </tr>)}
       </tbody></table></div><Pagination total={state.value.total} offset={state.value.offset} count={state.value.rows.length} onPage={onPage} />
     </> : <div className="explorer-alert"><p>{state.value.total ? 'This page is beyond the available results. Return to the first page to continue.' : 'No records match this selection. Broaden the filters. This does not establish that no such records exist at the source.'}</p>{query.offset ? <button className="explorer-button" onClick={() => onPage(0)}>Return to first page</button> : null}</div>}

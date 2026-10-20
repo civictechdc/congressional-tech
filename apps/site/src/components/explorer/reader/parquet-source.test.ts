@@ -5,13 +5,13 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { openPublicationReader } from './data-source.js';
-import { createParquetReader } from './parquet-source.js';
-import { committeeTypeLabel } from './record-presentation.js';
+import { openPublicationReader } from './data-source.ts';
+import { createParquetReader } from './parquet-source.ts';
+import { committeeTypeLabel } from '../browse/record-presentation.ts';
 
 // Generate real Snappy Parquet with the Python publisher; no mocked decoder.
 const root = mkdtempSync(join(tmpdir(), 'explorer-parquet-'));
-const repo = resolve(import.meta.dirname, '../../../../..');
+const repo = resolve(import.meta.dirname, '../../../../../..');
 const python = process.env.EXPLORER_PYTHON || process.env.COMMITTEE_PYTHON || (existsSync(join(repo, '.venv/bin/python')) ? join(repo, '.venv/bin/python') : 'python3');
 execFileSync(python, ['-c', `
 import sys, gzip, json

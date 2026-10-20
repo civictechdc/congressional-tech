@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react';
-import { filenameManifestUrl } from '../filename-publication.mjs';
-import { committeeTypeLabel, documentSourceLabel, recordingEmbedUrl, savedCopyHref, sourcePageUrl } from './record-presentation.js';
-import type { ExplorerRecord, ExplorerRecordRef, ExplorerSourceRecord } from './data-source';
+import { filenameManifestUrl } from '../../filenames/publication.mjs';
+import { committeeLevelLabel, committeeTypeLabel, documentSourceLabel, parentCommitteeId, recordingEmbedUrl, savedCopyHref, sourcePageUrl } from '../browse/record-presentation.ts';
+import type { ExplorerRecordRef, LoadedRecord } from '../reader/data-source.ts';
 
-export type DetailRecord = ExplorerRecord | ExplorerSourceRecord;
+export type DetailRecord = LoadedRecord;
 type Fields = Record<string, unknown>;
 export function fields(value: unknown): Fields {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Fields : {};
@@ -82,7 +82,7 @@ export function RecordDetail({ record, onSelect, sourceEvidence }: { record: Det
     ['Date', row.date], ['Congress', row.congress], ['Chamber', row.chamber], ['Access', row.access],
     ['Committee type', row.kind === 'committee_term' ? committeeTypeLabel(row) : null],
     ['Source committee type', row.source_committee_type && (String(row.source_committee_type).toLowerCase().replaceAll(' ', '_') !== row.committee_type || row.committee_type === 'subcommittee') ? row.source_committee_type : null],
-    ['Committee level', row.committee_level === 'full' ? 'Full committee' : row.committee_level === 'subcommittee' ? 'Subcommittee' : null],
+    ['Committee level', committeeLevelLabel(row) || null],
     [documentType(record) ? 'Document type' : 'Type', row.kind === 'committee_term' ? null : documentType(record) || row.type || row.meeting_type], ['Status', row.status], ['Category', documentType(record) ? null : row.category],
     ['Source collection', Array.isArray(row.source_document_groups) && row.source_document_groups.length ? `${documentSourceLabel(row)} (${row.source_document_groups.join(', ')})` : null],
     ['Position', row.position], ['Organization', row.organization], ['Participation', row.participation],
@@ -109,7 +109,7 @@ export function RecordDetail({ record, onSelect, sourceEvidence }: { record: Det
       : ['Type', 'Status', 'Category', 'Chamber', 'Participation', 'medium', 'coverage', 'production', 'Access'].includes(String(label)) ? enumLabel(value) : String(value)}</dd></div>)}</dl> : null}
     {record.kind === 'meeting' ? Object.entries(fields(row.evidence_states)).filter(([, state]) => ['inferred', 'error', 'blocked', 'not_found_in_checked_scope'].includes(String(state))).map(([aspect, state]) => <p className="explorer-note" key={aspect}>{words(aspect)}: {state === 'inferred' ? 'inferred match; needs verification' : state === 'not_found_in_checked_scope' ? 'not found in the sources checked' : state === 'error' ? 'source check failed' : 'source check blocked'}.</p>) : null}
     {explanation ? <p className="explorer-note">{String(explanation)}</p> : null}
-    {record.kind === 'committee_term' && (row.parent_committee_id || fields(row.parent).id) ? <p><button className="explorer-text-button" onClick={() => onSelect({kind: 'committee_term', id: String(row.parent_committee_id || fields(row.parent).id)})}>View parent committee →</button></p> : null}
+    {record.kind === 'committee_term' && parentCommitteeId(row) ? <p><button className="explorer-text-button" onClick={() => onSelect({kind: 'committee_term', id: String(parentCommitteeId(row))})}>View parent committee →</button></p> : null}
     {record.kind === 'material' && !files.length ? <p className="explorer-note">{row.type === 'recording' ? 'No recording is available in the collected sources.' : 'No file link in the collected sources.'}</p> : null}
     {row.meeting_id && !['meeting', 'material', 'data_issue'].includes(record.kind) ? <p><button className="explorer-text-button" onClick={() => onSelect({ kind: 'meeting', id: String(row.meeting_id) })}>View meeting →</button></p> : null}
     {affected ? <p><button className="explorer-text-button" onClick={() => onSelect(affected)}>View affected record →</button></p> : null}

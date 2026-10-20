@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { materialCategory, selectRelatedMaterials } from './related-materials.js';
+import { materialCategory, selectRelatedMaterials } from './related-materials.ts';
 
 test('native types remain exact; legacy typed records use their normalized category', () => {
   assert.equal(materialCategory({document_type:'Witness Statement', category:'statement'}), 'Witness Statement');
