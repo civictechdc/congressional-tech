@@ -32,14 +32,26 @@ def _save_preparation(path, request, dependency=None):
     staging.replace(path)
 
 
-def ordered_chunks(file, *, max_rows, max_bytes):
+def ordered_chunks(file, *, max_rows, max_bytes, start_row=0):
     from .catalog_rows import core_table, row_bytes
+    if type(start_row) is not int or not 0 <= start_row <= file.metadata.num_rows:
+        raise ValueError('Catalog adoption resume row must be within the selected table')
     schema = file.schema_arrow.append(pa.field('_catalog_order', pa.int64(), nullable=False))
-    pending, rows, size, physical_total, offset = [], 0, 0, 0, 0
+    pending, rows, size, physical_total, offset = [], 0, 0, 0, start_row
+    first_group, skip = 0, start_row
+    while first_group < file.metadata.num_row_groups and skip >= file.metadata.row_group(first_group).num_rows:
+        skip -= file.metadata.row_group(first_group).num_rows
+        first_group += 1
     def table():
         values = pa.Table.from_batches(pending, schema=file.schema_arrow).combine_chunks()
         return pa.Table.from_arrays([*values.columns, pa.array(range(offset, offset + rows), type=pa.int64())], schema=schema)
-    for batch in file.iter_batches(batch_size=min(max_rows,128)):
+    for batch in file.iter_batches(batch_size=min(max_rows,128),
+            row_groups=range(first_group, file.metadata.num_row_groups)):
+        if skip:
+            take = min(skip, len(batch))
+            batch, skip = batch.slice(take), skip - take
+        if not len(batch):
+            continue
         physical=core_table(pa.Table.from_batches([batch]))
         physical_sizes=row_bytes(physical.to_batches()[0])
         logical_sizes=row_bytes(batch)
@@ -147,7 +159,7 @@ def read_adoption_proof(store, reference, *, previous, scope_reference, scope):
 
 
 def adopt_native_catalog(store, *, native, previous, dependencies, candidate, directory,
-                         max_chunk_rows, max_chunk_bytes, rules):
+                         max_chunk_rows, max_chunk_bytes, rules, on_progress=None):
     """Preserve the exact existing pair; no grouping or classification replay."""
     from .catalog_selection import NativeCatalogSnapshot, publish_native_catalog
     if not isinstance(candidate, str) or not candidate or not isinstance(rules, dict) or not rules:
@@ -171,7 +183,7 @@ def adopt_native_catalog(store, *, native, previous, dependencies, candidate, di
             references=catalog_reference_requirements(),
             dependencies=sha256(b''.join(Path(__file__).with_name(name).read_bytes() for name in (
                 'catalog_dependency_storage.py', 'catalog_dependencies.py', 'catalog_memberships.py',
-                'partition_routing.py', 'document_index.py'))).hexdigest()))
+                'partition_routing.py', 'document_index.py', 'catalog_dependency_preparation.py'))).hexdigest()))
 
     def require_runtime():
         current_files = tuple(str(Path(path).resolve()) for path in native.execution_files()) if hasattr(native, 'execution_files') else ()
@@ -228,8 +240,10 @@ def adopt_native_catalog(store, *, native, previous, dependencies, candidate, di
             _save_preparation(preparation, request)
         require_inputs()
         if dependency is None:
-            dependency = dependencies.adopt(chunk.drop(['_catalog_order']) for chunk in ordered_chunks(
-                sources, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes))
+            dependency = dependencies.adopt(lambda start: (chunk.drop(['_catalog_order']) for chunk in ordered_chunks(
+                sources, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes, start_row=start)),
+                checkpoint_directory=directory / 'dependency-preparation',
+                preparation_key=sha256(encoded(request)).hexdigest(), on_progress=on_progress)
             require_inputs()
             _save_preparation(preparation, request, dependency)
         prepared = prepare_native_catalog_components(store, native, candidate=candidate,

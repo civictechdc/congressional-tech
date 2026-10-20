@@ -18,3 +18,9 @@ Replace CatalogDependencyStorage.adopt whole-corpus SQLite payload staging with 
 
 Record before/after wall time, staging bytes and memory on identical fixture including large occurrences. Exact source/document/mapping equivalence. Interrupted continuation reuses completed work and refuses changed inputs. Detect capacity failure before expensive staging; preserve original failed operation.
 
+
+## Notes
+
+**2026-10-20T18:40:47Z**
+
+Implemented typed Parquet dependency preparation with metadata-only SQLite indexes, fsynced hash-bound part receipts, fresh-process resume, source-row-group skip, checked file/schema/request coverage, aggregate staging budget, and bounded progress. No local native success authority: exact content-named CatalogRows writes replay through DocSpec. Selected v3 dependency and occurrence v1 formats remain readable/unchanged. Final focused suite80 passed/1 skipped/6 native-name deselected; earlier qualified native suite61 passed. Red9 failed/1 existing guard passed before implementation. Process loss os._exit(17), giant full source/document values+mapping equality, original hash partitions, sparse/global order, aliases/nulls/duplicates/unsigned/binary and changed-input refusal covered. Quiet identical1024row34.2MB fixture:2.109686s->2.221052s (+5.28%), peak temp29,978,624->2,373,710 bytes (-92.08%), peak processRSS562,642,944->405,323,776 bytes (-27.96%); both1459nativecalls/42424submittedrows. Evidence output/docspec-reuse-20261020/preparation. Await independent review and parent capacity integration; keep in_progress. No production/source-corpus writes, push, merge, archive or primary dirty edits.

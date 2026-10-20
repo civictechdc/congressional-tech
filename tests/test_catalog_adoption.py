@@ -102,3 +102,35 @@ def test_actual_native_adoption_keeps_exact_old_pair_and_retained_proof_on_retry
     monkeypatch.setattr(native, 'run_table', lambda *a, **k: (_ for _ in ()).throw(AssertionError('Completed adoption repeated')))
     assert adopt_native_catalog(store, previous=selected, **options)['unchanged']
     assert selected.selection['adoption'] == result['adoption_reference']
+
+
+def test_adoption_full_pair_preserves_giant_occurrence_values_and_all_id_mappings(tmp_path):
+    import pyarrow.parquet as pq
+    store,native=LocalStore(tmp_path/'store'),Native()
+    existing(tmp_path,store)
+    with read_catalog(store) as initial:
+        original_sources=pq.read_table(initial.filenames_path)
+        original_documents=pq.read_table(initial.documents_path)
+        occurrence=pa.struct([('labels',pa.list_(pa.string())),('bytes',pa.binary())])
+        repeated=dict(labels=['é','é',None],bytes=b'\0\xff'*1024)
+        giant=[None,repeated,*[repeated]*2400]
+        schema=pa.list_(occurrence)
+        sources=original_sources.append_column('source_occurrences',pa.array([None,[],giant,[None,repeated,repeated]],type=schema))
+        documents=original_documents.append_column('source_occurrences',pa.array([giant,[None,repeated,repeated]],type=schema))
+        directory=tmp_path/'exact-large-pair';directory.mkdir()
+        pq.write_table(sources,directory/'document-filenames.parquet',use_compliant_nested_type=False)
+        pq.write_table(documents,directory/'documents.parquet',use_compliant_nested_type=False)
+        publish_catalog(store,directory/'document-filenames.parquet',directory/'documents.parquet',previous=initial)
+    with read_catalog(store) as previous:
+        expected={label:pq.read_table(getattr(previous,label+'_path')) for label in ('filenames','documents')}
+        owner=CatalogDependencyStorage(native=native,store=store,namespace='exact-giant-adopt',
+            source_schema=expected['filenames'].schema,max_rows=128,max_bytes=1<<20)
+        adopt_native_catalog(store,native=native,previous=previous,dependencies=owner,candidate='preserve-giant',
+            directory=tmp_path/'adopt',max_chunk_rows=128,max_chunk_bytes=1<<20,rules=dict(interpretation='preserved'))
+    with read_catalog(store,native=native) as selected:
+        for label,table in expected.items():
+            actual=pa.Table.from_batches(list(selected.table(label,max_ordered_bytes=1<<20).iter_batches()))
+            assert actual.equals(table,check_metadata=True)
+            keys=['source_id','document_id'] if label=='filenames' else ['document_id']
+            assert actual.select(keys).equals(table.select(keys),check_metadata=True)
+    assert all(part.nbytes<=1<<20 and len(part)<=128 for part in native.tables.values())

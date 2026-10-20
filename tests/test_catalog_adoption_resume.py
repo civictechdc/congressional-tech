@@ -192,3 +192,59 @@ def test_change_during_readback_cannot_select_or_save_qualified_proof(tmp_path, 
         adoption.adopt_native_catalog(store, **options)
     assert store.read(MANIFEST_KEY) == before
     assert not (options['directory'] / 'qualified-adoption.json').exists()
+
+
+def test_dependency_interruption_reuses_typed_preparation_with_fresh_owner(tmp_path, monkeypatch):
+    store,native,options,_=setup_adoption(tmp_path,monkeypatch)
+    original=native.run_table
+    writes=[]
+    def interrupted(table,**request):
+        if request['dataset'].startswith('catalog-dep-'):
+            if writes:
+                raise OSError('dependency worker stopped')
+            writes.append(request['dataset'])
+        return original(table,**request)
+    monkeypatch.setattr(native,'run_table',interrupted)
+    before=store.read(MANIFEST_KEY)
+    with pytest.raises(OSError,match='dependency worker stopped'):
+        adoption.adopt_native_catalog(store,**options)
+    cache=options['directory']/'dependency-preparation'
+    assert (cache/'complete.json').exists()
+    assert store.read(MANIFEST_KEY)==before
+    expected={label:pq.read_table(getattr(options['previous'],label+'_path')) for label in ('filenames','documents')}
+    # A fresh process reconstructs disposable key indexes from checked Parquet,
+    # then asks the native owner to recover deterministic completed Runs.
+    old_owner=options['dependencies']
+    options['dependencies']=CatalogDependencyStorage(native=native,store=store,namespace=old_owner.namespace,
+        source_schema=old_owner.source_schema,max_rows=old_owner.max_rows,max_bytes=old_owner.max_bytes)
+    old_ordered=adoption.ordered_chunks
+    def no_dependency_inputs(*args,**kwargs):
+        if 'start_row' in kwargs:
+            pytest.fail('Completed dependency preparation reread selected source payloads')
+        return old_ordered(*args,**kwargs)
+    monkeypatch.setattr(adoption,'ordered_chunks',no_dependency_inputs)
+    monkeypatch.setattr(native,'run_table',original)
+    adoption.adopt_native_catalog(store,**options)
+    with read_catalog(store,native=native) as selected:
+        for label,table in expected.items():
+            actual=pa.Table.from_batches(list(selected.table(label,max_ordered_bytes=1<<20).iter_batches()))
+            assert actual.equals(table,check_metadata=True)
+            assert actual.select(['source_id','document_id'] if label=='filenames' else ['document_id']).equals(
+                table.select(['source_id','document_id'] if label=='filenames' else ['document_id']),check_metadata=True)
+
+
+def test_ordered_chunks_resume_skips_completed_row_groups_and_preserves_orders(tmp_path):
+    table=pa.table({'source_id':['a','b','c','d','e'],'filename':['a','b','c','d','e']})
+    path=tmp_path/'source.parquet';pq.write_table(table,path,row_group_size=2)
+    class TracedFile:
+        def __init__(self,file):self.file=file;self.groups=[]
+        def __getattr__(self,name):return getattr(self.file,name)
+        def iter_batches(self,**options):
+            self.groups.extend(options['row_groups'])
+            return self.file.iter_batches(**options)
+    with pq.ParquetFile(path) as file:
+        traced=TracedFile(file)
+        actual=pa.concat_tables(list(adoption.ordered_chunks(traced,max_rows=2,max_bytes=1<<20,start_row=3)))
+    assert traced.groups==[1,2]
+    assert actual['_catalog_order'].to_pylist()==[3,4]
+    assert actual.drop(['_catalog_order']).equals(table.slice(3),check_metadata=True)

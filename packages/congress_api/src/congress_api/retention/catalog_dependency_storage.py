@@ -144,7 +144,7 @@ class CatalogDependencyStorage:
         sink = pa.BufferOutputStream()
         with pa.ipc.new_stream(sink, table.schema) as writer:
             writer.write_table(table)
-        identity = sha256(sink.getvalue().to_pybytes()).hexdigest()
+        identity = sha256(sink.getvalue()).hexdigest()
         before=(self.row_owner.candidate_rows_submitted,self.row_owner.candidate_arrow_bytes)
         pin = self.row_owner.write(table, dataset=f'catalog-dep-v3-{kind}-{identity}',
             operation='initial', definition='catalog-dependencies-storage-v3',
@@ -353,81 +353,51 @@ class CatalogDependencyStorage:
         basis = self._selection(selection, require_lookup_policy=True)
         return self._lookup_sources(basis, self.packages, basis['package_root'], 'package:' + package)
 
-    def adopt(self, chunks, *, source_orders=None, first_unused_order=0):
-        """Import exact selected source values without replaying grouping policy.
+    def adopt(self, chunks, *, source_orders=None, first_unused_order=0,
+              checkpoint_directory=None, preparation_key=None, staging_byte_budget=None,
+              on_progress=None):
+        """Import exact typed selected values with bounded, checked preparation.
 
-        Adoption enumerates the prior table once. Temporary hash indexes bound
-        native leaf construction even when a whole historical component shares
-        one body or endpoint. This path never selects the resulting roots.
+        Parquet retains source payloads; the disposable SQL indexes hold only
+        keys and row locations. A caller-bound cache reuses completed typed
+        files after interruption. Completed native Runs replay through DocSpec;
+        preparation neither chooses a native head nor selects catalog roots.
         """
-        from .partition_routing import key_hash
-        with TemporaryDirectory(prefix='catalog-dependency-adoption-') as directory, closing(
-                sqlite3.connect(Path(directory) / 'sources.sqlite')) as db:
-            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
-                'CREATE TABLE sources(identity TEXT PRIMARY KEY,digest TEXT,body BLOB,ordinal INTEGER UNIQUE); '
-                'CREATE INDEX source_hashes ON sources(digest); '
-                'CREATE TABLE aliases(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
-                'CREATE TABLE lookups(kind INTEGER,alias TEXT,member TEXT,PRIMARY KEY(kind,alias,member));')
-            count, next_order = 0, first_unused_order
-            for chunk in chunks:
-                if not chunk.schema.equals(self.source_schema, check_metadata=True):
-                    raise DependencyGap('Adoption source schema differs from the selected table')
-                rows, positions, identities, ordinals = chunk.to_pylist(), [], set(), set()
-                if not rows:
-                    continue
-                for offset, row in enumerate(rows, count):
-                    identity = index.source_identity(row)
-                    if row.get('source_id') != identity:
-                        raise DependencyGap('Adoption source identity differs from its saved key')
-                    position = offset if source_orders is None else source_orders[identity]
-                    if type(position) is not int or position < 0:
-                        raise DependencyGap('Source order must be a nonnegative integer')
-                    if identity in identities or position in ordinals:
-                        raise DependencyGap('Repeated selected source identity during adoption')
-                    identities.add(identity)
-                    ordinals.add(position)
-                    positions.append(position)
-                    next_order = max(next_order, position + 1)
-                # The caller supplies bounded typed input; normalize it once.
-                sources, aliases = dependency_tables(rows, self.source_schema, first_order=count)
-                if source_orders is not None:
-                    # Saved positions may be sparse or differ from input order.
-                    column = sources.schema.get_field_index('source_order')
-                    sources = sources.set_column(column, sources.schema.field(column),
-                                                 pa.array(positions, type=pa.int64()))
-                for row, stored in zip(rows, sources.to_pylist()):
-                    identity, position = stored['source_id'], stored['source_order']
-                    try:
-                        db.execute('INSERT INTO sources VALUES (?,?,?,?)',
-                            (identity, key_hash(identity), pickle.dumps(stored), position))
-                    except sqlite3.IntegrityError as error:
-                        raise DependencyGap('Repeated selected source identity during adoption') from error
-                    for kind, keys in enumerate(self._lookup_keys(row)):
-                        db.executemany('INSERT OR IGNORE INTO lookups VALUES (?,?,?)',
-                                       ((kind, key, identity) for key in keys))
-                db.executemany('INSERT INTO aliases VALUES (?,?)',
-                    ((edge['alias'], edge['source_id']) for edge in aliases.to_pylist()))
-                count += len(rows)
+        from .catalog_dependency_preparation import DependencyPreparation
+        from contextlib import nullcontext
+        if type(first_unused_order) is not int or first_unused_order < 0:
+            raise ValueError('Source order must start at a nonnegative integer')
+        context = (TemporaryDirectory(prefix='catalog-dependency-adoption-')
+                   if checkpoint_directory is None else nullcontext(checkpoint_directory))
+        with context as directory, closing(DependencyPreparation(self, directory=directory,
+                preparation_key=preparation_key or ('temporary' if checkpoint_directory is None else None),
+                first_unused_order=first_unused_order, source_orders=source_orders,
+                staging_byte_budget=staging_byte_budget, on_progress=on_progress)) as work:
+            work.prepare(chunks)
+            db = work.db
             def leaves(prefix):
-                rows = [pickle.loads(body) for body, in db.execute(
-                    'SELECT body FROM sources WHERE digest>=? AND digest<? ORDER BY identity LIMIT ?',
-                    (prefix, prefix + 'g', self.max_rows + 1))]
-                table = pa.Table.from_pylist(rows, schema=dependency_schema(self.source_schema))
-                if self._fits(table):
+                table = work.source_table(prefix)
+                if table is not None:
                     if len(table):
-                        yield prefix, self._write(table, 'sources')
+                        pin = self._write(table, 'sources')
+                        if on_progress is not None:
+                            on_progress(dict(phase='native-source-leaf', prefix=prefix, leaf_rows=len(table),
+                                             **self.preparation_metrics))
+                        yield prefix, pin
                     return
-                if len(table) == 1 or len(prefix) == 64:
+                if len(prefix) == 64:
                     raise DependencyGap('One selected source cannot fit its adoption leaf budget')
                 for char in '0123456789abcdef':
                     yield from leaves(prefix + char)
-            source_root = self.sources.replace_stream(None, '', leaves('')) if count else None
+            source_root = self.sources.replace_stream(None, '', leaves('')) if work.count else None
             class Aliases:
                 def __iter__(self):
                     return (row[0] for row in db.execute('SELECT DISTINCT alias FROM aliases ORDER BY alias'))
                 def __getitem__(self, alias):
                     return (row[0] for row in db.execute('SELECT member FROM aliases WHERE alias=? ORDER BY member', (alias,)))
             alias_root = self.memberships.replace(None, Aliases())
+            if on_progress is not None:
+                on_progress(dict(phase='native-aliases', **self.preparation_metrics))
             lookup_roots = []
             for kind, owner in [(0, self.urls), (1, self.targets), (2, self.bodies), (3, self.packages)]:
                 class Lookups:
@@ -436,8 +406,10 @@ class CatalogDependencyStorage:
                     def __getitem__(self, alias):
                         return (row[0] for row in db.execute('SELECT member FROM lookups WHERE kind=? AND alias=? ORDER BY member', (kind, alias)))
                 lookup_roots.append(owner.replace(None, Lookups()))
+                if on_progress is not None:
+                    on_progress(dict(phase='native-lookup', kind=kind, **self.preparation_metrics))
             return dict(self._selection(None), source_root=source_root, alias_root=alias_root,
-                        url_root=lookup_roots[0], target_root=lookup_roots[1], body_root=lookup_roots[2], package_root=lookup_roots[3], next_source_order=next_order)
+                        url_root=lookup_roots[0], target_root=lookup_roots[1], body_root=lookup_roots[2], package_root=lookup_roots[3], next_source_order=work.next_order)
 
     def prepare_full(self, selection, *, replacements, source_orders):
         """Prepare a complete reviewed inventory using the bounded adoption owner.

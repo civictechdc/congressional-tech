@@ -157,9 +157,21 @@ def dependency_tables(rows, source_schema, *, first_order=0):
     import pyarrow as pa
     if type(first_order) is not int or first_order < 0:
         raise ValueError('Source order must start at a nonnegative integer')
-    sources, aliases, seen = [], [], set()
-    for order, original in enumerate(rows, first_order):
-        row = deepcopy(original)
+    typed = isinstance(rows, pa.Table)
+    if typed:
+        if not rows.schema.equals(source_schema, check_metadata=True):
+            raise ValueError('Dependency source table schema differs')
+        # Grouping and lookup use the core values. Keep potentially huge
+        # occurrence lists in Arrow rather than round-tripping Python structs.
+        from .catalog_rows import core_table, COUNT, ROW
+        core = core_table(rows)
+        projected = core.drop([name for name in (COUNT, ROW) if name in core.column_names])
+        originals = projected.to_pylist()
+    else:
+        originals = rows
+    sources, aliases, seen, keys, positions, edges = [], [], set(), [], [], []
+    for order, original in enumerate(originals, first_order):
+        row = original if typed else deepcopy(original)
         if set(row) - set(source_schema.names):
             raise ValueError('Source row fields are not declared in the application schema')
         key = index.source_identity(row)
@@ -170,10 +182,23 @@ def dependency_tables(rows, source_schema, *, first_order=0):
         if row.get('document_id'):
             aliases_for_row.append(('component', row['document_id']))
         encoded = [_encoded_alias(alias) for alias in aliases_for_row]
-        sources.append(dict(source_id=key, source_order=order, source_values=row, aliases=encoded))
+        if typed:
+            keys.append(key)
+            positions.append(order)
+            edges.append(encoded)
+        else:
+            sources.append(dict(source_id=key, source_order=order, source_values=row, aliases=encoded))
         aliases.extend(dict(alias=value, source_id=key) for value in encoded)
-    return (pa.Table.from_pylist(sources, schema=dependency_schema(source_schema)),
-            pa.Table.from_pylist(aliases, schema=alias_schema()))
+    if typed:
+        sources = pa.Table.from_arrays([
+            pa.array(keys, type=pa.string()), pa.array(positions, type=pa.int64()),
+            pa.StructArray.from_arrays([rows[name].combine_chunks() for name in source_schema.names],
+                                       fields=list(source_schema)),
+            pa.array(edges, type=pa.list_(pa.string())),
+        ], schema=dependency_schema(source_schema))
+    else:
+        sources = pa.Table.from_pylist(sources, schema=dependency_schema(source_schema))
+    return sources, pa.Table.from_pylist(aliases, schema=alias_schema())
 
 
 class NativeAliasMembers(Collection):
