@@ -1,11 +1,14 @@
 """Retain receipt interpretation ownership with the exact catalog selection."""
 import base64
+from contextlib import closing
+from tempfile import TemporaryDirectory
 from hashlib import sha256
 from pathlib import Path
 
 import pyarrow as pa
 
 from .immutable_metadata import MetadataObjects, encoded
+from .catalog_staging import WorkingCatalog
 
 
 def source_update_requirements():
@@ -28,6 +31,58 @@ def _digest(row, schema):
     return sha256(sink.getvalue().to_pybytes()).hexdigest()
 
 
+def _retain_pages(pages, label, values):
+    head, pending, count = None, [], 0
+    for value in values:
+        pending.append(value)
+        count += 1
+        if len(pending) == 64:
+            head = pages.put(dict(previous=head, **{label: pending}))
+            pending = []
+    if pending:
+        head = pages.put(dict(previous=head, **{label: pending}))
+    return dict(head=head, count=count)
+
+
+def _page_values(pages, descriptor, label, work):
+    seen = work.mapping('seen_' + label)
+    seen.clear()
+    head, count = descriptor['head'], 0
+    while head is not None:
+        if head['sha256'] in seen:
+            raise ValueError('Source update ' + label + ' pages contain a cycle')
+        seen[head['sha256']] = True
+        page = pages.read(head)
+        if not 0 < len(page[label]) <= 64:
+            raise ValueError('Invalid source update ' + label + ' page size')
+        for value in page[label]:
+            count += 1
+            yield value
+        head = page['previous']
+    if count != descriptor['count']:
+        raise ValueError('Source update ' + label + ' count differs')
+
+
+class SourceUpdateDeletions:
+    """Repeatable retained membership for preparation and proof verification."""
+    def __init__(self, store, body):
+        self.store, self.body = store, body
+
+    def __len__(self):
+        return self.body['deletions']['count']
+
+    def __iter__(self):
+        return iterator_source_update_deletions(self.store, self.body)
+
+
+def iterator_source_update_deletions(store, body):
+    """Read exact deletion membership from finite immutable pages."""
+    pages = MetadataObjects(store, 'source-update-rows-v1', max_cache_entries=4)
+    with TemporaryDirectory(prefix='source-update-deletions-') as directory, closing(
+            WorkingCatalog(Path(directory) / 'pages.sqlite')) as work:
+        yield from _page_values(pages, body['deletions'], 'deletions', work)
+
+
 def retain_source_update(store, *, base, before, after, schema, replacements, deletions, observations=(),
                          purpose='update', rule_version=None):
     if purpose not in {'update', 'qualification', 'rule-upgrade'}:
@@ -35,30 +90,27 @@ def retain_source_update(store, *, base, before, after, schema, replacements, de
     if purpose == 'rule-upgrade' and (not isinstance(rule_version, str) or not rule_version.strip()):
         raise ValueError('Source rule upgrade requires an explicit version')
     pages = MetadataObjects(store, 'source-update-rows-v1', max_cache_entries=4)
-    head, pending, count = None, [], 0
     from .document_index import source_identity
-    for row in replacements:
-        pending.append(dict(source_id=source_identity(row), digest=_digest(row, schema)))
-        count += 1
-        if len(pending) == 64:
-            head = pages.put(dict(previous=head, rows=pending))
-            pending = []
-    if pending:
-        head = pages.put(dict(previous=head, rows=pending))
-    observation_head, observation_count, pending = None, 0, []
-    for observation in observations:
-        pending.append(observation)
-        observation_count += 1
-        if len(pending) == 64:
-            observation_head = pages.put(dict(previous=observation_head, observations=pending))
-            pending = []
-    if pending:
-        observation_head = pages.put(dict(previous=observation_head, observations=pending))
+    rows = _retain_pages(pages, 'rows',
+        (dict(source_id=source_identity(row), digest=_digest(row, schema)) for row in replacements))
+    retained_observations = _retain_pages(pages, 'observations', observations)
+    with TemporaryDirectory(prefix='source-update-deletions-') as directory, closing(
+            WorkingCatalog(Path(directory) / 'membership.sqlite')) as work:
+        members = work.mapping('deletion_members')
+        def unique_deletions():
+            for identity in deletions:
+                if not isinstance(identity, str) or not identity:
+                    raise ValueError('Invalid source update deletion identity')
+                if identity in members:
+                    raise ValueError('Repeated source update deletion identity')
+                members[identity] = True
+                yield identity
+        retained_deletions = _retain_pages(pages, 'deletions', unique_deletions())
     body = dict(version=1, base=base, before=before, after=after,
         purpose=purpose, rule_version=rule_version,
         schema=base64.b64encode(schema.serialize().to_pybytes()).decode(),
-        rows=dict(head=head, count=count), observations=dict(head=observation_head, count=observation_count),
-        deletions=sorted(deletions), requirements=source_update_requirements())
+        rows=rows, observations=retained_observations,
+        deletions=retained_deletions, requirements=source_update_requirements())
     body['binding'] = sha256(encoded(body)).hexdigest()
     return MetadataObjects(store, 'source-updates-v1', max_cache_entries=1).put(body)
 
@@ -76,71 +128,59 @@ def read_source_update(store, reference):
 
 def verify_source_update(store, reference, *, native, base, before, rows, deletions):
     body = read_source_update(store, reference)
-    if body['base'] != base or body['before'] != before or set(body['deletions']) != set(deletions):
+    if body['base'] != base or body['before'] != before:
         raise ValueError('Retained source update differs from its catalog basis/deletions')
-    _verify_routing(store, native, body)
-    schema = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(body['schema'], validate=True)))
-    wanted, head, count, seen = {}, body['rows']['head'], 0, set()
     pages = MetadataObjects(store, 'source-update-rows-v1', max_cache_entries=4)
-    while head is not None:
-        if head['sha256'] in seen:
-            raise ValueError('Retained source update row pages contain a cycle')
-        seen.add(head['sha256'])
-        page = pages.read(head)
-        if not 0 < len(page['rows']) <= 64:
-            raise ValueError('Invalid source update page size')
-        for entry in page['rows']:
+    with TemporaryDirectory(prefix='source-update-values-') as directory, closing(
+            WorkingCatalog(Path(directory) / 'values.sqlite')) as work:
+        removed = work.mapping('removed')
+        for identity in _page_values(pages, body['deletions'], 'deletions', work):
+            if identity in removed:
+                raise ValueError('Repeated source update deletion identity')
+            removed[identity] = True
+        supplied = work.mapping('supplied')
+        for identity in deletions:
+            if identity in supplied or identity not in removed:
+                raise ValueError('Retained source update differs from its catalog basis/deletions')
+            supplied[identity] = True
+        if len(supplied) != len(removed):
+            raise ValueError('Retained source update differs from its catalog basis/deletions')
+        _verify_routing(store, native, body)
+        schema = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(body['schema'], validate=True)))
+        wanted = work.mapping('wanted')
+        for entry in _page_values(pages, body['rows'], 'rows', work):
             if entry['source_id'] in wanted:
                 raise ValueError('Repeated retained source update identity')
             wanted[entry['source_id']] = entry['digest']
-            count += 1
-        head = page['previous']
-    if count != body['rows']['count']:
-        raise ValueError('Retained source update row count differs')
-    from .document_index import source_identity
-    for row in rows:
-        identity = source_identity(row)
-        if identity in wanted:
-            if wanted.pop(identity) != _digest(row, schema):
-                raise ValueError('Grouped outputs changed retained source interpretation values')
-    if wanted:
-        raise ValueError('Grouped outputs omit retained source interpretation values')
+        from .document_index import source_identity
+        for row in rows:
+            identity = source_identity(row)
+            if identity in wanted:
+                if wanted.pop(identity) != _digest(row, schema):
+                    raise ValueError('Grouped outputs changed retained source interpretation values')
+        if wanted:
+            raise ValueError('Grouped outputs omit retained source interpretation values')
     return body['after']
 
 
 def _verify_routing(store, native, body):
     """Recompute exact changed observation paths while reusing other subtrees."""
-    from contextlib import closing
     import json
-    from tempfile import TemporaryDirectory
-    from .catalog_staging import WorkingCatalog
     from .source_observations import SourceObservationStorage, SourceObservationTrace, receipt_locator
     after, before = body['after'], body['before']
     owner = SourceObservationStorage(native=native, store=store, namespace=after['namespace'],
         max_rows=after['max_rows'], max_bytes=after['max_bytes'])
     pages = MetadataObjects(store, 'source-update-rows-v1', max_cache_entries=4)
-    head, count, seen = body['observations']['head'], 0, set()
     with TemporaryDirectory(prefix='source-update-routing-') as directory, closing(WorkingCatalog(Path(directory) / 'proof.sqlite')) as work:
         trace = SourceObservationTrace(work)
-        while head is not None:
-            if head['sha256'] in seen:
-                raise ValueError('Source update observation pages contain a cycle')
-            seen.add(head['sha256'])
-            page = pages.read(head)
-            if not 0 < len(page['observations']) <= 64:
-                raise ValueError('Invalid source update observation page')
-            for observation in page['observations']:
-                key, line = receipt_locator(observation)
-                if work.connection.execute('SELECT 1 FROM observation_inputs WHERE observation=?', (observation,)).fetchone():
-                    raise ValueError('Repeated source update observation')
-                trace.register(key, line)
-                count += 1
-                for edge in owner.members.values(after['root'], observation):
-                    dependency, access = json.loads(edge)
-                    kind, value = json.loads(dependency[len('dependency:'):])
-                    trace(dict(receipt_key=key, receipt_line=line, kind=kind, value=value, access=access))
-            head = page['previous']
-        if count != body['observations']['count']:
-            raise ValueError('Source update observation count differs')
+        for observation in _page_values(pages, body['observations'], 'observations', work):
+            key, line = receipt_locator(observation)
+            if work.connection.execute('SELECT 1 FROM observation_inputs WHERE observation=?', (observation,)).fetchone():
+                raise ValueError('Repeated source update observation')
+            trace.register(key, line)
+            for edge in owner.members.values(after['root'], observation):
+                dependency, access = json.loads(edge)
+                kind, value = json.loads(dependency[len('dependency:'):])
+                trace(dict(receipt_key=key, receipt_line=line, kind=kind, value=value, access=access))
         if owner.prepare(before['root'] if before else None, trace) != after['root']:
             raise ValueError('Source update changed unrelated observation routing')

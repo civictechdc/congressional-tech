@@ -26,7 +26,7 @@ from .raw_values import NATIVE_CAPTURE_SCHEMA
 from .raw_archive import STATE_KEY
 from .source_observations import SourceObservationStorage, dependency_id, hearing_records
 from .source_replay import prepare_source_replay
-from .source_update_proof import retain_source_update, read_source_update, source_update_requirements
+from .source_update_proof import retain_source_update, read_source_update, source_update_requirements, SourceUpdateDeletions
 
 MAX_ROWS, MAX_BYTES = 8192, 16 << 20
 
@@ -169,7 +169,7 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                     namespace=proof['after']['catalog_namespace'], source_schema=rows.schema,
                     max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
             result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
-                replacements=rows, deletions=proof['deletions'], candidate=candidate, directory=directory / 'catalog',
+                replacements=rows, deletions=SourceUpdateDeletions(store, proof), candidate=candidate, directory=directory / 'catalog',
                 max_chunk_rows=MAX_ROWS, max_chunk_bytes=MAX_BYTES, rules=request['requirements'],
                 expected_bodies=request['expected_bodies'], source_update=retained['source_update'], **full_options)
             return dict(result, raw_identity=raw.identity)
@@ -307,7 +307,7 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                 schema = logical
             values = _retain_rows(directory / 'interpreted-sources.parquet', interpreted, schema)
             ids = _keys(stage, 'interpreted_ids', (index.source_identity(row) for row in values))
-            deletions = sorted(identity for identity in old_ids if identity not in ids)
+            deletions = _keys(stage, 'deleted_ids', (identity for identity in old_ids if identity not in ids))
             after = dict(namespace=namespace, catalog_namespace=catalog_namespace,
                 root=prepared.after if prepared else before['root'] if before else None,
                 raw_identity=raw.identity, seed_sha256=seed_sha, max_rows=MAX_ROWS, max_bytes=MAX_BYTES, requirements=request['requirements'],
