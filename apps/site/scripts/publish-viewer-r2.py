@@ -129,9 +129,11 @@ def validated_accepted(value):
 
 def recovery_inputs(selected_digest, manifest_digest, manifest, accepted, *, release_identity=None):
     rows = validated_accepted(accepted)
-    return {'version': 1, 'raw_manifest_sha256': selected_digest,
+    basis = ({'version': 2, 'source_identity': manifest['source_identity'], 'roots': manifest['roots']}
+             if manifest.get('version') == 6 else
+             {'version': 1, 'files': {name: manifest['files'][name]['sha256'] for name in ('filenames', 'groups')}})
+    return {**basis, 'raw_manifest_sha256': selected_digest,
             'viewer_manifest_sha256': manifest_digest,
-            'files': {name: manifest['files'][name]['sha256'] for name in ('filenames', 'groups')},
             'accepted': {'present': accepted is not None, 'sha256': hashlib.sha256(encoded(rows)).hexdigest()},
             'full_release_inputs': release_identity or full_release_identity()}
 
@@ -146,7 +148,10 @@ def verify_recovery_status(client, descriptor, pointer, *, public_url):
     if len(payload) != descriptor['bytes'] or hashlib.sha256(payload).hexdigest() != descriptor['sha256']:
         raise ValueError('Selected recovery status hash mismatch.')
     index = json.loads(payload)
-    if index.get('version') != 1 or index.get('catalog_id') != pointer['catalog_id']:
+    version = 2 if pointer.get('source_manifest', {}).get('version') == 2 else 1
+    if (index.get('version') != version or index.get('catalog_id') != pointer['catalog_id']
+            or version == 2 and (not pointer.get('source_identity')
+                                 or index.get('source_identity') != pointer['source_identity'])):
         raise ValueError('Selected recovery status identity mismatch.')
     with open_public(public_request(public_url + descriptor['path'], {'Origin': 'https://civictechdc.github.io'})) as response:
         if public_control(response, kind='recovery', expected=descriptor['bytes']) != payload or response.headers.get('Access-Control-Allow-Origin') != '*':
@@ -239,15 +244,34 @@ def store_recovery_index(client, value):
 
 
 def recovery_preparation_inputs(manifest, accepted_record):
-    return dict(version=1, source_manifest=manifest['source_manifest'],
-        files={name: manifest['files'][name] for name in ('filenames', 'groups')},
+    basis = (dict(version=2, source_identity=manifest['source_identity'], roots=manifest['roots'])
+             if manifest.get('version') == 6 else
+             dict(version=1, files={name: manifest['files'][name] for name in ('filenames', 'groups')}))
+    return dict(basis, source_manifest=manifest['source_manifest'],
         catalog={key: manifest['info'][key] for key in ('catalog_id', 'rows', 'entries')},
         accepted_present=accepted_record[0] is not None, accepted_sha256=accepted_record[3])
 
 
-def prepare_recovery(root, manifest, accepted_record, *, validation=None):
-    value = index_recoveries(root, manifest, validated_accepted(accepted_record[0]),
-                             **({'validation': validation} if validation is not None else {}))
+def require_native_recovery(value, manifest):
+    if (not isinstance(value, dict) or value.get('version') != 2
+            or value.get('source_identity') != manifest['source_identity']
+            or any(value.get(key) != manifest['info'][key] for key in ('catalog_id', 'rows', 'entries'))):
+        raise ValueError('Stable recovery status identity differs from the selected catalog')
+
+
+def prepare_recovery(root, manifest, accepted_record, *, validation=None, index=None):
+    if manifest.get('version') == 6:
+        if index is None:
+            raise ValueError('Native publication requires an explicitly prepared stable recovery index')
+        require_native_recovery(index, manifest)
+        if index.get('accepted') != validated_accepted(accepted_record[0]):
+            raise ValueError('Stable recovery acceptance differs from its selected inputs')
+        value = index
+    else:
+        if index is not None:
+            raise ValueError('Historical recovery preparation requires verified source files')
+        value = index_recoveries(root, manifest, validated_accepted(accepted_record[0]),
+                                **({'validation': validation} if validation is not None else {}))
     prepared = dict(version=1, inputs=recovery_preparation_inputs(manifest, accepted_record), value=value)
     payload = encoded(prepared)
     if len(payload) > CONTROL_LIMITS['recovery']:
@@ -263,6 +287,10 @@ def load_prepared_recovery(root, manifest, accepted_record, *, validation):
     if prepared.get('version') != 1 or prepared.get('inputs') != recovery_preparation_inputs(manifest, accepted_record):
         raise ValueError('Prepared recovery inputs changed')
     value = prepared['value']
+    if manifest.get('version') == 6:
+        require_native_recovery(value, manifest)
+        if value.get('accepted') != validated_accepted(accepted_record[0]):
+            raise ValueError('Stable recovery acceptance differs from its selected inputs')
     if (value.get('catalog_id') != manifest['info']['catalog_id'] or value.get('rows') != manifest['info']['rows']
             or value.get('entries') != manifest['info']['entries']):
         raise ValueError('Prepared recovery status identity changed')
@@ -277,6 +305,8 @@ def recovery_for_publication(client, root, manifest, *, validation=None, plan=No
             raise ValueError('Accepted recovery mappings changed after viewer preparation')
         index = plan.recovery
     else:
+        if manifest.get('version') == 6 and validation is None:
+            raise ValueError('Native recovery publication requires verified prepared status')
         index = (load_prepared_recovery(root, manifest, accepted_record, validation=validation)
                  if validation is not None else index_recoveries(root, manifest, validated_accepted(accepted_record[0])))
     return store_recovery_index(client, index), accepted_record
@@ -287,7 +317,13 @@ def select_recoveries(client, root, manifest, selected_record, accepted_record, 
     pointer, pointer_etag = pointer_record[:2]
     accepted = validated_accepted(accepted_record[0])
     if index is None:
+        if manifest.get('version') == 6:
+            raise ValueError('Native publication requires an explicitly prepared stable recovery index')
         index = index_recoveries(root, manifest, accepted)
+    if manifest.get('version') == 6:
+        require_native_recovery(index, manifest)
+        if index.get('accepted') != accepted:
+            raise ValueError('Stable recovery acceptance differs from its selected inputs')
     descriptor = store_recovery_index(client, index)
     updated = dict(pointer, recovery=descriptor,
                    recovery_inputs=recovery_inputs(selected_record[3], manifest_digest, manifest, accepted_record[0]))
@@ -460,6 +496,10 @@ def check_selected_publication(client, pointer, *, public_url=PUBLIC_URL, record
     if (manifest['source_manifest'] != selected_record[0]
             or manifest['info']['catalog_id'] != pointer['catalog_id']):
         raise ValueError('Selected viewer manifest differs from the catalog.')
+    if (manifest.get('version') == 6 and
+            (pointer.get('source_identity') != manifest.get('source_identity')
+             or manifest['source_identity'].get('selector_sha256') != selected_record[3])):
+        raise ValueError('Selected viewer source identity differs from the exact catalog.')
     inputs = recovery_inputs(selected_record[3], manifest_digest, manifest, accepted_record[0], release_identity=release_identity)
     if pointer.get('recovery_inputs') == inputs:
         index = verify_recovery_status(client, pointer.get('recovery'), pointer, public_url=public_url)
