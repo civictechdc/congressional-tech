@@ -123,10 +123,13 @@ def test_native_builder_refuses_rule_upgrade_without_hidden_full_rebuild(tmp_pat
     seed(tmp_path, store, native)
     selected = read_catalog(store, native=native)
     previous = builder.publish_selected(selected, tmp_path / 'first', review_identities=None)
-    previous['requirements'] = {'renderer': 'older-rules'}
+    assert previous['requirements']['compression']['level'] == 3
+    # A compression change changes immutable bytes and needs explicit adoption.
+    changed_compression = builder.DEFAULT_COMPRESSION_POLICY._replace(level=9)
     native.reads.clear()
     with pytest.raises(ValueError, match='explicit qualified upgrade'):
-        builder.publish_selected(selected, tmp_path / 'upgrade', previous=previous, review_identities=None)
+        builder.publish_selected(selected, tmp_path / 'upgrade', previous=previous, review_identities=None,
+                                 compression_policy=changed_compression)
     assert not native.reads and not (tmp_path / 'upgrade').exists()
 
 
@@ -240,3 +243,20 @@ def test_native_publication_requires_exact_selector_byte_identity(tmp_path):
     manifest['proof'] = assets.put_node(dict(version=1, kind='viewer-proof', publication=publication_basis(manifest)))
     with pytest.raises(ValueError, match='native selection identity'):
         validate_publication(assets, manifest)
+
+
+def test_native_builder_refuses_dangling_output_link_before_native_reads(tmp_path):
+    import importlib.util
+    import pytest
+    script = Path(__file__).resolve().parents[1] / 'scripts/publish-filename-viewer.py'
+    spec = importlib.util.spec_from_file_location('linked_output_native_viewer', script)
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    seed(tmp_path, store, native)
+    target = tmp_path / 'output'
+    target.symlink_to(tmp_path / 'missing')
+    native.reads.clear()
+    with pytest.raises(ValueError, match='fresh empty directory'):
+        builder.publish_selected(read_catalog(store, native=native), target, review_identities=None)
+    assert target.is_symlink() and not native.reads and not (tmp_path / 'missing').exists()
