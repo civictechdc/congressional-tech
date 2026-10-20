@@ -7,7 +7,8 @@ import pyarrow as pa
 import pytest
 
 from congress_api.retention.catalog_cache import LocalStore
-from congress_api.retention.catalog_publication import prepare_native_catalog_component, read_catalog_component
+from congress_api.retention.catalog_publication import read_catalog_component
+from congress_api.retention.catalog_batches import prepare_native_catalog_components, iterator_prepared_components
 from congress_api.retention.immutable_metadata import MetadataObjects
 from congress_api.retention import catalog_validation
 from native_test_helpers import native_test_client
@@ -34,10 +35,11 @@ class NativeRecorder:
 
 
 def prepare(store, native, *, documents=None):
-    return prepare_native_catalog_component(store, native, component='doc', candidate='base-and-change',
+    prepared = prepare_native_catalog_components(store, native, candidate='base-and-change',
         source_chunks=[chunk('a', 3), chunk('b', 7)],
         document_chunks=[chunk('b', 0)] if documents is None else documents,
         source_schema=SCHEMA, document_schema=SCHEMA, max_chunk_rows=1, max_chunk_bytes=4096)
+    return next(iterator_prepared_components(store, prepared))[1]
 
 
 def test_durable_proof_survives_new_owner_without_native_payload_reads(tmp_path):
@@ -56,7 +58,7 @@ def test_reference_failure_never_issues_a_component_proof(tmp_path):
     with pytest.raises(ValueError, match='references do not match'):
         prepare(store, native, documents=[chunk('missing', 0)])
     assert len(native.calls) == 3  # Private prepared chunks remain native-owned.
-    assert not list(tmp_path.rglob('*.json'))
+    assert not list((tmp_path / 'indexes/native-manifests/catalog-component-pages-v1').glob('*.json'))
 
 
 def test_mixed_native_generation_refuses_existing_validation_binding(tmp_path):

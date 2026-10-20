@@ -98,10 +98,18 @@ class CatalogReferenceCheck:
         return dict(source_rows=self.source_rows, document_rows=self.document_rows)
 
 
-    def source_ids_digest(self):
+    def source_ids_digest(self, component=None):
         if self.resources is None or not self.finished or self.failed:
             raise ValueError('Catalog reference check has not finished')
-        return catalog_source_ids_digest(row[0] for row in self.db.execute('SELECT source_id FROM sources ORDER BY source_id'))
+        query, parameters = ('SELECT source_id FROM sources ORDER BY source_id', ()) if component is None else (
+            'SELECT source_id FROM sources WHERE document_id=? ORDER BY source_id', (component,))
+        return catalog_source_ids_digest(row[0] for row in self.db.execute(query, parameters))
+
+    def component_memberships(self):
+        if self.resources is None or not self.finished or self.failed:
+            raise ValueError('Catalog reference check has not finished')
+        for component, rows in self.db.execute('SELECT document_id,count(*) FROM sources GROUP BY document_id ORDER BY document_id'):
+            yield component, rows, self.source_ids_digest(component)
 
 
 def catalog_source_ids_digest(sorted_source_ids):

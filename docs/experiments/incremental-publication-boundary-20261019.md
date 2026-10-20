@@ -38,6 +38,30 @@ to this candidate API, and no v2 publication selector has been introduced.
 
 ## Measured current behavior
 
+The next local candidate uses `catalog_batches.prepare_native_catalog_components`
+to write mixed-component bounded source/document chunks. Logical document proofs
+share physical pins and application schemas in immutable pages of at most 64
+members. The rejected per-document native writer has been removed.
+`SelectedCatalogTable` exposes `schema_arrow`, `rows`, and repeatable
+`iter_batches(columns=..., batch_size=...)`; it groups selected proof references
+on disk, reads each physical native pin once, and filters that pin to only its
+selected document IDs. An old shared pin cannot reintroduce a retired component.
+It preserves chunk-local order and stable IDs; it does not promise unchanged
+global row offsets. Metadata caches have explicit finite entry limits.
+
+A controlled 130-document comparison measured 260 native Run calls and 130
+metadata PUTs in the previous unadopted candidate versus 2 Run calls and 6
+metadata PUTs in the coalesced candidate. The latter has two physical descriptor
+objects, one shared schema object, and three component proof pages. Stub metadata
+bytes fell from 288,550 to 101,250. These are application operation counts and
+stub-pin metadata bytes, not native/provider request counts, production sizes,
+latency, or throughput. Evidence is `publication/coalescing-cost/summary.json`.
+The full-reader check selects 130 logical components from an old shared batch
+and a changed batch, reads each once, excludes the retired old member, and reads
+each metadata object once. Actual native nested replay/schema restoration also
+passes. These candidate APIs are not yet connected to the publication selector
+or maintained consumer entry points.
+
 The fixture contains two logical tables, each with unique source/document IDs,
 nested provenance, ordered duplicate values, Unicode, null lists, empty lists,
 null reviews and empty reviews. A correction changes one filename review.

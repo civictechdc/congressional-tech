@@ -172,7 +172,8 @@ def publish_catalog(store, filenames_path, documents_path, *, previous, validati
 
 
 def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate,
-                                  schema, max_chunk_rows, max_chunk_bytes, check_references=None):
+                                  schema, max_chunk_rows, max_chunk_bytes, check_references=None,
+                                  on_prepared=None, ordered_chunks=True):
     """Retain rewritten bounded chunks as independent native candidates.
 
     The caller binds ``candidate`` to its exact base, semantic change, application
@@ -212,7 +213,7 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
         if not table.num_rows:
             continue
         extrema = pc.min_max(order).as_py()
-        if last_order is not None and extrema['min'] <= last_order:
+        if ordered_chunks and last_order is not None and extrema['min'] <= last_order:
             raise ValueError('Catalog chunk order ranges overlap or are out of order')
         last_order = extrema['max']
         if check_references is not None:
@@ -222,8 +223,11 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
         checked = CatalogTable(schema, [(dataset, release)], native=native)
         if checked.rows != table.num_rows:
             raise ValueError('Prepared native catalog chunk row count differs')
-        prepared.append(dict(name=dataset, release=release, rows=table.num_rows,
-                             arrow_bytes=table.nbytes, order_min=extrema['min'], order_max=extrema['max']))
+        descriptor = dict(name=dataset, release=release, rows=table.num_rows,
+                          arrow_bytes=table.nbytes, order_min=extrema['min'], order_max=extrema['max'])
+        prepared.append(descriptor)
+        if on_prepared is not None:
+            on_prepared(table, descriptor)
     return prepared
 
 
@@ -264,13 +268,18 @@ def _require_component(component, *, requirements=None):
     for label, count in [('filenames', 'source_rows'), ('documents', 'document_rows')]:
         table = component['tables'][label]
         schemas[label] = _component_schema(table)
-        checked = CatalogTable(schemas[label], [(chunk['name'], chunk['release']) for chunk in table['chunks']], native=None)
+        filtered = any('components' in chunk for chunk in table['chunks'])
+        views = {chunk['name']: dict(components=chunk.get('components', []), rows=chunk['rows'])
+                 for chunk in table['chunks']} if filtered else None
+        checked = CatalogTable(schemas[label], [(chunk['name'], chunk['release']) for chunk in table['chunks']],
+                               native=None, views=views)
         last_order = None
         for chunk in table['chunks']:
             minimum, maximum = chunk['order_min'], chunk['order_max']
             if (type(minimum) is not int or type(maximum) is not int or minimum < 0 or maximum < minimum
-                    or last_order is not None and minimum <= last_order
-                    or chunk['rows'] != chunk['release']['dataset']['groups']['source']['rows']):
+                    or not filtered and last_order is not None and minimum <= last_order
+                    or filtered and chunk.get('components') != [component['component']]
+                    or not filtered and chunk['rows'] != chunk['release']['dataset']['groups']['source']['rows']):
                 raise ValueError('Catalog component chunk counts or order differ')
             last_order = maximum
         counts[count] = checked.rows
@@ -280,47 +289,15 @@ def _require_component(component, *, requirements=None):
     return component
 
 
-def prepare_native_catalog_component(store, native, *, component, candidate, source_chunks, document_chunks,
-                                     source_schema, document_schema, max_chunk_rows, max_chunk_bytes):
-    """Persist a reference proof for changed chunks, without selecting publication.
-
-    The immutable proof binds exact native releases, original schemas, counts and
-    validator/runtime requirements. Its reuse assumes the same qualified store
-    custody as the application selector. It does not prove complete dependency
-    scope or uniqueness against other selected components.
-    """
-    from congress_api.retention.catalog_validation import CatalogReferenceCheck, catalog_reference_requirements
-    from congress_api.retention.immutable_metadata import MetadataObjects
-    tables = {}
-    requirements = catalog_reference_requirements()
-    with CatalogReferenceCheck(source_schema, document_schema) as check:
-        def check_documents(table):
-            if any(value != component for value in table['document_id'].to_pylist()):
-                raise ValueError('Catalog component name differs from its document ID')
-            check.add_documents(table)
-        for label, chunks, schema, references in [
-                ('filenames', source_chunks, source_schema, check.add_sources),
-                ('documents', document_chunks, document_schema, check_documents)]:
-            prepared = prepare_native_catalog_chunks(native, chunks, label=label, component=component,
-                candidate=candidate, schema=schema, max_chunk_rows=max_chunk_rows,
-                max_chunk_bytes=max_chunk_bytes, check_references=references)
-            tables[label] = dict(schema=base64.b64encode(schema.serialize().to_pybytes()).decode(), chunks=prepared)
-        counts = check.finish()
-        source_ids_sha256 = check.source_ids_digest()
-    result = dict(version=1, component=component, candidate=candidate, tables=tables,
-                  validation=dict(requirements=requirements, counts=counts,
-                                  source_ids_sha256=source_ids_sha256))
-    result['validation']['binding'] = _component_binding(result)
-    _require_component(result, requirements=requirements)
-    return MetadataObjects(store, 'catalog-components-v1').put(result)
-
-
 def read_catalog_component(store, reference, *, requirements=None):
     """Read historical evidence; new-selection admission supplies current requirements.
 
     The admission owner computes requirements once for the entire selection.
     An installed validator upgrade never makes an older exact snapshot unreadable.
     """
+    if isinstance(reference, dict) and 'page' in reference:
+        from congress_api.retention.catalog_batches import CatalogComponentReader
+        return CatalogComponentReader(store, requirements=requirements).read(reference)
     from congress_api.retention.immutable_metadata import MetadataObjects
     return _require_component(MetadataObjects(store, 'catalog-components-v1').read(reference),
                               requirements=requirements)
