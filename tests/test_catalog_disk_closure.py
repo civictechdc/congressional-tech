@@ -45,3 +45,30 @@ def test_native_lookup_cache_spools_many_leaves_and_alias_members(tmp_path):
         assert selected.order(identity(row)) == order
     scope.close()
     selected.close()
+
+
+def test_dependency_preparation_never_assembles_the_complete_changed_scope_as_arrow(tmp_path, monkeypatch):
+    from congress_api.retention import catalog_dependency_storage as storage
+    from congress_api.retention.catalog_cache import LocalStore
+    rows = [source(f'{i}.pdf', 'shared') for i in range(100)]
+    schema = pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS)])
+    owner = storage.CatalogDependencyStorage(native=Native(), store=LocalStore(tmp_path / 'store'),
+        namespace='bounded-preparation', source_schema=schema, max_rows=4, max_bytes=1 << 20)
+    # Limit the transient typed source-leaf assembly as well as submitted Runs.
+    class Tables:
+        def from_pylist(self, values, **kwargs):
+            assert len(values) <= 5, 'Whole affected scope assembled before leaf splitting'
+            return pa.Table.from_pylist(values, **kwargs)
+        def __getattr__(self, name):
+            return getattr(pa.Table, name)
+    class Arrow:
+        Table = Tables()
+        def __getattr__(self, name):
+            return getattr(pa, name)
+    monkeypatch.setattr(storage, 'pa', Arrow())
+    candidate = owner.prepare(None, replacements=iter(rows))
+    selected = owner.selected(candidate)
+    assert len(selected.members(('body', 'shared'))) == len(rows)
+    for order, row in enumerate(rows):
+        assert selected.order(identity(row)) == order
+        assert selected.source(identity(row)) == pa.Table.from_pylist([row], schema=schema).to_pylist()[0]

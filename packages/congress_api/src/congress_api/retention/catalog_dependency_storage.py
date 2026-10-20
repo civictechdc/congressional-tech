@@ -20,12 +20,13 @@ from .catalog_dependencies import (
     affected_sources, alias_schema, dependency_schema, dependency_tables,
     DependencyGap, DependencyWorkingSet, NativeCatalogDependencies, _encoded_alias, _decoded_alias,
 )
-from .partition_routing import RoutingPages, split_partition
+from .partition_routing import RoutingPages, key_hash
 from .catalog_memberships import CatalogMemberships
 from .source_aliases import resolution_candidates
 from .immutable_metadata import MetadataObjects
 from .catalog_batches import can_read_catalog_schema
 from .catalog_availability import package_dependencies
+from .catalog_staging import WorkingCatalog
 
 
 
@@ -154,29 +155,65 @@ class CatalogDependencyStorage:
         return pin
 
     def _replace_rows(self, root, pages, *, key, schema, replacements, deletions, kind, basis=None):
-        changes = {}
-        for identity in sorted(set(replacements) | set(deletions)):
-            prefix, pin = pages.lookup(root, identity)
-            changes.setdefault(prefix, (pin, []))[1].append(identity)
-        for prefix, (pin, identities) in sorted(changes.items()):
-            stored = self._source_reference(pin, basis) if kind == 'sources' else pin
-            existing = self._read(stored, schema).to_pylist() if stored is not None else []
-            rows = {row[key]: row for row in existing}
-            if len(rows) != len(existing):
-                raise DependencyGap('Duplicate keyed catalog dependency rows')
-            old = deepcopy(rows)
-            for identity in identities:
-                rows.pop(identity, None)
-                if identity in replacements:
-                    rows[identity] = replacements[identity]
-            if rows == old:
-                continue
-            table = pa.Table.from_pylist([rows[identity] for identity in sorted(rows)], schema=schema)
-            leaves = {}
-            for child, part in split_partition(table, key=key, prefix=prefix,
-                    max_rows=self.max_rows, max_bytes=self.max_bytes):
-                leaves[child] = self._write(part, kind) if len(part) else None
-            root = pages.replace(root, prefix, leaves)
+        # Partition changes on disk first. Inserting many new rows into an empty
+        # route must not assemble the entire affected scope before splitting.
+        with TemporaryDirectory(prefix='catalog-source-changes-') as directory, closing(
+                WorkingCatalog(Path(directory) / 'changes.sqlite')) as work:
+            db = work.connection
+            db.executescript('CREATE TABLE changes(identity TEXT PRIMARY KEY,prefix TEXT,body BLOB); '
+                'CREATE TABLE bases(prefix TEXT PRIMARY KEY,body BLOB); '
+                'CREATE TABLE rows(identity TEXT PRIMARY KEY,digest TEXT,body BLOB); '
+                'CREATE INDEX row_hashes ON rows(digest);')
+            for identity in deletions:
+                prefix, pin = pages.lookup(root, identity)
+                db.execute('INSERT OR IGNORE INTO bases VALUES (?,?)', (prefix, pickle.dumps(pin)))
+                db.execute('INSERT INTO changes VALUES (?,?,NULL)', (identity, prefix))
+            for identity in replacements:
+                prefix, pin = pages.lookup(root, identity)
+                db.execute('INSERT OR IGNORE INTO bases VALUES (?,?)', (prefix, pickle.dumps(pin)))
+                db.execute('INSERT INTO changes VALUES (?,?,?) ON CONFLICT(identity) '
+                    'DO UPDATE SET body=excluded.body', (identity, prefix, pickle.dumps(replacements[identity])))
+            for prefix, pin_body in db.execute('SELECT prefix,body FROM bases ORDER BY prefix'):
+                pin = pickle.loads(pin_body)
+                stored = self._source_reference(pin, basis) if kind == 'sources' else pin
+                existing = self._read(stored, schema).to_pylist() if stored is not None else []
+                db.execute('DELETE FROM rows')
+                try:
+                    db.executemany('INSERT INTO rows VALUES (?,?,?)',
+                        ((row[key], key_hash(row[key]), pickle.dumps(row)) for row in existing))
+                except sqlite3.IntegrityError as error:
+                    raise DependencyGap('Duplicate keyed catalog dependency rows') from error
+                changed = False
+                for identity, body in db.execute('SELECT identity,body FROM changes WHERE prefix=? ORDER BY identity', (prefix,)):
+                    prior = db.execute('SELECT body FROM rows WHERE identity=?', (identity,)).fetchone()
+                    if (pickle.loads(prior[0]) if prior else None) == (pickle.loads(body) if body is not None else None):
+                        continue
+                    changed = True
+                    db.execute('DELETE FROM rows WHERE identity=?', (identity,))
+                    if body is not None:
+                        db.execute('INSERT INTO rows VALUES (?,?,?)', (identity, key_hash(identity), body))
+                if not changed:
+                    continue
+                def leaves(child):
+                    values = [pickle.loads(body) for body, in db.execute(
+                        'SELECT body FROM rows WHERE digest>=? AND digest<? ORDER BY identity LIMIT ?',
+                        (child, child + 'g', self.max_rows + 1))]
+                    table = pa.Table.from_pylist(values, schema=schema)
+                    if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
+                        if len(table):
+                            yield child, self._write(table, kind)
+                        return
+                    if len(table) == 1 or len(child) == 64:
+                        raise DependencyGap('One selected source cannot fit its dependency leaf budget')
+                    for char in '0123456789abcdef':
+                        yield from leaves(child + char)
+                generated = iter(leaves(prefix))
+                first = next(generated, None)
+                if first is None:
+                    root = pages.replace(root, prefix, {prefix: None})
+                else:
+                    from itertools import chain
+                    root = pages.replace_stream(root, prefix, chain([first], generated))
         return root
 
     def read_source_leaf(self, selection, value):
@@ -241,8 +278,11 @@ class CatalogDependencyStorage:
             db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
                 'CREATE TABLE changes(kind INTEGER,alias TEXT,source TEXT,old INTEGER,new INTEGER, '
                 'PRIMARY KEY(kind,alias,source)); '
-                'CREATE TABLE members(kind INTEGER,alias TEXT,source TEXT,PRIMARY KEY(kind,alias,source));')
-            for identity in set(before) | set(after):
+                'CREATE TABLE members(kind INTEGER,alias TEXT,source TEXT,PRIMARY KEY(kind,alias,source)); '
+                'CREATE TABLE scope_keys(identity TEXT PRIMARY KEY);')
+            db.executemany('INSERT INTO scope_keys VALUES (?)', ((key,) for key in before))
+            db.executemany('INSERT OR IGNORE INTO scope_keys VALUES (?)', ((key,) for key in after))
+            for identity, in db.execute('SELECT identity FROM scope_keys ORDER BY identity'):
                 old = self._lookup_keys(before[identity]) if identity in before else (set(), set(), set(), set())
                 new = self._lookup_keys(after[identity]) if identity in after else (set(), set(), set(), set())
                 for kind in (0, 1, 2, 3):
@@ -392,49 +432,81 @@ class CatalogDependencyStorage:
         return self.adopt(chunks(), source_orders=source_orders, first_unused_order=next_order)
 
     def prepare(self, selection, *, replacements=(), deletions=(), source_orders=None):
-        """Prepare complete changed scope; the caller later CAS-selects roots.
+        """Prepare changed bounded leaves; selection still belongs to one app CAS.
 
-        The returned metadata may be discarded after a competing writer wins.
-        Native candidate datasets are immutable content-named Runs, so a losing
-        attempt cannot strand a mutable native head ahead of selected app state.
+        Temporary SQL indexes hold changed rows, ordinals and reverse edges even
+        when one affected component spans many native partitions.
         """
         basis = self._evolved_selection(self._selection(selection, require_lookup_policy=True))
-        replacements, deletions = list(replacements), tuple(deletions)
-        if not replacements and not deletions:
-            return basis
-        selected = self.selected(basis)
-        scope = affected_sources(selected, replacements=replacements, deletions=deletions)
-        order = basis['next_source_order']
-        new_positions = {}
-        for row in replacements:
-            key = index.source_identity(row)
-            if key not in scope.before:
-                new_positions[key] = source_orders[key] if source_orders is not None else order
-                order += 1
-        if set(new_positions.values()) != set(range(basis['next_source_order'], order)):
-            raise DependencyGap('New source orders must extend the selected contiguous ordinal range')
-        source_rows, old_aliases, new_aliases = {}, {}, {}
-        for key in sorted(scope.before):
-            for alias in selected.aliases(key):
-                old_aliases.setdefault(_encoded_alias(alias), set()).add(key)
-        for key, row in sorted(scope.after.items()):
-            position = selected.order(key) if key in scope.before else new_positions[key]
-            if source_orders is not None and source_orders[key] != position:
-                raise DependencyGap('Existing source order changed during candidate preparation')
-            table, _ = dependency_tables([row], self.source_schema, first_order=position)
-            source_rows[key] = table.to_pylist()[0]
-            for alias in source_rows[key]['aliases']:
-                new_aliases.setdefault(alias, set()).add(key)
-        source_root = self._replace_rows(basis['source_root'], self.sources,
-            key='source_id', schema=dependency_schema(self.source_schema), replacements=source_rows,
-            deletions=set(scope.before) - set(scope.after), kind='sources', basis=basis)
-        alias_changes = {}
-        for alias in sorted(old_aliases.keys() | new_aliases.keys()):
-            old_members, new_members = old_aliases.get(alias, set()), new_aliases.get(alias, set())
-            if set(selected.members(_decoded_alias(alias))) != old_members:
-                raise DependencyGap('Affected reverse dependency scope is incomplete')
-            if old_members != new_members:
-                alias_changes[alias] = new_members
-        alias_root = self.memberships.replace(basis['alias_root'], alias_changes)
-        lookups = self._prepare_lookups(basis, scope.before, scope.after)
-        return {**basis, **lookups, 'source_root': source_root, 'alias_root': alias_root, 'next_source_order': order}
+        with TemporaryDirectory(prefix='catalog-dependency-changes-') as directory, closing(
+                WorkingCatalog(Path(directory) / 'scope.sqlite')) as work:
+            db = work.connection
+            replacement_rows = work.mapping('replacements')
+            db.executescript('CREATE TABLE removed(identity TEXT PRIMARY KEY); '
+                'CREATE TABLE new_positions(identity TEXT PRIMARY KEY,ordinal INTEGER UNIQUE); '
+                'CREATE TABLE old_edges(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
+                'CREATE TABLE new_edges(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
+                'CREATE TABLE changed_aliases(alias TEXT PRIMARY KEY);')
+            for row in replacements:
+                identity = index.source_identity(row)
+                if identity in replacement_rows:
+                    raise ValueError('Duplicate replacement source identity')
+                replacement_rows[identity] = row
+            db.executemany('INSERT OR IGNORE INTO removed VALUES (?)', ((key,) for key in deletions))
+            if not replacement_rows and not db.execute('SELECT 1 FROM removed LIMIT 1').fetchone():
+                return basis
+            selected = self.selected(basis)
+            scope = affected_sources(selected, replacements=replacement_rows.values(),
+                                     deletions=(row[0] for row in db.execute('SELECT identity FROM removed')))
+            try:
+                order = basis['next_source_order']
+                for identity in replacement_rows:
+                    if identity not in scope.before:
+                        position = source_orders[identity] if source_orders is not None else order
+                        if type(position) is not int or position < 0:
+                            raise DependencyGap('New source orders must extend the selected contiguous ordinal range')
+                        try:
+                            db.execute('INSERT INTO new_positions VALUES (?,?)', (identity, position))
+                        except sqlite3.IntegrityError as error:
+                            raise DependencyGap('New source orders must extend the selected contiguous ordinal range') from error
+                        order += 1
+                low, high = db.execute('SELECT min(ordinal),max(ordinal) FROM new_positions').fetchone()
+                if low is not None and (low != basis['next_source_order'] or high != order - 1):
+                    raise DependencyGap('New source orders must extend the selected contiguous ordinal range')
+                source_rows = work.mapping('source_rows')
+                for identity in scope.before:
+                    db.executemany('INSERT INTO old_edges VALUES (?,?)',
+                        ((_encoded_alias(alias), identity) for alias in selected.aliases(identity)))
+                for identity, row in scope.after.items():
+                    position = (selected.order(identity) if identity in scope.before else
+                        db.execute('SELECT ordinal FROM new_positions WHERE identity=?', (identity,)).fetchone()[0])
+                    if source_orders is not None and source_orders[identity] != position:
+                        raise DependencyGap('Existing source order changed during candidate preparation')
+                    table, _ = dependency_tables([row], self.source_schema, first_order=position)
+                    stored = table.to_pylist()[0]
+                    source_rows[identity] = stored
+                    db.executemany('INSERT INTO new_edges VALUES (?,?)',
+                                   ((alias, identity) for alias in stored['aliases']))
+                source_root = self._replace_rows(basis['source_root'], self.sources,
+                    key='source_id', schema=dependency_schema(self.source_schema), replacements=source_rows,
+                    deletions=(identity for identity in scope.before if identity not in scope.after),
+                    kind='sources', basis=basis)
+                from itertools import zip_longest
+                for alias, in db.execute('SELECT alias FROM old_edges UNION SELECT alias FROM new_edges ORDER BY alias'):
+                    old_members = (row[0] for row in db.execute('SELECT member FROM old_edges WHERE alias=? ORDER BY member', (alias,)))
+                    if any(old != actual for old, actual in zip_longest(old_members, selected.members(_decoded_alias(alias)))):
+                        raise DependencyGap('Affected reverse dependency scope is incomplete')
+                    if (db.execute('SELECT member FROM old_edges WHERE alias=? EXCEPT SELECT member FROM new_edges WHERE alias=? LIMIT 1', (alias, alias)).fetchone()
+                            or db.execute('SELECT member FROM new_edges WHERE alias=? EXCEPT SELECT member FROM old_edges WHERE alias=? LIMIT 1', (alias, alias)).fetchone()):
+                        db.execute('INSERT INTO changed_aliases VALUES (?)', (alias,))
+                class AliasChanges:
+                    def __iter__(self):
+                        return (row[0] for row in db.execute('SELECT alias FROM changed_aliases ORDER BY alias'))
+                    def __getitem__(self, alias):
+                        return (row[0] for row in db.execute('SELECT member FROM new_edges WHERE alias=? ORDER BY member', (alias,)))
+                alias_root = self.memberships.replace(basis['alias_root'], AliasChanges())
+                lookups = self._prepare_lookups(basis, scope.before, scope.after)
+                return {**basis, **lookups, 'source_root': source_root, 'alias_root': alias_root, 'next_source_order': order}
+            finally:
+                scope.close()
+                selected.close()
