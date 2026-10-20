@@ -1,7 +1,7 @@
 ---
 id: ct-si9g
 status: in_progress
-deps: [ct-l5q1]
+deps: [ct-l5q1, ct-rcs8]
 links: []
 created: 2026-10-20T02:20:21Z
 type: task

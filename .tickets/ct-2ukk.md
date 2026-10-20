@@ -36,3 +36,7 @@ Basin target is the existing congressional-tech-raw bucket. Native qualification
 **2026-10-20T03:24:07Z**
 
 Credential blocker resolved. Actual raw-provider-2 source-only remote qualification passed on congressional-tech-raw: Build, correction/deletion, exact old/new nested reads, completed fresh-host retry without original inputs, and stale/conflicting request refusals. All selected S3 references are inside the isolated prefix; 110 objects / 487,980 bytes retained. Receipt: output/incremental-updates-20261019/catalog-setup/raw-provider-2/verification-receipt.json. Build 65.03 s, Update 100.72 s, completed retry 6.18 s are tiny provider timings, not throughput gains. Application adoption, race and end-to-end cost qualification remain open.
+
+**2026-10-20T07:37:41Z**
+
+Current input bytes retained and verified for all4core tables. Complete721-part reading scan passed491,710rows, preserving prior failed/unclassified/size-limit outcomes. Core decoded scan remains running. Native adoption is blocked by oversized selected document rows; ct-rcs8 owns preservation-safe resolution. Native production selectors remain unchanged.
