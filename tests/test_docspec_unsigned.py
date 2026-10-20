@@ -53,8 +53,7 @@ def test_schema_bound_read_refuses_out_of_range_unsigned_values(tmp_path, monkey
                                    schema=pa.schema([('unsigned', pa.decimal128(20, 0))]))
 
     import httpx
-    from types import SimpleNamespace
-    from congress_api.retention.docspec_host import Host
+    from docspec_transport_helpers import host_for_client
     pin = dict(dataset=dict(dataset='unsigned'), id='initial', manifest=dict(digest='fixture'))
     output = pa.BufferOutputStream()
     with pa.ipc.new_stream(output, physical.schema) as writer:
@@ -68,8 +67,7 @@ def test_schema_bound_read_refuses_out_of_range_unsigned_values(tmp_path, monkey
                 'docspec-manifest-blake3': 'fixture'})
         return httpx.Response(200, json=pin)
     with httpx.Client(base_url='http://fixture', transport=httpx.MockTransport(response)) as client:
-        host = SimpleNamespace(client=client, responses=set(), check_response=Host.check_response,
-                               request=lambda *args: pin)
+        host = host_for_client(client)
         monkeypatch.setattr(native, '_execution_host', lambda: host)
         with pytest.raises(pa.ArrowInvalid):
             with native.source_batches(pin, schema=schema) as reader:

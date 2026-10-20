@@ -41,6 +41,7 @@ def test_configuration_is_side_effect_free_and_scopes_credentials_to_child(tmp_p
 
     class Process:
         returncode = None
+        pid = 123456789
         def poll(self):
             return self.returncode
         def send_signal(self, signal):
@@ -50,13 +51,16 @@ def test_configuration_is_side_effect_free_and_scopes_credentials_to_child(tmp_p
 
     def start(command, **kwargs):
         calls.append((command, kwargs))
+        ready = Path(command[command.index('--ready-file') + 1])
+        ready.write_text(json.dumps(dict(protocol='docspec-loopback', version=1,
+            capabilities=['request-deadline'], pid=Process.pid, address='127.0.0.1:7391')))
+        ready.chmod(0o600)
         return Process()
 
     client_class = httpx.Client
     def client(**kwargs):
         return client_class(**kwargs, transport=httpx.MockTransport(
-            lambda request: httpx.Response(404 if request.url.path == '/__docspec_ready__' else 200,
-                                           json={'configured': True})))
+            lambda request: httpx.Response(200, json={'configured': True})))
 
     monkeypatch.setattr(subprocess, 'Popen', start)
     monkeypatch.setattr('congress_api.retention.docspec_host.httpx.Client', client)

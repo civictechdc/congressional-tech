@@ -1,16 +1,21 @@
 """Process ownership and bounded HTTP I/O for the maintained local DocSpec API."""
 import atexit
+from contextlib import contextmanager
 from hashlib import sha256
 import io
+import ipaddress
+import json
+import math
 import os
 from pathlib import Path
 import signal
-import socket
+import stat
 import subprocess
-from tempfile import TemporaryFile
+from tempfile import TemporaryDirectory, TemporaryFile
 import threading
 import time
 import weakref
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -22,6 +27,7 @@ class DocSpecFailure(RuntimeError):
         self.command = tuple(command)
         self.returncode = result.returncode
         self.stderr = result.stderr
+        self.status_code = None
         super().__init__(result.stderr.strip() or f'DocSpec exited {result.returncode}')
 
 
@@ -65,13 +71,10 @@ class Host:
         self.closed = False
         self.log = TemporaryFile(mode='w+b')
         self.responses = set()
-        # The native CLI accepts a bind address, not an inherited listener.
-        with socket.socket() as reservation:
-            reservation.bind(('127.0.0.1', 0))
-            port = reservation.getsockname()[1]
-        self.command = [*command, 'serve', '--bind', f'127.0.0.1:{port}']
-        self.client = httpx.Client(base_url=f'http://127.0.0.1:{port}',
-                                   timeout=timeout, trust_env=False)
+        self.readiness = TemporaryDirectory(prefix='docspec-host-')
+        ready = Path(self.readiness.name) / 'ready.json'
+        self.command = [*command, 'serve', '--bind', '127.0.0.1:0', '--ready-file', str(ready)]
+        self.client = None
         self.process = None
         try:
             self.process = subprocess.Popen(self.command, env=environment,
@@ -80,18 +83,46 @@ class Host:
             while True:
                 self.check_alive()
                 try:
-                    response = self.client.get('/__docspec_ready__', timeout=min(timeout, 0.1))
-                    if response.status_code == 404:
-                        break
-                    raise RuntimeError('Unexpected DocSpec host readiness response')
-                except httpx.TransportError:
-                    if time.monotonic() >= deadline:
-                        raise TimeoutError('DocSpec host startup timed out')
-                    time.sleep(0.01)
+                    mode = ready.lstat().st_mode
+                    if not stat.S_ISREG(mode) or mode & 0o077:
+                        raise ValueError('DocSpec readiness record must be a private regular file')
+                    with ready.open('rb') as record:
+                        encoded = record.read(4097)
+                    if len(encoded) > 4096:
+                        raise ValueError('DocSpec readiness record exceeds its metadata allowance')
+                    value = json.loads(encoded)
+                except (FileNotFoundError, json.JSONDecodeError):
+                    value = None  # The child may still be writing its one record.
+                if value is not None:
+                    address = self._ready_address(value)
+                    self.client = httpx.Client(base_url=f'http://{address}',
+                                               timeout=timeout, trust_env=False)
+                    break
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('DocSpec host startup timed out')
+                time.sleep(0.01)
             self.check_alive()
         except BaseException:
             self.close()
             raise
+
+    def _ready_address(self, value):
+        """Trust only the private record written by the owned native child."""
+        if (not isinstance(value, dict) or value.get('protocol') != 'docspec-loopback'
+                or type(value.get('version')) is not int or value['version'] != 1
+                or type(value.get('pid')) is not int or value['pid'] != self.process.pid
+                or not isinstance(value.get('capabilities'), list)
+                or 'request-deadline' not in value['capabilities']):
+            raise ValueError('DocSpec loopback protocol 1 with request-deadline support is required')
+        address = value.get('address')
+        if not isinstance(address, str):
+            raise ValueError('DocSpec readiness requires an explicit bound loopback address')
+        parsed = urlsplit(f'http://{address}')
+        if (parsed.username is not None or parsed.password is not None or parsed.path
+                or parsed.query or parsed.fragment or not parsed.port
+                or not ipaddress.ip_address(parsed.hostname).is_loopback):
+            raise ValueError('DocSpec readiness requires an explicit bound loopback address')
+        return address
 
     def check_alive(self):
         if os.getpid() != self.pid:
@@ -101,21 +132,50 @@ class Host:
         if self.process is not None and self.process.poll() is not None:
             self.log.seek(0)
             diagnostic = self.log.read().decode('utf-8', errors='replace')
+            if self.client is None:
+                diagnostic = ('DocSpec loopback protocol 1 with request deadlines and '
+                              '--ready-file is required.\n' + diagnostic)
             raise DocSpecFailure(self.command, subprocess.CompletedProcess(
                 self.command, self.process.returncode, stderr=diagnostic))
 
-    def request(self, method, path, **kwargs):
+    @contextmanager
+    def stream(self, method, path, *, deadline=None, dispatch=None, **kwargs):
         self.check_alive()
-        response = self.client.request(method, path, **kwargs)
-        self.check_response(response)
-        return response.json()
+        deadline = time.monotonic() + self.timeout if deadline is None else deadline
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('DocSpec response exceeded its wall-time limit')
+        headers = dict(kwargs.pop('headers', {}))
+        headers['docspec-timeout-ms'] = str(max(1, math.ceil(remaining * 1000)))
+        if dispatch is not None:
+            # From this point a failed response cannot establish whether native
+            # work was admitted. Earlier startup/deadline failures send no request.
+            dispatch['submitted'] = True
+        with self.client.stream(method, path, headers=headers, timeout=remaining, **kwargs) as response:
+            self.responses.add(response)
+            try:
+                yield response, deadline
+            finally:
+                self.responses.discard(response)
+
+    def request(self, method, path, *, deadline=None, **kwargs):
+        with self.stream(method, path, deadline=deadline, **kwargs) as (response, deadline):
+            with ArrowResponse(response, deadline=deadline) as stream:
+                body = stream.read()
+            self.check_response(response, body=body)
+            return json.loads(body)
 
     @staticmethod
-    def check_response(response):
+    def check_response(response, *, body=None):
         if not response.is_success:
-            response.read()
-            raise DocSpecFailure([response.request.method, response.request.url.path],
-                subprocess.CompletedProcess([], response.status_code, stderr=response.text))
+            if body is None:
+                response.read()
+            diagnostic = (response.text if body is None
+                          else body.decode(response.encoding or 'utf-8', errors='replace'))
+            error = DocSpecFailure([response.request.method, response.request.url.path],
+                subprocess.CompletedProcess([], response.status_code, stderr=diagnostic))
+            error.status_code = response.status_code
+            raise error
 
     def release(self):
         with _lock:
@@ -134,7 +194,8 @@ class Host:
         for response in tuple(self.responses):
             response.close()
         self.responses.clear()
-        self.client.close()
+        if self.client is not None:
+            self.client.close()
         if self.process is not None and self.process.poll() is None:
             try:
                 self.process.send_signal(signal.SIGINT)
@@ -156,6 +217,7 @@ class Host:
                         pass
                     self.process.wait()
         self.log.close()
+        self.readiness.cleanup()
 
 
 @atexit.register
@@ -169,7 +231,7 @@ class ArrowResponse(io.RawIOBase):
 
     def __init__(self, response, *, deadline=None):
         super().__init__()
-        self.chunks = response.iter_raw()
+        self.chunks = response.iter_bytes()
         self.pending = b''
         self.tail = b''
         self.deadline = deadline
@@ -187,7 +249,11 @@ class ArrowResponse(io.RawIOBase):
         while count < len(view):
             self.check_deadline()
             if not self.pending:
-                self.pending = next(self.chunks, b'')
+                try:
+                    self.pending = next(self.chunks, b'')
+                except httpx.TransportError:
+                    self.check_deadline()
+                    raise
                 self.check_deadline()
                 if not self.pending:
                     break

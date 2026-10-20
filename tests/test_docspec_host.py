@@ -1,11 +1,14 @@
 """Transport lifetimes and refusals, including real maintained native execution."""
 from copy import deepcopy
+import json
 import os
 import shutil
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from types import SimpleNamespace
+from pathlib import Path
+import subprocess
 
 import httpx
 import pyarrow as pa
@@ -14,6 +17,7 @@ import pytest
 from congress_api.retention.docspec import DocSpecFailure, NativeDatasets
 from congress_api.retention.docspec_host import ArrowResponse, Host
 from native_test_helpers import native_test_client
+from docspec_transport_helpers import host_for_client
 
 
 @pytest.fixture
@@ -110,7 +114,12 @@ def test_real_wrong_pin_refuses_before_body_and_schema_refuses(native, monkeypat
     wrong = deepcopy(pin)
     wrong['manifest']['digest'] = '0' * 64
     with monkeypatch.context() as scoped:
-        scoped.setattr(host.client, 'stream', lambda *a, **kw: pytest.fail('wrong pin must not read'))
+        original_stream = host.client.stream
+        def checked_stream(method, path, **kwargs):
+            if path.endswith('/arrow/source'):
+                pytest.fail('wrong pin must not read source payload')
+            return original_stream(method, path, **kwargs)
+        scoped.setattr(host.client, 'stream', checked_stream)
         with pytest.raises(ValueError, match='exact pin'):
             with native.source_batches(wrong):
                 pytest.fail('wrong pin accepted')
@@ -159,6 +168,43 @@ def test_startup_timeout_reaps_child(tmp_path):
         assert client._host is None
 
 
+@pytest.mark.parametrize('change', [
+    {'protocol': 'other'}, {'version': 0}, {'version': True}, {'pid': 1},
+    {'pid': True}, {'capabilities': []}, {'address': '192.0.2.1:7391'},
+    {'address': '127.0.0.1:0'}, {'address': 'localhost:7391'},
+    {'address': 'user@127.0.0.1:7391'},
+])
+def test_invalid_readiness_refuses_before_http_and_reaps_owned_child(tmp_path, monkeypatch, change):
+    class Process:
+        pid = 123456789
+        returncode = None
+        def poll(self):
+            return self.returncode
+        def send_signal(self, signal):
+            self.returncode = 0
+        def wait(self, **kwargs):
+            return self.returncode
+    process = Process()
+    paths = []
+    def start(command, **kwargs):
+        path = Path(command[command.index('--ready-file') + 1])
+        paths.append(path)
+        value = dict(protocol='docspec-loopback', version=1, capabilities=['request-deadline'],
+                     pid=process.pid, address='127.0.0.1:7391')
+        value.update(change)
+        path.write_text(json.dumps(value))
+        path.chmod(0o600)
+        return process
+    monkeypatch.setattr(subprocess, 'Popen', start)
+    monkeypatch.setattr('congress_api.retention.docspec_host.httpx.Client',
+                        lambda **kwargs: pytest.fail('unsupported host must receive no HTTP request'))
+    with NativeDatasets('unused', tmp_path) as native:
+        with pytest.raises(ValueError):
+            native.latest('unused')
+    assert process.returncode == 0
+    assert not paths[0].parent.exists()
+
+
 @pytest.mark.parametrize('bad', ['docspec-dataset', 'docspec-version', 'docspec-manifest-blake3', 'content-type'])
 def test_stream_header_identity_refuses_before_arrow_decode(tmp_path, monkeypatch, bad):
     pin = dict(dataset=dict(dataset='fixture'), id='initial', manifest=dict(digest='digest'))
@@ -167,9 +213,9 @@ def test_stream_header_identity_refuses_before_arrow_decode(tmp_path, monkeypatc
     headers[bad] = 'wrong'
     with NativeDatasets('unused', tmp_path) as native, httpx.Client(
             base_url='http://fixture', transport=httpx.MockTransport(
-                lambda request: httpx.Response(200, headers=headers, content=b'not Arrow'))) as client:
-        host = SimpleNamespace(client=client, responses=set(), check_response=Host.check_response,
-                               request=lambda *args: pin)
+                lambda request: (httpx.Response(200, headers=headers, content=b'not Arrow')
+                                 if request.url.path.endswith('/arrow/source') else httpx.Response(200, json=pin)))) as client:
+        host = host_for_client(client)
         monkeypatch.setattr(native, '_execution_host', lambda: host)
         with pytest.raises(ValueError, match='exact pin'):
             with native.source_batches(pin):
@@ -196,9 +242,9 @@ def test_premature_stream_never_becomes_success(tmp_path, monkeypatch, failure):
                'docspec-manifest-blake3': 'digest', 'content-type': 'application/vnd.apache.arrow.stream'}
     with NativeDatasets('unused', tmp_path) as native, httpx.Client(
             base_url='http://fixture', transport=httpx.MockTransport(
-                lambda request: httpx.Response(200, headers=headers, stream=Body()))) as client:
-        host = SimpleNamespace(client=client, responses=set(), check_response=Host.check_response,
-                               request=lambda *args: pin)
+                lambda request: (httpx.Response(200, headers=headers, stream=Body())
+                                 if request.url.path.endswith('/arrow/source') else httpx.Response(200, json=pin)))) as client:
+        host = host_for_client(client)
         monkeypatch.setattr(native, '_execution_host', lambda: host)
         with pytest.raises((OSError, httpx.RemoteProtocolError)):
             with native.source_batches(pin) as reader:
@@ -257,3 +303,39 @@ def test_public_http_timeouts_close_stalled_and_slow_periodic_responses(kind):
         server.shutdown()
         server.server_close()
         thread.join(timeout=1)
+
+
+def test_release_resolution_and_arrow_body_share_remaining_native_budget(tmp_path, monkeypatch):
+    pin = dict(dataset=dict(dataset='fixture'), id='initial', manifest=dict(digest='digest'))
+    table = pa.table({'row': [7, None, 7]})
+    output = pa.BufferOutputStream()
+    with pa.ipc.new_stream(output, table.schema) as writer:
+        writer.write_table(table)
+    body = output.getvalue().to_pybytes()
+    observed = []
+    def response(request):
+        observed.append(int(request.headers['docspec-timeout-ms']))
+        if not request.url.path.endswith('/arrow/source'):
+            time.sleep(0.03)
+            return httpx.Response(200, json=pin)
+        return httpx.Response(200, stream=httpx.ByteStream(body), headers={
+            'docspec-dataset': 'fixture', 'docspec-version': 'initial',
+            'docspec-manifest-blake3': 'digest', 'content-type': 'application/vnd.apache.arrow.stream'})
+    with NativeDatasets('unused', tmp_path, timeout=1) as native, httpx.Client(
+            base_url='http://fixture', transport=httpx.MockTransport(response)) as client:
+        monkeypatch.setattr(native, '_execution_host', lambda: host_for_client(client))
+        with native.source_batches(pin, schema=table.schema) as reader:
+            assert reader.read_all().equals(table)
+    assert len(observed) == 2
+    assert 0 < observed[1] < observed[0] <= 1000
+
+
+def test_real_old_binary_refuses_required_protocol_before_workspace_or_material_request(tmp_path):
+    baseline = os.environ.get('DOCSPEC_BASELINE_BINARY')
+    if not baseline:
+        pytest.skip('Set DOCSPEC_BASELINE_BINARY to the pre-protocol native executable')
+    workspace = tmp_path / 'unused-workspace'
+    with NativeDatasets(baseline, workspace) as native:
+        with pytest.raises(DocSpecFailure, match='protocol 1'):
+            native.latest('unused')
+    assert not workspace.exists()

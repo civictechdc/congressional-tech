@@ -11,12 +11,13 @@ import math
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import threading
 import time
 import weakref
 from urllib.parse import quote
-from tempfile import TemporaryDirectory
+from tempfile import mkdtemp
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -187,17 +188,15 @@ class NativeDatasets:
     def __exit__(self, *exc):
         self.close()
 
-    @contextmanager
-    def _scratch(self):
-        self.workspace.mkdir(parents=True, exist_ok=True)
-        with TemporaryDirectory(prefix='request-', dir=self.workspace) as directory:
-            yield Path(directory)
-
-    def _request(self, path, request):
+    def _request(self, path, request, *, dispatch=None):
         # Match CLI JSON validation before any host startup or native work.
         payload = json.dumps(request, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
-        return self._execution_host().request('POST', path, content=payload,
-                                              headers={'content-type': 'application/json'})
+        return self._host_request('POST', path, content=payload,
+            headers={'content-type': 'application/json'}, dispatch=dispatch)
+
+    def _host_request(self, method, path, **kwargs):
+        deadline = time.monotonic() + self.timeout
+        return self._execution_host().request(method, path, deadline=deadline, **kwargs)
 
     def hash_input(self, path):
         """Hash a local producer file without opening the configured remote host."""
@@ -212,14 +211,62 @@ class NativeDatasets:
         The caller owns candidate identity, schema and completeness. Input paths
         are locators; native retained expected-digest identity controls replay.
         """
-        with self._scratch() as directory:
+        self.workspace.mkdir(parents=True, exist_ok=True)
+        directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
+        dispatch = {}
+        retained = False
+        request = None
+        try:
             source = directory / 'source.parquet'
             physical = native_storage_schema(table.schema)
             stored = table if physical.equals(table.schema, check_metadata=True) else table.cast(physical, safe=True)
             pq.write_table(stored, source, compression='zstd')
             digest = self.hash_input(source)['digest']
-            return self.run(dict(dataset=dataset, operation=operation, definition=definition,
-                input=str(source), expected_digest=digest, sql='SELECT * FROM input'))
+            request = dict(dataset=dataset, operation=operation, definition=definition,
+                input=str(source), expected_digest=digest, sql='SELECT * FROM input')
+            # Persist replay inputs before sending: process death cannot run the
+            # exception handler that diagnoses an indeterminate submission.
+            (directory / 'request.json').write_text(
+                json.dumps(request, ensure_ascii=False, allow_nan=False))
+            return self._request('/run', request, dispatch=dispatch)
+        except BaseException as error:
+            refused = (isinstance(error, DocSpecFailure)
+                       and error.status_code is not None and error.status_code != 504)
+            if dispatch.get('submitted') and not refused:
+                # The native task may still need this producer file. Neither a
+                # response timeout nor a later host exit proves durable admission.
+                retained = True
+                request_path = directory / 'request.json'
+                try:
+                    size = source.stat().st_size
+                    error.retained_input = dict(input=str(source), request=str(request_path), bytes=size)
+                    error.add_note(f'DocSpec producer input retained: {source} ({size} bytes); '
+                                   f'exact replay request: {request_path}')
+                except OSError as diagnostic:
+                    error.add_note(f'DocSpec producer directory retained at {directory}; '
+                                   f'could not save its diagnostic: {diagnostic}')
+            raise
+        finally:
+            if not retained:
+                shutil.rmtree(directory)
+
+    def retained_producer_inputs(self):
+        """Inspect unresolved local producer files without inferring native completion.
+
+        Unknown attempts accumulate until explicitly reconciled. Sizes describe
+        actual local source files, not a bound on their count or aggregate bytes.
+        Closing the client or host never deletes these recovery inputs.
+        """
+        inputs = []
+        for request in sorted(self.workspace.glob('request-*/request.json')):
+            source = request.parent / 'source.parquet'
+            try:
+                size = source.stat().st_size
+            except FileNotFoundError:
+                size = None
+            inputs.append(dict(input=str(source), request=str(request),
+                               bytes=size))
+        return inputs
 
     def plan(self, request):
         return self._request('/plan', request)
@@ -231,14 +278,14 @@ class NativeDatasets:
         return self._request('/updates/plan', request)
 
     def latest(self, dataset):
-        return self._execution_host().request('GET', f'/datasets/{quote(dataset, safe="")}/latest')
+        return self._host_request('GET', f'/datasets/{quote(dataset, safe="")}/latest')
 
     def release(self, dataset, operation):
-        return self._execution_host().request('GET',
+        return self._host_request('GET',
             f'/datasets/{quote(dataset, safe="")}/versions/{quote(operation, safe="")}')
 
     def inspect(self, dataset):
-        return self._execution_host().request('GET', f'/datasets/{quote(dataset, safe="")}')
+        return self._host_request('GET', f'/datasets/{quote(dataset, safe="")}')
 
     def inspect_retention(self, request):
         return self._request('/retention/inspect', request)
@@ -254,17 +301,19 @@ class NativeDatasets:
         the body to that same version and manifest. Application schema restoration
         remains a checked cast from the lossless native storage representation.
         Leaving early cancels the response instead of draining it to a scratch file.
-        A wall deadline is checked between network chunks; an in-flight socket
-        read can extend it by at most the configured HTTPX read timeout.
+        One request deadline covers release lookup and the Arrow response. The
+        required native protocol enforces that budget around handlers and bodies,
+        so stalled and periodic reads both stop without killing shared work.
         """
-        dataset, version = pin['dataset']['dataset'], pin['id']
-        if self.release(dataset, version) != pin:
-            raise ValueError('Native release differs from the selected exact pin')
-        host = self._execution_host()
-        path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}/arrow/source'
         started = time.monotonic()
-        with host.client.stream('GET', path) as response:
-            host.responses.add(response)
+        deadline = started + self.timeout
+        dataset, version = pin['dataset']['dataset'], pin['id']
+        host = self._execution_host()
+        release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
+        if host.request('GET', release_path, deadline=deadline) != pin:
+            raise ValueError('Native release differs from the selected exact pin')
+        path = release_path + '/arrow/source'
+        with host.stream('GET', path, deadline=deadline) as (response, deadline):
             self._responses.add(response)
             try:
                 host.check_response(response)
@@ -273,7 +322,7 @@ class NativeDatasets:
                             'content-type': 'application/vnd.apache.arrow.stream'}
                 if any(response.headers.get(key) != value for key, value in expected.items()):
                     raise ValueError('Native stream differs from the selected exact pin')
-                with ArrowResponse(response, deadline=started + self.timeout) as stream, \
+                with ArrowResponse(response, deadline=deadline) as stream, \
                         pa.ipc.open_stream(stream) as reader:
                     physical = native_storage_schema(schema) if schema is not None else None
                     if physical is not None and not reader.schema.equals(physical, check_metadata=False):
@@ -288,5 +337,4 @@ class NativeDatasets:
                             reader.schema if schema is None else schema, batches()) as restored:
                         yield restored
             finally:
-                host.responses.discard(response)
                 self._responses.discard(response)

@@ -46,7 +46,16 @@ def measure():
 
     subprocess.Popen = counted_popen
     NativeDatasets._call = counted_call
-    NativeDatasets.release = counted_release
+    if hasattr(NativeDatasets, '_execution_host'):
+        from congress_api.retention.docspec_host import Host
+        request = Host.request
+        def counted_request(self, method, path, **kwargs):
+            if method == 'GET' and '/versions/' in path and not path.endswith('/arrow/source'):
+                counts['exact_release_lookups'] += 1
+            return request(self, method, path, **kwargs)
+        Host.request = counted_request
+    else:
+        NativeDatasets.release = counted_release
     schema = pa.schema([('row', pa.int64()), ('unsigned', pa.uint64()),
         ('nested', pa.list_(pa.struct([('name', pa.string()),
                                       ('values', pa.list_(pa.binary()))])))],
