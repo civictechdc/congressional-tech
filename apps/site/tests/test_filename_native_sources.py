@@ -150,6 +150,18 @@ def test_actual_native_builder_preserves_typed_source_assets(native, tmp_path):
         actual = source.read()
     expected = __import__('pyarrow').Table.from_batches(list(selected.table('filenames', max_ordered_bytes=1 << 20).iter_batches()))
     assert sorted(actual.to_pylist(), key=lambda row: row['source_id']) == sorted(expected.to_pylist(), key=lambda row: row['source_id'])
+    from filename_native import public_component
+    document_files = {}
+    assets = ViewerAssets(tmp_path / 'public')
+    for document, _ in selected.components.items(selected.selection['components']):
+        entry = public_component(assets, manifest['roots']['components'], document)
+        document_files[entry['document_file']['path']] = entry['document_file']
+    assert len(document_files) == 1  # One shared physical document chunk, not per document.
+    document = pq.read_table(assets.root / next(iter(document_files)))
+    expected_documents = __import__('pyarrow').Table.from_batches(list(selected.table('documents', max_ordered_bytes=1 << 20).iter_batches()))
+    assert document.schema.equals(expected_documents.schema, check_metadata=True)
+    assert sorted(document.to_pylist(), key=lambda row: row['document_id']) == sorted(expected_documents.to_pylist(), key=lambda row: row['document_id'])
+
 
 
 def test_public_lookup_returns_stable_members_and_one_bounded_source_asset(tmp_path):
