@@ -1,6 +1,6 @@
 ---
 id: ct-9vtu
-status: in_progress
+status: closed
 deps: [ct-rcs8]
 links: []
 created: 2026-10-20T15:54:57Z
@@ -22,3 +22,9 @@ Reuse existing chunk preparation checkpoints and exact input/requirements bindin
 
 Inject interruption after accepted preparation, resume without resubmitting completed catalog chunks; refuse changed input/schema/implementation. Preserve every row and mapping. Test locally, independently review, grade and integrate. No provider or full-corpus rerun.
 
+
+## Notes
+
+**2026-10-20T16:04:50Z**
+
+Reviewed and integrated as 7e0a2160 (agent 004b0174). Completed dependency roots and native chunks reuse existing checkpoints; exact input/runtime custody and all-value readback remain mandatory. Agent 81 passed/10 explicit native skips; root combined 62 passed in 2.49 s. Incomplete dependency/chunk work and prequalification readback can repeat through the maintained lifecycle. Review: review-merge/root-adoption-resume-review.md. Grade A-. Production acceptance remains ct-2ukk.
