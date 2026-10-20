@@ -17,7 +17,7 @@ from .catalog_batches import can_read_catalog_schema
 from .catalog_qualification import qualify_complete_values
 from .catalog_publication import CatalogSnapshot, MANIFEST_KEY, FILENAMES, DOCUMENTS
 from .catalog_selection import NativeCatalogSnapshot, read_native_catalog
-from .catalog_staging import WorkingCatalog
+from .catalog_staging import WorkingCatalog, DiskRows
 from .catalog_updates import update_native_catalog
 from .document_evidence import read_retained_body
 from .document_recovery import recover_sources
@@ -44,6 +44,52 @@ def _retain_previous_tables(previous, directory):
         staging.replace(path)
         paths[label] = path
     return paths
+
+
+class _RetainedSources:
+    """Repeatable exact rows; the operation file owns payload and schema."""
+    def __init__(self, path):
+        self.path = Path(path)
+        with pq.ParquetFile(self.path) as file:
+            self.schema = file.schema_arrow
+            self.count = file.metadata.num_rows
+
+    def __len__(self):
+        return self.count
+
+    def __iter__(self):
+        with pq.ParquetFile(self.path) as file:
+            # Producer groups are bounded; do not join them before decoding.
+            for group in range(file.num_row_groups):
+                for batch in file.iter_batches(row_groups=[group], batch_size=256, use_threads=False):
+                    yield from batch.to_pylist()
+
+
+def _retain_rows(path, rows, schema):
+    """Spool affected rows with finite row/decoded-byte groups and exact types."""
+    staging = path.with_suffix('.tmp')
+    with pq.ParquetWriter(staging, schema, compression='zstd', use_compliant_nested_type=False) as writer:
+        pending, size = [], 0
+        for row in rows:
+            row_bytes = pa.Table.from_pylist([row], schema=schema).nbytes
+            if row_bytes > MAX_BYTES:
+                raise ValueError('One interpreted source row exceeds its decoded byte budget')
+            if pending and (len(pending) == 256 or size + row_bytes > MAX_BYTES):
+                writer.write_table(pa.Table.from_pylist(pending, schema=schema))
+                pending, size = [], 0
+            pending.append(row)
+            size += row_bytes
+        if pending:
+            writer.write_table(pa.Table.from_pylist(pending, schema=schema))
+    staging.replace(path)
+    return _RetainedSources(path)
+
+
+def _keys(work, name, values=()):
+    result = work.mapping(name)
+    for value in values:
+        result[value] = True
+    return result
 
 
 def update_from_raw(store, *, raw_storage, directory, candidate, expected_bodies=(), seeds=()):
@@ -117,12 +163,11 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             if retained['request'] != request:
                 raise ValueError('Raw catalog continuation inputs differ from the retained candidate')
             proof = read_source_update(store, retained['source_update'])
-            with pq.ParquetFile(directory / 'interpreted-sources.parquet') as file:
-                rows = [row for batch in file.iter_batches(batch_size=256) for row in batch.to_pylist()]
-                if dependencies is None:
-                    dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
-                        namespace=proof['after']['catalog_namespace'], source_schema=file.schema_arrow,
-                        max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
+            rows = _RetainedSources(directory / 'interpreted-sources.parquet')
+            if dependencies is None:
+                dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
+                    namespace=proof['after']['catalog_namespace'], source_schema=rows.schema,
+                    max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
             result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
                 replacements=rows, deletions=proof['deletions'], candidate=candidate, directory=directory / 'catalog',
                 max_chunk_rows=MAX_ROWS, max_chunk_bytes=MAX_BYTES, rules=request['requirements'],
@@ -149,26 +194,32 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                 changed_dependencies=tuple(dependency_id('package', value) for value in sorted(changed_packages)))
             if prepared is not None:
                 owners.callback(prepared.close)
-            rows = list(prepared.sources()) if prepared else []
-            old_ids = set(prepared.old_source_ids) if prepared else set()
+            stage = owners.enter_context(_working(Path(attempt) / 'dispatch.sqlite'))
+            rows = DiskRows(stage.connection, 'source_rows')
+            for row in prepared.sources() if prepared else ():
+                rows.append(row)
+            old_ids = _keys(stage, 'old_ids', prepared.old_source_ids if prepared else ())
             if prior_tables is not None:
-                old_ids.update(row['source_id'] for batch in prior_tables['filenames'].iter_batches(
-                    columns=['source_id'], batch_size=256) for row in batch.to_pylist())
+                for batch in prior_tables['filenames'].iter_batches(columns=['source_id'], batch_size=256):
+                    for row in batch.to_pylist():
+                        old_ids[row['source_id']] = True
             captures = prepared.captures if prepared else pa.Table.from_pylist([], schema=NATIVE_CAPTURE_SCHEMA)
-            hearings = list(hearing_records(captures, store.read))
+            hearings = DiskRows(stage.connection, 'hearing_records')
+            for hearing in hearing_records(captures, store.read):
+                hearings.append(hearing)
             packages = changed_packages | {package for row in rows for package in package_dependencies(row)}
             packages.update(package for record, _, _ in hearings for package in hearing_input_packages(record))
             urls = set(changed_urls)
             if dependencies is not None:
                 selected = dependencies.selected(previous.selection['dependency'])
-                replayed = set(old_ids)
-                present = {index.source_identity(row) for row in rows}
+                replayed = _keys(stage, 'replayed_ids', old_ids)
+                present = _keys(stage, 'present_ids', (index.source_identity(row) for row in rows))
                 records = (record for url in changed_urls
                            for record in dependencies.sources_at_url(previous.selection['dependency'], url))
                 package_records = (record for package in sorted(packages)
                     for record in dependencies.sources_at_package(previous.selection['dependency'], package))
                 for record in chain(records, package_records):
-                    old_ids.add(record['source_id'])
+                    old_ids[record['source_id']] = True
                     if record['source_values'].get('source_url'):
                         urls.add(record['source_values']['source_url'])
                     state_backed = (record['source_values'].get('filename_origins') == ['download_state']
@@ -177,18 +228,26 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                     # independently retained raw-state response facts.
                     if record['source_id'] not in present and (record['source_id'] not in replayed or state_backed):
                         rows.append(record['source_values'])
-                        present.add(record['source_id'])
-                old_rows = ([row for identity in old_ids if (row := selected.source(identity)) is not None]
-                            if prior_tables is None else [])
+                        present[record['source_id']] = True
+                old_rows = DiskRows(stage.connection, 'previous_sources')
                 if prior_tables is None:
-                    old_ids = {index.source_identity(row) for row in old_rows}
+                    selected_ids = _keys(stage, 'selected_old_ids')
+                    for identity in old_ids:
+                        if (row := selected.source(identity)) is not None:
+                            old_rows.append(row)
+                            selected_ids[index.source_identity(row)] = True
+                    old_ids = selected_ids
             else:
-                old_rows = []
+                old_rows = ()
             if prepared is not None:
-                rows = list(recover_sources(rows, captures, read_receipt=store.read, working=prepared.working, source_observer=prepared.trace))
+                rows = recover_sources(rows, captures, read_receipt=store.read, working=prepared.working, source_observer=prepared.trace)
             urls.update(row['source_url'] for row in rows if row.get('source_url'))
             state = pa.Table.from_pylist(list(raw.states_for(urls).values()), schema=raw_storage.state_schema)
-            rows = list(annotate_availability(rows, state, hearing_records=((record, captures) for record, captures, _ in hearings)))
+            annotated = DiskRows(stage.connection, 'annotated_sources')
+            for row in annotate_availability(rows, state, working=stage,
+                    hearing_records=((record, captures) for record, captures, _ in hearings)):
+                annotated.append(row)
+            rows = annotated
             if prepared is not None:
                 # State-backed API rows inherit only availability association
                 # ownership. Their response facts remain the selected raw state.
@@ -206,22 +265,26 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             # qualified lookup. Missing qualification refuses before catalog CAS.
             if not callable(getattr(raw, 'body_readings', None)):
                 raise ValueError('Selected raw archive requires qualified retained body-reading lookup')
-            readings = list(raw.body_readings({row['body_key'] for row in rows if row.get('body_key')}))
+            body_keys = _keys(stage, 'body_keys', (row['body_key'] for row in rows if row.get('body_key')))
+            readings = raw.body_readings(body_keys)
             output = Path(attempt) / 'interpreted'
             (output / 'indexes').mkdir(parents=True)
             work = owners.enter_context(_working(Path(attempt) / 'filename.sqlite'))
-            prior = (prior_tables['filenames'] if prior_tables is not None else
-                     pa.Table.from_pylist(old_rows, schema=dependencies.source_schema) if dependencies else None)
+            if prior_tables is not None:
+                prior = prior_tables['filenames']
+            elif dependencies is not None:
+                previous_rows = _retain_rows(Path(attempt) / 'previous-sources.parquet', old_rows, dependencies.source_schema)
+                prior = owners.enter_context(pq.ParquetFile(previous_rows.path))
+            else:
+                prior = None
             # Grouping identities are derived scalars, not filename metadata
             # lists. Recompute them from the preserved source facts below.
             inputs = ({key: value for key, value in row.items() if key not in {'source_id', 'document_id'}}
                       for row in rows)
             index.write_filename_metadata(output, inputs, working=work, workers=1, previous=prior,
                 cache_store=store, retained_body_readings=readings)
-            file = pq.ParquetFile(output / 'indexes/document-filenames.parquet')
-            values = [row for batch in file.iter_batches(batch_size=256) for row in batch.to_pylist()]
-            schema = file.schema_arrow
-            file.close()
+            interpreted = _RetainedSources(output / 'indexes/document-filenames.parquet')
+            schema = interpreted.schema
             if purpose == 'qualification':
                 for label, name in [('filenames', 'document-filenames'), ('documents', 'documents')]:
                     with pq.ParquetFile(output / f'indexes/{name}.parquet') as observed:
@@ -241,10 +304,10 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                     raise ValueError('Source update changes a retained logical field type')
                 dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
                     namespace=catalog_namespace, source_schema=logical, max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
-                values = pa.Table.from_pylist(values, schema=logical).to_pylist()
                 schema = logical
-            ids = {index.source_identity(row) for row in values}
-            deletions = sorted(old_ids - ids)
+            values = _retain_rows(directory / 'interpreted-sources.parquet', interpreted, schema)
+            ids = _keys(stage, 'interpreted_ids', (index.source_identity(row) for row in values))
+            deletions = sorted(identity for identity in old_ids if identity not in ids)
             after = dict(namespace=namespace, catalog_namespace=catalog_namespace,
                 root=prepared.after if prepared else before['root'] if before else None,
                 raw_identity=raw.identity, seed_sha256=seed_sha, max_rows=MAX_ROWS, max_bytes=MAX_BYTES, requirements=request['requirements'],
@@ -252,7 +315,6 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             reference = retain_source_update(store, base=previous.identity, before=before, after=after,
                 schema=schema, replacements=values, deletions=deletions, observations=prepared.observations if prepared else (),
                 purpose=purpose, rule_version=after['rule_version'])
-            pq.write_table(pa.Table.from_pylist(values, schema=schema), directory / 'interpreted-sources.parquet')
             draft = directory / 'source-update.tmp'
             draft.write_bytes(encoded(dict(request=request, source_update=reference)))
             draft.replace(pending)

@@ -399,3 +399,52 @@ def test_changed_maintained_filename_rules_require_explicit_global_upgrade(tmp_p
                          rule_version='changed-filename-rules')
     current = read_catalog(store, native=native)
     assert current.selection['interpretation']['requirements']['filename_rules_sha256'] == original + '-changed'
+
+
+def test_dispatch_spills_receipt_rows_and_replays_retained_output_as_a_stream(tmp_path, monkeypatch):
+    from congress_api.retention import catalog_raw_updates as dispatch
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    observed = []
+    for name in ('recover_sources', 'annotate_availability'):
+        original = getattr(dispatch, name)
+        def check(rows, *args, _original=original, _name=name, **kwargs):
+            assert not isinstance(rows, (list, tuple)), f'{_name} retained the complete affected payload'
+            assert kwargs.get('working') is not None
+            observed.append(_name)
+            return _original(rows, *args, **kwargs)
+        monkeypatch.setattr(dispatch, name, check)
+    original = dispatch.update_native_catalog
+    def update(*args, **kwargs):
+        rows = kwargs.get('replacements', ())
+        assert not isinstance(rows, list), 'Dispatch decoded every retained interpreted row on retry'
+        if rows:
+            # The downstream owner hashes, groups and verifies the same input.
+            assert list(rows) == list(rows)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(dispatch, 'update_native_catalog', update)
+    options = dict(raw_storage=raw, directory=tmp_path / 'candidate', candidate='streamed')
+    first = update_from_raw(store, **options)
+    assert observed == ['recover_sources', 'annotate_availability']
+    assert first['counts'] == dict(source_rows=1, document_rows=1)
+    assert update_from_raw(store, **options)['unchanged']
+
+
+def test_retained_interpretation_groups_respect_bytes_and_restore_nullable_fields(tmp_path, monkeypatch):
+    from congress_api.retention import catalog_raw_updates as dispatch
+    schema = pa.schema([pa.field('source_url', pa.string()), pa.field('new_values', pa.list_(pa.string()))],
+                       metadata={b'literal': b'preserved'})
+    rows = [dict(source_url='https://example.gov/' + str(i), new_values=['literal', None, 'literal']) for i in range(9)]
+    monkeypatch.setattr(dispatch, 'MAX_BYTES', 125)
+    retained = dispatch._retain_rows(tmp_path / 'rows.parquet', iter(rows), schema)
+    assert len(retained) == len(rows)
+    assert list(retained) == rows == list(retained)
+    assert retained.schema.equals(schema, check_metadata=True)
+    with pq.ParquetFile(retained.path) as file:
+        assert file.num_row_groups > 1
+        for group in range(file.num_row_groups):
+            assert file.read_row_group(group).nbytes <= 125
+    with pytest.raises(ValueError, match='source row exceeds'):
+        dispatch._retain_rows(retained.path, [dict(source_url='x' * 200)], schema)
+    assert list(retained) == rows  # Incomplete retry did not replace the retained input.
