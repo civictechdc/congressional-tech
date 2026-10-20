@@ -19,11 +19,12 @@ from .capture_metadata import PREFIX, RESULT_COLUMNS
 PART_BYTES = 32 << 20
 PART_ROWS = 1000
 LEAF_ENTRIES = 128
+READER_PREFIX = 'indexes/processing/body-reader-results/'
 
 
 def part_rows(store, reference):
     key, size, digest, rows = (reference.get(name) for name in ('key', 'bytes', 'sha256', 'rows'))
-    if (not isinstance(key, str) or not key.startswith(PREFIX) or '..' in PurePosixPath(key).parts
+    if (not isinstance(key, str) or not key.startswith((PREFIX, READER_PREFIX)) or '..' in PurePosixPath(key).parts
             or type(size) is not int or not 0 < size <= PART_BYTES
             or type(rows) is not int or not 0 < rows <= PART_ROWS
             or not isinstance(digest, str) or len(digest) != 64
@@ -35,9 +36,11 @@ def part_rows(store, reference):
         raise ValueError('Retained reading part identity differs')
     file = pq.ParquetFile(pa.BufferReader(raw))
     schema = file.schema_arrow
-    if (file.metadata.num_rows != rows or (schema.metadata or {}).get(b'format_version') != b'1'
-            or not set(RESULT_COLUMNS) <= set(schema.names)
-            or any(field.type != (pa.string() if field.name in RESULT_COLUMNS else pa.list_(pa.string()))
+    reader_part = key.startswith(READER_PREFIX)
+    strings = (*RESULT_COLUMNS, 'reader') if reader_part else RESULT_COLUMNS
+    if (file.metadata.num_rows != rows or (schema.metadata or {}).get(b'format_version') != (b'2' if reader_part else b'1')
+            or not set(strings) <= set(schema.names)
+            or any(field.type != (pa.string() if field.name in strings else pa.list_(pa.string()))
                    for field in schema)):
         raise ValueError('Unexpected selected reading part schema or count')
     decoded = 0
@@ -112,9 +115,13 @@ class RawReadings:
                 selected[identity].add(body)
         for key in sorted(selected):
             found = set()
+            readers = set()
             for row in part_rows(self.store, references[key]):
-                if row['body_key'] in selected[key] and row['body_key'] not in found:
-                    found.add(row['body_key'])
+                body = row['body_key']
+                identity = (body, row.get('reader'))
+                if body in selected[key] and identity not in readers:
+                    readers.add(identity)
+                    found.add(body)
                     yield row
             if found != selected[key]:
                 raise ValueError('Selected reading reference lacks its body row')

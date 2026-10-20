@@ -124,7 +124,12 @@ def restore_readings(readings, cache):
     for row in readings:
         key = row['body_key']
         fields = {field: value for field, value in row.items()
-                  if field not in RESULT_COLUMNS and value is not None}
+                  if field not in (*RESULT_COLUMNS, 'reader') and value is not None}
+        if row.get('reader') is not None:
+            # An explicitly adopted reader result includes completed negatives.
+            # Its provenance remains in the selected immutable part.
+            cache.setdefault((row['reader'], key), fields)
+            continue
         pdf = fields.get('body_format') == ['pdf']
         # These are byte-derived facts. HTTP outcomes and source labels are
         # applied separately for each occurrence by the existing catalog reader.

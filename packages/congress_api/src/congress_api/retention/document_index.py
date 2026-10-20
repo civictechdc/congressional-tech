@@ -2411,6 +2411,16 @@ def write_filename_metadata(
                 key = (row.pop("reader"), row.pop("body_key"))
                 body_cache[key] = {field: value for field, value in row.items() if value is not None}
     del payload
+    selected_capture_readings = working.mapping("selected_capture_readings")
+    if retained_body_readings is not None:
+        from congress_api.retention.capture_metadata import restore_readings
+        for reading in retained_body_readings:
+            if reading.get('reader') is not None:
+                # Legacy per-reader results precede old catalog fields, including
+                # completed negative readings. Capture facts fill remaining gaps.
+                restore_readings((reading,), body_cache)
+            else:
+                selected_capture_readings.setdefault(reading['body_key'], reading)
     source_fields = set(SOURCE_SCHEMA.names) | SOURCE_CONTEXT_FIELDS | AVAILABILITY_FIELDS | {'capture_outcome'}
     reuse_names = previous is not None and reuse_results and 'document_kind_source' in previous_schema.names
     filename_fields = (set(previous_schema.names) - source_fields
@@ -2434,7 +2444,7 @@ def write_filename_metadata(
                 })
     if retained_body_readings is not None:
         from congress_api.retention.capture_metadata import restore_readings
-        restore_readings(retained_body_readings, body_cache)
+        restore_readings(selected_capture_readings.values(), body_cache)
     elif reuse_results:
         # Capture already inspected these bytes before releasing them. Preserve
         # published/legacy readings first, then admit newly completed results.
@@ -2563,6 +2573,7 @@ def write_filename_metadata(
             progress.report('finalize_metadata', completed=completed, total=len(rows), unit='source_rows')
         cached.clear()
         body_cache.clear()
+        selected_capture_readings.clear()
         shared_body_fields.clear()
 
     def output_schema():

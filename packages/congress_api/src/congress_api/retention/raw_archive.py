@@ -860,15 +860,27 @@ class Archive(LegacyArchiveSeed):
         return self.selected
 
 
-def adopt_legacy_archive(store, storage, *, operation, repair=False):
+def adopt_legacy_archive(store, storage, *, operation, repair=False,
+                         body_cache_path=None, body_cache_identity=None, directory=None):
     """Explicitly select a complete investigated seed; never called at startup."""
     base = storage.snapshot()
     if base.version is not None:
         raise ValueError('Raw archive adoption requires an unselected native root')
     from congress_api.retention.capture_metadata import PREFIX
     from congress_api.retention.raw_readings import PART_BYTES
-    if getattr(store, 'version', lambda key: None)('indexes/processing/bodies.parquet') != 'missing':
-        raise RuntimeError('Legacy per-reader body cache requires explicit bounded reading-index adoption')
+    cache_key = 'indexes/processing/bodies.parquet'
+    version = getattr(store, 'version', None)
+    if version is None:
+        if cache_key in store.keys('indexes/processing/'):
+            raise RuntimeError('Legacy body cache adoption requires version-aware source storage')
+        cache_version = 'missing'
+    else:
+        cache_version = version(cache_key)
+    if cache_version != 'missing' and (body_cache_path is None or body_cache_identity is None or directory is None):
+        raise RuntimeError('Legacy per-reader body cache requires its retained file, identity and adoption directory')
+    if body_cache_path is not None and (body_cache_identity is None or directory is None
+            or cache_version == 'missing' or body_cache_identity.get('version') != cache_version):
+        raise ValueError('Retained reader cache source version differs')
     parts = []
     for key in sorted(store.keys(PREFIX)):
         if key.endswith('.parquet'):
@@ -877,11 +889,18 @@ def adopt_legacy_archive(store, storage, *, operation, repair=False):
                 raise ValueError('Retained reading part exceeds adoption bounds')
             parts.append(dict(key=key, bytes=len(payload), sha256=hashlib.sha256(payload).hexdigest(),
                               rows=pq.ParquetFile(pa.BufferReader(payload)).metadata.num_rows))
+    if body_cache_path is not None:
+        from congress_api.retention.raw_readings_adoption import adopt_body_readings
+        parts = adopt_body_readings(store, parts, cache_path=body_cache_path,
+                                   expected=body_cache_identity, directory=directory)
     seed = LegacyArchiveSeed(store, 'seed-adoption', repair=repair)
     captures = seed.captures
     if seed.additions:
         captures = pa.concat_tables([captures, pa.Table.from_pylist(seed.additions, schema=CAPTURE_SCHEMA)])
-    return storage.publish(storage.prepare(base, operation=operation, captures=captures,
+    prepared = storage.prepare(base, operation=operation, captures=captures,
         states=pa.Table.from_pylist(list(seed.state.values()), schema=storage.state_schema),
         indexed_receipts={key for key in captures['receipt_key'].to_pylist() if key},
-        filename_version=seed.filename_version, reading_parts=parts, qualify_readings=True))
+        filename_version=seed.filename_version, reading_parts=parts, qualify_readings=True)
+    if version is not None and version(cache_key) != cache_version:
+        raise ValueError('Legacy reader cache changed during adoption; selection preserved')
+    return storage.publish(prepared)
