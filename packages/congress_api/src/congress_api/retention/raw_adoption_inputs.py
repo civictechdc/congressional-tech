@@ -18,6 +18,42 @@ from .raw_readings import PART_BYTES, PART_ROWS
 CACHE_KEY = 'indexes/processing/bodies.parquet'
 
 
+def raw_source_pins(value):
+    """Copy the exact capture/state source authority from a reviewed receipt."""
+    from .raw_archive import CAPTURES_KEY, STATE_KEY
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != {'captures', 'state'}:
+        raise ValueError('Raw adoption requires exact capture/state source pins')
+    pins = {}
+    for name, key in [('captures', CAPTURES_KEY), ('state', STATE_KEY)]:
+        entry = value[name]
+        if not isinstance(entry, dict) or set(entry) != {'bucket', 'key', 'version'}:
+            raise ValueError('Raw adoption requires exact capture/state source pins')
+        if not isinstance(entry['bucket'], str) or not entry['bucket'].strip():
+            raise ValueError('Invalid raw adoption source bucket')
+        if entry['key'] != key:
+            raise ValueError('Unexpected raw adoption source key')
+        if (not isinstance(entry['version'], str) or not entry['version'].strip()
+                or entry['version'] == 'missing'):
+            raise ValueError('Invalid raw adoption source version')
+        pins[name] = dict(entry)
+    if pins['captures']['bucket'] != pins['state']['bucket']:
+        raise ValueError('Raw adoption source bucket differs between checkpoints')
+    return pins
+
+
+def verify_raw_sources(store, pins):
+    """Detect checkpoint drift; separate object checks do not fence writers."""
+    if pins is None:
+        return
+    for entry in pins.values():
+        if getattr(store, 'bucket', None) != entry['bucket']:
+            raise ValueError('Raw adoption source bucket differs from configured storage')
+        if store.version(entry['key']) != entry['version']:
+            raise ValueError('Raw adoption source changed: ' + entry['key'])
+
+
 def _keys(store, db):
     db.execute('CREATE TABLE part_keys(key TEXT PRIMARY KEY)')
     for key in store.keys(PREFIX):

@@ -101,12 +101,12 @@ def test_explicit_modes_are_mutually_exclusive_and_blank_upgrade_refuses_before_
 
 
 def test_explicit_raw_adoption_preserves_investigated_values_and_retries_without_acquisition(tmp_path, monkeypatch):
-    from test_raw_complete_adoption import setup
-    store, owner, options, captures, states = setup(tmp_path)
+    from test_raw_source_adoption_pins import source_setup
+    store, owner, options, captures, states = source_setup(tmp_path)
     no_acquisition(monkeypatch)
     receipt = tmp_path / 'adopt.json'
-    receipt.write_text(json.dumps(dict(version=1, operation=options['operation'], filename_version=options['filename_version'],
-        inputs={name: dict(path=str(path), sha256=options['sha256s'][name]) for name, path in options['paths'].items()})))
+    receipt.write_text(json.dumps(dict(version=2, operation=options['operation'], filename_version=options['filename_version'],
+        inputs={name: dict(path=str(path), sha256=options['sha256s'][name], source=options['source_pins'][name]) for name, path in options['paths'].items()})))
     result = execute(tmp_path, '--adopt-raw', str(receipt), store=store, raw_storage=owner)
     assert result['mode'] == 'adopt-raw' and result['raw_adoption_status'] == 'completed'
     assert result['acquisition_status'] == result['catalog_status'] == 'not_run'
@@ -165,15 +165,15 @@ def test_local_raw_archive_enters_same_incremental_owner_and_refuses_legacy_rebu
 
 
 def test_raw_adoption_constructs_complete_investigated_schema_from_explicit_runtime(tmp_path, monkeypatch):
-    from test_raw_complete_adoption import setup
+    from test_raw_source_adoption_pins import source_setup
     from congress_api.retention.docspec import NativeDatasets
     from congress_api.retention.raw_storage import RawStorage
-    store, fixture, options, _, states = setup(tmp_path)
+    store, fixture, options, _, states = source_setup(tmp_path)
     no_acquisition(monkeypatch)
     monkeypatch.setattr(NativeDatasets, 'from_config', lambda _: fixture.native)
     receipt = tmp_path / 'adopt.json'
-    receipt.write_text(json.dumps(dict(version=1, operation='configured-adoption', filename_version=options['filename_version'],
-        inputs={name: dict(path=path.name, sha256=options['sha256s'][name]) for name, path in options['paths'].items()})))
+    receipt.write_text(json.dumps(dict(version=2, operation='configured-adoption', filename_version=options['filename_version'],
+        inputs={name: dict(path=path.name, sha256=options['sha256s'][name], source=options['source_pins'][name]) for name, path in options['paths'].items()})))
     execute(tmp_path, '--adopt-raw', str(receipt), '--native-config', str(tmp_path / 'native.json'), store=store)
     reopened = RawStorage.open(store, fixture.native)
     assert reopened.state_schema.equals(states.schema, check_metadata=True)
@@ -201,8 +201,8 @@ def test_capture_only_conflicts_refuse_at_parser_and_injected_run_boundary(tmp_p
     assert not args.summary.exists()
 
 
-@pytest.mark.parametrize('version', [True, 1.0])
-def test_raw_adoption_requires_integer_receipt_version_before_input_access(tmp_path, monkeypatch, version):
+@pytest.mark.parametrize('version', [True, 2.0, 1])
+def test_raw_adoption_requires_current_integer_receipt_version_before_input_access(tmp_path, monkeypatch, version):
     from congress_api.retention import derived_files
     monkeypatch.setattr(derived_files, 'file_identity', lambda *a: pytest.fail('Input files accessed'))
     receipt = tmp_path / 'adopt.json'
@@ -211,3 +211,26 @@ def test_raw_adoption_requires_integer_receipt_version_before_input_access(tmp_p
         inputs={name: dict(path=name + '.parquet', sha256='a' * 64) for name in ('captures', 'state')})))
     with pytest.raises(ValueError, match='Raw adoption requires exact input pins'):
         raw_sync.adoption_inputs(receipt)
+
+
+@pytest.mark.parametrize('failure', ['missing', 'key', 'version', 'bucket'])
+def test_raw_adoption_source_receipt_refuses_before_file_runtime_or_storage_access(tmp_path, monkeypatch, failure):
+    from congress_api.retention import derived_files
+    from congress_api.retention.docspec import NativeDatasets
+    monkeypatch.setattr(derived_files, 'file_identity', lambda *a: pytest.fail('Input files accessed'))
+    monkeypatch.setattr(raw_sync, 'connect_storage', lambda *a, **k: pytest.fail('Storage accessed'))
+    monkeypatch.setattr(NativeDatasets, 'from_config', lambda *a: pytest.fail('Native runtime accessed'))
+    sources = {name: dict(bucket='fixture', key=key, version='exact') for name, key in
+               [('captures', 'indexes/captures.parquet'), ('state', 'indexes/download-state.parquet')]}
+    value = dict(version=2, operation='adoption', filename_version=dict(selector_sha256=None, selected_ref=None),
+        inputs={name: dict(path=name + '.parquet', sha256='a' * 64, source=source)
+                for name, source in sources.items()})
+    if failure == 'missing':
+        value['inputs']['state'].pop('source')
+    else:
+        value['inputs']['state']['source'][failure] = {
+            'key': 'indexes/unrelated.parquet', 'version': True, 'bucket': 'other'}[failure]
+    receipt = tmp_path / 'invalid-adopt.json'
+    receipt.write_text(json.dumps(value))
+    with pytest.raises(ValueError, match='source pins|source key|source version|source bucket'):
+        execute(tmp_path, '--adopt-raw', str(receipt), '--native-config', 'native.json')

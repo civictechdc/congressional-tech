@@ -78,22 +78,26 @@ def operation_mode(args):
 def adoption_inputs(path):
     """Read only explicit investigated pins; never discover adoption inputs."""
     from congress_api.retention.derived_files import file_identity
+    from congress_api.retention.raw_adoption_inputs import raw_source_pins
     with path.open('rb') as source:
         payload = source.read((1 << 20) + 1)
     if len(payload) > 1 << 20:
         raise ValueError('Raw adoption input receipt exceeds its byte budget')
     value = json.loads(payload)
     if (not isinstance(value, dict) or set(value) != {'version', 'operation', 'inputs', 'filename_version'}
-            or type(value['version']) is not int or value['version'] != 1
+            or type(value['version']) is not int or value['version'] != 2
             or not isinstance(value['operation'], str) or not value['operation'].strip()
             or not isinstance(value['inputs'], dict) or set(value['inputs']) != {'captures', 'state'}
             or not isinstance(value['filename_version'], dict)
             or set(value['filename_version']) != {'selector_sha256', 'selected_ref'}):
         raise ValueError('Raw adoption requires exact input pins, an operation, and a catalog cursor')
+    if any(not isinstance(entry, dict) or set(entry) != {'path', 'sha256', 'source'}
+           for entry in value['inputs'].values()):
+        raise ValueError('Raw adoption input requires exact local and source pins')
+    sources = raw_source_pins({name: entry['source'] for name, entry in value['inputs'].items()})
     paths, hashes = {}, {}
     for name, entry in value['inputs'].items():
-        if (not isinstance(entry, dict) or set(entry) != {'path', 'sha256'}
-                or not isinstance(entry['path'], str) or not entry['path']
+        if (not isinstance(entry['path'], str) or not entry['path']
                 or not isinstance(entry['sha256'], str) or len(entry['sha256']) != 64
                 or any(char not in '0123456789abcdef' for char in entry['sha256'])):
             raise ValueError('Raw adoption input requires an exact path and SHA-256')
@@ -101,7 +105,8 @@ def adoption_inputs(path):
         if file_identity(paths[name])['sha256'] != entry['sha256']:
             raise ValueError('Investigated raw adoption input digest changed: ' + name)
         hashes[name] = entry['sha256']
-    return dict(paths=paths, sha256s=hashes, operation=value['operation'], filename_version=value['filename_version'])
+    return dict(paths=paths, sha256s=hashes, operation=value['operation'],
+                filename_version=value['filename_version'], source_pins=sources)
 
 
 def adopt_catalog(store, *, raw_storage, directory, candidate):

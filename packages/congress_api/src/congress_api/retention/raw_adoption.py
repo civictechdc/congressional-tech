@@ -86,7 +86,8 @@ def _qualified_candidate(storage, kind, table, *, operation, prefix, base_id):
     return pin
 
 
-def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None, before_publish=None):
+def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None,
+                 before_publish=None, source_pins=None):
     """Adopt exact reviewed capture/state Parquet inputs, with one final CAS.
 
     Recreate sorting scratch on any host to resume. Candidate identities depend
@@ -99,6 +100,10 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None, b
     inventory in the same selection. Capture/state-only adoption preserves raw
     values but leaves body-reading qualification absent, so recurring readers
     cannot silently treat a missing inventory as empty.
+
+    This lower-level local-input helper does not establish remote source
+    authority. Operational adoption uses adopt_archive's source-version checks;
+    supplied source pins also bind its completed delivery request here.
     """
     if not isinstance(operation, str) or not operation:
         raise ValueError('A stable adoption operation identity is required')
@@ -108,8 +113,11 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None, b
     for name, path in paths.items():
         if _digest(path) != sha256s[name]:
             raise ValueError(f'Investigated adoption input digest changed: {name}')
-    request = sha256(encoded(dict(inputs=sha256s, basis=storage.basis,
-                                  filename_version=filename_version))).hexdigest()
+    request_inputs = dict(inputs=sha256s, basis=storage.basis, filename_version=filename_version)
+    if source_pins is not None:
+        from .raw_adoption_inputs import raw_source_pins
+        request_inputs['source_pins'] = raw_source_pins(source_pins)
+    request = sha256(encoded(request_inputs)).hexdigest()
     base = storage.snapshot()
     completed = base.completed_delivery(operation)
     if completed is not None:
@@ -234,28 +242,42 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None, b
                                         changed=True, delivery=delivery))
 
 
-def adopt_archive(storage, *, paths, sha256s, operation, directory, filename_version=None):
+def adopt_archive(storage, *, paths, sha256s, operation, directory, filename_version=None,
+                  source_pins=None):
     """Compose exact source reading preparation with the maintained bounded owner.
 
     Capture/state files and hashes are the caller's investigated inputs. Reading
     inputs come only from the same store's exact legacy cache and immutable parts.
     No LegacyArchiveSeed reconstruction or compatibility writer is involved.
+    Remote storage requires exact source pins. Local fixture inputs may omit
+    them and therefore establish no remote source authority. Version checks
+    detect drift; legacy writers must remain quiescent through final cutover.
     """
     if set(paths) != {'captures', 'state'} or set(sha256s) != set(paths):
         raise ValueError('Complete raw adoption requires investigated capture/state inputs')
     if not isinstance(operation, str) or not operation:
         raise ValueError('A stable adoption operation identity is required')
+    from .raw_adoption_inputs import raw_source_pins, verify_raw_sources
+    source_pins = raw_source_pins(source_pins)
+    if source_pins is None and getattr(storage.store, 'bucket', None) is not None:
+        raise ValueError('Operational raw adoption requires exact capture/state source pins')
     for name, path in paths.items():
         if _digest(path) != sha256s[name]:
             raise ValueError(f'Investigated adoption input digest changed: {name}')
     base = storage.snapshot()
-    if base.version is not None and base.completed_delivery(operation) is None:
+    completed = base.completed_delivery(operation)
+    if base.version is not None and completed is None:
         raise ValueError('Adoption requires an unselected native raw root')
+    if completed is None:
+        verify_raw_sources(storage.store, source_pins)
     from .raw_adoption_inputs import prepare_reading_input, verify_reading_sources
     reading_path, receipt = prepare_reading_input(storage.store, directory=directory)
-    if base.completed_delivery(operation) is None:
+    if completed is None:
         verify_reading_sources(storage.store, receipt)
+    def before_publish():
+        verify_reading_sources(storage.store, receipt)
+        verify_raw_sources(storage.store, source_pins)
     return adopt_tables(storage, paths={**paths, 'readings': reading_path},
         sha256s={**sha256s, 'readings': receipt['input']['sha256']}, operation=operation,
-        filename_version=filename_version,
-        before_publish=lambda: verify_reading_sources(storage.store, receipt))
+        filename_version=filename_version, source_pins=source_pins,
+        before_publish=before_publish)

@@ -140,17 +140,27 @@ Existing file catalogs require these separate, explicit steps:
    The nonempty version names that deliberate change; it cannot authorize source
    acquisition, dropping old ownership, or implicit legacy reconstruction.
 
-Raw adoption receipts are small JSON files with explicit local paths and SHA-256
-pins. Relative paths resolve beside the receipt. Retain the receipt and continuation
+Operational raw adoption receipts use version 2 with explicit local paths, SHA-256
+pins and exact original source bucket/key/version pins. Copy each source version
+verbatim from its retained receipt ETag; do not strip its quotes or infer it from
+the local file hash. Relative paths resolve beside the receipt. Retain the receipt and continuation
 directory when retrying:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "operation": "investigated-raw-adoption-20261020",
   "inputs": {
-    "captures": {"path": "captures.parquet", "sha256": "<64 lowercase hex characters>"},
-    "state": {"path": "state.parquet", "sha256": "<64 lowercase hex characters>"}
+    "captures": {
+      "path": "captures.parquet",
+      "sha256": "<64 lowercase hex characters>",
+      "source": {"bucket": "congressional-tech-raw", "key": "indexes/captures.parquet", "version": "<exact retained source ETag>"}
+    },
+    "state": {
+      "path": "state.parquet",
+      "sha256": "<64 lowercase hex characters>",
+      "source": {"bucket": "congressional-tech-raw", "key": "indexes/download-state.parquet", "version": "<exact retained source ETag>"}
+    }
   },
   "filename_version": {
     "selector_sha256": "<exact adopted catalog selector SHA-256>",
@@ -162,6 +172,19 @@ directory when retrying:
 Copy the complete `filename_version` from the verified adopted catalog identity;
 the displayed metadata reference is illustrative, not an executable seed. Raw
 state retains its complete investigated Arrow schema, including extra typed fields.
+Operational adoption checks both source versions before preparation and again
+immediately before its existing raw selector update. The request binds these
+pins, so retries cannot substitute another source version. Completed retries use
+the original delivery and preserve later selected native changes.
+
+**Production cutover gate:** record that every legacy writer is inactive or fenced
+and keep that state through selection. Checks on the two source objects and the
+conditional `indexes/raw.json` update are separate operations; they detect drift
+but do not atomically fence a legacy writer. Any drift requires investigation and
+new reviewed inputs; it does not authorize an automatic refresh or rebuild.
+The local `adopt_tables` fixture helper establishes local input preservation only,
+not remote source authority.
+
 The legacy body-reader cache is a source for explicit adoption only. Normal
 native updates use the selected keyed reading inventory and do not scan that cache.
 
