@@ -18,7 +18,8 @@ spec=importlib.util.spec_from_file_location('native_analysis_viewer',ROOT/'docs/
 viewer=importlib.util.module_from_spec(spec);spec.loader.exec_module(viewer)
 
 
-def test_selected_analysis_preserves_search_detail_and_stable_ids_without_full_exports(tmp_path,monkeypatch):
+@pytest.mark.parametrize('search_indexes',[False,True])
+def test_selected_analysis_preserves_search_detail_and_stable_ids_without_full_exports(tmp_path,monkeypatch,search_indexes):
     store,native=LocalStore(tmp_path/'store'),Native()
     seed(tmp_path,store,native)
     selected=read_catalog(store,native=native)
@@ -30,7 +31,7 @@ def test_selected_analysis_preserves_search_detail_and_stable_ids_without_full_e
         old_result=old.search({'scope':'all'})
         old_rows=[{k:v for k,v in row.items() if k!='_row'} for row in old_result['rows']]
     monkeypatch.setattr(pq,'ParquetFile',lambda *a,**kw:pytest.fail('Native analysis opened a complete Parquet file'))
-    with viewer.Catalog.from_snapshot(selected,max_ordered_bytes=1<<20) as catalog:
+    with viewer.Catalog.from_snapshot(selected,max_ordered_bytes=1<<20,search_indexes=search_indexes) as catalog:
         result=catalog.search({'scope':'all'})
         assert [{k:v for k,v in row.items() if k!='_row'} for row in result['rows']]==old_rows
         assert all(row['_row']==row['source_id'] for row in result['rows'])
