@@ -1,5 +1,6 @@
 """Maintained closed-scope grouping and one coherent native catalog publication."""
 from copy import deepcopy
+from contextlib import ExitStack, closing
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -12,6 +13,8 @@ from .catalog_batches import (
     CatalogComponentReader, iterator_prepared_components, prepare_native_catalog_components,
 )
 from .catalog_dependencies import affected_sources
+from .catalog_inputs import CatalogKeys
+from .catalog_staging import DiskRows, WorkingCatalog
 from .catalog_scope import prepare_catalog_scope, verify_catalog_scope, read_catalog_scope, catalog_scope_requirements
 from .immutable_metadata import encoded
 from .catalog_selection import NativeCatalogSnapshot, publish_native_catalog
@@ -20,13 +23,18 @@ from .catalog_validation import catalog_reference_requirements
 
 def selected_body_coverage(previous, dependencies, expected_bodies):
     """Verify specific already selected bodies through the non-grouping index."""
-    expected = sorted(set(expected_bodies))
+    if not isinstance(expected_bodies, CatalogKeys):
+        with TemporaryDirectory(prefix='catalog-body-keys-') as temporary, closing(
+                WorkingCatalog(Path(temporary) / 'keys.sqlite')) as work:
+            return selected_body_coverage(previous, dependencies,
+                CatalogKeys(work, 'expected', expected_bodies, 'Expected catalog body identities'))
+    expected = expected_bodies
     basis = previous.selection['dependency'] if isinstance(previous, NativeCatalogSnapshot) else None
     for body in expected:
         source = next(iter(dependencies.sources_at_body(basis, body)), None)
         if source is None or source['source_values'].get('body_key') != body:
             raise ValueError('Selected catalog omits an expected retained body')
-    return dict(expected_count=len(expected), expected_sha256=sha256(encoded(expected)).hexdigest(),
+    return dict(expected_count=len(expected), expected_sha256=expected.identity()['sha256'],
                 selected_count=len(expected), selected_identity=deepcopy(previous.identity),
                 basis='selected-body-lookup-v1')
 
@@ -41,9 +49,24 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
     interpretation policy. The returned scope_reference is durable evidence for
     retry/continuation and is bound to the exact prior application selection.
     """
-    expected_bodies = sorted(set(expected_bodies))
-    if any(not isinstance(body, str) or not body for body in expected_bodies):
-        raise ValueError('Expected catalog body identities must be nonempty strings')
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(prefix='catalog-inputs-', dir=directory) as temporary, closing(
+            WorkingCatalog(Path(temporary) / 'inputs.sqlite')) as work:
+        rows = DiskRows(work.connection, 'replacement_rows')
+        for row in replacements:
+            rows.append(row)
+        removed = CatalogKeys(work, 'deletions', deletions, 'Catalog deletion identities', reject_duplicates=True)
+        expected = CatalogKeys(work, 'expected_bodies', expected_bodies, 'Expected catalog body identities')
+        return _update_native_catalog(store, native=native, previous=previous, dependencies=dependencies,
+            replacements=rows, deletions=removed, candidate=candidate, directory=directory,
+            max_chunk_rows=max_chunk_rows, max_chunk_bytes=max_chunk_bytes, rules=rules,
+            expected_bodies=expected, source_update=source_update, full_update=full_update, work=work)
+
+
+def _update_native_catalog(store, *, native, previous, dependencies, replacements, deletions,
+                           candidate, directory, max_chunk_rows, max_chunk_bytes, rules,
+                           expected_bodies, source_update, full_update, work):
     native_previous = isinstance(previous, NativeCatalogSnapshot)
     if not native_previous and (previous.manifest is not None or previous.files):
         raise ValueError('Native catalog update requires explicit prior adoption')
@@ -55,13 +78,10 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
         if (purpose.get('purpose') not in {'qualification', 'rule-upgrade'}
                 or purpose.get('purpose') == 'rule-upgrade' and not purpose.get('rule_version')):
             raise ValueError('Full source update requires explicit complete qualification or versioned rules')
-    replacements, deletions = list(replacements), tuple(deletions)
     if not replacements and not deletions and source_update is None:
         coverage = selected_body_coverage(previous, dependencies, expected_bodies)
         return dict(unchanged=True, body_coverage=coverage, selected_identity=deepcopy(previous.identity), selection=deepcopy(previous.identity['selected_ref']),
                     counts=deepcopy(previous.selection['counts']) if native_previous else dict(source_rows=0, document_rows=0))
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
     checkpoint = directory / 'prepared-scope.json'
     input_hash = sha256()
     for row in replacements:
@@ -73,8 +93,8 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
         input_hash.update(payload)
     input_digest = input_hash.hexdigest()
     request = dict(candidate=candidate, rules=rules, replacements_sha256=input_digest,
-                   deletions=sorted(deletions), max_chunk_rows=max_chunk_rows,
-                   max_chunk_bytes=max_chunk_bytes, expected_bodies=expected_bodies, source_update=source_update,
+                   deletions=deletions.identity(), max_chunk_rows=max_chunk_rows,
+                   max_chunk_bytes=max_chunk_bytes, expected_bodies=expected_bodies.identity(), source_update=source_update,
                    full_update=full_update)
     from .derived_files import file_identity
     native_inputs = {str(Path(path).resolve()): file_identity(path)
@@ -117,17 +137,20 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
         staging.write_bytes(encoded(binding))
         staging.replace(preparation_request)
     basis = previous.selection['dependency'] if native_previous else None
-    selected = dependencies.selected(basis)
-    scope = affected_sources(selected, replacements=replacements, deletions=deletions)
-    orders = {key: selected.order(key) for key in scope.before}
-    ordinal = basis['next_source_order'] if basis is not None else 0
-    for row in replacements:
-        key = index.source_identity(row)
-        if key not in orders:
-            orders[key], ordinal = ordinal, ordinal + 1
-    with TemporaryDirectory(prefix='catalog-grouped-', dir=directory) as group_directory:
-        prepared = prepare_catalog_scope(Path(group_directory) / 'scope', scope, schema=dependencies.source_schema,
-                                         source_orders=orders, candidate=candidate)
+    with ExitStack() as owners:
+        selected = owners.enter_context(closing(dependencies.selected(basis)))
+        scope = owners.enter_context(closing(affected_sources(selected, replacements=replacements, deletions=deletions)))
+        orders = work.mapping('source_orders')
+        for key in scope.before:
+            orders[key] = selected.order(key)
+        ordinal = basis['next_source_order'] if basis is not None else 0
+        for row in replacements:
+            key = index.source_identity(row)
+            if key not in orders:
+                orders[key], ordinal = ordinal, ordinal + 1
+        prepared = owners.enter_context(closing(prepare_catalog_scope(
+            directory / 'grouped-scope', scope, schema=dependencies.source_schema,
+            source_orders=orders, candidate=candidate, checkpoint_directory=directory / 'grouped-components')))
         after = (dependencies.prepare_full(basis, replacements=prepared.source_values(), source_orders=orders)
                  if full_update else dependencies.prepare(basis, replacements=prepared.source_values(),
                                                          deletions=deletions, source_orders=orders))

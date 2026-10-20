@@ -10,7 +10,7 @@ class CatalogKeys:
     """Sort unique identifiers on disk instead of retaining a corpus-sized list."""
 
     def __init__(self, work, name, values, label, *, reject_duplicates=False):
-        if re.fullmatch(r'[a-z][a-z0-9_]*', name) is None:
+        if not isinstance(name, str) or re.fullmatch(r'[a-z][a-z0-9_]*', name) is None:
             raise ValueError('Invalid catalog identifier table name')
         self.connection, self.name = work.connection, name
         self.connection.execute(f'CREATE TABLE {name} (value TEXT PRIMARY KEY)')
@@ -31,6 +31,8 @@ class CatalogKeys:
         return self.connection.execute(f'SELECT count(*) FROM {self.name}').fetchone()[0]
 
     def __contains__(self, value):
+        if not isinstance(value, str) or not value:
+            return False
         return self.connection.execute(
             f'SELECT 1 FROM {self.name} WHERE value=?', (value,)).fetchone() is not None
 

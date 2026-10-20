@@ -65,8 +65,36 @@ def test_mid_native_chunk_failure_replays_same_completed_immutable_inputs(tmp_pa
             pytest.fail('A completed native chunk was submitted again')
         return original(table, **request)
     monkeypatch.setattr(native, 'run_table', replay)
+    from congress_api.retention import catalog_staging
+    monkeypatch.setattr(catalog_staging, '_retain_group_summary',
+        lambda *a, **k: pytest.fail('A completed document summary was recomputed'))
     assert updates.update_native_catalog(store, **arguments)['counts'] == dict(source_rows=3, document_rows=3)
     assert all(native.tables[key].equals(table, check_metadata=True) for key, table in completed.items())
+
+
+def test_large_deletion_request_is_bounded_and_rejects_repeated_ids(tmp_path, monkeypatch):
+    import json
+    from hashlib import sha256
+    from congress_api.retention.immutable_metadata import encoded
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    owner, rows = seed(tmp_path, store, native)
+    previous = read_catalog(store, native=native)
+    keys = [f'{number:064x}' for number in range(20_000)]
+    monkeypatch.setattr(updates, 'affected_sources',
+        lambda *a, **k: (_ for _ in ()).throw(OSError('stop before closure')))
+    options = dict(native=native, previous=previous, dependencies=owner, candidate='many-removals',
+        directory=tmp_path / 'update', max_chunk_rows=64, max_chunk_bytes=1 << 20,
+        rules=dict(grouping='maintained-v1'))
+    before = store.read(MANIFEST_KEY)
+    with pytest.raises(OSError, match='stop before closure'):
+        updates.update_native_catalog(store, deletions=iter(keys), **options)
+    request = (tmp_path / 'update' / 'preparation-request.json').read_bytes()
+    assert len(request) < 16_384
+    assert json.loads(request)['request']['deletions'] == dict(
+        count=20_000, sha256=sha256(encoded(keys)).hexdigest())
+    with pytest.raises(ValueError, match='must not repeat'):
+        updates.update_native_catalog(store, deletions=[identity(rows[0])] * 2, **options)
+    assert store.read(MANIFEST_KEY) == before
 
 
 @pytest.mark.parametrize('damage', ['changed-input', 'corrupt-chunk'])

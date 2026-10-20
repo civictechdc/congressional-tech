@@ -25,3 +25,12 @@ def test_invalid_or_repeated_removals_refuse(tmp_path, values, message):
     with closing(WorkingCatalog(tmp_path / 'work.sqlite')) as work:
         with pytest.raises(ValueError, match=message):
             CatalogKeys(work, 'keys', iter(values), 'Deletions', reject_duplicates=True)
+
+
+def test_membership_does_not_coerce_non_string_identifiers(tmp_path):
+    with closing(WorkingCatalog(tmp_path / 'work.sqlite')) as work:
+        keys = CatalogKeys(work, 'keys', ['1'], 'Keys')
+        assert '1' in keys
+        assert all(value not in keys for value in (1, True, None, [], ''))
+        with pytest.raises(ValueError, match='table name'):
+            CatalogKeys(work, None, (), 'Keys')
