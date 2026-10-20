@@ -35,3 +35,7 @@ Reviewed dependency core 6901878 merged as f7b2694. Shared grouping/source-ID po
 **2026-10-20T03:35:46Z**
 
 Independent review of 2a45bca passed 18 focused checks, including actual local native storage, but found per-alias dataset creation unsuitable at archive scale. Coalesce small aliases into bounded shared native leaves, retain bounded large-alias overflow, and measure native call counts for adoption and fixed changes. This checkpoint is not merged or production-qualified. Review: output/incremental-updates-20261019/catalog/routed-storage-review.md.
+
+**2026-10-20T04:07:17Z**
+
+Coalesced dependency storage and closed grouping proofs are reviewed and locally merged. Unrelated routing-drop counterexample now refuses; 57 primary scope/grouping/context checks passed. Complete source/document membership, immutable source order and original columns are preserved. Dependency proof replay adds two actual local native calls in the measured bridge correction; remote cost is not zero. Receipt/event ownership and large-scope continuation remain active.

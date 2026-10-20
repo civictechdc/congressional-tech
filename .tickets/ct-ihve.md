@@ -25,3 +25,9 @@ Replace positional addressing at the publisher/browser boundary with stable docu
 - Preserve unaffected reviews and prior withdrawals. Apply existing binding policy to changed groups and retain explicit reasons; do not silently change review decisions.
 - Test a fresh browser and mapping-only edits. Prove mixed-generation, missing-partition and stale-cache rejection through the maintained loaders.
 - Measure assets/bytes rebuilt, uploaded and downloaded for fixed changes. Reuse untouched files; remove superseded positional reader/writer paths after both sides migrate.
+
+## Notes
+
+**2026-10-20T04:07:17Z**
+
+The dependency now exposes a reviewed stable logical table reader and conditional selector (main c59322d). Browser baseline: 37 JavaScript tests and 29 review/recovery Python tests passed. Dynamic viewer Catalog, publisher and browser must migrate together against stable source/document IDs; no fake Parquet compatibility layer. Final integration depends on ct-v5kb completion. Production remains unchanged.

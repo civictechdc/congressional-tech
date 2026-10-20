@@ -35,3 +35,7 @@ Reviewed exact-partition reader merged as 4f056c2; 9c1b965 removes quadratic par
 **2026-10-20T03:35:36Z**
 
 Independent review found that per-document native datasets would multiply fixed provider work across the archive. Coalesce physical storage across document components before runtime integration. Also separate current-proof admission from historical snapshot reads; old selected versions must remain readable after validator upgrades. Five focused checks passed, but this checkpoint is not approved for adoption. Review: output/incremental-updates-20261019/publication/component-proof-review.md.
+
+**2026-10-20T04:07:17Z**
+
+Shared physical batches, paged component proofs, historical readers and one conditional native catalog selector are reviewed and merged locally. 47 preparation/proof checks and 25 selector/routing/publication checks passed. In the 130-document stub comparison, native Run calls fell from 260 to 2 and metadata PUTs from 130 to 6; this is not production latency. Maintained callers and viewer migration remain required.
