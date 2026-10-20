@@ -4,6 +4,7 @@ import argparse
 from collections import Counter
 from datetime import datetime, timezone
 from functools import partial
+from hashlib import sha256
 import gzip
 import json
 import os
@@ -52,6 +53,81 @@ def seed_files(paths):
             )
             for record in records:
                 yield from json_links(record, source=path.name)
+
+
+def add_catalog_modes(mode):
+    mode.add_argument('--adopt-raw', type=Path, metavar='INPUTS_JSON',
+                      help='Adopt investigated capture/state files and retained readings from exact input pins; no acquisition')
+    mode.add_argument('--adopt-catalog', metavar='OPERATION',
+                      help='Adopt the exact existing catalog pair under a stable operation name; no interpretation replay')
+    mode.add_argument('--qualify-sources', action='store_true',
+                      help='Qualify all retained source contributions against exact selected source/document values')
+    mode.add_argument('--upgrade-source-rules', metavar='VERSION',
+                      help='Explicitly apply named source rules to the complete retained inventory after qualification')
+
+
+def operation_mode(args):
+    for field, label in (('adopt_raw', 'adopt-raw'), ('adopt_catalog', 'adopt-catalog'),
+                         ('qualify_sources', 'qualify-sources'), ('upgrade_source_rules', 'upgrade-source-rules'),
+                         ('update_only', 'update'), ('plan_only', 'plan')):
+        if getattr(args, field, None):
+            return label
+    return 'capture'
+
+
+def adoption_inputs(path):
+    """Read only explicit investigated pins; never discover adoption inputs."""
+    from congress_api.retention.derived_files import file_identity
+    with path.open('rb') as source:
+        payload = source.read((1 << 20) + 1)
+    if len(payload) > 1 << 20:
+        raise ValueError('Raw adoption input receipt exceeds its byte budget')
+    value = json.loads(payload)
+    if (not isinstance(value, dict) or set(value) != {'version', 'operation', 'inputs', 'filename_version'}
+            or value['version'] != 1 or not isinstance(value['operation'], str) or not value['operation'].strip()
+            or not isinstance(value['inputs'], dict) or set(value['inputs']) != {'captures', 'state'}
+            or not isinstance(value['filename_version'], dict)
+            or set(value['filename_version']) != {'selector_sha256', 'selected_ref'}):
+        raise ValueError('Raw adoption requires exact input pins, an operation, and a catalog cursor')
+    paths, hashes = {}, {}
+    for name, entry in value['inputs'].items():
+        if (not isinstance(entry, dict) or set(entry) != {'path', 'sha256'}
+                or not isinstance(entry['path'], str) or not entry['path']
+                or not isinstance(entry['sha256'], str) or len(entry['sha256']) != 64
+                or any(char not in '0123456789abcdef' for char in entry['sha256'])):
+            raise ValueError('Raw adoption input requires an exact path and SHA-256')
+        paths[name] = (path.parent / entry['path']).resolve()
+        if file_identity(paths[name])['sha256'] != entry['sha256']:
+            raise ValueError('Investigated raw adoption input digest changed: ' + name)
+        hashes[name] = entry['sha256']
+    return dict(paths=paths, sha256s=hashes, operation=value['operation'], filename_version=value['filename_version'])
+
+
+def adopt_catalog(store, *, raw_storage, directory, candidate):
+    """Use the maintained exact-value adoption owner without grouping replay."""
+    import pyarrow.parquet as pq
+    from congress_api.retention.catalog_publication import read_catalog
+    from congress_api.retention.catalog_selection import NativeCatalogSnapshot
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+    from congress_api.retention.catalog_adoption import adopt_native_catalog
+    from congress_api.retention.catalog_raw_updates import MAX_ROWS, MAX_BYTES
+    from congress_api.retention.immutable_metadata import encoded
+    with read_catalog(store, native=raw_storage.native) as previous:
+        if isinstance(previous, NativeCatalogSnapshot):
+            dependencies = CatalogDependencyStorage.for_snapshot(previous)
+        elif previous.filenames_path is not None:
+            with pq.ParquetFile(previous.filenames_path) as file:
+                schema = file.schema_arrow
+            dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
+                namespace='catalog-dependencies-v2', source_schema=schema, max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
+        else:
+            raise ValueError('Catalog adoption requires an existing exact catalog pair')
+        result = adopt_native_catalog(store, native=raw_storage.native, previous=previous,
+            dependencies=dependencies, candidate=candidate, directory=directory,
+            max_chunk_rows=MAX_ROWS, max_chunk_bytes=MAX_BYTES, rules=dict(interpretation='preserved-exact-values-v1'))
+        result['selected_identity'] = dict(selected_ref=result['selection'],
+            selector_sha256=sha256(encoded(dict(version=2, selection=result['selection']))).hexdigest())
+        return result
 
 
 def parser():
@@ -103,6 +179,7 @@ def parser():
                       help="Add retained evidence to document tables, preserving existing metadata; no acquisition")
     mode.add_argument("--rebuild-only", action="store_true",
                       help=argparse.SUPPRESS)
+    add_catalog_modes(mode)
     p.add_argument(
         "--local-mirror",
         type=Path,
@@ -222,7 +299,7 @@ def connect_storage(args, log):
             response_checksum_validation="when_required",
         )
         async_options = {}
-        if not (args.plan_only or args.update_only):
+        if operation_mode(args) == 'capture':
             from aiobotocore.session import get_session
             async_options['async_client'] = lambda: get_session().create_client(
                 's3', **client_args, config=storage_config)
@@ -243,6 +320,14 @@ def connect_storage(args, log):
 
 
 def run(args, log, *, store=None, raw_storage=None):
+    mode = operation_mode(args)
+    metadata_only = mode not in {'capture', 'plan'}
+    if args.upgrade_source_rules is not None and not args.upgrade_source_rules.strip():
+        raise SystemExit('A source rule upgrade requires an explicit nonempty rule version')
+    if args.adopt_catalog is not None and not args.adopt_catalog.strip():
+        raise SystemExit('Catalog adoption requires a nonempty stable operation name')
+    if mode in {'adopt-raw', 'adopt-catalog'} and args.seed:
+        raise SystemExit('Exact adoption does not accept seed changes')
     if args.retry_now and (not args.urls or not args.retry_outcome or not args.capture_only or args.reinspect_retained):
         raise SystemExit('--retry-now requires --capture-only, --urls and --retry-outcome')
     if set(args.retry_outcome) - {'retry_later', 'request_failed'} and not args.urls:
@@ -259,12 +344,13 @@ def run(args, log, *, store=None, raw_storage=None):
             raise SystemExit('--urls must contain a JSON array of nonempty URL strings')
     if args.retry_outcome and (not args.capture_only or args.initial_only or args.repair or args.seed):
         raise SystemExit("--retry-outcome requires --capture-only without --initial-only, --repair or --seed")
-    if args.initial_only and (args.repair or args.rebuild_only or args.update_only or args.plan_only):
+    if args.initial_only and (args.repair or args.rebuild_only or mode != 'capture'):
         raise SystemExit("--initial-only requires acquisition without --repair")
     if args.inspect_bodies:
         raise SystemExit("--inspect-bodies requires scoped native reprocessing; use explicit retained URL reinspection")
     if args.rebuild_only or args.repair:
         raise SystemExit("Full rebuild and repair are not operational routes; use --update-only or explicit reviewed adoption")
+    raw_inputs = adoption_inputs(args.adopt_raw) if args.adopt_raw else None
     if raw_storage is None:
         if args.native_config is None:
             raise SystemExit('--native-config is required; raw archive adoption is explicit')
@@ -274,14 +360,19 @@ def run(args, log, *, store=None, raw_storage=None):
     if store is None:
         store = connect_storage(args, log)
     if raw_storage is None:
-        raw_storage = RawStorage.open(store, native)
-    metadata_only = args.update_only
+        if raw_inputs is not None:
+            import pyarrow.parquet as pq
+            with pq.ParquetFile(raw_inputs['paths']['state']) as state:
+                raw_storage = RawStorage(store, native, state_schema=state.schema_arrow)
+        else:
+            raw_storage = RawStorage.open(store, native)
+    if raw_storage.store is not store:
+        raise ValueError('Raw/catalog commands must share one guarded store owner')
     if not args.plan_only and not metadata_only and not args.reinspect_retained and args.transport in {"auto", "zyte"}:
         zyte.token()
     run_id = (
         datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + uuid4().hex[:12]
     )
-    mode = 'update' if args.update_only else 'plan' if args.plan_only else 'capture'
     with log.lock:
         log.state.update(run_id=run_id, mode=mode)
     summary = dict(mode=mode,
@@ -306,16 +397,37 @@ def run(args, log, *, store=None, raw_storage=None):
                 save_summary(args.summary, summary)
                 summary.update(capture_sources(args, store, run_id, raw_storage=raw_storage))
                 summary['acquisition_status'] = 'completed'
-            if not args.capture_only:
+            if mode == 'adopt-raw':
+                from congress_api.retention.raw_adoption import adopt_archive
+                active_stage = 'raw_adoption_status'
+                summary[active_stage] = 'running'
+                save_summary(args.summary, summary)
+                candidate = sha256(raw_inputs['operation'].encode()).hexdigest()[:32]
+                directory = (args.catalog_directory or args.summary.with_suffix('.catalog-update')) / ('adopt-raw-' + candidate)
+                selected = adopt_archive(raw_storage, directory=directory, **raw_inputs)
+                summary['raw_adoption'] = dict(identity=selected.identity)
+                summary[active_stage] = 'completed'
+            elif not args.capture_only:
                 active_stage = 'catalog_status'
                 summary['catalog_status'] = 'running'
                 save_summary(args.summary, summary)
                 raw_identity = raw_storage.snapshot().identity
-                candidate = raw_identity[:32]
+                candidate = (raw_identity[:32] if mode == 'update' or mode == 'capture' else
+                    sha256(json.dumps([mode, args.adopt_catalog if mode == 'adopt-catalog' else raw_identity,
+                                       args.upgrade_source_rules], separators=(',', ':')).encode()).hexdigest()[:32])
                 directory = (args.catalog_directory or args.summary.with_suffix('.catalog-update')) / candidate
-                summary['catalog'] = update_from_raw(store, raw_storage=raw_storage,
-                    directory=directory, candidate=candidate,
-                    seeds=seed_files(args.seed) if args.seed else ())
+                options = dict(raw_storage=raw_storage, directory=directory, candidate=candidate)
+                if mode == 'adopt-catalog':
+                    summary['catalog'] = adopt_catalog(store, **options)
+                else:
+                    operation = update_from_raw
+                    if mode in {'qualify-sources', 'upgrade-source-rules'}:
+                        from congress_api.retention import raw_catalog
+                        operation = (raw_catalog.qualify_source_contributions if mode == 'qualify-sources'
+                                     else raw_catalog.upgrade_source_rules)
+                    if mode == 'upgrade-source-rules':
+                        options['rule_version'] = args.upgrade_source_rules
+                    summary['catalog'] = operation(store, seeds=seed_files(args.seed) if args.seed else (), **options)
                 summary['catalog_status'] = 'completed'
                 summary.setdefault('accounting', {}).update(
                     filename_rows=summary['catalog']['counts']['source_rows'],

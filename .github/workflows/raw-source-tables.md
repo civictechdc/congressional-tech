@@ -1,18 +1,23 @@
 # Raw source document table updates
 
-`capture-raw-sources.yml` saves capture batches and rebuilds the document tables
-in separate runs. Capture persists bodies, receipts and retry state immediately;
-the published tables reflect that evidence after the next successful rebuild.
-Routine updates preserve saved interpretations and add new evidence. Only an
-explicit rebuild reinterprets existing metadata; a fresh archive is built once.
+`capture-raw-sources.yml` saves capture batches and updates the catalog in
+separate runs. Capture retains bodies, receipts and retry state immediately;
+the published catalog reflects that evidence after the next successful update.
+Ordinary updates read selected raw changes and their affected dependencies. They
+preserve saved values and refuse an implicit full rebuild. Existing archives
+require explicit exact-value adoption and source-contribution qualification.
 
 | Trigger | Operation |
 | --- | --- |
 | Relevant code pushed to `main` | Validate Python and Rust; no archive reads or writes |
-| Manual dispatch, `mode=update` (default) | Add new evidence, preserving saved metadata; no acquisition |
-| Manual dispatch, `mode=rebuild` | Reinterpret all retained metadata with current rules; no acquisition |
-| Manual dispatch, `mode=capture` | Capture missing sources; leave published tables unchanged |
-| Daily at 03:23 UTC | Add accumulated evidence, preserving saved metadata; no acquisition |
+| Manual dispatch, `mode=update` (default) | Apply new retained evidence incrementally; no acquisition |
+| Manual dispatch, `mode=capture` | Capture missing sources; leave published catalog unchanged |
+| Daily at 03:23 UTC | Apply accumulated evidence incrementally; no acquisition |
+
+All archive operations require an explicit `--native-config` for the maintained
+DocSpec runtime. Hosted jobs require its configured distribution and execution
+inputs; missing configuration refuses execution. A local passing test does not
+establish hosted deployment or production adoption.
 
 Acquisition uses explicit dispatches so a failed or unverified batch cannot be
 followed automatically by a scheduled capture. The population monitor dispatches
@@ -69,7 +74,7 @@ states, queue accounting, all new metadata parts, and a deterministic body sampl
 body or reused metadata reading. Reports and summaries are uploaded as artifacts.
 A failed job or missing verification report stops automatic continuation.
 
-## Checkpoint identity and transition
+## Legacy checkpoint background before native adoption
 
 New capture and catalog checkpoints store `rows-v1:<sha256>` in `capture_digest`.
 The digest includes ordered field names, types and nullability, the row count,
@@ -87,10 +92,10 @@ checkpoints have transitioned.
 
 A missing digest/cursor field, invalid cursor, unknown digest version or digest
 mismatch stops ordinary acquisition or updating before recovery/publication.
-A historical archive without either checkpoint field can still bootstrap. For
-an incompatible legacy checkpoint, use its original writer to verify it first;
-only explicitly requested repair/rebuild can replay after investigation. Do not
-change a saved digest to bypass verification.
+Use the original writer to investigate incompatible legacy checkpoints before
+preparing exact adoption inputs. The current operational CLI refuses `--repair`
+and `--rebuild-only`; neither flag authorizes bypassing verification. Preserve
+the original checkpoint bytes and never replace a saved digest to force a match.
 
 The new format is a forward transition. Finish any old writer before dispatching
 a new one, and update pinned continuation branches before resuming automation.
@@ -98,132 +103,106 @@ Do not run an older revision after new checkpoints have been saved: it cannot
 understand `rows-v1` and may fall back to replay. Downgrades require an explicit
 compatibility plan; CI's shared writer lock alone does not enforce code versions.
 
-## Table rebuild steps
+## Native catalog updates and explicit migration
 
-1. **Inventory known files.** Read capture receipts for filenames, requested/final
-   URLs, response facts and parent/link context. Include links whose files have
-   not been downloaded. New retained parent XML/HTML can supply additional links
-   and publisher labels. The existing filename table supplies unchanged facts.
-2. **Extract useful metadata.** Run house-naming on new or changed filename
-   inputs, combine its fields with source metadata, and group proved aliases.
-   Opening retained document contents is optional (`--inspect-bodies`).
+DocSpec owns exact completed data versions. `indexes/raw.json` selects coherent
+capture, URL-state and reading references. `indexes/catalog.json` selects a
+coherent native catalog and its retained source/dependency evidence. The filename
+view preserves source observations and document mappings; the document view
+combines proved aliases using the maintained grouping rules. Readers pin one
+selection. A failed update or losing conditional write leaves the old selection
+readable. Original Parquet files, receipts, bodies, IDs, mappings and review data
+remain retained.
 
-The two public tables retain distinct views of the same catalog:
+An unchanged incremental update checks its selected identity and publishes
+nothing. Changed raw deliveries replay their affected receipt/body dependencies.
+Native lookup and output leaves have finite row and decoded-byte limits. SQLite
+holds affected rows and memberships on disk. Explicit continuation directories
+keep completed native chunks and completed component summaries for retry.
+Restart still reconstructs disposable grouping indexes and emits final tables;
+it skips completed metadata combination. One document summary can exceed the
+16 MiB leaf budget; that row refuses admission without truncating its values.
 
-| File | Contents |
-| --- | --- |
-| `catalog-generations/<generation>/document-filenames.parquet` | Exact file/URL observations, receipt locators, source context and per-filename fields |
-| `catalog-generations/<generation>/documents.parquet` | Grouped documents, extracted metadata and all known aliases |
+Existing file catalogs require these separate, explicit steps:
 
-`indexes/catalog.json` selects both immutable files together after their IDs,
-checksums, and row counts pass validation. Consumers read this selection once
-and use the named pair. Root `indexes/document-filenames.parquet` and
-`indexes/documents.parquet` are migration inputs only when no selection exists.
-A corrupt or incomplete selected generation fails instead of falling back to
-unselected roots. An interrupted generation upload leaves the last selected
-pair readable. A competing writer must pass the conditional selection update.
-Local commands stage outputs outside the archive, preserving legacy root files
-even during the first migration. Their results return the selected generation's
-file paths.
+1. Adopt the exact existing catalog pair with `--adopt-catalog OPERATION`.
+   This reads every selected source/document value back from native storage and
+   verifies IDs, mappings and original row order; it does not regroup or classify.
+2. Adopt investigated capture/state files and the exact retained reading inventory
+   with `--adopt-raw INPUTS_JSON`. Pin the already adopted catalog identity in the
+   receipt's `filename_version`. The maintained bounded owner performs one raw
+   selection only after its source and input checks succeed.
+3. Run `--qualify-sources` against the adopted selections. It replays the complete
+   retained source inventory and requires every selected source/document value
+   and ID mapping to remain exact. A mismatch refuses publication for investigation.
+4. Resume `--update-only` for ordinary changes. A later global source-rule change
+   requires `--upgrade-source-rules VERSION` after contribution qualification.
+   The nonempty version names that deliberate change; it cannot authorize source
+   acquisition, dropping old ownership, or implicit legacy reconstruction.
 
-Raw receipts and bodies remain authoritative. The capture index locates those
-receipts; the filename table is the reusable inventory. There is no additional
-saved source graph or filename-result table. Old `indexes/processing/sources.parquet`
-and `filenames.parquet` objects are ignored; this change does not delete archive data.
+Raw adoption receipts are small JSON files with explicit local paths and SHA-256
+pins. Relative paths resolve beside the receipt. Retain the receipt and continuation
+directory when retrying:
 
-An unchanged update reads neither receipts nor bodies and publishes nothing.
-On new captures, it replays new source records. Scoped meeting facts may be read
-from older Congress.gov receipts, and exact URL/body recovery may read older
-receipts; ordinary updates do not download all existing document bodies.
-Discovery observations retained with each download automatically carry the
-referring page and any proven hearing/committee ancestry to later files. Exact
-recorded links and redirects establish these paths; shared filenames or domains
-do not. Missing parent evidence stays unknown.
+```json
+{
+  "version": 1,
+  "operation": "investigated-raw-adoption-20261020",
+  "inputs": {
+    "captures": {"path": "captures.parquet", "sha256": "<64 lowercase hex characters>"},
+    "state": {"path": "state.parquet", "sha256": "<64 lowercase hex characters>"}
+  },
+  "filename_version": {
+    "selector_sha256": "<exact adopted catalog selector SHA-256>",
+    "selected_ref": {"key": "<exact selected metadata key>", "bytes": 0, "sha256": "<exact metadata SHA-256>"}
+  }
+}
+```
 
-Catalogs without the current `source_lineage_version` replay all recurring
-download receipts once, using the prior pair's legacy publisher observations.
-When the other inputs are unchanged, this refresh rewrites only provenance
-columns and checks every other value for equality. It preserves file/group IDs,
-classifications, saved bodies, recovery decisions and availability. Missing
-receipts fail the refresh before publication. The resulting metadata records
-completion, so ordinary updates do not repeat the backfill.
-
-The viewer publisher follows successful capture/catalog updates and also checks
-the selected R2 catalog every 30 minutes. It publishes verified immutable files,
-then selects their manifest. Open viewers check for new data each minute and
-on focus; both the list and detail panel offer **Load latest data**. Review links
-keep their original snapshot until the user chooses that action.
-Code changes alone do not invalidate source, filename, body, or document-group
-metadata. `--rebuild-only` (or the legacy explicit `--repair`) replays source
-interpretation from receipts and retained parent pages. With `--inspect-bodies`,
-that explicit rebuild also replaces saved body readings. New evidence can still
-change affected alias groups during an ordinary update. Implementation fingerprints
-describe the build; reused values may predate it. Earlier published generations
-retain their original metadata.
-
-Optional content inspection keeps one disposable result cache,
-`indexes/processing/bodies.parquet`, keyed by reader and body digest. This avoids
-repeating expensive PDF work, including inspections that found no classification.
-Missing bodies remain retryable. Only explicit inspection writes this cache;
-completed readings are saved approximately every minute and at stage exit.
-Metadata-only updates preserve earlier content readings and their reader version.
-An interrupted source/filename build reruns unpublished work from the receipts
-and last published inventory; there is no promise of resuming its internal join.
-
-Acquisition loads download state, applies new capture rows and imports changed
-inventory URLs. Unindexed receipt batches recover interrupted acquisition.
-Filename enrichment consumes source rows in batches, gathers shared facts, and
-writes one temporary Parquet stream. After all aliases are known, it reads that
-stream once into grouping. It does not rewrite the rows after each enrichment
-step. A disposable SQLite database supplies indexed lookups and grouping; it is
-working storage, not a published format or service. Previous filename and body
-interpretations are restored together, independent of code fingerprints.
+Copy the complete `filename_version` from the verified adopted catalog identity;
+the displayed metadata reference is illustrative, not an executable seed. Raw
+state retains its complete investigated Arrow schema, including extra typed fields.
+The legacy body-reader cache is a source for explicit adoption only. Normal
+native updates use the selected keyed reading inventory and do not scan that cache.
 
 ## Commands
 
-Save a capture batch without rebuilding document tables:
+Use the same explicit native configuration and retain `--catalog-directory`
+between retries. These examples name local input files; do not run adoption
+against an archive without its investigated pins.
 
 ```sh
-raw-source-sync --capture-only
+raw-source-sync --native-config native.json --capture-only
+raw-source-sync --native-config native.json --update-only
+raw-source-sync --native-config native.json --adopt-catalog investigated-pair-20261020
+raw-source-sync --native-config native.json --adopt-raw investigated-raw-inputs.json
+raw-source-sync --native-config native.json --qualify-sources
+raw-source-sync --native-config native.json --upgrade-source-rules source-rules-2
 ```
 
-Update retained metadata without acquisition:
+All four explicit migration modes skip acquisition, provider-token lookup and
+source HTTP worker setup. They use operation-specific continuation identities;
+an interrupted retry uses the same candidate and directory. A changed request
+refuses reuse instead of silently replacing retained work.
+
+The local raw archive command enters the same maintained incremental path:
 
 ```sh
-raw-source-sync --update-only
+document-filename-index .cache/congressional-tech-raw --native-config native.json
+document-filename-index .cache/congressional-tech-raw --native-config native.json --qualify-sources
 ```
 
-Reconstruct the inventory and explicitly inspect retained document contents:
+The local command refuses raw archives without explicit native configuration.
+`--rebuild`, `--repair`, and global `--inspect-bodies` cannot replay them. A
+standalone filename-only input and an explicit `--inventory-dir` import retain
+their separate local utility paths. Scoped retained-body reinspection uses the
+capture command described below and appends new readings without source HTTP.
 
-```sh
-raw-source-sync --rebuild-only --inspect-bodies
-```
-
-The local archive uses the same updater:
-
-```sh
-document-filename-index .cache/congressional-tech-raw
-# Explicitly reinterpret saved metadata:
-document-filename-index .cache/congressional-tech-raw --rebuild
-```
-
-The old `--documents-only`, `--metadata-only` and `--source-metadata-only` flags
-remain accepted as aliases for automatic updating. Callers no longer choose
-legacy refresh paths. Content inspection has one explicit switch. `--inventory-dir` remains a one-time legacy
-inventory import; a standalone filename table can be refreshed without a raw
-archive. Neither local operation fetches upstream sources.
-
-In GitHub Actions, choose **Capture raw sources and rebuild document tables**.
-Leave `repair` and `inspect_bodies` disabled for normal runs. `limit` and `transport` apply only to
-capture mode. Metadata-only runs pass no Zyte token and skip native-fetcher setup.
-`inspect_bodies` requires update or rebuild mode. `repair` in capture mode reconstructs
-capture state; in rebuild mode it replays source interpretation.
-CI capture mode uses `--capture-only` and never invokes the updater. A later
-rebuild reads all captures retained so far, including partial progress from
-failed collection runs. Capture can also resume before that rebuild, using
-saved receipts and retry state to avoid repeating successful downloads.
-New files therefore remain absent from the published tables until a successful
-rebuild; dispatch `mode=update` when an earlier publication is needed.
+GitHub Actions exposes only `update` and `capture`. Metadata-only runs require
+no Zyte token or native source fetcher. Capture mode uses `--capture-only`; a later
+incremental update applies retained progress from successful or interrupted capture
+runs. The workflow does not automatically adopt an existing archive or change
+its global source rules.
 
 Generic ZIP downloads retain both the original archive and its file members.
 Each member keeps its exact name, entry position, parent archive body key and
@@ -269,7 +248,7 @@ The cache uses GitHub's [separate restore and save actions](https://github.com/a
 
 All R2 writers share the `raw-source-mirror` concurrency group with
 `cancel-in-progress: false` and `queue: max`. This serializes writes while allowing
-up to 100 pending runs, so a new capture does not replace a queued rebuild.
+up to 100 pending runs, so a new capture does not replace a queued catalog update.
 GitHub cancels additional runs if that queue is full; schedules are not guaranteed
 start times. See [GitHub's concurrency documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
 Push validation uses a separate `raw-source-validation-<ref>` group, so code checks
@@ -280,9 +259,8 @@ The workflow has read-only repository permissions.
 Before replacement, it validates the paired tables and preserves exact previous
 table bytes in `catalog-history/sha256/`. Conditional writes reject competing
 index updates. Readers must check matching `catalog_id` values; interrupted
-publication leaves the previous selected pair readable. Legacy root files may
-already be unmatched; the rebuild can repair them by publishing a validated
-generation.
+publication leaves the previous selected pair readable. An incomplete or unmatched legacy pair refuses exact adoption and requires
+investigation; ordinary operations never reconstruct a replacement implicitly.
 
 The Actions summary and retained artifact include operation, revision, publication
 result and progress. Live progress is also available at
@@ -301,10 +279,10 @@ the step. Hosted publication requires checking the resulting table pair.
 The [architecture review](../../docs/raw-source-pipeline-review.md) records the
 failure evidence, boundaries, changes and verification limits.
 
-The workflow allows six hours for setup, capture or rebuilding, and verification.
-Capture admission remains bounded to five hours, followed by draining. Separating the jobs avoids paying the
-table rebuild cost on each capture batch; it does not reduce an individual
-rebuild's memory requirement or guarantee a shorter rebuild.
+The workflow allows six hours for setup, capture or catalog updating, and
+verification. Capture admission remains bounded to five hours, followed by
+draining. Separating the jobs avoids repeating catalog work on every capture
+batch; these time limits do not establish a full-corpus memory bound.
 
 
 ## Operational accounting and qualification
