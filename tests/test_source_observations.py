@@ -1,10 +1,12 @@
 """Persist receipt context ownership without rereading unrelated interpretations."""
 from contextlib import closing
 
+import pytest
+
 from test_catalog_dependency_storage import MemoryNative
 from test_raw_source_sync import MemoryStore
 from congress_api.retention.catalog_staging import WorkingCatalog
-from congress_api.retention.source_observations import SourceObservationTrace, SourceObservationStorage, observation_id
+from congress_api.retention.source_observations import SourceObservationTrace, SourceObservationStorage, dependency_id, observation_id
 
 
 def item(key, kind, value, access='read'):
@@ -54,6 +56,44 @@ def test_many_small_receipt_owners_share_one_native_membership_partition(tmp_pat
     assert len(native.tables[native.calls[0]]) == 2000
     with closing(WorkingCatalog(tmp_path / 'one.sqlite')) as work:
         assert list(owner.affected(root, root, [observation_id('page-99', 1)], working=work)) == [observation_id('page-99', 1)]
+
+
+@pytest.mark.parametrize('absent', ['before', 'after'])
+@pytest.mark.parametrize('trigger', ['observation', 'dependency'])
+def test_one_sided_closure_reuses_exact_native_membership(tmp_path, absent, trigger):
+    native, store = MemoryNative(), MemoryStore()
+    options = dict(native=native, store=store, namespace='one-sided-observations',
+                   max_rows=8192, max_bytes=1 << 20)
+    with closing(WorkingCatalog(tmp_path / 'trace.sqlite')) as work:
+        trace = SourceObservationTrace(work)
+        for number in range(4):
+            trace(item(f'page-{number}', 'event', str(number)))
+            trace(item(f'meeting-{number}', 'event', str(number), 'write'))
+        root = SourceObservationStorage(**options).prepare(None, trace)
+    assert len(native.calls) == 1
+    # A fresh owner must load the selected leaf once; an absent old/new graph
+    # contributes no edges and must not evict that exact immutable read.
+    owner = SourceObservationStorage(**options)
+    native.reads.clear()
+    before, after = (None, root) if absent == 'before' else (root, None)
+    observations = [observation_id('meeting-1', 1)] if trigger == 'observation' else []
+    dependencies = [dependency_id('event', '1')] if trigger == 'dependency' else []
+    with closing(WorkingCatalog(tmp_path / 'affected.sqlite')) as work:
+        affected = list(owner.affected(before, after, observations, working=work,
+                                       changed_dependencies=dependencies))
+    assert affected == sorted(observation_id(key, 1) for key in ['page-1', 'meeting-1'])
+    assert native.reads == native.calls
+
+
+def test_absent_graphs_keep_explicit_observations_without_native_reads(tmp_path):
+    native, store = MemoryNative(), MemoryStore()
+    owner = SourceObservationStorage(native=native, store=store, namespace='empty-observations',
+                                     max_rows=8192, max_bytes=1 << 20)
+    observation = observation_id('deleted', 1)
+    with closing(WorkingCatalog(tmp_path / 'empty.sqlite')) as work:
+        assert list(owner.affected(None, None, [observation], working=work,
+                                   changed_dependencies=[dependency_id('event', '7')])) == [observation]
+    assert native.reads == []
 
 
 def test_retained_receipt_xml_replay_persists_inherited_event_dependency_without_classification(tmp_path, monkeypatch):

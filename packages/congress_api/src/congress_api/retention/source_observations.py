@@ -225,6 +225,9 @@ class SourceObservationStorage:
         readers change. Separate reverse read/write keys keep that distinction
         bounded when many pages refer to the same unresolved event identifier.
         """
+        # An absent graph contributes no edges. Looking it up would evict the
+        # selected graph's validated immutable leaf between closure lookups.
+        roots = tuple(root for root in (before, after) if root is not None)
         db = working.connection
         db.executescript('CREATE TABLE affected_observations(observation TEXT PRIMARY KEY,changed INTEGER,done INTEGER); '
             'CREATE TABLE affected_dependencies(dependency TEXT,access TEXT,PRIMARY KEY(dependency,access));')
@@ -235,7 +238,7 @@ class SourceObservationStorage:
         def owners(dependency, access, changed):
             if not db.execute('INSERT OR IGNORE INTO affected_dependencies VALUES (?,?)', (dependency, access)).rowcount:
                 return
-            for root in (before, after):
+            for root in roots:
                 for member in self.members.values(root, access + ':' + dependency):
                     include(member, changed)
         def impact(dependency):
@@ -248,7 +251,7 @@ class SourceObservationStorage:
             impact(dependency)
         while pending := db.execute('SELECT observation,changed FROM affected_observations WHERE done<changed LIMIT 1').fetchone():
             observation, changed = pending
-            for root in (before, after):
+            for root in roots:
                 for outgoing in self.members.values(root, observation):
                     dependency, access = json.loads(outgoing)
                     self._validate_key(dependency)
