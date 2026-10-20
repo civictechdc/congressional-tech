@@ -29,13 +29,16 @@ class CatalogMemberships:
 
     def _groups(self, value):
         if value is None:
+            self._cached_leaf = None
             return {}
         if value.get('kind') == 'members':
+            self._cached_leaf = None
             if (not isinstance(value.get('alias'), str) or type(value.get('count')) is not int
                     or value['count'] < 1 or value.get('root') is None):
                 raise DependencyGap('Invalid large-alias dependency metadata')
             return {value['alias']: value}
         if value.get('kind') != 'rows':
+            self._cached_leaf = None
             raise DependencyGap('Unknown alias dependency leaf format')
         # Retain only one fully validated immutable leaf per schema owner. Many
         # aliases share that leaf; looking up each alias must not reread and
@@ -66,11 +69,13 @@ class CatalogMemberships:
         """Stream one alias's members with at most one native leaf resident."""
         _, value = self.routes.lookup(root, alias)
         if value is None:
+            self._cached_leaf = None
             return
         if value.get('kind') == 'rows':
             yield from (row[self.member_column] for row in self._groups(value).get(
                 alias, pa.Table.from_pylist([], schema=self.schema)).to_pylist())
             return
+        self._cached_leaf = None
         if value.get('kind') != 'members':
             raise DependencyGap('Unknown alias dependency leaf format')
         if alias != value.get('alias'):

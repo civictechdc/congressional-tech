@@ -143,3 +143,28 @@ def test_failed_leaf_validation_is_not_cached_and_retry_can_succeed(failure):
     assert list(memberships.values(root, 'event:7')) == ['first']
     assert list(memberships.values(root, 'event:7')) == ['first']
     assert len(calls) == 2
+
+
+def test_small_leaf_evicted_before_streaming_large_alias_and_on_missing_selection():
+    _, memberships = owner()
+    small = memberships.replace(None, {'event:7': ['first']})
+    large_members = [f'receipt-{i}' for i in range(20)]
+    large = memberships.replace(None, {'event:8': iter(large_members)})
+    reads = counted_reads(memberships)
+    assert list(memberships.values(small, 'event:7')) == ['first']
+    small_pin = reads[0][0]
+    original = memberships._read
+    def read_large_without_retained_small(pin, schema):
+        if pin != small_pin:
+            assert memberships._cached_leaf is None
+        return original(pin, schema)
+    memberships._read = read_large_without_retained_small
+    assert set(memberships.values(large, 'event:8')) == set(large_members)
+    assert list(memberships.values(small, 'event:7')) == ['first']
+    assert sum(pin == small_pin for pin, _ in reads) == 2
+    assert list(memberships.values(None, 'event:7')) == []
+    assert list(memberships.values(small, 'event:7')) == ['first']
+    assert sum(pin == small_pin for pin, _ in reads) == 3
+    assert memberships._groups(None) == {}
+    assert list(memberships.values(small, 'event:7')) == ['first']
+    assert sum(pin == small_pin for pin, _ in reads) == 4
