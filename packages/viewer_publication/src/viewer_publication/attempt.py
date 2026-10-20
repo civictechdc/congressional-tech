@@ -5,9 +5,8 @@ import hashlib
 import json
 import os
 import re
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 import subprocess
-import tempfile
 import uuid
 from datetime import datetime, timezone
 
@@ -40,7 +39,7 @@ def record_input(publisher, client, key, optional=False):
     return {'value': value, 'etag': etag, 'modified': modified, 'sha256': digest}
 
 
-def prepare(publisher, client, root, *, run_id, run_attempt, public_url):
+def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=None):
     """Read inputs and accept complete local output; perform no publication writes."""
     selected = record_input(publisher, client, 'indexes/catalog.json')
     previous = record_input(publisher, client, publisher.PREFIX + 'manifest.json', optional=True)
@@ -63,6 +62,20 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url):
         if result['status'] == 'unchanged':
             return result
         mode = 'recovery'
+    if selected['value'].get('version') != 2:
+        raise ValueError('Viewer updates require explicitly adopted native catalog storage')
+    if native is None:
+        from congress_api.retention.docspec import NativeDatasets
+        configuration = os.environ.get('DOCSPEC_CONFIG')
+        if not configuration:
+            raise ValueError('Native viewer preparation requires explicit DOCSPEC_CONFIG or --native-config')
+        native = NativeDatasets.from_config(configuration)
+    from congress_api.retention.catalog_publication import read_catalog
+    from congress_api.retention.r2 import R2Store
+    snapshot = read_catalog(R2Store(client, publisher.BUCKET), native=native)
+    if (snapshot.manifest != selected['value'] or snapshot.identity['selector_sha256'] != selected['sha256']
+            or snapshot.version != selected['etag']):
+        raise ValueError('Catalog changed before native viewer preparation')
     binding['mode'] = mode
     continuation = Continuation(root, binding)
     publication = root / 'publication'
@@ -70,47 +83,18 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url):
     def build():
         nonlocal inventory_proof
         identities = {}
-        if mode == 'recovery':
-            pointer = previous['value']
-            manifest, _, _ = publisher.read_json(client, publisher.PREFIX + pointer['manifest'])
-            release = str(PurePosixPath(pointer['manifest']).parent) + '/'
-            for name in ('filenames', 'groups'):
-                item = manifest['files'][name]
-                path = publication / item['path']
-                if not path.resolve().is_relative_to(publication.resolve()):
-                    raise ValueError('Invalid prepared recovery path')
-                path.parent.mkdir(parents=True, exist_ok=True)
-                client.download_file(publisher.BUCKET, publisher.PREFIX + release + item['path'], str(path))
-            # Accept the complete status once. The original table identities stay
-            # bound in that status; the recovery artifact needs only its output.
-            input_proof = verify_inventory(publication,
-                {manifest['files'][name]['path']: manifest['files'][name] for name in ('filenames', 'groups')},
-                context=binding)
-            publisher.prepare_recovery(publication, manifest,
-                tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')), validation=input_proof)
-            for name in ('filenames', 'groups'):
-                (publication / manifest['files'][name]['path']).unlink()
-        else:
-            import importlib.util
-            spec = importlib.util.spec_from_file_location('prepared_viewer_builder', Path(publisher.__file__).with_name('publish-filename-viewer.py'))
-            builder = importlib.util.module_from_spec(spec); spec.loader.exec_module(builder)
-            with tempfile.TemporaryDirectory(prefix='viewer-source-', dir=root.parent) as folder:
-                source = Path(folder)
-                (source / 'indexes').mkdir()
-                (source / 'indexes/catalog.json').write_bytes(publisher.encoded(selected['value']))
-                for item in selected['value']['files'].values():
-                    key = item['key']
-                    if not key.startswith('catalog-generations/' + selected['value']['generation'] + '/') or '..' in PurePosixPath(key).parts:
-                        raise ValueError('Invalid immutable source location')
-                    path = source / key; path.parent.mkdir(parents=True, exist_ok=True)
-                    client.download_file(publisher.BUCKET, key, str(path))
-                manifest = builder.publish(source, publication, selected['modified'])
-                identities = dict(getattr(manifest, 'identities', {}))
-                proof = (issue_inventory(publication, identities, context=binding) if identities else
-                         verify_inventory(publication, {str(p.relative_to(publication)): None for p in publication.rglob('*') if p.is_file()}, context=binding))
-                identities = dict(proof.identities)
-                publisher.prepare_recovery(publication, manifest,
-                    tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')), validation=proof)
+        import importlib.util
+        from viewer_publication.native import prepare_native_output
+        spec = importlib.util.spec_from_file_location('prepared_viewer_builder', Path(publisher.__file__).with_name('publish-filename-viewer.py'))
+        builder = importlib.util.module_from_spec(spec); spec.loader.exec_module(builder)
+        manifest, recovery = prepare_native_output(publisher, builder, client, snapshot, publication,
+            accepted_record=tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')),
+            viewer_record=tuple(previous[k] for k in ('value', 'etag', 'modified', 'sha256')),
+            recovery_only=mode == 'recovery')
+        identities = dict(manifest.identities)
+        proof = issue_inventory(publication, identities, context=binding)
+        publisher.prepare_recovery(publication, manifest,
+            tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')), validation=proof, index=recovery)
         publisher.validate_prepared_output(publication, manifest)
         (publication / 'manifest.json').write_bytes(publisher.encoded(manifest))
         for name in ('manifest.json', 'recovery-prepared.json'):
@@ -128,14 +112,14 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url):
     continuation.save('preparation.json', receipt_bytes)
     result = {'status': 'prepared', 'mode': mode, 'preparation_sha256': receipt_digest,
               'artifact_name': f'viewer-prepared-{run_id}-{run_attempt}-{receipt_digest}',
-              'attempt': f'{run_id}-{run_attempt}-{receipt_digest}', 'catalog_id': selected['value']['catalog_id']}
+              'attempt': f'{run_id}-{run_attempt}-{receipt_digest}', 'catalog_id': manifest['info']['catalog_id']}
     continuation.save('prepared-result.json', publisher.encoded(result))
     verify_prepared(publisher, root, validation=inventory_proof)
     return result
 
 
 def verify_prepared(publisher, root, *, validation=None):
-    """Verify every accepted output including all 256 source-ID shard hashes."""
+    """Verify every accepted output and exact stable selection/control custody."""
     receipt = json.loads((root / 'preparation.json').read_text())
     if receipt.get('version') != 1 or receipt['binding']['code_runtime'] != content_identity(publisher):
         raise ValueError('Prepared runtime, code or review identities changed')
@@ -165,7 +149,7 @@ def verify_prepared(publisher, root, *, validation=None):
     expected = {'status': 'prepared', 'mode': receipt['binding']['mode'], 'preparation_sha256': receipt_digest,
                 'artifact_name': f'viewer-prepared-{run_id}-{run_attempt}-{receipt_digest}',
                 'attempt': f'{run_id}-{run_attempt}-{receipt_digest}',
-                'catalog_id': receipt['binding']['source']['value']['catalog_id']}
+                'catalog_id': manifest['info']['catalog_id']}
     if result != expected:
         raise ValueError('Prepared receipt digest or attempt identity differs')
     protected = {name: tuple(receipt['binding'][name][key] for key in ('value', 'etag', 'modified', 'sha256'))
