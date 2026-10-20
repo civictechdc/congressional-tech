@@ -1,6 +1,6 @@
 ---
 id: ct-upte
-status: in_progress
+status: closed
 deps: [ct-l5q1]
 links: []
 created: 2026-10-20T07:43:10Z
@@ -22,3 +22,9 @@ Reuse a strictly bounded, exact-pin validated leaf within the maintained Catalog
 
 Red/green tests prove repeated alias queries sharing a leaf decode it once, changed pins or metadata revalidate, and eviction stays bounded. Re-run the retained4/40 integrated cases after the code change, report all counters and remaining shared-leaf amplification, prove exact values/IDs/publication hashes, and independently review.
 
+
+## Notes
+
+**2026-10-20T07:58:31Z**
+
+Implemented and independently reviewed bounded two-entry immutable membership reuse; combined retained Arrow bytes stay within the existing leaf budget. Local integration11tests pass; agent62focused tests pass. Identical4/40 fixture checks reduce append native reads105→21 while preserving values,IDs,old pins,old publication hashes and all write counters. Evidence: output/incremental-updates-20261019/end-to-end/cache-pair/receipt.md and review-merge/root-membership-cache-review.md. Remaining shared-leaf amplification is documented; ct-2ukk stays open.
