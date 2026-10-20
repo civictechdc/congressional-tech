@@ -1,7 +1,7 @@
 ---
 id: ct-2ukk
 status: open
-deps: [ct-dat9]
+deps: [ct-dat9, ct-7e7q]
 links: []
 created: 2026-10-20T02:20:22Z
 type: task
