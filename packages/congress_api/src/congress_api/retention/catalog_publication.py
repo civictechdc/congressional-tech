@@ -14,6 +14,8 @@ import weakref
 
 from congress_api.retention.derived_files import file_identity, check_identity
 
+import pyarrow as pa
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from congress_api.retention import raw_progress as progress
@@ -166,6 +168,60 @@ def publish_catalog(store, filenames_path, documents_path, *, previous, validati
     progress.report('catalog_published', completed=1, total=1, unit='generations')
     return {'manifest_key': MANIFEST_KEY, 'generation': generation, 'catalog_id': catalog_id,
             'filenames_key': files['filenames']['key'], 'documents_key': files['documents']['key']}
+
+
+def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate,
+                                  schema, max_chunk_rows, max_chunk_bytes):
+    """Retain rewritten bounded chunks as independent native candidates.
+
+    The caller binds ``candidate`` to its exact base, semantic change, application
+    rule versions and chunking requirements. Reusing that identity with different
+    bytes refuses through native operation conflict. Completed chunks survive a
+    later preparation failure; repeating the same candidate reuses native Run.
+
+    These descriptors establish neither complete dependency scope nor source /
+    document reference validity. The catalog owner supplies those checks before
+    the existing application selector may choose a prepared combination.
+    """
+    from congress_api.retention.catalog_partitions import CatalogTable
+    from congress_api.retention.immutable_metadata import encoded
+
+    if (label not in {'filenames', 'documents'} or not isinstance(component, str) or not component
+            or not isinstance(candidate, str) or not candidate or not isinstance(schema, pa.Schema)
+            or '_catalog_order' in schema.names
+            or type(max_chunk_rows) is not int or max_chunk_rows < 1
+            or type(max_chunk_bytes) is not int or max_chunk_bytes < 1):
+        raise ValueError('Native catalog preparation requires an explicit candidate, schema and chunk budget')
+    prepared, last_order = [], None
+    for index, table in enumerate(chunks):
+        if not isinstance(table, pa.Table):
+            raise TypeError('Catalog chunks must be typed Arrow tables')
+        if table.num_rows > max_chunk_rows or table.nbytes > max_chunk_bytes:
+            raise ValueError('Catalog table exceeds its native chunk budget')
+        if (table.column_names.count('_catalog_order') != 1
+                or not pa.types.is_int64(table.schema.field('_catalog_order').type)):
+            raise ValueError('Catalog chunk order field must be int64')
+        logical = pa.schema([field for field in table.schema if field.name != '_catalog_order'],
+                            metadata=table.schema.metadata)
+        if not logical.equals(schema, check_metadata=True):
+            raise ValueError('Catalog chunk application schema differs')
+        order = table['_catalog_order']
+        if order.null_count or len(pc.unique(order)) != table.num_rows:
+            raise ValueError('Catalog chunk order values must be nonnull and unique')
+        if not table.num_rows:
+            continue
+        extrema = pc.min_max(order).as_py()
+        if last_order is not None and extrema['min'] <= last_order:
+            raise ValueError('Catalog chunk order ranges overlap or are out of order')
+        last_order = extrema['max']
+        dataset = 'catalog-' + label + '-' + sha256(encoded([candidate, component, index])).hexdigest()
+        release = native.run_table(table, dataset=dataset, operation='initial', definition='catalog-chunk-v1')
+        checked = CatalogTable(schema, [(dataset, release)], native=native)
+        if checked.rows != table.num_rows:
+            raise ValueError('Prepared native catalog chunk row count differs')
+        prepared.append(dict(name=dataset, release=release, rows=table.num_rows,
+                             arrow_bytes=table.nbytes, order_min=extrema['min'], order_max=extrema['max']))
+    return prepared
 
 
 def local_catalog_paths(root):
