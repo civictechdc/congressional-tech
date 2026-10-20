@@ -18,3 +18,9 @@ Evaluate one existing dependency/count consumer against DocSpec incremental refr
 
 Supported remote operation plus exact append/correction/delete/duplicate/null and old/new dependency tests; prove unrelated files reused and measure complete path. No claim of arbitrary incremental SQL.
 
+
+## Notes
+
+**2026-10-20T18:35:21Z**
+
+User explicitly authorized extending DocSpec-rs itself for R2 support on2026-10-20. Implement in isolated native worktrees, qualify locally before isolated provider tests, preserve production data and mappings. Backend refusal is a dependency to solve, not grounds for closing this ticket as deferred.

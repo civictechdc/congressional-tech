@@ -18,3 +18,9 @@ Evaluate native evidence updates for source provenance/annotations without rewri
 
 Exact local/provider preservation and recovery tests, measured unchanged source bytes, no reinstated or silently withdrawn reviews. Real consumer migration required before closure.
 
+
+## Notes
+
+**2026-10-20T18:35:21Z**
+
+User explicitly authorized extending DocSpec-rs itself for R2 support on2026-10-20. Implement in isolated native worktrees, qualify locally before isolated provider tests, preserve production data and mappings. Backend refusal is a dependency to solve, not grounds for closing this ticket as deferred.

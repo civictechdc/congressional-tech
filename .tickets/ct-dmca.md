@@ -18,3 +18,9 @@ DocSpec currently refuses these operations on remote storage. Identify the first
 
 R2-capable implementation and isolated provider qualification for supported rename/addition/scalar field changes, exact old/new reads and interruption reuse. No production data migration or blanket removal of native backend guards. Unsupported nested edits remain explicit.
 
+
+## Notes
+
+**2026-10-20T18:35:21Z**
+
+User explicitly authorized extending DocSpec-rs itself for R2 support on2026-10-20. Implement in isolated native worktrees, qualify locally before isolated provider tests, preserve production data and mappings. Backend refusal is a dependency to solve, not grounds for closing this ticket as deferred.

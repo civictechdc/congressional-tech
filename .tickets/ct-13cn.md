@@ -18,3 +18,9 @@ Reuse DocSpec compare/changes for a concrete diagnostic consumer after remote su
 
 Native remote compare/change route and bounded diagnostic output qualified against an independent reference. Report reads and elapsed time; never treat metadata equality as semantic equality.
 
+
+## Notes
+
+**2026-10-20T18:35:21Z**
+
+User explicitly authorized extending DocSpec-rs itself for R2 support on2026-10-20. Implement in isolated native worktrees, qualify locally before isolated provider tests, preserve production data and mappings. Backend refusal is a dependency to solve, not grounds for closing this ticket as deferred.
