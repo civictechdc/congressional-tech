@@ -1,5 +1,6 @@
 """Transport lifetimes and refusals, including real maintained native execution."""
 from copy import deepcopy
+import io
 import json
 import os
 import shutil
@@ -170,7 +171,9 @@ def test_startup_timeout_reaps_child(tmp_path):
 
 @pytest.mark.parametrize('change', [
     {'protocol': 'other'}, {'version': 0}, {'version': True}, {'pid': 1},
-    {'pid': True}, {'capabilities': []}, {'address': '192.0.2.1:7391'},
+    {'pid': True}, {'capabilities': []}, {'capabilities': ['request-deadline']},
+    {'capabilities': ['request-deadline', {}]},
+    {'address': '192.0.2.1:7391'},
     {'address': '127.0.0.1:0'}, {'address': 'localhost:7391'},
     {'address': 'user@127.0.0.1:7391'},
 ])
@@ -178,6 +181,7 @@ def test_invalid_readiness_refuses_before_http_and_reaps_owned_child(tmp_path, m
     class Process:
         pid = 123456789
         returncode = None
+        stdin = io.BytesIO()
         def poll(self):
             return self.returncode
         def send_signal(self, signal):
@@ -189,7 +193,8 @@ def test_invalid_readiness_refuses_before_http_and_reaps_owned_child(tmp_path, m
     def start(command, **kwargs):
         path = Path(command[command.index('--ready-file') + 1])
         paths.append(path)
-        value = dict(protocol='docspec-loopback', version=1, capabilities=['request-deadline'],
+        value = dict(protocol='docspec-loopback', version=1,
+                     capabilities=['request-deadline', 'owned-stdin-eof'],
                      pid=process.pid, address='127.0.0.1:7391')
         value.update(change)
         path.write_text(json.dumps(value))

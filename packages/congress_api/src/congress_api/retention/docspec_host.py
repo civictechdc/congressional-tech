@@ -73,11 +73,13 @@ class Host:
         self.responses = set()
         self.readiness = TemporaryDirectory(prefix='docspec-host-')
         ready = Path(self.readiness.name) / 'ready.json'
-        self.command = [*command, 'serve', '--bind', '127.0.0.1:0', '--ready-file', str(ready)]
+        self.command = [*command, 'serve', '--bind', '127.0.0.1:0', '--ready-file', str(ready),
+                        '--shutdown-on-stdin-eof']
         self.client = None
         self.process = None
         try:
             self.process = subprocess.Popen(self.command, env=environment,
+                                            stdin=subprocess.PIPE,
                                             stdout=self.log, stderr=self.log)
             deadline = time.monotonic() + timeout
             while True:
@@ -112,8 +114,10 @@ class Host:
                 or type(value.get('version')) is not int or value['version'] != 1
                 or type(value.get('pid')) is not int or value['pid'] != self.process.pid
                 or not isinstance(value.get('capabilities'), list)
-                or 'request-deadline' not in value['capabilities']):
-            raise ValueError('DocSpec loopback protocol 1 with request-deadline support is required')
+                or any(not isinstance(item, str) for item in value['capabilities'])
+                or not {'request-deadline', 'owned-stdin-eof'}.issubset(value['capabilities'])):
+            raise ValueError('DocSpec loopback protocol 1 with request-deadline '
+                             'and owned-stdin-eof support is required')
         address = value.get('address')
         if not isinstance(address, str):
             raise ValueError('DocSpec readiness requires an explicit bound loopback address')
@@ -133,8 +137,8 @@ class Host:
             self.log.seek(0)
             diagnostic = self.log.read().decode('utf-8', errors='replace')
             if self.client is None:
-                diagnostic = ('DocSpec loopback protocol 1 with request deadlines and '
-                              '--ready-file is required.\n' + diagnostic)
+                diagnostic = ('DocSpec loopback protocol 1 with request deadlines, '
+                              '--ready-file and --shutdown-on-stdin-eof is required.\n' + diagnostic)
             raise DocSpecFailure(self.command, subprocess.CompletedProcess(
                 self.command, self.process.returncode, stderr=diagnostic))
 
@@ -196,6 +200,9 @@ class Host:
         self.responses.clear()
         if self.client is not None:
             self.client.close()
+        if self.process is not None and self.process.stdin is not None:
+            # The pipe also closes on abrupt Python exit, before finalizers can run.
+            self.process.stdin.close()
         if self.process is not None and self.process.poll() is None:
             try:
                 self.process.send_signal(signal.SIGINT)

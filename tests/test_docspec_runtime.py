@@ -1,5 +1,6 @@
 """Explicit runtime settings isolate credentials from the parent process."""
 import json
+import io
 import os
 from pathlib import Path
 import subprocess
@@ -42,6 +43,7 @@ def test_configuration_is_side_effect_free_and_scopes_credentials_to_child(tmp_p
     class Process:
         returncode = None
         pid = 123456789
+        stdin = io.BytesIO()
         def poll(self):
             return self.returncode
         def send_signal(self, signal):
@@ -53,7 +55,7 @@ def test_configuration_is_side_effect_free_and_scopes_credentials_to_child(tmp_p
         calls.append((command, kwargs))
         ready = Path(command[command.index('--ready-file') + 1])
         ready.write_text(json.dumps(dict(protocol='docspec-loopback', version=1,
-            capabilities=['request-deadline'], pid=Process.pid, address='127.0.0.1:7391')))
+            capabilities=['request-deadline', 'owned-stdin-eof'], pid=Process.pid, address='127.0.0.1:7391')))
         ready.chmod(0o600)
         return Process()
 
@@ -69,9 +71,12 @@ def test_configuration_is_side_effect_free_and_scopes_credentials_to_child(tmp_p
     assert "fixture-private-value" not in repr(command)
     assert kwargs["env"]["DOCSPEC_CATALOG_TOKEN"] == "fixture-private-value"
     assert kwargs["env"]["PATH"] == original["PATH"]
+    assert kwargs['stdin'] == subprocess.PIPE
+    assert '--shutdown-on-stdin-eof' in command
     assert dict(os.environ) == original
     assert not native.workspace.exists()
     native.close()
+    assert Process.stdin.closed
 
 
 def test_local_hash_does_not_receive_remote_credentials(tmp_path, monkeypatch):
