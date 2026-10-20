@@ -17,6 +17,22 @@ One interface for a viewer publish attempt. Run these commands through `apps/sit
 
 A failed command replaces a stale success report before it opens a client that could write.
 
+New preparation requires an explicitly adopted native catalog and a configured
+DocSpec runtime. Pass `--native-config /absolute/path/runtime.json` to `prepare`
+(or set `DOCSPEC_CONFIG`). The configuration names the approved executable,
+workspace, remote catalog and finite resource limits; credentials stay in the
+private file referenced by that configuration. Preparation records the executable
+and nonsecret configuration hashes and refuses if those files change while it
+builds the output. Uploading an accepted artifact does not need DocSpec.
+
+The hosted workflow uses `DOCSPEC_RUNTIME_CONFIG` and `DOCSPEC_BINARY_SHA256`
+repository variables and the maintained native preflight check. The runner must
+already contain that approved binary and configuration. This repository does not
+yet install a hosted distribution; missing inputs refuse before new preparation.
+Read-only no-op checks and restoring an accepted artifact skip this prerequisite.
+The remote source-only storage boundary has separate qualification evidence;
+that evidence does not provision a production runtime or select a live catalog.
+
 ## Resume through GitHub Actions
 
 Run `describe-attempt` with the original run ID and save its JSON report. If that

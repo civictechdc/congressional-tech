@@ -76,6 +76,8 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=
     if (snapshot.manifest != selected['value'] or snapshot.identity['selector_sha256'] != selected['sha256']
             or snapshot.version != selected['etag']):
         raise ValueError('Catalog changed before native viewer preparation')
+    native_inputs = {str(Path(path).resolve()): file_identity(path) for path in native.execution_files()}
+    binding['native_execution'] = {path: dict(identity) for path, identity in native_inputs.items()}
     binding['mode'] = mode
     continuation = Continuation(root, binding)
     publication = root / 'publication'
@@ -91,6 +93,8 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=
             accepted_record=tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')),
             viewer_record=tuple(previous[k] for k in ('value', 'etag', 'modified', 'sha256')),
             recovery_only=mode == 'recovery')
+        for path, identity in native_inputs.items():
+            identity.require(path)
         identities = dict(manifest.identities)
         proof = issue_inventory(publication, identities, context=binding)
         publisher.prepare_recovery(publication, manifest,
