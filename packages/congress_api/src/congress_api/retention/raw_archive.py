@@ -761,8 +761,8 @@ class Archive(LegacyArchiveSeed):
         self.initial_identity = self.selected.identity
         if self.selected.version is None:
             raise RuntimeError('Explicit raw archive seed adoption is required before recurring capture')
-        self.state = {row['url']: row for row in self.selected.states().to_pylist()}
-        self._saved_state = {url: dict(row) for url, row in self.state.items()}
+        from congress_api.retention.raw_state_map import RawStateMap
+        self.state = RawStateMap(self.selected)
         self.body_info = _BodyLookup(self.selected)
         self.additions, self.pending = [], []
         self._indexed_receipts = set()
@@ -816,7 +816,7 @@ class Archive(LegacyArchiveSeed):
 
     def save(self):
         self.flush()
-        updates = [row for url, row in self.state.items() if self._saved_state.get(url) != row]
+        updates = self.state.changed()
         if (not self.additions and not updates and not self._indexed_receipts
                 and self.filename_version == self.selected.manifest['filename_version']):
             return self.selected
@@ -828,7 +828,7 @@ class Archive(LegacyArchiveSeed):
         self.selected = self.storage.publish(prepared)
         self.body_info.snapshot = self.selected
         self.body_info.cache = {key: value for key, value in self.body_info.cache.items() if value is not None}
-        self._saved_state = {url: dict(row) for url, row in self.state.items()}
+        self.state.rebase(self.selected)
         self._indexed_receipts.clear()
         self.additions.clear()
         self._save_sequence += 1

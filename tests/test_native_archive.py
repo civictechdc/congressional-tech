@@ -274,3 +274,32 @@ def test_changed_file_catalog_requires_explicit_adoption_before_payload_read(mon
     monkeypatch.setattr(store, 'read_derived_file', lambda *a, **k: pytest.fail('Legacy catalog payload read'))
     with pytest.raises(ValueError, match='explicit catalog adoption'):
         archive_factory(store, 'changed-file-catalog')
+
+
+def test_unchanged_archive_does_not_read_unrelated_state_payloads(archive_factory):
+    store = policy.MemoryStore()
+    archive = archive_factory(store, 'empty')
+    for i in range(100):
+        archive.seed({'url': f'https://example.gov/{i}.pdf'})
+        archive.state[f'https://example.gov/{i}.pdf'].update(outcome='saved', links_scanned=True)
+    archive.save()
+    owner = store._native_raw
+    owner.native.reads.clear()
+    writes = list(store.writes)
+    restarted = Archive(store, 'no-change', storage=owner)
+    assert len(restarted.state) == 100
+    restarted.save()
+    assert owner.native.reads == []
+    assert store.writes == writes
+
+
+def test_accessed_state_reference_remains_mutable_after_save(archive_factory):
+    store = policy.MemoryStore()
+    archive = archive_factory(store, 'working-reference')
+    url = 'https://example.gov/lifetime.pdf'
+    archive.seed({'url': url})
+    held = archive.state[url]
+    archive.save()
+    held.update(outcome='request_failed', attempts=4)
+    archive.save()
+    assert store._native_raw.snapshot().state(url)['attempts'] == 4
