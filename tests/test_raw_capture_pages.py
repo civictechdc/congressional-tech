@@ -58,3 +58,21 @@ def test_lost_page_reply_resume_and_conflicting_or_reordered_metadata():
     store.objects[first['key']] = b'corrupt'
     with pytest.raises(ValueError, match='identity'):
         list(CapturePages(store).entries(first))
+
+
+def test_page_rolls_on_bytes_before_entry_limit(monkeypatch):
+    import congress_api.retention.raw_capture_pages as module
+    monkeypatch.setattr(module, 'PAGE_BYTES', 1400)
+    store = Store()
+    pages = CapturePages(store)
+    entries = [{**entry(i), 'constructed_pin_padding': 'x' * 500} for i in range(3)]
+    first = pages.append(None, entries[:1])
+    old = dict(store.objects)
+    selected = pages.append(first, entries[1:])
+    assert selected['entries'] < 64
+    assert all(len(payload) <= 1400 for payload in store.objects.values())
+    assert all(store.objects[key] == payload for key, payload in old.items())
+    assert list(pages.entries(selected)) == entries
+    assert list(pages.entries(first)) == entries[:1]
+    with pytest.raises(ValueError, match='budget'):
+        pages.append(selected, [{**entry(3), 'oversized_single_pin': 'x' * 2000}])

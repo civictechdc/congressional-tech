@@ -3,7 +3,7 @@
 These pages only select ordered completed native batches. They contain no source
 rows, native operation phases, retry queue, or independent record lifecycle.
 """
-from congress_api.retention.immutable_metadata import MetadataObjects
+from congress_api.retention.immutable_metadata import MetadataObjects, encoded
 
 PAGE_ENTRIES = 64
 PAGE_BYTES = 1 << 20
@@ -54,12 +54,29 @@ class CapturePages:
         if head is not None and head['entries'] < PAGE_ENTRIES:
             page = self._read(head)
             previous, pending = page['previous'], page['batches']
-        while entries:
-            count = PAGE_ENTRIES - len(pending)
-            pending.extend(entries[:count])
-            del entries[:count]
+        dirty = False
+        cursor = 0
+        pending_bytes = sum(len(encoded(value)) for value in pending)
+        base_bytes = len(encoded(dict(version=1, previous=previous, batches=[])))
+        while cursor < len(entries):
+            entry = entries[cursor]
+            entry_bytes = len(encoded(entry))
+            size = base_bytes + pending_bytes + entry_bytes + len(pending)
+            if len(pending) == PAGE_ENTRIES or size > PAGE_BYTES:
+                if not pending:
+                    raise ValueError('One capture reference exceeds the page byte budget')
+                if dirty:
+                    head = self._write(previous, pending)
+                previous, pending, dirty = head, [], False
+                pending_bytes = 0
+                base_bytes = len(encoded(dict(version=1, previous=previous, batches=[])))
+                continue
+            pending.append(entry)
+            pending_bytes += entry_bytes
+            cursor += 1
+            dirty = True
+        if dirty:
             head = self._write(previous, pending)
-            previous, pending = head, []
         return head
 
     def entries(self, head):
