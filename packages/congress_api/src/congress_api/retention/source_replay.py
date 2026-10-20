@@ -40,7 +40,8 @@ class PreparedSourceReplay:
         self.close()
 
 
-def prepare_source_replay(store, *, snapshot, changes, observations, root, directory, read_body, seeds=()):
+def prepare_source_replay(store, *, snapshot, changes, observations, root, directory, read_body, seeds=(),
+                          changed_dependencies=()):
     """Close old/new input owners before recomputing source facts.
 
     Complete receipt groups, including ambiguous/unresolved meeting lookups and
@@ -56,12 +57,13 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
         for change in changes:
             incoming.extend(inputs.changed(snapshot, change, trace))
         changed = tuple(trace.observations())
-        if not changed:
+        if not changed and not changed_dependencies:
             return None
         trace.replay(_captures(incoming), store.read, read_body, seeds=seeds, retained_capture_inputs=True)
         candidate = observations.prepare(root, trace)
     with closing(WorkingCatalog(directory / 'closure-initial.sqlite')) as work:
-        closed = tuple(observations.affected(root, candidate, changed, working=work))
+        closed = tuple(observations.affected(root, candidate, changed, working=work,
+                                            changed_dependencies=changed_dependencies))
     iteration = 0
     while True:
         work = WorkingCatalog(directory / f'replay-{iteration}.sqlite')
@@ -72,7 +74,8 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
             trace.replay(captures, store.read, read_body, seeds=seeds, retained_capture_inputs=True)
             after = observations.prepare(root, trace)
             with closing(WorkingCatalog(directory / f'closure-{iteration}.sqlite')) as closure_work:
-                complete = tuple(observations.affected(root, after, changed, working=closure_work))
+                complete = tuple(observations.affected(root, after, changed, working=closure_work,
+                                                       changed_dependencies=changed_dependencies))
             if complete == closed:
                 old_sources = set()
                 for observation in closed:

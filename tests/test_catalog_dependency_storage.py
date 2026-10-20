@@ -370,3 +370,24 @@ def test_nonnullable_or_changed_dependency_field_refuses_before_payload_read():
         with pytest.raises(DependencyGap, match='schema or order basis differs'):
             current.prepare(before, replacements=[])
         assert native.reads == []
+
+
+def test_package_lookup_preserves_complete_members_without_creating_group_edges():
+    package = 'CHRG-116shrg40895'
+    schema = pa.schema([*SCHEMA, ('hearing_package_id', index.STRINGS)])
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='packages',
+                                     source_schema=schema, max_rows=4, max_bytes=1 << 20)
+    api = dict(source('api', 'api-body'), source_url='https://api.congress.gov/v3/hearing/116/joint/40895',
+               hearing_package_id=[package])
+    pdf = dict(source('paper.pdf', 'paper-body'),
+               source_url=f'https://www.govinfo.gov/content/pkg/{package}/pdf/{package}.pdf')
+    initial = owner.prepare(None, replacements=[api, pdf, *[source(f'{i}.pdf', str(i)) for i in range(100)]])
+    selected = owner.selected(initial)
+    assert set(affected_sources(selected, replacements=[api]).before) == {identity(api)}
+    assert {row['source_id'] for row in owner.sources_at_package(initial, package)} == {identity(api), identity(pdf)}
+    assert {row['source_id'] for row in owner.sources_at_package(initial, 'CHRG-116jhrg40895')} == {identity(api)}
+    changed = owner.prepare(initial, deletions=[identity(pdf)])
+    assert {row['source_id'] for row in owner.sources_at_package(changed, package)} == {identity(api)}
+    # Historical roots retain exact membership after correction.
+    assert {row['source_id'] for row in owner.sources_at_package(initial, package)} == {identity(api), identity(pdf)}

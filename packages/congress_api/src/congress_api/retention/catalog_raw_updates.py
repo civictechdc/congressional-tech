@@ -1,15 +1,17 @@
 """Retained normal raw-to-catalog dispatch without legacy full-index fallback."""
 from contextlib import ExitStack
 from hashlib import sha256
+from itertools import chain
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from urllib.parse import urlsplit
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
 from . import document_index as index
-from .catalog_availability import annotate_availability, hearing_package, package_from_format
+from .catalog_availability import annotate_availability, hearing_package, package_dependencies, hearing_input_packages
 from .catalog_dependency_storage import CatalogDependencyStorage
 from .catalog_batches import can_read_catalog_schema
 from .catalog_publication import CatalogSnapshot, MANIFEST_KEY, FILENAMES, DOCUMENTS
@@ -20,7 +22,8 @@ from .document_evidence import read_retained_body
 from .document_recovery import recover_sources
 from .immutable_metadata import encoded
 from .raw_values import NATIVE_CAPTURE_SCHEMA
-from .source_observations import SourceObservationStorage
+from .raw_archive import STATE_KEY
+from .source_observations import SourceObservationStorage, dependency_id, hearing_records
 from .source_replay import prepare_source_replay
 from .source_update_proof import retain_source_update, read_source_update, source_update_requirements
 
@@ -91,38 +94,65 @@ def update_from_raw(store, *, raw_storage, directory, candidate, expected_bodies
             return dict(result, raw_identity=raw.identity)
         changes = list(raw.changes_since(before['raw_identity'] if before else raw_storage.empty_identity))
         changed_urls = {url for change in changes for url in raw.changed_state_urls(change)}
-        if any(hearing_package(url) or package_from_format(url) for url in changed_urls):
-            raise ValueError('Hearing package changes require qualified complete package-state membership')
+        changed_packages = {package for url in changed_urls for package in package_dependencies(dict(source_url=url))}
         namespace = before['namespace'] if before else 'catalog-source-observations-v1'
         observations = SourceObservationStorage(native=raw_storage.native, store=store, namespace=namespace,
             max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
         with TemporaryDirectory(prefix='source-replay-', dir=directory) as attempt:
             prepared = prepare_source_replay(store, snapshot=raw, changes=changes, observations=observations,
                 root=before['root'] if before else None, directory=Path(attempt),
-                read_body=lambda key: read_retained_body(None, key, read_compressed=store.read), seeds=seeds)
+                read_body=lambda key: read_retained_body(None, key, read_compressed=store.read), seeds=seeds,
+                changed_dependencies=tuple(dependency_id('package', value) for value in sorted(changed_packages)))
             if prepared is not None:
                 owners.callback(prepared.close)
             rows = list(prepared.sources()) if prepared else []
             old_ids = set(prepared.old_source_ids) if prepared else set()
+            captures = prepared.captures if prepared else pa.Table.from_pylist([], schema=NATIVE_CAPTURE_SCHEMA)
+            hearings = list(hearing_records(captures, store.read))
+            packages = changed_packages | {package for row in rows for package in package_dependencies(row)}
+            packages.update(package for record, _, _ in hearings for package in hearing_input_packages(record))
+            urls = set(changed_urls)
             if dependencies is not None:
                 selected = dependencies.selected(previous.selection['dependency'])
                 replayed = set(old_ids)
-                for url in changed_urls:
-                    for record in dependencies.sources_at_url(previous.selection['dependency'], url):
-                        old_ids.add(record['source_id'])
-                        if record['source_id'] not in replayed:
-                            rows.append(record['source_values'])
+                present = {index.source_identity(row) for row in rows}
+                records = (record for url in changed_urls
+                           for record in dependencies.sources_at_url(previous.selection['dependency'], url))
+                package_records = (record for package in sorted(packages)
+                    for record in dependencies.sources_at_package(previous.selection['dependency'], package))
+                for record in chain(records, package_records):
+                    old_ids.add(record['source_id'])
+                    if record['source_values'].get('source_url'):
+                        urls.add(record['source_values']['source_url'])
+                    state_backed = (record['source_values'].get('filename_origins') == ['download_state']
+                                    and record['source_values'].get('source_paths') == [STATE_KEY])
+                    # The API receipt owns availability associations, not these
+                    # independently retained raw-state response facts.
+                    if record['source_id'] not in present and (record['source_id'] not in replayed or state_backed):
+                        rows.append(record['source_values'])
+                        present.add(record['source_id'])
                 old_rows = [row for identity in old_ids if (row := selected.source(identity)) is not None]
                 old_ids = {index.source_identity(row) for row in old_rows}
             else:
                 old_rows = []
-            captures = prepared.captures if prepared else pa.Table.from_pylist([], schema=NATIVE_CAPTURE_SCHEMA)
             if prepared is not None:
                 rows = list(recover_sources(rows, captures, read_receipt=store.read, working=prepared.working, source_observer=prepared.trace))
-                prepared.after = observations.prepare(before['root'] if before else None, prepared.trace)
-            urls = changed_urls | {row['source_url'] for row in rows if row.get('source_url')}
+            urls.update(row['source_url'] for row in rows if row.get('source_url'))
             state = pa.Table.from_pylist(list(raw.states_for(urls).values()), schema=raw_storage.state_schema)
-            rows = list(annotate_availability(rows, state))
+            rows = list(annotate_availability(rows, state, hearing_records=((record, captures) for record, captures, _ in hearings)))
+            if prepared is not None:
+                # State-backed API rows inherit only availability association
+                # ownership. Their response facts remain the selected raw state.
+                for row in rows:
+                    if hearing_package(row.get('source_url')):
+                        path = urlsplit(row['source_url']).path.rstrip('/')
+                        for record, _, receipt in hearings:
+                            if not isinstance(record, dict):
+                                continue
+                            url = record.get('requested_url') or record.get('url') or record.get('_url')
+                            if url and urlsplit(url).path.rstrip('/') == path:
+                                prepared.trace.source(row, receipt)
+                prepared.after = observations.prepare(before['root'] if before else None, prepared.trace)
             # These exact selected capture readings are supplied by RawStorage's
             # qualified lookup. Missing qualification refuses before catalog CAS.
             if not callable(getattr(raw, 'body_readings', None)):
@@ -132,7 +162,11 @@ def update_from_raw(store, *, raw_storage, directory, candidate, expected_bodies
             (output / 'indexes').mkdir(parents=True)
             work = owners.enter_context(_working(Path(attempt) / 'filename.sqlite'))
             prior = pa.Table.from_pylist(old_rows, schema=dependencies.source_schema) if dependencies else None
-            index.write_filename_metadata(output, rows, working=work, workers=1, previous=prior,
+            # Grouping identities are derived scalars, not filename metadata
+            # lists. Recompute them from the preserved source facts below.
+            inputs = ({key: value for key, value in row.items() if key not in {'source_id', 'document_id'}}
+                      for row in rows)
+            index.write_filename_metadata(output, inputs, working=work, workers=1, previous=prior,
                 cache_store=store, retained_body_readings=readings)
             file = pq.ParquetFile(output / 'indexes/document-filenames.parquet')
             values = [row for batch in file.iter_batches(batch_size=256) for row in batch.to_pylist()]

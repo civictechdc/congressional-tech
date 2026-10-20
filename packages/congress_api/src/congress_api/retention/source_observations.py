@@ -14,6 +14,7 @@ from .catalog_dependencies import DependencyGap
 from .catalog_memberships import CatalogMemberships
 from .immutable_metadata import encoded
 from .source_inputs import collect_source_inputs
+from .catalog_availability import package_dependencies, hearing_input_packages
 
 SCHEMA = pa.schema([pa.field('alias', pa.string(), nullable=False),
                     pa.field('observation', pa.string(), nullable=False)])
@@ -35,7 +36,7 @@ def receipt_locator(observation):
 
 
 def dependency_id(kind, value):
-    if kind not in {'event', 'url', 'source', 'source-url', 'capture', 'body'} or not isinstance(value, str) or not value:
+    if kind not in {'event', 'url', 'source', 'source-url', 'capture', 'body', 'package'} or not isinstance(value, str) or not value:
         raise ValueError('Invalid source interpretation dependency')
     return 'dependency:' + json.dumps([kind, value], separators=(',', ':'))
 
@@ -78,6 +79,8 @@ class SourceObservationTrace:
                 ('source-url', index.http_url(row.get('source_url')) or row.get('source_url'), 'write')]:
             if value:
                 self(dict(receipt_key=key, receipt_line=line, kind=kind, value=value, access=access))
+        for package in package_dependencies(row):
+            self(dict(receipt_key=key, receipt_line=line, kind='package', value=package, access='read'))
 
     def source(self, row, receipt):
         keys, lines = receipt.get('source_receipt_key') or [], receipt.get('source_receipt_line') or []
@@ -132,7 +135,20 @@ class SourceObservationTrace:
         sources = self.working.mapping('sources')
         collect_source_inputs(sources, context, captures, read, working=self.working,
                               seeds=seeds, source_observer=self)
+        # Hearing API records supply availability associations even though they
+        # deliberately do not enter the document capture inventory.
+        for record, rows, receipt in hearing_records(captures, read):
+            for package in hearing_input_packages(record):
+                self(dict(receipt_key=next(iter(receipt['source_receipt_key'])),
+                          receipt_line=int(next(iter(receipt['source_receipt_line']))),
+                          kind='package', value=package, access='write'))
         return sources
+
+
+def hearing_records(captures, read):
+    import pyarrow.compute as pc
+    selected = captures.filter(pc.equal(captures['family'], 'congress/hearings'))
+    return index.retained_records(selected, read)
 
 
 class SourceObservationStorage:

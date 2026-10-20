@@ -202,3 +202,66 @@ def test_nullable_witness_fields_keep_old_component_pin_and_fill_only_missing_va
     assert actual_unrelated['source_witness_name'] is None
     assert all(actual_unrelated[name] == value for name, value in unrelated.items())
     assert old.schemas['filenames'].get_field_index('source_witness_name') == -1
+
+
+@pytest.mark.parametrize('actual_native', [False, True])
+def test_package_state_correction_replays_retained_api_receipt_and_complete_sibling_formats(tmp_path, monkeypatch, native, actual_native, record_property):
+    import json
+    from congress_api.retention.catalog_availability import annotate_availability
+    from congress_api.retention.raw_archive import STATE_SCHEMA
+    from test_catalog_availability import saved
+    store, native = SelectorStore(), native if actual_native else MemoryNative()
+    raw = RawStorage(store, native)
+    package = 'CHRG-116shrg40895'
+    api = 'https://api.congress.gov/v3/hearing/116/joint/40895?format=json'
+    publisher = f'https://congress.gov/116/chrg/{package}/{package}.pdf'
+    record = dict(requested_url=api, http_status=200,
+                  hearing={'formats': [{'type': 'PDF', 'url': publisher},
+                                       {'type': 'HTML', 'url': publisher[:-3] + 'htm'}]})
+    receipt = retain(store, record, family='congress/hearings', source_file='api.json', url=api,
+                    body=json.dumps(record).encode(), pointer=['content', 'body'])
+    captures = decode_table(store.read(CAPTURES_KEY))
+    pdf, html = saved(package), saved(package, 'html')
+    api_state = dict(url=api, outcome='retained', body_key='api-body', http_status=200)
+    raw.publish(raw.prepare(raw.snapshot(), operation='initial', captures=captures,
+        states=pa.Table.from_pylist([api_state, pdf, html], schema=STATE_SCHEMA)))
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    calls, run_table = [], native.run_table
+    def counted_run(table, **options):
+        calls.append(options['dataset'])
+        return run_table(table, **options)
+    monkeypatch.setattr(native, 'run_table', counted_run)
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'first', candidate='first')
+    record_property('initial_catalog_run_table_calls', len(calls))
+    first = read_catalog(store, native=native)
+    old = pa.Table.from_batches(list(first.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+    old_api = next(row for row in old if row['source_url'] == api)
+    assert old_api['hearing_package_id'] == [package]  # Actual publisher differs from endpoint guess.
+    assert {item['format'] for item in old_api['hearing_resources']} == {'pdf', 'html'}
+    assert all(item['api_response_body_key'] == captures['body_key'][0].as_py()
+               for item in old_api['hearing_resources'])
+    changed_pdf = dict(pdf, outcome='http_error', http_status=404)
+    raw.publish(raw.prepare(raw.snapshot(), operation='pdf-failed',
+        states=pa.Table.from_pylist([changed_pdf], schema=STATE_SCHEMA)))
+    calls.clear()  # Raw preparation is outside the catalog correction measurement.
+    monkeypatch.setattr(RawSnapshot, 'captures', lambda *a: (_ for _ in ()).throw(AssertionError('Full captures')))
+    monkeypatch.setattr(RawSnapshot, 'states', lambda *a: (_ for _ in ()).throw(AssertionError('Full states')))
+    read = store.read
+    reads = []
+    def counted(key):
+        reads.append(key)
+        return read(key)
+    monkeypatch.setattr(store, 'read', counted)
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'changed', candidate='changed')
+    record_property('correction_catalog_run_table_calls_including_completed_replays', len(calls))
+    current = read_catalog(store, native=native)
+    actual = pa.Table.from_batches(list(current.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+    api_row = next(row for row in actual if row['source_url'] == api)
+    expected = list(annotate_availability(old, pa.Table.from_pylist(
+        [api_state, changed_pdf, html], schema=STATE_SCHEMA), hearing_records=[(record, captures.to_pylist())]))
+    expected = pa.Table.from_pylist(expected, schema=current.schemas['filenames']).to_pylist()
+    assert sorted(actual, key=lambda row: row['source_id']) == sorted(expected, key=lambda row: row['source_id'])
+    assert api_row['source_id'] == old_api['source_id']
+    assert api_row['document_id'] == old_api['document_id']
+    assert [item['format'] for item in api_row['hearing_resources']] == ['html']
+    assert receipt in reads
