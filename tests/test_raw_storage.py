@@ -188,3 +188,15 @@ def test_unchanged_state_with_reversed_native_order_has_zero_writes(storage):
     assert not prepared['changed']
     storage.publish(prepared)
     assert storage.store.writes == before
+
+def test_body_lookup_and_count_do_not_read_capture_history(storage):
+    table = captures('a').to_pylist()
+    table[0].update(sha256='a' * 64, bytes=7, stored_sha256='b' * 64, stored_bytes=12)
+    table += [dict(body_key='bodies/legacy.gz'), dict(body_key='bodies/legacy.gz')]
+    selected = storage.publish(storage.prepare(storage.snapshot(), operation='body-seed',
+        captures=pa.Table.from_pylist(table, schema=CAPTURE_SCHEMA)))
+    storage.capture_pages.entries = lambda *args: pytest.fail('Hidden full capture history read')
+    assert selected.body_info('a' * 64)['body_key'] == 'bodies/a.gz'
+    assert selected.body_count == 2
+    updated = storage.publish(storage.prepare(selected, operation='body-repeat', captures=captures('a')))
+    assert updated.body_count == 2

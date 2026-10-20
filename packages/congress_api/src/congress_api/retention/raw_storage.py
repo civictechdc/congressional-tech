@@ -26,6 +26,9 @@ CAPTURE_BATCH_ROWS = 1000
 CAPTURE_BATCH_BYTES = 16 << 20
 DELIVERY_ENTRIES = 128
 SELECTOR_BYTES = 1 << 20
+BODY_FIELDS = ['body_key', 'sha256', 'bytes', 'stored_sha256', 'stored_bytes']
+BODY_SCHEMA = pa.schema([pa.field('key', pa.string(), nullable=False),
+                         *(CAPTURE_SCHEMA.field(name) for name in BODY_FIELDS)])
 
 
 
@@ -48,6 +51,26 @@ class RawSnapshot:
         if len(result) != self.manifest['captures']['rows']:
             raise ValueError('Selected capture count mismatch')
         return result
+
+    @property
+    def identity(self):
+        return sha256(encoded(self.manifest)).hexdigest()
+
+    @property
+    def body_count(self):
+        return self.manifest['bodies']['count']
+
+    def body_info(self, digest):
+        _, reference = self.owner.body_routes.lookup(self.manifest['bodies']['root'], 'sha:' + digest)
+        if reference is None:
+            return None
+        table = self.owner._read_bodies(reference)
+        selected = table.filter(pc.equal(table['key'], 'sha:' + digest)).select(BODY_FIELDS)
+        return selected.to_pylist()[0] if len(selected) else None
+
+    def has_receipt(self, key):
+        hashed, _, entries = self.owner._delivery(self.manifest['deliveries'], 'receipt:' + key)
+        return hashed in entries
 
     def receipt_keys(self):
         return {key for entry in self.owner.capture_pages.entries(self.manifest['captures']['head'])
@@ -85,13 +108,15 @@ class RawStorage:
         self.capture_pages = CapturePages(store)
         self.state_routes = RoutingPages(store, 'raw-state-v1')
         self.delivery_routes = RoutingPages(store, 'raw-deliveries-v1')
+        self.body_routes = RoutingPages(store, 'raw-bodies-v1')
         self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1',
                           max_state_rows=max_state_rows, max_state_bytes=max_state_bytes,
                           max_capture_rows=max_capture_rows, max_capture_bytes=max_capture_bytes)
 
     def _empty(self):
         return dict(version=1, basis=deepcopy(self.basis), captures=dict(head=None, rows=0),
-                    state=dict(root=None, rows=0), deliveries=None)
+                    state=dict(root=None, rows=0), bodies=dict(root=None, count=0),
+                    deliveries=None, filename_version=None)
 
     def _read_selector(self):
         raw = self.store.read(RAW_KEY)
@@ -155,6 +180,48 @@ class RawStorage:
             raise ValueError('Invalid selected URL-state ordinals')
         return table.take(pc.sort_indices(order))
 
+    def _read_bodies(self, reference):
+        return self._read_table(reference['release'], reference['rows'],
+            schema=BODY_SCHEMA, max_rows=self.max_state_rows,
+            max_bytes=self.max_state_bytes, decoded_bytes=reference['decoded_bytes'])
+
+    def _prepare_bodies(self, base, captures, *, operation, base_id):
+        updates = {}
+        for row in captures.to_pylist():
+            if row['body_key']:
+                info = {name: row[name] for name in BODY_FIELDS}
+                key = 'body:' + row['body_key']
+                if key not in updates or row['sha256']:
+                    updates[key] = dict(key=key, **info)
+                if row['sha256']:
+                    key = 'sha:' + row['sha256']
+                    updates[key] = dict(key=key, **info)
+        affected = {}
+        for key, row in updates.items():
+            prefix, reference = self.body_routes.lookup(base.manifest['bodies']['root'], key)
+            if prefix not in affected:
+                prior = self._read_bodies(reference) if reference else pa.Table.from_pylist([], schema=BODY_SCHEMA)
+                affected[prefix] = (prior, {r['key']: r for r in prior.to_pylist()}, {})
+            affected[prefix][2][key] = row
+        root, count = base.manifest['bodies']['root'], base.body_count
+        for prefix, (prior, rows, changed) in affected.items():
+            count += sum(key.startswith('body:') and key not in rows for key in changed)
+            # A metadata-only reference must not erase known digest metadata.
+            rows.update({key: row for key, row in changed.items()
+                         if key not in rows or row['sha256'] or not rows[key]['sha256']})
+            table = pa.Table.from_pylist([rows[key] for key in sorted(rows)], schema=BODY_SCHEMA)
+            if table.equals(prior.take(pc.sort_indices(prior['key']))):
+                continue
+            leaves = {}
+            for child, part in split_partition(table, key='key', prefix=prefix,
+                    max_rows=self.max_state_rows, max_bytes=self.max_state_bytes):
+                canonical = pa.Table.from_pylist(part.to_pylist(), schema=BODY_SCHEMA)
+                leaves[child] = (dict(release=self._candidate('bodies', canonical, operation=operation,
+                    prefix=child, base_id=base_id), rows=len(part), decoded_bytes=canonical.nbytes)
+                    if len(part) else None)
+            root = self.body_routes.replace(root, prefix, leaves)
+        return dict(root=root, count=count)
+
     def _capture_batches(self, table):
         offset = 0
         while offset < len(table):
@@ -204,7 +271,8 @@ class RawStorage:
         dataset = 'raw-' + kind + '-' + identity
         return self.native.run_table(table, dataset=dataset, operation='initial', definition='raw-native-v1')
 
-    def prepare(self, base, *, operation, captures=None, states=None):
+    def prepare(self, base, *, operation, captures=None, states=None,
+                indexed_receipts=(), filename_version=None):
         """Prepare exact bounded candidates; expose no independent native latest."""
         if base.owner is not self:
             raise ValueError('Raw base belongs to another storage owner')
@@ -214,7 +282,8 @@ class RawStorage:
         if updates is not None and any(not isinstance(url, str) or not url for url in updates['url'].to_pylist()):
             raise ValueError('Download state needs nonempty URL keys')
         incoming = capture_table(captures, first_order=0) if captures is not None and len(captures) else None
-        request = self._request_digest(incoming, updates)
+        request = sha256(encoded([self._request_digest(incoming, updates),
+                                 sorted(indexed_receipts), filename_version])).hexdigest()
         delivery_key, delivery_prefix, deliveries = self._delivery(base.manifest['deliveries'], operation)
         previous_delivery = deliveries.get(delivery_key)
         if previous_delivery:
@@ -235,6 +304,10 @@ class RawStorage:
                                     first_order=batch['_capture_order'][0].as_py()))
             manifest['captures']['head'] = self.capture_pages.append(manifest['captures']['head'], entries)
             manifest['captures']['rows'] += len(additions)
+        if incoming is not None:
+            manifest['bodies'] = self._prepare_bodies(base, incoming, operation=operation, base_id=base_id)
+        if filename_version is not None:
+            manifest['filename_version'] = filename_version
         if updates is not None:
             affected, old, row_prefixes = {}, {}, {}
             for row in updates.to_pylist():
@@ -278,6 +351,11 @@ class RawStorage:
         if manifest != base.manifest:
             manifest['deliveries'] = self._select_delivery(manifest['deliveries'], delivery_prefix,
                                                           {**deliveries, delivery_key: delivery})
+        for receipt in sorted(set(indexed_receipts)):
+            key, prefix, entries = self._delivery(manifest['deliveries'], 'receipt:' + receipt)
+            if key not in entries:
+                manifest['deliveries'] = self._select_delivery(manifest['deliveries'], prefix,
+                                                              {**entries, key: delivery})
         data = encoded(manifest)
         if len(data) > SELECTOR_BYTES:
             raise ValueError('Raw selector exceeds the byte budget')
