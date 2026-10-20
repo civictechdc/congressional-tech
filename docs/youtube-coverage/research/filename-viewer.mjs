@@ -665,6 +665,19 @@ try {
   if(info.downloads.catalog) {
    documents.hidden=true;sources.hidden=true;
    const index=link(info.downloads.catalog,'Catalog partitions · JSON ↗');index.className='download';document.querySelector('.downloads').append(index);
+   const download=node('button','Download document JSON');download.type='button';download.className='button';
+   $('copy').parentElement.append(download);
+   download.addEventListener('click',async()=>{
+    const controller=detailController;if(!controller || !$('detail').dataset.row)return;
+    download.disabled=true;$('copy-status').textContent='Preparing complete document metadata…';
+    try{
+     const record=await api(detailUrl('document'),controller.signal);if(controller!==detailController)return;
+     const asset=URL.createObjectURL(new Blob([JSON.stringify(record,null,2)+'\n'],{type:'application/json'}));
+     const a=node('a','');a.href=asset;a.download=record.document_id+'.json';document.body.append(a);a.click();a.remove();
+     setTimeout(()=>URL.revokeObjectURL(asset),0);$('copy-status').textContent='Document downloaded';
+    }catch(error){if(controller===detailController&&error.name!=='AbortError')$('copy-status').textContent='Could not download document: '+error.message;}
+    finally{download.disabled=false;}
+   });
   } else {documents.href=info.downloads.documents;sources.href=info.downloads.filenames;}
  }
  if(info.downloads?.recoveries) { const a=link(info.downloads.recoveries,'Recovery status · JSON ↗');a.className='download';document.querySelector('.downloads').append(a,node('p','Recovery status is a separate update; Parquet downloads preserve the original catalog values.','section-note')); }

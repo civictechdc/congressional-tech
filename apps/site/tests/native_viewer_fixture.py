@@ -46,3 +46,5 @@ selected = MetadataObjects(store, 'catalog-selections-v2').put(dict(version=2, c
 store.put_catalog_manifest(encoded(dict(version=2, selection=selected)), expected_version=None)
 snapshot = read_catalog(store, native=native)
 builder.publish_selected(snapshot, folder / 'native-public', review_identities=None)
+
+(folder / "document-records.json").write_text(json.dumps(documents.to_pylist(), default=str))

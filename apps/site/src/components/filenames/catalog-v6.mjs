@@ -72,7 +72,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
   Object.assign(info,reviews.info);
   const ranged = ref => rangeFile(url(ref.path),ref.bytes,fetcher,compressed,metrics);
   async function table(part,signal) {
-    valid(part,['filenames.parquet','details.parquet']);
+    valid(part,['filenames.parquet','details.parquet','documents.parquet']);
     return cached(`table:${part.path}`,async()=>{
       metrics.tableLoads++; const buffer=ranged(part), metadata=await parquetMetadataAsync(buffer.file());
       if (Number(metadata.num_rows)!==part.rows) throw new Error('Parquet row count differs from its selected partition.');
@@ -289,10 +289,19 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       ...(recovered?{recovery:recovered[0],recoveries:recovered}:{}),...context,record_complete:false,reading:null,saved_file_available:false,saved_file_url:savedCopyUrl(record,recovered?.[0],publication.url),published_only:true,
       sources_share_saved_file:!!bodies[0]&&bodies.every(v=>v===bodies[0])};
   }
+  async function documentRecord(id,catalog,signal) {
+    const {documentId}=await resolve(id,catalog,signal),member=await component(documentId,signal);
+    // A physical document asset can be shared with unselected historical members.
+    // Only the exact current logical member escapes this bounded read.
+    const rows=await read(member.document_file,0,member.document_file.rows,undefined,signal);
+    const selected=rows.filter(row=>row.document_id===documentId);
+    if(selected.length!==1)throw new Error('Document is not present uniquely in its selected partition.');
+    return Object.fromEntries(info.document_fields.map(name=>[name,selected[0][name]??null]));
+  }
   async function review(id,catalog,signal,withdrawn=false) {
     if(info.review_error)throw new Error(info.review_error);if(!info.complete_body_reviews)throw new Error('Document reviews are not configured.');
     await resolve(id,catalog,signal);const value=reviews.sources.get(id);return value?structuredClone({...value,status:withdrawn?'withdrawn':value.status,selected:withdrawn?value.baseline:value.selected}):{status:'no_review'};
   }
   return {info:{...info,recovery_sha256:recoveryDescriptor?.sha256,downloads:{catalog:publication.url,recoveries:recoveryDescriptor?.url},published_at:manifest.published_at},
-    diagnostics:()=>({...metrics,compressed:compressed.stats,decoded:decoded.stats}),search,entry,entryOrigin,technical,technicalOrigin,observationPage,review,sourceContext};
+    diagnostics:()=>({...metrics,compressed:compressed.stats,decoded:decoded.stats}),search,entry,entryOrigin,technical,technicalOrigin,observationPage,documentRecord,review,sourceContext};
 }

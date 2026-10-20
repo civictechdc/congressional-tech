@@ -33,7 +33,9 @@ test('stable browser agrees with maintained search and preserves complete origin
       assert(after.rows.every(row=>row._row===row.source_id),'new results use stable source IDs');
     }
     const originals=JSON.parse(await readFile(join(folder,'source-records.json')));
+    const documents=JSON.parse(await readFile(join(folder,'document-records.json')));
     for(const source of originals){
+      assert.deepEqual(await reader.documentRecord(source.source_id),documents.find(row=>row.document_id===source.document_id));
       assert.deepEqual(await reader.technical(source.source_id,undefined,undefined,true),source);
       const entry=await reader.entry(source.source_id),historical=await old.entry(source.source_id);
       assert.deepEqual(entry.record,historical.record);
