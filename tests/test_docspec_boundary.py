@@ -73,3 +73,25 @@ def test_native_refusals_preserve_error_and_cleanup_request_files(native, tmp_pa
                         sql='SELECT * FROM input', input=str(tmp_path / 'absent.parquet'),
                         expected_digest='0' * 64))
     assert not list(native.workspace.glob('request-*'))
+
+
+def test_raw_values_roundtrip_native_source_without_losing_occurrences(native, tmp_path):
+    from congress_api.retention.raw_archive import CAPTURE_SCHEMA
+    from congress_api.retention.raw_values import capture_table, ordered_captures
+
+    original = pa.Table.from_pylist([
+        dict(body_key='bodies/one.gz', receipt_key='receipts/one.gz', receipt_line=1,
+             http_status=200, resolution='saved', original_path=None),
+        dict(body_key=None, receipt_key='receipts/one.gz', receipt_line=2,
+             http_status=429, resolution='retry_later', original_path=''),
+        dict(body_key='bodies/one.gz', receipt_key='receipts/two.gz', receipt_line=1,
+             http_status=200, resolution='saved', original_path=None),
+    ], schema=CAPTURE_SCHEMA)
+    path = tmp_path / 'raw.parquet'
+    pq.write_table(capture_table(original, first_order=37), path)
+    pin = native.run(dict(dataset='raw-value-proof', operation='initial', definition='raw-v1',
+                          sql='SELECT * FROM input', input=str(path),
+                          expected_digest=native.hash_input(path)['digest']))
+    with native.source_batches(pin) as reader:
+        restored = ordered_captures(reader.read_all())
+    assert restored.equals(original)
