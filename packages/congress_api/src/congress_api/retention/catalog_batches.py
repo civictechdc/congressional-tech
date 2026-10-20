@@ -177,7 +177,7 @@ class SelectedCatalogTable:
                 members = list(db.execute('SELECT component,rows FROM views WHERE name=? ORDER BY component', (name,)))
                 table = CatalogTable(physical_schema, [(name, descriptor['release'])], native=self.native,
                     order_column='_catalog_order', max_ordered_bytes=self.max_ordered_bytes,
-                    views={name: dict(components=[member for member, _ in members], rows=sum(n for _, n in members))})
+                    views={name: dict(components=[member for member, _ in members], rows=sum(n for _, n in members))}, store=self.store)
                 physical_columns = [name for name in columns if name in physical_schema.names]
                 for batch in table.iter_batches(columns=physical_columns or ['document_id']):
                     batch = pa.RecordBatch.from_arrays(
@@ -236,7 +236,7 @@ def prepare_native_catalog_components(store, native, *, candidate, source_chunks
             prepare_native_catalog_chunks(native, chunks, label=label, component='mixed-components',
                 candidate=candidate, schema=schema, max_chunk_rows=max_chunk_rows,
                 max_chunk_bytes=max_chunk_bytes, check_references=references, ordered_chunks=False,
-                checkpoint_directory=checkpoint_directory,
+                checkpoint_directory=checkpoint_directory, store=store,
                 on_prepared=lambda table, descriptor, label=label: record_chunk(label, table, descriptor))
         counts = check.finish()
         if not counts['document_rows']:

@@ -148,20 +148,24 @@ class PreparedCatalogScope:
     def _chunks(self, path, schema, order_for_row, *, max_rows, max_bytes):
         if type(max_rows) is not int or max_rows < 1 or type(max_bytes) is not int or max_bytes < 1:
             raise ValueError('Catalog chunk budgets must be positive integers')
+        from .catalog_rows import core_bytes
         physical = schema.append(pa.field(ORDER, pa.int64(), nullable=False))
-        pending, size = [], 0
+        pending, size, core_size = [], 0, 0
         with pq.ParquetFile(path) as file:
             for batch in file.iter_batches(batch_size=max_rows):
                 for row in batch.to_pylist():
                     row[ORDER] = order_for_row(row)
-                    row_bytes = pa.Table.from_pylist([row], schema=physical).nbytes
-                    if row_bytes > max_bytes:
+                    row_table = pa.Table.from_pylist([row], schema=physical)
+                    row_bytes = row_table.nbytes
+                    physical_bytes = core_bytes(row_table)
+                    if physical_bytes > max_bytes:
                         raise ValueError('One catalog row exceeds its native chunk byte budget')
-                    if pending and (len(pending) == max_rows or size + row_bytes > max_bytes):
+                    if pending and (len(pending) == max_rows or size + row_bytes > max_bytes or core_size + physical_bytes > max_bytes):
                         yield pa.Table.from_pylist(pending, schema=physical)
-                        pending, size = [], 0
+                        pending, size, core_size = [], 0, 0
                     pending.append(row)
                     size += row_bytes
+                    core_size += physical_bytes
         if pending:
             yield pa.Table.from_pylist(pending, schema=physical)
 
@@ -258,7 +262,7 @@ def catalog_scope_requirements():
     """Bind new scope admission to this reviewed implementation."""
     from hashlib import sha256
     return dict(validator='catalog-scope-v1', implementation_sha256=sha256(
-        Path(__file__).read_bytes()).hexdigest())
+        Path(__file__).read_bytes() + Path(__file__).with_name('catalog_rows.py').read_bytes()).hexdigest())
 
 
 def _component_pages(store, values):

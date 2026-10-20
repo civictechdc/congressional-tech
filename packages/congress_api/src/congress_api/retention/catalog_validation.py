@@ -130,7 +130,9 @@ def catalog_source_ids_digest(sorted_source_ids):
 def catalog_reference_requirements():
     """Portable current requirements for reusing an immutable reference proof."""
     implementation = inspect.getsource(CatalogReferenceCheck) + inspect.getsource(catalog_source_ids_digest)
-    return dict(validator='catalog-references-v1',
+    from .catalog_rows import FORMAT
+    return dict(validator='catalog-references-v1', row_format=FORMAT,
+                row_implementation_sha256=hashlib.sha256(Path(__file__).with_name('catalog_rows.py').read_bytes()).hexdigest(),
                 implementation_sha256=hashlib.sha256(implementation.encode()).hexdigest(),
                 python=sys.version, pyarrow=pyarrow.__version__, sqlite=sqlite3.sqlite_version)
 

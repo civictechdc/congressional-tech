@@ -185,7 +185,7 @@ def publish_catalog(store, filenames_path, documents_path, *, previous, validati
 
 def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate,
                                   schema, max_chunk_rows, max_chunk_bytes, check_references=None,
-                                  on_prepared=None, ordered_chunks=True, checkpoint_directory=None):
+                                  on_prepared=None, ordered_chunks=True, checkpoint_directory=None, store=None):
     """Retain rewritten bounded chunks as independent native candidates.
 
     The caller binds ``candidate`` to its exact base, semantic change, application
@@ -207,11 +207,13 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
             or type(max_chunk_rows) is not int or max_chunk_rows < 1
             or type(max_chunk_bytes) is not int or max_chunk_bytes < 1):
         raise ValueError('Native catalog preparation requires an explicit candidate, schema and chunk budget')
+    from .catalog_rows import CatalogRows, core_bytes, fits_chunk
+    row_owner = CatalogRows(native=native, store=store)
     prepared, last_order = [], None
     for index, table in enumerate(chunks):
         if not isinstance(table, pa.Table):
             raise TypeError('Catalog chunks must be typed Arrow tables')
-        if table.num_rows > max_chunk_rows or table.nbytes > max_chunk_bytes:
+        if not fits_chunk(table, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes):
             raise ValueError('Catalog table exceeds its native chunk budget')
         if (table.column_names.count('_catalog_order') != 1
                 or not pa.types.is_int64(table.schema.field('_catalog_order').type)):
@@ -249,7 +251,9 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
                 raise ValueError('Retained native catalog chunk differs from its prepared input')
             release = saved['release']
         else:
-            release = native.run_table(table, dataset=dataset, operation='initial', definition='catalog-chunk-v1')
+            release = row_owner.write(table, dataset=dataset, operation='initial', definition='catalog-chunk-v1',
+                max_rows=max_chunk_rows, max_bytes=max_chunk_bytes,
+                owner_column='source_id' if label == 'filenames' else 'document_id')
         checked = CatalogTable(schema, [(dataset, release)], native=native)
         if checked.rows != table.num_rows or release['dataset'].get('dataset') != dataset:
             raise ValueError('Prepared native catalog chunk row count differs')
@@ -261,7 +265,7 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
             staging.write_bytes(encoded(saved))
             staging.replace(checkpoint)
         descriptor = dict(name=dataset, release=release, rows=table.num_rows,
-                          arrow_bytes=table.nbytes, order_min=extrema['min'], order_max=extrema['max'])
+                          arrow_bytes=core_bytes(table), order_min=extrema['min'], order_max=extrema['max'])
         prepared.append(descriptor)
         if on_prepared is not None:
             on_prepared(table, descriptor)

@@ -10,6 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from weakref import finalize
 import pickle
+import pyarrow as pa
 
 from .catalog_staging import WorkingCatalog
 
@@ -203,7 +204,8 @@ class NativeCatalogDependencies:
     schema when a routing value wraps a release pin and shared schema reference.
     This reader owns no latest pointer or routing engine.
     """
-    def __init__(self, *, native, source_schema, locate_source, locate_alias, expected_members=None, expected_rows=None, max_rows=None, max_bytes=None, source_leaf_schema=None, working=None):
+    def __init__(self, *, native, source_schema, locate_source, locate_alias, expected_members=None, expected_rows=None, max_rows=None, max_bytes=None, source_leaf_schema=None, working=None, row_owner=None):
+        self.row_owner = row_owner
         self.native = native
         self.source_schema = source_schema
         self.locate_source = locate_source
@@ -224,14 +226,18 @@ class NativeCatalogDependencies:
 
     def _rows(self, pin, schema):
         count = size = 0
-        with self.native.source_batches(deepcopy(pin), schema=schema) as reader:
+        from contextlib import nullcontext
+        from .catalog_rows import core_bytes
+        context=(nullcontext(pa.RecordBatchReader.from_batches(schema,self.row_owner.read(deepcopy(pin),schema=schema)))
+                 if self.row_owner is not None else self.native.source_batches(deepcopy(pin),schema=schema))
+        with context as reader:
             if not reader.schema.equals(schema, check_metadata=False):
                 raise DependencyGap('Native dependency schema differs from selected application schema')
             for batch in reader:
                 if not batch.schema.equals(schema, check_metadata=False):
                     raise DependencyGap('Native dependency batch schema differs')
                 count += len(batch)
-                size += batch.nbytes
+                size += core_bytes(pa.Table.from_batches([batch]))
                 if ((self.max_rows is not None and count > self.max_rows)
                         or (self.max_bytes is not None and size > self.max_bytes)):
                     raise DependencyGap('Selected dependency partition exceeds its row or byte budget')

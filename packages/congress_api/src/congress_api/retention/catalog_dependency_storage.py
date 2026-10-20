@@ -36,6 +36,8 @@ class CatalogDependencyStorage:
         if type(max_rows) is not int or max_rows < 1 or type(max_bytes) is not int or max_bytes < 1:
             raise ValueError('Catalog dependency partition budgets must be positive integers')
         self.native, self.source_schema, self.namespace = native, source_schema, namespace
+        from .catalog_rows import CatalogRows
+        self.row_owner = CatalogRows(native=native, store=store)
         self.max_rows, self.max_bytes = max_rows, max_bytes
         self.sources = RoutingPages(store, namespace + '-sources')
         self.sources.objects.max_cache_entries = 16
@@ -72,11 +74,11 @@ class CatalogDependencyStorage:
 
     def _selection(self, selection, *, require_lookup_policy=False):
         if selection is None:
-            return dict(format='catalog-dependencies-v2', namespace=self.namespace, ownership_edges='document-id-v1', schema_hash=self.schema_hash,
+            return dict(format='catalog-dependencies-v3', namespace=self.namespace, ownership_edges='document-id-v1', schema_hash=self.schema_hash,
                         max_rows=self.max_rows, max_arrow_bytes=self.max_bytes,
                         source_root=None, alias_root=None, url_root=None, target_root=None, body_root=None, package_root=None, lookup_schema='url-resolution-body-package-v1',
                         lookup_requirements=self.lookup_requirements, source_schema=base64.b64encode(self.schema_bytes).decode(), next_source_order=0)
-        if (selection.get('format') != 'catalog-dependencies-v2'
+        if (selection.get('format') != 'catalog-dependencies-v3'
                 or selection.get('namespace') != self.namespace
                 or selection.get('ownership_edges') != 'document-id-v1'
                 or selection.get('max_rows') != self.max_rows
@@ -123,30 +125,27 @@ class CatalogDependencyStorage:
         stored_schema = (dependency_schema(self._source_leaf_schema(pin))
                          if 'source_schema' in pin else schema)
         release = pin['release'] if 'source_schema' in pin else pin
-        with self.native.source_batches(release, schema=stored_schema) as reader:
-            if not reader.schema.equals(stored_schema, check_metadata=False):
-                raise DependencyGap('Native dependency leaf schema differs')
-            batches = []
-            rows = size = 0
-            for batch in reader:
-                rows += len(batch)
-                size += batch.nbytes
-                if rows > self.max_rows or size > self.max_bytes:
-                    raise DependencyGap('Selected dependency leaf exceeds its row or byte budget')
-                batches.append(batch)
-            self.rows_read += rows
-            self.bytes_read += size
-            table = pa.Table.from_batches(batches, schema=reader.schema)
-            return (table.cast(schema) if stored_schema.equals(schema, check_metadata=True)
-                    else pa.Table.from_pylist(table.to_pylist(), schema=schema))
+        batches=[];rows=size=0
+        from .catalog_rows import core_bytes
+        for batch in self.row_owner.read(release, schema=stored_schema):
+            rows+=len(batch)
+            size+=core_bytes(pa.Table.from_batches([batch]))
+            if rows>self.max_rows or size>self.max_bytes:
+                raise DependencyGap('Selected dependency leaf exceeds its row or byte budget')
+            batches.append(batch)
+        self.rows_read+=rows;self.bytes_read+=size
+        table=pa.Table.from_batches(batches,schema=stored_schema)
+        return (table.cast(schema) if stored_schema.equals(schema,check_metadata=True)
+                else pa.Table.from_pylist(table.to_pylist(),schema=schema))
 
     def _write(self, table, kind):
         sink = pa.BufferOutputStream()
         with pa.ipc.new_stream(sink, table.schema) as writer:
             writer.write_table(table)
         identity = sha256(sink.getvalue().to_pybytes()).hexdigest()
-        pin = self.native.run_table(table, dataset=f'catalog-dep-v2-{kind}-{identity}',
-                                   operation='initial', definition='catalog-dependencies-storage-v2')
+        pin = self.row_owner.write(table, dataset=f'catalog-dep-v3-{kind}-{identity}',
+            operation='initial', definition='catalog-dependencies-storage-v3',
+            max_rows=self.max_rows, max_bytes=self.max_bytes)
         self.candidate_rows_submitted += len(table)
         self.candidate_arrow_bytes += table.nbytes
         if kind == 'sources':
@@ -199,7 +198,7 @@ class CatalogDependencyStorage:
                         'SELECT body FROM rows WHERE digest>=? AND digest<? ORDER BY identity LIMIT ?',
                         (child, child + 'g', self.max_rows + 1))]
                     table = pa.Table.from_pylist(values, schema=schema)
-                    if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
+                    if self._fits(table):
                         if len(table):
                             yield child, self._write(table, kind)
                         return
@@ -216,10 +215,31 @@ class CatalogDependencyStorage:
                     root = pages.replace_stream(root, prefix, chain([first], generated))
         return root
 
-    def read_source_leaf(self, selection, value):
+    def _fits(self, table):
+        from .catalog_rows import fits_chunk
+        return fits_chunk(table, max_rows=self.max_rows, max_bytes=self.max_bytes)
+
+    def read_source_leaf(self, selection, value, *, source_columns=None):
         """Read one selected routing value using its exact physical app schema."""
         basis = self._selection(selection)
-        return self._read(self._source_reference(value, basis), dependency_schema(self.source_schema))
+        reference=self._source_reference(value,basis)
+        if source_columns is None:
+            return self._read(reference,dependency_schema(self.source_schema))
+        source_schema=self._source_leaf_schema(reference)
+        available=[name for name in source_columns if name in source_schema.names]
+        schema=dependency_schema(source_schema)
+        batches=list(self.row_owner.read(reference['release'],schema=schema,source_columns=available))
+        physical=schema.set(schema.get_field_index('source_values'),schema.field('source_values').with_type(pa.struct([source_schema.field(name)for name in available])))
+        table=pa.Table.from_batches(batches,schema=physical)
+        logical=dependency_schema(pa.schema([self.source_schema.field(name)for name in source_columns]))
+        return table if physical.equals(logical,check_metadata=True) else pa.Table.from_pylist(table.to_pylist(),schema=logical)
+
+    def source_occurrences(self, selection, value, source_id):
+        basis=self._selection(selection)
+        reference=self._source_reference(value,basis)
+        if 'source_occurrences' not in self._source_leaf_schema(reference).names:
+            return None
+        return self.row_owner.occurrences(reference['release'],schema=dependency_schema(self._source_leaf_schema(reference)),owner_id=source_id)
 
     def selected(self, selection):
         basis = self._selection(selection)
@@ -259,7 +279,7 @@ class CatalogDependencyStorage:
         return NativeCatalogDependencies(native=self.native, source_schema=self.source_schema,
             locate_source=source_pin, locate_alias=alias_pins, source_leaf_schema=self._source_leaf_schema, expected_members=member_counts.__getitem__,
             expected_rows=lambda pin: pin_counts.get(index.compact(pin)),
-            max_rows=self.max_rows, max_bytes=self.max_bytes, working=working)
+            max_rows=self.max_rows, max_bytes=self.max_bytes, working=working, row_owner=self.row_owner)
 
     @staticmethod
     def _lookup_keys(row):
@@ -374,7 +394,7 @@ class CatalogDependencyStorage:
                     'SELECT body FROM sources WHERE digest>=? AND digest<? ORDER BY identity LIMIT ?',
                     (prefix, prefix + 'g', self.max_rows + 1))]
                 table = pa.Table.from_pylist(rows, schema=dependency_schema(self.source_schema))
-                if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
+                if self._fits(table):
                     if len(table):
                         yield prefix, self._write(table, 'sources')
                     return

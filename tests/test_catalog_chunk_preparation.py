@@ -29,7 +29,7 @@ class NativeRecorder:
 
     def run_table(self, table, **request):
         self.calls.append((table, request))
-        return dict(id='initial', verified=True, dataset=dict(computed={}, related=None,
+        return dict(id='initial', verified=True, dataset=dict(dataset=request['dataset'], computed={}, related=None,
                     groups=dict(source=dict(rows=len(table)))))
 
 

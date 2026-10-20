@@ -19,30 +19,33 @@ from .immutable_metadata import MetadataObjects, encoded
 
 def adoption_requirements():
     return dict(validator='catalog-native-adoption-v1',
-                implementation_sha256=sha256(Path(__file__).read_bytes()).hexdigest())
+                implementation_sha256=sha256(Path(__file__).read_bytes() + Path(__file__).with_name('catalog_rows.py').read_bytes()).hexdigest())
 
 
 def ordered_chunks(file, *, max_rows, max_bytes):
+    from .catalog_rows import core_table, row_bytes
     schema = file.schema_arrow.append(pa.field('_catalog_order', pa.int64(), nullable=False))
-    pending, rows, size, offset = [], 0, 0, 0
+    pending, rows, size, physical_total, offset = [], 0, 0, 0, 0
     def table():
         values = pa.Table.from_batches(pending, schema=file.schema_arrow).combine_chunks()
         return pa.Table.from_arrays([*values.columns, pa.array(range(offset, offset + rows), type=pa.int64())], schema=schema)
-    # Parquet has a row-count batch API. Read one old row before checking bytes,
-    # then assemble bounded physical chunks rather than allocating a whole wide
-    # old row group and only splitting it after allocation.
-    for batch in file.iter_batches(batch_size=1):
-        row_bytes = batch.nbytes + 8
-        if row_bytes > max_bytes:
-            raise ValueError('One selected catalog row exceeds its native adoption budget')
-        if pending and (rows == max_rows or size + row_bytes > max_bytes):
-            yield table()
-            offset += rows
-            pending, rows, size = [], 0, 0
-        pending.append(batch)
-        rows, size = rows + 1, size + row_bytes
-    if pending:
-        yield table()
+    for batch in file.iter_batches(batch_size=min(max_rows,128)):
+        physical=core_table(pa.Table.from_batches([batch]))
+        physical_sizes=row_bytes(physical.to_batches()[0])
+        logical_sizes=row_bytes(batch)
+        start=0
+        for i,(physical_size,logical_size)in enumerate(zip(physical_sizes,logical_sizes)):
+            physical_size+=8;logical_size+=8
+            if physical_size>max_bytes:
+                raise ValueError('One selected catalog row exceeds its native adoption budget')
+            if pending or i>start:
+                if rows==max_rows or size+logical_size>max_bytes or physical_total+physical_size>max_bytes:
+                    if i>start:pending.append(batch.slice(start,i-start))
+                    yield table()
+                    offset+=rows;pending=[];rows=size=physical_total=0;start=i
+            rows+=1;size+=logical_size;physical_total+=physical_size
+        if len(batch)>start:pending.append(batch.slice(start))
+    if pending:yield table()
 
 
 def _hash_table(digest, table):
@@ -90,7 +93,7 @@ def qualify_adoption_readback(store, native, prepared, files, *, max_bytes):
                     remaining, position = remaining - take, position + take
                 expected = pa.Table.from_batches(parts, schema=file.schema_arrow).combine_chunks()
                 physical_schema = file.schema_arrow.append(pa.field('_catalog_order', pa.int64(), nullable=False))
-                table = CatalogTable(physical_schema, [(name, physical['release'])], native=native)
+                table = CatalogTable(physical_schema, [(name, physical['release'])], native=native, store=store)
                 observed = pa.Table.from_batches(list(table.iter_batches())).combine_chunks()
                 ordinals = observed['_catalog_order'].to_pylist()
                 actual = observed.sort_by('_catalog_order').drop(['_catalog_order'])
