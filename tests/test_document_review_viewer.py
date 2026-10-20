@@ -151,3 +151,24 @@ def test_text_evidence_preserves_literal_bytes_with_plain_text_type(tmp_path):
     snapshot=bridge.ReviewSnapshot(manifest,file_digest(manifest),args['sources'],args['documents'])
     doc=pq.read_table(args['documents']).to_pylist()[0];sources=pq.read_table(args['sources']).to_pylist()
     assert snapshot.evidence(doc,sources,'native-text') == (text.read_bytes(),'text/plain; charset=utf-8')
+
+
+def test_logical_group_reader_reuses_exact_review_policy_and_evidence(tmp_path):
+    args, manifest = exported(tmp_path)
+    document = pq.read_table(args['documents']).to_pylist()[0]
+    sources = pq.read_table(args['sources']).to_pylist()
+    calls=[]
+    def group(identity):
+        calls.append(identity)
+        assert identity == document['document_id']
+        return deepcopy(document), deepcopy(sources)
+    snapshot=bridge.ReviewSnapshot.from_logical_groups(manifest,file_digest(manifest),group)
+    assert calls == [document['document_id']]
+    assert snapshot.selection(document,sources)['status']=='candidate_applied'
+    assert snapshot.selection(document,sources,withdrawn=True)['status']=='withdrawn'
+    assert snapshot.evidence(document,sources,'body')[0]==(tmp_path/'original/body.pdf').read_bytes()
+    changed=deepcopy(sources);changed[0]['filename']='different.pdf'
+    with pytest.raises(ValueError,match='current baseline'):
+        bridge.ReviewSnapshot.from_logical_groups(manifest,file_digest(manifest),lambda _: (document,changed))
+    manifest.write_text('{}')
+    with pytest.raises(ValueError,match='snapshot changed'):snapshot.check()
