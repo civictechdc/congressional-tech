@@ -96,6 +96,12 @@ STRINGS = pa.list_(pa.string())
 RESPONSE_FIELDS = (
     "response_usable", "response_body_complete", "response_format", "response_result",
 )
+# The grouping policy reads these fields; consumers can keep large retained
+# evidence in Arrow while computing exact endpoint/body dependency keys.
+GROUP_ALIAS_FIELDS = (
+    'filename', 'source_url', 'body_key', 'media_type', 'http_status',
+    'source_resolved_url', 'capture_outcome', 'body_format', *RESPONSE_FIELDS,
+)
 SOURCE_SCHEMA = pa.schema(
     [
         ("body_key", pa.string()),
@@ -428,8 +434,7 @@ def source_groups(table):
         return row
 
     aliases = {}
-    fields = ['filename', 'source_url', 'body_key', 'media_type', 'http_status',
-              'source_resolved_url', 'capture_outcome', 'body_format', *RESPONSE_FIELDS]
+    fields = GROUP_ALIAS_FIELDS
     for row_id, row in enumerate(table.select(list(dict.fromkeys(
             name for name in fields if name in table.column_names))).to_pylist()):
         for alias in group_aliases(row, row_id):

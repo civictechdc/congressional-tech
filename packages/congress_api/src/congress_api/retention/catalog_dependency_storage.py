@@ -374,6 +374,7 @@ class CatalogDependencyStorage:
                 first_unused_order=first_unused_order, source_orders=source_orders,
                 staging_byte_budget=staging_byte_budget, on_progress=on_progress)) as work:
             work.prepare(chunks)
+            work.prepare_order()
             db = work.db
             def leaves(prefix):
                 table = work.source_table(prefix)

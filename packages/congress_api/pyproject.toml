@@ -21,6 +21,7 @@ dependencies = [
 # Checkpoint digests include Parquet writer metadata; readers/writers must match.
 archive = [
     "pyarrow==25.0.1",
+    "duckdb>=1.5.5,<2",
     "boto3>=1.40,<2",
     "aiobotocore>=3.9,<4",
     "house-naming-guide",

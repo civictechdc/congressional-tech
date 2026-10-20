@@ -148,6 +148,12 @@ def alias_schema():
                       pa.field('source_id', pa.string(), nullable=False)])
 
 
+def dependency_key_fields(source_schema):
+    """Fields used by identity, grouping, URL/body and hearing-package lookups."""
+    required = {*index.GROUP_ALIAS_FIELDS, 'source_id', 'document_id', 'hearing_package_id'}
+    return [name for name in source_schema.names if name in required]
+
+
 def dependency_tables(rows, source_schema, *, first_order=0):
     """Prepare one bounded source leaf and its exact reverse dependency rows.
 
@@ -163,10 +169,7 @@ def dependency_tables(rows, source_schema, *, first_order=0):
             raise ValueError('Dependency source table schema differs')
         # Grouping and lookup use the core values. Keep potentially huge
         # occurrence lists in Arrow rather than round-tripping Python structs.
-        from .catalog_rows import core_table, COUNT, ROW
-        core = core_table(rows)
-        projected = core.drop([name for name in (COUNT, ROW) if name in core.column_names])
-        originals = projected.to_pylist()
+        originals = rows.select(dependency_key_fields(source_schema)).to_pylist()
     else:
         originals = rows
     sources, aliases, seen, keys, positions, edges = [], [], set(), [], [], []
@@ -192,7 +195,8 @@ def dependency_tables(rows, source_schema, *, first_order=0):
     if typed:
         sources = pa.Table.from_arrays([
             pa.array(keys, type=pa.string()), pa.array(positions, type=pa.int64()),
-            pa.StructArray.from_arrays([rows[name].combine_chunks() for name in source_schema.names],
+            pa.StructArray.from_arrays([column.chunk(0) if column.num_chunks == 1 else column.combine_chunks()
+                                       for column in rows.columns],
                                        fields=list(source_schema)),
             pa.array(edges, type=pa.list_(pa.string())),
         ], schema=dependency_schema(source_schema))
