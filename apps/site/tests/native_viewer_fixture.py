@@ -68,7 +68,13 @@ selected = MetadataObjects(store, 'catalog-selections-v2').put(dict(version=2, c
     counts=dict(source_rows=len(sources),document_rows=len(documents)),requirements=catalog_reference_requirements(),scope=None))
 store.put_catalog_manifest(encoded(dict(version=2, selection=selected)), expected_version=None)
 snapshot = read_catalog(store, native=native)
-builder.publish_selected(snapshot, folder / 'native-public', review_identities=None)
+viewer_metrics = {}
+builder.publish_selected(snapshot, folder / 'native-public', review_identities=None, memory_metrics=viewer_metrics)
+(folder / 'native-viewer-metrics.json').write_text(json.dumps(viewer_metrics, indent=2))
+if os.environ.get('FILENAME_FIXTURE_GIANT_DOCUMENT'):
+    (folder / 'giant-document-metrics.json').write_text(json.dumps(dict(
+        document_id=documents['document_id'][0].as_py(), logical_arrow_bytes=documents.slice(0,1).nbytes,
+        observations=len(documents['source_occurrences'][0].values), fixture_native='in-memory test double'), indent=2))
 
 (folder / "document-records.json").write_text(json.dumps(documents.to_pylist(), default=str))
 
