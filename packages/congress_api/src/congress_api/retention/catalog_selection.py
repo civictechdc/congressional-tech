@@ -197,6 +197,32 @@ class NativeCatalogSnapshot:
             for body, in db.execute('SELECT body FROM changes ORDER BY position DESC'):
                 yield json.loads(body)
 
+    def _surviving_changed_components(self, identity):
+        from .catalog_scope import iterator_scope_components
+        with TemporaryDirectory(prefix='catalog-changed-members-') as directory, closing(
+                sqlite3.connect(Path(directory) / 'members.sqlite')) as db:
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+                             'CREATE TABLE members(component TEXT PRIMARY KEY,reference TEXT);')
+            for change in self.changes_since(identity):
+                for component, _ in iterator_scope_components(self.store, change['scope'], 'retired'):
+                    db.execute('DELETE FROM members WHERE component=?', (component,))
+                for component, reference in iterator_scope_components(self.store, change['scope'], 'prepared'):
+                    db.execute('INSERT OR REPLACE INTO members VALUES (?,?)', (component, encoded(reference).decode()))
+            for component, reference in db.execute('SELECT component,reference FROM members ORDER BY component'):
+                reference = json.loads(reference)
+                if self.component_ref(component) != reference:
+                    raise ValueError('Folded catalog change differs from the current component selection')
+                yield component, reference
+
+    def changed_sources_since(self, identity, *, max_ordered_bytes):
+        """Read only latest surviving changed components, not obsolete versions."""
+        reader = CatalogComponentReader(self.store)
+        rows = sum(reader.read(reference)['validation']['counts']['source_rows']
+                   for _, reference in self._surviving_changed_components(identity))
+        return SelectedCatalogTable(self.schemas['filenames'],
+            lambda: self._surviving_changed_components(identity), store=self.store, native=self.native,
+            label='filenames', rows=rows, max_ordered_bytes=max_ordered_bytes)
+
     def changed_sources(self, change, *, which='prepared', max_ordered_bytes):
         """Read one scope's exact selected or retired source members only."""
         from .catalog_scope import read_catalog_scope, iterator_scope_components

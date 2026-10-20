@@ -132,3 +132,50 @@ def test_scope_cursor_orders_multiple_changes_and_rejects_unrelated_identity(tmp
     assert not native.reads
     with pytest.raises(ValueError, match='not an ancestor'):
         list(third.changes_since(dict(selector_sha256='other-file-basis', selected_ref=None)))
+
+
+def test_explicit_known_empty_catalog_identity_seeds_initial_scope_without_full_scan(tmp_path):
+    from copy import deepcopy
+    from congress_api.retention import document_index as index
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+    from test_catalog_dependencies import source
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    empty = read_catalog(store)
+    rows, schema, _, _ = index.prepare_document_indexes([source('first.pdf', 'A')],
+        pa.schema([*index.SOURCE_SCHEMA, ('capture_outcome', index.STRINGS)]))
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='known-empty',
+                                     source_schema=schema, max_rows=64, max_bytes=1 << 20)
+    assert empty.identity == dict(selector_sha256=None, selected_ref=None)
+    updates.update_native_catalog(store, native=native, previous=empty, dependencies=owner,
+        replacements=rows, candidate='first', directory=tmp_path / 'first',
+        max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    current = read_catalog(store, native=native)
+    native.reads.clear()
+    change, = current.changes_since(empty.identity)
+    assert not native.reads
+    assert change['scope']['counts']['prepared_source_rows'] == 1
+    assert change['scope']['dependency_before'] is None
+    with pytest.raises(ValueError, match='not an ancestor'):
+        list(current.changes_since(None))
+
+
+def test_folded_source_changes_exclude_created_then_removed_components(tmp_path):
+    from test_catalog_dependencies import source
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    owner, rows = seed(tmp_path, store, native)
+    old = read_catalog(store, native=native)
+    added = source('temporary.pdf', 'temporary')
+    # Supply all declared fields as complete source values, including nulls.
+    added = pa.Table.from_pylist([added], schema=owner.source_schema).to_pylist()[0]
+    options = dict(native=native, dependencies=owner, max_chunk_rows=64,
+                   max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    updates.update_native_catalog(store, previous=old, replacements=[added], candidate='add-temporary',
+        directory=tmp_path / 'add', **options)
+    middle = read_catalog(store, native=native)
+    updates.update_native_catalog(store, previous=middle, deletions=[identity(added)], candidate='remove-temporary',
+        directory=tmp_path / 'remove', **options)
+    current = read_catalog(store, native=native)
+    native.reads.clear()
+    changed = current.changed_sources_since(old.identity, max_ordered_bytes=1 << 20)
+    assert changed.rows == 0 and list(changed.iter_batches()) == []
+    assert not native.reads
