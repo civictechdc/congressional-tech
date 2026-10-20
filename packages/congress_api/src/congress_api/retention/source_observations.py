@@ -46,7 +46,8 @@ class SourceObservationTrace:
         self.working, self.db = working, working.connection
         self.db.executescript('CREATE TABLE observation_inputs(observation TEXT PRIMARY KEY); '
             'CREATE TABLE observation_edges(observation TEXT,dependency TEXT,access TEXT, '
-            'PRIMARY KEY(observation,dependency,access));')
+            'PRIMARY KEY(observation,dependency,access)); '
+            'CREATE TABLE observation_source_owners(source TEXT,observation TEXT,PRIMARY KEY(source,observation));')
 
     def register(self, receipt_key, receipt_line):
         observation = observation_id(receipt_key, receipt_line)
@@ -67,6 +68,40 @@ class SourceObservationTrace:
         return self.db.execute('SELECT dependency,access FROM observation_edges WHERE observation=? '
                                'ORDER BY dependency,access', (observation,))
 
+    def _source(self, row, observation):
+        identity = index.source_identity(row)
+        self.db.execute('INSERT OR IGNORE INTO observation_source_owners VALUES (?,?)', (identity, observation))
+        key, line = receipt_locator(observation)
+        for kind, value, access in [('source', identity, 'write'),
+                ('url', index.http_url(row.get('source_url')) or row.get('source_url'), 'read'),
+                ('body', row.get('body_key'), 'read')]:
+            if value:
+                self(dict(receipt_key=key, receipt_line=line, kind=kind, value=value, access=access))
+
+    def source(self, row, receipt):
+        keys, lines = receipt.get('source_receipt_key') or [], receipt.get('source_receipt_line') or []
+        if len(keys) == len(lines) == 1:
+            self._source(row, self.register(next(iter(keys)), int(next(iter(lines)))))
+
+    def merged(self, old, new):
+        """Follow the maintained placeholder-to-captured-row fact transfer."""
+        for observation, in self.db.execute('SELECT observation FROM observation_source_owners WHERE source=?',
+                                            (index.source_identity(old),)):
+            self._source(new, observation)
+
+    def context(self, row, collector):
+        """Bind final source identities to all actual URL context writers.
+
+        Occurrence deduplication intentionally keeps one representative locator.
+        The trace retains every emitter before that deduplication, so repeated
+        copies and multiple parents still own their exact final source rows.
+        """
+        url = index.http_url(row.get('source_url')) or row.get('source_url')
+        if url:
+            for observation, in self.db.execute('SELECT DISTINCT observation FROM observation_edges '
+                    'WHERE dependency=? AND access=?', (dependency_id('url', url), 'write')):
+                self._source(row, observation)
+
     def replay(self, captures, read, read_body, *, seeds=()):
         columns = [name for name in ['receipt_key', 'receipt_line', '_capture_order', 'context_url', 'body_key']
                    if name in captures.column_names]
@@ -83,17 +118,8 @@ class SourceObservationTrace:
         index.read_document_sources(captures=captures, read_receipt=read,
                                     read_body=read_body, context=context)
         sources = self.working.mapping('sources')
-        def source_owner(row, receipt):
-            keys, lines = receipt.get('source_receipt_key') or [], receipt.get('source_receipt_line') or []
-            if len(keys) == len(lines) == 1:
-                for kind, value, access in [('source', index.source_identity(row), 'write'),
-                        ('url', index.http_url(row.get('source_url')) or row.get('source_url'), 'read'),
-                        ('body', row.get('body_key'), 'read')]:
-                    if value:
-                        self(dict(receipt_key=next(iter(keys)), receipt_line=int(next(iter(lines))),
-                                  kind=kind, value=value, access=access))
         collect_source_inputs(sources, context, captures, read, working=self.working,
-                              seeds=seeds, observe_source=source_owner)
+                              seeds=seeds, source_observer=self)
         return sources
 
 

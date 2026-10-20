@@ -23,13 +23,13 @@ def add_source(sources, body_key, filename, source_url, **values):
     return row
 
 
-def collect_source_inputs(sources, context, captures, read, *, working, seeds=(), observe_source=None):
+def collect_source_inputs(sources, context, captures, read, *, working, seeds=(), source_observer=None):
     active_receipt = None
     def add(body_key, filename, source_url, *, _receipt=None, **values):
         row = add_source(sources, body_key, filename, source_url, **values)
         receipt = _receipt or active_receipt
-        if observe_source is not None and receipt:
-            observe_source(row, receipt)
+        if source_observer is not None and receipt:
+            source_observer.source(row, receipt)
         return row
     def link_names(link, receipt=None):
         url = link.get("url")
@@ -128,7 +128,11 @@ def collect_source_inputs(sources, context, captures, read, *, working, seeds=()
                     if isinstance(items, list):
                         row[field] = index.merge_values(field, row.get(field), items)
                 sources[target] = row
+                if source_observer is not None:
+                    source_observer.merged(old, row)
     for key, row in progress.track(sources.items(), 'associate_source_metadata', unit='source_rows'):
         for field, values in context.for_url(row.get("source_url")).items():
             row[field] = index.merge_values(field, row.get(field), values)
         sources[key] = row
+        if source_observer is not None:
+            source_observer.context(row, context)

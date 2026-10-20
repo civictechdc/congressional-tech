@@ -114,3 +114,49 @@ def test_changed_reader_does_not_replay_unrelated_readers_of_the_same_event(tmp_
         affected = list(owner.affected(root, root, [observation_id('page-1', 1)], working=work))
     assert affected == sorted([observation_id('page-1', 1), observation_id('meeting', 1)])
     assert sum(len(native.tables[key]) for key in native.reads) < 100
+
+
+def test_metadata_only_deduplicated_parent_context_keeps_all_source_owners(tmp_path):
+    import pyarrow as pa
+    from congress_api.retention import document_index as index
+    from congress_api.retention.raw_archive import CAPTURE_SCHEMA
+    from congress_api.retention.source_inputs import collect_source_inputs
+    with closing(WorkingCatalog(tmp_path / 'late-source-owners.sqlite')) as work:
+        trace = SourceObservationTrace(work)
+        context = index.DocumentSources(working=work, observe=trace)
+        link = dict(url='https://example.gov/paper.pdf', parent_url='https://example.gov/page', label='Publisher label')
+        for key in ('original-parent', 'copied-parent'):
+            context.add_link(link, index.context_values(source_receipt_key=key, source_receipt_line=1))
+        sources = work.mapping('sources')
+        collect_source_inputs(sources, context, pa.Table.from_pylist([], schema=CAPTURE_SCHEMA),
+                              lambda key: None, working=work, source_observer=trace)
+        row, = list(sources.values())
+        identity = index.source_identity(row)
+        owners = {value[0] for value in work.connection.execute(
+            'SELECT observation FROM observation_source_owners WHERE source=?', (identity,))}
+        assert owners == {observation_id('original-parent', 1), observation_id('copied-parent', 1)}
+        # Display evidence remains deduplicated, while contribution ownership
+        # retains both actual receipts rather than fabricating paired locators.
+        assert len(row['source_occurrences']) == 1
+
+
+def test_placeholder_fact_merge_moves_every_exact_source_owner(tmp_path):
+    import pyarrow as pa
+    from congress_api.retention import document_index as index
+    from congress_api.retention.raw_archive import CAPTURE_SCHEMA
+    from congress_api.retention.source_inputs import collect_source_inputs, add_source
+    with closing(WorkingCatalog(tmp_path / 'merged-source-owners.sqlite')) as work:
+        trace = SourceObservationTrace(work)
+        sources = work.mapping('sources')
+        placeholder = add_source(sources, None, 'paper.pdf', 'https://example.gov/paper.pdf', media_type=['application/pdf'])
+        captured = add_source(sources, 'saved-body', 'paper.pdf', 'https://example.gov/paper.pdf', http_status=['200'])
+        trace.source(placeholder, index.context_values(source_receipt_key='metadata', source_receipt_line=1))
+        trace.source(captured, index.context_values(source_receipt_key='capture', source_receipt_line=2))
+        collect_source_inputs(sources, index.DocumentSources(working=work, observe=trace),
+            pa.Table.from_pylist([], schema=CAPTURE_SCHEMA), lambda key: None,
+            working=work, source_observer=trace)
+        row, = list(sources.values())
+        assert row['body_key'] == 'saved-body' and row['media_type'] == ['application/pdf']
+        owners = {value[0] for value in work.connection.execute(
+            'SELECT observation FROM observation_source_owners WHERE source=?', (index.source_identity(row),))}
+        assert owners == {observation_id('metadata', 1), observation_id('capture', 2)}
