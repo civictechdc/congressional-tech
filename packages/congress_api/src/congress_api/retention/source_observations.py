@@ -35,7 +35,7 @@ def receipt_locator(observation):
 
 
 def dependency_id(kind, value):
-    if kind not in {'event', 'url', 'source', 'capture', 'body'} or not isinstance(value, str) or not value:
+    if kind not in {'event', 'url', 'source', 'source-url', 'capture', 'body'} or not isinstance(value, str) or not value:
         raise ValueError('Invalid source interpretation dependency')
     return 'dependency:' + json.dumps([kind, value], separators=(',', ':'))
 
@@ -74,7 +74,8 @@ class SourceObservationTrace:
         key, line = receipt_locator(observation)
         for kind, value, access in [('source', identity, 'write'),
                 ('url', index.http_url(row.get('source_url')) or row.get('source_url'), 'read'),
-                ('body', row.get('body_key'), 'read')]:
+                ('body', row.get('body_key'), 'read'),
+                ('source-url', index.http_url(row.get('source_url')) or row.get('source_url'), 'write')]:
             if value:
                 self(dict(receipt_key=key, receipt_line=line, kind=kind, value=value, access=access))
 
@@ -102,13 +103,24 @@ class SourceObservationTrace:
                     'WHERE dependency=? AND access=?', (dependency_id('url', url), 'write')):
                 self._source(row, observation)
 
-    def replay(self, captures, read, read_body, *, seeds=()):
+    def finish(self, sources):
+        """Only final emitted source identities own selected contributions."""
+        self.db.execute('CREATE TEMP TABLE final_source_owners(source TEXT PRIMARY KEY)')
+        for row in sources.values():
+            self.db.execute('INSERT OR IGNORE INTO final_source_owners VALUES (?)', (index.source_identity(row),))
+        for identity, in self.db.execute('SELECT DISTINCT source FROM observation_source_owners WHERE source NOT IN '
+                                         '(SELECT source FROM final_source_owners)'):
+            self.db.execute('DELETE FROM observation_edges WHERE dependency=?', (dependency_id('source', identity),))
+        self.db.execute('DELETE FROM observation_source_owners WHERE source NOT IN (SELECT source FROM final_source_owners)')
+        self.db.execute('DROP TABLE final_source_owners')
+
+    def replay(self, captures, read, read_body, *, seeds=(), retained_capture_inputs=False):
         columns = [name for name in ['receipt_key', 'receipt_line', '_capture_order', 'context_url', 'body_key']
                    if name in captures.column_names]
         for batch in captures.select(columns).to_batches(max_chunksize=256):
             for row in batch.to_pylist():
                 self.register(row['receipt_key'], row['receipt_line'])
-                for kind, value, access in [('capture', str(row['_capture_order']) if '_capture_order' in row else None, 'write'),
+                for kind, value, access in [('capture', str(row['_capture_order']) if '_capture_order' in row and not retained_capture_inputs else None, 'write'),
                         ('url', index.http_url(row.get('context_url')) or row.get('context_url'), 'read'),
                         ('body', row.get('body_key'), 'read')]:
                     if value:
@@ -162,7 +174,8 @@ class SourceObservationStorage:
     def prepare(self, root, trace):
         """Replace complete observations; retain every unaffected owner edge."""
         db = trace.db
-        db.executescript('CREATE TABLE observation_changes(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
+        db.executescript('DROP TABLE IF EXISTS observation_changes; DROP TABLE IF EXISTS observation_changed_aliases; '
+            'CREATE TABLE observation_changes(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
             'CREATE TABLE observation_changed_aliases(alias TEXT PRIMARY KEY);')
         def add(alias, member):
             db.execute('INSERT OR IGNORE INTO observation_changed_aliases VALUES (?)', (alias,))

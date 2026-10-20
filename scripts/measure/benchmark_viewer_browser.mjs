@@ -43,14 +43,14 @@ try {
   const esbuild = dependency('esbuild'), {chromium} = dependency('playwright');
   receipt.runtime.esbuild = esbuild.version;
   receipt.runtime.playwright = dependency('playwright/package.json').version;
-  const moduleNames = ['filename-catalog.mjs', 'filename-reviews.mjs', 'filename-recoveries.mjs',
-    'filename-publication.mjs', 'filename-observations.mjs'];
+  const moduleNames = ['catalog.mjs', 'reviews.mjs', 'recoveries.mjs',
+    'publication.mjs', 'observations.mjs'];
   receipt.loader_hashes = Object.fromEntries(await Promise.all(moduleNames.map(async name =>
-    [name, hash(await readFile(join(root, 'apps/site/src/components', name)))])));
+    [name, hash(await readFile(join(root, 'apps/site/src/components/filenames', name)))])));
   const bundle = join(output, 'browser-bundle.js');
-  await esbuild.build({stdin: {contents: `export {createFilenameCatalog,savedCopyUrl} from './filename-catalog.mjs';
-    export {loadReviews} from './filename-reviews.mjs'; export {loadPublication} from './filename-publication.mjs';
-    export {loadRecoveries} from './filename-recoveries.mjs';`, resolveDir: join(root, 'apps/site/src/components')},
+  await esbuild.build({stdin: {contents: `export {createFilenameCatalog,savedCopyUrl} from './catalog.mjs';
+    export {loadReviews} from './reviews.mjs'; export {loadPublication} from './publication.mjs';
+    export {loadRecoveries} from './recoveries.mjs';`, resolveDir: join(root, 'apps/site/src/components/filenames')},
     bundle: true, format: 'iife', globalName: 'ViewerBenchmark', outfile: bundle, platform: 'browser', nodePaths: modulePaths, tsconfigRaw: {}});
   receipt.bundle_sha256 = hash(await readFile(bundle));
   const serverArgs = [join(root, 'scripts/measure/viewer_benchmark_server.py'), '--publication', resolve(options.publication),

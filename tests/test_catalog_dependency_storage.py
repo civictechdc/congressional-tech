@@ -167,8 +167,8 @@ def test_small_aliases_share_bounded_physical_native_tables():
                                      source_schema=SCHEMA, max_rows=1024, max_bytes=4 << 20)
     rows = [source(f'{i}.pdf', f'body-{i}') for i in range(100)]
     selected = owner.prepare(None, replacements=rows)
-    assert len(native.calls) == 3  # Source, grouping membership and URL membership leaves.
-    assert sum(len(table) for table in native.tables.values()) == 400
+    assert len(native.calls) == 4  # Source, grouping, URL and non-grouping body leaves.
+    assert sum(len(table) for table in native.tables.values()) == 500
     assert owner.selected(selected).source(identity(rows[50])) is not None
 
 
@@ -275,3 +275,16 @@ def test_url_lookups_refuse_stale_resolution_policy_without_payload_reads():
         with pytest.raises(DependencyGap, match='lookup policy changed'):
             list(lookup(initial, 'https://example.gov/a.pdf'))
     assert not native.reads
+
+
+def test_non_grouping_body_lookup_retains_failed_and_source_record_owners():
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='body-lookups',
+                                     source_schema=SCHEMA, max_rows=4, max_bytes=1 << 20)
+    failed = source('failed.pdf', 'saved-response', http_status=['500'])
+    source_record = source('metadata.xml', 'saved-response', media_type=['text/html'])
+    initial = owner.prepare(None, replacements=[failed, source_record])
+    assert {row['source_id'] for row in owner.sources_at_body(initial, 'saved-response')} == {
+        identity(failed), identity(source_record)}
+    changed = owner.prepare(initial, deletions=[identity(failed)])
+    assert {row['source_id'] for row in owner.sources_at_body(changed, 'saved-response')} == {identity(source_record)}

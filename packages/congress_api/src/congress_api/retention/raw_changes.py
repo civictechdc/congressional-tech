@@ -26,16 +26,24 @@ class RawChanges:
             pending.append(key)
         return self.objects.put(dict(version=1, previous=head, keys=pending)) if pending else head
 
-    def put(self, base, manifest, state_urls):
+    def put(self, base, manifest, state_urls, *, reading_parts=()):
         return self.objects.put(dict(version=1, previous_identity=base.identity,
             previous_change=base.manifest['change'],
             capture_start=base.manifest['captures']['rows'],
             capture_end=manifest['captures']['rows'], capture_head=manifest['captures']['head'],
             old_state_root=base.manifest['state']['root'], new_state_root=manifest['state']['root'],
-            state_urls=self._keys(state_urls), deleted_state_urls=None))
+            state_urls=self._keys(state_urls), deleted_state_urls=None,
+            reading_parts=self._keys(reading_parts),
+            old_reading_root=base.manifest.get('readings'), new_reading_root=manifest.get('readings')))
 
     def state_urls(self, change):
-        head, pages = change['state_urls'], []
+        yield from self._values(change['state_urls'])
+
+    def reading_parts(self, change):
+        yield from self._values(change.get('reading_parts'))
+
+    def _values(self, head):
+        pages = []
         while head is not None:
             page = self.objects.read(head)
             if page['version'] != 1 or not 0 < len(page['keys']) <= KEYS_PER_PAGE:

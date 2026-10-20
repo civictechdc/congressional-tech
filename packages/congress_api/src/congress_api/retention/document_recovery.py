@@ -30,7 +30,7 @@ def retained_path(path):
                   'hearing-text/', path or '')
 
 
-def recover_sources(rows, captures, *, read_receipt, working=None):
+def recover_sources(rows, captures, *, read_receipt, working=None, source_observer=None):
     """Return source rows with all proved body versions and original evidence kept."""
     from congress_api.retention import document_index as index
 
@@ -121,6 +121,8 @@ def recover_sources(rows, captures, *, read_receipt, working=None):
             source_receipt_key=capture['receipt_key'], source_receipt_line=number,
             source_occurrence_scope='capture', **extra).items()}
         merge(row, {**occurrence, 'source_occurrences': [occurrence]})
+        if source_observer is not None:
+            source_observer.source(row, index.context_values(source_receipt_key=capture['receipt_key'], source_receipt_line=number))
 
     receipts = sorted(references.items()) if working is None else ((key,None) for key in references.receipts())
     for key, lines in receipts:
@@ -175,6 +177,8 @@ def recover_sources(rows, captures, *, read_receipt, working=None):
                                     continue
                                 identity = (capture['body_key'], original.get('filename'), url)
                                 row = recovered.setdefault(identity, {**original, 'body_key': capture['body_key']})
+                                if source_observer is not None:
+                                    source_observer.merged(original, row)
                                 merge(row, facts)
                                 locate(row, capture, number, source_capture_url=sorted(observed_urls))
                                 recovered[identity] = row
@@ -202,4 +206,6 @@ def recover_sources(rows, captures, *, read_receipt, working=None):
             result[identity] = existing
         else:
             result[identity] = row
+    if source_observer is not None:
+        source_observer.finish(result)
     return list(result.values()) if working is None else result.values()

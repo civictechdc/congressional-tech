@@ -151,8 +151,12 @@ async def run_async(
     spool = _ByteBudget(max_spool_bytes, changed)
     submitted = downloading = 0
     fatal, collector_error = False, None
+    refresh_body_keys = {state['body_key'] for state in queue} if reinspect_retained else ()
+    reading_options = (dict(selected_readings=archive.selected,
+        on_part=partial(archive.register_reading_part, replace=refresh_body_keys))
+        if hasattr(archive, 'selected') else {})
     metadata = CaptureMetadata(archive.store, archive.run_id,
-        refresh_body_keys={state['body_key'] for state in queue} if reinspect_retained else ())
+        refresh_body_keys=refresh_body_keys, **reading_options)
     archive.metadata = metadata
     loop = asyncio.get_running_loop()
     reader_slots = asyncio.Semaphore(metadata_workers)

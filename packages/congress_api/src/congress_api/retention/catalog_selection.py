@@ -274,6 +274,17 @@ def publish_native_catalog(store, scope_reference, *, previous, adoption_referen
             read_adoption_proof(store, adoption_reference, previous=previous,
                                 scope_reference=scope_reference, scope=proof)
         root, dependency, counts = None, None, dict(source_rows=0, document_rows=0)
+    interpretation = previous.selection.get('interpretation') if isinstance(previous, NativeCatalogSnapshot) else None
+    if 'interpretation_before' in proof and proof['interpretation_before'] != interpretation:
+        raise ValueError('Catalog scope source interpretation basis differs')
+    interpretation = proof.get('interpretation_after', interpretation)
+    if proof.get('source_update') is not None:
+        from .source_update_proof import read_source_update
+        source_update = read_source_update(store, proof['source_update'])
+        if (source_update['base'] != previous.identity or source_update['before'] != proof.get('interpretation_before')
+                or source_update['after'] != proof.get('interpretation_after')):
+            raise ValueError('Catalog source interpretation basis differs')
+        interpretation = source_update['after']
     if proof['dependency_before'] != dependency:
         raise ValueError('Catalog scope dependency basis differs')
     schemas = {label: _schema(proof['schemas'][label]) for label in ('filenames', 'documents')}
@@ -302,7 +313,7 @@ def publish_native_catalog(store, scope_reference, *, previous, adoption_referen
     retained_adoption = adoption_reference or (previous.selection.get('adoption') if isinstance(previous, NativeCatalogSnapshot) else None)
     value = dict(version=2, components=selected_root, dependency=proof['dependency_after'],
                  schemas=proof['schemas'], counts=new_counts, requirements=requirements, scope=scope_reference,
-                 adoption=retained_adoption)
+                 adoption=retained_adoption, interpretation=interpretation)
     selected = MetadataObjects(store, 'catalog-selections-v2').put(value)
     payload = encoded(dict(version=2, selection=selected))
     reconcile_lost_acknowledgment(

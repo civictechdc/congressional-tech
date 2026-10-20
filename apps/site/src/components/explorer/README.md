@@ -1,5 +1,11 @@
 # Committee Explorer data
 
+`Explorer.tsx` is the page. The rest of this folder is split by the question it answers:
+
+- `view/` — coverage, record detail, related materials, and paging
+- `reader/` — opening a release. `data-source.ts` reads JSON releases; `parquet-source.ts` reads the current Parquet tables
+- `browse/` — URL filters, search, display rules, and document categories
+
 The UI receives one `ExplorerReader` with `search`, `getRecord`, `getRelated` and
 `getCoverage`. React components know nothing about Parquet, URLs or HTTP ranges.
 `openPublicationReader` chooses the reader from the release manifest.
@@ -21,7 +27,7 @@ Congresses, counts and committee labels. `CURRENT.json` selects an immutable
 release manifest. There are no record files, locator shards or inverse-reference
 files in a Parquet release.
 
-`parquet-source.js` uses Hyparquet, loaded only for Parquet releases. It reads
+`reader/parquet-source.ts` uses Hyparquet, loaded only for Parquet releases. It reads
 selected columns and row groups through HTTP byte ranges. Results retain their
 physical row positions so opening a result can read that row directly. Searches
 and charts never load source payloads. The source table's `payload` column holds

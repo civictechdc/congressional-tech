@@ -169,11 +169,7 @@ def run(args):
     # publish_imported binds these names per invocation so injected collaborators
     # do not become cached globals; their source ownership is already checked.
     from congress_api.retention.r2 import R2Store
-    from congress_api.retention.catalog_staging import WorkingCatalog
-    from congress_api.cli.raw_progress import ProgressLog
-    from congress_api.retention.document_index import validate_document_indexes
-    from congress_api.retention.catalog_validation import validate_catalog_pair
-    from congress_api.retention.raw_catalog import rebuild_catalog_in_directory
+    from congress_api.retention.docspec import NativeDatasets
     from filename_recoveries import accepted_rows
     from viewer_publication.client import ContinuedPublicationClient
     from corpus_recovery.mappings import publish_mappings
@@ -189,13 +185,23 @@ def run(args):
     lock_path = control_root / '.cache/local-recovery.lock'
     lock = lock_path.open('a')
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    native_config = getattr(args, 'native_config', None)
+    if native_config is None:
+        lock.close()
+        raise ValueError('--native-config is required for native recovery publication')
+    try:
+        native = NativeDatasets.from_config(native_config)
+    except BaseException:
+        lock.close()
+        raise
     destination = args.destination.resolve()
     parent = os.getppid()
     def report(name, value):
-        continuation.save(name, (json.dumps(value, indent=2) + '\n').encode())
+        continuation.save(name, (json.dumps(value, indent=2, sort_keys=True) + '\n').encode())
     def journal(event, value):
         continuation.record(event, value)
     paths = list(selected.files())
+    paths += list(native.execution_files())
     paths += list(batch.glob('*.json')) + list((ROOT/'scripts/corpus_recovery').glob('*.py'))
     import corpus_recovery
     import corpus_recovery.inventory as inventory_module
@@ -275,7 +281,7 @@ def run(args):
         return publication_module.publish_imported(client=client, proxy=proxy, guard=guard,
             continuation=continuation, destination=destination, batch=batch,
             baseline=args.baseline, bucket=bucket, imported=result, builder=builder,
-            publisher=publisher, publication_conditions=publication_conditions)
+            publisher=publisher, publication_conditions=publication_conditions, native=native)
     except BaseException as error:
         try:
             observation = diagnostics_module.catalog_build_observation(destination, continuation.value['phases'])
@@ -294,6 +300,8 @@ if __name__ == '__main__':
         parser.add_argument('--'+name, type=Path, required=True)
     parser.add_argument('--control-root', type=Path, default=ROOT, help='Shared checkout owning the recovery lock across runtimes.')
     parser.add_argument('--config', type=Path, default=ROOT/'.cache/r2-admin/rclone.conf')
+    parser.add_argument('--native-config', type=Path,
+                        help='Explicit DocSpec runtime; required for execution and pinned across continuation.')
     parser.add_argument('--readiness', type=Path, help='Reconciled readiness evidence pinned by the completed import.')
     parser.add_argument('--execute', action='store_true')
     parser.add_argument('--resume', action='store_true', help='Explicitly reconcile and continue this destination; requires --execute.')

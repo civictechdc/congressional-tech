@@ -627,7 +627,7 @@ class LegacyArchiveSeed:
             self.metadata.flush()
         while self.pending:
             owner = self.pending[0]["download_state"]["family"]
-            batch = [r for r in self.pending if r["download_state"]["family"] == owner]
+            batch = [self._publication_receipt(r) for r in self.pending if r["download_state"]["family"] == owner]
             self.sequence += 1
             key = f"receipts/{owner}/{self.day}/download-{self.run_id}-{self.sequence:06d}.jsonl.gz"
             payload = "".join(
@@ -642,6 +642,9 @@ class LegacyArchiveSeed:
             self.pending = [
                 r for r in self.pending if r["download_state"]["family"] != owner
             ]
+
+    def _publication_receipt(self, receipt):
+        return receipt
 
     def apply(self, receipt):
         state = receipt["download_state"]
@@ -761,11 +764,12 @@ class Archive(LegacyArchiveSeed):
         self.initial_identity = self.selected.identity
         if self.selected.version is None:
             raise RuntimeError('Explicit raw archive seed adoption is required before recurring capture')
-        self.state = {row['url']: row for row in self.selected.states().to_pylist()}
-        self._saved_state = {url: dict(row) for url, row in self.state.items()}
+        from congress_api.retention.raw_state_map import RawStateMap
+        self.state = RawStateMap(self.selected)
         self.body_info = _BodyLookup(self.selected)
         self.additions, self.pending = [], []
         self._indexed_receipts = set()
+        self._reading_parts, self._reading_by_body, self._replace_readings = {}, {}, set()
         self.sequence = self._save_sequence = 0
         self.metadata = None
         self.day = datetime.now(timezone.utc).date().isoformat()
@@ -805,6 +809,8 @@ class Archive(LegacyArchiveSeed):
         return {name: state.get(name) for name in STATE_SCHEMA.names}
 
     def apply(self, receipt):
+        for reference in receipt.get('reading_parts', ()):
+            self.register_reading_part(reference, replace=receipt.get('replace_readings', ()))
         url = receipt['download_state']['url']
         previous = self.state.get(url, {})
         super().apply(receipt)
@@ -814,22 +820,41 @@ class Archive(LegacyArchiveSeed):
         super().add_index(receipt, key, line)
         self._indexed_receipts.add(key)
 
+    def register_reading_part(self, reference, *, replace=()):
+        selected = {name: reference[name] for name in ('key', 'bytes', 'sha256', 'rows')}
+        self._reading_parts[selected['key']] = selected
+        for body in reference.get('body_keys', ()):
+            self._reading_by_body[body] = selected
+        self._replace_readings.update(replace)
+
+    def _publication_receipt(self, receipt):
+        bodies = metadata_body_keys(receipt['record'], receipt['captures'])
+        parts = {self._reading_by_body[key]['key']: self._reading_by_body[key]
+                 for key in bodies
+                 if key in self._reading_by_body}
+        return dict(receipt, reading_parts=[parts[key] for key in sorted(parts)],
+                    replace_readings=sorted(set(bodies) & self._replace_readings)) if parts else receipt
+
     def save(self):
         self.flush()
-        updates = [row for url, row in self.state.items() if self._saved_state.get(url) != row]
-        if (not self.additions and not updates and not self._indexed_receipts
+        updates = self.state.changed()
+        if (not self.additions and not updates and not self._indexed_receipts and not self._reading_parts
                 and self.filename_version == self.selected.manifest['filename_version']):
             return self.selected
         prepared = self.storage.prepare(self.selected,
             operation=f'archive:{self.run_id}:{self._save_sequence}',
             captures=pa.Table.from_pylist(self.additions, schema=CAPTURE_SCHEMA),
             states=pa.Table.from_pylist(updates, schema=self.storage.state_schema),
-            indexed_receipts=self._indexed_receipts, filename_version=self.filename_version)
+            indexed_receipts=self._indexed_receipts, filename_version=self.filename_version,
+            reading_parts=tuple(self._reading_parts.values()), replace_readings=self._replace_readings)
         self.selected = self.storage.publish(prepared)
         self.body_info.snapshot = self.selected
         self.body_info.cache = {key: value for key, value in self.body_info.cache.items() if value is not None}
-        self._saved_state = {url: dict(row) for url, row in self.state.items()}
+        self.state.rebase(self.selected)
         self._indexed_receipts.clear()
+        self._reading_parts.clear()
+        self._reading_by_body.clear()
+        self._replace_readings.clear()
         self.additions.clear()
         self._save_sequence += 1
         return self.selected
@@ -840,6 +865,18 @@ def adopt_legacy_archive(store, storage, *, operation, repair=False):
     base = storage.snapshot()
     if base.version is not None:
         raise ValueError('Raw archive adoption requires an unselected native root')
+    from congress_api.retention.capture_metadata import PREFIX
+    from congress_api.retention.raw_readings import PART_BYTES
+    if getattr(store, 'version', lambda key: None)('indexes/processing/bodies.parquet') != 'missing':
+        raise RuntimeError('Legacy per-reader body cache requires explicit bounded reading-index adoption')
+    parts = []
+    for key in sorted(store.keys(PREFIX)):
+        if key.endswith('.parquet'):
+            payload = store.read(key)
+            if payload is None or len(payload) > PART_BYTES:
+                raise ValueError('Retained reading part exceeds adoption bounds')
+            parts.append(dict(key=key, bytes=len(payload), sha256=hashlib.sha256(payload).hexdigest(),
+                              rows=pq.ParquetFile(pa.BufferReader(payload)).metadata.num_rows))
     seed = LegacyArchiveSeed(store, 'seed-adoption', repair=repair)
     captures = seed.captures
     if seed.additions:
@@ -847,4 +884,4 @@ def adopt_legacy_archive(store, storage, *, operation, repair=False):
     return storage.publish(storage.prepare(base, operation=operation, captures=captures,
         states=pa.Table.from_pylist(list(seed.state.values()), schema=storage.state_schema),
         indexed_receipts={key for key in captures['receipt_key'].to_pylist() if key},
-        filename_version=seed.filename_version))
+        filename_version=seed.filename_version, reading_parts=parts, qualify_readings=True))

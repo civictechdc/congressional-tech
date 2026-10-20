@@ -216,3 +216,22 @@ def test_completion_receipt_binds_affected_body_coverage_before_selection(tmp_pa
     assert result['body_coverage'] == read_catalog_scope(store, result['scope_reference'])['body_coverage']
     assert result['body_coverage']['expected_count'] == 2
     assert result['body_coverage']['expected_sha256'] == sha256(encoded(['A', 'B'])).hexdigest()
+
+
+def test_unchanged_expected_body_coverage_reads_only_body_lookup_and_never_writes(tmp_path):
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    owner, rows = seed(tmp_path, store, native)
+    previous = read_catalog(store, native=native)
+    before = {p: p.read_bytes() for p in store.root.rglob('*') if p.is_file()}
+    native.reads.clear()
+    result = updates.update_native_catalog(store, native=native, previous=previous, dependencies=owner,
+        expected_bodies=['A'], candidate='already-selected', directory=tmp_path / 'unused',
+        max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))
+    assert result['unchanged'] and result['selected_identity'] == previous.identity
+    assert result['body_coverage']['expected_count'] == 1
+    assert all(not key.startswith(('catalog-filenames-', 'catalog-documents-')) for key in native.reads)
+    assert {p: p.read_bytes() for p in store.root.rglob('*') if p.is_file()} == before
+    with pytest.raises(ValueError, match='expected retained body'):
+        updates.update_native_catalog(store, native=native, previous=previous, dependencies=owner,
+            expected_bodies=['missing'], candidate='missing', directory=tmp_path / 'unused',
+            max_chunk_rows=64, max_chunk_bytes=1 << 20, rules=dict(grouping='maintained-v1'))

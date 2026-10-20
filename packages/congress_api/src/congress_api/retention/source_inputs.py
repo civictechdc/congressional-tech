@@ -136,3 +136,6 @@ def collect_source_inputs(sources, context, captures, read, *, working, seeds=()
         sources[key] = row
         if source_observer is not None:
             source_observer.context(row, context)
+
+    if source_observer is not None:
+        source_observer.finish(sources)

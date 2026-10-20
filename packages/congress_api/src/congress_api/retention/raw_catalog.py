@@ -38,6 +38,13 @@ DOCUMENTS = "indexes/documents.parquet"
 SOURCE_LINEAGE_VERSION = '1'
 
 
+def update_from_raw(store, *, raw_storage, directory, candidate, expected_bodies=(), seeds=()):
+    """Resume the maintained native receipt-to-catalog update in retained storage."""
+    from .catalog_raw_updates import update_from_raw as update
+    return update(store, raw_storage=raw_storage, directory=directory, candidate=candidate,
+                  expected_bodies=expected_bodies, seeds=seeds)
+
+
 def rebuild_catalog(store, captures=None, *, seeds=(), workers=4, repair=False, inspect_bodies=False,
                     body_readings=()):
     """Publish derived tables; explicitly supplied PDF readings refresh only their bodies."""

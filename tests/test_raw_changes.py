@@ -84,3 +84,14 @@ def test_state_counts_follow_only_changed_rows_and_old_snapshot_remains_exact():
     assert second.state_counts == dict(url_outcomes={'saved': 1, 'excluded_media': 1},
         urls_by_source_family={'unknown': 1, 'documents': 1}, excluded_media_urls=1)
     assert len(list(second.changed_state_urls(next(second.changes_since(first.identity))))) == 1
+
+
+def test_empty_identity_is_frozen_basis_not_latest_selection():
+    from native_memory_helpers import memory_raw_storage
+    from test_raw_storage import SelectorStore, captures
+    store = SelectorStore()
+    owner = memory_raw_storage(store)
+    empty = owner.empty_identity
+    assert empty == owner.snapshot().identity and store.writes == []
+    selected = owner.publish(owner.prepare(owner.snapshot(), operation='one', captures=captures('one')))
+    assert selected.identity != empty and owner.empty_identity == empty
