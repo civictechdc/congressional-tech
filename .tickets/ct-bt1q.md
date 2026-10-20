@@ -1,6 +1,6 @@
 ---
 id: ct-bt1q
-status: open
+status: in_progress
 deps: [ct-copj]
 links: []
 created: 2026-10-20T19:13:35Z
