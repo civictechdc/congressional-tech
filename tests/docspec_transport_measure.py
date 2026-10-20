@@ -25,7 +25,7 @@ def measure():
         exec(compile(source, 'docspec-baseline.py', 'exec'), module.__dict__)
         NativeDatasets = native_test_helpers.NativeDatasets = module.NativeDatasets
     counts = dict(native_process_launches=0, scratch_read_bytes=0,
-                  exact_release_lookups=0)
+                  exact_release_lookups=0, exact_release_seconds=0)
     popen = subprocess.Popen
     call = NativeDatasets._call
     release = NativeDatasets.release
@@ -40,9 +40,16 @@ def measure():
             counts['scratch_read_bytes'] += Path(args[2]).stat().st_size
         return result
 
-    def counted_release(self, *args):
+    def counted_lookup(operation, *args, **kwargs):
         counts['exact_release_lookups'] += 1
-        return release(self, *args)
+        started = time.perf_counter()
+        try:
+            return operation(*args, **kwargs)
+        finally:
+            counts['exact_release_seconds'] += time.perf_counter() - started
+
+    def counted_release(self, *args):
+        return counted_lookup(release, self, *args)
 
     subprocess.Popen = counted_popen
     NativeDatasets._call = counted_call
@@ -51,7 +58,7 @@ def measure():
         request = Host.request
         def counted_request(self, method, path, **kwargs):
             if method == 'GET' and '/versions/' in path and not path.endswith('/arrow/source'):
-                counts['exact_release_lookups'] += 1
+                return counted_lookup(request, self, method, path, **kwargs)
             return request(self, method, path, **kwargs)
         Host.request = counted_request
     else:
