@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {brotliCompressSync} from 'node:zlib';
-import {observationReader} from './filename-observations.mjs';
+import {observationReader} from './observations.mjs';
 
 function packed(rows) {
   const raw=Buffer.from(JSON.stringify(rows)),bytes=brotliCompressSync(raw);

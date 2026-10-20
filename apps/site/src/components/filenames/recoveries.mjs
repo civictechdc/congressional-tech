@@ -1,4 +1,4 @@
-import {withVerifiedJson} from './filename-startup.mjs';
+import {withVerifiedJson} from './startup.mjs';
 
 // Saved sidecars reach 12.6 MB. Allow bounded growth and a separate mandatory
 // status deadline; the evidence and policy rationale live in recovery.md.

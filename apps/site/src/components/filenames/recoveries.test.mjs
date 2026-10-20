@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {loadRecoveries, recoveryStartupPolicy} from './filename-recoveries.mjs';
+import {loadRecoveries, recoveryStartupPolicy} from './recoveries.mjs';
 
 const info = {catalog_id: 'pair', rows: 3, entries: 2};
 const fixture = () => ({version: 1, ...info, recoveries: [{recovery_status: 'recovered', original_url: 'https://source.test/a.pdf'}], sources: [[1, 0]], groups: [[0, [0]]]});
@@ -108,7 +108,7 @@ test('caller cancellation propagates its reason and clears transport ownership',
 
 test('the real worker reports mandatory recovery initialization failure', {timeout: 2000}, async () => {
   const {Worker} = await import('node:worker_threads');
-  const workerUrl = new URL('./filename-worker.mjs', import.meta.url).href;
+  const workerUrl = new URL('./worker.mjs', import.meta.url).href;
   const sidecar = input(), sha256 = '0'.repeat(64);
   const pointer = {version: 1, catalog_id: info.catalog_id, manifest: `releases/${'a'.repeat(32)}/manifest.json`,
     recovery: {...sidecar.descriptor, sha256, path: `releases/${sha256.slice(0,32)}/${sha256.slice(32)}/viewer-v2/recovery-status.json`}};

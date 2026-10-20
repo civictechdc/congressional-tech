@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {loadPublication, watchPublication, latestReviewUrl} from './filename-publication.mjs';
+import {loadPublication, watchPublication, latestReviewUrl} from './publication.mjs';
 
 test('review links select an archived immutable publication and validate its identity', async () => {
   const old = 'a'.repeat(32), latest = 'b'.repeat(32), release = 'c'.repeat(32);
@@ -60,7 +60,7 @@ test('a recovery-only update notifies an open viewer on the same catalog', async
 });
 
 test('review evidence uses the site base on project Pages and custom domains', async () => {
-  const {reviewPublicationUrl}=await import('./filename-publication.mjs');
+  const {reviewPublicationUrl}=await import('./publication.mjs');
   for(const base of ['/congressional-tech','/congressional-tech/']) assert.equal(reviewPublicationUrl(base,'https://viewer.test'),'https://viewer.test/congressional-tech/data/document-reviews/reviews.json');
   assert.equal(reviewPublicationUrl('/','https://viewer.test'),'https://viewer.test/data/document-reviews/reviews.json');
 });

@@ -6,15 +6,15 @@ import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
-import {loadRecoveries} from './filename-recoveries.mjs';
+import {loadRecoveries} from './recoveries.mjs';
 import {createHash} from 'node:crypto';
 
 test('actual worker routes retain one catalog and serve lazy detail and complete values',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'filename-worker-'));
  let worker;
  try {
-  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
-  const moduleUrl=new URL('./filename-worker.mjs',import.meta.url).href;
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
+  const moduleUrl=new URL('./worker.mjs',import.meta.url).href;
   worker=new Worker(new URL('data:text/javascript,'+encodeURIComponent(`
    import {parentPort} from 'node:worker_threads';
    import {readFile} from 'node:fs/promises';

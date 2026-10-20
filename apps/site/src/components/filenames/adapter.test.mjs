@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createViewerAdapter} from '../../../../docs/youtube-coverage/research/filename-adapter.mjs';
+import {createViewerAdapter} from '../../../../../docs/youtube-coverage/research/filename-adapter.mjs';
 const entry={record:{source_id:'id'},catalog_id:'pin',saved_file_available:true,reading:{version:'local'}};
 test('published adapter requires its worker and published evidence URLs',async()=>{
  let calls=0;

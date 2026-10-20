@@ -1,5 +1,5 @@
-import { retainedBytes, sharedLoad } from './filename-cache.mjs';
-import { yieldToMessages, scanBatchRows } from './filename-cooperative.mjs';
+import { retainedBytes, sharedLoad } from './cache.mjs';
+import { yieldToMessages, scanBatchRows } from './cooperative.mjs';
 import { decompressBrotli } from 'hyparquet-compressors';
 
 /** Decode only bounded blocks containing the selected source's observations. */

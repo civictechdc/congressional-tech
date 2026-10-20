@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {evidenceGraph, mergeOrigin, sourceContext} from '../../../../docs/youtube-coverage/research/filename-provenance.mjs';
+import {evidenceGraph, mergeOrigin, sourceContext} from '../../../../../docs/youtube-coverage/research/filename-provenance.mjs';
 
 const url = name => 'https://committee.test/' + name;
 const page = (from, to, extra = {}) => ({urls: [url(from)], link_urls: [url(to)], titles: [],

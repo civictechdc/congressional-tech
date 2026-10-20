@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {loadReviews, reviewedMode} from './filename-reviews.mjs';
+import {loadReviews, reviewedMode} from './reviews.mjs';
 
 const manifest={info:{catalog_id:'pair',entries:3,rows:4,facets:{document_kind:['amendment'],document_family:['legislation']}},source_manifest:{files:{filenames:{sha256:'source'},documents:{sha256:'documents'}}}};
 const selected={document_kind:['letter'],document_family:['correspondence'],document_kind_source:['assistant_complete_body_review']};

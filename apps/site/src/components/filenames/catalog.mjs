@@ -1,14 +1,14 @@
-import { sourceContext } from '../../../../docs/youtube-coverage/research/filename-provenance.mjs';
+import { sourceContext } from '../../../../../docs/youtube-coverage/research/filename-provenance.mjs';
 export { sourceContext };
-import { yieldToMessages, scanBatchRows } from './filename-cooperative.mjs';
-import { byteCache, retainedBytes, sharedLoad } from './filename-cache.mjs';
-import { positiveInteger } from '../../../../docs/youtube-coverage/research/filename-rules.mjs';
+import { yieldToMessages, scanBatchRows } from './cooperative.mjs';
+import { byteCache, retainedBytes, sharedLoad } from './cache.mjs';
+import { positiveInteger } from '../../../../../docs/youtube-coverage/research/filename-rules.mjs';
 import { parquetMetadataAsync, parquetReadObjects, parquetRead } from 'hyparquet';
 import { compressors } from 'hyparquet-compressors';
-import { observationReader } from './filename-observations.mjs';
-import { loadPublication } from './filename-publication.mjs';
-import { loadReviews, reviewedMode } from './filename-reviews.mjs';
-import { loadRecoveries } from './filename-recoveries.mjs';
+import { observationReader } from './observations.mjs';
+import { loadPublication } from './publication.mjs';
+import { loadReviews, reviewedMode } from './reviews.mjs';
+import { loadRecoveries } from './recoveries.mjs';
 
 const filters = ['congress', 'document_family', 'document_kind', 'format'];
 const sourceColumns = ['filename','source_url','source_id','body_key','format','record_role'];

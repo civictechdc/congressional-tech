@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {createFilenameClient, publicationLifecycle} from './filename-client.mjs';
-import {positiveInteger, filenameDate} from '../../../../docs/youtube-coverage/research/filename-rules.mjs';
+import {createFilenameClient, publicationLifecycle} from './client.mjs';
+import {positiveInteger, filenameDate} from '../../../../../docs/youtube-coverage/research/filename-rules.mjs';
 
 function harness(context = {snapshot: 'pinned'}, onResult = () => {}) {
   const workers = [];

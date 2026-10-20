@@ -1,4 +1,4 @@
-import {withVerifiedJson} from './filename-startup.mjs';
+import {withVerifiedJson} from './startup.mjs';
 
 export const reviewStartupPolicy = Object.freeze({deadlineMs: 15_000, maxBytes: 16 * 1024 * 1024});
 

@@ -5,11 +5,11 @@ import { mkdtemp, readFile, open, stat, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { createFilenameCatalog, rangeFile, sourceContext, savedCopyUrl, videoReference } from './filename-catalog.mjs';
-import { observationReader } from './filename-observations.mjs';
+import { createFilenameCatalog, rangeFile, sourceContext, savedCopyUrl, videoReference } from './catalog.mjs';
+import { observationReader } from './observations.mjs';
 import { brotliCompressSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
-import {byteCache,retainedBytes} from './filename-cache.mjs';
+import {byteCache,retainedBytes} from './cache.mjs';
 
 test('saved-copy links prefer accepted recoveries and preserve the original record', () => {
   const manifest = 'https://data.test/releases/catalog/manifest.json';
@@ -41,7 +41,7 @@ async function localFetch(url, options = {}) {
 test('static Parquet queries match the Python catalog and preserve complete source records', async () => {
   const folder = await mkdtemp(join(tmpdir(), 'filename-catalog-'));
   try {
-    execFileSync(process.env.PYTHON || 'python3', [fileURLToPath(new URL('../../scripts/filename-test-fixture.py', import.meta.url)), folder]);
+    execFileSync(process.env.PYTHON || 'python3', [fileURLToPath(new URL('../../../scripts/filename-test-fixture.py', import.meta.url)), folder]);
     const requests = [];
     const reader = await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')), (url, options) => {
       requests.push(new URL(url).pathname);
@@ -227,7 +227,7 @@ for (const basis of ['user_accepted_url_variant', 'resolved_source_url']) {
 test(`${basis} updates saved filtering and summaries without changing original source values`, async () => {
   const folder = await mkdtemp(join(tmpdir(), 'filename-recovery-'));
   try {
-    execFileSync(process.env.PYTHON || 'python3', [fileURLToPath(new URL('../../scripts/filename-test-fixture.py', import.meta.url)), folder]);
+    execFileSync(process.env.PYTHON || 'python3', [fileURLToPath(new URL('../../../scripts/filename-test-fixture.py', import.meta.url)), folder]);
     const root = pathToFileURL(join(folder,'public/manifest.json')).href;
     const manifest = JSON.parse(await readFile(new URL(root)));
     const groupBytes = await readFile(new URL(manifest.files.groups.path, root));
@@ -291,7 +291,7 @@ test('relative source aliases link through the verified body without changing so
 test('reviews exported from an older catalog apply to a newer one only through its published binding', async () => {
   const folder=await mkdtemp(join(tmpdir(),'bound-catalog-'));
   try {
-    execFileSync(process.env.PYTHON || 'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
+    execFileSync(process.env.PYTHON || 'python3',[fileURLToPath(new URL('../../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
     const manifestPath=join(folder,'public/manifest.json'), manifest=JSON.parse(await readFile(manifestPath));
     const rows=(await (await createFilenameCatalog(pathToFileURL(manifestPath),localFetch)).search({scope:'all'})).rows;
     const a=rows.findIndex(row=>row.source_url==='https://committee.test/final');
@@ -321,7 +321,7 @@ test('reviews exported from an older catalog apply to a newer one only through i
 test('public reviewed search covers aliases, null filters, provenance, annotations and withdrawal', async () => {
   const folder=await mkdtemp(join(tmpdir(),'reviewed-catalog-'));
   try {
-    execFileSync(process.env.PYTHON || 'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
+    execFileSync(process.env.PYTHON || 'python3',[fileURLToPath(new URL('../../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
     const manifest=JSON.parse(await readFile(join(folder,'public/manifest.json')));
     const baseline=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),localFetch);
     const rows=(await baseline.search({scope:'all'})).rows;
@@ -365,7 +365,7 @@ test('public reviewed search covers aliases, null filters, provenance, annotatio
 test('concurrent column/table/store loads share work and wide columns use exact uncached fallback',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'filename-cache-'));
  try {
-  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_WIDTH:'5000'}});
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_WIDTH:'5000'}});
   const manifest=pathToFileURL(join(folder,'public/manifest.json'));
   const reader=await createFilenameCatalog(manifest,localFetch);
   const [first,second]=await Promise.all([reader.search({q:'Wide',field:'content_document_kind'}),reader.search({q:'Wide',field:'content_document_kind'})]);
@@ -386,7 +386,7 @@ test('concurrent column/table/store loads share work and wide columns use exact 
 test('uncached metadata is reused across field chunks, selected groups and column workers',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'filename-metadata-'));
  try {
-  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
   // Give every reader path multiple groups without changing any fixture values.
   execFileSync(process.env.PYTHON||'python3',['-c',`
 import hashlib,json,sys
@@ -466,7 +466,7 @@ manifest_path.write_text(json.dumps(manifest))
 test('prefix shards share bounded reads and oversized prefetch does no unused transfer',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'filename-reads-'));
  try {
-  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_SHARED_PREFIX:'1',FILENAME_FIXTURE_SPARSE:'1'}});
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_SHARED_PREFIX:'1',FILENAME_FIXTURE_SPARSE:'1'}});
   const manifest=pathToFileURL(join(folder,'public/manifest.json')),sources=JSON.parse(await readFile(join(folder,'source-records.json')));
   let shards=0;
   const reader=await createFilenameCatalog(manifest,(url,options)=>{if(String(url).endsWith('/aa.bin'))shards++;return localFetch(url,options);});
@@ -494,7 +494,7 @@ test('prefix shards share bounded reads and oversized prefetch does no unused tr
 test('wide scalar and group scans yield to cancellation after bounded completed work',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'filename-cancel-'));
  try {
-  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
   const reader=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),localFetch);
   const throughputStarted=performance.now();await reader.search({q:'warm'});console.log('controlled cold scan throughput',JSON.stringify({rows:4096,elapsedMs:performance.now()-throughputStarted}));
   for(const query of [{q:'different'},{scope:'all'}]) {
@@ -512,7 +512,7 @@ test('wide scalar and group scans yield to cancellation after bounded completed 
 test('repeated exact search reuses budgeted text and retains only requested plus last page',async()=>{
  const folder=await mkdtemp(join(tmpdir(),'filename-search-'));
  try {
-  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../scripts/filename-test-fixture.py',import.meta.url)),folder]);
   const reader=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),localFetch);
   const query={q:'a',scope:'all',limit:1};
   const cold=await reader.search(query),before=reader.diagnostics();assert.deepEqual(await reader.search(query),cold);const after=reader.diagnostics();

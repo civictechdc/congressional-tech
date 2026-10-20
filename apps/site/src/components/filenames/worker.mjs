@@ -1,4 +1,4 @@
-import { createFilenameCatalog } from './filename-catalog.mjs';
+import { createFilenameCatalog } from './catalog.mjs';
 let catalog;
 const requests = new Map();
 self.onmessage = async ({ data }) => {
