@@ -1023,3 +1023,20 @@ for (const stage of ['reader', 'format', 'clipboard']) test('complete-copy '+sta
     assert.equal(w.document.querySelector('.downloads a[href="'+downloads.filenames+'"]').href,downloads.filenames);
   } finally {w.JSON.stringify=stringify;dom.window.close();}
 });
+
+test('stable document download requests complete selected metadata and retains catalog pin',async()=>{
+  const full={...record,extra_document_fact:['original','ordered','original']};let saved,clicked;
+  const {dom,w,get,requests}=await app(async url=>({ok:true,json:async()=>url.startsWith('/api/document/')?full:entry}),
+    {downloads:{catalog:'https://viewer.test/manifest.json'}},w=>{
+      w.URL.createObjectURL=blob=>{saved=blob;return 'blob:document';};w.URL.revokeObjectURL=()=>{};
+      w.HTMLAnchorElement.prototype.click=function(){clicked=this.download;};
+    });
+  try {
+    const button=[...w.document.querySelectorAll('button')].find(b=>b.textContent==='Download document JSON');
+    button.click();await flush();
+    assert(requests.includes('/api/document/stable-final?catalog=snapshot'));
+    assert.equal(clicked,'group.json');
+    const text=await new Promise(resolve=>{const reader=new w.FileReader();reader.onload=()=>resolve(reader.result);reader.readAsText(saved);});
+    assert.deepEqual(JSON.parse(text),full);assert.equal(get('copy-status').textContent,'Document downloaded');
+  }finally{dom.window.close();}
+});

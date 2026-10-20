@@ -823,7 +823,7 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
         info = dict(catalog_id=catalog_id, rows=counts['source_rows'], entries=counts['document_rows'],
             documents=component_stats['documents'], capture_records=counts['document_rows'] - component_stats['documents'],
             api_reference_groups=component_stats['api'], video_reference_groups=component_stats['video'],
-            fields=snapshot.schemas['filenames'].names,
+            fields=snapshot.schemas['filenames'].names, document_fields=snapshot.schemas['documents'].names,
             facets={field: sorted(source_stats['facets'].get(field, {})) for field in viewer.FILTERS},
             bytes=source_stats['bytes'], generation=snapshot.identity['selected_ref']['sha256'][:32],
             house_naming_version=snapshot.schemas['filenames'].metadata.get(b'house_naming_version', b'unknown').decode())
