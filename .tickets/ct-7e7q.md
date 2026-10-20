@@ -1,6 +1,6 @@
 ---
 id: ct-7e7q
-status: in_progress
+status: closed
 deps: [ct-upte]
 links: []
 created: 2026-10-20T08:27:12Z
@@ -22,3 +22,9 @@ Skip lookups for provably absent before/after roots in the existing source-obser
 
 Demonstrate red/green read counts for initial qualification and deletions, preserve exact affected sources and old/new membership, and repeat only the retained local 4/40 setup measurement affected by the fix. Independently review. No provider, corpus or browser qualification repeat.
 
+
+## Notes
+
+**2026-10-20T08:33:50Z**
+
+Independently reviewed edde5519 integrated as82fae7f2. Five root regressions and11 owner checks passed. Exact same4/40 local fixtures reduce initial native reads116/908 to8/8 and logical read bytes1,350,183/90,695,052 to46,407/385,452. All phase native submissions and exact preservation assertions unchanged. No cache budget increase. Evidence:end-to-end/absent-root/comparison.json and review-merge/root-observation-absent-review.md. These are local logical counts, not cloud throughput.

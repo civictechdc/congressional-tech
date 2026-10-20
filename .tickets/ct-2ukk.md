@@ -48,3 +48,7 @@ Full current table scan complete:725Parquetfiles,8623851rows,1521719517storedbyt
 **2026-10-20T08:26:58Z**
 
 Final normalized-format local measurement passed at 3a03125a for 4 and 40 unrelated records. Append catalog reads are 18 in both cases versus baseline 105; logical read bytes 79,279 / 609,583 versus 1,135,041 / 8,992,328. Typed parts add native submissions (12 to 16) and metadata bytes. All unrelated values, IDs and public records preserved. Initial setup still reads alias owners repeatedly (116 / 908 native reads); assess before production import. These are fixture counters, not cloud throughput. Receipts: end-to-end/typed-occurrences/measurement-summary.json and receipt.md.
+
+**2026-10-20T08:33:51Z**
+
+Initial qualification alias rereads resolved by closed ct-7e7q; full fixed-change measurements preserve data, IDs, mappings and existing assets. Documented operational order: adopt catalog, pin its returned selected_identity in raw receipt v2, adopt raw, qualify retained source contributions, then ordinary updates. Keep one native workspace owner and inactive legacy writers during cutover. Production import/readback remains pending.
