@@ -72,6 +72,8 @@ def source(tmp_path_factory):
     from test_catalog_coalesced_batches import Native
     from test_native_catalog_selection import seed
     native = Native()
+    runtime=root/'native-runtime-input';runtime.write_bytes(b'explicit fixture native runtime')
+    native.execution_files=lambda: (runtime,)
     seed(root, LocalStore(root), native)
     _NATIVE_FIXTURES[str(root)] = native
     return root
@@ -112,9 +114,12 @@ def publish(ready, **kwargs):
                             verify_artifact=custody, probe=lambda *args: None, **kwargs)
 
 
-def test_preparation_hashes_every_partition_and_rejects_same_size_corruption(ready):
+def test_preparation_hashes_every_partition_and_rejects_same_size_corruption(ready,source):
     _, root, _ = ready
     receipt, manifest, _ = attempts.verify_prepared(publisher, root)
+    native_inputs=receipt['binding']['native_execution']
+    runtime=source/'native-runtime-input'
+    assert native_inputs=={str(runtime.resolve()):dict(bytes=runtime.stat().st_size,sha256=hashlib.sha256(runtime.read_bytes()).hexdigest())}
     shards = [relative for relative in receipt['files'] if relative.endswith('.parquet')]
     assert shards and not any('/ids/' in relative for relative in receipt['files'])
     path = next(root / relative for relative in shards if (root / relative).stat().st_size)
@@ -584,3 +589,19 @@ def test_recovery_preparation_keeps_noncanonical_retained_manifest_bytes(ready, 
     assert result['mode']=='recovery'
     assert (target/'publication/manifest.json').read_bytes()==raw
     attempts.verify_prepared(publisher,target)
+
+
+def test_native_runtime_change_during_preparation_refuses_before_acceptance(source,tmp_path,monkeypatch):
+    import viewer_publication.native as preparation
+    native=_NATIVE_FIXTURES[str(source)]
+    path=Path(native.execution_files()[0]);before=path.read_bytes()
+    original=preparation.prepare_native_output
+    def changed(*args,**kwargs):
+        result=original(*args,**kwargs);path.write_bytes(before+b'changed');return result
+    monkeypatch.setattr(preparation,'prepare_native_output',changed)
+    root=tmp_path/'refused'
+    try:
+        with pytest.raises(ValueError,match='custody changed'):
+            attempts.prepare(publisher,Remote(source),root,run_id='runtime',run_attempt='1',public_url=publisher.PUBLIC_URL)
+        assert not (root/'preparation.json').exists()
+    finally:path.write_bytes(before)
