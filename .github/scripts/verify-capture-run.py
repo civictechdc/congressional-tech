@@ -75,8 +75,8 @@ def table_object(store, key):
     return pq.read_table(pa.BufferReader(read_object(store, key)))
 
 
-def verify_run(store, summary):
-    """Verify injected read/keys storage; do not acquire sources or mutate storage."""
+def verify_legacy_run(store, summary):
+    """Read-only verification for retained pre-adoption checkpoint evidence."""
     run_id, day = validate_summary(summary)
     source = f'ci/{run_id}'
     captures = table_object(store, 'indexes/captures.parquet')
@@ -88,6 +88,53 @@ def verify_run(store, summary):
     require(capture_digest_matches(captures, checkpoint.get(b'capture_digest')),
             'Capture checkpoint digest mismatch')
     rows = captures.filter(pc.equal(captures['source_file'], source)).to_pylist()
+
+    def saved_state(urls, fields):
+        saved, outcomes, families = {}, Counter(), Counter()
+        for batch in state_file.iter_batches(batch_size=4096, columns=[*fields, 'family']):
+            for state in batch.to_pylist():
+                outcomes[state['outcome']] += 1
+                families[state['family'] or 'unknown'] += 1
+                if state['url'] in urls:
+                    require(state['url'] not in saved, 'Duplicate URL in saved state')
+                    saved[state['url']] = state
+        return saved, outcomes, families, sum(outcomes.values())
+
+    return verify_evidence(store, summary, rows, saved_state)
+
+
+def verify_run(store, summary, *, raw_storage):
+    """Verify the completed selected interval without reading unrelated payloads."""
+    validate_summary(summary)
+    interval = summary.get('raw_selection')
+    require(isinstance(interval, dict) and set(interval) == {'before', 'after'}
+            and all(isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value)
+                    for value in interval.values()), 'Missing or invalid raw selection interval')
+    require(raw_storage.store is store, 'Raw selection belongs to a different store')
+    selected = raw_storage.snapshot()
+    require(selected.identity == interval['after'], 'Raw selection differs from completed run')
+    source = f"ci/{summary['run_id']}"
+    rows = []
+    for change in selected.changes_since(interval['before']):
+        for entry in selected.changed_capture_batches(change):
+            batch = selected.capture_batch(entry)
+            rows.extend(batch.filter(pc.equal(batch['source_file'], source))
+                        .select(CAPTURE_SCHEMA.names).to_pylist())
+
+    def saved_state(urls, fields):
+        counts = selected.state_counts
+        return (selected.states_for(urls), Counter(counts['url_outcomes']),
+                Counter(counts['urls_by_source_family']), selected.manifest['state']['rows'])
+
+    result = verify_evidence(store, summary, rows, saved_state)
+    return {**result, 'raw_selection': dict(interval),
+            'archive_verification_scope': 'selected change interval and run URL state; unrelated payloads reused'}
+
+
+def verify_evidence(store, summary, rows, saved_state):
+    """Check run receipts, final URL state and sampled bodies for either representation."""
+    run_id, day = validate_summary(summary)
+    source = f'ci/{run_id}'
     indexed = defaultdict(list)
     for row in rows:
         indexed[(row['receipt_key'], row['receipt_line'])].append(row)
@@ -136,20 +183,14 @@ def verify_run(store, summary):
         elif state['checked_at'] == previous['checked_at']:
             require(all(state.get(field) == previous.get(field) for field in fields),
                     'Ambiguous latest receipt state')
-    saved = {}
-    state_outcomes, state_families = Counter(), Counter()
-    for batch in state_file.iter_batches(batch_size=4096, columns=[*fields, 'family']):
-        for state in batch.to_pylist():
-            state_outcomes[state['outcome']] += 1
-            state_families[state['family'] or 'unknown'] += 1
-            if state['url'] in latest:
-                require(state['url'] not in saved, 'Duplicate URL in saved state')
-                saved[state['url']] = state
+    saved, state_outcomes, state_families, known_urls = saved_state(latest, fields)
     require(dict(state_outcomes) == summary['accounting']['url_outcomes'],
             'Saved-state outcome accounting mismatch')
     require(dict(state_families) == summary['accounting']['urls_by_source_family'],
             'Saved-state family accounting mismatch')
-    require(sum(state_outcomes.values()) == summary['accounting']['known_urls'],
+    require(known_urls == summary['accounting']['known_urls']
+            and sum(state_outcomes.values()) == known_urls
+            and sum(state_families.values()) == known_urls,
             'Saved-state known URL accounting mismatch')
     require(set(saved) == set(latest), 'Run URL missing from saved state')
     require(all(all(saved[url].get(field) == state.get(field) for field in fields)
@@ -243,6 +284,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--summary', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--native-config', required=True, type=Path,
+                        help='Explicit configured DocSpec catalog runtime.')
     args = parser.parse_args()
     summary = json.loads(args.summary.read_text())
     validate_summary(summary)
@@ -256,7 +299,11 @@ def main():
         aws_access_key_id=os.environ[names[1]], aws_secret_access_key=os.environ[names[2]], region_name='auto',
         config=Config(max_pool_connections=16, retries={'mode': 'standard', 'max_attempts': 3},
                       request_checksum_calculation='when_required', response_checksum_validation='when_required'))
-    result = verify_run(R2Store(client, summary.get('bucket', 'congressional-tech-raw')), summary)
+    from congress_api.retention.docspec import NativeDatasets
+    from congress_api.retention.raw_storage import RawStorage
+    store = R2Store(client, summary.get('bucket', 'congressional-tech-raw'))
+    storage = RawStorage.open(store, NativeDatasets.from_config(args.native_config))
+    result = verify_run(store, summary, raw_storage=storage)
     args.output.write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps(result, separators=(',', ':')))
 
