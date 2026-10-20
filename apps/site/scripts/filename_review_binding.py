@@ -101,16 +101,16 @@ def bind_selected(catalog_id, identities, component_lookup, *, previous=None):
     validate_identities(identities)
     prior = {}
     if previous is not None:
-        if previous.get('version') != 2 or previous.get('review_sha256') != identities['review_sha256']:
+        if previous.get('version') not in (1, 2) or previous.get('review_sha256') != identities['review_sha256']:
             raise ValueError('Changed review input requires an explicit new review policy')
         expected = {item['index']: item for item in identities['rows']}
         for item in previous['withdrawn']:
             original = expected.get(item['index'])
             if (original is None or item['index'] in prior or item['document_id'] != original['document_id']
-                    or item['source_ids'] != original['source_ids']
+                    or previous['version'] == 2 and item['source_ids'] != original['source_ids']
                     or item['reason'] not in ('document_missing', 'sources_changed', 'body_changed')):
                 raise ValueError('Invalid retained review withdrawal')
-            prior[item['index']] = item
+            prior[item['index']] = dict(item, source_ids=original['source_ids'])
     rows, withdrawn = [], []
     for item in identities['rows']:
         if item['index'] in prior:

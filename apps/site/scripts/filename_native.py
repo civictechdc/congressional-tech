@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 from collections import OrderedDict
 
-from congress_api.retention.derived_files import file_identity, retain_verified_file
+from congress_api.retention.derived_files import file_identity, copy_checked
 from congress_api.retention.immutable_metadata import encoded
 
 
@@ -25,7 +25,11 @@ class ViewerAssets:
         identity = file_identity(source)
         digest = identity['sha256']
         relative = f'releases/{digest[:32]}/{digest[32:]}/viewer-v2/{name}'
-        proof = retain_verified_file(source, self.root / relative, expected=identity, key=relative)
+        # The producer deletes its temporary source after this call. An owned
+        # copy keeps the destination inode/custody independent of that unlink.
+        with Path(source).open('rb') as stream:
+            proof = copy_checked(stream, self.root / relative, size=identity['bytes'],
+                                 expected=identity, key=relative, exclusive=True)
         self.identities[relative] = proof
         return dict(path=relative, sha256=digest, bytes=proof['bytes'])
 
@@ -75,6 +79,18 @@ def browse_key(row):
     return [name is None, name or '', document]
 
 
+def browse_flags(rows=None, children=None):
+    """Bounded counts let default browsing skip unrelated payload pages."""
+    counts = {}
+    for item in rows if rows is not None else children:
+        values = {str(item.get('_flags', 0)): 1} if rows is not None else item['flags']
+        for flag, count in values.items():
+            if not flag.isdecimal() or not 0 <= int(flag) < 64 or type(count) is not int or count < 1:
+                raise ValueError('Invalid browse flags')
+            counts[flag] = counts.get(flag, 0) + count
+    return counts
+
+
 def build_page_levels(leaves, combine, fanout):
     """Carry bounded child groups upward without collecting all leaf refs."""
     levels = []
@@ -117,7 +133,7 @@ class BrowsePages:
         if any(a >= b for a, b in zip(keys, keys[1:])):
             raise ValueError('Browse keys must be unique and ordered')
         reference = self.assets.put_node(dict(version=1, kind='browse-leaf', records=rows))
-        return dict(reference, rows=len(rows), first=keys[0], last=keys[-1], height=0)
+        return dict(reference, rows=len(rows), first=keys[0], last=keys[-1], height=0, flags=browse_flags(rows=rows))
 
     def _branch(self, children):
         if (not children or len(children) > self.branch_children
@@ -125,7 +141,7 @@ class BrowsePages:
             raise ValueError('Invalid browse branch order or size')
         reference = self.assets.put_node(dict(version=1, kind='browse-branch', children=children))
         return dict(reference, rows=sum(child['rows'] for child in children), first=children[0]['first'],
-                    last=children[-1]['last'], height=children[0]['height'] + 1)
+                    last=children[-1]['last'], height=children[0]['height'] + 1, flags=browse_flags(children=children))
 
     def read(self, reference):
         node = self.assets.read_node(reference)
@@ -136,14 +152,14 @@ class BrowsePages:
             keys = [browse_key(row) for row in rows]
             if not 0 < len(rows) <= self.leaf_rows or any(a >= b for a, b in zip(keys, keys[1:])):
                 raise ValueError('Invalid selected browse leaf')
-            basis = dict(rows=len(rows), first=keys[0], last=keys[-1], height=0)
+            basis = dict(rows=len(rows), first=keys[0], last=keys[-1], height=0, flags=browse_flags(rows=rows))
         elif node.get('kind') == 'browse-branch':
             children = node.get('children', [])
             if (not 0 < len(children) <= self.branch_children or any(
                     a['last'] >= b['first'] or a['height'] != b['height'] for a, b in zip(children, children[1:]))):
                 raise ValueError('Invalid selected browse branch')
             basis = dict(rows=sum(child['rows'] for child in children), first=children[0]['first'],
-                         last=children[-1]['last'], height=children[0]['height'] + 1)
+                         last=children[-1]['last'], height=children[0]['height'] + 1, flags=browse_flags(children=children))
         else:
             raise ValueError('Unknown browse page kind')
         if any(reference.get(key) != value for key, value in basis.items()):
@@ -510,7 +526,10 @@ class NativeComponents:
                          source_rows=count, flags=flags, members=self._members(component, count))
             browse = {key: value for key, value in row.items() if key not in
                       {'body_key', 'extension', 'recovered_filename', 'response_result'}}
-            browse.update(source_count=count, retained=bool(saved), _flags=flags)
+            browse.setdefault('document_kind_source', None)
+            browse.update(source_count=count, retained=bool(saved), _flags=(int(bool(saved)) | (2 if document else 0) |
+                (4 if not row.get('document_kind') else 0) | (8 if not row.get('document_family') else 0) |
+                (16 if api_only else 0) | (32 if video_only else 0)))
             self.db.execute('UPDATE components SET entry=?,record=? WHERE id=?',
                             (encoded(entry).decode(), encoded(browse).decode(), component))
 
@@ -711,6 +730,7 @@ def iterator_inventory(assets, inventory):
 
 
 def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None, review_identities=None,
+                     prior_review_binding=None,
                      decoded_policy, stage_timings=None, stage_event=None, memory_metrics=None):
     """Prepare stable assets from one selected snapshot; never select publication."""
     from contextlib import closing
@@ -718,6 +738,8 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
     import sqlite3
     import time
     from congress_api.retention.viewer_inventory import PreparedManifest
+    if previous is not None and prior_review_binding is not None:
+        raise ValueError('Prior review binding is only for initial file-catalog adoption')
     requirements = native_requirements(viewer, decoded_policy)
     if previous is not None and previous.get('version') != 6:
         raise ValueError('Native viewer reuse requires a qualified stable publication')
@@ -780,17 +802,17 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
             bytes=source_stats['bytes'], generation=snapshot.identity['selected_ref']['sha256'][:32],
             house_naming_version=snapshot.schemas['filenames'].metadata.get(b'house_naming_version', b'unknown').decode())
         roots = dict(sources=source_root, components=component_root, browse=browse_root)
+        def node(value, prior=None):
+            raw = encoded(value)
+            return prior if prior and prior['bytes'] == len(raw) and prior['sha256'] == sha256(raw).hexdigest() else assets.put_node(value)
         files = {}
         if review_identities is not None:
             import filename_review_binding as binding
             identities = binding.load_identities(review_identities)
-            prior_binding = assets.read_node(previous['files']['review_binding']) if previous and previous['files'].get('review_binding') else None
+            prior_binding = assets.read_node(previous['files']['review_binding']) if previous and previous['files'].get('review_binding') else prior_review_binding
             placement = binding.bind_selected(catalog_id, identities,
                 lambda document: public_component(assets, component_root, document), previous=prior_binding)
-            files['review_binding'] = assets.put_node(placement)
-        def node(value, prior=None):
-            raw = encoded(value)
-            return prior if prior and prior['bytes'] == len(raw) and prior['sha256'] == sha256(raw).hexdigest() else assets.put_node(value)
+            files['review_binding'] = node(placement, previous['files'].get('review_binding') if previous else None)
         selection = node(snapshot.selection, previous.get('source_selection') if previous else None)
         manifest = dict(version=6, published_at=datetime.now(timezone.utc).isoformat(),
             info=info, source_manifest=snapshot.manifest, source_identity=snapshot.identity,
@@ -800,14 +822,22 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
         validate_publication(assets, manifest)
         stage('inventory', lambda: _reachable_assets(assets, [roots, files, selection, manifest['proof']]))
         manifest['inventory'] = write_inventory(assets)
+        uploads = set(assets.identities)
+        # These two bounded controls preserve offline/restart custody even when
+        # their unchanged remote assets need no upload in this publication.
+        for reference in (selection, manifest['proof']):
+            if reference['path'] not in assets.identities:
+                assets.put_node(assets.read_node(reference))
         if previous:
             manifest['reuse_base'] = dict(catalog_id=previous['info']['catalog_id'],
                 manifest_identity=sha256(encoded(previous)).hexdigest(), source_identity=previous['source_identity'])
         (target / 'manifest.json').write_bytes(encoded(manifest))
         assets.identities['manifest.json'] = file_identity(target / 'manifest.json')
         timings['total_seconds'] = time.perf_counter() - started
-        metrics['new_asset_files'] = len(assets.identities) - 1
-        metrics['new_asset_bytes'] = sum(value['bytes'] for path, value in assets.identities.items() if path != 'manifest.json')
+        metrics['new_asset_files'] = len(uploads)
+        metrics['new_asset_bytes'] = sum(assets.identities[path]['bytes'] for path in uploads)
+        metrics['retained_control_bytes'] = sum(proof['bytes'] for path, proof in assets.identities.items()
+                                                if path not in uploads and path != 'manifest.json')
         metrics['metadata_reads'] = assets.reads
         return PreparedManifest(manifest, assets.identities)
 

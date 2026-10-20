@@ -106,7 +106,9 @@ def test_native_builder_publishes_stable_roots_and_mapping_only_reuses_all_paylo
     assert again['roots'] == original['roots']
     assert not native.reads and again['inventory'] == dict(head=None, count=0)
     assert metrics['new_asset_bytes'] == 0
-    assert set(again.identities) == {'manifest.json'}
+    assert set(again.identities) == {'manifest.json', again['proof']['path'], again['source_selection']['path']}
+    from filename_native import validate_publication
+    validate_publication(ViewerAssets(tmp_path / 'again'), again)
     assert json.loads((tmp_path / 'again/manifest.json').read_bytes()) == again
 
 
