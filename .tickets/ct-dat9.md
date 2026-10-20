@@ -25,3 +25,9 @@ Keep the current writer ownership, conditional publication, intent/readback jour
 - Inject worker loss between chunks and writes. Fresh-host recovery resumes the same input/result versions; no expensive completed chunk repeats and no stale result becomes visible.
 - An explicit global rule upgrade progresses through resumable batches. Keep the old consistent generation visible until the required dependency scope is complete, or prove an equally consistent versioned rollout.
 - No-change and mapping-only paths perform only necessary work. Measure repeated work and writes; remove unused rebuild routing and duplicate phase logic after integration.
+
+## Notes
+
+**2026-10-20T07:41:04Z**
+
+Explicit adoption, resume, rule-upgrade and renderer-upgrade CLI paths are integrated locally. Final45 CLI checks and68 runtime/workflow checks pass. Private Linux executable is pinned to source91eb44f, copied/read back from private runtime storage, and downloaded successfully through the maintained installer. GitHub descriptor and engine secret are configured; no workflow was dispatched. Hosted execution and production selection remain unverified.
