@@ -248,3 +248,76 @@ def test_ordered_chunks_resume_skips_completed_row_groups_and_preserves_orders(t
     assert traced.groups==[1,2]
     assert actual['_catalog_order'].to_pylist()==[3,4]
     assert actual.drop(['_catalog_order']).equals(table.slice(3),check_metadata=True)
+
+
+def test_capacity_refusal_precedes_preparation_and_native_work(tmp_path, monkeypatch):
+    from congress_api.retention import native_capacity
+    store, native, options, _ = setup_adoption(tmp_path, monkeypatch)
+    native.workspace = tmp_path / 'native'
+    monkeypatch.setattr(native_capacity, '_filesystem', lambda path: (1, str(path), 1))
+    monkeypatch.setattr(adoption, 'ordered_chunks',
+                        lambda *a, **k: pytest.fail('Insufficient capacity decoded source rows'))
+    monkeypatch.setattr(native, 'run_table',
+                        lambda *a, **k: pytest.fail('Insufficient capacity reached native work'))
+    before = store.read(MANIFEST_KEY)
+    with pytest.raises(native_capacity.AdoptionCapacityError) as caught:
+        adoption.adopt_native_catalog(store, **options)
+    assert caught.value.receipt['native_scratch_bytes'] == 32 << 30
+    assert caught.value.receipt['staging_budget_bytes'] > 0
+    assert not options['directory'].exists()
+    assert store.read(MANIFEST_KEY) == before
+
+
+def test_capacity_budget_is_enforced_and_progress_retains_admission(tmp_path, monkeypatch):
+    from congress_api.retention import native_capacity
+    store, native, options, _ = setup_adoption(tmp_path, monkeypatch)
+    native.workspace = tmp_path / 'native'
+    monkeypatch.setattr(native_capacity, '_filesystem',
+                        lambda path: (1, str(path), 100 << 30))
+    events = []
+    options['on_progress'] = events.append
+    adopt = options['dependencies'].adopt
+    budgets = []
+    def prepared(*args, **kwargs):
+        budgets.append(kwargs.get('staging_byte_budget'))
+        return adopt(*args, **kwargs)
+    monkeypatch.setattr(options['dependencies'], 'adopt', prepared)
+    result = adoption.adopt_native_catalog(store, **options)
+    assert budgets and budgets[0] > 0
+    admission = json.loads((options['directory'] / 'capacity.json').read_bytes())
+    assert admission['staging_budget_bytes'] == budgets[0]
+    assert events[0] == dict(phase='capacity-admitted', **admission)
+    assert result['scope_reference']
+
+
+def test_completed_adoption_does_not_require_new_preparation_capacity(tmp_path, monkeypatch):
+    from congress_api.retention import native_capacity
+    store, native, options, _ = setup_adoption(tmp_path, monkeypatch)
+    native.workspace = tmp_path / 'native'
+    monkeypatch.setattr(native_capacity, '_filesystem',
+                        lambda path: (1, str(path), 100 << 30))
+    adoption.adopt_native_catalog(store, **options)
+    monkeypatch.setattr(native_capacity, '_filesystem',
+                        lambda path: pytest.fail('Completed adoption requested fresh capacity'))
+    with read_catalog(store, native=native) as selected:
+        assert adoption.adopt_native_catalog(
+            store, **{**options, 'previous': selected})['unchanged']
+
+
+def test_lost_headroom_stops_at_preparation_boundary_and_keeps_completed_files(tmp_path, monkeypatch):
+    from congress_api.retention import native_capacity
+    store, native, options, _ = setup_adoption(tmp_path, monkeypatch)
+    native.workspace = tmp_path / 'native'
+    free = [100 << 30]
+    monkeypatch.setattr(native_capacity, '_filesystem',
+                        lambda path: (1, str(path), free[0]))
+    def progress(event):
+        if event['phase'] == 'prepared':
+            free[0] = 1
+    options['on_progress'] = progress
+    before = store.read(MANIFEST_KEY)
+    with pytest.raises(native_capacity.AdoptionCapacityError):
+        adoption.adopt_native_catalog(store, **options)
+    assert list((options['directory'] / 'dependency-preparation').glob('part-*.parquet'))
+    assert not native.tables
+    assert store.read(MANIFEST_KEY) == before

@@ -1,6 +1,6 @@
 ---
 id: ct-n7la
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-20T18:28:03Z
@@ -24,3 +24,7 @@ Local tests prove early refusal before source iteration, combined same-volume ac
 **2026-10-20T18:29:30Z**
 
 Added early combined-capacity helper and 12 passing local characterization tests after red import failure. Accounts for retained stage bytes and separate filesystems; uses unchanged native scratch and 8 GiB headroom. Actual adoption wiring and independent review remain pending the typed-preparation lane.
+
+**2026-10-20T18:56:21Z**
+
+Implemented early and bounded-progress capacity admission without changing native limits. Preparation uses an enforced metadata-derived budget; repeated checks use tracked bytes, not directory scans. Red integration2failed/1passed; final46passed/1actual-native deselected in3.46s. Independent static review APPROVE with exact file hashes in primary output/docspec-reuse-20261020/capacity-integration-review.json. Production import remains untouched; aggregate adoption qualification is ct-nc7l.

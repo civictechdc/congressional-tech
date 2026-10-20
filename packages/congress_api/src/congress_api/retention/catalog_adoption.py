@@ -16,6 +16,7 @@ from .catalog_scope import _component_pages, catalog_scope_requirements
 from .catalog_validation import catalog_reference_requirements
 from .immutable_metadata import MetadataObjects, encoded
 from .derived_files import VerifiedFile, check_identity, file_identity
+from .native_capacity import preparation_budget, recheck_adoption_capacity, require_adoption_capacity
 
 
 def adoption_requirements():
@@ -167,7 +168,6 @@ def adopt_native_catalog(store, *, native, previous, dependencies, candidate, di
     if type(max_chunk_rows) is not int or max_chunk_rows < 1 or type(max_chunk_bytes) is not int or max_chunk_bytes < 1:
         raise ValueError('Native adoption requires positive chunk budgets')
     directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
     checkpoint = directory / 'qualified-adoption.json'
     inputs = dict(candidate=candidate, max_chunk_rows=max_chunk_rows, max_chunk_bytes=max_chunk_bytes, rules=rules)
     native_files = {str(Path(path).resolve()): file_identity(path)
@@ -236,19 +236,49 @@ def adopt_native_catalog(store, *, native, previous, dependencies, candidate, di
             if binding != sha256(encoded(saved)).hexdigest() or saved.get('request') != request:
                 raise ValueError('Native adoption continuation inputs or preparation differ')
             dependency = saved['dependency']
-        else:
+        staging_budget = preparation_budget(sources.metadata)
+        capacity = None
+        # In-memory test adapters have no native filesystem. Real native owners
+        # must admit the preparation alongside their unchanged scratch limits.
+        if hasattr(native, 'workspace'):
+            capacity = require_adoption_capacity(
+                native, directory / 'dependency-preparation',
+                staging_budget if dependency is None else 0)
+        directory.mkdir(parents=True, exist_ok=True)
+        if capacity is not None:
+            pending = directory / 'capacity.tmp'
+            pending.write_bytes(encoded(capacity))
+            pending.replace(directory / 'capacity.json')
+            if on_progress is not None:
+                on_progress(dict(phase='capacity-admitted', **capacity))
+        if not preparation.exists():
             _save_preparation(preparation, request)
+        def progress(event):
+            nonlocal capacity
+            if capacity is not None:
+                capacity = recheck_adoption_capacity(
+                    capacity, event.get('staging_bytes', capacity['staging_retained_bytes']))
+            if on_progress is not None:
+                on_progress(event)
+
+        def checked_chunks(file):
+            for chunk in ordered_chunks(file, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes):
+                if capacity is not None:
+                    recheck_adoption_capacity(capacity, capacity['staging_retained_bytes'])
+                yield chunk
+
         require_inputs()
         if dependency is None:
             dependency = dependencies.adopt(lambda start: (chunk.drop(['_catalog_order']) for chunk in ordered_chunks(
                 sources, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes, start_row=start)),
                 checkpoint_directory=directory / 'dependency-preparation',
-                preparation_key=sha256(encoded(request)).hexdigest(), on_progress=on_progress)
+                preparation_key=sha256(encoded(request)).hexdigest(),
+                staging_byte_budget=staging_budget, on_progress=progress)
             require_inputs()
             _save_preparation(preparation, request, dependency)
         prepared = prepare_native_catalog_components(store, native, candidate=candidate,
-            source_chunks=ordered_chunks(sources, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes),
-            document_chunks=ordered_chunks(documents, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes),
+            source_chunks=checked_chunks(sources),
+            document_chunks=checked_chunks(documents),
             source_schema=schemas['filenames'], document_schema=schemas['documents'],
             max_chunk_rows=max_chunk_rows, max_chunk_bytes=max_chunk_bytes,
             checkpoint_directory=directory / 'prepared-chunks')

@@ -89,3 +89,27 @@ def test_preparation_estimate_uses_uncompressed_metadata_not_payload(monkeypatch
     metadata = SimpleNamespace(num_rows=3, num_row_groups=2,
         row_group=lambda i: SimpleNamespace(total_byte_size=[100, 200][i]))
     assert capacity.preparation_budget(metadata) == 2 * 300 + 4096 * 3 + (1 << 20)
+
+
+def test_progress_rechecks_space_without_walking_retained_files(tmp_path, monkeypatch):
+    filesystem(monkeypatch, free=1000)
+    receipt = capacity.require_adoption_capacity(
+        client(tmp_path), tmp_path / "stage", 200, headroom_bytes=50)
+    monkeypatch.setattr(capacity, "_retained_bytes",
+                        lambda path: pytest.fail("Progress rescanned staging"))
+    filesystem(monkeypatch, free=250)
+    current = capacity.recheck_adoption_capacity(receipt, 100)
+    assert current["filesystems"][0]["required_free_bytes"] == 250
+    filesystem(monkeypatch, free=249)
+    with pytest.raises(capacity.AdoptionCapacityError):
+        capacity.recheck_adoption_capacity(current, 100)
+
+
+def test_progress_keeps_separate_volume_headroom(tmp_path, monkeypatch):
+    devices = {"stage": 1, "native": 2}
+    filesystem(monkeypatch, free=1000, devices=devices)
+    receipt = capacity.require_adoption_capacity(
+        client(tmp_path), tmp_path / "stage", 200, headroom_bytes=50)
+    filesystem(monkeypatch, free=150, devices=devices)
+    current = capacity.recheck_adoption_capacity(receipt, 200)
+    assert sorted(row["required_free_bytes"] for row in current["filesystems"]) == [50, 150]

@@ -84,13 +84,20 @@ def require_adoption_capacity(native, directory, staging_bytes, *,
     retained = _retained_bytes(directory)
     additional = max(0, staging_bytes - retained)
     volumes = {}
-    for path, required in ((directory, additional), (Path(native.workspace), scratch)):
+    for path, required, preparation in (
+            (directory, additional, True), (Path(native.workspace), scratch, False)):
         device, location, available = _filesystem(path)
         if device not in volumes:
             volumes[device] = dict(path=location, available_bytes=available,
-                                   required_free_bytes=headroom_bytes)
+                                   device=device, preparation=False,
+                                   required_free_bytes=headroom_bytes,
+                                   base_required_free_bytes=headroom_bytes)
         volumes[device]["available_bytes"] = min(volumes[device]["available_bytes"], available)
         volumes[device]["required_free_bytes"] += required
+        if preparation:
+            volumes[device]["preparation"] = True
+        else:
+            volumes[device]["base_required_free_bytes"] += required
     receipt = dict(version=1, staging_budget_bytes=staging_bytes,
                    staging_retained_bytes=retained, staging_additional_bytes=additional,
                    native_scratch_bytes=scratch, headroom_bytes=headroom_bytes,
@@ -99,3 +106,24 @@ def require_adoption_capacity(native, directory, staging_bytes, *,
            for row in receipt["filesystems"]):
         raise AdoptionCapacityError(receipt)
     return receipt
+
+
+def recheck_adoption_capacity(receipt, retained_bytes):
+    """Refresh free space using tracked stage bytes, without walking files again."""
+    if type(retained_bytes) is not int or retained_bytes < 0:
+        raise ValueError("Retained preparation bytes must be a nonnegative integer")
+    additional = max(0, receipt["staging_budget_bytes"] - retained_bytes)
+    volumes = []
+    for volume in receipt["filesystems"]:
+        device, _, available = _filesystem(Path(volume["path"]))
+        if device != volume["device"]:
+            raise ValueError("Adoption filesystem changed after capacity admission")
+        required = volume["base_required_free_bytes"]
+        if volume["preparation"]:
+            required += additional
+        volumes.append(dict(volume, available_bytes=available, required_free_bytes=required))
+    current = dict(receipt, staging_retained_bytes=retained_bytes,
+                   staging_additional_bytes=additional, filesystems=volumes)
+    if any(row["available_bytes"] < row["required_free_bytes"] for row in volumes):
+        raise AdoptionCapacityError(current)
+    return current
