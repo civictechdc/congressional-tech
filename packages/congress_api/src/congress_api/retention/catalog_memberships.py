@@ -8,6 +8,7 @@ from pathlib import Path
 import sqlite3
 import json
 from tempfile import TemporaryDirectory
+from types import MappingProxyType
 
 import pyarrow as pa
 
@@ -24,6 +25,7 @@ class CatalogMemberships:
         self.schema, self.member_column = schema, member_column
         self.max_rows, self.max_bytes = max_rows, max_bytes
         self._read, self._write, self.validate_alias = read, write, validate_alias
+        self._cached_leaf = None
 
     def _groups(self, value):
         if value is None:
@@ -35,6 +37,15 @@ class CatalogMemberships:
             return {value['alias']: value}
         if value.get('kind') != 'rows':
             raise DependencyGap('Unknown alias dependency leaf format')
+        # Retain only one fully validated immutable leaf per schema owner. Many
+        # aliases share that leaf; looking up each alias must not reread and
+        # regroup it. Bind every selected field, including the complete pin.
+        descriptor = json.dumps(value, sort_keys=True, separators=(',', ':'))
+        if self._cached_leaf is not None:
+            if (self._cached_leaf[0] == descriptor
+                    and self._cached_leaf[1].equals(self.schema, check_metadata=True)):
+                return self._cached_leaf[2]
+        self._cached_leaf = None
         table = self._read(value['release'], self.schema)
         if len(table) != value.get('rows'):
             raise DependencyGap('Alias dependency leaf row count differs')
@@ -46,7 +57,10 @@ class CatalogMemberships:
             seen.add(pair)
             self.validate_alias(row['alias'])
             groups.setdefault(row['alias'], []).append(row)
-        return {alias: pa.Table.from_pylist(rows, schema=self.schema) for alias, rows in groups.items()}
+        groups = MappingProxyType({alias: pa.Table.from_pylist(rows, schema=self.schema)
+                                   for alias, rows in groups.items()})
+        self._cached_leaf = descriptor, self.schema, groups
+        return groups
 
     def values(self, root, alias):
         """Stream one alias's members with at most one native leaf resident."""
