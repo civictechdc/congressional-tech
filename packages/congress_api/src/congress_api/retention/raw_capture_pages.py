@@ -92,3 +92,22 @@ class CapturePages:
             head = page['previous']
         for batches in reversed(pages):
             yield from batches
+
+    def entries_since(self, head, first_order):
+        """Read only pages containing newly appended batch references."""
+        if type(first_order) is not int or first_order < 0:
+            raise ValueError('Invalid capture change start')
+        if first_order > (head['end_order'] if head else 0):
+            raise ValueError('Capture change start exceeds selected count')
+        pages, seen = [], set()
+        while head is not None and head['end_order'] > first_order:
+            if head['sha256'] in seen:
+                raise ValueError('Capture page cycle')
+            seen.add(head['sha256'])
+            page = self._read(head)
+            pages.append([entry for entry in page['batches'] if entry['first_order'] >= first_order])
+            head = page['previous']
+        selected = [entry for entries in reversed(pages) for entry in entries]
+        if selected:
+            self._check_order(selected, first_order)
+        yield from selected

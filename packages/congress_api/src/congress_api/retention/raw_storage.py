@@ -6,6 +6,7 @@ unselected. Captures append as ordered batches. Only changed URL-state leaves
 are reconstructed, and a full leaf splits locally through immutable routing.
 """
 from copy import deepcopy
+import base64
 from hashlib import sha256
 import json
 
@@ -16,12 +17,19 @@ from congress_api.retention.immutable_metadata import encoded
 from congress_api.retention.partition_routing import RoutingPages, split_partition, key_hash
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA
 from congress_api.retention.raw_capture_pages import CapturePages
-from congress_api.retention.raw_values import capture_table, ordered_captures, state_table, NATIVE_CAPTURE_SCHEMA
+from congress_api.retention.raw_changes import RawChanges
+from congress_api.retention.raw_values import capture_table, ordered_captures, NATIVE_CAPTURE_SCHEMA
 from congress_api.retention.write_recovery import reconcile_lost_acknowledgment
 
 RAW_KEY = 'indexes/raw.json'
 STATE_ORDER = '_state_order'
-STATE_NATIVE_SCHEMA = pa.schema([pa.field(STATE_ORDER, pa.int64(), nullable=False), *STATE_SCHEMA])
+STATE_KEY_FIELD = '_state_key'
+
+def state_key(url):
+    return 'null:' if url is None else 'url:' + url
+
+STATE_NATIVE_SCHEMA = pa.schema([pa.field(STATE_ORDER, pa.int64(), nullable=False),
+                               pa.field(STATE_KEY_FIELD, pa.string(), nullable=False), *STATE_SCHEMA])
 CAPTURE_BATCH_ROWS = 1000
 CAPTURE_BATCH_BYTES = 16 << 20
 DELIVERY_ENTRIES = 128
@@ -37,16 +45,19 @@ class RawSnapshot:
         self.owner, self.manifest, self.version = owner, manifest, version
         self.delivery = delivery
 
+    def capture_batch(self, entry):
+        """Read one exact changed batch, retaining stable observation ordinals."""
+        stored = self.owner._read_table(entry['release'], entry['rows'],
+            schema=NATIVE_CAPTURE_SCHEMA, max_rows=self.owner.max_capture_rows,
+            max_bytes=self.owner.max_capture_bytes, decoded_bytes=entry['decoded_bytes'])
+        expected = list(range(entry['first_order'], entry['first_order'] + entry['rows']))
+        if sorted(stored['_capture_order'].to_pylist()) != expected:
+            raise ValueError('Selected capture batch order mismatch')
+        return stored.take(pc.sort_indices(stored['_capture_order']))
+
     def captures(self):
-        tables = []
-        for entry in self.owner.capture_pages.entries(self.manifest['captures']['head']):
-            stored = self.owner._read_table(entry['release'], entry['rows'],
-                schema=NATIVE_CAPTURE_SCHEMA, max_rows=self.owner.max_capture_rows,
-                max_bytes=self.owner.max_capture_bytes, decoded_bytes=entry['decoded_bytes'])
-            expected = list(range(entry['first_order'], entry['first_order'] + entry['rows']))
-            if sorted(stored['_capture_order'].to_pylist()) != expected:
-                raise ValueError('Selected capture batch order mismatch')
-            tables.append(ordered_captures(stored))
+        tables = [ordered_captures(self.capture_batch(entry)) for entry in
+                  self.owner.capture_pages.entries(self.manifest['captures']['head'])]
         result = pa.concat_tables(tables) if tables else pa.Table.from_pylist([], schema=CAPTURE_SCHEMA)
         if len(result) != self.manifest['captures']['rows']:
             raise ValueError('Selected capture count mismatch')
@@ -68,9 +79,36 @@ class RawSnapshot:
         selected = table.filter(pc.equal(table['key'], 'sha:' + digest)).select(BODY_FIELDS)
         return selected.to_pylist()[0] if len(selected) else None
 
+    def completed_delivery(self, operation):
+        key, _, entries = self.owner._delivery(self.manifest['deliveries'], 'delivery:' + operation)
+        return entries.get(key)
+
+    def states_for(self, urls):
+        groups = {}
+        for url in dict.fromkeys(urls):
+            _, reference = self.owner.state_routes.lookup(self.manifest['state']['root'], state_key(url))
+            if reference is not None:
+                identity = reference['release']['id']
+                groups.setdefault(identity, (reference, set()))[1].add(url)
+        result = {}
+        for reference, requested in groups.values():
+            for row in self.owner._read_states(reference).select(self.owner.state_schema.names).to_pylist():
+                if row['url'] in requested:
+                    result[row['url']] = row
+        return result
+
     def has_receipt(self, key):
         hashed, _, entries = self.owner._delivery(self.manifest['deliveries'], 'receipt:' + key)
         return hashed in entries
+
+    def changes_since(self, identity):
+        return self.owner.changes.since(self, identity)
+
+    def changed_capture_batches(self, change):
+        return self.owner.capture_pages.entries_since(change['capture_head'], change['capture_start'])
+
+    def changed_state_urls(self, change):
+        return self.owner.changes.state_urls(change)
 
     def receipt_keys(self):
         return {key for entry in self.owner.capture_pages.entries(self.manifest['captures']['head'])
@@ -80,27 +118,36 @@ class RawSnapshot:
         tables = [self.owner._read_states(value) for _, value in
                   self.owner.state_routes.leaf_items(self.manifest['state']['root'])]
         if not tables:
-            return pa.Table.from_pylist([], schema=STATE_SCHEMA)
+            return pa.Table.from_pylist([], schema=self.owner.state_schema)
         combined = pa.concat_tables(tables)
         order = combined[STATE_ORDER]
         if (order.null_count or pc.count_distinct(order).as_py() != len(combined)
                 or sorted(order.to_pylist()) != list(range(self.manifest['state']['rows']))):
             raise ValueError('Selected URL-state order or count mismatch')
-        return combined.take(pc.sort_indices(order)).select(STATE_SCHEMA.names).cast(STATE_SCHEMA)
+        return combined.take(pc.sort_indices(order)).select(self.owner.state_schema.names).cast(self.owner.state_schema)
 
     def state(self, url):
-        _, reference = self.owner.state_routes.lookup(self.manifest['state']['root'], url)
+        _, reference = self.owner.state_routes.lookup(self.manifest['state']['root'], state_key(url))
         if reference is None:
             return None
         table = self.owner._read_states(reference)
-        selected = table.filter(pc.equal(table['url'], url)).select(STATE_SCHEMA.names)
+        mask = pc.is_null(table['url']) if url is None else pc.equal(table['url'], url)
+        selected = table.filter(mask).select(self.owner.state_schema.names)
         return selected.to_pylist()[0] if len(selected) else None
 
 
 class RawStorage:
     def __init__(self, store, native, *, max_state_rows=8192, max_state_bytes=16 << 20,
-                 max_capture_rows=CAPTURE_BATCH_ROWS, max_capture_bytes=CAPTURE_BATCH_BYTES):
+                 max_capture_rows=CAPTURE_BATCH_ROWS, max_capture_bytes=CAPTURE_BATCH_BYTES,
+                 state_schema=STATE_SCHEMA):
         self.store, self.native = store, native
+        if (not isinstance(state_schema, pa.Schema) or 'url' not in state_schema.names
+                or state_schema.field('url').type != pa.string()
+                or {STATE_ORDER, STATE_KEY_FIELD} & set(state_schema.names)):
+            raise ValueError('Raw state schema requires a string URL and no reserved ordinal')
+        self.state_schema = state_schema
+        self.state_native_schema = pa.schema([pa.field(STATE_ORDER, pa.int64(), nullable=False),
+            pa.field(STATE_KEY_FIELD, pa.string(), nullable=False), *state_schema])
         self.max_state_rows, self.max_state_bytes = max_state_rows, max_state_bytes
         self.max_capture_rows, self.max_capture_bytes = max_capture_rows, max_capture_bytes
         if min(max_state_rows, max_state_bytes, max_capture_rows, max_capture_bytes) < 1:
@@ -108,15 +155,17 @@ class RawStorage:
         self.capture_pages = CapturePages(store)
         self.state_routes = RoutingPages(store, 'raw-state-v1')
         self.delivery_routes = RoutingPages(store, 'raw-deliveries-v1')
+        self.changes = RawChanges(store)
         self.body_routes = RoutingPages(store, 'raw-bodies-v1')
-        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1',
+        self.basis = dict(values='raw-native-v1', routing='sha256-utf8-prefix-v1', state_keys='nullable-url-v1',
                           max_state_rows=max_state_rows, max_state_bytes=max_state_bytes,
-                          max_capture_rows=max_capture_rows, max_capture_bytes=max_capture_bytes)
+                          max_capture_rows=max_capture_rows, max_capture_bytes=max_capture_bytes,
+                          state_schema=base64.b64encode(state_schema.serialize()).decode("ascii"))
 
     def _empty(self):
         return dict(version=1, basis=deepcopy(self.basis), captures=dict(head=None, rows=0),
                     state=dict(root=None, rows=0), bodies=dict(root=None, count=0),
-                    deliveries=None, filename_version=None)
+                    deliveries=None, filename_version=None, change=None)
 
     def _read_selector(self):
         raw = self.store.read(RAW_KEY)
@@ -172,7 +221,7 @@ class RawStorage:
 
     def _read_states(self, reference):
         table = self._read_table(reference['release'], reference['rows'],
-            schema=STATE_NATIVE_SCHEMA, max_rows=self.max_state_rows,
+            schema=self.state_native_schema, max_rows=self.max_state_rows,
             max_bytes=self.max_state_bytes, decoded_bytes=reference['decoded_bytes'])
         order = table[STATE_ORDER]
         if (order.null_count or pc.count_distinct(order).as_py() != len(table)
@@ -272,19 +321,27 @@ class RawStorage:
         return self.native.run_table(table, dataset=dataset, operation='initial', definition='raw-native-v1')
 
     def prepare(self, base, *, operation, captures=None, states=None,
-                indexed_receipts=(), filename_version=None):
+                indexed_receipts=(), filename_version=None, request_id=None, delivery_result=None):
         """Prepare exact bounded candidates; expose no independent native latest."""
         if base.owner is not self:
             raise ValueError('Raw base belongs to another storage owner')
         if not isinstance(operation, str) or not operation:
             raise ValueError('A stable raw operation identity is required')
-        updates = state_table(states) if states is not None and len(states) else None
-        if updates is not None and any(not isinstance(url, str) or not url for url in updates['url'].to_pylist()):
-            raise ValueError('Download state needs nonempty URL keys')
+        indexed_receipts = tuple(sorted(set(indexed_receipts)))
+        if any(not isinstance(key, str) or not key for key in indexed_receipts):
+            raise ValueError('Indexed receipts require nonempty string keys')
+        changed_state_urls = []
+        updates = None
+        if states is not None and len(states):
+            updates = states if isinstance(states, pa.Table) else pa.Table.from_pylist(states, schema=self.state_schema)
+            if (not updates.schema.equals(self.state_schema, check_metadata=False)
+                    or pc.count_distinct(updates['url'], mode='all').as_py() != len(updates)):
+                raise ValueError('Unexpected state schema or duplicate URL keys')
+            updates = updates.cast(self.state_schema)
         incoming = capture_table(captures, first_order=0) if captures is not None and len(captures) else None
         request = sha256(encoded([self._request_digest(incoming, updates),
-                                 sorted(indexed_receipts), filename_version])).hexdigest()
-        delivery_key, delivery_prefix, deliveries = self._delivery(base.manifest['deliveries'], operation)
+                                 sorted(indexed_receipts), filename_version, request_id])).hexdigest()
+        delivery_key, delivery_prefix, deliveries = self._delivery(base.manifest['deliveries'], 'delivery:' + operation)
         previous_delivery = deliveries.get(delivery_key)
         if previous_delivery:
             if previous_delivery['request'] != request:
@@ -311,11 +368,11 @@ class RawStorage:
         if updates is not None:
             affected, old, row_prefixes = {}, {}, {}
             for row in updates.to_pylist():
-                prefix, reference = self.state_routes.lookup(base.manifest['state']['root'], row['url'])
+                prefix, reference = self.state_routes.lookup(base.manifest['state']['root'], state_key(row['url']))
                 row_prefixes[row['url']] = prefix
                 if prefix not in affected:
                     prior = (self._read_states(reference) if reference else
-                             pa.Table.from_pylist([], schema=STATE_NATIVE_SCHEMA))
+                             pa.Table.from_pylist([], schema=self.state_native_schema))
                     affected[prefix] = (reference, prior)
                     previous_rows = prior.to_pylist()
                     old.update({r['url']: r for r in previous_rows})
@@ -327,7 +384,9 @@ class RawStorage:
                 ordinal = original[STATE_ORDER] if original is not None else next_order
                 if original is None:
                     next_order += 1
-                replacement[row['url']] = {STATE_ORDER: ordinal, **row}
+                if original is None or {name: original[name] for name in self.state_schema.names} != row:
+                    changed_state_urls.append(row['url'])
+                replacement[row['url']] = {STATE_ORDER: ordinal, STATE_KEY_FIELD: state_key(row['url']), **row}
             selected_root = manifest['state']['root']
             grouped = {prefix: [] for prefix in affected}
             for url, row in replacement.items():
@@ -335,27 +394,32 @@ class RawStorage:
             for prefix, (_, prior) in affected.items():
                 rows = grouped[prefix]
                 rows.sort(key=lambda row: row[STATE_ORDER])
-                table = pa.Table.from_pylist(rows, schema=STATE_NATIVE_SCHEMA)
+                table = pa.Table.from_pylist(rows, schema=self.state_native_schema)
                 if table.equals(prior):
                     continue
                 leaves = {}
-                for child, part in split_partition(table, key='url', prefix=prefix,
+                for child, part in split_partition(table, key=STATE_KEY_FIELD, prefix=prefix,
                         max_rows=self.max_state_rows, max_bytes=self.max_state_bytes):
                     leaves[child] = (dict(release=self._candidate('state', part, operation=operation,
                                           prefix=child, base_id=base_id), rows=len(part),
-                                          decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=STATE_NATIVE_SCHEMA).nbytes) if len(part) else None)
+                                          decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=self.state_native_schema).nbytes) if len(part) else None)
                 selected_root = self.state_routes.replace(selected_root, prefix, leaves)
             manifest['state'] = dict(root=selected_root, rows=next_order)
-        delivery = dict(request=request, capture_rows=len(incoming) if incoming is not None else 0,
-                        first_order=base.manifest['captures']['rows'])
-        if manifest != base.manifest:
-            manifest['deliveries'] = self._select_delivery(manifest['deliveries'], delivery_prefix,
-                                                          {**deliveries, delivery_key: delivery})
+        delivery = dict(request=request, request_id=request_id,
+                        capture_rows=len(incoming) if incoming is not None else 0,
+                        first_order=base.manifest['captures']['rows'], result=delivery_result)
         for receipt in sorted(set(indexed_receipts)):
             key, prefix, entries = self._delivery(manifest['deliveries'], 'receipt:' + receipt)
             if key not in entries:
                 manifest['deliveries'] = self._select_delivery(manifest['deliveries'], prefix,
                                                               {**entries, key: delivery})
+        if manifest != base.manifest:
+            delivery_key, delivery_prefix, deliveries = self._delivery(
+                manifest['deliveries'], 'delivery:' + operation)
+            manifest['deliveries'] = self._select_delivery(manifest['deliveries'], delivery_prefix,
+                                                          {**deliveries, delivery_key: delivery})
+        if manifest != base.manifest:
+            manifest['change'] = self.changes.put(base, manifest, changed_state_urls)
         data = encoded(manifest)
         if len(data) > SELECTOR_BYTES:
             raise ValueError('Raw selector exceeds the byte budget')
