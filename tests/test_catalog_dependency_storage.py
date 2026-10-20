@@ -260,3 +260,18 @@ def test_non_grouping_url_and_resolution_lookup_preserves_all_row_owners():
     assert row['source_values']['source_resolved_url'] == ['https://example.gov/other.pdf']
     assert row['source_order'] == 0
     assert len(affected_sources(owner.selected(initial), replacements=[a]).before) == 1
+
+
+def test_url_lookups_refuse_stale_resolution_policy_without_payload_reads():
+    import pytest
+    from congress_api.retention.catalog_dependencies import DependencyGap
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='stale-lookups',
+                                     source_schema=SCHEMA, max_rows=4, max_bytes=1 << 20)
+    initial = owner.prepare(None, replacements=[source('a.pdf', 'A')])
+    initial['lookup_requirements'] = 'old-resolution-policy'
+    native.reads.clear()
+    for lookup in (owner.sources_at_url, owner.originals_targeting):
+        with pytest.raises(DependencyGap, match='lookup policy changed'):
+            list(lookup(initial, 'https://example.gov/a.pdf'))
+    assert not native.reads

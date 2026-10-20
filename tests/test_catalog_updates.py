@@ -179,3 +179,18 @@ def test_folded_source_changes_exclude_created_then_removed_components(tmp_path)
     changed = current.changed_sources_since(old.identity, max_ordered_bytes=1 << 20)
     assert changed.rows == 0 and list(changed.iter_batches()) == []
     assert not native.reads
+
+
+@pytest.mark.parametrize('actual_native', [False, True])
+def test_fresh_dependency_owner_restores_exact_selected_lookup_schema(tmp_path, actual_native, native):
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+    selected_native = native if actual_native else Native()
+    store = LocalStore(tmp_path / 'store')
+    owner, rows = seed(tmp_path, store, selected_native)
+    snapshot = read_catalog(store, native=selected_native)
+    # Arrow may compare equal while emitting different serialized bytes after
+    # a Parquet/grouping round trip. Restore the exact saved lookup schema.
+    restored = CatalogDependencyStorage.for_snapshot(snapshot)
+    assert restored.schema_hash == owner.schema_hash
+    assert {row['source_id'] for row in restored.sources_at_url(
+        snapshot.selection['dependency'], rows[0]['source_url'])} == {identity(rows[0]), identity(rows[2])}

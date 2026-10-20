@@ -4,6 +4,7 @@ DocSpec owns each bounded typed leaf. The application's coherent catalog selecto
 owns the returned roots; preparing a candidate never selects it for readers.
 """
 from copy import deepcopy
+import base64
 from contextlib import closing
 from pathlib import Path
 import pickle
@@ -44,7 +45,8 @@ class CatalogDependencyStorage:
         self.targets = CatalogMemberships(namespace=namespace + '-resolved-target', **lookup_options)
         from . import source_aliases
         self.lookup_requirements = sha256(Path(source_aliases.__file__).read_bytes()).hexdigest()
-        self.schema_hash = sha256(source_schema.remove_metadata().serialize().to_pybytes()).hexdigest()
+        self.schema_bytes = source_schema.remove_metadata().serialize().to_pybytes()
+        self.schema_hash = sha256(self.schema_bytes).hexdigest()
         self.rows_read = self.bytes_read = 0
         self.candidate_rows_submitted = self.candidate_arrow_bytes = 0
 
@@ -55,7 +57,7 @@ class CatalogDependencyStorage:
             raise ValueError('Catalog lookups require the configured native client')
         basis = snapshot.selection['dependency']
         return cls(native=snapshot.native, store=snapshot.store, namespace=basis['namespace'],
-            source_schema=snapshot.schemas['filenames'], max_rows=basis['max_rows'],
+            source_schema=pa.ipc.read_schema(pa.BufferReader(base64.b64decode(basis['source_schema']))), max_rows=basis['max_rows'],
             max_bytes=basis['max_arrow_bytes'])
 
     def _selection(self, selection, *, require_lookup_policy=False):
@@ -63,11 +65,12 @@ class CatalogDependencyStorage:
             return dict(format='catalog-dependencies-v2', namespace=self.namespace, ownership_edges='document-id-v1', schema_hash=self.schema_hash,
                         max_rows=self.max_rows, max_arrow_bytes=self.max_bytes,
                         source_root=None, alias_root=None, url_root=None, target_root=None,
-                        lookup_requirements=self.lookup_requirements, next_source_order=0)
+                        lookup_requirements=self.lookup_requirements, source_schema=base64.b64encode(self.schema_bytes).decode(), next_source_order=0)
         if (selection.get('format') != 'catalog-dependencies-v2'
                 or selection.get('namespace') != self.namespace
                 or selection.get('ownership_edges') != 'document-id-v1'
                 or selection.get('schema_hash') != self.schema_hash
+                or selection.get('source_schema') != base64.b64encode(self.schema_bytes).decode()
                 or selection.get('max_rows') != self.max_rows
                 or selection.get('max_arrow_bytes') != self.max_bytes
                 or type(selection.get('next_source_order')) is not int
@@ -212,11 +215,11 @@ class CatalogDependencyStorage:
             yield dict(source_id=identity, source_order=selected.order(identity), source_values=row)
 
     def sources_at_url(self, selection, url):
-        basis = self._selection(selection)
+        basis = self._selection(selection, require_lookup_policy=True)
         return self._lookup_sources(basis, self.urls, basis['url_root'], 'url:' + url)
 
     def originals_targeting(self, selection, target):
-        basis = self._selection(selection)
+        basis = self._selection(selection, require_lookup_policy=True)
         return self._lookup_sources(basis, self.targets, basis['target_root'], 'target:' + index.compact(target))
 
     def adopt(self, chunks):
