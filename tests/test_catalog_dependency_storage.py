@@ -288,3 +288,85 @@ def test_non_grouping_body_lookup_retains_failed_and_source_record_owners():
         identity(failed), identity(source_record)}
     changed = owner.prepare(initial, deletions=[identity(failed)])
     assert {row['source_id'] for row in owner.sources_at_body(changed, 'saved-response')} == {identity(source_record)}
+
+
+def test_nullable_source_addition_reuses_exact_old_leaves_and_pads_only_missing_values():
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='schema-growth',
+                                     source_schema=SCHEMA, max_rows=4, max_bytes=1 << 20)
+    rows = [source(f'{i}.pdf', f'body-{i}') for i in range(100)]
+    initial = owner.prepare(None, replacements=rows)
+    retained = dict(native.tables)
+    expanded = SCHEMA.append(pa.field('source_new_literal', pa.list_(pa.string())))
+    changed_owner = CatalogDependencyStorage(native=native, store=store, namespace='schema-growth',
+                                     source_schema=expanded, max_rows=4, max_bytes=1 << 20)
+    native.reads.clear()
+    changed = changed_owner.prepare(initial, replacements=[{**rows[0], 'source_new_literal': ['exact publisher value']}])
+    assert changed_owner.selected(changed).source(identity(rows[0]))['source_new_literal'] == ['exact publisher value']
+    untouched = changed_owner.selected(changed).source(identity(rows[-1]))
+    assert untouched == {**owner.selected(initial).source(identity(rows[-1])), 'source_new_literal': None}
+    assert changed_owner.selected(changed).order(identity(rows[-1])) == 99
+    assert all(native.tables[key].equals(table, check_metadata=True) for key, table in retained.items())
+    assert sum(len(native.tables[key]) for key in native.reads) < 100
+
+
+def test_nullable_addition_reads_plain_legacy_pins_without_rewriting_unrelated_leaves():
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='legacy-source-schema',
+                                     source_schema=SCHEMA, max_rows=1, max_bytes=1 << 20)
+    rows = [source(f'{i}.pdf', f'body-{i}') for i in range(10)]
+    initial = owner.prepare(None, replacements=rows)
+    # Historical source leaves retained only a native pin; their exact source
+    # schema was selected once at the dependency root.
+    for prefix, value in list(owner.sources.leaf_items(initial['source_root'])):
+        initial['source_root'] = owner.sources.replace(initial['source_root'], prefix, {prefix: value['release']})
+    expanded = SCHEMA.append(pa.field('new_value', pa.string()))
+    current = CatalogDependencyStorage(native=native, store=store, namespace='legacy-source-schema',
+                                     source_schema=expanded, max_rows=1, max_bytes=1 << 20)
+    changed = current.prepare(initial, replacements=[{**rows[0], 'new_value': 'literal'}])
+    assert changed['legacy_source_schema'] == initial['source_schema']
+    old_values = dict(owner.sources.leaf_items(initial['source_root']))
+    new_values = dict(current.sources.leaf_items(changed['source_root']))
+    assert sum(new_values[key] == value for key, value in old_values.items()) == 9
+    assert current.selected(changed).source(identity(rows[-1]))['new_value'] is None
+    # A full exported leaf also restores the logical schema only after verifying
+    # its old exact physical schema; public bundle writers can reuse this owner.
+    prefix, value = current.sources.lookup(changed['source_root'], identity(rows[-1]))
+    table = current.read_source_leaf(changed, value)
+    assert table['source_values'][0].as_py()['new_value'] is None
+
+
+def test_actual_native_nullable_dependency_schema_keeps_unsigned_binary_and_field_metadata(native):
+    schema = SCHEMA.append(pa.field('exact_uint', pa.uint64(), metadata={b'origin': b'kept'})).append(
+        pa.field('exact_bytes', pa.list_(pa.binary())))
+    store = MemoryStore()
+    old = CatalogDependencyStorage(native=native, store=store, namespace='native-schema-growth',
+        source_schema=schema, max_rows=1, max_bytes=1 << 20)
+    a = source('a.pdf', 'A', exact_uint=2**64 - 1, exact_bytes=[None, b'\x00\xff'])
+    b = source('b.pdf', 'B', exact_uint=None, exact_bytes=[])
+    before = old.prepare(None, replacements=[a, b])
+    expanded = schema.append(pa.field('new_literal', pa.string()))
+    current = CatalogDependencyStorage(native=native, store=store, namespace='native-schema-growth',
+        source_schema=expanded, max_rows=1, max_bytes=1 << 20)
+    after = current.prepare(before, replacements=[{**a, 'new_literal': 'exact'}])
+    selected = current.selected(after)
+    assert selected.source(identity(a)) == {**old.selected(before).source(identity(a)), 'new_literal': 'exact'}
+    assert selected.source(identity(b)) == {**old.selected(before).source(identity(b)), 'new_literal': None}
+    assert current.source_schema.field('exact_uint').metadata == {b'origin': b'kept'}
+
+
+def test_nonnullable_or_changed_dependency_field_refuses_before_payload_read():
+    import pytest
+    from congress_api.retention.catalog_dependencies import DependencyGap
+    native, store = MemoryNative(), MemoryStore()
+    owner = CatalogDependencyStorage(native=native, store=store, namespace='schema-refusal',
+        source_schema=SCHEMA, max_rows=4, max_bytes=1 << 20)
+    before = owner.prepare(None, replacements=[source('a.pdf', 'A')])
+    for schema in (SCHEMA.append(pa.field('required', pa.string(), nullable=False)),
+                   SCHEMA.set(0, pa.field('body_key', pa.binary()))):
+        current = CatalogDependencyStorage(native=native, store=store, namespace='schema-refusal',
+            source_schema=schema, max_rows=4, max_bytes=1 << 20)
+        native.reads.clear()
+        with pytest.raises(DependencyGap, match='schema or order basis differs'):
+            current.prepare(before, replacements=[])
+        assert native.reads == []

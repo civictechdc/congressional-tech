@@ -23,6 +23,8 @@ from .catalog_dependencies import (
 from .partition_routing import RoutingPages, split_partition
 from .catalog_memberships import CatalogMemberships
 from .source_aliases import resolution_candidates
+from .immutable_metadata import MetadataObjects
+from .catalog_batches import can_read_catalog_schema
 
 
 
@@ -34,6 +36,7 @@ class CatalogDependencyStorage:
         self.native, self.source_schema, self.namespace = native, source_schema, namespace
         self.max_rows, self.max_bytes = max_rows, max_bytes
         self.sources = RoutingPages(store, namespace + '-sources')
+        self.schemas = MetadataObjects(store, namespace + '-source-schemas', max_cache_entries=4)
         self.memberships = CatalogMemberships(store=store, namespace=namespace, schema=alias_schema(),
             member_column='source_id', max_rows=max_rows, max_bytes=max_bytes,
             read=self._read, write=self._write, validate_alias=_decoded_alias)
@@ -71,21 +74,52 @@ class CatalogDependencyStorage:
         if (selection.get('format') != 'catalog-dependencies-v2'
                 or selection.get('namespace') != self.namespace
                 or selection.get('ownership_edges') != 'document-id-v1'
-                or selection.get('schema_hash') != self.schema_hash
-                or selection.get('source_schema') != base64.b64encode(self.schema_bytes).decode()
                 or selection.get('max_rows') != self.max_rows
                 or selection.get('max_arrow_bytes') != self.max_bytes
                 or type(selection.get('next_source_order')) is not int
                 or selection['next_source_order'] < 0):
+            raise DependencyGap('Catalog dependency selection schema or order basis differs')
+        stored = self._source_schema(selection.get('source_schema'))
+        if (selection.get('schema_hash') != sha256(base64.b64decode(selection['source_schema'], validate=True)).hexdigest()
+                or not can_read_catalog_schema(stored, self.source_schema.remove_metadata())):
             raise DependencyGap('Catalog dependency selection schema or order basis differs')
         if require_lookup_policy and (selection.get('lookup_requirements') != self.lookup_requirements
                 or selection.get('lookup_schema') != 'url-resolution-body-v1'):
             raise DependencyGap('Catalog URL lookup policy changed; qualify an explicit lookup adoption')
         return deepcopy(selection)
 
+    def _source_schema(self, value):
+        if isinstance(value, dict):
+            value = self.schemas.read(value)['source_schema']
+        try:
+            schema = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(value, validate=True)))
+        except (ValueError, TypeError, pa.ArrowException) as error:
+            raise DependencyGap('Invalid retained dependency source schema') from error
+        return schema
+
+    def _source_reference(self, pin, basis):
+        if pin is None or 'source_schema' in pin:
+            return pin
+        return dict(release=pin, source_schema=basis.get('legacy_source_schema') or basis['source_schema'])
+
+    def _source_leaf_schema(self, reference):
+        schema = self._source_schema(reference['source_schema'])
+        if not can_read_catalog_schema(schema, self.source_schema.remove_metadata()):
+            raise DependencyGap('Retained dependency leaf cannot supply selected logical source schema')
+        return schema
+
+    def _evolved_selection(self, basis):
+        if basis['source_schema'] == base64.b64encode(self.schema_bytes).decode():
+            return basis
+        return dict(basis, legacy_source_schema=basis.get('legacy_source_schema') or basis['source_schema'],
+                    source_schema=base64.b64encode(self.schema_bytes).decode(), schema_hash=self.schema_hash)
+
     def _read(self, pin, schema):
-        with self.native.source_batches(pin, schema=schema) as reader:
-            if not reader.schema.equals(schema, check_metadata=False):
+        stored_schema = (dependency_schema(self._source_leaf_schema(pin))
+                         if 'source_schema' in pin else schema)
+        release = pin['release'] if 'source_schema' in pin else pin
+        with self.native.source_batches(release, schema=stored_schema) as reader:
+            if not reader.schema.equals(stored_schema, check_metadata=False):
                 raise DependencyGap('Native dependency leaf schema differs')
             batches = []
             rows = size = 0
@@ -97,7 +131,9 @@ class CatalogDependencyStorage:
                 batches.append(batch)
             self.rows_read += rows
             self.bytes_read += size
-            return pa.Table.from_batches(batches, schema=reader.schema).cast(schema)
+            table = pa.Table.from_batches(batches, schema=reader.schema)
+            return (table.cast(schema) if stored_schema.equals(schema, check_metadata=True)
+                    else pa.Table.from_pylist(table.to_pylist(), schema=schema))
 
     def _write(self, table, kind):
         sink = pa.BufferOutputStream()
@@ -108,15 +144,19 @@ class CatalogDependencyStorage:
                                    operation='initial', definition='catalog-dependencies-storage-v2')
         self.candidate_rows_submitted += len(table)
         self.candidate_arrow_bytes += table.nbytes
+        if kind == 'sources':
+            reference = self.schemas.put(dict(source_schema=base64.b64encode(self.schema_bytes).decode()))
+            return dict(release=pin, source_schema=reference)
         return pin
 
-    def _replace_rows(self, root, pages, *, key, schema, replacements, deletions, kind):
+    def _replace_rows(self, root, pages, *, key, schema, replacements, deletions, kind, basis=None):
         changes = {}
         for identity in sorted(set(replacements) | set(deletions)):
             prefix, pin = pages.lookup(root, identity)
             changes.setdefault(prefix, (pin, []))[1].append(identity)
         for prefix, (pin, identities) in sorted(changes.items()):
-            existing = self._read(pin, schema).to_pylist() if pin is not None else []
+            stored = self._source_reference(pin, basis) if kind == 'sources' else pin
+            existing = self._read(stored, schema).to_pylist() if stored is not None else []
             rows = {row[key]: row for row in existing}
             if len(rows) != len(existing):
                 raise DependencyGap('Duplicate keyed catalog dependency rows')
@@ -135,12 +175,17 @@ class CatalogDependencyStorage:
             root = pages.replace(root, prefix, leaves)
         return root
 
+    def read_source_leaf(self, selection, value):
+        """Read one selected routing value using its exact physical app schema."""
+        basis = self._selection(selection)
+        return self._read(self._source_reference(value, basis), dependency_schema(self.source_schema))
+
     def selected(self, selection):
         basis = self._selection(selection)
         member_counts, pin_counts = {}, {}
 
         def source_pin(key):
-            return self.sources.lookup(basis['source_root'], key)[1]
+            return self._source_reference(self.sources.lookup(basis['source_root'], key)[1], basis)
 
         def alias_pins(value):
             _, leaf = self.aliases.lookup(basis['alias_root'], value)
@@ -165,7 +210,7 @@ class CatalogDependencyStorage:
             return pins
 
         return NativeCatalogDependencies(native=self.native, source_schema=self.source_schema,
-            locate_source=source_pin, locate_alias=alias_pins, expected_members=member_counts.__getitem__,
+            locate_source=source_pin, locate_alias=alias_pins, source_leaf_schema=self._source_leaf_schema, expected_members=member_counts.__getitem__,
             expected_rows=lambda pin: pin_counts.get(index.compact(pin)),
             max_rows=self.max_rows, max_bytes=self.max_bytes)
 
@@ -303,7 +348,7 @@ class CatalogDependencyStorage:
         Native candidate datasets are immutable content-named Runs, so a losing
         attempt cannot strand a mutable native head ahead of selected app state.
         """
-        basis = self._selection(selection, require_lookup_policy=True)
+        basis = self._evolved_selection(self._selection(selection, require_lookup_policy=True))
         replacements, deletions = list(replacements), tuple(deletions)
         if not replacements and not deletions:
             return basis
@@ -332,7 +377,7 @@ class CatalogDependencyStorage:
                 new_aliases.setdefault(alias, set()).add(key)
         source_root = self._replace_rows(basis['source_root'], self.sources,
             key='source_id', schema=dependency_schema(self.source_schema), replacements=source_rows,
-            deletions=set(scope.before) - set(scope.after), kind='sources')
+            deletions=set(scope.before) - set(scope.after), kind='sources', basis=basis)
         alias_changes = {}
         for alias in sorted(old_aliases.keys() | new_aliases.keys()):
             old_members, new_members = old_aliases.get(alias, set()), new_aliases.get(alias, set())

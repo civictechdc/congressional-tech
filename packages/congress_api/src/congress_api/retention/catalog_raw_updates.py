@@ -11,6 +11,7 @@ import pyarrow.parquet as pq
 from . import document_index as index
 from .catalog_availability import annotate_availability, hearing_package, package_from_format
 from .catalog_dependency_storage import CatalogDependencyStorage
+from .catalog_batches import can_read_catalog_schema
 from .catalog_publication import CatalogSnapshot, MANIFEST_KEY, FILENAMES, DOCUMENTS
 from .catalog_selection import NativeCatalogSnapshot, read_native_catalog
 from .catalog_staging import WorkingCatalog
@@ -143,11 +144,17 @@ def update_from_raw(store, *, raw_storage, directory, candidate, expected_bodies
                     namespace=catalog_namespace, source_schema=schema, max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
             else:
                 catalog_namespace = dependencies.namespace
-                extra = set(schema.names) - set(dependencies.source_schema.names)
-                if any(row.get(name) is not None for row in values for name in extra):
-                    raise ValueError('Added source fields require qualified nullable catalog schema adaptation')
-                values = pa.Table.from_pylist(values, schema=dependencies.source_schema).to_pylist()
-                schema = dependencies.source_schema
+                original = dependencies.source_schema
+                added = [field for field in schema if field.name not in original.names]
+                logical = pa.schema([*original, *added], metadata=original.metadata)
+                if not can_read_catalog_schema(original, logical):
+                    raise ValueError('Source update requires a versioned nonadditive schema upgrade')
+                if any(schema.field(field.name).type != field.type for field in original if field.name in schema.names):
+                    raise ValueError('Source update changes a retained logical field type')
+                dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
+                    namespace=catalog_namespace, source_schema=logical, max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
+                values = pa.Table.from_pylist(values, schema=logical).to_pylist()
+                schema = logical
             ids = {index.source_identity(row) for row in values}
             deletions = sorted(old_ids - ids)
             after = dict(namespace=namespace, catalog_namespace=catalog_namespace,
