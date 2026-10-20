@@ -6,10 +6,11 @@ repeated and unknown elements. Original bytes live in ``source_bodies``.
 """
 from typing import Annotated, Literal, cast
 
-from pydantic import BeforeValidator, Field, field_validator
+from pydantic import BeforeValidator, Field, JsonValue, field_validator
 
 from .base import SourceModel
 from .content import RawContent
+from .senate import DocumentMetadata, DocumentRow as SenateDocumentRow, PageMetadata, SenateWitness, WitnessCard
 from .xml import XmlAttributes, XmlElement
 
 
@@ -390,3 +391,99 @@ class HouseParsedRecord(SourceModel):
     witness_status: Literal['present', 'absent', 'unfetched']
     evidence: HouseEvidence
     source_bodies: dict[str, RawContent] = Field(default_factory=dict)
+
+
+class HouseCalendarLabelCommittee(SourceModel):
+    typename: str | None = Field(default=None, alias='__typename')
+    name: str | None = None
+    slug: str | None = None
+
+
+class HouseCalendarCommittee(SourceModel):
+    typename: str | None = Field(default=None, alias='__typename')
+    document_id: str | None = Field(default=None, alias='documentId')
+    slug: str | None = None
+    name: str | None = None
+    label_committee: HouseCalendarLabelCommittee | None = Field(default=None, alias='labelCommittee')
+    parent_committee: JsonValue = Field(default=None, alias='parentCommittee')
+
+
+class HouseCalendarAgendaItem(SourceModel):
+    typename: str | None = Field(default=None, alias='__typename')
+    id: str | None = None
+    custom_id: str | None = Field(default=None, alias='customId')
+    available_to_consider: JsonValue = Field(default=None, alias='availableToConsider')
+    info: str | None = None
+    measure: JsonValue = None
+    status: str | None = None
+
+
+class HouseCalendarLink(SourceModel):
+    typename: str | None = Field(default=None, alias='__typename')
+    label: str | None = None
+    route: str | None = None
+    target: str | None = None
+
+
+class HouseCalendarEvent(SourceModel):
+    typename: str | None = Field(default=None, alias='__typename')
+    document_id: str | None = Field(default=None, alias='documentId')
+    slug: str | None = None
+    title: str | None = None
+    start_datetime: str | None = Field(default=None, alias='startDatetime')
+    end_datetime: str | None = Field(default=None, alias='endDatetime')
+    all_day: bool | None = Field(default=None, alias='allDay')
+    custom_id: str | None = Field(default=None, alias='customId')
+    location: str | None = None
+    is_cancelled: bool | None = Field(default=None, alias='isCancelled')
+    agenda: list[HouseCalendarAgendaItem] | None = None
+    info: str | None = None
+    committee: HouseCalendarCommittee | None = None
+    measure: JsonValue = None
+    has_live: bool | None = Field(default=None, alias='hasLive')
+    image: JsonValue = None
+    links: list[HouseCalendarLink] | None = None
+
+
+class HouseCalendarEventsConnection(SourceModel):
+    typename: str | None = Field(default=None, alias='__typename')
+    nodes: list[HouseCalendarEvent]
+
+
+class HouseCalendarPageInfo(SourceModel):
+    typename: str | None = Field(default=None, alias='__typename')
+    total: int | None = None
+
+
+class HouseCalendarPagesConnection(SourceModel):
+    typename: str | None = Field(default=None, alias='__typename')
+    page_info: HouseCalendarPageInfo | None = Field(default=None, alias='pageInfo')
+
+
+class HouseCalendarResponse(SourceModel):
+    events_connection: HouseCalendarEventsConnection
+    pages_connection: HouseCalendarPagesConnection | None = None
+
+
+class HouseEventIdentity(SourceModel):
+    title: str
+    date: str
+    url: str
+    date_text: str | None = None
+    selector: str | None = None
+    type: str | None = None
+
+
+class HouseEventPage(SourceModel):
+    title: str
+    event: HouseEventIdentity | None = None
+    page_kind: Literal['listing', 'event_candidate']
+    lines: list[str]
+    witnesses: list[SenateWitness]
+    documents: list[SenateDocumentRow]
+    document_metadata: dict[str, DocumentMetadata] = Field(default_factory=dict)
+    witness_metadata: dict[str, WitnessCard] = Field(default_factory=dict)
+    page_metadata: PageMetadata | None = None
+    raw_html: RawContent | None = None
+
+

@@ -230,3 +230,39 @@ def test_raw_body_roundtrip_and_corruption_rejection(raw):
     invalid = value.source_dict(); invalid['body'] += 'corrupt'
     with pytest.raises(ValidationError):
         RawContent.model_validate(invalid)
+
+
+def test_house_calendar_and_event_page_models_validate_all_retained_keys():
+    import json
+    from congress_api.models.documents import DocumentResolution
+    from congress_api.models.house import HouseCalendarResponse, HouseEventPage
+    from congress_api.acquisition.documents import resolve_document
+    from congress_api.parsers.committee_pages import calendar_links, parse_event_page
+    from test_congress_source_models import assert_declared
+
+    cal_bytes = (FIXTURES / 'house-energycommerce-calendar.json').read_bytes()
+    cal_raw = json.loads(cal_bytes)
+    cal_model = HouseCalendarResponse.model_validate(cal_raw)
+    assert cal_model.source_dict() == cal_raw
+    assert_declared(cal_model)
+    links = calendar_links(cal_bytes, 'https://energycommerce.house.gov/api/events')
+    assert len(links) == 2
+
+    html_bytes = (FIXTURES / 'house-sites/agriculture.html').read_bytes()
+    page_dict = parse_event_page(html_bytes, 'https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=1')
+    page_model = HouseEventPage.model_validate(page_dict)
+    assert page_model.source_dict() == page_dict
+    assert_declared(page_model)
+
+    res = resolve_document(
+        'https://docs.house.gov/meetings/IF/IF00/20260101/1/HHRG-119-IF00-Wstate-SmithJ-20260101.pdf',
+        get=lambda url, **kwargs: {
+            'url': url, 'status_code': 200,
+            'headers': {'Content-Type': 'application/pdf'},
+            'header_items': [('Content-Type', 'application/pdf')],
+            'content': RawContent.from_bytes(b'%PDF-1.4\n...', 'application/pdf').source_dict(),
+            'complete': False,
+        },
+    )
+    assert isinstance(res, DocumentResolution)
+    assert res.format == 'pdf'

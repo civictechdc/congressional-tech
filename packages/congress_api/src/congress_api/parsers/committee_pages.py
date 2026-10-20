@@ -9,6 +9,7 @@ from lxml import etree, html
 from copy import deepcopy
 
 from congress_api.models.content import RawContent
+from congress_api.models.house import HouseCalendarResponse, HouseEventPage
 
 from congress_api.parsers.text import words
 from congress_api.parsers.document_links import FILE, links_from_trees, http_url
@@ -19,13 +20,15 @@ from congress_api.parsers.senate_page import (DATE, literal_document_kind, writt
 def calendar_links(body, url):
     """Use the publisher's literal slugs and its documented /events/ route."""
     data = json.loads(body)
-    connection = data.get('events_connection') if isinstance(data, dict) else None
-    nodes = connection.get('nodes') if isinstance(connection, dict) else None
-    if not isinstance(nodes, list):
+    if not isinstance(data, dict):
         raise ValueError('Unrecognized committee calendar response')
-    return [(urljoin(url, '/events/' + node['slug']), node.get('title', '')) for node in nodes[:20]
-            if isinstance(node, dict) and isinstance(node.get('slug'), str)
-            and re.fullmatch(r'[a-zA-Z0-9_-]+', node['slug']) and isinstance(node.get('title', ''), str)]
+    try:
+        response = HouseCalendarResponse.model_validate(data)
+    except Exception as error:
+        raise ValueError('Unrecognized committee calendar response') from error
+    return [(urljoin(url, '/events/' + node.slug), node.title or '') for node in response.events_connection.nodes[:20]
+            if isinstance(node.slug, str) and re.fullmatch(r'[a-zA-Z0-9_-]+', node.slug)
+            and isinstance(node.title or '', str)]
 
 
 def same_site(url, home):
@@ -179,10 +182,12 @@ def parse_event_page(body, url):
     title = event['title'] if event else event_title(trees[0][1]) if trees else ''
     if not title and trees:
         title = ' '.join(trees[0][1].xpath('//title/text()'))
-    return dict(title=title, event={**event, 'url': url} if event else None, page_kind='listing' if listing_url(url) else 'event_candidate',
+    return HouseEventPage.model_validate(dict(
+        title=title, event={**event, 'url': url} if event else None, page_kind='listing' if listing_url(url) else 'event_candidate',
         lines=sorted(lines(markup)), witnesses=people, documents=documents,
         document_metadata=metadata, witness_metadata=people_metadata, page_metadata=page_metadata,
-        raw_html=RawContent.from_bytes(body, 'text/html').source_dict())
+        raw_html=RawContent.from_bytes(body, 'text/html').source_dict(),
+    )).source_dict()
 
 
 def match_event(body, url, meeting):
