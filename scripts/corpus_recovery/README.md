@@ -10,6 +10,8 @@ Library code for assembly, transfer, and the write guards is in [`packages/corpu
 
 1. **`prepare_corpus_recovery_batch.py`** copies one recovery result into a new local batch. It checks body hashes and sizes, ZIP membership, and deferred URLs that must stay out. It does not upload. Use a new destination for each checkpoint. Do not overwrite a batch you already sealed.
 
+   For a GovInfo recovery with `package_id`, `archive_member`, and `request_evidence`, it retains the downloaded ZIP, every extracted member (including metadata), and the exact acquisition receipt. It checks the receipt and local files against the ZIP once per acquisition, even when several recovery targets use the same package. An incomplete package fails preparation. Existing retained-body recoveries without a local package still work without another download. The selected PDF or XML keeps its original recovery mapping; sibling files do not inherit that mapping.
+
 2. **`prepare_corpus_recovery_source_records.py`** adds source-record files to that sealed batch, using timestamps that were retained with the capture. It does not replace the manifest or files that are already there. If a previous run stopped halfway, copy the batch and start this step again. This command does not resume an interrupted pair.
 
 3. **`coalesce_corpus_recovery_batches.py`** combines finished batches into one import unit. It changes the mapping baseline only for URL and body pairs that these batches newly recovered. It leaves the original batches in place and does not talk to the network.

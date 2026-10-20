@@ -5,6 +5,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from corpus_recovery.govinfo import prepare_packages
+
 
 def prepare(source, deferred_path, destination):
     source = Path(source)
@@ -58,6 +60,20 @@ def prepare(source, deferred_path, destination):
                 member_keys.add(key)
     if member_keys != set(validated_members):
         raise ValueError('ZIP member coverage mismatch')
+    # Package retention is separate from the reviewed document-to-body choices.
+    # All members must match the actual ZIP; metadata need not be a recovery target.
+    packages = prepare_packages(recovered, inputs)
+    for receipt in packages:
+        if receipt['original_url'] in deferred:
+            raise ValueError('Deferred GovInfo package cannot enter recovery batch')
+        for capture in receipt['captures']:
+            key = capture['body_key']
+            body(key, receipt['local_bodies'][key], capture['bytes'])
+            if capture['pointer'][0] == 'archive_members':
+                if 'https://www.govinfo.gov/content/pkg/' + capture['original_path'] in deferred:
+                    raise ValueError('Deferred GovInfo package member cannot enter recovery batch')
+                member_keys.add(key)
+    receipts.extend(packages)
     accepted_pairs = {(r['original_url'], r['body_key']) for r in accepted['recoveries']}
     if any((r['original_url'], r['body_key']) not in accepted_pairs for r in recovered):
         raise ValueError('Recovered URL missing from accepted mappings')

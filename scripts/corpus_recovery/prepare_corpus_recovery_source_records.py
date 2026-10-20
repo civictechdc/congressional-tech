@@ -95,6 +95,16 @@ def prepare(batch, captures, timestamp_aliases=None):
     if 'recoveries.json' not in manifest['files']:
         raise ValueError('Recovery rows are not sealed by the manifest')
     rows = read(batch/'recoveries.json')
+    package_members = {}
+    if 'zip-receipts.json' in manifest['files']:
+        for item in read(batch/'zip-receipts.json'):
+            package = item['record'].get('recovery_package')
+            if package:
+                for cap in item['captures']:
+                    if cap['pointer'][0] == 'archive_members':
+                        key = (package['package_id'], cap['original_path'], cap['body_key'],
+                               package['acquisition_receipt_path'])
+                        package_members[key] = (cap['retrieved_at'], package['acquisition_receipt_sha256'])
     inputs[str(captures)] = digest(captures)
     needed = {(row['recovered_url'], row['body_key']) for row in rows if row.get('reused_retained_body')}
     prior = {}
@@ -124,9 +134,12 @@ def prepare(batch, captures, timestamp_aliases=None):
         inputs[str(path)] = sha
         rendered = row.get('rendered_copy') is True
         original = None; at = basis = None
+        package_capture = package_members.get((row.get('package_id'), row.get('archive_member'), row['body_key'],
+            str(Path(row['request_evidence']).resolve()) if row.get('request_evidence') else None))
         stamp = row.get('candidate', {}).get('timestamp')
         need_transport = ((rendered and instant(row.get('retrieved_at')) is None)
-                          or (not rendered and not stamp and (row['recovered_url'], row['body_key']) not in prior))
+                          or (not rendered and not stamp and not package_capture
+                              and (row['recovered_url'], row['body_key']) not in prior))
         transport = read(row['request_evidence']) if need_transport and row.get('request_evidence') else {}
         if rendered:
             # Rendering time and the original archive snapshot time describe
@@ -143,6 +156,8 @@ def prepare(batch, captures, timestamp_aliases=None):
         elif (row['recovered_url'], row['body_key']) in prior:
             original = prior[(row['recovered_url'], row['body_key'])]
             at, basis = original['retrieved_at'], 'existing_official_package_and_exact_body_capture'
+        elif package_capture:
+            at, basis = package_capture[0], 'sealed_official_package_member_capture'
         elif transport:
             at = transport_time(row, transport)
             basis = 'retained_transport_receipt_time'
@@ -152,6 +167,8 @@ def prepare(batch, captures, timestamp_aliases=None):
         source_url = original['context_url'] if original else row['recovered_url']
         evidence = dict(timestamp_basis=basis, original_capture=original, acquisition=row,
                         current_publisher_status_not_tested=True)
+        if basis == 'sealed_official_package_member_capture':
+            evidence['package_acquisition_receipt_sha256'] = package_capture[1]
         if rendered:
             evidence.update(rendered_copy=True, byte_provenance='browser_rendered_archive_copy',
                             original_archive_response_bytes=False)

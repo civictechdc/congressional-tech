@@ -18,6 +18,7 @@ The package is installed with the rest of the workspace (`uv sync --locked`). It
 | --- | --- |
 | `html` | Reads archived HTML and labels it: a real document body, an empty page, a "no prepared statement" page, or an error or challenge page. The caller still has to check the archive digest, the source URL, and any URL that was deliberately deferred. |
 | `assemble` | Builds the capture rows and ZIP receipts for one sealed batch, offline. |
+| `govinfo` | Validates a downloaded GovInfo ZIP and retains all members and its acquisition receipt, independently of the selected document's recovery mapping. |
 | `transfer` | `import_batch` writes those bodies and index rows. Each write is conditional. An uncertain response is reconciled by reading the object back, not by repeating the upload. |
 | `inventory` | Loads a sealed batch, compares it with objects already stored, and checks that a file's digest still matches the manifest. |
 | `admission` | `verify_import` checks that an import finished and that the readiness report still matches the batch. |
