@@ -208,3 +208,21 @@ def test_asset_inventory_pages_are_bounded_and_hash_checked(tmp_path):
     (assets.root / inventory['head']['path']).write_bytes(b'{}')
     with pytest.raises(ValueError, match='identity differs'):
         list(iterator_inventory(ViewerAssets(assets.root), inventory))
+
+
+def test_native_publication_requires_exact_selector_byte_identity(tmp_path):
+    import importlib.util
+    import pytest
+    from filename_native import publication_basis, validate_publication
+    script = Path(__file__).resolve().parents[1] / 'scripts/publish-filename-viewer.py'
+    spec = importlib.util.spec_from_file_location('selector_identity_viewer', script)
+    builder = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builder)
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    seed(tmp_path, store, native)
+    manifest = builder.publish_selected(read_catalog(store, native=native), tmp_path / 'public', review_identities=None)
+    assets = ViewerAssets(tmp_path / 'public')
+    manifest['source_identity']['selector_sha256'] = '0' * 64
+    manifest['proof'] = assets.put_node(dict(version=1, kind='viewer-proof', publication=publication_basis(manifest)))
+    with pytest.raises(ValueError, match='native selection identity'):
+        validate_publication(assets, manifest)

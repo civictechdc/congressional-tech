@@ -106,3 +106,14 @@ def test_identity_generation_requires_exact_pinned_review_bytes(tmp_path):
     path.write_bytes(data + b' ')
     with pytest.raises(ValueError, match='bytes'):
         binding.pinned_reviews(path, descriptor)
+
+
+def test_stable_withdrawal_survives_disappearance_and_return():
+    from congress_api.retention.catalog_validation import catalog_source_ids_digest
+    missing = binding.bind_selected('missing', IDENTITIES, lambda _: None)
+    component = dict(source_ids_sha256=catalog_source_ids_digest(iter(['s1','s2'])), body_key='bodies/a')
+    returned = binding.bind_selected('returned', IDENTITIES, lambda _: component, previous=missing)
+    assert returned['rows'] == [] and returned['withdrawn'] == missing['withdrawn']
+    assert returned['withdrawn'][0]['reason'] == 'document_missing'
+    with pytest.raises(ValueError, match='explicit new review policy'):
+        binding.bind_selected('returned', {**IDENTITIES, 'review_sha256': 'b' * 64}, lambda _: component, previous=missing)

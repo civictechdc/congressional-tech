@@ -651,7 +651,8 @@ def validate_publication(assets, manifest):
         raise ValueError('Viewer roots differ from their retained selection proof')
     selected = assets.read_node(manifest['source_selection'])
     identity = manifest['source_identity']
-    if (manifest['source_manifest'] != dict(version=2, selection=identity['selected_ref'])
+    if (identity.get('selector_sha256') != sha256(encoded(manifest['source_manifest'])).hexdigest()
+            or manifest['source_manifest'] != dict(version=2, selection=identity['selected_ref'])
             or manifest['source_selection']['sha256'] != identity['selected_ref']['sha256']):
         raise ValueError('Viewer native selection identity differs')
     roots, counts = manifest['roots'], selected['counts']
@@ -783,8 +784,9 @@ def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None
         if review_identities is not None:
             import filename_review_binding as binding
             identities = binding.load_identities(review_identities)
+            prior_binding = assets.read_node(previous['files']['review_binding']) if previous and previous['files'].get('review_binding') else None
             placement = binding.bind_selected(catalog_id, identities,
-                lambda document: public_component(assets, component_root, document))
+                lambda document: public_component(assets, component_root, document), previous=prior_binding)
             files['review_binding'] = assets.put_node(placement)
         def node(value, prior=None):
             raw = encoded(value)

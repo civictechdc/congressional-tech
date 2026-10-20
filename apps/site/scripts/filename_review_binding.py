@@ -95,12 +95,27 @@ def withdrawal_reason(*, exists, sources_match, body_matches):
     return None
 
 
-def bind_selected(catalog_id, identities, component_lookup):
+def bind_selected(catalog_id, identities, component_lookup, *, previous=None):
     """Place reviews by stable IDs using retained exact membership proofs."""
     from congress_api.retention.catalog_validation import catalog_source_ids_digest
     validate_identities(identities)
+    prior = {}
+    if previous is not None:
+        if previous.get('version') != 2 or previous.get('review_sha256') != identities['review_sha256']:
+            raise ValueError('Changed review input requires an explicit new review policy')
+        expected = {item['index']: item for item in identities['rows']}
+        for item in previous['withdrawn']:
+            original = expected.get(item['index'])
+            if (original is None or item['index'] in prior or item['document_id'] != original['document_id']
+                    or item['source_ids'] != original['source_ids']
+                    or item['reason'] not in ('document_missing', 'sources_changed', 'body_changed')):
+                raise ValueError('Invalid retained review withdrawal')
+            prior[item['index']] = item
     rows, withdrawn = [], []
     for item in identities['rows']:
+        if item['index'] in prior:
+            withdrawn.append(dict(prior[item['index']]))
+            continue
         component = component_lookup(item['document_id'])
         reason = withdrawal_reason(exists=component is not None,
             sources_match=component is not None and component['source_ids_sha256'] ==
