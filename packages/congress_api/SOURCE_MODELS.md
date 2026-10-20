@@ -36,12 +36,12 @@ that model is `ModsDocument`.
 
 | Source we parse | Canonical model | Parser or entry point |
 | --- | --- | --- |
-| Congress.gov meeting/detail/list JSON | `CommitteeMeeting`, `MeetingResponse`, `MeetingsPage` | `models.congress.parse_response`; `acquisition.meetings.get` |
-| Congress.gov committee/detail/list JSON | `CommitteeRecord`, `CommitteeDetail`, `CommitteeResponse`, `CommitteesPage` | `models.congress.parse_response`; `acquisition.meetings.get` |
+| Congress.gov meeting/detail/list JSON | `CommitteeMeeting`, `MeetingResponse`, `MeetingsPage` | `models.congress.parse_response`; `acquisition.meetings` |
+| Congress.gov committee/detail/list JSON | `CommitteeRecord`, `CommitteeDetail`, `CommitteeResponse`, `CommitteesPage` | `models.congress.parse_response`; `acquisition.committees` |
 | Congress.gov XML fallback | `CongressXmlDocument` | `parsers.congress.parse_congress_xml` |
-| GovInfo collection JSON | `GpoCollectionPage`, `GpoCollectionPackage` | `acquisition.gpo.list_collection` |
-| GovInfo MODS XML | `ModsDocument` and nested native MODS records | `parsers.gpo.parse_mods_document` |
-| GovInfo ZIP package file-list XML (METS) | `GpoPackageManifest`, `MetsFile`, `MetsFileLocation` | `parsers.gpo.parse_package_manifest` |
+| GovInfo collection JSON | `GpoCollectionPage`, `GpoCollectionPackage`, `GpoListingObservation` | `acquisition.gpo.list_collection`, `acquisition.gpo.main` |
+| GovInfo MODS XML | `ModsDocument`, `ModsRecord` and nested native MODS records | `parsers.gpo.parse_mods_document` |
+| GovInfo ZIP package file-list XML (METS) | `GpoPackageManifest`, `MetsFile`, `MetsFileLocation` | `parsers.gpo.parse_package_manifest`; `acquisition.gpo.main` |
 | GovInfo transcript HTML | `GpoTranscriptText`, `GpoTranscriptDates`; structured `Transcript` extraction | `transcripts.gpo`, `acquisition.gpo`, `parsers.gpo_text` |
 | House meeting and witness XML | `HouseMeetingXML`, `HouseWitnessListXML` | `parsers.house_xml.parse_house_meeting`, `parse_house_witnesses` |
 | House meeting HTML and combined extraction | `HouseEvidence`, `HouseParsedRecord` | `parsers.house_evidence`, `parsers.house.parse_house_record` |
@@ -68,7 +68,11 @@ manifest inside an official package ZIP can identify additional filenames. Its
 model preserves native file attributes and exact locators alongside the original
 XML. A filename that differs from the package ID is not corrected or discarded.
 Declared byte lengths remain publisher values even if they differ from captured
-file lengths.
+file lengths. Absolute HTTP(S) METS locators and MODS renditions not already
+listed in the CSV add representations on the existing package version; `file://`
+locators and MODS roster/bill fields stay on the evidence record. WordPress
+hearing posts stay source observations rather than emitting duplicate domain
+appearances or materials.
 
 HTML and PDF models describe the structure we extract. They retain the source
 body alongside it. Extracted PDF text is not a claim that image-only pages were

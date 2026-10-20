@@ -68,7 +68,11 @@ relationships. A document's existence does not establish its associations.
 A full committee and subcommittee can both convene a meeting. Parent committee
 references are scoped to the same Congress. A term represents one committee in
 one Congress; selected metadata and its source observations may change during
-that term. This draft does not build a complete historical membership directory.
+that term. This draft does not build a complete historical membership directory. Records
+and fields such as `CommitteeRelation`, `CommitteeMembership`, `Organization`,
+`CommitteeChannel`, `MeetingRelation`, `SpeakerAttribution`, `VoteTally`,
+`Ballot`, `MaterialLink.extent` and `Representation.xml_root` stay in the schema
+until a source states them.
 
 A rescheduled notice changes the scheduled time of the same occurrence unless
 evidence identifies a distinct sitting. Keep earlier observations; do not count
