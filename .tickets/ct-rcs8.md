@@ -1,6 +1,6 @@
 ---
 id: ct-rcs8
-status: open
+status: in_progress
 deps: [ct-l5q1]
 links: []
 created: 2026-10-20T07:37:34Z
