@@ -140,3 +140,60 @@ def test_two_nonempty_file_tuples_union():
     catalog = assembly.finish()
     material = next(record for record in catalog.records if record.kind == 'material')
     assert {file.url for file in material.files} == {'https://example.org/a.pdf', 'https://example.org/b.pdf'}
+
+
+def test_representation_saved_copy_survives_finish_and_write_tables(tmp_path):
+    from committee_explorer.assemble import apply_saved_copies
+    from committee_explorer.parquet import write_tables
+    from committee_meeting.materials import MaterialLocation, MaterialVersion, Representation
+    from committee_meeting.provenance import RetainedContent
+    import pyarrow as pa
+    digest = 'ab' * 32
+    local = 'cd' * 32
+    source = SourceRecord(id='a', provider='test', identifier=Identifier(scheme='test', value='a'), payload={})
+    statement = Material(id='statement', provenance=evidence('a'))
+    transcript = Material(id='transcript', provenance=evidence('a'))
+    records = [
+        source, statement, transcript,
+        MaterialVersion(id='statement-v', material=Ref(kind='material', id='statement'), provenance=evidence('a')),
+        MaterialVersion(id='transcript-v', material=Ref(kind='material', id='transcript'), provenance=evidence('a')),
+        Representation(id='pdf', version=Ref(kind='material_version', id='statement-v'), media_type='application/pdf',
+                       locations=(MaterialLocation(url='https://example.org/statement.pdf', role='download'),),
+                       sha256=digest, retained=RetainedContent(uri=f'bodies/sha256/{digest[:2]}/{digest}.gz', sha256=digest),
+                       provenance=evidence('a')),
+        Representation(id='text', version=Ref(kind='material_version', id='transcript-v'), media_type='text/plain',
+                       locations=(MaterialLocation(url='https://example.org/transcript.txt', role='download'),),
+                       sha256=local, retained=RetainedContent(uri='file:///tmp/transcript.txt', sha256=local),
+                       provenance=evidence('a')),
+    ]
+    assembly = _assembly()
+    assembly.add(records)
+    catalog = assembly.finish()
+    files = {record.id: next(item for item in catalog.records if item.kind == 'material' and item.id == record.id).files[0]
+             for record in (statement, transcript)}
+    assert files['statement'].saved_copy_sha256 == digest
+    assert files['transcript'].saved_copy_sha256 is None
+    write_tables((record.model_dump(mode='json') for record in catalog.records), [],
+                 [dict(kind='material', id='statement', title='Statement', type='document'),
+                  dict(kind='material', id='transcript', title='Transcript', type='document')],
+                 tmp_path, lambda *args, **kwargs: None)
+    published = {row['id']: row for row in pq.read_table(tmp_path / 'materials.parquet').to_pylist()}
+    assert published['statement']['files'][0]['saved_copy_sha256'] == digest
+    assert published['transcript']['files'][0]['saved_copy_sha256'] is None
+    named = 'ef' * 32
+    pq.write_table(pa.table({'source_url': ['https://example.org/named.pdf'],
+                             'body_key': [f'bodies/sha256/{named[:2]}/{named}.gz'],
+                             'filename': ['Witness statement.pdf']}), tmp_path / 'names.parquet')
+    named_material = Material(id='named', provenance=evidence('a'))
+    named_assembly = _assembly()
+    named_assembly.add([
+        source, named_material,
+        MaterialVersion(id='named-v', material=Ref(kind='material', id='named'), provenance=evidence('a')),
+        Representation(id='named-pdf', version=Ref(kind='material_version', id='named-v'),
+                       locations=(MaterialLocation(url='https://example.org/named.pdf', role='download'),),
+                       provenance=evidence('a')),
+    ])
+    apply_saved_copies(named_assembly, tmp_path / 'names.parquet')
+    named_catalog = named_assembly.finish()
+    named_file = next(record for record in named_catalog.records if record.id == 'named').files[0]
+    assert (named_file.saved_copy_sha256, named_file.saved_filename) == (named, 'Witness statement.pdf')
