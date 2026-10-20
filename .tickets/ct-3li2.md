@@ -18,3 +18,9 @@ The uncommitted native export draft allows List/Struct but rebuilds only root fi
 
 Recursively preserve authorized field IDs/types while stripping descendant metadata; reject unsupported descendant types. Charge footer growth by primitive leaf columns. Prove nested private metadata absent from the artifact and public descriptor, exact values/nulls preserved, and wide nested footer limits enforced. Review before merging the unrelated draft.
 
+
+## Notes
+
+**2026-10-20T19:23:00Z**
+
+Fresh read-only review2026-10-20: F1. Evidence: output/docspec-reuse-20261020/parquet-iceberg-review-v2/review.md and evidence.md. Expected performance gains remain unmeasured; preserve the exact inspected state in receipt.json.

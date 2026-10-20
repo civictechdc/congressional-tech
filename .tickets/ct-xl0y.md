@@ -28,3 +28,7 @@ CS300 review distinguishes a constant saved catalog registration from algorithmi
 **2026-10-20T19:00:10Z**
 
 Fresh Parquet/Iceberg advisor verified Iceberg0.10.1/DataFusion53.1.0/Parquet58.4.0. NativeProvider ignores filters; occurrence reads preserve whole-file ordinals, so do not enable row filtering blindly. After scale measurement, consider public TableScanBuilder.with_filter for conservative possible-match file paths, then unchanged full-file reads. Unknown metrics/null/default/type/truncation cases must retain scan. Private evaluator and IN>200 fallback constrain implementation. Advice: output/docspec-reuse-20261020/parquet-iceberg-advice.md.
+
+**2026-10-20T19:23:00Z**
+
+Fresh read-only review2026-10-20: F2. Evidence: output/docspec-reuse-20261020/parquet-iceberg-review-v2/review.md and evidence.md. Expected performance gains remain unmeasured; preserve the exact inspected state in receipt.json.

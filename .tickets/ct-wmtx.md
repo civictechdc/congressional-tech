@@ -18,3 +18,9 @@ The storage review found full historical-row replay on a cold lifecycle cache mi
 
 Report time, metadata rows/bytes, allocations and catalog calls as history grows. Preserve exact selected releases, old readers, incomplete operations and retention roots. Use existing Iceberg/catalog components; no second SQL authority or automatic expiry. Adopt a change only with local preservation tests and measured benefit, otherwise retain a bounded evidence-based conclusion.
 
+
+## Notes
+
+**2026-10-20T19:23:00Z**
+
+Fresh read-only review2026-10-20: F4. Evidence: output/docspec-reuse-20261020/parquet-iceberg-review-v2/review.md and evidence.md. Expected performance gains remain unmeasured; preserve the exact inspected state in receipt.json.
