@@ -96,7 +96,6 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=
         publisher.prepare_recovery(publication, manifest,
             tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')), validation=proof, index=recovery)
         publisher.validate_prepared_output(publication, manifest)
-        (publication / 'manifest.json').write_bytes(publisher.encoded(manifest))
         for name in ('manifest.json', 'recovery-prepared.json'):
             identities[name] = file_identity(publication / name)
         inventory_proof = issue_inventory(root,
