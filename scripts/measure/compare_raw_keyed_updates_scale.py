@@ -293,12 +293,20 @@ def main(args):
                     limits.write_text(json.dumps(LIMITS))
                     original_pin = base
                     source_pin = base['dataset']['groups']['source']
-                    for step in range(history):
-                        empty = directory / 'history.parquet'
-                        pq.write_table(pa.Table.from_pylist([], schema=SCHEMA).cast(PHYSICAL), empty)
-                        base = native.update(dict(dataset='target', operation=f'history-{step}', definition='raw-native-v1',
-                            base=base['id'], keys=[STATE_KEY_FIELD], replacements=source_spec(native, empty)))
-                        assert base['dataset']['groups']['source'] == source_pin
+                    history_counters = native.counts.copy()
+                    history_preparation = None
+                    if history:
+                        def prepare_history():
+                            selected = base
+                            for step in range(history):
+                                empty = directory / 'history.parquet'
+                                pq.write_table(pa.Table.from_pylist([], schema=SCHEMA).cast(PHYSICAL), empty)
+                                selected = native.update(dict(dataset='target', operation=f'history-{step}', definition='raw-native-v1',
+                                    base=selected['id'], keys=[STATE_KEY_FIELD], replacements=source_spec(native, empty)))
+                                assert selected['dataset']['groups']['source'] == source_pin
+                            return selected
+                        base, history_preparation = budget.stage(prepare_history)
+                    history_commands = dict(native.counts - history_counters)
                     original_objects = {obj['path']: digest(obj['path'])
                         for obj in source_pin['objects']}
                     full = directory / 'complete.parquet'
@@ -329,6 +337,7 @@ def main(args):
                     assert all(digest(path) == expected for path, expected in original_objects.items())
                     entry = dict(axis=axis, rows=count, history=history, seed_target_file_bytes=file_bytes,
                         repeat=repeat, arm=arm, case=case, fixture_generation=generation, seed=seed,
+                        history_preparation=history_preparation, history_commands=history_commands,
                         complete_input_preparation=preparation, operation=timing, readback=readback,
                         commands=observed, readback_commands=readback_commands,
                         processing=processing, native_table_registrations=new_tables,
@@ -347,6 +356,7 @@ def main(args):
         report.update(status='stopped', error_type=type(error).__name__, error=str(error))
         raise
     finally:
+        report['whole_experiment_seconds'] = time.monotonic() - (budget.deadline - args.seconds)
         (output / 'results.json').write_text(json.dumps(report, indent=2) + '\n')
 
 
