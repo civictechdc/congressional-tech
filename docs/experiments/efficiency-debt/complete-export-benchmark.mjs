@@ -4,8 +4,8 @@ import {brotliCompressSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import {readFile, writeFile} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
-import {observationReader} from '../../../apps/site/src/components/filenames/observations.mjs';
-import {byteCache, retainedBytes} from '../../../apps/site/src/components/filenames/cache.mjs';
+import {observationReader} from '../../../apps/site/src/components/explorer/reader/filenames/observations.ts';
+import {byteCache, retainedBytes} from '../../../apps/site/src/components/explorer/reader/filenames/cache.ts';
 
 const destination = process.argv[2];
 if (!destination) throw new Error('Usage: node --expose-gc complete-export-benchmark.mjs OUTPUT');
@@ -60,7 +60,7 @@ stages.blob=memory();
 const baselineKnownBytes=retainedBytes(full)+retainedBytes(clone)+formatted.length*2;
 const candidateKnownBytes=baselineKnownBytes+blob.size;
 const report={version:1,head:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),node:process.version,
- sourceSha256:sha(await readFile(new URL('../../../apps/site/src/components/filenames/observations.mjs',import.meta.url))),
+ sourceSha256:sha(await readFile(new URL('../../../apps/site/src/components/explorer/reader/filenames/observations.ts',import.meta.url))),
  fixture:{serializedBytes:input.data.rawBytes+input.refs.rawBytes,observations:4,sources:3,selectedReferences:5,expectedSha256:input.expectedSha256},
  metrics,retainedCache:cache.stats,stages,estimates:{restoredPage:retainedBytes(page),fullResult:retainedBytes(full),workerClone:retainedBytes(clone),formattedUtf16:formatted.length*2,formattedUtf8:Buffer.byteLength(formatted),blobBytes:blob.size,baselineKnownBytes,candidateKnownBytes,candidateRatio:candidateKnownBytes/baselineKnownBytes},
  elapsedMs:performance.now()-start,phaseStartMarkers:{page:pageStarted-start,full:fullStarted-start,blob:blobStarted-start},peakRssBytes:process.resourceUsage().maxRSS*1024,

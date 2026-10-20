@@ -1,4 +1,4 @@
-import { filenameManifestUrl } from '../../filenames/publication.mjs';
+import { filenameManifestUrl } from '../reader/filenames/publication.ts';
 import type { CoverageAspect, EvidenceState } from './kinds.ts';
 
 const calendar = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' });

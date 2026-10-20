@@ -5,9 +5,9 @@ import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import {delimiter,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {loadPublication} from '../src/components/filenames/publication.mjs';
-import {loadRecoveries} from '../src/components/filenames/recoveries.mjs';
-import {loadReviews} from '../src/components/filenames/reviews.mjs';
+import {loadPublication} from '../src/components/explorer/reader/filenames/publication.ts';
+import {loadRecoveries} from '../src/components/explorer/reader/filenames/recoveries.ts';
+import {loadReviews} from '../src/components/explorer/reader/filenames/reviews.ts';
 
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 export async function verifyLivePublication({viewerUrl,pagesUrl,descriptor,fetcher=fetch,runtimeProbe}) {
@@ -60,10 +60,10 @@ export async function verifyLivePublication({viewerUrl,pagesUrl,descriptor,fetch
   const assets=[];
   for(const url of moduleUrls.slice(0,8)){const response=await bounded(url);assets.push({url,sha256:hash(new Uint8Array(await response.arrayBuffer()))});}
   const runtime=runtimeProbe?await runtimeProbe({pagesUrl,pointer,reviewInfo:reviews.info}):{state:'pending',reason:'Deployed Pages worker was not executed'};
-  const loaderHashes=Object.fromEntries(await Promise.all(['filenames/publication.mjs','filenames/reviews.mjs','filenames/recoveries.mjs'].map(async name=>[name,hash(await readFile(new URL('../src/components/'+name,import.meta.url)))])));
+  const loaderHashes=Object.fromEntries(await Promise.all(['explorer/reader/filenames/publication.ts','explorer/reader/filenames/reviews.ts','explorer/reader/filenames/recoveries.ts'].map(async name=>[name,hash(await readFile(new URL('../src/components/'+name,import.meta.url)))])));
   return {version:1,runtime:{node:process.version,platform:process.platform,loader_hashes:loaderHashes},status:'observed',observed_at:new Date().toISOString(),pointer,manifest,manifest_url:manifestUrl,
     pages:{url:pagesUrl,assets,runtime_execution:runtime},
-    loader:{source:'maintained filenames/reviews.mjs',info:reviews.info,
+    loader:{source:'maintained explorer/reader/filenames/reviews.ts',info:reviews.info,
       rows:reviewData.rows.map((row,index)=>({document_id:row.document_id,status:row.status,baseline:row.baseline,selected:row.selected,
         placement:binding?.withdrawn?.find(item=>item.index===index)||{state:'bound'},index}))},
     withdrawn:binding?.withdrawn||[],requests,bytes:total,observations};

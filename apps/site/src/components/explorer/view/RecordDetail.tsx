@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { filenameManifestUrl } from '../../filenames/publication.mjs';
+import { filenameManifestUrl } from '../reader/filenames/publication.ts';
 import { committeeLevelLabel, committeeTypeLabel, documentSourceLabel, parentCommitteeId, recordingEmbedUrl, savedCopyHref, sourcePageUrl } from '../browse/record-presentation.ts';
 import type { ExplorerRecordRef, LoadedRecord } from '../reader/data-source.ts';
 
@@ -54,7 +54,9 @@ export function FileLinks({ record }: { record: unknown }) {
   if (!files.length) return null;
   return <div className="explorer-file-links">{files.map(file => {
     const saved = savedCopyHref(file, savedCopyManifest);
-    const label = file.role === 'player' || file.role === 'stream' ? 'Watch recording' : (file.label !== 'unknown' && words(file.label)) || 'Open file';
+    const filename = typeof file.saved_filename === 'string' && file.saved_filename ? file.saved_filename : (typeof file.url === 'string' ? decodeURIComponent(file.url.split('/').pop() || '').split('?')[0] : '');
+    const named = file.label && file.label !== 'unknown' && file.label !== 'pdf' ? words(file.label) : '';
+    const label = file.role === 'player' || file.role === 'stream' ? 'Watch recording' : named || filename || 'Open file';
     const savedLabel = file.label && file.label !== 'unknown' ? ` (${words(file.label)})` : '';
     return <span key={String(file.url)}>
       <a href={publicUrl(file.url)} target="_blank" rel="noreferrer">{label} ↗</a>
@@ -76,7 +78,7 @@ function RawRecord({ record }: { record: DetailRecord }) {
 }
 
 /** A short fact sheet; source evidence is an optional disclosure. */
-export function RecordDetail({ record, onSelect, sourceEvidence }: { record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void; sourceEvidence?: ReactNode }) {
+export function RecordDetail({ record, onSelect, sourceEvidence, catalogEvidence }: { record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void; sourceEvidence?: ReactNode; catalogEvidence?: ReactNode }) {
   const row = fields(record);
   const facts = [
     ['Date', row.date], ['Congress', row.congress], ['Chamber', row.chamber], ['Access', row.access],
@@ -84,7 +86,7 @@ export function RecordDetail({ record, onSelect, sourceEvidence }: { record: Det
     ['Source committee type', row.source_committee_type && (String(row.source_committee_type).toLowerCase().replaceAll(' ', '_') !== row.committee_type || row.committee_type === 'subcommittee') ? row.source_committee_type : null],
     ['Committee level', committeeLevelLabel(row) || null],
     [documentType(record) ? 'Document type' : 'Type', row.kind === 'committee_term' ? null : documentType(record) || row.type || row.meeting_type], ['Status', row.status], ['Category', documentType(record) ? null : row.category],
-    ['Source collection', Array.isArray(row.source_document_groups) && row.source_document_groups.length ? `${documentSourceLabel(row)} (${row.source_document_groups.join(', ')})` : null],
+    ['Source collection', Array.isArray(row.source_document_groups) && row.source_document_groups.length ? documentSourceLabel(row) : null],
     ['Position', row.position], ['Organization', row.organization], ['Participation', row.participation],
     ['Provider', row.provider], ['Retrieved', row.retrieved_at],
     ['Active from', fields(row.active).start], ['Active through', fields(row.active).end],
@@ -113,6 +115,7 @@ export function RecordDetail({ record, onSelect, sourceEvidence }: { record: Det
     {record.kind === 'material' && !files.length ? <p className="explorer-note">{row.type === 'recording' ? 'No recording is available in the collected sources.' : 'No file link in the collected sources.'}</p> : null}
     {row.meeting_id && !['meeting', 'material', 'data_issue'].includes(record.kind) ? <p><button className="explorer-text-button" onClick={() => onSelect({ kind: 'meeting', id: String(row.meeting_id) })}>View meeting →</button></p> : null}
     {affected ? <p><button className="explorer-text-button" onClick={() => onSelect(affected)}>View affected record →</button></p> : null}
+    {catalogEvidence}
     {sourceEvidence}
     <RawRecord key={`${record.kind}/${record.id}`} record={record} />
   </>;
