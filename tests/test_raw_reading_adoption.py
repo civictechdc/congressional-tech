@@ -123,8 +123,10 @@ def test_archive_adoption_binds_legacy_cache_version_and_preserves_source(tmp_pa
     save_results(store, 'bodies', 'earlier', ('reader', 'body_key'), {('cover', 'a'): {}})
     key = 'indexes/processing/bodies.parquet'
     payload = store.read(key)
-    source = tmp_path / 'bodies.parquet'
-    source.write_bytes(payload)
+    # An unrelated local file must not be paired with the remote cache version.
+    source = tmp_path / 'adopt' / 'retained-body-cache.parquet'
+    source.parent.mkdir()
+    pq.write_table(pa.table({'reader': ['cover'], 'body_key': ['wrong']}), source)
     owner = memory_raw_storage(store)
     original_prepare = owner.prepare
     def prepare(*args, **kwargs):
@@ -133,9 +135,7 @@ def test_archive_adoption_binds_legacy_cache_version_and_preserves_source(tmp_pa
             store.objects[key] = b'changed source'
         return result
     owner.prepare = prepare
-    options = dict(operation='archive-adoption', body_cache_path=source,
-        body_cache_identity=dict(bytes=len(payload), sha256=sha256(payload).hexdigest(), version=store.version(key)),
-        directory=tmp_path / 'adopt')
+    options = dict(operation='archive-adoption', directory=tmp_path / 'adopt')
     if mutate:
         with pytest.raises(ValueError, match='changed during adoption'):
             adopt_legacy_archive(store, owner, **options)
@@ -143,4 +143,19 @@ def test_archive_adoption_binds_legacy_cache_version_and_preserves_source(tmp_pa
     else:
         selected = adopt_legacy_archive(store, owner, **options)
         assert selected.has_body_reading('a')
+        assert not selected.has_body_reading('wrong')
         assert store.read(key) == payload
+
+
+def test_reader_adoption_rejects_oversized_body_before_group_decode(tmp_path, monkeypatch):
+    from congress_api.retention import raw_readings_adoption as adoption
+    store = SelectorStore()
+    path = tmp_path / 'cache.parquet'
+    pq.write_table(pa.table({'reader': [f'reader-{i}' for i in range(1001)],
+                            'body_key': ['a'] * 1001}), path)
+    data = path.read_bytes()
+    monkeypatch.setattr(adoption.json, 'loads', lambda *args: pytest.fail('Oversized group decoded'))
+    with pytest.raises(ValueError, match='One body exceeds'):
+        adoption.adopt_body_readings(store, [], cache_path=path, directory=tmp_path / 'adopt',
+            expected=dict(bytes=len(data), sha256=sha256(data).hexdigest()))
+    assert not store.writes

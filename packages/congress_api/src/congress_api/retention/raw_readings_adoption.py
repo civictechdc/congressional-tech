@@ -20,6 +20,12 @@ from .capture_metadata import RESULT_COLUMNS
 
 
 def adopt_body_readings(store, parts, *, cache_path, expected, directory):
+    """Offline convenience for small seeds; maintained adoption streams refs."""
+    return list(iter_adopted_body_readings(store, parts, cache_path=cache_path,
+                                         expected=expected, directory=directory))
+
+
+def iter_adopted_body_readings(store, parts, *, cache_path, expected, directory):
     """Import exact retained cache bytes; caller pins their source provenance.
 
     Duplicate (reader, body) records keep the last value, matching the existing
@@ -42,7 +48,8 @@ def adopt_body_readings(store, parts, *, cache_path, expected, directory):
             raise ValueError('Unexpected legacy reader cache schema')
         db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192;'
                          'CREATE TABLE results(body TEXT, reader TEXT, value TEXT, PRIMARY KEY(body,reader));'
-                         'CREATE TABLE capture(body TEXT PRIMARY KEY, value TEXT, reference TEXT);')
+                         'CREATE TABLE capture(body TEXT PRIMARY KEY, value TEXT, reference TEXT);'
+                         'CREATE TABLE original_parts(ordinal INTEGER PRIMARY KEY, value TEXT);')
         fields = set(schema.names) - {'reader', 'body_key'}
         for batch in source.iter_batches(batch_size=256):
             if batch.nbytes > PART_BYTES:
@@ -53,7 +60,8 @@ def adopt_body_readings(store, parts, *, cache_path, expected, directory):
                     raise ValueError('Legacy reader cache lacks exact reader/body identity')
                 db.execute('INSERT OR REPLACE INTO results VALUES (?,?,?)', (body, reader, encoded(row).decode()))
         identity.require(cache_path)
-        for reference in parts:
+        for ordinal, reference in enumerate(parts):
+            db.execute('INSERT INTO original_parts VALUES (?,?)', (ordinal, encoded(reference).decode()))
             for row in part_rows(store, reference):
                 if db.execute('SELECT 1 FROM results WHERE body=? LIMIT 1', (row['body_key'],)).fetchone():
                     fields.update(set(row) - set(RESULT_COLUMNS))
@@ -66,7 +74,7 @@ def adopt_body_readings(store, parts, *, cache_path, expected, directory):
                           source_cache_bytes=str(identity['bytes']),
                           source_cache_version=str(expected.get('version', 'local-retained-file')),
                           source_cache_schema=base64.b64encode(source.schema_arrow.serialize().to_pybytes()).decode()))
-        output, buffer, provenance = [], [], {}
+        buffer, provenance = [], {}
         buffer_bytes = 0
 
         def flush():
@@ -86,28 +94,41 @@ def adopt_body_readings(store, parts, *, cache_path, expected, directory):
             digest = sha256(data).hexdigest()
             key = READER_PREFIX + 'adopted-' + digest + '.parquet'
             store.put(key, data, immutable=True)
-            output.append(dict(key=key, bytes=len(data), sha256=digest, rows=len(buffer)))
+            reference = dict(key=key, bytes=len(data), sha256=digest, rows=len(buffer))
             buffer.clear()
             buffer_bytes = 0
             provenance.clear()
+            return reference
 
         for body, in db.execute('SELECT DISTINCT body FROM results ORDER BY body'):
-            group = [json.loads(value) for value, in db.execute(
-                'SELECT value FROM results WHERE body=? ORDER BY reader', (body,))]
+            row_count, = db.execute('SELECT count(*) FROM results WHERE body=?', (body,)).fetchone()
             capture = db.execute('SELECT value,reference FROM capture WHERE body=?', (body,)).fetchone()
+            if row_count + bool(capture) > PART_ROWS:
+                raise ValueError('One body exceeds adopted reader part bounds')
+            group, staged_bytes = [], 0
+            for value, in db.execute('SELECT value FROM results WHERE body=? ORDER BY reader', (body,)):
+                staged_bytes += len(value.encode())
+                if staged_bytes > PART_BYTES:
+                    raise ValueError('One body exceeds adopted reader staging-byte budget')
+                group.append(json.loads(value))
             if capture:
+                staged_bytes += len(capture[0].encode())
+                if staged_bytes > PART_BYTES:
+                    raise ValueError('One body exceeds adopted reader staging-byte budget')
                 group.append(json.loads(capture[0]))
             group_bytes = pa.Table.from_pylist(group, schema=schema).nbytes
             if len(group) > PART_ROWS or group_bytes > PART_BYTES:
                 raise ValueError('One body exceeds adopted reader part bounds')
             if buffer and (len(buffer) + len(group) > PART_ROWS or
                            buffer_bytes + group_bytes > PART_BYTES):
-                flush()
+                yield flush()
             buffer.extend(group)
             buffer_bytes += group_bytes
             if capture:
                 reference = json.loads(capture[1])
                 provenance[reference['key']] = reference
-        flush()
+        if buffer:
+            yield flush()
         # Adopted entries win first; capture-only bodies keep their exact parts.
-        return [*output, *parts]
+        for value, in db.execute('SELECT value FROM original_parts ORDER BY ordinal'):
+            yield json.loads(value)

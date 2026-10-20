@@ -34,6 +34,23 @@ class LocalStore:
             raise ValueError('Catalog selector exceeds 1 MiB read budget')
         return data
 
+    def version(self, key):
+        from congress_api.retention.derived_files import file_identity
+        path = self.root / key
+        return file_identity(path)['sha256'] if path.is_file() else 'missing'
+
+    def read_body_cache_file(self, path, *, expected_version):
+        from congress_api.retention.derived_files import file_identity, copy_checked
+        key = 'indexes/processing/bodies.parquet'
+        source = self.root / key
+        expected = file_identity(source)
+        if expected['sha256'] != expected_version:
+            raise ValueError('Reader cache source version differs')
+        with source.open('rb') as stream:
+            result = copy_checked(stream, path, size=expected['bytes'], expected=expected, key=key, exclusive=True)
+        result['version'] = expected_version
+        return result
+
     def read_derived_file(self, key, path, *, expected=None):
         from congress_api.retention.derived_files import require_derived_key, copy_checked
         require_derived_key(key)

@@ -898,7 +898,7 @@ class Archive(LegacyArchiveSeed):
 
 
 def adopt_legacy_archive(store, storage, *, operation, repair=False,
-                         body_cache_path=None, body_cache_identity=None, directory=None):
+                         directory=None):
     """Explicitly select a complete investigated seed; never called at startup."""
     base = storage.snapshot()
     if base.version is not None:
@@ -913,11 +913,8 @@ def adopt_legacy_archive(store, storage, *, operation, repair=False,
         cache_version = 'missing'
     else:
         cache_version = version(cache_key)
-    if cache_version != 'missing' and (body_cache_path is None or body_cache_identity is None or directory is None):
-        raise RuntimeError('Legacy per-reader body cache requires its retained file, identity and adoption directory')
-    if body_cache_path is not None and (body_cache_identity is None or directory is None
-            or cache_version == 'missing' or body_cache_identity.get('version') != cache_version):
-        raise ValueError('Retained reader cache source version differs')
+    if cache_version != 'missing' and (directory is None or not callable(getattr(store, 'read_body_cache_file', None))):
+        raise RuntimeError('Legacy per-reader body cache requires its exact source download and adoption directory')
     parts = []
     for key in sorted(store.keys(PREFIX)):
         if key.endswith('.parquet'):
@@ -926,8 +923,14 @@ def adopt_legacy_archive(store, storage, *, operation, repair=False,
                 raise ValueError('Retained reading part exceeds adoption bounds')
             parts.append(dict(key=key, bytes=len(payload), sha256=hashlib.sha256(payload).hexdigest(),
                               rows=pq.ParquetFile(pa.BufferReader(payload)).metadata.num_rows))
-    if body_cache_path is not None:
+    if cache_version != 'missing':
         from congress_api.retention.raw_readings_adoption import adopt_body_readings
+        from pathlib import Path
+        body_cache_path = Path(directory) / 'reader-caches' / (hashlib.sha256(cache_version.encode()).hexdigest() + '.parquet')
+        body_cache_path.parent.mkdir(parents=True, exist_ok=True)
+        body_cache_identity = store.read_body_cache_file(body_cache_path, expected_version=cache_version)
+        if body_cache_identity['version'] != cache_version:
+            raise ValueError('Retained reader cache source version differs')
         parts = adopt_body_readings(store, parts, cache_path=body_cache_path,
                                    expected=body_cache_identity, directory=directory)
     seed = LegacyArchiveSeed(store, 'seed-adoption', repair=repair)
