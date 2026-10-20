@@ -49,6 +49,9 @@ on:
       - '.github/tests/test_viewer_r2.py'
       - '.github/workflows/publish-filename-viewer.yml'
       - '.github/scripts/check-native-runtime.py'
+      - '.github/scripts/setup-native-runtime.py'
+      - '.github/docspec-remote.json'
+      - '.github/tests/test_native_runtime_setup.py'
       - '.github/tests/test_native_runtime_preflight.py'
 
 permissions:
@@ -109,6 +112,8 @@ jobs:
         if: github.event_name == 'push' || steps.resume.outputs.resume == 'true' || steps.preflight.outputs.status == 'preparation_required'
         run: |
           tests=(
+            .github/tests/test_native_runtime_setup.py
+            .github/tests/test_native_runtime_preflight.py
             .github/tests/test_filename_publication.py
             .github/tests/test_viewer_r2.py
             apps/site/tests/test_filename_recoveries.py
@@ -133,20 +138,17 @@ jobs:
       - name: Require approved native runtime for preparation
         if: steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required'
         env:
-          DOCSPEC_RUNTIME_CONFIG: ${{ vars.DOCSPEC_RUNTIME_CONFIG }}
-          DOCSPEC_BINARY_SHA256: ${{ vars.DOCSPEC_BINARY_SHA256 }}
-        run: |
-          if [ -z "${DOCSPEC_RUNTIME_CONFIG:-}" ] || [ ! -f "$DOCSPEC_RUNTIME_CONFIG" ]; then
-            echo 'A qualified native runtime and distribution must be provided before preparation; hosted installation is not configured.' >&2
-            exit 1
-          fi
-          python .github/scripts/check-native-runtime.py --config "$DOCSPEC_RUNTIME_CONFIG" \
-            --binary-sha256 "$DOCSPEC_BINARY_SHA256" --output native-runtime-check.json
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+        run: >-
+          python .github/scripts/setup-native-runtime.py
+          --directory "$RUNNER_TEMP/docspec-runtime" --output native-runtime-check.json
+          --github-env "$GITHUB_ENV"
       - name: Prepare a changed catalog or recovery index
         id: prepare
         if: steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required'
         env:
-          DOCSPEC_RUNTIME_CONFIG: ${{ vars.DOCSPEC_RUNTIME_CONFIG }}
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}

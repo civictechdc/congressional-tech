@@ -25,13 +25,35 @@ private file referenced by that configuration. Preparation records the executabl
 and nonsecret configuration hashes and refuses if those files change while it
 builds the output. Uploading an accepted artifact does not need DocSpec.
 
-The hosted workflow uses `DOCSPEC_RUNTIME_CONFIG` and `DOCSPEC_BINARY_SHA256`
-repository variables and the maintained native preflight check. The runner must
-already contain that approved binary and configuration. This repository does not
-yet install a hosted distribution; missing inputs refuse before new preparation.
-Read-only no-op checks and restoring an accepted artifact skip this prerequisite.
-The remote source-only storage boundary has separate qualification evidence;
-that evidence does not provision a production runtime or select a live catalog.
+The hosted workflow installs one approved private Linux AMD64 runtime through
+`.github/scripts/setup-native-runtime.py` before new preparation. The repository
+variable `DOCSPEC_RUNTIME_ARTIFACT` supplies JSON with `version: 1`,
+`platform: "linux-amd64"`, the exact 40-character `source_revision`, private R2
+`bucket`, immutable `key`, positive `bytes` and complete `sha256`. The key must be
+`runtime/docspec/<source_revision>/linux-amd64/<sha256>/docspec`.
+
+The `DOCSPEC_ENGINE_CREDENTIALS` secret is a JSON object containing
+`DOCSPEC_CATALOG_TOKEN`, `DOCSPEC_S3_ACCESS_KEY_ID` and
+`DOCSPEC_S3_SECRET_ACCESS_KEY`. Its S3 key pair reads the private runtime object
+and supplies the native engine; no additional artifact credential is needed. The
+checked-in `.github/docspec-remote.json` retains the qualified catalog URI,
+namespace generation and owned prefix.
+
+Setup requires a fresh `$RUNNER_TEMP/docspec-runtime` directory, verifies exact
+artifact size and SHA-256 before marking it executable, writes private runtime
+and credential files with mode 0600, and invokes the maintained native preflight
+check without starting DocSpec. It exports only `DOCSPEC_RUNTIME_CONFIG` and
+`DOCSPEC_BINARY_SHA256` for later steps. Neither binary nor credentials enter
+workflow artifacts. Missing distribution inputs or stale/partial installations
+refuse. Read-only no-op checks, raw-source code validation and restoring accepted
+artifacts skip installation. The native source and binary contents remain
+private; selecting a descriptor does not publish them.
+
+For local checks, the helper accepts explicit `--artifact-descriptor`,
+`--credentials-file`, `--remote`, `--directory` and `--output` paths; the credential
+input must already have private permissions. Installing does not execute the
+native engine, create its workspace or mutate the remote catalog. The artifact
+bucket and descriptor must be provisioned separately before hosted execution.
 
 ## Explicit renderer upgrades
 

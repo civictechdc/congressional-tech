@@ -47,6 +47,9 @@ on:
       - '.github/scripts/offline-python.py'
       - '.github/scripts/*capture*.py'
       - '.github/scripts/check-native-runtime.py'
+      - '.github/scripts/setup-native-runtime.py'
+      - '.github/docspec-remote.json'
+      - '.github/tests/test_native_runtime_setup.py'
       - '.github/tests/test_native_runtime_preflight.py'
       - '.github/tests/test_capture*.py'
       - '.github/scripts/finalize-raw-source.py'
@@ -129,9 +132,6 @@ jobs:
   capture:
     name: ${{ github.event_name == 'push' && 'Validate raw-source code' || 'Run raw-source operation' }}
     runs-on: ubuntu-24.04
-    env:
-      DOCSPEC_RUNTIME_CONFIG: ${{ vars.DOCSPEC_RUNTIME_CONFIG }}
-      DOCSPEC_BINARY_SHA256: ${{ vars.DOCSPEC_BINARY_SHA256 }}
     # Allow up to five hours of admission, then drain, checkpoint and verify.
     timeout-minutes: 360
     outputs:
@@ -211,7 +211,7 @@ jobs:
           tests/test_raw_progress.py tests/test_core_benchmark.py
           tests/test_core_source_context.py tests/test_catalog_publication.py tests/test_catalog_staging.py tests/test_catalog_availability.py tests/test_catalog_consumers.py
           tests/test_standalone_catalog_publication.py
-          .github/tests/test_raw_source_finalizer.py .github/tests/test_native_runtime_preflight.py tests/test_native_raw_cli.py
+          .github/tests/test_raw_source_finalizer.py .github/tests/test_native_runtime_preflight.py .github/tests/test_native_runtime_setup.py tests/test_native_raw_cli.py
           .github/tests/test_capture_verification.py .github/tests/test_capture_memory_guard.py .github/tests/test_capture_source_manifest.py
           docs/youtube-coverage/research/scripts/test_document_filename_index.py
           packages/congress_api/tests/test_congress_api_imports.py tests/test_document_link_probe.py
@@ -267,13 +267,14 @@ jobs:
           key: ${{ steps.fetcher.outputs.cache-primary-key }}
       - name: Require an approved native runtime before archive access
         if: steps.operation.outputs.mode != 'validate'
-        run: |
-          if [ -z "${DOCSPEC_RUNTIME_CONFIG:-}" ] || [ ! -f "$DOCSPEC_RUNTIME_CONFIG" ]; then
-            echo 'A qualified native runtime and distribution must be provided before archive access; hosted installation is not configured.' >&2
-            exit 1
-          fi
-          python .github/scripts/check-native-runtime.py --config "$DOCSPEC_RUNTIME_CONFIG" \
-            --binary-sha256 "$DOCSPEC_BINARY_SHA256" --output native-runtime-check.json
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+        run: >-
+          python .github/scripts/setup-native-runtime.py
+          --directory "$RUNNER_TEMP/docspec-runtime" --output native-runtime-check.json
+          --github-env "$GITHUB_ENV"
       - name: Record and check capture source revision
         env:
           EXPECTED_SOURCE_DIGEST: ${{ inputs.expected_source_digest }}
@@ -417,9 +418,6 @@ jobs:
     # Shares the workflow's raw-source-mirror lock. Acquisition has already
     # drained, checkpointed and passed Verify completed capture checkpoint.
     runs-on: ubuntu-24.04
-    env:
-      DOCSPEC_RUNTIME_CONFIG: ${{ vars.DOCSPEC_RUNTIME_CONFIG }}
-      DOCSPEC_BINARY_SHA256: ${{ vars.DOCSPEC_BINARY_SHA256 }}
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v5
@@ -439,13 +437,14 @@ jobs:
           pip install -e packages/house-naming -e packages/committee_meeting
           -e packages/congress_shared -e 'packages/congress_api[archive]'
       - name: Require an approved native runtime before archive access
-        run: |
-          if [ -z "${DOCSPEC_RUNTIME_CONFIG:-}" ] || [ ! -f "$DOCSPEC_RUNTIME_CONFIG" ]; then
-            echo 'A qualified native runtime and distribution must be provided before archive access; hosted installation is not configured.' >&2
-            exit 1
-          fi
-          python .github/scripts/check-native-runtime.py --config "$DOCSPEC_RUNTIME_CONFIG" \
-            --binary-sha256 "$DOCSPEC_BINARY_SHA256" --output native-runtime-check.json
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+        run: >-
+          python .github/scripts/setup-native-runtime.py
+          --directory "$RUNNER_TEMP/docspec-runtime" --output native-runtime-check.json
+          --github-env "$GITHUB_ENV"
       - name: Update catalog from the verified capture
         env:
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'

@@ -427,13 +427,17 @@ def test_native_runtime_is_required_before_archive_data_steps(tmp_path):
     preflight = next(step for step in STEPS if step.get('name') == 'Require an approved native runtime before archive access')
     assert STEPS.index(preflight) < STEPS.index(PUBLISH)
     assert preflight['if'] == "steps.operation.outputs.mode != 'validate'"
-    result = run_step(preflight, tmp_path)
-    assert result.returncode != 0 and 'qualified native runtime' in result.stderr
+    result = subprocess.run([sys.executable, str(ROOT / '.github/scripts/setup-native-runtime.py'),
+        '--directory', str(tmp_path / 'runtime'), '--output', str(tmp_path / 'check.json')],
+        env={'PATH': os.defpath, 'PYTHONPATH': os.environ.get('PYTHONPATH', '')},
+        capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0 and 'Runtime artifact descriptor' in result.stderr
+    assert not (tmp_path / 'runtime').exists()
     for step in STEPS:
         if 'verify-capture-run.py' in step.get('run', ''):
             assert '--native-config "$DOCSPEC_RUNTIME_CONFIG"' in step['run']
     update = WORKFLOW['jobs']['update_catalog_after_capture']
-    assert any('check-native-runtime.py' in step.get('run','') for step in update['steps'])
+    assert any('setup-native-runtime.py' in step.get('run','') for step in update['steps'])
     command = next(step['run'] for step in update['steps'] if step.get('name') == 'Update catalog from the verified capture')
     assert '--native-config "$DOCSPEC_RUNTIME_CONFIG"' in command
 
