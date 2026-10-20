@@ -28,6 +28,20 @@ def same_logical_catalog_schema(left, right):
     return without_catalog_id(left).equals(without_catalog_id(right), check_metadata=True)
 
 
+def can_read_catalog_schema(physical, logical):
+    """Reuse exact old fields and supply only declared nullable additions."""
+    if len(set(physical.names)) != len(physical) or len(set(logical.names)) != len(logical):
+        return False
+    existing = set(physical.names)
+    if [name for name in logical.names if name in existing] != physical.names:
+        return False
+    if any(not field.nullable for field in logical if field.name not in existing):
+        return False
+    projected = pa.schema([logical.field(name) for name in physical.names],
+                          metadata=logical.metadata)
+    return same_logical_catalog_schema(physical, projected)
+
+
 class CatalogComponentReader:
     """Share page/schema/pin reads across components during one admission or read."""
     def __init__(self, store, *, requirements=None):
@@ -97,6 +111,11 @@ class SelectedCatalogTable:
     def iter_batches(self, *, columns=None, batch_size=65536):
         if type(batch_size) is not int or batch_size < 1:
             raise ValueError('Catalog batch size must be a positive integer')
+        columns = self.schema_arrow.names if columns is None else list(columns)
+        if not columns or len(set(columns)) != len(columns) or set(columns) - set(self.schema_arrow.names):
+            raise ValueError('Requested catalog columns must be nonempty distinct selected fields')
+        output_schema = pa.schema([self.schema_arrow.field(name) for name in columns],
+                                  metadata=self.schema_arrow.metadata)
         reader = CatalogComponentReader(self.store)
         with TemporaryDirectory(prefix='selected-catalog-') as directory, closing(
                 sqlite3.connect(Path(directory) / 'selected.sqlite')) as db:
@@ -105,7 +124,7 @@ class SelectedCatalogTable:
                 CREATE TABLE members(component TEXT PRIMARY KEY,page TEXT NOT NULL);
                 CREATE INDEX member_pages ON members(page);
                 CREATE TABLE chunks(identity TEXT PRIMARY KEY,reference TEXT NOT NULL,body TEXT NOT NULL);
-                CREATE TABLE physical(name TEXT PRIMARY KEY,identity TEXT NOT NULL,first_order INTEGER NOT NULL);
+                CREATE TABLE physical(name TEXT PRIMARY KEY,identity TEXT NOT NULL,first_order INTEGER NOT NULL,schema TEXT NOT NULL);
                 CREATE TABLE views(name TEXT,component TEXT,rows INTEGER,PRIMARY KEY(name,component));''')
             try:
                 for component, reference in self.component_refs():
@@ -132,20 +151,18 @@ class SelectedCatalogTable:
                     proof = reader.read(dict(page=page_ref, component=component), page=page, read_chunk=read_chunk)
                     table = proof['tables'][self.label]
                     physical_schema = _component_schema(table)
-                    # catalog_id names the selected logical pair. Reused pins
-                    # retain their original exact schema/proof, while the root
-                    # explicitly selects the new logical pair identity. Other
-                    # application and field metadata must match exactly.
-                    if not same_logical_catalog_schema(physical_schema, self.schema_arrow):
+                    # Old pins retain exact types and metadata. The selected
+                    # logical schema may add nullable fields without rewriting them.
+                    if not can_read_catalog_schema(physical_schema, self.schema_arrow):
                         raise ValueError('Selected catalog application schemas differ')
                     for view in table['chunks']:
                         name, identity = view['name'], encoded(page['chunks'][view['name']]).decode()
-                        prior = db.execute('SELECT identity FROM physical WHERE name=?', (name,)).fetchone()
-                        if prior and prior[0] != identity:
+                        prior = db.execute('SELECT identity,schema FROM physical WHERE name=?', (name,)).fetchone()
+                        if prior and prior != (identity, table['schema']):
                             raise ValueError('Selected catalog physical chunk identity differs')
-                        db.execute('INSERT INTO physical VALUES (?,?,?) ON CONFLICT(name) DO UPDATE '
+                        db.execute('INSERT INTO physical VALUES (?,?,?,?) ON CONFLICT(name) DO UPDATE '
                                    'SET first_order=min(first_order,excluded.first_order)',
-                                   (name, identity, view['order_min']))
+                                   (name, identity, view['order_min'], table['schema']))
                         db.execute('INSERT INTO views VALUES (?,?,?)', (name, component, view['rows']))
                         logical_rows += view['rows']
             if logical_rows != self.rows:
@@ -153,14 +170,20 @@ class SelectedCatalogTable:
             # Admission exhausts all metadata before native data is delivered.
             # Physical order is deterministic; it does not retain global offsets
             # when a changed component moves between shared physical batches.
-            for name, raw_body in db.execute('SELECT p.name,c.body FROM physical p '
+            for name, raw_body, raw_schema in db.execute('SELECT p.name,c.body,p.schema FROM physical p '
                     'JOIN chunks c ON c.identity=p.identity ORDER BY p.first_order,p.name'):
                 descriptor = json.loads(raw_body)
+                physical_schema = _component_schema(dict(schema=raw_schema))
                 members = list(db.execute('SELECT component,rows FROM views WHERE name=? ORDER BY component', (name,)))
-                table = CatalogTable(self.schema_arrow, [(name, descriptor['release'])], native=self.native,
+                table = CatalogTable(physical_schema, [(name, descriptor['release'])], native=self.native,
                     order_column='_catalog_order', max_ordered_bytes=self.max_ordered_bytes,
                     views={name: dict(components=[member for member, _ in members], rows=sum(n for _, n in members))})
-                for batch in table.iter_batches(columns=columns):
+                physical_columns = [name for name in columns if name in physical_schema.names]
+                for batch in table.iter_batches(columns=physical_columns or ['document_id']):
+                    batch = pa.RecordBatch.from_arrays(
+                        [batch.column(field.name) if field.name in physical_columns
+                         else pa.nulls(batch.num_rows, type=field.type) for field in output_schema],
+                        schema=output_schema)
                     for offset in range(0, batch.num_rows, batch_size):
                         yield batch.slice(offset, batch_size)
 
