@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 
 import pyarrow as pa
 
-from .catalog_batches import CatalogComponentReader, SelectedCatalogTable, same_logical_catalog_schema
+from .catalog_batches import CatalogComponentReader, SelectedCatalogTable, same_logical_catalog_schema, can_read_catalog_schema
 from .catalog_publication import MANIFEST_KEY
 from .catalog_validation import CatalogReferenceCheck, catalog_reference_requirements
 from .immutable_metadata import MetadataObjects, encoded
@@ -290,7 +290,7 @@ def publish_native_catalog(store, scope_reference, *, previous, adoption_referen
     schemas = {label: _schema(proof['schemas'][label]) for label in ('filenames', 'documents')}
     CatalogReferenceCheck(schemas['filenames'], schemas['documents'])
     if isinstance(previous, NativeCatalogSnapshot) and any(
-            not same_logical_catalog_schema(previous.schemas[label], schemas[label]) for label in schemas):
+            not can_read_catalog_schema(previous.schemas[label], schemas[label]) for label in schemas):
         raise ValueError('Catalog schema change requires complete semantic revalidation')
     reader = CatalogComponentReader(store, requirements=requirements)
 

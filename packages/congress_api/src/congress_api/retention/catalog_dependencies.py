@@ -139,12 +139,15 @@ class NativeCatalogDependencies:
     locate_source(source_id) returns one selected bounded leaf pin or None for
     proved absence. locate_alias(encoded_alias) returns the selected member-page
     pins, possibly empty for proved absence. Unknown routing must raise, rather
-    than returning absence. This reader owns no latest pointer or routing engine.
+    than returning absence. source_leaf_schema resolves the exact physical app
+    schema when a routing value wraps a release pin and shared schema reference.
+    This reader owns no latest pointer or routing engine.
     """
-    def __init__(self, *, native, source_schema, locate_source, locate_alias, expected_members=None, expected_rows=None, max_rows=None, max_bytes=None):
+    def __init__(self, *, native, source_schema, locate_source, locate_alias, expected_members=None, expected_rows=None, max_rows=None, max_bytes=None, source_leaf_schema=None):
         self.native = native
         self.source_schema = source_schema
         self.locate_source = locate_source
+        self.source_leaf_schema = source_leaf_schema
         self.locate_alias = locate_alias
         self.expected_members = expected_members
         self.expected_rows = expected_rows
@@ -181,7 +184,12 @@ class NativeCatalogDependencies:
         if pin_key in self._source_pins:
             return
         pending = {}
-        for row in self._rows(pin, dependency_schema(self.source_schema)):
+        physical = self.source_leaf_schema(pin) if self.source_leaf_schema is not None else self.source_schema
+        release = pin['release'] if self.source_leaf_schema is not None else pin
+        for row in self._rows(release, dependency_schema(physical)):
+            if not physical.equals(self.source_schema, check_metadata=False):
+                import pyarrow as pa
+                row['source_values'] = pa.scalar(row['source_values'], type=pa.struct(list(self.source_schema))).as_py()
             identity = row['source_id']
             if (identity is None or not isinstance(row['source_values'], dict)
                     or index.source_identity(row['source_values']) != identity

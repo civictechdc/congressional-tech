@@ -170,3 +170,35 @@ def test_source_replay_proof_refuses_an_extra_selected_source_deletion(tmp_path,
     with pytest.raises(ValueError, match='basis/deletions'):
         update_from_raw(store, raw_storage=raw, directory=tmp_path / 'invalid', candidate='invalid')
     assert store.read(MANIFEST_KEY) == before
+
+
+@pytest.mark.parametrize('actual_native', [False, True])
+def test_nullable_witness_fields_keep_old_component_pin_and_fill_only_missing_values(tmp_path, native, monkeypatch, actual_native):
+    selected_native = native if actual_native else MemoryNative()
+    store = SelectorStore()
+    raw = seed(store, selected_native)
+    count = raw.snapshot().manifest['captures']['rows']
+    retain(store, dict(eventId=8, congress=119, chamber='House', meetingDocuments=[dict(
+        url='https://example.gov/other.pdf', documentType='Statement', name='Other paper')]),
+        family='congress/meetings', source_file='other.json')
+    raw.publish(raw.prepare(raw.snapshot(), operation='other', captures=decode_table(store.read(CAPTURES_KEY)).slice(count)))
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()), raising=False)
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'initial', candidate='initial')
+    old = read_catalog(store, native=selected_native)
+    old_rows = pa.Table.from_batches(list(old.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+    unrelated = next(row for row in old_rows if row['source_url'].endswith('other.pdf'))
+    old_ref = old.component_ref(unrelated['document_id'])
+    assert 'source_witness_name' not in old.schemas['filenames'].names
+    count = raw.snapshot().manifest['captures']['rows']
+    retain(store, {}, family='house/witness-xml', source_file='witness.xml', url='https://docs.house.gov/7.xml',
+        body=b'<witness-list meeting-id="HMKP7"><panel><witness><firstname>Jane</firstname><lastname>Doe</lastname><witness-documents><witness-document type="WS"><files><file doc-url="https://example.gov/paper.pdf" doc-type="PDF"/></files></witness-document></witness-documents></witness></panel></witness-list>')
+    raw.publish(raw.prepare(raw.snapshot(), operation='witness', captures=decode_table(store.read(CAPTURES_KEY)).slice(count)))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'witness', candidate='witness')
+    current = read_catalog(store, native=selected_native)
+    values = pa.Table.from_batches(list(current.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+    assert current.component_ref(unrelated['document_id']) == old_ref
+    assert next(row for row in values if row['source_url'].endswith('paper.pdf'))['source_witness_name'] == ['Jane Doe']
+    actual_unrelated = next(row for row in values if row['source_id'] == unrelated['source_id'])
+    assert actual_unrelated['source_witness_name'] is None
+    assert all(actual_unrelated[name] == value for name, value in unrelated.items())
+    assert old.schemas['filenames'].get_field_index('source_witness_name') == -1
