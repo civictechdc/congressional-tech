@@ -8,6 +8,7 @@ before calling this boundary. Normal Archive startup never calls it.
 """
 from copy import deepcopy
 from hashlib import sha256, file_digest
+from itertools import chain
 from pathlib import Path
 import sqlite3
 from tempfile import TemporaryDirectory
@@ -79,11 +80,16 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None):
     their native releases. There is no pending journal or local workspace copy.
     Row/Arrow-byte limits bound each admitted native table, not total process
     memory or the native reader's transport buffers.
+
+    An explicit ``readings`` JSONL input qualifies the complete retained reading
+    inventory in the same selection. Capture/state-only adoption preserves raw
+    values but leaves body-reading qualification absent, so recurring readers
+    cannot silently treat a missing inventory as empty.
     """
     if not isinstance(operation, str) or not operation:
         raise ValueError('A stable adoption operation identity is required')
-    if set(paths) != {'captures', 'state'} or set(sha256s) != set(paths):
-        raise ValueError('Adoption requires exact capture and state input pins')
+    if set(paths) not in ({'captures', 'state'}, {'captures', 'state', 'readings'}) or set(sha256s) != set(paths):
+        raise ValueError('Adoption requires exact capture/state and optional explicit reading input pins')
     paths = {name: Path(path).resolve() for name, path in paths.items()}
     for name, path in paths.items():
         if _digest(path) != sha256s[name]:
@@ -113,6 +119,9 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None):
             db.execute('CREATE TABLE rows(kind TEXT,key TEXT,digest TEXT,ordinal INTEGER,payload BLOB,bytes INTEGER,PRIMARY KEY(kind,key))')
             db.execute('CREATE INDEX route ON rows(kind,digest)')
             manifest = deepcopy(base.manifest)
+            if 'readings' in paths:
+                from .raw_reading_inventory import stage_inventory
+                stage_inventory(storage, db, paths['readings'])
             # Validate all input state keys and single-row budgets before any
             # remote candidate is prepared. Extras retain their Arrow types.
             ordinal = 0
@@ -168,12 +177,17 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None):
                         if kind == 'state':
                             reference['schedule'] = summarize(table.to_pylist())
                         yield prefix, reference
-                root = routes.replace_stream(None, '', references())
+                stream = iter(references())
+                first = next(stream, None)
+                root = routes.replace_stream(None, '', chain([first], stream)) if first is not None else None
                 if kind == 'state':
                     manifest['state']['root'] = root
                 else:
                     count = db.execute("SELECT count(*) FROM rows WHERE kind='body' AND key LIKE 'body:%'").fetchone()[0]
                     manifest['bodies'] = dict(root=root, count=count)
+            if 'readings' in paths:
+                from .raw_reading_inventory import select_inventory
+                manifest['readings'] = dict(root=select_inventory(storage, db), qualified=True)
             delivery = dict(request=request, request_id=request, capture_rows=position, first_order=0, result=None)
             # This directory contains completed delivery/receipt membership only.
             # Native completion remains exclusively owned by DocSpec.
@@ -188,7 +202,9 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None):
             manifest['deliveries'] = storage.delivery_routes.replace_stream(None, '', memberships())
             urls = (pa.ipc.open_stream(payload).read_all()['url'][0].as_py() for payload, in
                     db.execute("SELECT payload FROM rows WHERE kind='state' ORDER BY ordinal"))
-            manifest['change'] = storage.changes.put(base, manifest, urls)
+            from .raw_reading_inventory import inventory_references
+            manifest['change'] = storage.changes.put(base, manifest, urls,
+                reading_parts=inventory_references(db) if 'readings' in paths else ())
             data = encoded(manifest)
             if len(data) > SELECTOR_BYTES:
                 raise ValueError('Raw adoption selector exceeds the byte budget')
