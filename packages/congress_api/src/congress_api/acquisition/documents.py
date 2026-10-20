@@ -1,9 +1,10 @@
 """Resolve one download using saved responses or bounded injected GETs."""
+from congress_api.models.documents import DocumentProbeResponse, DocumentResolution
 from congress_api.parsers.document_links import document_links, download_query_fallback, http_url, response_kind
 from congress_api.transport.document_probe import DEFAULT_LIMIT, get_prefix
 
 
-def resolve_document(url, *, saved=None, get=get_prefix, max_bytes=DEFAULT_LIMIT, max_steps=5):
+def resolve_document(url, *, saved=None, get=get_prefix, max_bytes=DEFAULT_LIMIT, max_steps=5) -> DocumentResolution:
     """Identify a document prefix, or report candidates/why resolution stopped.
 
     `saved` maps exact URLs to DocumentProbeResponse records. No file reads or
@@ -12,6 +13,10 @@ def resolve_document(url, *, saved=None, get=get_prefix, max_bytes=DEFAULT_LIMIT
     """
     if max_steps < 1 or max_bytes < 1024:
         raise ValueError('Use at least one step and a 1024-byte response limit.')
+    validated_saved = {
+        key: value if isinstance(value, DocumentProbeResponse) else DocumentProbeResponse.model_validate(value)
+        for key, value in (saved or {}).items()
+    }
     target = http_url(url)
     responses, links, visited = [], [], set()
     result = {'url': url, 'outcome': 'step_limit', 'resolved_url': None,
@@ -24,13 +29,14 @@ def resolve_document(url, *, saved=None, get=get_prefix, max_bytes=DEFAULT_LIMIT
             result['outcome'] = 'loop'
             break
         visited.add(target)
-        response = (saved or {}).get(target)
+        response = validated_saved.get(target)
         if response is None:
             try:
                 response = get(target, max_bytes=max_bytes)
             except (RuntimeError, OSError) as error:
                 result.update(outcome='request_failed', error=str(error))
                 break
+            response = response if isinstance(response, DocumentProbeResponse) else DocumentProbeResponse.model_validate(response)
         responses.append(response)
         headers = {k.lower(): v for k, v in response.headers.items()}
         if response.status_code in (301, 302, 303, 307, 308):
@@ -60,4 +66,4 @@ def resolve_document(url, *, saved=None, get=get_prefix, max_bytes=DEFAULT_LIMIT
                 else 'html_limit')
             break
         target = found[0].url
-    return result
+    return DocumentResolution.model_validate(result)

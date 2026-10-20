@@ -100,15 +100,15 @@ def test_probe_fallback_keeps_failed_literal_response_and_uses_normal_step_budge
     def no_network(*args, **kwargs):
         pytest.fail('The retained chain is complete')
     result = resolve_document(wrapper, saved=saved, get=no_network, max_steps=4)
-    assert result['outcome'] == 'document_identified'
-    assert result['resolved_url'] == PDF
-    assert [r.url for r in result['responses']] == [wrapper, BAD, GOOD, PDF]
-    assert result['responses'][1].status_code == 410
-    fallback, = [l for l in result['links'] if l.basis == 'publisher_download_query_fallback']
+    assert result.outcome == 'document_identified'
+    assert result.resolved_url == PDF
+    assert [r.url for r in result.responses] == [wrapper, BAD, GOOD, PDF]
+    assert result.responses[1].status_code == 410
+    fallback, = [l for l in result.links if l.basis == 'publisher_download_query_fallback']
     assert fallback.url == GOOD and fallback.original_url == BAD
     assert saved == before
     limited = resolve_document(wrapper, saved=saved, get=no_network, max_steps=2)
-    assert limited['outcome'] == 'step_limit' and len(limited['responses']) == 2
+    assert limited.outcome == 'step_limit' and len(limited.responses) == 2
 
 
 @pytest.mark.parametrize('url,status', [
@@ -127,7 +127,7 @@ def test_fallback_never_rewrites_unproven_routes_or_retryable_responses(url, sta
 
 def test_successful_literal_ampersand_route_still_wins():
     result = resolve_document(BAD, saved={BAD: probe_response(BAD, b'%PDF-1.7', media='application/pdf')})
-    assert result['resolved_url'] == BAD and result['links'] == []
+    assert result.resolved_url == BAD and result.links == []
     assert inspect_capture(response(BAD, b'%PDF-1.7'))[1] == []
 
 

@@ -20,6 +20,8 @@ class DocumentLink(SourceModel):
     text: str
     tag: str
     attributes: dict[str, str]
+    original_url: str | None = None
+    source_selector: str | None = None
 
 
 class DocumentProbeResponse(SourceModel):
@@ -32,6 +34,16 @@ class DocumentProbeResponse(SourceModel):
     complete: bool
     from_cache: bool = False
     body_key: str | None = None
+
+
+class DocumentResolution(SourceModel):
+    url: str
+    outcome: str
+    resolved_url: str | None = None
+    format: str | None = None
+    error: str | None = None
+    responses: list[DocumentProbeResponse] = Field(default_factory=list)
+    links: list[DocumentLink] = Field(default_factory=list)
 
 
 class ReviewedPdfReading(SourceModel):

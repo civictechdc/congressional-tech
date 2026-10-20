@@ -65,10 +65,10 @@ def main():
     for url in args.urls:
         result = resolve_document(url, get=get, max_bytes=args.max_bytes, max_steps=args.max_steps)
         results.append(result)
-        print(json.dumps({k: v for k, v in result.items() if k not in ('responses', 'links')}))
+        print(json.dumps({k: v for k, v in result.source_dict().items() if k not in ('responses', 'links')}))
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps({'checked_at': now.isoformat(), 'max_bytes_per_response': args.max_bytes,
-        'max_steps_per_url': args.max_steps, 'full_document_downloads': False, 'results': results},
+        'max_steps_per_url': args.max_steps, 'full_document_downloads': False, 'results': [r.source_dict() for r in results]},
         default=lambda value: value.model_dump(mode='json'), ensure_ascii=False, indent=2) + '\n')
     print(f'Probe receipt: {output}')
 

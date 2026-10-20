@@ -21,10 +21,10 @@ def test_saved_cardin_landing_page_and_pdf_need_no_network():
     def no_network(*a, **k):
         pytest.fail('Saved responses should be reused.')
     result = resolve_document(url, saved=saved, get=no_network)
-    assert result['outcome'] == 'document_identified' and result['format'] == 'pdf'
-    assert result['resolved_url'] == pdf
-    assert result['links'][0].attributes['href'] == pdf
-    assert not result['responses'][-1].complete
+    assert result.outcome == 'document_identified' and result.format == 'pdf'
+    assert result.resolved_url == pdf
+    assert result.links[0].attributes['href'] == pdf
+    assert not result.responses[-1].complete
 
 
 def test_html_download_base_embeds_and_meta_refresh_preserve_evidence():
@@ -42,15 +42,15 @@ def test_html_download_base_embeds_and_meta_refresh_preserve_evidence():
 def test_truncated_html_is_not_reported_as_no_download(complete, outcome):
     url = 'https://x.test/'
     result = resolve_document(url, saved={url: response(url, b'<html>No link</html>', complete=complete)})
-    assert result['outcome'] == outcome
+    assert result.outcome == outcome
 
 
 def test_multiple_downloads_are_candidates_not_an_arbitrary_winner():
     url = 'https://x.test/'
     result = resolve_document(url, saved={url: response(url, b'<a href="1.pdf">One</a><a href="2.pdf">Two</a>')})
-    assert result['outcome'] == 'multiple_downloads'
-    assert len(result['links']) == 2
-    assert result['resolved_url'] is None
+    assert result.outcome == 'multiple_downloads'
+    assert len(result.links) == 2
+    assert result.resolved_url is None
 
 
 def test_http_errors_and_claimed_pdf_html_are_not_verified_documents():
@@ -58,9 +58,9 @@ def test_http_errors_and_claimed_pdf_html_are_not_verified_documents():
     for status, outcome in [(404, 'http_error'), (200, 'no_download_link')]:
         result = resolve_document(url, saved={url: response(url, b'<html>Unavailable</html>',
                                                           status=status, media='application/pdf')})
-        assert result['outcome'] == outcome
+        assert result.outcome == outcome
     result = resolve_document(url, saved={url: response(url, b'not pdf', media='application/pdf')})
-    assert result['outcome'] == 'unverified_content'
+    assert result.outcome == 'unverified_content'
 
 
 def test_redirect_loop_and_total_step_limit():
@@ -70,19 +70,19 @@ def test_redirect_loop_and_total_step_limit():
         urls.append(target)
         return response(target, status=302, Location=target + 'a')
     result = resolve_document(url, get=get, max_steps=3)
-    assert result['outcome'] == 'step_limit'
+    assert result.outcome == 'step_limit'
     assert len(urls) == 3
     result = resolve_document(url, saved={url: response(url, status=302, Location='/a')})
-    assert result['outcome'] == 'loop'
+    assert result.outcome == 'loop'
     result = resolve_document(url, saved={url: response(url, b'<a href="/a">Download</a>')})
-    assert result['outcome'] == 'no_download_link'
-    assert result['links'] == []
-    assert len(result['responses']) == 1
+    assert result.outcome == 'no_download_link'
+    assert result.links == []
+    assert len(result.responses) == 1
     result = resolve_document(url, saved={
         url: response(url, b'<a href="/b">Download</a>'),
         'https://x.test/b': response('https://x.test/b', b'<a href="/a">Download</a>')})
-    assert result['outcome'] == 'loop'
-    assert len(result['responses']) == 2
+    assert result.outcome == 'loop'
+    assert len(result.responses) == 2
 
 
 @pytest.mark.parametrize(('body', 'kind'), [(b'PK\x03\x04data', 'zip'), (b'{\\rtf1 data}', 'rtf'),
@@ -90,8 +90,8 @@ def test_redirect_loop_and_total_step_limit():
 def test_other_document_signatures_are_identified_without_full_validation(body, kind):
     url = 'https://x.test/file'
     result = resolve_document(url, saved={url: response(url, body, media='application/octet-stream')})
-    assert result['outcome'] == 'document_identified'
-    assert result['format'] == kind
+    assert result.outcome == 'document_identified'
+    assert result.format == kind
 
 
 class CountingStream(httpx.SyncByteStream):
@@ -131,10 +131,10 @@ def test_redirect_body_is_never_consumed_and_pdf_stops_after_magic(monkeypatch):
         return httpx.Response(200, headers={'Content-Type': 'application/pdf'}, stream=pdf)
     with httpx.Client(transport=httpx.MockTransport(handle)) as client:
         result = resolve_document('https://x.test/', get=lambda url, **kw: get_prefix(url, client=client, **kw))
-    assert result['outcome'] == 'document_identified'
+    assert result.outcome == 'document_identified'
     assert redirect.reads == 0 and redirect.closed
     assert pdf.reads == 1 and pdf.closed
-    assert len(result['responses']) == 2
+    assert len(result.responses) == 2
 
 
 def test_compressed_response_is_not_inflated_unboundedly(monkeypatch):
