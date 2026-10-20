@@ -1,6 +1,6 @@
 ---
 id: ct-wjce
-status: open
+status: closed
 deps: [ct-adu0]
 links: []
 created: 2026-10-20T20:12:37Z

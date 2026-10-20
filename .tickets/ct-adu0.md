@@ -1,6 +1,6 @@
 ---
 id: ct-adu0
-status: in_progress
+status: closed
 deps: []
 links: [ct-wjce]
 created: 2026-10-20T18:24:28Z

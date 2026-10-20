@@ -1,6 +1,6 @@
 ---
 id: ct-3faj
-status: open
+status: closed
 deps: [ct-copj]
 links: []
 created: 2026-10-20T18:50:27Z

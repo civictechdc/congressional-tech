@@ -1,6 +1,6 @@
 ---
 id: ct-eipa
-status: in_progress
+status: closed
 deps: [ct-xl0y]
 links: []
 created: 2026-10-20T18:24:28Z

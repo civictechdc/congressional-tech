@@ -25,11 +25,12 @@ class AdoptionCapacityError(ValueError):
 def preparation_budget(metadata):
     """Estimate a finite enforced stage budget from Parquet metadata, without decoding.
 
-    Twice the uncompressed size allows typed files and transient writes; the row
-    allowance covers lookup keys. This is a planning estimate, not a guarantee
-    about Parquet compression or Python objects. Preparation enforces its budget.
+    Three times the uncompressed size allows typed input parts, the ordered
+    derivative, and external sort/write scratch; the row allowance covers
+    lookup keys. This is a planning estimate, not a guarantee about Parquet
+    compression or Python objects. Preparation enforces its budget.
     """
-    return (2 * sum(metadata.row_group(i).total_byte_size
+    return (3 * sum(metadata.row_group(i).total_byte_size
                     for i in range(metadata.num_row_groups))
             + 4096 * metadata.num_rows + (1 << 20))
 
