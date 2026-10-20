@@ -633,17 +633,17 @@ def prepare_document_indexes(rows, schema):
     return rows, source_schema, documents, document_schema
 
 
-def write_document_indexes(destination, rows, schema, *, working=None, previous=None, previous_documents=None, reuse_groups=True):
+def write_document_indexes(destination, rows, schema, *, working=None, previous=None, previous_documents=None, reuse_groups=True, catalog_id=None, preserve_columns=False):
     from congress_api.retention.catalog_staging import write_grouped_indexes, WorkingCatalog
     if working is not None:
         return write_grouped_indexes(destination, rows, schema, working=working,
-                                     previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups)
+                                     previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups, catalog_id=catalog_id, preserve_columns=preserve_columns)
     from tempfile import TemporaryDirectory
     with TemporaryDirectory(prefix="document-working-") as directory:
         state = WorkingCatalog(Path(directory) / "working.sqlite")
         try:
             return write_grouped_indexes(destination, rows, schema, working=state,
-                                         previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups)
+                                         previous=previous, previous_documents=previous_documents, reuse_groups=reuse_groups, catalog_id=catalog_id, preserve_columns=preserve_columns)
         finally:
             state.close()
 

@@ -205,7 +205,7 @@ class CatalogDependencyStorage:
             expected_rows=lambda pin: pin_counts.get(index.compact(pin)),
             max_rows=self.max_rows, max_bytes=self.max_bytes)
 
-    def prepare(self, selection, *, replacements=(), deletions=()):
+    def prepare(self, selection, *, replacements=(), deletions=(), source_orders=None):
         """Prepare complete changed scope; the caller later CAS-selects roots.
 
         The returned metadata may be discarded after a competing writer wins.
@@ -223,14 +223,18 @@ class CatalogDependencyStorage:
         for row in replacements:
             key = index.source_identity(row)
             if key not in scope.before:
-                new_positions[key] = order
+                new_positions[key] = source_orders[key] if source_orders is not None else order
                 order += 1
+        if set(new_positions.values()) != set(range(basis['next_source_order'], order)):
+            raise DependencyGap('New source orders must extend the selected contiguous ordinal range')
         source_rows, old_aliases, new_aliases = {}, {}, {}
         for key in sorted(scope.before):
             for alias in selected.aliases(key):
                 old_aliases.setdefault(_encoded_alias(alias), set()).add(key)
         for key, row in sorted(scope.after.items()):
             position = selected.order(key) if key in scope.before else new_positions[key]
+            if source_orders is not None and source_orders[key] != position:
+                raise DependencyGap('Existing source order changed during candidate preparation')
             table, _ = dependency_tables([row], self.source_schema, first_order=position)
             source_rows[key] = table.to_pylist()[0]
             for alias in index.group_aliases(row, key):

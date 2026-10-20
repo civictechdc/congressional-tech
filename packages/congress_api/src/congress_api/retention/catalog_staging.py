@@ -261,7 +261,7 @@ class ParquetRows:
             yield from batch
 
 
-def write_grouped_indexes(destination, rows, schema, *, working, previous=None, previous_documents=None, reuse_groups=True):
+def write_grouped_indexes(destination, rows, schema, *, working, previous=None, previous_documents=None, reuse_groups=True, catalog_id=None, preserve_columns=False):
     """Compute alias components on disk; combine only affected components.
 
     Every current endpoint/body edge participates, including transitive bridges.
@@ -381,7 +381,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
 
     # Determine the final schema once, then write bounded source batches. The
     # old assembler remains the semantic oracle for one connected component.
-    if 'publication_code_code' in schema.names:
+    if 'publication_code_code' in schema.names and not preserve_columns:
         redundant = all(not row.get('publication_code_code') or row['publication_code_code'] == row.get('publication_type') for row in staged)
         if redundant:
             schema = pa.schema([field for field in schema if field.name != 'publication_code_code'], metadata=schema.metadata)
@@ -395,7 +395,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
             schema = schema.append(pa.field(field,index.STRINGS))
     fields = [*[field for field in schema if field.name not in {'document_id','source_id','format'}],
               pa.field('source_id',pa.string()),pa.field('document_id',pa.string()),pa.field('format',index.STRINGS)]
-    metadata = {**(schema.metadata or {}),b'catalog_id':uuid4().hex.encode(),b'format_version':b'10',
+    metadata = {**(schema.metadata or {}),b'catalog_id':(catalog_id or uuid4().hex).encode(),b'format_version':b'10',
                 b'document_grouping_fingerprint':grouping_fingerprint.encode()}
     source_schema = pa.schema(fields,metadata=metadata)
     document_schema = pa.schema([*fields,*[(field,index.STRINGS) for field in ('filenames','source_urls','body_keys')]],
