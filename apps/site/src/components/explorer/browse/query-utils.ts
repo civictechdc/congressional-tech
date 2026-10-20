@@ -64,7 +64,8 @@ function wordsOf(query: ExplorerQuery): string[] {
 function searchBlob(row: QueryRow): string {
   const cached = textCache.get(row);
   if (cached !== undefined) return cached;
-  const issueText = row.kind === 'data_issue' ? [issueNotes(row).join(' '), detectedNote(row), subjectKindLabel(row.subject_kind)].filter(Boolean).join(' ') : '';
+  const savedIssue = row.kind === 'data_issue' ? [row.explanation || '', ...(row.facts || []).map(fact => fact.value)].filter(Boolean).join(' ') : '';
+  const issueText = row.kind === 'data_issue' ? [issueNotes(row).join(' '), savedIssue, detectedNote(row), subjectKindLabel(row.subject_kind)].filter(Boolean).join(' ') : '';
   const committeeText = row.kind === 'committee_term' ? [row.explanation || '', committeeWebsite(row), committeeSourceNote(row)].filter(Boolean).join(' ') : '';
   const materialNote = row.kind === 'material' ? row.explanation || '' : '';
   const level = row.committee_level === 'subcommittee' ? 'Subcommittee' : '';
@@ -75,7 +76,7 @@ function searchBlob(row: QueryRow): string {
   const partText = [filePartNote(row), landingPageNote(row)].filter(Boolean).join(' ');
   const sourceType = sourceTypeNote(row);
   const sourceCount = sourceCountNote(row);
-  const text = `${row.title} ${(row.files || []).map(recordedFileName).filter(Boolean).join(' ')} ${recordedPlace(row)} ${scheduleNote(row)} ${recordedMeasureValues(row).join(' ')} ${recordedAction(row)} ${publishedNote(row)} ${recordedVotes(row).join(' ')} ${recordedAmendments(row).join(' ')} ${level} ${witnessNotes(row).join(' ')} ${notableRoles(row).join(' ')} ${participationNote(row)} ${issueText} ${committeeText} ${materialNote} ${row.search_text || ''} ${row.document_type || ''} ${categoryText} ${severityText} ${statusText} ${providerText} ${partText} ${sourceType} ${sourceCount} ${documentSourceLabel(row)} ${(row.source_document_groups || []).join(' ')}`.toLocaleLowerCase();
+  const text = `${row.title} ${row.committee_code || ''} ${(row.files || []).map(recordedFileName).filter(Boolean).join(' ')} ${recordedPlace(row)} ${scheduleNote(row)} ${recordedMeasureValues(row).join(' ')} ${recordedAction(row)} ${publishedNote(row)} ${recordedVotes(row).join(' ')} ${recordedAmendments(row).join(' ')} ${level} ${witnessNotes(row).join(' ')} ${notableRoles(row).join(' ')} ${participationNote(row)} ${issueText} ${committeeText} ${materialNote} ${row.search_text || ''} ${row.document_type || ''} ${categoryText} ${severityText} ${statusText} ${providerText} ${partText} ${sourceType} ${sourceCount} ${documentSourceLabel(row)} ${(row.source_document_groups || []).join(' ')}`.toLocaleLowerCase();
   textCache.set(row, text);
   return text;
 }
@@ -189,7 +190,7 @@ function emptyCounts(): EvidenceCounts {
     unit: 'meeting',
     denominator: 0,
     states: Object.fromEntries(evidenceStates.map(state => [state, 0])) as Record<EvidenceState, number>,
-    rule: 'One published evidence state per retained meeting entry. All checks remain in the record.',
+    rule: 'Each meeting has one saved result for this count. Every check stays on the meeting record.',
   };
 }
 
@@ -213,7 +214,7 @@ export function summarizeCoverage(info: QueryInfo, rows: readonly QueryRow[]): C
       counts.states[state]++;
     }
   }
-  const total = emptyGroup('all', 'Selected meeting entries');
+  const total = emptyGroup('all', 'Selected meetings');
   const groups = { congress: new Map<string, CoverageGroup>(), committee: new Map<string, CoverageGroup>(), month: new Map<string, CoverageGroup>() };
   for (const row of rows) {
     add(total, row);
@@ -235,7 +236,7 @@ export function summarizeCoverage(info: QueryInfo, rows: readonly QueryRow[]): C
       committee: [...groups.committee.values()].sort((a, b) => b.denominator - a.denominator || a.label.localeCompare(b.label)),
       month: [...groups.month.values()].sort((a, b) => a.key.localeCompare(b.key)),
     },
-    population: 'Collected Congress.gov and official committee meeting entries in the selected filters, all included statuses. The collection may omit meetings. This measures retained evidence, not expected publication.',
-    limitations: ['Reported and inferred evidence does not establish checked URLs, captured text, or complete coverage.', 'Unknown and unchecked do not mean absent. Failed checks remain visible even when another source supplies positive evidence.', 'Joint meetings appear for each convening committee; committee rows are not additive.'],
+    population: 'Meetings from Congress.gov and official committee sites that match the filters above, including every recorded status. This collection may leave some meetings out. The counts describe what was saved here. They do not say what should have been published.',
+    limitations: ['A statement from the source, or a likely match, does not mean the web address was checked, the text was saved, or the record is complete.', 'Not recorded and not checked do not mean the material is missing. A failed check stays visible even when another source has the material.', 'A joint meeting is listed under each committee that held it. Committee totals overlap.'],
   };
 }

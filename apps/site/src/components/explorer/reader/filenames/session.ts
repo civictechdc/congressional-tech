@@ -33,7 +33,7 @@ export function mountFilenameCatalog(): void {
       reviewPublication: { ...reviewDescriptor, url: reviewPublicationUrl(import.meta.env.BASE_URL, location.origin) },
     },
     onResult: value => lifecycle.accept(value as { catalog_id: string; recovery_sha256?: string }),
-    onError: () => { if (snapshot) showPublicationUpdate({ message: 'This review snapshot could not be loaded.' }); },
+    onError: () => { if (snapshot) showPublicationUpdate({ message: 'This review could not be loaded.' }); },
   });
   window.addEventListener('pagehide', event => { if (!event.persisted) client.dispose(); });
   window.filenameViewerApi = (url, signal) => client.request(url, signal);
@@ -69,7 +69,7 @@ function callFilenameApi(url: string, signal?: AbortSignal): Promise<unknown> {
         window.filenameViewerApi(url, signal).then(resolve, reject);
       } else if (performance.now() - started > 8000) {
         window.clearInterval(timer);
-        reject(new Error('The filename catalog reader is unavailable. Reload this page to retry.'));
+        reject(new Error('The file list could not be opened. Reload this page to try again.'));
       }
     }, 16);
   });

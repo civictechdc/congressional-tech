@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type DependencyList } from 'react';
 import { PAGE_SIZE } from '../browse/query-utils.ts';
+import { BackIcon, ForwardIcon } from './icons';
 
 export { PAGE_SIZE };
 export const integer = (value: number) => value.toLocaleString('en-US');
@@ -33,6 +34,13 @@ export function RequestMessage({ state, retry, noun = 'records' }: { state: { st
   return state.status === 'loading' ? <p className="explorer-loading" role="status">Loading {noun}…</p> : <div className="explorer-alert" role="alert"><p>Could not load {noun}. {state.message}</p><button className="explorer-button" aria-label={`Try loading ${noun} again`} onClick={retry}>Try again</button></div>;
 }
 
+/** Keep a two-part column name on one line until the column is too narrow to hold the slash. */
+export function SortLabel({ label }: { label: string }) {
+  const parts = label.split(' / ');
+  if (parts.length < 2) return label;
+  return <>{parts[0]}<span className="explorer-sort-join"> / </span><span className="explorer-sort-rest">{parts.slice(1).join(' / ')}</span></>;
+}
+
 export function Pagination({ total, offset, count, onPage }: { total: number; offset: number; count: number; onPage: (page: number) => void }) {
-  return <div className="explorer-pagination"><span>{total ? `${integer(count ? offset + 1 : 0)}–${integer(count ? offset + count : 0)} of ${integer(total)}` : '0 matching records'}</span><div><button className="explorer-button" aria-label="Previous page of this selection" disabled={offset === 0} onClick={() => onPage(Math.max(0, Math.floor(offset / PAGE_SIZE) - 1))}>← Previous</button><button className="explorer-button" aria-label="Next page of this selection" disabled={offset + count >= total} onClick={() => onPage(Math.floor(offset / PAGE_SIZE) + 1)}>Next →</button></div></div>;
+  return <div className="explorer-pagination"><span>{total ? `${integer(count ? offset + 1 : 0)}–${integer(count ? offset + count : 0)} of ${integer(total)}` : '0 matching records'}</span><div><button className="explorer-button" aria-label="Previous page of this selection" disabled={offset === 0} onClick={() => onPage(Math.max(0, Math.floor(offset / PAGE_SIZE) - 1))}><BackIcon /> Previous</button><button className="explorer-button" aria-label="Next page of this selection" disabled={offset + count >= total} onClick={() => onPage(Math.floor(offset / PAGE_SIZE) + 1)}>Next <ForwardIcon /></button></div></div>;
 }

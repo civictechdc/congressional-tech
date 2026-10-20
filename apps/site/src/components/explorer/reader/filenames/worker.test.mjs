@@ -53,7 +53,7 @@ test('actual worker routes retain one catalog and serve lazy detail and complete
   const observations=await call('/api/observations/2?catalog='+info.catalog_id+'&limit=2');assert.deepEqual(observations.items,full.source_occurrences.slice(0,2));
   assert.equal((await call('/api/entry-origin/2?catalog='+info.catalog_id)).origin_pending,false);
   const origin=await call('/api/origin/2?catalog='+info.catalog_id);assert(origin.origin);
-  await assert.rejects(call('/api/entry/2?catalog=wrong'),/different catalog snapshot/);
+  await assert.rejects(call('/api/entry/2?catalog=wrong'),/older file list/);
   await assert.rejects(call('/api/review/2?catalog='+info.catalog_id),/not configured/);
   for(const query of ['q=warm','scope=all','q=Witness&field=source_occurrences']) await call('/api/rows?'+query);
   const paused=new Promise(resolve=>{const listen=data=>{if(!data.paused)return;worker.off('message',listen);resolve();};worker.on('message',listen);});

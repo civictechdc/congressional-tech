@@ -16,7 +16,7 @@ test('review links select an archived immutable publication and validate its ide
   assert.equal(result.manifest.info.catalog_id, old);
   assert.equal(result.url, `https://data.test/releases/${release}/manifest.json`);
   assert.deepEqual(requests, [root, `https://data.test/catalogs/${old}.json`, result.url]);
-  await assert.rejects(loadPublication(root, fetcher, '../private'), /Invalid catalog/);
+  await assert.rejects(loadPublication(root, fetcher, '../private'), /not valid/);
   await assert.rejects(loadPublication(root, async () => new Response('', {status: 404}), old), /not available/);
 });
 

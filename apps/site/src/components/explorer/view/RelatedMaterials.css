@@ -2,4 +2,6 @@
 .explorer-related-filter select { width: 100%; min-width: 0; padding: .5rem; font: inherit; }
 .explorer-material-group { margin-block: 1.25rem; }
 .explorer-material-group h4 { margin-block: 0 .25rem; font-size: var(--ctdc-text-base); }
+.explorer-meeting-group { margin: .85rem 0 0; }
+.explorer-material-group .explorer-text-button { display: inline-block; margin-top: .35rem; }
 .explorer-material-group .explorer-related-list { margin-top: 0; }

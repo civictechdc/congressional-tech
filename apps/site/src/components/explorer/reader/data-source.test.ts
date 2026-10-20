@@ -266,7 +266,7 @@ test('legacy committee list and detail share inherited category without replacin
   const reader = await openPublicationReader({pointerUrl, fetcher:files.fetcher});
   const listed = (await reader.search({kind:'committee_term', congress:119})).rows[0];
   const detail = await reader.getRecord(subject);
-  assert.equal(committeeTypeLabel(listed), 'Standing (inherited from parent)');
+  assert.equal(committeeTypeLabel(listed), 'Standing, like the parent committee');
   assert.equal(committeeTypeLabel(detail), committeeTypeLabel(listed));
   assert.equal(detail.source_committee_type, 'Subcommittee');
   assert.equal(detail.committee_type, 'subcommittee');

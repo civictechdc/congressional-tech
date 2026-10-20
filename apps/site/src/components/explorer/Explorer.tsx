@@ -1,19 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { openPublicationReader, type CoverageSummary, type ExplorerQuery, type ExplorerReader, type ExplorerRecordRef, type QueryInfo, type QueryKind, type QueryResult, type RelatedResult } from './reader/data-source.ts';
 import { catalogMatchFiles } from './browse/filename-match.ts';
-import { sameRecordedTitle } from './browse/related-materials.ts';
+import { recordedCategoryLabel, sameRecordedTitle, titleInContext } from './browse/related-materials.ts';
+import { BackIcon, ExternalIcon, ForwardIcon } from './view/icons';
 import { RecordDetail, SourceLinkGroups, documentType, enumLabel, fields, publicUrl, recordTitle, type DetailRecord } from './view/RecordDetail';
 import { FilenameEvidence } from './view/FilenameEvidence';
 import { FilenameFilters, FilenameListing } from './view/FilenameListing';
 import Coverage from './view/Coverage';
-import RelatedMaterials from './view/RelatedMaterials';
-import { PAGE_SIZE, Pagination, RequestMessage, integer, useRequest } from './view/request-state';
+import RelatedMaterials, { OpenIssues } from './view/RelatedMaterials';
+import { PAGE_SIZE, Pagination, RequestMessage, SortLabel, integer, useRequest } from './view/request-state';
 import { downloadJson } from './view/download';
 import { accessStates, committeeTypes, materialCategories, materialProviders, nextSort, readNavigation, viewNavigation, drillNavigation, type Navigation, type View } from './browse/navigation.ts';
 import { issueCategories } from './browse/kinds.ts';
 import { filenameRequest } from './reader/filenames/session.ts';
 import type { FilenameCatalogInfo } from './reader/filenames/types.ts';
-import { categoryNote, committeeKindNote, committeeLevelLabel, committeeLevelNote, committeeSourceNote, committeeTypeLabel, committeeWebsite, coverageDrillNote, dateFilterReason, earlierCommitteeNames, detectedNote, documentSourceLabel, evidenceParts, extraIssueAlternatives, filePartNote, issueNotes, landingPageNote, linkedMeetingIds, listTitle, meetingStatusNote, notableRoles, participationNote, providerLabel, publishedNote, recordedAction, recordedAddressNames, recordedAmendments, recordedFileNames, recordedFormatNote, recordedInstant, recordedMeasureValues, recordedPlace, recordedTitlePreview, recordedVotes, recordedWhen, recordedWitnesses, recordingIdentity, relatedParts, scheduleNote, sourceCountNote, witnessNameList, sourceFacts, sourceLinks, sourcePageUrl, sourceTypeNote, subjectAbsentNote, subjectKindLabel, witnessNotes } from './browse/record-presentation.ts';
+import { categoryNote, committeeKindNote, committeeLevelLabel, committeeLevelNote, committeeSourceNote, committeeTypeLabel, committeeWebsite, coverageDrillNote, dateFilterReason, earlierCommitteeNames, detectedNote, documentSourceLabel, extraIssueAlternatives, listedDocumentType, listedEvidence, listedSourcePile, filePartNote, issueNotes, severityLabel, landingPageNote, linkedMeetingIds, listedSourceStatus, listedWhen, listTitle, meetingStatusNote, notableRoles, omitRepeatedChamber, omitRepeatedCongress, omitRepeatedWhen, participationNote, plainRecordedNote, providerLabel, publishedNote, recordedAction, recordedAddressNames, recordedAmendments, recordedFileNames, recordedFormatNote, recordedInstant, recordedMeasureValues, recordedPlace, recordedTitlePreview, recordedVotes, recordedWhen, recordedWitnesses, recordingIdentity, relatedParts, scheduleNote, sourceCountNote, sourceName, witnessNameList, sourceFacts, sourceLinks, sourcePageUrl, sourceTypeNote, subjectAbsentNote, subjectKindLabel, witnessNotes, congressName } from './browse/record-presentation.ts';
 
 const VIEWS = [
   { key: 'meetings', label: 'Meetings', kind: 'meeting' },
@@ -27,6 +28,12 @@ const VIEWS = [
 /** Keep a recorded calendar day on one line. */
 const keepDate = (value: string) => value.replace(/(\d{4})-(\d{2})-(\d{2})/g, '$1\u2011$2\u2011$3');
 
+function preparedWhen(value: unknown): string {
+  const text = String(value || '').trim();
+  const match = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/.exec(text);
+  return match ? `${match[1]} at ${match[2]} UTC` : 'date not recorded';
+}
+
 /** Composition root: only this adapter choice knows a publication URL. */
 export default function Explorer({ pointerUrl }: { pointerUrl: string }) {
   const [state, retry] = useRequest((signal) => openPublicationReader({ pointerUrl, signal }), [pointerUrl]);
@@ -36,7 +43,7 @@ export default function Explorer({ pointerUrl }: { pointerUrl: string }) {
 /** The application accepts domain queries; JSON, Parquet and transport stay in the reader. */
 export function CommitteeExplorer({ reader }: { reader: ExplorerReader }) {
   const [state, retry] = useRequest((signal) => reader.getQueryInfo({ signal }), [reader]);
-  return state.status === 'ready' ? <Workspace reader={reader} info={state.value} /> : <div className="explorer"><RequestMessage state={state} retry={retry} noun="archive metadata" /></div>;
+  return state.status === 'ready' ? <Workspace reader={reader} info={state.value} /> : <div className="explorer"><RequestMessage state={state} retry={retry} noun="the archive" /></div>;
 }
 
 function writeNavigation(nav: Navigation, replace: boolean) {
@@ -106,43 +113,55 @@ function Workspace({ reader, info }: { reader: ExplorerReader; info: QueryInfo }
     headingRef.current?.focus({ preventScroll: true });
   };
   return <div className="explorer">
-    <div className="explorer-publication"><span>Export generated {String(reader.publication.generated_at || 'date not recorded').replace('T', ' ').replace('Z', ' UTC')}</span><span>Snapshot <code>{String(reader.publication.publication_id || '').slice(0, 16)}</code></span>{captured && catalogInfo ? <span>Filename catalog <code>{catalogInfo.catalog_id.slice(0, 16)}</code></span> : null}</div>
+    <div className="explorer-publication"><span>Prepared {preparedWhen(reader.publication.generated_at)}</span></div>
     <nav className="explorer-tabs" aria-label="Explorer workspaces">{VIEWS.map((view) => <button key={view.key} aria-current={nav.view === view.key ? 'page' : undefined} aria-label={`${view.label}. ${view.key === 'coverage' ? 'Counts of recorded evidence for the current selection.' : VIEW_NOTES[view.key]}`} onClick={() => changeView(view.key)}>{view.label}</button>)}</nav>
     <form className="explorer-filters" aria-label="Filter committee records" onSubmit={(event) => { event.preventDefault(); filter({ q: queryText }); }}>
-      <div className="explorer-search"><label><span>Search this workspace</span><span className="explorer-field-reason">{captured ? 'Find a filename or the page it was captured from.' : 'Find a title, vote, note, or other recorded text in this workspace.'}</span><input type="search" value={queryText} onChange={(event) => setQueryText(event.target.value)} placeholder={captured ? 'Filename or source URL' : 'Title or recorded text'} /></label><button type="submit" className="explorer-button" aria-label="Search this workspace with the text in the box">Search</button></div>
-      <label><span>Congress</span><span className="explorer-field-reason">Keep one Congress, or search every retained Congress.</span><select value={nav.congress} onChange={(event) => filter({ congress: event.target.value })}><option value="all">All Congresses</option>{info.congresses.map((value) => <option key={value} value={value}>{value}th Congress</option>)}</select></label>
-      {nav.view === 'materials' ? <label className="explorer-scope"><span>Show</span><span className="explorer-field-reason">Meeting-linked materials, or the captured-file catalog.</span><select value={nav.scope} onChange={event => { const scope = event.target.value; filter(scope === 'documents' || scope === 'capture-records' || scope === 'all' ? { scope, sort: '', direction: '' } : { scope: '', retained: '', document_family: '', document_kind: '', format: '', field: '', classification: '', review: '', sort: '', direction: '' }); }}><option value="">Committee materials, linked to meetings</option><option value="documents">Captured files from committee sites</option><option value="capture-records">Source and capture records</option><option value="all">All captured records</option></select></label> : null}
+      <div className="explorer-search"><label><span>Search this workspace</span><span className="explorer-field-reason">{captured ? 'Find a filename or the page it was captured from.' : 'Find a title, vote, note, or other recorded text in this workspace.'}</span><input type="search" value={queryText} onChange={(event) => setQueryText(event.target.value)} placeholder={captured ? 'Filename or web address' : 'Title or recorded text'} /></label><button type="submit" className="explorer-button" aria-label="Search this workspace with the text in the box">Search</button></div>
+      <label><span>Congress</span><span className="explorer-field-reason">Keep one Congress, or search every Congress in this archive.</span><select value={nav.congress} onChange={(event) => filter({ congress: event.target.value })}><option value="all">All Congresses</option>{info.congresses.map((value) => <option key={value} value={value}>{value}th Congress</option>)}</select></label>
+      {nav.view === 'materials' ? <label className="explorer-scope"><span>Show</span><span className="explorer-field-reason">Documents linked to a meeting, or files saved from committee websites.</span><select value={nav.scope} onChange={event => { const scope = event.target.value; filter(scope === 'documents' || scope === 'capture-records' || scope === 'all' ? { scope, sort: '', direction: '' } : { scope: '', retained: '', document_family: '', document_kind: '', format: '', field: '', classification: '', review: '', sort: '', direction: '' }); }}><option value="">Committee materials, linked to meetings</option><option value="documents">Captured files from committee sites</option><option value="capture-records">Where files came from</option><option value="all">All saved files</option></select></label> : null}
       {captured && catalogInfo ? <FilenameFilters nav={nav} info={catalogInfo} onChange={filter} /> : null}
-      {captured ? null : <label><span>Chamber</span><span className="explorer-field-reason">House, Senate, joint, or a chamber the source did not record.</span><select value={nav.chamber} onChange={(event) => filter({ chamber: event.target.value })}><option value="">All chambers</option><option value="house">House</option><option value="senate">Senate</option><option value="joint">Joint</option><option value="unknown">Unknown</option></select></label>}
-      {!captured && info.supported_filters?.includes('committeeLevel') ? <label><span>Committee level</span><span className="explorer-field-reason">Choose full committees when subcommittee records and unknown levels should drop out.</span><select value={nav.committeeLevel} onChange={event => filter({ committeeLevel: event.target.value === 'full' ? 'full' : '' })}><option value="">Include subcommittees</option><option value="full">Full committees only</option></select></label> : null}
-      {!captured && info.supported_filters?.includes('committeeType') ? <label><span>Committee type</span><span className="explorer-field-reason">Standing, select, and the other types recorded for the committee.</span><select value={nav.committeeType} onChange={event => filter({committeeType: event.target.value})}><option value="">All committee types</option>{committeeTypes.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}</select></label> : null}
+      {captured ? null : <label><span>Chamber</span><span className="explorer-field-reason">House, Senate, joint, or a chamber the source did not record.</span><select value={nav.chamber} onChange={(event) => filter({ chamber: event.target.value })}><option value="">All chambers</option><option value="house">House</option><option value="senate">Senate</option><option value="joint">Joint</option><option value="unknown">Not recorded</option></select></label>}
+      {!captured && info.supported_filters?.includes('committeeLevel') ? <label><span>Committee level</span><span className="explorer-field-reason">Full committees only leaves out subcommittees and records whose level was not recorded.</span><select value={nav.committeeLevel} onChange={event => filter({ committeeLevel: event.target.value === 'full' ? 'full' : '' })}><option value="">Include subcommittees</option><option value="full">Full committees only</option></select></label> : null}
+      {!captured && info.supported_filters?.includes('committeeType') ? <label><span>Committee type</span><span className="explorer-field-reason">Standing, select, and the other types recorded for the committee.</span><select value={nav.committeeType} onChange={event => filter({committeeType: event.target.value})}><option value="">All committee types</option>{committeeTypes.map(value => <option key={value} value={value}>{value === 'unknown' ? 'Not recorded' : enumLabel(value)}</option>)}</select></label> : null}
       {!captured && nav.view !== 'committees' ? <><label><span>From date</span><span className="explorer-field-reason">{dateFilterReason(nav.view, 'from')}</span><input type="date" value={nav.from} onChange={(event) => filter({ from: event.target.value })} /></label>
       <label><span>Through date</span><span className="explorer-field-reason">{dateFilterReason(nav.view, 'through')}</span><input type="date" value={nav.to} onChange={(event) => filter({ to: event.target.value })} /></label></> : null}
-      {nav.view === 'materials' && !captured ? <><label><span>Material type</span><span className="explorer-field-reason">Documents, recordings, or text products linked to a meeting.</span><select value={nav.type} onChange={(event) => filter({ type: event.target.value })}><option value="">All types</option><option value="document">Document</option><option value="recording">Recording</option><option value="text">Text product</option></select></label>
-      <label><span>Document category</span><span className="explorer-field-reason">Statement, amendment, transcript, and the other recorded categories. Records without that category, including most recordings, drop out.</span><select value={nav.materialCategory} onChange={event => filter({ materialCategory: event.target.value })}><option value="">All categories</option>{materialCategories.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}</select></label>
-      <label><span>Provider</span><span className="explorer-field-reason">YouTube, Senate.gov, C-SPAN, and the other sites that published the file. Records from other providers drop out.</span><select value={nav.provider} onChange={event => filter({ provider: event.target.value })}><option value="">All providers</option>{materialProviders.map(value => <option key={value} value={value}>{providerLabel(value)}</option>)}</select></label></> : null}
-      {nav.view === 'meetings' || nav.view === 'coverage' ? <label><span>Meeting type</span><span className="explorer-field-reason">Hearing, markup, business meeting, and the other recorded types.</span><select value={nav.type} onChange={event => filter({type: event.target.value})}><option value="">All types</option><option value="hearing">Hearing</option><option value="markup">Markup</option><option value="business">Business meeting</option><option value="meeting">Meeting</option><option value="briefing">Briefing</option><option value="roundtable">Roundtable</option><option value="field_hearing">Field hearing</option><option value="other">Other</option><option value="unknown">Unknown</option></select></label> : null}
+      {nav.view === 'materials' && !captured ? <><label><span>Material type</span><span className="explorer-field-reason">Documents, recordings, or captions and transcripts linked to a meeting.</span><select value={nav.type} onChange={(event) => filter({ type: event.target.value })}><option value="">All types</option><option value="document">Document</option><option value="recording">Recording</option><option value="text">Captions or transcript</option></select></label>
+      <label><span>Document category</span><span className="explorer-field-reason">Statement, amendment, transcript, and the other recorded categories. Records without that category, including most recordings, drop out.</span><select value={nav.materialCategory} onChange={event => filter({ materialCategory: event.target.value })}><option value="">All categories</option>{materialCategories.map(value => <option key={value} value={value}>{value === 'unknown' ? 'Not recorded' : recordedCategoryLabel(value)}</option>)}</select></label>
+      <label><span>Published by</span><span className="explorer-field-reason">YouTube, Senate.gov, C-SPAN, and the other sites that published the file. Senate.gov, untitled is a Senate.gov video saved only as “Recording.” Records from other sites drop out.</span><select value={nav.provider} onChange={event => filter({ provider: event.target.value })}><option value="">All sites</option>{materialProviders.map(value => <option key={value} value={value}>{value === 'www.senate.gov' ? 'Senate.gov, untitled' : providerLabel(value)}</option>)}</select></label></> : null}
+      {nav.view === 'meetings' || nav.view === 'coverage' ? <label><span>Meeting type</span><span className="explorer-field-reason">Hearing, markup, business meeting, and the other recorded types.</span><select value={nav.type} onChange={event => filter({type: event.target.value})}><option value="">All types</option><option value="hearing">Hearing</option><option value="markup">Markup</option><option value="business">Business meeting</option><option value="meeting">Meeting</option><option value="briefing">Briefing</option><option value="roundtable">Roundtable</option><option value="field_hearing">Field hearing</option><option value="other">Other</option><option value="unknown">Not recorded</option></select></label> : null}
       {info.supported_filters?.includes('access') && (nav.view === 'meetings' || nav.view === 'coverage') ? <label><span>Access</span><span className="explorer-field-reason">Whether the meeting was recorded as open, closed, or partly closed.</span><select value={nav.access} onChange={event => filter({access: event.target.value})}><option value="">All access states</option>{accessStates.map(value => <option key={value} value={value}>{enumLabel(value)}</option>)}</select></label> : null}
       {nav.view === 'meetings' || nav.view === 'coverage' ? <label><span>Meeting status</span><span className="explorer-field-reason">Upcoming, past, and today come from the schedule. Canceled and postponed stay as recorded.</span><select value={nav.status} onChange={event => filter({ status: event.target.value })}><option value="">All statuses</option><option value="upcoming">Upcoming</option><option value="past">Past</option><option value="today">Today</option><option value="postponed">Postponed</option><option value="canceled">Canceled</option></select></label> : null}
       {nav.view === 'witnesses' ? <label><span>Participation</span><span className="explorer-field-reason">Testified means the record says the witness testified. Listed is everyone else on the witness list.</span><select value={nav.participation} onChange={event => filter({ participation: event.target.value === 'testified' || event.target.value === 'listed' ? event.target.value : '' })}><option value="">All participation</option><option value="testified">Testified</option><option value="listed">Listed</option></select></label> : null}
       {nav.view === 'gaps' ? <><label><span>Issue status</span><span className="explorer-field-reason">Open issues still need work. Resolved and dismissed are closed.</span><select value={nav.status} onChange={(event) => filter({ status: event.target.value })}><option value="">All statuses</option><option value="open">Open</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select></label>
-      <label><span>Issue history</span><span className="explorer-field-reason">Retained history comes from an earlier input and is not in the latest inputs. Current issues are.</span><select value={nav.history} onChange={event => filter({ history: event.target.value === 'current' || event.target.value === 'retained' ? event.target.value : '' })}><option value="">All issues</option><option value="current">Current</option><option value="retained">Retained history</option></select></label>
+      <label><span>Which copy</span><span className="explorer-field-reason">The latest copy is what this archive has now. An earlier copy was saved before and is not in that latest copy.</span><select value={nav.history} onChange={event => filter({ history: event.target.value === 'current' || event.target.value === 'retained' ? event.target.value : '' })}><option value="">All copies</option><option value="current">Latest copy</option><option value="retained">Earlier copy</option></select></label>
       <label><span>Issue category</span><span className="explorer-field-reason">Unlinked has no meeting match. Unverified and conflicting describe the recorded comparison. Duplicate and incorrect name a repeated or wrong recorded value.</span><select value={nav.category} onChange={event => filter({ category: event.target.value })}><option value="">All categories</option>{issueCategories.map(category => <option key={category} value={category}>{enumLabel(category)}</option>)}</select></label>
-      <label><span>Severity</span><span className="explorer-field-reason">Affects interpretation changes how a record should be read. Informational does not.</span><select value={nav.severity} onChange={event => filter({ severity: event.target.value })}><option value="">All severities</option><option value="affects_interpretation">Affects interpretation</option><option value="informational">Informational</option></select></label></> : null}
+      <label><span>How to read it</span><span className="explorer-field-reason">Changes how to read it means the record should be read differently. For information only does not.</span><select value={nav.severity} onChange={event => filter({ severity: event.target.value })}><option value="">All</option><option value="affects_interpretation">Changes how to read it</option><option value="informational">For information only</option></select></label></> : null}
       <button type="button" className="explorer-text-button" aria-label="Reset every filter to this workspace’s defaults" onClick={reset}>Reset</button>
     </form>
     {hasDrill ? <div className="explorer-subheading"><p className="explorer-note">{coverageDrillNote({ committee: nav.committee ? info.committee_labels?.[nav.committee] || 'the selected committee' : '', month: nav.month, aspect: nav.aspect, evidence: nav.evidence })}</p><button className="explorer-text-button" aria-label="Remove the committee, month, and evidence limits that came from a coverage chart" onClick={() => filter({ committee: '', month: '', aspect: '', evidence: '' })}>Clear chart filters</button></div> : null}
-    {nav.congress === 'all' && !captured ? <p className="explorer-note">All-Congress queries search the full retained archive and may take longer.</p> : null}
+    {nav.congress === 'all' && !captured ? <p className="explorer-note">Searching every Congress looks through the whole archive and may take longer.</p> : null}
     {nav.view === 'gaps' && nav.congress !== 'all' ? <p className="explorer-note">Issues with no recorded Congress are listed under All Congresses.</p> : null}
     {nav.view === 'materials' && nav.scope === '' && nav.congress !== 'all' ? <p className="explorer-note">Recordings and documents with no recorded Congress are listed under All Congresses.</p> : null}
-    {!captured && nav.view !== 'committees' && (nav.from || nav.to) ? <p className="explorer-note">{nav.view === 'gaps' ? 'Issues with no date are left out of this range. The detected day on a row does not keep it.' : nav.view === 'witnesses' ? 'Witnesses with no date are left out of this range.' : 'A record with no date stays in this range when its scheduled day does. Records with neither are left out.'}</p> : null}
     {captured && catalogInfo ? <CapturedCatalogNote info={catalogInfo} /> : null}
-    {query.committeeLevel === 'full' ? <p className="explorer-note">Full committees only excludes subcommittee records and records whose committee level is unknown.</p> : null}
     <section ref={headingRef} tabIndex={-1} className="explorer-workspace" aria-label="Explorer results">
-      {dateError ? <p className="explorer-alert" role="alert">The start date must be on or before the end date.</p> : selection?.kind === 'filename_entry' ? <FilenameInspector id={selection.id} catalog={nav.catalog} namingVersion={namingVersion} onOpen={openFilename} onClose={closeDetail} /> : selection ? <Inspector key={`${selection.kind}/${selection.id}`} reader={reader} selected={selection} onSelect={select} onOpenFilename={openFilename} namingVersion={namingVersion} committeeLabels={info.committee_labels} onClose={closeDetail} /> : nav.view === 'coverage' ? <CoverageView reader={reader} query={query} onDrill={drill} measure={nav.measure} grouping={nav.grouping} onSettings={update} /> : captured ? (catalogInfo ? <FilenameListing nav={nav} info={catalogInfo} onOpen={row => openFilename(row.source_id || (row._row == null ? '' : String(row._row)))} onPage={page => update({ page })} onSort={patch => update({ ...patch, page: 0 })} /> : <RequestMessage state={filenameInfo.status === 'ready' ? { status: 'error', message: 'The filename catalog did not load.' } : filenameInfo} retry={retryFilename} noun="the filename catalog" />) : <Listing reader={reader} query={query} view={nav.view} info={info} nav={nav} onSelect={select} onPage={(page) => update({ page })} onSort={patch => update({ ...patch, page: 0 })} />}
+      {dateError ? <p className="explorer-alert" role="alert">The start date must be on or before the end date.</p> : selection?.kind === 'filename_entry' ? <FilenameInspector id={selection.id} catalog={nav.catalog} namingVersion={namingVersion} onOpen={openFilename} onClose={closeDetail} /> : selection ? <Inspector key={`${selection.kind}/${selection.id}`} reader={reader} selected={selection} onSelect={select} onOpenFilename={openFilename} namingVersion={namingVersion} committeeLabels={info.committee_labels} onClose={closeDetail} /> : nav.view === 'coverage' ? <CoverageView reader={reader} query={query} onDrill={drill} measure={nav.measure} grouping={nav.grouping} onSettings={update} /> : captured ? (catalogInfo ? <FilenameListing nav={nav} info={catalogInfo} onOpen={row => openFilename(row.source_id || (row._row == null ? '' : String(row._row)))} onPage={page => update({ page })} onSort={patch => update({ ...patch, page: 0 })} /> : <RequestMessage state={filenameInfo.status === 'ready' ? { status: 'error', message: 'The file list did not load.' } : filenameInfo} retry={retryFilename} noun="the file list" />) : <Listing reader={reader} query={query} view={nav.view} info={info} nav={nav} onSelect={select} onPage={(page) => update({ page })} onSort={patch => update({ ...patch, page: 0 })} />}
     </section>
     {!selection && (nav.view === 'coverage' || nav.view === 'gaps') ? <PublicationScope publication={reader.publication} /> : null}
   </div>;
+}
+
+function coverageDates(item: { coverage?: unknown }): string {
+  const coverage = fields(item.coverage);
+  const start = coverage.start ? String(coverage.start) : '';
+  const end = coverage.end ? String(coverage.end) : '';
+  if (!start && !end) return '';
+  return `${start || 'Unknown'} to ${end || 'Unknown'}`;
+}
+
+function coverageLabel(item: { scope?: unknown }): string {
+  const raw = String(item.scope || '');
+  const plain = plainRecordedNote(raw);
+  return plain === raw ? enumLabel(raw) || raw : plain;
 }
 
 function PublicationScope({ publication }: { publication: Readonly<Record<string, unknown>> }) {
@@ -155,33 +174,52 @@ function PublicationScope({ publication }: { publication: Readonly<Record<string
     const group = grouped.get(key) || [];
     group.push(scope); grouped.set(key, group);
   }
+  const checks = new Map<string, { input: typeof inputs[number]; count: number }>();
+  for (const input of inputs) {
+    const key = JSON.stringify([input.provider, input.limitations, input.last_observed_at, input.last_attempt_status, input.last_attempt_at, input.imported_at]);
+    const existing = checks.get(key);
+    if (existing) existing.count += 1;
+    else checks.set(key, { input, count: 1 });
+  }
+  const exactNotes = [...new Set([
+    ...scopes.flatMap(scope => [String(scope.scope || ''), String(scope.explanation || '')]),
+    ...limitations.map(String),
+    ...inputs.flatMap(input => Array.isArray(input.limitations) ? input.limitations.map(String) : []),
+  ].map(text => text.trim()).filter(text => text && plainRecordedNote(text) !== text))];
   return <section className="explorer-detail-section"><h3>Source coverage and limits</h3>
-    <p className="explorer-note">These collection boundaries describe the entire publication, independently of the filters above. An included source is not a claim that every record or attachment was captured.</p>
-    {scopes.length ? <div className="explorer-table-scroll"><table className="explorer-table"><thead><tr><th scope="col">Source family</th><th scope="col">Collection status</th><th scope="col">Scope and limitations</th></tr></thead><tbody>{[...grouped.values()].map((group, index) => {
+    <p className="explorer-note">This describes the whole archive, not just the filters above. A source being included does not mean every document was captured.</p>
+    {scopes.length ? <div className="explorer-table-scroll"><table className="explorer-table"><thead><tr><th scope="col">Source</th><th scope="col">Collection status</th><th scope="col">What was collected</th></tr></thead><tbody>{[...grouped.values()].map((group, index) => {
       const scope = group[0];
-      return <tr key={index}><th scope="row">{String(scope.provider)}{group.length > 1 ? <span className="explorer-row-meta">{integer(group.length)} scopes</span> : null}</th><td>{enumLabel(scope.status)}</td><td>{group.length === 1 ? enumLabel(scope.scope) : `${integer(group.length)} source scopes`}<span className="explorer-row-meta">{String(scope.explanation)}</span>
-        <details><summary>{group.length > 1 ? `Show all ${integer(group.length)} exact scopes` : 'Scope details'}<span className="explorer-field-reason">The exact source scope, subject dates, and input snapshots.</span></summary><ul className="explorer-values">{group.map((item, itemIndex) => <li key={itemIndex}><strong>{String(item.scope)}</strong><span className="explorer-row-meta">Subject dates: {fields(item.coverage).start || fields(item.coverage).end ? `${String(fields(item.coverage).start || 'Unknown')} to ${String(fields(item.coverage).end || 'Unknown')}` : 'Not recorded'}</span><span className="explorer-row-meta">Input snapshots: {Array.isArray(item.input_snapshot_ids) && item.input_snapshot_ids.length ? item.input_snapshot_ids.join(', ') : 'None recorded'}</span></li>)}</ul></details>
+      const collected = plainRecordedNote(String(scope.scope || ''));
+      const parts = group.map(item => ({ label: coverageLabel(item), dates: coverageDates(item), raw: String(item.scope || '') }));
+      const dated = parts.filter(part => part.dates);
+      return <tr key={index}><th scope="row">{sourceName(String(scope.provider))}{group.length > 1 ? <span className="explorer-row-meta">{integer(group.length)} {dated.length ? 'date ranges' : 'parts'}</span> : null}</th><td>{enumLabel(scope.status)}</td><td>{group.length === 1 ? (collected === String(scope.scope || '') ? enumLabel(scope.scope) : collected) : null}{parts.length === 1 && parts[0].dates ? <span className="explorer-row-meta">Dates covered: {parts[0].dates}</span> : null}<span className="explorer-row-meta">{plainRecordedNote(String(scope.explanation || ''))}</span>
+        {dated.length > 1 ? <details><summary>Dates covered<span className="explorer-field-reason">The dates recorded for each part of this collection.</span></summary><ul className="explorer-values">{parts.map((part, itemIndex) => <li key={itemIndex}>{part.label !== collected ? <strong>{part.label}</strong> : null}<span className="explorer-row-meta">{part.dates || 'Dates not recorded'}</span></li>)}</ul></details> : group.length > 1 ? <details><summary>Part names<span className="explorer-field-reason">The saved name of each part. You do not need it to read this row.</span></summary><ul className="explorer-values">{parts.map((part, itemIndex) => <li key={itemIndex}>{part.raw}</li>)}</ul></details> : null}
       </td></tr>;
-    })}</tbody></table></div> : <p className="explorer-note">Collection scope has not been described for this publication.</p>}
-    {limitations.length ? <ul className="explorer-note">{limitations.map((limitation, index) => <li key={index}>{String(limitation)}</li>)}</ul> : null}
-    <details><summary>Input freshness and collection attempts<span className="explorer-field-reason">When each input was observed, attempted, and imported.</span></summary><p className="explorer-note">Import and export times do not establish when a source was fetched or last checked. An unrecorded observation date stays unknown.</p>
-      <div className="explorer-table-scroll"><table className="explorer-table explorer-input-freshness"><thead><tr><th scope="col">Input</th><th scope="col">Last source observation</th><th scope="col">Last attempt</th><th scope="col">Import time</th></tr></thead><tbody>{inputs.map((input, index) => <tr key={index}><th scope="row">{String(input.provider)}<span className="explorer-row-meta">{Array.isArray(input.limitations) ? input.limitations.join(' ') : ''}</span></th><td data-label="Last source observation">{input.last_observed_at ? recordedInstant(String(input.last_observed_at)) : 'Not recorded'}</td><td data-label="Last attempt">{enumLabel(input.last_attempt_status) || 'Unknown'}<span className="explorer-row-meta">{input.last_attempt_at ? recordedInstant(String(input.last_attempt_at)) : 'Date not recorded'}</span></td><td data-label="Import time">{input.imported_at ? recordedInstant(String(input.imported_at)) : 'Not recorded'}</td></tr>)}</tbody></table></div>
+    })}</tbody></table></div> : <p className="explorer-note">The dates this collection covers have not been described.</p>}
+    {scopes.length && scopes.every(scope => !coverageDates(scope)) ? <p className="explorer-note">None of these collections record the dates they cover.</p> : null}
+    {limitations.length ? <ul className="explorer-note">{limitations.map((limitation, index) => <li key={index}>{plainRecordedNote(String(limitation))}</li>)}</ul> : null}
+    {exactNotes.length ? <details><summary>Exact saved notes<span className="explorer-field-reason">The wording saved with this archive. You do not need it to read the table.</span></summary><ul className="explorer-values">{exactNotes.map(note => <li key={note}>{note}</li>)}</ul></details> : null}
+    <details><summary>When the sources were last checked<span className="explorer-field-reason">When each source was last looked at, tried, and added here.</span></summary><p className="explorer-note">The time a source was added here is not the time it was last checked. A missing date is not recorded.</p>
+      <div className="explorer-table-scroll"><table className="explorer-table explorer-input-freshness"><thead><tr><th scope="col">Source</th><th scope="col">Last checked</th><th scope="col">Last try</th><th scope="col">Added here</th></tr></thead><tbody>{[...checks.values()].map(({ input, count }, index) => <tr key={index}><th scope="row">{sourceName(String(input.provider))}{count > 1 ? <span className="explorer-row-meta">Same check for {integer(count)} parts</span> : null}<span className="explorer-row-meta">{Array.isArray(input.limitations) ? input.limitations.map(item => plainRecordedNote(String(item))).filter(Boolean).join(' ') : ''}</span></th><td data-label="Last checked">{input.last_observed_at ? recordedInstant(String(input.last_observed_at)) : 'Not recorded'}</td><td data-label="Last try">{enumLabel(input.last_attempt_status) || 'Not recorded'}<span className="explorer-row-meta">{input.last_attempt_at ? recordedInstant(String(input.last_attempt_at)) : 'Date not recorded'}</span></td><td data-label="Added here">{input.imported_at ? recordedInstant(String(input.imported_at)) : 'Not recorded'}</td></tr>)}</tbody></table></div>
     </details>
   </section>;
 }
 
-function listingColumns(view: Exclude<View, 'coverage'>, groupedCommittees: boolean): readonly (readonly [Navigation['sort'], string, string])[] {
+function listingColumns(view: Exclude<View, 'coverage'>, groupedCommittees: boolean, pinnedCongress: boolean): readonly (readonly [Navigation['sort'], string, string])[] {
   const record: readonly [Navigation['sort'], string, string] = ['record', view === 'witnesses' ? 'Recorded name' : view === 'gaps' ? 'Known issue' : 'Record', 'the record name'];
   const when: readonly [Navigation['sort'], string, string] = view === 'committees'
     ? ['congress', 'Congress', 'Congress']
-    : ['date', view === 'witnesses' ? 'Date / Congress' : 'Date / status', 'the recorded date'];
+    : ['date', view === 'witnesses' ? (pinnedCongress ? 'Date' : 'Date / Congress') : 'Date / status', 'the recorded date'];
   const detail: readonly [Navigation['sort'], string, string] = view === 'committees'
     ? ['kind', groupedCommittees ? 'Latest type / level' : 'Type / level', 'committee type']
     : view === 'witnesses'
       ? ['kind', 'Position / organization', 'position or organization']
       : view === 'gaps'
         ? ['kind', 'Category / severity', 'issue category and severity']
-        : ['congress', 'Congress / type', 'Congress'];
+        : pinnedCongress
+          ? ['kind', 'Type', 'the recorded type']
+          : ['congress', 'Congress / type', 'Congress'];
   return [record, when, detail];
 }
 
@@ -193,7 +231,7 @@ const VIEW_NOTES: Record<Exclude<View, 'coverage'>, string> = {
   gaps: 'Known collection and matching issues. Coverage shows which material remains unchecked.',
 };
 
-const subjectKinds = new Set(['meeting', 'material', 'appearance', 'committee_term']);
+const subjectKinds = new Set(['meeting', 'material', 'appearance', 'committee_term', 'source_record']);
 
 function useWitnessLines(reader: ExplorerReader, rows: readonly { id: string; title?: string | null; search_text?: string | null }[]): ReadonlyMap<string, readonly string[]> {
   const key = rows.map(row => row.id).sort().join('|');
@@ -251,6 +289,13 @@ function RemainingNotes({ values, noun, reason, limit, label, summary, plain = f
   </>;
 }
 
+function shownChamber(row: { chamber?: string | null }, coveredBy: readonly string[]): string {
+  if (!row.chamber) return '';
+  if (row.chamber === 'unknown') return 'Chamber not recorded';
+  const name = enumLabel(row.chamber);
+  return coveredBy.some(text => text.toLowerCase().includes(name.toLowerCase())) ? '' : name;
+}
+
 function Listing({ reader, query, view, info, nav, onSelect, onPage, onSort }: { reader: ExplorerReader; query: ExplorerQuery; view: Exclude<View, 'coverage'>; info: QueryInfo; nav: Navigation; onSelect: (ref: ExplorerRecordRef) => void; onPage: (page: number) => void; onSort: (patch: Pick<Navigation, 'sort' | 'direction'>) => void }) {
   const key = JSON.stringify(query);
   const [state, retry] = useRequest<QueryResult>((signal) => reader.search(query, { signal }), [reader, key]);
@@ -267,26 +312,29 @@ function Listing({ reader, query, view, info, nav, onSelect, onPage, onSort }: {
   const witnessLines = useWitnessLines(reader, view === 'meetings' && visible ? visible.rows : []);
   const noun = view === 'committees' ? (visible?.total === 1 ? 'committee' : 'committees') : view === 'witnesses' ? (visible?.total === 1 ? 'appearance' : 'appearances') : (visible?.total === 1 ? 'record' : 'records');
   return <>
-    <div className="explorer-subheading"><h2>{title}</h2>{visible ? <><span className="explorer-muted">{state.status === 'loading' ? 'Updating the list' : `${integer(visible.total)} ${noun}`}</span>{state.status === 'ready' ? <button className="explorer-text-button" aria-label="Download the rows on this page as JSON. This is not the full result." onClick={() => downloadJson(`committee-explorer-${view}-page-${Math.floor(visible.offset / PAGE_SIZE) + 1}.json`, { scope: 'selection', publication_id: reader.publication.publication_id, schema_version: reader.publication.schema_version, filters: query, total: visible.total, offset: visible.offset, rows: visible.rows })}>Download this page (JSON)</button> : null}</> : null}</div>
+    <div className="explorer-subheading"><h2>{title}</h2>{visible ? <><span className="explorer-muted" role={state.status === 'loading' ? 'status' : undefined}>{state.status === 'loading' ? 'Updating the list' : `${integer(visible.total)} ${noun}`}</span>{state.status === 'ready' ? <button className="explorer-text-button" aria-label="Download the rows on this page. This is not the full result." onClick={() => downloadJson(`committee-explorer-${view}-page-${Math.floor(visible.offset / PAGE_SIZE) + 1}.json`, { scope: 'selection', publication_id: reader.publication.publication_id, schema_version: reader.publication.schema_version, filters: query, total: visible.total, offset: visible.offset, rows: visible.rows })}>Download this page</button> : null}</> : null}</div>
     <p className="explorer-note">{groupedCommittees ? 'Each committee appears once. Choose a Congress to see its name, classification and records for that term.' : VIEW_NOTES[view]} Column headings sort this full selection. {view === 'committees' ? 'A third click restores the original list order.' : 'A third click restores newest recorded date first.'}</p>
     {state.status === 'error' ? <RequestMessage state={state} retry={retry} /> : null}
     {state.status === 'loading' && !visible ? <RequestMessage state={state} retry={retry} /> : null}
     {visible?.rows.length ? <>
-      {state.status === 'loading' ? <p className="explorer-note" role="status">Updating the list.</p> : null}
-      <div className="explorer-table-scroll"><table className="explorer-table" aria-busy={state.status === 'loading'}><thead><tr>
-        {listingColumns(view, groupedCommittees).map(([column, label, reason]) => {
+      <div className="explorer-table-scroll"><table className="explorer-table explorer-list-table" aria-busy={state.status === 'loading'}><thead><tr>
+        {listingColumns(view, groupedCommittees, query.congress !== 'all').map(([column, label, reason]) => {
           const direction = nav.sort === column ? nav.direction : '';
           const restore = view === 'committees' ? 'restore the original list order' : 'restore newest recorded date first';
-          return <th key={column} scope="col" aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}><button type="button" className="explorer-sort" data-direction={direction} onClick={() => onSort(nextSort(nav, column))} aria-label={direction === 'asc' ? `Sort by ${reason}, ascending. Activate to sort descending.` : direction === 'desc' ? `Sort by ${reason}, descending. Activate to ${restore}.` : `Sort by ${reason}`}>{label}</button></th>;
+          return <th key={column} scope="col" aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}><button type="button" className="explorer-sort" data-direction={direction} onClick={() => onSort(nextSort(nav, column))} aria-label={direction === 'asc' ? `Sort by ${reason}, ascending. Activate to sort descending.` : direction === 'desc' ? `Sort by ${reason}, descending. Activate to ${restore}.` : `Sort by ${reason}`}><SortLabel label={label} /></button></th>;
         })}
       </tr></thead><tbody>
-        {visible.rows.map(row => {
+        {visible.rows.map((row, index) => {
+          const meetingIds = view === 'witnesses' || view === 'materials' ? linkedMeetingIds(row).join('|') : '';
+          const previousMeetingIds = index > 0 && meetingIds ? linkedMeetingIds(visible.rows[index - 1]).join('|') : '';
+          const repeatedMeeting = Boolean(meetingIds) && meetingIds === previousMeetingIds;
           const filenames = view === 'materials' ? recordedFileNames(row.files) : [];
           const addresses = view === 'materials' ? recordedAddressNames(row) : [];
           const formats = view === 'materials' ? recordedFormatNote(row.files) : '';
           const filename = filenames[0] || '';
           const action = view === 'materials' ? recordedAction(row).split(' · ').filter(part => !filename.toLowerCase().includes(part.toLowerCase())).join(' · ') : '';
-          const recording = view === 'materials' && !filename ? recordingIdentity(row.recording_url) : '';
+          const recordingCode = view === 'materials' && !filename ? recordingIdentity(row.recording_url) : '';
+          const recording = recordingCode.startsWith('YouTube ') ? 'YouTube' : recordingCode;
           const provider = providerLabel(row.provider);
           const shownProvider = provider && !recording.toLowerCase().includes(provider.toLowerCase()) ? provider : '';
           const parent = view === 'committees' && row.parent_committee_id ? info.committee_labels?.[row.parent_committee_id] || '' : '';
@@ -303,14 +351,19 @@ function Listing({ reader, query, view, info, nav, onSelect, onPage, onSort }: {
           const measures = view === 'meetings' ? recordedMeasureValues(row) : [];
           const recordedNames = view === 'meetings' ? recordedWitnesses(row) : '';
           const witnesses = view === 'meetings' ? witnessLines.get(row.id) || (recordedNames ? [recordedNames] : []) : [];
+          const committeeNames = (view === 'committees' ? [] : row.committee_ids || []).map(id => info.committee_labels?.[id]).filter((name): name is string => Boolean(name));
+          const meetingPlace = view === 'meetings' ? recordedPlace(row) : '';
+          const chamberText = shownChamber(row, [...committeeNames, meetingPlace, view === 'committees' ? label : '']);
           const committeeKind = view === 'committees' ? '' : [committeeKindNote(row, info.committee_labels), committeeLevelNote(row, info.committee_labels)].filter(Boolean).join(' · ');
           const roleNote = view === 'witnesses' ? notableRoles(row).join(', ') : '';
           const participation = view === 'witnesses' ? participationNote(row) : '';
-          const materialType = view === 'materials' ? documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · ') : '';
-          const materialCategory = view === 'materials' && documentType(row) ? categoryNote(row) : '';
+          const recordedType = view === 'materials' ? documentType(row) : '';
+          const materialType = view === 'materials' ? listedDocumentType(recordedType) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index && !(value === 'text' && list.some(item => item && item !== 'unknown' && item !== 'text'))).map(value => value === 'text' ? 'Captions or transcript' : enumLabel(value)).join(' · ') : '';
+          const materialCategory = view === 'materials' && recordedType ? categoryNote(row) : '';
           const materialPart = view === 'materials' ? filePartNote(row) : '';
-          const materialSource = view === 'materials' ? documentSourceLabel(row) : '';
-          const history = row.selection === 'retained_history' ? <span className="explorer-row-meta">Retained from an earlier input. Not present in the latest inputs.</span> : null;
+          const materialSource = view === 'materials' ? listedSourcePile(row, recordedType) : '';
+          const history = row.selection === 'retained_history' ? <span className="explorer-row-meta">Saved in an earlier copy. Not in the latest copy.</span> : null;
+          const congressText = query.congress !== 'all' && String(row.congress ?? '') === String(query.congress) ? '' : row.congress ? `${row.congress}th Congress` : 'Congress not recorded';
           const meetings = (view === 'witnesses' || view === 'materials') ? linkedMeetingIds(row).flatMap(id => {
             const title = meetingTitles.get(`meeting/${id}`) || '';
             return title && !sameRecordedTitle(title, label) ? [[id, title] as const] : [];
@@ -322,7 +375,7 @@ function Listing({ reader, query, view, info, nav, onSelect, onPage, onSort }: {
             {about ? <RecordedNote text={`About ${about}`} summary="Rest of the subject title" reason="The rest of the title of the record this issue describes." /> : absentSubject ? <span className="explorer-row-meta">{absentSubject}</span> : unnamedSubject ? <span className="explorer-row-meta">About a {unnamedSubject}</span> : null}
             {view === 'gaps' ? issueNotes(row).map((note, index) => <RecordedNote text={note} summary="Rest of the issue note" reason="The rest of this issue note, in the order it was recorded." key={index} />) : null}
             {view === 'gaps' ? <RemainingNotes values={extraIssueAlternatives(row)} noun="alternative" reason="Other recorded values compared with the selected value." limit={0} /> : null}
-            {meetings.map(([id, title]) => {
+            {repeatedMeeting ? null : meetings.map(([id, title]) => {
               const meetingTitle = recordedTitlePreview(title);
               return <span key={id}><span className="explorer-row-meta explorer-recorded-lines" title={title}>{meetingTitle.preview}</span><RemainingNotes values={meetingTitle.rest} noun="line" reason="The rest of the meeting title, in the order it was recorded." limit={0} plain summary={meetingTitle.continued ? 'Rest of the meeting title' : meetingTitle.rest.length === 1 ? '1 more line of the meeting title' : `${meetingTitle.rest.length} more lines of the meeting title`} /></span>;
             })}
@@ -335,18 +388,18 @@ function Listing({ reader, query, view, info, nav, onSelect, onPage, onSort }: {
             {formats ? <span className="explorer-row-meta">{formats}</span> : null}
             {view === 'materials' && landingPageNote(row) ? <span className="explorer-row-meta">{landingPageNote(row)}</span> : null}
             {action ? <span className="explorer-row-meta">{action}</span> : null}
-            {recording ? <span className="explorer-row-meta">{recording}</span> : null}
-            <span className="explorer-row-meta">{[enumLabel(row.chamber), ...(view === 'committees' ? [] : row.committee_ids || []).map(id => info.committee_labels?.[id]).filter(Boolean), committeeKind, view === 'meetings' && row.access && row.access !== 'unknown' ? enumLabel(row.access) : '', shownProvider].filter(Boolean).join(' · ')}</span>
-            {view === 'meetings' && recordedPlace(row) ? <span className="explorer-row-meta explorer-place">{recordedPlace(row)}</span> : null}
+            {recording ? <span className="explorer-row-meta" title={recordingCode !== recording ? recordingCode : undefined}>{recording}</span> : null}
+            <span className="explorer-row-meta">{[chamberText, ...committeeNames, committeeKind, view === 'meetings' && row.access && row.access !== 'unknown' ? enumLabel(row.access) : '', shownProvider].filter(Boolean).join(' · ')}</span>
+            {meetingPlace ? <span className="explorer-row-meta explorer-place">{meetingPlace}</span> : null}
             {view === 'meetings' ? <RemainingNotes values={witnesses} noun="witness" reason="People listed for this meeting. A listing does not confirm attendance." limit={4} label={witnesses.length ? 'Witnesses' : undefined} /> : null}
             {view === 'meetings' ? <RemainingNotes values={measures} noun="measure" reason="Bills, resolutions, treaties, and nominations recorded for this meeting." limit={4} /> : null}
-            {view === 'meetings' && evidenceParts(row.evidence_states).length ? <span className="explorer-evidence">{evidenceParts(row.evidence_states).map(item => <span key={item}>{item}</span>)}</span> : null}
+            {view === 'meetings' && listedEvidence(row.evidence_states).length ? <span className="explorer-evidence">{listedEvidence(row.evidence_states).map(item => <span key={item}>{item}</span>)}</span> : null}
             {view === 'meetings' ? <RemainingNotes values={votes} noun="vote" reason="Roll-call and voice-vote results recorded for this meeting." limit={2} /> : null}
             {view === 'meetings' ? <RemainingNotes values={amendments} noun="amendment" reason="Amendment outcomes recorded for this meeting." limit={2} /> : null}
             {view === 'materials' && row.explanation ? <RecordedNote text={row.explanation} summary="Rest of the recorded note" reason="The rest of the note, in the order it was recorded." /> : null}
           </td>
-          <td>{view !== 'committees' ? (keepDate((row.date || '').slice(0, 10)) || ((view === 'materials' || view === 'meetings') && scheduleNote(row) ? null : <span className="explorer-unknown">Date unrecorded</span>)) : null}{view !== 'committees' && (row.date || '').slice(0, 10) && recordedWhen(row).time ? <span className="explorer-row-meta">{recordedWhen(row).time}</span> : null}{(view === 'materials' || view === 'meetings') && scheduleNote(row) ? <span className="explorer-row-meta">{keepDate(scheduleNote(row))}</span> : null}{view === 'materials' && publishedNote(row) ? <span className="explorer-row-meta">{keepDate(publishedNote(row))}</span> : null}{view === 'materials' && meetingStatusNote(row) ? <span className="explorer-row-meta">{meetingStatusNote(row)}</span> : null}{view === 'gaps' && detectedNote(row) ? <span className="explorer-row-meta explorer-nowrap">{keepDate(detectedNote(row))}</span> : null}<span className={view === 'committees' ? undefined : 'explorer-row-meta'}>{view === 'committees' && row.terms ? <span className="explorer-congress-terms">{row.terms.map(term => <button key={term.id} className="explorer-text-button" title={`${term.title} — ${term.congress}th Congress. Open this committee’s term.`} aria-label={`View ${term.title}, ${term.congress}th Congress`} onClick={() => onSelect(term)}>{term.congress}th</button>)}</span> : view === 'committees' || view === 'witnesses' ? row.congress ? <span className="explorer-nowrap">{row.congress}th Congress</span> : 'Congress unrecorded' : <>{row.status ? <span className="explorer-status">{enumLabel(row.status)}</span> : null}{row.source_status && row.source_status !== row.status ? <span className="explorer-row-meta">Recorded as {enumLabel(row.source_status)}</span> : null}</>}</span>{row.issue_count ? <span className="explorer-row-meta">{integer(row.issue_count)} known {row.issue_count === 1 ? 'issue' : 'issues'}</span> : null}{sourceCountNote(row) ? <span className="explorer-row-meta explorer-nowrap">{sourceCountNote(row)}</span> : null}</td>
-          <td>{view === 'committees' ? <>{committeeTypeLabel(row)}<span className="explorer-row-meta">{[committeeLevelLabel(row) || 'Level unrecorded', row.committee_code].filter(Boolean).join(' · ')}</span>{committeeSourceNote(row) ? <span className="explorer-row-meta">{committeeSourceNote(row)}</span> : null}{parent ? <span className="explorer-row-meta">Subcommittee of {parent}</span> : null}</> : view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position unrecorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}{witnessNotes(row).map(note => <span className="explorer-row-meta" key={note}>{note}</span>)}{roleNote ? <span className="explorer-row-meta">{roleNote}</span> : null}{participation ? <span className="explorer-row-meta">{participation}</span> : null}</> : view === 'materials' ? <>{materialType || 'Type unrecorded'}{materialCategory ? <span className="explorer-row-meta">{materialCategory}</span> : null}{materialPart ? <span className="explorer-row-meta">{materialPart}</span> : null}{materialSource ? <span className="explorer-row-meta">{materialSource}</span> : null}<span className="explorer-row-meta">{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}</span>{history}</> : view === 'gaps' ? <>{enumLabel(row.category) || enumLabel(row.type) || 'Category unrecorded'}{row.severity ? <span className="explorer-row-meta">{enumLabel(row.severity)}</span> : null}<span className="explorer-row-meta">{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}</span>{history}</> : <>{row.congress ? `${row.congress}th Congress` : 'Congress unrecorded'}<span className="explorer-row-meta">{[documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · '), documentSourceLabel(row)].filter(Boolean).join(' · ')}</span>{history}{view === 'meetings' && sourceTypeNote(row) ? <span className="explorer-row-meta">{sourceTypeNote(row)}</span> : null}</>}          </td>
+          <td>{view !== 'committees' ? (keepDate((row.date || '').slice(0, 10)) || ((view === 'materials' || view === 'meetings') && scheduleNote(row) ? null : <span className="explorer-unknown">Date not recorded</span>)) : null}{view !== 'committees' && (row.date || '').slice(0, 10) && recordedWhen(row).time ? <span className="explorer-row-meta">{recordedWhen(row).time}</span> : null}{(view === 'materials' || view === 'meetings') && scheduleNote(row) ? <span className="explorer-row-meta">{keepDate(scheduleNote(row))}</span> : null}{view === 'materials' && publishedNote(row) ? <span className="explorer-row-meta">{keepDate(publishedNote(row))}</span> : null}{view === 'materials' && meetingStatusNote(row) ? <span className="explorer-row-meta">{meetingStatusNote(row)}</span> : null}{view === 'gaps' && detectedNote(row) ? <span className="explorer-row-meta explorer-nowrap">{keepDate(detectedNote(row))}</span> : null}<span className={view === 'committees' ? undefined : 'explorer-row-meta'}>{view === 'committees' && row.terms ? <span className="explorer-congress-terms">{row.terms.map(term => <button key={term.id} className="explorer-text-button" title={`${term.title} — ${term.congress}th Congress. Open this committee’s term.`} aria-label={`View ${term.title}, ${term.congress}th Congress`} onClick={() => onSelect(term)}>{term.congress}th</button>)}</span> : view === 'committees' ? (row.congress ? <span className="explorer-nowrap">{row.congress}th Congress</span> : 'Congress not recorded') : view === 'witnesses' ? (congressText ? <span className="explorer-nowrap">{congressText}</span> : null) : <>{row.status ? <span className="explorer-status">{view === 'gaps' && row.status === 'open' ? 'Still open' : enumLabel(row.status)}</span> : null}{listedSourceStatus(row) ? <span className="explorer-row-meta">{listedSourceStatus(row)}</span> : null}</>}</span>{row.issue_count ? <OpenIssues reader={reader} record={row} count={row.issue_count} onSelect={onSelect} /> : null}{sourceCountNote(row) ? <span className="explorer-row-meta explorer-nowrap">{sourceCountNote(row)}</span> : null}</td>
+          <td>{view === 'committees' ? <>{committeeTypeLabel(row)}<span className="explorer-row-meta">{committeeLevelLabel(row) || 'Level not recorded'}</span>{committeeSourceNote(row) ? <span className="explorer-row-meta">{committeeSourceNote(row)}</span> : null}{parent ? <span className="explorer-row-meta">Subcommittee of {parent}</span> : null}</> : view === 'witnesses' ? <>{row.position || row.roles?.map(enumLabel).join(', ') || 'Position not recorded'}{row.organization ? <span className="explorer-row-meta">{row.organization}</span> : null}{witnessNotes(row).map(note => <span className="explorer-row-meta" key={note}>{note}</span>)}{roleNote ? <span className="explorer-row-meta">{roleNote}</span> : null}{participation ? <span className="explorer-row-meta">{participation}</span> : null}</> : view === 'materials' ? <>{materialType || 'Type not recorded'}{materialCategory ? <span className="explorer-row-meta">{materialCategory}</span> : null}{materialPart ? <span className="explorer-row-meta">{materialPart}</span> : null}{materialSource ? <span className="explorer-row-meta">{materialSource}</span> : null}{congressText ? <span className="explorer-row-meta">{congressText}</span> : null}{history}</> : view === 'gaps' ? <>{enumLabel(row.category) || enumLabel(row.type) || 'Category not recorded'}{row.severity ? <span className="explorer-row-meta">{severityLabel(row.severity)}</span> : null}{congressText ? <span className="explorer-row-meta">{congressText}</span> : null}{history}</> : <>{congressText}<span className="explorer-row-meta">{[documentType(row) || [row.type, row.category].filter((value, index, list) => value && value !== 'unknown' && list.indexOf(value) === index).map(enumLabel).join(' · '), documentSourceLabel(row)].filter(Boolean).join(' · ')}</span>{history}{view === 'meetings' && sourceTypeNote(row) ? <span className="explorer-row-meta">{sourceTypeNote(row)}</span> : null}</>}          </td>
         </tr>;
         })}
       </tbody></table></div><Pagination total={visible.total} offset={visible.offset} count={visible.rows.length} onPage={onPage} />
@@ -367,14 +420,13 @@ function CapturedCatalogNote({ info }: { info: FilenameCatalogInfo }) {
   const filenames = info.downloads?.filenames;
   const documents = info.downloads?.documents;
   return <>
-    <p className="explorer-note">These files may not be matched to a meeting.</p>
-    {filenames || documents ? <p className="explorer-file-links">{filenames ? <a className="explorer-nowrap" href={filenames}>Download filename catalog</a> : null}{documents ? <a className="explorer-nowrap" href={documents}>Download document catalog</a> : null}</p> : null}
-    <details><summary>Catalog snapshot<span className="explorer-field-reason">The catalog identifier for this filename publication.</span></summary><p className="explorer-note">Filename catalog {info.catalog_id}{info.recovery_sha256 ? <> · recovery {info.recovery_sha256}</> : ''}</p></details>
+    {filenames || documents ? <p className="explorer-file-links">{filenames ? <a className="explorer-nowrap" href={filenames}>Download the file list</a> : null}{documents ? <a className="explorer-nowrap" href={documents}>Download the document list</a> : null}</p> : null}
+    <details><summary>Which file list this is<span className="explorer-field-reason">A code for this exact file list. You do not need it to browse.</span></summary><p className="explorer-note">File list {info.catalog_id}</p></details>
   </>;
 }
 
 function FilenameInspector({ id, catalog, namingVersion, onOpen, onClose }: { id: string; catalog: string; namingVersion?: string; onOpen: (id: string) => void; onClose: () => void }) {
-  return <article className="explorer-detail"><div className="explorer-subheading"><button className="explorer-text-button" aria-label="Back to the list. Filters stay as they are." onClick={onClose}>← Back to results</button></div>
+  return <article className="explorer-detail"><div className="explorer-subheading"><button className="explorer-text-button" aria-label="Back to the list. Filters stay as they are." onClick={onClose}><BackIcon /> Results</button></div>
     <FilenameEvidence entryId={id} catalog={catalog} namingVersion={namingVersion} onOpen={onOpen} />
   </article>;
 }
@@ -382,7 +434,7 @@ function FilenameInspector({ id, catalog, namingVersion, onOpen, onClose }: { id
 function NamedMeeting({ reader, meetingId, onSelect }: { reader: ExplorerReader; meetingId: string; onSelect: (ref: ExplorerRecordRef) => void }) {
   const [state] = useRequest(signal => reader.getRecord({ kind: 'meeting', id: meetingId }, { signal }), [reader, meetingId]);
   const title = state.status === 'ready' && state.value ? recordTitle(state.value) : '';
-  return <p><button className="explorer-text-button" aria-label={title ? `Open the meeting ${title}` : 'Open the meeting this record belongs to'} onClick={() => onSelect({ kind: 'meeting', id: meetingId })}>{title ? `View ${title} →` : 'View meeting →'}</button></p>;
+  return <p><button className="explorer-text-button" aria-label={title ? `Open the meeting ${title}` : 'Open the meeting this record belongs to'} onClick={() => onSelect({ kind: 'meeting', id: meetingId })}>{title || 'Meeting'} <ForwardIcon /></button></p>;
 }
 
 function IssueSubject({ reader, record, onSelect }: { reader: ExplorerReader; record: DetailRecord; onSelect: (ref: ExplorerRecordRef) => void }) {
@@ -393,13 +445,20 @@ function IssueSubject({ reader, record, onSelect }: { reader: ExplorerReader; re
   const [state] = useRequest(signal => affected ? reader.getRecord(affected, { signal }) : Promise.resolve(undefined), [reader, affected?.kind, affected?.id]);
   if (!affected) return null;
   const title = state.status === 'ready' && state.value ? recordTitle(state.value) : '';
-  return <p><button className="explorer-text-button" aria-label={title ? `Open ${title}. This is the record the issue describes.` : 'Open the record this issue describes'} onClick={() => onSelect(affected)}>{title ? `View ${title} →` : 'View affected record →'}</button></p>;
+  return <p><button className="explorer-text-button" aria-label={title ? `Open ${title}. This is the record the issue describes.` : 'Open the record this issue describes'} onClick={() => onSelect(affected)}>{title || 'Affected record'} <ForwardIcon /></button></p>;
+}
+
+function shownOnRecord(record: DetailRecord, labels?: Readonly<Record<string, string>>) {
+  const row = fields(record);
+  const committees = (Array.isArray(row.committee_ids) ? row.committee_ids : []).map(id => labels?.[String(id)] || '').filter(Boolean).join(' · ');
+  const chamber = typeof row.chamber === 'string' && row.chamber && row.chamber !== 'unknown' ? enumLabel(row.chamber) : '';
+  return { congress: congressName(row.congress), chamber, committee: committees };
 }
 
 function Inspector({ reader, selected, onSelect, onOpenFilename, namingVersion, committeeLabels, onClose }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void; onOpenFilename: (id: string) => void; namingVersion?: string; committeeLabels?: Readonly<Record<string, string>>; onClose: () => void }) {
   const [state, retry] = useRequest<DetailRecord | undefined>((signal) => reader.getRecord(selected, { signal }), [reader, selected.kind, selected.id]);
-  return <article className="explorer-detail"><div className="explorer-subheading"><button className="explorer-text-button" aria-label="Back to the list. Filters stay as they are." onClick={onClose}>← Back to results</button>{state.status === 'ready' && state.value ? <button className="explorer-text-button" aria-label="Download this record’s published fields as JSON" onClick={() => downloadJson(`committee-explorer-${selected.kind}-${selected.id}.json`, { scope: 'record', publication_id: reader.publication.publication_id, schema_version: reader.publication.schema_version, record: state.value })}>Download record (JSON)</button> : null}</div>
-    {state.status !== 'ready' ? <RequestMessage state={state} retry={retry} noun="record details" /> : state.value ? <><RecordDetail record={state.value} onSelect={onSelect} committeeLabels={committeeLabels} affectedAction={state.value.kind === 'data_issue' ? <IssueSubject reader={reader} record={state.value} onSelect={onSelect} /> : undefined} meetingAction={fields(state.value).meeting_id && !['meeting', 'material', 'data_issue'].includes(state.value.kind) ? <NamedMeeting reader={reader} meetingId={String(fields(state.value).meeting_id)} onSelect={onSelect} /> : undefined} catalogEvidence={state.value.kind === 'material' ? <FilenameEvidence files={catalogMatchFiles(state.value)} namingVersion={namingVersion} onOpen={onOpenFilename} /> : null} sourceEvidence={<SourceEvidence reader={reader} record={state.value} />} /><Related key={`${selected.kind}/${selected.id}`} reader={reader} selected={selected} onSelect={onSelect} /></> : <p className="explorer-alert">This record is not present in the selected publication. Its absence does not establish that it was removed at the source.</p>}
+  return <article className="explorer-detail"><div className="explorer-subheading"><button className="explorer-text-button" aria-label="Back to the list. Filters stay as they are." onClick={onClose}><BackIcon /> Results</button>{state.status === 'ready' && state.value ? <button className="explorer-text-button" aria-label="Download a copy of everything saved for this record" onClick={() => downloadJson(`committee-explorer-${selected.kind}-${selected.id}.json`, { scope: 'record', publication_id: reader.publication.publication_id, schema_version: reader.publication.schema_version, record: state.value })}>Download this record</button> : null}</div>
+    {state.status !== 'ready' ? <RequestMessage state={state} retry={retry} noun="record details" /> : state.value ? <><RecordDetail record={state.value} onSelect={onSelect} committeeLabels={committeeLabels} affectedAction={state.value.kind === 'data_issue' ? <IssueSubject reader={reader} record={state.value} onSelect={onSelect} /> : undefined} meetingAction={fields(state.value).meeting_id && !['meeting', 'material', 'data_issue'].includes(state.value.kind) ? <NamedMeeting reader={reader} meetingId={String(fields(state.value).meeting_id)} onSelect={onSelect} /> : undefined} catalogEvidence={state.value.kind === 'material' ? <FilenameEvidence files={catalogMatchFiles(state.value)} namingVersion={namingVersion} onOpen={onOpenFilename} alreadyShown={shownOnRecord(state.value, committeeLabels)} /> : null} sourceEvidence={<SourceEvidence reader={reader} record={state.value} />} /><Related key={`${selected.kind}/${selected.id}`} reader={reader} selected={selected} contextTitle={state.value.kind === 'committee_term' ? recordTitle(state.value) : ''} contextCongress={state.value.kind === 'committee_term' ? fields(state.value).congress : ''} contextChamber={state.value.kind === 'committee_term' ? fields(state.value).chamber : ''} contextWhen={state.value.kind === 'meeting' ? listedWhen(fields(state.value)) : ''} onSelect={onSelect} /></> : <p className="explorer-alert">This record is not in the archive you are viewing. That does not mean it was removed from the original source.</p>}
   </article>;
 }
 
@@ -408,7 +467,7 @@ function SourceEvidence({ reader, record }: { reader: ExplorerReader; record: De
   const ids = fields(record).source_ids;
   if (!Array.isArray(ids) || !ids.length) return null;
   return <details className="explorer-detail-section" onToggle={event => setOpen(event.currentTarget.open)}>
-    <summary>Source evidence ({ids.length})<span className="explorer-field-reason">The source observations this record was built from.</span></summary>
+    <summary>Source evidence ({ids.length})<span className="explorer-field-reason">The original pages this record was built from.</span></summary>
     {open ? <SourceRecords reader={reader} ids={ids.map(String)} focusName={record.kind === 'appearance' ? recordTitle(record) : ''} /> : null}
   </details>;
 }
@@ -434,13 +493,13 @@ function SourceRecords({ reader, ids, focusName = '' }: { reader: ExplorerReader
   if (state.status !== 'ready') return <RequestMessage state={state} retry={retry} noun="source evidence" />;
   const focus = sourceFocus(focusName);
   return <>{state.value.map((source, index) => {
-    if (!source) return <p className="explorer-note" key={ids[index]}>Source {index + 1} is unavailable in this publication.</p>;
+    if (!source) return <p className="explorer-note" key={ids[index]}>This source is not in the archive.</p>;
     const url = publicUrl(sourcePageUrl(fields(source).url));
     const facts = sourceFacts(source);
     const recorded = sourceLinks(source);
     const links = focus.length >= 3 ? [...recorded.links].sort((left, right) => Number(`${right.label} ${right.href}`.toLowerCase().includes(focus)) - Number(`${left.label} ${left.href}`.toLowerCase().includes(focus))) : recorded.links;
     return <div key={source.id}>
-      <div className="explorer-subheading"><h4>Source {index + 1}: {recordTitle(source)}</h4>{url ? <a href={url} target="_blank" rel="noreferrer">Open original source ↗</a> : null}</div>
+      <div className="explorer-subheading"><h4>Source {index + 1}: {recordTitle(source)}</h4>{url ? <a href={url} target="_blank" rel="noreferrer">Open original source <ExternalIcon /></a> : null}</div>
       {facts.length ? <dl className="explorer-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd><FactValue label={label} value={value} /></dd></div>)}</dl> : null}
       <SourceLinkGroups links={links} />
       <SourcePayload source={source} />
@@ -450,18 +509,18 @@ function SourceRecords({ reader, ids, focusName = '' }: { reader: ExplorerReader
 
 function SourcePayload({ source }: { source: object }) {
   const [open, setOpen] = useState(false);
-  return <details onToggle={event => setOpen(event.currentTarget.open)}><summary>Published source response<span className="explorer-field-reason">The stored source record, including the original payload.</span></summary>
+  return <details onToggle={event => setOpen(event.currentTarget.open)}><summary>See the saved source<span className="explorer-field-reason">The complete saved source, in a technical format. You do not need it to read this page.</span></summary>
     {open ? <pre><code>{JSON.stringify(source, null, 2)}</code></pre> : null}</details>;
 }
 
-function Related({ reader, selected, onSelect }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void }) {
+function Related({ reader, selected, onSelect, contextTitle = '', contextCongress = '', contextChamber = '', contextWhen = '' }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void; contextTitle?: string; contextCongress?: unknown; contextChamber?: unknown; contextWhen?: string }) {
   const sections: Record<string, string[]> = {meeting: ['material', 'appearance', 'data_issue'], appearance: ['material', 'data_issue'], material: ['meeting', 'appearance', 'data_issue'], committee_term: ['committee_term', 'material', 'meeting', 'data_issue']};
   return <div className="explorer-related">{(sections[selected.kind] || []).map(kind => kind === 'material'
-    ? <RelatedMaterials key={kind} reader={reader} selected={selected} onSelect={onSelect} />
-    : <RelatedSection key={kind} kind={kind} reader={reader} selected={selected} onSelect={onSelect} />)}</div>;
+    ? <RelatedMaterials key={kind} reader={reader} selected={selected} contextTitle={contextTitle} contextWhen={contextWhen} onSelect={onSelect} />
+    : <RelatedSection key={kind} kind={kind} reader={reader} selected={selected} contextTitle={contextTitle} contextCongress={contextCongress} contextChamber={contextChamber} contextWhen={contextWhen} onSelect={onSelect} />)}</div>;
 }
 
-function RelatedSection({ reader, selected, onSelect, kind }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void; kind: string }) {
+function RelatedSection({ reader, selected, onSelect, kind, contextTitle = '', contextCongress = '', contextChamber = '', contextWhen = '' }: { reader: ExplorerReader; selected: ExplorerRecordRef; onSelect: (ref: ExplorerRecordRef) => void; kind: string; contextTitle?: string; contextCongress?: unknown; contextChamber?: unknown; contextWhen?: string }) {
   const [page, setPage] = useState(0);
   const [state, retry] = useRequest(signal => reader.getRelated(selected, { kind, offset: page * PAGE_SIZE, limit: PAGE_SIZE, signal }), [reader, selected.kind, selected.id, kind, page]);
   const identity = `${selected.kind}/${selected.id}/${kind}`;
@@ -473,24 +532,27 @@ function RelatedSection({ reader, selected, onSelect, kind }: { reader: Explorer
   if (!visible) return state.status !== 'ready' ? <RequestMessage state={state} retry={retry} noun={labels[kind].toLowerCase()} /> : null;
   if (!visible.records.length) return null;
   return <section className="explorer-detail-section" aria-busy={state.status === 'loading'}>
-    {state.status === 'loading' ? <p className="explorer-note" role="status">Updating the list.</p> : null}
     {state.status === 'error' ? <RequestMessage state={state} retry={retry} noun={labels[kind].toLowerCase()} /> : null}
-    <h3>{labels[kind]} <span className="explorer-muted">({integer(visible.total)})</span></h3><ul className="explorer-related-list">{visible.records.map(record => {
+    <h3>{labels[kind]} <span className="explorer-muted" role={state.status === 'loading' ? 'status' : undefined}>{state.status === 'loading' ? 'Updating' : `(${integer(visible.total)})`}</span></h3><ul className="explorer-related-list">{visible.records.map(record => {
         const row = fields(record);
-        const parts = relatedParts(kind, row);
+        const parts = omitRepeatedWhen(omitRepeatedChamber(omitRepeatedCongress(relatedParts(kind, row), contextCongress), contextChamber), contextWhen)
+          .map(part => contextTitle && kind === 'committee_term' && part.text.endsWith(', like the parent committee')
+            ? { ...part, text: part.text.slice(0, -', like the parent committee'.length) }
+            : part)
+          .filter(part => part.text);
         const measures = kind === 'meeting' ? recordedMeasureValues(row) : [];
         const votes = kind === 'meeting' ? recordedVotes(row) : [];
         const amendments = kind === 'meeting' ? recordedAmendments(row) : [];
         const alternatives = kind === 'data_issue' ? extraIssueAlternatives(row) : [];
         const loadedWitnesses = kind === 'meeting' ? witnessLines.get(record.id) : undefined;
         const witnessNames = kind === 'meeting' ? loadedWitnesses || (recordedWitnesses(row) ? [recordedWitnesses(row)] : []) : [];
-        const title = recordTitle(record);
+        const title = kind === 'meeting' || kind === 'committee_term' ? titleInContext(recordTitle(record), contextTitle) : recordTitle(record);
         const titlePreview = recordedTitlePreview(title);
         return <li key={record.id}>
           <button className="explorer-text-button" aria-label={`Open ${title}`} onClick={() => onSelect(record)}>{titlePreview.preview}</button>
           <RemainingNotes values={titlePreview.rest} noun="line" reason="The rest of the title, in the order it was recorded." limit={0} plain summary={titlePreview.continued ? 'Rest of the recorded title' : titlePreview.rest.length === 1 ? '1 more line of the recorded title' : `${titlePreview.rest.length} more lines of the recorded title`} />
           {parts.length ? <span className="explorer-evidence">{parts.map((part, index) => <span key={`${part.role || 'fact'}-${index}`} className={part.role === 'place' ? 'explorer-place' : part.role === 'status' ? 'explorer-status' : part.role === 'note' ? 'explorer-issue-note' : undefined}>{part.text}</span>)}</span> : null}
-          {typeof row.issue_count === 'number' && row.issue_count > 0 ? <span className="explorer-row-meta">{integer(row.issue_count)} known {row.issue_count === 1 ? 'issue' : 'issues'}</span> : null}
+          {typeof row.issue_count === 'number' && row.issue_count > 0 ? <OpenIssues reader={reader} record={record} count={row.issue_count} onSelect={onSelect} /> : null}
           <RemainingNotes values={witnessNames} noun="witness" reason="People listed for this meeting. A listing does not confirm attendance." limit={4} label={witnessNames.length ? 'Witnesses' : undefined} />
           <RemainingNotes values={measures} noun="measure" reason="Bills, resolutions, treaties, and nominations recorded for this meeting." limit={4} />
           <RemainingNotes values={votes} noun="vote" reason="Roll-call and voice-vote results recorded for this meeting." limit={2} />

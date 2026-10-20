@@ -1,20 +1,21 @@
 import type { FilenameRecord } from '../reader/filenames/types.ts';
 import { filenameDate } from './filename-rules.ts';
+import { listedDocumentType } from './record-presentation.ts';
 import { provenanceUrlKey } from './provenance.ts';
 
 const fieldLabels: Record<string, string> = {
-  body_key: 'Saved file location', filename: 'Filename', source_url: 'Publisher URL', filename_origins: 'Filename obtained from',
-  media_type: 'Server-reported type', http_status: 'HTTP response', response_usable: 'Recorded usability assessment',
-  response_body_complete: 'Complete response saved', response_format: 'Response format check', response_result: 'Response diagnostic',
-  capture_outcome: 'Capture result', body_format: 'Detected file format', format: 'File format', extension: 'Filename extension',
-  document_kind: 'Document classification', document_family: 'Classification family', document_kind_source: 'Classification evidence',
-  source_id: 'Source record ID', document_id: 'Grouped document ID', congress: 'Congress from filename',
-  source_congress: 'Congress from source', source_committee_name: 'Committee from source', committee_code: 'Committee code from filename',
+  body_key: 'Saved file location', filename: 'Filename', source_url: 'Web address of the file', filename_origins: 'Filename obtained from',
+  media_type: 'Type reported by the website', http_status: 'Website reply', response_usable: 'Whether the saved copy could be used',
+  response_body_complete: 'Complete response saved', response_format: 'Check of the saved copy', response_result: 'Result of that check',
+  capture_outcome: 'What happened when the file was saved', body_format: 'Detected file format', format: 'File format', extension: 'Filename extension',
+  document_kind: 'Document kind', document_family: 'Broad category', document_kind_source: 'Why this kind was chosen',
+  source_id: 'Source record number', document_id: 'Grouped document number', congress: 'Congress from filename',
+  source_congress: 'Congress recorded by the source', source_committee_name: 'Committee recorded by the source', committee_code: 'Committee code from the filename',
   content_document_kind: 'Document kind from saved contents', content_congress: 'Congress from saved contents', content_citation: 'Publication citation',
-  state_outcome: 'Latest fetch result', recovery: 'Recovered copy', measure_references: 'Measure', date_token_candidates: 'Possible date',
-  source_page_url: 'Recorded source page', source_page_title: 'Source page title', source_link_label: 'Publisher link text',
-  source_record_type: 'Source record type', source_meeting_title: 'Meeting title from source', source_chamber: 'Chamber from source',
-  source_occurrences: 'Related source observations',
+  state_outcome: 'Latest attempt to save the file', recovery: 'Recovered copy', measure_references: 'Bill or resolution', date_token_candidates: 'Possible date',
+  source_page_url: 'Page the file was linked from', source_page_title: 'Title of that page', source_link_label: 'Words used for the link',
+  source_record_type: 'Type recorded by the source', source_meeting_title: 'Meeting title recorded by the source', source_chamber: 'Chamber recorded by the source',
+  source_occurrences: 'Other times this file was seen',
 };
 
 export function fieldLabel(key: string): string {
@@ -24,6 +25,72 @@ export function fieldLabel(key: string): string {
 
 export function pretty(value: string): string {
   return value.replaceAll('_', ' ').replaceAll('-', ' ').replace(/^./, letter => letter.toUpperCase());
+}
+
+/** Ordinary names for filename kinds. Untyped means the bill type, such as H.R. or S., was not recorded. */
+const kindLabels: Record<string, string> = {
+  'bill-numbered': 'Bill or resolution with a number',
+  'bill-numbered-described': 'Numbered bill with a description in the name',
+  'bill-untyped-numbered': 'Numbered file, bill type not recorded',
+  'bill-untyped-draft': 'Draft, bill type not recorded',
+  'bill-unnumbered': 'Bill or resolution without a number',
+  'bill-named-draft': 'Named draft',
+  'bill-titled-draft': 'Draft named in the filename',
+  'bill-preintroduced': 'Bill before it was introduced',
+  'bill-suspension-numbered': 'Suspension bill with a number',
+  'bill-suspension-unnumbered': 'Suspension bill without a number',
+  'bill-unanimous-consent': 'Unanimous consent bill',
+  'bill-house-amendment': 'House amendment',
+  'bill-measure-list': 'File naming several bills',
+  'rules-original': 'Bill from the Rules Committee',
+  'appropriation-described': 'Appropriations bill described in the name',
+  'appropriation-annual': 'Appropriations bill for a fiscal year',
+  'appropriation-supplemental': 'Supplemental appropriations',
+  'appropriation-routed': 'Appropriations file',
+  'appropriation-amendment': 'Appropriations amendment',
+  'committee-enbloc-numbered': 'En bloc amendments with an identifier',
+  'committee-enbloc': 'En bloc amendments',
+  'committee-enbloc-described': 'En bloc amendment named by its subject',
+  'committee-amendment-described': 'Amendment named by its subject',
+  'committee-report-unnumbered': 'Committee report without a number',
+  'committee-report-part': 'Committee report, one part',
+  'conference-numbered': 'Conference report with a number',
+  'conference-unnumbered': 'Conference report without a number',
+  'conference-legislation-part': 'Conference report, part of the bill text',
+  'conference-statement': 'Conference joint statement',
+  'conference-statement-part': 'Conference joint statement, one part',
+  'committee-print-link': 'Link to a committee print',
+  'hearing-transcript-link': 'Link to a hearing transcript',
+  'op-ed': 'Op-ed',
+  'questions-for-record': 'Questions for the record',
+  'questions-for-record-response': 'Answers for the record',
+};
+
+/** A broad category in words. Print is the group for committee prints. */
+const familyLabels: Record<string, string> = {
+  print: 'Committee print',
+  'chair-mark': 'Chair’s mark',
+  'mark-description': 'Description of the chair’s mark',
+  'op-ed': 'Op-ed',
+};
+
+export function familyName(value: string): string {
+  return familyLabels[value] || pretty(value);
+}
+
+/** A document kind in words a reader can scan in a list or menu. */
+export function documentKindName(value: string): string {
+  return kindLabels[value] || pretty(value);
+}
+
+const originLabels: Record<string, string> = {
+  url_path: 'The web address',
+  filename_inventory: 'The site’s list of files',
+};
+
+/** Where a filename was taken from, in ordinary words. */
+export function filenameOriginLabel(value: string): string {
+  return originLabels[value] || pretty(value);
 }
 
 const textValues = (value: unknown): string[] => Array.isArray(value)
@@ -58,8 +125,8 @@ export function sourcePageLabel(row: { source_url?: unknown; source_page_url?: u
 /** A recorded role that is not the ordinary document or source-record role. */
 export function recordRoleNote(row: { record_role?: string[] | null }): string {
   const roles = row.record_role || [];
-  if (roles.includes('error-response')) return 'Error response';
-  if (roles.includes('capture-state')) return 'Capture state';
+  if (roles.includes('error-response')) return 'Error page';
+  if (roles.includes('capture-state')) return 'Note about the capture';
   return '';
 }
 
@@ -68,27 +135,27 @@ export function fileRoleLabel(row: { filename?: string | null; format?: string[]
   if (row.document_kind?.length) return '';
   const format = (row.format ?? []).map(value => value.toLowerCase());
   const name = (row.filename ?? '').toLowerCase();
-  if (format.includes('text/vtt') || name.endsWith('.vtt')) return 'Caption segment';
-  if (/^(?:mods|dip|premis|mets)\.xml$/.test(name)) return 'Package metadata';
-  if (/^h(?:hrg|mtg)-\d+-[a-z0-9]+-\d{8}\.xml$/.test(name)) return 'Meeting package';
+  if (format.includes('text/vtt') || name.endsWith('.vtt')) return 'Caption file';
+  if (/^(?:mods|dip|premis|mets)\.xml$/.test(name)) return 'Notes kept with the file';
+  if (/^h(?:hrg|mtg)-\d+-[a-z0-9]+-\d{8}\.xml$/.test(name)) return 'Meeting file';
   return '';
 }
 
 export function documentKindLabel(row: { video_reference?: unknown; api_reference?: unknown; document_kind?: string[] | null }): string {
-  if (row.video_reference) return 'Video reference';
-  if (row.api_reference) return 'Source/API reference';
-  return row.document_kind?.map(pretty).join(' · ') || 'Unclassified';
+  if (row.video_reference) return 'Video link';
+  if (row.api_reference) return 'Official record link';
+  return row.document_kind?.map(documentKindName).join(' · ') || 'No category';
 }
 
 const sourceRecordLabels: Record<string, string> = {
   hearing: 'Hearing record',
-  mods: 'Package metadata',
-  premis: 'Package metadata',
-  'package-summary': 'Package summary',
-  'collection-listing': 'Collection listing',
+  mods: 'Notes kept with the file',
+  premis: 'Notes kept with the file',
+  'package-summary': 'File summary',
+  'collection-listing': 'List of files',
   'error-page': 'Error page',
-  'house-cache-marker': 'Cache marker',
-  'collector-artifact': 'Collector artifact',
+  'house-cache-marker': 'Note that the page was checked',
+  'collector-artifact': 'File from the collection tools',
 };
 
 /** A recorded source type when the file has no document kind. A hearing type applies only to a source record. */
@@ -99,12 +166,12 @@ export function sourceRecordLabel(row: { document_kind?: string[] | null; record
 }
 
 export function recordLabel(row: Parameters<typeof documentKindLabel>[0] & Parameters<typeof sourcePageLabel>[0] & Parameters<typeof fileRoleLabel>[0] & Parameters<typeof sourceRecordLabel>[0]): string {
-  if (row.video_reference) return 'Video reference';
+  if (row.video_reference) return 'Video link';
   // A recorded source type is more specific than the generic API label. Every Congress hearing source record is an API URL.
   const source = sourceRecordLabel(row);
   if (source) return source;
   if (row.api_reference || row.document_kind?.length) return documentKindLabel(row);
-  return sourcePageLabel(row) || fileRoleLabel(row) || 'Unclassified';
+  return sourcePageLabel(row) || fileRoleLabel(row) || 'No category';
 }
 
 /** The source committee name, with any recorded code the name does not already contain. */
@@ -113,7 +180,7 @@ export function sourceCommitteeNote(row: { source_committee_name?: readonly stri
   const codes = [...new Set((row.source_committee_code || []).map(value => value.trim()).filter(Boolean))];
   const folded = names.join(' ').toLowerCase();
   const extra = codes.filter(code => !folded.includes(code.toLowerCase()));
-  if (names.length && extra.length) return { text: `${names.join(' · ')} · ${extra.join(' · ')}`, code: 'Committee code from the source record' };
+  if (names.length && extra.length) return { text: `${names.join(' · ')} · ${extra.join(' · ')}`, code: 'Committee code recorded by the source' };
   if (names.length) return { text: names.join(' · '), code: '' };
   if (codes.length) return { text: codes.join(' · '), code: 'Committee code' };
   return { text: '', code: '' };
@@ -124,15 +191,96 @@ export function congressLabel(values: readonly string[] | null | undefined): str
   return values.map(value => /^\d+$/.test(value) ? `${value}th Congress` : pretty(value)).join(' · ');
 }
 
-export function formatLabel(value: string): string {
-  return value.includes('/') ? value : value.toUpperCase();
+/** A source Congress note when it is not already the Congress shown, and the disagreement warning does not already say it. */
+export function sourceCongressNote(congress: readonly string[] | null | undefined, source: readonly string[] | null | undefined): string {
+  if (!congress?.length) return '';
+  const recorded = congressLabel(source);
+  const displayed = congressLabel(congress);
+  if (!recorded || recorded === displayed) return '';
+  if (congressWarning(congress, source).toLowerCase().includes('source records')) return '';
+  return `The source says ${recorded}.`;
 }
 
-/** An HTTP status worth showing beside a saved copy. A lone 200 repeats a saved response. */
+export interface ShownRecord {
+  congress?: string;
+  chamber?: string;
+  committee?: string;
+}
+
+/** True when a captured-file fact only repeats the record already open. */
+export function repeatsShownRecord(label: string, value: string, shown: ShownRecord): boolean {
+  const text = value.trim().toLowerCase();
+  const congress = (shown.congress || '').trim().toLowerCase();
+  const chamber = (shown.chamber || '').trim().toLowerCase();
+  const committee = (shown.committee || '').trim().toLowerCase();
+  if (label === 'Congress' && congress && text === congress) return true;
+  if (label === 'Chamber' && chamber && text === chamber) return true;
+  if (label === 'Committee' && committee) {
+    const names = text.split(' · ').map(part => part.trim()).filter(part => part && !/^[a-z]{2,}\d{2,}$/i.test(part));
+    return names.length > 0 && names.every(name => committee.includes(name) || name.includes(committee));
+  }
+  return false;
+}
+
+const readableFormats: Record<string, string> = {
+  pdf: 'PDF', html: 'Web page', htm: 'Web page', xml: 'XML file', json: 'Data file', txt: 'Text', text: 'Text',
+  doc: 'Word document (older)', docx: 'Word document', xls: 'Excel spreadsheet (older)', xlsx: 'Excel spreadsheet',
+  ppt: 'PowerPoint (older)', pptx: 'PowerPoint', zip: 'ZIP file', jpeg: 'JPEG image', jpg: 'JPEG image', png: 'PNG image',
+  mp3: 'MP3 audio', 'audio/mpeg': 'MP3 audio', 'audio/mp3': 'MP3 audio',
+  mp4: 'MP4 video', 'video/mp4': 'MP4 video',
+  'video/x-ms-wmv': 'WMV video', 'video/x-ms-asf': 'ASF video', 'video/x-ms-wvx': 'WVX video',
+  'text/vtt': 'Captions', vtt: 'Captions',
+  m3u8: 'Playlist file', 'application/x-mpegurl': 'Playlist', 'application/vnd.apple.mpegurl': 'Playlist',
+  'application/javascript': 'Script', 'text/javascript': 'Script',
+  'application/rss+xml': 'Feed',
+  'application/x-octet-stream': 'Saved file',
+  'text/calendar': 'Calendar',
+  aspx: 'ASP page', cfm: 'ColdFusion page',
+  csv: 'Spreadsheet', 'text/csv': 'Spreadsheet',
+  rtf: 'Rich text', 'application/rtf': 'Rich text', 'text/rtf': 'Rich text',
+};
+
+export function formatLabel(value: string): string {
+  const key = value.split(';')[0].trim().toLowerCase();
+  return readableFormats[key] || readableFormats[formatFamily(value)] || (key.includes('/') ? key : key.toUpperCase());
+}
+
+export function plainFormat(value: string): string {
+  const names: Record<string, string> = {
+    pdf: 'a PDF', html: 'a web page', xml: 'an XML file',     doc: 'an older Word document', docx: 'a Word document',
+    xls: 'an older Excel spreadsheet', xlsx: 'an Excel spreadsheet', ppt: 'an older PowerPoint file', pptx: 'a PowerPoint file',
+    zip: 'a ZIP file', jpeg: 'a JPEG image', png: 'a PNG image', text: 'a text file', json: 'a data file',
+    mp3: 'an MP3 audio file', 'audio/mpeg': 'an MP3 audio file', 'audio/mp3': 'an MP3 audio file',
+    mp4: 'an MP4 video', 'video/mp4': 'an MP4 video',
+    'video/x-ms-wmv': 'a WMV video', 'video/x-ms-asf': 'an ASF video', 'video/x-ms-wvx': 'a WVX video',
+    'text/vtt': 'a caption file', vtt: 'a caption file',
+    m3u8: 'a playlist file', 'application/x-mpegurl': 'a playlist',
+    'application/javascript': 'a script', 'text/javascript': 'a script',
+    'application/rss+xml': 'a feed',
+    'application/x-octet-stream': 'a saved file',
+    'text/calendar': 'a calendar',
+    aspx: 'an ASP page', cfm: 'a ColdFusion page',
+    csv: 'a spreadsheet', 'text/csv': 'a spreadsheet',
+    rtf: 'a rich text file', 'application/rtf': 'a rich text file', 'text/rtf': 'a rich text file',
+  };
+  const key = value.split(';')[0].trim().toLowerCase();
+  return names[formatFamily(value)] || names[key] || formatLabel(value);
+}
+
+function siteReply(code: string, saved: boolean): string {
+  if (code === '200') return saved ? '' : 'The website answered, and no copy was saved';
+  if (code === '404') return 'The website said this page was not found';
+  if (code === '401' || code === '403') return 'The website refused the request';
+  if (code.startsWith('3')) return 'The website sent the request somewhere else';
+  if (code.startsWith('5')) return 'The website reported an error';
+  return `The website replied ${code}`;
+}
+
+/** A website reply worth showing beside a saved copy. A lone saved 200 repeats that a copy exists. */
 export function httpStatusNote(row: { http_status?: readonly (string | number)[] | null; retained?: boolean | null }): string {
   const statuses = (row.http_status || []).map(String).filter(Boolean);
   if (!statuses.length || (row.retained && statuses.every(value => value === '200'))) return '';
-  return `HTTP ${statuses.join(' · ')}`;
+  return [...new Set(statuses.map(code => siteReply(code, Boolean(row.retained))))].filter(Boolean).join(' · ');
 }
 
 function formatFamily(value: string): string {
@@ -155,12 +303,12 @@ function formatFamily(value: string): string {
 }
 
 const responseDiagnostics: Record<string, string> = {
-  html_requires_document_discovery: 'Saved page needs document discovery',
-  unrecognized_body: 'Unrecognized saved body',
-  pdf_missing_eof: 'PDF is missing its end marker',
-  empty_response: 'Empty saved response',
-  challenge_html: 'Saved page is a challenge page',
-  invalid_xml: 'Saved XML did not parse',
+  html_requires_document_discovery: 'This saved page still needs its documents found',
+  unrecognized_body: 'The saved copy is not a recognized file',
+  pdf_missing_eof: 'The PDF is missing its ending',
+  empty_response: 'The saved copy is empty',
+  challenge_html: 'The saved page is a security check, not the document',
+  invalid_xml: 'The saved file could not be read',
 };
 
 function responseFamily(value: string): string {
@@ -177,12 +325,12 @@ function recordedFamilies(format: readonly string[] | null | undefined): Set<str
 }
 
 const checkedBodyLabels: Record<string, string> = {
-  pdf: 'Checked body includes PDF',
-  xml: 'Checked body includes XML',
-  rtf: 'Checked body is RTF',
-  office: 'Checked body is an Office file or ZIP',
-  'legacy-office': 'Checked body is a legacy Office file',
-  html: 'Checked body includes HTML',
+  pdf: 'The saved copy includes a PDF',
+  xml: 'The saved copy includes an XML file',
+  rtf: 'The saved copy is a rich-text file',
+  office: 'The saved copy is a Word, Excel, or PowerPoint file, or a ZIP',
+  'legacy-office': 'The saved copy is an older Word, Excel, or PowerPoint file',
+  html: 'The saved copy includes a web page',
 };
 
 /** A saved-body check that the recorded format does not already state. */
@@ -201,14 +349,14 @@ export function savedBodyNote(row: { format?: readonly string[] | null; body_for
   const body = [...new Set(row.body_format || [])];
   const format = new Set(row.format || []);
   if (!body.length || (body.length === format.size && body.every(value => format.has(value)))) return '';
-  return `Saved body ${body.map(formatLabel).join(' · ')}`;
+  return `The saved copy is ${body.map(plainFormat).join(' and ')}`;
 }
 
 /** A server-reported type that is not the same kind of file as the recorded format. */
 export function serverTypeNote(row: Pick<FilenameRecord, 'format' | 'media_type'>): string {
   const families = new Set((row.format || []).map(formatFamily));
   const reported = [...new Set((row.media_type || []).map(value => value.split(';')[0].trim()).filter(value => value && !families.has(formatFamily(value))))];
-  return reported.length ? `Server reported ${reported.join(' · ')}` : '';
+  return reported.length ? `The website called this ${reported.map(plainFormat).join(' and ')}` : '';
 }
 
 const kindBasisLabels: Record<string, string> = {
@@ -231,7 +379,7 @@ function reading(value: string): string {
 /** Source-page document types that the catalog kind does not already state. */
 export function sourceDocumentTypeNote(row: Pick<FilenameRecord, 'document_kind' | 'source_document_type'>): string {
   const kinds = (row.document_kind || []).map(reading).filter(Boolean);
-  const extras = (row.source_document_type || []).map(value => value.trim()).filter(value => {
+  const extras = (row.source_document_type || []).map(value => listedDocumentType(value.trim())).filter(value => {
     const text = reading(value);
     if (!text) return false;
     if (kinds.length && text.length <= 3) return false;
@@ -244,8 +392,8 @@ export function sourceDocumentTypeNote(row: Pick<FilenameRecord, 'document_kind'
 export function sourceDocumentBasis(row: Pick<FilenameRecord, 'source_document_type_basis'>): string {
   const basis = (row.source_document_type_basis || []).filter(Boolean);
   const inferred = basis.filter(value => /inference|parser|fallback/.test(value));
-  if (inferred.length && inferred.length === basis.length) return 'Inferred from the source page';
-  if (inferred.length) return 'Includes an inferred reading';
+  if (inferred.length && inferred.length === basis.length) return 'Worked out from the source page';
+  if (inferred.length) return 'Includes a reading worked out from the page';
   return basis.length ? 'Recorded on the source page' : '';
 }
 
@@ -256,7 +404,7 @@ export function contentKindNote(row: Pick<FilenameRecord, 'document_kind' | 'con
     const text = reading(value);
     return text && !kinds.has(text);
   }))];
-  return extras.length ? `Saved contents read as ${extras.map(pretty).join(' · ')}` : '';
+  return extras.length ? `Saved contents read as ${extras.map(documentKindName).join(' · ')}` : '';
 }
 
 /** The day the capture state was last checked. */
@@ -345,22 +493,22 @@ export function savedResponseLabel(row: FilenameRecord): string {
 
 const quietOutcomes = new Set(['saved', 'retained']);
 const outcomeLabels: Record<string, string> = {
-  http_error: 'HTTP error',
-  html: 'HTML response',
-  retry_later: 'Retry later',
-  pending: 'Fetch pending',
-  excluded_probe: 'Excluded probe',
-  request_failed: 'Request failed',
-  size_limit: 'Over the size limit',
-  unverified: 'Unverified fetch',
-  no_explicit_download_or_pdf_embed: 'No download or PDF embed',
-  invalid_document: 'Invalid document',
-  timeout: 'Timed out',
-  empty: 'Empty response',
-  resource_limit: 'Resource limit',
-  excluded_media: 'Excluded media',
-  repaired_url: 'Repaired URL',
-  excluded_scope: 'Outside the captured scope',
+  http_error: 'The website reported an error',
+  html: 'Web page',
+  retry_later: 'Try again later',
+  pending: 'Still waiting to save a copy',
+  excluded_probe: 'Not downloaded; it was only a check',
+  request_failed: 'The request failed',
+  size_limit: 'Larger than the size limit',
+  unverified: 'The copy was not confirmed',
+  no_explicit_download_or_pdf_embed: 'The page did not offer a file',
+  invalid_document: 'The file could not be read',
+  timeout: 'The request timed out',
+  empty: 'The reply was empty',
+  resource_limit: 'Too large to save',
+  excluded_media: 'Audio or video, not saved as a document',
+  repaired_url: 'The web address was corrected',
+  excluded_scope: 'Outside the pages this collection covers',
 };
 
 /** Fetch results that the saved-copy line does not already state. */
@@ -384,9 +532,9 @@ export function congressWarning(values: readonly string[] | null | undefined, so
   const maxCongress = Math.floor((new Date().getFullYear() - 1789) / 2) + 1;
   const anomalous = items.filter(value => !/^\d+$/.test(value) || Number(value) < 1 || Number(value) > maxCongress + 1);
   const notes: string[] = [];
-  if (anomalous.length) notes.push(`Outside the historical/current range: ${anomalous.join(', ')}.`);
-  if (items.length > 1) notes.push('Competing filename readings; no Congress has been selected.');
-  if (items.length && recorded.length && !items.some(value => recorded.includes(value))) notes.push(`Source context instead records Congress ${recorded.join(' · ')}.`);
+  if (anomalous.length) notes.push(`Congress number ${anomalous.join(', ')} is not a real Congress.`);
+  if (items.length > 1) notes.push('The filename suggests more than one Congress.');
+  if (items.length && recorded.length && !items.some(value => recorded.includes(value))) notes.push(`The source records Congress ${recorded.join(' · ')} instead.`);
   return notes.join(' ');
 }
 
@@ -420,11 +568,11 @@ function distinctText(values: readonly string[] | null | undefined): string[] {
 }
 
 const storedReadingLabels = [
-  ['amendment_marker_label', 'Amendment marker'],
+  ['amendment_marker_label', 'Amendment note'],
   ['citation_marker_label', 'Citation'],
-  ['publication_code_label', 'Publication code'],
-  ['local_code_token_label', 'Local code'],
-  ['version_token_label', 'Version'],
+  ['publication_code_label', 'Publication'],
+  ['local_code_token_label', 'Office code'],
+  ['version_token_label', 'Legislative stage'],
 ] as const;
 
 /** Stored filename readings whose words are not already the code in the filename. */
@@ -460,10 +608,10 @@ export function filenameReadings(row: {
   const readings: { label: string; value: string }[] = [];
   const labels = distinctText(row.package_family_label);
   const codes = distinctText(row.package_family).filter(code => !labels.some(label => label.toLowerCase().includes(code.toLowerCase())));
-  if (labels.length) readings.push({ label: 'Package', value: [...labels, ...codes].join(' · ') });
+  if (labels.length) readings.push({ label: 'File series', value: [...labels, ...codes].join(' · ') });
   const tokenLabels = distinctText(row.document_token_label);
   const tokens = distinctText(row.document_type).filter(token => !tokenLabels.some(label => label.toLowerCase().includes(token.toLowerCase())));
-  if (tokenLabels.length) readings.push({ label: 'Filename token', value: [...tokenLabels, ...tokens].join(' · ') });
+  if (tokenLabels.length) readings.push({ label: 'Words in the filename', value: [...tokenLabels, ...tokens].join(' · ') });
   const shown = readings.map(reading => reading.value);
   const revision = distinctText(row.revision_marker_label);
   const revisionNumbers = distinctText(row.revision_number);

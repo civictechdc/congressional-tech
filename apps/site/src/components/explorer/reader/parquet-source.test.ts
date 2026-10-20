@@ -217,7 +217,7 @@ test('official parent committee types filter committees, meetings, documents, wi
   assert.equal(child.committee_type, 'subcommittee');
   assert.deepEqual(child.committee_types, ['standing']);
   const childDetail = await reader.getRecord(child);
-  assert.equal(committeeTypeLabel(childDetail), 'Standing (inherited from parent)');
+  assert.equal(committeeTypeLabel(childDetail), 'Standing, like the parent committee');
   assert.equal(committeeTypeLabel(childDetail), committeeTypeLabel(child));
   assert.equal(childDetail.source_committee_type, 'Subcommittee');
   for (const kind of ['meeting', 'material', 'appearance']) {

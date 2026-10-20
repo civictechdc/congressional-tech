@@ -14,14 +14,14 @@ function harness(context = {snapshot: 'pinned'}, onResult = () => {}) {
 test('worker failure settles pending calls and retries on a fresh worker', async () => {
   const {client, workers} = harness();
   const one = client.request('/api/info'), two = client.request('/api/rows');
-  const rejected = Promise.all([assert.rejects(one,/reader stopped/), assert.rejects(two,/reader stopped/)]);
+  const rejected = Promise.all([assert.rejects(one,/stopped loading/), assert.rejects(two,/stopped loading/)]);
   workers[0].onerror(); await rejected; assert.equal(client.pendingCount,0);
   const retry = client.request('/api/rows');
   assert.equal(workers.length,2); assert.equal(workers[1].messages[0].snapshot,'pinned');
   workers[0].onmessage({data:{id:3,result:'stale'}});
   workers[1].onmessage({data:{id:3,result:'success'}});
   assert.equal(await retry,'success'); assert.equal(client.pendingCount,0);
-  client.dispose(); await assert.rejects(client.request('/api/info'),/reader stopped/);
+  client.dispose(); await assert.rejects(client.request('/api/info'),/stopped loading/);
 });
 test('ordinary accepted catalog survives pointer advancement and worker recreation', async () => {
   const accepted = 'a'.repeat(32), latest = 'b'.repeat(32), results = [];
@@ -41,7 +41,7 @@ test('ordinary accepted catalog survives pointer advancement and worker recreati
   workers[1].onmessage({data:{id:2,result:{rows:[selected]}}});
   assert.deepEqual(await retry,{rows:[accepted]});
   const conflict = client.request('/api/info');
-  const rejected = assert.rejects(conflict,/different catalog/);
+  const rejected = assert.rejects(conflict,/file list changed/);
   workers[1].onmessage({data:{id:3,result:{catalog_id:latest}}});
   await rejected;
   assert.equal(results.length,2,'conflicting results never reach the UI');
@@ -60,7 +60,7 @@ test('aborted, stale, missing and malformed catalog replies cannot establish a p
     const call=client.request('/api/info');
     const request=workers[0].messages.at(-1);
     assert.equal(request.snapshot,null);
-    const rejected=assert.rejects(call,/invalid catalog/);
+    const rejected=assert.rejects(call,/did not identify itself/);
     workers[0].onmessage({data:{id:request.id,result:{catalog_id:identity}}});
     await rejected;
   }
@@ -78,7 +78,7 @@ test('aborted, stale, missing and malformed catalog replies cannot establish a p
 test('an explicit catalog remains fixed when a current worker replies with a conflicting identity', async () => {
   const explicit='a'.repeat(32),other='b'.repeat(32);
   const {client,workers}=harness({snapshot:explicit});
-  const info=client.request('/api/info'),rejected=assert.rejects(info,/different catalog/);
+  const info=client.request('/api/info'),rejected=assert.rejects(info,/file list changed/);
   workers[0].onmessage({data:{id:1,result:{catalog_id:other}}});
   await rejected;workers[0].onerror();
   const retry=client.request('/api/info');

@@ -73,6 +73,6 @@ export function reviewedMode(query, info) {
   if (!['', 'reviewed'].includes(query.classification || '')) throw new Error('Unknown classification mode.');
   if (query.classification !== 'reviewed') return false;
   if (!info.reviewed_search) throw new Error(info.review_error || 'Reviewed-category search is not configured.');
-  if (query.review && query.review !== info.review_sha256) throw new Error('This search belongs to a different review snapshot.');
+  if (query.review && query.review !== info.review_sha256) throw new Error('This search belongs to an older review. Reset the filters and search again.');
   return true;
 }

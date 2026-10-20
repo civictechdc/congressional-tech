@@ -1,10 +1,10 @@
 import { useRef } from 'react';
 import { nextSort, type Navigation } from '../browse/navigation.ts';
 import { filenameSearchParams } from '../browse/filename-search.ts';
-import { captureNotes, checkedAtNote, congressLabel, congressWarning, contentAddressedFilename, contentCongressLabel, contentCongressNote, contentKindNote, fieldLabel, filenameClues, filenameIdentity, formatLabel, httpStatusNote, kindBasis, pretty, recordLabel, recordRoleNote, recoveredSourceHost, responseCheckNote, retrievedAtNote, reviewStatusLabel, savedBodyNote, savedResponseLabel, serverTypeNote, sourceDocumentTypeNote } from '../browse/filename-presentation.ts';
+import { captureNotes, checkedAtNote, congressLabel, congressWarning, contentAddressedFilename, contentCongressLabel, contentCongressNote, contentKindNote, documentKindName, familyName, fieldLabel, filenameClues, filenameIdentity, formatLabel, httpStatusNote, kindBasis, plainFormat, recordLabel, recordRoleNote, recoveredSourceHost, responseCheckNote, retrievedAtNote, reviewStatusLabel, savedBodyNote, savedResponseLabel, serverTypeNote, sourceDocumentTypeNote } from '../browse/filename-presentation.ts';
 import { filenameRequest } from '../reader/filenames/session.ts';
 import type { FilenameCatalogInfo, FilenameRecord, FilenameSearchResult } from '../reader/filenames/types.ts';
-import { Pagination, RequestMessage, integer, useRequest } from './request-state';
+import { Pagination, RequestMessage, SortLabel, integer, useRequest } from './request-state';
 
 const searchFields = ['filename', 'source_url', 'source_page_url', 'source_link_label', 'document_kind', 'content_document_kind', 'congress', 'source_congress', 'content_congress', 'committee_code', 'source_committee_name', 'measure_references', 'date_token_candidates', 'source_record_type', 'source_meeting_title', 'source_chamber'];
 
@@ -24,13 +24,13 @@ export function FilenameFilters({ nav, info, onChange }: { nav: Navigation; info
   const formats = facetValues(info, 'format');
   return <>
     <label><span>Saved copy</span><span className="explorer-field-reason">Keep files with a saved response, or files with none.</span><select value={nav.retained} onChange={event => onChange({ retained: event.target.value === 'yes' || event.target.value === 'no' ? event.target.value : '' })}><option value="">Any</option><option value="yes">Saved</option><option value="no">None saved</option></select></label>
-    <label><span>Document kind</span><span className="explorer-field-reason">The file form the catalog recorded. No document kind means it abstained.</span><select value={nav.document_kind} onChange={event => onChange({ document_kind: event.target.value })}><option value="">All kinds</option><option value="__null__">No document kind</option>{kinds.map(value => <option key={value} value={value}>{pretty(value)}</option>)}</select></label>
-    <label><span>Format</span><span className="explorer-field-reason">The recorded file format, such as PDF, HTML, or XML.</span><select value={nav.format} onChange={event => onChange({ format: event.target.value })}><option value="">All formats</option>{formats.map(value => <option key={value} value={value}>{formatLabel(value)}</option>)}</select></label>
+    <label><span>Document kind</span><span className="explorer-field-reason">Hearing, statement, transcript, and the other kinds recorded for the file. No document kind means none was recorded.</span><select value={nav.document_kind} onChange={event => onChange({ document_kind: event.target.value })}><option value="">All kinds</option><option value="__null__">No document kind</option>{kinds.map(value => <option key={value} value={value}>{documentKindName(value)}</option>)}</select></label>
+    <label><span>Format</span><span className="explorer-field-reason">PDF, web page, Word document, and the other recorded formats.</span><select value={nav.format} onChange={event => onChange({ format: event.target.value })}><option value="">All formats</option>{formats.map(value => <option key={value} value={value}>{formatLabel(value)}</option>)}</select></label>
     <details className="explorer-filter-more">
-      <summary>More filters<span className="explorer-field-reason">Search field, broad category, and the reviewed catalog.</span></summary>
-      <label><span>Search field</span><span className="explorer-field-reason">Which captured-file field the search box reads.</span><select value={nav.field || 'filename'} onChange={event => onChange({ field: event.target.value === 'filename' ? '' : event.target.value })}>{fields.map(key => <option key={key} value={key}>{fieldLabel(key)}</option>)}</select></label>
-      <label><span>Broad category</span><span className="explorer-field-reason">A coarser grouping than document kind.</span><select value={nav.document_family} onChange={event => onChange({ document_family: event.target.value })}><option value="">All categories</option><option value="__null__">Unclassified</option>{family.map(value => <option key={value} value={value}>{pretty(value)}</option>)}</select></label>
-      {info.complete_body_reviews || nav.classification ? <label><span>Catalog</span><span className="explorer-field-reason">Original classifications, or the assistant-reviewed preview.</span><select value={nav.classification} onChange={event => onChange({ classification: event.target.value === 'reviewed' ? 'reviewed' : '', review: event.target.value === 'reviewed' ? info.review_sha256 || '' : '' })}><option value="">Original</option><option value="reviewed" disabled={!info.reviewed_search}>Reviewed categories</option></select></label> : null}
+      <summary>More filters<span className="explorer-field-reason">Where to search, a broader category, and a later review of the categories.</span></summary>
+      <label><span>Search field</span><span className="explorer-field-reason">Which part of the saved file the search box reads.</span><select value={nav.field || 'filename'} onChange={event => onChange({ field: event.target.value === 'filename' ? '' : event.target.value })}>{fields.map(key => <option key={key} value={key}>{fieldLabel(key)}</option>)}</select></label>
+      <label><span>Broad category</span><span className="explorer-field-reason">A wider grouping than document kind.</span><select value={nav.document_family} onChange={event => onChange({ document_family: event.target.value })}><option value="">All categories</option><option value="__null__">No category</option>{family.map(value => <option key={value} value={value}>{familyName(value)}</option>)}</select></label>
+      {info.complete_body_reviews || nav.classification ? <label><span>Categories</span><span className="explorer-field-reason">The categories saved with the file, or a later review of those categories.</span><select value={nav.classification} onChange={event => onChange({ classification: event.target.value === 'reviewed' ? 'reviewed' : '', review: event.target.value === 'reviewed' ? info.review_sha256 || '' : '' })}><option value="">Original</option><option value="reviewed" disabled={!info.reviewed_search}>Reviewed categories</option></select></label> : null}
     </details>
   </>;
 }
@@ -48,29 +48,29 @@ export function FilenameListing({ nav, info, onOpen, onPage, onSort }: { nav: Na
   if (state.status === 'ready') shown.current = { scope: nav.scope, value: state.value };
   const visible = shown.current?.scope === nav.scope ? shown.current.value : null;
   const congressSkipped = nav.congress !== 'all' && !facetValues(info, 'congress').includes(nav.congress);
-  const heading = nav.scope === 'capture-records' ? 'Source & capture records' : nav.scope === 'all' ? 'All captured records' : 'Documents';
+  const heading = nav.scope === 'capture-records' ? 'Where files came from' : nav.scope === 'all' ? 'All saved files' : 'Captured files';
   return <>
-    <div className="explorer-subheading"><h2>{heading}</h2>{state.status === 'ready' ? <span className="explorer-muted">{integer(state.value.total)} {state.value.total === 1 ? 'record' : 'records'}</span> : visible ? <span className="explorer-muted">Updating the list</span> : null}</div>
-    <p className="explorer-note">{nav.scope === 'capture-records' ? 'Source and capture records, including API references that are not saved documents.' : nav.scope === 'all' ? 'Every captured record, including documents and capture metadata.' : 'Files found on committee sites, including files that are not matched to a meeting.'} Chamber, committee, and date filters do not apply in this list. Column headings sort the full list; a third click returns to catalog order.</p>
-    {nav.document_kind === '__null__' ? <p className="explorer-note">These records have no document kind. The list labels caption segments, meeting packages, package metadata, committee pages, and meeting pages from the catalog. A page identified only by its recorded title is labeled when the file is opened.</p> : null}
-    {congressSkipped ? <p className="explorer-note">The filename catalog has no entries for the {nav.congress}th Congress, so that Congress filter is not applied here.</p> : null}
-    {nav.classification === 'reviewed' ? <p className="explorer-note">{info.reviewed_search ? `Search uses ${integer(info.reviewed_groups || 0)} assistant-reviewed groups. Downloads keep the original catalog.` : info.review_error || 'Reviewed categories are unavailable. Choose Original.'}</p> : null}
+    <div className="explorer-subheading"><h2>{heading}</h2>{state.status === 'ready' ? <span className="explorer-muted">{integer(state.value.total)} {state.value.total === 1 ? 'record' : 'records'}</span> : visible ? <span className="explorer-muted" role="status">Updating the list</span> : null}</div>
+    <p className="explorer-note">{nav.scope === 'capture-records' ? 'Records of where a file came from, including official pages that are not saved documents.' : nav.scope === 'all' ? 'Every saved file, including notes about how it was captured.' : 'Files found on committee sites, including files that are not matched to a meeting.'} Chamber, committee, and date filters do not apply in this list. Column headings sort the full list; a third click returns to the original order.</p>
+    {nav.document_kind === '__null__' ? <p className="explorer-note">These records have no document kind. The list still names caption files, meeting files, notes kept with a file, committee pages, and meeting pages. A page identified only by its title is named when the file is opened.</p> : null}
+    {congressSkipped ? <p className="explorer-note">This file list has no entries for the {nav.congress}th Congress, so that Congress filter is not applied here.</p> : null}
+    {nav.classification === 'reviewed' ? <p className="explorer-note">{info.reviewed_search ? `Search is using a later review of ${integer(info.reviewed_groups || 0)} saved files. Downloads keep the categories saved with the files.` : info.review_error || 'Reviewed categories are unavailable. Choose Original.'}</p> : null}
     {state.status === 'error' ? <RequestMessage state={state} retry={retry} noun="captured files" /> : null}
-    {state.status === 'loading' && !visible ? <p className="explorer-loading" role="status">Searching the captured-file catalog.</p> : null}
+    {state.status === 'loading' && !visible ? <p className="explorer-loading" role="status">Searching the captured files.</p> : null}
     {visible?.rows.length ? <>
-      {state.status === 'loading' ? <p className="explorer-note" role="status">Updating the list.</p> : null}
       <div className="explorer-table-scroll"><table className="explorer-table explorer-filename-table" aria-busy={state.status === 'loading'}><thead><tr>
         {sortColumns.map(([column, label, reason]) => {
           const active = nav.sort === column;
           const direction = active ? nav.direction : '';
-          return <th key={column} scope="col" aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}><button type="button" className="explorer-sort" data-direction={direction} onClick={() => onSort(nextSort(nav, column))} aria-label={direction === 'asc' ? `Sort by ${reason}, ascending. Activate to sort descending.` : direction === 'desc' ? `Sort by ${reason}, descending. Activate to restore catalog order.` : `Sort by ${reason}`}>{label}</button></th>;
+          return <th key={column} scope="col" aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}><button type="button" className="explorer-sort" data-direction={direction} onClick={() => onSort(nextSort(nav, column))} aria-label={direction === 'asc' ? `Sort by ${reason}, ascending. Activate to sort descending.` : direction === 'desc' ? `Sort by ${reason}, descending. Activate to restore the original order.` : `Sort by ${reason}`}><SortLabel label={label} /></button></th>;
         })}
       </tr></thead><tbody>
         {visible.rows.map(row => {
           const clues = filenameClues(row).filter(clue => !clue.startsWith('Filename Congress '));
-          const context = [sourceHost(row.source_url) || recoveredSourceHost(row), row.source_committee_name?.join(' · ') || '', ...clues, congressWarning(row.congress, row.source_congress), row.source_count && row.source_count > 1 ? `${integer(row.source_count)} source records` : ''].filter(Boolean);
+          const context = [sourceHost(row.source_url) || recoveredSourceHost(row), row.source_committee_name?.join(' · ') || '', ...clues, congressWarning(row.congress, row.source_congress), row.source_count && row.source_count > 1 ? `Collected ${integer(row.source_count)} times` : ''].filter(Boolean);
           const review = reviewStatusLabel(row._review_status);
           const kind = recordLabel(row);
+          const kindLines = !row.video_reference && !row.api_reference && row.document_kind?.length ? [...new Set(row.document_kind.map(documentKindName))] : [kind];
           const role = recordRoleNote(row);
           const basis = kindBasis(row);
           const serverType = serverTypeNote(row);
@@ -78,20 +78,20 @@ export function FilenameListing({ nav, info, onOpen, onPage, onSort }: { nav: Na
           const responseCheck = responseCheckNote(row);
           const sourceType = sourceDocumentTypeNote(row);
           const contentKind = contentKindNote(row);
-          const family = (row.document_family || []).map(pretty).filter(value => value && !kind.toLowerCase().includes(value.toLowerCase()));
+          const family = (row.document_family || []).map(familyName).filter(value => value && !kind.toLowerCase().includes(value.toLowerCase()));
           const http = httpStatusNote(row);
           const congress = congressLabel(row.congress);
           const sourceCongress = congressLabel(row.source_congress);
           const savedCongress = contentCongressLabel(row);
           const identity = filenameIdentity(row);
           const saved = contentAddressedFilename(identity);
-          const copyNotes = [savedResponseLabel(row), responseCheck, ...captureNotes(row), checkedAtNote(row), retrievedAtNote(row), row.recovery?.kind && !row.format?.includes(row.recovery.kind) ? `Recovered ${formatLabel(row.recovery.kind)}` : '', http].filter(Boolean);
+          const copyNotes = [savedResponseLabel(row), responseCheck, ...captureNotes(row), checkedAtNote(row), retrievedAtNote(row), row.recovery?.kind && !row.format?.includes(row.recovery.kind) ? `Recovered as ${plainFormat(row.recovery.kind)}` : '', http].filter(Boolean);
           return <tr key={`${row.source_id || row._row}`}>
-            <td className="explorer-title-cell"><button className="explorer-text-button" title={identity} aria-label={`Open ${identity}`} onClick={() => onOpen(row)}>{saved ? <><span className="explorer-filename-hash">{saved.hash}.</span>{saved.name}</> : identity}</button>
-              {context.length ? context.map(line => <span className="explorer-row-meta" key={line}>{line}</span>) : <span className="explorer-row-meta">No filename clues recorded</span>}
+            <td className="explorer-title-cell"><button className="explorer-text-button" title={saved?.name || identity} aria-label={`Open ${saved?.name || identity}`} onClick={() => onOpen(row)}>{saved?.name || identity}</button>
+              {context.length ? context.map(line => <span className="explorer-row-meta" key={line}>{line}</span>) : <span className="explorer-row-meta">Nothing else was read from the filename</span>}
             </td>
-            <td>{kind}{role && !kind.toLowerCase().includes(role.toLowerCase()) ? <span className="explorer-row-meta">{role}</span> : null}{family.length ? <span className="explorer-row-meta">{family.join(' · ')}</span> : null}{sourceType ? <span className="explorer-row-meta">{sourceType}</span> : null}{contentKind ? <span className="explorer-row-meta">{contentKind}</span> : null}{basis ? <span className="explorer-row-meta">{basis}</span> : null}{row.format?.length ? <span className="explorer-row-meta">{row.format.map(formatLabel).join(' · ')}</span> : null}{savedBody ? <span className="explorer-row-meta">{savedBody}</span> : null}{serverType ? <span className="explorer-row-meta">{serverType}</span> : null}{review ? <span className="explorer-row-meta">{review}</span> : null}</td>
-            <td>{congress || sourceCongress || savedCongress || 'Congress unrecorded'}{!congress && sourceCongress ? <span className="explorer-row-meta">From the source record</span> : null}{savedCongress ? <span className="explorer-row-meta">From the saved contents</span> : null}{contentCongressNote(row) ? <span className="explorer-row-meta">{contentCongressNote(row)}</span> : null}{copyNotes.map(note => <span className="explorer-row-meta" key={note}>{note}</span>)}</td>
+            <td><span className="explorer-recorded-lines">{kindLines.join('\n')}</span>{role && !kind.toLowerCase().includes(role.toLowerCase()) ? <span className="explorer-row-meta">{role}</span> : null}{family.length ? <span className="explorer-row-meta explorer-recorded-lines">{family.join('\n')}</span> : null}{sourceType ? <span className="explorer-row-meta">{sourceType}</span> : null}{contentKind ? <span className="explorer-row-meta">{contentKind}</span> : null}{basis ? <span className="explorer-row-meta">{basis}</span> : null}{row.format?.length ? <span className="explorer-row-meta explorer-recorded-lines">{row.format.map(formatLabel).join('\n')}</span> : null}{savedBody ? <span className="explorer-row-meta">{savedBody}</span> : null}{serverType ? <span className="explorer-row-meta">{serverType}</span> : null}{review ? <span className="explorer-row-meta">{review}</span> : null}</td>
+            <td>{congress || sourceCongress || savedCongress || 'Congress not recorded'}{!congress && sourceCongress ? <span className="explorer-row-meta">Recorded by the source</span> : null}{savedCongress ? <span className="explorer-row-meta">From the saved contents</span> : null}{contentCongressNote(row) ? <span className="explorer-row-meta">{contentCongressNote(row)}</span> : null}{copyNotes.map(note => <span className="explorer-row-meta" key={note}>{note}</span>)}</td>
           </tr>;
         })}
       </tbody></table></div>

@@ -44,6 +44,7 @@ test('column sort orders the full selection and keeps blank values last', () => 
   assert.equal(matches({ kind: 'appearance', id: 'testified', title: 'Dr. Patricia McLaughlin', participation: 'testified' }, { q: 'testified' }), true);
   assert.equal(matches({ kind: 'material', id: 'amendment', title: 'The Honorable Jay Obernolte', facts: [{ label: 'Regarding', value: 'H.R. 8462' }] }, { q: '8462' }), true);
   assert.equal(matches({ kind: 'material', id: 'sponsor', title: 'Amendment #1 to H.R. 1341', facts: [{ label: 'Sponsor Bioguide ID', value: 'B001281' }] }, { q: 'B001281' }), true);
+  assert.equal(matches({ kind: 'committee_term', id: 'admin', title: 'Committee on House Administration', committee_code: 'hsha00' }, { q: 'hsha00' }), true);
   assert.equal(matches({ kind: 'material', id: 'published', title: 'Hearing video', date: '2013-07-17', files: [{ published_at: '2016-02-08' }] }, { q: '2016-02-08' }), true);
   assert.equal(matches({ kind: 'meeting', id: 'markup', title: 'Markup of H.R. 647', facts: [{ label: 'Vote 1', value: 'H.R. 647 was ordered favorably reported by voice vote' }] }, { q: 'voice vote' }), true);
   assert.equal(matches({ kind: 'meeting', id: 'amendment', title: 'Business Meeting', facts: [{ label: 'Amendment 1', value: 'ANS - Conway Contempt Resolution' }] }, { q: 'Conway' }), true);

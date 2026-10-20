@@ -19,7 +19,7 @@ interface PublicationDocument {
 
 async function read(url: string, fetcher: CatalogFetcher, signal?: AbortSignal, immutable = false): Promise<Record<string, unknown>> {
   const response = await fetcher(url, { cache: immutable ? 'force-cache' : 'no-store', signal });
-  if (!response.ok) throw new Error('This catalog snapshot is not available. Open the latest catalog to continue.');
+  if (!response.ok) throw new Error('This file list is not available. Open the current file list to continue.');
   return response.json() as Promise<Record<string, unknown>>;
 }
 
@@ -28,7 +28,7 @@ export async function loadPublication(url: string, fetcher: CatalogFetcher = fet
   let recovery: Record<string, unknown> | undefined;
   if (manifest.version === 1 && manifest.manifest) {
     if (catalogId && catalogId !== manifest.catalog_id) {
-      if (!/^[a-f0-9]{32}$/.test(catalogId)) throw new Error('Invalid catalog snapshot.');
+      if (!/^[a-f0-9]{32}$/.test(catalogId)) throw new Error('This file list link is not valid.');
       manifest = await read(new URL(`catalogs/${catalogId}.json`, url).href, fetcher, undefined, true);
       if (manifest.catalog_id !== catalogId) throw new Error('Catalog locator identity mismatch.');
     }

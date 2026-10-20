@@ -541,9 +541,9 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
   const resolved = new Map();
   async function resolve(identity, catalog, signal) {
     signal?.throwIfAborted();
-    if (catalog && catalog !== info.catalog_id) throw new Error('This link belongs to a different catalog snapshot. Close this panel and select the document in the current results.');
+    if (catalog && catalog !== info.catalog_id) throw new Error('This link is from an older file list. Close this and choose the file again from the current results.');
     if (/^\d{1,11}$/.test(identity) && Number(identity) < info.rows) return Number(identity);
-    if (!/^[a-f0-9]{64}$/.test(identity)) throw new Error('Source record is not present in this catalog.');
+    if (!/^[a-f0-9]{64}$/.test(identity)) throw new Error('This file is not in the current file list.');
     if (resolved.has(identity)) return resolved.get(identity);
     const prefix = identity.slice(0, 2);
     const buffer = await cached(`ids:${prefix}`, async () => {
@@ -564,7 +564,7 @@ export async function createFilenameCatalog(manifestUrl, fetcher = fetch, catalo
       resolved.set(identity, row);
       return row;
     }
-    throw new Error('Source record is not present in this catalog.');
+    throw new Error('This file is not in the current file list.');
   }
   async function detailRecord(row, signal) {
     if (!files.details) {

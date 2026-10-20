@@ -29,7 +29,7 @@ export function createFilenameClient({ createWorker, context, onResult = () => {
   let sequence = 0;
   let disposed = false;
   let snapshot = context.snapshot || null;
-  const unavailable = () => new Error('The catalog reader stopped. Retry the request or reload this page.');
+  const unavailable = () => new Error('The file list stopped loading. Try again or reload this page.');
   function fail(current: CatalogWorker) {
     if (current !== worker) return;
     worker = undefined;
@@ -47,8 +47,8 @@ export function createFilenameClient({ createWorker, context, onResult = () => {
       let error = data.error;
       if (!error && call.catalogResult) {
         const identity = (data.result as { catalog_id?: unknown } | undefined)?.catalog_id;
-        if (typeof identity !== 'string' || !/^[a-f0-9]{32}$/.test(identity)) error = 'The catalog reader returned an invalid catalog identity.';
-        else if (snapshot && identity !== snapshot) error = 'The catalog reader returned a different catalog snapshot. Retry the request or reload this page.';
+        if (typeof identity !== 'string' || !/^[a-f0-9]{32}$/.test(identity)) error = 'The file list did not identify itself. Reload this page.';
+        else if (snapshot && identity !== snapshot) error = 'The file list changed while this page was open. Reload this page and try again.';
         else snapshot = identity;
       }
       if (error) { call.settle(new Error(error)); onError(error); }

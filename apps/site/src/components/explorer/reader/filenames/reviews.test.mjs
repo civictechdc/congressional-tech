@@ -23,7 +23,7 @@ test('verified review map binds the catalog pair, all aliases, pages and selecte
  assert.equal(result.groups.get(1).evidence.pages[1],'https://viewer.test/data/'+page);
  assert.deepEqual(result.info.review_facets.document_kind,['amendment','letter']);
  assert.equal(reviewedMode({classification:'reviewed',review:'pin'},result.info),true);
- assert.throws(()=>reviewedMode({classification:'reviewed',review:'old'},result.info),/different review snapshot/);
+ assert.throws(()=>reviewedMode({classification:'reviewed',review:'old'},result.info),/older review/);
  assert.throws(()=>reviewedMode({classification:'wrong'},result.info),/Unknown classification/);
 });
 test('unsupported packets remain annotations and cannot introduce searchable categories',async()=>{

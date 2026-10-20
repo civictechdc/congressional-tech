@@ -128,7 +128,7 @@ test('static Parquet queries match the Python catalog and preserve complete sour
     assert(!freshRequests.some(path=>path.endsWith('/documents.parquet')||path.endsWith('/document-summaries.parquet')));
 
     assert.deepEqual((await reader.entry('2')).origin.pages[0].titles, ['Hearing page']);
-    await assert.rejects(reader.entry('0', 'stale'), /different catalog snapshot/);
+    await assert.rejects(reader.entry('0', 'stale'), /older file list/);
     await assert.rejects(reader.entry('unknown'), /not present/);
     await assert.rejects(reader.search({field:'missing'}), /Unknown search field/);
     const controller = new AbortController(); controller.abort();
@@ -365,7 +365,7 @@ test('public reviewed search covers aliases, null filters, provenance, annotatio
     assert.equal((await reader.review('0',data.catalog_id)).selected.document_kind[0],'letter');
     assert.equal((await reader.review('0',data.catalog_id,undefined,true)).selected.document_kind[0],'witness-statement');
     assert.equal((await reader.review('3',data.catalog_id)).status,'no_review');
-    await assert.rejects(reader.search({...reviewed,review:'old'}),/different review snapshot/);
+    await assert.rejects(reader.search({...reviewed,review:'old'}),/older review/);
     applied.document_kind.push('mutated');assert.deepEqual((await reader.search({...reviewed,document_kind:'letter'})).rows[0].document_kind,['letter']);
   }finally{await rm(folder,{recursive:true,force:true});}
 });

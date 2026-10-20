@@ -41,6 +41,24 @@ export function recordedWhen(row: { date?: string | null; scheduled_at?: string 
   return { date, time };
 }
 
+/** The date and time a related row would show, including a schedule that falls on another day. */
+export function listedWhen(row: { date?: unknown; scheduled_at?: unknown }): string {
+  const dated = { date: typeof row.date === 'string' ? row.date : '', scheduled_at: typeof row.scheduled_at === 'string' ? row.scheduled_at : '' };
+  const day = dated.date.slice(0, 10);
+  const clock = day ? [day, recordedWhen(dated).time].filter(Boolean).join(' ') : '';
+  return [clock, scheduleNote(dated)].filter(Boolean).join(' · ');
+}
+
+/** True when a related row’s time only repeats the meeting already open. A different day or a more specific time stays. */
+export function repeatsRecordedWhen(value: string, meetingWhen: string): boolean {
+  const when = value.trim();
+  const meeting = meetingWhen.trim();
+  if (!when || !meeting) return false;
+  if (when === meeting) return true;
+  const day = meeting.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) && when === day && meeting.startsWith(`${day} `);
+}
+
 /** A scheduled instant that is not already the record’s own date. */
 export function scheduleNote(row: { date?: string | null; scheduled_at?: string | null }): string {
   const scheduled = row.scheduled_at || '';
@@ -70,12 +88,21 @@ function addressLine(location: unknown): string {
     .map(key => typeof place[key] === 'string' ? place[key].trim() : '').filter(Boolean).join(', ');
 }
 
+function plainSourceId(value: string): string {
+  const parts = value.split('|').map(part => part.trim()).filter(Boolean);
+  const chamber = parts.length >= 3 ? { house: 'House', senate: 'Senate', joint: 'Joint' }[parts[2].toLowerCase()] : '';
+  if (parts.length >= 4 && /^\d+$/.test(parts[1]) && chamber) return `${congressName(parts[1])}, ${chamber}, event ${parts.slice(3).join(' ')}`;
+  if (parts.length === 3 && /^\d+$/.test(parts[1]) && parts[2]) return `${congressName(parts[1])}, event ${parts[2]}`;
+  return '';
+}
+
 function identifierLine(value: unknown): string {
   const record = parsed(value);
-  if (typeof record === 'string') return record.trim();
+  if (typeof record === 'string') return plainSourceId(record.trim()) || record.trim();
   if (!record || typeof record !== 'object' || Array.isArray(record)) return '';
   const identifier = record as { scheme?: unknown; value?: unknown };
-  return [identifier.scheme, identifier.value].filter((item): item is string => typeof item === 'string' && item.trim() !== '').join(' · ');
+  const id = typeof identifier.value === 'string' ? identifier.value.trim() : '';
+  return plainSourceId(id) || [identifier.scheme, id].filter(Boolean).join(' · ');
 }
 
 /** The source's own meeting type, when it names a different kind than the normalized type. */
@@ -123,7 +150,7 @@ export function recordedAction(row: { title?: string | null; facts?: readonly { 
   else if (votes.length) parts.push(...votes.map(value => `Vote ${value}`));
   parts.push(...values('Regarding'));
   parts.push(...values('Sponsor'));
-  parts.push(...values('Sponsor Bioguide ID'));
+  parts.push(...values('Sponsor Bioguide ID').map(value => `Member number ${value}`));
   parts.push(...values('En bloc group').map(value => `En bloc ${value}`));
   parts.push(...values('Vote question'));
   parts.push(...values('Amendment description'));
@@ -179,12 +206,28 @@ export function publishedNote(row: { date?: string | null; files?: readonly { pu
   return `Published ${dates.join(' · ')}`;
 }
 
+/** Ordinary bill numbers and vote notes. Catalog codes such as HR 2625 become H.R. 2625. */
+export function plainLegislativeNote(value: string): string {
+  return value
+    .replace(/\s*\(no attached file\)\s*$/i, '')
+    .replace(/\bH\.?\s*Con\.?\s*Res\.?\s*(\d+)\b/gi, 'H.Con.Res. $1')
+    .replace(/\bS\.?\s*Con\.?\s*Res\.?\s*(\d+)\b/gi, 'S.Con.Res. $1')
+    .replace(/\bH\.?\s*J\.?\s*Res\.?\s*(\d+)\b/gi, 'H.J.Res. $1')
+    .replace(/\bS\.?\s*J\.?\s*Res\.?\s*(\d+)\b/gi, 'S.J.Res. $1')
+    .replace(/\bH\.?\s*Res\.?\s*(\d+)\b/gi, 'H.Res. $1')
+    .replace(/\bS\.?\s*Res\.?\s*(\d+)\b/gi, 'S.Res. $1')
+    .replace(/\bH\.?R\.?\s*(\d+)\b/gi, 'H.R. $1')
+    .replace(/\bS\.?\s*(\d+)\b/g, 'S. $1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** Every bill, resolution, treaty, and nomination recorded for a meeting. */
 export function recordedMeasureValues(row: { facts?: readonly { label?: string | null; value?: string | null }[] | null }): string[] {
   const seen = new Set<string>();
   const values: string[] = [];
   for (const fact of row.facts || []) {
-    const value = fact.value?.trim() || '';
+    const value = plainLegislativeNote(fact.value?.trim() || '');
     if (!value || !measureLabels.includes(fact.label || '') || seen.has(value)) continue;
     seen.add(value);
     values.push(value);
@@ -201,7 +244,19 @@ export function recordedMeasures(row: { facts?: readonly { label?: string | null
 }
 
 const evidenceAspects = [['recording', 'Recording'], ['transcript', 'Transcript'], ['documents', 'Documents'], ['witnesses', 'Witness list'], ['captions', 'Captions']] as const;
-const evidenceStateWords: Record<string, string> = { not_found_in_checked_scope: 'not found', error: 'check failed', blocked: 'check blocked', not_applicable: 'not applicable' };
+export const evidenceStateLabels: Record<string, string> = {
+  observed: 'Seen in a checked source',
+  reported: 'Stated by the source',
+  curated: 'Entered in this archive',
+  derived: 'Worked out from other facts',
+  inferred: 'Likely match, needs a check',
+  not_found_in_checked_scope: 'Not found where we looked',
+  error: 'Check failed',
+  blocked: 'Check blocked',
+  not_applicable: 'Does not apply',
+  unknown: 'Not recorded',
+  unchecked: 'Not checked',
+};
 
 /** The recorded evidence state for each meeting aspect. */
 export function evidenceParts(states: { [key: string]: string | null | undefined } | null | undefined): string[] {
@@ -209,14 +264,22 @@ export function evidenceParts(states: { [key: string]: string | null | undefined
   return evidenceAspects.flatMap(([key, label]) => {
     const state = states[key];
     if (!state) return [];
-    const word = evidenceStateWords[state] || state.replaceAll('_', ' ');
-    return [`${label} ${word}`];
+    const word = state === 'not_applicable' ? 'not applicable' : evidenceStateLabels[state] || state.replaceAll('_', ' ');
+    return [`${label} ${word.charAt(0).toLowerCase()}${word.slice(1)}`];
   });
 }
 
 /** The recorded evidence state for each meeting aspect, in one line. */
 export function evidenceLine(states: { [key: string]: string | null | undefined } | null | undefined): string {
   return evidenceParts(states).join(' · ');
+}
+
+const quietEvidence = new Set(['unchecked', 'unknown', 'not_applicable']);
+
+/** Evidence a meeting row can show. Not checked, not recorded, and does not apply stay on the record. */
+export function listedEvidence(states: { [key: string]: string | null | undefined } | null | undefined): string[] {
+  if (!states) return [];
+  return evidenceAspects.flatMap(([key]) => quietEvidence.has(states[key] || '') ? [] : evidenceParts({ [key]: states[key] }));
 }
 
 /** A location's recorded "label" is the place, when the same record also names a building or city. */
@@ -228,17 +291,35 @@ export function factLabel(label: string, siblingLabels: readonly string[]): stri
 
 /** Recorded roll-call or voice-vote results, in the order they were stored. */
 export function recordedVotes(row: { facts?: readonly { label?: string | null; value?: string | null }[] | null }): string[] {
-  return (row.facts || []).flatMap(fact => /^vote \d+$/i.test(fact.label || '') && fact.value?.trim() ? [fact.value.trim()] : []);
+  return numberedFactValues(row.facts, 'vote');
 }
 
 /** Recorded amendment outcomes, in the order they were stored. */
 export function recordedAmendments(row: { facts?: readonly { label?: string | null; value?: string | null }[] | null }): string[] {
-  return (row.facts || []).flatMap(fact => {
+  const numbered = (row.facts || []).flatMap(fact => {
     const label = fact.label || '';
     const value = fact.value?.trim() || '';
-    if (!/^amendment( \d+)?$/i.test(label) || !value) return [];
-    return [value.toLowerCase().includes(label.toLowerCase()) ? value : `${label}: ${value}`];
+    const match = /^amendment (\d+)$/i.exec(label);
+    const note = plainLegislativeNote(value);
+    if (!match || !note) return [];
+    const text = note.toLowerCase().includes(label.toLowerCase()) ? note : `${label}: ${note}`;
+    return [{ n: Number(match[1]), text }];
+  }).sort((a, b) => a.n - b.n).map(item => item.text);
+  const plain = (row.facts || []).flatMap(fact => {
+    const label = fact.label || '';
+    const note = plainLegislativeNote(fact.value?.trim() || '');
+    if (label.toLowerCase() !== 'amendment' || !note) return [];
+    return [note.toLowerCase().includes(label.toLowerCase()) ? note : `${label}: ${note}`];
   });
+  return [...numbered, ...plain];
+}
+
+function numberedFactValues(facts: readonly { label?: string | null; value?: string | null }[] | null | undefined, name: string): string[] {
+  return (facts || []).flatMap(fact => {
+    const match = new RegExp(`^${name} (\\d+)$`, 'i').exec(fact.label || '');
+    const value = plainLegislativeNote(fact.value?.trim() || '');
+    return match && value ? [{ n: Number(match[1]), text: value }] : [];
+  }).sort((a, b) => a.n - b.n).map(item => item.text);
 }
 
 /** The official site recorded for a committee term. */
@@ -276,6 +357,9 @@ export function distinctRecordedFacts(facts: readonly { label?: string | null; v
       return ['Compared field', field || value];
     }
     if (label.toLowerCase() === 'detected at') return ['Detected', recordedInstant(value)];
+    if (label.toLowerCase() === 'selection reason') return ['Why this version', plainRecordedNote(value)];
+    if (label.toLowerCase() === 'resolution') return ['What was decided', plainRecordedNote(value)];
+    if (measureLabels.includes(label) || /^(vote|amendment)(?: \d+)?$/i.test(label)) return [label, plainLegislativeNote(value)];
     return [label, value];
   });
 }
@@ -306,7 +390,7 @@ export function collapseRepeatedFacts(facts: readonly (readonly [unknown, unknow
   return grouped.map(([name, values]) => [name, values.join('\n')]);
 }
 
-const sourceEnvelope = [['provider', 'Provider'], ['retrieved_at', 'Retrieved'], ['imported_at', 'Imported'], ['source_modified_at', 'Source modified'], ['input_snapshot_id', 'Input snapshot'], ['retained_uri', 'Retained copy'], ['retained_sha256', 'Retained SHA-256']] as const;
+const sourceEnvelope = [['provider', 'Source'], ['retrieved_at', 'Fetched'], ['imported_at', 'Added here'], ['source_modified_at', 'Changed at the source'], ['retained_uri', 'Saved original']] as const;
 const sourceLinkGroups = [['meetingDocuments', 'Meeting document'], ['witnessDocuments', 'Witness document'], ['videos', 'Video']] as const;
 
 function text(value: unknown): string {
@@ -359,25 +443,30 @@ function relatedLines(value: unknown): string {
 export function sourceFacts(value: object): [string, string][] {
   const row = value as Record<string, unknown>;
   const facts: [string, string][] = [];
-  for (const [key, label] of sourceEnvelope) if (typeof row[key] === 'string' && row[key].trim()) facts.push([label, ['Retrieved', 'Imported', 'Source modified'].includes(label) ? recordedInstant(row[key].trim()) : row[key].trim()]);
+  for (const [key, label] of sourceEnvelope) {
+    if (typeof row[key] !== 'string' || !row[key].trim()) continue;
+    const recorded = row[key].trim();
+    if (label === 'Saved original' && !/^https?:\/\//i.test(recorded)) continue;
+    facts.push([label, ['Fetched', 'Added here', 'Changed at the source'].includes(label) ? recordedInstant(recorded) : recorded]);
+  }
   const identifier = identifierLine(row.identifier);
-  if (identifier) facts.push(['Identifier', identifier]);
+  if (identifier) facts.push(['Record number', identifier]);
   const payload = payloadOf(value);
   if (!payload) return facts;
   const place = addressLine(payload.location);
   if (place) facts.push(['Place', place]);
-  for (const [key, label] of [['meetingStatus', 'Source status'], ['type', 'Source type'], ['eventId', 'Event ID'], ['updateDate', 'Source updated']] as const) {
+  for (const [key, label] of [['meetingStatus', 'Status at the source'], ['type', 'Type at the source'], ['eventId', 'Event number'], ['updateDate', 'Updated at the source']] as const) {
     const recorded = key === 'updateDate' ? recordedInstant(text(payload[key])) : text(payload[key]);
     if (recorded) facts.push([label, recorded]);
   }
-  const committees = rowsOf(payload.committees).map(item => [text(item.name), text(item.systemCode)].filter(Boolean).join(' · ')).filter(Boolean);
-  if (committees.length) facts.push(['Source committees', committees.join('\n')]);
+  const committees = rowsOf(payload.committees).map(item => text(item.name) || (text(item.systemCode) ? `Committee code ${text(item.systemCode)}` : '')).filter(Boolean);
+  if (committees.length) facts.push(['Committees', committees.join('\n')]);
   const witnesses = [...rowsOf(payload.witnesses), ...rowsOf(payload.people)].map(witnessLine).filter(Boolean);
   if (witnesses.length) facts.push(['Source witnesses', [...new Set(witnesses)].join('\n')]);
   if (payload.absent === true) facts.push(['Listing', 'Recorded as absent']);
   const related = relatedLines(payload.relatedItems);
   if (related) facts.push(['Related items', related]);
-  const transcripts = rowsOf(payload.hearingTranscript).map(item => text(item.jacketNumber)).filter(Boolean).map(jacket => `Jacket ${jacket}`);
+  const transcripts = rowsOf(payload.hearingTranscript).map(item => text(item.jacketNumber)).filter(Boolean).map(jacket => `Transcript number ${jacket}`);
   if (transcripts.length) facts.push(['Hearing transcript', transcripts.join('\n')]);
   const sittings = [...new Set([...rowsOf(payload.continuations).map(item => text(item.continuationDate)).filter(Boolean), ...extraHearingDates(payload)])];
   if (sittings.length) facts.push(['Additional sitting', sittings.join('\n')]);
@@ -415,7 +504,7 @@ function witnessLine(item: Record<string, unknown>): string {
   const behalf = text(item.behalf_of);
   const page = text(item.page);
   const bioguide = text(item.bioguide_id);
-  return [titled, text(item.position), organization, location && !covered.includes(location.toLowerCase()) ? location : '', behalf && !covered.includes(behalf.toLowerCase()) ? `On behalf of ${behalf}` : '', text(item.witness_type), text(item.panel) ? `Panel ${text(item.panel)}` : '', page && !/^https?:\/\//i.test(page) ? `Page ${page}` : '', testifiedNote(text(item.testified)), bioguide ? `Bioguide ${bioguide}` : ''].filter(Boolean).join(' · ');
+  return [titled, text(item.position), organization, location && !covered.includes(location.toLowerCase()) ? location : '', behalf && !covered.includes(behalf.toLowerCase()) ? `On behalf of ${behalf}` : '', text(item.witness_type), text(item.panel) ? `Panel ${text(item.panel)}` : '', page && !/^https?:\/\//i.test(page) ? `Page ${page}` : '', testifiedNote(text(item.testified)), bioguide ? `Member number ${bioguide}` : ''].filter(Boolean).join(' · ');
 }
 
 /** Hearing days recorded besides the held date. */
@@ -434,7 +523,7 @@ function witnessListNote(value: string): string {
 function captionKindNote(value: string): string {
   if (value === 'auto') return 'Automatic';
   if (value === 'manual') return 'Manual';
-  if (value === 'webvtt') return 'WebVTT';
+  if (value === 'webvtt') return 'Web captions';
   if (value === 'none') return 'None recorded';
   return '';
 }
@@ -475,21 +564,20 @@ function payloadIdentity(payload: Record<string, unknown>): [string, string][] {
   };
   const title = text(payload.title);
   const description = text(payload.description);
-  push('Recorded title', payload.title);
-  push('Video ID', payload.videoId);
+  push('YouTube video', payload.videoId);
   const duration = clockDuration(payload.duration);
   if (duration) facts.push(['Duration', duration]);
   if (typeof payload.caption === 'boolean') facts.push(['Captions', payload.caption ? 'Recorded' : 'Not recorded']);
   if (description && description.toLowerCase() !== title.toLowerCase()) facts.push(['Description', description]);
   push('Published', recordedInstant(text(payload.publishedAt)));
-  push('Package', payload.package_id);
+  push('GovInfo number', payload.package_id);
   push('Committee', payload.committee_name);
   push('Committee code', payload.committee_code);
   push('Subcommittee', payload.subcommittees);
   push('Held', payload.held_date);
   push('Serial', payload.serial);
   const witnesses = text(payload.witness_count);
-  if (witnesses && witnesses !== '0') facts.push(['Witnesses in package', witnesses]);
+  if (witnesses && witnesses !== '0') facts.push(['Witnesses listed', witnesses]);
   const congress = congressName(payload.congress);
   if (congress) facts.push(['Congress', congress]);
   const chamber = text(payload.chamber);
@@ -501,14 +589,14 @@ function payloadIdentity(payload: Record<string, unknown>): [string, string][] {
   const captionKind = captionKindNote(text(payload.kind));
   if (captionKind && typeof payload.caption !== 'boolean') facts.push(['Captions', captionKind]);
   push('Checked', recordedInstant(text(payload.checked) || text(payload.details_checked_at)));
-  push('Version', recordedInstant(text(payload.version)));
-  push('XML updated', recordedInstant(text(payload.xml_update)));
+  push('File dated', recordedInstant(text(payload.version)));
+  push('Meeting file updated', recordedInstant(text(payload.xml_update)));
   const events = Array.isArray(payload.events) ? payload.events.map(text).filter(Boolean) : [];
-  if (events.length) facts.push(['Event ID', events.join('\n')]);
-  if (!text(payload.eventId)) push('Event ID', payload.event_id);
+  if (events.length) facts.push(['Event number', events.join('\n')]);
+  if (!text(payload.eventId)) push('Event number', payload.event_id);
   const witness = [text(payload.name), text(payload.position), text(payload.organization)].filter(Boolean).join(' · ');
   if (witness && !rowsOf(payload.witnesses).length) facts.push(['Witness', witness]);
-  push('From package', payload.from);
+  push('Part of', payload.from);
   push('Channel', payload.channelTitle);
   push('Citation', payload.preferred_citation);
   const length = minuteLength(text(payload.video_minutes));
@@ -516,9 +604,9 @@ function payloadIdentity(payload: Record<string, unknown>): [string, string][] {
   push('Matched channels', payload.channels);
   const recordType = text(payload.record_type);
   if (recordType && recordType.toLowerCase() !== 'hearing') facts.push(['Record type', recordType]);
-  push('Package updated', recordedInstant(text(payload.last_modified)));
+  push('Last changed', recordedInstant(text(payload.last_modified)));
   const ingested = text(payload.date_ingested).slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}$/.test(ingested)) facts.push(['Ingested', ingested]);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ingested)) facts.push(['Added at the source', ingested]);
   if (payload.available === false) facts.push(['Availability', 'Not available']);
   const note = text(payload.note);
   if (note) facts.push([videoMatchStatus[text(payload.status)] || text(payload.video_minutes) || text(payload.channels) ? 'Match note' : 'Note', note]);
@@ -638,10 +726,10 @@ export function sourceLinks(value: object): { links: SourceLink[] } {
     const sponsor = text(item.sponsor_bioguide);
     const existing = links.find(link => link.href === href);
     if (existing) {
-      if (sponsor && !existing.label.includes(`Sponsor ${sponsor}`)) existing.label = `${existing.label} · Sponsor ${sponsor}`;
+      if (sponsor && !existing.label.includes(`Member number ${sponsor}`)) existing.label = `${existing.label} · Member number ${sponsor}`;
       continue;
     }
-    const named = [text(item.bill), text(item.number) ? `Amendment ${text(item.number)}` : '', text(item.description), sponsor ? `Sponsor ${sponsor}` : ''].filter(Boolean).join(' · ') || 'Amendment';
+    const named = [text(item.bill), text(item.number) ? `Amendment ${text(item.number)}` : '', text(item.description), sponsor ? `Member number ${sponsor}` : ''].filter(Boolean).join(' · ') || 'Amendment';
     const filename = linkFilename(href);
     links.push({ group: 'Amendment', href, label: filename && !named.includes(filename) ? `${named} · ${filename}` : named });
   }
@@ -699,18 +787,27 @@ function congressEventPage(href: string): boolean {
   }
 }
 
+function tupleParts(item: unknown[]): string[] {
+  return item.flatMap(part => Array.isArray(part) ? part.flatMap(text).filter(Boolean) : text(part) ? [text(part)] : []);
+}
+
 function tupleLinks(value: unknown, fallback: string): SourceLink[] {
   if (!Array.isArray(value)) return [];
   const links: SourceLink[] = [];
   for (const item of value) {
     if (!Array.isArray(item)) continue;
-    const parts = item.map(part => text(part));
+    const parts = tupleParts(item);
     const href = parts.find(part => /^https?:\/\//i.test(part));
-    if (!href) continue;
-    const group = parts.find(part => part && part !== href) || fallback;
-    const named = parts.filter(part => part && part !== href && part !== group).join(' · ') || group;
-    const filename = linkFilename(href);
-    links.push({ group: group.charAt(0).toUpperCase() + group.slice(1), href, label: filename && !named.includes(filename) ? `${named} · ${filename}` : named });
+    const recorded = parts.find(part => part.includes('://') || /^mailto:/i.test(part));
+    const address = href || recorded;
+    if (!address) continue;
+    const group = parts.find(part => part !== address && !part.includes('://') && !/^mailto:/i.test(part) && !part.includes('.')) || fallback;
+    const named = parts.filter(part => part && part !== address && part !== group).join(' · ') || group;
+    const filename = href ? linkFilename(href) : '';
+    const label = href
+      ? filename && !named.includes(filename) ? `${named} · ${filename}` : named
+      : `${named} · Not a web link. The saved address has extra “mailto:” text in front of ${address.replace(/^mailto:/i, '')}`;
+    links.push({ group: group.charAt(0).toUpperCase() + group.slice(1), href: address, label });
   }
   return links;
 }
@@ -778,7 +875,8 @@ function recordLeaves(value: unknown, prefix = ''): Map<string, string> {
 }
 
 function readablePath(path: string): string {
-  return path.split(' · ').map(part => part.toLowerCase() === 'id' ? 'ID' : phrase(part) || part).join(' ');
+  const parts = path.split(' · ').filter(part => part.toLowerCase() !== 'details');
+  return (parts.length ? parts : path.split(' · ')).map(part => part.toLowerCase() === 'id' ? 'ID' : phrase(part) || part).join(' ');
 }
 
 function readableValue(value: string): string {
@@ -812,14 +910,21 @@ function collapsedLeaves(changes: readonly string[], base: ReadonlyMap<string, s
   return kept;
 }
 
-function identifierDifference(path: string, value: string, where: string): string {
-  return value === 'none' ? `Nothing recorded ${where}` : `${readablePath(path)} ${where}\n${value}`;
+function versionName(index: number): string {
+  return index === 1 ? 'another recorded version' : `recorded version ${index}`;
 }
 
 function differenceLine(path: string, selected: string, alternative: string, index: number): string {
+  const name = readablePath(path);
+  const other = versionName(index);
   const identifier = /^[0-9a-f-]{32,}$/i.test(selected) || /^[0-9a-f-]{32,}$/i.test(alternative);
-  if (identifier) return `${identifierDifference(path, selected, 'on the selected record')}\n${identifierDifference(path, alternative, `on alternative ${index}`)}`;
-  return `${readablePath(path)}: ${readableValue(selected)} on the selected record; ${readableValue(alternative)} on alternative ${index}`;
+  if (identifier) {
+    const otherLabel = `${other[0].toUpperCase()}${other.slice(1)}`;
+    if (selected === 'none') return `${name}: not on this version. ${otherLabel} has it.`;
+    if (alternative === 'none') return `${name}: on this version. ${otherLabel} does not have it.`;
+    return `${name}: the two versions do not match.`;
+  }
+  return `${name}: ${readableValue(selected)} on this record; ${readableValue(alternative)} on ${other}`;
 }
 
 /** The fields that differ between a selected JSON value and its recorded alternatives. */
@@ -838,7 +943,148 @@ export function disagreementSummary(selected: string, alternatives: readonly str
   return lines;
 }
 
-/** What an issue list row can show from the recorded explanation and compared values. */
+const recordedPhrases: Record<string, string> = {
+  'The original video publication time is not established by this cache.': 'The original time this video was published is not known from the saved copy.',
+  'This recording has no verified meeting association.': 'This recording is not matched to a meeting.',
+  'This package has no verified meeting association.': 'This set of published files is not matched to a meeting.',
+  'The retained decision aggregates its recording evidence.': 'This result combines several recordings and is not split among them.',
+  'This document has no supported meeting association.': 'This document is not matched to a meeting.',
+  'Sources disagree about label': 'Sources disagree about the label.',
+  'Package-level recordings cannot yet be assigned to individual meetings.': 'These recordings belong to a whole volume and are not assigned to one meeting.',
+  'The caption observation has no supported observation date.': 'These captions have no saved date for when they were seen.',
+  'Legacy House state omits alternate file URLs and source ownership': 'An older House record does not include other file addresses or who provided the file.',
+  'Sources disagree about name': 'Sources disagree about the name.',
+  'This page has no retained live retrieval receipt.': 'This page has no saved record of a live download.',
+  'The probe has no supported live check date.': 'There is no saved date for a live check of this page.',
+  'This committee/day probe has no known recording association.': 'No recording is matched to this committee on this day.',
+  'Sources disagree about participation': 'Sources disagree about how the person took part.',
+  'The retained witness source has no supported live retrieval check.': 'This witness record has no saved live check.',
+  'This retained committee page has no supported meeting association.': 'This committee page is not matched to a meeting.',
+  'Sources disagree about title': 'Sources disagree about the title.',
+  'Witness rows have no meeting ownership in this source record.': 'These witnesses are not matched to a meeting in this source.',
+  'The retained clips_only verdict omits the clip identifiers.': 'This result says there are clips, but the clip names were not saved.',
+  'This caption observation has no known recording identity.': 'These captions are not matched to a recording.',
+  'Same-name witness rows need identity review': 'Witnesses with the same name still need to be checked.',
+  'Sources disagree about proceeding_dates': 'Sources disagree about the dates.',
+  "The reported held date differs from the transcript's retained day headers.": 'The reported date differs from the dates in the transcript.',
+  'Sources disagree about role': 'Sources disagree about the role.',
+  'Same-name House witnesses need correspondence review': 'House witnesses with the same name still need to be checked as one person.',
+  'Source repeats the same convening committee': 'The source lists the same committee more than once.',
+  'A House source file URL is malformed': 'A House file address is not a usable download link.',
+  'Sources disagree about meeting_type': 'Sources disagree about the kind of meeting.',
+  'This retained page may contain binary document data decoded as text.': 'This page may be a document that was saved as unreadable text.',
+  'Sources disagree about chamber': 'Sources disagree about the chamber.',
+  'Later record in deterministic source order; alternatives retained.': 'The later source was kept. The other version is still saved.',
+  'Use the retained transcript day headers when supplied; otherwise use the native held dates.': 'The date comes from the transcript when it has one. Otherwise it is the date the meeting was held.',
+  'The retained publishedAt field is the playlist-item timestamp. It remains in the source record.': 'The published date is the time this item was added to the playlist. That time is still saved with the original source.',
+  'Retained as a document. A title, committee code or hearing date alone does not establish meeting identity.': 'Kept as a document. A title, a committee, or a hearing date is not enough to name the meeting.',
+  'Its method, maximum score, channels and total minutes cannot be assigned to each video. The score is a matcher rank, not a probability; the producer revision and original check time are unavailable.': 'This result covers more than one video, so it is not split across them. The ranking is not a chance of being right, and the original check time was not saved.',
+  'The containing page has no unambiguous saved meeting match.': 'The page this came from does not match one saved meeting.',
+  'There is no single supported meeting and date combination. Shared or multiple-date volume results are retained at package level without distributing recordings across meetings.': 'These recordings belong to a volume that covers more than one meeting or date, so they stay with the volume.',
+  'Index-only observations remain undated. Import time and file modification time are not capture times.': 'Only an index entry was saved, so there is no capture date. When the file was imported or last changed is not when it was captured.',
+  'The saved checked day may be a cache import or scheduling date. It does not establish when the source was observed.': 'The saved check date may be when the file was imported or scheduled. It is not when the source was seen.',
+  "Research HEAD cache dates come from the imported file's modification time. They are not source observation times.": 'The saved date is when the imported file was last changed. It is not when the source was seen.',
+  'Its source scope is retained. A committee and date alone do not establish a meeting identity.': 'A committee and a date are not enough to name the meeting. The original scope is still saved.',
+  'Its checked day and any import time are preserved in the payload and are not promoted to retrieval timestamps.': 'The date this was checked, and the date it was imported, stay with the original source. They are not used as the date the record was retrieved.',
+  'Documents remain discoverable. Witness rows remain in the source payload until their meeting is established.': 'The documents can still be found. The witness list stays with the original source until the meeting is identified.',
+  'A recovered row with an explicit, unique event association is required before creating an appearance.': 'A witness is recorded only when the file points to one specific event.',
+  'The file appears on more than five pages and may be site-wide content.': 'This file appears on more than five pages and may belong to the whole site.',
+  'No clip resources or full-recording coverage were created from this aggregate verdict.': 'No clips or full-recording coverage were saved from this combined result.',
+  'Both dates remain available; neither establishes a new meeting or proves the other is incorrect.': 'Both dates are saved. Neither one creates a new meeting or shows that the other date is wrong.',
+  'The selected meeting association is listed once; the raw repeated entries remain in evidence.': 'The meeting is listed once. The repeated entries are still saved.',
+  'The original value remains in source evidence. It cannot be offered as an absolute HTTP(S) download URL without a verified correction.': 'The original address is saved. It cannot be offered as a download until it is corrected.',
+  'The URL ends in .pdf, the title is empty, and retained lines contain replacement or control characters. Original response bytes and MIME type are not retained, so the input format remains unverified.': 'The address ends in .pdf, the title is empty, and the saved text contains unreadable characters. The original file was not kept, so its format is not confirmed.',
+  'The existing print matcher supplied a supported association; its method and evidence remain on the link.': 'A match to a printed hearing was saved with this link.',
+  'Original bytes and acquisition metadata; cached replay is not a new upstream retrieval.': 'The original file and the notes about how it was collected are saved. Reading the saved copy again is not a new download.',
+  'Retained supplemental source records; uncollected meetings and unsupported layouts are not covered.': 'Extra source records are saved. Meetings that were not collected, and page layouts this archive does not read, are not included.',
+  'Cited corrections preserve original source names and classifications.': 'Corrections keep the original names and categories.',
+  'Existing matcher decisions computed from all supplied native/GPO context before applying the export selection.': 'Matches were decided from the full source material before this export chose what to include.',
+  'Retained metadata only; caption availability and reachability have not been checked by this export.': 'Only the description is saved. This export did not check whether captions exist or whether the page still opens.',
+  'Original notes and discovery method retained; links do not prove full coverage or current reachability.': 'The original notes and how the file was found are saved. A link does not mean the whole site was collected or that the page still opens.',
+  'Aggregate matcher evidence retained; only single-meeting, single-date package associations create meeting links.': 'The match notes are saved. A package is linked to a meeting only when it belongs to one meeting on one date.',
+  'Unsupported ownership and cache-derived dates remain explicit issues; no caption content is invented.': 'Unclear ownership and dates taken from a saved copy stay listed as issues. Caption text is not made up.',
+  'Unique explicit event associations supply listed appearances; title-derived nominees remain inferred. Unique matching originating appearances retain their identity and richer fields.': 'A witness is listed when the file names one specific event. A person guessed from a title stays marked as a guess. A witness who matches one earlier record keeps that identity and its extra details.',
+  'No body artifacts were supplied; metadata links do not establish captured or searchable text.': 'The text of the document was not included. A link in the description does not mean the text was captured or can be searched.',
+  'Legacy native records lack per-record retrieval timestamps.': 'Older records do not say when each one was downloaded.',
+  'Legacy checked dates may reflect seed import; live retrieval is established only by explicit receipts.': 'An older check date may be when the file was first imported. A live download is recorded only when there is a receipt for it.',
+  'CSV does not preserve all raw MODS metadata or downloaded transcript bytes.': 'The spreadsheet does not keep every original catalog field or the downloaded transcript.',
+  'Derived offline from retained meeting and GPO inputs, using existing matcher rules.': 'Worked out from the saved meetings and Government Publishing Office files, using the existing match rules.',
+  'Offline export: import time is not a source check.': 'This is a saved export. The time it was imported is not the time a source was checked.',
+  'Existing print matching rules run offline with explanations; video matching heuristics are not rerun.': 'Printed-hearing matches were made from the saved files, with an explanation. Video matches were not run again.',
+  'Historical issue evidence may refer to records outside the current selection; meeting index describes the current selection.': 'An older issue may point at a record that is not in this selection. The meeting index describes only this selection.',
+  'Retained committee meeting records, all statuses': 'Saved committee meeting records, including every status',
+  'Official Congress-scoped committee lists': 'Official committee lists for each Congress',
+  'Retained MODS and transcript observations': 'Saved catalog records and transcript notes',
+  'House parsed source state': 'House records as read from the source',
+  'Senate parsed source state': 'Senate records as read from the source',
+  'Reviewed committee metadata corrections': 'Reviewed corrections to committee records',
+  'Print-to-meeting associations': 'Links from printed hearings to meetings',
+  'Retained GPO package metadata': 'Saved Government Publishing Office package descriptions',
+  'Retained manual meeting-recording associations': 'Saved links between meetings and recordings that were entered by hand',
+  'Retained package recording decisions': 'Saved decisions about which recording belongs to a package',
+  'Retained caption, archive and witness observations': 'Saved notes on captions, archives, and witnesses',
+  'Retained recovered witness rows': 'Saved witness rows that were recovered',
+  'Retained transcript bodies': 'Saved transcript text',
+};
+
+const collectionNames: Record<string, string> = { congress: 'Congress', meetings: 'meetings', committees: 'committee', youtube: 'YouTube' };
+
+function plainSentence(text: string): string {
+  const known = recordedPhrases[text] || recordedPhrases[text.charAt(0).toUpperCase() + text.slice(1)];
+  if (known) return known;
+  if (text.startsWith('Collectors assigned different internal edition labels.')) return 'The sources used different edition labels. That is not a disagreement about the content.';
+  const importedAll = /^Imported (\d+) of (\d+) retained records\. Retention is not proof of complete upstream coverage\.?$/.exec(text);
+  if (importedAll) return `All ${Number(importedAll[1]).toLocaleString('en-US')} of ${Number(importedAll[2]).toLocaleString('en-US')} saved records were included. Saving a record does not mean every source was collected.`;
+  const committees = /^Imported (\d+) retained committee records; committees with no retained meetings may also appear\.?$/.exec(text);
+  if (committees) return `${Number(committees[1]).toLocaleString('en-US')} saved committee records were included. A committee with no saved meetings can still appear.`;
+  const packages = /^Imported (\d+) packages; explicit committee IDs and cited document reviews establish committee ownership\. Explicit event IDs and existing print matching rules separately supply meeting associations\.?$/.exec(text);
+  if (packages) return `${Number(packages[1]).toLocaleString('en-US')} published packages were included. A committee is named only when the package or a document review says so. A meeting is named only when the package names one event, or an existing printed-hearing match does.`;
+  const job = /^Collection job ([a-z0-9_.:-]+) concluded (success|failure); this job-level receipt does not establish individual source acquisition outcomes\.?$/i.exec(text);
+  if (job) {
+    const name = collectionNames[job[1].toLowerCase()] || job[1];
+    return `The ${name} collection ${job[2].toLowerCase() === 'success' ? 'reported success' : 'reported a failure'}. That does not show the result for each source.`;
+  }
+  const browserCopy = /^Browser distribution: original publication [0-9a-f]+\. Complete Catalog and legacy meeting index are excluded; query pages retain browse coverage\.?$/i.exec(text);
+  if (browserCopy) return 'This copy is for the browser. The full catalog and the older meeting index are left out. Browsing still covers the records in this selection.';
+  return text;
+}
+
+/** A saved issue sentence in ordinary words. The exact saved text stays in the full record. */
+export function plainRecordedNote(value: string): string {
+  const text = value.trim();
+  const direct = plainSentence(text);
+  if (direct !== text) return direct;
+  const parts = text.split(/(?<=\.)\s+/);
+  if (parts.length < 2) return text;
+  const plain = parts.map(plainSentence);
+  return plain.some((part, index) => part !== parts[index]) ? plain.join(' ') : text;
+}
+
+const sourceNames: Record<string, string> = {
+  'congress.gov': 'Congress.gov',
+  'congress.gov:committees': 'Congress.gov committees',
+  'govinfo:upstream': 'GovInfo files',
+  docs: 'House docs',
+  'docs.house.gov': 'House docs',
+  'senate.committees': 'Senate committees',
+  'committee-review': 'Committee review',
+  'gpo.committee-review': 'Committee review',
+  'congress_api.inventory.prints': 'Printed hearings',
+  govinfo: 'GovInfo',
+  youtube: 'YouTube',
+  'curated-recordings': 'Curated recordings',
+  'curated-issue-decisions': 'Curated issue decisions',
+  'gpo-video-matches': 'Printed-hearing video matches',
+  'meeting-inventory': 'Meeting inventory',
+  'recovered-witnesses': 'Recovered witnesses',
+  'transcript-artifact': 'Transcripts',
+};
+
+/** A source name a reader can recognize. An unknown source keeps its saved name. */
+export function sourceName(value: string): string {
+  return sourceNames[value] || value;
+}
+
 /** A subject the explorer cannot open by title: source record, committee, or person. */
 export function subjectKindLabel(kind: string | null | undefined): string {
   if (kind === 'source_record') return 'source record';
@@ -849,7 +1095,7 @@ export function subjectKindLabel(kind: string | null | undefined): string {
 
 /** A linked record the publication does not contain. */
 export function subjectAbsentNote(kind: string | null | undefined): string {
-  const names: Record<string, string> = { material: 'document or recording', meeting: 'meeting', appearance: 'witness', committee_term: 'committee' };
+  const names: Record<string, string> = { material: 'document or recording', meeting: 'meeting', appearance: 'witness', committee_term: 'committee', source_record: 'original source' };
   const name = kind ? names[kind] : '';
   return name ? `The ${name} this issue describes is not in this publication.` : '';
 }
@@ -858,7 +1104,7 @@ export function subjectAbsentNote(kind: string | null | undefined): string {
 export function sourceCountNote(row: { source_ids?: readonly string[] | null }): string {
   const count = row.source_ids?.length || 0;
   if (count < 2) return '';
-  return `${count} source records`;
+  return `Built from ${count} original pages`;
 }
 
 /** When the issue was detected, if that day is not already the row date. */
@@ -890,10 +1136,10 @@ export function issueNotes(row: { title?: string | null; explanation?: string | 
   const notes: string[] = [];
   const path = values('field path')[0];
   const field = path ? path.split('/').filter(Boolean).map(part => phrase(part) || part).join(' / ') : '';
-  if (field) notes.push(`Compared field: ${field}`);
   const selected = values('Selected value')[0] || '';
   const alternatives = facts.filter(fact => /^alternative \d+$/i.test(fact.label || '')).map(fact => fact.value || '');
   const summary = selected && alternatives.length ? disagreementSummary(selected, alternatives) : null;
+  if (field && !summary?.length) notes.push(`Compared field: ${field}`);
   const plain = (value: string) => Boolean(value) && value.length <= 240 && !value.startsWith('{') && !value.startsWith('[');
   if (summary?.length) notes.push(...summary.slice(0, 2));
   else if (plain(selected)) {
@@ -901,12 +1147,17 @@ export function issueNotes(row: { title?: string | null; explanation?: string | 
     const first = plainIssueValues(row)[0];
     if (first) notes.push(`Alternative: ${first}`);
   }
+  const heading = plainRecordedNote((row.title || '').trim());
+  const add = (value: string) => {
+    const plain = plainRecordedNote(value);
+    if (plain && plain !== heading && !notes.includes(plain)) notes.push(plain);
+  };
   const reason = values('Selection reason')[0];
-  if (reason) notes.push(reason);
+  if (reason) add(reason);
   const resolution = values('Resolution')[0];
   const explanation = (row.explanation || '').trim();
-  if (resolution && resolution !== (row.title || '').trim() && resolution !== explanation) notes.push(resolution);
-  if (explanation && explanation !== (row.title || '').trim()) notes.push(explanation);
+  if (resolution && resolution !== (row.title || '').trim() && resolution !== explanation) add(resolution);
+  if (explanation && explanation !== (row.title || '').trim()) add(explanation);
   return notes;
 }
 
@@ -990,9 +1241,9 @@ export function orderRecordedFiles<T extends NamedFile>(files: readonly T[]): T[
   return result.map(item => item.file);
 }
 
-const formatNames: Record<string, string> = { pdf: 'PDF', html: 'HTML', htm: 'HTML', doc: 'Word', docx: 'Word', xml: 'XML' };
+const formatNames: Record<string, string> = { pdf: 'PDF', html: 'web page', htm: 'web page', doc: 'Word', docx: 'Word', xml: 'XML file' };
 
-/** Every saved format when a document was kept as more than one, such as PDF and HTML. */
+/** Every saved format when a document was kept as more than one, such as PDF and a web page. */
 export function recordedFormatNote(files: readonly (NamedFile & { label?: string | null })[] | null | undefined): string {
   const names: string[] = [];
   for (const file of orderRecordedFiles(files || [])) {
@@ -1167,6 +1418,36 @@ export function documentSourceLabel(row: DisplayRow): string {
   return (row.source_document_groups || []).map(group => sourceGroupLabels[group] || group).join(' · ');
 }
 
+const documentTypeNames: Record<string, string> = {
+  'Generic Document': 'Document',
+  'Hearing: Transcript': 'Transcript',
+  'Hearing: Witness List': 'Witness list',
+  'Hearing: Questions for the Record': 'Questions for the record',
+  'Hearing: Member Roster': 'Member roster',
+  'Hearing: Cover Page': 'Cover page',
+  'Hearing: Table of Contents': 'Table of contents',
+  'COMMITTEE PRINT': 'Committee print',
+};
+
+/** The recorded document type in ordinary words. Catalog prefixes such as “Hearing:” stay in the saved record. */
+export function listedDocumentType(value: string): string {
+  return documentTypeNames[value] || value;
+}
+
+/** The source pile, omitted when the document type already says the same thing. */
+export function listedSourcePile(row: DisplayRow, documentType: string): string {
+  return documentSourceLabel(row).split(' · ').filter(part => {
+    if (part === 'Witness document' && documentType.toLowerCase().includes('witness')) return false;
+    if (part === 'Meeting document' && documentType) return false;
+    return true;
+  }).join(' · ');
+}
+
+/** On the meeting itself, “Meeting document” only repeats the documents list. A witness document still says so. */
+export function documentSourceInContext(row: DisplayRow, onMeeting: boolean): string {
+  return documentSourceLabel(row).split(' · ').filter(part => !(onMeeting && part === 'Meeting document')).join(' · ');
+}
+
 const categoryCues: Record<string, readonly string[]> = {
   supporting: ['support'],
   disclosure: ['disclosure', 'truth in testimony'],
@@ -1180,17 +1461,27 @@ const categoryCues: Record<string, readonly string[]> = {
 
 const providerLabels: Record<string, string> = {
   youtube: 'YouTube',
-  senate: 'Senate',
+  senate: 'Senate.gov',
   'www.senate.gov': 'Senate.gov',
   'www.c-span.org': 'C-SPAN',
   'www.facebook.com': 'Facebook',
   'www-senate-gov-msl3archive.akamaized.net': 'Senate video archive',
   'web.archive.org': 'Internet Archive',
   'www.jec.senate.gov': 'Joint Economic Committee',
-  'www.dvidshub.net': 'DVIDS',
+  'www.dvidshub.net': 'Defense media library',
 };
 
 /** The publishing site in words. An unrecognized host keeps its recorded name. */
+const severityLabels: Record<string, string> = {
+  affects_interpretation: 'Changes how to read it',
+  informational: 'For information only',
+};
+
+export function severityLabel(value: string | null | undefined): string {
+  if (!value) return '';
+  return severityLabels[value] || phrase(value);
+}
+
 export function providerLabel(value: string | null | undefined): string {
   if (!value) return '';
   return providerLabels[value] || value.replace(/^www\./, '');
@@ -1244,6 +1535,14 @@ export function committeeLevelLabel(row: DisplayRow): string {
   if (row.committee_level === 'full') return 'Full committee';
   if (row.committee_level === 'subcommittee') return 'Subcommittee';
   return '';
+}
+
+/** A hierarchy note that only restates the level, the code, or the parent link. */
+export function committeeHierarchyNote(value: string): string {
+  const text = value.trim();
+  if (text === 'The source identifies a parent committee.') return '';
+  if (/^Congress\.gov systemCode \S+: final two digits 00 identify a full committee; other digits identify a subcommittee\.$/.test(text)) return '';
+  return text;
 }
 
 function phrase(value: unknown): string {
@@ -1305,25 +1604,48 @@ export function relatedParts(kind: string, value: object): RelatedPart[] {
   const ownDay = (row.date || '').slice(0, 10);
   const clock = ownDay ? [when.date, when.time].filter(Boolean).join(' ') : '';
   const congress = congressName(row.congress);
-  const recordedLabel = row.source_status === 'unknown' ? 'Unknown' : phrase(row.source_status);
-  const recorded = row.source_status && row.source_status !== row.status && recordedLabel ? `Recorded as ${recordedLabel}` : '';
+  const recorded = listedSourceStatus(row);
+  const typeLabel = phrase(row.type);
+  const typeText = typeLabel && (row.title || '').toLowerCase().includes(typeLabel.toLowerCase()) ? '' : typeLabel;
   const place = recordedPlace(row);
   const status = phrase(row.status);
   const notes = kind === 'data_issue' ? issueNotes(row) : [];
   const parts: RelatedPart[] = (kind === 'appearance'
     ? [row.position, row.organization, ...witnessNotes(row), ...notableRoles(row), participationNote(row), clock]
     : kind === 'meeting'
-      ? [phrase(row.type), sourceTypeNote(row), clock, scheduleNote(row), congress, phrase(row.chamber), place, status, recorded]
+      ? [typeText, sourceTypeNote(row), clock, scheduleNote(row), congress, phrase(row.chamber), place, status, recorded]
       : kind === 'data_issue'
-        ? [phrase(row.category), phrase(row.severity), phrase(row.status), when.date, detectedNote(row), ...notes]
+        ? [phrase(row.category), severityLabel(row.severity), phrase(row.status), when.date, detectedNote(row), ...notes]
         : kind === 'committee_term'
-          ? [committeeTypeLabel(row) === 'Type unrecorded' ? '' : committeeTypeLabel(row), committeeLevelLabel(row), row.committee_code || '', congress]
+          ? [committeeTypeLabel(row) === 'Type not recorded' ? '' : committeeTypeLabel(row), (row.title || '').toLowerCase().includes(committeeLevelLabel(row).toLowerCase()) ? '' : committeeLevelLabel(row), congress]
           : [clock, scheduleNote(row), status]
   ).filter(Boolean).map(text => ({ text, role: notes.includes(text) ? 'note' as const : kind === 'meeting' && place && text === place ? 'place' as const : (kind === 'meeting' || kind === 'data_issue') && status && text === status ? 'status' as const : undefined }));
   const sources = sourceCountNote(row);
   if (!sources) return parts;
   const noteIndex = parts.findIndex(part => part.role === 'note');
   return noteIndex < 0 ? [...parts, { text: sources }] : [...parts.slice(0, noteIndex), { text: sources }, ...parts.slice(noteIndex)];
+}
+
+/** Hide a time that only repeats the meeting already open. */
+export function omitRepeatedWhen(parts: readonly RelatedPart[], meetingWhen: string): RelatedPart[] {
+  if (!meetingWhen.trim()) return [...parts];
+  return parts.filter(part => !repeatsRecordedWhen(part.text, meetingWhen));
+}
+
+/** Hide a Congress line that only repeats the committee term already open. */
+export function omitRepeatedCongress(parts: readonly RelatedPart[], congress: unknown): RelatedPart[] {
+  const name = congressName(congress);
+  if (!name) return [...parts];
+  return parts.filter(part => part.text !== name);
+}
+
+/** Hide a chamber line when the place already names that chamber. A room such as “Capitol, room S-219” keeps it. */
+export function omitRepeatedChamber(parts: readonly RelatedPart[], chamber: unknown): RelatedPart[] {
+  const name = phrase(chamber);
+  if (!name) return [...parts];
+  const place = parts.find(part => part.role === 'place')?.text || '';
+  if (!place.toLowerCase().includes(name.toLowerCase())) return [...parts];
+  return parts.filter(part => part.role === 'place' || part.text.toLowerCase() !== name.toLowerCase());
 }
 
 export function relatedMeta(kind: string, value: object): string {
@@ -1374,7 +1696,8 @@ export function coverageDrillNote(limits: { committee?: string; month?: string; 
   else if (limits.month) notes.push(`Only meetings in ${limits.month}.`);
   if (limits.aspect && limits.evidence) {
     const aspect = coverageAspectWords[limits.aspect] || limits.aspect.replaceAll('_', ' ');
-    notes.push(`Only meetings whose ${aspect} evidence is ${phrase(limits.evidence) || limits.evidence}.`);
+    const result = evidenceStateLabels[limits.evidence] || phrase(limits.evidence) || limits.evidence;
+    notes.push(`Only meetings whose ${aspect} result is ${result.charAt(0).toLowerCase()}${result.slice(1)}.`);
   }
   return notes.length ? `These limits came from a coverage chart. ${notes.join(' ')}` : '';
 }
@@ -1392,7 +1715,7 @@ export function committeeTypeLabel(row: DisplayRow): string {
   if (row.committee_type && !['unknown', 'subcommittee'].includes(row.committee_type)) return label(row.committee_type);
   const subcommittee = row.committee_level === 'subcommittee' || row.committee_type === 'subcommittee' || parentCommitteeId(row);
   const inherited = [...new Set(row.committee_types || [])].filter((type): type is string => typeof type === 'string' && !['unknown', 'subcommittee'].includes(type));
-  return subcommittee && inherited.length ? `${inherited.map(label).join(', ')} (inherited from parent)` : 'Type unrecorded';
+  return subcommittee && inherited.length ? `${inherited.map(label).join(', ')}, like the parent committee` : 'Type not recorded';
 }
 
 function phase(row: DisplayRow, now: Date): Phase | undefined {
@@ -1416,6 +1739,16 @@ export function recordingDue(row: DisplayRow, now = new Date()): boolean {
 export function recordingVisible(row: DisplayRow, now?: Date): boolean {
   if (row.type !== 'recording') return true;
   return Boolean(row.recording_url) && recordingDue(row, now || new Date());
+}
+
+/** A source status worth a second line. Upcoming already means the source said scheduled. */
+export function listedSourceStatus(row: { status?: string | null; source_status?: string | null }): string {
+  const source = row.source_status || '';
+  if (!source || source === row.status) return '';
+  if (source === 'unknown') return 'Status at the source not recorded';
+  if (['upcoming', 'today'].includes(row.status || '') && ['scheduled', 'rescheduled'].includes(source)) return '';
+  const label = phrase(source);
+  return label ? `The source still says ${label.toLowerCase()}` : '';
 }
 
 export function presentRecord<T extends DisplayRow>(row: T, now = new Date()): T {

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { contentHash, filenameReadings, readableValue, sourceCommitteeNote } from './filename-presentation.ts';
+import { contentHash, filenameReadings, readableValue, repeatsShownRecord, sourceCommitteeNote, sourceCongressNote } from './filename-presentation.ts';
 import { filenameSearchParams } from './filename-search.ts';
 import { readNavigation } from './navigation.ts';
 import type { FilenameCatalogInfo } from '../reader/filenames/types.ts';
@@ -9,25 +9,25 @@ const info = { catalog_id: 'c'.repeat(32), rows: 3, fields: ['filename', 'source
 
 test('filename readings keep the stored package and token labels', () => {
   assert.deepEqual(filenameReadings({ package_family: ['HHRG'], package_family_label: ['Hearings'], document_type: ['SD'], document_token_label: ['Documents in general support of the meeting'] }), [
-    { label: 'Package', value: 'Hearings · HHRG' },
-    { label: 'Filename token', value: 'Documents in general support of the meeting · SD' },
+    { label: 'File series', value: 'Hearings · HHRG' },
+    { label: 'Words in the filename', value: 'Documents in general support of the meeting · SD' },
   ]);
   assert.deepEqual(filenameReadings({ package_family: ['BILLS'], package_family_label: ['Congressional Measures (Bills, Resolutions, and Amendments)'] }), [
-    { label: 'Package', value: 'Congressional Measures (Bills, Resolutions, and Amendments)' },
+    { label: 'File series', value: 'Congressional Measures (Bills, Resolutions, and Amendments)' },
   ]);
   assert.deepEqual(filenameReadings({ package_family: ['HHRG'], document_type: ['SD'] }), []);
   assert.deepEqual(filenameReadings({ amendment_marker_label: ['Amendment considered in committee'], citation_marker_label: ['House report citation'], publication_code_label: ['House hearing'], package_family_label: ['Congressional Hearings including House and Senate Appropriations Hearings'] }), [
-    { label: 'Package', value: 'Congressional Hearings including House and Senate Appropriations Hearings' },
-    { label: 'Amendment marker', value: 'Amendment considered in committee' },
+    { label: 'File series', value: 'Congressional Hearings including House and Senate Appropriations Hearings' },
+    { label: 'Amendment note', value: 'Amendment considered in committee' },
     { label: 'Citation', value: 'House report citation' },
-    { label: 'Publication code', value: 'House hearing' },
+    { label: 'Publication', value: 'House hearing' },
   ]);
   assert.deepEqual(filenameReadings({ version_token_label: ['Introduced in Senate'], package_family_label: ['Congressional Measures (Bills, Resolutions, and Amendments)'] }), [
-    { label: 'Package', value: 'Congressional Measures (Bills, Resolutions, and Amendments)' },
-    { label: 'Version', value: 'Introduced in Senate' },
+    { label: 'File series', value: 'Congressional Measures (Bills, Resolutions, and Amendments)' },
+    { label: 'Legislative stage', value: 'Introduced in Senate' },
   ]);
   assert.deepEqual(filenameReadings({ meeting_wording_label: ['Hearing'], draft_label: ['Discussion Draft'], enbloc_marker_label: ['Amendments en bloc'], nomination_wording_label: ['Nomination'], committee_token_label: ['Senate Committee on Energy and Natural Resources'], package_family_label: ['Congressional Hearings including House and Senate Appropriations Hearings'] }), [
-    { label: 'Package', value: 'Congressional Hearings including House and Senate Appropriations Hearings' },
+    { label: 'File series', value: 'Congressional Hearings including House and Senate Appropriations Hearings' },
     { label: 'Meeting wording', value: 'Hearing' },
     { label: 'Draft', value: 'Discussion Draft' },
     { label: 'En bloc', value: 'Amendments en bloc' },
@@ -36,7 +36,7 @@ test('filename readings keep the stored package and token labels', () => {
   ]);
   assert.deepEqual(filenameReadings({ subcommittee_token_label: ['National Parks'], committee_token_label: ['Senate Committee on Energy and Natural Resources'] }).map(reading => reading.label), ['Committee', 'Subcommittee']);
   assert.deepEqual(filenameReadings({ scope_token_label: ['Bill as it is being considered by the subcommittee'], degree_token_label: ['Second degree'], document_abbreviation_label: ['Explanatory statement'], document_abbreviation: ['SOM'], collection_token_label: ['Congressional Measures (Bills, Resolutions, and Amendments)'], package_family_label: ['Congressional Measures (Bills, Resolutions, and Amendments)'] }), [
-    { label: 'Package', value: 'Congressional Measures (Bills, Resolutions, and Amendments)' },
+    { label: 'File series', value: 'Congressional Measures (Bills, Resolutions, and Amendments)' },
     { label: 'Stage', value: 'Bill as it is being considered by the subcommittee' },
     { label: 'Amendment degree', value: 'Second degree' },
     { label: 'Abbreviation', value: 'Explanatory statement (SOM)' },
@@ -49,12 +49,25 @@ test('filename readings keep the stored package and token labels', () => {
   ]);
   assert.deepEqual(filenameReadings({ revision_marker_label: ['Document update'], revision_number: ['1'], local_code_token_label: ['Measure considered under suspension'] }), [
     { label: 'Revision', value: 'Document update 1' },
-    { label: 'Local code', value: 'Measure considered under suspension' },
+    { label: 'Office code', value: 'Measure considered under suspension' },
   ]);
 });
 
+test('a matching source Congress is not repeated, and a captured file does not repeat the open record', () => {
+  assert.equal(sourceCongressNote(['119'], ['119']), '');
+  assert.equal(sourceCongressNote(['119'], ['118']), '');
+  assert.equal(sourceCongressNote(['119', '117'], ['117']), 'The source says 117th Congress.');
+  assert.equal(sourceCongressNote(undefined, ['117']), '');
+  const shown = { congress: '119th Congress', chamber: 'House', committee: 'House Energy and Commerce Subcommittee on Health' };
+  assert.equal(repeatsShownRecord('Congress', '119th Congress', shown), true);
+  assert.equal(repeatsShownRecord('Chamber', 'House', shown), true);
+  assert.equal(repeatsShownRecord('Committee', 'House Energy and Commerce Subcommittee on Health · hsif14', shown), true);
+  assert.equal(repeatsShownRecord('Committee', 'House Armed Services', shown), false);
+  assert.equal(repeatsShownRecord('Congress', '118th Congress', shown), false);
+});
+
 test('a source committee code stays beside the recorded name', () => {
-  assert.deepEqual(sourceCommitteeNote({ source_committee_name: ['Committee on Energy and Commerce'], source_committee_code: ['hsif00'] }), { text: 'Committee on Energy and Commerce · hsif00', code: 'Committee code from the source record' });
+  assert.deepEqual(sourceCommitteeNote({ source_committee_name: ['Committee on Energy and Commerce'], source_committee_code: ['hsif00'] }), { text: 'Committee on Energy and Commerce · hsif00', code: 'Committee code recorded by the source' });
   assert.deepEqual(sourceCommitteeNote({ source_committee_code: ['hsif14'] }), { text: 'hsif14', code: 'Committee code' });
   assert.deepEqual(sourceCommitteeNote({ source_committee_name: ['House Committee hsif00'], source_committee_code: ['hsif00'] }), { text: 'House Committee hsif00', code: '' });
 });
