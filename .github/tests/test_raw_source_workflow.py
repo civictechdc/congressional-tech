@@ -16,6 +16,13 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW_PATH = ROOT / ".github/workflows/capture-raw-sources.yml"
+
+
+def test_filename_viewer_trigger_tracks_capture_workflow_name():
+    capture = yaml.load(WORKFLOW_PATH.read_text(), Loader=yaml.BaseLoader)
+    viewer = yaml.load((WORKFLOW_PATH.parent / "publish-filename-viewer.yml").read_text(),
+                       Loader=yaml.BaseLoader)
+    assert viewer["on"]["workflow_run"]["workflows"] == [capture["name"]]
 # BaseLoader preserves GitHub's `on` key instead of treating it as YAML 1.1 True.
 WORKFLOW = yaml.load(WORKFLOW_PATH.read_text(), Loader=yaml.BaseLoader)
 STEPS = WORKFLOW["jobs"]["capture"]["steps"]

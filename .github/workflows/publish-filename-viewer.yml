@@ -2,7 +2,7 @@ name: Publish filename viewer data to R2
 
 on:
   workflow_run:
-    workflows: ["Capture raw sources and rebuild document tables"]
+    workflows: ["Capture raw sources and update document tables"]
     types: [completed]
     branches: [main]
   schedule:
