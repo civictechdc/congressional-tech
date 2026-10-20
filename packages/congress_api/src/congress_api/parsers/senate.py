@@ -8,7 +8,7 @@ from html import unescape
 from lxml import html as dom
 
 from congress_api.models.content import RawContent
-from congress_api.models.senate import ListingRow, SenatePage
+from congress_api.models.senate import ListingColumns, ListingRow, SenatePage
 from congress_api.parsers.senate_page import (
     DATE,
     HEARING_LINK,
@@ -59,6 +59,56 @@ def parse_page(page: str | bytes, url: str) -> SenatePage:
 def parsed(page, url):
     """Compatibility writer for callers that need the existing dictionary shape."""
     return parse_page(page, url).model_dump(mode="python", by_alias=True, exclude_unset=True)
+
+
+def parse_listing_details(page: str, site: str) -> dict[str, dict]:
+    """Extract optional listing columns (time, room, type) keyed by canonical URL."""
+    details: dict[str, dict] = {}
+    if not page.strip():
+        return details
+    for anchor in dom.fromstring(page).xpath(".//a[@href]"):
+        href = anchor.get("href") or ""
+        if not href or "#" in href:
+            continue
+        url = href if href.startswith("http") else f"https://www.{site}{href}"
+        cols: dict[str, str] = {}
+        item_texts = [
+            text(node.text_content())
+            for node in anchor.xpath(
+                ".//*[contains(concat(' ', normalize-space(@class), ' '), ' LegislationList__itemText ') "
+                "and not(contains(concat(' ', normalize-space(@class), ' '), ' LegislationList__title '))]"
+            )
+            if text(node.text_content())
+        ]
+        if len(item_texts) == 3:
+            cols["type"], cols["room"], cols["time"] = item_texts
+        elif table_rows := anchor.xpath("ancestor::tr[1]"):
+            tr = table_rows[0]
+            types = [
+                text(td.text_content())
+                for td in tr.xpath(".//td[contains(concat(' ', normalize-space(@class), ' '), ' recordListType ')]")
+                if not td.xpath(".//*[contains(concat(' ', normalize-space(@class), ' '), ' location ')]")
+                and text(td.text_content())
+            ]
+            if types:
+                cols["type"] = types[0]
+            rooms = [
+                text(node.text_content())
+                for node in tr.xpath(".//*[contains(concat(' ', normalize-space(@class), ' '), ' location ')]")
+                if text(node.text_content())
+            ]
+            if rooms:
+                cols["room"] = rooms[0]
+            for td in tr.xpath(".//td[contains(concat(' ', normalize-space(@class), ' '), ' recordListDate ')]"):
+                raw_date = td.text_content()
+                m = DATE.search(raw_date)
+                remainder = text(raw_date[m.end():] if m else raw_date)
+                if remainder:
+                    cols["time"] = remainder
+                    break
+        if cols:
+            details[url] = ListingColumns.model_validate(cols).source_dict()
+    return details
 
 
 def parse_listing_page(page, site):

@@ -16,6 +16,7 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from congress_api.acquisition.refresh import due
 from congress_api.acquisition.house import request, timestamp
+from congress_api.models.senate import WORDPRESS_POSTS
 from congress_api.parsers.committee_discovery import discover, key, task, comparison_key, listing_records, page_link_exclusion, pagination_field, UnrecognizedSitemap
 from congress_api.parsers.committee_pages import event_identity, parse_event_page, same_site, listing_url
 from congress_api.retention.body_files import content_bytes
@@ -169,6 +170,9 @@ def _read(saved, item, fetched, *, today, check_pagination=True, retain_previous
         else:
             observation['discovery_gap'] = 'sitemap_unrecognized'
             links = []
+    if item['kind'] == 'wordpress_posts':
+        posts = WORDPRESS_POSTS.validate_python(json.loads(body), strict=True)
+        saved.setdefault('wordpress_posts', {}).update({post.link: post.source_dict() for post in posts})
     if item['kind'] == 'site_home' or item['kind'] == 'home' and not same_site(final, item['url']):
         links += seeds(final)[1:]
     identity = event_identity(body, observation['final_url']) if item['kind'] not in {'home', 'site_home', 'robots', 'sitemap', 'calendar_api', 'wordpress_types', 'wordpress_posts'} else None

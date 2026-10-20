@@ -45,18 +45,32 @@ class WitnessCard(SourceModel):
 
 
 class DocumentLinkFields(SourceModel):
-    labels: list[str]
-    attributes: list[dict[str, str]]
-    container_attributes: list[dict[str, str]]
-    witness_indexes: list[Annotated[int, Field(ge=0)]]
+    labels: list[str] = Field(default_factory=list)
+    attributes: list[dict[str, str]] = Field(default_factory=list)
+    container_attributes: list[dict[str, str]] = Field(default_factory=list)
+    witness_indexes: list[Annotated[int, Field(ge=0)]] = Field(default_factory=list)
+
+
+class RelatedPage(SourceModel):
+    url: str | None = None
+    role: str
+    basis: str
+    document_kind: str | None = None
+    literal_href: str | None = None
+    uncertainty: str | None = None
+    event_ids: list[str] | None = None
+    day_ids: list[str] | None = None
 
 
 class DocumentOccurrence(DocumentLinkFields):
     """One literal anchor, with its own heading and witness-card association."""
     headings: list[str] = Field(default_factory=list)
     paragraph_text: str | None = None
+    line_text: str | None = None
+    related_page: RelatedPage | None = None
     # Publisher ownership can be a group or a name we cannot safely split.
     witness_card: WitnessCard | None = None
+    source_selector: str | None = None
 
 
 class DocumentMetadata(DocumentLinkFields):
@@ -71,6 +85,7 @@ class EmbeddedMedia(SourceModel):
 class SourceLink(SourceModel):
     text: str
     attributes: dict[str, str]
+    related_page: RelatedPage | None = None
 
 
 class InlineScript(SourceModel):
@@ -97,9 +112,9 @@ class PageMetadata(SourceModel):
 class SenateEvent(SourceModel):
     title: str
     date: str
-    date_text: str
-    type: str
-    url: str
+    date_text: str = ""
+    type: str = ""
+    url: str = ""
 
 
 class AttachmentFile(SourceModel):
@@ -110,7 +125,7 @@ class AttachmentFile(SourceModel):
 
 class RequestReceipt(SourceModel):
     url: str
-    started_at: str
+    started_at: str | None = None
     completed_at: str | None = None
     status_code: int | None = None
     outcome: str | None = None
@@ -158,10 +173,10 @@ class MatchDetail(SourceModel):
 class SenatePage(SourceModel):
     """Parsed publisher page. Match decisions and check receipts live on ``SenatePageWorkflow``."""
 
-    title: str
-    lines: list[str]
-    witnesses: list[SenateWitness]
-    documents: list[DocumentRow]
+    title: str = ""
+    lines: list[str] = Field(default_factory=list)
+    witnesses: list[SenateWitness] = Field(default_factory=list)
+    documents: list[DocumentRow] = Field(default_factory=list)
     raw_html: RawContent | None = None
     document_labels: dict[str, str] = Field(default_factory=dict)
     document_metadata: dict[str, DocumentMetadata] = Field(default_factory=dict)
@@ -200,6 +215,12 @@ class ListingRow(SourceModel):
     title: str
 
 
+class ListingColumns(SourceModel):
+    time: str | None = None
+    room: str | None = None
+    type: str | None = None
+
+
 class CollectionScope(SourceModel):
     since: str
     through: str
@@ -211,6 +232,8 @@ class SenateSite(SourceModel):
     # Keyed by the same page URL as ``pages``. Not a publisher record.
     workflow: dict[str, SenatePageWorkflow] = Field(default_factory=dict)
     listings: dict[str, ListingValue] = Field(default_factory=dict)
+    listing_details: dict[str, ListingColumns] = Field(default_factory=dict)
+    wordpress_posts: dict[str, "WordPressPost"] = Field(default_factory=dict)
     versions: dict[str, str] = Field(default_factory=dict)
     source_bodies: dict[str, RawContent] = Field(default_factory=dict)
     wordpress: bool | None = None
@@ -406,14 +429,19 @@ class WordPressHearingFields(SourceModel):
 
 
 class WordPressPost(SourceModel):
+    id: int | None = None
     link: str
-    title: WordPressTitle
+    title: WordPressTitle = Field(default_factory=lambda: WordPressTitle(rendered=""))
     date: str | None = None
+    modified: str | None = None
+    status: str | None = None
+    slug: str | None = None
     acf: WordPressHearingFields | Annotated[list[JsonValue], Field(max_length=0)] | None = None
 
 
 WORDPRESS_TYPES = TypeAdapter(dict[str, WordPressType])
 WORDPRESS_POSTS = TypeAdapter(list[WordPressPost])
+SenateSite.model_rebuild()
 SENATE_SITES = TypeAdapter(dict[str, SenateSite])
 
 PAGE_WORKFLOW_FIELDS = ("events", "candidate_events", "match_details", "last_check", "observation_check", "cache_replay")
@@ -499,9 +527,32 @@ def normalize_senate_state(state):
     """
     if not isinstance(state, dict):
         return state
+    doc_types = {
+        host: {
+            url: [type(doc) for doc in page.get("documents", [])]
+            for url, page in site.get("pages", {}).items()
+            if isinstance(page, dict) and isinstance(page.get("documents"), list)
+        }
+        for host, site in state.items()
+        if isinstance(site, dict) and isinstance(site.get("pages"), dict)
+    }
     for site in state.values():
         if not isinstance(site, dict) or not isinstance(site.get("pages"), dict):
             continue
+        if not site.get("wordpress_posts") and isinstance(site.get("source_bodies"), dict):
+            wp_posts = {}
+            for body_url, raw_body in sorted(site["source_bodies"].items()):
+                if "/wp-json/wp/v2/" not in body_url or body_url.rstrip("/").endswith("/types"):
+                    continue
+                try:
+                    raw_bytes = RawContent.model_validate(raw_body).body_bytes()
+                    posts = WORDPRESS_POSTS.validate_json(raw_bytes, strict=True)
+                except Exception:
+                    continue
+                for post in posts:
+                    wp_posts[post.link] = post.source_dict()
+            if wp_posts:
+                site["wordpress_posts"] = wp_posts
         for url, page in list(site["pages"].items()):
             if not isinstance(page, dict):
                 continue
@@ -511,4 +562,16 @@ def normalize_senate_state(state):
                 site.setdefault("workflow", {})[url] = merged
             for key in PAGE_WORKFLOW_FIELDS:
                 page.pop(key, None)
+    validated = SENATE_SITES.validate_python(state)
+    normalized = {host: site.source_dict() for host, site in validated.items()}
+    for host, url_types in doc_types.items():
+        pages = normalized.get(host, {}).get("pages", {})
+        for url, types_list in url_types.items():
+            if url in pages and "documents" in pages[url] and len(pages[url]["documents"]) == len(types_list):
+                pages[url]["documents"] = [
+                    t(doc) if t in (list, tuple) else doc
+                    for t, doc in zip(types_list, pages[url]["documents"])
+                ]
+    state.clear()
+    state.update(normalized)
     return state

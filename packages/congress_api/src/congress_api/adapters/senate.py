@@ -89,6 +89,8 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                     detected_at=context.now, last_checked_at=observed_time(listing_check.get("completed_at"), context.now),
                     provenance=context.evidence(listing_source, selector="/last_check"),
                 )
+        for wp_link, wp_post in sorted((site.get("wordpress_posts") or {}).items()):
+            yield context.source(f"senate-wordpress|{host}|{wp_link}", wp_post, wp_link)
         pages = site.get("pages") or {}
         # Match the producer's exclusion of files carried by more than five
         # listed pages. Keep these materials, but do not call them meeting files.

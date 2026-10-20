@@ -157,7 +157,7 @@ def test_wordpress_publication_date_is_only_a_discovery_hint():
     def get(url):
         return json.dumps({'hearings': {'rest_base': 'hearings'}} if url.endswith('/types') else payload)
     listed, route = records.listed(host, get, since=date(2011, 1, 3))
-    assert route == {'wordpress': True}
+    assert route == {'wordpress': True, 'wordpress_posts': {URLS['drug-market-2022']: payload[0]}}
     assert listed[0][0] == date(2022, 3, 4)
     assert records.listed(host, get, since=date(2023, 1, 3))[0] == []
 

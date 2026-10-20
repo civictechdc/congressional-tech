@@ -58,6 +58,11 @@ def test_caption_and_senate_negative_checks_require_past_zoned_times(timestamp, 
         "mode": "live", "receipts": [{"url": PAGE, "status_code": 404,
             "outcome": "not_found", "completed_at": timestamp}],
     }}
+    if not isinstance(timestamp, (str, type(None))):
+        with pytest.raises(ValueError):
+            list(senate.records({"example.senate.gov": {"pages": {PAGE: page}}}, context(),
+                meetings={(119, "senate", "12"): Ref(kind="meeting", id="meeting")}))
+        return
     result = list(senate.records({"example.senate.gov": {"pages": {PAGE: page}}}, context(),
         meetings={(119, "senate", "12"): Ref(kind="meeting", id="meeting")}))
     assessment, = [record for record in result if record.kind == "assessment"]
@@ -74,10 +79,7 @@ def test_caption_and_senate_negative_checks_require_past_zoned_times(timestamp, 
 @pytest.mark.parametrize("check", ["unreadable", 17, ["unknown"]])
 def test_senate_listing_keeps_unknown_check_shape_with_source_bodies(check):
     bodies = [{"url": PAGE, "text": "retained listing"}]
-    result = list(senate.records({"example.senate.gov": {
-        "last_check": check, "source_bodies": bodies, "pages": {},
-    }}, context(), meetings={}))
-    source, = result
-    assert source.kind == "source_record"
-    assert source.payload == {"host": "example.senate.gov", "last_check": check, "source_bodies": bodies}
-    assert source.retrieved_at is None
+    with pytest.raises(ValueError):
+        list(senate.records({"example.senate.gov": {
+            "last_check": check, "source_bodies": bodies, "pages": {},
+        }}, context(), meetings={}))

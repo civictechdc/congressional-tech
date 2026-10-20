@@ -9,6 +9,7 @@ from urllib.parse import parse_qsl, unquote, urlencode, urljoin, urlsplit, urlun
 
 from lxml import etree, html
 
+from congress_api.models.senate import WORDPRESS_POSTS
 from congress_api.parsers.committee_pages import calendar_links, same_site, listing_url
 from congress_api.parsers.document_links import http_url, is_document_url
 
@@ -198,16 +199,17 @@ def discover(body, request, *, headers=None):
         for row in data.values():
             base = row.get('rest_base') if isinstance(row, dict) else None
             if isinstance(base, str) and re.fullmatch(r'[\w-]+', base) and EVENT.search(base) and 'file' not in base:
-                out.append(task(urljoin(url, '/wp-json/wp/v2/' + base) + '?per_page=100&page=1&_fields=link,title,date,acf', 'wordpress_posts', parent=url))
+                out.append(task(urljoin(url, '/wp-json/wp/v2/' + base) + '?per_page=100&page=1&_fields=id,link,title,date,modified,status,slug,acf', 'wordpress_posts', parent=url))
         return out
     if kind == 'wordpress_posts':
         data = json.loads(body)
         if not isinstance(data, list):
             raise ValueError('Unrecognized WordPress event listing')
-        out = [task(row['link'], 'event', parent=url) for row in data if isinstance(row, dict) and http_url(row.get('link')) and same_site(row['link'], url)]
+        posts = WORDPRESS_POSTS.validate_python(data, strict=True)
+        out = [task(post.link, 'event', parent=url) for post in posts if http_url(post.link) and same_site(post.link, url)]
         page = int(dict(parse_qsl(urlsplit(url).query)).get('page', 1))
         total = (headers or {}).get('X-WP-TotalPages')
-        has_more = page < int(total) if total and str(total).isdigit() else len(data) == 100
+        has_more = page < int(total) if total and str(total).isdigit() else len(posts) == 100
         if has_more:
             out.append(task(query_url(url, page=page + 1), kind, parent=url))
         return out

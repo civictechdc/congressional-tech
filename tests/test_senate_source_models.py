@@ -126,12 +126,14 @@ def test_malformed_nested_source_values_fail_without_string_coercion():
 
 def test_collector_retains_complete_wordpress_response_through_saved_state_and_adapter(tmp_path, monkeypatch):
     args = setup_inputs(tmp_path, saved=False)
-    url = 'https://www.hsgac.senate.gov/wp-json/wp/v2/hearings_bmfwra?per_page=100&page=1&_fields=link,title,acf'
+    url = 'https://www.hsgac.senate.gov/wp-json/wp/v2/hearings_bmfwra?per_page=100&page=1&_fields=id,link,title,acf,date,modified,status,slug'
     raw = (SOURCES / 'senate-wordpress-post-response.json').read_bytes()
     def listing(host, get, saved):
         captured = get(url)
-        assert [post.source_dict() for post in WORDPRESS_POSTS.validate_json(captured)] == json.loads(raw)
-        return [(date(2026, 9, 20), PAGE, 'Retained hearing')], {'wordpress': True}
+        validated = WORDPRESS_POSTS.validate_json(captured)
+        assert [post.source_dict() for post in validated] == json.loads(raw)
+        wp_posts = {post.link: post.source_dict() for post in validated if post.link}
+        return [(date(2026, 9, 20), PAGE, 'Retained hearing')], {'wordpress': True, 'wordpress_posts': wp_posts}
     def request(_session, requested, **kwargs):
         return SimpleNamespace(status_code=200, content=raw if requested == url else HTML)
     monkeypatch.setattr(records, 'listed', listing)
@@ -145,6 +147,29 @@ def test_collector_retains_complete_wordpress_response_through_saved_state_and_a
     source, = [source for source in sources if 'source_bodies' in source.payload]
     assert source.payload['source_bodies'][url] == body
     assert RawContent.model_validate(source.payload['source_bodies'][url]).body_bytes() == raw
+    wp_sources = [s for s in sources if s.identifier and s.identifier.value.startswith('senate-wordpress|')]
+    assert len(wp_sources) == 3
+    assert any(s.payload.get('acf') and s.payload['acf'].get('witness_1') for s in wp_sources)
+    assert not of_kind(list(adapt_records(state, context(), meetings={})), 'appearance')
+
+
+def test_senate_fixture_roundtrips_through_senate_sites_and_retains_listing_columns():
+    from congress_api.models.senate import SENATE_SITES, normalize_senate_state
+    from congress_api.parsers.senate import parse_listing_details
+
+    epw_html = (SOURCES / 'senate-listing-table-date.html').read_text()
+    epw_details = parse_listing_details(epw_html, 'epw.senate.gov')
+    assert any(d.get('type') == 'Full Committee' and d.get('time') == '10:00 AM' for d in epw_details.values())
+
+    foreign_html = (SOURCES / 'senate-listing-anchor-time.html').read_text()
+    foreign_details = parse_listing_details(foreign_html, 'foreign.senate.gov')
+    assert any(d.get('room') == 'S-116' and d.get('time') == '06/26/19 at 10:15am' for d in foreign_details.values())
+
+    page = records_parse_page(HTML, PAGE).source_dict()
+    state = {HOST: {'pages': {PAGE: page}, 'listing_details': epw_details}}
+    normalized = normalize_senate_state(deepcopy(state))
+    validated = SENATE_SITES.validate_python(normalized)
+    assert {k: v.source_dict() for k, v in validated.items()} == normalized
 
 
 def test_caption_response_bytes_and_uninterpreted_source_metadata_are_retained(tmp_path, monkeypatch):

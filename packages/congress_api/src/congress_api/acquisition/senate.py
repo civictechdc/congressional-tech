@@ -50,7 +50,7 @@ from congress_api.models.senate import (
     merged_workflow,
     normalize_senate_state,
 )
-from congress_api.parsers.senate import PARSER_VERSION, parse_listing_page, parsed
+from congress_api.parsers.senate import PARSER_VERSION, parse_listing_details, parse_listing_page, parsed
 from congress_api.parsers.senate_page import FIRST_RECORD, LISTINGS, SITE, attachment_page, documents
 from congress_api.parsers.text import text
 from congress_api.retention.meetings import all_meetings, read_meetings
@@ -71,7 +71,7 @@ def listing_page(site, form, n, get):
     return parse_listing_page(get(f"https://www.{site}{form.format(n)}"), site)
 
 
-def wordpress_listed(site, get):
+def wordpress_listed(site, get, posts_out=None):
     """(day, url, title) for every hearing a WordPress site holds, when the site records the day a hearing is held."""
     try:
         types = json.loads(get(f"https://www.{site}/wp-json/wp/v2/types") or "{}")
@@ -82,12 +82,14 @@ def wordpress_listed(site, get):
     for base in sorted({t.rest_base for t in types.values() if re.search(r"hearing|meeting", t.rest_base) and "file" not in t.rest_base}):
         for n in range(1, 100):
             try:
-                posts = json.loads(get(f"https://www.{site}/wp-json/wp/v2/{base}?per_page=100&page={n}&_fields=link,title,acf,date") or "[]")
+                posts = json.loads(get(f"https://www.{site}/wp-json/wp/v2/{base}?per_page=100&page={n}&_fields=id,link,title,acf,date,modified,status,slug") or "[]")
             except ValueError:
                 break
             posts = WORDPRESS_POSTS.validate_python(posts, strict=True)
             held = []
             for post in posts:
+                if posts_out is not None:
+                    posts_out[post.link] = post.source_dict()
                 day = post.acf.hearing_date_time if isinstance(post.acf, WordPressHearingFields) else None
                 # Publication day only ranks discovery candidates for this site;
                 # a page's own event date is required before event admission.
@@ -105,18 +107,29 @@ def wordpress_listed(site, get):
 
 def listed(site, get, saved=None, since=FIRST_RECORD):
     """(day, url, title) for the hearing pages a site lists, back to the first Senate meeting record."""
-    out = [r for r in wordpress_listed(site, get) if r[0] >= since] if not saved or saved.get("wordpress") else []
+    wp_posts = {}
+    out = [r for r in wordpress_listed(site, get, wp_posts) if r[0] >= since] if not saved or saved.get("wordpress") else []
     if out:
-        return out, {"wordpress": True}
+        kept_urls = {r[1] for r in out}
+        route = {"wordpress": True}
+        kept_posts = {u: p for u, p in wp_posts.items() if u in kept_urls}
+        if kept_posts:
+            route["wordpress_posts"] = kept_posts
+        return out, route
+    details = {}
+    def get_html(url):
+        body = get(url)
+        details.update(parse_listing_details(body, site))
+        return body
     if saved and saved.get("form"):
         form, from_0 = saved["form"], saved["from_0"]
     else:
-        first = {f: {r[1] for r in listing_page(site, f, 1, get)} for f in LISTINGS}
-        form = next((f for f in LISTINGS if first[f] and {r[1] for r in listing_page(site, f, 2, get)} - first[f]), None) or next((f for f in LISTINGS if first[f]), None)
-        from_0 = form and {r[1] for r in listing_page(site, form, 0, get)} - first[form]
+        first = {f: {r[1] for r in listing_page(site, f, 1, get_html)} for f in LISTINGS}
+        form = next((f for f in LISTINGS if first[f] and {r[1] for r in listing_page(site, f, 2, get_html)} - first[f]), None) or next((f for f in LISTINGS if first[f]), None)
+        from_0 = form and {r[1] for r in listing_page(site, form, 0, get_html)} - first[form]
     for n in range(0 if from_0 else 1, 300) if form else ():
         have = {o[1] for o in out}
-        new = [r for r in listing_page(site, form, n, get) if r[1] not in have]
+        new = [r for r in listing_page(site, form, n, get_html) if r[1] not in have]
         if not new:
             break  # past the last page, the site repeats or empties
         out += new
@@ -124,7 +137,13 @@ def listed(site, get, saved=None, since=FIRST_RECORD):
             break  # two overlapping pages protect against a newly inserted hearing at a page boundary
         if max(r[0] for r in new) < since:
             break
-    return [row for row in out if row[0] >= since], {"form": form, "from_0": bool(from_0)}
+    kept = [row for row in out if row[0] >= since]
+    kept_urls = {row[1] for row in kept}
+    listing_details = {**(saved.get("listing_details") if saved else {}), **{u: d for u, d in details.items() if u in kept_urls}}
+    route = {"form": form, "from_0": bool(from_0)}
+    if listing_details:
+        route["listing_details"] = listing_details
+    return kept, route
 
 
 def timestamp():
@@ -359,6 +378,7 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
                 state[host] = saved
                 mark_possible_matches(native_meetings, state)
                 write_state(path, normalize_senate_state(state))
+                saved = state[host]
                 if not importing:
                     live_pages += 1
             if limit is None or live_pages < limit:
