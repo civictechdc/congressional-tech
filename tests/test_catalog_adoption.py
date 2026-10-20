@@ -46,7 +46,7 @@ def test_explicit_adoption_preserves_all_fields_and_original_row_document_links(
         assert actual_sources['document_id'][old_offset].as_py() == sources['document_id'][old_offset].as_py()
     assert selected.selection['adoption'] == result['adoption_reference']
     assert owner.selected(selected.selection['dependency']).order(identity(sources.to_pylist()[2])) == 2
-    assert len(native.tables) == 5  # Source/group/URL dependencies and two mixed output batches.
+    assert len(native.tables) == 6  # Source/group/URL/body dependencies and two mixed output batches.
 
 
 @pytest.mark.parametrize('corrupt', ['field', 'order', 'mapping', 'omission'])
