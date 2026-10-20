@@ -461,7 +461,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         document = {field:preferred.get(field) for field in ('source_id','body_key','filename','source_url')}
         document.update(document_id=document_id,
             filename=index.display_filename((preferred.get('recovered_filename') or [preferred.get('filename')])[0]))
-        document.update({field:sorted(items) for field,items in values.items() if items})
+        document.update({field:index.merge_values(field, items) for field,items in values.items() if items})
         paired = index.merge_values('source_occurrences', list(occurrences.values()))
         if paired:
             document['source_occurrences'] = paired

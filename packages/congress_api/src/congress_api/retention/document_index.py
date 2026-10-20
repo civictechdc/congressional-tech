@@ -571,7 +571,7 @@ def prepare_document_indexes(rows, schema):
                 if isinstance(value, list):
                     if key not in {"source_occurrences", "hearing_resources"}:
                         values[key].update(value)
-        document.update({key: sorted(value) for key, value in values.items() if value})
+        document.update({key: merge_values(key, value) for key, value in values.items() if value})
         occurrences = merge_values("source_occurrences", *[row.get("source_occurrences") for row in sources])
         if occurrences:
             document["source_occurrences"] = occurrences
@@ -733,7 +733,8 @@ def merge_values(field, *groups):
                   for group in groups for item in group or []}
         return [values[key] for key in sorted(values)]
     if field != "source_occurrences":
-        return sorted({value for group in groups if group for value in group})
+        return sorted({value for group in groups if group for value in group},
+                      key=lambda value: (value is None, value))
     # Arrow fills absent struct fields with null on readback. Normalize those
     # away before deduplication so repeated refreshes do not multiply origins.
     values = {}
