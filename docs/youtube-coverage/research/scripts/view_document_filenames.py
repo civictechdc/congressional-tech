@@ -282,7 +282,9 @@ class RetainedFiles:
 
 
 class Catalog:
-    def __init__(self, path: Path, retained=None, *, review_manifest=None, review_sha256=None, search_indexes=True):
+    def __init__(self, path, retained=None, *, review_manifest=None, review_sha256=None, search_indexes=True,
+                 max_ordered_bytes=64 << 20):
+        self.max_ordered_bytes = max_ordered_bytes
         self._readers = ExitStack()
         self._cleanup = weakref.finalize(self, self._readers.close)
         try:
@@ -294,6 +296,27 @@ class Catalog:
             except BaseException as cleanup:
                 error.add_note(f'Catalog reader cleanup also failed: {cleanup}')
             raise
+
+    @classmethod
+    def from_snapshot(cls, snapshot, retained=None, **options):
+        """Analyze one selected native snapshot; no complete-file export is made.
+
+        Search initializes thin logical tables across the selected catalog. That
+        is explicit local query work, separate from recurring update preparation.
+        Complete details use stable keyed membership and bounded physical pins.
+        """
+        from congress_api.retention.catalog_selection import NativeCatalogSnapshot
+        if not isinstance(snapshot, NativeCatalogSnapshot):
+            raise TypeError('Local analysis requires a selected native catalog')
+        return cls(snapshot, retained, **options)
+
+    def _read_table(self, label, columns=None):
+        if self.native_snapshot is None:
+            return (self.file if label == 'filenames' else self.document_file).read(columns=columns)
+        schema = self.native_snapshot.schemas[label]
+        output = schema if columns is None else pa.schema([schema.field(name) for name in columns], metadata=schema.metadata)
+        return pa.Table.from_batches(list(self.native_snapshot.table(label,
+            max_ordered_bytes=self.max_ordered_bytes).iter_batches(columns=columns)), schema=output)
 
     def close(self):
         if hasattr(self, '_complete_groups'):
@@ -313,12 +336,8 @@ class Catalog:
             error.add_note(f'Catalog reader cleanup also failed: {cleanup}')
 
     def _initialize(self, path, retained, *, review_manifest, review_sha256, search_indexes):
-        from congress_api.retention.catalog_publication import local_catalog_paths
-        if path.name == 'document-filenames.parquet' and path.parent.name == 'indexes':
-            path, documents = local_catalog_paths(path.parent.parent)
-        else:
-            documents = path.with_name('documents.parquet')
-        self.path = path
+        from congress_api.retention.catalog_selection import NativeCatalogSnapshot
+        self.native_snapshot = path if isinstance(path, NativeCatalogSnapshot) else None
         self.read_lock = Lock()
         self.retained = retained
         self.review_snapshot = None
@@ -327,19 +346,32 @@ class Catalog:
         self.row_group_budget = 32 * 1024**2
         self._complete_groups = OrderedDict()
         self._complete_group_bytes = 0
-        read_options = {} if search_indexes else {'pre_buffer': False, 'buffer_size': 64 * 1024}
-        self.file = self._readers.enter_context(pq.ParquetFile(path, **read_options))
-        self.document_path = documents
-        if not self.document_path.is_file():
-            raise ValueError('Build the root document index first with index_document_filenames.py --documents-only.')
-        self.document_file = self._readers.enter_context(pq.ParquetFile(self.document_path, **read_options))
-        catalog_id = (self.file.schema_arrow.metadata or {}).get(b'catalog_id')
-        if not catalog_id or catalog_id != (self.document_file.schema_arrow.metadata or {}).get(b'catalog_id'):
+        if self.native_snapshot is None:
+            from congress_api.retention.catalog_publication import local_catalog_paths
+            if path.name == 'document-filenames.parquet' and path.parent.name == 'indexes':
+                path, documents = local_catalog_paths(path.parent.parent)
+            else:
+                documents = path.with_name('documents.parquet')
+            self.path, self.document_path = path, documents
+            read_options = {} if search_indexes else {'pre_buffer': False, 'buffer_size': 64 * 1024}
+            self.file = self._readers.enter_context(pq.ParquetFile(path, **read_options))
+            if not documents.is_file():
+                raise ValueError('Build the root document index first with index_document_filenames.py --documents-only.')
+            self.document_file = self._readers.enter_context(pq.ParquetFile(documents, **read_options))
+            source_schema, document_schema = self.file.schema_arrow, self.document_file.schema_arrow
+        else:
+            from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+            self.path = self.document_path = None
+            source_schema, document_schema = (self.native_snapshot.schemas[label] for label in ('filenames', 'documents'))
+            self.dependencies = CatalogDependencyStorage.for_snapshot(self.native_snapshot).selected(
+                self.native_snapshot.selection['dependency'])
+        catalog_id = (source_schema.metadata or {}).get(b'catalog_id')
+        if not catalog_id or catalog_id != (document_schema.metadata or {}).get(b'catalog_id'):
             raise ValueError('The document indexes are from different builds. Rebuild them together.')
-        self.fields = self.file.schema_arrow.names
+        self.fields = source_schema.names
         columns = LIST_COLUMNS if search_indexes else GROUP_COLUMNS
-        self.table = self.file.read(columns=[c for c in columns if c in self.fields])
-        self.documents = self.document_file.read(columns=[c for c in LIST_COLUMNS if c in self.fields])
+        self.table = self._read_table('filenames', [c for c in columns if c in self.fields])
+        self.documents = self._read_table('documents', [c for c in LIST_COLUMNS if c in document_schema.names])
         entries = {key: i for i, key in enumerate(self.documents['document_id'].to_pylist())}
         self.document_id_entries = entries
         sources = {key: i for i, key in enumerate(self.table['source_id'].to_pylist())}
@@ -352,7 +384,7 @@ class Catalog:
         row_id = 0
         saved_columns = [name for name in SAVED_FIELDS if name in self.fields]
         saved_batches = (self.table.select(saved_columns).to_batches(max_chunksize=8192) if search_indexes
-                         else self.file.iter_batches(batch_size=8192, columns=saved_columns))
+                         else self._read_table('filenames', saved_columns).to_batches(max_chunksize=8192))
         for batch in saved_batches:
             for row in batch.to_pylist():
                 if saved_response(row):
@@ -389,12 +421,13 @@ class Catalog:
         self.video_entries = {entry for entry in self.video_entries
                               if all(row_id in self.video_sources for row_id in self.members[entry])}
         self.document_entries.difference_update(self.video_entries)
-        self.group_starts = [0]
-        for group in range(self.file.num_row_groups):
-            self.group_starts.append(self.group_starts[-1] + self.file.metadata.row_group(group).num_rows)
-        self.document_starts = [0]
-        for group in range(self.document_file.num_row_groups):
-            self.document_starts.append(self.document_starts[-1] + self.document_file.metadata.row_group(group).num_rows)
+        if self.native_snapshot is None:
+            self.group_starts = [0]
+            for group in range(self.file.num_row_groups):
+                self.group_starts.append(self.group_starts[-1] + self.file.metadata.row_group(group).num_rows)
+            self.document_starts = [0]
+            for group in range(self.document_file.num_row_groups):
+                self.document_starts.append(self.document_starts[-1] + self.document_file.metadata.row_group(group).num_rows)
         self.filter_text = {}
         facets = {}
         for field in FILTERS:
@@ -407,30 +440,41 @@ class Catalog:
         if search_indexes:
             self._ensure_search_indexes()
         self.info = {
-            'file': path.name, 'rows': len(self.table),
+            'file': path.name if self.native_snapshot is None else 'selected native catalog', 'rows': len(self.table),
             'filenames': pc.count_distinct(self.table['filename']).as_py(),
             'entries': len(self.members),
             'documents': len(self.document_entries),
             'capture_records': len(self.members) - len(self.document_entries),
             'api_reference_groups': len(self.api_entries),
             'video_reference_groups': len(self.video_entries),
-            'bytes': path.stat().st_size, 'fields': self.fields, 'facets': facets,
+            'bytes': path.stat().st_size if self.native_snapshot is None else 0, 'fields': self.fields, 'facets': facets,
             'catalog_id': catalog_id.decode(),
-            'house_naming_version': (self.file.schema_arrow.metadata or {}).get(b'house_naming_version', b'unknown').decode(),
+            'house_naming_version': (source_schema.metadata or {}).get(b'house_naming_version', b'unknown').decode(),
         }
-        archive = path.parents[2] if path.parent.parent.name == 'catalog-generations' else path.parent.parent
-        receipt = archive / 'sync-receipt.json'
-        if receipt.is_file():
-            sync = json.loads(receipt.read_text())
-            if sync.get('catalog_id') == self.info['catalog_id']:
-                self.info.update({key: sync.get(key) for key in ('generation', 'synced_at', 'remote_last_modified')})
+        if self.native_snapshot is None:
+            archive = path.parents[2] if path.parent.parent.name == 'catalog-generations' else path.parent.parent
+            receipt = archive / 'sync-receipt.json'
+            if receipt.is_file():
+                sync = json.loads(receipt.read_text())
+                if sync.get('catalog_id') == self.info['catalog_id']:
+                    self.info.update({key: sync.get(key) for key in ('generation', 'synced_at', 'remote_last_modified')})
+        else:
+            self.info['source_identity'] = self.native_snapshot.identity
+            self.info['downloads'] = {'catalog': '/api/selection'}
         self.info['complete_body_reviews'] = bool(review_manifest or review_sha256)
         if self.info['complete_body_reviews']:
             from congress_api.retention.document_review_viewer import ReviewSnapshot
             try:
                 if not review_manifest or not review_sha256:
                     raise ValueError('Both a portable review manifest and its SHA-256 are required.')
-                self.review_snapshot = ReviewSnapshot(review_manifest, review_sha256, self.path, self.document_path)
+                if self.native_snapshot is None:
+                    self.review_snapshot = ReviewSnapshot(review_manifest, review_sha256, self.path, self.document_path)
+                else:
+                    def complete_group(document_id):
+                        position = self.document_id_entries[document_id]
+                        row = self.members[position][0]
+                        return self.document(row), self.records(self.members[position])
+                    self.review_snapshot = ReviewSnapshot.from_logical_groups(review_manifest, review_sha256, complete_group)
                 self.review_classifications = {entries[key]: row for key, row in self.review_snapshot.classifications().items()}
             except (ValueError, OSError, KeyError, TypeError) as exc:
                 self.review_error = str(exc)
@@ -475,14 +519,14 @@ class Catalog:
         if self.table.column_names != columns:
             with self.read_lock:
                 if self.table.column_names != columns:
-                    self.table = self.file.read(columns=columns)
+                    self.table = self._read_table('filenames', columns)
 
     def resolve(self, identity, catalog_id=None):
         if catalog_id and catalog_id != self.info['catalog_id']:
             raise SnapshotChanged('This link belongs to a different catalog snapshot. Close this panel and select the document in the current results.')
         if identity in self.source_ids:
             return self.source_ids[identity]
-        if identity.isdecimal() and len(identity) < 12:
+        if self.native_snapshot is None and identity.isdecimal() and len(identity) < 12:
             row = int(identity)
             if row < len(self.table):
                 return row
@@ -496,7 +540,7 @@ class Catalog:
             column = self.table[field]
         else:
             with self.read_lock:
-                column = self.file.read(columns=[field])[field]
+                column = self._read_table('filenames', [field])[field]
         if pa.types.is_list(column.type) and pa.types.is_struct(column.type.value_type):
             return pa.array([json.dumps(value, ensure_ascii=False) if value else None
                              for value in column.to_pylist()], type=pa.string())
@@ -582,7 +626,8 @@ class Catalog:
                 if entry in self.reviewed_entries:
                     row['catalog_document_kind'] = row.get('document_kind')
                     row.update({key: deepcopy(classification[key]) for key in ('document_kind', 'document_family', 'document_kind_source')})
-            row['_row'] = self.preferred_sources[entry]
+            row['_row'] = (self.documents['source_id'][entry].as_py() if self.native_snapshot is not None
+                           else self.preferred_sources[entry])
             row['source_count'] = len(self.members[entry])
             row.pop('body_key')
             row['retained'] = bool(self.saved_responses[entry])
@@ -596,6 +641,30 @@ class Catalog:
         return self.records([row_id])[0]
 
     def _complete_rows(self, row_ids, *, documents=False):
+        if self.native_snapshot is not None:
+            from congress_api.retention.catalog_batches import SelectedCatalogTable
+            output = []
+            for row in row_ids:
+                table = self.documents if documents else self.table
+                if type(row) is not int or not 0 <= row < len(table):
+                    raise ValueError('Row does not exist.')
+                if not documents:
+                    identity = self.table['source_id'][row].as_py()
+                    selected = self.dependencies.source(identity)
+                    if selected is None:
+                        raise ValueError('Source record differs from selected catalog membership')
+                    output.append(selected)
+                    continue
+                identity = self.documents['document_id'][row].as_py()
+                reference = self.native_snapshot.component_ref(identity)
+                selected = SelectedCatalogTable(self.native_snapshot.schemas['documents'], lambda: iter([(identity, reference)]),
+                    store=self.native_snapshot.store, native=self.native_snapshot.native, label='documents', rows=1,
+                    max_ordered_bytes=self.max_ordered_bytes)
+                records = [value for batch in selected.iter_batches() for value in batch.to_pylist()]
+                if len(records) != 1 or records[0]['document_id'] != identity:
+                    raise ValueError('Document differs from selected catalog membership')
+                output.append(records[0])
+            return output
         file = self.document_file if documents else self.file
         starts = self.document_starts if documents else self.group_starts
         requested = {}
@@ -636,7 +705,7 @@ class Catalog:
         sources = self.table.take(pa.array(ids, type=pa.int64())).to_pylist()
         bodies = [source.get('body_key') if saved_response(source) else None for source in sources]
         for source, source_id in zip(sources, ids):
-            source['_row'] = source_id
+            source['_row'] = source['source_id'] if self.native_snapshot is not None else source_id
             source['retained'] = saved_response(source)
             source.pop('body_key')
         filename = self.documents['filename'][self.entry_ids[row_id]].as_py()
@@ -734,6 +803,8 @@ def handler_for(catalog):
                 elif url.path == '/api/rows':
                     self.json(catalog.search({k: v[-1] for k, v in parse_qs(url.query).items()}))
                 elif url.path.startswith('/api/row/'):
+                    if catalog.native_snapshot is not None:
+                        raise ValueError('Selected native catalogs require stable source IDs.')
                     self.json(catalog.record(int(url.path.removeprefix('/api/row/'))))
                 elif url.path.startswith('/api/entry/'):
                     row = catalog.resolve(url.path.removeprefix('/api/entry/'), query.get('catalog'))
@@ -770,7 +841,14 @@ def handler_for(catalog):
                     self.send_header('Content-Security-Policy', policy if pdf else policy + '; sandbox')
                     self.end_headers()
                     self.wfile.write(data)
+                elif url.path == '/api/selection' and catalog.native_snapshot is not None:
+                    self.json(dict(manifest=catalog.native_snapshot.manifest, identity=catalog.native_snapshot.identity))
+                elif url.path.startswith('/api/document/'):
+                    row = catalog.resolve(url.path.removeprefix('/api/document/'), query.get('catalog'))
+                    self.json(catalog.document(row))
                 elif url.path in ('/data.parquet', '/sources.parquet'):
+                    if catalog.native_snapshot is not None:
+                        raise FileNotFoundError('Selected native catalogs expose logical tables, not full Parquet exports.')
                     path = catalog.document_path if url.path == '/data.parquet' else catalog.path
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/vnd.apache.parquet')
@@ -804,6 +882,8 @@ def main():
     synced = ROOT / '.cache/filename-viewer-r2/indexes/document-filenames.parquet'
     default = synced if (synced.parent / 'catalog.json').is_file() else DEFAULT_FILE
     parser.add_argument('file', nargs='?', type=Path, default=default)
+    parser.add_argument('--catalog-root', type=Path, help='Local store containing an adopted native indexes/catalog.json')
+    parser.add_argument('--native-config', type=Path, help='Explicit DocSpec runtime for --catalog-root')
     parser.add_argument('--port', type=int, default=8785)
     parser.add_argument('--body-root', action='append', type=Path, default=[ROOT / '.cache/congressional-tech-raw'])
     parser.add_argument('--r2-account-id', default=os.environ.get('CLOUDFLARE_ACCOUNT_ID'))
@@ -812,11 +892,19 @@ def main():
     parser.add_argument('--review-sha256', help='Expected SHA-256 of that manifest')
     args = parser.parse_args()
     retained = RetainedFiles(args.body_root, ROOT / '.cache/filename-viewer-r2', args.r2_account_id, args.cloudflare_profile)
-    catalog = Catalog(args.file.resolve(), retained=retained,
+    if bool(args.catalog_root) != bool(args.native_config):
+        parser.error('--catalog-root and --native-config are required together')
+    source = args.file.resolve()
+    if args.catalog_root:
+        from congress_api.retention.docspec import NativeDatasets
+        from congress_api.retention.catalog_cache import LocalStore
+        from congress_api.retention.catalog_publication import read_catalog
+        source = read_catalog(LocalStore(args.catalog_root), native=NativeDatasets.from_config(args.native_config))
+    catalog = Catalog(source, retained=retained,
                       review_manifest=args.review_manifest, review_sha256=args.review_sha256)
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler_for(catalog))
     print(f'Filename viewer: http://127.0.0.1:{server.server_port}', flush=True)
-    print(f'{catalog.info["rows"]:,} rows from {catalog.path}', flush=True)
+    print(f'{catalog.info["rows"]:,} rows from {catalog.path or catalog.native_snapshot.identity}', flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
