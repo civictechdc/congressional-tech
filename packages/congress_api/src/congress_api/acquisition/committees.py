@@ -8,7 +8,11 @@ from urllib.parse import urlsplit
 
 import requests
 
-from congress_api.models.congress import CommitteeDetail, CommitteeRecord
+from congress_api.models.congress import (
+    CommitteeResponse,
+    CommitteesPage,
+    parse_response,
+)
 from congress_api.retention.committees import read as read_committees
 from congress_api.retention.committees import write as write_committees
 from congress_api.retention.meetings import read as read_meetings
@@ -46,7 +50,10 @@ def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None)
             page = get(session, url, api_key, {'limit': 250, 'offset': offset})
             retrieved = datetime.now(timezone.utc).isoformat()
             try:
-                committees = [CommitteeRecord.model_validate(native).source_dict() for native in page['committees']]
+                envelope = parse_response(page)
+                if not isinstance(envelope, CommitteesPage):
+                    raise ValueError('Congress.gov committee list did not return a CommitteesPage')
+                committees = [native.source_dict() for native in envelope.committees]
                 for committee in committees:
                     detail_url(committee)
             except (ValueError, TypeError, KeyError):
@@ -59,7 +66,7 @@ def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None)
                 seen_codes.add(code)
                 rows[f'{congress}|{code}'] = dict(congress=congress, committee=committee, _url=url, retrieved_at=retrieved)
             count += len(committees)
-            if not page.get('pagination', {}).get('next'):
+            if not (envelope.pagination and envelope.pagination.next):
                 break
             if not committees:
                 raise ValueError(f'Committee pagination did not advance for Congress {congress}')
@@ -82,7 +89,10 @@ def collect(meetings_path, output_path, *, api_key, session=None, gpo_path=None)
             else:
                 response = get(session, url, api_key)
                 try:
-                    detail = CommitteeDetail.model_validate(response['committee']).source_dict()
+                    envelope = parse_response(response)
+                    if not isinstance(envelope, CommitteeResponse):
+                        raise ValueError('Congress.gov committee detail did not return a CommitteeResponse')
+                    detail = envelope.committee.source_dict()
                     if detail['systemCode'] != row['committee']['systemCode']:
                         raise ValueError('Committee detail identity does not match its listing')
                 except (ValueError, TypeError, KeyError):

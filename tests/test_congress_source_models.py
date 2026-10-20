@@ -164,6 +164,28 @@ def test_mods_fills_witness_affiliation_without_replacing_role(monkeypatch):
     assert person.bioguide_id == 'W000001'
 
 
+def test_envelope_validation_rejects_bad_page_without_dropping_it(tmp_path, monkeypatch):
+    from congress_api.acquisition import committees, meetings
+
+    bad_meeting_page = {'committeeMeetings': 'not-a-list', 'pagination': {'count': 1}}
+    monkeypatch.setattr(meetings, 'load_congress_api_key', lambda: 'test-key')
+    monkeypatch.setattr(meetings, 'get', lambda session, url, api_key, params=None: bad_meeting_page)
+    rejected_file = tmp_path / 'meetings.jsonl.gz'
+    with pytest.raises(ValidationError):
+        meetings.main(output_path=rejected_file)
+    retained = json.loads(Path(str(rejected_file) + '.rejected.json').read_text())
+    assert retained[0]['response'] == bad_meeting_page
+
+    bad_committee_page = {'committees': 'not-a-list', 'pagination': {'count': 1}}
+    monkeypatch.setattr(committees, 'read_meetings', lambda path: {'1': {'congress': 119}})
+    monkeypatch.setattr(committees, 'get', lambda session, url, api_key, params=None: bad_committee_page)
+    comm_rejected = tmp_path / 'committees.json.gz'
+    with pytest.raises(ValidationError):
+        committees.collect(rejected_file, comm_rejected, api_key='test-key')
+    retained_comm = json.loads(Path(str(comm_rejected) + '.rejected.json').read_text())
+    assert retained_comm[0]['response'] == bad_committee_page
+
+
 def test_source_models_do_not_depend_on_io_or_normalization_and_export_schema():
     forbidden = {'requests', 'csv', 'tinydb', 'pyarrow', 'committee_meeting'}
     for entry in pkgutil.iter_modules(models.__path__):

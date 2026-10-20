@@ -168,7 +168,7 @@ def test_missing_collection_field_is_an_error_not_confirmed_empty(tmp_path, monk
     path, _, _ = setup(monkeypatch, tmp_path)
     before = path.read_bytes()
     monkeypatch.setattr(meetings, "get", lambda *args: {})
-    with pytest.raises(KeyError, match="committeeMeetings"):
+    with pytest.raises((KeyError, ValueError), match="committeeMeetings|no supported meeting"):
         meetings.main(path, nthreads=1)
     assert path.read_bytes() == before
     rejected = json.loads(path.with_suffix(path.suffix + '.rejected.json').read_text())

@@ -24,7 +24,11 @@ from congress_shared.auth import load_congress_api_key
 from congress_shared.resources import CONGRESS_METADATA
 from congress_shared.paths import DEFAULT_MEETINGS_FILE
 
-from congress_api.models.congress import CommitteeMeeting, MeetingSummary
+from congress_api.models.congress import (
+    MeetingResponse,
+    MeetingsPage,
+    parse_response,
+)
 from congress_api.models.content import RawContent
 from congress_api.parsers.congress import meeting_from_xml, parse_congress_xml
 from congress_api.retention.meetings import read, write, write_pending
@@ -75,7 +79,10 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
             while True:
                 page = get(session, f"{API}/committee-meeting/{congress}/{chamber}", api_key, params)
                 try:
-                    meetings = [MeetingSummary.model_validate(m) for m in page["committeeMeetings"]]
+                    envelope = parse_response(page)
+                    if not isinstance(envelope, MeetingsPage):
+                        raise ValueError("Congress.gov meeting list did not return a MeetingsPage")
+                    meetings = envelope.committeeMeetings
                 except (ValueError, TypeError, KeyError):
                     retain_rejected_page(output_path, page, url=f"{API}/committee-meeting/{congress}/{chamber}", offset=params['offset'])
                     raise
@@ -84,7 +91,7 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
                     raise ValueError(f"Meeting pagination repeated a page: {congress}/{chamber}")
                 listed.update(page_urls)
                 urls += page_urls
-                if not page.get("pagination", {}).get("next") and len(meetings) < params["limit"]:
+                if not (envelope.pagination and envelope.pagination.next) and len(meetings) < params["limit"]:
                     break
                 if not meetings:
                     raise ValueError(f"Meeting pagination did not advance: {congress}/{chamber}")
@@ -110,6 +117,7 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
                 if isinstance(error, HttpRequestError) and error.status != 500:
                     raise
                 xml = get_with_retry(session, url, params={'api_key': api_key, 'format': 'xml'}, attempts=5)
+                # Retained in failed_responses if XML parsing raises before committeeMeeting is built.
                 response = {'_source_xml': RawContent.from_bytes(xml.content, 'application/xml').source_dict()}
                 response = {'committeeMeeting': meeting_from_xml(parse_congress_xml(xml.content)).source_dict()}
                 recovered = response['committeeMeeting']
@@ -119,7 +127,10 @@ def main(output_path: Path = DEFAULT_MEETINGS_FILE, nthreads: int = 5) -> None:
                     chamber = 'nochamber'
                 if expected != [str(recovered['congress']), chamber, recovered['eventId']]:
                     raise ValueError('XML meeting identity does not match the requested endpoint')
-            record = CommitteeMeeting.model_validate(response["committeeMeeting"]).source_dict()
+            envelope = parse_response(response)
+            if not isinstance(envelope, MeetingResponse):
+                raise ValueError("Congress.gov meeting detail did not return a MeetingResponse")
+            record = envelope.committeeMeeting.source_dict()
             if any(record.get(field) in (None, "") for field in ("eventId", "congress", "chamber")):
                 raise ValueError("Meeting detail lacks eventId, congress or chamber")
             record["_url"] = url
