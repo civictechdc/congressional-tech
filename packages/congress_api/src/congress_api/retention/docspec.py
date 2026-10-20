@@ -18,6 +18,39 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 
+def native_storage_schema(schema):
+    """Use lossless Iceberg types for unsigned values and binary offsets.
+
+    The application retains the original schema in its immutable selection.
+    Native pins describe the physical representation; schema-bound reads restore
+    application types with Arrow's checked cast. UInt64 uses Decimal128(20, 0);
+    Binary uses LargeBinary to match the native nested writer. No floating-point
+    value occurs. Native storage can therefore use wider buffers than the input.
+    """
+    def field(value):
+        return value.with_type(data_type(value.type))
+
+    def data_type(value):
+        if pa.types.is_uint64(value):
+            return pa.decimal128(20, 0)
+        if pa.types.is_binary(value):
+            return pa.large_binary()
+        if pa.types.is_struct(value):
+            return pa.struct([field(child) for child in value])
+        if pa.types.is_list(value):
+            return pa.list_(field(value.value_field))
+        if pa.types.is_large_list(value):
+            return pa.large_list(field(value.value_field))
+        if pa.types.is_fixed_size_list(value):
+            return pa.list_(field(value.value_field), value.list_size)
+        if pa.types.is_map(value):
+            return pa.map_(field(value.key_field), field(value.item_field),
+                           keys_sorted=value.keys_sorted)
+        return value
+
+    return pa.schema([field(value) for value in schema], metadata=schema.metadata)
+
+
 class DocSpecFailure(RuntimeError):
     """The maintained CLI refused or failed; its original diagnostic is retained."""
 
@@ -132,7 +165,9 @@ class NativeDatasets:
         """
         with self._scratch() as directory:
             source = directory / 'source.parquet'
-            pq.write_table(table, source, compression='zstd')
+            physical = native_storage_schema(table.schema)
+            stored = table if physical.equals(table.schema, check_metadata=True) else table.cast(physical, safe=True)
+            pq.write_table(stored, source, compression='zstd')
             digest = self.hash_input(source)['digest']
             return self.run(dict(dataset=dataset, operation=operation, definition=definition,
                 input=str(source), expected_digest=digest, sql='SELECT * FROM input'))
@@ -153,12 +188,14 @@ class NativeDatasets:
         return self._call('release', dataset, operation)
 
     @contextmanager
-    def source_batches(self, pin):
+    def source_batches(self, pin, *, schema=None):
         """Read one exact bounded partition pin through the configured native host.
 
         Native reading supplies the logical source fields, including nested
         values. Callers retain any application Arrow schema metadata separately;
         the native representation replaces application field metadata with native IDs.
+        An explicit application schema restores losslessly mapped storage types.
+        Other native types must match it exactly; arbitrary coercion is refused.
         The temporary Arrow IPC file remains alive while the reader is open.
         """
         with self._scratch() as directory:
@@ -167,4 +204,12 @@ class NativeDatasets:
             self._call('read', release, output, '--group', 'source')
             with output.open('rb') as stream:
                 with pa.ipc.open_stream(stream) as reader:
-                    yield reader
+                    if schema is None:
+                        yield reader
+                    else:
+                        physical = native_storage_schema(schema)
+                        if not reader.schema.equals(physical, check_metadata=False):
+                            raise ValueError('Native source storage schema differs from the selected application schema')
+                        with pa.RecordBatchReader.from_batches(
+                                schema, (batch.cast(schema, safe=True) for batch in reader)) as restored:
+                            yield restored
