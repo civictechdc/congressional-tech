@@ -34,6 +34,7 @@ class CatalogSnapshot:
     version: str | None
     directory: Path
     files: dict = field(default_factory=dict)
+    identity: dict = field(default_factory=lambda: dict(selector_sha256=None, selected_ref=None))
     _cleanup: object = field(init=False, repr=False)
 
     def __post_init__(self):
@@ -98,7 +99,7 @@ def _validate(path, item, catalog_id, *, identity=None):
     return properties
 
 
-def read_catalog(store, *, read=None):
+def read_catalog(store, *, read=None, native=None):
     """Own verified files until the caller closes the selected snapshot.
 
     A corrupt selection never falls back to root files. Failed reads preserve
@@ -109,9 +110,18 @@ def read_catalog(store, *, read=None):
     version = (getattr(store, 'index_etags', {}).get(MANIFEST_KEY)
                if hasattr(store, 'index_etags') else
                sha256(selected).hexdigest() if selected is not None else None)
+    if selected is not None:
+        try:
+            selector = json.loads(selected)
+        except json.JSONDecodeError:
+            selector = None  # The existing v1 parser retains its failure behavior.
+        if isinstance(selector, dict) and selector.get('version') == 2:
+            from .catalog_selection import read_native_catalog
+            return read_native_catalog(store, selected, version=version, native=native)
     snapshot = CatalogSnapshot(None, None, None, version,
                                Path(tempfile.mkdtemp(prefix='catalog-snapshot-')))
     try:
+        snapshot.identity['selector_sha256'] = sha256(selected).hexdigest() if selected is not None else None
         if selected is not None:
             (snapshot.directory / 'selected.json').write_bytes(selected)
             snapshot.manifest = _manifest(selected)
@@ -137,6 +147,8 @@ def read_catalog(store, *, read=None):
 def publish_catalog(store, filenames_path, documents_path, *, previous, validation=None):
     """Upload immutable pair, then conditionally select it as the final write."""
     from congress_api.retention.document_index import validate_document_indexes
+    if hasattr(previous, 'selection'):
+        raise ValueError('Native catalog updates require the retained scope publication path')
     if not callable(getattr(store, 'put_catalog_manifest', None)) or not callable(getattr(store, 'put_derived_file', None)):
         raise TypeError('Catalog publication requires conditional selector and exclusive immutable file operations')
     if validation is None:

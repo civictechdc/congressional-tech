@@ -59,8 +59,27 @@ latency, or throughput. Evidence is `publication/coalescing-cost/summary.json`.
 The full-reader check selects 130 logical components from an old shared batch
 and a changed batch, reads each once, excludes the retired old member, and reads
 each metadata object once. Actual native nested replay/schema restoration also
-passes. These candidate APIs are not yet connected to the publication selector
-or maintained consumer entry points.
+passes.
+
+The candidate `catalog_selection.publish_native_catalog` now accepts only a
+durable closed scope proof. It compares the exact captured selector identity,
+complete dependency selection, current reference/scope requirements, prepared
+component bindings, and logical schemas before updating `indexes/catalog.json`
+once through the maintained conditional store operation. Bounded component
+reference leaves reuse unchanged routing paths. A lost reply reconciles exact
+selector bytes without issuing a second write. Read dispatch exposes native
+logical tables directly and refuses a complete-file path. Reused physical
+schemas remain exact; only the logical root's `catalog_id` metadata may differ.
+Old selected proofs remain readable after a validator upgrade; new reuse refuses
+until revalidated. An existing v1 file selection cannot silently enter this path:
+its explicit complete adoption and saved-reference mapping are still pending.
+
+Local tests cover bridge deletion/split with an unrelated component retained
+in an old shared pin, restart without old-payload validation, competing writers,
+lost replies, stale proof requirements, exact base refusal, bulk reference
+splitting, and actual native scope preparation/selection/read. The receipt is
+`publication/native-selection-final.xml`. Maintained catalog computation and
+viewer/recovery preparation entry points have not yet adopted this path.
 
 The fixture contains two logical tables, each with unique source/document IDs,
 nested provenance, ordered duplicate values, Unicode, null lists, empty lists,
