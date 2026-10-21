@@ -33,6 +33,7 @@ Deliberate representation choices:
   by dropping absent-optional nulls.
 """
 from contextlib import contextmanager
+from datetime import date
 from hashlib import sha256
 import ipaddress
 import json
@@ -53,9 +54,10 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from news_lake.analysis import bridges
+from news_lake.analysis.cluster import text_group_key
 from news_lake.analysis.export import export_release
-from news_lake.analysis.views import _by_kind, _merge_spans
-from news_lake.context import canonicalize_record_instants
+from news_lake.analysis.views import _by_kind, _merge_spans, _publication_date
+from news_lake.context import canonicalize_record_instants, parse_instant
 from news_lake.contract.records import (
     CONTENT_TABLES,
     CONTRACT_VERSION,
@@ -402,7 +404,7 @@ class DocSpecClient:
     constructor and request-builder shape while adding no second transport.
     """
 
-    def __init__(self, workspace, binary=None, *, timeout=120):
+    def __init__(self, workspace, binary=None, *, timeout=120, limits=None):
         resolved = (binary or os.environ.get('DOCSPEC_BINARY')
                     or shutil.which('docspec'))
         if not resolved:
@@ -414,9 +416,10 @@ class DocSpecClient:
                     stderr='no DocSpec runtime configured; set DOCSPEC_BINARY or install docspec',
                 ),
             )
-        self._native = NativeDatasets(resolved, workspace, timeout=timeout)
+        self._native = NativeDatasets(resolved, workspace, timeout=timeout, limits=limits)
         self.binary = self._native.binary
         self.workspace = self._native.workspace
+        self.limits = self._native.limits
         self.timeout = timeout
         self._dataset_schemas = {}
 
@@ -458,8 +461,14 @@ class DocSpecClient:
     def release(self, dataset, version):
         return self._native.release(dataset, version)
 
+    def inspect(self, dataset):
+        return self._native.inspect(dataset)
+
     def refresh(self, spec):
         return self._native.refresh(spec)
+
+    def plan_refresh(self, spec):
+        return self._native.plan_refresh(spec)
 
     def seal_generation(self, spec):
         return self._native.seal_generation(spec)
@@ -485,13 +494,47 @@ class DocSpecClient:
     def compact_lifecycle(self, dataset):
         return self._native.compact_lifecycle(dataset)
 
-    def read_arrow(self, release_pin, group='source', *, schema=None):
-        dataset = release_pin['dataset']['dataset']
+    def _projected_schema(self, dataset, columns, schema, group='source'):
         if schema is None and group == 'source':
             schema = self._dataset_schemas.get(dataset)
-        table = self._native.read_arrow(release_pin, group, schema=None)
-        if schema is not None:
-            return restore_application_schema(table, expected_schema=schema)
+        if schema is not None and columns is not None:
+            return pa.schema([schema.field(name) for name in columns], metadata=schema.metadata)
+        return schema
+
+    @contextmanager
+    def source_batches(self, release_pin, *, columns=None, schema=None):
+        """Stream projected Arrow RecordBatches from an exact release pin."""
+        dataset = release_pin['dataset']['dataset']
+        target_schema = self._projected_schema(dataset, columns, schema, group='source')
+        with self._native.source_batches(release_pin, columns=columns, schema=None) as reader:
+            if target_schema is None:
+                yield reader
+            else:
+                def restored_batches():
+                    for batch in reader:
+                        tbl = restore_application_schema(
+                            pa.Table.from_batches([batch], schema=reader.schema),
+                            expected_schema=target_schema,
+                        )
+                        yield from tbl.to_batches()
+
+                with pa.RecordBatchReader.from_batches(target_schema, restored_batches()) as restored:
+                    yield restored
+
+    def iter_records(self, release_pin, *, columns=None, schema=None):
+        """Stream projected records batch-by-batch without materializing a full table."""
+        with self.source_batches(release_pin, columns=columns, schema=schema) as reader:
+            for batch in reader:
+                if batch.num_rows == 0:
+                    continue
+                yield from table_records(pa.Table.from_batches([batch], schema=reader.schema))
+
+    def read_arrow(self, release_pin, group='source', *, columns=None, schema=None):
+        dataset = release_pin['dataset']['dataset']
+        target_schema = self._projected_schema(dataset, columns, schema, group=group)
+        table = self._native.read_arrow(release_pin, group, columns=columns, schema=None)
+        if target_schema is not None:
+            return restore_application_schema(table, expected_schema=target_schema)
         return table
 
     def read_keys(self, release_pin, key, values, *, columns=None, schema=None):
@@ -507,6 +550,22 @@ class DocSpecClient:
         if schema is not None:
             return restore_application_schema(table, expected_schema=schema)
         return table
+
+    @contextmanager
+    def changes_batches(self, before, after, *, group='source', identity='occurrences',
+                        force_full=False):
+        """Stream one exact change stream and its ``docspec.change`` descriptor."""
+        with self._native.changes_batches(
+            before, after, group=group, identity=identity, force_full=force_full
+        ) as result:
+            yield result
+
+    def read_changes(self, before, after, *, group='source', identity='occurrences',
+                     force_full=False):
+        """Consume one change stream, returning ``dict(descriptor, table, ...)``."""
+        return self._native.read_changes(
+            before, after, group=group, identity=identity, force_full=force_full
+        )
 
     def capture_inputs(self, inputs):
         return self._native.capture_inputs(inputs)
@@ -1310,7 +1369,18 @@ class DocSpecLake:
                 f'release contract_version {record.get("contract_version")!r} does not match reader {CONTRACT_VERSION!r}',
                 release_id=release_id,
             )
-        entries = record['snapshots']
+        all_entries = record['snapshots']
+        for entry in all_entries:
+            if 'snapshot_id' not in entry:
+                continue
+            table_name = entry['table']
+            pin = table_pins.get(table_name)
+            if pin is None:
+                raise ReleaseError('missing_snapshot', f'{table_name} pin is missing', release_id=release_id)
+            expected_uuid = self._table_uuid(table_name, pin=pin)
+            if expected_uuid != entry['table_uuid']:
+                raise ReleaseError('table_uuid_mismatch', f'{table_name} UUID differs from the release', release_id=release_id)
+        entries = all_entries
         if tables is not None:
             requested = set(tables)
             known = {entry['table'] for entry in entries}
@@ -1334,12 +1404,7 @@ class DocSpecLake:
             if 'snapshot_id' not in entry:
                 result[table_name] = []
                 continue
-            pin = table_pins.get(table_name)
-            if pin is None:
-                raise ReleaseError('missing_snapshot', f'{table_name} pin is missing', release_id=release_id)
-            expected_uuid = self._table_uuid(table_name, pin=pin)
-            if expected_uuid != entry['table_uuid']:
-                raise ReleaseError('table_uuid_mismatch', f'{table_name} UUID differs from the release', release_id=release_id)
+            pin = table_pins[table_name]
             kind = TABLE_KINDS[table_name]
             result[table_name] = table_records(
                 self.client.read_arrow(pin, schema=kind_arrow_schema(kind))
@@ -1351,14 +1416,59 @@ class DocSpecLake:
         }
 
 
+def _compact_run_meta(run):
+    return {
+        'id': run['id'],
+        'processor': run['processor'],
+        'processor_version': run['processor_version'],
+        'config_hash': run['config_hash'],
+        'status': run['status'],
+        'finished_at': run['finished_at'],
+    }
+
+
+def _is_run_eligible(run, pinned_triples):
+    return (
+        isinstance(run, dict)
+        and run.get('status') == 'succeeded'
+        and (run.get('processor'), run.get('processor_version'), run.get('config_hash')) in pinned_triples
+    )
+
+
+def _run_rank(run):
+    return (parse_instant(run['finished_at']), run['id'])
+
+
+def _select_version_assignments(runs_by_id, selections):
+    pinned = {
+        (s['processor'], s['processor_version'], s['config_hash'])
+        for s in (selections or ())
+    }
+    best = {}
+    for run in runs_by_id.values():
+        if not _is_run_eligible(run, pinned):
+            continue
+        rank = _run_rank(run)
+        for ref in run.get('inputs', ()):
+            if ref.get('kind') != 'version':
+                continue
+            key = f"{run['processor']}:{ref['id']}"
+            if key not in best or rank > best[key][0]:
+                best[key] = (rank, run['id'])
+    return {key: run_id for key, (_, run_id) in best.items()}
+
+
+_DATASET_TO_TABLE = {dataset_id_for(t): t for t in CONTENT_TABLES}
+
+
 class DocSpecNewsViews:
     """Materialize the relational bridges natively and run the C9 views on them.
 
     ``materialize`` admits ``entity_roots``, ``selected_mentions`` and
     ``survivor_items`` (``analysis.bridges``) as datasets and records their
-    exact ``ReleasePin``s in ``self.pins``; ``update_bridges`` diffs new bridge
-    rows against the current pinned bridge tables and issues keyed
-    ``update_table`` calls only for changed/removed keys;
+    exact ``ReleasePin``s in ``self.pins``; ``update_bridges`` derives changed
+    and removed bridge keys incrementally from pinned source dataset deltas and
+    targeted ``read_keys`` lookups without full-corpus Python scans;
     ``politician_articles`` refreshes a native join of ``selected_mentions``
     and ``entity_roots`` (projecting ``occurrences`` as a native
     ``list<struct>`` column) and assembles the Python row shape;
@@ -1374,11 +1484,15 @@ class DocSpecNewsViews:
         self.client = client
         self.workspace_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
         self.lifecycle_compact_interval = lifecycle_compact_interval
-        persisted_pins, persisted_rows, persisted_versions, persisted_mutations = self._load_views_state()
-        self.pins = dict(pins) if pins is not None else persisted_pins
-        self._bridge_rows = persisted_rows if pins is None else {}
-        self._bridge_versions = persisted_versions if pins is None else {}
-        self._mutation_counts = persisted_mutations if pins is None else {}
+        state = self._load_views_state()
+        self.pins = dict(pins) if pins is not None else state['pins']
+        self._bridge_versions = state['bridge_versions'] if pins is None else {}
+        self._mutation_counts = state['mutation_counts'] if pins is None else {}
+        self._source_pins = state['source_pins'] if pins is None else {}
+        self._selections = state['selections'] if pins is None else []
+        self._decisions = state['decisions'] if pins is None else {}
+        self._decision_roots = state['decision_roots'] if pins is None else {}
+        self._runs = state['runs'] if pins is None else {}
         self.last_bridge_diff = {}
         self.lifecycle_compactions = []
 
@@ -1386,26 +1500,44 @@ class DocSpecNewsViews:
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
         return self.client.workspace / f'.news_lake_views{suffix}.json'
 
+    def _committed_state_path(self):
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return self.client.workspace / f'.news_lake_committed{suffix}.json'
+
     def _load_views_state(self):
+        empty = {
+            'pins': {},
+            'bridge_versions': {},
+            'mutation_counts': {},
+            'source_pins': {},
+            'selections': [],
+            'decisions': {},
+            'decision_roots': {},
+            'runs': {},
+        }
         path = self._views_state_path()
         if not path.is_file():
-            return {}, {}, {}, {}
+            return empty
         try:
             data = json.loads(path.read_text())
             if not isinstance(data, dict):
-                return {}, {}, {}, {}
-            return (
-                dict(data.get('pins') or {}),
-                dict(data.get('bridge_rows') or {}),
-                dict(data.get('bridge_versions') or {}),
-                {
+                return empty
+            return {
+                'pins': dict(data.get('pins') or {}),
+                'bridge_versions': dict(data.get('bridge_versions') or {}),
+                'mutation_counts': {
                     str(k): int(v)
                     for k, v in (data.get('mutation_counts') or {}).items()
                     if isinstance(v, int) and not isinstance(v, bool)
                 },
-            )
+                'source_pins': dict(data.get('source_pins') or {}),
+                'selections': list(data.get('selections') or ()),
+                'decisions': dict(data.get('decisions') or {}),
+                'decision_roots': dict(data.get('decision_roots') or {}),
+                'runs': dict(data.get('runs') or {}),
+            }
         except (OSError, ValueError):
-            return {}, {}, {}, {}
+            return empty
 
     def _save_views_state(self):
         path = self._views_state_path()
@@ -1415,9 +1547,13 @@ class DocSpecNewsViews:
             json.dumps(
                 {
                     'pins': self.pins,
-                    'bridge_rows': self._bridge_rows,
                     'bridge_versions': self._bridge_versions,
                     'mutation_counts': self._mutation_counts,
+                    'source_pins': self._source_pins,
+                    'selections': self._selections,
+                    'decisions': self._decisions,
+                    'decision_roots': self._decision_roots,
+                    'runs': self._runs,
                 },
                 ensure_ascii=False,
                 separators=(',', ':'),
@@ -1470,6 +1606,130 @@ class DocSpecNewsViews:
         return (list(records_or_release_read),
                 (() if selections is None else selections), None)
 
+    @staticmethod
+    def _extract_release_meta(records_or_release_read, selections=None):
+        if isinstance(records_or_release_read, dict) and 'release' in records_or_release_read:
+            release = records_or_release_read['release']
+            if selections is None:
+                selections = release.get('selections', ())
+            return list(selections), release.get('id')
+        return list(() if selections is None else selections), None
+
+    def _resolve_source_pins(self, records_or_release_read=None):
+        """Return ``{table_name: ReleasePin}`` from release_read or committed lake state."""
+        raw_pins = None
+        if isinstance(records_or_release_read, dict) and isinstance(records_or_release_read.get('dataset_pins'), dict):
+            raw_pins = records_or_release_read['dataset_pins']
+        if not raw_pins:
+            cpath = self._committed_state_path()
+            if cpath.is_file():
+                try:
+                    loaded = json.loads(cpath.read_text())
+                    if isinstance(loaded, dict):
+                        raw_pins = loaded
+                except (OSError, ValueError):
+                    raw_pins = None
+        if not raw_pins:
+            return {}
+        resolved = {}
+        for key, pin in raw_pins.items():
+            if not isinstance(pin, dict):
+                continue
+            table_name = key if key in TABLE_KINDS else _DATASET_TO_TABLE.get(key)
+            if table_name is not None:
+                resolved[table_name] = pin
+        return resolved
+
+    @staticmethod
+    def _summarize_source_pins(source_pins):
+        summary = {}
+        for table_name, pin in (source_pins or {}).items():
+            source_group = pin.get('dataset', {}).get('groups', {}).get('source', {})
+            objects = [
+                obj.get('path') for obj in (source_group.get('objects') or ())
+                if isinstance(obj, dict) and isinstance(obj.get('path'), str)
+            ]
+            summary[table_name] = {
+                'version': pin.get('dataset', {}).get('version'),
+                'rows': source_group.get('rows', 0),
+                'objects': objects,
+            }
+        return summary
+
+    def _read_table_delta(self, table_name, new_pin, prior_info):
+        """Fetch only the changed/added records for ``table_name`` since ``prior_info`` via ``/changes``."""
+        if new_pin is None:
+            return []
+        source_group = new_pin.get('dataset', {}).get('groups', {}).get('source', {})
+        new_version = new_pin.get('dataset', {}).get('version')
+        new_rows = source_group.get('rows', 0)
+        new_objects = [
+            obj.get('path') for obj in (source_group.get('objects') or ())
+            if isinstance(obj, dict) and isinstance(obj.get('path'), str)
+        ]
+        if new_rows == 0:
+            return []
+        prior_version = (prior_info or {}).get('version')
+        prior_rows = (prior_info or {}).get('rows', 0)
+        prior_objects = (prior_info or {}).get('objects') or []
+        if prior_version is not None and (
+            new_version == prior_version
+            or (new_objects == prior_objects and new_rows == prior_rows)
+        ):
+            return []
+
+        dataset = dataset_id_for(table_name)
+        kind = TABLE_KINDS[table_name]
+        schema = kind_arrow_schema(kind)
+        if prior_version is None or prior_rows == 0:
+            return table_records(self.client.read_arrow(new_pin, schema=schema))
+        try:
+            prior_pin = self.client.release(dataset, prior_version)
+            with self.client.changes_batches(
+                prior_pin,
+                new_pin,
+                group='source',
+                identity='occurrences',
+                force_full=False,
+            ) as (descriptor, reader):
+                if isinstance(descriptor, dict) and descriptor.get('path') in ('forward_changes', 'unchanged'):
+                    batches = list(reader)
+                    change_table = pa.Table.from_batches(batches, schema=reader.schema)
+                else:
+                    change_table = None
+            if change_table is not None:
+                if change_table.num_rows == 0:
+                    return []
+                after_table = change_table.filter(pc.equal(change_table['side'], 'after'))
+                if after_table.num_rows == 0:
+                    return []
+                values_col = after_table['values'].combine_chunks()
+                unpacked = pa.Table.from_batches([pa.RecordBatch.from_struct_array(values_col)])
+                restored = restore_application_schema(unpacked, expected_schema=schema)
+                by_id = {}
+                for row in table_records(restored):
+                    by_id[row['id']] = row
+                return list(by_id.values())
+        except DocSpecFailure:
+            pass
+
+        # Fallback if prior_version is unavailable or not forward_changes: read newly added Parquet objects
+        added_paths = [
+            p for p in new_objects
+            if p.endswith('.parquet') and p not in set(prior_objects)
+        ]
+        if added_paths and all(Path(p).is_file() for p in added_paths):
+            tables = [
+                restore_application_schema(pq.read_table(p), expected_schema=schema)
+                for p in added_paths
+            ]
+            by_id = {}
+            for tbl in tables:
+                for row in table_records(tbl):
+                    by_id[row['id']] = row
+            return list(by_id.values())
+        return table_records(self.client.read_arrow(new_pin, schema=schema))
+
     def _pin(self, dataset):
         pin = self.pins.get(dataset)
         if pin is None:
@@ -1493,9 +1753,49 @@ class DocSpecNewsViews:
                         return latest_pin
         return pin
 
+    def _init_incremental_state(self, records, selections, source_pins):
+        self._source_pins = self._summarize_source_pins(source_pins)
+        self._selections = [dict(s) for s in (selections or ())]
+        self._decisions = {
+            r['id']: r for r in records if r.get('kind') == 'identity_decision'
+        }
+        decision_eids = set()
+        for dec in self._decisions.values():
+            for field in ('left_id', 'right_id'):
+                if field in dec:
+                    decision_eids.add(dec[field])
+        if self._decisions:
+            decision_result = apply_decisions(records)
+            roots = decision_result.get('roots', {})
+            self._decision_roots = {eid: roots.get(eid, eid) for eid in sorted(decision_eids)}
+        else:
+            self._decision_roots = {}
+        self._runs = {
+            r['id']: _compact_run_meta(r)
+            for r in records
+            if r.get('kind') == 'run'
+            and r.get('processor') != 'extract'
+            and r.get('status') == 'succeeded'
+        }
+
     def materialize(self, records_or_release_read, selections=None):
         """Admit the three bridge datasets; stores and returns ``{dataset: ReleasePin}``."""
-        records, selections, _ = self._unwrap(records_or_release_read, selections)
+        source_pins = self._resolve_source_pins(records_or_release_read)
+        if (
+            isinstance(records_or_release_read, dict)
+            and 'tables' in records_or_release_read
+            and not records_or_release_read['tables']
+            and source_pins
+        ):
+            selections, _ = self._extract_release_meta(records_or_release_read, selections)
+            records = []
+            for table_name, pin in source_pins.items():
+                kind = TABLE_KINDS[table_name]
+                records.extend(
+                    table_records(self.client.read_arrow(pin, schema=kind_arrow_schema(kind)))
+                )
+        else:
+            records, selections, _ = self._unwrap(records_or_release_read, selections)
         bridge_defs = {
             'entity_roots': (
                 'entity_id',
@@ -1522,112 +1822,654 @@ class DocSpecNewsViews:
             )
             pin = self.client.run_table(table, dataset, operation)
             pins[dataset] = pin
-            self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in rows}
             self._bridge_versions[dataset] = pin['dataset']['version']
         self.pins.update(pins)
+        self._init_incremental_state(records, selections, source_pins)
         self._save_views_state()
         return dict(pins)
 
-    def update_bridges(self, records_or_release_read, selections=None):
-        """Diff new bridge rows against pinned bridge state and update only changed keys."""
-        records, selections, _ = self._unwrap(records_or_release_read, selections)
-        desired = {
-            'entity_roots': (
-                'entity_id',
-                bridges.ENTITY_ROOTS_SCHEMA,
-                bridges.entity_roots_rows(records),
-            ),
-            'selected_mentions': (
-                'mention_id',
-                bridges.SELECTED_MENTIONS_SCHEMA,
-                bridges.selected_mentions_rows(records, selections),
-            ),
-            'survivor_items': (
-                'item_id',
-                bridges.SURVIVOR_ITEMS_SCHEMA,
-                bridges.survivor_items_rows(records, selections),
-            ),
+    def _apply_bridge_delta(self, dataset, key_col, schema, prior_pin,
+                            candidate_rows, removed_keys, prior_by_key, rows_recomputed):
+        prior_version = prior_pin['dataset']['version']
+        changed_rows = [
+            row for row in candidate_rows
+            if str_canonical(prior_by_key.get(row[key_col])) != str_canonical(_strip_nulls(row))
+        ]
+        removed_keys = sorted(k for k in set(removed_keys) if k in prior_by_key)
+        stats = {
+            'rows_recomputed': rows_recomputed,
+            'changed_rows': len(changed_rows),
+            'removed_keys': len(removed_keys),
+            'full_table_reads': 0,
+            'updated': bool(changed_rows or removed_keys),
         }
-        updated_pins = {}
-        diff_summary = {}
-        for dataset, (key_col, schema, new_rows) in desired.items():
-            prior_pin = self.pins.get(dataset) or self.client.try_latest(dataset)
-            if prior_pin is None:
-                table = pa.Table.from_pylist(new_rows, schema=schema)
-                stripped = _strip_nulls(new_rows)
-                operation = self._operation(
-                    f'materialize-{dataset}', content_digest(stripped)
+        if not changed_rows and not removed_keys:
+            self.pins[dataset] = prior_pin
+            self._bridge_versions[dataset] = prior_version
+            return prior_pin, stats
+        replacements_table = pa.Table.from_pylist(changed_rows, schema=schema)
+        deletions_table = (
+            pa.Table.from_pylist(
+                [{key_col: key} for key in removed_keys],
+                schema=pa.schema([schema.field(key_col)]),
+            )
+            if removed_keys
+            else None
+        )
+        operation = self._operation(
+            f'update-{dataset}',
+            content_digest([prior_version, _strip_nulls(changed_rows), removed_keys]),
+        )
+        pin = self.client.update_table(
+            dataset,
+            operation,
+            prior_version,
+            [key_col],
+            replacements_table,
+            deletions=deletions_table,
+        )
+        self.pins[dataset] = pin
+        self._bridge_versions[dataset] = pin['dataset']['version']
+        self._record_view_mutation(dataset)
+        return pin, stats
+
+    def _update_entity_roots_incremental(self, prior_pin, source_pins, delta_entities, delta_decisions):
+        if not delta_entities and not delta_decisions:
+            return self._apply_bridge_delta(
+                'entity_roots', 'entity_id', bridges.ENTITY_ROOTS_SCHEMA,
+                prior_pin, [], [], {}, 0
+            )
+        entities_pin = source_pins.get('news.entities')
+        delta_entities_by_id = {r['id']: r for r in delta_entities}
+        for dec in delta_decisions:
+            self._decisions[dec['id']] = dec
+
+        decision_eids = set()
+        for dec in self._decisions.values():
+            for field in ('left_id', 'right_id'):
+                if field in dec:
+                    decision_eids.add(dec[field])
+
+        new_decision_roots = dict(self._decision_roots)
+        if self._decisions and (delta_decisions or (decision_eids & set(delta_entities_by_id))):
+            missing_dec_eids = sorted(decision_eids - set(delta_entities_by_id))
+            dec_entities = dict(delta_entities_by_id)
+            if missing_dec_eids and entities_pin is not None:
+                fetched = table_records(
+                    self.client.read_keys(
+                        entities_pin, 'id', missing_dec_eids, schema=kind_arrow_schema('entity')
+                    )
                 )
-                pin = self.client.run_table(table, dataset, operation)
-                self.pins[dataset] = pin
-                self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in new_rows}
-                self._bridge_versions[dataset] = pin['dataset']['version']
-                updated_pins[dataset] = pin
-                diff_summary[dataset] = {
-                    'changed_rows': len(new_rows),
+                for ent in fetched:
+                    dec_entities[ent['id']] = ent
+            decision_result = apply_decisions(
+                list(dec_entities.values()) + list(self._decisions.values())
+            )
+            roots_map = decision_result.get('roots', {})
+            new_decision_roots = {eid: roots_map.get(eid, eid) for eid in sorted(decision_eids)}
+
+        affected_eids = set(delta_entities_by_id)
+        for eid in set(self._decision_roots) | set(new_decision_roots):
+            if self._decision_roots.get(eid, eid) != new_decision_roots.get(eid, eid):
+                affected_eids.add(eid)
+        for eid, root_id in new_decision_roots.items():
+            if root_id in delta_entities_by_id:
+                affected_eids.add(eid)
+        self._decision_roots = new_decision_roots
+
+        needed_entity_ids = set(affected_eids) | {
+            self._decision_roots.get(eid, eid) for eid in affected_eids
+        }
+        entity_map = dict(delta_entities_by_id)
+        missing_entity_ids = sorted(needed_entity_ids - set(entity_map))
+        if missing_entity_ids and entities_pin is not None:
+            fetched = table_records(
+                self.client.read_keys(
+                    entities_pin, 'id', missing_entity_ids, schema=kind_arrow_schema('entity')
+                )
+            )
+            for ent in fetched:
+                entity_map[ent['id']] = ent
+
+        prior_by_key = {}
+        if affected_eids:
+            prior_rows = table_records(
+                self.client.read_keys(
+                    prior_pin, 'entity_id', sorted(affected_eids),
+                    schema=bridges.ENTITY_ROOTS_SCHEMA,
+                )
+            )
+            prior_by_key = {row['entity_id']: _strip_nulls(row) for row in prior_rows}
+
+        candidate_rows = []
+        for eid in sorted(affected_eids):
+            entity = entity_map.get(eid)
+            if entity is None:
+                continue
+            root_id = self._decision_roots.get(eid, eid)
+            root_entity = entity_map.get(root_id, entity)
+            candidate_rows.append({
+                'entity_id': eid,
+                'person_root_id': root_id,
+                'entity_type': root_entity.get('entity_type', entity['entity_type']),
+                'name': root_entity.get('name', entity['name']),
+            })
+        return self._apply_bridge_delta(
+            'entity_roots', 'entity_id', bridges.ENTITY_ROOTS_SCHEMA,
+            prior_pin, candidate_rows, [], prior_by_key, len(candidate_rows)
+        )
+
+    def _update_selected_mentions_incremental(
+        self, prior_pin, source_pins, delta_mentions, reassigned_mention_versions,
+        pinned_processors, is_winning_run
+    ):
+        if not delta_mentions and not reassigned_mention_versions:
+            return self._apply_bridge_delta(
+                'selected_mentions', 'mention_id', bridges.SELECTED_MENTIONS_SCHEMA,
+                prior_pin, [], [], {}, 0
+            )
+        mentions_pin = source_pins.get('news.mentions')
+        candidate_mentions = {m['id']: m for m in delta_mentions}
+        prior_by_key = {}
+        removed_keys = set()
+
+        if reassigned_mention_versions:
+            prior_ver_rows = table_records(
+                self.client.read_keys(
+                    prior_pin, 'version_id', sorted(reassigned_mention_versions),
+                    schema=bridges.SELECTED_MENTIONS_SCHEMA,
+                )
+            )
+            for row in prior_ver_rows:
+                prior_by_key[row['mention_id']] = _strip_nulls(row)
+                removed_keys.add(row['mention_id'])
+            if mentions_pin is not None:
+                source_ver_mentions = table_records(
+                    self.client.read_keys(
+                        mentions_pin, 'version_id', sorted(reassigned_mention_versions),
+                        schema=kind_arrow_schema('mention'),
+                    )
+                )
+                for m in source_ver_mentions:
+                    candidate_mentions[m['id']] = m
+
+        lookup_mids = sorted(set(candidate_mentions) - set(prior_by_key))
+        if lookup_mids:
+            existing_rows = table_records(
+                self.client.read_keys(
+                    prior_pin, 'mention_id', lookup_mids,
+                    schema=bridges.SELECTED_MENTIONS_SCHEMA,
+                )
+            )
+            for row in existing_rows:
+                prior_by_key[row['mention_id']] = _strip_nulls(row)
+
+        candidate_rows = []
+        for mid in sorted(candidate_mentions):
+            record = candidate_mentions[mid]
+            if record.get('resolution') != 'resolved' or record.get('entity_id') is None:
+                continue
+            run = self._runs.get(record['run_id'])
+            if run is None or run['processor'] not in pinned_processors:
+                continue
+            if not is_winning_run(run['processor'], record['version_id'], record['run_id']):
+                continue
+            removed_keys.discard(mid)
+            candidate_rows.append({
+                'mention_id': mid,
+                'version_id': record['version_id'],
+                'run_id': record['run_id'],
+                'entity_id': record['entity_id'],
+                'surface': record['surface'],
+                'aboutness': record['aboutness'],
+                'occurrences': [
+                    {'field': span['field'], 'start': span['start'], 'end': span['end']}
+                    for span in record['occurrences']
+                ],
+            })
+        return self._apply_bridge_delta(
+            'selected_mentions', 'mention_id', bridges.SELECTED_MENTIONS_SCHEMA,
+            prior_pin, candidate_rows, removed_keys, prior_by_key, len(candidate_mentions)
+        )
+
+    def _update_survivor_items_incremental(
+        self, prior_pin, source_pins, delta_items, delta_versions,
+        delta_discoveries, delta_story_members, reassigned_cluster_versions,
+        pinned_processors, is_winning_run
+    ):
+        if (
+            not delta_items
+            and not delta_versions
+            and not delta_discoveries
+            and not delta_story_members
+            and not reassigned_cluster_versions
+        ):
+            return self._apply_bridge_delta(
+                'survivor_items', 'item_id', bridges.SURVIVOR_ITEMS_SCHEMA,
+                prior_pin, [], [], {}, 0
+            )
+        items_pin = source_pins.get('news.items')
+        versions_pin = source_pins.get('news.versions')
+        discoveries_pin = source_pins.get('news.discoveries')
+        story_members_pin = source_pins.get('news.story_members')
+
+        directly_affected_item_ids = (
+            {r['id'] for r in delta_items}
+            | {r['item_id'] for r in delta_versions}
+            | {r['item_id'] for r in delta_discoveries}
+        )
+        story_affected_vids = (
+            {r['version_id'] for r in delta_story_members}
+            | set(reassigned_cluster_versions)
+        )
+        prior_by_key = {}
+        if story_affected_vids:
+            ver_survivors = table_records(
+                self.client.read_keys(
+                    prior_pin, 'current_version_id', sorted(story_affected_vids),
+                    schema=bridges.SURVIVOR_ITEMS_SCHEMA,
+                )
+            )
+            for row in ver_survivors:
+                directly_affected_item_ids.add(row['item_id'])
+                prior_by_key[row['item_id']] = _strip_nulls(row)
+
+        missing_prior_iids = sorted(directly_affected_item_ids - set(prior_by_key))
+        if missing_prior_iids:
+            fetched_prior = table_records(
+                self.client.read_keys(
+                    prior_pin, 'item_id', missing_prior_iids,
+                    schema=bridges.SURVIVOR_ITEMS_SCHEMA,
+                )
+            )
+            for row in fetched_prior:
+                prior_by_key[row['item_id']] = _strip_nulls(row)
+
+        items_by_id = {
+            r['id']: r for r in delta_items if r['id'] in directly_affected_item_ids
+        }
+        missing_item_ids = sorted(directly_affected_item_ids - set(items_by_id))
+        if missing_item_ids and items_pin is not None:
+            fetched_items = table_records(
+                self.client.read_keys(
+                    items_pin, 'id', missing_item_ids, schema=kind_arrow_schema('item')
+                )
+            )
+            for item in fetched_items:
+                items_by_id[item['id']] = item
+
+        removed_keys = set()
+        active_survivors = []
+        for iid in sorted(directly_affected_item_ids):
+            item = items_by_id.get(iid)
+            if item is None or item.get('superseded_by'):
+                if iid in prior_by_key:
+                    removed_keys.add(iid)
+                continue
+            active_survivors.append(item)
+
+        needed_vids = {
+            item['current_version_id']
+            for item in active_survivors
+            if item.get('current_version_id') is not None
+        }
+        versions_by_id = {
+            r['id']: r for r in delta_versions if r['id'] in needed_vids
+        }
+        missing_vids = sorted(needed_vids - set(versions_by_id))
+        if missing_vids and versions_pin is not None:
+            fetched_versions = table_records(
+                self.client.read_keys(
+                    versions_pin, 'id', missing_vids, schema=kind_arrow_schema('version')
+                )
+            )
+            for ver in fetched_versions:
+                versions_by_id[ver['id']] = ver
+
+        items_needing_discoveries = []
+        for item in active_survivors:
+            vid = item.get('current_version_id')
+            ver = versions_by_id.get(vid) if vid is not None else None
+            if ver is None or _publication_date(ver.get('publication')) is None:
+                items_needing_discoveries.append(item['id'])
+        discoveries_by_item = {}
+        if items_needing_discoveries:
+            if discoveries_pin is not None:
+                fetched_disc = table_records(
+                    self.client.read_keys(
+                        discoveries_pin, 'item_id', sorted(items_needing_discoveries),
+                        schema=kind_arrow_schema('discovery'),
+                    )
+                )
+                for d in fetched_disc:
+                    discoveries_by_item.setdefault(d['item_id'], []).append(d)
+            else:
+                for d in delta_discoveries:
+                    discoveries_by_item.setdefault(d['item_id'], []).append(d)
+
+        story_by_version = {}
+        vids_needing_story_lookup = set()
+        for item in active_survivors:
+            vid = item.get('current_version_id')
+            if vid is None:
+                continue
+            prior_row = prior_by_key.get(item['id'])
+            if (
+                prior_row is not None
+                and prior_row.get('current_version_id') == vid
+                and vid not in story_affected_vids
+            ):
+                if 'story_id' in prior_row:
+                    story_by_version[vid] = prior_row['story_id']
+            else:
+                vids_needing_story_lookup.add(vid)
+
+        if vids_needing_story_lookup:
+            story_members = []
+            if story_members_pin is not None:
+                story_members = table_records(
+                    self.client.read_keys(
+                        story_members_pin, 'version_id', sorted(vids_needing_story_lookup),
+                        schema=kind_arrow_schema('story_member'),
+                    )
+                )
+            else:
+                story_members = [
+                    m for m in delta_story_members if m['version_id'] in vids_needing_story_lookup
+                ]
+            for record in story_members:
+                run = self._runs.get(record['run_id'])
+                if run is None or run['processor'] not in pinned_processors:
+                    continue
+                if is_winning_run(run['processor'], record['version_id'], record['run_id']):
+                    story_by_version.setdefault(record['version_id'], record['story_id'])
+
+        candidate_by_id = {}
+        for item in active_survivors:
+            iid = item['id']
+            vid = item.get('current_version_id')
+            ver = versions_by_id.get(vid) if vid is not None else None
+            pub_date_str = _publication_date(ver.get('publication')) if ver is not None else None
+            if pub_date_str is None:
+                discovery_dates = {
+                    d
+                    for discovery in discoveries_by_item.get(iid, ())
+                    if (d := _publication_date(discovery.get('reported_publication'))) is not None
+                }
+                if len(discovery_dates) == 1:
+                    pub_date_str = discovery_dates.pop()
+            effective_pub_date = date.fromisoformat(pub_date_str) if pub_date_str is not None else None
+            story_id = story_by_version.get(ver['id']) if ver is not None else None
+            text_group_id = (
+                text_group_key(ver['text'])
+                if (ver is not None and isinstance(ver.get('text'), str))
+                else None
+            )
+            candidate_by_id[iid] = {
+                'item_id': iid,
+                'outlet_id': item.get('outlet_id'),
+                'current_version_id': ver['id'] if ver is not None else None,
+                'effective_pub_date': effective_pub_date,
+                'story_id': story_id,
+                'text_group_id': text_group_id,
+                'identical_text_group_id': None,
+            }
+
+        # Resolve cross-date syndication for all affected text_group_ids via read_keys
+        affected_text_groups = {
+            row['text_group_id']
+            for row in candidate_by_id.values()
+            if row.get('text_group_id') is not None
+        } | {
+            row['text_group_id']
+            for row in prior_by_key.values()
+            if row.get('text_group_id') is not None
+        }
+        untouched_peers_by_id = {}
+        if affected_text_groups:
+            peer_rows = table_records(
+                self.client.read_keys(
+                    prior_pin, 'text_group_id', sorted(affected_text_groups),
+                    schema=bridges.SURVIVOR_ITEMS_SCHEMA,
+                )
+            )
+            for peer in peer_rows:
+                pid = peer['item_id']
+                if pid not in prior_by_key:
+                    prior_by_key[pid] = _strip_nulls(peer)
+                if pid not in directly_affected_item_ids:
+                    untouched_peers_by_id[pid] = {
+                        'item_id': pid,
+                        'outlet_id': peer.get('outlet_id'),
+                        'current_version_id': peer.get('current_version_id'),
+                        'effective_pub_date': peer.get('effective_pub_date'),
+                        'story_id': peer.get('story_id'),
+                        'text_group_id': peer.get('text_group_id'),
+                        'identical_text_group_id': peer.get('identical_text_group_id'),
+                    }
+
+            group_counts = {}
+            for row in list(candidate_by_id.values()) + list(untouched_peers_by_id.values()):
+                tg = row.get('text_group_id')
+                if tg is not None:
+                    group_counts[tg] = group_counts.get(tg, 0) + 1
+
+            for row in candidate_by_id.values():
+                tg = row.get('text_group_id')
+                row['identical_text_group_id'] = (
+                    tg if (tg is not None and group_counts.get(tg, 0) > 1) else None
+                )
+            for pid, peer_row in untouched_peers_by_id.items():
+                tg = peer_row.get('text_group_id')
+                new_identical = tg if (tg is not None and group_counts.get(tg, 0) > 1) else None
+                if peer_row.get('identical_text_group_id') != new_identical:
+                    peer_row['identical_text_group_id'] = new_identical
+                    candidate_by_id[pid] = peer_row
+
+        candidate_rows = [candidate_by_id[iid] for iid in sorted(candidate_by_id)]
+        rows_recomputed = len(active_survivors) + len(
+            [pid for pid in untouched_peers_by_id if pid in candidate_by_id]
+        )
+        return self._apply_bridge_delta(
+            'survivor_items', 'item_id', bridges.SURVIVOR_ITEMS_SCHEMA,
+            prior_pin, candidate_rows, removed_keys, prior_by_key, rows_recomputed
+        )
+
+    def update_bridges(self, records_or_release_read, selections=None):
+        """Derive incremental bridge updates from pinned release deltas and ``read_keys``."""
+        prior_pins = {
+            dataset: (self.pins.get(dataset) or self.client.try_latest(dataset))
+            for dataset in ('entity_roots', 'selected_mentions', 'survivor_items')
+        }
+        if any(pin is None for pin in prior_pins.values()):
+            pins = self.materialize(records_or_release_read, selections=selections)
+            self.last_bridge_diff = {
+                ds: {
+                    'rows_recomputed': pin.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', 0),
+                    'changed_rows': pin.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', 0),
                     'removed_keys': 0,
                     'full_table_reads': 0,
                     'updated': True,
                 }
-                continue
-            prior_version = prior_pin['dataset']['version']
-            if (
-                dataset in self._bridge_rows
-                and self._bridge_versions.get(dataset) == prior_version
-            ):
-                current_by_key = self._bridge_rows[dataset]
-                full_reads = 0
-            else:
-                current_table = self.client.read_arrow(prior_pin, schema=schema)
-                current_by_key = {
-                    row[key_col]: row for row in table_records(current_table)
-                }
-                full_reads = 1
-            changed_rows = [
-                row for row in new_rows
-                if str_canonical(current_by_key.get(row[key_col])) != str_canonical(_strip_nulls(row))
-            ]
-            new_keys = {row[key_col] for row in new_rows}
-            removed_keys = sorted(set(current_by_key) - new_keys)
-            diff_summary[dataset] = {
-                'changed_rows': len(changed_rows),
-                'removed_keys': len(removed_keys),
-                'full_table_reads': full_reads,
-                'updated': bool(changed_rows or removed_keys),
+                for ds, pin in pins.items()
             }
-            if not changed_rows and not removed_keys:
-                self.pins[dataset] = prior_pin
-                self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in new_rows}
-                self._bridge_versions[dataset] = prior_version
-                updated_pins[dataset] = prior_pin
+            return pins
+
+        source_pins = self._resolve_source_pins(records_or_release_read)
+        selections_list, _ = self._extract_release_meta(records_or_release_read, selections)
+
+        bridge_source_tables = (
+            'news.entities',
+            'news.identity_decisions',
+            'news.runs',
+            'news.mentions',
+            'news.items',
+            'news.versions',
+            'news.discoveries',
+            'news.story_members',
+        )
+        delta_tables = {
+            table_name: self._read_table_delta(
+                table_name,
+                source_pins.get(table_name),
+                self._source_pins.get(table_name),
+            )
+            for table_name in bridge_source_tables
+        }
+
+        prior_runs = dict(self._runs)
+        delta_runs = delta_tables['news.runs']
+        for run in delta_runs:
+            if run.get('processor') != 'extract' and run.get('status') == 'succeeded':
+                self._runs[run['id']] = _compact_run_meta(run)
+
+        normalized_selections = [dict(s) for s in selections_list]
+        pinned_triples = {
+            (s['processor'], s['processor_version'], s['config_hash'])
+            for s in normalized_selections
+        }
+        pinned_processors = {s['processor'] for s in normalized_selections}
+        delta_version_ids = {r['id'] for r in delta_tables['news.versions']}
+
+        max_prior_rank_by_proc = {}
+        for r in prior_runs.values():
+            if _is_run_eligible(r, pinned_triples):
+                proc = r['processor']
+                rank = _run_rank(r)
+                if proc not in max_prior_rank_by_proc or rank > max_prior_rank_by_proc[proc]:
+                    max_prior_rank_by_proc[proc] = rank
+
+        max_eligible_rank_by_proc = dict(max_prior_rank_by_proc)
+        eligible_delta_runs = []
+        has_backdated_delta_run = False
+        for run in delta_runs:
+            if not _is_run_eligible(run, pinned_triples):
                 continue
-            replacements_table = pa.Table.from_pylist(changed_rows, schema=schema)
-            deletions_table = (
-                pa.Table.from_pylist(
-                    [{key_col: key} for key in removed_keys],
-                    schema=pa.schema([schema.field(key_col)]),
-                )
-                if removed_keys
-                else None
+            eligible_delta_runs.append(run)
+            proc = run['processor']
+            rank = _run_rank(run)
+            if proc in max_prior_rank_by_proc and rank < max_prior_rank_by_proc[proc]:
+                has_backdated_delta_run = True
+            if proc not in max_eligible_rank_by_proc or rank > max_eligible_rank_by_proc[proc]:
+                max_eligible_rank_by_proc[proc] = rank
+
+        reassigned_mention_versions = set()
+        reassigned_cluster_versions = set()
+        delta_selected_runs = {}
+        full_selected_runs = [None]
+
+        def _load_full_selected_runs():
+            if full_selected_runs[0] is not None:
+                return full_selected_runs[0]
+            runs_pin = source_pins.get('news.runs')
+            if runs_pin is not None:
+                all_runs = {
+                    r['id']: r
+                    for r in table_records(
+                        self.client.read_arrow(runs_pin, schema=kind_arrow_schema('run'))
+                    )
+                    if r.get('processor') != 'extract' and r.get('status') == 'succeeded'
+                }
+            else:
+                all_runs = {r['id']: r for r in delta_runs if r.get('processor') != 'extract'}
+            full_selected_runs[0] = _select_version_assignments(all_runs, normalized_selections)
+            return full_selected_runs[0]
+
+        if normalized_selections != self._selections or has_backdated_delta_run:
+            runs_pin = source_pins.get('news.runs')
+            if runs_pin is not None:
+                all_runs = {
+                    r['id']: r
+                    for r in table_records(
+                        self.client.read_arrow(runs_pin, schema=kind_arrow_schema('run'))
+                    )
+                    if r.get('processor') != 'extract' and r.get('status') == 'succeeded'
+                }
+            else:
+                all_runs = {r['id']: r for r in delta_runs if r.get('processor') != 'extract'}
+            old_selected = _select_version_assignments(
+                {rid: all_runs[rid] for rid in prior_runs if rid in all_runs},
+                self._selections,
             )
-            base_version = prior_version
-            operation = self._operation(
-                f'update-{dataset}',
-                content_digest([base_version, _strip_nulls(changed_rows), removed_keys]),
-            )
-            pin = self.client.update_table(
-                dataset,
-                operation,
-                base_version,
-                [key_col],
-                replacements_table,
-                deletions=deletions_table,
-            )
-            self.pins[dataset] = pin
-            self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in new_rows}
-            self._bridge_versions[dataset] = pin['dataset']['version']
-            updated_pins[dataset] = pin
-            self._record_view_mutation(dataset)
+            new_selected = _select_version_assignments(all_runs, normalized_selections)
+            full_selected_runs[0] = new_selected
+            for slot_key in set(old_selected) | set(new_selected):
+                old_run = old_selected.get(slot_key)
+                new_run = new_selected.get(slot_key)
+                if old_run != new_run:
+                    proc, vid = slot_key.split(':', 1)
+                    if proc == 'mentions' and (old_run is not None or vid not in delta_version_ids):
+                        reassigned_mention_versions.add(vid)
+                    elif proc == 'cluster':
+                        reassigned_cluster_versions.add(vid)
+        else:
+            for run in sorted(eligible_delta_runs, key=_run_rank):
+                proc = run['processor']
+                for ref in run.get('inputs', ()):
+                    if not isinstance(ref, dict) or ref.get('kind') != 'version':
+                        continue
+                    vid = ref['id']
+                    delta_selected_runs[f"{proc}:{vid}"] = run['id']
+                    if vid not in delta_version_ids:
+                        if proc == 'mentions':
+                            reassigned_mention_versions.add(vid)
+                        elif proc == 'cluster':
+                            reassigned_cluster_versions.add(vid)
+
+        def is_winning_run(processor, version_id, run_id):
+            run = self._runs.get(run_id)
+            if not _is_run_eligible(run, pinned_triples):
+                return False
+            if full_selected_runs[0] is not None:
+                return full_selected_runs[0].get(f"{processor}:{version_id}") == run_id
+            slot_key = f"{processor}:{version_id}"
+            if slot_key in delta_selected_runs:
+                return delta_selected_runs[slot_key] == run_id
+            if _run_rank(run) == max_eligible_rank_by_proc.get(processor):
+                return True
+            return _load_full_selected_runs().get(slot_key) == run_id
+
+        self._selections = normalized_selections
+
+        updated_pins = {}
+        diff_summary = {}
+
+        roots_pin, roots_stats = self._update_entity_roots_incremental(
+            prior_pins['entity_roots'],
+            source_pins,
+            delta_tables['news.entities'],
+            delta_tables['news.identity_decisions'],
+        )
+        updated_pins['entity_roots'] = roots_pin
+        diff_summary['entity_roots'] = roots_stats
+
+        mentions_pin, mentions_stats = self._update_selected_mentions_incremental(
+            prior_pins['selected_mentions'],
+            source_pins,
+            delta_tables['news.mentions'],
+            reassigned_mention_versions,
+            pinned_processors,
+            is_winning_run,
+        )
+        updated_pins['selected_mentions'] = mentions_pin
+        diff_summary['selected_mentions'] = mentions_stats
+
+        survivor_pin, survivor_stats = self._update_survivor_items_incremental(
+            prior_pins['survivor_items'],
+            source_pins,
+            delta_tables['news.items'],
+            delta_tables['news.versions'],
+            delta_tables['news.discoveries'],
+            delta_tables['news.story_members'],
+            reassigned_cluster_versions,
+            pinned_processors,
+            is_winning_run,
+        )
+        updated_pins['survivor_items'] = survivor_pin
+        diff_summary['survivor_items'] = survivor_stats
+
+        if source_pins:
+            self._source_pins = self._summarize_source_pins(source_pins)
         self.last_bridge_diff = diff_summary
         self._save_views_state()
         return dict(updated_pins)
@@ -1694,7 +2536,9 @@ class DocSpecNewsViews:
         output, the pinned ``survivor_items`` dataset and the release's
         versions, matching ``analysis.views.politician_articles`` field for field.
         """
-        records, _, release_id = self._unwrap(records_or_release_read)
+        _, release_id = self._extract_release_meta(records_or_release_read, selections)
+        source_pins = self._resolve_source_pins(records_or_release_read)
+        versions_pin = source_pins.get('news.versions')
         base = self._base_version('politician_articles', mode)
         mentions_pin = self._bridge_pin_for_refresh(
             'selected_mentions', 'politician_articles', mode
@@ -1708,11 +2552,21 @@ class DocSpecNewsViews:
         self.pins['politician_articles'] = pin
         self._record_view_mutation('politician_articles')
         self._save_views_state()
-        joined = table_records(self.client.read_arrow(pin))
-        return self._assemble_politician_articles(records, release_id, joined, survivor_pin=survivor_pin)
+        join_cols = [
+            'entity_id', 'mention_id', 'version_id', 'run_id',
+            'surface', 'aboutness', 'occurrences', 'person_root_id', 'entity_type',
+        ]
+        joined = list(self.client.iter_records(pin, columns=join_cols))
+        return self._assemble_politician_articles(
+            records_or_release_read,
+            release_id,
+            joined,
+            survivor_pin=survivor_pin,
+            versions_pin=versions_pin,
+        )
 
-    def _assemble_politician_articles(self, records, release_id, joined, *, survivor_pin=None):
-        versions = _by_kind(list(records), 'version')
+    def _assemble_politician_articles(self, records_or_release_read, release_id, joined, *,
+                                      survivor_pin=None, versions_pin=None):
         if survivor_pin is None:
             survivor_pin = self._pin('survivor_items')
         needed_versions = sorted({
@@ -1757,6 +2611,23 @@ class DocSpecNewsViews:
                 {'field': span['field'], 'surface': row['surface'],
                  'start': span['start'], 'end': span['end']}
                 for span in row['occurrences'])
+        grouped_version_ids = sorted({entry['version_id'] for entry in grouped.values()})
+        if not grouped_version_ids:
+            versions = {}
+        elif versions_pin is not None:
+            ver_rows = table_records(
+                self.client.read_keys(
+                    versions_pin,
+                    'id',
+                    grouped_version_ids,
+                    columns=['id', 'title', 'text'],
+                    schema=kind_arrow_schema('version'),
+                )
+            )
+            versions = {row['id']: row for row in ver_rows}
+        else:
+            records, _, _ = self._unwrap(records_or_release_read)
+            versions = _by_kind(records, 'version')
         result = []
         for entry in grouped.values():
             version = versions.get(entry['version_id'])
@@ -1813,7 +2684,7 @@ class DocSpecNewsViews:
         such field). ``identical_text_group_ids`` is collected natively via
         ``collect_set`` over ``identical_text_group_id``.
         """
-        _, _, release_id = self._unwrap(records_or_release_read)
+        _, release_id = self._extract_release_meta(records_or_release_read, selections)
         base = self._base_version('coverage_daily', mode)
         survivor_pin = self._bridge_pin_for_refresh(
             'survivor_items', 'coverage_daily', mode
@@ -1823,7 +2694,10 @@ class DocSpecNewsViews:
         self.pins['coverage_daily'] = pin
         self._record_view_mutation('coverage_daily')
         self._save_views_state()
-        aggregate = table_records(self.client.read_arrow(pin))
+        cov_cols = [
+            'effective_pub_date', 'items', 'outlets', 'stories', 'identical_text_group_ids',
+        ]
+        aggregate = list(self.client.iter_records(pin, columns=cov_cols))
         return self._assemble_coverage_daily(release_id, aggregate)
 
     def _assemble_coverage_daily(self, release_id, aggregate):

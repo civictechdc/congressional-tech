@@ -832,14 +832,26 @@ class NativeDatasets:
                 return None
             raise
 
-    def read_arrow(self, pin, group='source', *, schema=None):
+    def read_arrow(self, pin, group='source', *, columns=None, schema=None):
         """Read one exact retained group as an Arrow table."""
         if group == 'source':
-            with self.source_batches(pin, schema=schema) as batches:
-                return pa.Table.from_batches(list(batches))
+            with self.source_batches(pin, schema=schema, columns=columns) as batches:
+                return pa.Table.from_batches(list(batches), schema=batches.schema)
         dataset, version = pin['dataset']['dataset'], pin['id']
+        projected_cols = list(columns) if columns is not None else None
+        query = (
+            '?columns=' + ','.join(quote(col, safe='') for col in projected_cols)
+            if projected_cols
+            else ''
+        )
         path = (f'/datasets/{quote(dataset, safe="")}'
-                f'/versions/{quote(version, safe="")}/arrow/{quote(group, safe="")}')
+                f'/versions/{quote(version, safe="")}/arrow/{quote(group, safe="")}'
+                f'{query}')
+        target_schema = (
+            pa.schema([schema.field(name) for name in projected_cols], metadata=schema.metadata)
+            if (schema is not None and projected_cols is not None)
+            else schema
+        )
         deadline = time.monotonic() + self.timeout
         with self._execution_host().stream('GET', path, deadline=deadline) as (response, deadline):
             self._responses.add(response)
@@ -849,7 +861,7 @@ class NativeDatasets:
                         pa.ipc.open_stream(stream) as reader:
                     table = reader.read_all()
                     stream.finish()
-                return table if schema is None else table.cast(schema, safe=True)
+                return table if target_schema is None else table.cast(target_schema, safe=True)
             finally:
                 self._responses.discard(response)
 
