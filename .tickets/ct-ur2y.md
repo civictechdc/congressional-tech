@@ -2,7 +2,7 @@
 id: ct-ur2y
 status: closed
 deps: []
-links: [ct-tuez, ct-mi03, ct-r60e, ct-gfv8, ct-ur7v, ct-nloa, ct-csyg, ct-qkvr]
+links: [ct-tuez, ct-mi03, ct-r60e, ct-gfv8, ct-ur7v, ct-nloa, ct-csyg, ct-qkvr, ct-xu1o, ct-pgxn]
 created: 2026-10-21T14:12:48Z
 type: task
 priority: 2
@@ -23,3 +23,9 @@ Switch the default id source to UUIDv7 (Python 3.14 uuid.uuid7, or a vetted RFC 
 - Contract/semantics tests still pass; no stored v4 id is rewritten.
 - Against the native backend, a second-poll upsert over N retained files decodes only files whose bounds contain an affected id (report files_scanned before/after for 1x and 10x retained archives).
 
+
+## Notes
+
+**2026-10-21T15:27:19Z**
+
+Scope correction 2026-10-21: context.new_id() has one caller (adapters/common.py:59, capture ids), so UUIDv7 clusters only news.captures. Every other table derives ids with deterministic uuid5 (named_id), deliberately, for idempotent replay and dedupe without a lookup; those ids stay hash-distributed and do not benefit. Follow-ups: ct-pgxn (measure per-table cost) and ct-xu1o (time-column Update keys for append tables); bloom filters for upsert tables in spicy-stack ss-wie5.
