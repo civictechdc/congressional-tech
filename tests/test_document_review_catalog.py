@@ -187,6 +187,8 @@ def test_write_candidates_attaches_and_remaps_native_provenance_receipts_preserv
         nr = result['native_receipts']
         assert nr['source_version'] == pin1['dataset']['groups']['source']
         assert nr['attached_rows'] == 1
+        assert nr['plan']['dataset'] == 'catalog_review_sources'
+        assert nr['plan']['operation'] == 'review-provenance-1'
         pin_with_ev = nr['pin']
         assert pin_with_ev['dataset']['groups']['source'] == pin1['dataset']['groups']['source']
         readback = read_review_provenance_receipts(native, pin_with_ev)
@@ -194,6 +196,27 @@ def test_write_candidates_attaches_and_remaps_native_provenance_receipts_preserv
         assert readback[0]['locator'] == 's'
         assert readback[0]['parsed']['document_id'] == 'd'
         assert readback[0]['parsed']['status'] == 'candidate_applied'
+
+        # Also verify CLI main() with --native-config and --source-pin flags
+        from congress_api.retention.document_review_catalog import main as review_cli_main
+        pin_file = tmp_path / 'source-pin.json'
+        pin_file.write_text(json.dumps(pin_with_ev))
+        cfg_file = tmp_path / 'native-config.json'
+        cfg_file.write_text(json.dumps(dict(binary=str(binary), workspace=str(tmp_path / 'native-ws'))))
+        cli_result = review_cli_main([
+            '--sources', str(args['sources']),
+            '--documents', str(args['documents']),
+            '--proposals', str(args['proposals']),
+            '--proposals-sha256', args['proposals_sha256'],
+            '--receipt', str(args['receipt']),
+            '--receipt-sha256', args['receipt_sha256'],
+            '--output', str(tmp_path / 'cli-output'),
+            '--native-config', str(cfg_file),
+            '--source-pin', str(pin_file),
+            '--receipt-operation', 'review-provenance-cli',
+        ])
+        assert cli_result['native_receipts']['version'] == 'review-provenance-cli'
+        assert cli_result['native_receipts']['plan']['operation'] == 'review-provenance-cli'
 
         # Update catalog_review_sources: add a preceding row so 's' shifts to a new row position,
         # plus add sources for withdrawn documents to test withdrawal preservation.

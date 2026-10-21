@@ -579,7 +579,7 @@ class NativeDatasets:
         return self._request('/receipts/run', request)
 
     def update_evidence_table(self, table=None, *, dataset, operation, definition, base,
-                              replacements=None, deletions=None):
+                              replacements=None, deletions=None, return_plan=False):
         """Submit one ``EvidenceSpec`` with pre-persisted producer custody."""
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
@@ -610,7 +610,12 @@ class NativeDatasets:
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
             primary = Path(replacements_spec['path'])
-            return self._request('/receipts/run', request, dispatch=dispatch)
+            plan = self.plan_evidence(request)
+            if not isinstance(plan, dict) or plan.get('dataset') != dataset or plan.get('operation') != operation:
+                raise ValueError('Planned evidence receipt update differs from the requested dataset or operation')
+            self.last_evidence_plan = plan
+            pin = self._request('/receipts/run', request, dispatch=dispatch)
+            return (plan, pin) if return_plan else pin
         except BaseException as error:
             if dispatch.get('submitted') and not cleanup_safe(error):
                 retained = True

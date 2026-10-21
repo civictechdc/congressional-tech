@@ -208,6 +208,7 @@ def write_candidates(sources, documents, proposals, proposals_sha256, receipt, r
             source_version=attached_pin['dataset']['groups']['source'],
             evidence_version=attached_pin['dataset']['evidence'],
             attached_rows=len(attached_rows),
+            plan=getattr(native, 'last_evidence_plan', None),
             pin=attached_pin,
         )
     output.mkdir(parents=True)
@@ -228,10 +229,30 @@ def write_candidates(sources, documents, proposals, proposals_sha256, receipt, r
     return summary
 
 
-if __name__=='__main__':
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ['sources','documents','proposals','receipt','output']:
         parser.add_argument('--'+name,type=Path,required=True)
     for name in ['proposals-sha256','receipt-sha256']: parser.add_argument('--'+name,required=True)
-    result = write_candidates(**vars(parser.parse_args()))
+    parser.add_argument('--native-config', default=None, help='JSON path or inline JSON with binary and workspace')
+    parser.add_argument('--source-pin', default=None, help='JSON path or inline JSON of the selected source ReleasePin')
+    parser.add_argument('--receipt-operation', default='review-provenance')
+    parsed = vars(parser.parse_args(argv))
+    native_cfg_arg = parsed.pop('native_config', None)
+    source_pin_arg = parsed.pop('source_pin', None)
+    pin_obj = None
+    if source_pin_arg is not None:
+        pin_text = Path(source_pin_arg).read_text() if Path(source_pin_arg).is_file() else source_pin_arg
+        pin_obj = json.loads(pin_text)
+    if native_cfg_arg is not None:
+        from .docspec import NativeDatasets
+        cfg_text = Path(native_cfg_arg).read_text() if Path(native_cfg_arg).is_file() else native_cfg_arg
+        cfg = json.loads(cfg_text)
+        with NativeDatasets(cfg['binary'], Path(cfg['workspace'])) as native:
+            return write_candidates(**parsed, native=native, source_pin=pin_obj)
+    return write_candidates(**parsed, source_pin=pin_obj)
+
+
+if __name__=='__main__':
+    result = main()
     print(json.dumps({k:v for k,v in result.items() if k not in ['bindings','outputs']},indent=2))

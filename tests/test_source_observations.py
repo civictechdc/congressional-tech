@@ -210,12 +210,18 @@ def test_observation_storage_attaches_reads_and_remaps_provenance_receipts_witho
     with closing(WorkingCatalog(tmp_path / 'adopt.sqlite')) as work:
         trace = SourceObservationTrace(work)
         trace(item('page', 'event', '7'))
+        trace(item('page', 'source', 'src-initial-1', 'write'))
         trace(item('meeting-119', 'event', '7', 'write'))
         trace(item('meeting-118', 'event', '7', 'write'))
         root1 = owner.prepare(None, trace)
 
     _, leaf1 = owner.members.routes.lookup(root1, observation_id('page', 1))
     source_pin_before = leaf1['release']['dataset']['groups']['source']
+    # Initial prepare() automatically attached 'source:src-initial-1' from the trace's source write edge!
+    initial_entries = owner.read_receipts(root1)
+    assert [(e['locator'], e['evidence']) for e in initial_entries] == [
+        (observation_id('page', 1), 'source:src-initial-1')
+    ]
 
     # Attach ordered duplicate receipts and an explicit None null receipt
     root2 = owner.attach_receipts(

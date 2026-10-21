@@ -290,7 +290,7 @@ def map_locators_to_occurrences(native, source_pin, *, locator_column):
 
 def attach_occurrence_receipts(native, *, dataset, operation, base_pin, definition,
                                locator_to_occurrences, receipts, deletions=(),
-                               evidence_type=pa.string()):
+                               evidence_type=pa.string(), return_plan=False):
     """Attach occurrence-linked provenance/review receipts without rewriting source files.
 
     ``receipts`` is an iterable of ``(locator, evidence_value)`` pairs; each
@@ -300,6 +300,7 @@ def attach_occurrence_receipts(native, *, dataset, operation, base_pin, definiti
     resulting ``ReleasePin`` keeps the exact same ``source`` ``TablePin`` (zero
     source-byte rewrites).
     """
+    import inspect
     ref = version_ref(base_pin)
     if ref["dataset"] != dataset:
         raise ValueError("base_pin dataset differs from target dataset")
@@ -330,17 +331,32 @@ def attach_occurrence_receipts(native, *, dataset, operation, base_pin, definiti
                 del_rows.append(dict(source_file=source_file, source_row=int(source_row)))
         del_table = pa.Table.from_pylist(del_rows, schema=EVIDENCE_KEY_SCHEMA)
 
-    pin = native.update_evidence_table(
-        rep_table,
-        dataset=dataset,
-        operation=operation,
-        definition=definition,
-        base=ref["version"],
-        deletions=del_table,
+    supports_return_plan = (
+        "return_plan" in inspect.signature(native.update_evidence_table).parameters
     )
+    if supports_return_plan:
+        plan, pin = native.update_evidence_table(
+            rep_table,
+            dataset=dataset,
+            operation=operation,
+            definition=definition,
+            base=ref["version"],
+            deletions=del_table,
+            return_plan=True,
+        )
+    else:
+        plan = None
+        pin = native.update_evidence_table(
+            rep_table,
+            dataset=dataset,
+            operation=operation,
+            definition=definition,
+            base=ref["version"],
+            deletions=del_table,
+        )
     if pin["dataset"]["groups"]["source"] != base_pin["dataset"]["groups"]["source"]:
         raise AssertionError("Receipt update rewrote the source group")
-    return pin
+    return dict(plan=plan, pin=pin) if return_plan else pin
 
 
 def read_occurrence_receipts(native, pin, *, occurrence_to_locator=None,

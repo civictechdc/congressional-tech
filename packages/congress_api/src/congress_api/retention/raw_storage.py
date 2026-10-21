@@ -537,19 +537,70 @@ class RawStorage:
             grouped = {prefix: [] for prefix in affected}
             for url, row in replacement.items():
                 grouped[row_prefixes[url]].append(row)
-            for prefix, (_, prior) in affected.items():
+            for prefix, (reference, prior) in affected.items():
                 rows = grouped[prefix]
                 rows.sort(key=lambda row: row[STATE_ORDER])
                 table = pa.Table.from_pylist(rows, schema=self.state_native_schema)
                 if table.equals(prior):
                     continue
+                splits = list(split_partition(table, key=STATE_KEY_FIELD, prefix=prefix,
+                        max_rows=self.max_state_rows, max_bytes=self.max_state_bytes))
                 leaves = {}
-                for child, part in split_partition(table, key=STATE_KEY_FIELD, prefix=prefix,
-                        max_rows=self.max_state_rows, max_bytes=self.max_state_bytes):
-                    leaves[child] = (dict(release=self._candidate('state', part, operation=operation,
-                                          prefix=child, base_id=base_id), rows=len(part),
-                                          decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=self.state_native_schema).nbytes,
-                                          schedule=summarize(part.to_pylist())) if len(part) else None)
+                for child, part in splits:
+                    if not len(part):
+                        leaves[child] = None
+                        continue
+                    if (
+                        reference is not None
+                        and reference.get('schema_evolved')
+                        and len(splits) == 1
+                        and child == prefix
+                        and hasattr(self.native, 'update_table')
+                    ):
+                        from congress_api.retention.native_features import source_schema_fields
+                        ref_pin = reference['release']
+                        for grp_name, grp_binding in (ref_pin.get('dataset', {}).get('computed') or {}).items():
+                            if grp_binding.get('qualification') is not None and hasattr(self.native, 'backfill'):
+                                grp_def = grp_binding['definition']
+                                ref_pin = self.native.backfill(dict(
+                                    dataset=ref_pin['dataset']['dataset'],
+                                    operation=f'{operation}-rebind-{grp_name}-{base_id[:12]}',
+                                    definition=ref_pin['dataset']['definition'],
+                                    base=ref_pin['id'],
+                                    group=grp_name,
+                                    group_definition=f"{grp_def['definition']}-{operation}",
+                                    fields=grp_def['fields'],
+                                ))
+                        col_order = [f['name'] for f in source_schema_fields(self.native, ref_pin)]
+                        prior_by_url = {r['url']: r for r in prior.to_pylist()}
+                        delta_rows = [
+                            r for r in part.to_pylist()
+                            if r['url'] not in prior_by_url or prior_by_url[r['url']] != r
+                        ]
+                        ordered_schema = pa.schema([self.state_native_schema.field(name) for name in col_order])
+                        delta_table = pa.Table.from_pylist(delta_rows, schema=ordered_schema)
+                        updated_pin = self.native.update_table(
+                            delta_table,
+                            dataset=ref_pin['dataset']['dataset'],
+                            operation=f'{operation}-{child or "root"}-{base_id[:12]}',
+                            definition=ref_pin['dataset']['definition'],
+                            base=ref_pin['id'],
+                            keys=[STATE_KEY_FIELD],
+                        )
+                        leaves[child] = dict(
+                            release=updated_pin,
+                            schema_evolved=True,
+                            rows=len(part),
+                            decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=self.state_native_schema).nbytes,
+                            schedule=summarize(part.to_pylist()),
+                        )
+                    else:
+                        leaves[child] = dict(
+                            release=self._candidate('state', part, operation=operation, prefix=child, base_id=base_id),
+                            rows=len(part),
+                            decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=self.state_native_schema).nbytes,
+                            schedule=summarize(part.to_pylist()),
+                        )
                 selected_root = self.state_routes.replace(selected_root, prefix, leaves)
             manifest['state'] = dict(root=selected_root, rows=next_order)
         delivery = dict(request=request, request_id=request_id,
@@ -684,8 +735,9 @@ class RawStorage:
                     continuous=continuous,
                     correction=corr,
                 )
+            selected_pin = backfilled['pin'] if backfilled is not None else evolved_pin
             evolved_table = next_owner._read_table(
-                evolved_pin,
+                selected_pin,
                 reference['rows'],
                 schema=next_owner.state_native_schema,
                 max_rows=next_owner.max_state_rows,
@@ -694,7 +746,9 @@ class RawStorage:
             )
             new_ref = dict(
                 reference,
-                release=evolved_pin,
+                release=selected_pin,
+                evolved_release=evolved_pin,
+                schema_evolved=True,
                 decoded_bytes=evolved_table.nbytes,
                 schedule=summarize(evolved_table.to_pylist()),
             )
@@ -722,6 +776,7 @@ class RawStorage:
         manifest['deliveries'] = self._select_delivery(
             manifest['deliveries'], delivery_prefix, {**deliveries, delivery_key: delivery}
         )
+        manifest['change'] = self.changes.put(base, manifest, [], reading_parts=())
         data = encoded(manifest)
         next_base = RawSnapshot(next_owner, base.manifest, base.version)
         prepared = dict(

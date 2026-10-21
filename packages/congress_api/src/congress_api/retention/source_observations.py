@@ -192,8 +192,30 @@ class SourceObservationStorage:
 
     def _write(self, table, kind):
         identity = sha256(encoded(table.to_pylist())).hexdigest()
-        return self.native.run_table(table, dataset='source-observations-' + kind + '-' + identity,
+        pin = self.native.run_table(table, dataset='source-observations-' + kind + '-' + identity,
             operation='initial', definition='source-observation-dependencies-v1')
+        pending = getattr(self, '_pending_receipts', None)
+        if kind == 'aliases' and pending:
+            present_aliases = set(table['alias'].to_pylist())
+            leaf_receipts = []
+            for locator, items in sorted(pending.items()):
+                if locator in present_aliases:
+                    leaf_receipts.extend(items)
+            if leaf_receipts:
+                loc_map = self._leaf_locator_map(pin, primary_only=True)
+                valid_receipts = [(loc, val) for loc, val in leaf_receipts if loc in loc_map]
+                if valid_receipts:
+                    op_hash = sha256(encoded(valid_receipts)).hexdigest()[:12]
+                    pin = attach_occurrence_receipts(
+                        self.native,
+                        dataset=pin['dataset']['dataset'],
+                        operation=f'remap-receipts-{op_hash}',
+                        base_pin=pin,
+                        definition=pin['dataset']['definition'],
+                        locator_to_occurrences=loc_map,
+                        receipts=valid_receipts,
+                    )
+        return pin
 
     def _leaf_locator_map(self, pin, *, primary_only=True):
         alias_map = (
@@ -301,16 +323,31 @@ class SourceObservationStorage:
 
     def prepare(self, root, trace):
         """Replace complete observations; retain every unaffected owner edge."""
-        prior_receipts = {}
+        replayed_obs = set(trace.observations())
+        desired_receipts = {}
         if (
-            root is not None
-            and hasattr(self.native, 'read_receipts')
+            hasattr(self.native, 'read_receipts')
             and hasattr(self.native, 'update_evidence_table')
         ):
-            for entry in self.read_receipts(root):
-                locator = entry.get('locator')
-                if locator:
-                    prior_receipts.setdefault(locator, []).append((locator, entry['evidence']))
+            if root is not None:
+                for entry in self.read_receipts(root):
+                    locator = entry.get('locator')
+                    ev = entry.get('evidence')
+                    if not locator:
+                        continue
+                    if locator in replayed_obs and isinstance(ev, str) and ev.startswith('source:'):
+                        continue
+                    desired_receipts.setdefault(locator, []).append((locator, ev))
+            for observation, dependency in trace.db.execute(
+                "SELECT observation, dependency FROM observation_edges "
+                "WHERE dependency LIKE 'dependency:[\"source\",%' AND access='write' "
+                "ORDER BY observation, dependency"
+            ):
+                _, source_id = json.loads(dependency[len('dependency:'):])
+                pair = (observation, f'source:{source_id}')
+                if pair not in desired_receipts.get(observation, ()):
+                    desired_receipts.setdefault(observation, []).append(pair)
+        self._pending_receipts = desired_receipts
         db = trace.db
         db.executescript('DROP TABLE IF EXISTS observation_changes; DROP TABLE IF EXISTS observation_changed_aliases; '
             'CREATE TABLE observation_changes(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
@@ -335,23 +372,7 @@ class SourceObservationStorage:
                 return (row[0] for row in db.execute('SELECT alias FROM observation_changed_aliases ORDER BY alias'))
             def __getitem__(self, alias):
                 return (row[0] for row in db.execute('SELECT member FROM observation_changes WHERE alias=? ORDER BY member', (alias,)))
-        next_root = self.members.replace(root, Changes())
-        if prior_receipts and next_root is not None:
-            remapped = []
-            for locator, items in sorted(prior_receipts.items()):
-                _, leaf = self.members.routes.lookup(next_root, locator)
-                if leaf is None or leaf.get('kind') != 'rows':
-                    continue
-                if leaf['release'].get('dataset', {}).get('evidence') is not None:
-                    continue
-                if list(self.members.values(next_root, locator)):
-                    remapped.extend(items)
-            if remapped:
-                op_hash = sha256(encoded(remapped)).hexdigest()[:12]
-                next_root = self.attach_receipts(
-                    next_root, remapped, operation=f'remap-receipts-{op_hash}'
-                )
-        return next_root
+        return self.members.replace(root, Changes())
 
     def affected(self, before, after, observations, *, working, changed_dependencies=()):
         """Replay changed outputs, including their immutable upstream owners.

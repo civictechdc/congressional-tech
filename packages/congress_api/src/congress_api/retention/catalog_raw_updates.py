@@ -25,7 +25,7 @@ from .document_recovery import recover_sources
 from .immutable_metadata import encoded
 from .native_features import backfill_scalar_group, evolve_catalog_schema, source_schema_fields
 from .raw_values import NATIVE_CAPTURE_SCHEMA
-from .raw_archive import STATE_KEY
+from .raw_archive import STATE_KEY, STATE_SCHEMA
 from .source_observations import SourceObservationStorage, dependency_id, hearing_records
 from .source_replay import prepare_source_replay, retain_source_seeds
 from .source_update_proof import retain_source_update, read_source_update, source_update_requirements, SourceUpdateDeletions
@@ -33,13 +33,15 @@ from .source_update_proof import retain_source_update, read_source_update, sourc
 MAX_ROWS, MAX_BYTES = 8192, 16 << 20
 DEFAULT_CATALOG_SCALAR_FIELDS = (
     dict(id=1, name='has_body', expression='body_key IS NOT NULL'),
-    dict(id=2, name='has_filename', expression='filename IS NOT NULL'),
+    dict(id=2, name='is_saved_capture', expression="array_has(capture_outcome, 'saved')"),
+    dict(id=3, name='has_source_url', expression='source_url IS NOT NULL'),
 )
 
 
 def _upgrade_native_catalog_scalars(store, *, native, previous, before, candidate, rule_version,
                                     schema_additions=(), write_defaults=None, scalar_backfill=None,
-                                    continuous_backfill=None, dependency_correction=None):
+                                    continuous_backfill=None, dependency_correction=None,
+                                    prior_backfills=None):
     """Evolve retained native catalog chunks and compute row-local scalar fields without rewriting source files."""
     if not isinstance(previous, NativeCatalogSnapshot):
         return {}
@@ -60,53 +62,71 @@ def _upgrade_native_catalog_scalars(store, *, native, previous, before, candidat
             descriptor = reader.chunks.read(chunk_ref)
             core_pin = {k: v for k, v in descriptor['release'].items() if k != 'catalog_rows'}
             chunk_pins[name] = core_pin
-    prior_backfills = dict((before or {}).get('native_schema_backfill') or {})
-    upgraded = dict(prior_backfills)
+    prior_map = dict(prior_backfills if prior_backfills is not None else ((before or {}).get('native_schema_backfill') or {}))
+    upgraded = dict(prior_map)
     for chunk_name, core_pin in sorted(chunk_pins.items()):
         dataset = core_pin['dataset']['dataset']
-        base_pin = prior_backfills.get(dataset, {}).get('pin') or core_pin
+        if prior_backfills is not None and dataset in upgraded:
+            continue
+        base_pin = prior_map.get(dataset, {}).get('pin') or core_pin
         base_def = base_pin['dataset']['definition']
         next_def = f'{base_def}-{rule_version}'
         root_fields = source_schema_fields(native, base_pin)
         existing_names = {f['name'] for f in root_fields}
-        if schema_additions or write_defaults:
-            additions = [dict(a) for a in schema_additions if a['name'] not in existing_names]
-            defaults = dict(write_defaults) if write_defaults else None
-        elif 'rule_version' not in existing_names:
-            additions = [dict(name='rule_version', data_type='string', default=rule_version)]
-            defaults = None
+        additions = [dict(a) for a in (schema_additions or ()) if a['name'] not in existing_names]
+        defaults = dict(write_defaults) if write_defaults else None
+        if additions or defaults:
+            evolved = evolve_catalog_schema(
+                native,
+                dataset=dataset,
+                operation=f'{candidate}-schema-{chunk_name}',
+                base_pin=base_pin,
+                definition=base_def,
+                next_definition=next_def,
+                fields=root_fields,
+                additions=additions,
+                write_defaults=defaults,
+            )
+            evolved_pin = evolved['pin']
+            schema_plan = evolved['plan']
+            bf_def = next_def
         else:
-            additions = []
-            defaults = dict(rule_version=rule_version)
-        evolved = evolve_catalog_schema(
-            native,
-            dataset=dataset,
-            operation=f'{candidate}-schema-{chunk_name}',
-            base_pin=base_pin,
-            definition=base_def,
-            next_definition=next_def,
-            fields=root_fields,
-            additions=additions,
-            write_defaults=defaults,
-        )
+            evolved_pin = base_pin
+            schema_plan = None
+            bf_def = base_def
         bf_spec = scalar_backfill or {}
         group = bf_spec.get('group', 'catalog_scalars')
         group_def = bf_spec.get('group_definition', f'catalog-scalars-{rule_version}')
-        bf_fields = bf_spec.get('fields', DEFAULT_CATALOG_SCALAR_FIELDS)
+        if 'fields' in bf_spec:
+            bf_fields = bf_spec['fields']
+        else:
+            bf_fields = [
+                dict(id=1, name='has_body', expression='body_key IS NOT NULL'),
+                dict(
+                    id=2,
+                    name='is_saved_capture',
+                    expression=(
+                        "array_has(capture_outcome, 'saved')"
+                        if 'capture_outcome' in existing_names
+                        else 'body_key IS NOT NULL'
+                    ),
+                ),
+                dict(id=3, name='has_source_url', expression='source_url IS NOT NULL'),
+            ]
         correction = None
         if dependency_correction is not None:
             correction = dict(dependency_correction)
             if 'fields' not in correction:
                 correction['fields'] = [
                     f['id'] for f in root_fields
-                    if f['name'] in {'document_id', 'source_id', 'body_key', 'filename'}
+                    if f['name'] in {'document_id', 'source_id', 'body_key', 'filename', 'source_url'}
                 ]
         backfilled = backfill_scalar_group(
             native,
             dataset=dataset,
             operation=f'{candidate}-backfill-{chunk_name}',
-            base_pin=evolved['pin'],
-            definition=next_def,
+            base_pin=evolved_pin,
+            definition=bf_def,
             group=group,
             group_definition=group_def,
             fields=bf_fields,
@@ -117,9 +137,9 @@ def _upgrade_native_catalog_scalars(store, *, native, previous, before, candidat
             chunk=chunk_name,
             dataset=dataset,
             base_version=base_pin['id'],
-            evolved_version=evolved['pin']['id'],
-            schema_plan=evolved['plan'],
-            evolved_pin=evolved['pin'],
+            evolved_version=evolved_pin['id'],
+            schema_plan=schema_plan,
+            evolved_pin=evolved_pin,
             backfill_plan=backfilled['plan'],
             pin=backfilled['pin'],
             correction=backfilled['correction'],
@@ -225,7 +245,31 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     raw = raw_storage.snapshot()
+    initial_empty_identity = raw_storage.empty_identity
     full = purpose in {'qualification', 'rule-upgrade'}
+    evolved_raw_state = None
+    if (
+        purpose == 'rule-upgrade'
+        and hasattr(raw_storage, 'state_schema')
+        and hasattr(raw_storage, 'evolve_state_schema')
+        and raw_storage.state_schema != STATE_SCHEMA
+        and can_read_catalog_schema(raw_storage.state_schema, STATE_SCHEMA)
+        and raw.manifest.get('state', {}).get('root') is not None
+    ):
+        raw_storage, prepared_state = raw_storage.evolve_state_schema(
+            raw,
+            operation=f'{candidate}-state-schema',
+            next_schema=STATE_SCHEMA,
+            scalar_backfill=dict(
+                group='state_scalars',
+                group_definition=f'raw-state-scalars-{rule_version or candidate}',
+                fields=[dict(id=1, name='has_body', expression='body_key IS NOT NULL')],
+            ),
+            continuous=continuous_backfill,
+            correction=dependency_correction,
+        )
+        raw = raw_storage.publish(prepared_state)
+        evolved_raw_state = prepared_state['leaves']
     full_options = dict(full_update=True) if full else {}
     pending = directory / 'source-update.json'
     with ExitStack() as owners:
@@ -297,7 +341,7 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
         if prior_tables is not None:
             prior_tables = {label: owners.enter_context(pq.ParquetFile(path)) for label, path in prior_tables.items()}
         changes = DiskRows(input_work.connection, 'changes')
-        for change in raw.changes_since(before['raw_identity'] if before and not full else raw_storage.empty_identity):
+        for change in raw.changes_since(before['raw_identity'] if before and not full else initial_empty_identity):
             changes.append(change)
         changed_urls = _keys(input_work, 'changed_urls',
             (url for change in changes for url in raw.changed_state_urls(change)))
@@ -468,7 +512,34 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             replacements=values, deletions=deletions, candidate=candidate, directory=directory / 'catalog',
             max_chunk_rows=MAX_ROWS, max_chunk_bytes=MAX_BYTES, rules=request['requirements'],
             expected_bodies=expected_bodies, source_update=reference, **full_options)
+        if purpose == 'rule-upgrade' or any(v for v in (schema_additions, write_defaults, scalar_backfill, continuous_backfill, dependency_correction)):
+            current_selected = store.read(MANIFEST_KEY)
+            if current_selected is not None:
+                pub_version = (
+                    getattr(store, 'index_etags', {}).get(MANIFEST_KEY)
+                    if hasattr(store, 'index_etags')
+                    else sha256(current_selected).hexdigest()
+                )
+                published = owners.enter_context(
+                    read_native_catalog(store, current_selected, version=pub_version, native=raw_storage.native)
+                )
+                schema_backfills = _upgrade_native_catalog_scalars(
+                    store,
+                    native=raw_storage.native,
+                    previous=published,
+                    before=before,
+                    candidate=candidate,
+                    rule_version=after['rule_version'],
+                    schema_additions=schema_additions,
+                    write_defaults=write_defaults,
+                    scalar_backfill=scalar_backfill,
+                    continuous_backfill=continuous_backfill,
+                    dependency_correction=dependency_correction,
+                    prior_backfills=schema_backfills,
+                )
         extra = dict(native_schema_backfill=schema_backfills) if schema_backfills else {}
+        if evolved_raw_state is not None:
+            extra['raw_state_schema_backfill'] = evolved_raw_state
         return dict(result, raw_identity=raw.identity, **extra)
 
 
