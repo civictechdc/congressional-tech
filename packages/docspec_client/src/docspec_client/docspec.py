@@ -32,11 +32,11 @@ from .docspec_host import (
 
 SUPPORTED_PLATFORMS = ('linux-amd64', 'darwin-arm64', 'darwin-amd64')
 QUALIFIED_DOCSPEC_RUNTIME = {
-    'source_revision': 'c0de1bd3a4d248f575a762af43b97535d440eeae',
-    'darwin_arm64_binary_sha256': 'ea88b2d5bf21876fd36c3d6327197f7a9a3163669ea84c5e6b4c52d6e452fa3a',
+    'source_revision': '96e382627bdffecb8df84ce2dec6d16b742a6ff2',
+    'darwin_arm64_binary_sha256': '9a9f9952939ef851c58440e264fea66a0a41d0b828ea8542c7cb2ab0e79ff58b',
     'build_features': ('remote',),
     'required_capabilities': REQUIRED_LOOPBACK_CAPABILITIES,
-    'safety_prerequisites': ('ct-3li2', 'ct-cpio', 'ct-xq1y', 'ct-5fkx', 'ct-gfv8', 'ct-q05l'),
+    'safety_prerequisites': ('ct-3li2', 'ct-cpio', 'ct-xq1y', 'ct-5fkx', 'ct-gfv8', 'ct-q05l', 'ct-csyg'),
 }
 
 
@@ -550,6 +550,262 @@ class NativeDatasets:
 
     def seal_generation(self, request):
         return self._request('/generations/seal', request)
+
+    def capture_inputs(self, inputs):
+        return self._request('/inputs/capture', inputs)
+
+    def correct_dependencies(self, request):
+        return self._request('/dependencies/corrections', request)
+
+    def plan_schema(self, request):
+        return self._request('/schemas/plan', request)
+
+    def evolve_schema(self, request):
+        return self._request('/schemas/run', request)
+
+    def plan_backfill(self, request):
+        return self._request('/backfills/plan', request)
+
+    def backfill(self, request):
+        return self._request('/backfills/run', request)
+
+    def plan_continuous_backfill(self, request):
+        return self._request('/plan-continuous-backfill', request)
+
+    def continuous_backfill(self, request):
+        return self._request('/continuous-backfill', request)
+
+    def plan_evidence(self, request):
+        return self._request('/receipts/plan', request)
+
+    def update_evidence(self, request):
+        return self._request('/receipts/run', request)
+
+    def update_evidence_table(self, table=None, *, dataset, operation, definition, base,
+                              replacements=None, deletions=None):
+        """Submit one ``EvidenceSpec`` with pre-persisted producer custody."""
+        self.workspace.mkdir(parents=True, exist_ok=True)
+        directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
+        dispatch = {}
+        retained = False
+        try:
+            if replacements is None:
+                if table is None:
+                    raise ValueError('update_evidence_table requires either table or replacements')
+                source = directory / 'replacements.parquet'
+                physical = native_storage_schema(table.schema)
+                stored = (
+                    table
+                    if physical.equals(table.schema, check_metadata=True)
+                    else table.cast(physical, safe=True)
+                )
+                pq.write_table(stored, source, compression='zstd')
+                digest = self.hash_input(source)['digest']
+                replacements_spec = dict(path=str(source), digest=digest)
+            else:
+                replacements_spec = dict(replacements)
+            deletions_spec = None
+            if isinstance(deletions, pa.Table):
+                deletion_path = directory / 'deletions.parquet'
+                del_physical = native_storage_schema(deletions.schema)
+                del_stored = (
+                    deletions
+                    if del_physical.equals(deletions.schema, check_metadata=True)
+                    else deletions.cast(del_physical, safe=True)
+                )
+                pq.write_table(del_stored, deletion_path, compression='zstd')
+                deletion_digest = self.hash_input(deletion_path)['digest']
+                deletions_spec = dict(path=str(deletion_path), digest=deletion_digest)
+            elif deletions is not None:
+                deletions_spec = dict(deletions)
+            request = dict(dataset=dataset, operation=operation, definition=definition,
+                           base=base, replacements=replacements_spec)
+            if deletions_spec is not None:
+                request['deletions'] = deletions_spec
+            (directory / 'request.json').write_text(
+                json.dumps(request, ensure_ascii=False, allow_nan=False))
+            primary = Path(replacements_spec['path'])
+            return self._request('/receipts/run', request, dispatch=dispatch)
+        except BaseException as error:
+            if dispatch.get('submitted') and not cleanup_safe(error):
+                retained = True
+                try:
+                    entry = producer_input_entry(directory / 'request.json')
+                    size = entry['bytes'] if entry is not None else None
+                    error.retained_input = dict(
+                        input=str(primary),
+                        request=str(directory / 'request.json'),
+                        bytes=size,
+                        files=entry['files'] if entry is not None else [],
+                    )
+                    error.add_note(
+                        f'DocSpec producer inputs retained under {directory} ({size} bytes); '
+                        f'exact replay request: {directory / "request.json"}'
+                    )
+                except OSError as diagnostic:
+                    error.add_note(f'DocSpec producer directory retained at {directory}; '
+                                   f'could not save its diagnostic: {diagnostic}')
+            raise
+        finally:
+            if not retained:
+                shutil.rmtree(directory)
+
+    def compare(self, before, after, *, group='source', identity='values', force_full=False):
+        """Compare two exact releases without streaming row payloads."""
+        return self._request(
+            '/compare',
+            dict(
+                before=before,
+                after=after,
+                group=group,
+                options=dict(identity=identity, force_full=Boolean(force_full) if False else bool(force_full)),
+            ),
+        )
+
+    @contextmanager
+    def changes_batches(self, before, after, *, group='source', identity='occurrences',
+                        force_full=False):
+        """Stream one exact change stream and its ``docspec.change`` descriptor."""
+        started = time.monotonic()
+        deadline = started + self.timeout
+        host = self._execution_host()
+        payload = json.dumps(
+            dict(
+                before=before,
+                after=after,
+                group=group,
+                options=dict(identity=identity, force_full=bool(force_full)),
+            ),
+            ensure_ascii=False,
+            separators=(',', ':'),
+            allow_nan=False,
+        )
+        with host.stream(
+            'POST',
+            '/changes',
+            deadline=deadline,
+            content=payload,
+            headers={'content-type': 'application/json'},
+        ) as (response, deadline):
+            self._responses.add(response)
+            try:
+                host.check_response(response)
+                with ArrowResponse(response, deadline=deadline) as stream, \
+                        pa.ipc.open_stream(stream) as reader:
+                    raw_meta = (reader.schema.metadata or {}).get(b'docspec.change')
+                    descriptor = json.loads(raw_meta.decode('utf-8')) if raw_meta else None
+
+                    def batches():
+                        for batch in reader:
+                            yield batch
+                        stream.finish()
+
+                    with pa.RecordBatchReader.from_batches(reader.schema, batches()) as restored:
+                        yield descriptor, restored
+            finally:
+                self._responses.discard(response)
+
+    def read_changes(self, before, after, *, group='source', identity='occurrences',
+                     force_full=False):
+        """Consume one change stream, returning ``(descriptor, table, summary)``."""
+        with self.changes_batches(
+            before, after, group=group, identity=identity, force_full=force_full
+        ) as (descriptor, reader):
+            batches = list(reader)
+            table = pa.Table.from_batches(batches, schema=reader.schema)
+        added_rows = 0
+        removed_rows = 0
+        if 'side' in table.column_names:
+            for side in table['side'].to_pylist():
+                if side in ('after', 'added', '+1', 1):
+                    added_rows += 1
+                elif side in ('before', 'removed', '-1', -1):
+                    removed_rows += 1
+        return dict(
+            descriptor=descriptor,
+            table=table,
+            added_rows=added_rows,
+            removed_rows=removed_rows,
+            total_rows=table.num_rows,
+        )
+
+    def read_keys(self, pin, key, values, *, columns=None, schema=None):
+        """Stream only rows matching ``values`` on ``key`` from an exact release pin."""
+        started = time.monotonic()
+        deadline = started + self.timeout
+        dataset, version = pin['dataset']['dataset'], pin['id']
+        host = self._execution_host()
+        release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
+        if host.request('GET', release_path, deadline=deadline) != pin:
+            raise ValueError('Native release differs from the selected exact pin')
+        spec = dict(key=key, values=[str(v) for v in values])
+        if columns is not None:
+            spec['columns'] = list(columns)
+        payload = json.dumps(spec, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+        path = release_path + '/keys'
+        with host.stream(
+            'POST',
+            path,
+            deadline=deadline,
+            content=payload,
+            headers={'content-type': 'application/json'},
+        ) as (response, deadline):
+            self._responses.add(response)
+            try:
+                host.check_response(response)
+                expected = {
+                    'docspec-dataset': dataset,
+                    'docspec-version': version,
+                    'docspec-manifest-blake3': pin['manifest']['digest'],
+                    'content-type': 'application/vnd.apache.arrow.stream',
+                }
+                if any(response.headers.get(k) != v for k, v in expected.items()):
+                    raise ValueError('Native stream differs from the selected exact pin')
+                with ArrowResponse(response, deadline=deadline) as stream, \
+                        pa.ipc.open_stream(stream) as reader:
+                    table = reader.read_all()
+                    stream.finish()
+                return table if schema is None else table.cast(schema, safe=True)
+            finally:
+                self._responses.discard(response)
+
+    def _read_pin_endpoint(self, pin, suffix, *, schema=None):
+        started = time.monotonic()
+        deadline = started + self.timeout
+        dataset, version = pin['dataset']['dataset'], pin['id']
+        host = self._execution_host()
+        release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
+        if host.request('GET', release_path, deadline=deadline) != pin:
+            raise ValueError('Native release differs from the selected exact pin')
+        path = release_path + suffix
+        with host.stream('GET', path, deadline=deadline) as (response, deadline):
+            self._responses.add(response)
+            try:
+                host.check_response(response)
+                expected = {
+                    'docspec-dataset': dataset,
+                    'docspec-version': version,
+                    'docspec-manifest-blake3': pin['manifest']['digest'],
+                    'content-type': 'application/vnd.apache.arrow.stream',
+                }
+                if any(response.headers.get(k) != v for k, v in expected.items()):
+                    raise ValueError('Native stream differs from the selected exact pin')
+                with ArrowResponse(response, deadline=deadline) as stream, \
+                        pa.ipc.open_stream(stream) as reader:
+                    table = reader.read_all()
+                    stream.finish()
+                return table if schema is None else table.cast(schema, safe=True)
+            finally:
+                self._responses.discard(response)
+
+    def read_receipts(self, pin, *, schema=None):
+        return self._read_pin_endpoint(pin, '/receipts', schema=schema)
+
+    def read_evidence(self, pin, *, schema=None):
+        return self._read_pin_endpoint(pin, '/evidence', schema=schema)
+
+    def read_occurrences(self, pin, *, schema=None):
+        return self._read_pin_endpoint(pin, '/occurrences', schema=schema)
 
     def export(self, request):
         return self._request('/exports/run', request)

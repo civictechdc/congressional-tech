@@ -1,6 +1,6 @@
 ---
 id: ct-qkvr
-status: open
+status: closed
 deps: [ct-egpe]
 links: [ct-nloa, ct-jo8n, ct-5fkx]
 created: 2026-10-20T22:15:53Z
@@ -42,3 +42,7 @@ CS 300 Grade at 8221566d — Spec: A | Impl: C- (Reopened). Preserves prior poll
 **2026-10-21T00:31:41Z**
 
 Nearly closed: the shared transport, exact-base Update, and UpdateSpec relationship support are now implemented. Remaining blocker is _existing_by_ids calling read_arrow (docspec_backend.py:980-997), which still materializes the full historical dataset in Python; track that in ct-nloa/ct-csyg. Also requires the rebuilt binary from ct-oxg6.
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: DocSpecLake._commit_append and _existing_by_ids (packages/news_lake/src/news_lake/storage/docspec_backend.py:626-643) now use client.read_keys (/datasets/{dataset}/versions/{version}/keys) so append polls stream only matching IDs (0 rows on new IDs) instead of calling read_arrow on the full table, while replace_keys skips non-overlapping files and advances coupled relationships (ct-5fkx).

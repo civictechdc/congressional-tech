@@ -1,6 +1,6 @@
 ---
 id: ct-gziq
-status: open
+status: closed
 deps: [ct-egpe, ct-q05l]
 links: [ct-gf8i, ct-csjp, ct-vt7i, ct-sb0s, ct-13cn, ct-q05l, ct-3180, ct-dmca]
 created: 2026-10-20T18:24:29Z
@@ -35,3 +35,7 @@ CS 300 / evolutionary-refactoring audit linked `ct-gziq` to `ct-dmca` (unified r
 **2026-10-20T22:19:30Z**
 
 2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: added refresh_catalog_observation_summary in packages/congress_api/src/congress_api/retention/native_features.py connecting source_observations (alias, observation) to full and incremental native Refresh aggregates while keeping transitive alias closure in catalog_dependencies.py. Tested in tests/test_native_features.py::test_ct_gziq_refresh_catalog_observation_summary_full_and_incremental.

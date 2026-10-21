@@ -182,6 +182,19 @@ def _pinned_records(lake, release, validated=()):
 
 def publish_release(coordinator, records, *, release_id, recorded_at, selections=(), checkpoints=()):
     """Run one publication cycle; safe to retry after a crash at any point."""
+    if hasattr(coordinator, 'publish_release') and not hasattr(coordinator, 'lake'):
+        raise TypeError('publish_release requires a Coordinator or (DocSpecLake, ControlStore)')
+    if hasattr(coordinator, 'lake') and hasattr(coordinator.lake, 'publish_release'):
+        return coordinator.lake.publish_release(
+            coordinator.control,
+            records,
+            release_id=release_id,
+            recorded_at=recorded_at,
+            selections=selections,
+            checkpoints=checkpoints,
+            epoch=coordinator.epoch,
+            faults=coordinator.faults,
+        )
     control = coordinator.control
     control.require_epoch(coordinator.epoch)
     faults = coordinator.faults
@@ -277,6 +290,8 @@ def publish_release(coordinator, records, *, release_id, recorded_at, selections
 
 def find_release(lake, release_id):
     """Find one release with an Iceberg row filter (never a full-lake scan)."""
+    if hasattr(lake, 'find_release'):
+        return lake.find_release(release_id)
     table = lake.table('news.releases')
     snapshot = table.current_snapshot()
     if snapshot is None:
@@ -296,6 +311,8 @@ def read_release(lake, control, release_id, tables=None):
     tables (default: all twelve). Requested names must be pinned by the
     release.
     """
+    if hasattr(lake, 'read_release'):
+        return lake.read_release(control, release_id, tables=tables)
     record = find_release(lake, release_id)
     if record is None:
         raise ReleaseError('unknown_release', 'no release record with this id', release_id=release_id)

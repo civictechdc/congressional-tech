@@ -147,7 +147,9 @@ def _merge_spans(spans, version=None):
     return merged
 
 
-def politician_articles(release_read, decision_result=None):
+def politician_articles(release_read, decision_result=None, *, docspec_views=None, mode='full'):
+    if docspec_views is not None:
+        return docspec_views.politician_articles(release_read, mode=mode)
     scope = _ReleaseScope(release_read, decision_result)
     rows = {}
     for item in scope.survivor_items():
@@ -199,7 +201,9 @@ def politician_articles(release_read, decision_result=None):
     return sorted(result, key=lambda row: (row['person_root_id'], row['item_id']))
 
 
-def coverage_daily(release_read, decision_result=None):
+def coverage_daily(release_read, decision_result=None, *, docspec_views=None, mode='full'):
+    if docspec_views is not None:
+        return docspec_views.coverage_daily(release_read, mode=mode)
     scope = _ReleaseScope(release_read, decision_result)
     buckets = {}
     corpus_text_groups = {}

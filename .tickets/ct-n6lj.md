@@ -1,6 +1,6 @@
 ---
 id: ct-n6lj
-status: open
+status: closed
 deps: [ct-jo8n]
 links: [ct-gf8i, ct-jo8n, ct-csjp, ct-vt7i]
 created: 2026-10-20T23:52:31Z
@@ -26,3 +26,7 @@ In packages/news_lake/src/news_lake/storage/docspec_backend.py:1190-1272, DocSpe
 **2026-10-20T23:53:21Z**
 
 CS 300 Grade — Spec: A | Impl: N/A (Open). Created to address the CS 300 B- deduction on ct-gf8i: replace full-corpus Python bridge recomputation and full read_arrow bridge diffing in DocSpecNewsViews.update_bridges (docspec_backend.py:1190-1272) and _assemble_politician_articles (:1351-1359) with release-delta keyed updates.
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: DocSpecNewsViews.update_bridges (docspec_backend.py:850-950) persists bridge row state by version so incremental updates perform 0 full-table read_arrow calls on prior bridge pins (full_table_reads == 0 asserted in test_published_release_lifecycle_fresh_process_resume_and_retire), and _assemble_politician_articles (:1020-1042) uses client.read_keys with projected columns=['current_version_id', 'item_id'].

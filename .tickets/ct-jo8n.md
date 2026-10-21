@@ -1,6 +1,6 @@
 ---
 id: ct-jo8n
-status: open
+status: closed
 deps: [ct-qkvr, ct-nloa, ct-5fkx]
 links: [ct-nloa, ct-qkvr, ct-5fkx, ct-f11a, ct-4nyy, ct-gf8i, ct-n6lj, ct-csjp, ct-vt7i]
 created: 2026-10-20T22:15:53Z
@@ -39,3 +39,7 @@ Reopened by evolutionary-refactoring audit at `main` (`8221566d` / `33ce7877`):
 **2026-10-20T23:53:21Z**
 
 CS 300 Grade at 8221566d — Spec: A | Impl: D+ (Reopened). Zero non-test callers in packages/news_lake; DocSpecLake.committed (:951) and DocSpecNewsViews.pins (:1127) are ephemeral in-memory dicts that fall back to client.latest() on fresh-process resume.
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: wired DocSpecLake.publish_release / read_release / find_release into news_lake.storage.releases (releases.py:183-196,290-310) and DocSpecNewsViews into news_lake.analysis.views (views.py:150-153,204-207) and news_lake.analysis.export (export.py:43-62). Added durable workspace state (.news_lake_committed.json, .news_lake_views.json, releases/<id>.json), explicit empty-table preservation across all 12 CONTENT_TABLES, and capture_inputs verification. Verified in test_published_release_lifecycle_fresh_process_resume_and_retire.

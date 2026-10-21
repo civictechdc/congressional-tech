@@ -1,6 +1,6 @@
 ---
 id: ct-4nyy
-status: open
+status: closed
 deps: [ct-jo8n, ct-f11a]
 links: [ct-3li2, ct-f11a, ct-jo8n]
 created: 2026-10-20T22:15:53Z
@@ -38,3 +38,7 @@ Reopened by evolutionary-refactoring audit at `main` (`8221566d` / `33ce7877`):
 **2026-10-20T23:53:21Z**
 
 CS 300 Grade at 8221566d — Spec: A- | Impl: C+ (Reopened). Enforces C5 export_release before native export, but removing synthetic release UUIDs, triple Parquet writes, and wiring a non-test caller is tracked in ct-f11a.
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: wired news_lake.analysis.export.export_release(..., docspec_views=...) to DocSpecNewsViews.export_authorized, automatically binding release_read['dataset_pins'] from DocSpecLake.read_release so unchanged C5 tables export directly from their pinned ReleasePin without re-staging.

@@ -1,6 +1,6 @@
 ---
 id: ct-csyg
-status: open
+status: closed
 deps: [ct-xl0y, ct-clvr, ct-cpio]
 links: [ct-nloa, ct-eipa]
 created: 2026-10-20T19:23:00Z
@@ -48,3 +48,7 @@ CS 300 Grade at 8221566d — Spec: A | Impl: F (Reopened). Closed in 6cd80b0e wi
 **2026-10-21T00:31:42Z**
 
 Not implemented in this pass. The safe prerequisite is a maintained exact-release keyed read or Iceberg manifest-bounds pruning; docspec-rs 0.10.1 exposes only crate-private InclusiveMetricsEvaluator/StrictMetricsEvaluator, so a hand-written evaluator would duplicate maintained semantics and was not shipped. Keep open.
+
+**2026-10-21T02:20:25Z**
+
+Implemented in docspec-rs (96e38262): (1) replace_keys (src/engine/write.rs:606-710,900-965) prunes non-overlapping files via Iceberg DataFile lower_bounds/upper_bounds/null_value_counts (with 64-byte truncation guard) and skips all probes when key_files.is_empty(); (2) NativeTable::supports_filters_pushdown (src/query.rs:163-198,480-595) returns Inexact for values-only (!located) scans while preserving Unsupported and whole-file occurrence ordinals on located scans; (3) Engine::read_keys / KeyReadSpec (src/engine/read.rs:55-82,220-415, POST /datasets/{dataset}/versions/{version}/keys) streams only matching key rows with column projection and manifest bounds pruning.

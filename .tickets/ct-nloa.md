@@ -1,6 +1,6 @@
 ---
 id: ct-nloa
-status: open
+status: closed
 deps: [ct-egpe, ct-csyg]
 links: [ct-eipa, ct-csyg, ct-jo8n, ct-qkvr, ct-5fkx]
 created: 2026-10-20T22:15:53Z
@@ -42,3 +42,7 @@ CS 300 Grade at 8221566d — Spec: A | Impl: D (Reopened). _existing_by_ids (doc
 **2026-10-21T00:31:42Z**
 
 Blocked on a native exact-release scoped/keyed read. The Python adapter now uses the shared transport but still calls read_arrow(pin) before pc.is_in; no public filtered read exists yet. ct-csyg owns the native capability.
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: DocSpecLake._existing_by_ids (docspec_backend.py:626-643) calls client.read_keys(pin, 'id', id_list, schema=kind_arrow_schema(kind)); test_bounded_upsert_updates_only_changed_rows_across_unrelated_records (test_docspec_backend.py:618-638) asserts rows_transferred == 1 when total_rows == 50.

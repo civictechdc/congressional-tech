@@ -40,17 +40,27 @@ def _strip(record, fields):
         record.pop(field, None)
 
 
-def export_release(release_read, *, authorized=False, now=None):
+def export_release(release_read, *, authorized=False, now=None, docspec_views=None,
+                   destination_dir=None, channel='public'):
     """Return a C5-filtered deep copy of a release read.
 
     `now` may be an aware datetime or an instant string; it defaults to the
     current UTC time. Expiry is strict: a payload is expired only when
-    `retain_until < now`.
+    `retain_until < now`. When `docspec_views` is supplied, also materializes
+    the C5-filtered release through native `ExportSpec` into `destination_dir`.
 
     Precondition: `release_read` is a validated release snapshot (as returned
     by `read_release`), and every exported record is re-checked for shape and
     credential redaction (C2/C5) before return.
     """
+    if docspec_views is not None:
+        return docspec_views.export_authorized(
+            release_read,
+            destination_dir,
+            now=now,
+            authorized=authorized,
+            channel=channel,
+        )
     exported = copy.deepcopy(release_read)
     validate_shape(exported['release'])
     _check_credentials(exported['release'])

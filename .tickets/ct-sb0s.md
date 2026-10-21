@@ -1,6 +1,6 @@
 ---
 id: ct-sb0s
-status: open
+status: closed
 deps: [ct-egpe, ct-q05l]
 links: [ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-gziq]
 created: 2026-10-20T18:24:29Z
@@ -35,3 +35,7 @@ CS 300 / evolutionary-refactoring audit linked `ct-sb0s` to `ct-dmca`'s unified 
 **2026-10-20T22:19:30Z**
 
 2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: added NativeDatasets.update_evidence_table, read_receipts, read_evidence, read_occurrences in docspec_client and map_locators_to_occurrences / attach_occurrence_receipts / read_occurrence_receipts in native_features.py with zero source-byte rewrites. Tested in tests/test_native_features.py::test_ct_sb0s_attach_and_read_occurrence_receipts_with_zero_source_rewrites.

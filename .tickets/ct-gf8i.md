@@ -1,6 +1,6 @@
 ---
 id: ct-gf8i
-status: open
+status: closed
 deps: [ct-jo8n, ct-n6lj]
 links: [ct-csjp, ct-vt7i, ct-gziq, ct-n6lj, ct-jo8n]
 created: 2026-10-20T22:15:53Z
@@ -46,3 +46,7 @@ CS 300 Grade at 8221566d — Spec: A | Impl: B- (Reopened). Native list<struct> 
 **2026-10-21T00:31:41Z**
 
 Semantic cross-date syndication is already covered: test_update_bridges_pin_isolation_and_cross_day_syndication asserts both 2026-10-18 and 2026-10-19 buckets carry the shared text_group_key. Remaining scope is efficiency only, tracked in ct-n6lj.
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: list<struct> occurrences, native CollectSet in coverage_daily, release-pinned incremental bridge updates (ct-n6lj), and projected read_keys lookup in _assemble_politician_articles all pass in test_docspec_backend.py (14 passed).

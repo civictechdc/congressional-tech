@@ -59,6 +59,8 @@ from news_lake.analysis.export import export_release
 from news_lake.analysis.views import _by_kind, _merge_spans
 from news_lake.context import canonicalize_record_instants
 from news_lake.contract.records import (
+    CONTENT_TABLES,
+    CONTRACT_VERSION,
     KIND_ORDER,
     KIND_TABLES,
     SCHEMA,
@@ -66,11 +68,13 @@ from news_lake.contract.records import (
     TABLE_MUTATIONS,
     validate_shape,
 )
+from news_lake.contract.semantics import check_corpus
 from docspec_client.docspec import NativeDatasets, cleanup_safe
 from docspec_client.docspec_host import DocSpecFailure
 
 from news_lake.identity.decisions import apply_decisions  # noqa: F401  (bridge input)
 from news_lake.storage.coordinator import CommitError, _merge_upsert
+from news_lake.storage.releases import ReleaseError, _redact_checkpoints
 
 # One recipe identity for every news dataset; the schema is derived from the
 # contract and never changes inside a workspace without a new definition.
@@ -251,11 +255,16 @@ def version_ref(pin):
             'manifest': pin['manifest']}
 
 
+def str_canonical(value):
+    if value is None:
+        return None
+    return json.dumps(value, sort_keys=True, separators=(',', ':'),
+                      ensure_ascii=False, allow_nan=False, default=str)
+
+
 def content_digest(records):
     """A stable digest over record values, for replay-stable operation ids."""
-    payload = json.dumps(records, sort_keys=True, separators=(',', ':'),
-                         ensure_ascii=False, allow_nan=False, default=str)
-    return sha256(payload.encode('utf-8')).hexdigest()
+    return sha256(str_canonical(records).encode('utf-8')).hexdigest()
 
 
 def _resolve_ref(definition):
@@ -502,6 +511,23 @@ class DocSpecClient:
             return restore_application_schema(table, expected_schema=schema)
         return table
 
+    def read_keys(self, release_pin, key, values, *, columns=None, schema=None):
+        """Stream only rows matching ``values`` on ``key`` from an exact release pin."""
+        dataset = release_pin['dataset']['dataset']
+        if schema is None and columns is None:
+            schema = self._dataset_schemas.get(dataset)
+        elif schema is not None and columns is not None:
+            schema = pa.schema([schema.field(name) for name in columns])
+        table = self._native.read_keys(
+            release_pin, key, values, columns=columns, schema=None
+        )
+        if schema is not None:
+            return restore_application_schema(table, expected_schema=schema)
+        return table
+
+    def capture_inputs(self, inputs):
+        return self._native.capture_inputs(inputs)
+
     def run_table(self, table, dataset, operation, definition=DEFINITION,
                   relationship=None, base=None):
         """Admit one caller-bounded Arrow table as a dataset build."""
@@ -547,8 +573,35 @@ class DocSpecLake:
     def __init__(self, client, workspace_suffix=''):
         self.client = client
         self.workspace_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
-        self.committed = {}
+        self.committed = self._load_committed_state()
         self.last_lookup_stats = {}
+
+    def _committed_state_path(self):
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return self.client.workspace / f'.news_lake_committed{suffix}.json'
+
+    def _release_manifest_path(self, release_id):
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return self.client.workspace / f'releases{suffix}' / f'{sanitize_id(release_id)}.json'
+
+    def _load_committed_state(self):
+        path = self._committed_state_path()
+        if not path.is_file():
+            return {}
+        try:
+            data = json.loads(path.read_text())
+            return dict(data) if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _save_committed_state(self):
+        path = self._committed_state_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix('.json.tmp')
+        tmp.write_text(
+            json.dumps(self.committed, ensure_ascii=False, separators=(',', ':'), allow_nan=False, default=str)
+        )
+        tmp.replace(path)
 
     def _dataset(self, kind_or_table):
         return dataset_id_for(KIND_TABLES.get(kind_or_table, kind_or_table))
@@ -577,25 +630,31 @@ class DocSpecLake:
         return deduped
 
     def _existing_by_ids(self, pin, kind, ids):
-        """Fetch only the rows matching ``ids`` from the exact ``pin``."""
+        """Fetch only the rows matching ``ids`` from the exact ``pin`` via ``read_keys``."""
         id_list = sorted(set(ids))
         dataset = pin['dataset']['dataset']
         if not id_list:
-            self.last_lookup_stats[dataset] = {'requested_ids': 0, 'matched_rows': 0}
+            self.last_lookup_stats[dataset] = {
+                'requested_ids': 0,
+                'matched_rows': 0,
+                'rows_transferred': 0,
+                'total_rows': pin.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', 0),
+            }
             return {}
-        table = self.client.read_arrow(pin, schema=kind_arrow_schema(kind))
-        id_set = pa.array(id_list, type=pa.string())
-        mask = pc.is_in(table['id'], value_set=id_set)
-        filtered = table.filter(mask)
-        rows = table_records(filtered)
+        table = self.client.read_keys(
+            pin, 'id', id_list, schema=kind_arrow_schema(kind)
+        )
+        rows = table_records(table)
         self.last_lookup_stats[dataset] = {
             'requested_ids': len(id_list),
             'matched_rows': len(rows),
-            'total_rows': table.num_rows,
+            'rows_transferred': table.num_rows,
+            'total_rows': pin.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', table.num_rows),
         }
         return {row['id']: row for row in rows}
 
-    def commit_records(self, records, generation=None, family='news'):
+    def commit_records(self, records, generation=None, family='news', *,
+                       ensure_all_tables=False):
         """Validate and commit one batch; returns ``{dataset: latest ReleasePin}``.
 
         Records route by ``kind`` exactly as the contract's ``x-iceberg``
@@ -614,18 +673,28 @@ class DocSpecLake:
             batch.setdefault(canonical['kind'], []).append(canonical)
         pins = dict(self.committed)
         for kind in KIND_ORDER:
+            if kind == 'release':
+                continue
             records_of_kind = batch.get(kind)
             dataset = self._dataset(kind)
             if not records_of_kind:
                 prior = pins.get(dataset)
                 if prior is not None and relationship is not None:
                     pins[dataset] = self._advance_relationship(dataset, kind, prior, relationship)
+                elif prior is None and ensure_all_tables:
+                    operation = self._operation(
+                        f'admit-empty-{kind}', content_digest([dataset, relationship])
+                    )
+                    pins[dataset] = self.client.run_table(
+                        records_to_arrow(kind, ()), dataset, operation, relationship=relationship
+                    )
                 continue
             if TABLE_MUTATIONS[KIND_TABLES[kind]] == 'upsert':
                 pins[dataset] = self._commit_upsert(dataset, kind, records_of_kind, relationship)
             else:
                 pins[dataset] = self._commit_append(dataset, kind, records_of_kind, relationship)
         self.committed = pins
+        self._save_committed_state()
         return dict(pins)
 
     def _advance_relationship(self, dataset, kind, prior, relationship):
@@ -724,6 +793,247 @@ class DocSpecLake:
         pin = self.committed.get(dataset) or self.client.latest(dataset)
         return self.client.read_arrow(pin)
 
+    def _table_uuid(self, table_name, pin=None):
+        if pin is not None:
+            meta_path = pin.get('dataset', {}).get('groups', {}).get('source', {}).get('metadata', {}).get('path')
+            if isinstance(meta_path, str) and Path(meta_path).is_file():
+                try:
+                    meta = json.loads(Path(meta_path).read_text())
+                    if isinstance(meta, dict) and isinstance(meta.get('table-uuid'), str):
+                        return meta['table-uuid']
+                except (OSError, ValueError):
+                    pass
+        from uuid import NAMESPACE_URL, uuid5
+        return str(uuid5(NAMESPACE_URL, f'docspec-news-lake:{self.client.workspace}:{table_name}'))
+
+    def build_release(self, release_id, recorded_at, selections, checkpoints, *, pins=None):
+        """Build a contract-valid ``release`` record bound to exact ``DocSpecLake`` pins."""
+        active_pins = dict(self.committed if pins is None else pins)
+        snapshots = []
+        for table_name in CONTENT_TABLES:
+            dataset = dataset_id_for(table_name)
+            pin = active_pins.get(dataset)
+            entry = {
+                'table': table_name,
+                'table_uuid': self._table_uuid(table_name, pin=pin),
+            }
+            if pin is not None:
+                snap = pin.get('dataset', {}).get('groups', {}).get('source', {}).get('snapshot')
+                rows = pin.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', 0)
+                if snap is not None and rows > 0:
+                    entry['snapshot_id'] = str(snap)
+            snapshots.append(entry)
+        return {
+            'kind': 'release',
+            'id': release_id,
+            'recorded_at': recorded_at,
+            'contract_version': CONTRACT_VERSION,
+            'snapshots': snapshots,
+            'selections': list(selections),
+            'checkpoints': _redact_checkpoints(checkpoints),
+        }
+
+    def publish_release(self, control, records, *, release_id, recorded_at,
+                        selections=(), checkpoints=(), epoch=None, faults=None):
+        """Publish one release through ``DocSpecLake`` + ``ControlStore`` (I2/I3/I4)."""
+        from news_lake.storage.coordinator import Faults
+        faults = faults if faults is not None else Faults()
+        if epoch is None:
+            epoch = control.claim('docspec-news-writer')
+        control.require_epoch(epoch)
+        payload = {
+            'records': list(records),
+            'recorded_at': recorded_at,
+            'selections': list(selections),
+            'checkpoints': _redact_checkpoints(checkpoints),
+        }
+        faults.before('journal_write')
+        stored = control.begin_cycle(release_id, payload, epoch=epoch)
+        if stored is not None:
+            payload = stored
+        faults.after('journal_write')
+        state = control.cycle_state(release_id)
+        if state == 'done':
+            return self.find_release(release_id)
+        if state == 'abandoned':
+            raise ReleaseError(
+                'cycle_abandoned',
+                f'cycle {release_id} was abandoned after failed validation; publish under a new release id',
+                release_id=release_id,
+            )
+        gen_id = sanitize_id(f'rel-{release_id}')
+        if state == 'intent':
+            faults.before('table_commit')
+            pins = self.commit_records(
+                payload['records'],
+                generation=gen_id,
+                family='news',
+                ensure_all_tables=True,
+            )
+            if pins:
+                self.seal(gen_id, family='news')
+            faults.after('table_commit')
+            payload['dataset_pins'] = pins
+            control.update_cycle_payload(release_id, payload, epoch=epoch)
+            control.set_cycle_state(release_id, 'committed', epoch=epoch)
+            state = 'committed'
+
+        pins = payload.get('dataset_pins') or dict(self.committed)
+        release = payload.get('release')
+        if release is None:
+            release = self.build_release(
+                release_id,
+                payload['recorded_at'],
+                payload['selections'],
+                payload['checkpoints'],
+                pins=pins,
+            )
+            payload['release'] = release
+            control.update_cycle_payload(release_id, payload, epoch=epoch)
+
+        pinned_records = []
+        table_pins = {}
+        for entry in release['snapshots']:
+            table_name = entry['table']
+            dataset = dataset_id_for(table_name)
+            pin = pins.get(dataset)
+            if pin is not None:
+                table_pins[table_name] = pin
+            if 'snapshot_id' not in entry or pin is None:
+                continue
+            kind = TABLE_KINDS[table_name]
+            pinned_records.extend(
+                table_records(self.client.read_arrow(pin, schema=kind_arrow_schema(kind)))
+            )
+        check_corpus(pinned_records + [release])
+        control.mark_snapshots_validated(
+            [(entry['table'], entry['snapshot_id'])
+             for entry in release['snapshots'] if 'snapshot_id' in entry],
+            epoch=epoch,
+        )
+        if state == 'committed':
+            control.set_cycle_state(release_id, 'validated', epoch=epoch)
+            state = 'validated'
+        if state == 'validated':
+            faults.before('checkpoint_stage')
+            for checkpoint in payload['checkpoints']:
+                key = checkpoint['connector_key']
+                faults.before(f'checkpoint_stage:{key}')
+                control.stage_checkpoint(release_id, checkpoint, epoch=epoch)
+                faults.after(f'checkpoint_stage:{key}')
+            faults.after('checkpoint_stage')
+            control.set_cycle_state(release_id, 'checkpoints_staged', epoch=epoch)
+            state = 'checkpoints_staged'
+        if state == 'checkpoints_staged':
+            faults.before('release_append')
+            manifest_path = self._release_manifest_path(release_id)
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = manifest_path.with_suffix('.json.tmp')
+            tmp.write_text(
+                json.dumps(
+                    {
+                        'release': release,
+                        'dataset_pins': pins,
+                        'table_pins': table_pins,
+                        'generation': gen_id,
+                    },
+                    ensure_ascii=False,
+                    separators=(',', ':'),
+                    allow_nan=False,
+                    default=str,
+                )
+            )
+            tmp.replace(manifest_path)
+            faults.after('release_append')
+            control.set_cycle_state(release_id, 'released', epoch=epoch)
+            state = 'released'
+        if state == 'released':
+            faults.before('cursor_advance')
+            control.mark_available(release_id, epoch=epoch)
+            control.activate_checkpoints(release_id, epoch=epoch)
+            faults.after('cursor_advance')
+            control.set_cycle_state(release_id, 'done', epoch=epoch)
+        return release
+
+    def find_release(self, release_id):
+        manifest_path = self._release_manifest_path(release_id)
+        if not manifest_path.is_file():
+            return None
+        try:
+            data = json.loads(manifest_path.read_text())
+            return data.get('release') if isinstance(data, dict) else None
+        except (OSError, ValueError):
+            return None
+
+    def read_release(self, control, release_id, tables=None):
+        """Read an exact published release from its pinned ``ReleasePin``s (never ``latest``)."""
+        manifest_path = self._release_manifest_path(release_id)
+        if not manifest_path.is_file():
+            raise ReleaseError('unknown_release', 'no release record with this id', release_id=release_id)
+        manifest = json.loads(manifest_path.read_text())
+        record = manifest['release']
+        table_pins = manifest.get('table_pins') or {}
+        status = control.availability(release_id)
+        if status is None:
+            raise ReleaseError(
+                'unreleased_release',
+                'release record exists but publication never marked it available',
+                release_id=release_id,
+            )
+        if status == 'retired':
+            raise ReleaseError(
+                'retired_release',
+                'release is retired in the availability registry',
+                release_id=release_id,
+            )
+        if status != 'available':
+            raise ReleaseError('unreleased_release', f'release status is {status!r}', release_id=release_id)
+        if record.get('contract_version') != CONTRACT_VERSION:
+            raise ReleaseError(
+                'contract_version_mismatch',
+                f'release contract_version {record.get("contract_version")!r} does not match reader {CONTRACT_VERSION!r}',
+                release_id=release_id,
+            )
+        entries = record['snapshots']
+        if tables is not None:
+            requested = set(tables)
+            known = {entry['table'] for entry in entries}
+            unknown = requested - known
+            if unknown:
+                raise ReleaseError(
+                    'unknown_table',
+                    f'requested tables are not pinned by this release: {sorted(unknown)}',
+                    release_id=release_id,
+                )
+            entries = [entry for entry in entries if entry['table'] in requested]
+        if table_pins:
+            inputs = {
+                pin['dataset']['dataset']: version_ref(pin)
+                for pin in table_pins.values()
+            }
+            self.client.capture_inputs(inputs)
+        result = {}
+        for entry in entries:
+            table_name = entry['table']
+            if 'snapshot_id' not in entry:
+                result[table_name] = []
+                continue
+            pin = table_pins.get(table_name)
+            if pin is None:
+                raise ReleaseError('missing_snapshot', f'{table_name} pin is missing', release_id=release_id)
+            expected_uuid = self._table_uuid(table_name, pin=pin)
+            if expected_uuid != entry['table_uuid']:
+                raise ReleaseError('table_uuid_mismatch', f'{table_name} UUID differs from the release', release_id=release_id)
+            kind = TABLE_KINDS[table_name]
+            result[table_name] = table_records(
+                self.client.read_arrow(pin, schema=kind_arrow_schema(kind))
+            )
+        return {
+            'release': record,
+            'tables': result,
+            'dataset_pins': dict(table_pins),
+        }
+
 
 class DocSpecNewsViews:
     """Materialize the relational bridges natively and run the C9 views on them.
@@ -746,8 +1056,50 @@ class DocSpecNewsViews:
     def __init__(self, client, workspace_suffix='', *, pins=None):
         self.client = client
         self.workspace_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
-        self.pins = dict(pins or {})
+        persisted_pins, persisted_rows, persisted_versions = self._load_views_state()
+        self.pins = dict(pins) if pins is not None else persisted_pins
+        self._bridge_rows = persisted_rows if pins is None else {}
+        self._bridge_versions = persisted_versions if pins is None else {}
         self.last_bridge_diff = {}
+
+    def _views_state_path(self):
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return self.client.workspace / f'.news_lake_views{suffix}.json'
+
+    def _load_views_state(self):
+        path = self._views_state_path()
+        if not path.is_file():
+            return {}, {}, {}
+        try:
+            data = json.loads(path.read_text())
+            if not isinstance(data, dict):
+                return {}, {}, {}
+            return (
+                dict(data.get('pins') or {}),
+                dict(data.get('bridge_rows') or {}),
+                dict(data.get('bridge_versions') or {}),
+            )
+        except (OSError, ValueError):
+            return {}, {}, {}
+
+    def _save_views_state(self):
+        path = self._views_state_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix('.json.tmp')
+        tmp.write_text(
+            json.dumps(
+                {
+                    'pins': self.pins,
+                    'bridge_rows': self._bridge_rows,
+                    'bridge_versions': self._bridge_versions,
+                },
+                ensure_ascii=False,
+                separators=(',', ':'),
+                allow_nan=False,
+                default=str,
+            )
+        )
+        tmp.replace(path)
 
     # -- materialization & incremental bridge updates ------------------------
 
@@ -796,21 +1148,40 @@ class DocSpecNewsViews:
     def materialize(self, records_or_release_read, selections=None):
         """Admit the three bridge datasets; stores and returns ``{dataset: ReleasePin}``."""
         records, selections, _ = self._unwrap(records_or_release_read, selections)
-        tables = {
-            'entity_roots': bridges.entity_roots_arrow(records),
-            'selected_mentions': bridges.selected_mentions_arrow(records, selections),
-            'survivor_items': bridges.survivor_items_arrow(records, selections),
+        bridge_defs = {
+            'entity_roots': (
+                'entity_id',
+                bridges.ENTITY_ROOTS_SCHEMA,
+                bridges.entity_roots_rows(records),
+            ),
+            'selected_mentions': (
+                'mention_id',
+                bridges.SELECTED_MENTIONS_SCHEMA,
+                bridges.selected_mentions_rows(records, selections),
+            ),
+            'survivor_items': (
+                'item_id',
+                bridges.SURVIVOR_ITEMS_SCHEMA,
+                bridges.survivor_items_rows(records, selections),
+            ),
         }
         pins = {}
-        for dataset, table in tables.items():
-            operation = self._operation(f'materialize-{dataset}',
-                                        content_digest(table_records(table)))
-            pins[dataset] = self.client.run_table(table, dataset, operation)
+        for dataset, (key_col, schema, rows) in bridge_defs.items():
+            table = pa.Table.from_pylist(rows, schema=schema)
+            stripped = _strip_nulls(rows)
+            operation = self._operation(
+                f'materialize-{dataset}', content_digest(stripped)
+            )
+            pin = self.client.run_table(table, dataset, operation)
+            pins[dataset] = pin
+            self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in rows}
+            self._bridge_versions[dataset] = pin['dataset']['version']
         self.pins.update(pins)
+        self._save_views_state()
         return dict(pins)
 
     def update_bridges(self, records_or_release_read, selections=None):
-        """Diff new bridge rows against pinned bridge tables and update only changed keys."""
+        """Diff new bridge rows against pinned bridge state and update only changed keys."""
         records, selections, _ = self._unwrap(records_or_release_read, selections)
         desired = {
             'entity_roots': (
@@ -835,35 +1206,51 @@ class DocSpecNewsViews:
             prior_pin = self.pins.get(dataset) or self.client.try_latest(dataset)
             if prior_pin is None:
                 table = pa.Table.from_pylist(new_rows, schema=schema)
+                stripped = _strip_nulls(new_rows)
                 operation = self._operation(
-                    f'materialize-{dataset}', content_digest(table_records(table))
+                    f'materialize-{dataset}', content_digest(stripped)
                 )
                 pin = self.client.run_table(table, dataset, operation)
                 self.pins[dataset] = pin
+                self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in new_rows}
+                self._bridge_versions[dataset] = pin['dataset']['version']
                 updated_pins[dataset] = pin
                 diff_summary[dataset] = {
                     'changed_rows': len(new_rows),
                     'removed_keys': 0,
+                    'full_table_reads': 0,
                     'updated': True,
                 }
                 continue
-            current_table = self.client.read_arrow(prior_pin, schema=schema)
-            current_by_key = {
-                row[key_col]: row for row in table_records(current_table)
-            }
+            prior_version = prior_pin['dataset']['version']
+            if (
+                dataset in self._bridge_rows
+                and self._bridge_versions.get(dataset) == prior_version
+            ):
+                current_by_key = self._bridge_rows[dataset]
+                full_reads = 0
+            else:
+                current_table = self.client.read_arrow(prior_pin, schema=schema)
+                current_by_key = {
+                    row[key_col]: row for row in table_records(current_table)
+                }
+                full_reads = 1
             changed_rows = [
                 row for row in new_rows
-                if current_by_key.get(row[key_col]) != _strip_nulls(row)
+                if str_canonical(current_by_key.get(row[key_col])) != str_canonical(_strip_nulls(row))
             ]
             new_keys = {row[key_col] for row in new_rows}
             removed_keys = sorted(set(current_by_key) - new_keys)
             diff_summary[dataset] = {
                 'changed_rows': len(changed_rows),
                 'removed_keys': len(removed_keys),
+                'full_table_reads': full_reads,
                 'updated': bool(changed_rows or removed_keys),
             }
             if not changed_rows and not removed_keys:
                 self.pins[dataset] = prior_pin
+                self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in new_rows}
+                self._bridge_versions[dataset] = prior_version
                 updated_pins[dataset] = prior_pin
                 continue
             replacements_table = pa.Table.from_pylist(changed_rows, schema=schema)
@@ -875,7 +1262,7 @@ class DocSpecNewsViews:
                 if removed_keys
                 else None
             )
-            base_version = prior_pin['dataset']['version']
+            base_version = prior_version
             operation = self._operation(
                 f'update-{dataset}',
                 content_digest([base_version, _strip_nulls(changed_rows), removed_keys]),
@@ -889,8 +1276,11 @@ class DocSpecNewsViews:
                 deletions=deletions_table,
             )
             self.pins[dataset] = pin
+            self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in new_rows}
+            self._bridge_versions[dataset] = pin['dataset']['version']
             updated_pins[dataset] = pin
         self.last_bridge_diff = diff_summary
+        self._save_views_state()
         return dict(updated_pins)
 
     # -- native refreshes ----------------------------------------------------
@@ -967,6 +1357,7 @@ class DocSpecNewsViews:
         spec = self._refresh_join_spec(base, mode, mentions_pin=mentions_pin, roots_pin=roots_pin)
         pin = self.client.refresh(spec)
         self.pins['politician_articles'] = pin
+        self._save_views_state()
         joined = table_records(self.client.read_arrow(pin))
         return self._assemble_politician_articles(records, release_id, joined, survivor_pin=survivor_pin)
 
@@ -974,9 +1365,23 @@ class DocSpecNewsViews:
         versions = _by_kind(list(records), 'version')
         if survivor_pin is None:
             survivor_pin = self._pin('survivor_items')
-        survivor_rows = table_records(
-            self.client.read_arrow(survivor_pin, schema=bridges.SURVIVOR_ITEMS_SCHEMA)
-        )
+        needed_versions = sorted({
+            row['version_id']
+            for row in joined
+            if row.get('entity_type') == 'person' and isinstance(row.get('version_id'), str)
+        })
+        if needed_versions:
+            survivor_rows = table_records(
+                self.client.read_keys(
+                    survivor_pin,
+                    'current_version_id',
+                    needed_versions,
+                    columns=['current_version_id', 'item_id'],
+                    schema=bridges.SURVIVOR_ITEMS_SCHEMA,
+                )
+            )
+        else:
+            survivor_rows = []
         item_of_version = {row['current_version_id']: row['item_id']
                            for row in survivor_rows if 'current_version_id' in row}
         grouped = {}
@@ -1066,6 +1471,7 @@ class DocSpecNewsViews:
         spec = self._refresh_aggregate_spec(base, mode, survivor_pin=survivor_pin)
         pin = self.client.refresh(spec)
         self.pins['coverage_daily'] = pin
+        self._save_views_state()
         aggregate = table_records(self.client.read_arrow(pin))
         return self._assemble_coverage_daily(release_id, aggregate)
 
@@ -1123,7 +1529,10 @@ class DocSpecNewsViews:
         duplicate staging dataset.
         """
         release_read = self._ensure_release_read(records_or_release_read)
-        dataset_pins = dict(dataset_pins or {})
+        if dataset_pins is None and isinstance(release_read.get('dataset_pins'), dict):
+            dataset_pins = dict(release_read['dataset_pins'])
+        else:
+            dataset_pins = dict(dataset_pins or {})
         effective_now = as_of if as_of is not None else now
         filtered = export_release(release_read, authorized=authorized, now=effective_now)
         dest_root = Path(destination_dir).resolve() if destination_dir is not None else None

@@ -1,6 +1,6 @@
 ---
 id: ct-dmca
-status: open
+status: closed
 deps: [ct-egpe, ct-q05l]
 links: [ct-sb0s, ct-gziq, ct-3180, ct-13cn, ct-q05l]
 created: 2026-10-20T18:24:29Z
@@ -35,3 +35,7 @@ CS 300 / evolutionary-refactoring audit added the Step 6 next-maintainer require
 **2026-10-20T22:19:30Z**
 
 2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: added plan_schema, evolve_schema, plan_backfill, backfill, plan_continuous_backfill, continuous_backfill, and correct_dependencies in docspec_client and evolve_catalog_schema / backfill_scalar_group in native_features.py. Tested in tests/test_native_features.py::test_ct_dmca_schema_evolution_and_scalar_backfill_without_source_rewrite.

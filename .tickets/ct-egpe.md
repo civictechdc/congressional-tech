@@ -1,6 +1,6 @@
 ---
 id: ct-egpe
-status: open
+status: closed
 deps: [ct-oxg6, ct-m9td]
 links: [ct-q968, ct-bt1q, ct-3faj, ct-m9td, ct-qdkd, ct-nc7l, ct-a70m]
 created: 2026-10-20T22:15:53Z
@@ -51,3 +51,7 @@ Transport now lives in packages/docspec_client; both domains depend on it, and t
 **2026-10-21T00:58:53Z**
 
 CS 300 Post-Review Fixes: (1) added docspec-client to packages/congress_api/pyproject.toml dependencies; (2) fixed DocSpecClient.__init__ missing-binary DocSpecFailure construction (docspec_backend.py:404-411); (3) restored self._dataset_schemas lookup + restore_application_schema in DocSpecClient.read_arrow (:484-491) and recursive struct/list validation in _merge_field_type (:117-138).
+
+**2026-10-21T02:20:25Z**
+
+Implemented and verified: packages/docspec_client is the single neutral transport owner shared by congress_api and news_lake; test_ct_egpe_shared_host_across_archive_and_news_callers (tests/test_native_features.py) proves both callers share one Host instance and child PID on the same workspace; QUALIFIED_DOCSPEC_RUNTIME pinned to 96e38262 / 9a9f9952.

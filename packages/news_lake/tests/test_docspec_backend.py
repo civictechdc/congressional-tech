@@ -620,12 +620,16 @@ def test_bounded_upsert_updates_only_changed_rows_across_unrelated_records(tmp_p
     target_id = _id('outlet:bulk-7')
     existing_subset = lake._existing_by_ids(pin_before, 'outlet', {target_id})
     assert list(existing_subset.keys()) == [target_id]
+    assert lake.last_lookup_stats['news_outlets']['rows_transferred'] == 1
+    assert lake.last_lookup_stats['news_outlets']['total_rows'] == 50
 
     updated_outlet = {
         'kind': 'outlet', 'id': target_id, 'recorded_at': '2026-10-21T09:00:00Z',
         'name': 'Outlet 7 Renamed', 'domains': ['o7-new.example'],
     }
     pin_after = lake.commit_records([updated_outlet])['news_outlets']
+    assert lake.last_lookup_stats['news_outlets']['rows_transferred'] == 1
+    assert lake.last_lookup_stats['news_outlets']['total_rows'] == 50
 
     assert observed_updates == [('news_outlets', 1, ['id'])]
     # Unchanged Parquet file from the second batch (indices 25..49) is reused without rewrite.
@@ -988,3 +992,87 @@ def test_multi_poll_coupled_generation_sealing_with_partial_tables(tmp_path, mon
     monkeypatch.setattr('shutil.which', lambda _: None)
     with pytest.raises(DocSpecFailure, match='no DocSpec runtime configured'):
         DocSpecClient(tmp_path / 'ws-missing', binary=None)
+
+
+# -- ct-jo8n, ct-n6lj, ct-gf8i, ct-4nyy: published release lifecycle & fresh resume -----
+
+
+def test_published_release_lifecycle_fresh_process_resume_and_retire(tmp_path):
+    """publish_release / read_release / views / export_release work across fresh processes."""
+    from news_lake.analysis.export import export_release as export_release_fn
+    from news_lake.storage import ControlStore, Coordinator, ReleaseError, publish_release, read_release, retire_release
+
+    ws = tmp_path / 'ws'
+    control = ControlStore(tmp_path / 'control.sqlite')
+    client1 = DocSpecClient(ws)
+    lake1 = DocSpecLake(client1)
+    coord1 = Coordinator(lake1, control)
+
+    initial_corpus = [r for r in CORPUS if r['id'] != MERGE_P1B_INTO_P1['id']]
+    rel1_id = _id('release:pub-1')
+    rel1 = publish_release(
+        coord1,
+        initial_corpus,
+        release_id=rel1_id,
+        recorded_at=AT,
+        selections=SELECTIONS,
+        checkpoints=[{'connector_key': 'rss:example', 'checkpoint_ref': 'urn:fixture:cp:1', 'completed_until': AT}],
+    )
+    assert rel1['id'] == rel1_id
+
+    views1 = DocSpecNewsViews(client1)
+    read1 = read_release(lake1, control, rel1_id)
+    # Explicit empty tables are preserved as []
+    assert read1['tables']['news.classifications'] == []
+    views1.materialize(read1)
+    pa1 = politician_articles_views(read1, docspec_views=views1, mode='full')
+    cov1 = coverage_daily(read1, docspec_views=views1, mode='full')
+    assert pa1 == politician_articles_views(read1)
+    assert cov1 == coverage_daily(read1)
+    client1.close()
+
+    # Fresh process resumes durable lake & bridge state without calling client.latest()
+    client2 = DocSpecClient(ws)
+    lake2 = DocSpecLake(client2)
+    coord2 = Coordinator(lake2, control)
+    rel2_id = _id('release:pub-2')
+    publish_release(
+        coord2,
+        [MERGE_P1B_INTO_P1],
+        release_id=rel2_id,
+        recorded_at='2026-10-20T05:00:00Z',
+        selections=SELECTIONS,
+        checkpoints=[{'connector_key': 'rss:example', 'checkpoint_ref': 'urn:fixture:cp:2', 'completed_until': '2026-10-20T05:00:00Z'}],
+    )
+    read2 = read_release(lake2, control, rel2_id)
+    views2 = DocSpecNewsViews(client2)
+    views2.update_bridges(read2)
+    # Cached bridge state avoids full-table read_arrow on prior bridge pins!
+    for bridge_ds, stats in views2.last_bridge_diff.items():
+        assert stats['full_table_reads'] == 0, bridge_ds
+    pa2 = politician_articles_views(read2, docspec_views=views2, mode='incremental')
+    assert pa2 == politician_articles_views(read2)
+
+    # Export through analysis.export.export_release using the release's dataset_pins
+    exp_dir = tmp_path / 'exported-rel2'
+    exp_result = export_release_fn(
+        read2,
+        authorized=True,
+        now='2026-10-20T12:00:00Z',
+        docspec_views=views2,
+        destination_dir=exp_dir,
+        channel='authorized',
+    )
+    assert (exp_dir / 'news_outlets.parquet').is_file()
+    assert (
+        exp_result['pins']['news.outlets']['source']['version']
+        == read2['dataset_pins']['news.outlets']['dataset']['version']
+    )
+
+    # Retiring release 1 blocks read_release on release 1 while release 2 stays readable
+    retire_release(control, rel1_id, epoch=coord2.epoch)
+    with pytest.raises(ReleaseError) as exc_info:
+        read_release(lake2, control, rel1_id)
+    assert exc_info.value.rule == 'retired_release'
+    assert read_release(lake2, control, rel2_id)['release']['id'] == rel2_id
+    client2.close()
