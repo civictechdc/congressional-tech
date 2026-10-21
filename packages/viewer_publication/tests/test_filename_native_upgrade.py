@@ -102,6 +102,7 @@ def test_actual_native_upgrade_survives_abrupt_worker_exit_without_new_native_ca
     snapshot=read_catalog(store,native=native)
     previous=builder.publish_selected(snapshot,tmp_path/'old',review_identities=None,
         compression_policy=builder.DEFAULT_COMPRESSION_POLICY._replace(level=9))
+    native.close()
     selector=store.read('indexes/catalog.json')
     script=r'''
 from contextlib import contextmanager

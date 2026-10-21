@@ -411,7 +411,9 @@ class NativeSourceAssets:
 
 class NativeComponents:
     """Stage changed component metadata, then read each changed physical pin once."""
-    def __init__(self, snapshot, assets, browse, db, *, viewer, policy, metrics, compression_policy=DEFAULT_COMPRESSION_POLICY):
+    def __init__(self, snapshot, assets, browse, db, *, viewer=None, policy, metrics, compression_policy=DEFAULT_COMPRESSION_POLICY):
+        if viewer is None:
+            import viewer_publication.filename_viewer as viewer
         from congress_api.retention.partition_routing import RoutingPages
         self.snapshot, self.assets, self.browse, self.db = snapshot, assets, browse, db
         self.viewer, self.policy, self.metrics = viewer, policy, metrics
@@ -697,6 +699,8 @@ def public_component(assets, root, document_id):
 
 def native_requirements(viewer, policy, compression=DEFAULT_COMPRESSION_POLICY):
     """Compute reuse requirements once, separately from native operation names."""
+    if viewer is None:
+        import viewer_publication.filename_viewer as viewer
     from dataclasses import asdict
     import inspect
     import pyarrow
@@ -817,10 +821,12 @@ def iterator_inventory(assets, inventory):
         raise ValueError('Viewer inventory count differs')
 
 
-def publish_selected(snapshot, target, *, viewer, previous=None, read_asset=None, review_identities=None,
+def publish_selected(snapshot, target, *, viewer=None, previous=None, read_asset=None, review_identities=None,
                      prior_review_binding=None, compression_policy=DEFAULT_COMPRESSION_POLICY,
                      renderer_upgrade=False, resume_upgrade=False, decoded_policy, stage_timings=None, stage_event=None, memory_metrics=None):
     """Prepare stable assets from one selected snapshot; never select publication."""
+    if viewer is None:
+        import viewer_publication.filename_viewer as viewer
     from contextlib import closing, ExitStack
     from datetime import datetime, timezone
     import sqlite3

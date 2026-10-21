@@ -1,6 +1,6 @@
 ---
 id: ct-mi03
-status: in_progress
+status: closed
 deps: []
 links: [ct-2ukk, ct-czsd]
 created: 2026-10-20T18:24:28Z
@@ -56,3 +56,7 @@ Architecture correction (2026-10-21): the shared DocSpec transport now lives in 
 **2026-10-21T07:28:00Z**
 
 Reconciled on `main` (`55ba3479`) after `ab68f546` and `e9431d68`: 42 of 43 child tickets are now closed and verified across local Python and Node suites (`ct-egpe`, `ct-csyg`, `ct-nloa`, `ct-qkvr`, `ct-n6lj`, `ct-jo8n`, `ct-gf8i`, `ct-4nyy`, `ct-13cn`, `ct-dmca`, `ct-gziq`, `ct-sb0s`, `ct-nc7l`). Repaired the `8221566d` merge regression, added `docspec_client` to `SelectedRuntime.PACKAGES` (`dispatch_corpus_recovery_publication.py`), and retired legacy full-table Parquet writers (`ct-dat9`). Only `ct-3180`'s isolated R2 remote comparison receipt remains `in_progress`.
+
+**2026-10-21T11:48:00Z**
+
+All 43 of 43 child tickets of `ct-mi03` are now closed and verified following the isolated R2 provider qualification receipt for `ct-3180` (`output/docspec-reuse-20261020/ct-3180-r2-qualification/verification-receipt.json`) and extraction of `viewer_publication.filename_viewer` into `packages/viewer_publication/src/viewer_publication/filename_viewer.py` (eliminating production `importlib` coupling to `docs/youtube-coverage/research/scripts/view_document_filenames.py`).

@@ -164,10 +164,7 @@ def main():
     parser.add_argument('--output', type=Path, default=IDENTITIES)
     parser.add_argument('--descriptor', type=Path, default=DESCRIPTOR)
     args = parser.parse_args()
-    viewer_path = Path(__file__).resolve().parents[4] / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
-    spec = importlib.util.spec_from_file_location('filename_viewer', viewer_path)
-    viewer = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(viewer)
+    import viewer_publication.filename_viewer as viewer
     descriptor = json.loads(args.descriptor.read_text())
     reviews = pinned_reviews(args.reviews, descriptor)
     with viewer.Catalog(args.filenames, search_indexes=False) as catalog:

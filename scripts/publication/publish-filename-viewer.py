@@ -26,10 +26,7 @@ import pyarrow.parquet as pq
 from pyarrow.parquet import ParquetFile
 
 ROOT = Path(__file__).resolve().parents[2]
-VIEWER = ROOT / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
-spec = importlib.util.spec_from_file_location('filename_viewer', VIEWER)
-viewer = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(viewer)
+import viewer_publication.filename_viewer as viewer
 import viewer_publication.filename_observations as observations
 import viewer_publication.filename_details as details
 import viewer_publication.filename_navigation as navigation
