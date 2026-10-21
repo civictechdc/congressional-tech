@@ -560,6 +560,7 @@ class DocSpecLake:
         self.lifecycle_compact_interval = lifecycle_compact_interval
         self.committed = self._load_committed_state()
         self._mutation_counts = self._load_mutation_counts()
+        self._known_ids = {}
         self.last_lookup_stats = {}
         self.lifecycle_compactions = []
 
@@ -695,6 +696,7 @@ class DocSpecLake:
         if not id_list:
             self.last_lookup_stats[dataset] = {
                 'requested_ids': 0,
+                'requested_keys': 0,
                 'matched_rows': 0,
                 'rows_transferred': 0,
                 'total_rows': pin.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', 0),
@@ -706,11 +708,68 @@ class DocSpecLake:
         rows = table_records(table)
         self.last_lookup_stats[dataset] = {
             'requested_ids': len(id_list),
+            'requested_keys': len(id_list),
             'matched_rows': len(rows),
             'rows_transferred': table.num_rows,
             'total_rows': pin.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', table.num_rows),
         }
         return {row['id']: row for row in rows}
+
+    def _existing_for_append(self, pin, kind, records):
+        """Fetch existing rows for an append batch using its physical update key (ct-xu1o).
+
+        For time-keyed append tables (``keys = [time_col, 'id']``), queries
+        ``read_keys`` on ``time_col`` so ``docspec-rs`` prunes every historical
+        Parquet file whose ``time_col`` min/max bounds exclude the incoming
+        poll's timestamps, then filters to the incoming ``id``s.
+        """
+        keys = self._update_keys_for(kind)
+        if len(keys) <= 1:
+            found = self._existing_by_ids(pin, kind, (record['id'] for record in records))
+            dataset = pin['dataset']['dataset']
+            self._known_ids.setdefault(dataset, set()).update(found.keys())
+            return found
+
+        time_col = keys[0]
+        id_list = sorted({record['id'] for record in records})
+        id_set = set(id_list)
+        dataset = pin['dataset']['dataset']
+        total_rows = pin.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', 0)
+        if not id_list:
+            self.last_lookup_stats[dataset] = {
+                'requested_ids': 0,
+                'requested_keys': 0,
+                'matched_rows': 0,
+                'rows_transferred': 0,
+                'total_rows': total_rows,
+            }
+            return {}
+        time_values = sorted({str(record[time_col]) for record in records})
+        table = self.client.read_keys(
+            pin, time_col, time_values, schema=kind_arrow_schema(kind)
+        )
+        rows = table_records(table)
+        found = {row['id']: row for row in rows if row['id'] in id_set}
+        rows_transferred = int(table.num_rows)
+        known = self._known_ids.setdefault(dataset, set())
+        known.update(found.keys())
+        missing_known = (id_set & known) - set(found)
+        if missing_known:
+            fallback_table = self.client.read_keys(
+                pin, 'id', sorted(missing_known), schema=kind_arrow_schema(kind)
+            )
+            for row in table_records(fallback_table):
+                if row['id'] in id_set:
+                    found[row['id']] = row
+            rows_transferred += int(fallback_table.num_rows)
+        self.last_lookup_stats[dataset] = {
+            'requested_ids': len(id_list),
+            'requested_keys': len(id_list),
+            'matched_rows': len(found),
+            'rows_transferred': rows_transferred,
+            'total_rows': total_rows,
+        }
+        return found
 
     def commit_records(self, records, generation=None, family='news', *,
                        ensure_all_tables=False):
@@ -799,10 +858,12 @@ class DocSpecLake:
         prior = self.committed.get(dataset) or self.client.try_latest(dataset)
         if prior is None:
             operation = self._operation(f'admit-{kind}', content_digest(records))
-            return self.client.run_table(
+            pin = self.client.run_table(
                 records_to_arrow(kind, records), dataset, operation, relationship=relationship
             )
-        existing = self._existing_by_ids(prior, kind, (record['id'] for record in records))
+            self._known_ids.setdefault(dataset, set()).update(r['id'] for r in records)
+            return pin
+        existing = self._existing_for_append(prior, kind, records)
         new_records = []
         for record in records:
             stored = existing.get(record['id'])
@@ -821,7 +882,7 @@ class DocSpecLake:
         operation = self._operation(
             f'append-{kind}', content_digest([base_version, new_records, relationship])
         )
-        return self.client.update_table(
+        pin = self.client.update_table(
             dataset,
             operation,
             base_version,
@@ -829,6 +890,8 @@ class DocSpecLake:
             records_to_arrow(kind, new_records),
             relationship=relationship,
         )
+        self._known_ids.setdefault(dataset, set()).update(r['id'] for r in new_records)
+        return pin
 
     def _commit_upsert(self, dataset, kind, records, relationship):
         records = self._dedup_incoming(dataset, records, is_append=False)
@@ -1130,6 +1193,7 @@ class DocSpecLake:
             baseline_version = baseline_pin['dataset']['version']
             if current_version == baseline_version:
                 new_committed[dataset] = baseline_pin
+                self._known_ids.pop(dataset, None)
                 continue
             current_source = current_pin.get('dataset', {}).get('groups', {}).get('source', {})
             baseline_source = baseline_pin.get('dataset', {}).get('groups', {}).get('source', {})
@@ -1143,30 +1207,39 @@ class DocSpecLake:
                 for o in (baseline_source.get('objects') or ())
                 if str(o.get('path', '')).endswith('.parquet')
             ]
-            if (
+            current_rel = current_pin.get('dataset', {}).get('relationship')
+            relationship = baseline_pin.get('dataset', {}).get('relationship')
+            same_data = (
                 current_parquet == baseline_parquet
                 and current_source.get('rows', 0) == baseline_source.get('rows', 0)
-            ):
+            )
+            if same_data and current_rel == relationship:
                 new_committed[dataset] = current_pin
+                self._known_ids.pop(dataset, None)
                 continue
             schema = kind_arrow_schema(kind)
-            baseline_rows = table_records(self.client.read_arrow(baseline_pin, schema=schema))
-            current_rows = table_records(self.client.read_arrow(current_pin, schema=schema))
-            baseline_by_id = {r['id']: r for r in baseline_rows}
-            current_by_id = {r['id']: r for r in current_rows}
-            to_restore = [rec for rid, rec in baseline_by_id.items() if current_by_id.get(rid) != rec]
-            deleted_rows = [rec for rid, rec in current_by_id.items() if rid not in baseline_by_id]
-            relationship = baseline_pin.get('dataset', {}).get('relationship')
             keys = self._update_keys_for(kind)
-            replacements_table = records_to_arrow(kind, to_restore)
-            if deleted_rows:
-                del_schema = pa.schema([schema.field(col) for col in keys])
-                deletions_table = pa.Table.from_pylist(
-                    [{col: r[col] for col in keys} for r in deleted_rows],
-                    schema=del_schema,
-                )
-            else:
+            if same_data:
+                to_restore = []
+                deleted_rows = []
+                replacements_table = records_to_arrow(kind, ())
                 deletions_table = None
+            else:
+                baseline_rows = table_records(self.client.read_arrow(baseline_pin, schema=schema))
+                current_rows = table_records(self.client.read_arrow(current_pin, schema=schema))
+                baseline_by_id = {r['id']: r for r in baseline_rows}
+                current_by_id = {r['id']: r for r in current_rows}
+                to_restore = [rec for rid, rec in baseline_by_id.items() if current_by_id.get(rid) != rec]
+                deleted_rows = [rec for rid, rec in current_by_id.items() if rid not in baseline_by_id]
+                replacements_table = records_to_arrow(kind, to_restore)
+                if deleted_rows:
+                    del_schema = pa.schema([schema.field(col) for col in keys])
+                    deletions_table = pa.Table.from_pylist(
+                        [{col: r[col] for col in keys} for r in deleted_rows],
+                        schema=del_schema,
+                    )
+                else:
+                    deletions_table = None
             operation = self._operation(
                 f'abandon-{kind}',
                 content_digest([
@@ -1188,6 +1261,7 @@ class DocSpecLake:
                 relationship=relationship,
             )
             new_committed[dataset] = restored_pin
+            self._known_ids.pop(dataset, None)
             if self._record_dataset_mutation(dataset, current_pin, restored_pin):
                 mutated.append(dataset)
 

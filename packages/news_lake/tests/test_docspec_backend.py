@@ -1392,6 +1392,8 @@ def test_append_time_keyed_pruning_replay_and_collision_refusal(tmp_path):
                     continue
                 ds = dataset_id_for(KIND_TABLES[kind])
                 assert observed_update_keys[ds][-1] == list(expected_keys)
+                assert lake.last_lookup_stats[ds]['matched_rows'] == 0, (ds, poll_idx, lake.last_lookup_stats[ds])
+                assert lake.last_lookup_stats[ds]['rows_transferred'] == 0, (ds, poll_idx, lake.last_lookup_stats[ds])
                 latest_op = pins[ds]['id']
                 inspect_all = client._native.inspect(ds)
                 phases = [
@@ -1424,6 +1426,13 @@ def test_append_time_keyed_pruning_replay_and_collision_refusal(tmp_path):
     lake2 = DocSpecLake(client2)
     pins_replay_fresh = lake2.commit_records(polls[2])
     assert {ds: p['dataset']['version'] for ds, p in pins_replay_fresh.items()} == versions_before
+    for kind, expected_keys in APPEND_UPDATE_KEYS.items():
+        if kind == 'capture':
+            continue
+        ds = dataset_id_for(KIND_TABLES[kind])
+        assert lake2.last_lookup_stats[ds]['matched_rows'] == 4, (ds, lake2.last_lookup_stats[ds])
+        assert lake2.last_lookup_stats[ds]['rows_transferred'] == 4, (ds, lake2.last_lookup_stats[ds])
+        assert lake2.last_lookup_stats[ds]['total_rows'] == 16, (ds, lake2.last_lookup_stats[ds])
 
     # Reusing an existing id with different content (same timestamp OR different timestamp) is refused.
     orig_version = next(r for r in polls[1] if r['kind'] == 'version')
@@ -1565,7 +1574,12 @@ def test_docspec_abandon_cycle_rollback_idempotency_and_refusals(tmp_path):
     assert 'news_outlets' in str(missing_pin_err.value)
     manifest_path.write_text(orig_manifest_text)
 
-    # 6. Abandoning rel_b restores all content datasets to rel_a's pinned baseline and discards staged checkpoints.
+    # 6. Abandoning rel_b from a fresh process restores all content datasets (including relationship)
+    # to rel_a's pinned baseline and discards staged checkpoints.
+    client.close()
+    client = DocSpecClient(ws)
+    lake = DocSpecLake(client)
+    coord = Coordinator(lake, control)
     coord.abandon_cycle(rel_b_id)
     assert control.cycle_state(rel_b_id) == 'abandoned'
     assert control.connection.execute(
@@ -1575,6 +1589,9 @@ def test_docspec_abandon_cycle_rollback_idempotency_and_refusals(tmp_path):
     assert _records_of(lake, 'news_mentions') == baseline_mentions
     assert _records_of(lake, 'news_captures') == baseline_captures
     assert read_release(lake, control, rel_a_id)['release']['id'] == rel_a_id
+    rel_a_manifest = json.loads(orig_manifest_text)
+    for ds, pin in lake.committed.items():
+        assert pin['dataset']['relationship'] == rel_a_manifest['dataset_pins'][ds]['dataset']['relationship'], ds
 
     # 7. Abandoning is idempotent (second call is a no-op) and terminal for recover().
     versions_after_abandon = {
