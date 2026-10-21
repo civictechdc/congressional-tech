@@ -45,7 +45,9 @@ def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
         if descriptor.get("before") != expected_before or descriptor.get("after") != expected_after:
             raise ValueError("Change stream descriptor endpoints differ from the requested pins")
         path = descriptor.get("path")
-        fallback_reason = descriptor.get("fallback_reason")
+        # docspec-rs serializes ChangeDescriptor.fallback (ComparisonFallback, snake_case)
+        # and ComparisonEffects.evidence_refs_changed; accept only those names.
+        fallback_reason = descriptor.get("fallback")
         if not allow_full_fallback and path == "full":
             raise ValueError(
                 f"Incremental caller refused full comparison fallback ({fallback_reason})"
@@ -82,7 +84,7 @@ def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
         effects=effects,
         schema_changed=bool(effects.get("schema_changed")),
         inputs_changed=bool(effects.get("input_refs_changed") or effects.get("coverage_changed")),
-        evidence_changed=bool(effects.get("evidence_changed")),
+        evidence_changed=bool(effects.get("evidence_refs_changed")),
         added_rows=added_rows,
         removed_rows=removed_rows,
         added_records=added_records,

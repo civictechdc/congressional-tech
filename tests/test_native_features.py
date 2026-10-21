@@ -1,5 +1,6 @@
 """Integration tests for ct-13cn, ct-dmca, ct-gziq, ct-sb0s, ct-egpe, and ct-nc7l."""
 from pathlib import Path
+import json
 import os
 import shutil
 
@@ -333,3 +334,143 @@ def test_ct_egpe_shared_host_across_archive_and_news_callers(tmp_path):
         assert (os.getpid(), str(ws.resolve())) in _hosts
         assert archive_client.read_arrow(p_arch).to_pylist() == [{"id": "a1", "val": 10}]
         assert news_client.read_arrow(p_news).to_pylist() == [{"id": "n1", "name": "Outlet 1"}]
+
+
+# -- ct-9few: ChangeDescriptor field names (fallback / evidence_refs_changed) ------------
+
+
+def test_ct_9few_descriptor_uses_serialized_field_names_and_reports_forced_fallback(tmp_path):
+    binary = _binary()
+    with NativeDatasets(binary, tmp_path / "ws") as native:
+        schema = pa.schema([pa.field("source_id", pa.string(), nullable=False)])
+        initial = pa.Table.from_pylist(
+            [{"source_id": "a"}, {"source_id": "b"}], schema=schema
+        )
+        pin1 = native.run_table(
+            initial, dataset="catalog_sources", operation="op-1", definition="v1"
+        )
+        replacement = pa.Table.from_pylist(
+            [{"source_id": "a"}], schema=schema
+        )
+        pin2 = native.update_table(
+            replacement,
+            dataset="catalog_sources",
+            operation="op-2",
+            definition="v1",
+            base=pin1["id"],
+            keys=["source_id"],
+        )
+        # The serialized descriptor uses `fallback` (ComparisonFallback, snake_case),
+        # never `fallback_reason`.
+        with native.changes_batches(pin1, pin2, force_full=True) as (descriptor, _):
+            assert descriptor["fallback"] == "forced"
+            assert "fallback_reason" not in descriptor
+            assert descriptor["path"] == "full"
+        # inspect_catalog_changes surfaces the real reason instead of None.
+        report = inspect_catalog_changes(
+            native, pin1, pin2, allow_full_fallback=True
+        )
+        assert report["path"] in {"forward_changes", "full"}
+        if report["path"] == "full":
+            assert isinstance(report["fallback_reason"], str)
+            assert report["fallback_reason"]
+        # Same-pin streams carry no fallback at all.
+        same = inspect_catalog_changes(native, pin2, pin2)
+        assert same["fallback_reason"] is None
+        assert same["path"] == "unchanged"
+
+
+def test_ct_9few_receipt_update_sets_evidence_changed_flag(tmp_path):
+    binary = _binary()
+    with NativeDatasets(binary, tmp_path / "ws") as native:
+        schema = pa.schema([
+            pa.field("locator", pa.string(), nullable=False),
+            pa.field("document_id", pa.string(), nullable=False),
+        ])
+        source = pa.Table.from_pylist(
+            [{"locator": "receipt:[\"h\",1]", "document_id": "doc-1"}], schema=schema
+        )
+        pin1 = native.run_table(
+            source, dataset="catalog_sources", operation="src-1", definition="v1"
+        )
+        loc_map = map_locators_to_occurrences(native, pin1, locator_column="locator")
+        pin2 = attach_occurrence_receipts(
+            native,
+            dataset="catalog_sources",
+            operation="ev-1",
+            base_pin=pin1,
+            definition="v1",
+            locator_to_occurrences=loc_map,
+            receipts=[("receipt:[\"h\",1]", "review:approved")],
+        )
+        # ComparisonEffects serializes `evidence_refs_changed`; the Python report
+        # must reflect receipt changes instead of a permanently False flag.
+        report = inspect_catalog_changes(native, pin1, pin2)
+        assert report["evidence_changed"] is True
+
+
+# -- ct-x0nk: setup-native-runtime descriptor/credential validation ----------------------
+
+
+def _load_setup_module():
+    import importlib.util
+    path = Path(__file__).resolve().parents[1] / ".github" / "scripts" / "setup-native-runtime.py"
+    spec = importlib.util.spec_from_file_location("setup_native_runtime_under_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_ct_x0nk_artifact_descriptor_accepts_only_exact_contracts():
+    setup = _load_setup_module()
+    sha = "a" * 64
+    good = setup.artifact_descriptor(json.dumps({
+        "version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
+        "bucket": "qualified-runtime-bucket",
+        "key": f"runtime/docspec/{'b' * 40}/linux-amd64/{sha}/docspec",
+        "bytes": 1024, "sha256": sha,
+    }))
+    assert good["build_features"] == ["remote"]
+    for bad in [
+        {},  # missing required fields
+        {"version": 2, "platform": "linux-amd64", "source_revision": "b" * 40,
+         "bucket": "qualified-runtime-bucket", "key": "x", "bytes": 1, "sha256": sha},
+        {"version": 1, "platform": "darwin-arm64", "source_revision": "b" * 40,
+         "bucket": "qualified-runtime-bucket", "key": "k", "bytes": 1, "sha256": sha},
+        {"version": 1, "platform": "linux-amd64", "source_revision": "short",
+         "bucket": "qualified-runtime-bucket", "key": "k", "bytes": 1, "sha256": sha},
+        {"version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
+         "bucket": "Bad_Bucket", "key": "k", "bytes": 1, "sha256": sha},
+        {"version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
+         "bucket": "qualified-runtime-bucket", "key": "mismatched/key", "bytes": 1,
+         "sha256": sha},
+        {"version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
+         "bucket": "qualified-runtime-bucket", "bytes": 1, "sha256": sha},
+        {"version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
+         "bucket": "qualified-runtime-bucket",
+         "key": f"runtime/docspec/{'b' * 40}/linux-amd64/{sha}/docspec",
+         "bytes": 1, "sha256": sha, "build_features": ["test-util"]},
+    ]:
+        with pytest.raises(setup.SetupFailure):
+            setup.artifact_descriptor(json.dumps(bad))
+
+
+def test_ct_x0nk_engine_credentials_require_exactly_the_three_secrets():
+    setup = _load_setup_module()
+    good = setup.engine_credentials(json.dumps({
+        "DOCSPEC_CATALOG_TOKEN": "t", "DOCSPEC_S3_ACCESS_KEY_ID": "a",
+        "DOCSPEC_S3_SECRET_ACCESS_KEY": "s",
+    }))
+    assert set(good) == {
+        "DOCSPEC_CATALOG_TOKEN", "DOCSPEC_S3_ACCESS_KEY_ID", "DOCSPEC_S3_SECRET_ACCESS_KEY"
+    }
+    for bad in [
+        {},
+        {"DOCSPEC_CATALOG_TOKEN": "t"},
+        {"DOCSPEC_CATALOG_TOKEN": "t", "DOCSPEC_S3_ACCESS_KEY_ID": "a",
+         "DOCSPEC_S3_SECRET_ACCESS_KEY": "s", "EXTRA": "x"},
+        {"DOCSPEC_CATALOG_TOKEN": "", "DOCSPEC_S3_ACCESS_KEY_ID": "a",
+         "DOCSPEC_S3_SECRET_ACCESS_KEY": "s"},
+    ]:
+        with pytest.raises(setup.SetupFailure):
+            setup.engine_credentials(json.dumps(bad))

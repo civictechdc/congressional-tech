@@ -643,7 +643,7 @@ class NativeDatasets:
                 before=before,
                 after=after,
                 group=group,
-                options=dict(identity=identity, force_full=Boolean(force_full) if False else bool(force_full)),
+                options=dict(identity=identity, force_full=bool(force_full)),
             ),
         )
 

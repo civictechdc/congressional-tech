@@ -34,7 +34,6 @@ Deliberate representation choices:
 """
 from contextlib import contextmanager
 from hashlib import sha256
-import io
 import ipaddress
 import json
 import math
@@ -45,7 +44,6 @@ import shutil
 import stat
 import subprocess
 import tempfile
-import time
 import urllib.error
 from urllib.parse import quote, urlsplit
 import urllib.request
@@ -80,43 +78,15 @@ from news_lake.storage.releases import ReleaseError, _redact_checkpoints
 # contract and never changes inside a workspace without a new definition.
 DEFINITION = 'news-v1'
 DEFAULT_LIFECYCLE_COMPACT_INTERVAL = 16
-_ARROW_STREAM_EOS = b'\xff\xff\xff\xff\x00\x00\x00\x00'
 
 
 class AppendCollisionError(CommitError, ValueError):
     """Conflicting ID reuse on an append-only dataset (both CommitError and ValueError)."""
 
 
-def native_storage_schema(schema):
-    """Lossless native storage types for unsigned values and binary offsets.
-
-    Shared with ``docspec_client``: UInt64 becomes
-    Decimal128(20, 0) and Binary becomes LargeBinary to match the native
-    nested writer; composites recurse. The application retains its original
-    schema and casts readbacks back with Arrow's checked cast.
-    """
-    def field(value):
-        return value.with_type(data_type(value.type))
-
-    def data_type(value):
-        if pa.types.is_uint64(value):
-            return pa.decimal128(20, 0)
-        if pa.types.is_binary(value):
-            return pa.large_binary()
-        if pa.types.is_struct(value):
-            return pa.struct([field(child) for child in value])
-        if pa.types.is_list(value):
-            return pa.list_(field(value.value_field))
-        if pa.types.is_large_list(value):
-            return pa.large_list(field(value.value_field))
-        if pa.types.is_fixed_size_list(value):
-            return pa.list_(field(value.value_field), value.list_size)
-        if pa.types.is_map(value):
-            return pa.map_(field(value.key_field), field(value.item_field),
-                           keys_sorted=value.keys_sorted)
-        return value
-
-    return pa.schema([field(value) for value in schema], metadata=schema.metadata)
+# The storage-type mapping has one owner: docspec_client. Keep the historical
+# news_lake name for callers and __all__ while delegating every decision there.
+from docspec_client.docspec import native_storage_schema  # noqa: E402  (re-export)
 
 
 def _merge_field_type(physical_type, expected_type):
@@ -363,43 +333,6 @@ def merge_upsert_batch(existing_records, incoming_records):
         validate_shape(candidate)
         merged.append(candidate)
     return merged
-
-
-class _ArrowHttpStream(io.RawIOBase):
-    """Expose an HTTP body as a bounded blocking Arrow IPC stream without staging."""
-
-    def __init__(self, response, *, deadline=None):
-        super().__init__()
-        self._response = response
-        self._deadline = deadline
-        self._tail = b''
-
-    def _check_deadline(self):
-        if self._deadline is not None and time.monotonic() >= self._deadline:
-            raise TimeoutError('DocSpec response exceeded its wall-time limit')
-
-    def readable(self):
-        return True
-
-    def readinto(self, target):
-        view = memoryview(target)
-        count = 0
-        while count < len(view):
-            self._check_deadline()
-            chunk = self._response.read(min(1 << 20, len(view) - count))
-            self._check_deadline()
-            if not chunk:
-                break
-            length = len(chunk)
-            view[count:count + length] = chunk
-            self._tail = (self._tail + chunk)[-8:]
-            count += length
-        return count
-
-    def verify_eos(self):
-        """Require both Arrow's stream terminator and complete HTTP framing."""
-        if self.read(1) or self._tail != _ARROW_STREAM_EOS:
-            raise OSError('DocSpec Arrow response lacks a complete stream terminator')
 
 
 def _file_digest(path):

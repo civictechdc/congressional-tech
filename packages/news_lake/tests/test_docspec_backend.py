@@ -8,6 +8,8 @@ Corpus fixtures mirror ``tests/test_analysis_views.py`` (deterministic uuid5
 ids), and every admitted corpus passes ``check_corpus``.
 """
 from pathlib import Path
+import io
+import time
 import subprocess
 from uuid import NAMESPACE_URL, uuid5
 
@@ -25,13 +27,52 @@ from news_lake.storage.docspec_backend import (
     DocSpecFailure,
     DocSpecLake,
     DocSpecNewsViews,
-    _ArrowHttpStream,
     dataset_id_for,
     merge_upsert_batch,
     restore_application_schema,
     table_records,
     version_ref,
 )
+
+_ARROW_STREAM_EOS = b'\xff\xff\xff\xff\x00\x00\x00\x00'
+
+
+class _ArrowHttpStream(io.RawIOBase):
+    """Bounded blocking Arrow IPC framing check retained next to its only user."""
+
+    def __init__(self, response, *, deadline=None):
+        super().__init__()
+        self._response = response
+        self._deadline = deadline
+        self._tail = b''
+
+    def _check_deadline(self):
+        if self._deadline is not None and time.monotonic() >= self._deadline:
+            raise TimeoutError('DocSpec response exceeded its wall-time limit')
+
+    def readable(self):
+        return True
+
+    def readinto(self, target):
+        view = memoryview(target)
+        count = 0
+        while count < len(view):
+            self._check_deadline()
+            chunk = self._response.read(min(1 << 20, len(view) - count))
+            self._check_deadline()
+            if not chunk:
+                break
+            length = len(chunk)
+            view[count:count + length] = chunk
+            self._tail = (self._tail + chunk)[-8:]
+            count += length
+        return count
+
+    def verify_eos(self):
+        """Require both Arrow's stream terminator and complete HTTP framing."""
+        if self.read(1) or self._tail != _ARROW_STREAM_EOS:
+            raise OSError('DocSpec Arrow response lacks a complete stream terminator')
+
 
 docspec = DocSpecClient.default_binary_path()
 pytestmark = pytest.mark.skipif(
