@@ -13,6 +13,122 @@ from . import document_index, document_evidence, document_reviews, document_revi
 from .document_index import validate_document_indexes
 from .document_review_receipts import file_digest, verified, read_ledger, load_reviews, compile_review
 from .document_reviews import apply_review_candidate
+from .native_features import (
+    attach_occurrence_receipts,
+    map_locators_to_occurrences,
+    read_occurrence_receipts,
+)
+
+
+def attach_review_provenance_receipts(native, source_pin, *, candidates, members_by_doc=None,
+                                      operation='review-provenance', definition=None,
+                                      locator_column='source_id', deletions=()):
+    """Attach verified review provenance receipts to ``source_pin`` without rewriting source files.
+
+    Receipt locators/URLs remain application metadata and do not retain external
+    objects. Supports ordered duplicate receipts and explicit ``None`` nulls.
+    """
+    loc_map = map_locators_to_occurrences(native, source_pin, locator_column=locator_column)
+    receipts = []
+    for candidate in candidates:
+        doc_id = candidate['document']['document_id']
+        review = candidate.get('review')
+        payload = (
+            json.dumps(
+                dict(
+                    document_id=doc_id,
+                    status=candidate['status'],
+                    receipt=review['receipt'],
+                    receipt_sha256=review['receipt_sha256'],
+                    group_sha256=review['group_sha256'],
+                    body_key=review['body_key'],
+                    body_sha256=review['body_sha256'],
+                ),
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(',', ':'),
+            )
+            if review is not None
+            else None
+        )
+        if locator_column == 'document_id':
+            targets = [doc_id]
+        elif members_by_doc is not None and doc_id in members_by_doc:
+            targets = sorted(row['source_id'] for row in members_by_doc[doc_id])
+        else:
+            targets = sorted(candidate.get('source_ids') or [doc_id])
+        for target in targets:
+            receipts.append((target, payload))
+    dataset = source_pin['dataset']['dataset']
+    base_def = definition or source_pin['dataset']['definition']
+    return attach_occurrence_receipts(
+        native,
+        dataset=dataset,
+        operation=operation,
+        base_pin=source_pin,
+        definition=base_def,
+        locator_to_occurrences=loc_map,
+        receipts=receipts,
+        deletions=deletions,
+    )
+
+
+def read_review_provenance_receipts(native, pin, *, locator_column='source_id'):
+    """Read attached review provenance receipts bound to exact ``source`` and ``evidence`` versions."""
+    loc_map = map_locators_to_occurrences(native, pin, locator_column=locator_column)
+    inv_map = {occ: loc for loc, occs in loc_map.items() for occ in occs}
+    evidence_pin = pin.get('dataset', {}).get('evidence')
+    rows = read_occurrence_receipts(
+        native,
+        pin,
+        occurrence_to_locator=inv_map,
+        expected_source_pin=pin['dataset']['groups']['source'],
+        expected_evidence_pin=evidence_pin,
+    )
+    for row in rows:
+        if isinstance(row.get('evidence'), str) and row['evidence'].startswith('{'):
+            row['parsed'] = json.loads(row['evidence'])
+        else:
+            row['parsed'] = row.get('evidence')
+    return rows
+
+
+def remap_review_provenance_receipts(native, before_pin, after_pin, *, identities, catalog_id,
+                                     component_lookup, previous_binding=None,
+                                     operation='review-provenance-remap', definition=None,
+                                     locator_column='source_id'):
+    """Remap review receipts across source updates by stable identity, preserving withdrawal reasons.
+
+    Never infers review authority from native ``(source_file, source_row)`` row
+    positions: withdrawn documents drop their occurrence receipts while their
+    recorded withdrawal reasons (``document_missing``, ``sources_changed``,
+    ``body_changed``) are preserved in the returned binding.
+    """
+    from viewer_publication.filename_review_binding import bind_selected
+    from .native_features import remap_occurrence_receipts
+
+    binding = bind_selected(
+        catalog_id, identities, component_lookup, previous=previous_binding
+    )
+    withdrawn_locators = set()
+    for item in binding['withdrawn']:
+        if locator_column == 'document_id':
+            withdrawn_locators.add(item['document_id'])
+        else:
+            withdrawn_locators.update(item.get('source_ids') or ())
+    dataset = after_pin['dataset']['dataset']
+    base_def = definition or after_pin['dataset']['definition']
+    pin = remap_occurrence_receipts(
+        native,
+        dataset=dataset,
+        operation=operation,
+        before_pin=before_pin,
+        after_pin=after_pin,
+        definition=base_def,
+        locator_column=locator_column,
+        deleted_locators=withdrawn_locators,
+    )
+    return dict(pin=pin, binding=binding)
 
 
 def implementation():
@@ -36,7 +152,8 @@ def selected_groups(path, ids, identity):
     return result
 
 
-def write_candidates(sources, documents, proposals, proposals_sha256, receipt, receipt_sha256, output, resolve=Path):
+def write_candidates(sources, documents, proposals, proposals_sha256, receipt, receipt_sha256, output, resolve=Path,
+                     *, native=None, source_pin=None, receipt_operation='review-provenance'):
     """Admit verified evidence and publish only a separate local candidate bundle.
 
     resolve maps review locators to bytes (default: the locator as a path). The
@@ -75,6 +192,25 @@ def write_candidates(sources, documents, proposals, proposals_sha256, receipt, r
         candidates.append(candidate)
     for path,digest in bindings.items(): verified(path,digest,{},locate)
     if implementation() != policy: raise ValueError('Review implementation changed during admission')
+    native_receipts = None
+    if native is not None and source_pin is not None:
+        attached_pin = attach_review_provenance_receipts(
+            native,
+            source_pin,
+            candidates=candidates,
+            members_by_doc=members,
+            operation=receipt_operation,
+        )
+        attached_rows = read_review_provenance_receipts(native, attached_pin)
+        native_receipts = dict(
+            dataset=attached_pin['dataset']['dataset'],
+            version=attached_pin['id'],
+            source_version=attached_pin['dataset']['groups']['source'],
+            evidence_version=attached_pin['dataset']['evidence'],
+            attached_rows=len(attached_rows),
+            plan=getattr(native, 'last_evidence_plan', None),
+            pin=attached_pin,
+        )
     output.mkdir(parents=True)
     candidate_path = output/'candidates.jsonl'
     with candidate_path.open('x') as stream:
@@ -87,15 +223,36 @@ def write_candidates(sources, documents, proposals, proposals_sha256, receipt, r
         reviewed_pages=sum(r['observation']['pages'] for r in reviews.values()),
         case_status=dict(Counter(c['status'] for c in candidates)),bindings=bindings,implementation=policy,
         outputs={'candidates.jsonl':file_digest(candidate_path)},baseline_files_unchanged=True,
-        withdrawal_restores_baseline=True,production_selected=False,independent_reference=False,release_approved=False)
+        withdrawal_restores_baseline=True,production_selected=False,independent_reference=False,release_approved=False,
+        **({'native_receipts': native_receipts} if native_receipts is not None else {}))
     (output/'summary.json').write_text(json.dumps(summary,indent=2)+'\n')
     return summary
 
 
-if __name__=='__main__':
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ['sources','documents','proposals','receipt','output']:
         parser.add_argument('--'+name,type=Path,required=True)
     for name in ['proposals-sha256','receipt-sha256']: parser.add_argument('--'+name,required=True)
-    result = write_candidates(**vars(parser.parse_args()))
+    parser.add_argument('--native-config', default=None, help='JSON path or inline JSON with binary and workspace')
+    parser.add_argument('--source-pin', default=None, help='JSON path or inline JSON of the selected source ReleasePin')
+    parser.add_argument('--receipt-operation', default='review-provenance')
+    parsed = vars(parser.parse_args(argv))
+    native_cfg_arg = parsed.pop('native_config', None)
+    source_pin_arg = parsed.pop('source_pin', None)
+    pin_obj = None
+    if source_pin_arg is not None:
+        pin_text = Path(source_pin_arg).read_text() if Path(source_pin_arg).is_file() else source_pin_arg
+        pin_obj = json.loads(pin_text)
+    if native_cfg_arg is not None:
+        from .docspec import NativeDatasets
+        cfg_text = Path(native_cfg_arg).read_text() if Path(native_cfg_arg).is_file() else native_cfg_arg
+        cfg = json.loads(cfg_text)
+        with NativeDatasets(cfg['binary'], Path(cfg['workspace'])) as native:
+            return write_candidates(**parsed, native=native, source_pin=pin_obj)
+    return write_candidates(**parsed, source_pin=pin_obj)
+
+
+if __name__=='__main__':
+    result = main()
     print(json.dumps({k:v for k,v in result.items() if k not in ['bindings','outputs']},indent=2))

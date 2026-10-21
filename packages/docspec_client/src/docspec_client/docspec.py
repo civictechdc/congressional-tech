@@ -579,7 +579,7 @@ class NativeDatasets:
         return self._request('/receipts/run', request)
 
     def update_evidence_table(self, table=None, *, dataset, operation, definition, base,
-                              replacements=None, deletions=None):
+                              replacements=None, deletions=None, return_plan=False):
         """Submit one ``EvidenceSpec`` with pre-persisted producer custody."""
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
@@ -610,7 +610,12 @@ class NativeDatasets:
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
             primary = Path(replacements_spec['path'])
-            return self._request('/receipts/run', request, dispatch=dispatch)
+            plan = self.plan_evidence(request)
+            if not isinstance(plan, dict) or plan.get('dataset') != dataset or plan.get('operation') != operation:
+                raise ValueError('Planned evidence receipt update differs from the requested dataset or operation')
+            self.last_evidence_plan = plan
+            pin = self._request('/receipts/run', request, dispatch=dispatch)
+            return (plan, pin) if return_plan else pin
         except BaseException as error:
             if dispatch.get('submitted') and not cleanup_safe(error):
                 retained = True
@@ -917,11 +922,31 @@ class NativeDatasets:
                 with ArrowResponse(response, deadline=deadline) as stream, \
                         pa.ipc.open_stream(stream) as reader:
                     physical = native_storage_schema(target_schema) if target_schema is not None else None
-                    if physical is not None and not reader.schema.equals(physical, check_metadata=False):
+                    extra_supplied = (
+                        [f.name for f in reader.schema if f.name.startswith('__docspec_supplied_') and f.name not in physical.names]
+                        if physical is not None else []
+                    )
+                    effective_reader_schema = (
+                        pa.schema([f for f in reader.schema if f.name not in extra_supplied], metadata=reader.schema.metadata)
+                        if extra_supplied else reader.schema
+                    )
+                    if (
+                        extra_supplied
+                        and physical is not None
+                        and set(effective_reader_schema.names) == set(physical.names)
+                        and all(effective_reader_schema.field(f.name).equals(f, check_metadata=False) for f in physical)
+                    ):
+                        effective_reader_schema = physical
+                    if physical is not None and not effective_reader_schema.equals(physical, check_metadata=False):
                         raise ValueError('Native source storage schema differs from the selected application schema')
 
                     def batches():
                         for batch in reader:
+                            if extra_supplied:
+                                batch = pa.RecordBatch.from_arrays(
+                                    [batch.column(reader.schema.get_field_index(f.name)) for f in effective_reader_schema],
+                                    schema=effective_reader_schema,
+                                )
                             yield batch if target_schema is None else batch.cast(target_schema, safe=True)
                         stream.finish()
 

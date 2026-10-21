@@ -149,3 +149,125 @@ def test_admission_rechecks_snapshot_before_output(tmp_path,monkeypatch,change):
         monkeypatch.setattr(catalog,'implementation',lambda:next(calls))
     with pytest.raises(ValueError):write_candidates(**args)
     assert not args['output'].exists()
+
+
+def test_write_candidates_attaches_and_remaps_native_provenance_receipts_preserving_withdrawals(tmp_path):
+    import os
+    import shutil
+    from congress_api.retention.docspec import NativeDatasets
+    from congress_api.retention.catalog_validation import catalog_source_ids_digest
+    from congress_api.retention.document_review_catalog import (
+        read_review_provenance_receipts,
+        remap_review_provenance_receipts,
+    )
+
+    binary = (
+        os.environ.get('DOCSPEC_BINARY')
+        or shutil.which('docspec')
+        or '/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec'
+    )
+    if not binary or not Path(binary).is_file():
+        pytest.skip('Set DOCSPEC_BINARY to the qualified maintained CLI')
+
+    args = fixture(tmp_path)
+    sources_table = pq.read_table(args['sources']).select(['document_id', 'source_id', 'body_key', 'filename'])
+    with NativeDatasets(binary, tmp_path / 'native-ws') as native:
+        pin1 = native.run_table(
+            sources_table,
+            dataset='catalog_review_sources',
+            operation='admit-sources-1',
+            definition='v1',
+        )
+        result = write_candidates(
+            **args,
+            native=native,
+            source_pin=pin1,
+            receipt_operation='review-provenance-1',
+        )
+        nr = result['native_receipts']
+        assert nr['source_version'] == pin1['dataset']['groups']['source']
+        assert nr['attached_rows'] == 1
+        assert nr['plan']['dataset'] == 'catalog_review_sources'
+        assert nr['plan']['operation'] == 'review-provenance-1'
+        pin_with_ev = nr['pin']
+        assert pin_with_ev['dataset']['groups']['source'] == pin1['dataset']['groups']['source']
+        readback = read_review_provenance_receipts(native, pin_with_ev)
+        assert len(readback) == 1
+        assert readback[0]['locator'] == 's'
+        assert readback[0]['parsed']['document_id'] == 'd'
+        assert readback[0]['parsed']['status'] == 'candidate_applied'
+
+        # Also verify CLI main() with --native-config and --source-pin flags
+        from congress_api.retention.document_review_catalog import main as review_cli_main
+        pin_file = tmp_path / 'source-pin.json'
+        pin_file.write_text(json.dumps(pin_with_ev))
+        cfg_file = tmp_path / 'native-config.json'
+        cfg_file.write_text(json.dumps(dict(binary=str(binary), workspace=str(tmp_path / 'native-ws'))))
+        cli_result = review_cli_main([
+            '--sources', str(args['sources']),
+            '--documents', str(args['documents']),
+            '--proposals', str(args['proposals']),
+            '--proposals-sha256', args['proposals_sha256'],
+            '--receipt', str(args['receipt']),
+            '--receipt-sha256', args['receipt_sha256'],
+            '--output', str(tmp_path / 'cli-output'),
+            '--native-config', str(cfg_file),
+            '--source-pin', str(pin_file),
+            '--receipt-operation', 'review-provenance-cli',
+        ])
+        assert cli_result['native_receipts']['version'] == 'review-provenance-cli'
+        assert cli_result['native_receipts']['plan']['operation'] == 'review-provenance-cli'
+
+        # Update catalog_review_sources: add a preceding row so 's' shifts to a new row position,
+        # plus add sources for withdrawn documents to test withdrawal preservation.
+        updated_sources = pa.Table.from_pylist(
+            [
+                {'document_id': 'd0', 'source_id': 'a-first', 'body_key': 'b0', 'filename': 'first.pdf'},
+                sources_table.to_pylist()[0],
+                {'document_id': 'd-changed-src', 'source_id': 's-other', 'body_key': 'b2', 'filename': ' two.pdf'},
+                {'document_id': 'd-changed-body', 'source_id': 's-body', 'body_key': 'b-new', 'filename': 'three.pdf'},
+            ],
+            schema=sources_table.schema,
+        )
+        pin2 = native.run_table(
+            updated_sources,
+            dataset='catalog_review_sources_v2',
+            operation='admit-sources-2',
+            definition='v1',
+        )
+        body_key = sources_table.to_pylist()[0]['body_key']
+        identities = dict(
+            version=1,
+            review_sha256='a' * 64,
+            catalog_id='pair',
+            rows=[
+                dict(index=0, document_id='d', body_key=body_key, source_ids=['s']),
+                dict(index=1, document_id='d-missing', body_key='b1', source_ids=['s-missing']),
+                dict(index=2, document_id='d-changed-src', body_key='b2', source_ids=['s-orig']),
+                dict(index=3, document_id='d-changed-body', body_key='b-old', source_ids=['s-body']),
+            ],
+        )
+        components = {
+            'd': dict(source_ids_sha256=catalog_source_ids_digest(iter(['s'])), body_key=body_key),
+            'd-changed-src': dict(source_ids_sha256=catalog_source_ids_digest(iter(['s-other'])), body_key='b2'),
+            'd-changed-body': dict(source_ids_sha256=catalog_source_ids_digest(iter(['s-body'])), body_key='b-new'),
+        }
+        remapped = remap_review_provenance_receipts(
+            native,
+            pin_with_ev,
+            pin2,
+            identities=identities,
+            catalog_id='pair',
+            component_lookup=components.get,
+            operation='remap-review-1',
+        )
+        assert remapped['pin']['dataset']['groups']['source'] == pin2['dataset']['groups']['source']
+        remapped_rows = read_review_provenance_receipts(native, remapped['pin'])
+        assert [(r['locator'], r['source_row'], r['parsed']['document_id']) for r in remapped_rows] == [
+            ('s', 1, 'd')
+        ]
+        assert {(w['document_id'], w['reason']) for w in remapped['binding']['withdrawn']} == {
+            ('d-missing', 'document_missing'),
+            ('d-changed-src', 'sources_changed'),
+            ('d-changed-body', 'body_changed'),
+        }

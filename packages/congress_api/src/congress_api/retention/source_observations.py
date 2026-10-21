@@ -20,6 +20,11 @@ from .immutable_metadata import encoded
 from .native_features import inspect_catalog_changes, refresh_catalog_observation_summary
 from .source_inputs import collect_source_inputs
 from .catalog_availability import package_dependencies, hearing_input_packages
+from .native_features import (
+    attach_occurrence_receipts,
+    map_locators_to_occurrences,
+    read_occurrence_receipts,
+)
 
 SCHEMA = pa.schema([pa.field('alias', pa.string(), nullable=False),
                     pa.field('observation', pa.string(), nullable=False)])
@@ -195,11 +200,162 @@ class SourceObservationStorage:
 
     def _write(self, table, kind):
         identity = sha256(encoded(table.to_pylist())).hexdigest()
-        return self.native.run_table(table, dataset='source-observations-' + kind + '-' + identity,
+        pin = self.native.run_table(table, dataset='source-observations-' + kind + '-' + identity,
             operation='initial', definition='source-observation-dependencies-v1')
+        pending = getattr(self, '_pending_receipts', None)
+        if kind == 'aliases' and pending:
+            present_aliases = set(table['alias'].to_pylist())
+            leaf_receipts = []
+            for locator, items in sorted(pending.items()):
+                if locator in present_aliases:
+                    leaf_receipts.extend(items)
+            if leaf_receipts:
+                loc_map = self._leaf_locator_map(pin, primary_only=True)
+                valid_receipts = [(loc, val) for loc, val in leaf_receipts if loc in loc_map]
+                if valid_receipts:
+                    op_hash = sha256(encoded(valid_receipts)).hexdigest()[:12]
+                    pin = attach_occurrence_receipts(
+                        self.native,
+                        dataset=pin['dataset']['dataset'],
+                        operation=f'remap-receipts-{op_hash}',
+                        base_pin=pin,
+                        definition=pin['dataset']['definition'],
+                        locator_to_occurrences=loc_map,
+                        receipts=valid_receipts,
+                    )
+        return pin
+
+    def _leaf_locator_map(self, pin, *, primary_only=True):
+        alias_map = (
+            map_locators_to_occurrences(self.native, pin, locator_column='alias')
+            if 'alias' in SCHEMA.names else {}
+        )
+        obs_map = map_locators_to_occurrences(self.native, pin, locator_column='observation')
+        combined = {}
+        for locator, occs in alias_map.items():
+            if isinstance(locator, str) and locator.startswith('receipt:'):
+                combined[locator] = [occs[0]] if primary_only and occs else list(occs)
+        for locator, occs in obs_map.items():
+            if isinstance(locator, str) and locator.startswith('receipt:') and locator not in combined:
+                combined[locator] = [occs[0]] if primary_only and occs else list(occs)
+        return combined
+
+    def attach_receipts(self, root, receipts, *, operation, deletions=(), evidence_type=pa.string()):
+        """Attach occurrence-linked provenance/review receipts to selected observation leaves."""
+        if root is None:
+            raise ValueError('Cannot attach receipts to an empty observation root')
+        receipts = list(receipts)
+        deletions = list(deletions)
+        for locator, _ in receipts:
+            receipt_locator(locator)
+        for locator in deletions:
+            receipt_locator(locator)
+        grouped_receipts = {}
+        grouped_deletions = {}
+        leaf_by_prefix = {}
+        for locator, value in receipts:
+            prefix, leaf = self.members.routes.lookup(root, locator)
+            if leaf is None or leaf.get('kind') != 'rows':
+                raise ValueError(f'Observation locator {locator!r} has no row leaf in selected root')
+            leaf_by_prefix[prefix] = leaf
+            grouped_receipts.setdefault(prefix, []).append((locator, value))
+        for locator in deletions:
+            prefix, leaf = self.members.routes.lookup(root, locator)
+            if leaf is None or leaf.get('kind') != 'rows':
+                raise ValueError(f'Deletion locator {locator!r} has no row leaf in selected root')
+            leaf_by_prefix[prefix] = leaf
+            grouped_deletions.setdefault(prefix, []).append(locator)
+        updated_root = root
+        for prefix in sorted(leaf_by_prefix):
+            leaf = leaf_by_prefix[prefix]
+            pin = leaf['release']
+            loc_map = self._leaf_locator_map(pin, primary_only=True)
+            all_loc_map = self._leaf_locator_map(pin, primary_only=False)
+            for loc in grouped_deletions.get(prefix, ()):
+                if loc in all_loc_map:
+                    loc_map[loc] = all_loc_map[loc]
+            dataset = pin['dataset']['dataset']
+            definition = pin['dataset']['definition']
+            new_pin = attach_occurrence_receipts(
+                self.native,
+                dataset=dataset,
+                operation=f'{operation}-{prefix or "root"}',
+                base_pin=pin,
+                definition=definition,
+                locator_to_occurrences=loc_map,
+                receipts=grouped_receipts.get(prefix, ()),
+                deletions=grouped_deletions.get(prefix, ()),
+                evidence_type=evidence_type,
+            )
+            new_leaf = dict(leaf, release=new_pin)
+            updated_root = self.members.routes.replace(updated_root, prefix, {prefix: new_leaf})
+        return updated_root
+
+    def read_receipts(self, root, *, locators=None):
+        """Read attached provenance/review receipts from selected observation leaves."""
+        if root is None:
+            return []
+        wanted = set(locators) if locators is not None else None
+        if wanted is not None:
+            for locator in wanted:
+                receipt_locator(locator)
+        entries = []
+        for prefix, leaf in self.members.routes.leaf_items(root):
+            if not isinstance(leaf, dict) or leaf.get('kind') != 'rows':
+                continue
+            pin = leaf['release']
+            evidence_pin = pin.get('dataset', {}).get('evidence')
+            if evidence_pin is None:
+                continue
+            loc_map = self._leaf_locator_map(pin, primary_only=False)
+            inv_map = {occ: loc for loc, occs in loc_map.items() for occ in occs}
+            for row in read_occurrence_receipts(
+                self.native,
+                pin,
+                occurrence_to_locator=inv_map,
+                expected_source_pin=pin['dataset']['groups']['source'],
+                expected_evidence_pin=evidence_pin,
+            ):
+                if wanted is not None and row.get('locator') not in wanted:
+                    continue
+                entries.append(
+                    dict(
+                        row,
+                        prefix=prefix,
+                        dataset=pin['dataset']['dataset'],
+                        source_version=pin['dataset']['groups']['source'],
+                        evidence_version=evidence_pin,
+                    )
+                )
+        return entries
 
     def prepare(self, root, trace):
         """Replace complete observations; retain every unaffected owner edge."""
+        replayed_obs = set(trace.observations())
+        desired_receipts = {}
+        if (
+            hasattr(self.native, 'read_receipts')
+            and hasattr(self.native, 'update_evidence_table')
+        ):
+            if root is not None:
+                for entry in self.read_receipts(root):
+                    locator = entry.get('locator')
+                    ev = entry.get('evidence')
+                    if not locator:
+                        continue
+                    if locator in replayed_obs and isinstance(ev, str) and ev.startswith('source:'):
+                        continue
+                    desired_receipts.setdefault(locator, []).append((locator, ev))
+            for observation, dependency in trace.db.execute(
+                "SELECT observation, dependency FROM observation_edges "
+                "WHERE dependency LIKE 'dependency:[\"source\",%' AND access='write' "
+                "ORDER BY observation, dependency"
+            ):
+                _, source_id = json.loads(dependency[len('dependency:'):])
+                pair = (observation, f'source:{source_id}')
+                if pair not in desired_receipts.get(observation, ()):
+                    desired_receipts.setdefault(observation, []).append(pair)
+        self._pending_receipts = desired_receipts
         db = trace.db
         db.executescript('DROP TABLE IF EXISTS observation_changes; DROP TABLE IF EXISTS observation_changed_aliases; '
             'CREATE TABLE observation_changes(alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '

@@ -503,3 +503,102 @@ def test_schema_addition_retry_uses_the_retained_interpretation_schema(tmp_path,
         rows = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
         row = next(row for row in rows if row['source_url'] == 'https://example.gov/paper.pdf')
         assert row['source_witness_name'] == ['Jane Doe']
+
+
+def test_upgrade_source_rules_evolves_native_schema_and_backfills_scalars_without_source_rewrite(tmp_path, monkeypatch, native):
+    from congress_api.retention.raw_archive import STATE_SCHEMA
+    from congress_api.retention.raw_catalog import upgrade_source_rules
+    from congress_api.retention.catalog_batches import CatalogComponentReader
+    from congress_api.retention.source_update_proof import read_source_update
+    from congress_api.retention.catalog_scope import read_catalog_scope
+
+    store = SelectorStore()
+    prior_state_schema = pa.schema([
+        f for f in STATE_SCHEMA if f.name not in {'next_attempt_at', 'links_scanned'}
+    ])
+    raw = RawStorage(store, native, state_schema=prior_state_schema)
+    retain(store, dict(eventId=7, congress=119, chamber='House', meetingDocuments=[dict(
+        url='https://example.gov/paper.pdf', documentType='Statement', name='Literal paper')]),
+        family='congress/meetings', source_file='meeting.json')
+    seed_states = pa.Table.from_pylist(
+        [dict(url='https://example.gov/paper.pdf', outcome='saved', attempts=1, body_key='bodies/paper.gz')],
+        schema=prior_state_schema,
+    )
+    raw.publish(raw.prepare(raw.snapshot(), operation='meeting',
+                            captures=decode_table(store.read(CAPTURES_KEY)),
+                            states=seed_states))
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    update_from_raw(store, raw_storage=RawStorage.open(store, native), directory=tmp_path / 'initial', candidate='initial')
+    previous = read_catalog(store, native=native)
+
+    reader = CatalogComponentReader(store)
+    _, comp_ref = next(previous.components.items(previous.selection['components']))
+    page = reader.page(comp_ref['page'])
+    chunk_name = next(name for name in page['chunks'] if name.startswith('catalog-filenames-'))
+    before_chunk = reader.chunks.read(page['chunks'][chunk_name])
+    before_core_pin = {k: v for k, v in before_chunk['release'].items() if k != 'catalog_rows'}
+    dataset = before_core_pin['dataset']['dataset']
+    source_files_before = [
+        obj['path']
+        for obj in before_core_pin['dataset']['groups']['source']['objects']
+        if obj['path'].endswith('.parquet')
+    ]
+    before_rows = native.read_arrow(before_core_pin).to_pylist()
+
+    options = dict(
+        raw_storage=raw,
+        directory=tmp_path / 'upgrade-schema-bf',
+        candidate='upgrade-schema-bf',
+        rule_version='source-rules-20261021',
+        continuous_backfill=dict(optimistic_rounds=2, fence_millis=1000),
+        dependency_correction=dict(
+            id='corr-rules-20261021',
+            reason='bind document_id, source_id, body_key, and filename for catalog scalars',
+        ),
+    )
+    result = upgrade_source_rules(store, **options)
+    # 1. RawStorage.evolve_state_schema evolved the URL-state leaf to STATE_SCHEMA and backfilled state_scalars
+    assert 'raw_state_schema_backfill' in result
+    state_bf = next(iter(result['raw_state_schema_backfill'].values()))
+    assert state_bf['schema_plan']['dataset'] and state_bf['evolved_pin']
+    evolved_raw_owner = RawStorage.open(store, native)
+    assert evolved_raw_owner.state_schema.equals(STATE_SCHEMA)
+    evolved_raw_snap = evolved_raw_owner.snapshot()
+    assert evolved_raw_snap.state('https://example.gov/paper.pdf')['links_scanned'] is False
+    supplied_state = evolved_raw_snap.state_supplied('https://example.gov/paper.pdf')
+    supplied_state_keys = [k for k in supplied_state if k.startswith('__docspec_supplied_')]
+    assert len(supplied_state_keys) == 2 and all(supplied_state[k] is False for k in supplied_state_keys)
+
+    # 2. Catalog chunks backfilled catalog_scalars (has_body, is_saved_capture, has_source_url) without manufacturing fake columns
+    assert dataset in result['native_schema_backfill']
+    bf_entry = result['native_schema_backfill'][dataset]
+    evolved_pin = bf_entry['evolved_pin']
+    backfilled_pin = bf_entry['pin']
+    assert bf_entry['schema_plan'] is None and evolved_pin == before_core_pin
+
+    # Zero source-file rewrites across schema evolution and continuous scalar backfill
+    source_files_after = [
+        obj['path']
+        for obj in backfilled_pin['dataset']['groups']['source']['objects']
+        if obj['path'].endswith('.parquet')
+    ]
+    assert source_files_after == source_files_before
+    # Old pin remains readable with its exact original schema and values
+    assert native.read_arrow(before_core_pin).to_pylist() == before_rows
+    # Backfilled scalar group exposes has_body, is_saved_capture, and has_source_url and is qualified after correction
+    scalar_rows = native.read_arrow(backfilled_pin, group='catalog_scalars').to_pylist()
+    assert len(scalar_rows) == len(before_rows)
+    assert all(
+        'has_body' in r and 'is_saved_capture' in r and 'has_source_url' in r
+        for r in scalar_rows
+    )
+    assert bf_entry['correction']['request']['id'] == 'corr-rules-20261021'
+    assert backfilled_pin['dataset']['computed']['catalog_scalars']['qualification'] is not None
+
+    # Proof retains the schema/backfill metadata and retry is idempotent
+    scope_proof = read_catalog_scope(store, result['scope_reference'])
+    source_proof = read_source_update(store, scope_proof['source_update'])
+    assert dataset in source_proof['after']['native_schema_backfill']
+    retry = upgrade_source_rules(store, **{**options, 'raw_storage': RawStorage.open(store, native)})
+    assert retry['unchanged'] is True
+    assert dataset in retry['native_schema_backfill']

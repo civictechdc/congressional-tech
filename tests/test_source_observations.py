@@ -200,3 +200,75 @@ def test_placeholder_fact_merge_moves_every_exact_source_owner(tmp_path):
         owners = {value[0] for value in work.connection.execute(
             'SELECT observation FROM observation_source_owners WHERE source=?', (index.source_identity(row),))}
         assert owners == {observation_id('metadata', 1), observation_id('capture', 2)}
+
+
+def test_observation_storage_attaches_reads_and_remaps_provenance_receipts_without_source_rewrite(tmp_path, native):
+    store = MemoryStore()
+    owner = SourceObservationStorage(
+        native=native, store=store, namespace='receipt-observations', max_rows=32, max_bytes=1 << 20
+    )
+    with closing(WorkingCatalog(tmp_path / 'adopt.sqlite')) as work:
+        trace = SourceObservationTrace(work)
+        trace(item('page', 'event', '7'))
+        trace(item('page', 'source', 'src-initial-1', 'write'))
+        trace(item('meeting-119', 'event', '7', 'write'))
+        trace(item('meeting-118', 'event', '7', 'write'))
+        root1 = owner.prepare(None, trace)
+
+    _, leaf1 = owner.members.routes.lookup(root1, observation_id('page', 1))
+    source_pin_before = leaf1['release']['dataset']['groups']['source']
+    # Initial prepare() automatically attached 'source:src-initial-1' from the trace's source write edge!
+    initial_entries = owner.read_receipts(root1)
+    assert [(e['locator'], e['evidence']) for e in initial_entries] == [
+        (observation_id('page', 1), 'source:src-initial-1')
+    ]
+
+    # Attach ordered duplicate receipts and an explicit None null receipt
+    root2 = owner.attach_receipts(
+        root1,
+        [
+            (observation_id('page', 1), 'provenance:pass-1'),
+            (observation_id('page', 1), 'provenance:pass-2'),
+            (observation_id('meeting-119', 1), None),
+            (observation_id('meeting-118', 1), 'provenance:to-be-deleted'),
+        ],
+        operation='attach-obs-receipts-1',
+    )
+    _, leaf2 = owner.members.routes.lookup(root2, observation_id('page', 1))
+    assert leaf2['release']['dataset']['groups']['source'] == source_pin_before
+
+    # Fresh owner reads back exact receipts bound to source and evidence versions
+    fresh = SourceObservationStorage(
+        native=native, store=store, namespace='receipt-observations', max_rows=32, max_bytes=1 << 20
+    )
+    entries = fresh.read_receipts(root2)
+    by_loc = {}
+    for entry in entries:
+        assert entry['source_version'] == source_pin_before
+        assert entry['evidence_version'] == leaf2['release']['dataset']['evidence']
+        by_loc.setdefault(entry['locator'], []).append(entry['evidence'])
+    assert by_loc == {
+        observation_id('page', 1): ['provenance:pass-1', 'provenance:pass-2'],
+        observation_id('meeting-119', 1): [None],
+        observation_id('meeting-118', 1): ['provenance:to-be-deleted'],
+    }
+
+    # Delete meeting-118 and add a new observation; prepare() remaps surviving receipts by locator
+    with closing(WorkingCatalog(tmp_path / 'update.sqlite')) as work:
+        trace = SourceObservationTrace(work)
+        trace.register('meeting-118', 1)
+        trace(item('aaa-first', 'event', '7', 'write'))
+        root3 = owner.prepare(root2, trace)
+
+    remapped_entries = fresh.read_receipts(root3)
+    remapped_by_loc = {}
+    for entry in remapped_entries:
+        remapped_by_loc.setdefault(entry['locator'], []).append(entry['evidence'])
+    assert remapped_by_loc == {
+        observation_id('page', 1): ['provenance:pass-1', 'provenance:pass-2'],
+        observation_id('meeting-119', 1): [None],
+    }
+    # Affected closure still works identically over leaves with attached receipts
+    with closing(WorkingCatalog(tmp_path / 'closure.sqlite')) as work:
+        affected = set(fresh.affected(root2, root3, [observation_id('meeting-118', 1)], working=work))
+    assert observation_id('page', 1) in affected and observation_id('meeting-119', 1) in affected
