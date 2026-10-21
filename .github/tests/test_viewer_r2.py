@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -15,6 +16,56 @@ SCRIPT = ROOT / 'scripts/publication/publish-viewer-r2.py'
 spec = importlib.util.spec_from_file_location('viewer_r2', SCRIPT)
 publication = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publication)
+
+
+def test_fresh_cli_preparation_uses_shared_release_identity(tmp_path):
+    # Package paths alone reproduce the workflow; pytest's scripts path must not
+    # supply a missing CLI bootstrap dependency.
+    code = '''
+import importlib.util, json, runpy, sys
+from pathlib import Path
+import boto3
+import viewer_publication.attempt as attempts
+
+script = Path(sys.argv[1])
+report = Path(sys.argv[2])
+sys.path.insert(0, str(script.parent))  # Python adds this for a direct script.
+boto3.client = lambda *args, **kwargs: object()
+attempts.record_input = lambda publisher, client, key, optional=False: {
+    'value': None if optional else {'version': 1}, 'etag': 'fixture',
+    'modified': None, 'sha256': 'a' * 64}
+original = attempts.content_identity
+def check_identity(publisher):
+    identity = original(publisher)
+    spec = importlib.util.spec_from_file_location('expected_identity', script.parents[2] / 'scripts/viewer_release_identity.py')
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    assert identity == {'version': 1, 'publisher_version': publisher.PUBLISHER_VERSION,
+        'implementation': helper.hashlib.sha256(helper.encoded(helper.source_files(script.parents[2]))).hexdigest(),
+        'dependencies': helper.installed_runtime()}
+    assert Path(sys.modules['viewer_release_identity'].__file__).resolve() == Path(helper.__file__).resolve()
+    print(json.dumps(identity))
+    return identity
+attempts.content_identity = check_identity
+sys.argv = [str(script), 'prepare', '--directory', str(report.parent / 'preparation'),
+    '--run-id', '123', '--run-attempt', '1', '--report', str(report)]
+try:
+    runpy.run_path(str(script), run_name='__main__')
+except ValueError as error:
+    assert str(error) == 'Viewer updates require explicitly adopted native catalog storage'
+else:
+    raise AssertionError('Legacy catalog must still be refused')
+assert json.loads(report.read_text())['error_type'] == 'ValueError'
+assert not (report.parent / 'preparation').exists()
+'''
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith(('DOCSPEC_', 'GITHUB_', 'R2_', 'AWS_', 'CLOUDFLARE_'))}
+    env['PYTHONPATH'] = os.pathsep.join(str(path) for path in sorted((ROOT / 'packages').glob('*/src')))
+    env.update(CLOUDFLARE_ACCOUNT_ID='fixture', R2_ACCESS_KEY_ID='fixture', R2_SECRET_ACCESS_KEY='fixture')
+    result = subprocess.run([sys.executable, '-c', code, str(SCRIPT), str(tmp_path / 'outcome.json')],
+                            cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)['publisher_version'] == publication.PUBLISHER_VERSION
 
 
 Body = io.BytesIO

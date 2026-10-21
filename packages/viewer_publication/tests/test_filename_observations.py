@@ -7,7 +7,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-import viewer_publication.filename_observations as observations
+spec = importlib.util.spec_from_file_location('observation_publication',
+    Path(__file__).resolve().parents[3] / 'packages/viewer_publication/src/viewer_publication/filename_observations.py')
+observations = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(observations)
 
 
 def publication(tmp_path, monkeypatch):
@@ -219,3 +222,59 @@ def test_arrow_list_slices_keep_offsets_nulls_timestamps_types_and_order(tmp_pat
     assert decoded('observations.bin', index['observations']) == [None, first, second]
     assert decoded('observation-rows.bin', index['references']) == [None, [], [0, 1, 2, 1]]
     observations.verify_observations(source, tmp_path, index)
+
+
+def test_typed_sequence_publishes_giant_logical_list_without_joining_parts(tmp_path):
+    from types import SimpleNamespace
+    kind = pa.struct([('label', pa.list_(pa.string())), ('links', pa.list_(pa.string()))])
+    value = {'label': ['José 🏛️' + 'x' * 1100, '', None], 'links': []}
+    part = pa.array([value, None, value] * 256, type=kind)
+    assert part.nbytes < observations.DEFAULT_DECODED_POLICY.row_arrow_bytes
+    repeats = 40
+    assert part.nbytes * repeats > observations.DEFAULT_DECODED_POLICY.row_arrow_bytes
+    opened = []
+    def batches():
+        for index in range(repeats):
+            opened.append(index)
+            yield part
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        metadata = SimpleNamespace(num_rows=4)
+        def iter_batches(self, **kwargs): raise AssertionError('whole logical list must not be read')
+        def observation_rows(self):
+            yield None
+            yield observations.ObservationSequence(0, lambda: iter(()))
+            yield observations.ObservationSequence(3, lambda: iter((part.slice(0, 3),)))
+            yield observations.ObservationSequence(len(part) * repeats, batches)
+    source = Source()
+    index = observations.publish_observations(source, tmp_path)
+    assert opened == list(range(repeats)) * 2  # Write and independent readback.
+    assert index['observations']['rows'] == 2
+    refs = [row for block in index['references']['blocks']
+            for row in observations.block_items(tmp_path / 'observation-rows.bin', block)]
+    assert refs[:3] == [None, [], [0, 1, 0]]
+    assert refs[3] == [0, 1, 0] * (256 * repeats)
+    observations.verify_observations(source, tmp_path, index)
+
+
+@pytest.mark.parametrize('mode', ['missing', 'extra', 'corrupt', 'schema'])
+def test_typed_sequence_rejects_missing_extra_or_corrupt_parts(tmp_path, mode):
+    from types import SimpleNamespace
+    kind = pa.struct([('label', pa.list_(pa.string()))])
+    value = pa.array([{'label': ['exact']}], type=kind)
+    def parts():
+        if mode == 'missing': return
+        if mode == 'schema':
+            yield pa.array([{'other': ['lost']}], type=pa.struct([('other', pa.list_(pa.string()))]))
+            return
+        yield value
+        if mode == 'extra': yield value
+        if mode == 'corrupt': raise ValueError('corrupt typed occurrence part')
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        metadata = SimpleNamespace(num_rows=1)
+        def observation_rows(self):
+            yield observations.ObservationSequence(1, parts)
+    with pytest.raises(ValueError, match='length differs|corrupt typed occurrence|schema differs'):
+        observations.publish_observations(Source(), tmp_path)
+    assert not (tmp_path / 'observation-index.json').exists()

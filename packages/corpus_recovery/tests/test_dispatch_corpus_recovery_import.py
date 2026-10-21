@@ -17,13 +17,15 @@ import dispatch_corpus_recovery_import as module
 import test_import_corpus_recovery_batch as fixtures
 from botocore.exceptions import ClientError
 from congress_api.retention.raw_archive import encode_table
+from congress_api.retention.raw_storage import RawStorage
+from congress_api.retention.immutable_metadata import encoded
+from native_memory_helpers import MemoryNative
 
 
 class ConditionalClient:
     def __init__(self, change_capture_after_state=False):
         self.data = {
-            module.CAPTURES_KEY: encode_table(fixtures.pa.Table.from_pylist([], schema=fixtures.CAPTURE_SCHEMA)),
-            module.STATE_KEY: encode_table(fixtures.pa.Table.from_pylist([], schema=fixtures.STATE_SCHEMA)),
+            module.RAW_KEY: encoded(RawStorage(None, MemoryNative())._empty()),
             'indexes/catalog.json': b'{}', 'viewer-publications/recoveries/accepted.json': b'{}',
         }
         self.meta = SimpleNamespace(config=SimpleNamespace(retries={'total_max_attempts': 1}), events=Mock())
@@ -45,13 +47,13 @@ class ConditionalClient:
             raise ClientError({'Error': {'Code': 'PreconditionFailed'}}, 'PutObject')
         self.data[Key] = Body
         self.writes.append((Key, options))
-        if Key == module.STATE_KEY and self.change_capture_after_state:
-            self.data[module.CAPTURES_KEY] = b'competing update'
+        if Key.startswith('indexes/native-manifests/') and self.change_capture_after_state:
+            self.data[module.RAW_KEY] = b'competing update'
         return self.head_object(Bucket=Bucket, Key=Key)
 
 
 class DispatchTests(unittest.TestCase):
-    def exercise_dispatch(self, client, external=False, control_root=None):
+    def exercise_dispatch(self, client, external=False, control_root=None, native=None):
         fixture = fixtures.ImportTests()
         fixture.setUp()
         self.addCleanup(fixture.doCleanups)
@@ -87,7 +89,7 @@ class DispatchTests(unittest.TestCase):
             args.readiness = root/'reconciliation/import-readiness.json'
             self.readiness_path = args.readiness
         with patch.object(module, 'ROOT', root), patch.object(module, 'cloud_clear'), patch('boto3.client', return_value=client):
-            return module.run(args)
+            return module.run(args, native=native or MemoryNative())
 
     def test_full_dispatch_uses_conditional_versions(self):
         client = ConditionalClient()
@@ -95,7 +97,7 @@ class DispatchTests(unittest.TestCase):
         self.assertTrue(result['complete'])
         self.assertEqual(result['added_capture_rows'], 2)
         for key, options in client.writes:
-            self.assertIn('IfMatch' if key.startswith('indexes/') else 'IfNoneMatch', options)
+            self.assertIn('IfMatch' if key == module.RAW_KEY else 'IfNoneMatch', options)
         self.assertTrue((self.destination / 'payloads/import-complete.json').exists())
 
     def test_maintained_reconciliation_to_import_to_publication_evidence(self):
@@ -130,9 +132,28 @@ class DispatchTests(unittest.TestCase):
         client = ConditionalClient(change_capture_after_state=True)
         with self.assertRaisesRegex(RuntimeError, 'Protected input changed'):
             self.exercise_dispatch(client)
-        self.assertNotIn(module.CAPTURES_KEY, [key for key, _ in client.writes])
+        self.assertNotIn(module.RAW_KEY, [key for key, _ in client.writes])
         self.assertFalse((self.destination / 'payloads/import-complete.json').exists())
         self.assertIn('failed_requires_reconciliation', (self.destination / 'events.jsonl').read_text())
+
+    def test_changed_native_execution_file_blocks_before_raw_selection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            executable = Path(directory) / 'docspec'
+            executable.write_bytes(b'original-executable')
+            class ChangingNative(MemoryNative):
+                def execution_files(self):
+                    return (executable,)
+                def run_table(self, table, **kwargs):
+                    pin = super().run_table(table, **kwargs)
+                    executable.write_bytes(b'changed-executable')
+                    return pin
+            client = ConditionalClient()
+            with self.assertRaisesRegex(RuntimeError, 'Pinned input changed'):
+                self.exercise_dispatch(client, native=ChangingNative())
+            self.assertNotIn(module.RAW_KEY, [key for key, _ in client.writes])
+            pins = next(json.loads(line)['value'] for line in (self.destination/'events.jsonl').read_text().splitlines()
+                        if json.loads(line)['event'] == 'pins')
+            self.assertEqual(pins[str(executable)], hashlib.sha256(b'original-executable').hexdigest())
 
     def test_active_writer_on_later_page_blocks(self):
         response = dict(total_count=1, workflow_runs=[

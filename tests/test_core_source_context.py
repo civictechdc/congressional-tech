@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from congress_api.retention.raw_archive import CAPTURES_KEY
-from congress_api.retention.raw_catalog import DOCUMENTS, rebuild_catalog
+from historical_raw_catalog import DOCUMENTS, rebuild_catalog
 from test_raw_catalog import table
 from test_raw_rebuild import retain
 from test_raw_source_sync import MemoryStore

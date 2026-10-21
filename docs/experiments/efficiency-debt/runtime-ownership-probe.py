@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 
-SOURCE_DIRS = ('packages/congress_api/src', 'packages/house-naming/src',
+SOURCE_DIRS = ('packages/congress_api/src', 'packages/docspec_client/src', 'packages/house-naming/src',
     'packages/congress_shared/src', 'packages/committee_meeting/src',
     'packages/youtube_api/src', 'packages/corpus_recovery/src',
     'packages/viewer_publication/src', 'apps/committee_youtube/src',
@@ -45,11 +45,14 @@ def fixture(root, destination):
     (imported / 'payloads/indexes/raw.json').write_bytes(raw_payload)
     (imported / 'payloads/import-complete.json').write_text(json.dumps(complete))
     events = [{'event': 'pins', 'value': {str(batch / name): digest(batch / name) for name in ('manifest.json', 'prepared-source-records.json', 'import-readiness.json')}},
+              {'event': 'raw_selection_reused', 'value': {'key': 'indexes/raw.json', 'sha256': complete['raw_identity']}},
               {'event': 'import_complete', 'value': complete}]
     (imported / 'events.jsonl').write_text('\n'.join(map(json.dumps, events)))
     (destination / '.cache').mkdir()
     (destination / 'baseline.json').write_text('{}')
     (destination / 'r2.conf').write_text('[congressionalraw]\nendpoint=https://invalid.test\naccess_key_id=sentinel\nsecret_access_key=sentinel\n')
+    (destination / 'docspec').write_text('#!/bin/sh\n')
+    (destination / 'native.json').write_text(json.dumps({'version': 1, 'binary': 'docspec', 'workspace': 'workspace'}))
     return {'source_bytes': size, 'source_files': len(files), 'source_sha256': hashes}
 
 
@@ -141,11 +144,11 @@ error = None
 try:
     dispatch.run(SimpleNamespace(batch=fixture/'batch', imported=fixture/'imported', runtime=runtime,
         execute=True, resume=False, destination=fixture/attempt, control_root=fixture,
-        baseline=fixture/'baseline.json', config=fixture/'r2.conf'))
+        baseline=fixture/'baseline.json', config=fixture/'r2.conf', native_config=fixture/'native.json'))
 except BaseException as caught:
     error = {'type': type(caught).__name__, 'message': str(caught)}
 sys.setprofile(None)
-prefixes = ('congress_api', 'house_naming', 'congress_shared', 'committee_meeting', 'youtube_api',
+prefixes = ('congress_api', 'docspec_client', 'house_naming', 'congress_shared', 'committee_meeting', 'youtube_api',
             'corpus_recovery', 'viewer_publication', 'committee_explorer', 'filename_', 'viewer_release_identity')
 for name, module in list(sys.modules.items()):
     if name.startswith(prefixes):

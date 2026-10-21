@@ -15,7 +15,8 @@ import pytest
 from congress_api.models.content import RawContent
 from congress_api.retention.capture_metadata import MetadataWriter, PREFIX
 from congress_api.retention.catalog_cache import capture_digest, legacy_capture_digest
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, CAPTURE_SCHEMA, encode_table
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, encode_table
+from historical_raw_archive import LegacyArchiveSeed as Archive
 from congress_api.retention.derived_files import copy_checked, require_derived_key
 
 
@@ -39,6 +40,7 @@ def fixed_capture_clock(monkeypatch):
             return value.astimezone(tz) if tz else value.replace(tzinfo=None)
 
     monkeypatch.setattr('congress_api.retention.raw_archive.datetime', FixtureClock)
+    monkeypatch.setattr('historical_raw_archive.datetime', FixtureClock)
 
 
 class MemoryStore:

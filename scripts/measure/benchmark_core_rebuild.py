@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Qualify a local retained-source rebuild against a pinned semantic reference.
+"""Qualify a historical retained-source rebuild against a pinned semantic reference.
 
 Run through offline-python.py. Inputs remain read-only; all writes use an overlay.
 Canonical records include every field (including JSON strings and list ordering).
@@ -26,7 +26,9 @@ import pyarrow.parquet as pq
 
 from congress_api.cli.raw_progress import memory_usage
 from congress_api.cli.raw_sync import seed_files
-from congress_api.retention.raw_catalog import rebuild_catalog
+# Historical reference only; recurring writers never import this test helper.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tests'))
+from historical_raw_catalog import rebuild_catalog
 from congress_api.retention.raw_progress import LOGGER
 
 

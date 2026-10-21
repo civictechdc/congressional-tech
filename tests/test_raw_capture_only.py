@@ -11,7 +11,9 @@ from congress_api.cli import raw_sync
 from congress_api.cli.raw_progress import ProgressLog
 from congress_api.retention.catalog_publication import MANIFEST_KEY
 from congress_api.retention.catalog_raw_updates import MAX_BYTES
-from congress_api.retention.raw_archive import Archive, LegacyArchiveSeed, adopt_legacy_archive
+from congress_api.retention.raw_archive import Archive
+from historical_raw_archive import LegacyArchiveSeed
+from raw_archive_fixtures import adopt_fixture_archive
 from congress_api.retention.raw_storage import RAW_KEY
 from congress_api.retention.catalog_publication import read_catalog
 from native_memory_helpers import memory_raw_storage
@@ -42,7 +44,7 @@ def worker(tmp_path):
 def owner(store):
     if not hasattr(store, '_native_raw'):
         store._native_raw = memory_raw_storage(store)
-        adopt_legacy_archive(store, store._native_raw, operation='explicit-cli-fixture-seed')
+        adopt_fixture_archive(store, store._native_raw, operation='explicit-cli-fixture-seed')
     return store._native_raw
 
 

@@ -318,6 +318,9 @@ def main(argv=None):
     except (ValueError, KeyError, TypeError) as error:
         parser.exit(1, f'Invalid status evidence: {error}\n')
     if args.verify_publication:
+        # Native readback reuses the same file/route owners as the publisher.
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts/publication'))
         from viewer_publication import verify as publication_verification
         control, live_observation, verify = (
             publication_verification.control,

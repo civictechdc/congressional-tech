@@ -1,5 +1,7 @@
 """Small, typed serving records. The full source export remains unchanged."""
 from datetime import datetime, timezone
+
+from viewer_publication.filename_compression import DEFAULT_COMPRESSION_POLICY, validate_compression
 import re
 import hashlib
 from contextlib import closing
@@ -48,17 +50,17 @@ def typed_value(name, values):
     return value
 
 
-def publish_details(source, path, *, observation_counts, policy=DEFAULT_DECODED_POLICY, metrics=None):
+def publish_details(source, path, *, observation_counts, policy=DEFAULT_DECODED_POLICY, metrics=None, compression_policy=DEFAULT_COMPRESSION_POLICY):
     metrics = metrics if metrics is not None else {}
     try:
         with owned_resources() as owned:
-            return _publish_details(source, path, owned, observation_counts, policy, metrics)
+            return _publish_details(source, path, owned, observation_counts, policy, metrics, compression_policy)
     except DecodedBudgetExceeded as error:
         failure_receipt(path.parent, error, policy, metrics)
         raise
 
 
-def _publish_details(source, path, owned, observation_counts, policy, metrics):
+def _publish_details(source, path, owned, observation_counts, policy, metrics, compression_policy):
     names = source.schema_arrow.names
     core = [name for name in CORE + ORIGIN if name in names]
     core += [name for name in names if name.startswith('content_')]
@@ -80,7 +82,7 @@ def _publish_details(source, path, owned, observation_counts, policy, metrics):
                 hasher.update(piece)
             hasher.update(b'\n')
     count = 0
-    with pq.ParquetWriter(path, schema, compression='zstd', compression_level=9, write_page_index=True) as writer:
+    with pq.ParquetWriter(path, schema, compression=validate_compression(compression_policy).codec, compression_level=compression_policy.level, write_page_index=True) as writer:
         staging = ArrowStager(writer, schema, policy=policy, metrics=metrics, stage='detail')
         columns = list(dict.fromkeys(core + typed + readings + [name for name in SAVED_FIELDS if name in names]))
         for batch in bounded_batches(source, columns=columns, policy=policy, stage='details', metrics=metrics):

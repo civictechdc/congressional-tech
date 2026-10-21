@@ -5,7 +5,7 @@ import threading
 import pytest
 
 from congress_api.acquisition.raw_sync import run_async
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
+from historical_raw_archive import LegacyArchiveSeed as Archive
 from congress_api.retention.capture_inspection import inspect_capture
 from test_raw_source_sync import response
 from test_async_capture import AsyncMemoryStore, receipts

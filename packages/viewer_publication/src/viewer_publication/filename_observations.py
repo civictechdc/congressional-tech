@@ -1,4 +1,4 @@
-"""Lossless, bounded reads of nested observations alongside the full Parquet.
+"""Lossless, bounded delivery of nested source and document observations.
 
 Repeated observations share a dictionary entry. Each block contains JSON with
 null struct fields omitted; the schema restores them on read. Large individual
@@ -25,23 +25,55 @@ def json_bytes(value):
     return json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode()
 
 
+class ObservationSequence:
+    """A repeatable typed sequence whose parts never join the whole Arrow list."""
+    def __init__(self, length, batches):
+        if type(length) is not int or length < 0 or not callable(batches):
+            raise ValueError('Invalid typed observation sequence')
+        self.length, self.batches = length, batches
+
+    def __len__(self): return self.length
+
+
 def observation_rows(source, *, policy, metrics, stage):
-    # The outer list remains in Arrow. Its actual row/batch Arrow limits still
-    # apply; Python admission belongs to each observation converted below.
-    for batch in bounded_batches(source, columns=['source_occurrences'], batch_rows=128,
-                                 policy=policy, stage=stage, metrics=metrics, python_values=False):
-        for scalar in batch.column(0):
-            if not scalar.is_valid:
-                yield None
-                continue
-            values = scalar.values
-            # References are the only Python list retained for the whole source
-            # row. Allow for list capacity, pointers and distinct Python ints.
+    def rows():
+        if hasattr(source, 'observation_rows'):
+            yield from source.observation_rows()
+            return
+        for batch in bounded_batches(source, columns=['source_occurrences'], batch_rows=128,
+                                     policy=policy, stage=stage, metrics=metrics, python_values=False):
+            for scalar in batch.column(0):
+                yield scalar.values if scalar.is_valid else None
+    for values in rows():
+        if values is not None:
+            # References, not converted observations, remain for the whole row.
             estimate = 64 + 48 * len(values)
             if estimate > policy.row_python_estimate:
                 refuse(stage, 'reference-list Python estimate', estimate, policy.row_python_estimate)
             maximum(metrics, 'max_reference_list_python_estimate', estimate)
-            yield values
+        yield values
+
+
+def observation_values(values, *, policy, metrics, stage, kind):
+    if values is None:
+        return
+    batches = values.batches() if isinstance(values, ObservationSequence) else (values,)
+    count = 0
+    for batch in batches:
+        if not isinstance(batch, pa.Array):
+            raise TypeError('Observation parts must be typed Arrow arrays')
+        if not batch.type.equals(kind, check_metadata=True):
+            raise ValueError('Typed observation part schema differs')
+        if batch.nbytes > policy.row_arrow_bytes:
+            refuse(stage, 'observation part Arrow bytes', batch.nbytes, policy.row_arrow_bytes)
+        maximum(metrics, 'max_observation_part_arrow_bytes', batch.nbytes)
+        for position in range(len(batch)):
+            count += 1
+            if count > len(values):
+                raise ValueError('Typed observation sequence length differs')
+            yield observation_value(batch, position, policy=policy, metrics=metrics, stage=stage)
+    if count != len(values):
+        raise ValueError('Typed observation sequence length differs')
 
 
 def observation_value(values, index, *, policy, metrics, stage):
@@ -142,7 +174,8 @@ def publish_observations(source, output, *, counts=None, policy=DEFAULT_DECODED_
 
 
 def _publish_observations(source, output, owned, counts, policy, metrics):
-    fields = [field.name for field in source.schema_arrow.field('source_occurrences').type.value_type]
+    kind = source.schema_arrow.field('source_occurrences').type.value_type
+    fields = [field.name for field in kind]
     observations = owned.enter_context(Blocks(output / 'observations.bin', policy=policy, metrics=metrics))
     references = owned.enter_context(Blocks(output / 'observation-rows.bin', row_limit=1024, policy=policy, metrics=metrics))
     temporary = owned.enter_context(tempfile.TemporaryDirectory(prefix='observation-identities-'))
@@ -153,8 +186,7 @@ def _publish_observations(source, output, owned, counts, policy, metrics):
     count = 0
     for values in observation_rows(source, policy=policy, metrics=metrics, stage='observations'):
         refs = None if values is None else []
-        for position in range(len(values) if values is not None else 0):
-            observation = observation_value(values, position, policy=policy, metrics=metrics, stage='observations')
+        for observation in observation_values(values, policy=policy, metrics=metrics, stage='observations', kind=kind):
             compact = None if observation is None else {key: value for key, value in observation.items() if value is not None}
             encoded = b''.join(json_chunks(compact, policy=policy, metrics=metrics))
             metrics['observation_serializations'] = metrics.get('observation_serializations', 0) + 1
@@ -181,7 +213,8 @@ def _publish_observations(source, output, owned, counts, policy, metrics):
 def verify_observations(source, output, index, *, policy=DEFAULT_DECODED_POLICY, metrics=None):
     """Check every value using a disk dictionary, decoding each block once."""
     metrics = metrics if metrics is not None else {}
-    fields = [field.name for field in source.schema_arrow.field('source_occurrences').type.value_type]
+    kind = source.schema_arrow.field('source_occurrences').type.value_type
+    fields = [field.name for field in kind]
     if index['fields'] != fields:
         raise ValueError('Observation schema changed.')
 
@@ -229,9 +262,8 @@ def verify_observations(source, output, index, *, policy=DEFAULT_DECODED_POLICY,
                 if expected is not None:
                     if not isinstance(refs, list) or len(refs) != len(expected):
                         raise ValueError('Observation publication changed source values.')
-                    for position, ref in enumerate(refs):
-                        value = observation_value(expected, position, policy=policy, metrics=metrics,
-                                                  stage='observation verification')
+                    for ref, value in zip(refs, observation_values(expected, policy=policy, metrics=metrics,
+                                                 stage='observation verification', kind=kind), strict=True):
                         if type(ref) is not int or ref < 0:
                             raise ValueError('Invalid observation reference.')
                         metrics['verification_lookups'] = metrics.get('verification_lookups', 0) + 1

@@ -10,7 +10,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 
-DOCS = Path(__file__).resolve().parents[2] / 'news-lake' / 'docs'
+DOCS = Path(__file__).resolve().parents[1] / 'docs'
 DOCS_SCHEMA = DOCS / 'schema' / 'news-lake.schema.json'
 DOCS_FIXTURES = DOCS / 'examples' / 'records.jsonl'
 

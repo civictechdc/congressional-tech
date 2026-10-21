@@ -62,7 +62,7 @@ from test_docspec_boundary import native
 
 def test_actual_native_recurring_ambiguity_matches_maintained_full_reference(tmp_path, native, monkeypatch):
     from test_raw_source_sync import MemoryStore
-    from congress_api.retention.raw_catalog import rebuild_catalog
+    from historical_raw_catalog import rebuild_catalog
     from catalog_test_helpers import selected_path
     store = SelectorStore()
     raw = RawStorage(store, native, max_capture_rows=2)

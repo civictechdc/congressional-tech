@@ -150,3 +150,30 @@ def test_resume_validator_and_bootstrap_are_in_release_identity():
     files = source_files(ROOT)
     assert 'packages/viewer_publication/src/viewer_publication/resume.py' in files
     assert 'scripts/publication/prepare_workflow_resume.py' in files
+
+
+def test_new_preparation_requires_native_runtime_while_resume_and_noop_skip_it(tmp_path):
+    steps=workflow()['jobs']['publish']['steps']
+    guard=next(step for step in steps if step.get('name')=='Require approved native runtime for preparation')
+    prepare=next(step for step in steps if step.get('id')=='prepare')
+    assert guard['if']==prepare['if']
+    assert '--native-config "$DOCSPEC_RUNTIME_CONFIG"' in prepare['run']
+    # Execute the current workflow shell in a minimal checkout, without any
+    # inherited runtime/provider credentials or installed-checkout package paths.
+    relative=Path('.github/scripts/setup-native-runtime.py')
+    setup=tmp_path/relative
+    setup.parent.mkdir(parents=True)
+    original=(ROOT/relative).read_bytes()
+    setup.write_bytes(original)
+    env=dict(PATH=str(Path(sys.executable).parent)+os.pathsep+os.defpath,
+        PYTHONPATH=str(ROOT/'packages/congress_api/src'),PYTHONDONTWRITEBYTECODE='1',
+        HOME=str(tmp_path),RUNNER_TEMP=str(tmp_path),GITHUB_ENV=str(tmp_path/'github-env'),
+        AWS_EC2_METADATA_DISABLED='true')
+    result=subprocess.run(['bash','-e','-c',guard['run']],cwd=tmp_path,
+        env=env,capture_output=True,text=True,timeout=10)
+    assert result.returncode==1
+    assert result.stderr=='Native runtime setup refused: Runtime artifact descriptor must be valid JSON\n'
+    assert result.stdout==''
+    assert setup.read_bytes()==original
+    assert {path.relative_to(tmp_path) for path in tmp_path.rglob('*')}=={
+        Path('.github'),Path('.github/scripts'),relative}

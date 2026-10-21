@@ -1,7 +1,7 @@
 ---
 id: ct-si9g
-status: in_progress
-deps: [ct-l5q1]
+status: closed
+deps: [ct-l5q1, ct-rcs8, ct-upte]
 links: []
 created: 2026-10-20T02:20:21Z
 type: task
@@ -43,3 +43,19 @@ Coalesced dependency storage and closed grouping proofs are reviewed and locally
 **2026-10-20T04:22:09Z**
 
 Maintained native update caller and bounded reverse membership construction are reviewed and merged locally through 7b2d5f5. Independent 21 checks passed including actual native typed storage, bridge split and prepared-proof resume. Exact v1 adoption, retained receipt contributions and complete large-scope resume remain open.
+
+**2026-10-20T04:49:46Z**
+
+Reviewed native adoption, exact source change cursors, directed receipt dependencies and URL lookups integrated. Actual native catalog adoption/update: 21 tests; source observation/cursor: 13 tests. Integration exposed a fresh-host lookup schema restoration mismatch; fix underway. Complete receipt-derived contributions and normal update dispatch remain open.
+
+**2026-10-20T05:34:22Z**
+
+Normal raw-to-catalog dispatch now retains source-observation proofs in the same conditional catalog selection. Nullable logical additions preserve old native pins and exact old types. Exact deletion-set regression fixed. Package membership, contribution adoption, bounded large-scope resume and explicit upgrades remain open.
+
+**2026-10-20T07:20:03Z**
+
+Reviewed source replay/closure checkpoints, paged20,000-deletion proofs, additive-schema retry and completed grouping summaries are integrated. Combined backend/viewer suite:118 passed123.11s; root bounded-input suite35 passed11.06s. Scratch grouping and final row emission still repeat; a single document must fit the existing byte limit. Full production table qualification remains open.
+
+**2026-10-20T16:02:11Z**
+
+Implemented and independently reviewed: affected dependency closure, disk-backed receipt replay, bounded native chunks and completed group summaries preserve every source/document field and ID. Fixed-change reads are 18 for both measured 4/40 fixtures; affected leaf bytes still grow. Full current-corpus source qualification remains required under ct-2ukk. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.

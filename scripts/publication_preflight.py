@@ -142,9 +142,14 @@ def preflight(reader,identity,*,publisher_version):
     location=pointer.get('manifest','')
     if not re.fullmatch(r'releases/[a-f0-9]{32}/manifest.json',location):raise ValueError('Invalid selected immutable manifest')
     manifest_record=reader.read(PREFIX+location);manifest=manifest_record['value']
+    native=manifest.get('version')==6
+    basis_matches=(inputs.get('version')==2 and inputs.get('source_identity')==manifest.get('source_identity')
+        and pointer.get('source_identity')==manifest.get('source_identity') and inputs.get('roots')==manifest.get('roots')
+        and manifest['source_identity']['selector_sha256']==source['sha256']
+        and manifest['source_identity']['selected_ref']==source['value'].get('selection')) if native else (
+        inputs.get('files')=={name:manifest['files'][name]['sha256'] for name in ('filenames','groups')})
     if (manifest_record['sha256']!=inputs.get('viewer_manifest_sha256') or manifest.get('source_manifest')!=source['value']
-            or manifest.get('info',{}).get('catalog_id')!=pointer.get('catalog_id')
-            or inputs.get('files')!={name:manifest['files'][name]['sha256'] for name in ('filenames','groups')}):
+            or manifest.get('info',{}).get('catalog_id')!=pointer.get('catalog_id') or not basis_matches):
         raise ValueError('Selected immutable manifest input identity differs')
     descriptor=pointer.get('recovery',{})
     if (not isinstance(descriptor,dict) or not re.fullmatch(r'releases/[a-f0-9]{32}/[a-f0-9]{32}/viewer-v2/recovery-status.json',descriptor.get('path',''))
@@ -154,7 +159,9 @@ def preflight(reader,identity,*,publisher_version):
     if len(recovery['raw'])!=descriptor['bytes'] or recovery['sha256']!=descriptor.get('sha256'):
         raise ValueError('Selected recovery status length/hash differs')
     index=recovery['value']
-    if index.get('version')!=1 or index.get('catalog_id')!=pointer.get('catalog_id'):
+    if (index.get('version')!=(2 if native else 1) or index.get('catalog_id')!=pointer.get('catalog_id')
+            or native and (index.get('source_identity')!=manifest['source_identity']
+                          or any(index.get(key)!=manifest['info'][key] for key in ('rows','entries')))):
         raise ValueError('Selected recovery status catalog differs')
     public,cors=reader.public(descriptor['path'],kind='recovery')
     if public!=recovery['raw'] or cors!='*':raise ValueError('Public recovery bytes or CORS differs')

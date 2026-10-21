@@ -129,7 +129,7 @@ test('static Parquet queries match the Python catalog and preserve complete sour
 
     assert.deepEqual((await reader.entry('2')).origin.pages[0].titles, ['Hearing page']);
     await assert.rejects(reader.entry('0', 'stale'), /older file list/);
-    await assert.rejects(reader.entry('unknown'), /not present/);
+    await assert.rejects(reader.entry('unknown'), /not in the current file list/);
     await assert.rejects(reader.search({field:'missing'}), /Unknown search field/);
     const controller = new AbortController(); controller.abort();
     await assert.rejects(reader.search({q:'anything'}, controller.signal), {name:'AbortError'});

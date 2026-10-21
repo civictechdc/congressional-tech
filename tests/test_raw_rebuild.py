@@ -10,7 +10,7 @@ import pytest
 
 from congress_api.retention import document_index as index
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, CAPTURES_KEY, STATE_KEY, STATE_SCHEMA, encode_table
-from congress_api.retention.raw_catalog import rebuild_catalog, FILENAMES, DOCUMENTS
+from historical_raw_catalog import rebuild_catalog, FILENAMES, DOCUMENTS
 from test_raw_source_sync import MemoryStore
 from test_raw_catalog import table, initialize
 
@@ -253,7 +253,7 @@ def test_receipt_replay_groups_noncontiguous_rows_without_losing_fields():
 def test_rebuild_releases_capture_index_before_filename_interpretation(tmp_path, monkeypatch):
     import gc
     import weakref
-    from congress_api.retention import raw_catalog
+    import historical_raw_catalog as raw_catalog
 
     store = initialize(tmp_path)
     retain(store, {'url': 'https://example.gov/new.pdf'}, family='documents',

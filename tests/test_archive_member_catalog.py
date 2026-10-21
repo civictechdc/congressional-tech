@@ -3,8 +3,8 @@ import asyncio
 import json
 
 from congress_api.acquisition.raw_sync import run_async
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
-from congress_api.retention.raw_catalog import rebuild_catalog
+from historical_raw_archive import LegacyArchiveSeed as Archive
+from historical_raw_catalog import rebuild_catalog
 from test_archive_member_capture import URL, zip_bytes, response
 from test_async_capture import receipts
 from test_raw_catalog import table

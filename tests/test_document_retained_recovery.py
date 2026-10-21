@@ -205,7 +205,7 @@ def test_anonymous_xml_body_cache_replays_without_rereading(tmp_path):
 
 
 def test_recurring_catalog_replays_old_consumed_receipts_and_new_attempts(tmp_path):
-    from congress_api.retention.raw_catalog import rebuild_catalog, FILENAMES, DOCUMENTS
+    from historical_raw_catalog import rebuild_catalog, FILENAMES, DOCUMENTS
     from congress_api.retention.raw_archive import CAPTURE_SCHEMA
     from test_raw_source_sync import MemoryStore
 

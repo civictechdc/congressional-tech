@@ -6,7 +6,7 @@ from pathlib import Path
 from congress_api.retention import document_index as index
 from congress_api.retention.catalog_cache import LocalStore
 from congress_api.retention.catalog_publication import publish_catalog, read_catalog
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
+from historical_raw_archive import LegacyArchiveSeed as Archive
 from test_raw_source_sync import MemoryStore
 
 

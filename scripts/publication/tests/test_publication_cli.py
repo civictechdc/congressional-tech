@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path[:0] = [str(ROOT/'scripts/publication')]
+sys.path[:0] = [str(ROOT/'scripts/publication'),str(ROOT/'apps/site/scripts')]
 import publication_cli as cli
 import viewer_publication.attempt as attempts
 
@@ -23,6 +23,8 @@ def descriptor():
     (['publish','--directory','new','--resume'], 'required together'),
     (['publish','--directory','new'], 'requires original artifact'),
     (['describe-attempt'], 'requires --repository'),
+    (['verify-prepared','--directory','new','--renderer-upgrade'], 'require prepare'),
+    (['prepare','--directory','new','--resume-preparation'], 'requires --renderer-upgrade'),
 ])
 def test_invalid_command_combinations_fail_before_client_and_replace_report(tmp_path, monkeypatch, arguments, diagnostic):
     for name in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_REPOSITORY'):
@@ -121,3 +123,16 @@ def test_missing_or_malformed_artifact_expiry_never_means_unexpired(monkeypatch,
     monkeypatch.setattr(attempts,'github_json',github)
     with pytest.raises(ValueError,match='Expected one original'):
         attempts.lookup_attempt('fixture/repo','123')
+
+
+def test_explicit_upgrade_flags_reach_existing_preparation(tmp_path,monkeypatch):
+    calls=[]
+    monkeypatch.delenv('DOCSPEC_CONFIG',raising=False)
+    monkeypatch.setattr(cli,'make_client',lambda:'fixture-client')
+    def prepare(*args,**options):
+        calls.append((args,options));return {'status':'prepared'}
+    monkeypatch.setattr(attempts,'prepare',prepare)
+    assert cli.main(SimpleNamespace(PUBLIC_URL='fixture-public'),['prepare','--directory',str(tmp_path),
+        '--run-id','upgrade','--run-attempt','1','--renderer-upgrade','--resume-preparation'])==0
+    assert calls[0][1]==dict(run_id='upgrade',run_attempt='1',public_url='fixture-public',
+        renderer_upgrade=True,resume_preparation=True)

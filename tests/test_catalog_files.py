@@ -171,7 +171,7 @@ def test_history_collision_verifies_remote_contents_by_stream(tmp_path):
 
 def test_previous_snapshot_paths_stay_alive_through_history_then_close(tmp_path, monkeypatch):
     from test_raw_catalog import initialize
-    from congress_api.retention.raw_catalog import rebuild_catalog
+    from historical_raw_catalog import rebuild_catalog
     store = initialize(tmp_path)
     original_read, original_put = store.read_derived_file, store.put_derived_file
     owned, archived = [], []

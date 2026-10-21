@@ -3,12 +3,8 @@
 import json
 import pyarrow as pa
 import pytest
-from congress_api.retention.raw_archive import (
-    LegacyArchiveSeed as Archive,
-    CAPTURE_SCHEMA,
-    STATE_KEY,
-    encode_table,
-)
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_KEY, encode_table
+from historical_raw_archive import LegacyArchiveSeed as Archive
 from test_raw_source_sync import MemoryStore, response
 
 URL = "https://www.govinfo.gov/content/pkg/CHRG-118hhrg56269/pdf/CHRG-118hhrg56269.pdf"

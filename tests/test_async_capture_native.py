@@ -13,7 +13,7 @@ from aiobotocore.session import get_session
 from botocore.config import Config
 
 from congress_api.acquisition.raw_sync import run_async
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
+from historical_raw_archive import LegacyArchiveSeed as Archive
 from congress_api.retention.r2 import AsyncBodies
 from test_raw_source_sync import MemoryStore, response
 

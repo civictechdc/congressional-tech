@@ -7,8 +7,9 @@ import pyarrow as pa
 import pytest
 
 from congress_api.retention import document_index as index
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, STATE_KEY, decode_table
-from congress_api.retention.raw_catalog import rebuild_catalog
+from congress_api.retention.raw_archive import STATE_KEY, decode_table
+from historical_raw_archive import LegacyArchiveSeed as Archive
+from historical_raw_catalog import rebuild_catalog
 from test_raw_catalog import table
 from test_raw_rebuild import retain
 from test_raw_source_sync import MemoryStore
@@ -133,9 +134,16 @@ def test_filename_cache_independent_of_body_fields_and_negative_cover_is_cached(
     assert len(calls) == 2
 
 
-def test_saved_download_state_does_not_reload_unchanged_filename_table():
+def test_saved_download_state_does_not_reload_unchanged_filename_table(tmp_path):
+    from congress_api.retention.raw_archive import Archive as NativeArchive
+    from native_memory_helpers import memory_raw_storage
+    from raw_archive_fixtures import adopt_fixture_archive
+    from test_native_catalog_selection import seed
     store = MemoryStore()
-    first = Archive(store, "first")
+    owner = memory_raw_storage(store)
+    adopt_fixture_archive(store, owner, operation='explicit-fixture')
+    seed(tmp_path, store, owner.native)
+    first = NativeArchive(store, "first", storage=owner)
     first.seed({"url": "https://example.gov/a.pdf"})
     first.save()
     original = store.read
@@ -145,14 +153,16 @@ def test_saved_download_state_does_not_reload_unchanged_filename_table():
         return original(key)
 
     store.read = read
-    resumed = Archive(store, "second")
+    resumed = NativeArchive(store, "second", storage=owner)
     assert resumed.state == {
-        row["url"]: row for row in decode_table(store.objects[STATE_KEY]).to_pylist()
+        row["url"]: row for row in owner.snapshot().states().to_pylist()
     }
+    assert STATE_KEY not in store.writes
+
 
 
 def test_parser_change_reuses_metadata_until_explicit_repair(monkeypatch):
-    from congress_api.retention import raw_catalog
+    import historical_raw_catalog as raw_catalog
 
     store = MemoryStore()
     receipt = retain(

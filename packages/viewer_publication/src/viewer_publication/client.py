@@ -60,7 +60,7 @@ class GuardedPublicationClient:
     def immutable_write(kwargs):
         return (kwargs.get('IfNoneMatch') == '*' and
                 kwargs['Key'].startswith(('catalog-generations/', 'catalog-history/sha256/',
-                    'indexes/processing/body-results/', 'viewer-publications/releases/',
+                    'indexes/processing/body-results/', 'indexes/native-manifests/', 'viewer-publications/releases/',
                     'viewer-publications/catalogs/', 'viewer-publications/attempts/')))
 
     @contextmanager
@@ -124,10 +124,13 @@ class GuardedPublicationClient:
     def put_object(self, **kwargs):
         local_validation = kwargs.pop('_local_validation', None)
         key = kwargs['Key']
+        native_metadata = key.startswith('indexes/native-manifests/')
         if not (key.startswith(('catalog-generations/', 'catalog-history/sha256/',
-                                'indexes/processing/', 'viewer-publications/'))
+                                'indexes/processing/', 'viewer-publications/')) or native_metadata
                 or key == 'indexes/catalog.json'):
             raise ValueError('Publication cannot write raw/source object: ' + key)
+        if native_metadata and (kwargs.get('IfNoneMatch') != '*' or kwargs.get('IfMatch')):
+            raise ValueError('Native catalog metadata is immutable')
         if not kwargs.get('IfMatch') and kwargs.get('IfNoneMatch') != '*':
             raise ValueError('Publication write requires an explicit condition')
         body = kwargs['Body']
@@ -149,6 +152,12 @@ class GuardedPublicationClient:
                     digestor.update(chunk)
                 body.seek(start)
                 digest = digestor.hexdigest()
+        if native_metadata:
+            parts = key.split('/')
+            if (len(parts) != 4 or not parts[2]
+                    or any(char not in 'abcdefghijklmnopqrstuvwxyz0123456789-' for char in parts[2])
+                    or parts[3] != digest + '.json'):
+                raise ValueError('Native catalog metadata identity differs from its key')
 
         def verify():
             response = self.client.get_object(Bucket=kwargs['Bucket'], Key=key)

@@ -5,7 +5,8 @@ import json
 import pyarrow as pa
 import pytest
 
-from congress_api.retention.raw_archive import Archive, adopt_legacy_archive, CAPTURE_SCHEMA
+from congress_api.retention.raw_archive import Archive, CAPTURE_SCHEMA
+from raw_archive_fixtures import adopt_fixture_archive
 from native_memory_helpers import memory_raw_storage
 import test_raw_source_sync as policy
 
@@ -15,7 +16,7 @@ def archive_factory(monkeypatch):
     def create(store, run_id, **kwargs):
         if not hasattr(store, '_native_raw'):
             store._native_raw = memory_raw_storage(store)
-            adopt_legacy_archive(store, store._native_raw, operation='explicit-fixture-seed')
+            adopt_fixture_archive(store, store._native_raw, operation='explicit-fixture-seed')
         return Archive(store, run_id, storage=store._native_raw, **kwargs)
     monkeypatch.setattr(policy, 'Archive', create)
     return create
@@ -79,7 +80,7 @@ def test_real_native_archive_roundtrip_and_unchanged_restart(tmp_path):
     store = SelectorStore()
     native = native_test_client(binary, tmp_path / 'native')
     owner = RawStorage(store, native)
-    adopt_legacy_archive(store, owner, operation='explicit-empty-seed')
+    adopt_fixture_archive(store, owner, operation='explicit-empty-seed')
     archive = Archive(store, 'actual-native', storage=owner)
     url = 'https://example.gov/a.pdf'
     archive.record(policy.response(url, b'%PDF-1.7\n%%EOF'), outcome='saved', links=[])
@@ -142,7 +143,7 @@ def test_archive_preserves_richer_adopted_state_on_correction_and_restart():
     store = policy.MemoryStore()
     store.objects[STATE_KEY] = encode_table(prior)
     owner = memory_raw_storage(store, state_schema=schema)
-    adopt_legacy_archive(store, owner, operation='explicit-rich-seed')
+    adopt_fixture_archive(store, owner, operation='explicit-rich-seed')
     archive = Archive(store, 'correct-rich', storage=owner)
     archive.record(policy.response(url, b'%PDF-1.7\n%%EOF'), outcome='saved', links=[])
     archive.save()
@@ -207,7 +208,7 @@ def test_archive_consumes_real_retained_catalog_scope_chain_and_unchanged_reads_
     from test_raw_storage import SelectorStore
     store = SelectorStore()
     owner = memory_raw_storage(store, max_state_rows=3)
-    adopt_legacy_archive(store, owner, operation='explicit-empty')
+    adopt_fixture_archive(store, owner, operation='explicit-empty')
     dependencies, rows = seed(tmp_path, store, owner.native)
     initial = Archive(store, 'initial-catalog', storage=owner)
     initial.save()

@@ -9,8 +9,8 @@ import pyarrow.parquet as pq
 from congress_api.acquisition.raw_sync import run_sync
 from congress_api.retention.capture_metadata import MetadataWriter
 from congress_api.retention.document_index import validated_body_readings
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
-from congress_api.retention.raw_catalog import rebuild_catalog
+from historical_raw_archive import LegacyArchiveSeed as Archive
+from historical_raw_catalog import rebuild_catalog
 from test_raw_catalog import table
 from test_raw_source_sync import MemoryStore, response
 from catalog_test_helpers import selected_path

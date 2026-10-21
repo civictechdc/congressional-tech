@@ -16,8 +16,8 @@ import json
 import re
 from pathlib import Path
 
-DEFAULT_DESCRIPTOR_NAME = 'document-review-publication.json'
-_UNSET = object()
+IDENTITIES = Path(__file__).resolve().parents[4] / 'apps/site/document-review-identities.json'
+DESCRIPTOR = IDENTITIES.with_name('document-review-publication.json')
 
 
 def validate_identities(value, descriptor=None):
@@ -48,12 +48,10 @@ def validate_identities(value, descriptor=None):
     return value
 
 
-def load_identities(path, *, descriptor=_UNSET):
+def load_identities(path=IDENTITIES, *, descriptor=DESCRIPTOR):
     path = Path(path)
     if not path.is_file():
         raise ValueError(f'Required review identity file is missing: {path}')
-    if descriptor is _UNSET:
-        descriptor = path.with_name(DEFAULT_DESCRIPTOR_NAME)
     identities = json.loads(path.read_text())
     return validate_identities(identities, json.loads(Path(descriptor).read_text()) if descriptor else None)
 
@@ -75,17 +73,60 @@ def bind(catalog, identities):
     rows, withdrawn = [], []
     for item in identities['rows']:
         entry = entries.get(item['document_id'])
-        if entry is None:
-            reason = 'document_missing'
-        elif sorted(source_ids[row].as_py() for row in catalog.members[entry]) != sorted(item['source_ids']):
-            reason = 'sources_changed'
-        elif body_keys[entry].as_py() != item['body_key']:
-            reason = 'body_changed'
-        else:
+        reason = withdrawal_reason(exists=entry is not None,
+            sources_match=entry is not None and sorted(source_ids[row].as_py() for row in catalog.members[entry]) == sorted(item['source_ids']),
+            body_matches=entry is not None and body_keys[entry].as_py() == item['body_key'])
+        if reason is None:
             rows.append(dict(index=item['index'], group=position[entry], sources=list(catalog.members[entry])))
             continue
         withdrawn.append(dict(index=item['index'], document_id=item['document_id'], reason=reason))
     return dict(version=1, review_sha256=identities['review_sha256'], catalog_id=catalog.info['catalog_id'],
+                rows=rows, withdrawn=withdrawn)
+
+
+def withdrawal_reason(*, exists, sources_match, body_matches):
+    """The maintained document/member/body policy, independent of placement."""
+    if not exists:
+        return 'document_missing'
+    if not sources_match:
+        return 'sources_changed'
+    if not body_matches:
+        return 'body_changed'
+    return None
+
+
+def bind_selected(catalog_id, identities, component_lookup, *, previous=None):
+    """Place reviews by stable IDs using retained exact membership proofs."""
+    from congress_api.retention.catalog_validation import catalog_source_ids_digest
+    validate_identities(identities)
+    prior = {}
+    if previous is not None:
+        if previous.get('version') not in (1, 2) or previous.get('review_sha256') != identities['review_sha256']:
+            raise ValueError('Changed review input requires an explicit new review policy')
+        expected = {item['index']: item for item in identities['rows']}
+        for item in previous['withdrawn']:
+            original = expected.get(item['index'])
+            if (original is None or item['index'] in prior or item['document_id'] != original['document_id']
+                    or previous['version'] == 2 and item['source_ids'] != original['source_ids']
+                    or item['reason'] not in ('document_missing', 'sources_changed', 'body_changed')):
+                raise ValueError('Invalid retained review withdrawal')
+            prior[item['index']] = dict(item, source_ids=original['source_ids'])
+    rows, withdrawn = [], []
+    for item in identities['rows']:
+        if item['index'] in prior:
+            withdrawn.append(dict(prior[item['index']]))
+            continue
+        component = component_lookup(item['document_id'])
+        reason = withdrawal_reason(exists=component is not None,
+            sources_match=component is not None and component['source_ids_sha256'] ==
+                catalog_source_ids_digest(iter(sorted(item['source_ids']))),
+            body_matches=component is not None and component['body_key'] == item['body_key'])
+        if reason is None:
+            rows.append(dict(index=item['index'], document_id=item['document_id'], source_ids=item['source_ids']))
+        else:
+            withdrawn.append(dict(index=item['index'], document_id=item['document_id'], reason=reason,
+                                  source_ids=item['source_ids']))
+    return dict(version=2, review_sha256=identities['review_sha256'], catalog_id=catalog_id,
                 rows=rows, withdrawn=withdrawn)
 
 
@@ -120,15 +161,14 @@ def main():
     parser = argparse.ArgumentParser(description='Record stable review identities from a verified review publication.')
     parser.add_argument('reviews', type=Path, help='reviews.json of the pinned review publication')
     parser.add_argument('filenames', type=Path, help='document-filenames.parquet of the exact catalog the reviews name')
-    parser.add_argument('--output', type=Path, default=Path('apps/site/document-review-identities.json'))
-    parser.add_argument('--descriptor', type=Path)
-    parser.add_argument('--viewer', type=Path, default=Path('docs/youtube-coverage/research/scripts/view_document_filenames.py'))
+    parser.add_argument('--output', type=Path, default=IDENTITIES)
+    parser.add_argument('--descriptor', type=Path, default=DESCRIPTOR)
     args = parser.parse_args()
-    descriptor_path = args.descriptor or args.output.with_name(DEFAULT_DESCRIPTOR_NAME)
-    spec = importlib.util.spec_from_file_location('filename_viewer', args.viewer)
+    viewer_path = Path(__file__).resolve().parents[4] / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
+    spec = importlib.util.spec_from_file_location('filename_viewer', viewer_path)
     viewer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(viewer)
-    descriptor = json.loads(descriptor_path.read_text())
+    descriptor = json.loads(args.descriptor.read_text())
     reviews = pinned_reviews(args.reviews, descriptor)
     with viewer.Catalog(args.filenames, search_indexes=False) as catalog:
         identities = validate_identities(identities_from(catalog, reviews), descriptor)

@@ -83,3 +83,95 @@ def test_live_observation_uses_explicit_checkout_for_node_verifier(tmp_path, mon
     monkeypatch.setattr(verification.subprocess, 'run', run)
     assert verification.live_observation('https://viewer.test/', 'https://pages.test/', descriptor,
                                          root=checkout, node='fixture-node') == expected
+
+
+@pytest.fixture
+def native_observed(tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[3] / 'apps/site/scripts'))
+    from viewer_publication.filename_native import ViewerAssets, publication_basis
+    from congress_api.retention.immutable_metadata import encoded
+    source, value, _ = observed(tmp_path)
+    assets = ViewerAssets(tmp_path / 'public')
+    document = assets.put_file(tmp_path / 'documents.parquet', name='documents.parquet')
+    document['rows'] = 1
+    component = assets.put_node(dict(kind='component-leaf', prefix='', members={
+        'a' * 64: dict(document_file=document)}))
+    component.update(native_sha256='2' * 64, stats=dict(entries=1, source_rows=1))
+    source_root = dict(native_sha256='1' * 64, stats=dict(rows=1))
+    selected = dict(counts=dict(source_rows=1, document_rows=1),
+                    dependency=dict(source_root=dict(sha256='1' * 64)), components=dict(sha256='2' * 64))
+    selection = assets.put_node(selected)
+    source = dict(version=2, selection=dict(key='selected.json', bytes=selection['bytes'], sha256=selection['sha256']))
+    identity = dict(selected_ref=source['selection'], selector_sha256=hashlib.sha256(encoded(source)).hexdigest())
+    manifest = dict(version=6, source_manifest=source, source_identity=identity, source_selection=selection,
+        roots=dict(sources=source_root, components=component, browse=dict(rows=1)), requirements={}, files={},
+        info=dict(catalog_id='catalog', rows=1, entries=1))
+    manifest['proof'] = assets.put_node(dict(version=1, kind='viewer-proof', publication=publication_basis(manifest)))
+    value.update(manifest=manifest, observations=[dict(url=value['manifest_url'], sha256='5' * 64)],
+        pointer=dict(catalog_id='catalog', source_manifest=source, source_identity=identity,
+        recovery=dict(sha256='3' * 64), recovery_inputs=dict(version=2, source_identity=identity, roots=manifest['roots'],
+            raw_manifest_sha256=identity['selector_sha256'], viewer_manifest_sha256='5' * 64, accepted=dict(sha256='4' * 64))),
+        recovery_identity=dict(source_identity=identity, sha256='3' * 64, accepted_sha256='4' * 64))
+    requests = []
+    def read(location, **options):
+        from urllib.parse import urlsplit
+        requests.append(str(location))
+        return verification.control(assets.root / urlsplit(str(location)).path.lstrip('/'), **options)
+    return source, value, read, requests, assets
+
+
+def test_native_verification_reads_reviewed_document_partitions_by_exact_identity(native_observed):
+    source, value, read, requests, _ = native_observed
+    result = verification.verify(source, value, current_raw=True, read=read,
+        raw_digest=value['manifest']['source_identity']['selector_sha256'],
+        expected_raw_digest=value['manifest']['source_identity']['selector_sha256'])
+    assert result['status'] == 'verified'
+    differences = next(item['detail'] for item in result['checks'] if item['check'] == 'document_category_readback')
+    assert differences['documents'][0]['catalog']['document_kind'] == ['bill']
+    assert differences['documents'][0]['different_from_review_baseline'] is True
+    assert len([url for url in requests if url.endswith('.parquet')]) == 1
+    assert value['withdrawn'] == differences['withdrawn']
+
+
+def test_native_reused_partition_keeps_its_original_catalog_metadata(native_observed):
+    _, value, read, _, assets = native_observed
+    from viewer_publication.filename_native import publication_basis
+    value['manifest']['info']['catalog_id'] = 'new-catalog'
+    value['manifest']['proof'] = assets.put_node(dict(version=1, kind='viewer-proof', publication=publication_basis(value['manifest'])))
+    value['pointer']['catalog_id'] = 'new-catalog'
+    result = verification.catalog_differences(value, read=read)
+    assert result['state'] == 'passed'
+    assert result['documents'][0]['document_id'] == 'a' * 64
+
+
+@pytest.mark.parametrize('damage', ['pointer', 'selector', 'root', 'partition', 'recovery', 'accepted'])
+def test_native_mixed_or_stale_identity_never_verifies(native_observed, damage):
+    source, value, read, _, assets = native_observed
+    if damage == 'pointer':
+        value['pointer']['source_identity'] = dict(value['pointer']['source_identity'], selector_sha256='wrong')
+    elif damage == 'selector':
+        source = dict(source, selection=dict(source['selection'], sha256='0' * 64))
+    elif damage == 'root':
+        value['manifest']['roots']['components']['native_sha256'] = '0' * 64
+    elif damage == 'recovery':
+        value['recovery_identity']['source_identity'] = dict(value['recovery_identity']['source_identity'], selector_sha256='wrong')
+    elif damage == 'accepted':
+        value['recovery_identity']['accepted_sha256'] = 'wrong'
+    else:
+        file = next(assets.root.rglob('documents.parquet'))
+        raw = file.read_bytes()
+        file.write_bytes(raw[:10] + bytes([raw[10] ^ 1]) + raw[11:])
+    digest = value['manifest']['source_identity']['selector_sha256']
+    if damage in {'root', 'partition'}:
+        with pytest.raises(ValueError, match='retained selection proof|pinned bytes/hash'):
+            verification.verify(source, value, current_raw=True, read=read, raw_digest=digest, expected_raw_digest=digest)
+        return
+    result = verification.verify(source, value, current_raw=True, read=read, raw_digest=digest, expected_raw_digest=digest)
+    assert result['status'] == 'failed'
+
+
+def test_native_category_readback_keeps_finite_byte_budget(native_observed):
+    _, value, read, requests, _ = native_observed
+    result = verification.catalog_differences(value, max_bytes=1, read=read)
+    assert result['state'] == 'pending'
+    assert requests == []

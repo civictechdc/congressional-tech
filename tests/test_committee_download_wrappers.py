@@ -16,7 +16,7 @@ from congress_api.parsers.committee_pages import parse_event_page, document_grou
 from congress_api.parsers.document_links import document_links
 from congress_api.parsers.senate import parse_page
 from congress_api.parsers.senate_page import document_labels
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
+from historical_raw_archive import LegacyArchiveSeed as Archive
 from test_document_link_probe import response as probe_response
 from test_raw_source_sync import MemoryStore, response
 

@@ -9,9 +9,8 @@ from zipfile import ZipFile
 import pytest
 
 from congress_api.models.content import CapturedBody
-from congress_api.retention.raw_archive import (
-    LegacyArchiveSeed as Archive, BodyLimitExceeded, metadata_body_keys, prepare_capture,
-)
+from congress_api.retention.raw_archive import BodyLimitExceeded, metadata_body_keys, prepare_capture
+from historical_raw_archive import LegacyArchiveSeed as Archive
 from test_raw_source_sync import MemoryStore
 
 

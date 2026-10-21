@@ -32,7 +32,8 @@ def test_complete_adoption_uses_exact_sources_and_streaming_owner(tmp_path,monke
     from congress_api.retention import raw_archive
     store,owner,options,captures,states=setup(tmp_path)
     original=dict(store.objects)
-    monkeypatch.setattr(raw_archive,'LegacyArchiveSeed',lambda *a,**k:pytest.fail('Full compatibility reconstruction'))
+    assert not hasattr(raw_archive, 'LegacyArchiveSeed')
+    monkeypatch.setattr(raw_archive,'LegacyArchiveSeed',lambda *a,**k:pytest.fail('Full compatibility reconstruction'), raising=False)
     owner.readings.prepare=lambda *a,**k:pytest.fail('All-body dictionary')
     selected=raw_adoption.adopt_archive(owner,**options)
     assert selected.captures().equals(captures) and selected.states().equals(states)

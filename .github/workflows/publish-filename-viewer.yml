@@ -2,7 +2,7 @@ name: Publish filename viewer data to R2
 
 on:
   workflow_run:
-    workflows: ["Capture raw sources and rebuild document tables"]
+    workflows: ["Capture raw sources and update document tables"]
     types: [completed]
     branches: [main]
   schedule:
@@ -24,15 +24,35 @@ on:
       - 'apps/site/document-review-publication.json'
       - 'pyproject.toml'
       - 'uv.lock'
+      - 'packages/viewer_publication/src/viewer_publication/filename*.py'
       - 'scripts/publication_preflight.py'
       - 'scripts/tests/test_publication_preflight.py'
       - '.python-version'
       - '.github/actions/setup-python-project/action.yml'
       - 'scripts/viewer_release_identity.py'
       - 'scripts/publication/**'
+      - 'packages/viewer_publication/tests/test_viewer_publication_attempt.py'
+      - 'packages/viewer_publication/tests/test_recovery_publication_continuation.py'
+      - 'packages/viewer_publication/tests/test_guarded_recovery_publication_client.py'
+      - 'packages/viewer_publication/tests/test_recovery_viewer_transfers.py'
+      - 'scripts/publication/publish-viewer-r2.py'
+      - 'scripts/publication/publish-filename-viewer.py'
+      - 'scripts/publication/filename-test-fixture.py'
+      - 'packages/viewer_publication/src/viewer_publication/filename_observations.py'
+      - 'packages/viewer_publication/src/viewer_publication/filename_details.py'
+      - 'packages/viewer_publication/src/viewer_publication/filename_navigation.py'
+      - 'packages/viewer_publication/src/viewer_publication/filename_recoveries.py'
+      - 'packages/viewer_publication/tests/test_filename_recoveries.py'
+      - 'packages/viewer_publication/tests/test_filename_observations.py'
+      - 'packages/viewer_publication/tests/test_filename_details.py'
       - '.github/tests/test_filename_publication.py'
       - '.github/tests/test_viewer_r2.py'
       - '.github/workflows/publish-filename-viewer.yml'
+      - '.github/scripts/check-native-runtime.py'
+      - '.github/scripts/setup-native-runtime.py'
+      - '.github/docspec-remote.json'
+      - '.github/tests/test_native_runtime_setup.py'
+      - '.github/tests/test_native_runtime_preflight.py'
 
 permissions:
   contents: read
@@ -92,6 +112,8 @@ jobs:
         if: github.event_name == 'push' || steps.resume.outputs.resume == 'true' || steps.preflight.outputs.status == 'preparation_required'
         run: |
           tests=(
+            .github/tests/test_native_runtime_setup.py
+            .github/tests/test_native_runtime_preflight.py
             .github/tests/test_filename_publication.py
             .github/tests/test_viewer_r2.py
             packages/viewer_publication/tests/test_filename_recoveries.py
@@ -108,13 +130,21 @@ jobs:
           # Original attempts may predate the test relocation. Both routes stay
           # inside the exact selected checkout; no other checkout supplies tests.
           for index in "${!tests[@]}"; do
-            if [ ! -f "${tests[$index]}" ] && [ -f "apps/site/tests/${tests[$index]##*/}" ]; then
-              tests[$index]="apps/site/tests/${tests[$index]##*/}"
-            elif [ ! -f "${tests[$index]}" ] && [ -f "tests/${tests[$index]##*/}" ]; then
+            if [ ! -f "${tests[$index]}" ] && [ -f "tests/${tests[$index]##*/}" ]; then
               tests[$index]="tests/${tests[$index]##*/}"
             fi
           done
           PYTHONPATH=scripts/publication:scripts python -m pytest -q "${tests[@]}"
+      - name: Require approved native runtime for preparation
+        if: steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+        run: >-
+          python .github/scripts/setup-native-runtime.py
+          --directory "$RUNNER_TEMP/docspec-runtime" --output native-runtime-check.json
+          --github-env "$GITHUB_ENV"
       - name: Prepare a changed catalog or recovery index
         id: prepare
         if: steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required'
@@ -122,7 +152,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: '174055408ff1560e60601c4d12c561c4'
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: python scripts/publication/publish-viewer-r2.py prepare --directory viewer-preparation --report viewer-publication.json
+        run: python scripts/publication/publish-viewer-r2.py prepare --native-config "$DOCSPEC_RUNTIME_CONFIG" --directory viewer-preparation --report viewer-publication.json
       - name: Accept preparation before any publication write
         id: accepted
         if: steps.prepare.outputs.status == 'prepared'
@@ -198,6 +228,7 @@ jobs:
             viewer-publication.json
             viewer-preflight.json
             viewer-job-cost.json
+            native-runtime-check.json
             viewer-preparation/continuation.json
             viewer-preparation/journal/
             viewer-preparation/journal-intents/

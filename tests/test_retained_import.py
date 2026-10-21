@@ -8,7 +8,7 @@ from congress_api.acquisition.retained_import import (
     capture_retained_batch, partition_retained_urls,
 )
 from congress_api.acquisition.raw_sync import run_sync
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
+from historical_raw_archive import LegacyArchiveSeed as Archive
 from test_raw_source_sync import MemoryStore, response
 from test_async_capture import receipts
 

@@ -140,7 +140,7 @@ def test_repack_borrows_original_reader_without_reopening_or_closing_it(tmp_path
 
 
 def test_preparation_readers_disable_readahead_and_buffer_column_reads(monkeypatch):
-    import viewer_publication.filename_budget as filename_budget
+    from viewer_publication import filename_budget
     calls = []
     monkeypatch.setattr(filename_budget.pq, 'ParquetFile', lambda *args, **kwargs: calls.append((args, kwargs)))
     filename_budget.open_parquet('owned.parquet')
@@ -260,7 +260,7 @@ def test_repack_full_arrow_comparison_crosses_adaptive_row_group_boundaries(tmp_
 
 
 def test_arrow_only_repack_preserves_large_row_without_estimating_unused_python_values(tmp_path, monkeypatch):
-    import viewer_publication.filename_budget as filename_budget
+    from viewer_publication import filename_budget
     schema = pa.schema([('payload', pa.string()), ('values', pa.list_(pa.string())),
                         ('observations', pa.list_(pa.struct([('label', pa.string())])))],
                        metadata={b'catalog_id': b'stage-budget', b'custom': b'preserve'})
@@ -329,6 +329,7 @@ def test_python_conversion_admission_requires_explicit_boolean(invalid):
 
 
 def test_refused_existing_publication_is_never_overwritten(tmp_path):
+    import historical_viewer_publication as publisher
     target = tmp_path / 'valid'; target.mkdir(); (target / 'manifest.json').write_text('valid')
     with pytest.raises(ValueError, match='fresh empty'): publisher.publish(tmp_path, target)
     assert (target / 'manifest.json').read_text() == 'valid'
@@ -512,6 +513,7 @@ def test_borrowed_reader_survives_repack_failure_and_owned_output_closes(tmp_pat
 
 
 def test_publication_reuses_its_catalog_readers_and_preparation_options(tmp_path, monkeypatch):
+    import historical_viewer_publication as publisher
     import subprocess, sys
     fixture = Path(__file__).resolve().parents[3] / 'scripts/publication/filename-test-fixture.py'
     root = tmp_path / 'fixture'

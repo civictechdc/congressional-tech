@@ -9,8 +9,9 @@ import pytest
 
 from congress_api.retention import catalog_cache
 from congress_api.retention.catalog_publication import read_catalog, MANIFEST_KEY
-from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive, CAPTURES_KEY, STATE_KEY, decode_table, encode_table
-from congress_api.retention.raw_catalog import rebuild_catalog, FILENAMES, DOCUMENTS
+from congress_api.retention.raw_archive import CAPTURES_KEY, STATE_KEY, decode_table, encode_table
+from historical_raw_archive import LegacyArchiveSeed as Archive
+from historical_raw_catalog import rebuild_catalog, FILENAMES, DOCUMENTS
 from test_raw_source_sync import MemoryStore, response
 
 

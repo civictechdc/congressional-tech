@@ -272,10 +272,10 @@ test('related document categories count the complete meeting and filter before p
   const all = await reader.getRelated(meeting, {kind:'material', materialType:'document', limit:25});
   assert.equal(all.total, 74);
   assert.equal(all.records.length, 25);
-  assert.deepEqual(all.categories, [{label:'Support Document', count:44}, {label:'Witness Statement', count:30}]);
+  assert.deepEqual(all.categories, [{label:'Supporting document', count:44}, {label:'Witness statement', count:30}]);
   assert.ok(all.records.every(record => record.document_type === 'Support Document'));
-  const first = await reader.getRelated(meeting, {kind:'material', materialType:'document', category:'Witness Statement', limit:25});
-  const last = await reader.getRelated(meeting, {kind:'material', materialType:'document', category:'Witness Statement', offset:25, limit:25});
+  const first = await reader.getRelated(meeting, {kind:'material', materialType:'document', category:'Witness statement', limit:25});
+  const last = await reader.getRelated(meeting, {kind:'material', materialType:'document', category:'Witness statement', offset:25, limit:25});
   assert.equal(first.total, 30);
   assert.equal(first.records.length, 25);
   assert.equal(last.records.length, 5);

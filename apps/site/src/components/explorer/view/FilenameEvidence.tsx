@@ -8,6 +8,7 @@ import type { FilenameEntry, FilenameMatchResult, FilenameRecord, FilenameReview
 import { CopyIcon, ExternalIcon, LinkIcon } from './icons';
 import { publicUrl } from './RecordDetail';
 import { RequestMessage, integer, useRequest } from './request-state';
+import { downloadJson } from './download';
 
 function catalogQuery(catalog?: string): string {
   return catalog ? `catalog=${encodeURIComponent(catalog)}` : '';
@@ -75,7 +76,7 @@ function ReadyEntry({ entry, id, catalog, onOpen, embedded, namingVersion, alrea
   return <>
     {embedded || kind === shownKind ? null : <p className="explorer-record-kind">{kind === 'No category' ? 'Document' : kind}</p>}
     <FilenameHeading title={title} embedded={embedded} />
-    {source || recovered || saved || !embedded ? <div className="explorer-actions">{saved ? <a href={saved} target="_blank" rel="noreferrer">Open saved copy <ExternalIcon /></a> : null}{source ? <a href={source} target="_blank" rel="noreferrer">{entry.video_reference ? 'Watch video' : entry.api_reference ? 'Open the official record' : 'Open original source'} <ExternalIcon /></a> : recovered ? <a href={recovered} target="_blank" rel="noreferrer">{recoveredSourceHost(sourceRecord)} <ExternalIcon /></a> : null}{embedded ? null : <EntryActions id={sourceRecord.source_id || id} catalog={entry.catalog_id} />}</div> : null}
+    {source || recovered || saved || !embedded ? <div className="explorer-actions">{saved ? <a href={saved} target="_blank" rel="noreferrer">Open saved copy <ExternalIcon /></a> : null}{source ? <a href={source} target="_blank" rel="noreferrer">{entry.video_reference ? 'Watch video' : entry.api_reference ? 'Open the official record' : 'Open original source'} <ExternalIcon /></a> : recovered ? <a href={recovered} target="_blank" rel="noreferrer">{recoveredSourceHost(sourceRecord)} <ExternalIcon /></a> : null}{embedded ? null : <EntryActions id={sourceRecord.source_id || id} catalog={entry.catalog_id} documentDownload={entry.document_download_available} />}</div> : null}
     <Summary entry={{ ...entry, record: sourceRecord }} alreadyShown={embedded ? alreadyShown : undefined} />
     <ReviewSection id={record.source_id || id} catalog={entry.catalog_id} />
     <Clues entry={entry} namingVersion={namingVersion} />
@@ -157,9 +158,22 @@ function FactGroup({ title, rows, embedded = false }: { title: string; rows: Rea
   return <section className="explorer-fact-group">{heading ? <h3>{heading}</h3> : null}<dl className="explorer-facts">{visible}</dl></section>;
 }
 
-function EntryActions({ id, catalog }: { id: string; catalog: string }) {
+function EntryActions({ id, catalog, documentDownload }: { id: string; catalog: string; documentDownload?: boolean }) {
   const [copyStatus, setCopyStatus] = useState('');
   const [linkStatus, setLinkStatus] = useState('');
+  const [downloadStatus, setDownloadStatus] = useState('');
+  const [downloading, setDownloading] = useState(false);
+  async function downloadMetadata(kind: 'full' | 'document') {
+    setDownloading(true);
+    setDownloadStatus('Preparing complete metadata…');
+    try {
+      const record = await filenameRequest<unknown>(entryPath(kind, id, catalog), new AbortController().signal);
+      downloadJson(`${kind === 'document' ? 'document' : 'source'}-${id}.json`, record);
+      setDownloadStatus(kind === 'document' ? 'Document downloaded' : 'Source downloaded');
+    } catch (error) {
+      setDownloadStatus(error instanceof Error ? error.message : 'Could not download complete metadata');
+    } finally { setDownloading(false); }
+  }
   async function copyJson() {
       setCopyStatus('Preparing the saved record…');
     try {
@@ -188,6 +202,9 @@ function EntryActions({ id, catalog }: { id: string; catalog: string }) {
   return <>
     <button className="explorer-icon-button" type="button" aria-label="Copy the saved details for this file. The file itself stays where it is." title="Copy the saved details" onClick={() => void copyJson()}><CopyIcon /></button>
     <button className="explorer-icon-button" type="button" aria-label="Copy a link that opens this file" title="Copy link to this file" onClick={() => void copyLink()}><LinkIcon /></button>
+    <button className="explorer-text-button" type="button" disabled={downloading} onClick={() => void downloadMetadata('full')}>Download source JSON</button>
+    {documentDownload ? <button className="explorer-text-button" type="button" disabled={downloading} onClick={() => void downloadMetadata('document')}>Download document JSON</button> : null}
+    {downloadStatus ? <span className="explorer-row-meta" role="status">{downloadStatus}</span> : null}
     {copyStatus ? <span className="explorer-row-meta">{copyStatus}</span> : null}
     {linkStatus ? <span className="explorer-row-meta">{linkStatus}</span> : null}
   </>;

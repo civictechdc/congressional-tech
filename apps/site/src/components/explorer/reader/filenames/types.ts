@@ -17,7 +17,7 @@ export interface FilenameCatalogInfo {
   remote_last_modified?: string;
   house_naming_version?: string;
   api_reference_groups?: number;
-  downloads?: { documents?: string; filenames?: string; recoveries?: string };
+  downloads?: { documents?: string; filenames?: string; recoveries?: string; catalog?: string };
 }
 
 export interface FilenameRecovery {
@@ -118,6 +118,7 @@ export interface FilenameEntry {
   published_only?: boolean;
   sources_share_saved_file?: boolean;
   record_complete?: boolean;
+  document_download_available?: boolean;
 }
 
 export interface FilenameReview {

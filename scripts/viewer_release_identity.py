@@ -33,6 +33,7 @@ def source_files(root):
         'scripts/publication/publication_cli.py','scripts/viewer_release_identity.py','scripts/publication_preflight.py',
         'packages/viewer_publication/src/viewer_publication/__init__.py',
         'packages/viewer_publication/src/viewer_publication/client.py',
+        'packages/viewer_publication/src/viewer_publication/native.py',
         'packages/viewer_publication/src/viewer_publication/continuation.py',
         'packages/viewer_publication/src/viewer_publication/attempt.py',
         'packages/viewer_publication/src/viewer_publication/plan.py',

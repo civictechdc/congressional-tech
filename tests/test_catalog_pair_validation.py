@@ -13,7 +13,8 @@ import pyarrow.parquet as pq
 from congress_api.retention.catalog_validation import validate_catalog_pair
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('validated_pair_builder', ROOT/'scripts/publication/publish-filename-viewer.py')
+sys.path.insert(0, str(ROOT/'apps/site/scripts'))
+spec = importlib.util.spec_from_file_location('historical_validated_pair_builder', ROOT/'tests/historical_viewer_publication.py')
 builder = importlib.util.module_from_spec(spec); spec.loader.exec_module(builder)
 
 
@@ -103,7 +104,7 @@ def test_direct_build_refuses_existing_publication_before_reading_inputs(tmp_pat
 
 def test_normal_catalog_rebuild_checks_references_once_and_fresh_process_has_no_proof(tmp_path, monkeypatch):
     from congress_api.retention import document_index as index
-    from congress_api.retention.raw_catalog import rebuild_catalog
+    from historical_raw_catalog import rebuild_catalog
     from test_raw_catalog import initialize
     store = initialize(tmp_path)
     original, calls = index.validate_document_indexes, []

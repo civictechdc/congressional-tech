@@ -23,6 +23,9 @@ def arguments(argv):
     parser.add_argument('command', choices=('prepare', 'verify-prepared', 'publish', 'describe-attempt'))
     parser.add_argument('--directory', type=Path)
     parser.add_argument('--public-url')
+    parser.add_argument('--native-config', type=Path, default=os.environ.get('DOCSPEC_CONFIG'))
+    parser.add_argument('--renderer-upgrade', action='store_true')
+    parser.add_argument('--resume-preparation', action='store_true')
     parser.add_argument('--report', type=Path)
     parser.add_argument('--run-id', default=os.environ.get('GITHUB_RUN_ID'))
     parser.add_argument('--run-attempt', default=os.environ.get('GITHUB_RUN_ATTEMPT'))
@@ -37,6 +40,12 @@ def arguments(argv):
 
 
 def validate(args, attempts):
+    if args.command!='prepare' and (args.renderer_upgrade or args.resume_preparation):
+        raise ValueError('Renderer upgrade options require prepare')
+    if args.resume_preparation and not args.renderer_upgrade:
+        raise ValueError('--resume-preparation requires --renderer-upgrade')
+    if args.command != 'prepare' and '--native-config' in args.explicit_options:
+        raise ValueError('--native-config is used only for preparation')
     if args.command != 'describe-attempt' and args.directory is None:
         raise ValueError(args.command + ' requires --directory')
     if args.command == 'prepare' and (not args.run_id or not args.run_attempt):
@@ -111,7 +120,13 @@ def main(publisher, argv=None):
         else:
             client = make_client()
             if args.command == 'prepare':
-                result = attempts.prepare(publisher, client, args.directory, run_id=args.run_id, run_attempt=args.run_attempt, public_url=public_url)
+                options = {}
+                if args.renderer_upgrade:
+                    options.update(renderer_upgrade=True,resume_preparation=args.resume_preparation)
+                if args.native_config:
+                    from congress_api.retention.docspec import NativeDatasets
+                    options['native'] = NativeDatasets.from_config(args.native_config)
+                result = attempts.prepare(publisher, client, args.directory, run_id=args.run_id, run_attempt=args.run_attempt, public_url=public_url, **options)
             else:
                 artifact = {'id':args.artifact_id, 'digest':args.artifact_digest, 'repository':args.repository, 'run_id':args.run_id}
                 result = attempts.publish(publisher, client, args.directory, artifact=artifact, public_url=public_url, resume=args.resume, attempt=args.attempt)

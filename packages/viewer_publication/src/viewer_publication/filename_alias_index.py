@@ -6,7 +6,8 @@ import sqlite3
 import tempfile
 
 from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches, failure_receipt, open_parquet
-from viewer_publication.filename_aliases import content_kind, valid_body, wrapped_target
+from viewer_publication.filename_aliases import content_kind, valid_body
+from congress_api.retention.source_aliases import resolution_candidates
 from congress_api.parsers.archive_links import allowed_url
 from congress_api.retention.saved_responses import FIELDS, saved_response
 
@@ -106,10 +107,7 @@ class AliasIndex:
                         continue
                     if usable:
                         db.execute('INSERT OR IGNORE INTO saved VALUES (?)', (original,))
-                    resolved = row.get('source_resolved_url') or []
-                    if not resolved:
-                        target = wrapped_target(original)
-                        resolved = [target] if target else []
+                    resolved = resolution_candidates(row)
                     # JSON preserves None and invalid/self values as distinct
                     # conflict evidence; validity is checked only after grouping.
                     db.executemany('INSERT OR IGNORE INTO candidates VALUES (?,?)',

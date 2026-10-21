@@ -70,13 +70,14 @@ def test_existing_negative_reading_survives_new_reader_until_explicit_replacemen
 
 def test_native_capture_reuses_selected_readings_and_orphan_receipts_keep_exact_part_links(tmp_path):
     from congress_api.acquisition.raw_sync import run_sync
-    from congress_api.retention.raw_archive import Archive, adopt_legacy_archive
+    from congress_api.retention.raw_archive import Archive
+    from raw_archive_fixtures import adopt_fixture_archive
     from test_raw_source_sync import response
     import gzip
     import json
     store = SelectorStore()
     owner = memory_raw_storage(store)
-    adopt_legacy_archive(store, owner, operation='reviewed-empty')
+    adopt_fixture_archive(store, owner, operation='reviewed-empty')
     keys = store.keys
     store.keys = lambda prefix: pytest.fail('Global reading scan') if prefix == PREFIX else keys(prefix)
     archive = Archive(store, 'parts-before-selection', storage=owner)
@@ -112,11 +113,12 @@ def test_invalid_reading_reference_refuses_before_io():
 
 
 def test_interrupted_explicit_reinspection_keeps_replacement_intent():
-    from congress_api.retention.raw_archive import Archive, adopt_legacy_archive
+    from congress_api.retention.raw_archive import Archive
+    from raw_archive_fixtures import adopt_fixture_archive
     from test_raw_source_sync import response
     store = SelectorStore()
     owner = memory_raw_storage(store)
-    adopt_legacy_archive(store, owner, operation='seed')
+    adopt_fixture_archive(store, owner, operation='seed')
     archive = Archive(store, 'reinspect-before-selection', storage=owner)
     archive.record(response('https://example.gov/a.pdf', b'%PDF-1.7\ninvalid\n%%EOF'), outcome='saved', links=[])
     body = archive.state['https://example.gov/a.pdf']['body_key']

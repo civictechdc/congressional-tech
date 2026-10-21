@@ -142,7 +142,7 @@ def test_compression_preserves_original_headers_and_limits_decoded_bytes(server,
 def test_spooled_pipeline_downloads_ahead_with_explicit_memory_budget(server, monkeypatch):
     from functools import partial
     from congress_api.acquisition.raw_sync import run_sync
-    from congress_api.retention.raw_archive import LegacyArchiveSeed as Archive
+    from historical_raw_archive import LegacyArchiveSeed as Archive
     from test_raw_source_sync import MemoryStore
 
     url, starts, peak = server

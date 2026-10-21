@@ -1,4 +1,4 @@
-"""Replay discovery evidence without reinterpreting filenames or regrouping files.
+"""Historical fixture: replay discovery evidence without reinterpreting filenames or regrouping files.
 
 The existing pair supplies the parsed legacy publisher records. Recurring
 download receipts supply discovery observations that older builders omitted.

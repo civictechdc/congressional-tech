@@ -1,6 +1,6 @@
 ---
 id: ct-v5kb
-status: in_progress
+status: closed
 deps: [ct-l5q1]
 links: []
 created: 2026-10-20T02:20:21Z
@@ -39,3 +39,19 @@ Independent review found that per-document native datasets would multiply fixed 
 **2026-10-20T04:07:17Z**
 
 Shared physical batches, paged component proofs, historical readers and one conditional native catalog selector are reviewed and merged locally. 47 preparation/proof checks and 25 selector/routing/publication checks passed. In the 130-document stub comparison, native Run calls fell from 260 to 2 and metadata PUTs from 130 to 6; this is not production latency. Maintained callers and viewer migration remain required.
+
+**2026-10-20T04:49:46Z**
+
+Stable viewer builder and retained withdrawal safeguards integrated; joint builder, review, cursor and lookup tests: 42 passed. Recovery preparation: 34 baseline checks and 8 review-fix checks passed. Browser/uploader migration and native operational phase connection remain open; existing published viewer is unchanged.
+
+**2026-10-20T05:34:22Z**
+
+Shared native preparation now serves cloud and local recovery publication; recovery-only mode preserves exact prior manifest bytes. Native runtime input custody and low-compression policy are integrated locally. Hosted native distribution is still absent; no deployment/adoption claimed.
+
+**2026-10-20T07:20:03Z**
+
+Renderer interruption fixes and maintained caller upgrade/resume are reviewed and merged locally in0fc67e5f. Atomic files keep partials outside accepted assets; worker loss around immutable linking is covered. Combined suite118 passed. Hosted runtime installation and production adoption remain separate pending work.
+
+**2026-10-20T16:02:11Z**
+
+Implemented and independently reviewed: coalesced native storage, exact reusable proofs, one conditional catalog selector, and migrated maintained readers. Production snapshot import, release and retirement are required under ct-2ukk; ct-9vtu and ct-y32m finish initial adoption preparation. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.

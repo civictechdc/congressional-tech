@@ -30,6 +30,7 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     let result: unknown;
     if (request.pathname === '/api/info') result = reader.info;
     else if (request.pathname === '/api/rows') result = await reader.search(query, controller.signal);
+    else if (request.pathname.startsWith('/api/document/')) result = await reader.documentRecord(identity, query.catalog, controller.signal);
     else if (request.pathname === '/api/match') result = await reader.matchUrls(JSON.parse(query.payload || '{}'), controller.signal);
     else if (request.pathname.startsWith('/api/review/')) result = await reader.review(identity, query.catalog, controller.signal, query.selection === 'baseline');
     else if (request.pathname.startsWith('/api/entry-origin/')) result = await reader.entryOrigin(identity, query.catalog, controller.signal);

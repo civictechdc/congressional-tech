@@ -117,8 +117,9 @@ def test_selected_reader_cache_keeps_precedence_over_previous_catalog(tmp_path):
 
 
 @pytest.mark.parametrize('mutate', [False, True])
-def test_archive_adoption_binds_legacy_cache_version_and_preserves_source(tmp_path, mutate):
-    from congress_api.retention.raw_archive import adopt_legacy_archive
+def test_archive_adoption_binds_legacy_cache_version_and_preserves_source(tmp_path, mutate, monkeypatch):
+    from congress_api.retention import raw_adoption
+    from congress_api.retention.raw_archive import CAPTURE_SCHEMA
     store = SelectorStore()
     save_results(store, 'bodies', 'earlier', ('reader', 'body_key'), {('cover', 'a'): {}})
     key = 'indexes/processing/bodies.parquet'
@@ -128,20 +129,26 @@ def test_archive_adoption_binds_legacy_cache_version_and_preserves_source(tmp_pa
     source.parent.mkdir()
     pq.write_table(pa.table({'reader': ['cover'], 'body_key': ['wrong']}), source)
     owner = memory_raw_storage(store)
-    original_prepare = owner.prepare
-    def prepare(*args, **kwargs):
-        result = original_prepare(*args, **kwargs)
-        if mutate:
-            store.objects[key] = b'changed source'
-        return result
-    owner.prepare = prepare
-    options = dict(operation='archive-adoption', directory=tmp_path / 'adopt')
+    paths = {name: tmp_path / (name + '.parquet') for name in ('captures', 'state')}
+    pq.write_table(pa.Table.from_pylist([], schema=CAPTURE_SCHEMA), paths['captures'])
+    pq.write_table(pa.Table.from_pylist([], schema=owner.state_schema), paths['state'])
+    original_adopt = raw_adoption.adopt_tables
+    def adopt(storage, **kwargs):
+        before_publish = kwargs['before_publish']
+        def recheck():
+            if mutate:
+                store.objects[key] = b'changed source'
+            before_publish()
+        return original_adopt(storage, **dict(kwargs, before_publish=recheck))
+    monkeypatch.setattr(raw_adoption, 'adopt_tables', adopt)
+    options = dict(paths=paths, sha256s={name: sha256(path.read_bytes()).hexdigest() for name, path in paths.items()},
+        operation='archive-adoption', directory=tmp_path / 'adopt')
     if mutate:
-        with pytest.raises(ValueError, match='changed during adoption'):
-            adopt_legacy_archive(store, owner, **options)
+        with pytest.raises(ValueError, match='Legacy reader cache changed during adoption'):
+            raw_adoption.adopt_archive(owner, **options)
         assert owner.snapshot().version is None
     else:
-        selected = adopt_legacy_archive(store, owner, **options)
+        selected = raw_adoption.adopt_archive(owner, **options)
         assert selected.has_body_reading('a')
         assert not selected.has_body_reading('wrong')
         assert store.read(key) == payload

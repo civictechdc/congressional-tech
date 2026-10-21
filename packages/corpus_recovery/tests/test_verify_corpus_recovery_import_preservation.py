@@ -9,7 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from corpus_recovery.preservation import verify
+from corpus_recovery.preservation import verify_legacy as verify
 
 
 def fixture(root, *, drift=False, missing=False):

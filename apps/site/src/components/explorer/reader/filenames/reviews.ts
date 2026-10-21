@@ -20,7 +20,7 @@ export async function loadReviews(descriptor, manifest, fetcher, manifestUrl, co
       let placement = null;
       if (bound) {
         const binding = await verified(fetcher, new URL(bound.path, manifestUrl).href, bound.sha256, bound.bytes, 'document review binding');
-        if (binding.version !== 1 || binding.review_sha256 !== descriptor.review_sha256 || binding.catalog_id !== manifest.info.catalog_id) {
+        if (binding.version !== (manifest.version === 6 ? 2 : 1) || binding.review_sha256 !== descriptor.review_sha256 || binding.catalog_id !== manifest.info.catalog_id) {
           throw new Error('Document review binding belongs to a different publication.');
         }
         placement = new Map(binding.rows.map(row => [row.index, row]));
@@ -35,17 +35,20 @@ export async function loadReviews(descriptor, manifest, fetcher, manifestUrl, co
         if (placement) {
           const place = placement.get(index);
           if (!place) continue;
-          row.group = place.group;
-          row.sources = place.sources;
+          if (manifest.version === 6 && place.document_id !== row.document_id) throw new Error('Reviewed document stable identity differs.');
+          row.group = manifest.version === 6 ? place.document_id : place.group;
+          row.sources = manifest.version === 6 ? place.source_ids : place.sources;
         }
-        if (!Number.isInteger(row.group) || row.group < 0 || row.group >= manifest.info.entries || groups.has(row.group) ||
+        if ((manifest.version === 6 ? typeof row.group !== 'string' || !row.group :
+            !Number.isInteger(row.group) || row.group < 0 || row.group >= manifest.info.entries) || groups.has(row.group) ||
             !['candidate_applied','annotation_only_unsupported_forms'].includes(row.status) || !row.sources.length) throw new Error('Invalid reviewed group.');
         if (row.status === 'annotation_only_unsupported_forms' && JSON.stringify(row.baseline) !== JSON.stringify(row.selected)) throw new Error('Unsupported forms changed catalog categories.');
         for (const field of ['document_kind','document_family','document_kind_source']) {
           for (const value of [row.baseline[field], row.selected[field]]) if (value != null && (!Array.isArray(value) || value.some(item => typeof item !== 'string'))) throw new Error('Invalid reviewed classification.');
         }
         for (const source of row.sources) {
-          if (!Number.isInteger(source) || source < 0 || source >= manifest.info.rows || sources.has(source)) throw new Error('Invalid reviewed source.');
+          if ((manifest.version === 6 ? !/^[a-f0-9]{64}$/.test(source) :
+              !Number.isInteger(source) || source < 0 || source >= manifest.info.rows) || sources.has(source)) throw new Error('Invalid reviewed source.');
           sources.set(source, row);
         }
         const links = {...row.evidence, pages: {...row.evidence.pages}};
