@@ -1,5 +1,6 @@
 // The mutable pointer is tiny. All large reads use one immutable release.
-export const filenameManifestUrl = 'https://congressional-viewer-data.mdeeb.workers.dev/manifest.json';
+export const publicDataOrigin = 'https://congressional-data.spicygov.ai';
+export const filenameManifestUrl = `${publicDataOrigin}/viewer-publications/manifest.json`;
 
 export type CatalogFetcher = (url: string, init?: RequestInit) => Promise<Response>;
 

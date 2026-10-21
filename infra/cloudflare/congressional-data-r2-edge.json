@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "custom_domain": {
+    "hostname": "congressional-data.spicygov.ai",
+    "bucket": "congressional-tech-raw",
+    "retired_worker": "congressional-viewer-data"
+  },
+  "cors": {
+    "rules": [
+      {
+        "id": "public-viewer-read-cors",
+        "allowed": {
+          "origins": ["*"],
+          "methods": ["GET", "HEAD"],
+          "headers": ["Range", "If-None-Match", "If-Modified-Since"]
+        },
+        "expose_headers": [
+          "Accept-Ranges",
+          "Content-Length",
+          "Content-Range",
+          "ETag",
+          "Content-Type",
+          "Content-Disposition"
+        ],
+        "max_age_seconds": 86400
+      }
+    ]
+  },
+  "waf_custom_rules": [
+    {
+      "id": "block-non-public-r2-prefixes",
+      "description": "Allow only GET/HEAD on /viewer-publications/* and /bodies/sha256/*; block /warehouse/*, /receipts/*, /quarantine/*, /indexes/* and all other paths with 403.",
+      "action": "block",
+      "status_code": 403,
+      "expression": "(http.host eq \"congressional-data.spicygov.ai\") and not ((http.request.method in {\"GET\" \"HEAD\"}) and (starts_with(http.request.uri.path, \"/viewer-publications/\") or starts_with(http.request.uri.path, \"/bodies/sha256/\")) and not contains(http.request.uri.path, \"..\") and not starts_with(http.request.uri.path, \"/viewer-publications/accepted-\"))",
+      "allowed_prefixes": [
+        "/viewer-publications/",
+        "/bodies/sha256/"
+      ],
+      "blocked_prefixes": [
+        "/warehouse/",
+        "/receipts/",
+        "/quarantine/",
+        "/indexes/"
+      ]
+    }
+  ],
+  "response_header_transform_rules": [
+    {
+      "id": "public-r2-security-and-disposition-headers",
+      "description": "Set nosniff, Referrer-Policy, conditional CSP (omit sandbox CSP on application/pdf so Chromium PDF viewer renders), and map ?filename= to Content-Disposition.",
+      "headers": {
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer"
+      },
+      "conditional_csp": {
+        "when_content_type_not_equals": "application/pdf",
+        "header": "Content-Security-Policy",
+        "value": "sandbox; default-src 'none'"
+      },
+      "filename_disposition": {
+        "query_param": "filename",
+        "path_prefix": "/bodies/sha256/",
+        "pdf_disposition": "inline",
+        "non_pdf_disposition": "attachment"
+      }
+    }
+  ]
+}

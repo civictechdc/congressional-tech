@@ -360,12 +360,25 @@ test('a scheduled clock time stays with the recorded date', () => {
   assert.deepEqual(recordedWhen({ scheduled_at: '2019-12-04T15:00:00Z' }, eastern), { date: '2019-12-04', time: '10:00 AM EST' });
 });
 
-test('saved copies use the viewer-data content route', () => {
+test('saved copies use the direct public R2 content route with uncompressed PDFs and gzipped non-PDFs', () => {
   const hash = 'ab'.repeat(32);
-  const origin = 'https://congressional-viewer-data.mdeeb.workers.dev';
-  assert.equal(savedCopyHref({saved_copy_sha256: hash, saved_filename: 'Witness statement.pdf'}), `${origin}/saved/${hash}/Witness%20statement.pdf`);
-  assert.equal(savedCopyHref({saved_copy_sha256: hash}), `${origin}/saved/${hash}/saved-copy`);
-  assert.equal(savedCopyHref({saved_copy_sha256: hash, saved_filename: '../secret'}), `${origin}/saved/${hash}/saved-copy`);
+  const origin = 'https://congressional-data.spicygov.ai';
+  assert.equal(
+    savedCopyHref({saved_copy_sha256: hash, saved_filename: 'Witness statement.pdf'}),
+    `${origin}/bodies/sha256/ab/${hash}.pdf?filename=Witness%20statement.pdf`,
+  );
+  assert.equal(
+    savedCopyHref({saved_copy_sha256: hash, saved_filename: 'hearing.xml', format: 'xml'}),
+    `${origin}/bodies/sha256/ab/${hash}.gz?filename=hearing.xml`,
+  );
+  assert.equal(
+    savedCopyHref({saved_copy_sha256: hash}),
+    `${origin}/bodies/sha256/ab/${hash}.gz?filename=saved-copy`,
+  );
+  assert.equal(
+    savedCopyHref({saved_copy_sha256: hash, saved_filename: '../secret'}),
+    `${origin}/bodies/sha256/ab/${hash}.gz?filename=saved-copy`,
+  );
   assert.equal(savedCopyHref({saved_copy_sha256: 'short', saved_filename: 'a.pdf'}), undefined);
   assert.equal(savedCopyHref(null), undefined);
 });

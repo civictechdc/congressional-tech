@@ -86,10 +86,17 @@ def sigv4_request(account,key,access_key,secret_key,now=None):
         'Authorization':'AWS4-HMAC-SHA256 Credential='+access_key+'/'+scope+', SignedHeaders='+names+', Signature='+signature})
 
 
+ALLOWED_PUBLIC_URLS = frozenset({
+    'https://congressional-data.spicygov.ai/viewer-publications/',
+    'https://congressional-data.spicygov.ai/',
+    'https://congressional-viewer-data.mdeeb.workers.dev/',
+})
+
+
 class ReadOnlyR2:
     def __init__(self,account,access_key,secret_key,*,public_url):
         self.account,self.access_key,self.secret_key=account,access_key,secret_key
-        if public_url!='https://congressional-viewer-data.mdeeb.workers.dev/':
+        if public_url not in ALLOWED_PUBLIC_URLS:
             raise ValueError('Public read endpoint is outside the preflight allowlist')
         self.public_url=public_url;self.requests=0;self.response_bytes=0
         self.opener=urllib.request.build_opener(NoRedirects())

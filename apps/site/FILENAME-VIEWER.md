@@ -5,16 +5,16 @@ It needs no Python service and receives no R2 credentials. It shares the reviewe
 HTML and presentation code with the optional local viewer.
 
 GitHub Pages serves the interface. Filename-viewer data lives in R2 under
-`congressional-tech-raw/viewer-publications/`, served at
-`https://congressional-viewer-data.mdeeb.workers.dev/` (also available at
-`https://congressional-data.spicygov.ai/`) by the read-only Worker in
-`apps/viewer-data`. It accepts only known publication paths and exact saved-body
-hashes through GET/HEAD. This route does not serve receipts or source indexes.
-The bucket also has direct public object access at
-`https://pub-1b36ca710ab14e7f8e65813c41761724.r2.dev/`, enabled at the owner's request.
-That endpoint exposes known object paths, including receipts and indexes; it does
-not list the bucket. The viewer uses the existing Worker for production data and
-decoded saved copies. Browsers receive no storage credentials.
+`congressional-tech-raw/viewer-publications/`, served directly at
+`https://congressional-data.spicygov.ai/viewer-publications/` by the public R2
+custom domain on `congressional-tech-raw` (`infra/cloudflare/congressional-data-r2-edge.json`).
+Cloudflare WAF Custom Rules allow only `GET`/`HEAD` requests to `/viewer-publications/*`
+and `/bodies/sha256/*`, blocking `/warehouse/*`, `/receipts/*`, `/quarantine/*`, and
+`/indexes/*` with HTTP 403. PDF bodies are stored uncompressed at
+`bodies/sha256/<xx>/<sha256>.pdf` (`Content-Type: application/pdf`, `Content-Disposition: inline`,
+`Cache-Control: public, max-age=31536000, immutable`), while non-PDF bodies remain at
+`bodies/sha256/<xx>/<sha256>.gz`. Logical `row["body_key"]` values remain
+`bodies/sha256/<xx>/<sha256>.gz` everywhere. Browsers receive no storage credentials.
 
 Catalog alias links use `source_resolved_url` or a recognized URL wrapper only when
 the target has one usable retained body. Conflicting destinations and body versions
@@ -173,12 +173,11 @@ For local data development, build with
 `PUBLIC_FILENAME_MANIFEST_URL=/congressional-tech/data/filenames/manifest.json`
 and generate the local files with `scripts/publication/publish-filename-viewer.py --source ...`.
 Normal local previews use the same R2 publication as the website.
-Deploy the file-serving Worker with `npm run deploy --workspace viewer-data`.
+The declarative Cloudflare R2 custom domain, CORS, WAF, and Response Header Transform Rules live in `infra/cloudflare/congressional-data-r2-edge.json`.
 
 ```sh
 npm run test:explorer --workspace apps/site
 npm run check:explorer-types --workspace apps/site
-npm test --workspace viewer-data
 npx --workspace apps/site --no-install astro check
 pytest .github/tests/test_viewer_r2.py .github/tests/test_filename_publication.py .github/tests/test_raw_source_workflow.py
 ```

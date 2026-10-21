@@ -21,8 +21,10 @@ from congress_api.retention.raw_archive import decode_table, encode_table
 
 
 class LocalStore:
-    def __init__(self, root):
+    def __init__(self, root, *, excluded_body_hashes=None, store_uncompressed_pdfs=False):
         self.root = Path(root)
+        self.excluded_body_hashes = excluded_body_hashes
+        self.store_uncompressed_pdfs = store_uncompressed_pdfs
 
     def read(self, key):
         path = self.root / key
@@ -80,6 +82,9 @@ class LocalStore:
         return (str(path.relative_to(self.root)) for path in paths if path.is_file())
 
     def put(self, key, data, *, immutable=False):
+        if key.startswith("bodies/") and self.excluded_body_hashes:
+            from congress_api.retention.raw_storage import enforce_body_ingest_gate
+            enforce_body_ingest_gate(self, key, data, excluded_hashes=self.excluded_body_hashes)
         path = self.root / key
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(dir=path.parent)
@@ -103,6 +108,11 @@ class LocalStore:
                 os.close(directory)
         finally:
             Path(temporary).unlink(missing_ok=True)
+
+    def put_pdf_body(self, key_or_sha256, data):
+        from congress_api.retention.body_keys import physical_body_object_key
+        pdf_key = physical_body_object_key(key_or_sha256, is_pdf=True)
+        return self.put(pdf_key, data, immutable=True)
 
 
     def put_catalog_manifest(self, data, *, expected_version):

@@ -6,14 +6,27 @@ import { observationReader } from './observations.ts';
 import { byteCache, retainedBytes } from './cache.ts';
 
 test('saved-copy links prefer accepted recoveries and preserve the original record', () => {
-  const manifest = 'https://data.test/releases/catalog/manifest.json';
+  const manifest = 'https://data.test/viewer-publications/manifest.json';
   const body = hash => `bodies/sha256/${hash.slice(0, 2)}/${hash}.gz`;
   const originalHash = 'a'.repeat(64), recoveredHash = 'b'.repeat(64);
   const record = {filename: 'Hearing #1.pdf', body_key: body(originalHash)};
   const recovered = {recovery_status: 'recovered', body_key: body(recoveredHash)};
-  assert.equal(savedCopyUrl(record, null, manifest), `https://data.test/saved/${originalHash}/Hearing%20%231.pdf`);
-  assert.match(savedCopyUrl({...record, recovery: recovered}, null, manifest), new RegExp('/saved/' + recoveredHash + '/'));
-  assert.match(savedCopyUrl(record, recovered, manifest), new RegExp('/saved/' + recoveredHash + '/'));
+  assert.equal(
+    savedCopyUrl(record, null, manifest),
+    `https://data.test/bodies/sha256/aa/${originalHash}.pdf?filename=Hearing%20%231.pdf`,
+  );
+  assert.equal(
+    savedCopyUrl({...record, recovery: recovered}, null, manifest),
+    `https://data.test/bodies/sha256/bb/${recoveredHash}.pdf?filename=Hearing%20%231.pdf`,
+  );
+  assert.equal(
+    savedCopyUrl(record, recovered, manifest),
+    `https://data.test/bodies/sha256/bb/${recoveredHash}.pdf?filename=Hearing%20%231.pdf`,
+  );
+  assert.equal(
+    savedCopyUrl({filename: 'witnesses.xml', body_format: ['xml'], body_key: body(originalHash)}, null, manifest),
+    `https://data.test/bodies/sha256/aa/${originalHash}.gz?filename=witnesses.xml`,
+  );
   assert.equal(record.body_key, body(originalHash));
   assert.equal(savedCopyUrl({body_key: null}, null, manifest), null);
   assert.equal(savedCopyUrl({body_key: 'receipts/private.json'}, null, manifest), null);
@@ -105,8 +118,8 @@ test('relative source aliases link through the verified body without changing so
   const before = structuredClone(record);
   const recovery = {original_url:record.source_url, recovered_url:'https://committee.test/docs/statement.pdf',
     body_key:`bodies/sha256/aa/${'a'.repeat(64)}.gz`, recovery_status:'recovered', recovery_basis:'resolved_source_url'};
-  assert.equal(savedCopyUrl(record, recovery, 'https://data.test/manifest.json'),
-    `https://data.test/saved/${'a'.repeat(64)}/statement.pdf`);
+  assert.equal(savedCopyUrl(record, recovery, 'https://data.test/viewer-publications/manifest.json'),
+    `https://data.test/bodies/sha256/aa/${'a'.repeat(64)}.pdf?filename=statement.pdf`);
   assert.deepEqual(record, before);
 });
 

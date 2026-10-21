@@ -101,9 +101,21 @@ def _configure_retries(client):
     client.meta.events.register_first('needs-retry.s3', retry, unique_id='r2-http-429')
 
 
+PDF_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+
+
 def put_parameters(bucket, key, body, **conditions):
+    md5_b64 = base64.b64encode(hashlib.md5(body).digest()).decode()
+    if key.endswith('.pdf'):
+        headers = dict(
+            ContentType='application/pdf',
+            ContentDisposition='inline',
+            CacheControl=PDF_CACHE_CONTROL,
+        )
+        headers.update(conditions)
+        return dict(Bucket=bucket, Key=key, Body=body, ContentMD5=md5_b64, **headers)
     return dict(Bucket=bucket, Key=key, Body=body,
-                ContentMD5=base64.b64encode(hashlib.md5(body).digest()).decode(),
+                ContentMD5=md5_b64,
                 ContentType='application/gzip' if key.endswith('.gz') else 'application/octet-stream',
                 **conditions)
 
@@ -166,10 +178,12 @@ class AsyncBodies:
 
 
 class R2Store:
-    def __init__(self, client, bucket, *, async_client=None):
+    def __init__(self, client, bucket, *, async_client=None, excluded_body_hashes=None, store_uncompressed_pdfs=False):
         self.client, self.bucket = client, bucket
         _configure_retries(client)
         self.async_client = async_client
+        self.excluded_body_hashes = excluded_body_hashes
+        self.store_uncompressed_pdfs = store_uncompressed_pdfs
         self.index_etags = {}
 
     @asynccontextmanager
@@ -219,6 +233,10 @@ class R2Store:
     def put(self, key, body, *, immutable=False):
         from botocore.exceptions import ClientError
 
+        if key.startswith("bodies/") and self.excluded_body_hashes:
+            from congress_api.retention.raw_storage import enforce_body_ingest_gate
+            enforce_body_ingest_gate(self, key, body, excluded_hashes=self.excluded_body_hashes)
+
         options = {}
         if immutable:
             options["IfNoneMatch"] = "*"
@@ -244,22 +262,43 @@ class R2Store:
             self.index_etags[key] = result["ETag"]
         return True
 
+    def put_pdf_body(self, key_or_sha256, data):
+        """Conditionally retain an uncompressed PDF body with public inline and immutable headers."""
+        from congress_api.retention.body_keys import physical_body_object_key
+        pdf_key = physical_body_object_key(key_or_sha256, is_pdf=True)
+        return self.put(pdf_key, data, immutable=True)
+
     def put_file(self, key, path):
         """Conditionally retain an immutable body without loading it in memory."""
         from pathlib import Path
         from botocore.exceptions import ClientError
         if not key.startswith('bodies/'):
             raise ValueError('File upload requires a body key')
+        if self.excluded_body_hashes:
+            from congress_api.retention.raw_storage import enforce_body_ingest_gate
+            enforce_body_ingest_gate(
+                self, key, Path(path).read_bytes(), excluded_hashes=self.excluded_body_hashes
+            )
         with Path(path).open('rb') as source:
             digest = hashlib.file_digest(source, 'md5')
             import os
             length = os.fstat(source.fileno()).st_size
             source.seek(0)
+            extra = (
+                dict(
+                    ContentType='application/pdf',
+                    ContentDisposition='inline',
+                    CacheControl=PDF_CACHE_CONTROL,
+                    IfNoneMatch='*',
+                )
+                if key.endswith('.pdf')
+                else dict(ContentType='application/gzip', IfNoneMatch='*')
+            )
             try:
                 result = self.client.put_object(
                     Bucket=self.bucket, Key=key, Body=source, ContentLength=length,
                     ContentMD5=base64.b64encode(digest.digest()).decode(),
-                    ContentType='application/gzip', IfNoneMatch='*')
+                    **extra)
             except ClientError as error:
                 if error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
                     return False
@@ -267,6 +306,12 @@ class R2Store:
         if result['ETag'].strip('"') != digest.hexdigest():
             raise ValueError('Upload checksum mismatch')
         return True
+
+    def put_pdf_file(self, key_or_sha256, path):
+        """Stream an uncompressed PDF file to bodies/sha256/<xx>/<sha256>.pdf."""
+        from congress_api.retention.body_keys import physical_body_object_key
+        pdf_key = physical_body_object_key(key_or_sha256, is_pdf=True)
+        return self.put_file(pdf_key, path)
 
     def read_file(self, key, path, *, max_bytes):
         """Read a bounded immutable body to disk; pin its version across retries."""

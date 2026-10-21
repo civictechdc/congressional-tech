@@ -104,9 +104,13 @@ def file_digest(path, algorithm='sha256'):
 
 def retain_body_file(store, path, scratch, *, expected_sha256=None):
     """Publish only verified original bytes; scratch belongs to this operation."""
+    from congress_api.retention.body_keys import is_pdf_bytes, physical_body_object_key
+    from congress_api.retention.raw_storage import enforce_body_ingest_gate
+
     path, scratch = Path(path), Path(scratch)
     size = path.stat().st_size
     digest = hashlib.sha256()
+    header = b''
     owned = False
     try:
         with path.open('rb') as source, scratch.open('xb') as destination:
@@ -114,12 +118,22 @@ def retain_body_file(store, path, scratch, *, expected_sha256=None):
             with gzip.GzipFile(filename='', fileobj=destination, mode='wb',
                                compresslevel=1, mtime=0) as zipped:
                 while chunk := source.read(CHUNK):
+                    if len(header) < 5:
+                        header += chunk[: 5 - len(header)]
                     digest.update(chunk)
                     zipped.write(chunk)
         digest = digest.hexdigest()
         if path.stat().st_size != size or (expected_sha256 and digest != expected_sha256):
             raise ValueError('Acquired file changed before retention')
         key = f'bodies/sha256/{digest[:2]}/{digest}.gz'
+        if getattr(store, 'excluded_body_hashes', None):
+            enforce_body_ingest_gate(
+                store,
+                key,
+                path.read_bytes(),
+                excluded_hashes=store.excluded_body_hashes,
+                is_pdf=is_pdf_bytes(header),
+            )
         created = store.put_file(key, scratch)
         if created is False:
             # An earlier orphan may have a different gzip representation.
@@ -133,6 +147,11 @@ def retain_body_file(store, path, scratch, *, expected_sha256=None):
                     actual.update(chunk)
             if actual.hexdigest() != digest or raw_size != size:
                 raise ValueError('Stored body checksum mismatch')
+        if getattr(store, 'store_uncompressed_pdfs', False) and is_pdf_bytes(header):
+            if hasattr(store, 'put_pdf_file'):
+                store.put_pdf_file(key, path)
+            else:
+                store.put_file(physical_body_object_key(key, is_pdf=True), path)
         return dict(body_key=key, sha256=digest, bytes=size,
                     stored_sha256=file_digest(scratch), stored_bytes=scratch.stat().st_size)
     finally:

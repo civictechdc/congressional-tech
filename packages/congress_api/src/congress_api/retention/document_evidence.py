@@ -17,7 +17,7 @@ from zipfile import is_zipfile
 from congress_api.parsers.house_xml import parse_house_meeting, parse_house_witnesses
 from congress_api.parsers.document_cover import COVER_FIELDS, document_cover
 from congress_api.retention import pdf_tools
-from congress_api.retention.body_keys import body_key_digest
+from congress_api.retention.body_keys import body_key_digest, physical_body_object_key
 from congress_api.parsers import document_links
 from congress_api.parsers.xml import parse_xml, xml_element
 
@@ -132,16 +132,28 @@ def read_retained_body(root, key, *, read_compressed=None, limit=16 * 1024 * 102
     digest = body_key_digest(key)
     if digest is None:
         return None
+    pdf_key = physical_body_object_key(key, is_pdf=True)
     try:
         if read_compressed is None:
-            source = gzip.open(root / key, 'rb')
+            path = root / key
+            if path.is_file():
+                with gzip.open(path, 'rb') as source:
+                    data = source.read(limit + 1)
+            else:
+                pdf_path = root / pdf_key
+                with pdf_path.open('rb') as source:
+                    data = source.read(limit + 1)
         else:
             payload = read_compressed(key)
             if payload is None:
+                payload = read_compressed(pdf_key)
+            if payload is None:
                 return None
-            source = gzip.GzipFile(fileobj=BytesIO(payload))
-        with source:
-            data = source.read(limit + 1)
+            if payload[:2] != b'\x1f\x8b':
+                data = payload[: limit + 1]
+            else:
+                with gzip.GzipFile(fileobj=BytesIO(payload)) as source:
+                    data = source.read(limit + 1)
     except FileNotFoundError:
         return None
     if len(data) > limit:

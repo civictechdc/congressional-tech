@@ -1,9 +1,0 @@
-{
-  "name": "viewer-data",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "node --test worker.test.mjs",
-    "deploy": "npx --yes wrangler@4.145.0 deploy"
-  }
-}

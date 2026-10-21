@@ -15,12 +15,30 @@ import {yieldToMessages} from './cooperative.ts';
 
 const validUrl = value => { try { const url = new URL(value); return /^https?:$/.test(url.protocol) && !url.username && !url.password ? url : null; } catch { return null; } };
 
+function isPdfSavedCopy(record, recovery) {
+  const rawFormats = [recovery?.kind, record?.body_format, record?.format, record?.content_type, record?.media_type]
+    .flatMap(value => Array.isArray(value) ? value : value != null ? [value] : [])
+    .map(value => String(value).split(';')[0].trim().toLowerCase())
+    .filter(Boolean);
+  if (rawFormats.some(value => value === 'pdf' || value === 'application/pdf')) return true;
+  if (rawFormats.length > 0) return false;
+  const names = [record?.filename, record?.source_name]
+    .filter(value => typeof value === 'string' && value.length > 0);
+  if (names.some(value => value.toLowerCase().endsWith('.pdf'))) return true;
+  const urls = [recovery?.recovered_url, record?.source_url]
+    .filter(value => typeof value === 'string' && value.length > 0);
+  return urls.some(value => value.split(/[?#]/, 1)[0].toLowerCase().endsWith('.pdf'));
+}
+
 export function savedCopyUrl(record, groupRecovery, manifestUrl) {
-  const recovery = record.recovery || groupRecovery;
-  const key = recovery?.recovery_status === 'recovered' ? recovery.body_key : record.body_key;
+  const recovery = record?.recovery || groupRecovery;
+  const key = recovery?.recovery_status === 'recovered' ? recovery.body_key : record?.body_key;
   const match = /^bodies\/sha256\/([a-f0-9]{2})\/([a-f0-9]{64})\.gz$/.exec(key || '');
   if (!match || match[1] !== match[2].slice(0, 2) || !validUrl(manifestUrl)) return null;
-  return new URL(`/saved/${match[2]}/${encodeURIComponent(record.filename || 'saved-copy')}`, manifestUrl).href;
+  const rawName = typeof record?.filename === 'string' ? record.filename : '';
+  const filename = rawName && !/[/\\]/.test(rawName) && !/[\u0000-\u001f\u007f]/.test(rawName) ? rawName : 'saved-copy';
+  const ext = isPdfSavedCopy(record, recovery) ? 'pdf' : 'gz';
+  return new URL(`/bodies/sha256/${match[1]}/${match[2]}.${ext}?filename=${encodeURIComponent(filename)}`, manifestUrl).href;
 }
 
 export function apiReference(value) {

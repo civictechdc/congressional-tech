@@ -363,25 +363,50 @@ class _Acquisition:
 
 
     def put_body(self, data):
+        from congress_api.retention.body_keys import is_pdf_bytes, physical_body_object_key
+        from congress_api.retention.raw_storage import enforce_body_ingest_gate
+
         digest = hashlib.sha256(data).hexdigest()
+        exclusions = getattr(self.store, 'excluded_body_hashes', None) or getattr(
+            getattr(self, 'storage', None), 'excluded_body_hashes', None
+        )
+        if exclusions:
+            enforce_body_ingest_gate(
+                self.store,
+                f'bodies/sha256/{digest[:2]}/{digest}.gz',
+                data,
+                excluded_hashes=exclusions,
+            )
         if digest not in self.body_info:
             compressed, info = body_payload(data)
             created = self.store.put(info['body_key'], compressed, immutable=True)
             # An orphan from an interrupted run may use different gzip bytes.
             if created is False:
                 info = existing_body_info(self.store.read(info['body_key']), info)
+            if getattr(self.store, 'store_uncompressed_pdfs', False) and is_pdf_bytes(data):
+                pdf_key = physical_body_object_key(info['body_key'], is_pdf=True)
+                if hasattr(self.store, 'put_pdf_body'):
+                    self.store.put_pdf_body(pdf_key, data)
+                else:
+                    self.store.put(pdf_key, data, immutable=True)
             self.body_info[digest] = info
         return self.body_info[digest]["body_key"]
 
 
     def body(self, state, max_bytes=None):
+        from congress_api.retention.body_keys import physical_body_object_key
+
         info = self.body_info.get(state.get("sha256"), {})
         if max_bytes is not None and (info.get("bytes") or 0) > max_bytes:
             raise BodyLimitExceeded("Retained body exceeds inspection limit")
-        with gzip.GzipFile(
-            fileobj=BytesIO(self.store.read(state["body_key"]))
-        ) as stream:
-            data = stream.read(max_bytes + 1 if max_bytes is not None else -1)
+        payload = self.store.read(state["body_key"])
+        if payload is None and state.get("body_key"):
+            payload = self.store.read(physical_body_object_key(state["body_key"], is_pdf=True))
+        if payload is not None and payload[:2] != b"\x1f\x8b":
+            data = payload[: max_bytes + 1] if max_bytes is not None else payload
+        else:
+            with gzip.GzipFile(fileobj=BytesIO(payload)) as stream:
+                data = stream.read(max_bytes + 1 if max_bytes is not None else -1)
         if max_bytes is not None and len(data) > max_bytes:
             raise BodyLimitExceeded("Retained body exceeds inspection limit")
         if state.get("sha256") and hashlib.sha256(data).hexdigest() != state["sha256"]:

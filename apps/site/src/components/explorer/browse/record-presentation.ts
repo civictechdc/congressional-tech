@@ -1425,12 +1425,32 @@ export function recordingEmbedUrl(row: DisplayRow, now = new Date()): string | u
   return undefined;
 }
 
-export function savedCopyHref(file: { saved_copy_sha256?: string | null; saved_filename?: string | null } | null | undefined, manifestUrl = filenameManifestUrl): string | undefined {
+export function savedCopyHref(
+  file: {
+    saved_copy_sha256?: string | null;
+    saved_filename?: string | null;
+    format?: string | null;
+    body_format?: string | null;
+    media_type?: string | null;
+    content_type?: string | null;
+    url?: string | null;
+  } | null | undefined,
+  manifestUrl = filenameManifestUrl,
+): string | undefined {
   if (!file || typeof file.saved_copy_sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(file.saved_copy_sha256)) return undefined;
   const hash = file.saved_copy_sha256;
   const name = typeof file.saved_filename === 'string' ? file.saved_filename : '';
   const filename = name && !/[/\\]/.test(name) && !/[\u0000-\u001f\u007f]/.test(name) ? name : 'saved-copy';
-  try { return new URL(`/saved/${hash}/${encodeURIComponent(filename)}`, manifestUrl).href; }
+  const rawFormats = [file.body_format, file.format, file.content_type, file.media_type]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map(value => value.split(';')[0].trim().toLowerCase());
+  const isPdf = rawFormats.some(value => value === 'pdf' || value === 'application/pdf')
+    || (rawFormats.length === 0 && (
+      filename.toLowerCase().endsWith('.pdf')
+      || (typeof file.url === 'string' && file.url.split(/[?#]/, 1)[0].toLowerCase().endsWith('.pdf'))
+    ));
+  const ext = isPdf ? 'pdf' : 'gz';
+  try { return new URL(`/bodies/sha256/${hash.slice(0, 2)}/${hash}.${ext}?filename=${encodeURIComponent(filename)}`, manifestUrl).href; }
   catch { return undefined; }
 }
 
