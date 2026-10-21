@@ -795,8 +795,36 @@ class NativeDatasets:
     def export(self, request):
         return self._request('/exports/run', request)
 
-    def compact(self, request):
+    def compact(self, request, *, operation=None, version=None, group='source',
+                files=(), target_file_bytes=64 * 1024 * 1024):
+        if isinstance(request, str):
+            resolved_version = (
+                version['dataset']['version']
+                if isinstance(version, dict)
+                else version
+            )
+            if not operation or not resolved_version:
+                raise ValueError('compact(dataset, ...) requires operation and version')
+            request = {
+                'dataset': request,
+                'operation': operation,
+                'version': resolved_version,
+                'group': group,
+                'files': list(files or ()),
+                'target_file_bytes': int(target_file_bytes),
+            }
         return self._request('/compactions/run', request)
+
+    def compact_table(self, dataset, *, operation, version, group='source',
+                      files=(), target_file_bytes=64 * 1024 * 1024):
+        return self.compact(
+            dataset,
+            operation=operation,
+            version=version,
+            group=group,
+            files=files,
+            target_file_bytes=target_file_bytes,
+        )
 
     def compact_lifecycle(self, dataset):
         return self._host_request(

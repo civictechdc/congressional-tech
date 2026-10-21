@@ -1270,3 +1270,140 @@ def test_news_lake_cli_publish_views_export_and_compact_lifecycle(tmp_path, caps
     assert comp_out['backend'] == 'docspec'
     assert 'news_versions' in comp_out['lake_datasets']
     assert 'politician_articles' in comp_out['view_datasets']
+
+
+# -- ct-8ax6: threshold native table compaction bounds active Parquet files -------------
+
+
+def test_threshold_table_compaction_bounds_active_files_and_preserves_oracle_equivalence(tmp_path):
+    """DocSpecLake and DocSpecNewsViews compact undersized Parquet files at threshold while preserving C1-C9."""
+    from news_lake.storage.control import ControlStore
+    from news_lake.storage.coordinator import Coordinator
+    from news_lake.storage.releases import publish_release, read_release
+
+    ws = tmp_path / 'ws-table-compact'
+    control = ControlStore(tmp_path / 'control.sqlite')
+    client = DocSpecClient(ws)
+    lake = DocSpecLake(
+        client,
+        compact_file_threshold=4,
+        lifecycle_compact_interval=4,
+    )
+    views = DocSpecNewsViews(
+        client,
+        compact_file_threshold=4,
+        lifecycle_compact_interval=4,
+    )
+
+    # Seed base corpus on Poll 0
+    lake.commit_records(CORPUS)
+    views.materialize(CORPUS, SELECTIONS)
+
+    expected_captures = {r['id']: r for r in CORPUS if r['kind'] == 'capture'}
+    expected_aliases = list(I1['url_aliases'])
+
+    # Run 5 additional polls (total 6 polls). With compact_file_threshold=4:
+    # - Polls 0, 1, 2 accumulate 1, 2, 3 Parquet files.
+    # - Poll 3 triggers native table compaction on prior (3 -> 1 file) before update_table,
+    #   so Poll 3's resulting ReleasePin has 2 Parquet files instead of 4.
+    # - Poll 4 has 3 Parquet files.
+    # - Poll 5 triggers native table compaction on prior (3 -> 1 file) before update_table,
+    #   so Poll 5's resulting ReleasePin has 2 Parquet files instead of 6.
+    last_batch = None
+    last_pins = None
+    for poll_idx in range(1, 6):
+        key = f'poll-{poll_idx}'
+        poll_at = f'2026-10-20T0{poll_idx}:00:00Z'
+
+        cap = dict(_capture(key), id=f'ffffb000-{poll_idx:04x}-7000-8000-000000000001')
+        new_item = dict(
+            _item(key, outlet=OUTLET_A),
+            id=f'ffffb000-{poll_idx:04x}-7000-8000-000000000002',
+            recorded_at=poll_at,
+        )
+        # Upsert I1 on the final poll with an additional url_alias to exercise C1 evidence union
+        batch = [cap, new_item]
+        if poll_idx == 5:
+            alias_url = 'https://a.example/v1-mirror-5'
+            batch.append(dict(I1, recorded_at=poll_at, url_aliases=[alias_url]))
+            if alias_url not in expected_aliases:
+                expected_aliases.append(alias_url)
+
+        pins = lake.commit_records(batch)
+        expected_captures[cap['id']] = cap
+        last_batch = batch
+        last_pins = pins
+
+        for ds in ('news_captures', 'news_items'):
+            pin_parquet = [
+                o for o in pins[ds]['dataset']['groups']['source']['objects']
+                if o['path'].endswith('.parquet')
+            ]
+            assert len(pin_parquet) < 4, (poll_idx, ds, len(pin_parquet))
+            assert len(lake.active_parquet_files(ds)) < 4
+
+    # Idempotent replay of the exact same batch must be a strict no-op
+    compactions_before_replay = len(lake.table_compactions)
+    replay_pins = lake.commit_records(last_batch)
+    assert replay_pins['news_captures']['id'] == last_pins['news_captures']['id']
+    assert len(lake.table_compactions) == compactions_before_replay
+
+    # Verify table compactions fired on both append and upsert datasets at Poll 3 and Poll 5
+    cap_compactions = [c for c in lake.table_compactions if c['dataset'] == 'news_captures']
+    item_compactions = [c for c in lake.table_compactions if c['dataset'] == 'news_items']
+    assert len(cap_compactions) == 2
+    assert len(item_compactions) == 2
+    assert all(c['verified'] is True and c['rewritten_files'] == 3 and c['produced_files'] == 1 for c in cap_compactions)
+    assert all(c['verified'] is True and c['rewritten_files'] == 3 and c['produced_files'] == 1 for c in item_compactions)
+
+    # Publish a release after the multi-poll compacted updates and verify read_release & C9 oracle parity
+    coord = Coordinator(lake, control)
+    rel_id = _id('release:compacted-1')
+    publish_release(
+        coord,
+        [OUTLET_A],
+        release_id=rel_id,
+        recorded_at='2026-10-20T06:00:00Z',
+        selections=SELECTIONS,
+    )
+    release_read = read_release(lake, control, rel_id)
+    assert len(release_read['tables']['news.captures']) == len(expected_captures)
+    stored_i1 = next(r for r in release_read['tables']['news.items'] if r['id'] == I1['id'])
+    assert stored_i1['url_aliases'] == expected_aliases
+
+    # Incrementally update bridges across 3 polls to trigger bridge table compaction at threshold=4
+    all_records = [r for rows in release_read['tables'].values() for r in rows]
+    for b_idx in range(3):
+        extra_mention = dict(
+            _mention(
+                f'extra-{b_idx}',
+                version_key='v1',
+                surface='Alex Doe',
+                resolution='resolved',
+                entity_key='p1',
+                aboutness='passing',
+                occurrences=[{'field': 'text', 'start': 15, 'end': 23}],
+            ),
+            id=f'ffffc000-{b_idx:04x}-7000-8000-000000000005',
+        )
+        all_records.append(extra_mention)
+        views.update_bridges(all_records, SELECTIONS)
+        assert len(views.active_parquet_files('selected_mentions')) < 4
+
+    assert any(
+        c['dataset'] == 'selected_mentions' and c['verified'] is True
+        for c in views.table_compactions
+    )
+
+    # Verify C9 views match pure-Python reference oracle 100%
+    rel_for_views = release_read_of(all_records, SELECTIONS)
+    assert views.politician_articles(rel_for_views, mode='full') == politician_articles_views(rel_for_views)
+    assert views.coverage_daily(rel_for_views, mode='full') == coverage_daily(rel_for_views)
+
+    # On-demand compact_table coalesces remaining 2 files into 1 file
+    on_demand = lake.compact_table('news_captures')
+    assert on_demand is not None
+    assert on_demand['verified'] is True
+    assert on_demand['produced_files'] == 1
+    assert len(lake.active_parquet_files('news_captures')) == 1
+    client.close()

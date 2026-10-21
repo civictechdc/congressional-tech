@@ -78,6 +78,47 @@ from news_lake.storage.releases import ReleaseError, _redact_checkpoints
 # contract and never changes inside a workspace without a new definition.
 DEFINITION = 'news-v1'
 DEFAULT_LIFECYCLE_COMPACT_INTERVAL = 16
+DEFAULT_COMPACT_FILE_THRESHOLD = 32
+DEFAULT_COMPACT_TARGET_FILE_BYTES = 64 * 1024 * 1024
+
+
+def _table_pin_parquet_objects(table_pin):
+    """Return distinct active Parquet data file objects from a TablePin."""
+    if not isinstance(table_pin, dict):
+        return []
+    objects = table_pin.get('objects') or ()
+    seen = set()
+    result = []
+    for obj in objects:
+        if not isinstance(obj, dict):
+            continue
+        path = obj.get('path')
+        if isinstance(path, str) and path.endswith('.parquet') and path not in seen:
+            seen.add(path)
+            result.append(obj)
+    return result
+
+
+def _source_parquet_objects(pin):
+    """Return distinct active Parquet data file objects from a ReleasePin's source group."""
+    if not isinstance(pin, dict):
+        return []
+    table_pin = pin.get('dataset', {}).get('groups', {}).get('source')
+    return _table_pin_parquet_objects(table_pin)
+
+
+def _undersized_parquet_files(table_pin, target_file_bytes=DEFAULT_COMPACT_TARGET_FILE_BYTES):
+    """Return paths of active Parquet data files smaller than ``target_file_bytes``."""
+    limit = (
+        int(target_file_bytes)
+        if target_file_bytes and int(target_file_bytes) > 0
+        else DEFAULT_COMPACT_TARGET_FILE_BYTES
+    )
+    return [
+        obj['path']
+        for obj in _table_pin_parquet_objects(table_pin)
+        if int(obj.get('bytes') or 0) < limit
+    ]
 
 
 class AppendCollisionError(CommitError, ValueError):
@@ -430,8 +471,29 @@ class DocSpecClient:
     def try_export_pin(self, dataset, operation):
         return self._native.try_export_pin(dataset, operation)
 
-    def compact(self, spec):
+    def compact(self, spec, *, operation=None, version=None, group='source',
+                files=(), target_file_bytes=DEFAULT_COMPACT_TARGET_FILE_BYTES):
+        if isinstance(spec, str):
+            return self._native.compact(
+                spec,
+                operation=operation,
+                version=version,
+                group=group,
+                files=files,
+                target_file_bytes=target_file_bytes,
+            )
         return self._native.compact(spec)
+
+    def compact_table(self, dataset, *, operation, version, group='source',
+                      files=(), target_file_bytes=DEFAULT_COMPACT_TARGET_FILE_BYTES):
+        return self._native.compact_table(
+            dataset,
+            operation=operation,
+            version=version,
+            group=group,
+            files=files,
+            target_file_bytes=target_file_bytes,
+        )
 
     def compact_lifecycle(self, dataset):
         return self._native.compact_lifecycle(dataset)
@@ -505,14 +567,22 @@ class DocSpecLake:
     """
 
     def __init__(self, client, workspace_suffix='', *,
-                 lifecycle_compact_interval=DEFAULT_LIFECYCLE_COMPACT_INTERVAL):
+                 lifecycle_compact_interval=DEFAULT_LIFECYCLE_COMPACT_INTERVAL,
+                 compact_file_threshold=DEFAULT_COMPACT_FILE_THRESHOLD,
+                 compact_target_file_bytes=DEFAULT_COMPACT_TARGET_FILE_BYTES):
         self.client = client
         self.workspace_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
         self.lifecycle_compact_interval = lifecycle_compact_interval
+        self.compact_file_threshold = compact_file_threshold
+        self._compact_file_threshold = compact_file_threshold
+        self.compact_target_file_bytes = compact_target_file_bytes
+        self._compact_target_file_bytes = compact_target_file_bytes
         self.committed = self._load_committed_state()
         self._mutation_counts = self._load_mutation_counts()
+        self._compacted_pins = {}
         self.last_lookup_stats = {}
         self.lifecycle_compactions = []
+        self.table_compactions = []
 
     def _committed_state_path(self):
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
@@ -600,6 +670,120 @@ class DocSpecLake:
             if self._mutation_counts.get(ds, 0) >= interval
         ]
         return self.compact_lifecycle(due) if due else {}
+
+    def _effective_source_table_pin(self, dataset, pin):
+        if not isinstance(pin, dict):
+            return {}
+        version = pin.get('dataset', {}).get('version')
+        compacted = self._compacted_pins.get(dataset)
+        if isinstance(compacted, dict) and compacted.get('version') == version:
+            replacement = compacted.get('replacement')
+            if isinstance(replacement, dict):
+                return replacement
+        return pin.get('dataset', {}).get('groups', {}).get('source') or {}
+
+    def active_parquet_files(self, dataset, *, pin=None):
+        """Return active Parquet data file objects for ``dataset``."""
+        resolved_dataset = self._dataset(dataset)
+        target_pin = (
+            pin
+            or self.committed.get(resolved_dataset)
+            or self.client.try_latest(resolved_dataset)
+        )
+        if target_pin is None:
+            return []
+        table_pin = self._effective_source_table_pin(resolved_dataset, target_pin)
+        return _table_pin_parquet_objects(table_pin)
+
+    def compact_table(self, dataset, *, pin=None, target_file_bytes=None, force=True):
+        """Run native table compaction on undersized Parquet files of ``dataset``."""
+        if getattr(self.client._native, 'remote', None) is not None:
+            return None
+        resolved_dataset = self._dataset(dataset)
+        target_pin = (
+            pin
+            or self.committed.get(resolved_dataset)
+            or self.client.try_latest(resolved_dataset)
+        )
+        if target_pin is None:
+            return None
+        limit = (
+            int(target_file_bytes)
+            if target_file_bytes is not None
+            else int(self.compact_target_file_bytes or DEFAULT_COMPACT_TARGET_FILE_BYTES)
+        )
+        if limit <= 0:
+            limit = DEFAULT_COMPACT_TARGET_FILE_BYTES
+        table_pin = self._effective_source_table_pin(resolved_dataset, target_pin)
+        undersized = _undersized_parquet_files(table_pin, limit)
+        if len(undersized) < 2:
+            return None
+        if not force:
+            threshold = self.compact_file_threshold
+            if not threshold or threshold < 1 or len(undersized) < threshold:
+                return None
+        version = target_pin['dataset']['version']
+        operation = self._operation(
+            f'compact-{resolved_dataset}',
+            content_digest([version, undersized, limit]),
+        )
+        report = self.client.compact({
+            'dataset': resolved_dataset,
+            'operation': operation,
+            'version': version,
+            'group': 'source',
+            'files': undersized,
+            'target_file_bytes': limit,
+        })
+        if isinstance(report, dict) and isinstance(report.get('replacement'), dict):
+            self._compacted_pins[resolved_dataset] = {
+                'version': version,
+                'replacement': report['replacement'],
+            }
+        input_files = list((report or {}).get('input_files') or undersized)
+        output_files = list((report or {}).get('output_files') or ())
+        entry = {
+            'dataset': resolved_dataset,
+            'version': version,
+            'operation': operation,
+            'group': 'source',
+            'files_before': len(input_files),
+            'files_after': len(output_files),
+            'rewritten_files': len(input_files),
+            'produced_files': len(output_files),
+            **(report if isinstance(report, dict) else {}),
+        }
+        self.table_compactions.append(entry)
+        return entry
+
+    def compact_tables(self, datasets=None, *, target_file_bytes=None, force=True):
+        """Run native table compaction across committed (or specified) datasets."""
+        targets = list(self.committed if datasets is None else datasets)
+        results = {}
+        for dataset in targets:
+            resolved = self._dataset(dataset)
+            report = self.compact_table(
+                resolved,
+                target_file_bytes=target_file_bytes,
+                force=force,
+            )
+            if report is not None:
+                results[resolved] = report
+        return results
+
+    def _maybe_compact_table(self, dataset, pin, *, incoming_files=1):
+        threshold = self.compact_file_threshold
+        if not threshold or threshold < 1 or pin is None:
+            return None
+        resolved = self._dataset(dataset)
+        limit = int(self.compact_target_file_bytes or DEFAULT_COMPACT_TARGET_FILE_BYTES)
+        if limit <= 0:
+            limit = DEFAULT_COMPACT_TARGET_FILE_BYTES
+        table_pin = self._effective_source_table_pin(resolved, pin)
+        undersized = _undersized_parquet_files(table_pin, limit)
+        if len(undersized) < 2 or len(undersized) + int(incoming_files) < threshold:
+            return None
+        return self.compact_table(resolved, pin=pin, target_file_bytes=limit, force=True)
 
     def _dataset(self, kind_or_table):
         return dataset_id_for(KIND_TABLES.get(kind_or_table, kind_or_table))
@@ -743,6 +927,7 @@ class DocSpecLake:
             new_records.append(record)
         if not new_records:
             return self._advance_relationship(dataset, kind, prior, relationship)
+        self._maybe_compact_table(dataset, prior, incoming_files=1)
         base_version = prior['dataset']['version']
         operation = self._operation(
             f'append-{kind}', content_digest([base_version, new_records, relationship])
@@ -769,6 +954,7 @@ class DocSpecLake:
         changed = [row for row in merged if existing.get(row['id']) != row]
         if not changed:
             return self._advance_relationship(dataset, kind, prior, relationship)
+        self._maybe_compact_table(dataset, prior, incoming_files=1)
         base_version = prior['dataset']['version']
         operation = self._operation(
             f'upsert-{kind}', content_digest([base_version, changed, relationship])
@@ -1061,17 +1247,25 @@ class DocSpecNewsViews:
     SELECTED_MENTIONS_SCHEMA = bridges.SELECTED_MENTIONS_SCHEMA
 
     def __init__(self, client, workspace_suffix='', *, pins=None,
-                 lifecycle_compact_interval=DEFAULT_LIFECYCLE_COMPACT_INTERVAL):
+                 lifecycle_compact_interval=DEFAULT_LIFECYCLE_COMPACT_INTERVAL,
+                 compact_file_threshold=DEFAULT_COMPACT_FILE_THRESHOLD,
+                 compact_target_file_bytes=DEFAULT_COMPACT_TARGET_FILE_BYTES):
         self.client = client
         self.workspace_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
         self.lifecycle_compact_interval = lifecycle_compact_interval
+        self.compact_file_threshold = compact_file_threshold
+        self._compact_file_threshold = compact_file_threshold
+        self.compact_target_file_bytes = compact_target_file_bytes
+        self._compact_target_file_bytes = compact_target_file_bytes
         persisted_pins, persisted_rows, persisted_versions, persisted_mutations = self._load_views_state()
         self.pins = dict(pins) if pins is not None else persisted_pins
         self._bridge_rows = persisted_rows if pins is None else {}
         self._bridge_versions = persisted_versions if pins is None else {}
         self._mutation_counts = persisted_mutations if pins is None else {}
+        self._compacted_pins = {}
         self.last_bridge_diff = {}
         self.lifecycle_compactions = []
+        self.table_compactions = []
 
     def _views_state_path(self):
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
@@ -1139,6 +1333,112 @@ class DocSpecNewsViews:
         interval = self.lifecycle_compact_interval
         if interval and interval >= 1 and self._mutation_counts[dataset] >= interval:
             self.compact_lifecycle([dataset])
+
+    def _effective_source_table_pin(self, dataset, pin):
+        if not isinstance(pin, dict):
+            return {}
+        version = pin.get('dataset', {}).get('version')
+        compacted = self._compacted_pins.get(dataset)
+        if isinstance(compacted, dict) and compacted.get('version') == version:
+            replacement = compacted.get('replacement')
+            if isinstance(replacement, dict):
+                return replacement
+        return pin.get('dataset', {}).get('groups', {}).get('source') or {}
+
+    def active_parquet_files(self, dataset, *, pin=None):
+        """Return active Parquet data file objects for ``dataset``."""
+        resolved = sanitize_id(dataset)
+        target_pin = pin or self.pins.get(resolved) or self.client.try_latest(resolved)
+        if target_pin is None:
+            return []
+        table_pin = self._effective_source_table_pin(resolved, target_pin)
+        return _table_pin_parquet_objects(table_pin)
+
+    def compact_table(self, dataset, *, pin=None, target_file_bytes=None, force=True):
+        """Run native table compaction on undersized Parquet files of ``dataset``."""
+        if getattr(self.client._native, 'remote', None) is not None:
+            return None
+        resolved = sanitize_id(dataset)
+        target_pin = pin or self.pins.get(resolved) or self.client.try_latest(resolved)
+        if target_pin is None:
+            return None
+        limit = (
+            int(target_file_bytes)
+            if target_file_bytes is not None
+            else int(self.compact_target_file_bytes or DEFAULT_COMPACT_TARGET_FILE_BYTES)
+        )
+        if limit <= 0:
+            limit = DEFAULT_COMPACT_TARGET_FILE_BYTES
+        table_pin = self._effective_source_table_pin(resolved, target_pin)
+        undersized = _undersized_parquet_files(table_pin, limit)
+        if len(undersized) < 2:
+            return None
+        if not force:
+            threshold = self.compact_file_threshold
+            if not threshold or threshold < 1 or len(undersized) < threshold:
+                return None
+        version = target_pin['dataset']['version']
+        operation = self._operation(
+            f'compact-{resolved}',
+            content_digest([version, undersized, limit]),
+        )
+        report = self.client.compact({
+            'dataset': resolved,
+            'operation': operation,
+            'version': version,
+            'group': 'source',
+            'files': undersized,
+            'target_file_bytes': limit,
+        })
+        if isinstance(report, dict) and isinstance(report.get('replacement'), dict):
+            self._compacted_pins[resolved] = {
+                'version': version,
+                'replacement': report['replacement'],
+            }
+        input_files = list((report or {}).get('input_files') or undersized)
+        output_files = list((report or {}).get('output_files') or ())
+        entry = {
+            'dataset': resolved,
+            'version': version,
+            'operation': operation,
+            'group': 'source',
+            'files_before': len(input_files),
+            'files_after': len(output_files),
+            'rewritten_files': len(input_files),
+            'produced_files': len(output_files),
+            **(report if isinstance(report, dict) else {}),
+        }
+        self.table_compactions.append(entry)
+        return entry
+
+    def compact_tables(self, datasets=None, *, target_file_bytes=None, force=True):
+        """Run native table compaction across pinned (or specified) bridge/view datasets."""
+        targets = list(self.pins if datasets is None else datasets)
+        results = {}
+        for dataset in targets:
+            resolved = sanitize_id(dataset)
+            report = self.compact_table(
+                resolved,
+                target_file_bytes=target_file_bytes,
+                force=force,
+            )
+            if report is not None:
+                results[resolved] = report
+        return results
+
+    def _maybe_compact_table(self, dataset, pin, *, incoming_files=1):
+        threshold = self.compact_file_threshold
+        if not threshold or threshold < 1 or pin is None:
+            return None
+        resolved = sanitize_id(dataset)
+        limit = int(self.compact_target_file_bytes or DEFAULT_COMPACT_TARGET_FILE_BYTES)
+        if limit <= 0:
+            limit = DEFAULT_COMPACT_TARGET_FILE_BYTES
+        table_pin = self._effective_source_table_pin(resolved, pin)
+        undersized = _undersized_parquet_files(table_pin, limit)
+        if len(undersized) < 2 or len(undersized) + int(incoming_files) < threshold:
+            return None
+        return self.compact_table(resolved, pin=pin, target_file_bytes=limit, force=True)
 
     # -- materialization & incremental bridge updates ------------------------
 
@@ -1292,6 +1592,11 @@ class DocSpecNewsViews:
                 self._bridge_versions[dataset] = prior_version
                 updated_pins[dataset] = prior_pin
                 continue
+            self._maybe_compact_table(
+                dataset,
+                prior_pin,
+                incoming_files=1 if changed_rows else 0,
+            )
             replacements_table = pa.Table.from_pylist(changed_rows, schema=schema)
             deletions_table = (
                 pa.Table.from_pylist(
@@ -1662,6 +1967,9 @@ class DocSpecNewsViews:
 
 __all__ = [
     'AppendCollisionError',
+    'DEFAULT_COMPACT_FILE_THRESHOLD',
+    'DEFAULT_COMPACT_TARGET_FILE_BYTES',
+    'DEFAULT_LIFECYCLE_COMPACT_INTERVAL',
     'DEFINITION',
     'DocSpecClient',
     'DocSpecFailure',

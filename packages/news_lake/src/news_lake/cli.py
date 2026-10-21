@@ -24,6 +24,8 @@ from news_lake.contract.records import parse_jsonl
 from news_lake.storage.control import ControlStore
 from news_lake.storage.coordinator import Coordinator
 from news_lake.storage.docspec_backend import (
+    DEFAULT_COMPACT_FILE_THRESHOLD,
+    DEFAULT_COMPACT_TARGET_FILE_BYTES,
     DEFAULT_LIFECYCLE_COMPACT_INTERVAL,
     DocSpecClient,
     DocSpecLake,
@@ -60,6 +62,8 @@ def _cmd_publish(args):
         lake = DocSpecLake(
             client,
             lifecycle_compact_interval=args.lifecycle_compact_interval,
+            compact_file_threshold=args.compact_file_threshold,
+            compact_target_file_bytes=args.compact_target_file_bytes,
         )
         coordinator = Coordinator(lake, control)
         release = publish_release(
@@ -73,6 +77,7 @@ def _cmd_publish(args):
         return {
             'backend': 'docspec',
             'release': release,
+            'table_compactions': lake.table_compactions,
             'lifecycle_compactions': lake.lifecycle_compactions,
         }
 
@@ -85,11 +90,15 @@ def _cmd_views(args):
         lake = DocSpecLake(
             client,
             lifecycle_compact_interval=args.lifecycle_compact_interval,
+            compact_file_threshold=args.compact_file_threshold,
+            compact_target_file_bytes=args.compact_target_file_bytes,
         )
         release_read = read_release(lake, control, args.release_id)
         views = DocSpecNewsViews(
             client,
             lifecycle_compact_interval=args.lifecycle_compact_interval,
+            compact_file_threshold=args.compact_file_threshold,
+            compact_target_file_bytes=args.compact_target_file_bytes,
         )
         if args.mode == 'full' or not views.pins:
             views.materialize(release_read)
@@ -113,6 +122,7 @@ def _cmd_views(args):
             'oracle_verified': oracle_verified,
             'politician_articles': pa_rows,
             'coverage_daily': cov_rows,
+            'table_compactions': views.table_compactions,
             'lifecycle_compactions': views.lifecycle_compactions,
         }
 
@@ -154,10 +164,14 @@ def _cmd_compact_lifecycle(args):
     with DocSpecClient(workspace, binary=args.binary) as client:
         lake = DocSpecLake(client)
         views = DocSpecNewsViews(client)
+        lake_tables = lake.compact_tables() if getattr(args, 'compact_tables', False) else {}
+        view_tables = views.compact_tables() if getattr(args, 'compact_tables', False) else {}
         lake_reports = lake.compact_lifecycle()
         view_reports = views.compact_lifecycle()
         return {
             'backend': 'docspec',
+            'lake_table_compactions': lake_tables,
+            'view_table_compactions': view_tables,
             'lake_datasets': lake_reports,
             'view_datasets': view_reports,
         }
@@ -179,6 +193,18 @@ def build_parser():
             type=int,
             default=DEFAULT_LIFECYCLE_COMPACT_INTERVAL,
             help='Compact dataset lifecycle every N mutations (0 disables automatic compaction)',
+        )
+        p.add_argument(
+            '--compact-file-threshold',
+            type=int,
+            default=DEFAULT_COMPACT_FILE_THRESHOLD,
+            help='Compact undersized Parquet files when active count reaches N (0 disables automatic table compaction)',
+        )
+        p.add_argument(
+            '--compact-target-file-bytes',
+            type=int,
+            default=DEFAULT_COMPACT_TARGET_FILE_BYTES,
+            help='Target Parquet file size in bytes for native table compaction',
         )
 
     p_pub = sub.add_parser('publish', help='Validate and publish a JSONL batch as a pinned release')
@@ -209,6 +235,7 @@ def build_parser():
     p_comp = sub.add_parser('compact-lifecycle', help='Compact obsolete lifecycle revisions across workspace datasets')
     p_comp.add_argument('--workspace', required=True, help='DocSpec workspace directory')
     p_comp.add_argument('--binary', default=None, help='Explicit docspec binary path')
+    p_comp.add_argument('--compact-tables', action='store_true', help='Also compact undersized Parquet data files')
     p_comp.set_defaults(func=_cmd_compact_lifecycle)
 
     return parser
