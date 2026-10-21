@@ -162,10 +162,32 @@ def _cmd_export(args):
 def _cmd_compact_lifecycle(args):
     workspace = Path(args.workspace).resolve()
     with DocSpecClient(workspace, binary=args.binary) as client:
-        lake = DocSpecLake(client)
-        views = DocSpecNewsViews(client)
-        lake_tables = lake.compact_tables() if getattr(args, 'compact_tables', False) else {}
-        view_tables = views.compact_tables() if getattr(args, 'compact_tables', False) else {}
+        lake = DocSpecLake(
+            client,
+            compact_file_threshold=args.compact_file_threshold,
+            compact_target_file_bytes=args.compact_target_file_bytes,
+        )
+        views = DocSpecNewsViews(
+            client,
+            compact_file_threshold=args.compact_file_threshold,
+            compact_target_file_bytes=args.compact_target_file_bytes,
+        )
+        lake_tables = (
+            lake.compact_tables(
+                compact_file_threshold=args.compact_file_threshold,
+                target_file_bytes=args.compact_target_file_bytes,
+            )
+            if getattr(args, 'compact_tables', False)
+            else {}
+        )
+        view_tables = (
+            views.compact_tables(
+                compact_file_threshold=args.compact_file_threshold,
+                target_file_bytes=args.compact_target_file_bytes,
+            )
+            if getattr(args, 'compact_tables', False)
+            else {}
+        )
         lake_reports = lake.compact_lifecycle()
         view_reports = views.compact_lifecycle()
         return {
@@ -236,6 +258,18 @@ def build_parser():
     p_comp.add_argument('--workspace', required=True, help='DocSpec workspace directory')
     p_comp.add_argument('--binary', default=None, help='Explicit docspec binary path')
     p_comp.add_argument('--compact-tables', action='store_true', help='Also compact undersized Parquet data files')
+    p_comp.add_argument(
+        '--compact-file-threshold',
+        type=int,
+        default=DEFAULT_COMPACT_FILE_THRESHOLD,
+        help='Compact undersized Parquet files when active count reaches N (0 disables automatic table compaction)',
+    )
+    p_comp.add_argument(
+        '--compact-target-file-bytes',
+        type=int,
+        default=DEFAULT_COMPACT_TARGET_FILE_BYTES,
+        help='Target Parquet file size in bytes for native table compaction',
+    )
     p_comp.set_defaults(func=_cmd_compact_lifecycle)
 
     return parser

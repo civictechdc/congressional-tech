@@ -577,9 +577,10 @@ class DocSpecLake:
         self._compact_file_threshold = compact_file_threshold
         self.compact_target_file_bytes = compact_target_file_bytes
         self._compact_target_file_bytes = compact_target_file_bytes
+        self._compacted_pins = {}
         self.committed = self._load_committed_state()
         self._mutation_counts = self._load_mutation_counts()
-        self._compacted_pins = {}
+        self._pending_lifecycle_compactions = set()
         self.last_lookup_stats = {}
         self.lifecycle_compactions = []
         self.table_compactions = []
@@ -592,19 +593,47 @@ class DocSpecLake:
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
         return self.client.workspace / f'.news_lake_mutations{suffix}.json'
 
+    def _compacted_pins_path(self):
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return self.client.workspace / f'.news_lake_compacted{suffix}.json'
+
     def _release_manifest_path(self, release_id):
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
         return self.client.workspace / f'releases{suffix}' / f'{sanitize_id(release_id)}.json'
 
     def _load_committed_state(self):
         path = self._committed_state_path()
-        if not path.is_file():
-            return {}
-        try:
-            data = json.loads(path.read_text())
-            return dict(data) if isinstance(data, dict) else {}
-        except (OSError, ValueError):
-            return {}
+        committed = {}
+        if path.is_file():
+            try:
+                data = json.loads(path.read_text())
+                if isinstance(data, dict):
+                    committed = dict(data)
+            except (OSError, ValueError):
+                committed = {}
+        cpath = self._compacted_pins_path()
+        compacted_pins = {}
+        if cpath.is_file():
+            try:
+                raw_compacted = json.loads(cpath.read_text())
+                if isinstance(raw_compacted, dict):
+                    for ds, entry in raw_compacted.items():
+                        if not isinstance(entry, dict) or not isinstance(entry.get('replacement'), dict):
+                            continue
+                        pin = committed.get(ds)
+                        selected_ver = (
+                            (pin or {}).get('dataset', {}).get('version')
+                            or (pin or {}).get('selected_version')
+                        )
+                        if selected_ver and entry.get('version') == selected_ver:
+                            compacted_pins[str(ds)] = {
+                                'version': selected_ver,
+                                'replacement': entry['replacement'],
+                            }
+            except (OSError, ValueError):
+                compacted_pins = {}
+        self._compacted_pins = compacted_pins
+        return committed
 
     def _load_mutation_counts(self):
         path = self._mutation_counts_path()
@@ -634,6 +663,24 @@ class DocSpecLake:
             json.dumps(self._mutation_counts, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
         )
         mtmp.replace(mpath)
+        valid_compacted = {}
+        for ds, entry in self._compacted_pins.items():
+            if not isinstance(entry, dict) or not isinstance(entry.get('replacement'), dict):
+                continue
+            pin = self.committed.get(ds)
+            selected_ver = (
+                (pin or {}).get('dataset', {}).get('version')
+                or (pin or {}).get('selected_version')
+            )
+            if selected_ver is None or entry.get('version') == selected_ver:
+                valid_compacted[ds] = entry
+        self._compacted_pins = valid_compacted
+        cpath = self._compacted_pins_path()
+        ctmp = cpath.with_suffix('.json.tmp')
+        ctmp.write_text(
+            json.dumps(self._compacted_pins, ensure_ascii=False, separators=(',', ':'), allow_nan=False, default=str)
+        )
+        ctmp.replace(cpath)
 
     def compact_lifecycle(self, datasets=None):
         """Compact obsolete lifecycle revisions for local datasets."""
@@ -664,11 +711,15 @@ class DocSpecLake:
     def _maybe_compact_lifecycle(self, datasets):
         interval = self.lifecycle_compact_interval
         if not interval or interval < 1:
+            self._pending_lifecycle_compactions.clear()
             return {}
         due = [
             ds for ds in datasets
             if self._mutation_counts.get(ds, 0) >= interval
+            or ds in self._pending_lifecycle_compactions
         ]
+        for ds in due:
+            self._pending_lifecycle_compactions.discard(ds)
         return self.compact_lifecycle(due) if due else {}
 
     def _effective_source_table_pin(self, dataset, pin):
@@ -695,7 +746,8 @@ class DocSpecLake:
         table_pin = self._effective_source_table_pin(resolved_dataset, target_pin)
         return _table_pin_parquet_objects(table_pin)
 
-    def compact_table(self, dataset, *, pin=None, target_file_bytes=None, force=True):
+    def compact_table(self, dataset, *, pin=None, target_file_bytes=None,
+                      compact_file_threshold=None, force=True):
         """Run native table compaction on undersized Parquet files of ``dataset``."""
         if getattr(self.client._native, 'remote', None) is not None:
             return None
@@ -718,8 +770,12 @@ class DocSpecLake:
         undersized = _undersized_parquet_files(table_pin, limit)
         if len(undersized) < 2:
             return None
-        if not force:
-            threshold = self.compact_file_threshold
+        if compact_file_threshold is not None or not force:
+            threshold = (
+                self.compact_file_threshold
+                if compact_file_threshold is None
+                else compact_file_threshold
+            )
             if not threshold or threshold < 1 or len(undersized) < threshold:
                 return None
         version = target_pin['dataset']['version']
@@ -740,6 +796,7 @@ class DocSpecLake:
                 'version': version,
                 'replacement': report['replacement'],
             }
+            self._save_committed_state()
         input_files = list((report or {}).get('input_files') or undersized)
         output_files = list((report or {}).get('output_files') or ())
         entry = {
@@ -756,7 +813,8 @@ class DocSpecLake:
         self.table_compactions.append(entry)
         return entry
 
-    def compact_tables(self, datasets=None, *, target_file_bytes=None, force=True):
+    def compact_tables(self, datasets=None, *, target_file_bytes=None,
+                       compact_file_threshold=None, force=True):
         """Run native table compaction across committed (or specified) datasets."""
         targets = list(self.committed if datasets is None else datasets)
         results = {}
@@ -765,6 +823,7 @@ class DocSpecLake:
             report = self.compact_table(
                 resolved,
                 target_file_bytes=target_file_bytes,
+                compact_file_threshold=compact_file_threshold,
                 force=force,
             )
             if report is not None:
@@ -927,7 +986,8 @@ class DocSpecLake:
             new_records.append(record)
         if not new_records:
             return self._advance_relationship(dataset, kind, prior, relationship)
-        self._maybe_compact_table(dataset, prior, incoming_files=1)
+        if self._maybe_compact_table(dataset, prior, incoming_files=1) is not None:
+            self._pending_lifecycle_compactions.add(dataset)
         base_version = prior['dataset']['version']
         operation = self._operation(
             f'append-{kind}', content_digest([base_version, new_records, relationship])
@@ -954,7 +1014,8 @@ class DocSpecLake:
         changed = [row for row in merged if existing.get(row['id']) != row]
         if not changed:
             return self._advance_relationship(dataset, kind, prior, relationship)
-        self._maybe_compact_table(dataset, prior, incoming_files=1)
+        if self._maybe_compact_table(dataset, prior, incoming_files=1) is not None:
+            self._pending_lifecycle_compactions.add(dataset)
         base_version = prior['dataset']['version']
         operation = self._operation(
             f'upsert-{kind}', content_digest([base_version, changed, relationship])
@@ -1257,12 +1318,15 @@ class DocSpecNewsViews:
         self._compact_file_threshold = compact_file_threshold
         self.compact_target_file_bytes = compact_target_file_bytes
         self._compact_target_file_bytes = compact_target_file_bytes
+        self._compacted_pins = {}
         persisted_pins, persisted_rows, persisted_versions, persisted_mutations = self._load_views_state()
         self.pins = dict(pins) if pins is not None else persisted_pins
         self._bridge_rows = persisted_rows if pins is None else {}
         self._bridge_versions = persisted_versions if pins is None else {}
         self._mutation_counts = persisted_mutations if pins is None else {}
-        self._compacted_pins = {}
+        if pins is not None:
+            self._compacted_pins = {}
+        self._pending_lifecycle_compactions = set()
         self.last_bridge_diff = {}
         self.lifecycle_compactions = []
         self.table_compactions = []
@@ -1274,13 +1338,33 @@ class DocSpecNewsViews:
     def _load_views_state(self):
         path = self._views_state_path()
         if not path.is_file():
+            self._compacted_pins = {}
             return {}, {}, {}, {}
         try:
             data = json.loads(path.read_text())
             if not isinstance(data, dict):
+                self._compacted_pins = {}
                 return {}, {}, {}, {}
+            pins = dict(data.get('pins') or {})
+            compacted_pins = {}
+            raw_compacted = data.get('compacted_pins')
+            if isinstance(raw_compacted, dict):
+                for ds, entry in raw_compacted.items():
+                    if not isinstance(entry, dict) or not isinstance(entry.get('replacement'), dict):
+                        continue
+                    pin = pins.get(ds)
+                    selected_ver = (
+                        (pin or {}).get('dataset', {}).get('version')
+                        or (pin or {}).get('selected_version')
+                    )
+                    if selected_ver and entry.get('version') == selected_ver:
+                        compacted_pins[str(ds)] = {
+                            'version': selected_ver,
+                            'replacement': entry['replacement'],
+                        }
+            self._compacted_pins = compacted_pins
             return (
-                dict(data.get('pins') or {}),
+                pins,
                 dict(data.get('bridge_rows') or {}),
                 dict(data.get('bridge_versions') or {}),
                 {
@@ -1290,11 +1374,24 @@ class DocSpecNewsViews:
                 },
             )
         except (OSError, ValueError):
+            self._compacted_pins = {}
             return {}, {}, {}, {}
 
     def _save_views_state(self):
         path = self._views_state_path()
         path.parent.mkdir(parents=True, exist_ok=True)
+        valid_compacted = {}
+        for ds, entry in self._compacted_pins.items():
+            if not isinstance(entry, dict) or not isinstance(entry.get('replacement'), dict):
+                continue
+            pin = self.pins.get(ds)
+            selected_ver = (
+                (pin or {}).get('dataset', {}).get('version')
+                or (pin or {}).get('selected_version')
+            )
+            if selected_ver is None or entry.get('version') == selected_ver:
+                valid_compacted[ds] = entry
+        self._compacted_pins = valid_compacted
         tmp = path.with_suffix('.json.tmp')
         tmp.write_text(
             json.dumps(
@@ -1303,6 +1400,7 @@ class DocSpecNewsViews:
                     'bridge_rows': self._bridge_rows,
                     'bridge_versions': self._bridge_versions,
                     'mutation_counts': self._mutation_counts,
+                    'compacted_pins': self._compacted_pins,
                 },
                 ensure_ascii=False,
                 separators=(',', ':'),
@@ -1328,11 +1426,24 @@ class DocSpecNewsViews:
             self._save_views_state()
         return results
 
-    def _record_view_mutation(self, dataset):
+    def _record_view_mutation(self, dataset, *, is_bridge=False):
         self._mutation_counts[dataset] = self._mutation_counts.get(dataset, 0) + 1
         interval = self.lifecycle_compact_interval
-        if interval and interval >= 1 and self._mutation_counts[dataset] >= interval:
+        if not is_bridge and interval and interval >= 1 and (
+            self._mutation_counts[dataset] >= interval
+        ):
             self.compact_lifecycle([dataset])
+
+    def _flush_pending_bridge_compactions(self, datasets):
+        interval = self.lifecycle_compact_interval
+        if not interval or interval < 1:
+            for ds in datasets:
+                self._pending_lifecycle_compactions.discard(ds)
+            return {}
+        due = [ds for ds in datasets if ds in self._pending_lifecycle_compactions]
+        for ds in due:
+            self._pending_lifecycle_compactions.discard(ds)
+        return self.compact_lifecycle(due) if due else {}
 
     def _effective_source_table_pin(self, dataset, pin):
         if not isinstance(pin, dict):
@@ -1354,7 +1465,8 @@ class DocSpecNewsViews:
         table_pin = self._effective_source_table_pin(resolved, target_pin)
         return _table_pin_parquet_objects(table_pin)
 
-    def compact_table(self, dataset, *, pin=None, target_file_bytes=None, force=True):
+    def compact_table(self, dataset, *, pin=None, target_file_bytes=None,
+                      compact_file_threshold=None, force=True):
         """Run native table compaction on undersized Parquet files of ``dataset``."""
         if getattr(self.client._native, 'remote', None) is not None:
             return None
@@ -1373,8 +1485,12 @@ class DocSpecNewsViews:
         undersized = _undersized_parquet_files(table_pin, limit)
         if len(undersized) < 2:
             return None
-        if not force:
-            threshold = self.compact_file_threshold
+        if compact_file_threshold is not None or not force:
+            threshold = (
+                self.compact_file_threshold
+                if compact_file_threshold is None
+                else compact_file_threshold
+            )
             if not threshold or threshold < 1 or len(undersized) < threshold:
                 return None
         version = target_pin['dataset']['version']
@@ -1395,6 +1511,7 @@ class DocSpecNewsViews:
                 'version': version,
                 'replacement': report['replacement'],
             }
+            self._save_views_state()
         input_files = list((report or {}).get('input_files') or undersized)
         output_files = list((report or {}).get('output_files') or ())
         entry = {
@@ -1411,7 +1528,8 @@ class DocSpecNewsViews:
         self.table_compactions.append(entry)
         return entry
 
-    def compact_tables(self, datasets=None, *, target_file_bytes=None, force=True):
+    def compact_tables(self, datasets=None, *, target_file_bytes=None,
+                       compact_file_threshold=None, force=True):
         """Run native table compaction across pinned (or specified) bridge/view datasets."""
         targets = list(self.pins if datasets is None else datasets)
         results = {}
@@ -1420,6 +1538,7 @@ class DocSpecNewsViews:
             report = self.compact_table(
                 resolved,
                 target_file_bytes=target_file_bytes,
+                compact_file_threshold=compact_file_threshold,
                 force=force,
             )
             if report is not None:
@@ -1592,11 +1711,18 @@ class DocSpecNewsViews:
                 self._bridge_versions[dataset] = prior_version
                 updated_pins[dataset] = prior_pin
                 continue
-            self._maybe_compact_table(
+            compacted = self._maybe_compact_table(
                 dataset,
                 prior_pin,
                 incoming_files=1 if changed_rows else 0,
             )
+            interval = self.lifecycle_compact_interval
+            if interval and interval >= 1 and (
+                compacted is not None
+                or self._mutation_counts.get(dataset, 0) + 1 >= interval
+            ):
+                self.compact_lifecycle([dataset])
+                self._pending_lifecycle_compactions.add(dataset)
             replacements_table = pa.Table.from_pylist(changed_rows, schema=schema)
             deletions_table = (
                 pa.Table.from_pylist(
@@ -1623,7 +1749,7 @@ class DocSpecNewsViews:
             self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in new_rows}
             self._bridge_versions[dataset] = pin['dataset']['version']
             updated_pins[dataset] = pin
-            self._record_view_mutation(dataset)
+            self._record_view_mutation(dataset, is_bridge=True)
         self.last_bridge_diff = diff_summary
         self._save_views_state()
         return dict(updated_pins)
@@ -1702,6 +1828,7 @@ class DocSpecNewsViews:
         spec = self._refresh_join_spec(base, mode, mentions_pin=mentions_pin, roots_pin=roots_pin)
         pin = self.client.refresh(spec)
         self.pins['politician_articles'] = pin
+        self._flush_pending_bridge_compactions(('selected_mentions', 'entity_roots'))
         self._record_view_mutation('politician_articles')
         self._save_views_state()
         joined = table_records(self.client.read_arrow(pin))
@@ -1817,6 +1944,7 @@ class DocSpecNewsViews:
         spec = self._refresh_aggregate_spec(base, mode, survivor_pin=survivor_pin)
         pin = self.client.refresh(spec)
         self.pins['coverage_daily'] = pin
+        self._flush_pending_bridge_compactions(('survivor_items',))
         self._record_view_mutation('coverage_daily')
         self._save_views_state()
         aggregate = table_records(self.client.read_arrow(pin))

@@ -1265,6 +1265,9 @@ def test_news_lake_cli_publish_views_export_and_compact_lifecycle(tmp_path, caps
         'compact-lifecycle',
         '--workspace', str(ws),
         '--binary', str(docspec),
+        '--compact-tables',
+        '--compact-file-threshold', '2',
+        '--compact-target-file-bytes', str(64 * 1024 * 1024),
     ]) == 0
     comp_out = json.loads(capsys.readouterr().out)
     assert comp_out['backend'] == 'docspec'
@@ -1287,12 +1290,12 @@ def test_threshold_table_compaction_bounds_active_files_and_preserves_oracle_equ
     lake = DocSpecLake(
         client,
         compact_file_threshold=4,
-        lifecycle_compact_interval=4,
+        lifecycle_compact_interval=16,
     )
     views = DocSpecNewsViews(
         client,
         compact_file_threshold=4,
-        lifecycle_compact_interval=4,
+        lifecycle_compact_interval=16,
     )
 
     # Seed base corpus on Poll 0
@@ -1349,12 +1352,15 @@ def test_threshold_table_compaction_bounds_active_files_and_preserves_oracle_equ
     assert len(lake.table_compactions) == compactions_before_replay
 
     # Verify table compactions fired on both append and upsert datasets at Poll 3 and Poll 5
+    # and triggered immediate lifecycle compaction even though lifecycle_compact_interval=16.
     cap_compactions = [c for c in lake.table_compactions if c['dataset'] == 'news_captures']
     item_compactions = [c for c in lake.table_compactions if c['dataset'] == 'news_items']
     assert len(cap_compactions) == 2
     assert len(item_compactions) == 2
     assert all(c['verified'] is True and c['rewritten_files'] == 3 and c['produced_files'] == 1 for c in cap_compactions)
     assert all(c['verified'] is True and c['rewritten_files'] == 3 and c['produced_files'] == 1 for c in item_compactions)
+    assert sum(1 for c in lake.lifecycle_compactions if c['dataset'] == 'news_captures') >= 2
+    assert sum(1 for c in lake.lifecycle_compactions if c['dataset'] == 'news_items') >= 2
 
     # Publish a release after the multi-poll compacted updates and verify read_release & C9 oracle parity
     coord = Coordinator(lake, control)
@@ -1394,16 +1400,35 @@ def test_threshold_table_compaction_bounds_active_files_and_preserves_oracle_equ
         c['dataset'] == 'selected_mentions' and c['verified'] is True
         for c in views.table_compactions
     )
+    assert any(
+        c['dataset'] == 'selected_mentions'
+        for c in views.lifecycle_compactions
+    )
 
     # Verify C9 views match pure-Python reference oracle 100%
     rel_for_views = release_read_of(all_records, SELECTIONS)
     assert views.politician_articles(rel_for_views, mode='full') == politician_articles_views(rel_for_views)
     assert views.coverage_daily(rel_for_views, mode='full') == coverage_daily(rel_for_views)
 
-    # On-demand compact_table coalesces remaining 2 files into 1 file
+    # On-demand compact_table coalesces remaining 2 files into 1 file and persists across restarts
     on_demand = lake.compact_table('news_captures')
     assert on_demand is not None
     assert on_demand['verified'] is True
     assert on_demand['produced_files'] == 1
     assert len(lake.active_parquet_files('news_captures')) == 1
+
+    on_demand_view = views.compact_table('selected_mentions')
+    assert on_demand_view is not None
+    assert on_demand_view['verified'] is True
+    assert len(views.active_parquet_files('selected_mentions')) == 1
+
+    fresh_lake = DocSpecLake(client, compact_file_threshold=4, lifecycle_compact_interval=16)
+    assert len(fresh_lake.active_parquet_files('news_captures')) == 1
+    assert fresh_lake.compact_table('news_captures') is None
+    assert fresh_lake.table_compactions == []
+
+    fresh_views = DocSpecNewsViews(client, compact_file_threshold=4, lifecycle_compact_interval=16)
+    assert len(fresh_views.active_parquet_files('selected_mentions')) == 1
+    assert fresh_views.compact_table('selected_mentions') is None
+    assert fresh_views.table_compactions == []
     client.close()
