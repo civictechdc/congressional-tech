@@ -10,10 +10,14 @@ import json
 import pyarrow as pa
 
 from . import document_index as index
-from .catalog_dependencies import DependencyGap, summarize_alias_observations
+from .catalog_dependencies import (
+    DependencyGap,
+    summarize_alias_observations,
+    _aggregate_partition_summaries,
+)
 from .catalog_memberships import CatalogMemberships
 from .immutable_metadata import encoded
-from .native_features import refresh_catalog_observation_summary
+from .native_features import inspect_catalog_changes, refresh_catalog_observation_summary
 from .source_inputs import collect_source_inputs
 from .catalog_availability import package_dependencies, hearing_input_packages
 
@@ -159,6 +163,9 @@ class SourceObservationStorage:
     """Persist event/URL receipt ownership in shared bounded native leaves."""
     def __init__(self, *, native, store, namespace, max_rows, max_bytes):
         self.native, self.max_rows, self.max_bytes = native, max_rows, max_bytes
+        self.namespace = namespace
+        self.last_change_report = None
+        self.last_refresh_summary = None
         self.members = CatalogMemberships(store=store, namespace=namespace, schema=SCHEMA,
             member_column='observation', max_rows=max_rows, max_bytes=max_bytes,
             read=self._read, write=self._write, validate_alias=self._validate_key)
@@ -217,7 +224,88 @@ class SourceObservationStorage:
                 return (row[0] for row in db.execute('SELECT alias FROM observation_changed_aliases ORDER BY alias'))
             def __getitem__(self, alias):
                 return (row[0] for row in db.execute('SELECT member FROM observation_changes WHERE alias=? ORDER BY member', (alias,)))
-        return self.members.replace(root, Changes())
+        changed_aliases = [
+            row[0] for row in db.execute('SELECT alias FROM observation_changed_aliases ORDER BY alias')
+        ]
+        if (
+            root is not None
+            and changed_aliases
+            and hasattr(self.native, 'changes_batches')
+            and hasattr(self.native, 'update_table')
+        ):
+            before_obs_rows = [
+                dict(alias=a, observation=m)
+                for a in changed_aliases
+                for m in self.members.values(root, a)
+            ]
+            after_obs_rows = [
+                dict(alias=a, observation=m)
+                for a in changed_aliases
+                for (m,) in db.execute(
+                    'SELECT member FROM observation_changes WHERE alias=? ORDER BY member',
+                    (a,),
+                )
+            ]
+            if before_obs_rows and before_obs_rows != after_obs_rows:
+                before_set = {(r['alias'], r['observation']) for r in before_obs_rows}
+                after_set = {(r['alias'], r['observation']) for r in after_obs_rows}
+                added_obs = [dict(alias=a, observation=m) for (a, m) in sorted(after_set - before_set)]
+                removed_obs = [dict(alias=a, observation=m) for (a, m) in sorted(before_set - after_set)]
+                scope_hash = sha256(
+                    encoded(before_obs_rows) + encoded(after_obs_rows)
+                ).hexdigest()[:32]
+                obs_ds = f'source-obs-scope-{scope_hash}'
+                b_pin = self.native.run_table(
+                    pa.Table.from_pylist(before_obs_rows, schema=SCHEMA),
+                    dataset=obs_ds,
+                    operation='before',
+                    definition='source-observation-dependencies-v1',
+                )
+                a_pin = self.native.update_table(
+                    pa.Table.from_pylist(added_obs, schema=SCHEMA),
+                    dataset=obs_ds,
+                    operation='after',
+                    definition='source-observation-dependencies-v1',
+                    base=b_pin['id'],
+                    keys=['alias', 'observation'],
+                    deletions=(
+                        pa.Table.from_pylist(removed_obs, schema=SCHEMA)
+                        if removed_obs
+                        else None
+                    ),
+                )
+                self.last_change_report = inspect_catalog_changes(
+                    self.native,
+                    b_pin,
+                    a_pin,
+                    key_column='alias',
+                    identity='values',
+                    allow_full_fallback=False,
+                )
+        new_root = self.members.replace(root, Changes())
+        if (
+            new_root is not None
+            and changed_aliases
+            and hasattr(self.native, 'refresh')
+            and getattr(self.native, 'remote', None) is None
+        ):
+            for candidate_alias in changed_aliases:
+                if self.members.routes.lookup(new_root, candidate_alias)[1] is not None:
+                    alias_op = 'sum-' + sha256(
+                        json.dumps(new_root, sort_keys=True, default=str).encode('utf-8')
+                    ).hexdigest()[:16]
+                    alias_ds = (
+                        f'{self.namespace}-obs-summary-'
+                        f'{sha256(candidate_alias.encode("utf-8")).hexdigest()[:12]}'
+                    )
+                    self.summarize_alias(
+                        new_root,
+                        candidate_alias,
+                        dataset=alias_ds,
+                        operation=alias_op,
+                    )
+                    break
+        return new_root
 
     def affected(self, before, after, observations, *, working, changed_dependencies=()):
         """Replay changed outputs, including their immutable upstream owners.
@@ -289,16 +377,47 @@ class SourceObservationStorage:
         _, leaf = self.members.routes.lookup(root, alias)
         if leaf is None:
             return None
-        pin = leaf['release'] if leaf.get('kind') == 'rows' else next(
-            (p for _, p in self.members.members.leaf_items(leaf['root'])), None
-        )
-        if pin is None:
+        if leaf.get('kind') == 'rows':
+            partitions = [('', leaf['release'])]
+        elif leaf.get('kind') == 'members':
+            if alias != leaf.get('alias'):
+                return None
+            partitions = list(self.members.members.leaf_items(leaf['root']))
+        else:
             return None
-        return self.summarize_pin(
-            pin,
-            dataset=dataset,
-            operation=operation,
-            base_pin=base_pin,
-            prior_source_pin=prior_source_pin,
-            mode=mode,
-        )
+        if not partitions:
+            return None
+        part_summaries = []
+        multi = len(partitions) > 1
+        for idx, (part_prefix, pin) in enumerate(partitions):
+            if pin is None:
+                continue
+            suffix = f'-part-{part_prefix or idx}' if multi else ''
+            part_dataset = f'{dataset}{suffix}'
+            part_op = f'{operation}{suffix}' if operation else None
+            part_base = (
+                base_pin.get(part_prefix)
+                if isinstance(base_pin, dict) and 'verified' not in base_pin
+                else (base_pin if not multi else None)
+            )
+            part_prior = (
+                prior_source_pin.get(part_prefix)
+                if isinstance(prior_source_pin, dict) and 'verified' not in prior_source_pin
+                else (prior_source_pin if not multi else None)
+            )
+            part_summaries.append(
+                (
+                    part_prefix,
+                    self.summarize_pin(
+                        pin,
+                        dataset=part_dataset,
+                        operation=part_op,
+                        base_pin=part_base,
+                        prior_source_pin=part_prior,
+                        mode=mode,
+                    ),
+                )
+            )
+        summary = _aggregate_partition_summaries(part_summaries)
+        self.last_refresh_summary = summary
+        return summary

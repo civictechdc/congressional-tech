@@ -256,12 +256,65 @@ def inspect_operator_status(native, dataset, *, stage_directory=None, staging_bu
     )
     latest = inspection.get("latest") if isinstance(inspection, dict) else None
     latest_id = latest.get("id") if isinstance(latest, dict) else (latest if isinstance(latest, str) else None)
+    if latest_id is None and isinstance(authority, dict) and isinstance(authority.get("release"), dict):
+        latest_id = authority["release"].get("id") or authority["release"].get("version")
     versions = inspection.get("versions", []) if isinstance(inspection, dict) else []
     completed_ids = [
         item.get("id") if isinstance(item, dict) else item
         for item in versions
         if isinstance(item, (dict, str))
     ]
+    objects = (
+        inspection["objects"]
+        if isinstance(inspection, dict) and isinstance(inspection.get("objects"), dict)
+        else (inspection if isinstance(inspection, dict) else {})
+    )
+    if not completed_ids and objects:
+        completed_ids = [
+            v["id"]
+            for k, v in sorted(objects.items())
+            if isinstance(k, str)
+            and k.startswith("result/")
+            and isinstance(v, dict)
+            and isinstance(v.get("id"), str)
+        ]
+    latest_changes = None
+    if latest_id is not None and objects and hasattr(native, "changes_batches"):
+        succ = objects.get(f"succession/{latest_id}")
+        pred_ver = (
+            succ.get("predecessor", {}).get("version")
+            if isinstance(succ, dict) and isinstance(succ.get("predecessor"), dict)
+            else None
+        )
+        before_pin = objects.get(f"result/{pred_ver}") if pred_ver else None
+        after_pin = objects.get(f"result/{latest_id}")
+        if (
+            isinstance(before_pin, dict)
+            and before_pin.get("verified")
+            and isinstance(after_pin, dict)
+            and after_pin.get("verified")
+        ):
+            from .native_features import inspect_catalog_changes
+            change_summary = inspect_catalog_changes(
+                native,
+                before_pin,
+                after_pin,
+                identity="values",
+                allow_full_fallback=True,
+            )
+            latest_changes = dict(
+                before_version=pred_ver,
+                after_version=latest_id,
+                path=change_summary["path"],
+                added_rows=change_summary["added_rows"],
+                removed_rows=change_summary["removed_rows"],
+                read_bytes=change_summary["read_bytes"],
+                returned_bytes=change_summary["returned_bytes"],
+                unchanged_files_reused=change_summary["unchanged_files_reused"],
+                schema_changed=change_summary["schema_changed"],
+                inputs_changed=change_summary["inputs_changed"],
+                evidence_changed=change_summary["evidence_changed"],
+            )
     incomplete = inspection.get("incomplete_operations", []) if isinstance(inspection, dict) else []
     incomplete_ids = [
         item.get("id") if isinstance(item, dict) else item
@@ -321,6 +374,7 @@ def inspect_operator_status(native, dataset, *, stage_directory=None, staging_bu
         latest_release_id=latest_id,
         completed_release_ids=completed_ids,
         version_count=len(completed_ids),
+        latest_changes=latest_changes,
         lifecycle_revision=lifecycle_revision,
         lifecycle_compaction_available=hasattr(native, "compact_lifecycle") and getattr(native, "remote", None) is None,
         incomplete_operation_ids=incomplete_ids,

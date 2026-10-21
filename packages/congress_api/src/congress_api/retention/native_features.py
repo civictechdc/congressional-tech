@@ -4,6 +4,7 @@ Each helper binds exact ``ReleasePin`` versions through the shared ``docspec_cli
 transport while preserving application authority over source identity, transitive
 alias closure, review decisions, and coherent multi-table publication.
 """
+from collections import Counter
 import json
 import time
 import pyarrow as pa
@@ -165,8 +166,46 @@ def _compute_field_group_metrics(before_pin, after_pin, *, path, effects, table)
             "returned_bytes": int(ret_bytes),
             **caps,
         }
+    before_groups = before_ds.get("groups") or {}
+    after_groups = after_ds.get("groups") or {}
+    for g_name in set(before_groups) | set(after_groups):
+        if g_name not in field_groups:
+            b_objs = (before_groups.get(g_name) or {}).get("objects") or []
+            a_objs = (after_groups.get(g_name) or {}).get("objects") or []
+            b_pq = _parquet_digests(b_objs)
+            a_pq = _parquet_digests(a_objs)
+            if path == "unchanged":
+                g_read = 0
+            elif path == "forward_changes":
+                d_pq = set(b_pq) ^ set(a_pq)
+                g_read = sum(b_pq.get(d, 0) or a_pq.get(d, 0) for d in d_pq)
+            else:
+                g_read = sum(b_pq.values()) + sum(a_pq.values())
+            field_groups[g_name] = {
+                "read_bytes": int(g_read),
+                "returned_bytes": int(table.nbytes) if table.num_rows > 0 else 0,
+                "backend_capability": "local_only",
+                "local_supported": True,
+                "remote_supported": False,
+            }
     unchanged_files_reused = len(set(before_pq) & set(after_pq))
     return field_groups, unchanged_files_reused, len(after_pq)
+
+
+def _multiset_diff(lhs_rows, rhs_rows):
+    """Return multiset difference ``lhs_rows - rhs_rows`` preserving duplicate multiplicity."""
+    rhs_counts = Counter(
+        json.dumps(r, sort_keys=True, separators=(",", ":"), default=str)
+        for r in rhs_rows
+    )
+    diff = []
+    for r in lhs_rows:
+        key = json.dumps(r, sort_keys=True, separators=(",", ":"), default=str)
+        if rhs_counts.get(key, 0) > 0:
+            rhs_counts[key] -= 1
+        else:
+            diff.append(r)
+    return diff
 
 
 # -- ct-13cn: Certified change streams & catalog diagnostics -------------------
@@ -195,7 +234,14 @@ def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
             f"400 remote_unsupported: field group {group!r} requires BackendCapability::LocalOnly "
             "and is not supported on remote R2"
         )
-    stream_group = "source" if group in ("occurrences", "inputs", "evidence") else group
+    before_groups = (before_pin.get("dataset") or {}).get("groups") or {}
+    after_groups = (after_pin.get("dataset") or {}).get("groups") or {}
+    has_native_group = group in before_groups or group in after_groups
+    stream_group = (
+        group
+        if has_native_group or group not in ("occurrences", "inputs", "evidence")
+        else "source"
+    )
     stream_identity = "occurrences" if group == "occurrences" else identity
     with native.changes_batches(
         before_pin,
@@ -269,8 +315,8 @@ def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
             if _evidence_objects(after_pin.get("dataset") or {})
             else []
         )
-        added_records = [r for r in after_ev_rows if r not in before_ev_rows]
-        removed_records = [r for r in before_ev_rows if r not in after_ev_rows]
+        added_records = _multiset_diff(after_ev_rows, before_ev_rows)
+        removed_records = _multiset_diff(before_ev_rows, after_ev_rows)
         added_rows = len(added_records)
         removed_rows = len(removed_records)
     elif group == "inputs" and (effects.get("input_refs_changed") or effects.get("coverage_changed")):
@@ -439,7 +485,9 @@ def backfill_scalar_group(native, *, dataset, operation, base_pin, definition,
 # -- ct-gziq: Eligible catalog equality joins and aggregate rollups ------------
 
 
-def _compute_refresh_metrics(pin, *, mode, base_pin=None, input_pins=(), prior_input_pins=(), elapsed_ms=0.0):
+def _compute_refresh_metrics(pin, *, mode, base_pin=None, input_pins=(), prior_input_pins=(),
+                             elapsed_ms=0.0, native=None, dataset=None, operation=None,
+                             executed_requests=0):
     out_objs = (((pin.get("dataset") or {}).get("groups") or {}).get("source") or {}).get("objects") or []
     out_pq = _parquet_digests(out_objs)
     base_objs = ((((base_pin or {}).get("dataset") or {}).get("groups") or {}).get("source") or {}).get("objects") or []
@@ -447,7 +495,10 @@ def _compute_refresh_metrics(pin, *, mode, base_pin=None, input_pins=(), prior_i
 
     output_reused = len(set(out_pq) & set(base_pq))
     new_out_digests = set(out_pq) - set(base_pq)
-    written_bytes = sum(out_pq[d] for d in new_out_digests) if new_out_digests else sum(out_pq.values())
+    if base_pin is not None:
+        written_bytes = sum(out_pq[d] for d in new_out_digests)
+    else:
+        written_bytes = sum(out_pq.values())
 
     read_bytes = 0
     input_reused = 0
@@ -476,15 +527,44 @@ def _compute_refresh_metrics(pin, *, mode, base_pin=None, input_pins=(), prior_i
         else:
             read_bytes += sum(in_pq.values())
 
+    native_phase_metrics = {}
+    if native is not None and dataset is not None and operation is not None and hasattr(native, "inspect"):
+        inspection = native.inspect(dataset)
+        if isinstance(inspection, dict):
+            obj_map = (
+                inspection["objects"]
+                if isinstance(inspection.get("objects"), dict)
+                else inspection
+            )
+            for key, entry in obj_map.items():
+                if (
+                    isinstance(key, str)
+                    and key.startswith("phase/")
+                    and isinstance(entry, dict)
+                    and entry.get("operation") == operation
+                    and entry.get("phase") == "processing"
+                    and isinstance(entry.get("metrics"), dict)
+                ):
+                    native_phase_metrics = dict(entry["metrics"])
+                    break
+
+    prep_reads = getattr(native, "preparation_reads", None) if native is not None else None
+    spill_bytes = int(
+        (prep_reads.get("sort_spill_peak_bytes") if isinstance(prep_reads, dict) else None)
+        or native_phase_metrics.get("spill_bytes")
+        or 0
+    )
+
     return dict(
         mode=mode,
         read_bytes=int(read_bytes),
         written_bytes=int(written_bytes),
-        unchanged_files_reused=int(output_reused),
+        unchanged_files_reused=int(max(output_reused, int(native_phase_metrics.get("files_reused", 0)))),
         input_unchanged_files_reused=int(input_reused),
         total_output_files=len(out_pq),
-        provider_requests=2,
-        spill_bytes=0,
+        provider_requests=int(executed_requests),
+        spill_bytes=spill_bytes,
+        native_phase_metrics=native_phase_metrics,
         elapsed_ms=round(float(elapsed_ms), 3),
         backend_capability="local_only",
         remote_supported=False,
@@ -540,9 +620,12 @@ def refresh_catalog_observation_summary(native, *, dataset, operation, source_pi
             ),
         ),
     )
+    executed_requests = 0
     t0 = time.perf_counter()
     plan = native.plan_refresh(spec)
+    executed_requests += 1
     pin = native.refresh(spec)
+    executed_requests += 1
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     metrics = _compute_refresh_metrics(
         pin,
@@ -551,6 +634,10 @@ def refresh_catalog_observation_summary(native, *, dataset, operation, source_pi
         input_pins=(source_pin,),
         prior_input_pins=(prior_source_pin,) if prior_source_pin is not None else (),
         elapsed_ms=elapsed_ms,
+        native=native,
+        dataset=dataset,
+        operation=operation,
+        executed_requests=executed_requests,
     )
     return dict(plan=plan, pin=pin, metrics=metrics)
 
@@ -616,9 +703,12 @@ def refresh_catalog_join(native, *, dataset, operation, left_pin, right_pin,
             ),
         ),
     )
+    executed_requests = 0
     t0 = time.perf_counter()
     plan = native.plan_refresh(spec)
+    executed_requests += 1
     pin = native.refresh(spec)
+    executed_requests += 1
     elapsed_ms = (time.perf_counter() - t0) * 1000.0
     metrics = _compute_refresh_metrics(
         pin,
@@ -627,6 +717,10 @@ def refresh_catalog_join(native, *, dataset, operation, left_pin, right_pin,
         input_pins=(left_pin, right_pin),
         prior_input_pins=(prior_left_pin, prior_right_pin),
         elapsed_ms=elapsed_ms,
+        native=native,
+        dataset=dataset,
+        operation=operation,
+        executed_requests=executed_requests,
     )
     return dict(plan=plan, pin=pin, metrics=metrics)
 

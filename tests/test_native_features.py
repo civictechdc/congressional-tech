@@ -32,20 +32,22 @@ def _binary():
 
 
 def test_ct_13cn_inspect_catalog_changes_preserves_duplicates_nulls_and_affected_keys(tmp_path):
+    from collections import Counter
+
     binary = _binary()
     with NativeDatasets(binary, tmp_path / "ws") as native:
         schema = pa.schema([
             pa.field("source_id", pa.string(), nullable=False),
             pa.field("body_key", pa.string(), nullable=True),
         ])
-        initial = pa.Table.from_pylist(
-            [
-                {"source_id": "src-1", "body_key": "body-a"},
-                {"source_id": "src-2", "body_key": None},
-                {"source_id": "src-3", "body_key": "body-c"},
-            ],
-            schema=schema,
-        )
+        initial_rows = [
+            {"source_id": "src-1", "body_key": "body-a"},
+            {"source_id": "src-2", "body_key": None},
+            {"source_id": "src-3", "body_key": "body-c"},
+            {"source_id": "src-dup", "body_key": "body-dup"},
+            {"source_id": "src-dup", "body_key": "body-dup"},
+        ]
+        initial = pa.Table.from_pylist(initial_rows, schema=schema)
         pin1 = native.run_table(
             initial, dataset="catalog_sources", operation="op-1", definition="v1"
         )
@@ -53,6 +55,9 @@ def test_ct_13cn_inspect_catalog_changes_preserves_duplicates_nulls_and_affected
             [
                 {"source_id": "src-2", "body_key": "body-b-recovered"},
                 {"source_id": "src-4", "body_key": "body-d"},
+                {"source_id": "src-dup", "body_key": "body-dup"},
+                {"source_id": "src-dup", "body_key": "body-dup"},
+                {"source_id": "src-dup", "body_key": "body-dup"},
             ],
             schema=schema,
         )
@@ -70,22 +75,86 @@ def test_ct_13cn_inspect_catalog_changes_preserves_duplicates_nulls_and_affected
             deletions=deletions,
         )
 
-        report = inspect_catalog_changes(
+        # 1. Compare identity="occurrences" vs identity="values" and verify against Counter multiset oracle
+        report_occ = inspect_catalog_changes(
             native,
             pin1,
             pin2,
+            identity="occurrences",
             key_column="source_id",
             allow_full_fallback=False,
         )
-        assert report["path"] == "forward_changes"
-        assert report["added_rows"] == 2
-        assert report["removed_rows"] == 2
-        assert report["changed_keys"] == ["src-2", "src-3", "src-4"]
+        report_val = inspect_catalog_changes(
+            native,
+            pin1,
+            pin2,
+            identity="values",
+            key_column="source_id",
+            allow_full_fallback=False,
+        )
+        assert report_occ["path"] == "forward_changes"
+        assert report_val["path"] == "forward_changes"
+        assert report_occ["changed_keys"] == ["src-2", "src-3", "src-4", "src-dup"]
+        assert report_val["changed_keys"] == ["src-2", "src-3", "src-4", "src-dup"]
 
-        # Same-pin comparison skips payload work and reports 0 differences.
+        # Under identity="occurrences", replacing src-dup (2 copies -> 3 copies) removes the 2 old occurrences
+        # and adds the 3 new occurrences (total 9 row-occurrence transitions); under identity="values",
+        # multiset difference emits only the +1 net copy (total 5 value transitions)!
+        assert len(report_occ["changed_occurrences"]) == report_occ["added_rows"] + report_occ["removed_rows"] == 9
+        assert report_val["added_rows"] + report_val["removed_rows"] == 5
+        assert len(report_val["changed_occurrences"]) < len(report_occ["changed_occurrences"])
+
+        canon = lambda r: json.dumps(r, sort_keys=True, separators=(",", ":"))
+        before_multiset = Counter(canon(r) for r in native.read_arrow(pin1).to_pylist())
+        after_multiset = Counter(canon(r) for r in native.read_arrow(pin2).to_pylist())
+        expected_val_added = after_multiset - before_multiset
+        expected_val_removed = before_multiset - after_multiset
+        actual_val_added = Counter(canon(r) for r in report_val["added_records"])
+        actual_val_removed = Counter(canon(r) for r in report_val["removed_records"])
+        assert actual_val_added == expected_val_added
+        assert actual_val_removed == expected_val_removed
+        # Explicitly verify null body_key in removed_records and duplicate multiplicity in added_records
+        assert any(r["source_id"] == "src-2" and r["body_key"] is None for r in report_val["removed_records"])
+        assert sum(1 for r in report_occ["added_records"] if r["source_id"] == "src-dup") == 3
+        assert sum(1 for r in report_val["added_records"] if r["source_id"] == "src-dup") == 1
+
+        # 2. Verify duplicate receipt multiset difference on group="evidence"
+        loc_map = map_locators_to_occurrences(native, pin2, locator_column="source_id")
+        pin3 = attach_occurrence_receipts(
+            native,
+            dataset="catalog_sources",
+            operation="op-3",
+            base_pin=pin2,
+            definition="v1",
+            locator_to_occurrences=loc_map,
+            receipts=[("src-4", "receipt:dup"), ("src-4", None)],
+        )
+        pin4 = attach_occurrence_receipts(
+            native,
+            dataset="catalog_sources",
+            operation="op-4",
+            base_pin=pin3,
+            definition="v1",
+            locator_to_occurrences=loc_map,
+            receipts=[("src-4", "receipt:dup"), ("src-4", "receipt:dup"), ("src-4", None)],
+        )
+        ev_diff = inspect_catalog_changes(native, pin3, pin4, group="evidence", allow_full_fallback=False)
+        assert ev_diff["evidence_changed"] is True
+        assert ev_diff["added_rows"] == 1
+        assert ev_diff["removed_rows"] == 0
+        assert ev_diff["added_records"][0]["evidence"] == "receipt:dup"
+
+        # 3. Missing history / forced full fallback refusal when allow_full_fallback=False
+        with pytest.raises(ValueError, match="refused full comparison fallback"):
+            inspect_catalog_changes(
+                native, pin1, pin2, allow_full_fallback=False, force_full=True
+            )
+
+        # 4. Same-pin comparison skips payload work and reports 0 differences.
         same = inspect_catalog_changes(native, pin2, pin2, key_column="source_id")
         assert same["path"] == "unchanged"
         assert same["added_rows"] == 0 and same["removed_rows"] == 0
+        assert same["read_bytes"] == 0 and same["returned_bytes"] == 0
 
 
 def test_ct_dmca_schema_evolution_and_scalar_backfill_without_source_rewrite(tmp_path):
@@ -732,8 +801,20 @@ def test_ct_13cn_production_dependency_callers_consume_certified_changes_at_1x_a
             finally:
                 noop_scope.close()
 
-            # 3. CatalogDependencyStorage.prepare production caller with before_pin/after_pin
+            # 3. Default CatalogDependencyStorage.prepare and inspect_operator_status production callers
+            #    (both without and with explicit before_pin/after_pin)
             if label == "1x":
+                from congress_api.retention.native_capacity import inspect_operator_status
+                op_status = inspect_operator_status(
+                    native,
+                    f"dep_sources_{label}",
+                    allow_insufficient_capacity=True,
+                )
+                assert op_status["latest_changes"] is not None
+                assert op_status["latest_changes"]["path"] == "forward_changes"
+                assert op_status["latest_changes"]["added_rows"] == 1
+                assert op_status["latest_changes"]["removed_rows"] == 2
+
                 store = MemoryStore()
                 storage = CatalogDependencyStorage(
                     native=native,
@@ -744,6 +825,22 @@ def test_ct_13cn_production_dependency_callers_consume_certified_changes_at_1x_a
                     max_bytes=1 << 20,
                 )
                 adopted = storage.prepare(None, replacements=initial_rows)
+                assert storage.last_refresh_summary is not None
+                assert storage.last_refresh_summary["metrics"]["read_bytes"] > 0
+
+                # Standard production prepare() without before_pin/after_pin kwargs invokes both
+                # extract_pin_changes (ct-13cn) and summarize_alias_leaf (ct-gziq) automatically!
+                prepared_std = storage.prepare(
+                    adopted,
+                    replacements=[a_updated],
+                    deletions=[index.source_identity(bridge)],
+                )
+                assert storage.last_change_report is not None
+                assert storage.last_change_report["path"] == "forward_changes"
+                assert storage.last_change_report["identity"] == "values"
+                assert storage.last_refresh_summary is not None
+
+                # Also verify explicit before_pin/after_pin pin-driven prepare()
                 prepared = storage.prepare(
                     adopted,
                     before_pin=pin1,
@@ -751,6 +848,7 @@ def test_ct_13cn_production_dependency_callers_consume_certified_changes_at_1x_a
                     key_column="source_id",
                     allow_full_fallback=False,
                 )
+                assert prepared == prepared_std
                 assert storage.last_change_report is not None
                 assert storage.last_change_report["path"] == "forward_changes"
                 reader = storage.selected(prepared)
@@ -773,14 +871,16 @@ def test_ct_13cn_production_dependency_callers_consume_certified_changes_at_1x_a
 
 
 def test_ct_gziq_production_consumers_and_join_aggregate_edge_cases(tmp_path):
-    """Test SourceObservationStorage and NativeCatalogDependencies refresh consumers."""
+    """Test SourceObservationStorage, CatalogDependencyStorage, and NativeCatalogDependencies refresh consumers."""
     from contextlib import closing
     from congress_api.retention import document_index as index
     from congress_api.retention.catalog_dependencies import (
         NativeCatalogDependencies,
+        _encoded_alias,
         affected_sources,
         dependency_tables,
     )
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
     from congress_api.retention.catalog_staging import WorkingCatalog
     from congress_api.retention.source_observations import (
         SCHEMA as OBS_SCHEMA,
@@ -796,7 +896,7 @@ def test_ct_gziq_production_consumers_and_join_aggregate_edge_cases(tmp_path):
             native=native,
             store=store,
             namespace="obs-prod",
-            max_rows=64,
+            max_rows=4,
             max_bytes=1 << 20,
         )
         with closing(WorkingCatalog(tmp_path / "trace.sqlite")) as work:
@@ -805,20 +905,61 @@ def test_ct_gziq_production_consumers_and_join_aggregate_edge_cases(tmp_path):
             trace(dict(receipt_key="meeting-1", receipt_line=1, kind="event", value="7", access="write"))
             root = obs_owner.prepare(None, trace)
 
-        # 1. Production consumer: SourceObservationStorage.summarize_alias calls refresh_catalog_observation_summary
+        # Standard SourceObservationStorage.prepare automatically ran refresh_catalog_observation_summary!
+        assert obs_owner.last_refresh_summary is not None
+        assert obs_owner.last_refresh_summary["metrics"]["native_phase_metrics"]["bytes_written"] > 0
+
+        # Incremental SourceObservationStorage.prepare automatically runs both inspect_catalog_changes
+        # and refresh_catalog_observation_summary, including multi-partition (kind == 'members') aliases!
+        with closing(WorkingCatalog(tmp_path / "trace-inc.sqlite")) as work:
+            trace2 = SourceObservationTrace(work)
+            for idx in range(12):
+                trace2(dict(receipt_key=f"page-{idx}", receipt_line=1, kind="event", value="7", access="read"))
+            root2 = obs_owner.prepare(root, trace2)
+        assert obs_owner.last_change_report is not None
+        assert obs_owner.last_change_report["path"] == "forward_changes"
         alias_key = 'read:dependency:["event","7"]'
+        _, obs_leaf = obs_owner.members.routes.lookup(root2, alias_key)
+        assert obs_leaf["kind"] == "members" and obs_leaf["count"] == 12
         summary = obs_owner.summarize_alias(
-            root, alias_key, dataset="obs_leaf_summary", operation="sum-leaf-1"
+            root2, alias_key, dataset="obs_leaf_summary", operation="sum-leaf-1"
         )
         assert summary is not None
+        assert len(summary["partition_pins"]) > 1
         assert summary["counts"][alias_key] == {
-            "total_rows": 1,
-            "distinct_observations": 1,
+            "total_rows": 12,
+            "distinct_observations": 12,
         }
         assert summary["metrics"]["read_bytes"] > 0
         assert summary["metrics"]["written_bytes"] > 0
-        assert summary["metrics"]["provider_requests"] == 2
+        assert summary["metrics"]["provider_requests"] == 2 * len(summary["partition_pins"])
         assert summary["metrics"]["spill_bytes"] == 0
+
+        # Multi-partition (kind == 'members') alias in CatalogDependencyStorage.summarize_alias_leaf
+        source_schema = pa.schema([*index.SOURCE_SCHEMA, ("capture_outcome", index.STRINGS)])
+        dep_owner = CatalogDependencyStorage(
+            native=native,
+            store=MemoryStore(),
+            namespace="multi-part-dep",
+            source_schema=source_schema,
+            max_rows=4,
+            max_bytes=1 << 20,
+        )
+        shared_rows = [_make_catalog_source(f"doc-{i}.pdf", "shared-body-multi") for i in range(16)]
+        dep_sel = dep_owner.prepare(None, replacements=shared_rows)
+        shared_alias = ("body", "shared-body-multi")
+        _, dep_leaf = dep_owner.aliases.lookup(dep_sel["alias_root"], _encoded_alias(shared_alias))
+        assert dep_leaf["kind"] == "members" and dep_leaf["count"] == 16
+        dep_sum = dep_owner.summarize_alias_leaf(
+            dep_sel, shared_alias, dataset="dep_multi_sum", operation="dms-1"
+        )
+        assert dep_sum is not None
+        assert len(dep_sum["partition_pins"]) > 1
+        assert dep_sum["counts"][_encoded_alias(shared_alias)] == {
+            "total_rows": 16,
+            "distinct_observations": 16,
+        }
+        assert dep_sum["metrics"]["provider_requests"] == 2 * len(dep_sum["partition_pins"])
 
         # 2. Append, correction, delete, duplicate keys, and affected old/new groups
         p0 = native.run_table(

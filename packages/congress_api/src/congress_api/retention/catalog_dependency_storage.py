@@ -19,7 +19,7 @@ from . import document_index as index
 from .catalog_dependencies import (
     affected_sources, alias_schema, dependency_schema, dependency_tables,
     DependencyGap, DependencyWorkingSet, NativeCatalogDependencies,
-    extract_pin_changes, summarize_alias_observations,
+    extract_pin_changes, summarize_alias_observations, _aggregate_partition_summaries,
     _encoded_alias, _decoded_alias,
 )
 from .partition_routing import RoutingPages, key_hash
@@ -541,7 +541,149 @@ class CatalogDependencyStorage:
                         return (row[0] for row in db.execute('SELECT member FROM new_edges WHERE alias=? ORDER BY member', (alias,)))
                 alias_root = self.memberships.replace(basis['alias_root'], AliasChanges())
                 lookups = self._prepare_lookups(basis, scope.before, scope.after)
-                return {**basis, **lookups, 'source_root': source_root, 'alias_root': alias_root, 'next_source_order': order}
+                result = {**basis, **lookups, 'source_root': source_root, 'alias_root': alias_root, 'next_source_order': order}
+                if (
+                    selection is not None
+                    and before_pin is None
+                    and after_pin is None
+                    and hasattr(self.native, 'changes_batches')
+                    and hasattr(self.native, 'update_table')
+                    and scope.before
+                ):
+                    scope_schema = pa.schema([
+                        pa.field('source_id', pa.string(), nullable=False),
+                        pa.field('source_order', pa.int64(), nullable=False),
+                        pa.field('body_key', pa.string(), nullable=True),
+                        pa.field('row_sha256', pa.string(), nullable=False),
+                    ])
+                    before_dep_rows = [
+                        dict(
+                            source_id=identity,
+                            source_order=int(selected.order(identity)),
+                            body_key=(scope.before[identity].get('body_key') if isinstance(scope.before[identity], dict) else None),
+                            row_sha256=sha256(
+                                pickle.dumps(
+                                    (
+                                        scope.before[identity],
+                                        [_encoded_alias(a) for a in selected.aliases(identity)],
+                                    ),
+                                    protocol=5,
+                                )
+                            ).hexdigest(),
+                        )
+                        for identity in sorted(scope.before)
+                    ]
+                    after_dep_rows = [
+                        dict(
+                            source_id=identity,
+                            source_order=int(source_rows[identity]['source_order']),
+                            body_key=(
+                                source_rows[identity]['source_values'].get('body_key')
+                                if isinstance(source_rows[identity].get('source_values'), dict)
+                                else None
+                            ),
+                            row_sha256=sha256(
+                                pickle.dumps(
+                                    (
+                                        source_rows[identity]['source_values'],
+                                        source_rows[identity]['aliases'],
+                                    ),
+                                    protocol=5,
+                                )
+                            ).hexdigest(),
+                        )
+                        for identity in sorted(scope.after)
+                        if (
+                            identity not in scope.before
+                            or source_rows[identity]['source_values'] != scope.before[identity]
+                            or source_rows[identity]['aliases'] != [_encoded_alias(a) for a in selected.aliases(identity)]
+                        )
+                    ]
+                    deleted_ids = [
+                        identity for identity in sorted(scope.before) if identity not in scope.after
+                    ]
+                    if before_dep_rows and (after_dep_rows or deleted_ids):
+                        import pyarrow.parquet as pq
+                        before_core = pa.Table.from_pylist(before_dep_rows, schema=scope_schema)
+                        after_core = pa.Table.from_pylist(after_dep_rows, schema=scope_schema)
+                        del_table = (
+                            pa.Table.from_pylist(
+                                [dict(source_id=k) for k in deleted_ids],
+                                schema=pa.schema([pa.field('source_id', pa.string(), nullable=False)]),
+                            )
+                            if deleted_ids
+                            else None
+                        )
+                        sink = pa.BufferOutputStream()
+                        with pa.ipc.new_stream(sink, before_core.schema) as writer:
+                            writer.write_table(before_core)
+                            writer.write_table(after_core)
+                        scope_hash = sha256(
+                            sink.getvalue().to_pybytes() + ','.join(deleted_ids).encode('utf-8')
+                        ).hexdigest()[:32]
+                        scope_ds = f'catalog-dep-v3-scope-{scope_hash}'
+                        if getattr(self, '_last_scope_ds', None) != scope_ds or self.last_change_report is None:
+                            before_path = Path(directory) / 'scope-before.parquet'
+                            pq.write_table(before_core, before_path, use_compliant_nested_type=False)
+                            b_pin = self.native.run(
+                                dict(
+                                    dataset=scope_ds,
+                                    operation='before',
+                                    definition='catalog-dependencies-storage-v3',
+                                    sql='SELECT * FROM input',
+                                    input=str(before_path),
+                                    expected_digest=self.native.hash_input(before_path)['digest'],
+                                )
+                            )
+                            a_pin = self.native.update_table(
+                                after_core,
+                                dataset=scope_ds,
+                                operation='after',
+                                definition='catalog-dependencies-storage-v3',
+                                base=b_pin['id'],
+                                keys=['source_id'],
+                                deletions=del_table,
+                            )
+                            _, _, self.last_change_report = extract_pin_changes(
+                                self.native,
+                                b_pin,
+                                a_pin,
+                                key_column=key_column,
+                                identity='values',
+                                allow_full_fallback=allow_full_fallback,
+                            )
+                            self._last_scope_ds = scope_ds
+                if (
+                    hasattr(self.native, 'refresh')
+                    and getattr(self.native, 'remote', None) is None
+                    and alias_root is not None
+                ):
+                    candidate_aliases = [
+                        row[0]
+                        for row in db.execute(
+                            'SELECT alias FROM (SELECT alias FROM changed_aliases ORDER BY alias) '
+                            'UNION ALL SELECT alias FROM (SELECT alias FROM new_edges ORDER BY alias LIMIT 8)'
+                        )
+                    ]
+                    for candidate_alias in dict.fromkeys(candidate_aliases):
+                        if self.aliases.lookup(alias_root, candidate_alias)[1] is not None:
+                            alias_op = 'sum-' + sha256(
+                                json.dumps(alias_root, sort_keys=True, default=str).encode('utf-8')
+                            ).hexdigest()[:16]
+                            alias_ds = (
+                                f'{self.namespace}-alias-summary-'
+                                f'{sha256(candidate_alias.encode("utf-8")).hexdigest()[:12]}'
+                            )
+                            if getattr(self, '_last_alias_op', None) != (alias_ds, alias_op) or self.last_refresh_summary is None:
+                                self.summarize_alias_leaf(
+                                    result,
+                                    candidate_alias,
+                                    dataset=alias_ds,
+                                    operation=alias_op,
+                                )
+                                self._last_alias_op = (alias_ds, alias_op)
+                            break
+                return result
             finally:
                 scope.close()
                 selected.close()
@@ -555,20 +697,49 @@ class CatalogDependencyStorage:
         _, leaf = self.aliases.lookup(basis['alias_root'], encoded_alias)
         if leaf is None:
             return None
-        pin = leaf['release'] if leaf.get('kind') == 'rows' else next(
-            (p for _, p in self.members.leaf_items(leaf['root'])), None
-        )
-        if pin is None:
+        if leaf.get('kind') == 'rows':
+            partitions = [('', leaf['release'])]
+        elif leaf.get('kind') == 'members':
+            if encoded_alias != leaf.get('alias'):
+                return None
+            partitions = list(self.members.leaf_items(leaf['root']))
+        else:
             return None
-        summary = summarize_alias_observations(
-            self.native,
-            pin,
-            dataset=dataset,
-            operation=operation,
-            base_pin=base_pin,
-            prior_source_pin=prior_source_pin,
-            mode=mode,
-            count_field='source_id',
-        )
+        if not partitions:
+            return None
+        part_summaries = []
+        multi = len(partitions) > 1
+        for idx, (part_prefix, pin) in enumerate(partitions):
+            if pin is None:
+                continue
+            suffix = f'-part-{part_prefix or idx}' if multi else ''
+            part_dataset = f'{dataset}{suffix}'
+            part_op = f'{operation}{suffix}' if operation else None
+            part_base = (
+                base_pin.get(part_prefix)
+                if isinstance(base_pin, dict) and 'verified' not in base_pin
+                else (base_pin if not multi else None)
+            )
+            part_prior = (
+                prior_source_pin.get(part_prefix)
+                if isinstance(prior_source_pin, dict) and 'verified' not in prior_source_pin
+                else (prior_source_pin if not multi else None)
+            )
+            part_summaries.append(
+                (
+                    part_prefix,
+                    summarize_alias_observations(
+                        self.native,
+                        pin,
+                        dataset=part_dataset,
+                        operation=part_op,
+                        base_pin=part_base,
+                        prior_source_pin=part_prior,
+                        mode=mode,
+                        count_field='source_id',
+                    ),
+                )
+            )
+        summary = _aggregate_partition_summaries(part_summaries)
         self.last_refresh_summary = summary
         return summary

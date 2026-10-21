@@ -57,7 +57,7 @@ class AffectedSources:
 
 
 def extract_pin_changes(native, before_pin, after_pin, *, key_column='source_id',
-                        allow_full_fallback=False, source_schema=None):
+                        identity='values', allow_full_fallback=False, source_schema=None):
     """Derive proven replacement rows and deleted source IDs from one native ``/changes`` stream."""
     if native is None:
         raise ValueError('A native DocSpec client is required for pin change inspection')
@@ -65,6 +65,7 @@ def extract_pin_changes(native, before_pin, after_pin, *, key_column='source_id'
         native,
         before_pin,
         after_pin,
+        identity=identity,
         key_column=key_column,
         allow_full_fallback=allow_full_fallback,
     )
@@ -104,7 +105,7 @@ def extract_pin_changes(native, before_pin, after_pin, *, key_column='source_id'
 
 def affected_sources(selected, *, replacements=(), deletions=(), native=None,
                      before_pin=None, after_pin=None, key_column='source_id',
-                     allow_full_fallback=False):
+                     identity='values', allow_full_fallback=False):
     """Close old/new components with row values and the frontier staged on disk.
 
     The returned mappings own their disposable working directory. Missing aliases
@@ -126,6 +127,7 @@ def affected_sources(selected, *, replacements=(), deletions=(), native=None,
             before_pin,
             after_pin,
             key_column=key_column,
+            identity=identity,
             allow_full_fallback=allow_full_fallback,
             source_schema=source_schema,
         )
@@ -517,3 +519,64 @@ def summarize_alias_observations(native, source_pin, *, dataset='catalog-alias-s
             entry['members'] = list(row['members']) if row['members'] is not None else []
         counts[k] = entry
     return dict(**result, counts=counts, table=table)
+
+
+def _aggregate_partition_summaries(partition_summaries):
+    """Aggregate native refresh summaries across multiple disjoint routed member partitions."""
+    if not partition_summaries:
+        return None
+    if len(partition_summaries) == 1:
+        return partition_summaries[0][1]
+    counts = {}
+    partition_pins = {}
+    total_metrics = dict(
+        mode=partition_summaries[-1][1]['metrics']['mode'],
+        read_bytes=0,
+        written_bytes=0,
+        unchanged_files_reused=0,
+        input_unchanged_files_reused=0,
+        total_output_files=0,
+        provider_requests=0,
+        spill_bytes=0,
+        elapsed_ms=0.0,
+        backend_capability='local_only',
+        remote_supported=False,
+    )
+    tables = []
+    for prefix, part_sum in partition_summaries:
+        partition_pins[prefix] = part_sum['pin']
+        tables.append(part_sum['table'])
+        m = part_sum['metrics']
+        for k in (
+            'read_bytes',
+            'written_bytes',
+            'unchanged_files_reused',
+            'input_unchanged_files_reused',
+            'total_output_files',
+            'provider_requests',
+            'spill_bytes',
+        ):
+            total_metrics[k] += int(m.get(k, 0))
+        total_metrics['elapsed_ms'] = round(
+            total_metrics['elapsed_ms'] + float(m.get('elapsed_ms', 0.0)), 3
+        )
+        for alias_key, entry in part_sum['counts'].items():
+            agg = counts.setdefault(
+                alias_key,
+                dict(total_rows=0, distinct_observations=0),
+            )
+            agg['total_rows'] += int(entry['total_rows'])
+            if 'members' in entry:
+                existing = set(agg.get('members', ())) | set(entry['members'])
+                agg['members'] = sorted(existing)
+                agg['distinct_observations'] = len(agg['members'])
+            else:
+                agg['distinct_observations'] += int(entry['distinct_observations'])
+    return dict(
+        plan=partition_summaries[-1][1]['plan'],
+        pin=partition_summaries[-1][1]['pin'],
+        partition_pins=partition_pins,
+        metrics=total_metrics,
+        counts=counts,
+        table=pa.concat_tables(tables) if tables else None,
+    )
