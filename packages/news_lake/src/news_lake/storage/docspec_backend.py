@@ -79,6 +79,55 @@ from news_lake.storage.releases import ReleaseError, _redact_checkpoints
 DEFINITION = 'news-v1'
 DEFAULT_LIFECYCLE_COMPACT_INTERVAL = 16
 
+# Physical Update keys per append-only record kind (ct-xu1o).
+# The contract logical key stays ['id'] everywhere (stored ids and C1-C9
+# semantics are unchanged). Prepending an input-derived deterministic time
+# column that clusters by poll lets docspec-rs per-column point pruning
+# (src/engine/write/key_points.rs: exact Point::String for canonical ISO-8601
+# UTC instant strings in kind_arrow_schema, or Point::Int(i64) for
+# Timestamp(Microsecond, UTC) in native scale benchmarks) skip older Parquet
+# files whose [min, max] time bounds precede the incoming poll, even though
+# deterministic uuid5 ids span the full key range:
+# - capture (news.captures): ('id',) — keeps ['id'] because AdapterContext
+#   mints RFC 9562 time-ordered UUIDv7 ids (ct-ur2y) that already cluster by
+#   poll time.
+# - discovery (news.discoveries): ('observed_at', 'id') — derived from capture
+#   observed_at / fetched_at (RssAdapter.ingest, MediaCloudAdapter.parse_page,
+#   GdeltAdapter.parse_page), never commit wall-clock time.
+# - version (news.versions): ('recorded_at', 'id') — contract version records
+#   store the capture's observed_at / fetched_at in recorded_at
+#   (RssAdapter.ingest sets version['recorded_at'] = capture['observed_at']).
+# - mention (news.mentions): ('recorded_at', 'id') — contract mention records
+#   store their creation timestamp in recorded_at, copied deterministically
+#   from the producing linking run's recorded_at (identity.linking.link_mentions).
+# - classification (news.classifications): ('recorded_at', 'id') — contract
+#   classification records store their creation timestamp in recorded_at,
+#   copied from the producing classification run's recorded_at
+#   (analysis.labels.classify).
+# - identity_decision (news.identity_decisions): ('recorded_at', 'id') —
+#   contract identity_decision records store their decision timestamp in
+#   recorded_at, which defines canonical C6 application order
+#   (identity.decisions._decision_order).
+# - run (news.runs): ('started_at', 'id') — the run's pinned started_at
+#   instant (context.build_run).
+# - story (news.stories): ('recorded_at', 'id') — contract story records store
+#   their creation timestamp in recorded_at, copied from the producing
+#   clustering run's recorded_at (analysis.cluster.cluster).
+# - story_member (news.story_members): ('recorded_at', 'id') — contract
+#   story_member records store their addition timestamp in recorded_at, copied
+#   from the producing clustering run's recorded_at (analysis.cluster.cluster).
+APPEND_UPDATE_KEYS = {
+    'capture': ('id',),
+    'discovery': ('observed_at', 'id'),
+    'version': ('recorded_at', 'id'),
+    'identity_decision': ('recorded_at', 'id'),
+    'run': ('started_at', 'id'),
+    'mention': ('recorded_at', 'id'),
+    'classification': ('recorded_at', 'id'),
+    'story': ('recorded_at', 'id'),
+    'story_member': ('recorded_at', 'id'),
+}
+
 
 class AppendCollisionError(CommitError, ValueError):
     """Conflicting ID reuse on an append-only dataset (both CommitError and ValueError)."""
@@ -523,8 +572,20 @@ class DocSpecLake:
         return self.client.workspace / f'.news_lake_mutations{suffix}.json'
 
     def _release_manifest_path(self, release_id):
+        return self._releases_dir() / f'{sanitize_id(release_id)}.json'
+
+    def _releases_dir(self):
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
-        return self.client.workspace / f'releases{suffix}' / f'{sanitize_id(release_id)}.json'
+        return self.client.workspace / f'releases{suffix}'
+
+    def _has_any_release_manifest(self):
+        releases_dir = self._releases_dir()
+        if not releases_dir.is_dir():
+            return False
+        return any(
+            p.is_file() and not p.name.endswith('.tmp')
+            for p in releases_dir.glob('*.json')
+        )
 
     def _load_committed_state(self):
         path = self._committed_state_path()
@@ -704,6 +765,19 @@ class DocSpecLake:
             self._maybe_compact_lifecycle(mutated)
         return dict(pins)
 
+    @staticmethod
+    def _update_keys_for(kind):
+        """Physical Update keys for ``kind`` (ct-xu1o).
+
+        Upsert tables and ``capture`` keep ``['id']``; other append-only tables
+        prepend their deterministic input-derived instant column so ``docspec-rs``
+        point pruning skips older Parquet files while logical key checks stay on
+        ``id``.
+        """
+        if TABLE_MUTATIONS.get(KIND_TABLES.get(kind)) == 'append':
+            return list(APPEND_UPDATE_KEYS.get(kind, ('id',)))
+        return ['id']
+
     def _advance_relationship(self, dataset, kind, prior, relationship):
         if relationship is None or prior.get('dataset', {}).get('relationship') == relationship:
             return prior
@@ -715,7 +789,7 @@ class DocSpecLake:
             dataset,
             operation,
             base_version,
-            ['id'],
+            self._update_keys_for(kind),
             records_to_arrow(kind, ()),
             relationship=relationship,
         )
@@ -751,7 +825,7 @@ class DocSpecLake:
             dataset,
             operation,
             base_version,
-            ['id'],
+            self._update_keys_for(kind),
             records_to_arrow(kind, new_records),
             relationship=relationship,
         )
@@ -961,6 +1035,167 @@ class DocSpecLake:
             faults.after('cursor_advance')
             control.set_cycle_state(release_id, 'done', epoch=epoch)
         return release
+
+    def abandon_cycle(self, control, cycle_id, *, epoch=None, faults=None):
+        """Policy rollback of one failed publication cycle on ``DocSpecLake`` (I2/I3/I4).
+
+        Restores each content dataset that drifted from the latest available
+        release manifest (``releases/<id>.json`` ``dataset_pins``) via a
+        base-bound ``update_table`` (0 replacement rows when no baseline rows
+        were mutated; baseline row replacements plus dirty-key deletions when
+        the failed cycle mutated or added rows), or explicitly refuses with
+        ``CommitError('no_available_baseline', ...)`` if a dirtied dataset has
+        no pinned baseline. Never deletes retained native generations; discards
+        staged checkpoints for ``cycle_id`` and marks the cycle ``abandoned``.
+        """
+        if epoch is None:
+            epoch = control.claim('docspec-news-writer')
+        control.require_epoch(epoch)
+        row = control.cycle(cycle_id)
+        if row is None:
+            raise CommitError('unknown_cycle', f'no journal entry for cycle {cycle_id}')
+        if row['state'] == 'abandoned':
+            return  # idempotent no-op
+        if row['state'] in ('released', 'done'):
+            raise CommitError('cycle_released', f'cycle {cycle_id} is {row["state"]} and cannot be abandoned')
+        if self.find_release(cycle_id) is not None:
+            raise CommitError(
+                'cycle_release_appended',
+                f'cycle {cycle_id} already appended its release record; run recover() instead',
+            )
+
+        baseline_release_id = control.latest_available_release()
+        if baseline_release_id is None:
+            if self._has_any_release_manifest():
+                raise CommitError(
+                    'no_available_baseline',
+                    'release records exist but none is available; refusing to wipe the warehouse to empty',
+                )
+            baseline_pins_by_table = {}
+        else:
+            manifest_path = self._release_manifest_path(baseline_release_id)
+            if not manifest_path.is_file():
+                raise CommitError(
+                    'no_available_baseline',
+                    f'latest available release {baseline_release_id} manifest is missing at {manifest_path}',
+                )
+            try:
+                manifest = json.loads(manifest_path.read_text())
+            except (OSError, ValueError) as exc:
+                raise CommitError(
+                    'no_available_baseline',
+                    f'latest available release {baseline_release_id} manifest is unreadable: {exc}',
+                ) from exc
+            dataset_pins = manifest.get('dataset_pins') if isinstance(manifest.get('dataset_pins'), dict) else {}
+            table_pins = manifest.get('table_pins') if isinstance(manifest.get('table_pins'), dict) else {}
+            has_dataset_pins_key = isinstance(manifest.get('dataset_pins'), dict)
+            baseline_pins_by_table = {}
+            for table_name in CONTENT_TABLES:
+                dataset = dataset_id_for(table_name)
+                pin = dataset_pins.get(dataset) or dataset_pins.get(table_name)
+                if pin is None and not has_dataset_pins_key:
+                    pin = table_pins.get(table_name) or table_pins.get(dataset)
+                if pin is not None:
+                    baseline_pins_by_table[table_name] = pin
+
+        work_plan = []
+        for table_name in CONTENT_TABLES:
+            dataset = dataset_id_for(table_name)
+            kind = TABLE_KINDS[table_name]
+            current_pin = self.client.try_latest(dataset) or self.committed.get(dataset)
+            baseline_pin = baseline_pins_by_table.get(table_name)
+            if current_pin is None and baseline_pin is None:
+                continue
+            if baseline_pin is None:
+                raise CommitError(
+                    'no_available_baseline',
+                    f'cannot abandon cycle {cycle_id}: dataset {dataset} ({table_name}) '
+                    f'has no pinned baseline ReleasePin in the latest available release manifest',
+                )
+            if current_pin is None:
+                raise CommitError(
+                    'no_available_baseline',
+                    f'cannot abandon cycle {cycle_id}: dataset {dataset} ({table_name}) '
+                    f'is missing from workspace but pinned in release {baseline_release_id}',
+                )
+            work_plan.append((table_name, dataset, kind, current_pin, baseline_pin))
+
+        control.discard_staged_checkpoints(cycle_id, epoch=epoch)
+
+        new_committed = dict(self.committed)
+        mutated = []
+        for table_name, dataset, kind, current_pin, baseline_pin in work_plan:
+            control.require_epoch(epoch)
+            current_version = current_pin['dataset']['version']
+            baseline_version = baseline_pin['dataset']['version']
+            if current_version == baseline_version:
+                new_committed[dataset] = baseline_pin
+                continue
+            current_source = current_pin.get('dataset', {}).get('groups', {}).get('source', {})
+            baseline_source = baseline_pin.get('dataset', {}).get('groups', {}).get('source', {})
+            current_parquet = [
+                (o.get('path'), o.get('digest'), o.get('bytes'))
+                for o in (current_source.get('objects') or ())
+                if str(o.get('path', '')).endswith('.parquet')
+            ]
+            baseline_parquet = [
+                (o.get('path'), o.get('digest'), o.get('bytes'))
+                for o in (baseline_source.get('objects') or ())
+                if str(o.get('path', '')).endswith('.parquet')
+            ]
+            if (
+                current_parquet == baseline_parquet
+                and current_source.get('rows', 0) == baseline_source.get('rows', 0)
+            ):
+                new_committed[dataset] = current_pin
+                continue
+            schema = kind_arrow_schema(kind)
+            baseline_rows = table_records(self.client.read_arrow(baseline_pin, schema=schema))
+            current_rows = table_records(self.client.read_arrow(current_pin, schema=schema))
+            baseline_by_id = {r['id']: r for r in baseline_rows}
+            current_by_id = {r['id']: r for r in current_rows}
+            to_restore = [rec for rid, rec in baseline_by_id.items() if current_by_id.get(rid) != rec]
+            deleted_rows = [rec for rid, rec in current_by_id.items() if rid not in baseline_by_id]
+            relationship = baseline_pin.get('dataset', {}).get('relationship')
+            keys = self._update_keys_for(kind)
+            replacements_table = records_to_arrow(kind, to_restore)
+            if deleted_rows:
+                del_schema = pa.schema([schema.field(col) for col in keys])
+                deletions_table = pa.Table.from_pylist(
+                    [{col: r[col] for col in keys} for r in deleted_rows],
+                    schema=del_schema,
+                )
+            else:
+                deletions_table = None
+            operation = self._operation(
+                f'abandon-{kind}',
+                content_digest([
+                    cycle_id,
+                    current_version,
+                    baseline_version,
+                    to_restore,
+                    [r['id'] for r in deleted_rows],
+                    relationship,
+                ]),
+            )
+            restored_pin = self.client.update_table(
+                dataset,
+                operation,
+                current_version,
+                keys,
+                replacements_table,
+                deletions=deletions_table,
+                relationship=relationship,
+            )
+            new_committed[dataset] = restored_pin
+            if self._record_dataset_mutation(dataset, current_pin, restored_pin):
+                mutated.append(dataset)
+
+        self.committed = new_committed
+        self._save_committed_state()
+        if mutated:
+            self._maybe_compact_lifecycle(mutated)
+        control.set_cycle_state(cycle_id, 'abandoned', epoch=epoch)
 
     def find_release(self, release_id):
         manifest_path = self._release_manifest_path(release_id)
@@ -1661,6 +1896,7 @@ class DocSpecNewsViews:
 
 
 __all__ = [
+    'APPEND_UPDATE_KEYS',
     'AppendCollisionError',
     'DEFINITION',
     'DocSpecClient',

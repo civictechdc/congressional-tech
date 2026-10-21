@@ -1270,3 +1270,373 @@ def test_news_lake_cli_publish_views_export_and_compact_lifecycle(tmp_path, caps
     assert comp_out['backend'] == 'docspec'
     assert 'news_versions' in comp_out['lake_datasets']
     assert 'politician_articles' in comp_out['view_datasets']
+
+
+# -- ct-xu1o: input-derived time-keyed append updates prune historical poll files -------
+
+
+def test_append_time_keyed_pruning_replay_and_collision_refusal(tmp_path):
+    """ct-xu1o: uuid5 append tables key Updates by [<time_col>, 'id'] so polls skip old files."""
+    from news_lake.contract.records import CONTENT_TABLES, TABLE_KINDS, TABLE_MUTATIONS
+    from news_lake.storage.docspec_backend import APPEND_UPDATE_KEYS, kind_arrow_schema
+
+    append_kinds = {
+        TABLE_KINDS[table]
+        for table in CONTENT_TABLES
+        if TABLE_MUTATIONS[table] == 'append'
+    }
+    assert set(APPEND_UPDATE_KEYS) == append_kinds
+    assert APPEND_UPDATE_KEYS['capture'] == ('id',)
+    assert APPEND_UPDATE_KEYS['discovery'] == ('observed_at', 'id')
+    assert APPEND_UPDATE_KEYS['run'] == ('started_at', 'id')
+    for kind in ('version', 'mention', 'classification', 'identity_decision', 'story', 'story_member'):
+        assert APPEND_UPDATE_KEYS[kind] == ('recorded_at', 'id')
+    for kind, keys in APPEND_UPDATE_KEYS.items():
+        schema = kind_arrow_schema(kind)
+        for col in keys:
+            assert col in schema.names, (kind, col)
+
+    ws = tmp_path / 'ws-xu1o'
+    client = DocSpecClient(ws)
+    lake = DocSpecLake(client)
+
+    observed_update_keys = {}
+    orig_update_table = client.update_table
+
+    def spy_update_table(dataset, operation, base_version, keys, table, **kwargs):
+        observed_update_keys.setdefault(dataset, []).append(list(keys))
+        return orig_update_table(dataset, operation, base_version, keys, table, **kwargs)
+
+    client.update_table = spy_update_table
+
+    polls = []
+    for poll_idx in range(4):
+        ts = f'2026-10-20T{poll_idx:02d}:00:00Z'
+        batch = []
+        for item_idx in range(4):
+            key = f'xu1o-p{poll_idx}-i{item_idx}'
+            cap_id = _id('capture:' + key)
+            item_id = _id('item:' + key)
+            ver_id = _id('version:' + key)
+            run_id = _id('run:' + key)
+            story_id = _id('story:' + key)
+            batch.extend([
+                dict(_discovery(key), observed_at=ts, recorded_at=ts),
+                dict(_extract_run(key, cap_id), id=run_id, recorded_at=ts, started_at=ts, finished_at=ts),
+                dict(
+                    _version(
+                        key,
+                        title=f'Poll {poll_idx} item {item_idx}',
+                        publication={'precision': 'unknown'},
+                    ),
+                    id=ver_id,
+                    item_id=item_id,
+                    capture_id=cap_id,
+                    run_id=run_id,
+                    recorded_at=ts,
+                ),
+                dict(
+                    _mention(
+                        key,
+                        version_key=key,
+                        surface='Alex Doe',
+                        resolution='resolved',
+                        occurrences=[{'field': 'title', 'start': 0, 'end': 8}],
+                        entity_key='p1',
+                    ),
+                    version_id=ver_id,
+                    run_id=run_id,
+                    recorded_at=ts,
+                ),
+                {
+                    'kind': 'classification',
+                    'id': _id('classification:' + key),
+                    'recorded_at': ts,
+                    'version_id': ver_id,
+                    'run_id': run_id,
+                    'dimension': 'topic',
+                    'taxonomy_version': 'fixture-1',
+                    'value_string': 'election',
+                },
+                {
+                    'kind': 'identity_decision',
+                    'id': _id('decision:' + key),
+                    'recorded_at': ts,
+                    'action': 'same_as',
+                    'left_id': _id('entity:left-' + key),
+                    'right_id': _id('entity:right-' + key),
+                    'decided_by': 'fixture:reviewer',
+                    'reason': 'Synthetic decision.',
+                },
+                {
+                    'kind': 'story',
+                    'id': story_id,
+                    'recorded_at': ts,
+                    'run_id': run_id,
+                },
+                {
+                    'kind': 'story_member',
+                    'id': _id('member:' + key),
+                    'recorded_at': ts,
+                    'story_id': story_id,
+                    'version_id': ver_id,
+                    'run_id': run_id,
+                },
+            ])
+        polls.append(batch)
+        pins = lake.commit_records(batch)
+
+        if poll_idx >= 1:
+            for kind, expected_keys in APPEND_UPDATE_KEYS.items():
+                if kind == 'capture':
+                    continue
+                ds = dataset_id_for(KIND_TABLES[kind])
+                assert observed_update_keys[ds][-1] == list(expected_keys)
+                latest_op = pins[ds]['id']
+                inspect_all = client._native.inspect(ds)
+                phases = [
+                    v for v in inspect_all.values()
+                    if isinstance(v, dict)
+                    and v.get('operation') == latest_op
+                    and v.get('phase') == 'processing'
+                ]
+                assert len(phases) == 1, (ds, poll_idx)
+                metrics = phases[0]['metrics']
+                assert metrics['files_scanned'] == 0, (ds, poll_idx, metrics)
+                assert metrics['files_reused'] == poll_idx, (ds, poll_idx, metrics)
+
+    # Stored IDs and records match input exactly across all converted append tables.
+    all_records = [r for p in polls for r in p]
+    for kind in ('discovery', 'run', 'version', 'mention', 'classification', 'identity_decision', 'story', 'story_member'):
+        ds = dataset_id_for(KIND_TABLES[kind])
+        expected = sorted([r for r in all_records if r['kind'] == kind], key=lambda r: r['id'])
+        assert _records_of(lake, ds) == expected
+
+    # Re-running the same poll in-process and from a fresh process is an idempotent no-op.
+    versions_before = {
+        ds: pin['dataset']['version'] for ds, pin in lake.committed.items()
+    }
+    pins_replay_inproc = lake.commit_records(polls[1])
+    assert {ds: p['dataset']['version'] for ds, p in pins_replay_inproc.items()} == versions_before
+    client.close()
+
+    client2 = DocSpecClient(ws)
+    lake2 = DocSpecLake(client2)
+    pins_replay_fresh = lake2.commit_records(polls[2])
+    assert {ds: p['dataset']['version'] for ds, p in pins_replay_fresh.items()} == versions_before
+
+    # Reusing an existing id with different content (same timestamp OR different timestamp) is refused.
+    orig_version = next(r for r in polls[1] if r['kind'] == 'version')
+    bad_same_ts = dict(orig_version, title='Tampered Title With Same Timestamp')
+    with pytest.raises(AppendCollisionError, match='append-only news_versions'):
+        lake2.commit_records([bad_same_ts])
+    bad_diff_ts = dict(orig_version, recorded_at='2026-10-20T09:00:00Z', title='Tampered Title With New Timestamp')
+    with pytest.raises(AppendCollisionError, match='append-only news_versions'):
+        lake2.commit_records([bad_diff_ts])
+    assert lake2.committed['news_versions']['dataset']['version'] == versions_before['news_versions']
+    client2.close()
+
+
+# -- ct-dzyf: Coordinator.abandon_cycle on DocSpecLake-backed publication ---------------
+
+
+def test_docspec_abandon_cycle_rollback_idempotency_and_refusals(tmp_path):
+    """ct-dzyf: Coordinator.abandon_cycle restores DocSpecLake pins, discards checkpoints, and enforces baseline/release guards."""
+    import copy
+    import json
+    from news_lake.contract import ContractError
+    from news_lake.storage import (
+        CommitError,
+        ControlStore,
+        Coordinator,
+        CrashInjection,
+        Faults,
+        ReleaseError,
+        publish_release,
+        read_release,
+        retire_release,
+    )
+    from news_lake.storage.releases import find_release
+
+    # 1. Abandoning on a warehouse with no prior published release when a dataset was dirtied refuses.
+    ws_unpinned = tmp_path / 'ws-unpinned'
+    ctrl_unpinned = ControlStore(tmp_path / 'ctrl-unpinned.sqlite')
+    client_unpinned = DocSpecClient(ws_unpinned)
+    lake_unpinned = DocSpecLake(client_unpinned)
+    coord_unpinned = Coordinator(lake_unpinned, ctrl_unpinned)
+    bad_first_id = _id('release:bad-first')
+    bad_first_corpus = [
+        OUTLET_A,
+        dict(M1, entity_id='00000000-0000-0000-0000-00000000000f'),
+    ]
+    with pytest.raises(ContractError):
+        publish_release(coord_unpinned, bad_first_corpus, release_id=bad_first_id, recorded_at=AT)
+    with pytest.raises(CommitError) as no_base_err:
+        coord_unpinned.abandon_cycle(bad_first_id)
+    assert no_base_err.value.rule == 'no_available_baseline'
+    client_unpinned.close()
+
+    # 2. Publish a valid baseline release (rel_a) on DocSpecLake.
+    ws = tmp_path / 'ws-dzyf'
+    control = ControlStore(tmp_path / 'ctrl-dzyf.sqlite')
+    client = DocSpecClient(ws)
+    lake = DocSpecLake(client)
+    coord = Coordinator(lake, control)
+
+    initial_corpus = [r for r in CORPUS if r['id'] != MERGE_P1B_INTO_P1['id']]
+    rel_a_id = _id('release:dzyf-a')
+    cp_a = [{'connector_key': 'rss:a', 'checkpoint_ref': 'urn:cp:a', 'completed_until': AT}]
+    rel_a = publish_release(
+        coord,
+        initial_corpus,
+        release_id=rel_a_id,
+        recorded_at=AT,
+        selections=SELECTIONS,
+        checkpoints=cp_a,
+    )
+    assert rel_a['id'] == rel_a_id
+    baseline_outlets = _records_of(lake, 'news_outlets')
+    baseline_mentions = _records_of(lake, 'news_mentions')
+    baseline_captures = _records_of(lake, 'news_captures')
+
+    # 3. Candidate cycle (rel_b) mutates an existing upsert row (OUTLET_A), adds a new outlet,
+    # replays an existing capture, and adds an invalid C7 mention -> fails mid-cycle after table_commit.
+    mutated_outlet = dict(
+        copy.deepcopy(OUTLET_A),
+        recorded_at='2026-10-20T05:00:00Z',
+        name='Mutated By Failed Cycle B',
+        domains=['a.example', 'dirty.example'],
+    )
+    added_dirty_outlet = {
+        'kind': 'outlet',
+        'id': _id('outlet:dirty-b'),
+        'recorded_at': '2026-10-20T05:00:00Z',
+        'name': 'Added Dirty Outlet',
+        'domains': ['added-dirty.example'],
+    }
+    replayed_capture = copy.deepcopy(_capture('v1'))
+    invalid_mention = dict(
+        copy.deepcopy(M1),
+        id=_id('mention:dirty-invalid-b'),
+        recorded_at='2026-10-20T05:00:00Z',
+        entity_id='00000000-0000-0000-0000-00000000000f',
+    )
+    rel_b_id = _id('release:dzyf-b')
+    with pytest.raises(ContractError) as c7_err:
+        publish_release(
+            coord,
+            [mutated_outlet, added_dirty_outlet, replayed_capture, invalid_mention],
+            release_id=rel_b_id,
+            recorded_at='2026-10-20T05:00:00Z',
+            selections=SELECTIONS,
+        )
+    assert c7_err.value.rule == 'missing_reference'
+    # Dirty candidate records landed in DocSpecLake before C7 validation failed.
+    assert len(_records_of(lake, 'news_outlets')) == len(baseline_outlets) + 1
+    assert len(_records_of(lake, 'news_mentions')) == len(baseline_mentions) + 1
+
+    # Stage a checkpoint on rel_b to verify abandon_cycle discards staged checkpoints.
+    control.stage_checkpoint(
+        rel_b_id,
+        {
+            'connector_key': 'rss:dirty',
+            'checkpoint_ref': 'urn:cp:dirty',
+            'completed_until': '2026-10-20T05:00:00Z',
+        },
+        epoch=coord.epoch,
+    )
+
+    # 4. If all releases are retired, abandon_cycle refuses to wipe and preserves staged state.
+    retire_release(control, rel_a_id, epoch=coord.epoch)
+    with pytest.raises(CommitError) as retired_base_err:
+        coord.abandon_cycle(rel_b_id)
+    assert retired_base_err.value.rule == 'no_available_baseline'
+    control.mark_available(rel_a_id, epoch=coord.epoch)
+
+    # 5. If a dirtied dataset is missing from the release manifest's dataset_pins, abandon_cycle refuses.
+    manifest_path = lake._release_manifest_path(rel_a_id)
+    orig_manifest_text = manifest_path.read_text()
+    tampered_manifest = json.loads(orig_manifest_text)
+    tampered_manifest['dataset_pins'].pop('news_outlets', None)
+    manifest_path.write_text(json.dumps(tampered_manifest))
+    with pytest.raises(CommitError) as missing_pin_err:
+        coord.abandon_cycle(rel_b_id)
+    assert missing_pin_err.value.rule == 'no_available_baseline'
+    assert 'news_outlets' in str(missing_pin_err.value)
+    manifest_path.write_text(orig_manifest_text)
+
+    # 6. Abandoning rel_b restores all content datasets to rel_a's pinned baseline and discards staged checkpoints.
+    coord.abandon_cycle(rel_b_id)
+    assert control.cycle_state(rel_b_id) == 'abandoned'
+    assert control.connection.execute(
+        'SELECT * FROM staged_checkpoints WHERE cycle_id = ?', (rel_b_id,)
+    ).fetchall() == []
+    assert _records_of(lake, 'news_outlets') == baseline_outlets
+    assert _records_of(lake, 'news_mentions') == baseline_mentions
+    assert _records_of(lake, 'news_captures') == baseline_captures
+    assert read_release(lake, control, rel_a_id)['release']['id'] == rel_a_id
+
+    # 7. Abandoning is idempotent (second call is a no-op) and terminal for recover().
+    versions_after_abandon = {
+        ds: pin['dataset']['version'] for ds, pin in lake.committed.items()
+    }
+    coord.abandon_cycle(rel_b_id)
+    assert {
+        ds: pin['dataset']['version'] for ds, pin in lake.committed.items()
+    } == versions_after_abandon
+    assert coord.recover() == []
+
+    # Retrying an abandoned cycle_id, abandoning an unknown cycle, or abandoning a released cycle fail cleanly.
+    with pytest.raises(ReleaseError) as retry_err:
+        publish_release(coord, [MERGE_P1B_INTO_P1], release_id=rel_b_id, recorded_at='2026-10-20T05:00:00Z')
+    assert retry_err.value.rule == 'cycle_abandoned'
+    with pytest.raises(CommitError) as unknown_err:
+        coord.abandon_cycle(_id('release:unknown'))
+    assert unknown_err.value.rule == 'unknown_cycle'
+    with pytest.raises(CommitError) as released_err:
+        coord.abandon_cycle(rel_a_id)
+    assert released_err.value.rule == 'cycle_released'
+
+    # 8. Subsequent valid cycle (rel_c) publishes cleanly on top of the restored baseline.
+    rel_c_id = _id('release:dzyf-c')
+    rel_c = publish_release(
+        coord,
+        [MERGE_P1B_INTO_P1],
+        release_id=rel_c_id,
+        recorded_at='2026-10-20T06:00:00Z',
+        selections=SELECTIONS,
+    )
+    assert rel_c['id'] == rel_c_id
+    read_c = read_release(lake, control, rel_c_id)
+    assert sorted(read_c['tables']['news.outlets'], key=lambda r: r['id']) == baseline_outlets
+    assert read_c['tables']['news.identity_decisions'] == [MERGE_P1B_INTO_P1]
+
+    # 9. If the release record was already appended (crash after release_append), abandon_cycle refuses.
+    rel_d_id = _id('release:dzyf-d')
+    crashing_coord = Coordinator(
+        lake, control, writer_id='crashing-writer', faults=Faults(crash_after={'release_append'})
+    )
+    new_outlet_d = {
+        'kind': 'outlet',
+        'id': _id('outlet:dzyf-d'),
+        'recorded_at': '2026-10-20T07:00:00Z',
+        'name': 'Cycle D Outlet',
+        'domains': ['d.example'],
+    }
+    with pytest.raises(CrashInjection):
+        publish_release(
+            crashing_coord,
+            [new_outlet_d],
+            release_id=rel_d_id,
+            recorded_at='2026-10-20T07:00:00Z',
+            selections=SELECTIONS,
+        )
+    assert find_release(lake, rel_d_id) is not None
+    with pytest.raises(CommitError) as appended_err:
+        crashing_coord.abandon_cycle(rel_d_id)
+    assert appended_err.value.rule == 'cycle_release_appended'
+    assert find_release(lake, rel_d_id) is not None
+    assert Coordinator(lake, control, writer_id='recovery-writer').recover() == [rel_d_id]
+    assert read_release(lake, control, rel_d_id)['release']['id'] == rel_d_id
+    client.close()
+
