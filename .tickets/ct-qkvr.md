@@ -2,7 +2,7 @@
 id: ct-qkvr
 status: closed
 deps: [ct-egpe]
-links: [ct-nloa, ct-jo8n, ct-5fkx, ct-ur2y, ct-csyg, ct-xu1o, ct-pgxn]
+links: [ct-nloa, ct-jo8n, ct-5fkx, ct-ur2y, ct-csyg, ct-xu1o, ct-pgxn, ct-8ax6, ct-r60e, ct-ur7v]
 created: 2026-10-20T22:15:53Z
 type: bug
 priority: 1

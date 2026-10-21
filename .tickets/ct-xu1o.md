@@ -2,7 +2,7 @@
 id: ct-xu1o
 status: open
 deps: [ct-pgxn]
-links: [ct-nloa, ct-pgxn, ct-ur2y, ct-qkvr]
+links: [ct-nloa, ct-pgxn, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v]
 created: 2026-10-21T15:27:19Z
 type: task
 priority: 1
@@ -47,3 +47,19 @@ Fixture-sized runs (a few files, tens of rows) prove correctness only; they are 
 **2026-10-21T15:55:59Z**
 
 Mechanism confirmed in engine source (docspec-rs src/engine/write/key_points.rs): a file is pruned when ANY key column's bounds exclude an affected point (per-column necessary condition), so a poll-clustered time component prunes older files even though uuid5 ids span the whole key space. Per-table constraint to record in the AC table: the chosen time column must have an exact Point representation in key_points.rs (Int i64 / Date32 / String; timestamp-us maps to Int(i64)); columns without an exact representation are skipped, never guessed, and would silently revert that column to the interval test.
+
+**2026-10-21T17:08:00Z — Realistic-Scale Qualification Complete (`ct-pgxn` unblocked)**
+
+Measured with `docspec-rs/examples/news_poll_scale.rs` (release build, 2,000 `uuid5` rows/poll, receipts in `output/news-poll-scale-20261021/summary.md`, `id-1080.csv`, `time-id-1080.csv`):
+- At `1x` (poll 60), `10x` (poll 600), `T1 = 720` polls (30d, 1.44M rows), and `1,079` polls (45d, 2.16M rows), `keys = ["observed_at", "id"]` keeps `files_scanned = 0` at every single poll (vs `60`, `600`, `720`, and `1,079` for `keys = ["id"]`), and 60-poll p50 `wall_ms` stays flat (`537 ms` at poll 60, `549 ms` at poll 600, `558 ms` at poll 720, `603 ms` at poll 1,079; vs `1,028 ms` at poll 720 and `1,088 ms` at poll 1,079 for `["id"]`).
+- Per-table deterministic input-derived time columns (all Arrow `Timestamp(Microsecond, UTC)` -> exact `Point::Int(i64)` in `key_points.rs`) ready for `DocSpecLake._commit_append`:
+  - `versions`: `["observed_at", "id"]` (derived from capture `fetched_at`)
+  - `mentions`: `["created_at", "id"]` (derived from version `observed_at`)
+  - `discoveries`: `["observed_at", "id"]`
+  - `classifications`: `["created_at", "id"]`
+  - `identity_decisions`: `["decided_at", "id"]`
+  - `runs`: `["started_at", "id"]`
+  - `stories`: `["created_at", "id"]`
+  - `story_members`: `["added_at", "id"]`
+  - `captures`: keeps `["id"]` (already time-ordered `UUIDv7` via `ct-ur2y`).
+- Companion tickets for the physical disk (`2.37 GiB` for `102.9 MiB` rows) and 1-file-per-poll fragmentation observed in the same 1,080-poll run: `ct-8ax6` (coalescing / threshold table compaction for `news_lake` so active file count and live head `ReleasePin` metadata stay $O(1)$), `spicy-stack` `ss-g9sn` (unlinking expired lifecycle and checkpointed release/manifest files on disk), and `spicy-stack` `ss-onwi` (eliding duplicate `inputs` Parquet writes on `SELECT * FROM input`).

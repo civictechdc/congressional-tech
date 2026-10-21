@@ -2,7 +2,7 @@
 id: ct-nloa
 status: closed
 deps: [ct-egpe, ct-csyg]
-links: [ct-eipa, ct-csyg, ct-jo8n, ct-qkvr, ct-5fkx, ct-ur2y, ct-xu1o, ct-pgxn]
+links: [ct-eipa, ct-csyg, ct-jo8n, ct-qkvr, ct-5fkx, ct-ur2y, ct-xu1o, ct-pgxn, ct-8ax6, ct-r60e, ct-ur7v]
 created: 2026-10-20T22:15:53Z
 type: task
 priority: 2
