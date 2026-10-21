@@ -1,7 +1,7 @@
 ---
 id: ct-13cn
-status: closed
-deps: [ct-egpe, ct-q05l]
+status: open
+deps: [ct-egpe, ct-q05l, ct-9few]
 links: [ct-3180, ct-sb0s, ct-q05l, ct-dmca, ct-gziq]
 created: 2026-10-20T18:24:29Z
 type: task
@@ -39,3 +39,7 @@ CS 300 / evolutionary-refactoring audit note: native remote `source`-group compa
 **2026-10-21T02:20:25Z**
 
 Implemented and verified: added NativeDatasets.compare, changes_batches, and read_changes in packages/docspec_client/src/docspec_client/docspec.py and inspect_catalog_changes in packages/congress_api/src/congress_api/retention/native_features.py. Tested in tests/test_native_features.py::test_ct_13cn_inspect_catalog_changes_preserves_duplicates_nulls_and_affected_keys.
+
+**2026-10-21T15:21:41Z**
+
+Reopened by independent CS300 audit (re-validated): acceptance requires wiring an actual catalog diagnostic/change consumer, but packages/congress_api/src/congress_api/retention/native_features.py is currently imported only by tests/test_native_features.py. Remaining scope: connect inspect_catalog_changes to a real caller (e.g. raw_changes/catalog dependency preparation feeding only proven changed keys, or an operator diagnostic command) and record read/returned bytes per field group; also fix the ct-9few descriptor field-name mismatch in the same pass.

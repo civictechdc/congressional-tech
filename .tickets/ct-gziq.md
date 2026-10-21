@@ -1,6 +1,6 @@
 ---
 id: ct-gziq
-status: closed
+status: open
 deps: [ct-egpe, ct-q05l]
 links: [ct-gf8i, ct-csjp, ct-vt7i, ct-sb0s, ct-13cn, ct-q05l, ct-3180, ct-dmca]
 created: 2026-10-20T18:24:29Z
@@ -39,3 +39,7 @@ CS 300 / evolutionary-refactoring audit linked `ct-gziq` to `ct-dmca` (unified r
 **2026-10-21T02:20:25Z**
 
 Implemented and verified: added refresh_catalog_observation_summary in packages/congress_api/src/congress_api/retention/native_features.py connecting source_observations (alias, observation) to full and incremental native Refresh aggregates while keeping transitive alias closure in catalog_dependencies.py. Tested in tests/test_native_features.py::test_ct_gziq_refresh_catalog_observation_summary_full_and_incremental.
+
+**2026-10-21T15:21:41Z**
+
+Reopened by independent CS300 audit (re-validated): refresh_catalog_observation_summary is verified in tests/test_native_features.py but no production consumer calls it. Remaining scope: connect one real catalog dependency/count consumer (source_observations rollup or equivalent) through the shared client, keep transitive alias-component closure in catalog_dependencies.py, and measure full-path reads/writes at 1x/10x unrelated scale.

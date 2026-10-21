@@ -1,6 +1,6 @@
 ---
 id: ct-dmca
-status: closed
+status: open
 deps: [ct-egpe, ct-q05l]
 links: [ct-sb0s, ct-gziq, ct-3180, ct-13cn, ct-q05l]
 created: 2026-10-20T18:24:29Z
@@ -39,3 +39,7 @@ CS 300 / evolutionary-refactoring audit added the Step 6 next-maintainer require
 **2026-10-21T02:20:25Z**
 
 Implemented and verified: added plan_schema, evolve_schema, plan_backfill, backfill, plan_continuous_backfill, continuous_backfill, and correct_dependencies in docspec_client and evolve_catalog_schema / backfill_scalar_group in native_features.py. Tested in tests/test_native_features.py::test_ct_dmca_schema_evolution_and_scalar_backfill_without_source_rewrite.
+
+**2026-10-21T15:21:41Z**
+
+Reopened by independent CS300 audit (re-validated): evolve_catalog_schema and backfill_scalar_group are exercised only by tests/test_native_features.py; acceptance requires migrating the existing application schema/rule-upgrade caller. Remaining scope: wire the maintained catalog schema/rule-upgrade entry point through evolve_catalog_schema/backfill_scalar_group for a real compatible field change. Note: R2 execution of schemas/backfills is still gated LocalOnly (Engine::check_request_backend), so local-workspace qualification comes first; R2 enablement remains the separately authorized engine extension.

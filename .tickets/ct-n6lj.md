@@ -1,6 +1,6 @@
 ---
 id: ct-n6lj
-status: closed
+status: open
 deps: [ct-jo8n]
 links: [ct-gf8i, ct-jo8n, ct-csjp, ct-vt7i]
 created: 2026-10-20T23:52:31Z
@@ -30,3 +30,7 @@ CS 300 Grade — Spec: A | Impl: N/A (Open). Created to address the CS 300 B- de
 **2026-10-21T02:20:25Z**
 
 Implemented and verified: DocSpecNewsViews.update_bridges (docspec_backend.py:850-950) persists bridge row state by version so incremental updates perform 0 full-table read_arrow calls on prior bridge pins (full_table_reads == 0 asserted in test_published_release_lifecycle_fresh_process_resume_and_retire), and _assemble_politician_articles (:1020-1042) uses client.read_keys with projected columns=['current_version_id', 'item_id'].
+
+**2026-10-21T15:21:41Z**
+
+Reopened by independent CS300 audit (re-validated): update_bridges (packages/news_lake/src/news_lake/storage/docspec_backend.py:1253-1330) no longer reads full prior bridge tables via read_arrow (full_table_reads == 0 is asserted), but it still unwraps every record of the release read and recomputes bridges.entity_roots_rows / selected_mentions_rows / survivor_items_rows over the full corpus in Python (:1261-1271, :1296-1306), and persists the full _bridge_rows map to .news_lake_views.json. Remaining scope: derive the three bridge tables from the release/poll delta (new/changed records since the last pinned release) or move survivor/mention/roots derivation into native relational work, so per-poll Python work scales with the delta rather than the corpus.

@@ -1,6 +1,6 @@
 ---
 id: ct-sb0s
-status: closed
+status: open
 deps: [ct-egpe, ct-q05l]
 links: [ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-gziq]
 created: 2026-10-20T18:24:29Z
@@ -39,3 +39,7 @@ CS 300 / evolutionary-refactoring audit linked `ct-sb0s` to `ct-dmca`'s unified 
 **2026-10-21T02:20:25Z**
 
 Implemented and verified: added NativeDatasets.update_evidence_table, read_receipts, read_evidence, read_occurrences in docspec_client and map_locators_to_occurrences / attach_occurrence_receipts / read_occurrence_receipts in native_features.py with zero source-byte rewrites. Tested in tests/test_native_features.py::test_ct_sb0s_attach_and_read_occurrence_receipts_with_zero_source_rewrites.
+
+**2026-10-21T15:21:41Z**
+
+Reopened by independent CS300 audit (re-validated): map_locators_to_occurrences / attach_occurrence_receipts / read_occurrence_receipts are exercised only by tests/test_native_features.py; acceptance requires one real occurrence-linked provenance/review consumer. Remaining scope: wire review provenance (e.g. source_observations receipt locators) through attach_occurrence_receipts against an exact pinned release, preserving duplicate receipts, review ownership, and zero source-byte rewrites. R2 receipts remain gated LocalOnly; local qualification first.
