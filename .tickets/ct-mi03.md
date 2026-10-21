@@ -52,3 +52,7 @@ CS 300 Grade at 8221566d — Spec: A- | Impl: B (In Progress). Added 6 focused r
 **2026-10-21T00:31:41Z**
 
 Architecture correction (2026-10-21): the shared DocSpec transport now lives in the neutral workspace package packages/docspec_client (docspec-client). news-lake depends on docspec-client, not congress-api; congress_api.retention.docspec and .docspec_host are compatibility shims. This preserves domain separation while giving transport, readiness, deadlines, streaming and producer custody one owner. Implemented and locally verified: ct-xq1y, ct-m9td, ct-gfv8, ct-q05l, ct-5fkx, ct-f11a. Still open: ct-egpe measurement/re-qualification, ct-csyg pruning, ct-nloa/ct-qkvr full-history reads, ct-n6lj incremental bridges, ct-jo8n production caller wiring, ct-gf8i/ct-4nyy caller qualification, ct-nc7l runtime gate.
+
+**2026-10-21T07:28:00Z**
+
+Reconciled on `main` (`55ba3479`) after `ab68f546` and `e9431d68`: 42 of 43 child tickets are now closed and verified across local Python and Node suites (`ct-egpe`, `ct-csyg`, `ct-nloa`, `ct-qkvr`, `ct-n6lj`, `ct-jo8n`, `ct-gf8i`, `ct-4nyy`, `ct-13cn`, `ct-dmca`, `ct-gziq`, `ct-sb0s`, `ct-nc7l`). Repaired the `8221566d` merge regression, added `docspec_client` to `SelectedRuntime.PACKAGES` (`dispatch_corpus_recovery_publication.py`), and retired legacy full-table Parquet writers (`ct-dat9`). Only `ct-3180`'s isolated R2 remote comparison receipt remains `in_progress`.

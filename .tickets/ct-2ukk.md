@@ -60,3 +60,7 @@ Five implementation lanes are now locally closed after independent acceptance re
 **2026-10-20T22:19:32Z**
 
 Application capability review: production adoption follows ct-nc7l and ct-ugqq. Resume only after recorded capacity, runtime/input identity and remote reconciliation prerequisites pass. Do not refetch/reclassify retained sources, restart the failed operation automatically, or claim local integration as production adoption. Native optional news features do not block archive cutover unless an actual caller needs them.
+
+**2026-10-21T07:28:00Z**
+
+All 13 dependency tickets (`ct-dat9`, `ct-7e7q`, `ct-9vtu`, `ct-y32m`, `ct-pki9`, `ct-87n4`, `ct-5kb2`, `ct-i7j2`, `ct-jufk`, `ct-kkio`, `ct-omnp`, `ct-nc7l`, `ct-ugqq`) are now closed and reconciled on `main` (`55ba3479`), and legacy full-table Parquet writers (`raw_archive.py`, `raw_catalog.py`, `publish-filename-viewer.py`) are retired into `tests/historical_*.py`. Only the live R2 production catalog/raw import, readback, and guarded v6 publication cutover receipt remain before closing `ct-2ukk`.

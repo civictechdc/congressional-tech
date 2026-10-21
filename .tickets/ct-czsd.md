@@ -35,3 +35,9 @@ proofs and catalog configuration do not establish production adoption.
 - Each child records a relevant baseline before edits, characterizes preserved behavior, measures its improvement and migrates its actual callers. Delete superseded internals after cutover; retain historical evidence.
 - No change performs no dataset writes. Compaction and full exports are optional, never correctness prerequisites. Existing snapshots seed adoption without refetching or reclassifying them.
 - Complete ct-2ukk before claiming end-to-end qualification. Unknown dependency scope fails explicitly; it must not return partial success or force a full rebuild.
+
+## Notes
+
+**2026-10-21T07:28:00Z**
+
+19 of 20 child tickets under `ct-czsd` are now closed and verified on `main` (`55ba3479`), including native v6 viewer preparation/verification (`ct-ihve`, `ct-87n4`), incremental partition/dependency reuse (`ct-si9g`, `ct-v5kb`, `ct-365w`, `ct-upte`, `ct-7e7q`), oversized row preservation (`ct-rcs8`), and retirement of the 3 legacy full-table Parquet writers (`ct-dat9`). Only live production cutover qualification (`ct-2ukk`) remains `in_progress`.
