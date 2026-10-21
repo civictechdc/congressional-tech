@@ -1,8 +1,8 @@
 ---
 id: ct-nc7l
-status: closed
-deps: [ct-q968, ct-adu0, ct-wjce, ct-qdkd, ct-n7la, ct-oxg6, ct-bt1q, ct-3faj, ct-egpe, ct-ccy4]
-links: []
+status: open
+deps: [ct-q968, ct-adu0, ct-wjce, ct-qdkd, ct-n7la, ct-oxg6, ct-bt1q, ct-3faj, ct-egpe, ct-ccy4, ct-m9td]
+links: [ct-m9td, ct-egpe, ct-qdkd, ct-3faj, ct-a70m]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 1
@@ -36,3 +36,9 @@ CS 300 / evolutionary-refactoring audit expanded `deps` to include all 22 child 
 **2026-10-20T22:19:32Z**
 
 2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.
+
+**2026-10-20T23:32:30Z**
+
+Reopened by evolutionary-refactoring audit at `main` (`8221566d`):
+1. `ct-nc7l` depends on `ct-egpe` (shared client across archive and news plus `update_table` / `deletions.parquet` producer-input custody in `NativeDatasets`), which remains open.
+2. Reconciled dependency policy: `ct-nc7l` intentionally gates core runtime, shared client (`ct-egpe`), preparation/spill (`ct-adu0`, `ct-wjce`, `ct-n7la`, `ct-ccy4`), operator inspection (`ct-qdkd`), and host safety (`ct-oxg6`, `ct-q968`, `ct-bt1q`, `ct-3faj`), while optional news feature tickets (`ct-qkvr`, `ct-nloa`, `ct-5fkx`, `ct-jo8n`, `ct-gf8i`, `ct-4nyy`) do not block archive qualification.

@@ -2,7 +2,7 @@
 id: ct-lcbc
 status: closed
 deps: [ct-wmtx]
-links: [ct-mi03, ct-a1aa, ct-wmtx, ct-mpsp, ct-a70m]
+links: [ct-mi03, ct-a1aa, ct-wmtx, ct-mpsp, ct-a70m, ct-qdkd, ct-gfv8]
 created: 2026-10-20T20:37:00Z
 type: task
 priority: 1
@@ -26,3 +26,9 @@ At the existing `DatasetCatalog` (`src/catalog.rs`) and retention (`src/engine/r
 - Cold `DatasetCatalog::open` after >250 hourly operations stays well within `limits.max_metadata_bytes` (`32 MiB`) and preserves exact selected `ReleasePin`s, `ExportPin`s, active reader grants, and incomplete operations.
 - Crash/interruption recovery and `verify_release` pass before and after baseline compaction.
 - Record before/after revision counts, replayed metadata bytes, and cold-open latency.
+
+## Notes
+
+**2026-10-20T23:53:21Z**
+
+CS 300 Grade at 8221566d — Spec: A | Impl: B+ (Closed for embedded Rust). Engine::compact_lifecycle (src/engine/retention.rs:245-273, src/catalog.rs:527-661) compacts superseded SQLite revisions behind the oldest protected ReleasePin; CLI/HTTP exposure and Python operator wiring are tracked in ct-gfv8.

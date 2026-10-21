@@ -228,6 +228,13 @@ def _inspect_producer_inputs(native):
                     entry["dataset"] = payload.get("dataset")
                     entry["operation"] = payload.get("operation")
                     entry["expected_digest"] = payload.get("expected_digest")
+                    replacements = payload.get("replacements")
+                    deletions = payload.get("deletions")
+                    if isinstance(replacements, dict):
+                        entry["replacements_digest"] = replacements.get("digest")
+                    if isinstance(deletions, dict):
+                        entry["deletions_digest"] = deletions.get("digest")
+                    entry.setdefault("files", [])
             except (OSError, ValueError):
                 pass
         summarized.append(entry)
@@ -241,6 +248,12 @@ def inspect_operator_status(native, dataset, *, stage_directory=None, staging_bu
     """Report reusable preparation/native phases, producer inputs, and disk headroom without secrets."""
     secrets = _secret_values(native)
     inspection = native.inspect(dataset) if hasattr(native, "inspect") else {}
+    authority = inspection.get("authority") if isinstance(inspection, dict) else None
+    lifecycle_revision = (
+        inspection.get("current_revision")
+        if isinstance(inspection, dict) and type(inspection.get("current_revision")) is int
+        else (authority.get("revision") if isinstance(authority, dict) and type(authority.get("revision")) is int else None)
+    )
     latest = inspection.get("latest") if isinstance(inspection, dict) else None
     latest_id = latest.get("id") if isinstance(latest, dict) else (latest if isinstance(latest, str) else None)
     versions = inspection.get("versions", []) if isinstance(inspection, dict) else []
@@ -308,6 +321,8 @@ def inspect_operator_status(native, dataset, *, stage_directory=None, staging_bu
         latest_release_id=latest_id,
         completed_release_ids=completed_ids,
         version_count=len(completed_ids),
+        lifecycle_revision=lifecycle_revision,
+        lifecycle_compaction_available=hasattr(native, "compact_lifecycle") and getattr(native, "remote", None) is None,
         incomplete_operation_ids=incomplete_ids,
         retained_producer_inputs=producer_inputs,
         outstanding_producer_bytes=outstanding_producer_bytes,
@@ -399,6 +414,9 @@ def plan_protected_retention(native, dataset, *, objects=(), application_pins=()
     for item in producer_inputs:
         if isinstance(item.get("input"), str):
             protected_object_paths.add(item["input"])
+        for file_entry in item.get("files", ()):
+            if isinstance(file_entry, dict) and isinstance(file_entry.get("path"), str):
+                protected_object_paths.add(file_entry["path"])
         if isinstance(item.get("operation"), str):
             incomplete_ids.add(item["operation"])
 

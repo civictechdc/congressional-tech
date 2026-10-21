@@ -2,7 +2,7 @@
 id: ct-3faj
 status: closed
 deps: [ct-copj]
-links: [ct-q968, ct-egpe, ct-bt1q]
+links: [ct-q968, ct-egpe, ct-bt1q, ct-m9td, ct-qdkd, ct-nc7l, ct-a70m]
 created: 2026-10-20T18:50:27Z
 type: bug
 priority: 1

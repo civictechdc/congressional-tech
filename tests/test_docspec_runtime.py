@@ -70,7 +70,7 @@ def test_configuration_is_side_effect_free_and_scopes_credentials_to_child(tmp_p
             lambda request: httpx.Response(200, json={'configured': True})))
 
     monkeypatch.setattr(subprocess, 'Popen', start)
-    monkeypatch.setattr('congress_api.retention.docspec_host.httpx.Client', client)
+    monkeypatch.setattr('docspec_client.docspec_host.httpx.Client', client)
     assert native.latest("fixture") == {"configured": True}
     command, kwargs = calls[0]
     assert "fixture-private-value" not in repr(command)
@@ -312,3 +312,84 @@ def test_live_unified_docspec_binary_matches_qualified_contract(tmp_path):
     sample.write_bytes(b'docspec-qualified-hash-probe')
     hashed = native.hash_input(sample)
     assert isinstance(hashed.get('digest'), str) and len(hashed['digest']) == 64
+
+
+def test_update_table_retains_replacements_and_deletions_after_indeterminate_outcome(
+        tmp_path):
+    from congress_api.retention.docspec_host import DocSpecFailure
+
+    client = NativeDatasets(tmp_path / "docspec", tmp_path / "workspace")
+    replacements = tmp_path / "replacements.parquet"
+    replacements.write_bytes(b"replacements")
+    deletions = tmp_path / "deletions.parquet"
+    deletions.write_bytes(b"deletions")
+
+    def fail(*args, dispatch=None):
+        if dispatch is not None:
+            dispatch["submitted"] = True
+        raise DocSpecFailure(
+            [], subprocess.CompletedProcess(
+                [], 500, stderr='{"code":"worker","message":"indeterminate"}'))
+
+    client._request = fail
+    with pytest.raises(DocSpecFailure):
+        client.update_table(
+            dataset="news_captures",
+            operation="update-1",
+            definition="news-v1",
+            base="admit-1",
+            keys=["id"],
+            replacements={"path": str(replacements), "digest": "0" * 64},
+            deletions={"path": str(deletions), "digest": "0" * 64},
+        )
+
+    retained = client.retained_producer_inputs()
+    assert len(retained) == 1
+    entry = retained[0]
+    assert entry["bytes"] == len(b"replacements") + len(b"deletions")
+    assert {item["path"] for item in entry["files"]} == {
+        str(replacements), str(deletions)}
+    assert Path(entry["request"]).is_file()
+
+
+def test_update_table_cleans_up_after_deterministic_refusal(tmp_path):
+    from congress_api.retention.docspec_host import DocSpecFailure
+
+    client = NativeDatasets(tmp_path / "docspec", tmp_path / "workspace")
+    replacements = tmp_path / "replacements.parquet"
+    replacements.write_bytes(b"replacements")
+
+    def refuse(*args, dispatch=None):
+        if dispatch is not None:
+            dispatch["submitted"] = True
+        error = DocSpecFailure(
+            [], subprocess.CompletedProcess(
+                [], 422, stderr='{"code":"invalid_update","message":"refused"}'))
+        error.status_code = 422
+        raise error
+
+    client._request = refuse
+    with pytest.raises(DocSpecFailure):
+        client.update_table(
+            dataset="news_captures",
+            operation="update-1",
+            definition="news-v1",
+            base="admit-1",
+            keys=["id"],
+            replacements={"path": str(replacements), "digest": "0" * 64},
+        )
+    assert client.retained_producer_inputs() == []
+
+
+def test_compact_lifecycle_delegates_to_dataset_lifecycle_route(tmp_path):
+    client = NativeDatasets(tmp_path / "docspec", tmp_path / "workspace")
+    observed = []
+
+    def fake_host_request(method, path, **kwargs):
+        observed.append((method, path))
+        return {"revisions_before": 12, "revisions_after": 1, "current_revision": 13}
+
+    client._host_request = fake_host_request
+    result = client.compact_lifecycle("news_captures")
+    assert observed == [("POST", "/datasets/news_captures/lifecycle/compact")]
+    assert result["revisions_after"] == 1

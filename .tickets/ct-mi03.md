@@ -17,6 +17,7 @@ Reduce import staging, process and read-copy overhead while preserving source va
 
 - **Native authority (`docspec-rs`)**: Owns admission, typed dataset versions, completion receipts, concurrency, and recovery. All five native worktrees are unified on `docspec-rs` `main` (`298053b`) and pushed to `Formspec-Labs/docspec-rs`.
 - **Application authority (`congressional-tech`)**: Owns candidate identity, bounded typed preparation (`ct-adu0`), combined filesystem capacity preflight (`ct-n7la`), persistent loopback HTTP custody (`ct-q968`, `ct-copj`, `ct-bt1q`, `ct-3faj`), and coherent multi-table snapshot selection.
+- **Transport authority (`docspec-client`)**: Neutral workspace package owning process custody, readiness, deadlines, streaming and producer-input retention. Both `congress_api` and `news_lake` depend on it; neither domain package imports the other.
 - **Evolutionary-refactoring guardrails**:
   1. Do not freeze or adopt a new `docspec-rs` binary (`ct-oxg6`) until the two P1 regressions introduced on `docspec-rs` `main` (`715a8c2`) are repaired: recursive nested export schema sanitization + primitive-leaf footer admission (`ct-3li2`) and restoring caller-bounded row-group sizing in `src/engine/write.rs` (`ct-cpio`).
   2. Retain unknown-outcome producer inputs whenever native worker state is indeterminate, including HTTP 422 `"worker"` / quarantine failures (`ct-3faj`).
@@ -36,3 +37,18 @@ CS 300 / evolutionary-refactoring audit validated the epic architecture (grade B
 **2026-10-20T22:19:32Z**
 
 Current application plan: docs/plans/docspec-application-adoption-20261020.md. Eight new congressional-tech adoption tickets cover the shared client, cumulative news append, bounded upsert, coherent news releases, typed/incremental news views, policy-safe exports, runtime distribution and preparation spill qualification. Existing feature tickets now own application integration only. Engine upgrades are an upstream planning assumption, not observed deployment; actual9661026 local/R2 gaps are recorded. Different operations per consumer are appropriate; transport/custody/schema conversion have one owner. No implementation or production changes in this planning pass.
+
+**2026-10-20T23:32:30Z**
+
+Evolutionary-refactoring / Iceberg / Parquet / query-plan audit of `docs/plans/docspec-application-adoption-20261020.md` after `main` merge (`8221566d`, commits `6cd80b0e`, `936ff845`, `33ce7877`):
+1. Created `ct-5fkx` (P1 bug) to resolve the multi-poll `UpdateSpec` / `GenerationSeal` contract mismatch (`docspec_backend.py:924-925` passes `spec['relationship']`, which `docspec-rs` `UpdateSpec` at `src/model.rs:875-883` and `src/engine/inputs.rs:48-74,515-528` ignores, breaking `seal_generation` on Poll 2).
+2. Reopened prematurely closed `ct-egpe`, `ct-qkvr`, `ct-nloa`, `ct-csyg`, `ct-jo8n`, `ct-gf8i`, `ct-4nyy`, and `ct-nc7l` with exact `path:line` evidence for remaining gaps: duplicate client in `docspec_backend.py:394-936`, missing `update_table` / `deletions.parquet` custody in `docspec.py:398-420`, full-table `read_arrow` materialization in `_existing_by_ids` (`docspec_backend.py:980-997`), $O(\text{files})$ unpruned key-probe scans in `docspec-rs/src/engine/write.rs:606-659`, and zero non-test callers in `packages/news_lake`.
+3. Confirmed `ct-oxg6`, `ct-ugqq`, `ct-ccy4`, `ct-qdkd`, `ct-a70m`, `ct-3li2`, `ct-cpio` implementations on `main` (`6cd80b0e` / `docspec-rs` `22a804e1`).
+
+**2026-10-20T23:53:21Z**
+
+CS 300 Grade at 8221566d — Spec: A- | Impl: B (In Progress). Added 6 focused remediation tickets (ct-xq1y, ct-m9td, ct-gfv8, ct-q05l, ct-f11a, ct-n6lj) alongside ct-5fkx and reopened premature news/pruning closures so every CS 300 deduction has an explicit owner.
+
+**2026-10-21T00:31:41Z**
+
+Architecture correction (2026-10-21): the shared DocSpec transport now lives in the neutral workspace package packages/docspec_client (docspec-client). news-lake depends on docspec-client, not congress-api; congress_api.retention.docspec and .docspec_host are compatibility shims. This preserves domain separation while giving transport, readiness, deadlines, streaming and producer custody one owner. Implemented and locally verified: ct-xq1y, ct-m9td, ct-gfv8, ct-q05l, ct-5fkx, ct-f11a. Still open: ct-egpe measurement/re-qualification, ct-csyg pruning, ct-nloa/ct-qkvr full-history reads, ct-n6lj incremental bridges, ct-jo8n production caller wiring, ct-gf8i/ct-4nyy caller qualification, ct-nc7l runtime gate.

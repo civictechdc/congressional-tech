@@ -28,6 +28,7 @@ members = [
     "packages/congress_shared",
     "packages/youtube_api",
     "packages/congress_api",
+    "packages/docspec_client",
     "packages/viewer_publication",
     "packages/corpus_recovery",
     "packages/news_lake",
@@ -40,6 +41,7 @@ committee-meeting = { workspace = true }
 congress-shared = { workspace = true }
 youtube-api = { workspace = true }
 congress-api = { workspace = true }
+docspec-client = { workspace = true }
 congress-youtube = { workspace = true }
 viewer-publication = { workspace = true }
 corpus-recovery = { workspace = true }

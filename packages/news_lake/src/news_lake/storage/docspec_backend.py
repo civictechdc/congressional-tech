@@ -59,8 +59,6 @@ from news_lake.analysis.export import export_release
 from news_lake.analysis.views import _by_kind, _merge_spans
 from news_lake.context import canonicalize_record_instants
 from news_lake.contract.records import (
-    CONTENT_TABLES,
-    CONTRACT_VERSION,
     KIND_ORDER,
     KIND_TABLES,
     SCHEMA,
@@ -68,22 +66,15 @@ from news_lake.contract.records import (
     TABLE_MUTATIONS,
     validate_shape,
 )
+from docspec_client.docspec import NativeDatasets, cleanup_safe
+from docspec_client.docspec_host import DocSpecFailure
+
 from news_lake.identity.decisions import apply_decisions  # noqa: F401  (bridge input)
 from news_lake.storage.coordinator import CommitError, _merge_upsert
 
-DEFAULT_BINARY = '/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec'
 # One recipe identity for every news dataset; the schema is derived from the
 # contract and never changes inside a workspace without a new definition.
 DEFINITION = 'news-v1'
-_SERVE_LOG = '.news_lake_serve.log'
-_INDETERMINATE_CODES = frozenset({
-    'worker',
-    'custody_quarantined',
-    'timeout',
-    'host_unavailable',
-    'request_timeout',
-    'injected_failure',
-})
 _ARROW_STREAM_EOS = b'\xff\xff\xff\xff\x00\x00\x00\x00'
 
 
@@ -91,50 +82,10 @@ class AppendCollisionError(CommitError, ValueError):
     """Conflicting ID reuse on an append-only dataset (both CommitError and ValueError)."""
 
 
-class DocSpecFailure(RuntimeError):
-    """The native engine refused or failed; its original diagnostic is retained."""
-
-    def __init__(self, command, returncode, stderr, *, status_code=None, code=None):
-        self.command = tuple(command)
-        self.returncode = returncode
-        self.stderr = stderr
-        self.status_code = status_code
-        self.retained_input = None
-        if code is None and isinstance(stderr, str):
-            code = self._parse_code(stderr)
-        self.code = code
-        super().__init__(stderr.strip() or f'DocSpec exited {returncode}')
-
-    @staticmethod
-    def _parse_code(stderr):
-        text = stderr.strip()
-        if not text:
-            return None
-        try:
-            payload = json.loads(text)
-        except json.JSONDecodeError:
-            payload = None
-        if isinstance(payload, dict) and isinstance(payload.get('code'), str) and payload['code']:
-            return payload['code']
-        for line in text.splitlines():
-            match = re.match(r'^(?:Error:\s*)?([a-z][a-z0-9_]*):\s', line.strip())
-            if match:
-                return match.group(1)
-        return None
-
-    @property
-    def status(self):
-        return self.status_code
-
-    @status.setter
-    def status(self, value):
-        self.status_code = value
-
-
 def native_storage_schema(schema):
     """Lossless native storage types for unsigned values and binary offsets.
 
-    Copied from ``congress_api.retention.docspec``: UInt64 becomes
+    Shared with ``docspec_client``: UInt64 becomes
     Decimal128(20, 0) and Binary becomes LargeBinary to match the native
     nested writer; composites recurse. The application retains its original
     schema and casts readbacks back with Arrow's checked cast.
@@ -165,6 +116,19 @@ def native_storage_schema(schema):
 
 def _merge_field_type(physical_type, expected_type):
     """Validate and resolve a physical Arrow type against an expected application type."""
+    if pa.types.is_struct(physical_type) and pa.types.is_struct(expected_type):
+        if physical_type.num_fields != expected_type.num_fields:
+            raise ValueError(
+                f'Native source storage schema ({physical_type}) differs from '
+                f'the selected application schema ({expected_type})'
+            )
+        for i in range(expected_type.num_fields):
+            _merge_field_type(physical_type[i].type, expected_type[i].type)
+        return expected_type
+    if (pa.types.is_list(physical_type) or pa.types.is_large_list(physical_type)) and (
+            pa.types.is_list(expected_type) or pa.types.is_large_list(expected_type)):
+        _merge_field_type(physical_type.value_type, expected_type.value_type)
+        return expected_type
     expected_physical = native_storage_schema(pa.schema([pa.field('x', expected_type)])).field(0).type
     if physical_type != expected_physical and physical_type != expected_type:
         raise ValueError(
@@ -428,299 +392,70 @@ class _ArrowHttpStream(io.RawIOBase):
             raise OSError('DocSpec Arrow response lacks a complete stream terminator')
 
 
-class DocSpecClient:
-    """One engine interface over the one-shot CLI and the loopback HTTP host.
+def _file_digest(path):
+    """Stream a SHA-256 digest so large exports are never materialized in memory."""
+    digest = sha256()
+    with Path(path).open('rb') as source:
+        for chunk in iter(lambda: source.read(1 << 20), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
 
-    CLI calls spawn the binary per request with a scratch directory under the
-    workspace. ``serve()`` starts ``docspec serve`` bound to loopback and
-    routes the same operations over HTTP until the context exits; hashing
-    stays a CLI call in both transports because the engine exposes it as a
-    workspace-independent reader.
+
+class DocSpecClient:
+    """Thin news adapter over the shared ``docspec_client`` transport.
+
+    Readiness, deadlines, owned-host lifetime, exact-pin streaming, schema
+    restoration and unknown-outcome producer custody all live in
+    ``docspec_client``. This class keeps the historical news
+    constructor and request-builder shape while adding no second transport.
     """
 
     def __init__(self, workspace, binary=None, *, timeout=120):
-        if binary is None:
-            binary = os.environ.get('DOCSPEC_BINARY') or shutil.which('docspec') or DEFAULT_BINARY
-        self.binary = str(Path(binary).resolve())
-        self.workspace = Path(workspace).resolve()
+        resolved = (binary or os.environ.get('DOCSPEC_BINARY')
+                    or shutil.which('docspec'))
+        if not resolved:
+            raise DocSpecFailure(
+                ('docspec',),
+                subprocess.CompletedProcess(
+                    ('docspec',),
+                    127,
+                    stderr='no DocSpec runtime configured; set DOCSPEC_BINARY or install docspec',
+                ),
+            )
+        self._native = NativeDatasets(resolved, workspace, timeout=timeout)
+        self.binary = self._native.binary
+        self.workspace = self._native.workspace
         self.timeout = timeout
-        self._port = None
-        self._host = '127.0.0.1'
         self._dataset_schemas = {}
 
     @classmethod
     def default_binary_path(cls):
-        """The last-resort prebuilt engine binary used when nothing else is configured."""
-        return DEFAULT_BINARY
-
-    # -- transports ----------------------------------------------------------
-
-    def _base_command(self):
-        self.workspace.mkdir(parents=True, exist_ok=True)
-        return [self.binary, '--workspace', str(self.workspace)]
-
-    def _call(self, *args, dispatch=None):
-        command = self._base_command() + [str(arg) for arg in args]
-        if dispatch is not None:
-            dispatch['submitted'] = True
-        result = subprocess.run(command, capture_output=True, text=True, timeout=self.timeout)
-        if result.returncode:
-            raise DocSpecFailure(args, result.returncode, result.stderr)
-        return json.loads(result.stdout) if result.stdout.strip() else None
+        """The configured immutable runtime, never a mutable developer build."""
+        return os.environ.get('DOCSPEC_BINARY') or shutil.which('docspec')
 
     @contextmanager
-    def _scratch(self):
-        self.workspace.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix='request-', dir=self.workspace) as directory:
-            yield Path(directory)
+    def serve(self):
+        """The shared transport owns one persistent host for this client."""
+        yield self
 
-    def _deadline_headers(self, deadline=None):
-        remaining = self.timeout if deadline is None else (deadline - time.monotonic())
-        if remaining <= 0:
-            raise TimeoutError('DocSpec response exceeded its wall-time limit')
-        budget_ms = str(max(1, math.ceil(remaining * 1000)))
-        return {
-            'docspec-timeout-ms': budget_ms,
-            'X-DocSpec-Deadline-Ms': budget_ms,
-        }
+    def close(self):
+        self._native.close()
 
-    def _http(self, method, path, json_body=None, *, dispatch=None, deadline=None):
-        """One loopback HTTP call returning decoded JSON."""
-        data = None
-        headers = self._deadline_headers(deadline=deadline)
-        if json_body is not None:
-            data = json.dumps(json_body, ensure_ascii=False, separators=(',', ':'),
-                              allow_nan=False, default=str).encode('utf-8')
-            headers['Content-Type'] = 'application/json'
-        request = urllib.request.Request(
-            f'http://{self._host}:{self._port}{path}', data=data, headers=headers, method=method)
-        if dispatch is not None:
-            dispatch['submitted'] = True
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                body = response.read()
-        except urllib.error.HTTPError as error:
-            detail = error.read().decode('utf-8', 'replace')
-            code = None
-            message = detail
-            try:
-                payload = json.loads(detail)
-                if isinstance(payload, dict):
-                    code = payload.get('code') if isinstance(payload.get('code'), str) else None
-                    message = payload.get('message', detail)
-            except json.JSONDecodeError:
-                pass
-            raise DocSpecFailure(
-                (method, path), error.code, message, status_code=error.code, code=code
-            ) from None
-        return json.loads(body) if body.strip() else None
+    def __enter__(self):
+        return self
 
-    def _dispatch(self, command, request, http_method, http_path, *, dispatch=None):
-        if self._port is not None:
-            return self._http(http_method, http_path, json_body=request, dispatch=dispatch)
-        return self._request(command, request, dispatch=dispatch)
-
-    def _request(self, command, request, *, dispatch=None):
-        with self._scratch() as directory:
-            path = directory / 'request.json'
-            path.write_text(json.dumps(request, ensure_ascii=False, separators=(',', ':'),
-                                       allow_nan=False, default=str))
-            return self._call(command, path, dispatch=dispatch)
-
-    @staticmethod
-    def _validate_readiness(value, *, expected_pid=None):
-        """Validate the native loopback readiness record (protocol v1)."""
-        if not isinstance(value, dict):
-            raise ValueError('DocSpec readiness record must be a JSON object')
-        proto_ok = (
-            (value.get('protocol') == 'docspec-loopback'
-             and type(value.get('version')) is int
-             and value['version'] == 1)
-            or (type(value.get('protocol')) is int and value['protocol'] == 1)
-        )
-        capabilities = value.get('capabilities')
-        if (not proto_ok
-                or not isinstance(capabilities, list)
-                or any(not isinstance(item, str) for item in capabilities)
-                or not {'request-deadline', 'owned-stdin-eof'}.issubset(capabilities)):
-            raise ValueError(
-                'DocSpec loopback protocol 1 with request-deadline and owned-stdin-eof '
-                'support is required'
-            )
-        if expected_pid is not None and 'pid' in value:
-            if type(value['pid']) is not int or value['pid'] != expected_pid:
-                raise ValueError('DocSpec readiness pid does not match the owned child process')
-        address = value.get('address')
-        if isinstance(address, str):
-            parsed = urlsplit(f'http://{address}')
-            if (parsed.username is not None or parsed.password is not None or parsed.path
-                    or parsed.query or parsed.fragment or not parsed.port
-                    or not ipaddress.ip_address(parsed.hostname).is_loopback):
-                raise ValueError('DocSpec readiness requires an explicit bound loopback address')
-            return parsed.hostname, parsed.port
-        if type(value.get('port')) is int and value['port'] > 0:
-            host = value.get('host', '127.0.0.1')
-            if not ipaddress.ip_address(host).is_loopback:
-                raise ValueError('DocSpec readiness requires a loopback host')
-            return host, value['port']
-        raise ValueError('DocSpec readiness requires an explicit bound loopback address')
-
-    @contextmanager
-    def serve(self, port=0, host='127.0.0.1', wait_seconds=60):
-        """Run the persistent loopback host; this client uses HTTP inside the block.
-
-        Uses the native readiness record (``--ready-file``) and owned-stdin EOF
-        shutdown (``--shutdown-on-stdin-eof``) instead of free-port probing.
-        """
-        if self._port is not None:
-            raise RuntimeError('serve() is already active for this client')
-        self._call('init')  # idempotent; the host needs an initialized host state
-        self.workspace.mkdir(parents=True, exist_ok=True)
-        log_path = self.workspace / _SERVE_LOG
-        with tempfile.TemporaryDirectory(prefix='docspec-host-') as ready_dir:
-            os.chmod(ready_dir, 0o700)
-            ready_path = Path(ready_dir) / 'ready.json'
-            cmd = self._base_command() + [
-                'serve',
-                '--bind', f'{host}:{port}',
-                '--ready-file', str(ready_path),
-                '--shutdown-on-stdin-eof',
-            ]
-            with log_path.open('wb') as log:
-                process = subprocess.Popen(
-                    cmd, stdin=subprocess.PIPE, stdout=log, stderr=log
-                )
-                try:
-                    deadline = time.monotonic() + wait_seconds
-                    bound_host, bound_port = None, None
-                    while True:
-                        if process.poll() is not None:
-                            log.flush()
-                            tail = log_path.read_text(errors='replace')[-2000:]
-                            raise DocSpecFailure(('serve', host, port), process.returncode, tail)
-                        try:
-                            mode = ready_path.lstat().st_mode
-                            if not stat.S_ISREG(mode) or (mode & 0o077):
-                                raise ValueError(
-                                    'DocSpec readiness record must be a private regular file'
-                                )
-                            encoded = ready_path.read_bytes()
-                            if len(encoded) > 4096:
-                                raise ValueError(
-                                    'DocSpec readiness record exceeds its metadata allowance'
-                                )
-                            record = json.loads(encoded)
-                        except (FileNotFoundError, json.JSONDecodeError):
-                            record = None
-                        if record is not None:
-                            bound_host, bound_port = self._validate_readiness(
-                                record, expected_pid=process.pid
-                            )
-                            break
-                        if time.monotonic() >= deadline:
-                            if process.stdin is not None:
-                                process.stdin.close()
-                            process.terminate()
-                            process.wait(timeout=self.timeout)
-                            raise TimeoutError(f'docspec serve did not become ready on {host}:{port}')
-                        time.sleep(0.01)
-                    self._host = bound_host
-                    self._port = bound_port
-                    yield self
-                finally:
-                    self._port = None
-                    self._host = '127.0.0.1'
-                    if process.stdin is not None and not process.stdin.closed:
-                        process.stdin.close()
-                    if process.poll() is None:
-                        try:
-                            process.wait(timeout=min(self.timeout, 5))
-                        except subprocess.TimeoutExpired:
-                            process.terminate()
-                            try:
-                                process.wait(timeout=15)
-                            except subprocess.TimeoutExpired:
-                                process.kill()
-                                process.wait(timeout=15)
-        try:
-            log_path.unlink()
-        except FileNotFoundError:
-            pass
+    def __exit__(self, *exc):
+        self.close()
 
     # -- operations ----------------------------------------------------------
 
     def hash_input(self, path):
-        """Hash a local producer file (workspace-independent in both transports)."""
-        return self._call('hash', Path(path).resolve())
-
-    def run(self, spec, *, dispatch=None):
-        """Submit one ``RunSpec``; returns the selected ``ReleasePin``."""
-        return self._dispatch('run', spec, 'POST', '/run', dispatch=dispatch)
-
-    def update(self, spec, *, dispatch=None):
-        """Submit one ``UpdateSpec``; returns the selected ``ReleasePin``."""
-        return self._dispatch('update', spec, 'POST', '/updates/run', dispatch=dispatch)
-
-    def refresh(self, spec):
-        """Submit one ``RefreshSpec`` (join or aggregate); returns the ``ReleasePin``."""
-        return self._dispatch('refresh', spec, 'POST', '/refreshes/run')
-
-    def seal_generation(self, spec):
-        """Seal one ``GenerationSeal``; an identical retry returns the original."""
-        return self._dispatch('seal-generation', spec, 'POST', '/generations/seal')
-
-    def export(self, spec):
-        """Submit one ``ExportSpec``; returns the ``ExportPin``."""
-        return self._dispatch('export', spec, 'POST', '/exports/run')
-
-    def latest_export(self, dataset, channel):
-        """Resolve one export channel to its selected ``ExportPin``."""
-        if self._port is not None:
-            return self._http(
-                'GET',
-                f'/datasets/{quote(dataset, safe="")}/exports/channels/{quote(channel, safe="")}',
-            )
-        return self._call('latest-export', dataset, channel)
-
-    def try_latest_export(self, dataset, channel):
-        """The selected ``ExportPin`` on ``channel``, or ``None`` when absent."""
-        try:
-            return self.latest_export(dataset, channel)
-        except DocSpecFailure as error:
-            if error.code == 'no_export' or 'no_export' in error.stderr:
-                return None
-            raise
-
-    def export_pin(self, dataset, operation):
-        """Resolve one completed historical ``ExportPin`` by operation id."""
-        if self._port is not None:
-            return self._http(
-                'GET',
-                f'/datasets/{quote(dataset, safe="")}/exports/{quote(operation, safe="")}',
-            )
-        return self._call('export-pin', dataset, operation)
-
-    def try_export_pin(self, dataset, operation):
-        """Resolve one completed ``ExportPin`` by operation id, or ``None``."""
-        try:
-            return self.export_pin(dataset, operation)
-        except DocSpecFailure as error:
-            if error.code == 'no_export' or 'no_export' in error.stderr:
-                return None
-            raise
-
-    def compact(self, spec):
-        """Submit one ``CompactionSpec``; returns the ``CompactionResult``."""
-        return self._dispatch('compact', spec, 'POST', '/compactions/run')
+        return self._native.hash_input(path)
 
     def latest(self, dataset):
-        """The selected ``ReleasePin`` of a dataset; raises when absent."""
-        if self._port is not None:
-            return self._http('GET', f'/datasets/{quote(dataset, safe="")}/latest')
-        return self._call('latest', dataset)
+        return self._native.latest(dataset)
 
     def try_latest(self, dataset):
-        """The selected ``ReleasePin``, or ``None`` when nothing is selected."""
         try:
             return self.latest(dataset)
         except DocSpecFailure as error:
@@ -729,210 +464,74 @@ class DocSpecClient:
             raise
 
     def release(self, dataset, version):
-        """Resolve one exact historical ``ReleasePin`` by version id."""
-        if self._port is not None:
-            return self._http(
-                'GET', f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
-            )
-        return self._call('release', dataset, version)
+        return self._native.release(dataset, version)
+
+    def refresh(self, spec):
+        return self._native.refresh(spec)
+
+    def seal_generation(self, spec):
+        return self._native.seal_generation(spec)
+
+    def export(self, spec):
+        return self._native.export(spec)
+
+    def latest_export(self, dataset, channel):
+        return self._native.latest_export(dataset, channel)
+
+    def try_latest_export(self, dataset, channel):
+        return self._native.try_latest_export(dataset, channel)
+
+    def export_pin(self, dataset, operation):
+        return self._native.export_pin(dataset, operation)
+
+    def try_export_pin(self, dataset, operation):
+        return self._native.try_export_pin(dataset, operation)
+
+    def compact(self, spec):
+        return self._native.compact(spec)
+
+    def compact_lifecycle(self, dataset):
+        return self._native.compact_lifecycle(dataset)
 
     def read_arrow(self, release_pin, group='source', *, schema=None):
-        """Stream one retained group as Arrow (CLI file or HTTP stream) into a Table."""
         dataset = release_pin['dataset']['dataset']
-        version = release_pin['dataset']['version']
         if schema is None and group == 'source':
             schema = self._dataset_schemas.get(dataset)
-        if self._port is not None:
-            deadline = time.monotonic() + self.timeout
-            headers = self._deadline_headers(deadline=deadline)
-            path = (
-                f'/datasets/{quote(dataset, safe="")}'
-                f'/versions/{quote(version, safe="")}/arrow/{quote(group, safe="")}'
-            )
-            request = urllib.request.Request(
-                f'http://{self._host}:{self._port}{path}', headers=headers, method='GET'
-            )
-            try:
-                with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                    expected_headers = {
-                        'docspec-dataset': dataset,
-                        'docspec-version': version,
-                        'docspec-manifest-blake3': release_pin['manifest']['digest'],
-                        'content-type': 'application/vnd.apache.arrow.stream',
-                    }
-                    for key, expected_val in expected_headers.items():
-                        actual_val = response.headers.get(key)
-                        if actual_val is not None and actual_val != expected_val:
-                            raise ValueError('Native stream differs from the selected exact pin')
-                    stream = _ArrowHttpStream(response, deadline=deadline)
-                    with pa.ipc.open_stream(stream) as reader:
-                        table = reader.read_all()
-                        stream.verify_eos()
-            except urllib.error.HTTPError as error:
-                detail = error.read().decode('utf-8', 'replace')
-                code = None
-                message = detail
-                try:
-                    payload = json.loads(detail)
-                    if isinstance(payload, dict):
-                        code = payload.get('code') if isinstance(payload.get('code'), str) else None
-                        message = payload.get('message', detail)
-                except json.JSONDecodeError:
-                    pass
-                raise DocSpecFailure(
-                    ('GET', path), error.code, message, status_code=error.code, code=code
-                ) from None
-        else:
-            with self._scratch() as directory:
-                output = directory / 'group.arrow'
-                pin = directory / 'release.json'
-                pin.write_text(json.dumps(release_pin, ensure_ascii=False,
-                                          separators=(',', ':'), allow_nan=False, default=str))
-                if output.exists():
-                    output.unlink()
-                self._call('read', pin, output, '--group', group)
-                with output.open('rb') as stream:
-                    with pa.ipc.open_stream(stream) as reader:
-                        table = reader.read_all()
+        table = self._native.read_arrow(release_pin, group, schema=None)
         if schema is not None:
             return restore_application_schema(table, expected_schema=schema)
         return table
 
-    def _stage(self, directory, name, table):
-        """Write one zstd Parquet producer file and its trusted digest."""
-        source = directory / name
-        physical = native_storage_schema(table.schema)
-        stored = (
-            table
-            if physical.equals(table.schema, check_metadata=True)
-            else table.cast(physical, safe=True)
-        )
-        pq.write_table(stored, source, compression='zstd')
-        return source, self.hash_input(source)['digest']
-
-    def _request_directory(self, operation):
-        directory = self.workspace / 'requests' / f'request-{sanitize_id(operation)}'
-        directory.mkdir(parents=True, exist_ok=True)
-        return directory
-
-    @staticmethod
-    def _is_cleanup_safe(error):
-        if not isinstance(error, DocSpecFailure):
-            return False
-        if not error.code or error.code in _INDETERMINATE_CODES:
-            return False
-        if error.status is not None:
-            return 400 <= error.status < 500
-        return True
-
-    def _submit_with_custody(self, directory, source, spec, submit_fn):
-        """Persist ``request.json`` before submitting; retain producer input on unknown outcome."""
-        request_path = directory / 'request.json'
-        request_path.write_text(
-            json.dumps(spec, ensure_ascii=False, separators=(',', ':'), allow_nan=False, default=str)
-        )
-        dispatch = {}
-        retained = False
-        try:
-            return submit_fn(spec, dispatch)
-        except BaseException as error:
-            if dispatch.get('submitted') and not self._is_cleanup_safe(error):
-                retained = True
-                try:
-                    size = source.stat().st_size
-                    retained_info = {
-                        'input': str(source),
-                        'request': str(request_path),
-                        'bytes': size,
-                    }
-                    if isinstance(error, DocSpecFailure):
-                        error.retained_input = retained_info
-                    if hasattr(error, 'add_note'):
-                        error.add_note(
-                            f'DocSpec producer input retained: {source} ({size} bytes); '
-                            f'exact replay request: {request_path}'
-                        )
-                except OSError:
-                    pass
-            raise
-        finally:
-            if not retained:
-                shutil.rmtree(directory, ignore_errors=True)
-
-    def retained_producer_inputs(self):
-        """Inspect unresolved local producer files without inferring native completion."""
-        inputs = []
-        seen = set()
-        for pattern in ('requests/request-*/request.json', 'request-*/request.json'):
-            for request_path in sorted(self.workspace.glob(pattern)):
-                resolved = request_path.resolve()
-                if resolved in seen:
-                    continue
-                seen.add(resolved)
-                source = request_path.parent / 'source.parquet'
-                try:
-                    size = source.stat().st_size
-                except FileNotFoundError:
-                    size = None
-                inputs.append({
-                    'input': str(source),
-                    'request': str(request_path),
-                    'bytes': size,
-                })
-        return inputs
-
     def run_table(self, table, dataset, operation, definition=DEFINITION,
                   relationship=None, base=None):
-        """Admit one caller-bounded Arrow table as a dataset build.
-
-        The caller owns candidate identity, schema and completeness; the input
-        path is a locator and the retained expected digest selects the bytes.
-        """
+        """Admit one caller-bounded Arrow table as a dataset build."""
         self._dataset_schemas[dataset] = table.schema
-        directory = self._request_directory(operation)
-        source, digest = self._stage(directory, 'source.parquet', table)
-        spec = dict(dataset=dataset, operation=operation, input=str(source),
-                    expected_digest=digest, sql='SELECT * FROM input',
-                    definition=definition)
-        if base is not None:
-            spec['base'] = base
-        if relationship is not None:
-            spec['relationship'] = relationship
-        return self._submit_with_custody(
-            directory,
-            source,
-            spec,
-            lambda payload, dispatch: (
-                self._http('POST', '/run', json_body=payload, dispatch=dispatch)
-                if self._port is not None
-                else self._call('run', directory / 'request.json', dispatch=dispatch)
-            ),
+        return self._native.run_table(
+            table,
+            dataset=dataset,
+            operation=operation,
+            definition=definition,
+            relationship=relationship,
+            base=base,
         )
 
     def update_table(self, dataset, operation, base, keys, replacements_table,
                      deletions=None, definition=DEFINITION, relationship=None):
-        """Replace/insert complete rows by key against the exact selected base."""
+        """Replace or insert complete rows by key against the exact selected base."""
         self._dataset_schemas[dataset] = replacements_table.schema
-        directory = self._request_directory(operation)
-        source, digest = self._stage(directory, 'source.parquet', replacements_table)
-        spec = dict(dataset=dataset, operation=operation, definition=definition,
-                    base=base, keys=list(keys),
-                    replacements={'path': str(source), 'digest': digest})
-        if deletions is not None:
-            deletion_path, deletion_digest = self._stage(directory, 'deletions.parquet', deletions)
-            spec['deletions'] = {'path': str(deletion_path), 'digest': deletion_digest}
-        if relationship is not None:
-            spec['relationship'] = relationship
-        return self._submit_with_custody(
-            directory,
-            source,
-            spec,
-            lambda payload, dispatch: (
-                self._http('POST', '/updates/run', json_body=payload, dispatch=dispatch)
-                if self._port is not None
-                else self._call('update', directory / 'request.json', dispatch=dispatch)
-            ),
+        return self._native.update_table(
+            replacements_table,
+            dataset=dataset,
+            operation=operation,
+            definition=definition,
+            base=base,
+            keys=list(keys),
+            deletions=deletions,
+            relationship=relationship,
         )
+
+    def retained_producer_inputs(self):
+        return self._native.retained_producer_inputs()
 
 
 class DocSpecLake:
@@ -1016,15 +615,34 @@ class DocSpecLake:
         pins = dict(self.committed)
         for kind in KIND_ORDER:
             records_of_kind = batch.get(kind)
-            if not records_of_kind:
-                continue
             dataset = self._dataset(kind)
+            if not records_of_kind:
+                prior = pins.get(dataset)
+                if prior is not None and relationship is not None:
+                    pins[dataset] = self._advance_relationship(dataset, kind, prior, relationship)
+                continue
             if TABLE_MUTATIONS[KIND_TABLES[kind]] == 'upsert':
                 pins[dataset] = self._commit_upsert(dataset, kind, records_of_kind, relationship)
             else:
                 pins[dataset] = self._commit_append(dataset, kind, records_of_kind, relationship)
         self.committed = pins
         return dict(pins)
+
+    def _advance_relationship(self, dataset, kind, prior, relationship):
+        if relationship is None or prior.get('dataset', {}).get('relationship') == relationship:
+            return prior
+        base_version = prior['dataset']['version']
+        operation = self._operation(
+            f'rel-{kind}', content_digest([base_version, relationship])
+        )
+        return self.client.update_table(
+            dataset,
+            operation,
+            base_version,
+            ['id'],
+            records_to_arrow(kind, ()),
+            relationship=relationship,
+        )
 
     def _commit_append(self, dataset, kind, records, relationship):
         records = self._dedup_incoming(dataset, records, is_append=True)
@@ -1048,9 +666,11 @@ class DocSpecLake:
                 )
             new_records.append(record)
         if not new_records:
-            return prior
+            return self._advance_relationship(dataset, kind, prior, relationship)
         base_version = prior['dataset']['version']
-        operation = self._operation(f'append-{kind}', content_digest([base_version, new_records]))
+        operation = self._operation(
+            f'append-{kind}', content_digest([base_version, new_records, relationship])
+        )
         return self.client.update_table(
             dataset,
             operation,
@@ -1072,9 +692,11 @@ class DocSpecLake:
         merged = merge_upsert_batch(list(existing.values()), records)
         changed = [row for row in merged if existing.get(row['id']) != row]
         if not changed:
-            return prior
+            return self._advance_relationship(dataset, kind, prior, relationship)
         base_version = prior['dataset']['version']
-        operation = self._operation(f'upsert-{kind}', content_digest([base_version, changed]))
+        operation = self._operation(
+            f'upsert-{kind}', content_digest([base_version, changed, relationship])
+        )
         return self.client.update_table(
             dataset,
             operation,
@@ -1475,45 +1097,33 @@ class DocSpecNewsViews:
     # -- C5-authorized native export -----------------------------------------
 
     @staticmethod
-    def _ensure_release_read(records_or_release_read, selections=None):
-        if isinstance(records_or_release_read, dict) and 'tables' in records_or_release_read:
-            return records_or_release_read
-        records = list(records_or_release_read)
-        release = next((r for r in records if r.get('kind') == 'release'), None)
-        tables = {}
-        for record in records:
-            if record.get('kind') == 'release':
-                continue
-            tables.setdefault(KIND_TABLES[record['kind']], []).append(record)
-        if release is None:
-            recorded_at = max(
-                (r['recorded_at'] for r in records if 'recorded_at' in r),
-                default='2026-01-01T00:00:00Z',
-            )
-            release = {
-                'kind': 'release',
-                'id': '00000000-0000-5000-8000-000000000000',
-                'recorded_at': recorded_at,
-                'contract_version': CONTRACT_VERSION,
-                'snapshots': [
-                    {'table': table, 'table_uuid': '00000000-0000-5000-8000-000000000001'}
-                    for table in CONTENT_TABLES
-                ],
-                'selections': list(() if selections is None else selections),
-                'checkpoints': [],
-            }
-        return {'release': release, 'tables': tables}
+    def _ensure_release_read(records_or_release_read):
+        if not (isinstance(records_or_release_read, dict)
+                and 'tables' in records_or_release_read
+                and isinstance(records_or_release_read.get('release'), dict)
+                and records_or_release_read['release'].get('id')):
+            raise ValueError(
+                'authorized export requires an exact published release read; '
+                'raw record lists are not a release identity')
+        return records_or_release_read
 
     def export_authorized(self, records_or_release_read, destination_dir=None, *,
-                          as_of=None, now=None, authorized=False, channel='public'):
+                          as_of=None, now=None, authorized=False, channel='public',
+                          dataset_pins=None):
         """Apply C5 rights and capture-expiry rules, then run native Parquet exports.
 
         Enforces ``news_lake.analysis.export.export_release`` before admitting
         any export dataset version so restricted or expired captures/versions
         are downgraded to ``metadata_only`` and stripped of bodies prior to
         native ``ExportSpec`` materialization.
+
+        ``dataset_pins`` optionally maps a release table name to the exact native
+        ``ReleasePin`` that already retains those rows. When C5 filtering leaves a
+        table unchanged, that pin is exported directly instead of re-admitting a
+        duplicate staging dataset.
         """
         release_read = self._ensure_release_read(records_or_release_read)
+        dataset_pins = dict(dataset_pins or {})
         effective_now = as_of if as_of is not None else now
         filtered = export_release(release_read, authorized=authorized, now=effective_now)
         dest_root = Path(destination_dir).resolve() if destination_dir is not None else None
@@ -1529,13 +1139,18 @@ class DocSpecNewsViews:
             logical_dataset = dataset_id_for(table_name)
             export_dataset = sanitize_id(f'export_{logical_dataset}')
             arrow_table = records_to_arrow(kind, rows)
-            admit_digest = content_digest([filtered['release']['id'], table_name, rows])
-            admit_op = self._operation(f'admit-exp-{kind}', admit_digest)
-            prior_pin = self.client.try_latest(export_dataset)
-            if prior_pin is not None and prior_pin['dataset']['version'] == admit_op:
-                source_pin = prior_pin
+            unchanged = rows == release_read['tables'].get(table_name)
+            pinned = dataset_pins.get(table_name)
+            if unchanged and pinned is not None:
+                source_pin = pinned
             else:
-                source_pin = self.client.run_table(arrow_table, export_dataset, admit_op)
+                admit_digest = content_digest([filtered['release']['id'], table_name, rows])
+                admit_op = self._operation(f'admit-exp-{kind}', admit_digest)
+                prior_pin = self.client.try_latest(export_dataset)
+                if prior_pin is not None and prior_pin['dataset']['version'] == admit_op:
+                    source_pin = prior_pin
+                else:
+                    source_pin = self.client.run_table(arrow_table, export_dataset, admit_op)
 
             columns = list(arrow_table.schema.names)
             channel_id = sanitize_id(channel)
@@ -1543,14 +1158,15 @@ class DocSpecNewsViews:
                 f'exp-{kind}',
                 content_digest([version_ref(source_pin), channel_id, columns]),
             )
-            existing_export = self.client.try_export_pin(export_dataset, export_op)
+            existing_export = self.client.try_export_pin(source_pin['dataset']['dataset'], export_op)
             if existing_export is not None:
                 export_pin = existing_export
             else:
-                current_channel = self.client.try_latest_export(export_dataset, channel_id)
+                current_channel = self.client.try_latest_export(
+                    source_pin['dataset']['dataset'], channel_id)
                 expected = current_channel['id'] if current_channel is not None else None
                 export_spec = {
-                    'dataset': export_dataset,
+                    'dataset': source_pin['dataset']['dataset'],
                     'operation': export_op,
                     'source': version_ref(source_pin),
                     'channel': channel_id,
@@ -1568,11 +1184,13 @@ class DocSpecNewsViews:
             exported_path = Path(export_pin['object']['path'])
             if dest_root is not None:
                 dest_file = dest_root / f'{logical_dataset}.parquet'
-                if (not dest_file.exists()
-                        or dest_file.stat().st_size != exported_path.stat().st_size
-                        or sha256(dest_file.read_bytes()).hexdigest()
-                        != sha256(exported_path.read_bytes()).hexdigest()):
-                    shutil.copyfile(exported_path, dest_file)
+                if not dest_file.exists() or _file_digest(dest_file) != _file_digest(exported_path):
+                    try:
+                        if dest_file.exists():
+                            dest_file.unlink()
+                        os.link(exported_path, dest_file)
+                    except OSError:
+                        shutil.copyfile(exported_path, dest_file)
                 files[logical_dataset] = str(dest_file)
                 files[table_name] = str(dest_file)
             else:
@@ -1594,7 +1212,6 @@ class DocSpecNewsViews:
 __all__ = [
     'AppendCollisionError',
     'DEFINITION',
-    'DEFAULT_BINARY',
     'DocSpecClient',
     'DocSpecFailure',
     'DocSpecLake',

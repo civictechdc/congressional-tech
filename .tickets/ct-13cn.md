@@ -1,8 +1,8 @@
 ---
 id: ct-13cn
 status: open
-deps: [ct-egpe]
-links: [ct-3180]
+deps: [ct-egpe, ct-q05l]
+links: [ct-3180, ct-sb0s, ct-q05l, ct-dmca, ct-gziq]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2

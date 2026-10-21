@@ -2,7 +2,7 @@
 id: ct-a70m
 status: closed
 deps: [ct-qdkd]
-links: [ct-wmtx, ct-lcbc, ct-mpsp]
+links: [ct-wmtx, ct-lcbc, ct-mpsp, ct-m9td, ct-egpe, ct-qdkd, ct-nc7l, ct-3faj, ct-gfv8]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -31,3 +31,7 @@ CS 300 / evolutionary-refactoring audit verified that `NativeDatasets.inspect_re
 **2026-10-20T22:19:31Z**
 
 2026-10-20 fresh application adoption review at app 34c1ee7 / engine 9661026. Scope is congressional-tech using an upgraded engine, not reimplementing native lifecycle. Actual local/R2 capability must pass before use; unsupported upstream work remains linked evidence, not a completion claim. See docs/plans/docspec-application-adoption-20261020.md.
+
+**2026-10-20T23:53:21Z**
+
+CS 300 Grade at 8221566d — Spec: A | Impl: B+ (Closed for RunSpec pins). plan_protected_retention (native_capacity.py:361-465) protects application pins, exports, active readers, incomplete ops, and RunSpec producer inputs; UpdateSpec replacement/deletion custody and CLI/HTTP lifecycle compaction are tracked in ct-m9td and ct-gfv8.

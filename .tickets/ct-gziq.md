@@ -1,8 +1,8 @@
 ---
 id: ct-gziq
 status: open
-deps: [ct-egpe]
-links: [ct-gf8i, ct-csjp, ct-vt7i]
+deps: [ct-egpe, ct-q05l]
+links: [ct-gf8i, ct-csjp, ct-vt7i, ct-sb0s, ct-13cn, ct-q05l, ct-3180, ct-dmca]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2

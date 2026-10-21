@@ -20,8 +20,8 @@ def measure():
         # Reproduce the pre-change adapter without creating another worktree.
         import native_test_helpers
         source = subprocess.check_output(['git', 'show',
-            sys.argv[2] + ':packages/congress_api/src/congress_api/retention/docspec.py'], text=True)
-        module = types.ModuleType('congress_api.retention.docspec_baseline')
+            sys.argv[2] + ':packages/docspec_client/src/docspec_client/docspec.py'], text=True)
+        module = types.ModuleType('docspec_client.docspec_baseline')
         exec(compile(source, 'docspec-baseline.py', 'exec'), module.__dict__)
         NativeDatasets = native_test_helpers.NativeDatasets = module.NativeDatasets
     counts = dict(native_process_launches=0, scratch_read_bytes=0,

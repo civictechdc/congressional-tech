@@ -2,7 +2,7 @@
 id: ct-csjp
 status: closed
 deps: [ct-vt7i]
-links: [ct-mi03, ct-a1aa, ct-gf8i, ct-vt7i, ct-gziq]
+links: [ct-mi03, ct-a1aa, ct-gf8i, ct-vt7i, ct-gziq, ct-n6lj, ct-jo8n]
 created: 2026-10-20T20:37:00Z
 type: task
 priority: 2

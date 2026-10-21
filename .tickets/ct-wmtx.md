@@ -2,7 +2,7 @@
 id: ct-wmtx
 status: closed
 deps: [ct-xl0y]
-links: [ct-lcbc, ct-mpsp, ct-a70m]
+links: [ct-lcbc, ct-mpsp, ct-a70m, ct-qdkd, ct-gfv8]
 created: 2026-10-20T18:59:59Z
 type: task
 priority: 2

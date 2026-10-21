@@ -181,12 +181,14 @@ from test_docspec_boundary import native
 
 
 def test_process_loss_reuses_fsynced_typed_parts_and_counts_abandoned_indexes(tmp_path):
+    from pathlib import Path
     import subprocess
     import sys
     script='''
 import os
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[3])))
 from test_catalog_dependency_preparation import values,owner,assert_exact
 from test_catalog_dependency_storage import MemoryNative
 from test_raw_source_sync import MemoryStore
@@ -208,12 +210,13 @@ assert max(restored)==4
 assert_exact(prepared,selection,table,{key:i for i,key in enumerate(table['source_id'].to_pylist())})
 assert prepared.preparation_metrics['retained_bytes']>=sum(p.stat().st_size for p in root.rglob('keys.sqlite'))
 '''
+    tests_dir = str(Path(__file__).resolve().parent)
     directory=tmp_path/'killed-process'
-    before=subprocess.run([sys.executable,'-c',script,str(directory),'crash'],capture_output=True,text=True)
+    before=subprocess.run([sys.executable,'-c',script,str(directory),'crash',tests_dir],capture_output=True,text=True)
     assert before.returncode==17,before.stderr
     assert list(directory.glob('part-*.json'))
     assert list(directory.rglob('keys.sqlite'))
-    after=subprocess.run([sys.executable,'-c',script,str(directory),'resume'],capture_output=True,text=True)
+    after=subprocess.run([sys.executable,'-c',script,str(directory),'resume',tests_dir],capture_output=True,text=True)
     assert after.returncode==0,after.stderr
 
 
@@ -402,6 +405,7 @@ def test_ordering_multiple_flushes_respect_the_aggregate_disk_budget(tmp_path,mo
 
 
 def test_process_loss_during_ordering_reuses_completed_source_files(tmp_path):
+    from pathlib import Path
     import subprocess
     import sys
     from hashlib import sha256
@@ -409,6 +413,7 @@ def test_process_loss_during_ordering_reuses_completed_source_files(tmp_path):
 import os
 import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(sys.argv[3])))
 import pyarrow as pa
 from test_catalog_dependency_preparation import owner,SCHEMA
 from congress_api.retention import document_index as index
@@ -453,14 +458,15 @@ assert prepared.preparation_reads['decoded_rows']==len(table)
 assert prepared.preparation_metrics['staging_bytes']<=16<<20
 work.close()
 '''
+    tests_dir = str(Path(__file__).resolve().parent)
     directory=tmp_path/'ordering-process-loss'
-    before=subprocess.run([sys.executable,'-c',script,str(directory),'crash'],capture_output=True,text=True)
+    before=subprocess.run([sys.executable,'-c',script,str(directory),'crash',tests_dir],capture_output=True,text=True)
     assert before.returncode==19,before.stderr
     assert (directory/'complete.json').exists()
     assert (directory/'ordered.tmp').exists()
     assert not (directory/'ordered.json').exists()
     preserved={path.name:sha256(path.read_bytes()).hexdigest() for path in directory.glob('part-*.parquet')}
-    after=subprocess.run([sys.executable,'-c',script,str(directory),'resume'],capture_output=True,text=True)
+    after=subprocess.run([sys.executable,'-c',script,str(directory),'resume',tests_dir],capture_output=True,text=True)
     assert after.returncode==0,after.stderr
     assert preserved=={path.name:sha256(path.read_bytes()).hexdigest() for path in directory.glob('part-*.parquet')}
     assert (directory/'ordered.json').exists()

@@ -369,17 +369,31 @@ def test_plan_protected_retention_protects_selected_releases_readers_incomplete_
             removal_id="rm-active-reader",
         )
 
-    native.producer = [dict(input=str(tmp_path / "native/request-1/source.parquet"), request="req.json", bytes=512)]
+    native.producer = [
+        dict(
+            input=str(tmp_path / "native/request-1/replacements.parquet"),
+            request="req.json",
+            bytes=768,
+            files=[
+                dict(path=str(tmp_path / "native/request-1/replacements.parquet"), bytes=512),
+                dict(path=str(tmp_path / "native/request-1/deletions.parquet"), bytes=256),
+            ],
+        )
+    ]
     non_quiescent = capacity.plan_protected_retention(
         native,
         "catalog-sources",
         namespace="ns-prod",
-        objects=["s3://bucket/data/orphan-01.parquet"],
+        objects=[
+            "s3://bucket/data/orphan-01.parquet",
+            str(tmp_path / "native/request-1/deletions.parquet"),
+        ],
         application_pins=[app_pin],
     )
     assert non_quiescent["quiescent"] is False
     assert non_quiescent["reclaimable_objects"] == []
-    assert non_quiescent["protected_bytes"] == 512 + 128
+    assert str(tmp_path / "native/request-1/deletions.parquet") in non_quiescent["protected_objects"]
+    assert non_quiescent["protected_bytes"] == 768 + 2 * 128
 
     # Wrong namespace or unreferenced local path pin refuses immediately.
     with pytest.raises(capacity.ProtectedRetentionError, match="namespace"):

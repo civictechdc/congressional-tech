@@ -12,7 +12,10 @@ include those changes. Their runtime qualification remains separate work.
 
 The archive and news packages should use different native operations when their
 work differs, through one configured client for transport, exact pins, errors,
-streaming and input custody. Acquisition, document grouping, news evidence-union,
+streaming and input custody. That transport now lives in the neutral
+`docspec_client` workspace package; `congress_api.retention.docspec` and
+`.docspec_host` are compatibility shims, so neither domain package imports the
+other. Acquisition, document grouping, news evidence-union,
 identity decisions, span merging, rights and publication policy stay in their
 application owners. Do not replace sound domain code just to call another API.
 
@@ -21,20 +24,27 @@ application owners. Do not replace sound domain code just to call another API.
 | Ticket | User result | Depends on |
 |---|---|---|
 | [ct-oxg6](../../.tickets/ct-oxg6.md) | One immutable, checked engine runtime | Existing host/custody fixes and ct-3li2/ct-cpio safety fixes |
-| [ct-egpe](../../.tickets/ct-egpe.md) | Shared safe client for archive and news | ct-oxg6 |
-| [ct-qkvr](../../.tickets/ct-qkvr.md) | Later news batches preserve earlier records | ct-egpe |
-| [ct-nloa](../../.tickets/ct-nloa.md) | Small news updates avoid whole-table reads | ct-egpe |
-| [ct-jo8n](../../.tickets/ct-jo8n.md) | Actual news callers read one complete published release | ct-qkvr, ct-nloa |
-| [ct-gf8i](../../.tickets/ct-gf8i.md) | Typed spans and incrementally maintained news views | ct-jo8n |
-| [ct-4nyy](../../.tickets/ct-4nyy.md) | Exact exports respect news rights and expiry | ct-jo8n |
+| [ct-xq1y](../../.tickets/ct-xq1y.md) | Native request specs reject unknown fields instead of silently dropping them | ct-oxg6 |
+| [ct-m9td](../../.tickets/ct-m9td.md) | UpdateSpec replacement and deletion files are tracked in producer custody and retention | ct-3faj, ct-qdkd, ct-a70m |
+| [ct-egpe](../../.tickets/ct-egpe.md) | Shared safe client for archive and news | ct-oxg6, ct-m9td |
+| [ct-qkvr](../../.tickets/ct-qkvr.md) | Later news batches preserve earlier records without full-history Python reads | ct-egpe |
+| [ct-nloa](../../.tickets/ct-nloa.md) | Small news updates avoid whole-table reads | ct-egpe, ct-csyg |
+| [ct-5fkx](../../.tickets/ct-5fkx.md) | Multi-poll news updates preserve or advance coupled release relationships | ct-egpe, ct-xq1y |
+| [ct-jo8n](../../.tickets/ct-jo8n.md) | Actual news callers read one complete published release | ct-qkvr, ct-nloa, ct-5fkx |
+| [ct-n6lj](../../.tickets/ct-n6lj.md) | Incremental news bridge updates derive from pinned release deltas without full-corpus Python scans | ct-jo8n |
+| [ct-gf8i](../../.tickets/ct-gf8i.md) | Typed spans and incrementally maintained news views | ct-jo8n, ct-n6lj |
+| [ct-f11a](../../.tickets/ct-f11a.md) | Authorized news exports avoid synthetic release UUIDs and triple Parquet writes | ct-jo8n |
+| [ct-4nyy](../../.tickets/ct-4nyy.md) | Exact exports respect news rights and expiry | ct-jo8n, ct-f11a |
 | [ct-ugqq](../../.tickets/ct-ugqq.md) | Capture and publisher install the same qualified runtime | ct-egpe |
 | [ct-ccy4](../../.tickets/ct-ccy4.md) | Measured spill/recovery stays within preparation disk budget | Existing preparation and capacity fixes |
 | [ct-qdkd](../../.tickets/ct-qdkd.md) | Operators see progress, reusable work and resource costs | ct-egpe, ct-n7la |
-| [ct-dmca](../../.tickets/ct-dmca.md) | Compatible fields and scalar enrichment evolve without full rewrites | ct-egpe |
-| [ct-gziq](../../.tickets/ct-gziq.md) | Eligible catalog joins and rollups reuse unchanged results | ct-egpe |
-| [ct-sb0s](../../.tickets/ct-sb0s.md) | Provenance/review evidence changes without rewriting source | ct-egpe |
-| [ct-13cn](../../.tickets/ct-13cn.md) | Change reports and downstream work use exact native differences | ct-egpe |
+| [ct-q05l](../../.tickets/ct-q05l.md) | Remote R2 operation and field-group capability checks share one Engine authority | ct-oxg6 |
+| [ct-dmca](../../.tickets/ct-dmca.md) | Compatible fields and scalar enrichment evolve without full rewrites | ct-egpe, ct-q05l |
+| [ct-gziq](../../.tickets/ct-gziq.md) | Eligible catalog joins and rollups reuse unchanged results | ct-egpe, ct-q05l |
+| [ct-sb0s](../../.tickets/ct-sb0s.md) | Provenance/review evidence changes without rewriting source | ct-egpe, ct-q05l |
+| [ct-13cn](../../.tickets/ct-13cn.md) | Change reports and downstream work use exact native differences | ct-egpe, ct-q05l |
 | [ct-a70m](../../.tickets/ct-a70m.md) | Maintenance protects releases and recoverable operations | ct-qdkd |
+| [ct-gfv8](../../.tickets/ct-gfv8.md) | Local lifecycle baseline compaction is exposed via CLI, HTTP, and protected maintenance | ct-lcbc, ct-a70m |
 | [ct-nc7l](../../.tickets/ct-nc7l.md) | Core archive integration is reviewed and tested locally | Runtime, client, preparation/spill, progress and accepted safety fixes |
 | [ct-2ukk](../../.tickets/ct-2ukk.md) | Existing retained data is adopted and live behavior is verified | Existing adoption work, ct-nc7l, ct-ugqq |
 

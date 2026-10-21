@@ -1,8 +1,8 @@
 ---
 id: ct-dmca
 status: open
-deps: [ct-egpe]
-links: [ct-sb0s, ct-gziq, ct-3180]
+deps: [ct-egpe, ct-q05l]
+links: [ct-sb0s, ct-gziq, ct-3180, ct-13cn, ct-q05l]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2

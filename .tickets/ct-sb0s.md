@@ -1,8 +1,8 @@
 ---
 id: ct-sb0s
 status: open
-deps: [ct-egpe]
-links: []
+deps: [ct-egpe, ct-q05l]
+links: [ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-gziq]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2

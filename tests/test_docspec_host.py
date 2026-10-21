@@ -201,7 +201,7 @@ def test_invalid_readiness_refuses_before_http_and_reaps_owned_child(tmp_path, m
         path.chmod(0o600)
         return process
     monkeypatch.setattr(subprocess, 'Popen', start)
-    monkeypatch.setattr('congress_api.retention.docspec_host.httpx.Client',
+    monkeypatch.setattr('docspec_client.docspec_host.httpx.Client',
                         lambda **kwargs: pytest.fail('unsupported host must receive no HTTP request'))
     with NativeDatasets('unused', tmp_path) as native:
         with pytest.raises(ValueError):

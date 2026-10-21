@@ -2,7 +2,7 @@
 id: ct-vt7i
 status: closed
 deps: []
-links: [ct-gf8i, ct-csjp, ct-gziq]
+links: [ct-gf8i, ct-csjp, ct-gziq, ct-n6lj, ct-jo8n]
 created: 2026-10-20T19:23:00Z
 type: task
 priority: 2

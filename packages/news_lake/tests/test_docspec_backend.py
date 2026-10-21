@@ -8,6 +8,7 @@ Corpus fixtures mirror ``tests/test_analysis_views.py`` (deterministic uuid5
 ids), and every admitted corpus passes ``check_corpus``.
 """
 from pathlib import Path
+import subprocess
 from uuid import NAMESPACE_URL, uuid5
 
 import pyarrow as pa
@@ -34,7 +35,8 @@ from news_lake.storage.docspec_backend import (
 
 docspec = DocSpecClient.default_binary_path()
 pytestmark = pytest.mark.skipif(
-    not Path(docspec).exists(), reason=f'docspec binary is not available at {docspec}')
+    not docspec or not Path(docspec).exists(),
+    reason='set DOCSPEC_BINARY to the qualified maintained CLI')
 
 AT = '2026-10-20T04:00:00Z'
 _id = lambda key: str(uuid5(NAMESPACE_URL, 'news-lake-views-test:' + key))
@@ -688,18 +690,16 @@ def test_boundary_hardening_schema_retention_and_ipc_framing(tmp_path):
     # and cleans them up on deterministic ('validation') refusals.
     client = DocSpecClient(tmp_path / 'ws')
     table = pa.Table.from_pylist([{'id': '1'}])
-    orig_call = client._call
+    orig_request = client._native._request
 
-    def fake_worker_call(*args, dispatch=None):
-        if args and args[0] == 'hash':
-            return orig_call(*args, dispatch=dispatch)
+    def fake_worker_request(path, request, *, dispatch=None):
         if dispatch is not None:
             dispatch['submitted'] = True
         raise DocSpecFailure(
-            args, 500, 'worker: simulated crash', status_code=500, code='worker'
-        )
+            [path], subprocess.CompletedProcess(
+                [path], 500, stderr='{"code":"worker","message":"simulated crash"}'))
 
-    client._call = fake_worker_call
+    client._native._request = fake_worker_request
     with pytest.raises(DocSpecFailure):
         client.run_table(table, 'news_outlets', 'op-crash')
     retained = client.retained_producer_inputs()
@@ -707,16 +707,16 @@ def test_boundary_hardening_schema_retention_and_ipc_framing(tmp_path):
     assert Path(retained[0]['input']).exists()
     assert Path(retained[0]['request']).exists()
 
-    def fake_validation_call(*args, dispatch=None):
-        if args and args[0] == 'hash':
-            return orig_call(*args, dispatch=dispatch)
+    def fake_validation_request(path, request, *, dispatch=None):
         if dispatch is not None:
             dispatch['submitted'] = True
-        raise DocSpecFailure(
-            args, 422, 'validation: bad schema', status_code=422, code='validation'
-        )
+        error = DocSpecFailure(
+            [path], subprocess.CompletedProcess(
+                [path], 422, stderr='{"code":"validation","message":"bad schema"}'))
+        error.status_code = 422
+        raise error
 
-    client._call = fake_validation_call
+    client._native._request = fake_validation_request
     with pytest.raises(DocSpecFailure):
         client.run_table(table, 'news_outlets', 'op-invalid')
     # The deterministic validation refusal cleans up its staging dir; only op-crash remains.
@@ -902,3 +902,89 @@ def test_export_authorized_enforces_c5_rights_and_capture_expiry(tmp_path):
     assert auth_versions[ver_restricted['id']]['access'] == 'restricted'
     assert auth_versions[ver_restricted['id']]['text'] == 'Restricted body text.'
 
+
+
+# -- ct-f11a: strict release identity and direct pinned export --------------------------
+
+
+def test_export_authorized_requires_a_published_release_identity(tmp_path):
+    """Raw record lists cannot fabricate a release identity for authorized export."""
+    client = DocSpecClient(tmp_path / 'ws')
+    views = DocSpecNewsViews(client)
+    with pytest.raises(ValueError, match='requires an exact published release read'):
+        views.export_authorized([_capture('raw')], tmp_path / 'export')
+
+
+def test_export_authorized_uses_an_unchanged_release_pin_directly(tmp_path):
+    """When C5 filtering changes nothing, the pinned dataset is exported, not re-admitted."""
+    corpus = [OUTLET_A]
+    read = release_read_of(corpus, [])
+    client = DocSpecClient(tmp_path / 'ws')
+    lake = DocSpecLake(client)
+    lake.commit_records(corpus)
+    pin = client.latest('news_outlets')
+    views = DocSpecNewsViews(client)
+    result = views.export_authorized(
+        read, tmp_path / 'export-pinned', authorized=True,
+        dataset_pins={'news.outlets': pin})
+    assert result['pins']['news.outlets']['source']['version'] == pin['dataset']['version']
+    # No duplicate export_news_outlets staging dataset was created.
+    with pytest.raises(DocSpecFailure):
+        client.latest('export_news_outlets')
+
+
+# -- ct-5fkx: multi-poll coupled generation sealing with partial table updates ----------
+
+
+def test_multi_poll_coupled_generation_sealing_with_partial_tables(tmp_path, monkeypatch):
+    """Poll 1 (g1) and Poll 2 (g2 with untouched tables) both seal and preserve pins."""
+    client = DocSpecClient(tmp_path / 'ws')
+    lake = DocSpecLake(client)
+
+    # Poll 1 commits outlet (upsert), capture (append), run (append), and version (append).
+    poll1 = [
+        OUTLET_A,
+        _capture('p1'),
+        _extract_run('p1', _id('capture:p1')),
+        _version('p1', title='Poll 1 article',
+                 publication={'precision': 'day', 'date': '2026-10-18', 'basis': 'publisher'},
+                 text='Alex Doe spoke in poll 1.'),
+    ]
+    pins_g1 = lake.commit_records(poll1, generation='g1', family='news')
+    seal_g1 = lake.seal('g1', family='news')
+    assert set(seal_g1['members']) == {'news_outlets', 'news_captures', 'news_runs', 'news_versions'}
+
+    # Poll 2 touches ONLY outlet (upsert) and capture (append), leaving news_runs and
+    # news_versions completely untouched in the incoming batch.
+    outlet_updated = dict(
+        OUTLET_A,
+        recorded_at='2026-10-21T10:00:00Z',
+        domains=['example.com', 'news.example.com'],
+    )
+    poll2 = [
+        outlet_updated,
+        _capture('p2'),
+    ]
+    pins_g2 = lake.commit_records(poll2, generation='g2', family='news')
+    seal_g2 = lake.seal('g2', family='news')
+    assert set(seal_g2['members']) == set(seal_g1['members'])
+    for ds, member in seal_g2['members'].items():
+        assert pins_g2[ds]['dataset']['relationship'] == {
+            'kind': 'coupled', 'family': 'news', 'generation': 'g2'
+        }
+        assert version_ref(pins_g2[ds]) == member
+
+    # Untouched news_versions preserved 100% of its data files without rewrite.
+    v_files_g1 = {
+        obj['path'] for obj in pins_g1['news_versions']['dataset']['groups']['source']['objects']
+    }
+    v_files_g2 = {
+        obj['path'] for obj in pins_g2['news_versions']['dataset']['groups']['source']['objects']
+    }
+    assert v_files_g1 == v_files_g2
+
+    # Missing binary raises DocSpecFailure rather than TypeError.
+    monkeypatch.delenv('DOCSPEC_BINARY', raising=False)
+    monkeypatch.setattr('shutil.which', lambda _: None)
+    with pytest.raises(DocSpecFailure, match='no DocSpec runtime configured'):
+        DocSpecClient(tmp_path / 'ws-missing', binary=None)

@@ -1,6 +1,6 @@
 ---
 id: ct-csyg
-status: closed
+status: open
 deps: [ct-xl0y, ct-clvr, ct-cpio]
 links: [ct-nloa, ct-eipa]
 created: 2026-10-20T19:23:00Z
@@ -34,3 +34,17 @@ CS 300 / evolutionary-refactoring audit confirmed that `715a8c2` on `docspec-rs`
 **2026-10-20T22:19:32Z**
 
 Current API has no public exact-version column/filter read; internal native projection is not an application read endpoint. ct-nloa is a concrete bounded-values consumer. Qualify a maintained scoped-read API before expecting application savings; preserve occurrence positions and do not materialize exports merely to emulate lookups.
+
+**2026-10-20T23:32:30Z**
+
+Reopened by evolutionary-refactoring / Iceberg / query-plan audit at `main` (`8221566d` / `6cd80b0e`):
+1. `6cd80b0e` marked `ct-csyg` closed without modifying `docspec-rs/src/query.rs:162-180` (`NativeTable::scan` still ignores `_filters: &[Expr]`) or `docspec-rs/src/engine/write.rs:606-659` (`replace_keys` still iterates every file in `scan.files()` and executes a `chunk_{index}` key-join probe without checking Iceberg `DataFile` lower/upper bounds).
+2. Both `replace_keys` file probing (`write.rs:606-659`) and `news_lake` keyed lookups (`ct-nloa`, `ct-qkvr` at `docspec_backend.py:980-997`) remain concrete callers needing either Iceberg manifest min/max file pruning on values-only scans (`OccurrenceScan::values`) or a bounded exact-release key/projection read path.
+
+**2026-10-20T23:53:21Z**
+
+CS 300 Grade at 8221566d — Spec: A | Impl: F (Reopened). Closed in 6cd80b0e with zero code changes: docspec-rs/src/query.rs:162-180 still ignores _filters and src/engine/write.rs:606-659 still probes all F files without checking Iceberg DataFile lower/upper bounds.
+
+**2026-10-21T00:31:42Z**
+
+Not implemented in this pass. The safe prerequisite is a maintained exact-release keyed read or Iceberg manifest-bounds pruning; docspec-rs 0.10.1 exposes only crate-private InclusiveMetricsEvaluator/StrictMetricsEvaluator, so a hand-written evaluator would duplicate maintained semantics and was not shipped. Keep open.

@@ -1,8 +1,8 @@
 ---
 id: ct-oxg6
 status: closed
-deps: [ct-3faj, ct-q968, ct-3li2, ct-cpio]
-links: [ct-ugqq, ct-cpio, ct-xl0y, ct-3li2]
+deps: [ct-3faj, ct-q968, ct-3li2, ct-cpio, ct-bt1q]
+links: [ct-ugqq, ct-cpio, ct-xl0y, ct-3li2, ct-xq1y, ct-5fkx]
 created: 2026-10-20T18:47:06Z
 type: task
 priority: 1
@@ -36,3 +36,7 @@ CS 300 / evolutionary-refactoring audit updated `deps` to include `ct-bt1q`, `ct
 **2026-10-20T22:21:55Z**
 
 Independent application-plan review required preserving ct-3li2 and ct-cpio as mandatory freeze prerequisites. Restored both dependency edges; chosen-binary evidence must prove the fixes even while upstream commits and ticket statuses advance.
+
+**2026-10-20T23:32:30Z**
+
+Evolutionary-refactoring audit at `main` (`8221566d` / `6cd80b0e`): restored `ct-bt1q` in `deps` to match acceptance criteria requiring owned-host EOF draining verification alongside `ct-3faj`, `ct-q968`, `ct-3li2`, and `ct-cpio`. Verified `QUALIFIED_DOCSPEC_RUNTIME` in `packages/congress_api/src/congress_api/retention/docspec.py:34-40` pins `docspec-rs` `22a804e19b8c8e376e28cf9612d4f8ae3b7b4726` (`darwin_arm64_binary_sha256` = `bd17918e9512e87d923e39ce7512c59550d420946fdc33fb5046b0d3bbc4ce3c`).
