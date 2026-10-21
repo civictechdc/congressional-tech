@@ -29,24 +29,38 @@ export interface DisplayRow {
 
 type Phase = 'upcoming' | 'past' | 'today';
 
-/** The recorded calendar day, plus a clock time and its source offset when one was stored. */
-export function recordedWhen(row: { date?: string | null; scheduled_at?: string | null }): { date: string; time: string } {
+type WhenOptions = { timeZone?: string; locale?: string };
+
+/** Format a stored instant with the browser’s locale and timezone (or an explicit zone for tests). */
+function browserInstant(value: string, options: WhenOptions = {}): { date: string; time: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(value)) return null;
+  // Date-only midnights are stored as midnight UTC; do not invent a clock time.
+  if (/T00:00:00(?:\.\d+)?(?:Z|[+-]00:00)$/.test(value)) return { date: value.slice(0, 10), time: '' };
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) return null;
+  const instant = new Date(ms);
+  const date = new Intl.DateTimeFormat('en-CA', { timeZone: options.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(instant);
+  const time = new Intl.DateTimeFormat(options.locale, { timeZone: options.timeZone, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(instant);
+  return { date, time };
+}
+
+/** The recorded calendar day, plus a clock time in the viewer’s local zone when a scheduled instant was stored. */
+export function recordedWhen(row: { date?: string | null; scheduled_at?: string | null }, options: WhenOptions = {}): { date: string; time: string } {
   const scheduled = row.scheduled_at || '';
   const scheduledDay = /^\d{4}-\d{2}-\d{2}/.test(scheduled) ? scheduled.slice(0, 10) : '';
   const date = (row.date || '').slice(0, 10) || scheduledDay;
   const sameDay = Boolean(scheduledDay) && date === scheduledDay;
-  const clock = sameDay && scheduled.includes('T') ? scheduled.slice(11, 16) : '';
-  const zone = sameDay ? scheduled.match(/(?:Z|[+-]\d{2}:\d{2})$/)?.[0] || '' : '';
-  const time = /^\d{2}:\d{2}$/.test(clock) && clock !== '00:00' ? `${clock}${zone === 'Z' ? ' UTC' : zone ? ` ${zone}` : ''}` : '';
-  return { date, time };
+  if (!sameDay || !scheduled.includes('T')) return { date, time: '' };
+  const local = browserInstant(scheduled, options);
+  return { date, time: local?.time || '' };
 }
 
 /** The date and time a related row would show, including a schedule that falls on another day. */
-export function listedWhen(row: { date?: unknown; scheduled_at?: unknown }): string {
+export function listedWhen(row: { date?: unknown; scheduled_at?: unknown }, options: WhenOptions = {}): string {
   const dated = { date: typeof row.date === 'string' ? row.date : '', scheduled_at: typeof row.scheduled_at === 'string' ? row.scheduled_at : '' };
   const day = dated.date.slice(0, 10);
-  const clock = day ? [day, recordedWhen(dated).time].filter(Boolean).join(' ') : '';
-  return [clock, scheduleNote(dated)].filter(Boolean).join(' · ');
+  const clock = day ? [day, recordedWhen(dated, options).time].filter(Boolean).join(' ') : '';
+  return [clock, scheduleNote(dated, options)].filter(Boolean).join(' · ');
 }
 
 /** True when a related row’s time only repeats the meeting already open. A different day or a more specific time stays. */
@@ -60,13 +74,14 @@ export function repeatsRecordedWhen(value: string, meetingWhen: string): boolean
 }
 
 /** A scheduled instant that is not already the record’s own date. */
-export function scheduleNote(row: { date?: string | null; scheduled_at?: string | null }): string {
+export function scheduleNote(row: { date?: string | null; scheduled_at?: string | null }, options: WhenOptions = {}): string {
   const scheduled = row.scheduled_at || '';
   if (!/^\d{4}-\d{2}-\d{2}T/.test(scheduled)) return '';
   const date = (row.date || '').slice(0, 10);
   if (date && date === scheduled.slice(0, 10)) return '';
-  const when = recordedWhen({ scheduled_at: scheduled });
-  return `Scheduled ${[when.date, when.time].filter(Boolean).join(' ')}`;
+  const local = browserInstant(scheduled, options);
+  if (!local) return '';
+  return `Scheduled ${[local.date, local.time].filter(Boolean).join(' ')}`;
 }
 
 function parsed(value: unknown): unknown {
@@ -277,9 +292,16 @@ export function evidenceLine(states: { [key: string]: string | null | undefined 
 const quietEvidence = new Set(['unchecked', 'unknown', 'not_applicable']);
 
 /** Evidence a meeting row can show. Not checked, not recorded, and does not apply stay on the record. */
-export function listedEvidence(states: { [key: string]: string | null | undefined } | null | undefined): string[] {
+export function listedEvidence(states: { [key: string]: string | null | undefined } | null | undefined, options: { omit?: readonly string[] } = {}): string[] {
   if (!states) return [];
-  return evidenceAspects.flatMap(([key]) => quietEvidence.has(states[key] || '') ? [] : evidenceParts({ [key]: states[key] }));
+  const omit = new Set(options.omit || []);
+  return evidenceAspects.flatMap(([key]) => omit.has(key) || quietEvidence.has(states[key] || '') ? [] : evidenceParts({ [key]: states[key] }));
+}
+
+/** How many people the meeting list should mention without naming them. */
+export function listedWitnessCount(count: number): string {
+  if (count <= 0) return '';
+  return count === 1 ? '1 witness' : `${count} witnesses`;
 }
 
 /** A location's recorded "label" is the place, when the same record also names a building or city. */

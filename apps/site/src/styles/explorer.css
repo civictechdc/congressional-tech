@@ -25,9 +25,20 @@
 .explorer-search label { display:grid; grid-template-rows:subgrid; grid-row:1 / -1; grid-column:1; row-gap:var(--ctdc-space-3xs); }
 .explorer-search .explorer-button { grid-column:2; grid-row:2; align-self:end; margin:0; background:var(--ctdc-primary); border-color:var(--ctdc-primary); color:#fff; }
 .explorer-search .explorer-button:hover:not(:disabled) { background:#0c3560; }
-.explorer-filters input, .explorer-filters select, .explorer-measure select { min-width:0; width:100%; border:1px solid var(--explorer-border); border-radius:var(--ctdc-radius-xs); background:var(--ctdc-surface); color:var(--ctdc-ink); padding:.5rem .6rem; font-size:var(--ctdc-text-sm); min-height:2.5rem; }
-.explorer-filters label:not(:first-child) { flex:1 1 13rem; }
-.explorer-filters label.explorer-scope { flex:1 1 18rem; }
+.explorer-filters input, .explorer-filters select, .explorer-measure select { min-width:0; width:100%; border:1px solid var(--explorer-border); border-radius:var(--ctdc-radius-xs); background-color:var(--ctdc-surface); color:var(--ctdc-ink); padding:.5rem .6rem; font-size:var(--ctdc-text-sm); min-height:2.5rem; }
+/* Replace the native chevron so option text never runs under the arrow. */
+.explorer-filters select, .explorer-measure select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-inline: .65rem 2.35rem;
+  text-overflow: ellipsis;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1.2 1.5 6 6.3l4.8-4.8' stroke='%23565c65' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .75rem center;
+  background-size: .75rem .5rem;
+}
+.explorer-filters label:not(:first-child) { flex:1 1 14rem; min-width:min(100%, 12.5rem); }
+.explorer-filters label.explorer-scope { flex:1 1 20rem; min-width:min(100%, 18rem); }
 .explorer-filters .explorer-filter-more { flex:1 1 100%; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:var(--ctdc-space-sm) var(--ctdc-space-xs); margin-top:var(--ctdc-space-xs); }
 .explorer-filters .explorer-filter-more summary { grid-column:1 / -1; color:var(--ctdc-primary); cursor:pointer; font-weight:600; }
 .explorer-filters .explorer-filter-more::details-content { grid-column:1 / -1; display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:var(--ctdc-space-sm) var(--ctdc-space-xs); }
@@ -65,8 +76,8 @@ a > .explorer-icon { vertical-align:-0.15em; margin-left:.25rem; }
 .explorer-table .explorer-title-cell { overflow-wrap:anywhere; }
 .explorer-table th:first-child,.explorer-table td:first-child { padding-left:0; }
 .explorer-table tbody tr { transition:background .15s; }
-.explorer-table tbody tr:hover { background:rgba(16,67,120,.035); }
-.explorer-table .explorer-title-cell { width:55%; min-width:16rem; }
+.explorer-table .explorer-title-cell { width:55%; min-width:16rem; cursor:pointer; border-radius:var(--ctdc-radius-xs); }
+.explorer-table .explorer-title-cell:hover { background:rgba(16,67,120,.035); }
 .explorer-table .explorer-title-cell button { font-weight:600; text-decoration:none; }
 .explorer-table .explorer-title-cell button:hover { text-decoration:underline; }
 .explorer-table .explorer-title-cell > button { white-space:pre-line; }

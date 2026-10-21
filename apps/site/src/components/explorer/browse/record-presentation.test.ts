@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { categoryNote, collapseRepeatedFacts, committeeHierarchyNote, committeeKindNote, committeeLevelNote, committeeSourceNote, committeeTypeLabel, earlierCommitteeNames, coverageDrillNote, dateFilterReason, disagreementSummary, distinctRecordedFacts, recordedTitleLines, recordedTitlePreview, documentSourceInContext, documentSourceLabel, listedDocumentType, listedSourcePile, evidenceLine, listedEvidence, factLabel, detectedNote, fileLinkName, filePartNote, extraIssueAlternatives, issueNotes, landingPageNote, linkedMeetingIds, listedSourceStatus, listedWhen, listTitle, meetingStatusNote, presentRecord, providerLabel, publishedNote, recordedAction, recordedAddressNames, recordedAmendments, recordedFileName, recordedFileNames, recordedFormatNote, recordedMeasures, recordedPlace, recordedVotes, recordedWhen, recordedWitnesses, scheduleNote, separateWitnesses, witnessNameList, recordingEmbedUrl, recordingIdentity, recordingVisible, notableRoles, omitRepeatedChamber, omitRepeatedCongress, omitRepeatedWhen, participationNote, plainLegislativeNote, plainRecordedNote, relatedMeta, relatedParts, savedCopyHref, sourceCountNote, sourceFacts, sourceLinks, sourceTypeNote, subjectAbsentNote, subjectKindLabel, witnessNotes } from './record-presentation.ts';
+import { categoryNote, collapseRepeatedFacts, committeeHierarchyNote, committeeKindNote, committeeLevelNote, committeeSourceNote, committeeTypeLabel, earlierCommitteeNames, coverageDrillNote, dateFilterReason, disagreementSummary, distinctRecordedFacts, recordedTitleLines, recordedTitlePreview, documentSourceInContext, documentSourceLabel, listedDocumentType, listedSourcePile, evidenceLine, listedEvidence, listedWitnessCount, factLabel, detectedNote, fileLinkName, filePartNote, extraIssueAlternatives, issueNotes, landingPageNote, linkedMeetingIds, listedSourceStatus, listedWhen, listTitle, meetingStatusNote, presentRecord, providerLabel, publishedNote, recordedAction, recordedAddressNames, recordedAmendments, recordedFileName, recordedFileNames, recordedFormatNote, recordedMeasures, recordedPlace, recordedVotes, recordedWhen, recordedWitnesses, scheduleNote, separateWitnesses, witnessNameList, recordingEmbedUrl, recordingIdentity, recordingVisible, notableRoles, omitRepeatedChamber, omitRepeatedCongress, omitRepeatedWhen, participationNote, plainLegislativeNote, plainRecordedNote, relatedMeta, relatedParts, savedCopyHref, sourceCountNote, sourceFacts, sourceLinks, sourceTypeNote, subjectAbsentNote, subjectKindLabel, witnessNotes } from './record-presentation.ts';
 import { matches } from './query-utils.ts';
 
 const now = new Date('2026-09-27T15:00:00Z');
@@ -156,7 +156,11 @@ test('a source observation shows its identifier and place without the payload bl
   assert.equal(evidenceLine({ recording: 'reported', transcript: 'unchecked', documents: 'reported', witnesses: 'reported', captions: 'unknown' }), 'Recording stated by the source · Transcript not checked · Documents stated by the source · Witness list stated by the source · Captions not recorded');
   assert.equal(evidenceLine({ recording: 'not_applicable', captions: 'not_applicable' }), 'Recording outside this meeting · Captions outside this meeting');
   assert.deepEqual(listedEvidence({ recording: 'reported', transcript: 'unchecked', documents: 'not_applicable', witnesses: 'inferred', captions: 'unknown' }), ['Recording stated by the source', 'Witness list likely match, needs a check']);
+  assert.deepEqual(listedEvidence({ recording: 'reported', transcript: 'unchecked', documents: 'reported', witnesses: 'reported', captions: 'unknown' }, { omit: ['witnesses'] }), ['Recording stated by the source', 'Documents stated by the source']);
   assert.deepEqual(listedEvidence({ recording: 'not_applicable', captions: 'unchecked' }), []);
+  assert.equal(listedWitnessCount(0), '');
+  assert.equal(listedWitnessCount(1), '1 witness');
+  assert.equal(listedWitnessCount(4), '4 witnesses');
   assert.equal(factLabel('label', ['label', 'building', 'city']), 'Place');
   assert.equal(factLabel('label', ['label']), 'label');
   assert.deepEqual(linkedMeetingIds({ meeting_id: 'one', meeting_ids: ['two', 'two', 'three'] }), ['two', 'three']);
@@ -172,12 +176,12 @@ test('related rows keep the recorded role, time, and issue severity', () => {
   assert.equal(omitRepeatedCongress(relatedParts('meeting', { type: 'hearing', congress: 118, chamber: 'house' }), 119).map(part => part.text).join(' · '), 'Hearing · 118th Congress · House');
   assert.equal(omitRepeatedChamber(relatedParts('meeting', { type: 'hearing', chamber: 'house', facts: [{ label: 'building', value: 'Rayburn House Office Building' }, { label: 'room', value: '2237' }] }), 'house').map(part => part.text).join(' · '), 'Hearing · Rayburn House Office Building, room 2237');
   assert.equal(omitRepeatedChamber(relatedParts('meeting', { type: 'hearing', chamber: 'house', facts: [{ label: 'building', value: 'Capitol' }, { label: 'room', value: 'S-219' }] }), 'house').map(part => part.text).join(' · '), 'Hearing · House · Capitol, room S-219');
-  assert.equal(listedWhen({ date: '2025-03-25', scheduled_at: '2025-03-25T19:30:00Z' }), '2025-03-25 19:30 UTC');
+  assert.equal(listedWhen({ date: '2025-03-25', scheduled_at: '2025-03-25T19:30:00Z' }, { timeZone: 'America/New_York', locale: 'en-US' }), '2025-03-25 3:30 PM EDT');
   assert.equal(plainLegislativeNote('HR 2625'), 'H.R. 2625');
   assert.equal(plainLegislativeNote('S 1254'), 'S. 1254');
   assert.equal(plainLegislativeNote('H.R.1107 AGREED (no attached file)'), 'H.R. 1107 AGREED');
-  assert.equal(omitRepeatedWhen(relatedParts('appearance', { position: 'Commander', participation: 'testified', date: '2025-03-25' }), '2025-03-25 19:30 UTC').map(part => part.text).join(' · '), 'Commander · Testified');
-  assert.equal(omitRepeatedWhen(relatedParts('appearance', { date: '2025-03-26' }), '2025-03-25 19:30 UTC').map(part => part.text).join(' · '), '2025-03-26');
+  assert.equal(omitRepeatedWhen(relatedParts('appearance', { position: 'Commander', participation: 'testified', date: '2025-03-25' }), '2025-03-25 3:30 PM EDT').map(part => part.text).join(' · '), 'Commander · Testified');
+  assert.equal(omitRepeatedWhen(relatedParts('appearance', { date: '2025-03-26' }), '2025-03-25 3:30 PM EDT').map(part => part.text).join(' · '), '2025-03-26');
   assert.equal(documentSourceInContext({ source_document_groups: ['meetingDocuments'] }, true), '');
   assert.equal(documentSourceInContext({ source_document_groups: ['meetingDocuments', 'witnessDocuments'] }, true), 'Witness document');
   assert.equal(documentSourceInContext({ source_document_groups: ['meetingDocuments'] }, false), 'Meeting document');
@@ -342,17 +346,18 @@ test('a file name comes from the saved copy or the URL path', () => {
 });
 
 test('a scheduled clock time stays with the recorded date', () => {
-  assert.deepEqual(recordedWhen({ date: '2026-09-27', scheduled_at: '2026-09-27T14:30:00-04:00' }), { date: '2026-09-27', time: '14:30 -04:00' });
-  assert.deepEqual(recordedWhen({ date: '2026-09-27', scheduled_at: '2026-09-27T18:30:00Z' }), { date: '2026-09-27', time: '18:30 UTC' });
-  assert.deepEqual(recordedWhen({ scheduled_at: '2026-09-27' }), { date: '2026-09-27', time: '' });
-  assert.deepEqual(recordedWhen({ date: '2026-09-27', scheduled_at: '2026-09-27T00:00:00Z' }), { date: '2026-09-27', time: '' });
+  const eastern = { timeZone: 'America/New_York', locale: 'en-US' };
+  assert.deepEqual(recordedWhen({ date: '2026-09-27', scheduled_at: '2026-09-27T14:30:00-04:00' }, eastern), { date: '2026-09-27', time: '2:30 PM EDT' });
+  assert.deepEqual(recordedWhen({ date: '2026-09-27', scheduled_at: '2026-09-27T18:30:00Z' }, eastern), { date: '2026-09-27', time: '2:30 PM EDT' });
+  assert.deepEqual(recordedWhen({ scheduled_at: '2026-09-27' }, eastern), { date: '2026-09-27', time: '' });
+  assert.deepEqual(recordedWhen({ date: '2026-09-27', scheduled_at: '2026-09-27T00:00:00Z' }, eastern), { date: '2026-09-27', time: '' });
   assert.deepEqual(recordedWhen({}), { date: '', time: '' });
-  assert.deepEqual(recordedWhen({ date: '2014-03-26', scheduled_at: '2014-04-03T17:00:00Z' }), { date: '2014-03-26', time: '' });
-  assert.equal(scheduleNote({ date: '2014-03-26', scheduled_at: '2014-04-03T17:00:00Z' }), 'Scheduled 2014-04-03 17:00 UTC');
-  assert.equal(scheduleNote({ date: '2026-09-27', scheduled_at: '2026-09-27T14:30:00-04:00' }), '');
-  assert.equal(scheduleNote({ scheduled_at: '2019-12-04T15:00:00Z' }), 'Scheduled 2019-12-04 15:00 UTC');
-  assert.equal(relatedMeta('material', { title: 'Recording', scheduled_at: '2019-12-04T15:00:00Z' }), 'Scheduled 2019-12-04 15:00 UTC');
-  assert.deepEqual(recordedWhen({ scheduled_at: '2019-12-04T15:00:00Z' }), { date: '2019-12-04', time: '15:00 UTC' });
+  assert.deepEqual(recordedWhen({ date: '2014-03-26', scheduled_at: '2014-04-03T17:00:00Z' }, eastern), { date: '2014-03-26', time: '' });
+  assert.equal(scheduleNote({ date: '2014-03-26', scheduled_at: '2014-04-03T17:00:00Z' }, eastern), 'Scheduled 2014-04-03 1:00 PM EDT');
+  assert.equal(scheduleNote({ date: '2026-09-27', scheduled_at: '2026-09-27T14:30:00-04:00' }, eastern), '');
+  assert.equal(scheduleNote({ scheduled_at: '2019-12-04T15:00:00Z' }, eastern), 'Scheduled 2019-12-04 10:00 AM EST');
+  assert.equal(relatedMeta('material', { title: 'Recording', scheduled_at: '2019-12-04T15:00:00Z' }), scheduleNote({ scheduled_at: '2019-12-04T15:00:00Z' }));
+  assert.deepEqual(recordedWhen({ scheduled_at: '2019-12-04T15:00:00Z' }, eastern), { date: '2019-12-04', time: '10:00 AM EST' });
 });
 
 test('saved copies use the viewer-data content route', () => {

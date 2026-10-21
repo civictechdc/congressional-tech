@@ -1,6 +1,6 @@
 .explorer-related-lead { display: inline-flex; align-items: baseline; gap: .35rem; flex-wrap: wrap; }
 .explorer-related-filter { display: grid; gap: .35rem; max-width: 28rem; margin-block: 1rem; }
-.explorer-related-filter select { width: 100%; min-width: 0; padding: .5rem; font: inherit; }
+.explorer-related-filter select { width: 100%; min-width: 0; padding: .5rem 2.1rem .5rem .65rem; font: inherit; }
 .explorer-material-group { margin-block: 1.25rem; }
 .explorer-material-group h4 { margin-block: 0 .25rem; font-size: var(--ctdc-text-base); }
 .explorer-meeting-group { margin: .85rem 0 0; }
