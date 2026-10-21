@@ -9,6 +9,7 @@ storage internals. It is the single owner of instant rendering and parsing
 import copy
 import hashlib
 import json
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -76,17 +77,54 @@ def named_id(namespace, name):
     return str(uuid5(namespace, name))
 
 
+def uuid7(moment=None, *, timestamp_ms=None, counter=None):
+    """Mint a lowercase RFC 9562 UUIDv7 string ordered by UTC millisecond timestamp."""
+    if timestamp_ms is None:
+        if moment is None:
+            moment = datetime.now(timezone.utc)
+        timestamp_ms = int(moment.timestamp() * 1000)
+    ts_ms = max(0, int(timestamp_ms)) & ((1 << 48) - 1)
+    rand_bytes = int.from_bytes(os.urandom(10), 'big')
+    rand_a = (counter if counter is not None else (rand_bytes >> 62)) & 0xFFF
+    rand_b = rand_bytes & ((1 << 62) - 1)
+    value = (
+        (ts_ms << 80)
+        | (0x7 << 76)
+        | (rand_a << 64)
+        | (0b10 << 62)
+        | rand_b
+    )
+    return str(uuid.UUID(int=value))
+
+
 class AdapterContext:
     """Fresh ids (captures are minted per fetch attempt) and a clock.
 
     Storage owns journaling capture ids across crash retries; the default id
-    source is uuid4 and callers that need cross-crash stability pass their own
-    ids (or replay through the publish journal, which pins record ids).
+    source is RFC 9562 UUIDv7 (time-ordered by the context clock so chronological
+    polls cluster keys into disjoint Parquet file min/max intervals) and callers
+    that need cross-crash stability pass their own ids (or replay through the
+    publish journal, which pins record ids).
     """
 
     def __init__(self, id_source=None, clock=None):
-        self._id_source = id_source if id_source is not None else uuid.uuid4
         self._clock = clock if clock is not None else (lambda: datetime.now(timezone.utc))
+        self._last_ms = -1
+        self._seq = 0
+        self._id_source = id_source if id_source is not None else self._next_uuid7
+
+    def _next_uuid7(self):
+        ms = max(0, int(self.now().timestamp() * 1000))
+        if ms <= self._last_ms:
+            self._seq += 1
+            if self._seq > 0xFFF:
+                self._last_ms += 1
+                self._seq = 0
+            ms = self._last_ms
+        else:
+            self._last_ms = ms
+            self._seq = 0
+        return uuid7(timestamp_ms=ms, counter=self._seq)
 
     def new_id(self):
         return str(self._id_source()).lower()

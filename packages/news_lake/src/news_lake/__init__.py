@@ -9,8 +9,12 @@ from news_lake.analysis import (
 )
 from news_lake.contract import check_corpus, parse_jsonl, validate_shape
 from news_lake.identity import apply_decisions
+from news_lake.storage import DocSpecClient, DocSpecLake, DocSpecNewsViews
 
 __all__ = [
+    'DocSpecClient',
+    'DocSpecLake',
+    'DocSpecNewsViews',
     'apply_decisions',
     'check_corpus',
     'classify',

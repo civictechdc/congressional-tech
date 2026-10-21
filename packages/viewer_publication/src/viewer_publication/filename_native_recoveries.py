@@ -54,7 +54,7 @@ def index_catalog_recoveries(snapshot, rows, *, max_ordered_bytes, previous=None
         for change in snapshot.changes_since(source_identity):
             for which in ('retired', 'prepared'):
                 table = snapshot.changed_sources(change, which=which, max_ordered_bytes=max_ordered_bytes)
-                for batch in table.iter_batches():
+                for batch in table.iter_batches(columns=['source_id', 'source_url']):
                     yield from batch.to_pylist()
 
     counts = snapshot.selection['counts']

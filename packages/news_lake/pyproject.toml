@@ -15,6 +15,9 @@ dependencies = [
     "tldextract>=5",
 ]
 
+[project.scripts]
+news-lake = "news_lake.cli:main"
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"

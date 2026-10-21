@@ -2,7 +2,7 @@
 id: ct-2ukk
 status: in_progress
 deps: [ct-dat9, ct-7e7q, ct-9vtu, ct-y32m, ct-pki9, ct-87n4, ct-5kb2, ct-i7j2, ct-jufk, ct-kkio, ct-omnp, ct-nc7l, ct-ugqq]
-links: [ct-mi03, ct-czsd]
+links: [ct-mi03, ct-czsd, ct-oc2g]
 created: 2026-10-20T02:20:22Z
 type: task
 priority: 1

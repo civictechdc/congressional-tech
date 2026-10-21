@@ -393,3 +393,68 @@ def test_compact_lifecycle_delegates_to_dataset_lifecycle_route(tmp_path):
     result = client.compact_lifecycle("news_captures")
     assert observed == [("POST", "/datasets/news_captures/lifecycle/compact")]
     assert result["revisions_after"] == 1
+
+
+def test_producer_parquet_writes_bound_row_group_size_for_batch_budget(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from docspec_client.docspec import PRODUCER_PARQUET_ROW_GROUP_SIZE
+
+    client = NativeDatasets(tmp_path / "docspec", tmp_path / "workspace")
+    client.hash_input = lambda path: {"digest": "0" * 64}
+    observed_row_groups = []
+
+    def inspect_request(path, request, *, dispatch=None):
+        for field in ("input", "replacements", "deletions"):
+            value = request.get(field)
+            file_path = value["path"] if isinstance(value, dict) else value
+            if isinstance(file_path, str):
+                pf = pq.ParquetFile(file_path)
+                observed_row_groups.append(
+                    (
+                        path,
+                        field,
+                        pf.metadata.num_rows,
+                        pf.metadata.num_row_groups,
+                        [pf.metadata.row_group(i).num_rows for i in range(pf.metadata.num_row_groups)],
+                    )
+                )
+        return {"id": "admit-1"}
+
+    client._request = inspect_request
+    rows = PRODUCER_PARQUET_ROW_GROUP_SIZE * 2 + 123
+    table = pa.table({"id": [f"{i:064x}" for i in range(rows)], "body": ["x" * 64] * rows})
+    deletions = pa.table({"id": [f"{i:064x}" for i in range(PRODUCER_PARQUET_ROW_GROUP_SIZE + 5)]})
+
+    client.run_table(table, dataset="captures", operation="run-1", definition="v1")
+    client.update_table(
+        table,
+        dataset="captures",
+        operation="upd-1",
+        definition="v1",
+        base="admit-1",
+        keys=["id"],
+        deletions=deletions,
+    )
+    client.update_evidence_table(
+        table,
+        dataset="captures",
+        operation="ev-1",
+        definition="v1",
+        base="admit-1",
+        deletions=deletions,
+    )
+
+    assert len(observed_row_groups) == 5
+    for route, field, total_rows, num_rgs, rg_counts in observed_row_groups:
+        assert max(rg_counts) <= PRODUCER_PARQUET_ROW_GROUP_SIZE, (route, field, rg_counts)
+        if total_rows == rows:
+            assert num_rgs == 3
+            assert rg_counts == [
+                PRODUCER_PARQUET_ROW_GROUP_SIZE,
+                PRODUCER_PARQUET_ROW_GROUP_SIZE,
+                123,
+            ]
+        else:
+            assert num_rgs == 2
+            assert rg_counts == [PRODUCER_PARQUET_ROW_GROUP_SIZE, 5]

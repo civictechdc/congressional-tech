@@ -2,7 +2,7 @@
 id: ct-qkvr
 status: closed
 deps: [ct-egpe]
-links: [ct-nloa, ct-jo8n, ct-5fkx]
+links: [ct-nloa, ct-jo8n, ct-5fkx, ct-ur2y, ct-csyg]
 created: 2026-10-20T22:15:53Z
 type: bug
 priority: 1
@@ -46,3 +46,7 @@ Nearly closed: the shared transport, exact-base Update, and UpdateSpec relations
 **2026-10-21T02:20:25Z**
 
 Implemented and verified: DocSpecLake._commit_append and _existing_by_ids (packages/news_lake/src/news_lake/storage/docspec_backend.py:626-643) now use client.read_keys (/datasets/{dataset}/versions/{version}/keys) so append polls stream only matching IDs (0 rows on new IDs) instead of calling read_arrow on the full table, while replace_keys skips non-overlapping files and advances coupled relationships (ct-5fkx).
+
+**2026-10-21T15:17:45Z**
+
+Scale review 2026-10-21: the docspec-rs replace_keys manifest pruning from 96e3826 had no test and compared each file with the overall affected-key min/max, so it pruned almost nothing. docspec-rs 381108c (spicy-stack ss-6cz9) tests per-file affected key points, with oracle tests. news_lake ids are uuid4 (context.py:88), and random keys give every file a near-total key range, so pruning still decodes every retained file each poll until ct-ur2y (UUIDv7 ids) lands; engine-side alternative in spicy-stack ss-wie5.

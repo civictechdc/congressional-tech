@@ -31,12 +31,16 @@ from .docspec_host import (
 )
 
 SUPPORTED_PLATFORMS = ('linux-amd64', 'darwin-arm64', 'darwin-amd64')
+PRODUCER_PARQUET_ROW_GROUP_SIZE = 2048
 QUALIFIED_DOCSPEC_RUNTIME = {
-    'source_revision': '96e382627bdffecb8df84ce2dec6d16b742a6ff2',
-    'darwin_arm64_binary_sha256': '9a9f9952939ef851c58440e264fea66a0a41d0b828ea8542c7cb2ab0e79ff58b',
+    'source_revision': '270a8b627405bfe5819bf41485f8e3848d5be328',
+    'darwin_arm64_binary_sha256': '28d3a2a76e7ba9901e08cedfa8e1ba8039134049fc5e08d7827eaea035ea4ef0',
     'build_features': ('remote',),
     'required_capabilities': REQUIRED_LOOPBACK_CAPABILITIES,
-    'safety_prerequisites': ('ct-3li2', 'ct-cpio', 'ct-xq1y', 'ct-5fkx', 'ct-gfv8', 'ct-q05l', 'ct-csyg'),
+    'safety_prerequisites': (
+        'ct-3li2', 'ct-cpio', 'ct-xq1y', 'ct-5fkx', 'ct-gfv8', 'ct-q05l', 'ct-csyg',
+        'ct-tuez', 'ct-nmjc', 'ct-13g5',
+    ),
 }
 
 
@@ -71,6 +75,13 @@ def native_storage_schema(schema):
         return value
 
     return pa.schema([field(value) for value in schema], metadata=schema.metadata)
+
+
+def _write_producer_parquet(table, path, *, row_group_size=PRODUCER_PARQUET_ROW_GROUP_SIZE):
+    """Write producer Parquet inputs with bounded row groups so zero-copy Arrow slices stay within max_batch_bytes."""
+    physical = native_storage_schema(table.schema)
+    stored = table if physical.equals(table.schema, check_metadata=True) else table.cast(physical, safe=True)
+    pq.write_table(stored, path, compression='zstd', row_group_size=row_group_size)
 
 
 def producer_input_entry(request_path):
@@ -401,9 +412,7 @@ class NativeDatasets:
         request = None
         try:
             source = directory / 'source.parquet'
-            physical = native_storage_schema(table.schema)
-            stored = table if physical.equals(table.schema, check_metadata=True) else table.cast(physical, safe=True)
-            pq.write_table(stored, source, compression='zstd')
+            _write_producer_parquet(table, source)
             digest = self.hash_input(source)['digest']
             request = dict(dataset=dataset, operation=operation, definition=definition,
                 input=str(source), expected_digest=digest, sql='SELECT * FROM input')
@@ -479,13 +488,7 @@ class NativeDatasets:
                 if table is None:
                     raise ValueError('update_table requires either table or replacements')
                 source = directory / 'replacements.parquet'
-                physical = native_storage_schema(table.schema)
-                stored = (
-                    table
-                    if physical.equals(table.schema, check_metadata=True)
-                    else table.cast(physical, safe=True)
-                )
-                pq.write_table(stored, source, compression='zstd')
+                _write_producer_parquet(table, source)
                 digest = self.hash_input(source)['digest']
                 replacements_spec = dict(path=str(source), digest=digest)
             else:
@@ -493,13 +496,7 @@ class NativeDatasets:
             deletions_spec = None
             if isinstance(deletions, pa.Table):
                 deletion_path = directory / 'deletions.parquet'
-                del_physical = native_storage_schema(deletions.schema)
-                del_stored = (
-                    deletions
-                    if del_physical.equals(deletions.schema, check_metadata=True)
-                    else deletions.cast(del_physical, safe=True)
-                )
-                pq.write_table(del_stored, deletion_path, compression='zstd')
+                _write_producer_parquet(deletions, deletion_path)
                 deletion_digest = self.hash_input(deletion_path)['digest']
                 deletions_spec = dict(path=str(deletion_path), digest=deletion_digest)
             elif deletions is not None:
@@ -593,13 +590,7 @@ class NativeDatasets:
                 if table is None:
                     raise ValueError('update_evidence_table requires either table or replacements')
                 source = directory / 'replacements.parquet'
-                physical = native_storage_schema(table.schema)
-                stored = (
-                    table
-                    if physical.equals(table.schema, check_metadata=True)
-                    else table.cast(physical, safe=True)
-                )
-                pq.write_table(stored, source, compression='zstd')
+                _write_producer_parquet(table, source)
                 digest = self.hash_input(source)['digest']
                 replacements_spec = dict(path=str(source), digest=digest)
             else:
@@ -607,13 +598,7 @@ class NativeDatasets:
             deletions_spec = None
             if isinstance(deletions, pa.Table):
                 deletion_path = directory / 'deletions.parquet'
-                del_physical = native_storage_schema(deletions.schema)
-                del_stored = (
-                    deletions
-                    if del_physical.equals(deletions.schema, check_metadata=True)
-                    else deletions.cast(del_physical, safe=True)
-                )
-                pq.write_table(del_stored, deletion_path, compression='zstd')
+                _write_producer_parquet(deletions, deletion_path)
                 deletion_digest = self.hash_input(deletion_path)['digest']
                 deletions_spec = dict(path=str(deletion_path), digest=deletion_digest)
             elif deletions is not None:
@@ -889,7 +874,7 @@ class NativeDatasets:
         return self._request('/retention/removal/plan', request)
 
     @contextmanager
-    def source_batches(self, pin, *, schema=None):
+    def source_batches(self, pin, *, schema=None, columns=None):
         """Stream one exact pin, retaining HTTP custody for the reader's lifetime.
 
         Resolve and compare the complete pin before reading; stream headers bind
@@ -907,7 +892,19 @@ class NativeDatasets:
         release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
         if host.request('GET', release_path, deadline=deadline) != pin:
             raise ValueError('Native release differs from the selected exact pin')
-        path = release_path + '/arrow/source'
+        projected_cols = list(columns) if columns is not None else None
+        if projected_cols is not None and (schema is None or projected_cols != list(schema.names)):
+            if not projected_cols:
+                raise ValueError('Projected column list must not be empty')
+            query = '?columns=' + ','.join(quote(col, safe='') for col in projected_cols)
+        else:
+            query = ''
+        path = release_path + '/arrow/source' + query
+        target_schema = (
+            pa.schema([schema.field(name) for name in projected_cols], metadata=schema.metadata)
+            if (schema is not None and projected_cols is not None)
+            else schema
+        )
         with host.stream('GET', path, deadline=deadline) as (response, deadline):
             self._responses.add(response)
             try:
@@ -919,17 +916,17 @@ class NativeDatasets:
                     raise ValueError('Native stream differs from the selected exact pin')
                 with ArrowResponse(response, deadline=deadline) as stream, \
                         pa.ipc.open_stream(stream) as reader:
-                    physical = native_storage_schema(schema) if schema is not None else None
+                    physical = native_storage_schema(target_schema) if target_schema is not None else None
                     if physical is not None and not reader.schema.equals(physical, check_metadata=False):
                         raise ValueError('Native source storage schema differs from the selected application schema')
 
                     def batches():
                         for batch in reader:
-                            yield batch if schema is None else batch.cast(schema, safe=True)
+                            yield batch if target_schema is None else batch.cast(target_schema, safe=True)
                         stream.finish()
 
                     with pa.RecordBatchReader.from_batches(
-                            reader.schema if schema is None else schema, batches()) as restored:
+                            reader.schema if target_schema is None else target_schema, batches()) as restored:
                         yield restored
             finally:
                 self._responses.discard(response)

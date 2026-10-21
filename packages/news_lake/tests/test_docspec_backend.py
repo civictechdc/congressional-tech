@@ -1076,3 +1076,156 @@ def test_published_release_lifecycle_fresh_process_resume_and_retire(tmp_path):
     assert exc_info.value.rule == 'retired_release'
     assert read_release(lake2, control, rel2_id)['release']['id'] == rel2_id
     client2.close()
+
+
+# -- ct-ur2y: RFC 9562 UUIDv7 time-ordered record IDs prune disjoint poll files ---------
+
+
+def test_uuidv7_context_ids_prune_disjoint_historical_files_across_polls(tmp_path):
+    """Chronological polls using AdapterContext default UUIDv7 IDs prune prior files on Update."""
+    from datetime import datetime, timedelta, timezone
+    import uuid
+    from news_lake.context import AdapterContext
+
+    base_time = datetime(2026, 10, 20, 0, 0, 0, tzinfo=timezone.utc)
+    current_time = [base_time]
+    ctx = AdapterContext(clock=lambda: current_time[0])
+
+    client = DocSpecClient(tmp_path / 'ws-uuid7')
+    lake = DocSpecLake(client)
+
+    poll_ids = []
+    for poll_idx in range(4):
+        current_time[0] = base_time + timedelta(hours=poll_idx)
+        batch = []
+        for item_idx in range(4):
+            cid = ctx.new_id()
+            parsed = uuid.UUID(cid)
+            assert parsed.version == 7
+            batch.append(
+                dict(
+                    _capture(f'p{poll_idx}-{item_idx}'),
+                    id=cid,
+                    recorded_at=ctx.now_string(),
+                    observed_at=ctx.now_string(),
+                )
+            )
+        # Within and across polls, UUIDv7 IDs are strictly monotonically increasing
+        assert batch[0]['id'] < batch[1]['id'] < batch[2]['id'] < batch[3]['id']
+        if poll_ids:
+            assert poll_ids[-1][-1] < batch[0]['id']
+        poll_ids.append([r['id'] for r in batch])
+        lake.commit_records(batch)
+
+    # Touch the first ID of poll 3 in an update; polls 0, 1, 2 have disjoint [min, max] bounds
+    # and must be reused without scanning!
+    pin_before = lake.committed['news_captures']
+    inspect_all = client._native.inspect('news_captures')
+    latest_op = pin_before['id']
+    processing_phases = [
+        v for v in inspect_all.values()
+        if isinstance(v, dict) and v.get('operation') == latest_op and v.get('phase') == 'processing'
+    ]
+    assert len(processing_phases) == 1
+    metrics = processing_phases[0]['metrics']
+    # On the 4th poll (3 existing files + 1 new replacement batch), none of the 3 prior files
+    # overlap the new poll's UUIDv7 keys, so all 3 prior files are reused without decoding
+    # (`files_reused == 3` and `files_scanned == 0`)!
+    assert metrics['files_reused'] == 3, metrics
+    assert metrics['files_scanned'] == 0, metrics
+    client.close()
+
+
+# -- ct-r60e: threshold-based automatic compact_lifecycle maintenance -------------------
+
+
+def test_threshold_lifecycle_compaction_triggers_after_multi_poll_updates(tmp_path):
+    """DocSpecLake and DocSpecNewsViews compact lifecycle revisions automatically at threshold."""
+    client = DocSpecClient(tmp_path / 'ws-compact')
+    lake = DocSpecLake(client, lifecycle_compact_interval=4)
+    views = DocSpecNewsViews(client, lifecycle_compact_interval=4)
+
+    for i in range(4):
+        cap = dict(_capture(f'c{i}'), id=f'0192a000-{i:04x}-7000-8000-000000000001')
+        lake.commit_records([OUTLET_A, cap])
+
+    assert len(lake.lifecycle_compactions) == 1
+    assert lake.lifecycle_compactions[0]['dataset'] == 'news_captures'
+    assert lake.lifecycle_compactions[0]['revisions_after'] == 1
+    assert lake._mutation_counts['news_captures'] == 0
+
+    # Verify views also compact at threshold
+    views.materialize(CORPUS, SELECTIONS)
+    for i in range(4):
+        views.coverage_daily(CORPUS, mode='full', selections=SELECTIONS)
+    assert any(c['dataset'] == 'coverage_daily' and c['revisions_after'] == 1 for c in views.lifecycle_compactions)
+    client.close()
+
+
+# -- ct-ur7v: news-lake CLI defaults to DocSpecLake and DocSpecNewsViews ----------------
+
+
+def test_news_lake_cli_publish_views_export_and_compact_lifecycle(tmp_path, capsys):
+    """news_lake.cli drives publish, views (--verify-oracle), export, and compact-lifecycle."""
+    import json
+    from news_lake.cli import main as cli_main
+
+    ws = tmp_path / 'cli-ws'
+    jsonl_path = tmp_path / 'corpus.jsonl'
+    jsonl_path.write_text(
+        '\n'.join(json.dumps(r, sort_keys=True) for r in CORPUS) + '\n',
+        encoding='utf-8',
+    )
+    selections_path = tmp_path / 'selections.json'
+    selections_path.write_text(json.dumps(SELECTIONS), encoding='utf-8')
+    rel_id = _id('release:cli-1')
+
+    assert cli_main([
+        'publish',
+        '--workspace', str(ws),
+        '--input', str(jsonl_path),
+        '--release-id', rel_id,
+        '--recorded-at', AT,
+        '--selections', str(selections_path),
+        '--binary', str(docspec),
+    ]) == 0
+    pub_out = json.loads(capsys.readouterr().out)
+    assert pub_out['backend'] == 'docspec'
+    assert pub_out['release']['id'] == rel_id
+
+    assert cli_main([
+        'views',
+        '--workspace', str(ws),
+        '--release-id', rel_id,
+        '--mode', 'full',
+        '--verify-oracle',
+        '--binary', str(docspec),
+    ]) == 0
+    views_out = json.loads(capsys.readouterr().out)
+    assert views_out['backend'] == 'docspec'
+    assert views_out['oracle_verified'] is True
+    assert len(views_out['politician_articles']) == 2
+    assert len(views_out['coverage_daily']) == 3
+
+    export_dir = tmp_path / 'cli-export'
+    assert cli_main([
+        'export',
+        '--workspace', str(ws),
+        '--release-id', rel_id,
+        '--destination', str(export_dir),
+        '--as-of', '2026-10-20T12:00:00Z',
+        '--binary', str(docspec),
+    ]) == 0
+    exp_out = json.loads(capsys.readouterr().out)
+    assert exp_out['backend'] == 'docspec'
+    assert (export_dir / 'news_versions.parquet').is_file()
+
+    assert cli_main([
+        'compact-lifecycle',
+        '--workspace', str(ws),
+        '--binary', str(docspec),
+    ]) == 0
+    comp_out = json.loads(capsys.readouterr().out)
+    assert comp_out['backend'] == 'docspec'
+    assert 'news_versions' in comp_out['lake_datasets']
+    assert 'politician_articles' in comp_out['view_datasets']

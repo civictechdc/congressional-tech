@@ -2,7 +2,7 @@
 id: ct-csyg
 status: closed
 deps: [ct-xl0y, ct-clvr, ct-cpio]
-links: [ct-nloa, ct-eipa]
+links: [ct-nloa, ct-eipa, ct-ur2y, ct-qkvr]
 created: 2026-10-20T19:23:00Z
 type: task
 priority: 3
@@ -52,3 +52,7 @@ Not implemented in this pass. The safe prerequisite is a maintained exact-releas
 **2026-10-21T02:20:25Z**
 
 Implemented in docspec-rs (96e38262): (1) replace_keys (src/engine/write.rs:606-710,900-965) prunes non-overlapping files via Iceberg DataFile lower_bounds/upper_bounds/null_value_counts (with 64-byte truncation guard) and skips all probes when key_files.is_empty(); (2) NativeTable::supports_filters_pushdown (src/query.rs:163-198,480-595) returns Inexact for values-only (!located) scans while preserving Unsupported and whole-file occurrence ordinals on located scans; (3) Engine::read_keys / KeyReadSpec (src/engine/read.rs:55-82,220-415, POST /datasets/{dataset}/versions/{version}/keys) streams only matching key rows with column projection and manifest bounds pruning.
+
+**2026-10-21T15:17:46Z**
+
+Scale review 2026-10-21: query pushdown pruning (file_matches_inexact_filters) was correct but untested; docspec-rs 381108c adds exhaustive oracle tests and replaces an O(files^2) per-probe file lookup. Key-bound pruning quality for news_lake depends on clustered ids: ct-ur2y.

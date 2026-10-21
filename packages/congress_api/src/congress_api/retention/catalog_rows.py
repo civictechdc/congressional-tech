@@ -8,6 +8,7 @@ from collections import OrderedDict
 import base64
 from copy import deepcopy
 from hashlib import sha256
+import inspect
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -675,17 +676,39 @@ class CatalogRows:
                 source_field.with_type(pa.struct(fields)),
             )
         if "catalog_rows" not in pin:
+            native_columns = list(dict.fromkeys(columns))
+            if "_catalog_order" in schema.names and "_catalog_order" not in native_columns:
+                native_columns.append("_catalog_order")
+            if not native_columns and schema.names:
+                native_columns = [schema.names[0]]
+                if "_catalog_order" in schema.names and "_catalog_order" not in native_columns:
+                    native_columns.append("_catalog_order")
+            supports_projection = (
+                _layout(schema) is None
+                and bool(native_columns)
+                and native_columns != list(schema.names)
+                and "columns" in inspect.signature(self.native.source_batches).parameters
+            )
+            expected_schema = (
+                pa.schema([schema.field(name) for name in native_columns], metadata=schema.metadata)
+                if supports_projection
+                else schema
+            )
             context = (
                 self._legacy_table(pin, schema).to_reader()
                 if _layout(schema) is not None
-                else self.native.source_batches(pin, schema=schema)
+                else (
+                    self.native.source_batches(pin, schema=schema, columns=native_columns)
+                    if supports_projection
+                    else self.native.source_batches(pin, schema=schema)
+                )
             )
             with context as reader:
                 for batch in reader:
                     if _layout(schema) is None:
                         self._record_read(batch)
                     actual = batch.schema
-                    if "_catalog_order" in schema.names:
+                    if "_catalog_order" in expected_schema.names:
                         if (
                             "_catalog_order" not in actual.names
                             or not pa.types.is_int64(
@@ -694,11 +717,11 @@ class CatalogRows:
                         ):
                             raise ValueError("Native catalog order field must be int64")
                         actual = actual.remove(actual.get_field_index("_catalog_order"))
-                        expected = schema.remove(
-                            schema.get_field_index("_catalog_order")
+                        expected = expected_schema.remove(
+                            expected_schema.get_field_index("_catalog_order")
                         )
                     else:
-                        expected = schema
+                        expected = expected_schema
                     if not actual.equals(expected, check_metadata=False):
                         raise ValueError("Catalog logical schema differs")
                     selected = pa.Table.from_batches([batch.select(columns)])

@@ -495,3 +495,54 @@ def test_single_chunk_occurrence_extraction_and_core_sizing_reuse_nested_buffers
     assert core_single.equals(core_multi, check_metadata=True)
     assert core_single[COUNT].to_pylist() == [None, 0, 4, 2400, 2500, 1]
     assert core_single[ROW].to_pylist() == list(range(len(nested)))
+
+
+def test_native_projected_read_pushes_column_selection_and_bounds_bytes_read(tmp_path):
+    import os
+    from pathlib import Path
+    import shutil
+    from native_test_helpers import native_test_client
+
+    default_bin = Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec")
+    binary = os.environ.get("DOCSPEC_BINARY") or shutil.which("docspec") or (str(default_bin) if default_bin.exists() else None)
+    if not binary:
+        pytest.skip("Set DOCSPEC_BINARY to maintained local CLI")
+    native = native_test_client(binary, tmp_path / "native")
+    wide_fields = [
+        pa.field("source_id", pa.string(), nullable=False),
+        pa.field("source_url", pa.string()),
+    ] + [pa.field(f"extra_col_{i:03d}", pa.string()) for i in range(60)]
+    wide_schema = pa.schema(wide_fields)
+    rows = [
+        {
+            "source_id": f"src-{r:04d}",
+            "source_url": f"https://example.gov/doc/{r}",
+            **{f"extra_col_{i:03d}": ("payload-" * 32) for i in range(60)},
+        }
+        for r in range(64)
+    ]
+    wide_table = pa.Table.from_pylist(rows, schema=wide_schema)
+    writer = CatalogRows(native=native, store=MemoryStore())
+    pin = writer.write(
+        wide_table,
+        dataset="wide-sources",
+        operation="initial",
+        definition="SELECT * FROM input",
+        owner_column="source_id",
+        max_rows=8192,
+        max_bytes=16 << 20,
+    )
+    assert "catalog_rows" not in pin
+
+    full_reader = CatalogRows(native=native, store=MemoryStore())
+    full_out = pa.Table.from_batches(list(full_reader.read(pin, schema=wide_schema)))
+    assert full_out.num_columns == 62
+
+    proj_reader = CatalogRows(native=native, store=MemoryStore())
+    proj_out = pa.Table.from_batches(
+        list(proj_reader.read(pin, schema=wide_schema, columns=["source_id", "source_url"]))
+    )
+    assert proj_out.column_names == ["source_id", "source_url"]
+    assert proj_out.equals(wide_table.select(["source_id", "source_url"]), check_metadata=True)
+    assert proj_reader.bytes_read < full_reader.bytes_read // 10
+

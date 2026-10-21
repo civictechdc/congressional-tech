@@ -79,6 +79,7 @@ from news_lake.storage.releases import ReleaseError, _redact_checkpoints
 # One recipe identity for every news dataset; the schema is derived from the
 # contract and never changes inside a workspace without a new definition.
 DEFINITION = 'news-v1'
+DEFAULT_LIFECYCLE_COMPACT_INTERVAL = 16
 _ARROW_STREAM_EOS = b'\xff\xff\xff\xff\x00\x00\x00\x00'
 
 
@@ -570,15 +571,23 @@ class DocSpecLake:
     exact prior version so earlier rows and unchanged files remain retained.
     """
 
-    def __init__(self, client, workspace_suffix=''):
+    def __init__(self, client, workspace_suffix='', *,
+                 lifecycle_compact_interval=DEFAULT_LIFECYCLE_COMPACT_INTERVAL):
         self.client = client
         self.workspace_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
+        self.lifecycle_compact_interval = lifecycle_compact_interval
         self.committed = self._load_committed_state()
+        self._mutation_counts = self._load_mutation_counts()
         self.last_lookup_stats = {}
+        self.lifecycle_compactions = []
 
     def _committed_state_path(self):
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
         return self.client.workspace / f'.news_lake_committed{suffix}.json'
+
+    def _mutation_counts_path(self):
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return self.client.workspace / f'.news_lake_mutations{suffix}.json'
 
     def _release_manifest_path(self, release_id):
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
@@ -594,6 +603,20 @@ class DocSpecLake:
         except (OSError, ValueError):
             return {}
 
+    def _load_mutation_counts(self):
+        path = self._mutation_counts_path()
+        if not path.is_file():
+            return {}
+        try:
+            data = json.loads(path.read_text())
+            return {
+                str(k): int(v)
+                for k, v in data.items()
+                if isinstance(v, int) and not isinstance(v, bool)
+            } if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
     def _save_committed_state(self):
         path = self._committed_state_path()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -602,6 +625,48 @@ class DocSpecLake:
             json.dumps(self.committed, ensure_ascii=False, separators=(',', ':'), allow_nan=False, default=str)
         )
         tmp.replace(path)
+        mpath = self._mutation_counts_path()
+        mtmp = mpath.with_suffix('.json.tmp')
+        mtmp.write_text(
+            json.dumps(self._mutation_counts, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+        )
+        mtmp.replace(mpath)
+
+    def compact_lifecycle(self, datasets=None):
+        """Compact obsolete lifecycle revisions for local datasets."""
+        if getattr(self.client._native, 'remote', None) is not None:
+            return {}
+        targets = list(self.committed if datasets is None else datasets)
+        results = {}
+        for dataset in targets:
+            report = self.client.compact_lifecycle(dataset)
+            self._mutation_counts[dataset] = 0
+            entry = {'dataset': dataset, **(report if isinstance(report, dict) else {})}
+            self.lifecycle_compactions.append(entry)
+            results[dataset] = report
+        if results:
+            self._save_committed_state()
+        return results
+
+    def _record_dataset_mutation(self, dataset, prior_pin, new_pin):
+        if new_pin is None:
+            return False
+        prior_ver = (prior_pin or {}).get('dataset', {}).get('version')
+        new_ver = new_pin.get('dataset', {}).get('version')
+        if prior_ver == new_ver:
+            return False
+        self._mutation_counts[dataset] = self._mutation_counts.get(dataset, 0) + 1
+        return True
+
+    def _maybe_compact_lifecycle(self, datasets):
+        interval = self.lifecycle_compact_interval
+        if not interval or interval < 1:
+            return {}
+        due = [
+            ds for ds in datasets
+            if self._mutation_counts.get(ds, 0) >= interval
+        ]
+        return self.compact_lifecycle(due) if due else {}
 
     def _dataset(self, kind_or_table):
         return dataset_id_for(KIND_TABLES.get(kind_or_table, kind_or_table))
@@ -672,15 +737,18 @@ class DocSpecLake:
             canonical = canonicalize_record_instants(record)
             batch.setdefault(canonical['kind'], []).append(canonical)
         pins = dict(self.committed)
+        mutated = []
         for kind in KIND_ORDER:
             if kind == 'release':
                 continue
             records_of_kind = batch.get(kind)
             dataset = self._dataset(kind)
+            prior = pins.get(dataset)
             if not records_of_kind:
-                prior = pins.get(dataset)
                 if prior is not None and relationship is not None:
                     pins[dataset] = self._advance_relationship(dataset, kind, prior, relationship)
+                    if self._record_dataset_mutation(dataset, prior, pins[dataset]):
+                        mutated.append(dataset)
                 elif prior is None and ensure_all_tables:
                     operation = self._operation(
                         f'admit-empty-{kind}', content_digest([dataset, relationship])
@@ -688,13 +756,19 @@ class DocSpecLake:
                     pins[dataset] = self.client.run_table(
                         records_to_arrow(kind, ()), dataset, operation, relationship=relationship
                     )
+                    if self._record_dataset_mutation(dataset, prior, pins[dataset]):
+                        mutated.append(dataset)
                 continue
             if TABLE_MUTATIONS[KIND_TABLES[kind]] == 'upsert':
                 pins[dataset] = self._commit_upsert(dataset, kind, records_of_kind, relationship)
             else:
                 pins[dataset] = self._commit_append(dataset, kind, records_of_kind, relationship)
+            if self._record_dataset_mutation(dataset, prior, pins[dataset]):
+                mutated.append(dataset)
         self.committed = pins
         self._save_committed_state()
+        if mutated:
+            self._maybe_compact_lifecycle(mutated)
         return dict(pins)
 
     def _advance_relationship(self, dataset, kind, prior, relationship):
@@ -1053,14 +1127,18 @@ class DocSpecNewsViews:
 
     SELECTED_MENTIONS_SCHEMA = bridges.SELECTED_MENTIONS_SCHEMA
 
-    def __init__(self, client, workspace_suffix='', *, pins=None):
+    def __init__(self, client, workspace_suffix='', *, pins=None,
+                 lifecycle_compact_interval=DEFAULT_LIFECYCLE_COMPACT_INTERVAL):
         self.client = client
         self.workspace_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
-        persisted_pins, persisted_rows, persisted_versions = self._load_views_state()
+        self.lifecycle_compact_interval = lifecycle_compact_interval
+        persisted_pins, persisted_rows, persisted_versions, persisted_mutations = self._load_views_state()
         self.pins = dict(pins) if pins is not None else persisted_pins
         self._bridge_rows = persisted_rows if pins is None else {}
         self._bridge_versions = persisted_versions if pins is None else {}
+        self._mutation_counts = persisted_mutations if pins is None else {}
         self.last_bridge_diff = {}
+        self.lifecycle_compactions = []
 
     def _views_state_path(self):
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
@@ -1069,18 +1147,23 @@ class DocSpecNewsViews:
     def _load_views_state(self):
         path = self._views_state_path()
         if not path.is_file():
-            return {}, {}, {}
+            return {}, {}, {}, {}
         try:
             data = json.loads(path.read_text())
             if not isinstance(data, dict):
-                return {}, {}, {}
+                return {}, {}, {}, {}
             return (
                 dict(data.get('pins') or {}),
                 dict(data.get('bridge_rows') or {}),
                 dict(data.get('bridge_versions') or {}),
+                {
+                    str(k): int(v)
+                    for k, v in (data.get('mutation_counts') or {}).items()
+                    if isinstance(v, int) and not isinstance(v, bool)
+                },
             )
         except (OSError, ValueError):
-            return {}, {}, {}
+            return {}, {}, {}, {}
 
     def _save_views_state(self):
         path = self._views_state_path()
@@ -1092,6 +1175,7 @@ class DocSpecNewsViews:
                     'pins': self.pins,
                     'bridge_rows': self._bridge_rows,
                     'bridge_versions': self._bridge_versions,
+                    'mutation_counts': self._mutation_counts,
                 },
                 ensure_ascii=False,
                 separators=(',', ':'),
@@ -1100,6 +1184,28 @@ class DocSpecNewsViews:
             )
         )
         tmp.replace(path)
+
+    def compact_lifecycle(self, datasets=None):
+        """Compact obsolete lifecycle revisions for local bridge and view datasets."""
+        if getattr(self.client._native, 'remote', None) is not None:
+            return {}
+        targets = list(self.pins if datasets is None else datasets)
+        results = {}
+        for dataset in targets:
+            report = self.client.compact_lifecycle(dataset)
+            self._mutation_counts[dataset] = 0
+            entry = {'dataset': dataset, **(report if isinstance(report, dict) else {})}
+            self.lifecycle_compactions.append(entry)
+            results[dataset] = report
+        if results:
+            self._save_views_state()
+        return results
+
+    def _record_view_mutation(self, dataset):
+        self._mutation_counts[dataset] = self._mutation_counts.get(dataset, 0) + 1
+        interval = self.lifecycle_compact_interval
+        if interval and interval >= 1 and self._mutation_counts[dataset] >= interval:
+            self.compact_lifecycle([dataset])
 
     # -- materialization & incremental bridge updates ------------------------
 
@@ -1279,6 +1385,7 @@ class DocSpecNewsViews:
             self._bridge_rows[dataset] = {row[key_col]: _strip_nulls(row) for row in new_rows}
             self._bridge_versions[dataset] = pin['dataset']['version']
             updated_pins[dataset] = pin
+            self._record_view_mutation(dataset)
         self.last_bridge_diff = diff_summary
         self._save_views_state()
         return dict(updated_pins)
@@ -1357,6 +1464,7 @@ class DocSpecNewsViews:
         spec = self._refresh_join_spec(base, mode, mentions_pin=mentions_pin, roots_pin=roots_pin)
         pin = self.client.refresh(spec)
         self.pins['politician_articles'] = pin
+        self._record_view_mutation('politician_articles')
         self._save_views_state()
         joined = table_records(self.client.read_arrow(pin))
         return self._assemble_politician_articles(records, release_id, joined, survivor_pin=survivor_pin)
@@ -1471,6 +1579,7 @@ class DocSpecNewsViews:
         spec = self._refresh_aggregate_spec(base, mode, survivor_pin=survivor_pin)
         pin = self.client.refresh(spec)
         self.pins['coverage_daily'] = pin
+        self._record_view_mutation('coverage_daily')
         self._save_views_state()
         aggregate = table_records(self.client.read_arrow(pin))
         return self._assemble_coverage_daily(release_id, aggregate)
