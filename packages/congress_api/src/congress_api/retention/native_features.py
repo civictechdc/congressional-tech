@@ -97,12 +97,43 @@ def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
 # -- ct-dmca: Compatible schema evolution & resumable scalar backfills ---------
 
 
+def source_schema_fields(native, pin):
+    """Discover root Iceberg field IDs and names from a verified ``ReleasePin``."""
+    version_ref(pin)
+    with native.source_batches(pin) as reader:
+        schema = reader.schema
+    fields = []
+    for idx, field in enumerate(schema, start=1):
+        if field.name.startswith("__docspec_"):
+            continue
+        meta = field.metadata or {}
+        raw_id = meta.get(b"PARQUET:field_id") or meta.get("PARQUET:field_id")
+        field_id = (
+            int(raw_id.decode() if isinstance(raw_id, bytes) else raw_id)
+            if raw_id is not None
+            else idx
+        )
+        fields.append(dict(id=field_id, name=field.name))
+    return fields
+
+
+def _parquet_source_paths(pin):
+    return [
+        obj["path"]
+        for obj in pin.get("dataset", {}).get("groups", {}).get("source", {}).get("objects", ())
+        if isinstance(obj, dict) and str(obj.get("path", "")).endswith(".parquet")
+    ]
+
+
 def evolve_catalog_schema(native, *, dataset, operation, base_pin, definition,
-                          next_definition, fields, additions=(), write_defaults=None):
+                          next_definition, fields=None, additions=(), write_defaults=None):
     """Apply a metadata-only compatible schema evolution against ``base_pin``."""
     ref = version_ref(base_pin)
     if ref["dataset"] != dataset:
         raise ValueError("base_pin dataset differs from target dataset")
+    if fields is None:
+        fields = source_schema_fields(native, base_pin)
+    source_files_before = _parquet_source_paths(base_pin)
     spec = dict(
         dataset=dataset,
         operation=operation,
@@ -117,6 +148,8 @@ def evolve_catalog_schema(native, *, dataset, operation, base_pin, definition,
         spec["write_defaults"] = {str(k): v for k, v in write_defaults.items()}
     plan = native.plan_schema(spec)
     pin = native.evolve_schema(spec)
+    if _parquet_source_paths(pin) != source_files_before:
+        raise AssertionError("Schema evolution rewrote source data files")
     return dict(plan=plan, pin=pin)
 
 
@@ -127,6 +160,7 @@ def backfill_scalar_group(native, *, dataset, operation, base_pin, definition,
     ref = version_ref(base_pin)
     if ref["dataset"] != dataset:
         raise ValueError("base_pin dataset differs from target dataset")
+    source_files_before = _parquet_source_paths(base_pin)
     computed_fields = [
         dict(id=int(f["id"]), name=str(f["name"]), expression=str(f["expression"]))
         for f in fields
@@ -166,6 +200,17 @@ def backfill_scalar_group(native, *, dataset, operation, base_pin, definition,
             reason=str(correction["reason"]),
         )
         correction_decision = native.correct_dependencies(corr_spec)
+        if correction.get("qualify", True) and (
+            pin.get("dataset", {}).get("computed", {}).get(group, {}).get("qualification") is None
+        ):
+            qualify_spec = dict(
+                backfill_spec,
+                operation=str(correction.get("qualify_operation") or f"{operation}-qualify"),
+                base=pin["id"],
+            )
+            pin = native.backfill(qualify_spec)
+    if _parquet_source_paths(pin) != source_files_before:
+        raise AssertionError("Scalar backfill rewrote source data files")
     return dict(plan=plan, pin=pin, correction=correction_decision)
 
 
@@ -224,12 +269,20 @@ EVIDENCE_KEY_SCHEMA = pa.schema([
 
 def map_locators_to_occurrences(native, source_pin, *, locator_column):
     """Map application locator values to their exact ``(source_file, source_row)`` occurrences."""
+    version_ref(source_pin)
     table = native.read_occurrences(source_pin)
-    if locator_column not in table.column_names:
-        raise ValueError(f"Locator column {locator_column!r} is absent from source schema")
+    if isinstance(locator_column, (tuple, list)):
+        missing = [col for col in locator_column if col not in table.column_names]
+        if missing:
+            raise ValueError(f"Locator columns {missing!r} are absent from source schema")
+        extract = lambda row: tuple(row[col] for col in locator_column)
+    else:
+        if locator_column not in table.column_names:
+            raise ValueError(f"Locator column {locator_column!r} is absent from source schema")
+        extract = lambda row: row[locator_column]
     mapping = {}
     for row in table.to_pylist():
-        locator = row[locator_column]
+        locator = extract(row)
         occ = (row["__docspec_file"], int(row["__docspec_row"]))
         mapping.setdefault(locator, []).append(occ)
     return mapping
@@ -290,8 +343,14 @@ def attach_occurrence_receipts(native, *, dataset, operation, base_pin, definiti
     return pin
 
 
-def read_occurrence_receipts(native, pin, *, occurrence_to_locator=None):
+def read_occurrence_receipts(native, pin, *, occurrence_to_locator=None,
+                             expected_source_pin=None, expected_evidence_pin=None):
     """Read attached receipts and optionally map ``(source_file, source_row)`` back to locators."""
+    version_ref(pin)
+    if expected_source_pin is not None and pin["dataset"]["groups"]["source"] != expected_source_pin:
+        raise ValueError("Receipt read source version differs from expected pin")
+    if expected_evidence_pin is not None and pin["dataset"].get("evidence") != expected_evidence_pin:
+        raise ValueError("Receipt read evidence version differs from expected pin")
     table = native.read_receipts(pin)
     rows = []
     for row in table.to_pylist():
@@ -305,3 +364,64 @@ def read_occurrence_receipts(native, pin, *, occurrence_to_locator=None):
             entry["locator"] = occurrence_to_locator.get(occ)
         rows.append(entry)
     return rows
+
+
+def remap_occurrence_receipts(native, *, dataset, operation, before_pin, after_pin,
+                              definition, locator_column, updated_receipts=(),
+                              deleted_locators=(), evidence_type=pa.string()):
+    """Remap surviving occurrence receipts by application locator across source updates.
+
+    Preserves ordered duplicate receipts and explicit ``None`` nulls by
+    application locator rather than native ``(source_file, source_row)`` row
+    positions. Receipts for deleted or withdrawn locators are dropped.
+    """
+    version_ref(before_pin)
+    after_ref = version_ref(after_pin)
+    if after_ref["dataset"] != dataset:
+        raise ValueError("after_pin dataset differs from target dataset")
+    before_map = map_locators_to_occurrences(native, before_pin, locator_column=locator_column)
+    before_inv = {occ: loc for loc, occs in before_map.items() for occ in occs}
+    after_map = map_locators_to_occurrences(native, after_pin, locator_column=locator_column)
+
+    deleted_set = set(deleted_locators)
+    updated_by_locator = {}
+    for locator, value in updated_receipts:
+        updated_by_locator.setdefault(locator, []).append((locator, value))
+
+    # Deduplicate per-(locator, occurrence) when a locator spans multiple rows in before_pin
+    prior_by_occ = {}
+    if before_pin.get("dataset", {}).get("evidence") is not None:
+        for entry in read_occurrence_receipts(
+            native,
+            before_pin,
+            occurrence_to_locator=before_inv,
+            expected_source_pin=before_pin["dataset"]["groups"]["source"],
+            expected_evidence_pin=before_pin["dataset"]["evidence"],
+        ):
+            occ = (entry["source_file"], entry["source_row"])
+            prior_by_occ.setdefault(occ, []).append(entry["evidence"])
+
+    carried_receipts = []
+    for locator, occs in before_map.items():
+        if locator in deleted_set or locator in updated_by_locator or locator not in after_map:
+            continue
+        first_occ = occs[0]
+        for value in prior_by_occ.get(first_occ, ()):
+            carried_receipts.append((locator, value))
+
+    for locator, items in updated_by_locator.items():
+        if locator not in deleted_set:
+            carried_receipts.extend(items)
+
+    if not carried_receipts:
+        return after_pin
+    return attach_occurrence_receipts(
+        native,
+        dataset=dataset,
+        operation=operation,
+        base_pin=after_pin,
+        definition=definition,
+        locator_to_occurrences=after_map,
+        receipts=carried_receipts,
+        evidence_type=evidence_type,
+    )

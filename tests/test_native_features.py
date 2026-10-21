@@ -179,6 +179,69 @@ def test_ct_dmca_schema_evolution_and_scalar_backfill_without_source_rewrite(tmp
         assert [row["has_body"] for row in enriched] == [True, False]
 
 
+def test_ct_dmca_raw_storage_evolve_state_schema_and_scalar_backfill(tmp_path):
+    from congress_api.retention.raw_archive import STATE_SCHEMA
+    from congress_api.retention.raw_storage import RawStorage
+    from test_raw_storage import SelectorStore
+
+    binary = _binary()
+    store = SelectorStore()
+    prior_schema = pa.schema([
+        f for f in STATE_SCHEMA if f.name not in {"next_attempt_at", "links_scanned"}
+    ])
+    with NativeDatasets(binary, tmp_path / "ws") as native:
+        owner = RawStorage(store, native, state_schema=prior_schema)
+        seed_states = pa.Table.from_pylist(
+            [
+                {
+                    "url": "https://example.gov/a.pdf",
+                    "outcome": "saved",
+                    "attempts": 1,
+                    "body_key": "bodies/a.gz",
+                },
+                {
+                    "url": "https://example.gov/b.pdf",
+                    "outcome": "failed",
+                    "attempts": 2,
+                    "body_key": None,
+                },
+            ],
+            schema=prior_schema,
+        )
+        snap1 = owner.publish(owner.prepare(owner.snapshot(), operation="seed-v1", states=seed_states))
+        next_owner, prepared = owner.evolve_state_schema(
+            snap1,
+            operation="state-v2",
+            next_schema=STATE_SCHEMA,
+            scalar_backfill={
+                "group": "state_scalars",
+                "group_definition": "raw-state-scalars-v1",
+                "fields": [{"id": 1, "name": "has_body", "expression": "body_key IS NOT NULL"}],
+            },
+            continuous={"optimistic_rounds": 2, "fence_millis": 1000},
+            correction={"id": "state-corr-1", "reason": "bind url and body_key"},
+        )
+        snap2 = next_owner.publish(prepared)
+        # Old snapshot remains readable with its original 11-column schema
+        assert snap1.states().equals(seed_states)
+        # Evolved snapshot exposes the full 13-column STATE_SCHEMA with links_scanned=False default
+        evolved_rows = snap2.states().to_pylist()
+        assert [r["links_scanned"] for r in evolved_rows] == [False, False]
+        assert [r["next_attempt_at"] for r in evolved_rows] == [None, None]
+        # Historical rows report __docspec_supplied_* == False
+        supplied_a = snap2.state_supplied("https://example.gov/a.pdf")
+        supplied_cols = [k for k in supplied_a if k.startswith("__docspec_supplied_")]
+        assert len(supplied_cols) == 2 and all(supplied_a[k] is False for k in supplied_cols)
+        # Backfilled scalar group has_body matches body_key IS NOT NULL with zero source-file rewrite
+        leaf_info = next(iter(prepared["leaves"].values()))
+        bf_pin = leaf_info["backfill"]["pin"]
+        assert bf_pin["dataset"]["groups"]["source"]["objects"] == (
+            leaf_info["evolved_pin"]["dataset"]["groups"]["source"]["objects"]
+        )
+        scalars = native.read_arrow(bf_pin, group="state_scalars").to_pylist()
+        assert [r["has_body"] for r in scalars] == [True, False]
+
+
 def test_ct_gziq_refresh_catalog_observation_summary_full_and_incremental(tmp_path):
     binary = _binary()
     with NativeDatasets(binary, tmp_path / "ws") as native:

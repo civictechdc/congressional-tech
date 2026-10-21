@@ -917,11 +917,31 @@ class NativeDatasets:
                 with ArrowResponse(response, deadline=deadline) as stream, \
                         pa.ipc.open_stream(stream) as reader:
                     physical = native_storage_schema(target_schema) if target_schema is not None else None
-                    if physical is not None and not reader.schema.equals(physical, check_metadata=False):
+                    extra_supplied = (
+                        [f.name for f in reader.schema if f.name.startswith('__docspec_supplied_') and f.name not in physical.names]
+                        if physical is not None else []
+                    )
+                    effective_reader_schema = (
+                        pa.schema([f for f in reader.schema if f.name not in extra_supplied], metadata=reader.schema.metadata)
+                        if extra_supplied else reader.schema
+                    )
+                    if (
+                        extra_supplied
+                        and physical is not None
+                        and set(effective_reader_schema.names) == set(physical.names)
+                        and all(effective_reader_schema.field(f.name).equals(f, check_metadata=False) for f in physical)
+                    ):
+                        effective_reader_schema = physical
+                    if physical is not None and not effective_reader_schema.equals(physical, check_metadata=False):
                         raise ValueError('Native source storage schema differs from the selected application schema')
 
                     def batches():
                         for batch in reader:
+                            if extra_supplied:
+                                batch = pa.RecordBatch.from_arrays(
+                                    [batch.column(reader.schema.get_field_index(f.name)) for f in effective_reader_schema],
+                                    schema=effective_reader_schema,
+                                )
                             yield batch if target_schema is None else batch.cast(target_schema, safe=True)
                         stream.finish()
 

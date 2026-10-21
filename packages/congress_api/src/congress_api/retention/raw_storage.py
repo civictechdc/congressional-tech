@@ -198,6 +198,17 @@ class RawSnapshot:
         selected = table.filter(mask).select(self.owner.state_schema.names)
         return selected.to_pylist()[0] if len(selected) else None
 
+    def state_supplied(self, url):
+        """Read one URL-state row including native ``__docspec_supplied_*`` provenance flags."""
+        _, reference = self.owner.state_routes.lookup(self.manifest['state']['root'], state_key(url))
+        if reference is None:
+            return None
+        with self.owner.native.source_batches(reference['release']) as reader:
+            raw_table = pa.Table.from_batches(list(reader), schema=reader.schema)
+        mask = pc.is_null(raw_table['url']) if url is None else pc.equal(raw_table['url'], url)
+        selected = raw_table.filter(mask)
+        return selected.to_pylist()[0] if len(selected) else None
+
 
 class RawStorage:
     def __init__(self, store, native, *, max_state_rows=8192, max_state_bytes=16 << 20,
@@ -291,9 +302,16 @@ class RawStorage:
             raise ValueError('Native raw source pin count or identity mismatch')
         batches, count, size = [], 0, 0
         with self.native.source_batches(pin, schema=schema) as reader:
-            if not reader.schema.equals(schema, check_metadata=False):
+            supplied_cols = [name for name in reader.schema.names if name.startswith('__docspec_supplied_')]
+            logical_reader_schema = (
+                pa.schema([f for f in reader.schema if not f.name.startswith('__docspec_supplied_')])
+                if supplied_cols else reader.schema
+            )
+            if not logical_reader_schema.equals(schema, check_metadata=False):
                 raise ValueError('Unexpected native raw source schema')
             for batch in reader:
+                if supplied_cols:
+                    batch = pa.Table.from_batches([batch]).drop(supplied_cols).to_batches()[0]
                 if not batch.schema.equals(schema, check_metadata=False):
                     raise ValueError('Unexpected native raw source schema')
                 count += len(batch)
@@ -575,3 +593,144 @@ class RawStorage:
         if verified != data:
             raise ValueError('Raw selector readback mismatch')
         return RawSnapshot(self, json.loads(verified), version, prepared['delivery'])
+
+    def evolve_state_schema(self, base, *, operation, next_schema=STATE_SCHEMA,
+                            additions=None, write_defaults=None, scalar_backfill=None,
+                            continuous=None, correction=None):
+        """Evolve selected URL-state leaves to a compatible ``next_schema`` without rewriting source files."""
+        from congress_api.retention.catalog_batches import can_read_catalog_schema
+        from congress_api.retention.native_features import (
+            backfill_scalar_group,
+            evolve_catalog_schema,
+            source_schema_fields,
+        )
+        if base.owner is not self:
+            raise ValueError('Raw base belongs to another storage owner')
+        if not can_read_catalog_schema(self.state_schema, next_schema):
+            raise ValueError('Raw state schema evolution requires a compatible nullable extension')
+        next_owner = type(self)(
+            self.store,
+            self.native,
+            max_state_rows=self.max_state_rows,
+            max_state_bytes=self.max_state_bytes,
+            max_capture_rows=self.max_capture_rows,
+            max_capture_bytes=self.max_capture_bytes,
+            state_schema=next_schema,
+        )
+        type_map = {
+            pa.bool_(): 'boolean',
+            pa.int64(): 'long',
+            pa.float64(): 'double',
+            pa.string(): 'string',
+        }
+        if additions is None:
+            existing = set(self.state_schema.names)
+            additions = []
+            for field in next_schema:
+                if field.name in existing:
+                    continue
+                if field.type not in type_map:
+                    raise ValueError(f'Unsupported native schema evolution type for {field.name!r}')
+                spec = dict(name=field.name, data_type=type_map[field.type])
+                if field.name == 'links_scanned':
+                    spec['default'] = False
+                additions.append(spec)
+        else:
+            additions = [dict(a) for a in additions]
+
+        manifest = deepcopy(base.manifest)
+        manifest['basis'] = deepcopy(next_owner.basis)
+        selected_root = manifest['state']['root']
+        leaf_results = {}
+        for prefix, reference in list(self.state_routes.leaf_items(selected_root)):
+            pin = reference['release']
+            dataset = pin['dataset']['dataset']
+            base_def = pin['dataset']['definition']
+            next_def = f'{base_def}-{operation}'
+            root_fields = source_schema_fields(self.native, pin)
+            evolved = evolve_catalog_schema(
+                self.native,
+                dataset=dataset,
+                operation=f'{operation}-schema-{prefix or "root"}',
+                base_pin=pin,
+                definition=base_def,
+                next_definition=next_def,
+                fields=root_fields,
+                additions=additions,
+                write_defaults=write_defaults,
+            )
+            evolved_pin = evolved['pin']
+            backfilled = None
+            if scalar_backfill is not None or continuous is not None or correction is not None:
+                bf_spec = scalar_backfill or {}
+                corr = dict(correction) if correction is not None else None
+                if corr is not None and 'fields' not in corr:
+                    corr['fields'] = [
+                        f['id'] for f in root_fields
+                        if f['name'] in {STATE_KEY_FIELD, 'url', 'body_key', 'outcome'}
+                    ]
+                backfilled = backfill_scalar_group(
+                    self.native,
+                    dataset=dataset,
+                    operation=f'{operation}-backfill-{prefix or "root"}',
+                    base_pin=evolved_pin,
+                    definition=next_def,
+                    group=bf_spec.get('group', 'state_scalars'),
+                    group_definition=bf_spec.get('group_definition', f'raw-state-scalars-{operation}'),
+                    fields=bf_spec.get(
+                        'fields',
+                        [dict(id=1, name='has_body', expression='body_key IS NOT NULL')],
+                    ),
+                    continuous=continuous,
+                    correction=corr,
+                )
+            evolved_table = next_owner._read_table(
+                evolved_pin,
+                reference['rows'],
+                schema=next_owner.state_native_schema,
+                max_rows=next_owner.max_state_rows,
+                max_bytes=next_owner.max_state_bytes,
+                decoded_bytes=None,
+            )
+            new_ref = dict(
+                reference,
+                release=evolved_pin,
+                decoded_bytes=evolved_table.nbytes,
+                schedule=summarize(evolved_table.to_pylist()),
+            )
+            if backfilled is not None:
+                new_ref['scalar_release'] = backfilled['pin']
+            selected_root = self.state_routes.replace(selected_root, prefix, {prefix: new_ref})
+            leaf_results[dataset] = dict(
+                prefix=prefix,
+                base_pin=pin,
+                schema_plan=evolved['plan'],
+                evolved_pin=evolved_pin,
+                backfill=backfilled,
+            )
+        manifest['state']['root'] = selected_root
+        delivery = dict(
+            request=sha256(encoded([operation, next_owner.basis['state_schema']])).hexdigest(),
+            request_id=operation,
+            capture_rows=0,
+            first_order=base.manifest['captures']['rows'],
+            result=dict(evolved_leaves=sorted(leaf_results)),
+        )
+        delivery_key, delivery_prefix, deliveries = self._delivery(
+            manifest['deliveries'], 'delivery:' + operation
+        )
+        manifest['deliveries'] = self._select_delivery(
+            manifest['deliveries'], delivery_prefix, {**deliveries, delivery_key: delivery}
+        )
+        data = encoded(manifest)
+        next_base = RawSnapshot(next_owner, base.manifest, base.version)
+        prepared = dict(
+            base=next_base,
+            manifest=manifest,
+            data=data,
+            changed=manifest != base.manifest,
+            already_applied=False,
+            delivery=delivery,
+            leaves=leaf_results,
+        )
+        return next_owner, prepared

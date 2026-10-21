@@ -503,3 +503,76 @@ def test_schema_addition_retry_uses_the_retained_interpretation_schema(tmp_path,
         rows = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
         row = next(row for row in rows if row['source_url'] == 'https://example.gov/paper.pdf')
         assert row['source_witness_name'] == ['Jane Doe']
+
+
+def test_upgrade_source_rules_evolves_native_schema_and_backfills_scalars_without_source_rewrite(tmp_path, monkeypatch, native):
+    from congress_api.retention.raw_catalog import upgrade_source_rules
+    from congress_api.retention.catalog_batches import CatalogComponentReader
+    from congress_api.retention.source_update_proof import read_source_update
+    from congress_api.retention.catalog_scope import read_catalog_scope
+
+    store = SelectorStore()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'initial', candidate='initial')
+    previous = read_catalog(store, native=native)
+
+    reader = CatalogComponentReader(store)
+    _, comp_ref = next(previous.components.items(previous.selection['components']))
+    page = reader.page(comp_ref['page'])
+    chunk_name = next(name for name in page['chunks'] if name.startswith('catalog-filenames-'))
+    before_chunk = reader.chunks.read(page['chunks'][chunk_name])
+    before_core_pin = {k: v for k, v in before_chunk['release'].items() if k != 'catalog_rows'}
+    dataset = before_core_pin['dataset']['dataset']
+    source_files_before = [
+        obj['path']
+        for obj in before_core_pin['dataset']['groups']['source']['objects']
+        if obj['path'].endswith('.parquet')
+    ]
+    before_rows = native.read_arrow(before_core_pin).to_pylist()
+
+    options = dict(
+        raw_storage=raw,
+        directory=tmp_path / 'upgrade-schema-bf',
+        candidate='upgrade-schema-bf',
+        rule_version='source-rules-20261021',
+        continuous_backfill=dict(optimistic_rounds=2, fence_millis=1000),
+        dependency_correction=dict(
+            id='corr-rules-20261021',
+            reason='bind document_id, source_id, body_key, and filename for catalog scalars',
+        ),
+    )
+    result = upgrade_source_rules(store, **options)
+    assert dataset in result['native_schema_backfill']
+    bf_entry = result['native_schema_backfill'][dataset]
+    evolved_pin = bf_entry['evolved_pin']
+    backfilled_pin = bf_entry['pin']
+
+    # Zero source-file rewrites across schema evolution and continuous scalar backfill
+    source_files_after = [
+        obj['path']
+        for obj in backfilled_pin['dataset']['groups']['source']['objects']
+        if obj['path'].endswith('.parquet')
+    ]
+    assert source_files_after == source_files_before
+    # Old pin remains readable with its exact original schema and values
+    assert native.read_arrow(before_core_pin).to_pylist() == before_rows
+    # Evolved pin exposes the default rule_version and __docspec_supplied_* == False
+    evolved_rows = native.read_arrow(evolved_pin).to_pylist()
+    assert all(r['rule_version'] == 'source-rules-20261021' for r in evolved_rows)
+    supplied_keys = [k for k in evolved_rows[0] if k.startswith('__docspec_supplied_')]
+    assert supplied_keys and all(r[supplied_keys[0]] is False for r in evolved_rows)
+    # Backfilled scalar group exposes has_body and has_filename and is qualified after correction
+    scalar_rows = native.read_arrow(backfilled_pin, group='catalog_scalars').to_pylist()
+    assert len(scalar_rows) == len(before_rows)
+    assert all('has_body' in r and 'has_filename' in r for r in scalar_rows)
+    assert bf_entry['correction']['request']['id'] == 'corr-rules-20261021'
+    assert backfilled_pin['dataset']['computed']['catalog_scalars']['qualification'] is not None
+
+    # Proof retains the schema/backfill metadata and retry is idempotent
+    scope_proof = read_catalog_scope(store, result['scope_reference'])
+    source_proof = read_source_update(store, scope_proof['source_update'])
+    assert dataset in source_proof['after']['native_schema_backfill']
+    retry = upgrade_source_rules(store, **options)
+    assert retry['unchanged'] is True
+    assert dataset in retry['native_schema_backfill']
