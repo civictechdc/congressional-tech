@@ -11,7 +11,7 @@
         "id": "public-viewer-read-cors",
         "allowed": {
           "origins": ["*"],
-          "methods": ["GET", "HEAD"],
+          "methods": ["GET", "HEAD", "OPTIONS"],
           "headers": ["Range", "If-None-Match", "If-Modified-Since"]
         },
         "expose_headers": [
@@ -29,13 +29,14 @@
   "waf_custom_rules": [
     {
       "id": "block-non-public-r2-prefixes",
-      "description": "Allow only GET/HEAD on /viewer-publications/* and /bodies/sha256/*; block /warehouse/*, /receipts/*, /quarantine/*, /indexes/* and all other paths with 403.",
+      "description": "Allow only GET/HEAD/OPTIONS on /viewer-publications/*, /bodies/sha256/*, and /exports/*; block /warehouse/*, /receipts/*, /quarantine/*, /indexes/* and all other paths with 403.",
       "action": "block",
       "status_code": 403,
-      "expression": "(http.host eq \"congressional-data.spicygov.ai\") and not ((http.request.method in {\"GET\" \"HEAD\"}) and (starts_with(http.request.uri.path, \"/viewer-publications/\") or starts_with(http.request.uri.path, \"/bodies/sha256/\")) and not contains(http.request.uri.path, \"..\") and not starts_with(http.request.uri.path, \"/viewer-publications/accepted-\"))",
+      "expression": "(http.host eq \"congressional-data.spicygov.ai\") and not ((http.request.method in {\"GET\" \"HEAD\" \"OPTIONS\"}) and (starts_with(http.request.uri.path, \"/viewer-publications/\") or starts_with(http.request.uri.path, \"/bodies/sha256/\") or starts_with(http.request.uri.path, \"/exports/\")) and not contains(http.request.uri.path, \"..\") and not starts_with(http.request.uri.path, \"/viewer-publications/accepted-\"))",
       "allowed_prefixes": [
         "/viewer-publications/",
-        "/bodies/sha256/"
+        "/bodies/sha256/",
+        "/exports/"
       ],
       "blocked_prefixes": [
         "/warehouse/",
@@ -48,7 +49,7 @@
   "response_header_transform_rules": [
     {
       "id": "public-r2-security-and-disposition-headers",
-      "description": "Set nosniff, Referrer-Policy, conditional CSP (omit sandbox CSP on application/pdf so Chromium PDF viewer renders), and map ?filename= to Content-Disposition.",
+      "description": "Set nosniff, Referrer-Policy, conditional CSP (omit sandbox CSP on application/pdf so Chromium PDF viewer renders), Cache-Control for /viewer-publications/*, /bodies/sha256/*, and /exports/*, and map ?filename= to Content-Disposition.",
       "headers": {
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer"
@@ -63,6 +64,19 @@
         "path_prefix": "/bodies/sha256/",
         "pdf_disposition": "inline",
         "non_pdf_disposition": "attachment"
+      },
+      "cache_control": {
+        "immutable_prefixes": [
+          "/bodies/sha256/",
+          "/viewer-publications/releases/",
+          "/viewer-publications/catalogs/",
+          "/exports/releases/",
+          "/exports/snapshots/"
+        ],
+        "no_store_paths": [
+          "/viewer-publications/manifest.json",
+          "/exports/manifest.json"
+        ]
       }
     }
   ]

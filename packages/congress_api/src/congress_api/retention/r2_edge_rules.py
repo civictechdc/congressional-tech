@@ -23,6 +23,9 @@ _VIEWER_RELEASE_ASSET_RE = re.compile(
     r'^/viewer-publications/releases/[a-f0-9]{32}/(?:[a-f0-9]{32}/viewer-v2/(?:manifest\.json|search\.parquet|sources\.parquet|details\.parquet|recoveries\.parquet|observations(?:\.index\.json|\.blocks\.br|\.refs\.br))|[A-Za-z0-9._-]+-(?:filenames|documents|sources)\.parquet)$'
 )
 _BODY_OBJECT_RE = re.compile(r'^/bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})\.(pdf|gz)$')
+_EXPORTS_OBJECT_RE = re.compile(
+    r'^/exports/(?:[A-Za-z0-9][A-Za-z0-9._-]*/)*[A-Za-z0-9][A-Za-z0-9._-]*\.(?:json|parquet|bin|br|gz|csv|zst|ipc|arrow)$'
+)
 
 
 def load_edge_config(path=None):
@@ -68,9 +71,9 @@ def evaluate_waf_request(method, url_or_path, *, config=None):
 
     if host != cfg['custom_domain']['hostname']:
         return dict(allowed=False, status_code=403, reason='host_mismatch')
-    if upper_method not in {'GET', 'HEAD'}:
+    if upper_method not in {'GET', 'HEAD', 'OPTIONS'}:
         return dict(allowed=False, status_code=403, reason='method_not_allowed')
-    if '..' in path:
+    if '..' in path or '//' in path:
         return dict(allowed=False, status_code=403, reason='path_traversal')
 
     for blocked in cfg['waf_custom_rules'][0]['blocked_prefixes']:
@@ -94,6 +97,11 @@ def evaluate_waf_request(method, url_or_path, *, config=None):
             )
         return dict(allowed=False, status_code=403, reason='invalid_body_object_path')
 
+    if path.startswith('/exports/'):
+        if '/accepted-' not in path and _EXPORTS_OBJECT_RE.match(path):
+            return dict(allowed=True, status_code=200, prefix='/exports/')
+        return dict(allowed=False, status_code=403, reason='unallowed_exports_path')
+
     return dict(allowed=False, status_code=403, reason='outside_prefix_allowlist')
 
 
@@ -111,6 +119,8 @@ def evaluate_response_headers(url_or_path, *, content_type=None, config=None):
             inferred_type = 'application/pdf'
         elif path.endswith('.gz'):
             inferred_type = 'application/gzip'
+        elif path.endswith('.parquet'):
+            inferred_type = 'application/vnd.apache.parquet'
         elif path.endswith('.json'):
             inferred_type = 'application/json; charset=utf-8'
         else:
@@ -119,7 +129,7 @@ def evaluate_response_headers(url_or_path, *, content_type=None, config=None):
     normalized_type = inferred_type.split(';', 1)[0].strip().lower()
     headers = {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, HEAD',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
         'Access-Control-Expose-Headers': ', '.join(cfg['cors']['rules'][0]['expose_headers']),
         'X-Content-Type-Options': 'nosniff',
         'Referrer-Policy': 'no-referrer',
@@ -134,11 +144,16 @@ def evaluate_response_headers(url_or_path, *, content_type=None, config=None):
         headers['Cache-Control'] = 'public, max-age=31536000, immutable'
         disposition_kind = 'inline' if normalized_type == 'application/pdf' else 'attachment'
         headers['Content-Disposition'] = format_content_disposition(disposition_kind, filename_param)
-    elif path.endswith('/manifest.json') and path == '/viewer-publications/manifest.json':
+    elif path in {'/viewer-publications/manifest.json', '/exports/manifest.json'} or (
+        path.startswith('/exports/')
+        and path.endswith(('/manifest.json', '/latest.json'))
+        and '/releases/' not in path
+        and '/snapshots/' not in path
+    ):
         headers['Cache-Control'] = 'no-store'
     elif path.endswith('/recovery-status.json'):
         headers['Cache-Control'] = 'no-store'
-    elif path.startswith('/viewer-publications/'):
+    elif path.startswith(('/viewer-publications/', '/exports/')):
         headers['Cache-Control'] = 'public, max-age=31536000, immutable'
 
     return headers

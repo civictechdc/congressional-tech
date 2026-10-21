@@ -255,12 +255,18 @@ def test_cloudflare_r2_custom_domain_waf_and_transform_rules():
     assert cfg["custom_domain"]["hostname"] == PUBLIC_HOSTNAME
     assert cfg["custom_domain"]["bucket"] == PUBLIC_BUCKET
     assert cfg["custom_domain"]["retired_worker"] == "congressional-viewer-data"
+    assert cfg["waf_custom_rules"][0]["allowed_prefixes"] == [
+        "/viewer-publications/",
+        "/bodies/sha256/",
+        "/exports/",
+    ]
+    assert 'starts_with(http.request.uri.path, "/exports/")' in cfg["waf_custom_rules"][0]["expression"]
 
     sha = "ab" * 32
     release = "cd" * 16
 
-    # Allowed public paths on GET/HEAD
-    for method in ("GET", "HEAD"):
+    # Allowed public paths on GET/HEAD/OPTIONS
+    for method in ("GET", "HEAD", "OPTIONS"):
         assert evaluate_waf_request(
             method, f"https://{PUBLIC_HOSTNAME}/viewer-publications/manifest.json"
         )["allowed"] is True
@@ -274,6 +280,13 @@ def test_cloudflare_r2_custom_domain_waf_and_transform_rules():
         assert evaluate_waf_request(
             method, f"https://{PUBLIC_HOSTNAME}/bodies/sha256/ab/{sha}.gz?filename=Test.xml"
         )["allowed"] is True
+        assert evaluate_waf_request(
+            method, f"https://{PUBLIC_HOSTNAME}/exports/manifest.json"
+        )["allowed"] is True
+        assert evaluate_waf_request(
+            method,
+            f"https://{PUBLIC_HOSTNAME}/exports/releases/{release}/committee-meetings.parquet",
+        )["allowed"] is True
 
     # Blocked internal prefixes (/warehouse/*, /receipts/*, /quarantine/*, /indexes/*) and mutations
     for blocked_path in (
@@ -283,6 +296,8 @@ def test_cloudflare_r2_custom_domain_waf_and_transform_rules():
         "/indexes/catalog.json",
         "/indexes/raw.json",
         "/viewer-publications/accepted-recoveries.json",
+        "/exports/accepted-internal.json",
+        "/exports/../indexes/raw.json",
         f"/bodies/sha256/ff/{sha}.pdf",
         "/bodies/sha256/../indexes/raw.json",
         "/",
@@ -293,6 +308,9 @@ def test_cloudflare_r2_custom_domain_waf_and_transform_rules():
 
     assert evaluate_waf_request(
         "PUT", f"https://{PUBLIC_HOSTNAME}/viewer-publications/manifest.json"
+    )["status_code"] == 403
+    assert evaluate_waf_request(
+        "POST", f"https://{PUBLIC_HOSTNAME}/exports/releases/{release}/committee-meetings.parquet"
     )["status_code"] == 403
 
     # Response Header Transform Rules: PDF omits sandbox CSP and sets inline Content-Disposition
@@ -306,6 +324,7 @@ def test_cloudflare_r2_custom_domain_waf_and_transform_rules():
         "inline; filename=\"Hearing #1.pdf\"; filename*=UTF-8''Hearing%20%231.pdf"
     )
     assert pdf_headers["Access-Control-Allow-Origin"] == "*"
+    assert pdf_headers["Access-Control-Allow-Methods"] == "GET, HEAD, OPTIONS"
 
     # Non-PDF body gets sandbox CSP and attachment Content-Disposition
     gz_headers = evaluate_response_headers(
@@ -316,3 +335,20 @@ def test_cloudflare_r2_custom_domain_waf_and_transform_rules():
         "attachment; filename=\"witnesses.xml\"; filename*=UTF-8''witnesses.xml"
     )
     assert format_content_disposition("inline", "../traversal.pdf") == "inline"
+
+    # /exports/* response headers: no-store on mutable manifest pointer, immutable on release Parquet
+    export_manifest_headers = evaluate_response_headers(
+        f"https://{PUBLIC_HOSTNAME}/exports/manifest.json"
+    )
+    assert export_manifest_headers["Access-Control-Allow-Origin"] == "*"
+    assert export_manifest_headers["Cache-Control"] == "no-store"
+    assert export_manifest_headers["Content-Type"] == "application/json; charset=utf-8"
+    assert export_manifest_headers["Content-Security-Policy"] == "sandbox; default-src 'none'"
+
+    export_parquet_headers = evaluate_response_headers(
+        f"https://{PUBLIC_HOSTNAME}/exports/releases/{release}/committee-meetings.parquet"
+    )
+    assert export_parquet_headers["Access-Control-Allow-Origin"] == "*"
+    assert export_parquet_headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    assert export_parquet_headers["Content-Type"] == "application/vnd.apache.parquet"
+    assert export_parquet_headers["Content-Security-Policy"] == "sandbox; default-src 'none'"
