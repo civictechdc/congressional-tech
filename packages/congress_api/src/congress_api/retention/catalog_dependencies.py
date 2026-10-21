@@ -13,6 +13,11 @@ import pickle
 import pyarrow as pa
 
 from .catalog_staging import WorkingCatalog
+from .native_features import (
+    inspect_catalog_changes,
+    refresh_catalog_join,
+    refresh_catalog_observation_summary,
+)
 
 from . import document_index as index
 
@@ -44,20 +49,88 @@ class AffectedSources:
     sources_read: int
     aliases_read: int
     _working: object = None
+    change_report: object = None
 
     def close(self):
         if self._working is not None:
             self._working.close()
 
 
-def affected_sources(selected, *, replacements=(), deletions=()):
+def extract_pin_changes(native, before_pin, after_pin, *, key_column='source_id',
+                        allow_full_fallback=False, source_schema=None):
+    """Derive proven replacement rows and deleted source IDs from one native ``/changes`` stream."""
+    if native is None:
+        raise ValueError('A native DocSpec client is required for pin change inspection')
+    report = inspect_catalog_changes(
+        native,
+        before_pin,
+        after_pin,
+        key_column=key_column,
+        allow_full_fallback=allow_full_fallback,
+    )
+    allowed_fields = set(source_schema.names) if source_schema is not None else None
+
+    def _unwrap_row(record):
+        if not isinstance(record, dict):
+            raise ValueError('Change stream record must be a mapping')
+        if isinstance(record.get('source_values'), dict):
+            row = deepcopy(record['source_values'])
+        else:
+            row = deepcopy(record)
+            if allowed_fields is not None and key_column not in allowed_fields:
+                row.pop(key_column, None)
+        return row
+
+    def _record_key(record, row):
+        if isinstance(record, dict) and key_column in record and record[key_column] is not None:
+            return record[key_column]
+        return index.source_identity(row)
+
+    replacements_by_key = {}
+    for rec in report['added_records']:
+        row = _unwrap_row(rec)
+        key = _record_key(rec, row)
+        replacements_by_key[key] = row
+
+    removed_keys = set()
+    for rec in report['removed_records']:
+        row = _unwrap_row(rec)
+        key = _record_key(rec, row)
+        if key not in replacements_by_key:
+            removed_keys.add(key)
+
+    return list(replacements_by_key.values()), sorted(removed_keys), report
+
+
+def affected_sources(selected, *, replacements=(), deletions=(), native=None,
+                     before_pin=None, after_pin=None, key_column='source_id',
+                     allow_full_fallback=False):
     """Close old/new components with row values and the frontier staged on disk.
 
     The returned mappings own their disposable working directory. Missing aliases
     mean absence only when the selected owner proves it; missing routing raises.
     Replacements remain complete interpreted rows, with exact typed Python values
-    preserved by the existing WorkingCatalog pickle storage policy.
+    preserved by the existing WorkingCatalog pickle storage policy. When
+    ``before_pin`` and ``after_pin`` are supplied, consumes one certified native
+    ``/changes`` stream via ``inspect_catalog_changes`` and feeds only proven
+    changed keys/replacements/deletions into the closure frontier.
     """
+    change_report = None
+    if before_pin is not None or after_pin is not None:
+        if before_pin is None or after_pin is None:
+            raise ValueError('Both before_pin and after_pin are required for native change inspection')
+        native_client = native or getattr(selected, 'native', None)
+        source_schema = getattr(selected, 'source_schema', None)
+        pin_replacements, pin_deletions, change_report = extract_pin_changes(
+            native_client,
+            before_pin,
+            after_pin,
+            key_column=key_column,
+            allow_full_fallback=allow_full_fallback,
+            source_schema=source_schema,
+        )
+        replacements = (*pin_replacements, *replacements)
+        deletions = (*pin_deletions, *deletions)
     working = DependencyWorkingSet()
     db = working.work.connection
     before, after = working.work.mapping('before_rows'), working.work.mapping('after_rows')
@@ -109,7 +182,7 @@ def affected_sources(selected, *, replacements=(), deletions=()):
                     raise DependencyGap(f'Missing reverse dependency membership: {key} {alias}')
             db.execute('UPDATE frontier SET processed=1 WHERE position=?', (position,))
         return AffectedSources(before, after, reads,
-            db.execute('SELECT count(*) FROM aliases').fetchone()[0], working)
+            db.execute('SELECT count(*) FROM aliases').fetchone()[0], working, change_report)
     except BaseException:
         working.close()
         raise
@@ -359,3 +432,88 @@ class NativeCatalogDependencies:
         if expected is not None and count != expected:
             raise DependencyGap('Reverse dependency member count differs from selected directory')
         return NativeAliasMembers(self._working, encoded)
+
+    def summarize_alias_pin(self, alias_pin, *, dataset='catalog-alias-summary',
+                            operation=None, base_pin=None, prior_source_pin=None,
+                            mode=None, count_field='source_id', collect_field=None):
+        """Maintain or query grouped alias member counts via native ``RefreshTransform::Aggregate``."""
+        return summarize_alias_observations(
+            self.native,
+            alias_pin,
+            dataset=dataset,
+            operation=operation,
+            base_pin=base_pin,
+            prior_source_pin=prior_source_pin,
+            mode=mode,
+            count_field=count_field,
+            collect_field=collect_field,
+        )
+
+    def join_alias_sources(self, alias_pin, source_pin, *, dataset='catalog-alias-sources',
+                           operation=None, base_pin=None, prior_left_pin=None,
+                           prior_right_pin=None, mode=None, join_kind='inner',
+                           nulls='never', cardinality='many_to_one', fields=None):
+        """Join an alias-membership pin against a source pin via native ``RefreshTransform::Join``."""
+        effective_mode = mode or ('incremental' if base_pin is not None else 'full')
+        op = operation or f"join-{alias_pin['id']}-{source_pin['id']}-{effective_mode}"
+        join_fields = fields or [
+            dict(side='left', field='alias', name='alias'),
+            dict(side='left', field='source_id', name='source_id'),
+            dict(side='right', field='source_order', name='source_order'),
+        ]
+        result = refresh_catalog_join(
+            self.native,
+            dataset=dataset,
+            operation=op,
+            left_pin=alias_pin,
+            right_pin=source_pin,
+            keys=[('source_id', 'source_id')],
+            fields=join_fields,
+            base_pin=base_pin,
+            prior_left_pin=prior_left_pin,
+            prior_right_pin=prior_right_pin,
+            mode=effective_mode,
+            join_kind=join_kind,
+            nulls=nulls,
+            cardinality=cardinality,
+        )
+        rows = self.native.read_arrow(result['pin']).to_pylist()
+        return dict(**result, rows=rows)
+
+
+def summarize_alias_observations(native, source_pin, *, dataset='catalog-alias-summary',
+                                 operation=None, base_pin=None, prior_source_pin=None,
+                                 mode=None, keys=('alias',), count_field='observation',
+                                 collect_field=None):
+    """Roll up grouped alias/observation counts via ``refresh_catalog_observation_summary``.
+
+    Transitive alias-component closure remains in ``affected_sources``, while
+    eligible grouped counting is delegated to native ``RefreshTransform::Aggregate``.
+    """
+    effective_mode = mode or ('incremental' if base_pin is not None else 'full')
+    op = operation or f"sum-{source_pin['id']}-{effective_mode}"
+    result = refresh_catalog_observation_summary(
+        native,
+        dataset=dataset,
+        operation=op,
+        source_pin=source_pin,
+        base_pin=base_pin,
+        prior_source_pin=prior_source_pin,
+        mode=effective_mode,
+        keys=keys,
+        count_field=count_field,
+        collect_field=collect_field,
+    )
+    table = native.read_arrow(result['pin'])
+    key_col = keys[0] if keys else 'alias'
+    counts = {}
+    for row in table.to_pylist():
+        k = row.get(key_col)
+        entry = dict(
+            total_rows=int(row['total_rows']),
+            distinct_observations=int(row['distinct_observations']),
+        )
+        if 'members' in row:
+            entry['members'] = list(row['members']) if row['members'] is not None else []
+        counts[k] = entry
+    return dict(**result, counts=counts, table=table)

@@ -4,7 +4,33 @@ Each helper binds exact ``ReleasePin`` versions through the shared ``docspec_cli
 transport while preserving application authority over source identity, transitive
 alias closure, review decisions, and coherent multi-table publication.
 """
+import json
+import time
 import pyarrow as pa
+
+
+FIELD_GROUP_CAPABILITIES = {
+    "source": {
+        "backend_capability": "source_group",
+        "local_supported": True,
+        "remote_supported": True,
+    },
+    "occurrences": {
+        "backend_capability": "local_only",
+        "local_supported": True,
+        "remote_supported": False,
+    },
+    "inputs": {
+        "backend_capability": "local_only",
+        "local_supported": True,
+        "remote_supported": False,
+    },
+    "evidence": {
+        "backend_capability": "local_only",
+        "local_supported": True,
+        "remote_supported": False,
+    },
+}
 
 
 def version_ref(pin):
@@ -19,26 +45,164 @@ def version_ref(pin):
     }
 
 
+def _parquet_digests(objects):
+    return {
+        obj["digest"]: int(obj.get("bytes", 0))
+        for obj in (objects or ())
+        if isinstance(obj, dict) and str(obj.get("path", "")).endswith(".parquet") and "digest" in obj
+    }
+
+
+def _metadata_digests(objects):
+    return {
+        obj["digest"]: int(obj.get("bytes", 0))
+        for obj in (objects or ())
+        if isinstance(obj, dict) and not str(obj.get("path", "")).endswith(".parquet") and "digest" in obj
+    }
+
+
+def _evidence_objects(ds):
+    if not isinstance(ds, dict):
+        return []
+    ev = ds.get("evidence") or {}
+    if isinstance(ev, dict) and isinstance(ev.get("table"), dict):
+        return ev["table"].get("objects") or []
+    rel_ev = (ds.get("related") or {}).get("evidence") or {}
+    if isinstance(rel_ev, dict):
+        return rel_ev.get("objects") or []
+    return []
+
+
+def _compute_field_group_metrics(before_pin, after_pin, *, path, effects, table):
+    before_ds = before_pin.get("dataset") or {}
+    after_ds = after_pin.get("dataset") or {}
+    before_src_objs = ((before_ds.get("groups") or {}).get("source") or {}).get("objects") or []
+    after_src_objs = ((after_ds.get("groups") or {}).get("source") or {}).get("objects") or []
+
+    before_pq = _parquet_digests(before_src_objs)
+    after_pq = _parquet_digests(after_src_objs)
+    before_meta = _metadata_digests(before_src_objs)
+    after_meta = _metadata_digests(after_src_objs)
+
+    if path == "unchanged":
+        source_read_bytes = 0
+        occ_read_bytes = 0
+    elif path == "forward_changes":
+        delta_pq = set(before_pq) ^ set(after_pq)
+        source_read_bytes = sum(before_pq.get(d, 0) or after_pq.get(d, 0) for d in delta_pq)
+        delta_meta = set(before_meta) ^ set(after_meta)
+        occ_read_bytes = sum(before_meta.get(d, 0) or after_meta.get(d, 0) for d in delta_meta)
+    else:
+        source_read_bytes = sum(before_pq.values()) + sum(after_pq.values())
+        occ_read_bytes = sum(before_meta.values()) + sum(after_meta.values())
+
+    if table.num_rows > 0:
+        if "values" in table.column_names:
+            source_returned_bytes = int(table["values"].nbytes) or int(table.nbytes)
+        else:
+            source_returned_bytes = int(table.nbytes)
+        occ_returned_bytes = sum(
+            int(table[col].nbytes)
+            for col in ("side", "file", "row")
+            if col in table.column_names
+        )
+    else:
+        source_returned_bytes = 0
+        occ_returned_bytes = 0
+
+    before_in = before_ds.get("inputs") or {}
+    after_in = after_ds.get("inputs") or {}
+    if path == "unchanged" or not (effects.get("input_refs_changed") or effects.get("coverage_changed")):
+        in_read_bytes = 0
+        in_returned_bytes = 0
+    else:
+        delta_in = [v for k, v in after_in.items() if before_in.get(k) != v] + [
+            v for k, v in before_in.items() if k not in after_in
+        ]
+        in_read_bytes = sum(int(v.get("bytes", 0)) for v in delta_in if isinstance(v, dict))
+        in_returned_bytes = sum(
+            len(json.dumps(v, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+            for v in delta_in
+            if isinstance(v, dict)
+        )
+
+    before_ev_objs = _evidence_objects(before_ds)
+    after_ev_objs = _evidence_objects(after_ds)
+    before_ev = {
+        o["digest"]: int(o.get("bytes", 0))
+        for o in before_ev_objs
+        if isinstance(o, dict) and "digest" in o
+    }
+    after_ev = {
+        o["digest"]: int(o.get("bytes", 0))
+        for o in after_ev_objs
+        if isinstance(o, dict) and "digest" in o
+    }
+    if path == "unchanged" or not effects.get("evidence_refs_changed"):
+        ev_read_bytes = 0
+        ev_returned_bytes = 0
+    else:
+        delta_ev = set(before_ev) ^ set(after_ev)
+        ev_read_bytes = sum(before_ev.get(d, 0) or after_ev.get(d, 0) for d in delta_ev)
+        ev_pq_after = _parquet_digests(after_ev_objs)
+        ev_pq_before = _parquet_digests(before_ev_objs)
+        ev_returned_bytes = sum(
+            ev_pq_after.get(d, 0) or ev_pq_before.get(d, 0)
+            for d in (set(ev_pq_after) ^ set(ev_pq_before))
+        )
+
+    raw_metrics = {
+        "source": (source_read_bytes, source_returned_bytes),
+        "occurrences": (occ_read_bytes, occ_returned_bytes),
+        "inputs": (in_read_bytes, in_returned_bytes),
+        "evidence": (ev_read_bytes, ev_returned_bytes),
+    }
+    field_groups = {}
+    for fg, caps in FIELD_GROUP_CAPABILITIES.items():
+        r_bytes, ret_bytes = raw_metrics[fg]
+        field_groups[fg] = {
+            "read_bytes": int(r_bytes),
+            "returned_bytes": int(ret_bytes),
+            **caps,
+        }
+    unchanged_files_reused = len(set(before_pq) & set(after_pq))
+    return field_groups, unchanged_files_reused, len(after_pq)
+
+
 # -- ct-13cn: Certified change streams & catalog diagnostics -------------------
 
 
 def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
                             identity="occurrences", key_column=None,
-                            allow_full_fallback=True):
+                            allow_full_fallback=True, allow_fallback=None,
+                            force_full=False):
     """Consume one native ``/changes`` stream and derive counts and affected keys.
 
     Does not call ``/compare`` and ``/changes`` redundantly when row changes are
     consumed. Verifies exact endpoint ``VersionRef`` bindings and refuses
-    unbounded full-fallback reconstruction when ``allow_full_fallback=False``.
+    unbounded full-fallback reconstruction when ``allow_full_fallback=False``
+    (or ``allow_fallback=False``). Reports ``read_bytes``, ``returned_bytes``,
+    and backend capability support separately for ``source``, ``occurrences``,
+    ``inputs``, and ``evidence``.
     """
     expected_before = version_ref(before_pin)
     expected_after = version_ref(after_pin)
+    effective_allow_fallback = (
+        bool(allow_full_fallback) if allow_fallback is None else bool(allow_fallback)
+    )
+    if getattr(native, "remote", None) is not None and group in ("occurrences", "inputs", "evidence"):
+        raise ValueError(
+            f"400 remote_unsupported: field group {group!r} requires BackendCapability::LocalOnly "
+            "and is not supported on remote R2"
+        )
+    stream_group = "source" if group in ("occurrences", "inputs", "evidence") else group
+    stream_identity = "occurrences" if group == "occurrences" else identity
     with native.changes_batches(
         before_pin,
         after_pin,
-        group=group,
-        identity=identity,
-        force_full=False,
+        group=stream_group,
+        identity=stream_identity,
+        force_full=force_full,
     ) as (descriptor, reader):
         if not isinstance(descriptor, dict):
             raise ValueError("Change stream is missing its docspec.change descriptor")
@@ -48,9 +212,11 @@ def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
         # docspec-rs serializes ChangeDescriptor.fallback (ComparisonFallback, snake_case)
         # and ComparisonEffects.evidence_refs_changed; accept only those names.
         fallback_reason = descriptor.get("fallback")
-        if not allow_full_fallback and path == "full":
+        if not effective_allow_fallback and (
+            path == "full" or (fallback_reason not in (None, "none"))
+        ):
             raise ValueError(
-                f"Incremental caller refused full comparison fallback ({fallback_reason})"
+                f"Incremental caller refused full comparison fallback ({fallback_reason or path})"
             )
         batches = list(reader)
         table = pa.Table.from_batches(batches, schema=reader.schema)
@@ -60,15 +226,22 @@ def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
     added_records = []
     removed_records = []
     changed_keys = set()
+    changed_occurrences = []
     rows = table.to_pylist()
     for row in rows:
         side = row.get("side") or row.get("change") or row.get("__docspec_change")
+        if row.get("file") is not None and row.get("row") is not None:
+            changed_occurrences.append((str(row["file"]), int(row["row"])))
         record = row.get("values") if isinstance(row.get("values"), dict) else {
             k: v for k, v in row.items()
             if k not in {"side", "file", "row", "change", "weight"} and not k.startswith("__docspec_")
         }
-        if key_column is not None and isinstance(record, dict) and record.get(key_column) is not None:
-            changed_keys.add(record[key_column])
+        if key_column is not None and isinstance(record, dict):
+            key_val = record.get(key_column)
+            if key_val is None and isinstance(record.get("source_values"), dict):
+                key_val = record["source_values"].get(key_column)
+            if key_val is not None:
+                changed_keys.add(key_val)
         if side in ("after", "added", "+1", 1):
             added_rows += 1
             added_records.append(record)
@@ -77,8 +250,91 @@ def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
             removed_records.append(record)
 
     effects = descriptor.get("effects") or {}
+    field_groups, unchanged_files_reused, total_after_files = _compute_field_group_metrics(
+        before_pin,
+        after_pin,
+        path=path,
+        effects=effects,
+        table=table,
+    )
+
+    if group == "evidence" and effects.get("evidence_refs_changed"):
+        before_ev_rows = (
+            native.read_receipts(before_pin).to_pylist()
+            if _evidence_objects(before_pin.get("dataset") or {})
+            else []
+        )
+        after_ev_rows = (
+            native.read_receipts(after_pin).to_pylist()
+            if _evidence_objects(after_pin.get("dataset") or {})
+            else []
+        )
+        added_records = [r for r in after_ev_rows if r not in before_ev_rows]
+        removed_records = [r for r in before_ev_rows if r not in after_ev_rows]
+        added_rows = len(added_records)
+        removed_rows = len(removed_records)
+    elif group == "inputs" and (effects.get("input_refs_changed") or effects.get("coverage_changed")):
+        before_in = (before_pin.get("dataset") or {}).get("inputs") or {}
+        after_in = (after_pin.get("dataset") or {}).get("inputs") or {}
+        added_records = [
+            {"input": k, **v}
+            for k, v in sorted(after_in.items())
+            if before_in.get(k) != v and isinstance(v, dict)
+        ]
+        removed_records = [
+            {"input": k, **v}
+            for k, v in sorted(before_in.items())
+            if after_in.get(k) != v and isinstance(v, dict)
+        ]
+        added_rows = len(added_records)
+        removed_rows = len(removed_records)
+
+    replacement_by_key = {}
+    removed_key_set = set()
+    if key_column is not None:
+        for rec in added_records:
+            if isinstance(rec, dict):
+                kv = rec.get(key_column)
+                if kv is None and isinstance(rec.get("source_values"), dict):
+                    kv = rec["source_values"].get(key_column)
+                if kv is not None:
+                    replacement_by_key[kv] = rec
+        for rec in removed_records:
+            if isinstance(rec, dict):
+                kv = rec.get(key_column)
+                if kv is None and isinstance(rec.get("source_values"), dict):
+                    kv = rec["source_values"].get(key_column)
+                if kv is not None:
+                    removed_key_set.add(kv)
+        replacement_records = [replacement_by_key[k] for k in sorted(replacement_by_key)]
+        deleted_keys = sorted(removed_key_set - set(replacement_by_key))
+    else:
+        replacement_records = list(added_records)
+        deleted_keys = []
+
+    group_cap = FIELD_GROUP_CAPABILITIES.get(
+        group,
+        {
+            "backend_capability": "local_only",
+            "local_supported": True,
+            "remote_supported": False,
+        },
+    )
+    if group in field_groups:
+        read_bytes = field_groups[group]["read_bytes"]
+        returned_bytes = (
+            int(table.nbytes)
+            if group == "source" and table.num_rows > 0
+            else field_groups[group]["returned_bytes"]
+        )
+    else:
+        read_bytes = field_groups["source"]["read_bytes"]
+        returned_bytes = int(table.nbytes) if table.num_rows > 0 else 0
+
     return dict(
         descriptor=descriptor,
+        group=group,
+        identity=identity,
         path=path,
         fallback_reason=fallback_reason,
         effects=effects,
@@ -89,7 +345,18 @@ def inspect_catalog_changes(native, before_pin, after_pin, *, group="source",
         removed_rows=removed_rows,
         added_records=added_records,
         removed_records=removed_records,
+        replacement_records=replacement_records,
+        deleted_keys=deleted_keys,
         changed_keys=sorted(changed_keys),
+        changed_occurrences=changed_occurrences,
+        read_bytes=read_bytes,
+        returned_bytes=returned_bytes,
+        backend_capability=group_cap["backend_capability"],
+        local_supported=group_cap["local_supported"],
+        remote_supported=group_cap["remote_supported"],
+        field_groups=field_groups,
+        unchanged_files_reused=unchanged_files_reused,
+        total_after_files=total_after_files,
         table=table,
     )
 
@@ -172,20 +439,91 @@ def backfill_scalar_group(native, *, dataset, operation, base_pin, definition,
 # -- ct-gziq: Eligible catalog equality joins and aggregate rollups ------------
 
 
+def _compute_refresh_metrics(pin, *, mode, base_pin=None, input_pins=(), prior_input_pins=(), elapsed_ms=0.0):
+    out_objs = (((pin.get("dataset") or {}).get("groups") or {}).get("source") or {}).get("objects") or []
+    out_pq = _parquet_digests(out_objs)
+    base_objs = ((((base_pin or {}).get("dataset") or {}).get("groups") or {}).get("source") or {}).get("objects") or []
+    base_pq = _parquet_digests(base_objs)
+
+    output_reused = len(set(out_pq) & set(base_pq))
+    new_out_digests = set(out_pq) - set(base_pq)
+    written_bytes = sum(out_pq[d] for d in new_out_digests) if new_out_digests else sum(out_pq.values())
+
+    read_bytes = 0
+    input_reused = 0
+    for idx, in_pin in enumerate(input_pins):
+        in_objs = (((in_pin.get("dataset") or {}).get("groups") or {}).get("source") or {}).get("objects") or []
+        in_pq = _parquet_digests(in_objs)
+        prior_pin = prior_input_pins[idx] if idx < len(prior_input_pins) else None
+        if mode == "incremental" and base_pin is not None:
+            if prior_pin is not None:
+                prior_objs = (((prior_pin.get("dataset") or {}).get("groups") or {}).get("source") or {}).get("objects") or []
+                prior_pq = _parquet_digests(prior_objs)
+                delta_digests = set(in_pq) ^ set(prior_pq)
+                read_bytes += sum(in_pq.get(d, 0) or prior_pq.get(d, 0) for d in delta_digests)
+                input_reused += len(set(in_pq) & set(prior_pq))
+            else:
+                in_list = [
+                    int(o.get("bytes", 0))
+                    for o in in_objs
+                    if isinstance(o, dict) and str(o.get("path", "")).endswith(".parquet")
+                ]
+                if len(in_list) > 1:
+                    read_bytes += in_list[-1]
+                    input_reused += len(in_list) - 1
+                else:
+                    read_bytes += sum(in_list)
+        else:
+            read_bytes += sum(in_pq.values())
+
+    return dict(
+        mode=mode,
+        read_bytes=int(read_bytes),
+        written_bytes=int(written_bytes),
+        unchanged_files_reused=int(output_reused),
+        input_unchanged_files_reused=int(input_reused),
+        total_output_files=len(out_pq),
+        provider_requests=2,
+        spill_bytes=0,
+        elapsed_ms=round(float(elapsed_ms), 3),
+        backend_capability="local_only",
+        remote_supported=False,
+    )
+
+
 def refresh_catalog_observation_summary(native, *, dataset, operation, source_pin,
-                                        base_pin=None, mode="full",
+                                        base_pin=None, prior_source_pin=None,
+                                        mode="full",
                                         definition="catalog-obs-summary-v1",
-                                        keys=("alias",), count_field="observation"):
+                                        keys=("alias",), count_field="observation",
+                                        collect_field=None):
     """Maintain an incremental or full observation summary over ``source_pin``.
 
     Preserves transitive alias closure in Python (`catalog_dependencies.py`) while
-    offloading grouped observation counts (`CountRows`, `CountDistinct`) to native
-    `Refresh` over exact pinned inputs (`policy='captured'`).
+    offloading grouped observation counts (`CountRows`, `CountDistinct`, and
+    optional `CollectSet`) to native `Refresh` over exact pinned inputs
+    (`policy='captured'`).
     """
+    if getattr(native, "remote", None) is not None:
+        raise ValueError(
+            "400 remote_unsupported: /refreshes requires BackendCapability::LocalOnly "
+            "and is not supported on remote R2"
+        )
     source_ref = version_ref(source_pin)
     base_version = version_ref(base_pin)["version"] if base_pin is not None else None
     if mode == "incremental" and base_version is None:
         raise ValueError("incremental refresh requires base_pin")
+    aggregates = [
+        dict(name="total_rows", function=dict(kind="count_rows")),
+        dict(
+            name="distinct_observations",
+            function=dict(kind="count_distinct", field=count_field),
+        ),
+    ]
+    if collect_field is not None:
+        aggregates.append(
+            dict(name="members", function=dict(kind="collect_set", field=collect_field))
+        )
     spec = dict(
         dataset=dataset,
         operation=operation,
@@ -198,19 +536,99 @@ def refresh_catalog_observation_summary(native, *, dataset, operation, source_pi
             input=source_ref,
             grouping=dict(
                 keys=list(keys),
-                aggregates=[
-                    dict(name="total_rows", function=dict(kind="count_rows")),
-                    dict(
-                        name="distinct_observations",
-                        function=dict(kind="count_distinct", field=count_field),
-                    ),
-                ],
+                aggregates=aggregates,
             ),
         ),
     )
+    t0 = time.perf_counter()
     plan = native.plan_refresh(spec)
     pin = native.refresh(spec)
-    return dict(plan=plan, pin=pin)
+    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+    metrics = _compute_refresh_metrics(
+        pin,
+        mode=mode,
+        base_pin=base_pin,
+        input_pins=(source_pin,),
+        prior_input_pins=(prior_source_pin,) if prior_source_pin is not None else (),
+        elapsed_ms=elapsed_ms,
+    )
+    return dict(plan=plan, pin=pin, metrics=metrics)
+
+
+def refresh_catalog_join(native, *, dataset, operation, left_pin, right_pin,
+                         keys, fields, base_pin=None, prior_left_pin=None,
+                         prior_right_pin=None, mode="full",
+                         definition="catalog-join-v1", join_kind="inner",
+                         nulls="never", cardinality="many_to_one",
+                         policy="captured"):
+    """Maintain an incremental or full equality join over ``left_pin`` and ``right_pin``.
+
+    Supports bounded one-hop equality joins with explicit ``join_kind``
+    (``'inner'`` or ``'left'``), ``nulls`` (``'never'`` or ``'equal'``), and
+    ``cardinality`` (``'one_to_one'``, ``'many_to_one'``, or ``'many_to_many'``),
+    while keeping recursive/transitive alias-component closure in Python.
+    """
+    if getattr(native, "remote", None) is not None:
+        raise ValueError(
+            "400 remote_unsupported: /refreshes requires BackendCapability::LocalOnly "
+            "and is not supported on remote R2"
+        )
+    left_ref = version_ref(left_pin)
+    right_ref = version_ref(right_pin)
+    base_version = version_ref(base_pin)["version"] if base_pin is not None else None
+    if mode == "incremental" and base_version is None:
+        raise ValueError("incremental refresh requires base_pin")
+    normalized_keys = []
+    for k in keys:
+        if isinstance(k, str):
+            normalized_keys.append(dict(left=k, right=k))
+        elif isinstance(k, (tuple, list)) and len(k) == 2:
+            normalized_keys.append(dict(left=str(k[0]), right=str(k[1])))
+        elif isinstance(k, dict) and "left" in k and "right" in k:
+            normalized_keys.append(dict(left=str(k["left"]), right=str(k["right"])))
+        else:
+            raise ValueError(f"Invalid join key specification: {k!r}")
+    normalized_fields = [
+        dict(
+            side=str(f["side"]),
+            field=str(f["field"]),
+            name=str(f.get("name", f["field"])),
+        )
+        for f in fields
+    ]
+    spec = dict(
+        dataset=dataset,
+        operation=operation,
+        base=base_version,
+        definition=definition,
+        mode=mode,
+        policy=policy,
+        transform=dict(
+            kind="join",
+            left=left_ref,
+            right=right_ref,
+            join=dict(
+                keys=normalized_keys,
+                kind=join_kind,
+                nulls=nulls,
+                cardinality=cardinality,
+                fields=normalized_fields,
+            ),
+        ),
+    )
+    t0 = time.perf_counter()
+    plan = native.plan_refresh(spec)
+    pin = native.refresh(spec)
+    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+    metrics = _compute_refresh_metrics(
+        pin,
+        mode=mode,
+        base_pin=base_pin,
+        input_pins=(left_pin, right_pin),
+        prior_input_pins=(prior_left_pin, prior_right_pin),
+        elapsed_ms=elapsed_ms,
+    )
+    return dict(plan=plan, pin=pin, metrics=metrics)
 
 
 # -- ct-sb0s: Occurrence-linked provenance and review receipts -----------------

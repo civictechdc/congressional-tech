@@ -18,7 +18,9 @@ import pyarrow as pa
 from . import document_index as index
 from .catalog_dependencies import (
     affected_sources, alias_schema, dependency_schema, dependency_tables,
-    DependencyGap, DependencyWorkingSet, NativeCatalogDependencies, _encoded_alias, _decoded_alias,
+    DependencyGap, DependencyWorkingSet, NativeCatalogDependencies,
+    extract_pin_changes, summarize_alias_observations,
+    _encoded_alias, _decoded_alias,
 )
 from .partition_routing import RoutingPages, key_hash
 from .catalog_memberships import CatalogMemberships
@@ -60,6 +62,8 @@ class CatalogDependencyStorage:
         self.schema_hash = sha256(self.schema_bytes).hexdigest()
         self.rows_read = self.bytes_read = 0
         self.candidate_rows_submitted = self.candidate_arrow_bytes = 0
+        self.last_change_report = None
+        self.last_refresh_summary = None
 
     @classmethod
     def for_snapshot(cls, snapshot):
@@ -443,13 +447,32 @@ class CatalogDependencyStorage:
 
         return self.adopt(chunks(), source_orders=source_orders, first_unused_order=next_order)
 
-    def prepare(self, selection, *, replacements=(), deletions=(), source_orders=None):
+    def prepare(self, selection, *, replacements=(), deletions=(), source_orders=None,
+                before_pin=None, after_pin=None, key_column='source_id',
+                allow_full_fallback=False):
         """Prepare changed bounded leaves; selection still belongs to one app CAS.
 
         Temporary SQL indexes hold changed rows, ordinals and reverse edges even
-        when one affected component spans many native partitions.
+        when one affected component spans many native partitions. When
+        ``before_pin`` and ``after_pin`` are supplied, consumes one certified
+        native ``/changes`` stream via ``inspect_catalog_changes`` and prepares
+        only the proven changed scope.
         """
         basis = self._evolved_selection(self._selection(selection, require_lookup_policy=True))
+        if before_pin is not None or after_pin is not None:
+            if before_pin is None or after_pin is None:
+                raise ValueError('Both before_pin and after_pin are required for native change inspection')
+            pin_replacements, pin_deletions, change_report = extract_pin_changes(
+                self.native,
+                before_pin,
+                after_pin,
+                key_column=key_column,
+                allow_full_fallback=allow_full_fallback,
+                source_schema=self.source_schema,
+            )
+            self.last_change_report = change_report
+            replacements = (*pin_replacements, *replacements)
+            deletions = (*pin_deletions, *deletions)
         with TemporaryDirectory(prefix='catalog-dependency-changes-') as directory, closing(
                 WorkingCatalog(Path(directory) / 'scope.sqlite')) as work:
             db = work.connection
@@ -522,3 +545,30 @@ class CatalogDependencyStorage:
             finally:
                 scope.close()
                 selected.close()
+
+    def summarize_alias_leaf(self, selection, alias, *, dataset='catalog-alias-summary',
+                             operation=None, base_pin=None, prior_source_pin=None,
+                             mode=None):
+        """Summarize grouped alias member counts on the routed native leaf via ``refresh_catalog_observation_summary``."""
+        basis = self._selection(selection)
+        encoded_alias = _encoded_alias(alias) if isinstance(alias, tuple) else str(alias)
+        _, leaf = self.aliases.lookup(basis['alias_root'], encoded_alias)
+        if leaf is None:
+            return None
+        pin = leaf['release'] if leaf.get('kind') == 'rows' else next(
+            (p for _, p in self.members.leaf_items(leaf['root'])), None
+        )
+        if pin is None:
+            return None
+        summary = summarize_alias_observations(
+            self.native,
+            pin,
+            dataset=dataset,
+            operation=operation,
+            base_pin=base_pin,
+            prior_source_pin=prior_source_pin,
+            mode=mode,
+            count_field='source_id',
+        )
+        self.last_refresh_summary = summary
+        return summary

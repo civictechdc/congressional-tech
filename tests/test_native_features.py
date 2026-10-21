@@ -15,6 +15,7 @@ from congress_api.retention.native_features import (
     inspect_catalog_changes,
     map_locators_to_occurrences,
     read_occurrence_receipts,
+    refresh_catalog_join,
     refresh_catalog_observation_summary,
 )
 
@@ -474,3 +475,647 @@ def test_ct_x0nk_engine_credentials_require_exactly_the_three_secrets():
     ]:
         with pytest.raises(setup.SetupFailure):
             setup.engine_credentials(json.dumps(bad))
+
+
+# -- ct-13cn: Production caller integration, field-group metrics & fallback refusal --------
+
+
+def _make_catalog_source(name, body=None, **values):
+    from congress_api.retention import document_index as index
+    row = {
+        **dict(
+            body_key=body,
+            filename=name,
+            source_url="https://example.gov/" + name,
+            media_type=["application/pdf"],
+            http_status=["200"],
+            capture_outcome=["saved"],
+        ),
+        **values,
+    }
+    for field in index.SOURCE_SCHEMA:
+        if field.name not in row:
+            row[field.name] = [] if pa.types.is_list(field.type) else None
+    return row
+
+
+def test_ct_13cn_field_group_metrics_backend_capabilities_and_fallback_refusal(tmp_path):
+    binary = _binary()
+    with NativeDatasets(binary, tmp_path / "ws") as native:
+        schema = pa.schema([
+            pa.field("source_id", pa.string(), nullable=False),
+            pa.field("body_key", pa.string(), nullable=True),
+        ])
+        pin0 = native.run_table(
+            pa.Table.from_pylist(
+                [{"source_id": "src-unrel", "body_key": "body-unrel"}],
+                schema=schema,
+            ),
+            dataset="catalog_sources",
+            operation="op-0",
+            definition="v1",
+        )
+        pin1 = native.update_table(
+            pa.Table.from_pylist(
+                [
+                    {"source_id": "src-1", "body_key": "body-1"},
+                    {"source_id": "src-2", "body_key": "body-2"},
+                ],
+                schema=schema,
+            ),
+            dataset="catalog_sources",
+            operation="op-1",
+            definition="v1",
+            base=pin0["id"],
+            keys=["source_id"],
+        )
+        pin2 = native.update_table(
+            pa.Table.from_pylist(
+                [{"source_id": "src-2", "body_key": "body-2-updated"}],
+                schema=schema,
+            ),
+            dataset="catalog_sources",
+            operation="op-2",
+            definition="v1",
+            base=pin1["id"],
+            keys=["source_id"],
+        )
+        loc_map = map_locators_to_occurrences(native, pin2, locator_column="source_id")
+        pin3 = attach_occurrence_receipts(
+            native,
+            dataset="catalog_sources",
+            operation="op-3",
+            base_pin=pin2,
+            definition="v1",
+            locator_to_occurrences=loc_map,
+            receipts=[("src-2", "review:verified")],
+        )
+
+        report = inspect_catalog_changes(
+            native, pin1, pin3, key_column="source_id", allow_full_fallback=False
+        )
+        assert report["path"] == "forward_changes"
+        assert report["read_bytes"] > 0
+        assert report["returned_bytes"] > 0
+        assert report["backend_capability"] == "source_group"
+        assert report["remote_supported"] is True
+        assert report["unchanged_files_reused"] >= 1
+
+        fgs = report["field_groups"]
+        assert set(fgs.keys()) == {"source", "occurrences", "inputs", "evidence"}
+        assert fgs["source"]["backend_capability"] == "source_group"
+        assert fgs["source"]["remote_supported"] is True
+        assert fgs["source"]["read_bytes"] > 0
+        assert fgs["source"]["returned_bytes"] > 0
+
+        for local_fg in ("occurrences", "inputs", "evidence"):
+            assert fgs[local_fg]["backend_capability"] == "local_only"
+            assert fgs[local_fg]["local_supported"] is True
+            assert fgs[local_fg]["remote_supported"] is False
+            assert fgs[local_fg]["read_bytes"] > 0
+            assert fgs[local_fg]["returned_bytes"] > 0
+
+        # Direct per-group inspection on local succeeds for occurrences, inputs, and evidence
+        ev_report = inspect_catalog_changes(native, pin1, pin3, group="evidence")
+        assert ev_report["backend_capability"] == "local_only"
+        assert ev_report["remote_supported"] is False
+        assert ev_report["added_rows"] == 1
+        assert ev_report["read_bytes"] > 0
+
+        in_report = inspect_catalog_changes(native, pin1, pin3, group="inputs")
+        assert in_report["backend_capability"] == "local_only"
+        assert in_report["added_rows"] >= 1
+        assert in_report["read_bytes"] > 0
+
+        # Unbounded fallback refusal when force_full=True and allow_full_fallback=False / allow_fallback=False
+        with pytest.raises(ValueError, match="refused full comparison fallback"):
+            inspect_catalog_changes(
+                native, pin1, pin2, allow_full_fallback=False, force_full=True
+            )
+        with pytest.raises(ValueError, match="refused full comparison fallback"):
+            inspect_catalog_changes(
+                native, pin1, pin2, allow_fallback=False, force_full=True
+            )
+
+        # Remote R2 capability guard rejects local-only field groups with 400 remote_unsupported
+        native.remote = {"endpoint": "https://r2.example.invalid"}
+        try:
+            for local_fg in ("occurrences", "inputs", "evidence"):
+                with pytest.raises(ValueError, match="400 remote_unsupported"):
+                    inspect_catalog_changes(native, pin1, pin3, group=local_fg)
+        finally:
+            native.remote = None
+
+
+def test_ct_13cn_production_dependency_callers_consume_certified_changes_at_1x_and_10x_scale(tmp_path):
+    """affected_sources and CatalogDependencyStorage.prepare consume /changes without full-table diffs."""
+    from congress_api.retention import document_index as index
+    from congress_api.retention.catalog_dependencies import (
+        affected_sources,
+        dependency_tables,
+    )
+    from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
+    from test_catalog_dependencies import SelectedDependencies
+    from test_raw_source_sync import MemoryStore
+
+    binary = _binary()
+    source_schema = pa.schema([*index.SOURCE_SCHEMA, ("capture_outcome", index.STRINGS)])
+
+    scale_metrics = {}
+    for label, unrelated_count in (("1x", 20), ("10x", 200)):
+        with NativeDatasets(binary, tmp_path / f"ws-{label}") as native:
+            a = _make_catalog_source("a.pdf", "body-A")
+            b = _make_catalog_source("b.pdf", "body-B")
+            bridge = _make_catalog_source("a.pdf", "body-B")
+            unrelated = [
+                _make_catalog_source(f"u-{i}.pdf", f"body-U-{i}")
+                for i in range(unrelated_count)
+            ]
+            # Write unrelated corpus in op-0 so its parquet file is separate from the active component
+            unrel_table, _ = dependency_tables(unrelated, source_schema, first_order=0)
+            pin0 = native.run_table(
+                unrel_table,
+                dataset=f"dep_sources_{label}",
+                operation="op-0",
+                definition="v1",
+            )
+            comp_table_1, _ = dependency_tables(
+                [a, b, bridge], source_schema, first_order=unrelated_count
+            )
+            pin1 = native.update_table(
+                comp_table_1,
+                dataset=f"dep_sources_{label}",
+                operation="op-1",
+                definition="v1",
+                base=pin0["id"],
+                keys=["source_id"],
+            )
+
+            # Update a's filename_origins and delete bridge via native update_table
+            a_updated = {**a, "filename_origins": ["corrected-label"]}
+            rep_table, _ = dependency_tables(
+                [a_updated], source_schema, first_order=unrelated_count
+            )
+            del_table = pa.Table.from_pylist(
+                [{"source_id": index.source_identity(bridge)}],
+                schema=pa.schema([pa.field("source_id", pa.string(), nullable=False)]),
+            )
+            pin2 = native.update_table(
+                rep_table,
+                dataset=f"dep_sources_{label}",
+                operation="op-2",
+                definition="v1",
+                base=pin1["id"],
+                keys=["source_id"],
+                deletions=del_table,
+            )
+
+            initial_rows = [*unrelated, a, b, bridge]
+            # 1. Direct affected_sources production caller with before_pin/after_pin
+            selected = SelectedDependencies(initial_rows)
+            scope = affected_sources(
+                selected,
+                native=native,
+                before_pin=pin1,
+                after_pin=pin2,
+                key_column="source_id",
+                allow_full_fallback=False,
+            )
+            try:
+                assert scope.change_report is not None
+                assert scope.change_report["path"] == "forward_changes"
+                assert scope.change_report["unchanged_files_reused"] >= 1
+                assert set(scope.before) == {
+                    index.source_identity(r) for r in (a, b, bridge)
+                }
+                assert set(scope.after) == {
+                    index.source_identity(r) for r in (a_updated, b)
+                }
+                assert scope.after[index.source_identity(a)]["filename_origins"] == [
+                    "corrected-label"
+                ]
+                # Unrelated rows were never read by the dependency closure!
+                assert scope.sources_read == 3
+                assert not any(
+                    key == index.source_identity(u)
+                    for u in unrelated
+                    for kind, key in selected.reads
+                    if kind == "source"
+                )
+                scale_metrics[label] = {
+                    "read_bytes": scope.change_report["read_bytes"],
+                    "returned_bytes": scope.change_report["returned_bytes"],
+                    "unchanged_files_reused": scope.change_report["unchanged_files_reused"],
+                    "sources_read": scope.sources_read,
+                    "aliases_read": scope.aliases_read,
+                }
+            finally:
+                scope.close()
+
+            # 2. Same-pin no-op short-circuits with 0 reads
+            noop_selected = SelectedDependencies(initial_rows)
+            noop_scope = affected_sources(
+                noop_selected,
+                native=native,
+                before_pin=pin2,
+                after_pin=pin2,
+                key_column="source_id",
+                allow_full_fallback=False,
+            )
+            try:
+                assert noop_scope.change_report["path"] == "unchanged"
+                assert noop_scope.change_report["read_bytes"] == 0
+                assert noop_scope.change_report["returned_bytes"] == 0
+                assert noop_scope.sources_read == 0
+                assert noop_scope.aliases_read == 0
+                assert noop_selected.reads == []
+            finally:
+                noop_scope.close()
+
+            # 3. CatalogDependencyStorage.prepare production caller with before_pin/after_pin
+            if label == "1x":
+                store = MemoryStore()
+                storage = CatalogDependencyStorage(
+                    native=native,
+                    store=store,
+                    namespace="dep-storage-1x",
+                    source_schema=source_schema,
+                    max_rows=64,
+                    max_bytes=1 << 20,
+                )
+                adopted = storage.prepare(None, replacements=initial_rows)
+                prepared = storage.prepare(
+                    adopted,
+                    before_pin=pin1,
+                    after_pin=pin2,
+                    key_column="source_id",
+                    allow_full_fallback=False,
+                )
+                assert storage.last_change_report is not None
+                assert storage.last_change_report["path"] == "forward_changes"
+                reader = storage.selected(prepared)
+                try:
+                    assert reader.source(index.source_identity(bridge)) is None
+                    assert reader.source(index.source_identity(a))[
+                        "filename_origins"
+                    ] == ["corrected-label"]
+                finally:
+                    reader.close()
+
+    # Delta read_bytes, returned_bytes, and closure reads are identical at 1x and 10x unrelated scale!
+    assert scale_metrics["1x"]["returned_bytes"] == scale_metrics["10x"]["returned_bytes"]
+    assert scale_metrics["1x"]["sources_read"] == scale_metrics["10x"]["sources_read"] == 3
+    assert scale_metrics["1x"]["aliases_read"] == scale_metrics["10x"]["aliases_read"]
+    assert scale_metrics["1x"]["read_bytes"] == scale_metrics["10x"]["read_bytes"]
+
+
+# -- ct-gziq: Production consumer integration, joins/aggregates & 1x/10x scale -------------
+
+
+def test_ct_gziq_production_consumers_and_join_aggregate_edge_cases(tmp_path):
+    """Test SourceObservationStorage and NativeCatalogDependencies refresh consumers."""
+    from contextlib import closing
+    from congress_api.retention import document_index as index
+    from congress_api.retention.catalog_dependencies import (
+        NativeCatalogDependencies,
+        affected_sources,
+        dependency_tables,
+    )
+    from congress_api.retention.catalog_staging import WorkingCatalog
+    from congress_api.retention.source_observations import (
+        SCHEMA as OBS_SCHEMA,
+        SourceObservationStorage,
+        SourceObservationTrace,
+    )
+    from test_raw_source_sync import MemoryStore
+
+    binary = _binary()
+    with NativeDatasets(binary, tmp_path / "ws") as native:
+        store = MemoryStore()
+        obs_owner = SourceObservationStorage(
+            native=native,
+            store=store,
+            namespace="obs-prod",
+            max_rows=64,
+            max_bytes=1 << 20,
+        )
+        with closing(WorkingCatalog(tmp_path / "trace.sqlite")) as work:
+            trace = SourceObservationTrace(work)
+            trace(dict(receipt_key="page-1", receipt_line=1, kind="event", value="7", access="read"))
+            trace(dict(receipt_key="meeting-1", receipt_line=1, kind="event", value="7", access="write"))
+            root = obs_owner.prepare(None, trace)
+
+        # 1. Production consumer: SourceObservationStorage.summarize_alias calls refresh_catalog_observation_summary
+        alias_key = 'read:dependency:["event","7"]'
+        summary = obs_owner.summarize_alias(
+            root, alias_key, dataset="obs_leaf_summary", operation="sum-leaf-1"
+        )
+        assert summary is not None
+        assert summary["counts"][alias_key] == {
+            "total_rows": 1,
+            "distinct_observations": 1,
+        }
+        assert summary["metrics"]["read_bytes"] > 0
+        assert summary["metrics"]["written_bytes"] > 0
+        assert summary["metrics"]["provider_requests"] == 2
+        assert summary["metrics"]["spill_bytes"] == 0
+
+        # 2. Append, correction, delete, duplicate keys, and affected old/new groups
+        p0 = native.run_table(
+            pa.Table.from_pylist(
+                [
+                    {"alias": "pkg:hr-1", "observation": "receipt:[\"r1\",1]"},
+                    {"alias": "pkg:hr-1", "observation": "receipt:[\"r1\",1]"},  # duplicate row
+                    {"alias": "pkg:hr-1", "observation": "receipt:[\"r1\",2]"},
+                ],
+                schema=OBS_SCHEMA,
+            ),
+            dataset="obs_mutations",
+            operation="m-0",
+            definition="v1",
+        )
+        p1 = native.update_table(
+            pa.Table.from_pylist(
+                [
+                    {"alias": "pkg:old-group", "observation": "receipt:[\"r2\",1]"},
+                    {"alias": "pkg:delete-me", "observation": "receipt:[\"r3\",1]"},
+                ],
+                schema=OBS_SCHEMA,
+            ),
+            dataset="obs_mutations",
+            operation="m-1",
+            definition="v1",
+            base=p0["id"],
+            keys=["alias", "observation"],
+        )
+        s1 = obs_owner.summarize_pin(
+            p1, dataset="obs_mutations_sum", operation="ms-1", mode="full"
+        )
+        assert s1["counts"] == {
+            "pkg:hr-1": {"total_rows": 3, "distinct_observations": 2},
+            "pkg:old-group": {"total_rows": 1, "distinct_observations": 1},
+            "pkg:delete-me": {"total_rows": 1, "distinct_observations": 1},
+        }
+
+        # Incremental: append to pkg:hr-1, move r2 from pkg:old-group to pkg:new-group, delete pkg:delete-me
+        p2 = native.update_table(
+            pa.Table.from_pylist(
+                [
+                    {"alias": "pkg:hr-1", "observation": "receipt:[\"r1\",3]"},
+                    {"alias": "pkg:new-group", "observation": "receipt:[\"r2\",1]"},
+                ],
+                schema=OBS_SCHEMA,
+            ),
+            dataset="obs_mutations",
+            operation="m-2",
+            definition="v1",
+            base=p1["id"],
+            keys=["alias", "observation"],
+            deletions=pa.Table.from_pylist(
+                [
+                    {"alias": "pkg:old-group", "observation": "receipt:[\"r2\",1]"},
+                    {"alias": "pkg:delete-me", "observation": "receipt:[\"r3\",1]"},
+                ],
+                schema=OBS_SCHEMA,
+            ),
+        )
+        s2 = obs_owner.summarize_pin(
+            p2,
+            dataset="obs_mutations_sum",
+            operation="ms-2",
+            base_pin=s1["pin"],
+            prior_source_pin=p1,
+            mode="incremental",
+        )
+        assert s2["counts"] == {
+            "pkg:hr-1": {"total_rows": 4, "distinct_observations": 3},
+            "pkg:new-group": {"total_rows": 1, "distinct_observations": 1},
+        }
+        assert s2["metrics"]["input_unchanged_files_reused"] >= 1
+
+        # 3. Join cardinality (many_to_one, one_to_one, many_to_many) and null key handling
+        source_schema = pa.schema([*index.SOURCE_SCHEMA, ("capture_outcome", index.STRINGS)])
+        a = _make_catalog_source("a.pdf", "body-A")
+        b = _make_catalog_source("b.pdf", "body-B")
+        bridge = _make_catalog_source("a.pdf", "body-B")
+        src_table, alias_table = dependency_tables([a, b, bridge], source_schema, first_order=10)
+        src_pin = native.run_table(src_table, dataset="cat_src", operation="cs-1", definition="v1")
+        alias_pin = native.run_table(alias_table, dataset="cat_alias", operation="ca-1", definition="v1")
+
+        dep_reader = NativeCatalogDependencies(
+            native=native,
+            source_schema=source_schema,
+            locate_source=lambda k: src_pin,
+            locate_alias=lambda al: [alias_pin],
+        )
+        try:
+            alias_sum = dep_reader.summarize_alias_pin(
+                alias_pin, dataset="cat_alias_sum", operation="cas-1", mode="full"
+            )
+            assert alias_sum["counts"]['["body","body-B"]'] == {
+                "total_rows": 2,
+                "distinct_observations": 2,
+            }
+            joined = dep_reader.join_alias_sources(
+                alias_pin,
+                src_pin,
+                dataset="cat_alias_joined",
+                operation="caj-1",
+                mode="full",
+                cardinality="many_to_one",
+            )
+            assert len(joined["rows"]) == len(alias_table)
+            # Transitive closure remains in affected_sources in catalog_dependencies.py
+            closure = affected_sources(
+                dep_reader, deletions=[index.source_identity(bridge)]
+            )
+            try:
+                assert set(closure.before) == {
+                    index.source_identity(r) for r in (a, b, bridge)
+                }
+            finally:
+                closure.close()
+        finally:
+            dep_reader.close()
+
+        # Null-key matching ('never' vs 'equal') and many_to_many join cardinality
+        left_schema = pa.schema([
+            pa.field("join_key", pa.string(), nullable=True),
+            pa.field("left_val", pa.string(), nullable=False),
+        ])
+        right_schema = pa.schema([
+            pa.field("join_key", pa.string(), nullable=True),
+            pa.field("right_val", pa.string(), nullable=False),
+        ])
+        left_pin = native.run_table(
+            pa.Table.from_pylist(
+                [
+                    {"join_key": "k1", "left_val": "L1"},
+                    {"join_key": "k1", "left_val": "L2"},
+                    {"join_key": None, "left_val": "L-null"},
+                ],
+                schema=left_schema,
+            ),
+            dataset="join_left",
+            operation="jl-1",
+            definition="v1",
+        )
+        right_pin = native.run_table(
+            pa.Table.from_pylist(
+                [
+                    {"join_key": "k1", "right_val": "R1"},
+                    {"join_key": "k1", "right_val": "R2"},
+                    {"join_key": None, "right_val": "R-null"},
+                ],
+                schema=right_schema,
+            ),
+            dataset="join_right",
+            operation="jr-1",
+            definition="v1",
+        )
+        join_fields = [
+            {"side": "left", "field": "join_key", "name": "join_key"},
+            {"side": "left", "field": "left_val", "name": "left_val"},
+            {"side": "right", "field": "right_val", "name": "right_val"},
+        ]
+        j_never = refresh_catalog_join(
+            native,
+            dataset="join_out_never",
+            operation="jon-1",
+            left_pin=left_pin,
+            right_pin=right_pin,
+            keys=["join_key"],
+            fields=join_fields,
+            nulls="never",
+            cardinality="many_to_many",
+        )
+        rows_never = native.read_arrow(j_never["pin"]).to_pylist()
+        assert len(rows_never) == 4  # 2x2 for 'k1'; NULL never matches NULL
+
+        j_equal = refresh_catalog_join(
+            native,
+            dataset="join_out_equal",
+            operation="joe-1",
+            left_pin=left_pin,
+            right_pin=right_pin,
+            keys=["join_key"],
+            fields=join_fields,
+            nulls="equal",
+            cardinality="many_to_many",
+        )
+        rows_equal = native.read_arrow(j_equal["pin"]).to_pylist()
+        assert len(rows_equal) == 5  # 2x2 for 'k1' + 1x1 for NULL == NULL
+
+
+def test_ct_gziq_refresh_observation_summary_1x_and_10x_unrelated_scale(tmp_path):
+    """Measure full and incremental refresh reads/writes, requests, spill, and file reuse at 1x and 10x scale."""
+    from congress_api.retention.catalog_dependencies import summarize_alias_observations
+
+    binary = _binary()
+    obs_schema = pa.schema([
+        pa.field("alias", pa.string(), nullable=False),
+        pa.field("observation", pa.string(), nullable=False),
+    ])
+    scale_results = {}
+    for label, unrelated_groups in (("1x", 50), ("10x", 500)):
+        with NativeDatasets(binary, tmp_path / f"ws-refresh-{label}") as native:
+            unrelated_rows = [
+                {"alias": f"pkg:unrel-{i}", "observation": f"receipt:[\"u\",{i}]"}
+                for i in range(unrelated_groups)
+            ]
+            src0 = native.run_table(
+                pa.Table.from_pylist(unrelated_rows, schema=obs_schema),
+                dataset=f"obs_{label}",
+                operation="op-0",
+                definition="v1",
+            )
+            full0 = summarize_alias_observations(
+                native,
+                src0,
+                dataset=f"sum_{label}",
+                operation="sum-full-0",
+                mode="full",
+            )
+            # Step 1: add pkg:target in its own incremental partition
+            src1 = native.update_table(
+                pa.Table.from_pylist(
+                    [
+                        {"alias": "pkg:target", "observation": "receipt:[\"t\",1]"},
+                        {"alias": "pkg:target", "observation": "receipt:[\"t\",2]"},
+                    ],
+                    schema=obs_schema,
+                ),
+                dataset=f"obs_{label}",
+                operation="op-1",
+                definition="v1",
+                base=src0["id"],
+                keys=["alias", "observation"],
+            )
+            inc1 = summarize_alias_observations(
+                native,
+                src1,
+                dataset=f"sum_{label}",
+                operation="sum-inc-1",
+                base_pin=full0["pin"],
+                prior_source_pin=src0,
+                mode="incremental",
+            )
+            assert inc1["counts"]["pkg:target"] == {
+                "total_rows": 2,
+                "distinct_observations": 2,
+            }
+            assert len(inc1["counts"]) == unrelated_groups + 1
+
+            # Step 2: incremental update touches only pkg:target; the unrelated base file is reused!
+            delta = pa.Table.from_pylist(
+                [{"alias": "pkg:target", "observation": "receipt:[\"t\",3]"}],
+                schema=obs_schema,
+            )
+            src2 = native.update_table(
+                delta,
+                dataset=f"obs_{label}",
+                operation="op-2",
+                definition="v1",
+                base=src1["id"],
+                keys=["alias", "observation"],
+            )
+            inc2 = summarize_alias_observations(
+                native,
+                src2,
+                dataset=f"sum_{label}",
+                operation="sum-inc-2",
+                base_pin=inc1["pin"],
+                prior_source_pin=src1,
+                mode="incremental",
+            )
+            assert inc2["counts"]["pkg:target"] == {
+                "total_rows": 3,
+                "distinct_observations": 3,
+            }
+            assert len(inc2["counts"]) == unrelated_groups + 1
+            assert inc2["metrics"]["unchanged_files_reused"] >= 1
+            assert inc2["metrics"]["input_unchanged_files_reused"] >= 1
+            assert inc2["metrics"]["provider_requests"] == 2
+            assert inc2["metrics"]["spill_bytes"] == 0
+            scale_results[label] = {
+                "full": full0["metrics"],
+                "incremental": inc2["metrics"],
+            }
+
+    # Incremental read_bytes and written_bytes are bounded by the 1-row delta and independent of 1x vs 10x unrelated groups!
+    assert (
+        scale_results["1x"]["incremental"]["read_bytes"]
+        == scale_results["10x"]["incremental"]["read_bytes"]
+    )
+    assert (
+        scale_results["1x"]["incremental"]["written_bytes"]
+        == scale_results["10x"]["incremental"]["written_bytes"]
+    )
+    assert (
+        scale_results["10x"]["full"]["read_bytes"]
+        > scale_results["1x"]["full"]["read_bytes"]
+    )
+    assert (
+        scale_results["10x"]["incremental"]["read_bytes"]
+        < scale_results["10x"]["full"]["read_bytes"]
+    )

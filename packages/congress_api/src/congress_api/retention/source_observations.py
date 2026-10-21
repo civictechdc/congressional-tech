@@ -10,9 +10,10 @@ import json
 import pyarrow as pa
 
 from . import document_index as index
-from .catalog_dependencies import DependencyGap
+from .catalog_dependencies import DependencyGap, summarize_alias_observations
 from .catalog_memberships import CatalogMemberships
 from .immutable_metadata import encoded
+from .native_features import refresh_catalog_observation_summary
 from .source_inputs import collect_source_inputs
 from .catalog_availability import package_dependencies, hearing_input_packages
 
@@ -262,3 +263,42 @@ class SourceObservationStorage:
                         impact(dependency)
             db.execute('UPDATE affected_observations SET done=? WHERE observation=?', (changed, observation))
         return (row[0] for row in db.execute('SELECT observation FROM affected_observations ORDER BY observation'))
+
+    def summarize_pin(self, source_pin, *, dataset='source-observation-summary',
+                      operation=None, base_pin=None, prior_source_pin=None,
+                      mode=None, collect_field=None):
+        """Maintain or query grouped ``(alias -> total_rows, distinct_observations)`` via ``refresh_catalog_observation_summary``."""
+        return summarize_alias_observations(
+            self.native,
+            source_pin,
+            dataset=dataset,
+            operation=operation,
+            base_pin=base_pin,
+            prior_source_pin=prior_source_pin,
+            mode=mode,
+            keys=('alias',),
+            count_field='observation',
+            collect_field=collect_field,
+        )
+
+    def summarize_alias(self, root, alias, *, dataset='source-observation-summary',
+                        operation=None, base_pin=None, prior_source_pin=None,
+                        mode=None):
+        """Summarize the native leaf pin routed for ``alias`` via ``refresh_catalog_observation_summary``."""
+        self._validate_key(alias)
+        _, leaf = self.members.routes.lookup(root, alias)
+        if leaf is None:
+            return None
+        pin = leaf['release'] if leaf.get('kind') == 'rows' else next(
+            (p for _, p in self.members.members.leaf_items(leaf['root'])), None
+        )
+        if pin is None:
+            return None
+        return self.summarize_pin(
+            pin,
+            dataset=dataset,
+            operation=operation,
+            base_pin=base_pin,
+            prior_source_pin=prior_source_pin,
+            mode=mode,
+        )
