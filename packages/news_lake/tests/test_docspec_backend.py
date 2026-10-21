@@ -1347,9 +1347,12 @@ def test_incremental_update_bridges_scales_with_delta_not_corpus_and_cross_date_
         assert views.politician_articles(read1, mode='full') == politician_articles_views(read1)
         assert views.coverage_daily(read1, mode='full') == coverage_daily(read1)
 
-        # Verify .news_lake_views.json does not persist full bridge_rows
+        # Verify .news_lake_deltas.json does not exist and .news_lake_views.json omits O(corpus) structures
+        assert not (ws / '.news_lake_deltas.json').exists()
         persisted_views = json.loads(views._views_state_path().read_text())
         assert 'bridge_rows' not in persisted_views
+        assert 'selected_runs' not in persisted_views
+        assert all('inputs' not in r for r in persisted_views.get('runs', {}).values())
 
         # Poll 2: admit a 1-article delta
         delta_key = 'delta-new'
@@ -1400,11 +1403,23 @@ def test_incremental_update_bridges_scales_with_delta_not_corpus_and_cross_date_
         read2_full = read_release(lake, control, rel2_id)
         assert pa_inc == politician_articles_views(read2_full)
         assert cov_inc == coverage_daily(read2_full)
-        client.close()
-        return views2.last_bridge_diff
 
-    diff_1x = _run_scaling_trial('1x', 4)
-    diff_10x = _run_scaling_trial('10x', 40)
+        assert not (ws / '.news_lake_deltas.json').exists()
+        persisted_views2 = json.loads(views2._views_state_path().read_text())
+        assert 'selected_runs' not in persisted_views2
+        assert all('inputs' not in r for r in persisted_views2.get('runs', {}).values())
+        runs_bytes = len(json.dumps(persisted_views2.get('runs', {}), sort_keys=True))
+        views_state_bytes = views2._views_state_path().stat().st_size
+        client.close()
+        return views2.last_bridge_diff, views_state_bytes, runs_bytes
+
+    diff_1x, views_bytes_1x, runs_bytes_1x = _run_scaling_trial('1x', 4)
+    diff_10x, views_bytes_10x, runs_bytes_10x = _run_scaling_trial('10x', 40)
+
+    # Persisted runs metadata is identical in byte size across 1x vs 10x corpus;
+    # total .news_lake_views.json is O(1) w.r.t. n_articles (only workspace name / row count digits differ)
+    assert runs_bytes_1x == runs_bytes_10x
+    assert abs(views_bytes_10x - views_bytes_1x) <= 256, (views_bytes_1x, views_bytes_10x)
 
     for ds in ('entity_roots', 'selected_mentions', 'survivor_items'):
         assert diff_1x[ds]['full_table_reads'] == 0
@@ -1639,4 +1654,36 @@ def test_hot_group_collect_set_null_bucket_limits_and_projected_streaming(tmp_pa
     # Selected version of coverage_daily remains unchanged at prior_cov_ver
     with DocSpecClient(ws_ok, limits=limits_ok_path) as client_verify:
         assert client_verify.latest('coverage_daily')['dataset']['version'] == prior_cov_ver
+
+    # 3. Verify retained DataFusion DisplayableExecutionPlan::with_metrics operator receipt
+    repo_root = Path(__file__).resolve().parents[3]
+    receipt_json_path = repo_root / 'output' / 'docspec-reuse-20261020' / 'hot-group-null-bucket-receipt.json'
+    receipt_md_path = repo_root / 'output' / 'docspec-reuse-20261020' / 'hot-group-null-bucket-receipt.md'
+    assert receipt_json_path.is_file()
+    assert receipt_md_path.is_file()
+    receipt = json.loads(receipt_json_path.read_text(encoding='utf-8'))
+    assert receipt['ticket'] == 'ct-n6lj'
+    assert receipt['dataset'] == 'coverage_daily'
+    assert receipt['grouping_key'] == 'effective_pub_date'
+    for profile_key, expected_rows in (('null_bucket_200_rows', 200), ('null_bucket_2000_rows', 2000)):
+        prof = receipt['profiles'][profile_key]
+        assert prof['n_items'] == expected_rows
+        assert prof['output_rows'] == 1
+        plan_metrics_text = prof['physical_plan_with_metrics']
+        assert 'AggregateExec: mode=Partial' in plan_metrics_text
+        assert 'AggregateExec: mode=FinalPartitioned' in plan_metrics_text
+        assert 'peak_mem_used=' in plan_metrics_text
+        assert 'spill_count=0' in plan_metrics_text
+        assert 'projection=[item_id, outlet_id, effective_pub_date, story_id, identical_text_group_id]' in plan_metrics_text
+        assert 'SortExec' not in plan_metrics_text
+        agg_ops = [op for op in prof['operators'] if op['operator'] == 'AggregateExec']
+        assert len(agg_ops) == 2
+        assert all(op['peak_mem_used'] > 0 for op in agg_ops)
+        assert all(op['spill_count'] == 0 and op['spilled_bytes'] == 0 for op in agg_ops)
+        assert prof['tight_limit_refusals'] == {
+            'admission_semaphore_exhausted_code': 'capacity',
+            'fair_spill_pool_exhausted_code': 'query',
+            'prior_release_preserved': True,
+        }
+
 

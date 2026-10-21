@@ -502,6 +502,22 @@ class DocSpecClient:
             return restore_application_schema(table, expected_schema=schema)
         return table
 
+    @contextmanager
+    def changes_batches(self, before, after, *, group='source', identity='occurrences',
+                        force_full=False):
+        """Stream one exact change stream and its ``docspec.change`` descriptor."""
+        with self._native.changes_batches(
+            before, after, group=group, identity=identity, force_full=force_full
+        ) as result:
+            yield result
+
+    def read_changes(self, before, after, *, group='source', identity='occurrences',
+                     force_full=False):
+        """Consume one change stream, returning ``dict(descriptor, table, ...)``."""
+        return self._native.read_changes(
+            before, after, group=group, identity=identity, force_full=force_full
+        )
+
     def capture_inputs(self, inputs):
         return self._native.capture_inputs(inputs)
 
@@ -554,7 +570,6 @@ class DocSpecLake:
         self.lifecycle_compact_interval = lifecycle_compact_interval
         self.committed = self._load_committed_state()
         self._mutation_counts = self._load_mutation_counts()
-        self._deltas = self._load_deltas_state()
         self.last_lookup_stats = {}
         self.lifecycle_compactions = []
 
@@ -565,10 +580,6 @@ class DocSpecLake:
     def _mutation_counts_path(self):
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
         return self.client.workspace / f'.news_lake_mutations{suffix}.json'
-
-    def _deltas_state_path(self):
-        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
-        return self.client.workspace / f'.news_lake_deltas{suffix}.json'
 
     def _release_manifest_path(self, release_id):
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
@@ -598,28 +609,6 @@ class DocSpecLake:
         except (OSError, ValueError):
             return {}
 
-    def _load_deltas_state(self):
-        path = self._deltas_state_path()
-        if not path.is_file():
-            return {}
-        try:
-            data = json.loads(path.read_text())
-            return dict(data) if isinstance(data, dict) else {}
-        except (OSError, ValueError):
-            return {}
-
-    def _record_delta(self, dataset, base_version, new_pin, changed_ids):
-        if new_pin is None:
-            return
-        new_version = new_pin.get('dataset', {}).get('version')
-        if not isinstance(new_version, str):
-            return
-        ds_deltas = self._deltas.setdefault(dataset, {})
-        ds_deltas[new_version] = {
-            'base_version': base_version,
-            'changed_ids': sorted({str(cid) for cid in changed_ids}),
-        }
-
     def _save_committed_state(self):
         path = self._committed_state_path()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -634,12 +623,6 @@ class DocSpecLake:
             json.dumps(self._mutation_counts, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
         )
         mtmp.replace(mpath)
-        dpath = self._deltas_state_path()
-        dtmp = dpath.with_suffix('.json.tmp')
-        dtmp.write_text(
-            json.dumps(self._deltas, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
-        )
-        dtmp.replace(dpath)
 
     def compact_lifecycle(self, datasets=None):
         """Compact obsolete lifecycle revisions for local datasets."""
@@ -765,7 +748,6 @@ class DocSpecLake:
                     pins[dataset] = self.client.run_table(
                         records_to_arrow(kind, ()), dataset, operation, relationship=relationship
                     )
-                    self._record_delta(dataset, None, pins[dataset], ())
                     if self._record_dataset_mutation(dataset, prior, pins[dataset]):
                         mutated.append(dataset)
                 continue
@@ -788,7 +770,7 @@ class DocSpecLake:
         operation = self._operation(
             f'rel-{kind}', content_digest([base_version, relationship])
         )
-        pin = self.client.update_table(
+        return self.client.update_table(
             dataset,
             operation,
             base_version,
@@ -796,19 +778,15 @@ class DocSpecLake:
             records_to_arrow(kind, ()),
             relationship=relationship,
         )
-        self._record_delta(dataset, base_version, pin, ())
-        return pin
 
     def _commit_append(self, dataset, kind, records, relationship):
         records = self._dedup_incoming(dataset, records, is_append=True)
         prior = self.committed.get(dataset) or self.client.try_latest(dataset)
         if prior is None:
             operation = self._operation(f'admit-{kind}', content_digest(records))
-            pin = self.client.run_table(
+            return self.client.run_table(
                 records_to_arrow(kind, records), dataset, operation, relationship=relationship
             )
-            self._record_delta(dataset, None, pin, (r['id'] for r in records))
-            return pin
         existing = self._existing_by_ids(prior, kind, (record['id'] for record in records))
         new_records = []
         for record in records:
@@ -828,7 +806,7 @@ class DocSpecLake:
         operation = self._operation(
             f'append-{kind}', content_digest([base_version, new_records, relationship])
         )
-        pin = self.client.update_table(
+        return self.client.update_table(
             dataset,
             operation,
             base_version,
@@ -836,19 +814,15 @@ class DocSpecLake:
             records_to_arrow(kind, new_records),
             relationship=relationship,
         )
-        self._record_delta(dataset, base_version, pin, (r['id'] for r in new_records))
-        return pin
 
     def _commit_upsert(self, dataset, kind, records, relationship):
         records = self._dedup_incoming(dataset, records, is_append=False)
         prior = self.committed.get(dataset) or self.client.try_latest(dataset)
         if prior is None:
             operation = self._operation(f'admit-{kind}', content_digest(records))
-            pin = self.client.run_table(
+            return self.client.run_table(
                 records_to_arrow(kind, records), dataset, operation, relationship=relationship
             )
-            self._record_delta(dataset, None, pin, (r['id'] for r in records))
-            return pin
         existing = self._existing_by_ids(prior, kind, (record['id'] for record in records))
         merged = merge_upsert_batch(list(existing.values()), records)
         changed = [row for row in merged if existing.get(row['id']) != row]
@@ -858,7 +832,7 @@ class DocSpecLake:
         operation = self._operation(
             f'upsert-{kind}', content_digest([base_version, changed, relationship])
         )
-        pin = self.client.update_table(
+        return self.client.update_table(
             dataset,
             operation,
             base_version,
@@ -866,8 +840,6 @@ class DocSpecLake:
             records_to_arrow(kind, changed),
             relationship=relationship,
         )
-        self._record_delta(dataset, base_version, pin, (r['id'] for r in changed))
-        return pin
 
     def seal(self, generation_id, family='news'):
         """Seal the committed datasets as one generation of ``family``.
@@ -1143,12 +1115,19 @@ def _compact_run_meta(run):
         'config_hash': run['config_hash'],
         'status': run['status'],
         'finished_at': run['finished_at'],
-        'inputs': [
-            {'kind': ref['kind'], 'id': ref['id']}
-            for ref in run.get('inputs', ())
-            if isinstance(ref, dict) and 'kind' in ref and 'id' in ref
-        ],
     }
+
+
+def _is_run_eligible(run, pinned_triples):
+    return (
+        isinstance(run, dict)
+        and run.get('status') == 'succeeded'
+        and (run.get('processor'), run.get('processor_version'), run.get('config_hash')) in pinned_triples
+    )
+
+
+def _run_rank(run):
+    return (parse_instant(run['finished_at']), run['id'])
 
 
 def _select_version_assignments(runs_by_id, selections):
@@ -1158,11 +1137,9 @@ def _select_version_assignments(runs_by_id, selections):
     }
     best = {}
     for run in runs_by_id.values():
-        if run.get('status') != 'succeeded':
+        if not _is_run_eligible(run, pinned):
             continue
-        if (run.get('processor'), run.get('processor_version'), run.get('config_hash')) not in pinned:
-            continue
-        rank = (parse_instant(run['finished_at']), run['id'])
+        rank = _run_rank(run)
         for ref in run.get('inputs', ()):
             if ref.get('kind') != 'version':
                 continue
@@ -1207,7 +1184,6 @@ class DocSpecNewsViews:
         self._decisions = state['decisions'] if pins is None else {}
         self._decision_roots = state['decision_roots'] if pins is None else {}
         self._runs = state['runs'] if pins is None else {}
-        self._selected_runs = state['selected_runs'] if pins is None else {}
         self.last_bridge_diff = {}
         self.lifecycle_compactions = []
 
@@ -1219,10 +1195,6 @@ class DocSpecNewsViews:
         suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
         return self.client.workspace / f'.news_lake_committed{suffix}.json'
 
-    def _deltas_state_path(self):
-        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
-        return self.client.workspace / f'.news_lake_deltas{suffix}.json'
-
     def _load_views_state(self):
         empty = {
             'pins': {},
@@ -1233,7 +1205,6 @@ class DocSpecNewsViews:
             'decisions': {},
             'decision_roots': {},
             'runs': {},
-            'selected_runs': {},
         }
         path = self._views_state_path()
         if not path.is_file():
@@ -1255,7 +1226,6 @@ class DocSpecNewsViews:
                 'decisions': dict(data.get('decisions') or {}),
                 'decision_roots': dict(data.get('decision_roots') or {}),
                 'runs': dict(data.get('runs') or {}),
-                'selected_runs': dict(data.get('selected_runs') or {}),
             }
         except (OSError, ValueError):
             return empty
@@ -1275,7 +1245,6 @@ class DocSpecNewsViews:
                     'decisions': self._decisions,
                     'decision_roots': self._decision_roots,
                     'runs': self._runs,
-                    'selected_runs': self._selected_runs,
                 },
                 ensure_ascii=False,
                 separators=(',', ':'),
@@ -1378,18 +1347,8 @@ class DocSpecNewsViews:
             }
         return summary
 
-    def _load_deltas_map(self):
-        dpath = self._deltas_state_path()
-        if not dpath.is_file():
-            return {}
-        try:
-            data = json.loads(dpath.read_text())
-            return dict(data) if isinstance(data, dict) else {}
-        except (OSError, ValueError):
-            return {}
-
-    def _read_table_delta(self, table_name, new_pin, prior_info, deltas_map):
-        """Fetch only the changed/added records for ``table_name`` since ``prior_info``."""
+    def _read_table_delta(self, table_name, new_pin, prior_info):
+        """Fetch only the changed/added records for ``table_name`` since ``prior_info`` via ``/changes``."""
         if new_pin is None:
             return []
         source_group = new_pin.get('dataset', {}).get('groups', {}).get('source', {})
@@ -1413,28 +1372,43 @@ class DocSpecNewsViews:
         dataset = dataset_id_for(table_name)
         kind = TABLE_KINDS[table_name]
         schema = kind_arrow_schema(kind)
-        ds_deltas = deltas_map.get(dataset) or {}
-        if new_version in ds_deltas:
-            changed_ids = set()
-            cur = new_version
-            steps = 0
-            while cur is not None and cur != prior_version and steps <= len(ds_deltas) + 1:
-                entry = ds_deltas.get(cur)
-                if not isinstance(entry, dict):
-                    break
-                changed_ids.update(entry.get('changed_ids') or ())
-                cur = entry.get('base_version')
-                steps += 1
-            if cur == prior_version:
-                if not changed_ids:
+        if prior_version is None or prior_rows == 0:
+            return table_records(self.client.read_arrow(new_pin, schema=schema))
+        try:
+            prior_pin = self.client.release(dataset, prior_version)
+            with self.client.changes_batches(
+                prior_pin,
+                new_pin,
+                group='source',
+                identity='occurrences',
+                force_full=False,
+            ) as (descriptor, reader):
+                if isinstance(descriptor, dict) and descriptor.get('path') in ('forward_changes', 'unchanged'):
+                    batches = list(reader)
+                    change_table = pa.Table.from_batches(batches, schema=reader.schema)
+                else:
+                    change_table = None
+            if change_table is not None:
+                if change_table.num_rows == 0:
                     return []
-                table = self.client.read_keys(
-                    new_pin, 'id', sorted(changed_ids), schema=schema
-                )
-                return table_records(table)
+                after_table = change_table.filter(pc.equal(change_table['side'], 'after'))
+                if after_table.num_rows == 0:
+                    return []
+                values_col = after_table['values'].combine_chunks()
+                unpacked = pa.Table.from_batches([pa.RecordBatch.from_struct_array(values_col)])
+                restored = restore_application_schema(unpacked, expected_schema=schema)
+                by_id = {}
+                for row in table_records(restored):
+                    by_id[row['id']] = row
+                return list(by_id.values())
+        except DocSpecFailure:
+            pass
 
-        # Fallback if mutated outside DocSpecLake: read only newly added Parquet objects
-        added_paths = [p for p in new_objects if p not in set(prior_objects)]
+        # Fallback if prior_version is unavailable or not forward_changes: read newly added Parquet objects
+        added_paths = [
+            p for p in new_objects
+            if p.endswith('.parquet') and p not in set(prior_objects)
+        ]
         if added_paths and all(Path(p).is_file() for p in added_paths):
             tables = [
                 restore_application_schema(pq.read_table(p), expected_schema=schema)
@@ -1494,7 +1468,6 @@ class DocSpecNewsViews:
             and r.get('processor') != 'extract'
             and r.get('status') == 'succeeded'
         }
-        self._selected_runs = _select_version_assignments(self._runs, self._selections)
 
     def materialize(self, records_or_release_read, selections=None):
         """Admit the three bridge datasets; stores and returns ``{dataset: ReleasePin}``."""
@@ -1679,7 +1652,7 @@ class DocSpecNewsViews:
 
     def _update_selected_mentions_incremental(
         self, prior_pin, source_pins, delta_mentions, reassigned_mention_versions,
-        pinned_processors, new_selected_runs
+        pinned_processors, is_winning_run
     ):
         if not delta_mentions and not reassigned_mention_versions:
             return self._apply_bridge_delta(
@@ -1730,7 +1703,7 @@ class DocSpecNewsViews:
             run = self._runs.get(record['run_id'])
             if run is None or run['processor'] not in pinned_processors:
                 continue
-            if new_selected_runs.get(f"{run['processor']}:{record['version_id']}") != record['run_id']:
+            if not is_winning_run(run['processor'], record['version_id'], record['run_id']):
                 continue
             removed_keys.discard(mid)
             candidate_rows.append({
@@ -1753,7 +1726,7 @@ class DocSpecNewsViews:
     def _update_survivor_items_incremental(
         self, prior_pin, source_pins, delta_items, delta_versions,
         delta_discoveries, delta_story_members, reassigned_cluster_versions,
-        pinned_processors, new_selected_runs
+        pinned_processors, is_winning_run
     ):
         if (
             not delta_items
@@ -1899,7 +1872,7 @@ class DocSpecNewsViews:
                 run = self._runs.get(record['run_id'])
                 if run is None or run['processor'] not in pinned_processors:
                     continue
-                if new_selected_runs.get(f"{run['processor']}:{record['version_id']}") == record['run_id']:
+                if is_winning_run(run['processor'], record['version_id'], record['run_id']):
                     story_by_version.setdefault(record['version_id'], record['story_id'])
 
         candidate_by_id = {}
@@ -2015,7 +1988,6 @@ class DocSpecNewsViews:
 
         source_pins = self._resolve_source_pins(records_or_release_read)
         selections_list, _ = self._extract_release_meta(records_or_release_read, selections)
-        deltas_map = self._load_deltas_map()
 
         bridge_source_tables = (
             'news.entities',
@@ -2032,37 +2004,123 @@ class DocSpecNewsViews:
                 table_name,
                 source_pins.get(table_name),
                 self._source_pins.get(table_name),
-                deltas_map,
             )
             for table_name in bridge_source_tables
         }
 
+        prior_runs = dict(self._runs)
         delta_runs = delta_tables['news.runs']
         for run in delta_runs:
             if run.get('processor') != 'extract' and run.get('status') == 'succeeded':
                 self._runs[run['id']] = _compact_run_meta(run)
 
         normalized_selections = [dict(s) for s in selections_list]
+        pinned_triples = {
+            (s['processor'], s['processor_version'], s['config_hash'])
+            for s in normalized_selections
+        }
         pinned_processors = {s['processor'] for s in normalized_selections}
-        if delta_runs or normalized_selections != self._selections:
-            new_selected_runs = _select_version_assignments(self._runs, normalized_selections)
-        else:
-            new_selected_runs = dict(self._selected_runs)
+        delta_version_ids = {r['id'] for r in delta_tables['news.versions']}
+
+        max_prior_rank_by_proc = {}
+        for r in prior_runs.values():
+            if _is_run_eligible(r, pinned_triples):
+                proc = r['processor']
+                rank = _run_rank(r)
+                if proc not in max_prior_rank_by_proc or rank > max_prior_rank_by_proc[proc]:
+                    max_prior_rank_by_proc[proc] = rank
+
+        max_eligible_rank_by_proc = dict(max_prior_rank_by_proc)
+        eligible_delta_runs = []
+        has_backdated_delta_run = False
+        for run in delta_runs:
+            if not _is_run_eligible(run, pinned_triples):
+                continue
+            eligible_delta_runs.append(run)
+            proc = run['processor']
+            rank = _run_rank(run)
+            if proc in max_prior_rank_by_proc and rank < max_prior_rank_by_proc[proc]:
+                has_backdated_delta_run = True
+            if proc not in max_eligible_rank_by_proc or rank > max_eligible_rank_by_proc[proc]:
+                max_eligible_rank_by_proc[proc] = rank
 
         reassigned_mention_versions = set()
         reassigned_cluster_versions = set()
-        for slot_key in set(self._selected_runs) | set(new_selected_runs):
-            old_run = self._selected_runs.get(slot_key)
-            new_run = new_selected_runs.get(slot_key)
-            if old_run != new_run:
-                proc, vid = slot_key.split(':', 1)
-                if proc == 'mentions' and old_run is not None:
-                    reassigned_mention_versions.add(vid)
-                elif proc == 'cluster':
-                    reassigned_cluster_versions.add(vid)
+        delta_selected_runs = {}
+        full_selected_runs = [None]
+
+        def _load_full_selected_runs():
+            if full_selected_runs[0] is not None:
+                return full_selected_runs[0]
+            runs_pin = source_pins.get('news.runs')
+            if runs_pin is not None:
+                all_runs = {
+                    r['id']: r
+                    for r in table_records(
+                        self.client.read_arrow(runs_pin, schema=kind_arrow_schema('run'))
+                    )
+                    if r.get('processor') != 'extract' and r.get('status') == 'succeeded'
+                }
+            else:
+                all_runs = {r['id']: r for r in delta_runs if r.get('processor') != 'extract'}
+            full_selected_runs[0] = _select_version_assignments(all_runs, normalized_selections)
+            return full_selected_runs[0]
+
+        if normalized_selections != self._selections or has_backdated_delta_run:
+            runs_pin = source_pins.get('news.runs')
+            if runs_pin is not None:
+                all_runs = {
+                    r['id']: r
+                    for r in table_records(
+                        self.client.read_arrow(runs_pin, schema=kind_arrow_schema('run'))
+                    )
+                    if r.get('processor') != 'extract' and r.get('status') == 'succeeded'
+                }
+            else:
+                all_runs = {r['id']: r for r in delta_runs if r.get('processor') != 'extract'}
+            old_selected = _select_version_assignments(
+                {rid: all_runs[rid] for rid in prior_runs if rid in all_runs},
+                self._selections,
+            )
+            new_selected = _select_version_assignments(all_runs, normalized_selections)
+            full_selected_runs[0] = new_selected
+            for slot_key in set(old_selected) | set(new_selected):
+                old_run = old_selected.get(slot_key)
+                new_run = new_selected.get(slot_key)
+                if old_run != new_run:
+                    proc, vid = slot_key.split(':', 1)
+                    if proc == 'mentions' and (old_run is not None or vid not in delta_version_ids):
+                        reassigned_mention_versions.add(vid)
+                    elif proc == 'cluster':
+                        reassigned_cluster_versions.add(vid)
+        else:
+            for run in sorted(eligible_delta_runs, key=_run_rank):
+                proc = run['processor']
+                for ref in run.get('inputs', ()):
+                    if not isinstance(ref, dict) or ref.get('kind') != 'version':
+                        continue
+                    vid = ref['id']
+                    delta_selected_runs[f"{proc}:{vid}"] = run['id']
+                    if vid not in delta_version_ids:
+                        if proc == 'mentions':
+                            reassigned_mention_versions.add(vid)
+                        elif proc == 'cluster':
+                            reassigned_cluster_versions.add(vid)
+
+        def is_winning_run(processor, version_id, run_id):
+            run = self._runs.get(run_id)
+            if not _is_run_eligible(run, pinned_triples):
+                return False
+            if full_selected_runs[0] is not None:
+                return full_selected_runs[0].get(f"{processor}:{version_id}") == run_id
+            slot_key = f"{processor}:{version_id}"
+            if slot_key in delta_selected_runs:
+                return delta_selected_runs[slot_key] == run_id
+            if _run_rank(run) == max_eligible_rank_by_proc.get(processor):
+                return True
+            return _load_full_selected_runs().get(slot_key) == run_id
 
         self._selections = normalized_selections
-        self._selected_runs = new_selected_runs
 
         updated_pins = {}
         diff_summary = {}
@@ -2082,7 +2140,7 @@ class DocSpecNewsViews:
             delta_tables['news.mentions'],
             reassigned_mention_versions,
             pinned_processors,
-            new_selected_runs,
+            is_winning_run,
         )
         updated_pins['selected_mentions'] = mentions_pin
         diff_summary['selected_mentions'] = mentions_stats
@@ -2096,7 +2154,7 @@ class DocSpecNewsViews:
             delta_tables['news.story_members'],
             reassigned_cluster_versions,
             pinned_processors,
-            new_selected_runs,
+            is_winning_run,
         )
         updated_pins['survivor_items'] = survivor_pin
         diff_summary['survivor_items'] = survivor_stats
