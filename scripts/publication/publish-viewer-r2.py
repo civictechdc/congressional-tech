@@ -19,7 +19,7 @@ from typing import NamedTuple
 
 from botocore.exceptions import ClientError
 from congress_api.retention.control_documents import CONTROL_LIMITS, bounded_control_read
-from filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
+from viewer_publication.filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
 
 BUCKET = 'congressional-tech-raw'
 PREFIX = 'viewer-publications/'
@@ -102,7 +102,7 @@ def read_json(client, key, *, optional=False):
 
 def release_source_files(root=None):
     from viewer_release_identity import source_files
-    return source_files(root or Path(__file__).resolve().parents[3])
+    return source_files(root or Path(__file__).resolve().parents[2])
 
 
 def implementation_identity():
@@ -473,6 +473,6 @@ def check_selected_publication(client, pointer, *, public_url=PUBLIC_URL, record
 
 if __name__ == '__main__':
     import sys
-    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'scripts/publication'))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
     from publication_cli import main
     raise SystemExit(main(sys.modules[__name__]))

@@ -2,11 +2,11 @@
 
 These commands publish and inspect the **filename viewer**: the public site that looks up congressional documents by filename. The built files live in Cloudflare R2 under `viewer-publications/`. They are derived from the raw archive. These commands do not capture new documents and do not rewrite archive bodies or `indexes/`.
 
-The day-to-day publisher is `apps/site/scripts/publish-viewer-r2.py`. It imports `publication_cli.py` from this folder. Run it from the repository root after `uv sync --locked`.
+The day-to-day publisher is `scripts/publication/publish-viewer-r2.py`. It imports `publication_cli.py` from this folder. Run it from the repository root after `uv sync --locked`.
 
 ## `publication_cli.py`
 
-One interface for a viewer publish attempt. Run these commands through `apps/site/scripts/publish-viewer-r2.py`.
+One interface for a viewer publish attempt. Run these commands through `scripts/publication/publish-viewer-r2.py`.
 
 | Command | What it does |
 | --- | --- |
@@ -69,7 +69,7 @@ prepare a separate local upgrade from the current native catalog and prior v6
 viewer release:
 
 ```bash
-.venv/bin/python apps/site/scripts/publish-viewer-r2.py prepare \
+.venv/bin/python scripts/publication/publish-viewer-r2.py prepare \
   --directory output/renderer-upgrade --run-id upgrade-20261020 --run-attempt 1 \
   --native-config /absolute/path/runtime.json --renderer-upgrade
 ```

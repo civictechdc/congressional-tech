@@ -94,7 +94,7 @@ def test_bounded_control_body_closes_for_bad_length_or_limit(raw,length,limit):
 
 
 def test_source_hashes_reuse_only_unchanged_custody_and_docs_do_not_invalidate(tmp_path,monkeypatch):
-    path=tmp_path/'apps/site/scripts/filename_helper.py';path.parent.mkdir(parents=True);path.write_text('one')
+    path=tmp_path/'packages/viewer_publication/src/viewer_publication/filename_helper.py';path.parent.mkdir(parents=True);path.write_text('one')
     original=identity.hashlib.file_digest;calls=[]
     def digest(stream,*a,**k):calls.append(stream.name);return original(stream,*a,**k)
     monkeypatch.setattr(identity.hashlib,'file_digest',digest)

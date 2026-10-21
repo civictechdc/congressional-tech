@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import urllib.request
-from filename_reviews import extract_archive, verify_directory, recover_directory
+from viewer_publication.filename_reviews import extract_archive, verify_directory, recover_directory
 
 root = Path(__file__).resolve().parents[1]
 descriptor = json.loads((root/'document-review-publication.json').read_text())

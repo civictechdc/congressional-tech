@@ -22,33 +22,25 @@ import sys
 import time
 from congress_api.retention.derived_files import VerifiedFile, copy_checked, custody_identity, file_identity
 from congress_api.retention.viewer_inventory import PreparedManifest
-from filename_resources import owned_resources
-from filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, open_parquet
-from filename_json_stream import ObservationCounts
+from viewer_publication.filename_resources import owned_resources
+from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, open_parquet
+from viewer_publication.filename_json_stream import ObservationCounts
+import viewer_publication.filename_observations as observations
+import viewer_publication.filename_details as details
+import viewer_publication.filename_navigation as navigation
+import viewer_publication.filename_review_binding as review_binding
 
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from pyarrow.parquet import ParquetFile
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 VIEWER = ROOT / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
+REVIEW_IDENTITIES = ROOT / 'apps/site/document-review-identities.json'
 spec = importlib.util.spec_from_file_location('filename_viewer', VIEWER)
 viewer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(viewer)
-spec = importlib.util.spec_from_file_location('filename_observations', Path(__file__).with_name('filename_observations.py'))
-observations = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(observations)
-spec = importlib.util.spec_from_file_location('filename_details', Path(__file__).with_name('filename_details.py'))
-details = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(details)
-
-spec = importlib.util.spec_from_file_location('filename_navigation', Path(__file__).with_name('filename_navigation.py'))
-navigation = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(navigation)
-spec = importlib.util.spec_from_file_location('filename_review_binding', Path(__file__).with_name('filename_review_binding.py'))
-review_binding = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(review_binding)
 
 
 def digest(path):
@@ -188,7 +180,7 @@ def _repack_and_verify(source, destination, policy, owned, decoded_policy, metri
             'repack_seconds': written - started, 'equality_seconds': time.perf_counter() - written,
             'exact_equal': True}
 
-def publish(root, target, modified=None, *, validation=None, review_identities=review_binding.IDENTITIES,
+def publish(root, target, modified=None, *, validation=None, review_identities=REVIEW_IDENTITIES,
             compression_policy=DEFAULT_COMPRESSION_POLICY, stage_timings=None, stage_event=None,
             decoded_policy=DEFAULT_DECODED_POLICY, memory_metrics=None):
     memory_metrics = memory_metrics if memory_metrics is not None else {}

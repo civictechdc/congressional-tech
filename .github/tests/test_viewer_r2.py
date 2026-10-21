@@ -11,7 +11,7 @@ from botocore.exceptions import ClientError
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / 'apps/site/scripts/publish-viewer-r2.py'
+SCRIPT = ROOT / 'scripts/publication/publish-viewer-r2.py'
 spec = importlib.util.spec_from_file_location('viewer_r2', SCRIPT)
 publication = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publication)

@@ -10,10 +10,10 @@ import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
+sys.path.insert(0, str(ROOT / 'packages/viewer_publication/src'))
 import pyarrow as pa
 import pyarrow.parquet as pq
-from filename_budget import ArrowStager, DEFAULT_DECODED_POLICY, bounded_batches, open_parquet
+from viewer_publication.filename_budget import ArrowStager, DEFAULT_DECODED_POLICY, bounded_batches, open_parquet
 from congress_api.retention.derived_files import custody_identity
 
 

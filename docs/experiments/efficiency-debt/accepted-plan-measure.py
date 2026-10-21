@@ -2,7 +2,7 @@
 import sys
 from pathlib import Path
 root, fixture, output, arm = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]
-sys.path[:0] = [str(p) for p in (list((root / 'packages').glob('*/src')) + [root / 'apps/site/scripts', root / 'scripts/measure', root / 'scripts'])]
+sys.path[:0] = [str(p) for p in (list((root / 'packages').glob('*/src')) + [root / 'scripts/publication', root / 'scripts/measure', root / 'scripts'])]
 import importlib.util
 import io
 import json
@@ -19,8 +19,8 @@ import pyarrow.parquet as pq
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     value = importlib.util.module_from_spec(spec); spec.loader.exec_module(value); return value
-publisher = load('measured_publisher', root / 'apps/site/scripts/publish-viewer-r2.py')
-builder = load('measured_builder', root / 'apps/site/scripts/publish-filename-viewer.py')
+publisher = load('measured_publisher', root / 'scripts/publication/publish-viewer-r2.py')
+builder = load('measured_builder', root / 'scripts/publication/publish-filename-viewer.py')
 control = load('measured_control', root / 'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py')
 fixture_module = load('measured_remote_fixture', root / 'packages/viewer_publication/tests/test_viewer_publication_attempt.py')
 remote = fixture_module.Remote(fixture)

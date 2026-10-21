@@ -7,14 +7,14 @@ values span independently compressed parts instead of increasing decode size.
 import hashlib
 import json
 from contextlib import closing
-from filename_resources import owned_resources
+from viewer_publication.filename_resources import owned_resources
 import sqlite3
 import tempfile
 from pathlib import Path
 
-from filename_budget import (DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches,
+from viewer_publication.filename_budget import (DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches,
                              failure_receipt, json_chunks, maximum, python_estimate, refuse)
-from filename_json_stream import ObservationCounts, block_items, decoded_json_default
+from viewer_publication.filename_json_stream import ObservationCounts, block_items, decoded_json_default
 
 import pyarrow as pa
 

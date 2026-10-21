@@ -19,16 +19,15 @@ import time
 import tracemalloc
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
 import ijson
 import pyarrow as pa
 import pyarrow.parquet as pq
-from filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches, json_chunks
-from filename_json_stream import ObservationCounts
-import filename_observations as observations
-import filename_details as details
+from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches, json_chunks
+from viewer_publication.filename_json_stream import ObservationCounts
+import viewer_publication.filename_observations as observations
+import viewer_publication.filename_details as details
 
-spec = importlib.util.spec_from_file_location('measured_publisher', ROOT / 'apps/site/scripts/publish-filename-viewer.py')
+spec = importlib.util.spec_from_file_location('measured_publisher', ROOT / 'scripts/publication/publish-filename-viewer.py')
 publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
 
 

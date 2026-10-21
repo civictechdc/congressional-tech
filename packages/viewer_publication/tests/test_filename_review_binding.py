@@ -7,10 +7,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pytest
 
-SPEC = importlib.util.spec_from_file_location(
-    'filename_review_binding', Path(__file__).resolve().parents[3] / 'apps/site/scripts/filename_review_binding.py')
-binding = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(binding)
+import viewer_publication.filename_review_binding as binding
 
 
 def catalog(documents, sources, catalog_id='next'):
@@ -63,8 +60,9 @@ def test_identities_round_trip_from_a_review_publication_and_refuse_mismatches()
 
 
 def test_committed_identities_name_the_published_review_pin():
-    identities = binding.load_identities()
-    descriptor = __import__('json').loads((Path(__file__).resolve().parents[3] / 'apps/site/document-review-publication.json').read_text())
+    root = Path(__file__).resolve().parents[3]
+    identities = binding.load_identities(root / 'apps/site/document-review-identities.json')
+    descriptor = __import__('json').loads((root / 'apps/site/document-review-publication.json').read_text())
     assert identities['review_sha256'] == descriptor['review_sha256']
     assert len(identities['rows']) == descriptor['groups']
     assert len({row['document_id'] for row in identities['rows']}) == len(identities['rows'])

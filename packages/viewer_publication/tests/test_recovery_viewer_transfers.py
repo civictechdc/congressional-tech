@@ -16,10 +16,9 @@ from botocore.exceptions import ClientError
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT/'scripts/publication'))
-sys.path.insert(0, str(ROOT/'apps/site/scripts'))
 from viewer_publication.client import GuardedPublicationClient, VerifiedTransfer
 
-spec = importlib.util.spec_from_file_location('recovery_transfer_publisher', ROOT/'apps/site/scripts/publish-viewer-r2.py')
+spec = importlib.util.spec_from_file_location('recovery_transfer_publisher', ROOT/'scripts/publication/publish-viewer-r2.py')
 publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
 
 

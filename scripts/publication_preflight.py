@@ -42,7 +42,7 @@ class NoRedirects(urllib.request.HTTPRedirectHandler):
 
 
 def constants(root):
-    tree=ast.parse((root/'apps/site/scripts/publish-viewer-r2.py').read_text())
+    tree=ast.parse((root/'scripts/publication/publish-viewer-r2.py').read_text())
     values={}
     for node in tree.body:
         if isinstance(node,ast.Assign) and isinstance(node.value,ast.Constant):

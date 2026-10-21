@@ -179,7 +179,7 @@ def test_publisher_and_mapping_share_one_control_reader_and_policy():
     import congress_api.retention.control_documents as controls
     import corpus_recovery.mappings as mappings
     root = Path(__file__).resolve().parents[3]
-    spec = importlib.util.spec_from_file_location('shared_control_publisher', root / 'apps/site/scripts/publish-viewer-r2.py')
+    spec = importlib.util.spec_from_file_location('shared_control_publisher', root / 'scripts/publication/publish-viewer-r2.py')
     publisher = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(publisher)
     assert publisher.bounded_control_read is mappings.bounded_control_read is controls.bounded_control_read

@@ -6,8 +6,7 @@ import sys
 import tarfile
 
 import pytest
-sys.path.insert(0,str(Path(__file__).parents[3]/'apps/site/scripts'))
-from filename_reviews import export_reviews, verify_directory, extract_archive
+from viewer_publication.filename_reviews import export_reviews, verify_directory, extract_archive
 from test_document_review_search import search_catalog
 
 @pytest.mark.parametrize('unsupported',[False,True])
@@ -53,7 +52,7 @@ def test_archive_refuses_paths_and_links_even_with_a_matching_archive_hash(tmp_p
 
 
 def test_staging_preserves_verified_tree_after_interruption_and_retries(tmp_path, monkeypatch):
-    import filename_reviews
+    import viewer_publication.filename_reviews as filename_reviews
     catalog, _ = search_catalog(tmp_path, False)
     target = tmp_path / 'public'
     descriptor = export_reviews(catalog, target)
@@ -79,7 +78,7 @@ def test_staging_preserves_verified_tree_after_interruption_and_retries(tmp_path
 
 
 def test_staging_recovers_install_failure_and_process_death_gap(tmp_path, monkeypatch):
-    import filename_reviews
+    import viewer_publication.filename_reviews as filename_reviews
     catalog, _ = search_catalog(tmp_path, False)
     target = tmp_path / 'public'
     descriptor = export_reviews(catalog, target)
@@ -131,7 +130,7 @@ def test_changed_descriptor_installs_only_fully_verified_replacement(tmp_path):
 
 
 def test_consecutive_install_interruptions_preserve_newest_current_tree(tmp_path, monkeypatch):
-    import filename_reviews
+    import viewer_publication.filename_reviews as filename_reviews
     catalog, _ = search_catalog(tmp_path, False)
     target = tmp_path / 'public'; descriptor = export_reviews(catalog, target)
     original = (target / 'reviews.json').read_bytes()

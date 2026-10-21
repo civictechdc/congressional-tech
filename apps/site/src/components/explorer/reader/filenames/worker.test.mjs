@@ -13,7 +13,7 @@ test('actual worker routes retain one catalog and serve lazy detail and complete
  const folder=await mkdtemp(join(tmpdir(),'filename-worker-'));
  let worker;
  try {
-  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../../../scripts/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../../../../../scripts/publication/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
   const moduleUrl=new URL('./worker.ts',import.meta.url).href;
   worker=new Worker(new URL('data:text/javascript,'+encodeURIComponent(`
    import {parentPort} from 'node:worker_threads';

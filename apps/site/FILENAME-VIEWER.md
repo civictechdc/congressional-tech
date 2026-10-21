@@ -146,9 +146,9 @@ inventory, and uploads an immutable GitHub artifact before making public writes.
 The three explicit commands are:
 
 ```sh
-python apps/site/scripts/publish-viewer-r2.py prepare --directory viewer-preparation --run-id RUN_ID --run-attempt 1 --report viewer-publication.json
-python apps/site/scripts/publish-viewer-r2.py verify-prepared --directory viewer-preparation
-python apps/site/scripts/publish-viewer-r2.py publish --directory viewer-preparation --artifact-id ARTIFACT_ID --artifact-digest ARTIFACT_SHA256 --run-id RUN_ID --repository OWNER/REPO --report viewer-publication.json
+python scripts/publication/publish-viewer-r2.py prepare --directory viewer-preparation --run-id RUN_ID --run-attempt 1 --report viewer-publication.json
+python scripts/publication/publish-viewer-r2.py verify-prepared --directory viewer-preparation
+python scripts/publication/publish-viewer-r2.py publish --directory viewer-preparation --artifact-id ARTIFACT_ID --artifact-digest ARTIFACT_SHA256 --run-id RUN_ID --repository OWNER/REPO --report viewer-publication.json
 npm run build --workspace apps/site
 npm run preview --workspace apps/site -- --port 8791
 ```
@@ -171,7 +171,7 @@ publication CLI selects only the currently bound catalog.
 
 For local data development, build with
 `PUBLIC_FILENAME_MANIFEST_URL=/congressional-tech/data/filenames/manifest.json`
-and generate the local files with `publish-filename-viewer.py --source ...`.
+and generate the local files with `scripts/publication/publish-filename-viewer.py --source ...`.
 Normal local previews use the same R2 publication as the website.
 Deploy the file-serving Worker with `npm run deploy --workspace viewer-data`.
 

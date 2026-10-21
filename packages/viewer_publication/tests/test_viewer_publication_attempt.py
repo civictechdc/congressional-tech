@@ -17,11 +17,10 @@ from botocore.exceptions import ClientError
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
 import viewer_publication.attempt as attempts
 from viewer_publication.continuation import Continuation, DurableJournal
 
-spec = importlib.util.spec_from_file_location('attempt_publisher', ROOT / 'apps/site/scripts/publish-viewer-r2.py')
+spec = importlib.util.spec_from_file_location('attempt_publisher', ROOT / 'scripts/publication/publish-viewer-r2.py')
 publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
 
 
@@ -65,7 +64,7 @@ class Remote:
 @pytest.fixture(scope='module')
 def source(tmp_path_factory):
     root = tmp_path_factory.mktemp('attempt-source')
-    subprocess.run([sys.executable, str(ROOT / 'apps/site/scripts/filename-test-fixture.py'), str(root)],
+    subprocess.run([sys.executable, str(ROOT / 'scripts/publication/filename-test-fixture.py'), str(root)],
                    capture_output=True, check=True)
     return root
 

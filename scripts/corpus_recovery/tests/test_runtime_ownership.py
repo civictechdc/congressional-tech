@@ -38,9 +38,17 @@ def test_clean_alternate_runtime_loads_real_builder_and_transitive_owners(altern
     pins = json.loads((alternate / 'attempt/pins.json').read_text())
     for relative in ('packages/corpus_recovery/src/corpus_recovery/admission.py',
                      'packages/viewer_publication/src/viewer_publication/continuation.py',
+                     'packages/viewer_publication/src/viewer_publication/filename_details.py',
                      'packages/congress_shared/src/congress_shared/__init__.py',
+                     'scripts/publication/publish-filename-viewer.py',
+                     'scripts/publication/publish-viewer-r2.py',
                      'scripts/viewer_release_identity.py'):
         assert str(selected / relative) in pins
+    for excluded in ('scripts/publication/README.md',
+                     'scripts/publication/pipeline_status.py',
+                     'scripts/publication/prepare_workflow_resume.py',
+                     'scripts/publication/filename-test-fixture.py'):
+        assert str(selected / excluded) not in pins
     assert str(DRIVER) in pins
 
 
@@ -69,9 +77,9 @@ def test_required_selected_source_cannot_fall_back_to_ambient_admission(alternat
 
 def test_explicit_file_builder_children_are_checked_without_sys_modules(tmp_path, monkeypatch):
     selected = object.__new__(dispatch.SelectedRuntime); selected.root = tmp_path; selected._checked = {}
-    child = ModuleType('filename_details'); child.__file__ = str(ROOT / 'apps/site/scripts/filename_details.py')
+    child = ModuleType('filename_details'); child.__file__ = str(ROOT / 'packages/viewer_publication/src/viewer_publication/filename_details.py')
     builder = ModuleType('recovery_viewer_builder')
-    builder.__file__ = str(tmp_path / 'apps/site/scripts/publish-filename-viewer.py')
+    builder.__file__ = str(tmp_path / 'scripts/publication/publish-filename-viewer.py')
     builder.details = child
     # Restrict the cache to this direct-file scenario; the child is intentionally
     # absent from sys.modules, like the maintained builder's module objects.

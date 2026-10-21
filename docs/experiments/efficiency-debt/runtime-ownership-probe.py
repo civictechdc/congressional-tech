@@ -12,14 +12,14 @@ SOURCE_DIRS = ('packages/congress_api/src', 'packages/house-naming/src',
     'packages/congress_shared/src', 'packages/committee_meeting/src',
     'packages/youtube_api/src', 'packages/corpus_recovery/src',
     'packages/viewer_publication/src', 'apps/committee_youtube/src',
-    'apps/site/scripts', 'docs/youtube-coverage/research/scripts')
+    'scripts/publication', 'docs/youtube-coverage/research/scripts')
 
 
 def fixture(root, destination):
     """Retain one small source-only alternate checkout and sealed import."""
     selected = destination / 'selected'
     files = [path for directory in SOURCE_DIRS for path in (root / directory).rglob('*')
-             if path.is_file() and path.suffix in {'.py', '.json', '.csv'} and '__pycache__' not in path.parts]
+             if path.is_file() and path.suffix in {'.py', '.json', '.csv'} and '__pycache__' not in path.parts and 'tests' not in path.parts]
     files.append(root / 'scripts/viewer_release_identity.py')
     size = sum(path.stat().st_size for path in files)
     assert size < 16 * 1024**2
@@ -39,12 +39,14 @@ def fixture(root, destination):
     (batch / 'manifest.json').write_text(json.dumps({'files': pins}))
     (batch / 'source-record-preparation.json').write_text(json.dumps({'unresolved': [], 'batch_manifest_sha256': digest(batch / 'manifest.json')}))
     (batch / 'import-readiness.json').write_text(json.dumps({'files': pins, 'capture_rows': 1, 'distinct_capture_bodykeys': 1}))
-    (imported / 'payloads/import-complete.json').write_text(json.dumps({'complete': True, 'added_capture_rows': 1, 'distinct_bodies': 1}))
+    raw_payload = b'{"version":1,"selection":"fixture"}'
+    complete = {'complete': True, 'added_capture_rows': 1, 'distinct_bodies': 1,
+                'raw_identity': hashlib.sha256(raw_payload).hexdigest()}
+    (imported / 'payloads/indexes/raw.json').write_bytes(raw_payload)
+    (imported / 'payloads/import-complete.json').write_text(json.dumps(complete))
     events = [{'event': 'pins', 'value': {str(batch / name): digest(batch / name) for name in ('manifest.json', 'prepared-source-records.json', 'import-readiness.json')}},
-              {'event': 'import_complete', 'value': {'complete': True, 'added_capture_rows': 1, 'distinct_bodies': 1}}]
+              {'event': 'import_complete', 'value': complete}]
     (imported / 'events.jsonl').write_text('\n'.join(map(json.dumps, events)))
-    for name in ('captures.parquet', 'download-state.parquet'):
-        (imported / 'payloads/indexes' / name).write_bytes(b'not read before client sentinel')
     (destination / '.cache').mkdir()
     (destination / 'baseline.json').write_text('{}')
     (destination / 'r2.conf').write_text('[congressionalraw]\nendpoint=https://invalid.test\naccess_key_id=sentinel\nsecret_access_key=sentinel\n')
@@ -70,8 +72,7 @@ if conflict in ('missing_corpus', 'symlink_corpus'):
 if conflict in ('congress_api', 'corpus_recovery', 'viewer_publication'):
     __import__(conflict)
 elif conflict == 'filename_resources':
-    sys.path.insert(0, str(original/'apps/site/scripts'))
-    __import__(conflict)
+    __import__('viewer_publication.filename_resources')
 elif conflict == 'unknown':
     sys.modules['filename_unknown'] = types.ModuleType('filename_unknown')
 elif conflict == 'extended_path':
@@ -103,8 +104,8 @@ def profile(frame, event, value):
             calls['direct_load'] += 1
             direct_owners[value.__name__] = str(Path(value.__file__).resolve())
             for child in vars(value).values():
-                if isinstance(child, types.ModuleType) and child.__name__.startswith('filename_'):
-                    direct_owners[child.__name__] = str(Path(child.__file__).resolve())
+                if isinstance(child, types.ModuleType) and (child.__name__.startswith('filename_') or child.__name__.startswith('viewer_publication.filename_')):
+                    direct_owners[child.__name__.rpartition('.')[2]] = str(Path(child.__file__).resolve())
 sys.setprofile(profile)
 class ClientBoundary(Exception): pass
 warm_boundary = None

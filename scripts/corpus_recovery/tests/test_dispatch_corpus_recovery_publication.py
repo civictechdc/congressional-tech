@@ -90,7 +90,6 @@ class DispatcherContinuationTests(unittest.TestCase):
         from types import SimpleNamespace
         from unittest.mock import patch
         from viewer_publication.continuation import Continuation
-        sys.path.insert(0, str(RUNTIME/'apps/site/scripts'))
         scripts = Path(__file__).resolve().parents[3]/'scripts/corpus_recovery'
         for failed_phase in ('catalog', 'mappings', 'prepared', 'publication', 'incomplete_catalog'):
             with self.subTest(phase=failed_phase), tempfile.TemporaryDirectory() as folder:
@@ -173,7 +172,7 @@ class DispatcherContinuationTests(unittest.TestCase):
                      patch('congress_api.retention.r2._configure_retries'), \
                      patch('congress_api.retention.document_index.validate_document_indexes'), \
                      patch('corpus_recovery.mappings.publish_mappings', side_effect=mapping), \
-                     patch('filename_recoveries.accepted_rows', side_effect=lambda rows: rows):
+                     patch('viewer_publication.filename_recoveries.accepted_rows', side_effect=lambda rows: rows):
                     with patch.object(Continuation, 'phase', fail_after_accept):
                         failed_diagnostic = (patch('corpus_recovery.diagnostics.catalog_build_observation',
                             side_effect=PermissionError('private diagnostic transport detail'))

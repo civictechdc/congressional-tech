@@ -1,12 +1,9 @@
 """Viewer aliases require one explicit target and one usable retained body."""
-from pathlib import Path
-import sys
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'apps/site/scripts'))
-from filename_aliases import catalog_aliases
+from viewer_publication.filename_aliases import catalog_aliases
 
 BODY = 'bodies/sha256/aa/' + 'a' * 64 + '.gz'
 OTHER = 'bodies/sha256/bb/' + 'b' * 64 + '.gz'

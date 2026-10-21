@@ -86,7 +86,7 @@ def run(checkout, source, output, source_manifest_sha256, *, maximum_source_byte
     source_files = {str(path.relative_to(source)): {'bytes': path.stat().st_size, 'sha256': digest(path)}
                     for path in paths}
     output.mkdir(parents=True, exist_ok=False)
-    sys.path[:0] = [str(checkout / p) for p in ('scripts', 'apps/site/scripts', 'packages/congress_api/src', 'packages/house-naming/src')]
+    sys.path[:0] = [str(checkout / p) for p in ('scripts', 'scripts/publication', 'packages/viewer_publication/src', 'packages/congress_api/src', 'packages/house-naming/src')]
     spec = importlib.util.spec_from_file_location('control_cost_fixture', publication_fixture(checkout))
     fixture = importlib.util.module_from_spec(spec); spec.loader.exec_module(fixture)
     publisher, attempts, remote = fixture.publisher, fixture.attempts, fixture.Remote(source)

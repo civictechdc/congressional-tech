@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path[:0] = [str(ROOT/'scripts/publication'),str(ROOT/'apps/site/scripts')]
+sys.path[:0] = [str(ROOT/'scripts/publication')]
 import publication_cli as cli
 import viewer_publication.attempt as attempts
 

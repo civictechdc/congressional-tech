@@ -16,8 +16,8 @@ import json
 import re
 from pathlib import Path
 
-IDENTITIES = Path(__file__).resolve().parents[1] / 'document-review-identities.json'
-DESCRIPTOR = IDENTITIES.with_name('document-review-publication.json')
+DEFAULT_DESCRIPTOR_NAME = 'document-review-publication.json'
+_UNSET = object()
 
 
 def validate_identities(value, descriptor=None):
@@ -48,10 +48,12 @@ def validate_identities(value, descriptor=None):
     return value
 
 
-def load_identities(path=IDENTITIES, *, descriptor=DESCRIPTOR):
+def load_identities(path, *, descriptor=_UNSET):
     path = Path(path)
     if not path.is_file():
         raise ValueError(f'Required review identity file is missing: {path}')
+    if descriptor is _UNSET:
+        descriptor = path.with_name(DEFAULT_DESCRIPTOR_NAME)
     identities = json.loads(path.read_text())
     return validate_identities(identities, json.loads(Path(descriptor).read_text()) if descriptor else None)
 
@@ -118,14 +120,15 @@ def main():
     parser = argparse.ArgumentParser(description='Record stable review identities from a verified review publication.')
     parser.add_argument('reviews', type=Path, help='reviews.json of the pinned review publication')
     parser.add_argument('filenames', type=Path, help='document-filenames.parquet of the exact catalog the reviews name')
-    parser.add_argument('--output', type=Path, default=IDENTITIES)
-    parser.add_argument('--descriptor', type=Path, default=DESCRIPTOR)
+    parser.add_argument('--output', type=Path, default=Path('apps/site/document-review-identities.json'))
+    parser.add_argument('--descriptor', type=Path)
+    parser.add_argument('--viewer', type=Path, default=Path('docs/youtube-coverage/research/scripts/view_document_filenames.py'))
     args = parser.parse_args()
-    viewer_path = Path(__file__).resolve().parents[3] / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
-    spec = importlib.util.spec_from_file_location('filename_viewer', viewer_path)
+    descriptor_path = args.descriptor or args.output.with_name(DEFAULT_DESCRIPTOR_NAME)
+    spec = importlib.util.spec_from_file_location('filename_viewer', args.viewer)
     viewer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(viewer)
-    descriptor = json.loads(args.descriptor.read_text())
+    descriptor = json.loads(descriptor_path.read_text())
     reviews = pinned_reviews(args.reviews, descriptor)
     with viewer.Catalog(args.filenames, search_indexes=False) as catalog:
         identities = validate_identities(identities_from(catalog, reviews), descriptor)

@@ -9,8 +9,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
-spec = importlib.util.spec_from_file_location('publisher', ROOT / 'apps/site/scripts/publish-filename-viewer.py')
+sys.path.insert(0, str(ROOT / 'packages/viewer_publication/src'))
+spec = importlib.util.spec_from_file_location('publisher', ROOT / 'scripts/publication/publish-filename-viewer.py')
 publisher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
 root = Path(sys.argv[1])

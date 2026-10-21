@@ -11,11 +11,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-scripts = Path(__file__).resolve().parents[3] / 'apps/site/scripts'
-sys.path.insert(0, str(scripts))
-from filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
+from viewer_publication.filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
 
-spec = importlib.util.spec_from_file_location('recovery_publisher', scripts / 'publish-viewer-r2.py')
+spec = importlib.util.spec_from_file_location('recovery_publisher', Path(__file__).resolve().parents[3] / 'scripts/publication/publish-viewer-r2.py')
 publisher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
 
@@ -256,7 +254,7 @@ def test_spilled_alias_index_scans_source_once_and_preserves_high_fanout_mapping
 
 
 def test_alias_output_budget_refuses_without_returning_partial_status(tmp_path, monkeypatch):
-    import filename_alias_index
+    import viewer_publication.filename_alias_index as filename_alias_index
     import shutil
     accepted, manifest, _ = alias_fixture(tmp_path)
     monkeypatch.setattr(filename_alias_index, 'OUTPUT_BYTES', 10)
@@ -269,7 +267,7 @@ def test_alias_output_budget_refuses_without_returning_partial_status(tmp_path, 
 
 @pytest.mark.parametrize('unicode_url', [False, True])
 def test_status_header_and_separators_count_toward_exact_final_output_budget(tmp_path, monkeypatch, unicode_url):
-    import filename_alias_index
+    import viewer_publication.filename_alias_index as filename_alias_index
     import shutil
     accepted, manifest, _ = fixture(tmp_path)
     if unicode_url:

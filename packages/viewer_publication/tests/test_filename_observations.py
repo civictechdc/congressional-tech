@@ -7,10 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-spec = importlib.util.spec_from_file_location('observation_publication',
-    Path(__file__).resolve().parents[3] / 'apps/site/scripts/filename_observations.py')
-observations = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(observations)
+import viewer_publication.filename_observations as observations
 
 
 def publication(tmp_path, monkeypatch):
@@ -119,7 +116,7 @@ def test_all_observation_writers_close_and_abort_never_flushes_pending_rows(tmp_
 
 
 def test_resource_cleanup_keeps_primary_exception_and_records_close_error():
-    from filename_resources import owned_resources
+    from viewer_publication.filename_resources import owned_resources
     class Reader:
         def __enter__(self): return self
         def __exit__(self, *args): raise OSError('injected close failure')
@@ -131,8 +128,8 @@ def test_resource_cleanup_keeps_primary_exception_and_records_close_error():
 
 
 def test_default_budget_accepts_many_small_units_without_converting_the_outer_list(tmp_path):
-    from filename_budget import DEFAULT_DECODED_POLICY, python_estimate
-    from filename_json_stream import ObservationCounts
+    from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, python_estimate
+    from viewer_publication.filename_json_stream import ObservationCounts
     fields = [('label', pa.list_(pa.string()))] + [(f'context_{i}', pa.list_(pa.string())) for i in range(12)]
     kind = pa.list_(pa.struct(fields))
     # Many ordinary observations can exceed the whole-list Python estimate even
@@ -161,7 +158,7 @@ def test_default_budget_accepts_many_small_units_without_converting_the_outer_li
 @pytest.mark.parametrize('stage', ['observations', 'observation verification'])
 def test_single_observation_refuses_before_python_conversion(stage):
     from dataclasses import replace
-    from filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded
+    from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded
     values = pa.array([{'label': ['é🏛️' * 1000]}], type=pa.struct([('label', pa.list_(pa.string()))]))
     class Guarded:
         def slice(self, *args): return values.slice(*args)
@@ -173,7 +170,7 @@ def test_single_observation_refuses_before_python_conversion(stage):
 
 def test_reference_list_refuses_before_allocating_or_converting_observations(tmp_path, monkeypatch):
     from dataclasses import replace
-    from filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded
+    from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, DecodedBudgetExceeded
     table = pa.table({'source_occurrences': pa.array([[{}] * 30], type=pa.list_(pa.struct([('label', pa.string())])))})
     class Source:
         schema_arrow = table.schema

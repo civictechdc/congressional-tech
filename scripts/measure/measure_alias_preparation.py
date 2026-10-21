@@ -23,7 +23,6 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
 
 
 def load(path, name):
@@ -32,11 +31,11 @@ def load(path, name):
 
 
 def worker(root, old):
-    import filename_recoveries
+    import viewer_publication.filename_recoveries as filename_recoveries
     # Exclude module initialization for both paths. The old alias module imports
     # saved-response helpers eagerly; the new implementation imports its index
     # lazily. Process RSS below still includes all initialization allocations.
-    import filename_alias_index
+    import viewer_publication.filename_alias_index as filename_alias_index
     if old:
         previous_alias = load(root / 'old_aliases.py', 'old_aliases')
         previous = load(root / 'old_recoveries.py', 'old_recoveries')

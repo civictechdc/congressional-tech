@@ -190,7 +190,7 @@ def highwater():
 
 def arm(fixture_path, destination, kind, operation):
     import pyarrow as pa
-    sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
+    sys.path.insert(0, str(ROOT / 'packages/viewer_publication/src'))
     module = viewer(kind)
     start = time.perf_counter()
     destination.mkdir(parents=True, exist_ok=False)
@@ -211,7 +211,7 @@ def arm(fixture_path, destination, kind, operation):
             constructor_highwater_rss=peak, arrow_bytes=arrow, approximate_python_owned_bytes=state, info=info,
             search_indexes_built=bool(catalog.filter_text), readers_closed=catalog.file.closed and catalog.document_file.closed))
     else:
-        publisher = load(ROOT / 'apps/site/scripts/publish-filename-viewer.py', 'measured_publisher')
+        publisher = load(ROOT / 'scripts/publication/publish-filename-viewer.py', 'measured_publisher')
         publisher.viewer = module
         original_load = publisher.review_binding.load_identities
         publisher.review_binding.load_identities = lambda path: original_load(path, descriptor=None)

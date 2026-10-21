@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = ROOT / 'apps/site/scripts/publish-filename-viewer.py'
+SCRIPT = ROOT / 'scripts/publication/publish-filename-viewer.py'
 spec = importlib.util.spec_from_file_location('filename_publication', SCRIPT)
 publication = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publication)

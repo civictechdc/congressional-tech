@@ -44,6 +44,6 @@ def catalog_aliases(path, accepted=()):
     Resolve across all observations of an original URL. Multiple destinations or
     usable body versions remain unresolved. Accepted recoveries take precedence.
     """
-    from filename_alias_index import AliasIndex
+    from viewer_publication.filename_alias_index import AliasIndex
     with AliasIndex(path, accepted) as index:
         return index.aliases()

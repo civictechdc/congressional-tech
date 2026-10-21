@@ -50,7 +50,7 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url):
                'viewer': previous, 'accepted': accepted, 'run_id': str(run_id), 'run_attempt': str(run_attempt),
                'publisher_version': publisher.PUBLISHER_VERSION}
     binding['provenance_revision'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'],
-        cwd=Path(publisher.__file__).resolve().parents[3], text=True, timeout=10).strip()
+        cwd=Path(publisher.__file__).resolve().parents[2], text=True, timeout=10).strip()
     mode = 'full'
     if (previous['value'] and previous['value'].get('source_manifest') == selected['value']
             and previous['value'].get('publisher_version') == publisher.PUBLISHER_VERSION

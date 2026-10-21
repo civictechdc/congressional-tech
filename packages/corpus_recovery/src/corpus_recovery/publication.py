@@ -77,7 +77,7 @@ def publish_imported(*, client, proxy, guard, continuation, destination, batch, 
     from congress_api.retention.document_index import validate_document_indexes
     from congress_api.retention.catalog_validation import validate_catalog_pair
     from congress_api.retention.raw_catalog import rebuild_catalog_in_directory
-    from filename_recoveries import accepted_rows
+    from viewer_publication.filename_recoveries import accepted_rows
     from corpus_recovery.mappings import publish_mappings
 
     save = continuation.save

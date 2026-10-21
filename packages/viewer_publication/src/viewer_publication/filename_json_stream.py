@@ -8,7 +8,7 @@ import tempfile
 import ijson
 import pyarrow as pa
 
-from filename_budget import DEFAULT_DECODED_POLICY, maximum, refuse
+from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, maximum, refuse
 
 
 class ObservationCounts:

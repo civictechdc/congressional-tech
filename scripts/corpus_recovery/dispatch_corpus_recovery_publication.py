@@ -46,7 +46,7 @@ class SelectedRuntime:
                 raise ValueError(f'Selected runtime {root} has missing or escaping required source owner '
                                  f'{name}: expected {owner}. Select a complete runtime checkout.')
         self.sources = [root / folder for folder in self.PACKAGES.values()]
-        self.sources += [root / 'apps/site/scripts', root / 'scripts']
+        self.sources += [root / 'scripts/publication', root / 'scripts']
         self.check()
         # Path precedence affects only imports that have not happened yet.
         source_paths = [str(path) for path in self.sources]
@@ -58,12 +58,12 @@ class SelectedRuntime:
             return self.root / self.PACKAGES[package] / package
         if package == 'filename_viewer':
             return self.root / 'docs/youtube-coverage/research/scripts'
-        if package.startswith('filename_') or package in {'recovery_viewer_builder', 'recovery_viewer_publisher'}:
-            return self.root / 'apps/site/scripts'
+        if package.startswith('filename_'):
+            return self.root / self.PACKAGES['viewer_publication'] / 'viewer_publication'
+        if package in {'recovery_viewer_builder', 'recovery_viewer_publisher', 'publication_cli'}:
+            return self.root / 'scripts/publication'
         if package in {'viewer_release_identity', 'publication_preflight'}:
             return self.root / 'scripts'
-        if package == 'publication_cli':
-            return self.root / 'scripts/publication'
 
     def check(self, *direct):
         """Verify cached imports and explicit-file modules, including their children."""
@@ -94,11 +94,18 @@ class SelectedRuntime:
 
     def files(self):
         folders = [*self.sources, self.root / 'docs/youtube-coverage/research/scripts']
-        # scripts/ contains operational evidence and tests too; pin only helpers
-        # used by this route there, rather than unrelated command implementations.
-        folders.remove(self.root / 'scripts')
+        # scripts/ and scripts/publication/ contain operational evidence, CLI
+        # helpers, docs, and tests; pin only helpers used by this route there.
+        for excluded in (self.root / 'scripts', self.root / 'scripts/publication'):
+            if excluded in folders:
+                folders.remove(excluded)
         paths = {path for folder in folders for path in folder.rglob('*')
-                 if path.is_file() and '__pycache__' not in path.parts}
+                 if path.is_file() and '__pycache__' not in path.parts and 'tests' not in path.parts}
+        for script in ('scripts/publication/publish-filename-viewer.py',
+                       'scripts/publication/publish-viewer-r2.py'):
+            candidate = self.root / script
+            if (self.root / 'scripts/publication') in self.sources or candidate.is_file():
+                paths.add(candidate)
         paths.add(self.root / 'scripts/viewer_release_identity.py')
         paths.add(Path(__file__).resolve())
         return paths
@@ -174,15 +181,15 @@ def run(args):
     from congress_api.retention.document_index import validate_document_indexes
     from congress_api.retention.catalog_validation import validate_catalog_pair
     from congress_api.retention.raw_catalog import rebuild_catalog_in_directory
-    from filename_recoveries import accepted_rows
+    from viewer_publication.filename_recoveries import accepted_rows
     from viewer_publication.client import ContinuedPublicationClient
     from corpus_recovery.mappings import publish_mappings
     from viewer_publication.local import LocalContinuation as Continuation
     from corpus_recovery.guards import RecoveryGuard
     import viewer_release_identity
     import corpus_recovery.publication as publication_module
-    builder = load(runtime/'apps/site/scripts/publish-filename-viewer.py', 'recovery_viewer_builder')
-    publisher = load(runtime/'apps/site/scripts/publish-viewer-r2.py', 'recovery_viewer_publisher')
+    builder = load(runtime/'scripts/publication/publish-filename-viewer.py', 'recovery_viewer_builder')
+    publisher = load(runtime/'scripts/publication/publish-viewer-r2.py', 'recovery_viewer_publisher')
     selected.check(builder, publisher)
     cloud_clear()
     control_root = (getattr(args, 'control_root', None) or ROOT).resolve()

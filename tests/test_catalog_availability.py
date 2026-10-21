@@ -133,7 +133,7 @@ def test_availability_survives_static_publication(tmp_path):
     from pathlib import Path
     import pyarrow.parquet as pq
     from congress_api.retention.catalog_publication import local_catalog_paths
-    script=Path(__file__).resolve().parents[1]/'apps/site/scripts/publish-filename-viewer.py'
+    script=Path(__file__).resolve().parents[1]/'scripts/publication/publish-filename-viewer.py'
     spec=importlib.util.spec_from_file_location('availability_publication',script)
     publisher=importlib.util.module_from_spec(spec);spec.loader.exec_module(publisher)
     api='https://api.congress.gov/v3/hearing/118/senate/53528?format=json'
@@ -199,7 +199,7 @@ def test_state_retained_body_is_exposed_without_rewriting_existing_observation(t
     from congress_api.retention.catalog_publication import local_catalog_paths
     import importlib.util
     from pathlib import Path
-    script = Path(__file__).resolve().parents[1] / 'apps/site/scripts/publish-filename-viewer.py'
+    script = Path(__file__).resolve().parents[1] / 'scripts/publication/publish-filename-viewer.py'
     spec = importlib.util.spec_from_file_location('retained_publication', script)
     publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
     output = tmp_path / 'public'
@@ -230,7 +230,7 @@ def test_publication_keeps_video_locations_without_saved_video_links(tmp_path, m
     rows = [dict(source_url=url, filename='recording', body_key=body, media_type=[media],
                  source_occurrences=[dict(source_occurrence_scope=['capture'], source_capture_url=[url])])]
     index.write_filename_metadata(tmp_path, rows, workers=1)
-    script = Path(__file__).resolve().parents[1] / 'apps/site/scripts/publish-filename-viewer.py'
+    script = Path(__file__).resolve().parents[1] / 'scripts/publication/publish-filename-viewer.py'
     spec = importlib.util.spec_from_file_location('video_policy_publication', script)
     publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
     output = tmp_path / 'public'
@@ -264,7 +264,7 @@ def test_saved_response_flags_and_links_use_capture_evidence(tmp_path, evidence,
     body = 'bodies/error-or-content'
     rows = [dict(source_url='https://example.gov/document', filename='document', body_key=body, source_occurrences=[dict(source_occurrence_scope=['capture'], source_capture_url=['https://example.gov/document'])], **evidence)]
     index.write_filename_metadata(tmp_path, rows, workers=1)
-    script = Path(__file__).resolve().parents[1] / 'apps/site/scripts/publish-filename-viewer.py'
+    script = Path(__file__).resolve().parents[1] / 'scripts/publication/publish-filename-viewer.py'
     spec = importlib.util.spec_from_file_location('saved_policy_publication', script)
     publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
     output = tmp_path / 'public'

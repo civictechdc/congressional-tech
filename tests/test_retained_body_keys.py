@@ -7,7 +7,7 @@ import pytest
 from congress_api.retention.body_keys import body_key_digest
 from congress_api.retention.document_evidence import read_retained_body
 from congress_api.retention.document_index import validated_body_readings
-from filename_aliases import valid_body
+from viewer_publication.filename_aliases import valid_body
 
 
 def reading(key):

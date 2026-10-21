@@ -17,8 +17,7 @@ import sys
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
-from filename_recoveries import index_recoveries, accepted_rows
+from viewer_publication.filename_recoveries import index_recoveries, accepted_rows
 
 
 def sha(path):

@@ -5,7 +5,7 @@ import struct
 import time
 from urllib.parse import urlsplit
 
-from filename_aliases import valid_body
+from viewer_publication.filename_aliases import valid_body
 
 ACCEPTED_KEY = 'viewer-publications/recoveries/accepted.json'
 FIELDS = ('original_url', 'recovered_url', 'body_key', 'kind', 'recovery_status', 'recovery_basis')
@@ -50,7 +50,7 @@ def index_recoveries(root, manifest, rows, *, validation=None, metrics=None):
         paths[name] = path
     import mmap
     from contextlib import ExitStack
-    from filename_alias_index import AliasIndex
+    from viewer_publication.filename_alias_index import AliasIndex, OUTPUT_BYTES
     size = paths['groups'].stat().st_size
     if size != 4 * info['rows']:
         raise ValueError('Recovery group counts disagree with catalog.')
@@ -74,7 +74,6 @@ def index_recoveries(root, manifest, rows, *, validation=None, metrics=None):
             # Entry accounting already includes each exact encoded entry plus
             # one separator. Add the small empty-array header and remove the
             # final separator from every nonempty array; do not walk output twice.
-            from filename_alias_index import OUTPUT_BYTES
             started = time.perf_counter()
             arrays = ('recoveries', 'sources', 'groups')
             header = dict(result, **{name: [] for name in arrays})

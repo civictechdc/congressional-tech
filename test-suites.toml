@@ -36,7 +36,24 @@ commit = "38f75574d217d3e4908e3f37e0c0906b1090990a"
 parser = "packages/congress_api/src/congress_api/parsers/document_cover.py"
 
 [lanes.production-offline]
-roots = ["tests", "packages/committee_meeting/tests", "packages/house-naming/tests", "packages/congress_api/tests", "packages/corpus_recovery/tests", "packages/news_lake/tests", "packages/viewer_publication/tests", "packages/youtube_api/tests", "apps/committee_youtube/tests", "apps/site/tests", "scripts/corpus_recovery/tests", "scripts/publication/tests", "scripts/measure/tests", "scripts/webharvest/tests", "scripts/tests", "docs/youtube-coverage/research/scripts", ".github/tests"]
+roots = [
+    "tests",
+    "packages/committee_meeting/tests",
+    "packages/house-naming/tests",
+    "packages/congress_api/tests",
+    "packages/corpus_recovery/tests",
+    "packages/news_lake/tests",
+    "packages/viewer_publication/tests",
+    "packages/youtube_api/tests",
+    "apps/committee_youtube/tests",
+    "scripts/corpus_recovery/tests",
+    "scripts/publication/tests",
+    "scripts/measure/tests",
+    "scripts/webharvest/tests",
+    "scripts/tests",
+    "docs/youtube-coverage/research/scripts",
+    ".github/tests",
+]
 marker = "not loopback"
 offline = true
 purpose = "Production regression with an in-process Python socket tripwire; child processes are not network-isolated."

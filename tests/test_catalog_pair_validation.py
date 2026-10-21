@@ -13,8 +13,7 @@ import pyarrow.parquet as pq
 from congress_api.retention.catalog_validation import validate_catalog_pair
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT/'apps/site/scripts'))
-spec = importlib.util.spec_from_file_location('validated_pair_builder', ROOT/'apps/site/scripts/publish-filename-viewer.py')
+spec = importlib.util.spec_from_file_location('validated_pair_builder', ROOT/'scripts/publication/publish-filename-viewer.py')
 builder = importlib.util.module_from_spec(spec); spec.loader.exec_module(builder)
 
 

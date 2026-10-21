@@ -71,7 +71,7 @@ def main():
         old_path = folder / 'old_navigation.py'
         old_path.write_bytes(subprocess.check_output(['git', 'show', f'{args.revision}:apps/site/scripts/filename_navigation.py'], cwd=ROOT))
         functions = [('before', load(old_path, 'old_navigation').publish_navigation),
-                     ('after', load(ROOT / 'apps/site/scripts/filename_navigation.py', 'new_navigation').publish_navigation)]
+                     ('after', load(ROOT / 'packages/viewer_publication/src/viewer_publication/filename_navigation.py', 'new_navigation').publish_navigation)]
         navigation = {}
         groups = [i // 20 for i in range(200000)]; preferred = list(range(0, len(groups), 20))
         for name, function in functions:

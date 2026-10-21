@@ -4,7 +4,7 @@ import io
 from pathlib import Path
 import pytest
 
-spec = importlib.util.spec_from_file_location('bounded_publisher', Path(__file__).resolve().parents[3] / 'apps/site/scripts/publish-viewer-r2.py')
+spec = importlib.util.spec_from_file_location('bounded_publisher', Path(__file__).resolve().parents[3] / 'scripts/publication/publish-viewer-r2.py')
 publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
 
 

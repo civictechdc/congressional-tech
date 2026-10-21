@@ -1,11 +1,6 @@
 """Typed display facts never silently select conflicting source observations."""
-import importlib.util
-from pathlib import Path
 from datetime import datetime, timezone
-
-spec = importlib.util.spec_from_file_location('details', Path(__file__).resolve().parents[3] / 'apps/site/scripts/filename_details.py')
-details = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(details)
+import viewer_publication.filename_details as details
 
 
 def test_typed_facts_preserve_unknown_and_conflicting_states():

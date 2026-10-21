@@ -12,20 +12,21 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from filename_budget import (DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches,
+from viewer_publication.filename_budget import (DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches,
                              json_chunks, plan_native_rows, open_parquet, python_estimate)
-from filename_json_stream import ObservationCounts, block_items, decoded_json_default
-import filename_details as details
-import filename_observations as observations
+from viewer_publication.filename_json_stream import ObservationCounts, block_items, decoded_json_default
+import viewer_publication.filename_details as details
+import viewer_publication.filename_observations as observations
 
 spec = importlib.util.spec_from_file_location('budget_publication',
-    Path(__file__).resolve().parents[3] / 'apps/site/scripts/publish-filename-viewer.py')
+    Path(__file__).resolve().parents[3] / 'scripts/publication/publish-filename-viewer.py')
 publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
 
 
 def source_file(folder, rows):
     schema = pa.schema([('filename', pa.string()), ('body_key', pa.string()),
-        ('source_page_title', pa.list_(pa.string())), ('state_checked_at', pa.list_(pa.string())),
+        ('source_page_title', pa.list_(pa.string())), ('source_link_label', pa.list_(pa.string())),
+        ('state_checked_at', pa.list_(pa.string())),
         ('content_labels', pa.list_(pa.string())), ('wording', pa.list_(pa.string())),
         ('http_status', pa.list_(pa.string())), ('response_usable', pa.list_(pa.string())),
         ('response_body_complete', pa.list_(pa.string())),
@@ -139,7 +140,7 @@ def test_repack_borrows_original_reader_without_reopening_or_closing_it(tmp_path
 
 
 def test_preparation_readers_disable_readahead_and_buffer_column_reads(monkeypatch):
-    import filename_budget
+    import viewer_publication.filename_budget as filename_budget
     calls = []
     monkeypatch.setattr(filename_budget.pq, 'ParquetFile', lambda *args, **kwargs: calls.append((args, kwargs)))
     filename_budget.open_parquet('owned.parquet')
@@ -186,7 +187,7 @@ def test_details_reject_count_corruption_before_output_acceptance(tmp_path, kind
 
 def test_details_use_explicit_counts_without_sidecar_reread_and_keep_canonical_values(tmp_path):
     rows = [dict(filename='José 🏛️\n', body_key='retained-evidence', source_page_title=['Origin', 'Origin'],
-                 state_checked_at=['2026-10-14T09:00:00.123999-04:00'], content_labels=['é', 'é', '', '🏛️'],
+                 source_link_label=['Link'], state_checked_at=['2026-10-14T09:00:00.123999-04:00'], content_labels=['é', 'é', '', '🏛️'],
                  wording=['hidden fragment'], http_status=['200', '404'], response_usable=['false'], source_occurrences=value)
             for value in [None, [], [None], [{'label': ['é', '', 'é']}]]]
     path = source_file(tmp_path, rows)
@@ -204,7 +205,8 @@ def test_details_use_explicit_counts_without_sidecar_reread_and_keep_canonical_v
         assert row['content_labels'] == ['é', 'é', '', '🏛️']
         assert row['body_key'] is None  # conflicting failure evidence never links saved content
         assert row['fact_alternatives'] == [{'field': 'http_status', 'values': ['200', '404']}]
-        assert row['source_page_title'] == (['Origin', 'Origin'] if i < 2 else None)
+        assert row['source_page_title'] == ['Origin', 'Origin']
+        assert row['source_link_label'] == (['Link'] if i < 2 else None)
         assert row['filename_readings'] == [] and row['filename_field_count'] == 1
 
 
@@ -258,7 +260,7 @@ def test_repack_full_arrow_comparison_crosses_adaptive_row_group_boundaries(tmp_
 
 
 def test_arrow_only_repack_preserves_large_row_without_estimating_unused_python_values(tmp_path, monkeypatch):
-    import filename_budget
+    import viewer_publication.filename_budget as filename_budget
     schema = pa.schema([('payload', pa.string()), ('values', pa.list_(pa.string())),
                         ('observations', pa.list_(pa.struct([('label', pa.string())])))],
                        metadata={b'catalog_id': b'stage-budget', b'custom': b'preserve'})
@@ -334,7 +336,7 @@ def test_refused_existing_publication_is_never_overwritten(tmp_path):
 
 
 def test_alias_scan_uses_byte_admission_and_keeps_refusal_scratch(tmp_path):
-    from filename_alias_index import AliasIndex
+    from viewer_publication.filename_alias_index import AliasIndex
     path = tmp_path / 'aliases.parquet'
     pq.write_table(pa.table({'source_url': ['https://example.test/' + 'x' * 2000]}), path)
     index = AliasIndex(path, policy=replace(DEFAULT_DECODED_POLICY, row_arrow_bytes=1024))
@@ -410,7 +412,7 @@ def test_details_coalesce_native_batches_with_exact_order_and_retained_metrics(t
 
 
 def test_arrow_staging_checks_limits_before_aggregation_and_keeps_write_error():
-    from filename_budget import ArrowStager
+    from viewer_publication.filename_budget import ArrowStager
     batch = pa.record_batch([['x' * 100] * 4], names=['value'])
     written = []
     class Writer:
@@ -433,7 +435,7 @@ def test_arrow_staging_checks_limits_before_aggregation_and_keeps_write_error():
 
 
 def test_writer_detaches_shared_nested_parents_and_preserves_exact_order_and_metadata():
-    from filename_budget import ArrowStager
+    from viewer_publication.filename_budget import ArrowStager
     schema = pa.schema([('values', pa.list_(pa.string()))], metadata={b'exact': b'preserve'})
     parent = pa.RecordBatch.from_arrays([pa.array([[str(i), None, '', 'é', 'é', '🏛️'] for i in range(10000)])], schema=schema)
     written, metrics = [], {}
@@ -452,7 +454,7 @@ def test_writer_detaches_shared_nested_parents_and_preserves_exact_order_and_met
 
 
 def test_writer_retained_limit_refuses_dictionary_backing_that_survives_compaction():
-    from filename_budget import ArrowStager
+    from viewer_publication.filename_budget import ArrowStager
     dictionary = pa.array(['x' * 1024**2, 'é']).slice(1, 1)
     batch = pa.record_batch([pa.DictionaryArray.from_arrays(pa.array([0], type=pa.int8()), dictionary)], names=['value'])
     assert batch.nbytes < 1024 and batch.get_total_buffer_size() > 1024**2
@@ -464,7 +466,7 @@ def test_writer_retained_limit_refuses_dictionary_backing_that_survives_compacti
 
 
 def test_writer_compaction_failure_propagates_without_flushing_pending(monkeypatch):
-    from filename_budget import ArrowStager
+    from viewer_publication.filename_budget import ArrowStager
     parent = pa.record_batch([['x' * 1024] * 1000], names=['value'])
     class Writer:
         def write_table(self, *args, **kwargs): raise AssertionError('abort flushed pending data')
@@ -477,7 +479,7 @@ def test_writer_compaction_failure_propagates_without_flushing_pending(monkeypat
 
 
 def test_writer_budget_is_independent_of_decode_batch_size():
-    from filename_budget import ArrowStager
+    from viewer_publication.filename_budget import ArrowStager
     batch = pa.record_batch([['x' * 100] * 128], names=['value'])
     written, metrics = [], {}
     class Writer:
@@ -511,7 +513,7 @@ def test_borrowed_reader_survives_repack_failure_and_owned_output_closes(tmp_pat
 
 def test_publication_reuses_its_catalog_readers_and_preparation_options(tmp_path, monkeypatch):
     import subprocess, sys
-    fixture = Path(__file__).resolve().parents[3] / 'apps/site/scripts/filename-test-fixture.py'
+    fixture = Path(__file__).resolve().parents[3] / 'scripts/publication/filename-test-fixture.py'
     root = tmp_path / 'fixture'
     subprocess.run([sys.executable, str(fixture), str(root)], check=True, capture_output=True)
     manifest = json.loads((root / 'indexes/catalog.json').read_text())

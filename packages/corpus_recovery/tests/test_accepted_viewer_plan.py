@@ -18,15 +18,14 @@ from viewer_publication.client import ContinuedPublicationClient
 from corpus_recovery.publication import prepare_viewer
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
 
 def module(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
     value = importlib.util.module_from_spec(spec); spec.loader.exec_module(value)
     return value
 
-builder = module('plan_fixture_builder', ROOT / 'apps/site/scripts/publish-filename-viewer.py')
-publisher = module('plan_fixture_publisher', ROOT / 'apps/site/scripts/publish-viewer-r2.py')
+builder = module('plan_fixture_builder', ROOT / 'scripts/publication/publish-filename-viewer.py')
+publisher = module('plan_fixture_publisher', ROOT / 'scripts/publication/publish-viewer-r2.py')
 control = module('plan_fixture_control', ROOT / 'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py')
 remote_fixture = module('plan_fixture_remote', ROOT / 'packages/viewer_publication/tests/test_viewer_publication_attempt.py')
 
@@ -34,7 +33,7 @@ remote_fixture = module('plan_fixture_remote', ROOT / 'packages/viewer_publicati
 @pytest.fixture(scope='module')
 def source(tmp_path_factory):
     root = tmp_path_factory.mktemp('accepted-plan-source')
-    subprocess.run([sys.executable, str(ROOT / 'apps/site/scripts/filename-test-fixture.py'), str(root)],
+    subprocess.run([sys.executable, str(ROOT / 'scripts/publication/filename-test-fixture.py'), str(root)],
                    check=True, capture_output=True)
     return root
 
@@ -170,10 +169,9 @@ from viewer_publication.continuation import bounded_json
 from congress_api.retention import viewer_inventory
 from corpus_recovery.publication import prepare_viewer
 root, checkout = map(pathlib.Path, sys.argv[1:])
-sys.path.insert(0, str(checkout/'apps/site/scripts'))
 def load(name, path):
  spec=importlib.util.spec_from_file_location(name,path); module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
-publisher=load('restored_plan_publisher',checkout/'apps/site/scripts/publish-viewer-r2.py')
+publisher=load('restored_plan_publisher',checkout/'scripts/publication/publish-viewer-r2.py')
 control=load('restored_plan_control',checkout/'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py')
 state=bounded_json(root/'continuation.json')
 run=LocalContinuation(root,state['binding'],resume=True)

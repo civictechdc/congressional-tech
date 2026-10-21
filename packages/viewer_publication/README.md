@@ -4,7 +4,7 @@ Python library for publishing the **filename viewer** without rewriting the raw 
 
 The filename viewer is the public lookup of congressional documents by filename. Its files live in Cloudflare R2 under `viewer-publications/`. They are built from the archive. This package is the write boundary for those derived files: one conditional upload, a full read-back, and a local journal so a crashed attempt can resume from what already landed.
 
-People publish with `apps/site/scripts/publish-viewer-r2.py`. That script calls [`scripts/publication/publication_cli.py`](../../scripts/publication/README.md) for `prepare`, `verify-prepared`, `publish`, and `describe-attempt`. Import this package when code needs the guarded client or the journal directly.
+People publish with `scripts/publication/publish-viewer-r2.py`. That script calls [`scripts/publication/publication_cli.py`](../../scripts/publication/README.md) for `prepare`, `verify-prepared`, `publish`, and `describe-attempt`. Import this package when code needs the guarded client or the journal directly.
 
 ```python
 import viewer_publication
@@ -23,6 +23,10 @@ Install it with the workspace (`uv sync --locked`).
 | `plan` | `AcceptedViewerPlan` binds protected source/mapping/viewer identities, code pins, accepted recovery status, exact file inventory and original release/selector conditions using the existing issued inventory proof. Both local and cloud routes consume it; cloud artifact custody remains separately required. |
 | `attempt` | Identifies one publish attempt (run, revision, artifact digest) so a later publish cannot claim a different attempt. |
 | `verify` | Read-only checks that a published viewer object matches the attempt that was prepared. |
+| `filename_budget`, `filename_resources`, `filename_json_stream` | Bounded Arrow/JSON decoding admission (`DEFAULT_DECODED_POLICY`, `bounded_batches`, `ArrowStager`, `open_parquet`), deterministic resource ownership (`owned_resources`), and streaming observation counts (`ObservationCounts`). |
+| `filename_observations`, `filename_details`, `filename_navigation` | Serving-table builders and verifiers used by `scripts/publication/publish-filename-viewer.py` to emit bounded provenance blocks, detail Parquet tables, and binary group/member navigation indexes. |
+| `filename_aliases`, `filename_alias_index`, `filename_recoveries` | URL/identity alias resolution, disk-backed SQLite alias lookup (`AliasIndex`), and accepted corpus-recovery indexing (`accepted_rows`, `index_recoveries`). |
+| `filename_reviews`, `filename_review_binding` | Public review archive verification/extraction (`export_reviews`, `verify_directory`, `extract_archive`) and catalog-version identity rebinding (`load_identities`, `bind`, `identities_from`). |
 
 ## What has to stay outside this package
 
