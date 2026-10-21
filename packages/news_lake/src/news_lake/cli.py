@@ -86,12 +86,18 @@ def _cmd_views(args):
             client,
             lifecycle_compact_interval=args.lifecycle_compact_interval,
         )
-        release_read = read_release(lake, control, args.release_id)
         views = DocSpecNewsViews(
             client,
             lifecycle_compact_interval=args.lifecycle_compact_interval,
         )
-        if args.mode == 'full' or not views.pins:
+        full_mode = args.mode == 'full' or not views.pins
+        release_read = read_release(
+            lake,
+            control,
+            args.release_id,
+            tables=None if (full_mode or args.verify_oracle) else (),
+        )
+        if full_mode:
             views.materialize(release_read)
         else:
             views.update_bridges(release_read)

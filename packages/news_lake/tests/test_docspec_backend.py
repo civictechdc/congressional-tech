@@ -1270,3 +1270,373 @@ def test_news_lake_cli_publish_views_export_and_compact_lifecycle(tmp_path, caps
     assert comp_out['backend'] == 'docspec'
     assert 'news_versions' in comp_out['lake_datasets']
     assert 'politician_articles' in comp_out['view_datasets']
+
+
+# -- ct-n6lj: Incremental delta bridge updates, cross-date syndication, & hot-group bounds --
+
+
+def test_incremental_update_bridges_scales_with_delta_not_corpus_and_cross_date_syndication(tmp_path):
+    """update_bridges derives changes from deltas/read_keys (O(delta)) and updates cross-date syndication."""
+    import json
+    from news_lake.analysis.cluster import text_group_key
+    from news_lake.storage.control import ControlStore
+    from news_lake.storage.coordinator import Coordinator
+    from news_lake.storage.releases import publish_release, read_release
+
+    def _build_corpus_n(n_articles):
+        records = [OUTLET_A, OUTLET_B, P1, P1B, P2]
+        version_ids = []
+        for idx in range(n_articles):
+            key = f'scale-{idx:04d}'
+            day = f'2026-09-{(idx % 28) + 1:02d}'
+            body = f'Unique article {idx} quoting Alex Doe on policy item {idx}.'
+            cap = _capture(key)
+            ext = _extract_run(key, cap['id'])
+            ver = _version(
+                key,
+                title=f'Alex Doe headline {idx}',
+                publication={'precision': 'day', 'date': day, 'basis': 'publisher'},
+                text=body,
+            )
+            itm = _item(key, version_key=key)
+            version_ids.append(ver['id'])
+            records.extend([cap, ext, ver, itm])
+
+        run_link = _run(
+            'link-scale',
+            processor='mentions',
+            config='model-B',
+            inputs=version_ids,
+            finished_at='2026-10-20T06:00:00Z',
+        )
+        records.append(run_link)
+        for idx in range(n_articles):
+            key = f'scale-{idx:04d}'
+            m = _mention(
+                f'm-{key}',
+                version_key=key,
+                surface='Alex Doe',
+                resolution='resolved',
+                occurrences=[{'field': 'title', 'start': 0, 'end': 8}],
+                entity_key='p1',
+            )
+            m['run_id'] = run_link['id']
+            records.append(m)
+        return records, version_ids
+
+    def _run_scaling_trial(label, n_articles):
+        ws = tmp_path / f'ws-{label}'
+        ws.mkdir(parents=True, exist_ok=True)
+        control = ControlStore(ws / 'control.sqlite')
+        client = DocSpecClient(ws)
+        lake = DocSpecLake(client)
+        coord = Coordinator(lake, control)
+
+        initial_records, version_ids = _build_corpus_n(n_articles)
+        rel1_id = _id(f'release:{label}:1')
+        publish_release(
+            coord,
+            initial_records,
+            release_id=rel1_id,
+            recorded_at='2026-10-20T07:00:00Z',
+            selections=SELECTIONS,
+        )
+        read1 = read_release(lake, control, rel1_id)
+        views = DocSpecNewsViews(client)
+        views.materialize(read1)
+        assert views.politician_articles(read1, mode='full') == politician_articles_views(read1)
+        assert views.coverage_daily(read1, mode='full') == coverage_daily(read1)
+
+        # Verify .news_lake_views.json does not persist full bridge_rows
+        persisted_views = json.loads(views._views_state_path().read_text())
+        assert 'bridge_rows' not in persisted_views
+
+        # Poll 2: admit a 1-article delta
+        delta_key = 'delta-new'
+        delta_cap = _capture(delta_key)
+        delta_ext = _extract_run(delta_key, delta_cap['id'])
+        delta_ver = _version(
+            delta_key,
+            title='Alex Doe delta story',
+            publication={'precision': 'day', 'date': '2026-10-18', 'basis': 'publisher'},
+            text='Delta article mentioning Alex Doe.',
+        )
+        delta_itm = _item(delta_key, version_key=delta_key)
+        delta_run = _run(
+            'link-delta',
+            processor='mentions',
+            config='model-B',
+            inputs=[delta_ver['id']],
+            finished_at='2026-10-20T08:00:00Z',
+        )
+        delta_mention = _mention(
+            'm-delta-new',
+            version_key=delta_key,
+            surface='Alex Doe',
+            resolution='resolved',
+            occurrences=[{'field': 'title', 'start': 0, 'end': 8}],
+            entity_key='p1',
+        )
+        delta_mention['run_id'] = delta_run['id']
+        delta_records = [delta_cap, delta_ext, delta_ver, delta_itm, delta_run, delta_mention]
+
+        rel2_id = _id(f'release:{label}:2')
+        publish_release(
+            coord,
+            delta_records,
+            release_id=rel2_id,
+            recorded_at='2026-10-20T08:30:00Z',
+            selections=SELECTIONS,
+        )
+        # Read metadata-only release (tables=()) to prove no full-corpus Python table unwrapping
+        read2_meta = read_release(lake, control, rel2_id, tables=())
+        assert read2_meta['tables'] == {}
+
+        views2 = DocSpecNewsViews(client)
+        views2.update_bridges(read2_meta)
+        pa_inc = views2.politician_articles(read2_meta, mode='incremental')
+        cov_inc = views2.coverage_daily(read2_meta, mode='incremental')
+
+        read2_full = read_release(lake, control, rel2_id)
+        assert pa_inc == politician_articles_views(read2_full)
+        assert cov_inc == coverage_daily(read2_full)
+        client.close()
+        return views2.last_bridge_diff
+
+    diff_1x = _run_scaling_trial('1x', 4)
+    diff_10x = _run_scaling_trial('10x', 40)
+
+    for ds in ('entity_roots', 'selected_mentions', 'survivor_items'):
+        assert diff_1x[ds]['full_table_reads'] == 0
+        assert diff_10x[ds]['full_table_reads'] == 0
+        assert diff_1x[ds]['rows_recomputed'] == diff_10x[ds]['rows_recomputed']
+        assert diff_1x[ds]['changed_rows'] == diff_10x[ds]['changed_rows']
+
+    assert diff_10x['entity_roots']['rows_recomputed'] == 0
+    assert diff_10x['selected_mentions']['rows_recomputed'] == 1
+    assert diff_10x['survivor_items']['rows_recomputed'] == 1
+
+    # Part B: Cross-date syndication across incremental polls (count 1 -> 2 -> 1)
+    ws_syn = tmp_path / 'ws-syndication'
+    ws_syn.mkdir(parents=True, exist_ok=True)
+    control_syn = ControlStore(ws_syn / 'control.sqlite')
+    client_syn = DocSpecClient(ws_syn)
+    lake_syn = DocSpecLake(client_syn)
+    coord_syn = Coordinator(lake_syn, control_syn)
+
+    shared_text = 'Syndicated wire dispatch on infrastructure bill.'
+    expected_tg = text_group_key(shared_text)
+
+    # Poll 1 (2026-10-15): first occurrence of shared_text (count == 1 -> identical_text_group_id is None)
+    cap1 = _capture('syn-1')
+    ext1 = _extract_run('syn-1', cap1['id'])
+    ver1 = _version(
+        'syn-1',
+        title='Wire dispatch day 1',
+        publication={'precision': 'day', 'date': '2026-10-15', 'basis': 'publisher'},
+        text=shared_text,
+    )
+    itm1 = _item('syn-1', outlet=OUTLET_A, version_key='syn-1')
+    rel_syn_1 = _id('release:syn:1')
+    publish_release(
+        coord_syn,
+        [OUTLET_A, OUTLET_B, cap1, ext1, ver1, itm1],
+        release_id=rel_syn_1,
+        recorded_at='2026-10-15T12:00:00Z',
+        selections=SELECTIONS,
+    )
+    read_syn_1 = read_release(lake_syn, control_syn, rel_syn_1)
+    views_syn = DocSpecNewsViews(client_syn)
+    views_syn.materialize(read_syn_1)
+    cov_syn_1 = views_syn.coverage_daily(read_syn_1, mode='full')
+    assert cov_syn_1 == coverage_daily(read_syn_1)
+    assert {r['date']: r['identical_text_group_ids'] for r in cov_syn_1} == {'2026-10-15': []}
+
+    # Poll 2 (2026-10-21): second occurrence on a later date -> both 2026-10-15 and 2026-10-21 must show expected_tg
+    cap2 = _capture('syn-2')
+    ext2 = _extract_run('syn-2', cap2['id'])
+    ver2 = _version(
+        'syn-2',
+        title='Wire dispatch day 2',
+        publication={'precision': 'day', 'date': '2026-10-21', 'basis': 'publisher'},
+        text=shared_text,
+    )
+    itm2 = _item('syn-2', outlet=OUTLET_B, version_key='syn-2')
+    rel_syn_2 = _id('release:syn:2')
+    publish_release(
+        coord_syn,
+        [cap2, ext2, ver2, itm2],
+        release_id=rel_syn_2,
+        recorded_at='2026-10-21T12:00:00Z',
+        selections=SELECTIONS,
+    )
+    read_syn_2_meta = read_release(lake_syn, control_syn, rel_syn_2, tables=())
+    views_syn.update_bridges(read_syn_2_meta)
+    assert views_syn.last_bridge_diff['survivor_items']['changed_rows'] == 2
+    assert views_syn.last_bridge_diff['survivor_items']['rows_recomputed'] == 2
+    assert views_syn.last_bridge_diff['survivor_items']['full_table_reads'] == 0
+
+    cov_syn_2 = views_syn.coverage_daily(read_syn_2_meta, mode='incremental')
+    read_syn_2_full = read_release(lake_syn, control_syn, rel_syn_2)
+    assert cov_syn_2 == coverage_daily(read_syn_2_full)
+    assert {r['date']: r['identical_text_group_ids'] for r in cov_syn_2} == {
+        '2026-10-15': [expected_tg],
+        '2026-10-21': [expected_tg],
+    }
+
+    # Poll 3: supersede syn-2 with non-matching text -> count drops 2 -> 1, so 2026-10-15 clears expected_tg
+    cap3 = _capture('syn-3')
+    ext3 = _extract_run('syn-3', cap3['id'])
+    ver3 = _version(
+        'syn-3',
+        title='Corrected local report',
+        publication={'precision': 'day', 'date': '2026-10-21', 'basis': 'publisher'},
+        text='Completely distinct replacement article body.',
+    )
+    itm3 = _item('syn-3', outlet=OUTLET_B, version_key='syn-3')
+    itm2_superseded = dict(itm2, superseded_by=itm3['id'])
+    rel_syn_3 = _id('release:syn:3')
+    publish_release(
+        coord_syn,
+        [cap3, ext3, ver3, itm3, itm2_superseded],
+        release_id=rel_syn_3,
+        recorded_at='2026-10-21T15:00:00Z',
+        selections=SELECTIONS,
+    )
+    read_syn_3_meta = read_release(lake_syn, control_syn, rel_syn_3, tables=())
+    views_syn.update_bridges(read_syn_3_meta)
+    assert views_syn.last_bridge_diff['survivor_items']['removed_keys'] == 1
+    assert views_syn.last_bridge_diff['survivor_items']['changed_rows'] == 2
+
+    cov_syn_3 = views_syn.coverage_daily(read_syn_3_meta, mode='incremental')
+    read_syn_3_full = read_release(lake_syn, control_syn, rel_syn_3)
+    assert cov_syn_3 == coverage_daily(read_syn_3_full)
+    assert {r['date']: r['identical_text_group_ids'] for r in cov_syn_3} == {
+        '2026-10-15': [],
+        '2026-10-21': [],
+    }
+    client_syn.close()
+
+
+def test_hot_group_collect_set_null_bucket_limits_and_projected_streaming(tmp_path):
+    """Verify high-cardinality NULL bucket CollectSet/CountDistinct under bounded Limits and projected streaming."""
+    import json
+
+    # 1. Build a 200-item high-cardinality NULL effective_pub_date bridge table
+    n_items = 200
+    n_groups = 80
+    n_outlets = 50
+    n_stories = 60
+    survivor_rows = []
+    for i in range(n_items):
+        # First 160 items form 80 repeated syndication groups; remaining 40 have None
+        tg = f'tg-{i // 2:04d}' if i < (n_groups * 2) else None
+        survivor_rows.append({
+            'item_id': _id(f'hot-item:{i:04d}'),
+            'outlet_id': _id(f'hot-outlet:{i % n_outlets:03d}'),
+            'current_version_id': _id(f'hot-ver:{i:04d}'),
+            'effective_pub_date': None,  # All 200 rows land in the single NULL undated bucket
+            'story_id': _id(f'hot-story:{i % n_stories:03d}'),
+            'text_group_id': tg or f'unique-{i:04d}',
+            'identical_text_group_id': tg,
+        })
+
+    limits_ok_path = tmp_path / 'limits-ok.json'
+    limits_ok_path.write_text(
+        json.dumps({
+            'compute_threads': 4,
+            'memory_bytes': 128 * 1024 * 1024,
+            'scratch_bytes': 128 * 1024 * 1024,
+            'batch_rows': 1024,
+            'max_batch_bytes': 4 * 1024 * 1024,
+            'max_metadata_bytes': 4 * 1024 * 1024,
+        }),
+        encoding='utf-8',
+    )
+    ws_ok = tmp_path / 'ws-hot-ok'
+    client_ok = DocSpecClient(ws_ok, limits=limits_ok_path)
+    survivor_table = pa.Table.from_pylist(survivor_rows, schema=bridges.SURVIVOR_ITEMS_SCHEMA)
+    survivor_pin = client_ok.run_table(survivor_table, 'survivor_items', 'admit-hot-survivors')
+
+    # Verify projected streaming via source_batches, iter_records, and read_arrow(columns=...)
+    projected_arrow = client_ok.read_arrow(
+        survivor_pin,
+        columns=['item_id', 'identical_text_group_id'],
+        schema=bridges.SURVIVOR_ITEMS_SCHEMA,
+    )
+    assert projected_arrow.column_names == ['item_id', 'identical_text_group_id']
+    assert projected_arrow.num_rows == n_items
+
+    streamed_rows = list(
+        client_ok.iter_records(
+            survivor_pin,
+            columns=['item_id', 'outlet_id'],
+            schema=bridges.SURVIVOR_ITEMS_SCHEMA,
+        )
+    )
+    assert len(streamed_rows) == n_items
+    assert set(streamed_rows[0].keys()) == {'item_id', 'outlet_id'}
+
+    views_ok = DocSpecNewsViews(client_ok, pins={'survivor_items': survivor_pin})
+    spec_ok = views_ok._refresh_aggregate_spec(base=None, mode='full', survivor_pin=survivor_pin)
+    plan_ok = client_ok.plan_refresh(spec_ok)
+    assert isinstance(plan_ok, dict) and plan_ok.get('dataset') == 'coverage_daily'
+    agg_funcs = {
+        agg['name']: agg['function']['kind']
+        for agg in spec_ok['transform']['grouping']['aggregates']
+    }
+    assert agg_funcs == {
+        'rows': 'count_rows',
+        'items': 'count_distinct',
+        'outlets': 'count_distinct',
+        'stories': 'count_distinct',
+        'identical_text_group_ids': 'collect_set',
+    }
+
+    cov_rows = views_ok.coverage_daily({'release': {'id': 'rel-hot-ok', 'selections': []}}, mode='full')
+    assert len(cov_rows) == 1
+    undated_bucket = cov_rows[0]
+    assert undated_bucket['date'] is None
+    assert undated_bucket['undated'] is True
+    assert undated_bucket['items'] == n_items
+    assert undated_bucket['outlets'] == n_outlets
+    assert undated_bucket['stories'] == n_stories
+    assert undated_bucket['identical_text_group_ids'] == [f'tg-{g:04d}' for g in range(n_groups)]
+
+    inspect_cov = client_ok.inspect('coverage_daily')
+    processing_entries = [
+        v for v in inspect_cov.values()
+        if isinstance(v, dict) and v.get('phase') == 'processing'
+    ]
+    assert len(processing_entries) == 1
+    assert isinstance(processing_entries[0].get('metrics'), dict)
+    assert views_ok.pins['coverage_daily']['dataset']['groups']['source']['rows'] == 1
+    client_ok.close()
+
+    # 2. Verify tight memory_bytes limit refuses hot-group state cleanly without advancing selection
+    limits_tight_path = tmp_path / 'limits-tight.json'
+    limits_tight_path.write_text(
+        json.dumps({
+            'compute_threads': 2,
+            'memory_bytes': 4 * 1024 * 1024,
+            'scratch_bytes': 4 * 1024 * 1024,
+            'batch_rows': 64,
+            'max_batch_bytes': 1024 * 1024,
+            'max_metadata_bytes': 512 * 1024,
+        }),
+        encoding='utf-8',
+    )
+    client_tight = DocSpecClient(ws_ok, limits=limits_tight_path)
+    prior_cov_ver = views_ok.pins['coverage_daily']['dataset']['version']
+    bad_spec = views_ok._refresh_aggregate_spec(
+        base=prior_cov_ver, mode='full', survivor_pin=survivor_pin
+    )
+    bad_spec['operation'] = 'cov-hot-tight-limit'
+    with pytest.raises(DocSpecFailure) as exc_info:
+        client_tight.refresh(bad_spec)
+    assert exc_info.value.code in ('capacity', 'query')
+    client_tight.close()
+    # Selected version of coverage_daily remains unchanged at prior_cov_ver
+    with DocSpecClient(ws_ok, limits=limits_ok_path) as client_verify:
+        assert client_verify.latest('coverage_daily')['dataset']['version'] == prior_cov_ver
+
