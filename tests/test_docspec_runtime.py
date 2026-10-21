@@ -395,6 +395,39 @@ def test_compact_lifecycle_delegates_to_dataset_lifecycle_route(tmp_path):
     assert result["revisions_after"] == 1
 
 
+def test_compact_table_delegates_to_compactions_run_route(tmp_path):
+    client = NativeDatasets(tmp_path / "docspec", tmp_path / "workspace")
+    observed = []
+
+    def fake_request(path, request, **kwargs):
+        observed.append((path, dict(request)))
+        return {"verified": True, "input_files": request["files"], "output_files": ["out.parquet"]}
+
+    client._request = fake_request
+    pin = {"dataset": {"dataset": "news_captures", "version": "append-capture-1"}}
+    result = client.compact_table(
+        "news_captures",
+        operation="compact-1",
+        version=pin,
+        files=["a.parquet", "b.parquet"],
+        target_file_bytes=32 * 1024 * 1024,
+    )
+    assert result["verified"] is True
+    assert observed == [
+        (
+            "/compactions/run",
+            {
+                "dataset": "news_captures",
+                "operation": "compact-1",
+                "version": "append-capture-1",
+                "group": "source",
+                "files": ["a.parquet", "b.parquet"],
+                "target_file_bytes": 32 * 1024 * 1024,
+            },
+        )
+    ]
+
+
 def test_producer_parquet_writes_bound_row_group_size_for_batch_budget(tmp_path):
     import pyarrow as pa
     import pyarrow.parquet as pq
