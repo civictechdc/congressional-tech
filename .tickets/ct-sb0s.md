@@ -1,8 +1,8 @@
 ---
 id: ct-sb0s
-status: open
+status: closed
 deps: [ct-egpe, ct-q05l]
-links: [ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-gziq]
+links: [ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-gziq, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -43,3 +43,11 @@ Implemented and verified: added NativeDatasets.update_evidence_table, read_recei
 **2026-10-21T15:21:41Z**
 
 Reopened by independent CS300 audit (re-validated): map_locators_to_occurrences / attach_occurrence_receipts / read_occurrence_receipts are exercised only by tests/test_native_features.py; acceptance requires one real occurrence-linked provenance/review consumer. Remaining scope: wire review provenance (e.g. source_observations receipt locators) through attach_occurrence_receipts against an exact pinned release, preserving duplicate receipts, review ownership, and zero source-byte rewrites. R2 receipts remain gated LocalOnly; local qualification first.
+
+**2026-10-21T20:53:50Z**
+
+Aligned with end-state epic ct-8kl2 (ct-2yl5, ct-bwac) and spicy-stack ss-6gwu (multi-group read_combined in ExportSpec) and ss-vfm6 (remote R2 parity for EvidenceSpec).
+
+**2026-10-21T21:40:24Z**
+
+Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): wired SourceObservationStorage (attach_receipts, read_receipts, and automatic remapping in prepare) and document_review_catalog.py (write_candidates, attach_review_provenance_receipts, read_review_provenance_receipts, remap_review_provenance_receipts) through map_locators_to_occurrences, attach_occurrence_receipts, read_occurrence_receipts, and remap_occurrence_receipts (/receipts/plan, /receipts/run, /occurrences, /receipts).

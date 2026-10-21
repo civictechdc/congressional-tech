@@ -1,8 +1,8 @@
 ---
 id: ct-8ax6
-status: open
+status: closed
 deps: []
-links: [ct-nloa, ct-xu1o, ct-pgxn, ct-r60e, ct-ur7v, ct-qkvr]
+links: [ct-nloa, ct-xu1o, ct-pgxn, ct-r60e, ct-ur7v, ct-qkvr, ct-a3le, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
 created: 2026-10-21T17:19:25Z
 type: task
 priority: 1
@@ -35,3 +35,9 @@ Whichever path (or combination) is chosen must keep active file count per table 
 - C1-C5 contract invariants, idempotent replay (ct-qkvr), failed-cycle abandon (ct-dzyf), and exact ReleasePin lineage for published releases remain intact.
 - Measure and record before/after active file count, lifecycle_bytes, disk_kib, and per-poll wall_ms in output/news-poll-scale-20261021/.
 
+
+## Notes
+
+**2026-10-21T21:40:25Z**
+
+Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): added automatic and explicit native table compaction (compact_table / compact_tables via POST /compactions/run) and lifecycle compaction across DocSpecLake, DocSpecNewsViews, and CLI (compact-tables, compact-lifecycle, poll --coalesce), plus updated examples/news_poll_scale.rs. Empirical 1,080-poll scale receipt (output/news-poll-scale-20261021/after-time-id-1080.csv) bounds active files <= 49, reduces workspace disk from 2,366.9 MiB to 98.4 MiB (24.1x reduction), and bounds lifecycle_bytes at 127.5 KiB (50.4x reduction).

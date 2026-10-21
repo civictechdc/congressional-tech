@@ -1,8 +1,8 @@
 ---
 id: ct-dzyf
-status: open
+status: closed
 deps: []
-links: []
+links: [ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
 created: 2026-10-21T15:21:26Z
 type: bug
 priority: 2
@@ -25,3 +25,7 @@ Independent CS300 audit finding (re-validated): news_lake.storage.coordinator.Co
 **2026-10-21T15:56:05Z**
 
 Fix direction validated (iceberg + refactoring lenses): implement as rollback-expressed-as-new-commit (0-row base-bound update_table against the ReleasePin) exactly as the AC states - no destructive operation on the abandon path, the abandoned generation stays retained, and engine compact_baseline (docspec-rs src/catalog.rs:533) already exists to coalesce superseded revisions afterwards. Route the fix through the existing capability delegation seam (releases.py:186-197 delegates via hasattr(coordinator.lake, 'publish_release')); do NOT add a .table()-shaped PyIceberg adapter to DocSpecLake (it has no table/read_all/fenced_commit, and a fake Iceberg API there invites further reach-throughs from coordinator.py:177,213,299,316,350).
+
+**2026-10-21T21:40:24Z**
+
+Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): Coordinator.publish clears pending_stage after stage verification and raises deterministic ReleaseError('stage_mismatch', ...) on mismatched stage replay across both Lake and DocSpecLake.

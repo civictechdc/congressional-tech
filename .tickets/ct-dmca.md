@@ -1,8 +1,8 @@
 ---
 id: ct-dmca
-status: open
+status: closed
 deps: [ct-egpe, ct-q05l]
-links: [ct-sb0s, ct-gziq, ct-3180, ct-13cn, ct-q05l]
+links: [ct-sb0s, ct-gziq, ct-3180, ct-13cn, ct-q05l, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -43,3 +43,11 @@ Implemented and verified: added plan_schema, evolve_schema, plan_backfill, backf
 **2026-10-21T15:21:41Z**
 
 Reopened by independent CS300 audit (re-validated): evolve_catalog_schema and backfill_scalar_group are exercised only by tests/test_native_features.py; acceptance requires migrating the existing application schema/rule-upgrade caller. Remaining scope: wire the maintained catalog schema/rule-upgrade entry point through evolve_catalog_schema/backfill_scalar_group for a real compatible field change. Note: R2 execution of schemas/backfills is still gated LocalOnly (Engine::check_request_backend), so local-workspace qualification comes first; R2 enablement remains the separately authorized engine extension.
+
+**2026-10-21T20:53:50Z**
+
+Aligned with end-state epic ct-8kl2 (ct-2yl5, ct-bwac) and spicy-stack ss-6gwu (multi-group read_combined in ExportSpec) and ss-vfm6 (remote R2 parity for BackfillSpec).
+
+**2026-10-21T21:40:24Z**
+
+Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): wired upgrade_source_rules / _update_from_raw (catalog_raw_updates.py) and RawStorage.evolve_state_schema (raw_storage.py) through evolve_catalog_schema and backfill_scalar_group (/schemas/run, /backfills/run, /continuous-backfill) for compatible field evolution and scalar group backfills with zero source-file rewrites.

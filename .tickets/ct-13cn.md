@@ -1,8 +1,8 @@
 ---
 id: ct-13cn
-status: open
+status: closed
 deps: [ct-egpe, ct-q05l, ct-9few]
-links: [ct-3180, ct-sb0s, ct-q05l, ct-dmca, ct-gziq]
+links: [ct-3180, ct-sb0s, ct-q05l, ct-dmca, ct-gziq, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -47,3 +47,11 @@ Reopened by independent CS300 audit (re-validated): acceptance requires wiring a
 **2026-10-21T15:56:05Z**
 
 Refactoring-lens caution on remaining scope: an "operator diagnostic command" caller would manufacture a consumer to justify the adapter - the same anti-pattern ct-dmca's own AC forbids on the data side ("Do not manufacture a field simply to exercise an API"). Prefer migrating one existing, measured-expensive caller (e.g. raw_changes / catalog dependency preparation feeding only proven changed keys). If no existing caller justifies migration, the honest outcome is descope with the adapter retained as linked evidence. Closure evidence must cite the production caller at file:line, never a test file.
+
+**2026-10-21T20:53:50Z**
+
+Aligned with end-state epic ct-8kl2 (ct-bwac, ct-gi01): /changes feeds selective downstream dependency/component and weekly source updates.
+
+**2026-10-21T21:40:24Z**
+
+Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): wired SourceObservationStorage.prepare, CatalogDependencyStorage.prepare, and RawStorage.diff_snapshot through inspect_catalog_changes and extract_pin_changes (/compare and /changes).

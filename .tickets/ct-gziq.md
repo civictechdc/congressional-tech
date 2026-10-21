@@ -1,8 +1,8 @@
 ---
 id: ct-gziq
-status: open
+status: closed
 deps: [ct-egpe, ct-q05l]
-links: [ct-gf8i, ct-csjp, ct-vt7i, ct-sb0s, ct-13cn, ct-q05l, ct-3180, ct-dmca]
+links: [ct-gf8i, ct-csjp, ct-vt7i, ct-sb0s, ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -43,3 +43,11 @@ Implemented and verified: added refresh_catalog_observation_summary in packages/
 **2026-10-21T15:21:41Z**
 
 Reopened by independent CS300 audit (re-validated): refresh_catalog_observation_summary is verified in tests/test_native_features.py but no production consumer calls it. Remaining scope: connect one real catalog dependency/count consumer (source_observations rollup or equivalent) through the shared client, keep transitive alias-component closure in catalog_dependencies.py, and measure full-path reads/writes at 1x/10x unrelated scale.
+
+**2026-10-21T20:53:50Z**
+
+Aligned with end-state epic ct-8kl2 (ct-bwac) and spicy-stack ss-65bz (filtered/projected RefreshSpec + chaining) and ss-vfm6 (remote R2 parity for RefreshSpec).
+
+**2026-10-21T21:40:24Z**
+
+Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): wired SourceObservationStorage (summarize_pin, summarize_alias, and automatic rollup in prepare) and CatalogDependencyStorage (summarize_alias_pin, summarize_alias_leaf, refresh_alias_source_join) through refresh_catalog_observation_summary and refresh_catalog_join (/refreshes/plan and /refreshes/run).

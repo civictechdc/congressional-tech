@@ -1,8 +1,8 @@
 ---
 id: ct-n6lj
-status: open
+status: closed
 deps: [ct-jo8n]
-links: [ct-gf8i, ct-jo8n, ct-csjp, ct-vt7i]
+links: [ct-gf8i, ct-jo8n, ct-csjp, ct-vt7i, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
 created: 2026-10-20T23:52:31Z
 type: task
 priority: 2
@@ -38,3 +38,11 @@ Reopened by independent CS300 audit (re-validated): update_bridges (packages/new
 **2026-10-21T15:56:05Z**
 
 Hot-group AC verification approach strengthened: the refusal mechanism exists and is engine-tested. docspec-rs src/engine/aggregation.rs:958-990 proves refresh refuses with capacity/query errors without advancing selection when either the byte-admission semaphore or the DataFusion spill pool is exhausted (a hot-group-ceiling MemoryConsumer exists). The NULL undated bucket (one group accumulating every distinct value) is the correct worst case. For the AC, capture DataFusion operator memory/spill metrics in the receipt via the displayable(plan) infrastructure already at aggregation.rs:578 and :817, not outcome assertions only. Python-side complaint re-confirmed: client read_arrow full-collects (packages/docspec_client/src/docspec_client/docspec.py:830-834) while streaming projected readers exist.
+
+**2026-10-21T20:53:50Z**
+
+Aligned with end-state epic ct-8kl2 (ct-a3le) and spicy-stack ss-65bz (filtered/projected JoinTransform & AggregateTransform + chained incremental RefreshSpec VersionRefs), which natively supports both politician_articles and two-stage incremental cross-date syndication for coverage_daily.identical_text_group_ids.
+
+**2026-10-21T21:40:25Z**
+
+Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): DocSpecNewsViews._read_table_delta streams forward changes via client.changes_batches (/changes), update_bridges derives incremental bridge updates in O(delta) with O(1)-in-corpus state in .news_lake_views.json, DocSpecClient exposes projected streaming readers, and hot-group NULL undated bucket DataFusion operator metrics + capacity/spill refusal receipts are recorded in output/docspec-reuse-20261020/hot-group-null-bucket-receipt.{json,md}.

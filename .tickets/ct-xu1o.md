@@ -1,8 +1,8 @@
 ---
 id: ct-xu1o
-status: open
+status: closed
 deps: [ct-pgxn]
-links: [ct-nloa, ct-pgxn, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v]
+links: [ct-nloa, ct-pgxn, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v, ct-a3le, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
 created: 2026-10-21T15:27:19Z
 type: task
 priority: 1
@@ -63,3 +63,7 @@ Measured with `docspec-rs/examples/news_poll_scale.rs` (release build, 2,000 `uu
   - `story_members`: `["added_at", "id"]`
   - `captures`: keeps `["id"]` (already time-ordered `UUIDv7` via `ct-ur2y`).
 - Companion tickets for the physical disk (`2.37 GiB` for `102.9 MiB` rows) and 1-file-per-poll fragmentation observed in the same 1,080-poll run: `ct-8ax6` (coalescing / threshold table compaction for `news_lake` so active file count and live head `ReleasePin` metadata stay $O(1)$), `spicy-stack` `ss-g9sn` (unlinking expired lifecycle and checkpointed release/manifest files on disk), and `spicy-stack` `ss-onwi` (eliding duplicate `inputs` Parquet writes on `SELECT * FROM input`).
+
+**2026-10-21T21:40:24Z**
+
+Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): DocSpecLake._commit_append uses composite time-prefixed UpdateSpec.keys = [time_col, 'id'] across all 9 append-only tables, eliminating 100% of historical Parquet file scans (files_scanned = 0 across all 1,080 polls in output/news-poll-scale-20261021/after-time-id-1080.csv).
