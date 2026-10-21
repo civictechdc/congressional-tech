@@ -169,11 +169,10 @@ def run(args):
     result = verify_import(batch, imported, readiness=readiness)
     if not args.execute:
         return dict(local_preflight=True, import_verified=True, writes=False)
-    import boto3
-    from botocore.config import Config
     # Import the domain dependency closure before the pre-lock owner check.
     # publish_imported binds these names per invocation so injected collaborators
     # do not become cached globals; their source ownership is already checked.
+    from congress_shared.storage import R2Config, connect_r2
     from congress_api.retention.r2 import R2Store
     from congress_api.retention.docspec import NativeDatasets
     from viewer_publication.filename_recoveries import accepted_rows
@@ -249,10 +248,12 @@ def run(args):
     save = continuation.save
     report('pins.json', pins)
     config = configparser.ConfigParser(); config.read(args.config); account = config['congressionalraw']
-    client = boto3.client('s3', endpoint_url=account['endpoint'], region_name='auto',
-        aws_access_key_id=account['access_key_id'], aws_secret_access_key=account['secret_access_key'],
-        config=Config(connect_timeout=15, read_timeout=180, retries={'total_max_attempts': 1},
-                      request_checksum_calculation='when_required', response_checksum_validation='when_required'))
+    client = connect_r2(R2Config.from_ini_section(
+        account,
+        connect_timeout=15,
+        read_timeout=180,
+        checksum_when_required=True,
+    ))
     bucket = 'congressional-tech-raw'
     protected = [RAW_KEY, 'indexes/catalog.json',
                  'viewer-publications/recoveries/accepted.json', 'viewer-publications/manifest.json']

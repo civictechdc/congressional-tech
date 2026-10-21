@@ -17,6 +17,7 @@ from pathlib import Path
 import re
 import sys
 from congress_api.retention.derived_files import VerifiedFile, copy_checked, custody_identity, file_identity
+from congress_shared.custody import write_atomic_bytes
 from viewer_publication.filename_resources import owned_resources
 from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, open_parquet
 
@@ -90,11 +91,12 @@ def fetch(root, *, client=None):
             except FileExistsError:
                 if path.is_symlink() or path.stat().st_size != item['bytes'] or digest(path) != item['sha256']:
                     raise ValueError('Conflicting immutable downloaded catalog: ' + item['key'])
-        (root / 'indexes').mkdir(parents=True, exist_ok=True)
-        temporary = root / 'indexes' / ('.catalog-' + staged.name + '.partial')
-        with temporary.open('xb') as stream:
-            stream.write(raw); stream.flush(); os.fsync(stream.fileno())
-        temporary.replace(root / 'indexes/catalog.json')
+        write_atomic_bytes(
+            root / 'indexes/catalog.json',
+            raw,
+            temp_path=root / 'indexes' / ('.catalog-' + staged.name + '.partial'),
+            fsync=True,
+        )
     except BaseException as error:
         error.add_note('Owned catalog fetch evidence retained: ' + str(staged))
         raise

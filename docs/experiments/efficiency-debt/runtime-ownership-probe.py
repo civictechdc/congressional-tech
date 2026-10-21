@@ -115,7 +115,10 @@ warm_boundary = None
 def client(*args, **kwargs):
     global warm_boundary
     calls['client'] += 1
-    local = inspect.currentframe().f_back.f_locals
+    frame = inspect.currentframe().f_back
+    while frame is not None and 'selected' not in frame.f_locals:
+        frame = frame.f_back
+    local = frame.f_locals if frame is not None else {}
     selected = local.get('selected')
     if selected is not None:
         # Count real filesystem resolution work on an unchanged admitted graph.

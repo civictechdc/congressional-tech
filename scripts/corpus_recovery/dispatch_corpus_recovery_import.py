@@ -127,15 +127,16 @@ def run(args, *, native=None):
         inputs[readback_path] = readiness['remote_body_readback_sha256']
     journal('pins', {str(k): v for k, v in (code | inputs).items()})
     try:
-        import boto3
-        from botocore.config import Config
+        from congress_shared.storage import R2Config, connect_r2
         config = configparser.ConfigParser()
         config.read(args.config)
         account = config['congressionalraw']
-        client = boto3.client('s3', endpoint_url=account['endpoint'], region_name='auto',
-            aws_access_key_id=account['access_key_id'], aws_secret_access_key=account['secret_access_key'],
-            config=Config(connect_timeout=args.connect_timeout, read_timeout=180, retries={'total_max_attempts': 1},
-                          request_checksum_calculation='when_required', response_checksum_validation='when_required'))
+        client = connect_r2(R2Config.from_ini_section(
+            account,
+            connect_timeout=args.connect_timeout,
+            read_timeout=180,
+            checksum_when_required=True,
+        ))
         store = R2Store(client, 'congressional-tech-raw')
         baseline = {}
         for key in [RAW_KEY, 'indexes/catalog.json',

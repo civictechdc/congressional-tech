@@ -52,7 +52,9 @@ class VerifiedFile(dict):
         if isinstance(path_or_value, Mapping):
             super().__init__(path_or_value)
             raw_path = target if target is not None else path_or_value.get("path")
-            resolved_path = Path(raw_path) if raw_path is not None else None
+            resolved_path = Path(raw_path).resolve() if raw_path is not None else None
+            if "path" in self and resolved_path is not None:
+                self["path"] = resolved_path
             resolved_sha256 = (
                 sha256_digest if sha256_digest is not None else self.get("sha256")
             )
@@ -66,23 +68,24 @@ class VerifiedFile(dict):
                 raise TypeError(
                     "VerifiedFile(path, sha256, size_bytes) requires sha256 and size_bytes"
                 )
-            resolved_path = Path(path_or_value)
+            raw_input_path = Path(path_or_value)
+            resolved_path = raw_input_path.resolve()
             resolved_sha256 = str(sha256_digest)
             resolved_size = int(size_bytes)
             super().__init__(sha256=resolved_sha256, bytes=resolved_size)
             if pid is None and target is None and identity is None:
                 try:
-                    if not resolved_path.is_symlink() and resolved_path.is_file():
+                    if not raw_input_path.is_symlink() and raw_input_path.is_file():
                         pid = os.getpid()
-                        target = resolved_path.resolve()
-                        identity = custody_identity(resolved_path)
+                        target = resolved_path
+                        identity = custody_identity(raw_input_path)
                 except OSError:
                     pass
 
         resolved_target = (
             Path(target).resolve()
             if target is not None
-            else (resolved_path.resolve() if resolved_path is not None and pid is not None else None)
+            else (resolved_path if resolved_path is not None and pid is not None else None)
         )
         object.__setattr__(self, "path", resolved_path)
         object.__setattr__(self, "sha256", resolved_sha256)
@@ -95,6 +98,13 @@ class VerifiedFile(dict):
         object.__setattr__(self, "facts", (self.get("bytes"), self.get("sha256")))
         if pid is not None:
             self._issued[id(self)] = self
+
+    def __getitem__(self, key: str) -> Any:
+        if key == "path" and not super().__contains__("path") and self.path is not None:
+            return self.path
+        if key == "size_bytes" and not super().__contains__("size_bytes") and self.size_bytes is not None:
+            return self.size_bytes
+        return super().__getitem__(key)
 
     def __setattr__(self, name: str, value: Any) -> None:
         raise AttributeError("VerifiedFile attributes are immutable")
@@ -300,3 +310,127 @@ def write_bound_receipt(
         fsync=fsync,
         fsync_dir=fsync_dir,
     )
+
+
+def write_atomic_json(
+    path: Path | str,
+    payload: Any,
+    *,
+    temp_mode: Literal["unique", "fixed"] = "unique",
+    temp_path: Path | str | None = None,
+    ensure_ascii: bool = False,
+    trailing_newline: bool = True,
+    allow_nan: bool = True,
+    default: Callable[[Any], Any] | None = None,
+    fsync: bool = True,
+    fsync_dir: bool = False,
+) -> VerifiedFile:
+    """Serialize ``payload`` via :func:`canonical_json_bytes` and write atomically."""
+    raw = canonical_json_bytes(
+        payload,
+        ensure_ascii=ensure_ascii,
+        trailing_newline=trailing_newline,
+        allow_nan=allow_nan,
+        default=default,
+    )
+    return write_atomic_bytes(
+        path,
+        raw,
+        temp_mode=temp_mode,
+        temp_path=temp_path,
+        fsync=fsync,
+        fsync_dir=fsync_dir,
+    )
+
+
+def read_bound_receipt(
+    path: Path | str,
+    *,
+    expected_fields: Mapping[str, Any] | None = None,
+    expected_sha256: str | None = None,
+    expected_size: int | None = None,
+) -> dict[str, Any]:
+    """Read and parse a JSON receipt written by :func:`write_bound_receipt`, verifying bindings."""
+    verified = verify_local_file(
+        path,
+        expected_sha256=expected_sha256,
+        expected_size=expected_size,
+    )
+    raw = verified.path.read_bytes()
+    if len(raw) != verified.size_bytes or sha256(raw).hexdigest() != verified.sha256:
+        raise ValueError(f"Receipt changed during read: {path}")
+    parsed = json.loads(raw.decode("utf-8"))
+    if not isinstance(parsed, dict):
+        raise ValueError(f"Bound receipt must be a JSON object: {path}")
+    if expected_fields is not None:
+        for key, expected_value in expected_fields.items():
+            if parsed.get(key) != expected_value:
+                raise ValueError(
+                    f"Bound receipt field mismatch for {key!r} in {path}: "
+                    f"expected {expected_value!r}, got {parsed.get(key)!r}"
+                )
+    return parsed
+
+
+def copy_checked(
+    src: Path | str,
+    dst: Path | str,
+    *,
+    expected_sha256: str | None = None,
+    expected_bytes: int | None = None,
+    chunk_size: int = CHUNK_BYTES,
+    temp_mode: Literal["unique", "fixed"] = "unique",
+    temp_path: Path | str | None = None,
+    fsync: bool = True,
+    fsync_dir: bool = False,
+) -> VerifiedFile:
+    """Stream-verify ``src`` and atomically write its exact bytes to ``dst``."""
+    verified_src = verify_local_file(
+        src,
+        expected_sha256=expected_sha256,
+        expected_size=expected_bytes,
+    )
+    chunks: list[bytes] = []
+    with Path(src).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(chunk_size), b""):
+            chunks.append(chunk)
+    raw = b"".join(chunks)
+    if len(raw) != verified_src.size_bytes or sha256(raw).hexdigest() != verified_src.sha256:
+        raise ValueError(f"Source file changed during checked copy: {src}")
+    return write_atomic_bytes(
+        dst,
+        raw,
+        temp_mode=temp_mode,
+        temp_path=temp_path,
+        fsync=fsync,
+        fsync_dir=fsync_dir,
+    )
+
+
+def iter_canonical_digest(
+    items: Any,
+    *,
+    ensure_ascii: bool = False,
+    allow_nan: bool = True,
+    default: Callable[[Any], Any] | None = None,
+) -> str:
+    """Incrementally hash an iterable of JSON-serializable items into a SHA-256 hex digest."""
+    digest = sha256()
+    for item in items:
+        if isinstance(item, (bytes, bytearray, memoryview)):
+            raw = bytes(item)
+            if not raw.endswith(b"\n"):
+                raw += b"\n"
+            digest.update(raw)
+        else:
+            digest.update(
+                canonical_json_bytes(
+                    item,
+                    ensure_ascii=ensure_ascii,
+                    trailing_newline=True,
+                    allow_nan=allow_nan,
+                    default=default,
+                )
+            )
+    return digest.hexdigest()
+

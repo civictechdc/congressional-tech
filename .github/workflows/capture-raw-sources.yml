@@ -213,7 +213,7 @@ jobs:
           tests/test_standalone_catalog_publication.py
           .github/tests/test_raw_source_finalizer.py .github/tests/test_native_runtime_preflight.py .github/tests/test_native_runtime_setup.py tests/test_native_raw_cli.py
           .github/tests/test_capture_verification.py .github/tests/test_capture_memory_guard.py .github/tests/test_capture_source_manifest.py
-          docs/youtube-coverage/research/scripts/test_document_filename_index.py
+          tests/test_document_filename_index.py
           packages/congress_api/tests/test_congress_api_imports.py tests/test_document_link_probe.py
           tests/test_committee_download_wrappers.py
           tests/test_house_sites.py tests/test_house_history_repairs.py tests/test_house_site_concurrency.py tests/test_house_source_failures.py tests/test_http_policy.py

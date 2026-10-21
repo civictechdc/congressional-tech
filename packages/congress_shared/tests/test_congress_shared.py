@@ -10,10 +10,15 @@ import pytest
 from congress_shared.custody import (
     VerifiedFile,
     canonical_json_bytes,
+    copy_checked,
     custody_identity,
     file_identity,
+    issue_verified_file,
+    iter_canonical_digest,
+    read_bound_receipt,
     verify_local_file,
     write_atomic_bytes,
+    write_atomic_json,
     write_bound_receipt,
 )
 from congress_shared.storage import R2Config, connect_r2
@@ -107,6 +112,58 @@ def test_canonical_json_bytes_and_write_bound_receipt(tmp_path: Path) -> None:
     assert verified.sha256 == sha256(expected_bytes).hexdigest()
     assert verified.size_bytes == len(expected_bytes)
     assert verified.require(receipt_path) is verified
+
+
+def test_relative_paths_canonicalize_to_absolute_paths_and_extended_custody_helpers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    rel = Path("subdir/relative.json")
+
+    vf_written = write_atomic_bytes(rel, b"hello", temp_mode="unique")
+    assert vf_written.path.is_absolute()
+    assert vf_written.path == vf_written.target == (tmp_path / rel).resolve()
+    assert vf_written["path"] == vf_written.path
+
+    vf_verified = verify_local_file(rel)
+    assert vf_verified.path.is_absolute()
+    assert vf_verified.path == vf_verified.target == (tmp_path / rel).resolve()
+    assert vf_verified["path"] == vf_verified.path
+
+    vf_issued = issue_verified_file(rel, {"sha256": vf_verified.sha256, "bytes": vf_verified.size_bytes})
+    assert vf_issued.path.is_absolute()
+    assert vf_issued.path == vf_issued.target == (tmp_path / rel).resolve()
+    assert vf_issued["path"] == vf_issued.path
+
+    json_rel = Path("subdir/atomic.json")
+    vf_json = write_atomic_json(json_rel, {"status": "ok", "count": 3})
+    assert vf_json.path.is_absolute()
+    parsed = read_bound_receipt(
+        json_rel,
+        expected_fields={"status": "ok", "count": 3},
+        expected_sha256=vf_json.sha256,
+        expected_size=vf_json.size_bytes,
+    )
+    assert parsed == {"status": "ok", "count": 3}
+    with pytest.raises(ValueError, match="field mismatch"):
+        read_bound_receipt(json_rel, expected_fields={"status": "mismatch"})
+
+    copied_rel = Path("subdir/copied.json")
+    vf_copied = copy_checked(
+        json_rel,
+        copied_rel,
+        expected_sha256=vf_json.sha256,
+        expected_bytes=vf_json.size_bytes,
+    )
+    assert vf_copied.path.is_absolute()
+    assert vf_copied.sha256 == vf_json.sha256
+    assert vf_copied.size_bytes == vf_json.size_bytes
+
+    items = [{"k": 1, "b": "x"}, {"a": True, "k": 2}]
+    expected_stream = canonical_json_bytes(items[0], trailing_newline=True) + canonical_json_bytes(
+        items[1], trailing_newline=True
+    )
+    assert iter_canonical_digest(items) == sha256(expected_stream).hexdigest()
 
 
 def test_r2_config_and_connect_r2() -> None:

@@ -36,17 +36,13 @@ def read_youtube_videos(directory, channels):
 
 
 def write_csv(path, rows, fields):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    try:
-        with temporary.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=fields)
-            writer.writeheader()
-            writer.writerows(rows)
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    import io
+
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=fields, lineterminator="\r\n")
+    writer.writeheader()
+    writer.writerows(rows)
+    write_atomic_bytes(path, buf.getvalue().encode("utf-8"), temp_mode="fixed", fsync=False)
 
 
 def read_state(path):

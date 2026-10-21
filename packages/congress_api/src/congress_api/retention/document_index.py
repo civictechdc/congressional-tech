@@ -679,8 +679,9 @@ def _legacy_write_document_indexes(destination, rows, schema):
                                     total=len(rows) + len(documents), unit='rows')
         progress.report('validate_document_tables')
         validate_document_indexes(*temporary, source_rows=len(rows), document_rows=len(documents))
+        from congress_shared.custody import write_atomic_bytes
         for tmp, (path, _, _) in zip(temporary, outputs):
-            tmp.replace(path)
+            write_atomic_bytes(path, tmp.read_bytes(), temp_path=tmp, fsync=False)
     finally:
         for tmp in temporary:
             tmp.unlink(missing_ok=True)

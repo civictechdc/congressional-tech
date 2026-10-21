@@ -371,7 +371,7 @@ def test_triggers_cover_parser_changes_and_exclude_generated_outputs():
         "indexes/documents.parquet",
         "packages/document-catalog/src/document_catalog/store.py",
         "packages/youtube_api/src/youtube_api/main.py",
-        "docs/youtube-coverage/source-capture-fidelity.md",
+        "docs/development.md",
     ]:
         assert not any(fnmatchcase(path, pattern) for pattern in patterns), path
 

@@ -10,7 +10,6 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-SCRIPT = Path(__file__).resolve().parent / 'index_document_filenames.py'
 from congress_api.retention import document_index as index
 
 
@@ -83,7 +82,7 @@ def test_metadata_refresh_keeps_source_rows_and_identity_without_reopening_evide
     index.write_document_indexes(path, [{**source, 'obsolete_metadata': ['old parser']}], schema)
     before = pq.read_table(selected_path(path))
     # The fixture intentionally has no receipts, bodies, captures or inventories.
-    run = subprocess.run([sys.executable, str(SCRIPT), str(tmp_path), '--rebuild',
+    run = subprocess.run([sys.executable, '-m', 'congress_api.cli.document_index', str(tmp_path), '--rebuild',
                           '--workers', '1'], check=True, capture_output=True, text=True)
     result = json.loads(run.stdout)
     after = pq.read_table(selected_path(path))
@@ -212,8 +211,7 @@ def test_build_keeps_body_coverage_and_merges_repeated_name_origins(tmp_path):
         for record in records:
             stream.write(json.dumps(record)+'\n')
     write_inventory(tmp_path/'inventory', [], [])
-    subprocess.run([sys.executable, str(SCRIPT), str(tmp_path), '--inventory-dir',
-                    str(tmp_path/'inventory'), '--workers', '1'], check=True, capture_output=True)
+    index.build(tmp_path, tmp_path/'inventory', workers=1)
     table = pq.read_table(selected_path(tmp_path/'indexes/document-filenames.parquet'))
     actual = table.to_pylist()
     assert len(actual) == 4
@@ -576,8 +574,7 @@ def test_source_refresh_preserves_parser_fields_ids_and_alias_context(tmp_path):
     assert docs[0]['committee_code']==['IF14']
     assert after.to_pylist()[1]['source_committee_code'] is None
     # A filename-only refresh keeps the previously retained source context.
-    subprocess.run([sys.executable, str(SCRIPT), str(tmp_path), '--metadata-only',
-                    '--workers', '1'], check=True, capture_output=True)
+    index.refresh_filename_metadata(tmp_path, workers=1)
     assert pq.read_table(selected_path(path))['source_committee_code'].to_pylist()==[['hsif14'],None]
 
 
@@ -603,11 +600,9 @@ def test_source_metadata_cli_reads_retained_records_without_fetching(tmp_path):
     path=tmp_path/'indexes/document-filenames.parquet'
     index.write_document_indexes(path,[dict(filename='report.pdf',source_url='https://legacy.test/report.pdf',
                                            body_key=None)],index.SOURCE_SCHEMA)
-    run=subprocess.run([sys.executable,str(SCRIPT),str(tmp_path),'--source-metadata-only'],
-                       check=True,capture_output=True,text=True)
-    assert json.loads(run.stdout)['rows'] >= 1
-    from congress_api.retention.catalog_publication import local_catalog_paths
-    record=next(row for row in pq.read_table(selected_path(local_catalog_paths(tmp_path)[1])).to_pylist()
+    result=index.refresh_source_metadata(tmp_path)
+    assert result['rows'] >= 1
+    record=next(row for row in pq.read_table(selected_path(path.with_name('documents.parquet'))).to_pylist()
                 if row['source_url']=='https://legacy.test/report.pdf')
     assert record['source_committee_code']==['hsif14']
     assert record['source_document_type']==['BR']

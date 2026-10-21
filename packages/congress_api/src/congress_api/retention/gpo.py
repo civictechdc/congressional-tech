@@ -78,14 +78,10 @@ def read(path: Path | None):
 
 
 def write(values, path: Path):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + '.tmp')
+    import io
     # Stable gzip headers keep a replay with identical data byte-identical.
-    try:
-        with temporary.open('wb') as raw, gzip.GzipFile(fileobj=raw, mode='wb', mtime=0, filename='') as stream:
-            for package in sorted(values):
-                stream.write((json.dumps(values[package], ensure_ascii=False, separators=(',', ':'), sort_keys=True) + '\n').encode())
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode='wb', mtime=0, filename='') as stream:
+        for package in sorted(values):
+            stream.write((json.dumps(values[package], ensure_ascii=False, separators=(',', ':'), sort_keys=True) + '\n').encode())
+    write_atomic_bytes(path, buf.getvalue(), temp_mode='fixed', fsync=False)
