@@ -43,7 +43,3 @@ Implemented and verified: added NativeDatasets.update_evidence_table, read_recei
 **2026-10-21T15:21:41Z**
 
 Reopened by independent CS300 audit (re-validated): map_locators_to_occurrences / attach_occurrence_receipts / read_occurrence_receipts are exercised only by tests/test_native_features.py; acceptance requires one real occurrence-linked provenance/review consumer. Remaining scope: wire review provenance (e.g. source_observations receipt locators) through attach_occurrence_receipts against an exact pinned release, preserving duplicate receipts, review ownership, and zero source-byte rewrites. R2 receipts remain gated LocalOnly; local qualification first.
-
-**2026-10-21T19:03:00Z**
-
-Wired `SourceObservationStorage` (`attach_receipts`, `read_receipts`, and automatic receipt remapping across `prepare()` in `source_observations.py`) and `document_review_catalog.py` (`write_candidates`, `attach_review_provenance_receipts`, `read_review_provenance_receipts`, and `remap_review_provenance_receipts`) through `map_locators_to_occurrences`, `attach_occurrence_receipts`, `read_occurrence_receipts`, and `remap_occurrence_receipts` (`native_features.py`), binding exact `source` and `evidence` versions, preserving ordered duplicate receipts, explicit `None` nulls, review decisions, and withdrawal reasons (`document_missing`, `sources_changed`, `body_changed`) with zero source-file rewrites.

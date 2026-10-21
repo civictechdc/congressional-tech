@@ -43,7 +43,3 @@ Implemented and verified: added plan_schema, evolve_schema, plan_backfill, backf
 **2026-10-21T15:21:41Z**
 
 Reopened by independent CS300 audit (re-validated): evolve_catalog_schema and backfill_scalar_group are exercised only by tests/test_native_features.py; acceptance requires migrating the existing application schema/rule-upgrade caller. Remaining scope: wire the maintained catalog schema/rule-upgrade entry point through evolve_catalog_schema/backfill_scalar_group for a real compatible field change. Note: R2 execution of schemas/backfills is still gated LocalOnly (Engine::check_request_backend), so local-workspace qualification comes first; R2 enablement remains the separately authorized engine extension.
-
-**2026-10-21T19:03:00Z**
-
-Wired the maintained catalog rule-upgrade entry point (`upgrade_source_rules` / `_update_from_raw` in `catalog_raw_updates.py` and `raw_catalog.py`) and `RawStorage.evolve_state_schema` (`raw_storage.py`) through `evolve_catalog_schema` and `backfill_scalar_group` (`native_features.py`) for real compatible field additions (`rule_version` on `filenames` chunks and `links_scanned`/`next_attempt_at` on `STATE_SCHEMA`) and row-local scalar field groups (`catalog_scalars`: `has_body`/`has_filename` and `state_scalars`: `has_body`), including continuous backfill, dependency correction qualification, `__docspec_supplied_*` omission vs explicit-null preservation, and zero source-file rewrites.
