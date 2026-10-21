@@ -4,38 +4,13 @@ import os
 from pathlib import Path
 import re
 import tempfile
-import weakref
 
-_issued = weakref.WeakValueDictionary()
-
-
-def custody_identity(path):
-    value = Path(path).stat()
-    return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
-
-
-class VerifiedFile(dict):
-    """A JSON-compatible digest with process-local, exact-file custody.
-
-    Serialization retains only public hash/size facts. It cannot manufacture
-    the issued object needed to avoid a new integrity pass after restoration.
-    """
-    def require(self, path):
-        if (_issued.get(id(self)) is not self or self.process != os.getpid() or Path(path).resolve() != self.path
-                or custody_identity(path) != self.custody
-                or (self.get('bytes'), self.get('sha256')) != self.facts):
-            raise ValueError('Verified catalog file custody changed')
-        return self
-
-
-def _verified(path, facts):
-    result = VerifiedFile(facts)
-    result.path = Path(path).resolve()
-    result.process = os.getpid()
-    result.custody = custody_identity(path)
-    result.facts = result['bytes'], result['sha256']
-    _issued[id(result)] = result
-    return result
+from congress_shared.custody import (
+    VerifiedFile,
+    custody_identity,
+    issue_verified_file as _verified,
+    verify_local_file,
+)
 
 
 def require_derived_key(key):
@@ -46,15 +21,7 @@ def require_derived_key(key):
 
 
 def file_identity(path):
-    before = custody_identity(path)
-    digest, count = sha256(), 0
-    with Path(path).open('rb') as stream:
-        for chunk in iter(lambda: stream.read(1024**2), b''):
-            digest.update(chunk)
-            count += len(chunk)
-    if custody_identity(path) != before:
-        raise ValueError(f'Catalog changed during hashing: {path}')
-    return _verified(path, {'sha256': digest.hexdigest(), 'bytes': count})
+    return verify_local_file(path, sha256_factory=sha256, identity_fn=custody_identity)
 
 
 def retain_verified_file(path, destination, *, expected, key):
@@ -95,7 +62,7 @@ def retain_verified_file(path, destination, *, expected, key):
         now = custody_identity(path)
         if now[:4] != actual.custody[:4]:
             raise ValueError('Catalog changed while retaining verified file')
-        actual.custody = now
+        actual._rebind_custody(now)
         return _verified(destination, actual)
     except BaseException as error:
         error.add_note(f'Owned catalog partial retained for diagnosis: {partial}')

@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import shutil
 import tempfile
+from congress_shared.custody import write_atomic_bytes
 from .export import encode, file_sha, sha
 from committee_meeting.publication import PublicationManifest
 
@@ -64,7 +65,12 @@ def package(input_dir, output_dir, *, max_bytes=900_000_000):
         if release.exists(): shutil.rmtree(stage)
         else: stage.rename(release)
         pointer = {'schema_version':manifest.schema_version,'publication_id':publication_id,'manifest_path':f'releases/{publication_id}/manifest.json','manifest_sha256':sha(manifest_raw),'media_type':'application/json'}
-        temporary=output/'.CURRENT.json.tmp';temporary.write_bytes(encode(pointer));temporary.replace(output/'CURRENT.json')
+        write_atomic_bytes(
+            output / 'CURRENT.json',
+            encode(pointer),
+            temp_path=output / '.CURRENT.json.tmp',
+            fsync=False,
+        )
         verify(output)
         # A static deployment carries exactly its current release. Old full/local
         # publications remain outside this browser distribution.

@@ -9,6 +9,8 @@ import json
 import os
 from pathlib import Path
 
+from congress_shared.custody import canonical_json_bytes
+
 from . import continuation as state
 
 MAX_LOCAL_EVENTS = 65536
@@ -17,7 +19,7 @@ MAX_LOCAL_RECORD_BYTES = state.MAX_STATE_BYTES + 1024
 
 
 def encoded(value):
-    return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
+    return canonical_json_bytes(value, ensure_ascii=True)
 
 
 def transition(value, event, detail):

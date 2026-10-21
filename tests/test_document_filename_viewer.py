@@ -9,10 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
-spec = importlib.util.spec_from_file_location('filename_viewer', SCRIPT)
-viewer = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(viewer)
+from viewer_publication import filename_viewer as viewer
 from congress_api.retention import document_index as index
 
 
@@ -566,37 +563,6 @@ def test_shared_parquet_reads_are_serialized_between_detail_and_search(tmp_path)
         return catalog.searchable('source_occurrences').to_pylist()
     with ThreadPoolExecutor(max_workers=8) as pool:results=list(pool.map(read,range(60)))
     assert len(results)==60 and 2 <= count < 20 and active==0
-
-
-@pytest.mark.loopback
-def test_local_route_composes_shared_markup_and_serves_every_module():
-    from http.client import HTTPConnection
-    from http.server import ThreadingHTTPServer
-    from threading import Thread
-    server = ThreadingHTTPServer(('127.0.0.1', 0), viewer.handler_for(object()))
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        connection = HTTPConnection(*server.server_address, timeout=5)
-        connection.request('GET', '/')
-        response = connection.getresponse()
-        page = response.read().decode()
-        assert response.status == 200
-        assert '<!-- filename-viewer:body -->' not in page
-        assert 'data-filename-mode="local"' in page
-        assert '<dialog id="detail"' in page
-        assert page.index('/filename-viewer.css') < page.index('<body') < page.index('/filename-viewer.mjs')
-        for name in ('filename-viewer.mjs', 'filename-adapter.mjs', 'filename-rules.mjs',
-                     'filename-provenance.mjs', 'filename-detail-state.mjs', 'filename-viewer.css'):
-            connection.request('GET', '/' + name)
-            response = connection.getresponse()
-            assert response.status == 200
-            assert response.read() == viewer.HTML.with_name(name).read_bytes()
-        connection.close()
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
 
 
 def test_local_search_normalizes_fractional_nonfinite_and_out_of_range_pages(tmp_path):

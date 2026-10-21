@@ -1,6 +1,7 @@
 // @ts-nocheck
 /** Stable-ID reader for the selected native catalog's bounded delivery assets. */
-import {provenanceUrlKey} from '../../browse/provenance.ts';
+import {sourceContext, provenanceUrlKey} from '../../browse/provenance.ts';
+export {sourceContext};
 import {decodeDetailRecord} from './detail-record.ts';
 import {parquetMetadataAsync, parquetReadObjects} from 'hyparquet';
 import {compressors} from 'hyparquet-compressors';
@@ -11,7 +12,70 @@ import {loadReviews, reviewedMode} from './reviews.ts';
 import {loadRecoveries} from './recoveries.ts';
 import {positiveInteger} from '../../browse/filename-rules.ts';
 import {yieldToMessages} from './cooperative.ts';
-import {rangeFile, sourceContext, savedCopyUrl, apiReference, videoReference} from './catalog-v5.ts';
+
+const validUrl = value => { try { const url = new URL(value); return /^https?:$/.test(url.protocol) && !url.username && !url.password ? url : null; } catch { return null; } };
+
+export function savedCopyUrl(record, groupRecovery, manifestUrl) {
+  const recovery = record.recovery || groupRecovery;
+  const key = recovery?.recovery_status === 'recovered' ? recovery.body_key : record.body_key;
+  const match = /^bodies\/sha256\/([a-f0-9]{2})\/([a-f0-9]{64})\.gz$/.exec(key || '');
+  if (!match || match[1] !== match[2].slice(0, 2) || !validUrl(manifestUrl)) return null;
+  return new URL(`/saved/${match[2]}/${encodeURIComponent(record.filename || 'saved-copy')}`, manifestUrl).href;
+}
+
+export function apiReference(value) {
+  const url = validUrl(value);
+  if (url?.hostname !== 'api.congress.gov' || !url.pathname.startsWith('/v3/')) return null;
+  const parts = url.pathname.slice(4).split('/').filter(Boolean);
+  if (!parts.length) return null;
+  const title = parts.length >= 4 && /^\d+$/.test(parts[1]) && ['house','senate'].includes(parts[2])
+    ? `${parts[2]} ${parts[0].replaceAll('-', ' ')} ${parts[3]} · Congress ${parts[1]}${parts.length > 4 ? ' · ' + parts.slice(4).join(' / ') : ''}`
+    : parts[0].replaceAll('-', ' ') + (parts.length > 1 ? ' · ' + parts.slice(1).join(' / ') : '');
+  return { title: title.replace(/^./, value => value.toUpperCase()), evidence: 'Congress.gov API endpoint URL' };
+}
+
+export function videoReference(value) {
+  const url = validUrl(value);
+  if (!url) return null;
+  const host = url.hostname.replace(/^www\./, '');
+  const parts = url.pathname.replace(/^\/+|\/+$/g, '').split('/');
+  const id = host === 'youtu.be' ? parts[0]
+    : ['youtube.com', 'youtube-nocookie.com'].includes(host)
+      ? url.pathname === '/watch' ? url.searchParams.get('v')
+        : parts.length === 2 && ['live', 'embed', 'shorts', 'v'].includes(parts[0]) ? parts[1] : null
+      : null;
+  return /^[A-Za-z0-9_-]{11}$/.test(id || '') ? {provider: 'YouTube', id} : null;
+}
+
+/** Bounded compressed-byte cache; the host must return the exact requested range. */
+export function rangeFile(url, byteLength, fetcher = fetch, cache = byteCache(48 * 1024 * 1024, 32 * 1024 * 1024), metrics = {}) {
+  const pending = new Map();
+  async function slice(start, end = byteLength, signal) {
+    signal?.throwIfAborted();
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end <= start || end > byteLength) throw new Error('Invalid catalog byte range.');
+    for (const [key, item] of cache.entries()) if (item.url === url && item.start <= start && item.end >= end) {
+      cache.get(key); metrics.rangeHits = (metrics.rangeHits || 0) + 1;
+      return item.bytes.slice(start - item.start, end - item.start);
+    }
+    const key = `${url}:${start}/${end}`;
+    const bytes = await sharedLoad(pending, key, async () => {
+      const response = await fetcher(url, { headers: { Range: `bytes=${start}-${end - 1}` } });
+      if (response.status !== 206 || response.headers.get('Content-Range') !== `bytes ${start}-${end - 1}/${byteLength}`) {
+        await response.body?.cancel();
+        throw new Error('The catalog host did not return a valid Parquet byte range. Reload and retry.');
+      }
+      const bytes = await response.arrayBuffer();
+      metrics.rangeRequests = (metrics.rangeRequests || 0) + 1;
+      metrics.rangeBytes = (metrics.rangeBytes || 0) + bytes.byteLength;
+      if (bytes.byteLength !== end - start) throw new Error('Incomplete Parquet byte range.');
+      cache.set(key, {url, start, end, bytes}, bytes.byteLength);
+      return bytes;
+    }, signal);
+    signal?.throwIfAborted(); return bytes;
+  }
+  return { slice, canRetain: size => cache.admits(size,`${url}:${byteLength}/${byteLength}`), cacheBudget: cache.stats.maxBytes,
+    file: signal => ({ byteLength, slice: (start, end) => slice(start, end, signal) }) };
+}
 
 const filters = ['congress','document_kind','document_family','format'];
 const origins = ['source_association_basis','source_associated_url','source_original_page_url','source_page_url','source_page_title','source_link_label','source_link_url','source_occurrence_scope','source_page_type','source_page_date'];

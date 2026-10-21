@@ -126,5 +126,5 @@ print(json.dumps({{"server_path_verified":True}}),flush=True)
     receipt = json.loads((output / 'browser-receipt.json').read_text())
     assert result.returncode == 1  # Deliberate stop before any browser launch.
     assert 'PATHS_REACHED_BROWSER' in receipt['error'], receipt
-    assert len(receipt['loader_hashes']) == 8
+    assert len(receipt['loader_hashes']) == 7
     assert receipt['inputs']['server_path_verified']

@@ -69,6 +69,7 @@ from news_lake.contract.records import (
     validate_shape,
 )
 from news_lake.contract.semantics import check_corpus
+from congress_shared.custody import canonical_json_bytes, verify_local_file, write_atomic_bytes
 from docspec_client.docspec import NativeDatasets, cleanup_safe
 from docspec_client.docspec_host import DocSpecFailure
 
@@ -321,13 +322,16 @@ def version_ref(pin):
 def str_canonical(value):
     if value is None:
         return None
-    return json.dumps(value, sort_keys=True, separators=(',', ':'),
-                      ensure_ascii=False, allow_nan=False, default=str)
+    return canonical_json_bytes(
+        value, ensure_ascii=False, allow_nan=False, default=str
+    ).decode('utf-8')
 
 
 def content_digest(records):
     """A stable digest over record values, for replay-stable operation ids."""
-    return sha256(str_canonical(records).encode('utf-8')).hexdigest()
+    return sha256(
+        canonical_json_bytes(records, ensure_ascii=False, allow_nan=False, default=str)
+    ).hexdigest()
 
 
 def _resolve_ref(definition):
@@ -429,11 +433,7 @@ def merge_upsert_batch(existing_records, incoming_records):
 
 def _file_digest(path):
     """Stream a SHA-256 digest so large exports are never materialized in memory."""
-    digest = sha256()
-    with Path(path).open('rb') as source:
-        for chunk in iter(lambda: source.read(1 << 20), b''):
-            digest.update(chunk)
-    return digest.hexdigest()
+    return verify_local_file(path).sha256
 
 
 class DocSpecClient:
@@ -772,18 +772,19 @@ class DocSpecLake:
 
     def _save_committed_state(self):
         path = self._committed_state_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix('.json.tmp')
-        tmp.write_text(
-            json.dumps(self.committed, ensure_ascii=False, separators=(',', ':'), allow_nan=False, default=str)
+        write_atomic_bytes(
+            path,
+            json.dumps(self.committed, ensure_ascii=False, separators=(',', ':'), allow_nan=False, default=str).encode('utf-8'),
+            temp_mode='fixed',
+            fsync=False,
         )
-        tmp.replace(path)
         mpath = self._mutation_counts_path()
-        mtmp = mpath.with_suffix('.json.tmp')
-        mtmp.write_text(
-            json.dumps(self._mutation_counts, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+        write_atomic_bytes(
+            mpath,
+            json.dumps(self._mutation_counts, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode('utf-8'),
+            temp_mode='fixed',
+            fsync=False,
         )
-        mtmp.replace(mpath)
         valid_compacted = {}
         for ds, entry in self._compacted_pins.items():
             if not isinstance(entry, dict) or not isinstance(entry.get('replacement'), dict):
@@ -797,11 +798,12 @@ class DocSpecLake:
                 valid_compacted[ds] = entry
         self._compacted_pins = valid_compacted
         cpath = self._compacted_pins_path()
-        ctmp = cpath.with_suffix('.json.tmp')
-        ctmp.write_text(
-            json.dumps(self._compacted_pins, ensure_ascii=False, separators=(',', ':'), allow_nan=False, default=str)
+        write_atomic_bytes(
+            cpath,
+            json.dumps(self._compacted_pins, ensure_ascii=False, separators=(',', ':'), allow_nan=False, default=str).encode('utf-8'),
+            temp_mode='fixed',
+            fsync=False,
         )
-        ctmp.replace(cpath)
 
     def compact_lifecycle(self, datasets=None):
         """Compact obsolete lifecycle revisions for local datasets."""
@@ -1377,9 +1379,8 @@ class DocSpecLake:
         if state == 'checkpoints_staged':
             faults.before('release_append')
             manifest_path = self._release_manifest_path(release_id)
-            manifest_path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = manifest_path.with_suffix('.json.tmp')
-            tmp.write_text(
+            write_atomic_bytes(
+                manifest_path,
                 json.dumps(
                     {
                         'release': release,
@@ -1391,9 +1392,10 @@ class DocSpecLake:
                     separators=(',', ':'),
                     allow_nan=False,
                     default=str,
-                )
+                ).encode('utf-8'),
+                temp_mode='fixed',
+                fsync=False,
             )
-            tmp.replace(manifest_path)
             faults.after('release_append')
             control.set_cycle_state(release_id, 'released', epoch=epoch)
             state = 'released'
@@ -1833,8 +1835,8 @@ class DocSpecNewsViews:
             if selected_ver is None or entry.get('version') == selected_ver:
                 valid_compacted[ds] = entry
         self._compacted_pins = valid_compacted
-        tmp = path.with_suffix('.json.tmp')
-        tmp.write_text(
+        write_atomic_bytes(
+            path,
             json.dumps(
                 {
                     'pins': self.pins,
@@ -1851,9 +1853,10 @@ class DocSpecNewsViews:
                 separators=(',', ':'),
                 allow_nan=False,
                 default=str,
-            )
+            ).encode('utf-8'),
+            temp_mode='fixed',
+            fsync=False,
         )
-        tmp.replace(path)
 
     def compact_lifecycle(self, datasets=None):
         """Compact obsolete lifecycle revisions for local bridge and view datasets."""

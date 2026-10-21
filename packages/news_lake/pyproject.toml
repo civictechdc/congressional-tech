@@ -5,6 +5,7 @@ description = "Political news lake: record contract and the Iceberg storage boun
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "congress-shared",
     "docspec-client",
     "jsonschema>=4.18,<5",
     "rfc3987>=1.3",

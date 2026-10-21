@@ -18,8 +18,8 @@ on:
     branches: [main]
     paths:
       - 'packages/congress_api/src/congress_api/**'
+      - 'packages/congress_shared/src/congress_shared/**'
       - 'packages/viewer_publication/**'
-      - 'docs/youtube-coverage/research/scripts/**'
       - 'apps/site/document-review-identities.json'
       - 'apps/site/document-review-publication.json'
       - 'pyproject.toml'

@@ -13,9 +13,7 @@ from congress_api.retention.catalog_cache import LocalStore
 from congress_api.retention.catalog_publication import read_catalog
 from test_catalog_coalesced_batches import Native
 from test_native_catalog_selection import seed
-
-spec=importlib.util.spec_from_file_location('native_analysis_viewer',ROOT/'docs/youtube-coverage/research/scripts/view_document_filenames.py')
-viewer=importlib.util.module_from_spec(spec);spec.loader.exec_module(viewer)
+from viewer_publication import filename_viewer as viewer
 
 
 @pytest.mark.parametrize('search_indexes',[False,True])

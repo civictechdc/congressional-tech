@@ -144,15 +144,12 @@ def run(args):
         if not args.prior_sha256 or digest(args.prior) != args.prior_sha256:
             raise ValueError('Prior evidence digest mismatch')
         prior = json.loads(args.prior.read_text())
-    import boto3
-    from botocore.config import Config
+    from congress_shared.storage import R2Config, connect_r2
     from congress_api.retention.r2 import R2Store
     config = configparser.ConfigParser()
     config.read(args.config)
     account = config['congressionalraw']
-    client = boto3.client('s3', endpoint_url=account['endpoint'], region_name='auto',
-                          aws_access_key_id=account['access_key_id'], aws_secret_access_key=account['secret_access_key'],
-                          config=Config(connect_timeout=15, read_timeout=180, retries={'total_max_attempts': 1}))
+    client = connect_r2(R2Config.from_ini_section(account, connect_timeout=15, read_timeout=180, retries={'total_max_attempts': 1}))
     store = R2Store(client, 'congressional-tech-raw')
     report = reconcile(store, inventory, prior=prior)
     report.update(at=datetime.now(timezone.utc).isoformat(), batch_manifest_sha256=files['manifest.json'], files=files)

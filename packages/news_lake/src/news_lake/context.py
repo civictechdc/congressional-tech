@@ -15,6 +15,8 @@ import uuid
 from datetime import datetime, timezone
 from uuid import NAMESPACE_URL, uuid5
 
+from congress_shared.custody import canonical_json_bytes
+
 INSTANT_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:[0-5]\d(?:\.\d{1,6})?Z$')
 INSTANT_KEYS = frozenset({
     'recorded_at',
@@ -154,7 +156,7 @@ def config_hash(config):
     dictionary; callers put model_version inside the config they pass.
     """
     return hashlib.sha256(
-        json.dumps(config, sort_keys=True, separators=(',', ':')).encode('utf-8')
+        canonical_json_bytes(config, ensure_ascii=True)
     ).hexdigest()
 
 

@@ -311,17 +311,16 @@ def main(argv=None):
         if args.native_config is None or args.r2_config is None:
             parser.error('--native-config and --r2-config are required for native evidence')
         import configparser
-        import boto3
-        from botocore.config import Config
+        from congress_shared.storage import R2Config, connect_r2
         from congress_api.retention.docspec import NativeDatasets
         from congress_api.retention.raw_storage import RawStorage, RAW_KEY
         from congress_api.retention.r2 import R2Store
         configuration = configparser.ConfigParser()
         configuration.read(args.r2_config)
         account = configuration['congressionalraw']
-        store = R2Store(boto3.client('s3', endpoint_url=account['endpoint'], region_name='auto',
-            aws_access_key_id=account['access_key_id'], aws_secret_access_key=account['secret_access_key'],
-            config=Config(retries={'total_max_attempts': 1})), 'congressional-tech-raw')
+        store = R2Store(connect_r2(R2Config.from_ini_section(
+            account, connect_timeout=None, read_timeout=None, retries={'total_max_attempts': 1}
+        )), 'congressional-tech-raw')
         owner = RawStorage.from_selection(store, NativeDatasets.from_config(args.native_config),
                                          _read_raw(args.destination / 'payloads' / RAW_KEY))
         result = verify(args.destination, raw_storage=owner)

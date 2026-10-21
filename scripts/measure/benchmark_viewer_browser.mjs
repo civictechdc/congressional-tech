@@ -43,7 +43,7 @@ try {
   const esbuild = dependency('esbuild'), {chromium} = dependency('playwright');
   receipt.runtime.esbuild = esbuild.version;
   receipt.runtime.playwright = dependency('playwright/package.json').version;
-  const moduleNames = ['catalog.ts', 'catalog-v5.ts', 'catalog-v6.ts', 'detail-record.ts', 'reviews.ts', 'recoveries.ts',
+  const moduleNames = ['catalog.ts', 'catalog-v6.ts', 'detail-record.ts', 'reviews.ts', 'recoveries.ts',
     'publication.ts', 'observations.ts'];
   receipt.loader_hashes = Object.fromEntries(await Promise.all(moduleNames.map(async name =>
     [name, hash(await readFile(join(root, 'apps/site/src/components/explorer/reader/filenames', name)))])));

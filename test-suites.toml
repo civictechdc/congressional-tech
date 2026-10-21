@@ -39,6 +39,7 @@ parser = "packages/congress_api/src/congress_api/parsers/document_cover.py"
 roots = [
     "tests",
     "packages/committee_meeting/tests",
+    "packages/congress_shared/tests",
     "packages/house-naming/tests",
     "packages/congress_api/tests",
     "packages/corpus_recovery/tests",

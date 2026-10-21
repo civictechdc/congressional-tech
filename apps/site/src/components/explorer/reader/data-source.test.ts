@@ -6,7 +6,7 @@ import test from 'node:test';
 import { committeeTypeLabel } from '../browse/record-presentation.ts';
 import { createCatalogSource, createPublicationSource, decodeGzipJson, normalizeCatalog, openPublicationReader } from './data-source.ts';
 
-const fixtureUrl = new URL('../../../../../../docs/youtube-coverage/committee-explorer-preview.json', import.meta.url);
+const fixtureUrl = new URL('./__fixtures__/committee-explorer-preview.json', import.meta.url);
 const fixture = JSON.parse(await readFile(fixtureUrl, 'utf8'));
 const encode = value => new TextEncoder().encode(JSON.stringify(value));
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');

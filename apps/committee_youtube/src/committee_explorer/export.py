@@ -36,6 +36,7 @@ from congress_api.adapters import meetings as native
 from congress_api.adapters import recordings as curated_recordings
 from congress_api.adapters.committees import committee_lookup, ensure_committee_term
 from congress_api.adapters.common import AdapterContext
+from congress_shared.custody import canonical_json_bytes, write_atomic_bytes
 from congress_api.matching import reviewed_committees
 
 from .assemble import Assembly, apply_saved_copies
@@ -51,7 +52,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def encode(value):
-    return (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode()
+    return canonical_json_bytes(value, ensure_ascii=False, trailing_newline=True)
 
 
 def sha(data):
@@ -679,12 +680,18 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                 stage.rename(release)
             pointer = {"schema_version": SCHEMA_VERSION, "publication_id": publication_id, "manifest_path": f"releases/{publication_id}/manifest.json",
                        "manifest_sha256": sha(manifest_raw), "media_type": "application/json"}
-            temporary = output / ".CURRENT.json.tmp"
-            temporary.write_bytes(encode(pointer))
-            temporary.replace(output / "CURRENT.json")
-            retained_manifest = state / ".publication.json.tmp"
-            retained_manifest.write_bytes(manifest_raw)
-            retained_manifest.replace(state / "publication.json")
+            write_atomic_bytes(
+                output / "CURRENT.json",
+                encode(pointer),
+                temp_path=output / ".CURRENT.json.tmp",
+                fsync=False,
+            )
+            write_atomic_bytes(
+                state / "publication.json",
+                manifest_raw,
+                temp_path=state / ".publication.json.tmp",
+                fsync=False,
+            )
             for old in (state / "issue-history").glob("*.sqlite"):
                 if old.stem != publication_id: old.unlink()
             if reuse_key is not None:

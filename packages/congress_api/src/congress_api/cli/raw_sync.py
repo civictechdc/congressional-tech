@@ -13,6 +13,9 @@ import signal
 import threading
 from uuid import uuid4
 
+from congress_shared.custody import write_atomic_bytes
+from congress_shared.storage import R2Config, connect_r2
+
 from congress_api.acquisition.raw_sync import run_sync, response_capacity, RETRY_OUTCOMES
 from congress_api.cli.common import positive, nonnegative
 from congress_api.cli.raw_progress import ProgressLog
@@ -268,10 +271,11 @@ def capture_sources(args, store, run_id, *, raw_storage):
 
 
 def save_summary(path, summary):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(json.dumps(summary, indent=2) + "\n")
-    temporary.replace(path)
+    write_atomic_bytes(
+        path,
+        (json.dumps(summary, indent=2) + "\n").encode("utf-8"),
+        temp_mode="fixed",
+    )
 
 
 def connect_storage(args, log):
@@ -281,48 +285,39 @@ def connect_storage(args, log):
             raise SystemExit("--local-mirror requires --plan-only")
         store = LocalReadOnly(args.local_mirror)
     else:
-        import boto3
-        from botocore.config import Config
-
-        if not all(
-            (
-                args.account_id,
-                os.environ.get("R2_ACCESS_KEY_ID"),
-                os.environ.get("R2_SECRET_ACCESS_KEY"),
+        try:
+            r2_cfg = R2Config.from_env(
+                account_id=args.account_id,
+                bucket=args.bucket,
+                connect_timeout=None,
+                read_timeout=None,
+                retries={"mode": "standard", "max_attempts": 5},
+                max_pool_connections=args.workers + 4,
             )
-        ):
-            raise SystemExit(
-                "CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY are required"
-            )
-        client_args = dict(
-            endpoint_url=f"https://{args.account_id}.r2.cloudflarestorage.com",
-            aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
-            aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
-            region_name="auto",
-        )
-        storage_config = Config(
-            retries={"mode": "standard", "max_attempts": 5},
-            max_pool_connections=args.workers + 4,
-            request_checksum_calculation="when_required",
-            response_checksum_validation="when_required",
-        )
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+        client_args = r2_cfg.client_kwargs()
+        storage_config = r2_cfg.botocore_config()
         async_options = {}
         if operation_mode(args) == 'capture':
             from aiobotocore.session import get_session
             async_options['async_client'] = lambda: get_session().create_client(
                 's3', **client_args, config=storage_config)
         store = R2Store(
-            boto3.client("s3", **client_args, config=storage_config),
+            connect_r2(r2_cfg),
             args.bucket,
             **async_options,
         )
         if not args.plan_only:
             # Status is best-effort and bounded; it must not hold up data work.
-            status_store = R2Store(boto3.client("s3", **client_args, config=Config(
-                connect_timeout=3, read_timeout=5, retries={"total_max_attempts": 1},
-                request_checksum_calculation="when_required",
-                response_checksum_validation="when_required",
-            )), args.bucket)
+            status_cfg = R2Config.from_env(
+                account_id=args.account_id,
+                bucket=args.bucket,
+                connect_timeout=3,
+                read_timeout=5,
+                retries={"total_max_attempts": 1},
+            )
+            status_store = R2Store(connect_r2(status_cfg), args.bucket)
             log.publish = lambda payload: status_store.put('status/raw-source-sync.json', payload)
     return store
 

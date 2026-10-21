@@ -31,7 +31,7 @@ def load(path, name):
 
 
 def catalog(path, minimal):
-    viewer = load(ROOT / 'docs/youtube-coverage/research/scripts/view_document_filenames.py', 'measured_viewer')
+    from viewer_publication import filename_viewer as viewer
     gc.collect(); before = pa.total_allocated_bytes(); tracemalloc.start(); started = time.perf_counter()
     with viewer.Catalog(path, search_indexes=not minimal) as value:
         seconds = time.perf_counter() - started

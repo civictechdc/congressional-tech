@@ -5,6 +5,8 @@ from __future__ import annotations
 import datetime as dt
 from pathlib import Path
 
+from congress_shared.custody import write_atomic_bytes
+
 from congress_api.models.content import RawContent
 from congress_api.models.transcription import GeminiResponseCapture
 
@@ -26,9 +28,8 @@ def retain_response(response, directory: Path, *, model: str, start: float, end:
     )
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f'{start:g}-{end:g}-{observed.strftime("%Y%m%dT%H%M%S%fZ")}-{attempt}.json'
-    temporary = path.with_suffix('.tmp')
-    try:
-        temporary.write_text(capture.model_dump_json(by_alias=True), encoding='utf-8')
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    write_atomic_bytes(
+        path,
+        capture.model_dump_json(by_alias=True).encode('utf-8'),
+        temp_path=path.with_suffix('.tmp'),
+    )

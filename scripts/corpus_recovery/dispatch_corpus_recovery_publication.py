@@ -57,8 +57,6 @@ class SelectedRuntime:
         package = name.partition('.')[0]
         if package in self.PACKAGES:
             return self.root / self.PACKAGES[package] / package
-        if package == 'filename_viewer':
-            return self.root / 'docs/youtube-coverage/research/scripts'
         if package.startswith('filename_'):
             return self.root / self.PACKAGES['viewer_publication'] / 'viewer_publication'
         if package in {'recovery_viewer_builder', 'recovery_viewer_publisher', 'publication_cli'}:
@@ -94,7 +92,7 @@ class SelectedRuntime:
                            if isinstance(value, type(sys)))
 
     def files(self):
-        folders = [*self.sources, self.root / 'docs/youtube-coverage/research/scripts']
+        folders = [*self.sources]
         # scripts/ and scripts/publication/ contain operational evidence, CLI
         # helpers, docs, and tests; pin only helpers used by this route there.
         for excluded in (self.root / 'scripts', self.root / 'scripts/publication'):

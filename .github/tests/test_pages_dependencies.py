@@ -15,7 +15,7 @@ def test_pages_uses_declared_locked_environments_and_checks_built_reader():
     workflow = yaml.load((ROOT / '.github/workflows/deploy-pages.yml').read_text(), Loader=yaml.BaseLoader)
     from fnmatch import fnmatch
     triggers = workflow['on']['push']['paths']
-    assert any(fnmatch('docs/youtube-coverage/research/filename-rules.mjs', path) for path in triggers)
+    assert any(fnmatch('apps/site/src/components/explorer/browse/filename-rules.ts', path) for path in triggers)
     steps = workflow['jobs']['build']['steps']
     assert any(step.get('uses') == './.github/actions/setup-python-project' for step in steps)
     shared = './.github/actions/setup-node-project'

@@ -13,7 +13,10 @@ test('actual worker routes retain one catalog and serve lazy detail and complete
  const folder=await mkdtemp(join(tmpdir(),'filename-worker-'));
  let worker;
  try {
-  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../../../../../scripts/publication/filename-test-fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'4096'}});
+  execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../../../../../packages/viewer_publication/tests/native_viewer_fixture.py',import.meta.url)),folder],{env:{...process.env,FILENAME_FIXTURE_ROWS:'200'}});
+  const sources=JSON.parse(await readFile(join(folder,'source-records.json')));
+  const targetId=sources[2].source_id;
+  const manifestHref=pathToFileURL(join(folder,'native-public/manifest.json')).href;
   const moduleUrl=new URL('./worker.ts',import.meta.url).href;
   worker=new Worker(new URL('data:text/javascript,'+encodeURIComponent(`
    import {parentPort} from 'node:worker_threads';
@@ -39,28 +42,28 @@ test('actual worker routes retain one catalog and serve lazy detail and complete
   let sequence=0;
   const call=url=>new Promise((resolve,reject)=>{
    const id=++sequence;const listen=data=>{if(data.id!==id)return;worker.off('message',listen);data.error?reject(new Error(data.error)):resolve(data.result);};
-   worker.on('message',listen);worker.postMessage({id,url,manifest:pathToFileURL(join(folder,'public/manifest.json')).href});
+   worker.on('message',listen);worker.postMessage({id,url,manifest:manifestHref});
   });
   const info=await call('/api/info');assert.equal(info.catalog_id,'b'.repeat(32));
   const matched=await call('/api/match?payload='+encodeURIComponent(JSON.stringify({urls:['http://committee.test/final']})));
   assert.equal(matched.matches.length,24);assert.equal(matched.truncated,true);
-  assert.equal(matched.matches[0].source_id,createHash('sha256').update('1').digest('hex'));
+  assert.match(matched.matches[0].source_id,/^[a-f0-9]{64}$/);
   const rows=await call('/api/rows?limit=1.9&page=Infinity');assert.equal(rows.page,1);assert.equal(rows.limit,1);
-  const entry=await call('/api/entry/2?catalog='+info.catalog_id);assert.equal(entry.record_complete,false);
+  const entry=await call(`/api/entry/${targetId}?catalog=${info.catalog_id}`);assert.equal(entry.record_complete,false);
   assert.equal(entry.origin_pending,true);
-  const technical=await call('/api/technical/2?catalog='+info.catalog_id);assert(!('source_occurrences' in technical));
-  const full=await call('/api/full/2?catalog='+info.catalog_id);assert.equal(full.source_occurrences.length,3);
-  const observations=await call('/api/observations/2?catalog='+info.catalog_id+'&limit=2');assert.deepEqual(observations.items,full.source_occurrences.slice(0,2));
-  assert.equal((await call('/api/entry-origin/2?catalog='+info.catalog_id)).origin_pending,false);
-  const origin=await call('/api/origin/2?catalog='+info.catalog_id);assert(origin.origin);
-  await assert.rejects(call('/api/entry/2?catalog=wrong'),/older file list/);
-  await assert.rejects(call('/api/review/2?catalog='+info.catalog_id),/not configured/);
+  const technical=await call(`/api/technical/${targetId}?catalog=${info.catalog_id}`);assert(!('source_occurrences' in technical));
+  const full=await call(`/api/full/${targetId}?catalog=${info.catalog_id}`);assert.equal(full.source_occurrences.length,3);
+  const observations=await call(`/api/observations/${targetId}?catalog=${info.catalog_id}&limit=2`);assert.deepEqual(observations.items,full.source_occurrences.slice(0,2));
+  assert.equal((await call(`/api/entry-origin/${targetId}?catalog=${info.catalog_id}`)).origin_pending,false);
+  const origin=await call(`/api/origin/${targetId}?catalog=${info.catalog_id}`);assert(origin.origin);
+  await assert.rejects(call(`/api/entry/${targetId}?catalog=wrong`),/different catalog/);
+  await assert.rejects(call(`/api/review/${targetId}?catalog=${info.catalog_id}`),/not configured/);
   for(const query of ['q=warm','scope=all','q=Witness&field=source_occurrences']) await call('/api/rows?'+query);
   const paused=new Promise(resolve=>{const listen=data=>{if(!data.paused)return;worker.off('message',listen);resolve();};worker.on('message',listen);});
   worker.postMessage({pause:true});await paused;
   const cancelledId=++sequence,replies=[];const listen=data=>replies.push(data);worker.on('message',listen);
   const started=performance.now();
-  worker.postMessage({id:cancelledId,url:'/api/entry/'+matched.matches[0].source_id+'?catalog='+info.catalog_id,manifest:pathToFileURL(join(folder,'public/manifest.json')).href});
+  worker.postMessage({id:cancelledId,url:'/api/entry/'+matched.matches[0].source_id+'?catalog='+info.catalog_id,manifest:manifestHref});
   worker.postMessage({cancel:cancelledId});worker.postMessage({resume:true});
   await call('/api/info');
   const latencyMs=performance.now()-started;

@@ -12,7 +12,7 @@ SOURCE_DIRS = ('packages/congress_api/src', 'packages/docspec_client/src', 'pack
     'packages/congress_shared/src', 'packages/committee_meeting/src',
     'packages/youtube_api/src', 'packages/corpus_recovery/src',
     'packages/viewer_publication/src', 'apps/committee_youtube/src',
-    'scripts/publication', 'docs/youtube-coverage/research/scripts')
+    'scripts/publication')
 
 
 def fixture(root, destination):

@@ -61,14 +61,12 @@ def verify(root, manifest, *, validation=None):
 
 
 def fetch(root, *, client=None):
-    import boto3
     import shutil
     import tempfile
+    from congress_shared.storage import connect_r2
     from congress_api.retention.catalog_publication import _manifest
     root = Path(root)
-    client = client or boto3.client('s3', endpoint_url=f'https://{os.environ["CLOUDFLARE_ACCOUNT_ID"]}.r2.cloudflarestorage.com',
-                          aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'],
-                          aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'], region_name='auto')
+    client = client or connect_r2(use_botocore_config=False)
     bucket = 'congressional-tech-raw'
     response = client.get_object(Bucket=bucket, Key='indexes/catalog.json')
     with owned_resources() as resources:

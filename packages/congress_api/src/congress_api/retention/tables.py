@@ -7,6 +7,7 @@ import gzip
 import json
 from pathlib import Path
 
+from congress_shared.custody import canonical_json_bytes, write_atomic_bytes
 from congress_shared.youtube_cache import decode_cache
 
 from congress_api.matching.meetings import in_inventory_scope
@@ -56,14 +57,15 @@ def read_state(path):
 
 
 def write_state(path, state, *, compresslevel=9):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    try:
-        temporary.write_bytes(gzip.compress(json.dumps(state, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(), compresslevel=compresslevel, mtime=0))
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    write_atomic_bytes(
+        path,
+        gzip.compress(
+            canonical_json_bytes(state, ensure_ascii=False),
+            compresslevel=compresslevel,
+            mtime=0,
+        ),
+        temp_mode="fixed",
+    )
 
 
 def read_meetings(path):

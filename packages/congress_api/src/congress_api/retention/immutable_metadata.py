@@ -3,11 +3,12 @@ from hashlib import sha256
 from collections import OrderedDict
 import json
 
+from congress_shared.custody import canonical_json_bytes
 from congress_api.retention.write_recovery import reconcile_lost_acknowledgment
 
 
 def encoded(value):
-    return json.dumps(value, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
+    return canonical_json_bytes(value, ensure_ascii=True, allow_nan=False)
 
 
 class MetadataObjects:

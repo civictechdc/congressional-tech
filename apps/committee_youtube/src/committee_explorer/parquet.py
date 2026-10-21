@@ -584,9 +584,13 @@ def migrate(input_dir, output_dir):
         else: stage.rename(release)
         pointer = {'schema_version': manifest.schema_version, 'publication_id': publication_id,
                    'manifest_path': f'releases/{publication_id}/manifest.json', 'manifest_sha256': sha(raw)}
-        temporary = output / '.CURRENT.json.tmp'
-        temporary.write_bytes(encode(pointer))
-        temporary.replace(output / 'CURRENT.json')
+        from congress_shared.custody import write_atomic_bytes
+        write_atomic_bytes(
+            output / 'CURRENT.json',
+            encode(pointer),
+            temp_path=output / '.CURRENT.json.tmp',
+            fsync=False,
+        )
         verify(output)
         return updated
     finally:

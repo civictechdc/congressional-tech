@@ -39,16 +39,12 @@ def test_source_route_reuse_never_reopens_old_native_payloads(tmp_path):
 
 
 def test_components_read_shared_new_pins_once_and_retain_unrelated_browse_members(tmp_path):
-    import importlib.util
     import sqlite3
+    from viewer_publication import filename_viewer as viewer
     from viewer_publication.filename_native import NativeComponents, BrowsePages
     from test_native_catalog_selection import scope_for
     from test_catalog_dependencies import identity
     from congress_api.retention.catalog_selection import publish_native_catalog
-    script = Path(__file__).resolve().parents[3] / 'docs/youtube-coverage/research/scripts/view_document_filenames.py'
-    spec = importlib.util.spec_from_file_location('native_component_viewer', script)
-    viewer = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(viewer)
     store, native = LocalStore(tmp_path / 'store'), Native()
     owner, rows = seed(tmp_path, store, native)
     selected = read_catalog(store, native=native)

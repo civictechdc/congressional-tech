@@ -6,7 +6,7 @@ import {mkdtemp,readFile,open,stat,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {pathToFileURL,fileURLToPath} from 'node:url';
-import {createFilenameCatalog} from './catalog.ts';
+import {createFilenameCatalog, sourceContext} from './catalog.ts';
 import {compareBrowseKeys} from './catalog-v6.ts';
 
 async function localFetch(url,options={}) {
@@ -16,40 +16,60 @@ async function localFetch(url,options={}) {
   try{const bytes=Buffer.alloc(end-start+1);await handle.read(bytes,0,bytes.length,start);return new Response(bytes,{status:206,headers:{'Content-Range':`bytes ${start}-${end}/${(await stat(new URL(url))).size}`}});}finally{await handle.close();}
 }
 const comparable = rows => rows.map(row=>{
-  const result={...row};for(const name of ['_row','source_id','document_id'])delete result[name];return result;
+  const result={...row};
+  for(const name of ['_row','source_id','document_id','extension','recovered_filename','response_result'])delete result[name];
+  if(!('document_kind_source' in result))result.document_kind_source=null;
+  return result;
 });
 
 test('stable browser agrees with maintained search and preserves complete original records',async()=>{
   const folder=await mkdtemp(join(tmpdir(),'stable-viewer-'));
   try{
     execFileSync(process.env.PYTHON||'python3',[fileURLToPath(new URL('../../../../../../../packages/viewer_publication/tests/native_viewer_fixture.py',import.meta.url)),folder]);
-    const old=await createFilenameCatalog(pathToFileURL(join(folder,'public/manifest.json')),localFetch),requests=[];
+    const requests=[];
     const reader=await createFilenameCatalog(pathToFileURL(join(folder,'native-public/manifest.json')),(url,options)=>{requests.push(String(url));return localFetch(url,options);});
     assert.equal(requests.length,3,'startup only reads manifest and two bounded proof pages');
     const expected=JSON.parse(await readFile(join(folder,'expected.json')));
-    for(const {query}of expected){
-      const before=await old.search(query),after=await reader.search(query);
-      assert.deepEqual({...after,rows:comparable(after.rows)},{...before,rows:comparable(before.rows)},JSON.stringify(query));
+    for(const {query,result}of expected){
+      const after=await reader.search(query);
+      assert.deepEqual({...after,rows:comparable(after.rows)},{...result,rows:comparable(result.rows)},JSON.stringify(query));
       assert(after.rows.every(row=>row._row===row.source_id),'new results use stable source IDs');
     }
     const originals=JSON.parse(await readFile(join(folder,'source-records.json')));
     const documents=JSON.parse(await readFile(join(folder,'document-records.json')));
     for(const source of originals){
-      assert.deepEqual(await reader.documentRecord(source.source_id),documents.find(row=>row.document_id===source.document_id));
+      const doc=documents.find(row=>row.document_id===source.document_id);
+      assert.deepEqual(await reader.documentRecord(source.source_id),doc);
       assert.deepEqual(await reader.technical(source.source_id,undefined,undefined,true),source);
-      const entry=await reader.entry(source.source_id),historical=await old.entry(source.source_id);
-      assert.deepEqual(entry.record,historical.record);
-      assert.deepEqual(entry.facts,historical.facts);
-      assert.deepEqual(entry.sources,historical.sources);
-      assert.deepEqual(entry.origin,historical.origin);
-      assert.deepEqual(entry.document_origin,historical.document_origin);
-      assert.equal(entry.filename,historical.filename);
+      const entry=await reader.entry(source.source_id);
+      const isRetained=row=>row.record_role?.[0]==='document'&&row.body_key!=null;
+      const expectedRecord=Object.fromEntries(Object.keys(entry.record).map(k=>[k,
+        k==='body_key'?isRetained(source)?source.body_key:null:
+        k==='state_checked_at'&&source[k]?source[k].map(v=>new Date(v).toISOString()):source[k]]));
+      assert.deepEqual(entry.record,expectedRecord);
+      assert.deepEqual(entry.sources,originals.filter(row=>row.document_id===source.document_id).map(row=>({
+        filename:row.filename,source_url:row.source_url,source_id:row.source_id,format:row.format,record_role:row.record_role,retained:isRetained(row),
+      })));
+      assert.deepEqual(entry.origin,sourceContext(source));
+      const preferred=originals.find(row=>row.source_id===doc.source_id);
+      assert.deepEqual(entry.document_origin,{redirects:sourceContext(preferred).redirects});
+      assert.equal(entry.filename,doc.filename);
     }
-    const ordered = result => ({...result,matches:result.matches.toSorted((a,b)=>a.source_id.localeCompare(b.source_id))});
-    const matchQueries = [{urls:[]},{urls:['https://absent.test/none']},
-      ...originals.map(row=>({urls:[row.source_url]})),
-      ...originals.filter(row=>/([a-f0-9]{64})\.gz$/.test(row.body_key||'')).map(row=>({sha256s:[/([a-f0-9]{64})\.gz$/.exec(row.body_key)[1]]})),{sha256s:['invalid','a'.repeat(64)]}];
-    for(const query of matchQueries)assert.deepEqual(ordered(await reader.matchUrls(query)),ordered(await old.matchUrls(query)),JSON.stringify(query));
+    const typed=await reader.entry(originals[1].source_id);
+    assert.equal(typed.facts.http_status,200);assert.equal(typed.facts.response_usable,true);
+    assert.equal(typed.facts.response_body_complete,null);assert.equal(typed.facts.completeness_conflict,true);
+    assert.equal(typed.facts.state_checked_at,'2026-10-14T13:00:00.000Z');
+    assert.deepEqual(await reader.matchUrls({urls:[]}),{matches:[],truncated:false});
+    assert.deepEqual(await reader.matchUrls({urls:['https://absent.test/none']}),{matches:[],truncated:false});
+    for(const row of originals.filter(row=>row.source_url)){
+      assert.deepEqual(await reader.matchUrls({urls:[row.source_url]}),{matches:[{source_id:row.source_id,url:row.source_url}],truncated:false});
+    }
+    for(const row of originals.filter(row=>/([a-f0-9]{64})\.gz$/.test(row.body_key||''))){
+      const sha256=/([a-f0-9]{64})\.gz$/.exec(row.body_key)[1];
+      assert.deepEqual(await reader.matchUrls({sha256s:[sha256]}),{matches:[{source_id:row.source_id,sha256}],truncated:false});
+    }
+    assert.deepEqual(await reader.matchUrls({sha256s:['invalid','a'.repeat(64)]}),{matches:[],truncated:false});
+    assert.deepEqual(await reader.matchUrls({urls:['http://archive.test/recovered-unfetched.pdf']}),{matches:[{source_id:originals[2].source_id}],truncated:false});
     const aborted = new AbortController();aborted.abort();
     await assert.rejects(reader.matchUrls({urls:[originals[0].source_url]},aborted.signal),{name:'AbortError'});
     await assert.rejects(reader.entry('0'),/not present/);

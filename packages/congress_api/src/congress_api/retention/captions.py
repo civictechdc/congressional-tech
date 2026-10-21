@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
 
+from congress_shared.custody import write_atomic_bytes
+
 from congress_api.models.media import ArchiveProbe, CaptionReceipt
 from congress_api.parsers.senate_player import parse_player_url
 from congress_api.parsers.observations import last_successful_caption_check
@@ -22,12 +24,7 @@ def receipt_path(out_dir: Path, url: str) -> Path:
 
 
 def _write_text(path: Path, text: str) -> None:
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    try:
-        temporary.write_text(text, encoding="utf-8")
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    write_atomic_bytes(path, text.encode("utf-8"), temp_mode="fixed")
 
 
 def _write_receipt(out_dir: Path, url: str, receipt: dict) -> None:

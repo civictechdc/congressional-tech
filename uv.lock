@@ -546,12 +546,14 @@ version = "0.1.0"
 source = { editable = "packages/corpus_recovery" }
 dependencies = [
     { name = "congress-api", extra = ["archive"] },
+    { name = "congress-shared" },
     { name = "viewer-publication" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "congress-api", extras = ["archive"], editable = "packages/congress_api" },
+    { name = "congress-shared", editable = "packages/congress_shared" },
     { name = "viewer-publication", editable = "packages/viewer_publication" },
 ]
 
@@ -1565,6 +1567,7 @@ name = "news-lake"
 version = "0.1.0"
 source = { editable = "packages/news_lake" }
 dependencies = [
+    { name = "congress-shared" },
     { name = "docspec-client" },
     { name = "feedparser" },
     { name = "jsonschema" },
@@ -1577,6 +1580,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "congress-shared", editable = "packages/congress_shared" },
     { name = "docspec-client", editable = "packages/docspec_client" },
     { name = "feedparser", specifier = ">=6,<7" },
     { name = "jsonschema", specifier = ">=4.18,<5" },
@@ -2601,10 +2605,14 @@ version = "0.1.0"
 source = { editable = "packages/viewer_publication" }
 dependencies = [
     { name = "congress-api", extra = ["archive"] },
+    { name = "congress-shared" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "congress-api", extras = ["archive"], editable = "packages/congress_api" }]
+requires-dist = [
+    { name = "congress-api", extras = ["archive"], editable = "packages/congress_api" },
+    { name = "congress-shared", editable = "packages/congress_shared" },
+]
 
 [[package]]
 name = "websockets"

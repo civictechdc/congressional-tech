@@ -12,6 +12,8 @@ from pathlib import Path, PurePosixPath
 import threading
 import uuid
 
+from congress_shared.custody import VerifiedFile, canonical_json_bytes, write_atomic_bytes
+
 
 def sha256(path):
     with Path(path).open('rb') as stream:
@@ -141,16 +143,16 @@ class Continuation:
 
     def flush(self):
         with self.lock:
-            raw = (json.dumps(self.value, sort_keys=True, separators=(',', ':')) + '\n').encode()
+            raw = canonical_json_bytes(self.value, ensure_ascii=True, trailing_newline=True)
             if len(raw) > MAX_STATE_BYTES:
                 raise ValueError('Publication continuation exceeds state byte limit')
-            temporary = self.path.with_suffix('.tmp')
-            with temporary.open('wb') as stream:
-                stream.write(raw); stream.flush(); os.fsync(stream.fileno())
-            temporary.replace(self.path)
-            descriptor = os.open(self.root, os.O_RDONLY)
-            try: os.fsync(descriptor)
-            finally: os.close(descriptor)
+            write_atomic_bytes(
+                self.path,
+                raw,
+                temp_path=self.path.with_suffix('.tmp'),
+                fsync=True,
+                fsync_dir=True,
+            )
 
     def save(self, name, raw, *, replace=False):
         path = self.root / relative_name(name)
@@ -161,10 +163,13 @@ class Continuation:
             if path.read_bytes() != raw:
                 raise ValueError('Publication artifact changed: ' + name)
             return
-        temporary = path.with_name(path.name + '.partial')
-        with temporary.open('wb') as stream:
-            stream.write(raw); stream.flush(); os.fsync(stream.fileno())
-        temporary.replace(path)
+        write_atomic_bytes(
+            path,
+            raw,
+            temp_path=path.with_name(path.name + '.partial'),
+            fsync=True,
+            fsync_dir=False,
+        )
 
     def phase(self, name, action, *, files, inventory=None):
         relative_name(name)

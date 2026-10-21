@@ -7,15 +7,18 @@ import subprocess
 import sys
 import tempfile
 
+from congress_shared.custody import write_atomic_bytes
+from congress_shared.storage import connect_r2
 from viewer_publication.resume import MAX_DESCRIPTOR_BYTES, parse_resume_descriptor
 
 
 def save_report(path, result):
-    path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
-    fd, name = tempfile.mkstemp(dir=path.parent, prefix=path.name+'.', suffix='.partial')
-    with os.fdopen(fd, 'w') as stream:
-        json.dump(result, stream, indent=2); stream.write('\n'); stream.flush(); os.fsync(stream.fileno())
-    Path(name).replace(path)
+    write_atomic_bytes(
+        path,
+        (json.dumps(result, indent=2) + '\n').encode('utf-8'),
+        temp_mode='unique',
+        fsync=True,
+    )
 
 
 def arguments(argv):
@@ -78,12 +81,11 @@ def validate(args, attempts):
 
 
 def make_client():
-    import boto3
-    from botocore.config import Config
-    return boto3.client('s3', endpoint_url=f'https://{os.environ["CLOUDFLARE_ACCOUNT_ID"]}.r2.cloudflarestorage.com',
-        aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'],
-        region_name='auto', config=Config(connect_timeout=15, read_timeout=180,
-            retries={'total_max_attempts':1}, request_checksum_calculation='when_required', response_checksum_validation='when_required'))
+    return connect_r2(
+        connect_timeout=15,
+        read_timeout=180,
+        retries={'total_max_attempts': 1},
+    )
 
 
 def failure_context(argv):

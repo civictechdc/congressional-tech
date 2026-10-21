@@ -7,6 +7,7 @@ import sys
 import tempfile
 
 from committee_meeting.publication import PublicationManifest
+from congress_shared.custody import write_atomic_bytes
 from .export import encode, file_sha, sha
 
 
@@ -40,9 +41,12 @@ def state_digests(state, publication_id):
 def save_receipt(state, key, manifest):
     receipt = {'version': 1, 'request_key': key, 'publication_id': manifest.publication_id,
                'state': state_digests(state, manifest.publication_id)}
-    temporary = state / '.reuse.json.tmp'
-    temporary.write_bytes(encode(receipt))
-    temporary.replace(state / 'reuse.json')
+    write_atomic_bytes(
+        state / 'reuse.json',
+        encode(receipt),
+        temp_path=state / '.reuse.json.tmp',
+        fsync=False,
+    )
 
 
 def try_reuse(output, state, retained, key):
@@ -94,9 +98,12 @@ def try_reuse(output, state, retained, key):
             pointer = {'schema_version': manifest.schema_version, 'publication_id': manifest.publication_id,
                        'manifest_path': f'releases/{manifest.publication_id}/manifest.json',
                        'manifest_sha256': sha(manifest_raw), 'media_type': 'application/json'}
-            temporary = output / '.CURRENT.json.tmp'
-            temporary.write_bytes(encode(pointer))
-            temporary.replace(output / 'CURRENT.json')
+            write_atomic_bytes(
+                output / 'CURRENT.json',
+                encode(pointer),
+                temp_path=output / '.CURRENT.json.tmp',
+                fsync=False,
+            )
             return manifest
         finally:
             if stage.exists():

@@ -10,7 +10,7 @@
     "migrate": "node scripts/migrate-content.mjs",
     "generate:explorer-types": "node scripts/generate-explorer-types.mjs",
     "check:explorer-types": "node scripts/generate-explorer-types.mjs --check",
-    "test:explorer": "node --test src/components/explorer/reader/*.test.ts src/components/explorer/browse/*.test.ts src/components/explorer/reader/filenames/*.test.mjs scripts/verify-live-publication.test.mjs ../../docs/youtube-coverage/committee-explorer-charts.test.mjs",
+    "test:explorer": "node --test src/components/explorer/reader/*.test.ts src/components/explorer/browse/*.test.ts src/components/explorer/reader/filenames/*.test.mjs scripts/verify-live-publication.test.mjs",
     "test:built-filenames": "node --experimental-vm-modules --test scripts/built-filenames.test.mjs"
   },
   "dependencies": {

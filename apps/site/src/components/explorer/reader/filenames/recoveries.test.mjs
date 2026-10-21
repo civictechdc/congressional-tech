@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {loadRecoveries, recoveryStartupPolicy} from './recoveries.ts';
+import {canonicalJson} from './startup.ts';
 
 const info = {catalog_id: 'pair', rows: 3, entries: 2};
 const fixture = () => ({version: 1, ...info, recoveries: [{recovery_status: 'recovered', original_url: 'https://source.test/a.pdf'}], sources: [[1, 0]], groups: [[0, [0]]]});
@@ -110,6 +111,18 @@ test('the real worker reports mandatory recovery initialization failure', {timeo
   const {Worker} = await import('node:worker_threads');
   const workerUrl = new URL('./worker.ts', import.meta.url).href;
   const sidecar = input(), sha256 = '0'.repeat(64);
+  const asset = body => {
+    const raw = JSON.stringify(body), digest = createHash('sha256').update(raw).digest('hex');
+    return {raw, ref: {path: `releases/${digest.slice(0,32)}/${digest.slice(32)}/viewer-v2/page.json`, sha256: digest, bytes: Buffer.byteLength(raw)}};
+  };
+  const selected = asset({dependency: {source_root: {sha256: '1'.repeat(64)}}, components: {sha256: '2'.repeat(64)}, counts: {source_rows: info.rows, document_rows: info.entries}});
+  const sourceManifest = {version: 2, selection: selected.ref};
+  const selectorSha = createHash('sha256').update(canonicalJson(sourceManifest)).digest('hex');
+  const baseManifest = {version: 6, info, source_manifest: sourceManifest, source_identity: {selected_ref: selected.ref, selector_sha256: selectorSha},
+    source_selection: selected.ref, requirements: {}, files: {},
+    roots: {browse: {rows: info.entries}, sources: {native_sha256: '1'.repeat(64), stats: {rows: info.rows}}, components: {native_sha256: '2'.repeat(64), stats: {entries: info.entries, source_rows: info.rows}}}};
+  const proof = asset({version: 1, kind: 'viewer-proof', publication: baseManifest});
+  const manifest = {...baseManifest, proof: proof.ref};
   const pointer = {version: 1, catalog_id: info.catalog_id, manifest: `releases/${'a'.repeat(32)}/manifest.json`,
     recovery: {...sidecar.descriptor, sha256, path: `releases/${sha256.slice(0,32)}/${sha256.slice(32)}/viewer-v2/recovery-status.json`}};
   const worker = new Worker(new URL('data:text/javascript,' + encodeURIComponent(`
@@ -118,7 +131,9 @@ test('the real worker reports mandatory recovery initialization failure', {timeo
     globalThis.fetch=async url=>{
       if(String(url)==='https://data.test/manifest.json')return Response.json(${JSON.stringify(pointer)});
       if(String(url).endsWith('/recovery-status.json'))return new Response(${JSON.stringify(sidecar.bytes.toString())});
-      return Response.json({version:2,info:${JSON.stringify(info)},files:{}});
+      if(String(url).endsWith(${JSON.stringify(proof.ref.path)}))return new Response(${JSON.stringify(proof.raw)});
+      if(String(url).endsWith(${JSON.stringify(selected.ref.path)}))return new Response(${JSON.stringify(selected.raw)});
+      return Response.json(${JSON.stringify(manifest)});
     };
     await import(${JSON.stringify(workerUrl)});
     parentPort.on('message',data=>self.onmessage({data}));parentPort.postMessage({ready:true});

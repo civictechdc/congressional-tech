@@ -1,19 +1,35 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {fieldTextCache} from '../../../../../../../docs/youtube-coverage/research/filename-detail-state.mjs';
+import {byteCache, retainedBytes} from './cache.ts';
+import {fieldLabel, readableValue} from '../../browse/filename-presentation.ts';
 
-test('repeated technical searches format each unchanged value once within a byte budget', () => {
-  const cache = fieldTextCache(4096), format = value => JSON.stringify(value);
+test('repeated technical values stay within a bounded byte budget', () => {
+  const cache = byteCache(4096);
   const values = Array.from({length: 10}, (_, i) => ({value: 'entry-' + i}));
-  for (let search = 0; search < 20; search++) values.forEach((value, i) => cache.text(String(i), value, format));
-  assert.equal(cache.stats.formats, 10); assert.equal(cache.stats.hits, 190);
+  let formats = 0, hits = 0;
+  for (let search = 0; search < 20; search++) {
+    values.forEach((value, i) => {
+      const key = String(i);
+      const existing = cache.get(key);
+      if (existing !== undefined) {
+        hits++;
+      } else {
+        formats++;
+        const formatted = `${fieldLabel(key)} ${readableValue(value)}`.toLowerCase();
+        cache.set(key, formatted, retainedBytes(formatted));
+      }
+    });
+  }
+  assert.equal(formats, 10);
+  assert.equal(hits, 190);
   assert.ok(cache.stats.bytes <= 4096);
-  assert.match(cache.text('0', {value: 'replacement'}, format), /replacement/);
-  cache.clear(); assert.equal(cache.stats.bytes, 0); assert.equal(cache.stats.entries, 0);
 });
 
-test('oversized technical values remain complete and searchable without retention', () => {
-  const cache = fieldTextCache(1024), value = 'A'.repeat(5000) + 'end';
-  assert.equal(cache.text('long', value, String), value.toLowerCase());
+test('oversized technical values remain readable without exceeding cache admission limits', () => {
+  const cache = byteCache(1024, 512);
+  const value = 'A'.repeat(5000) + 'end';
+  assert.equal(readableValue(value).toLowerCase(), value.toLowerCase());
+  assert.equal(cache.admits(retainedBytes(value), 'long'), false);
+  cache.set('long', value, retainedBytes(value));
   assert.equal(cache.stats.entries, 0);
 });

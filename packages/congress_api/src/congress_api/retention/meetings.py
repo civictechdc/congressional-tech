@@ -5,6 +5,8 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
+from congress_shared.custody import write_atomic_bytes
+
 from congress_api.matching.meetings import in_inventory_scope
 from congress_api.models.congress import CommitteeMeeting
 from congress_api.retention.jsonl import write as write_jsonl
@@ -72,13 +74,11 @@ def write(records: dict[str, dict], path: Path) -> None:
 
 
 def write_pending(path, urls, responses=None):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    try:
-        payload = {"urls": sorted(set(urls))}
-        if responses:
-            payload["responses"] = responses
-        temporary.write_text(json.dumps(payload, indent=2) + "\n")
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    payload = {"urls": sorted(set(urls))}
+    if responses:
+        payload["responses"] = responses
+    write_atomic_bytes(
+        path,
+        (json.dumps(payload, indent=2) + "\n").encode("utf-8"),
+        temp_mode="fixed",
+    )

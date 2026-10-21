@@ -7,7 +7,7 @@ import os
 import sys
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path[:0] = [str(ROOT / 'packages/congress_api/src'), str(ROOT / 'tests'), str(ROOT / 'apps/site/scripts')]
+sys.path[:0] = [str(ROOT / 'packages/congress_shared/src'), str(ROOT / 'packages/congress_api/src'), str(ROOT / 'tests'), str(ROOT / 'apps/site/scripts')]
 import pyarrow as pa
 import pyarrow.parquet as pq
 from congress_api.retention.catalog_batches import prepare_native_catalog_components, iterator_prepared_components

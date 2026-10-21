@@ -12,6 +12,8 @@ import json
 from dataclasses import fields
 from pathlib import Path
 
+from congress_shared.custody import write_atomic_bytes
+
 from congress_api.models.content import RawContent
 from congress_api.models.gpo import GpoEvidenceObservation, GpoEvidenceRecord
 from congress_api.parsers.gpo_hearings import GpoHearing
@@ -35,13 +37,11 @@ def write_csv(rows: dict[str, dict], path: Path) -> None:
 
 
 def write_pending(values, path):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + '.tmp')
-    try:
-        temporary.write_text(json.dumps(values, sort_keys=True) + '\n')
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    write_atomic_bytes(
+        path,
+        (json.dumps(values, sort_keys=True) + '\n').encode('utf-8'),
+        temp_mode='fixed',
+    )
 
 
 def observation(data: bytes, url: str, media_type: str, *, retrieved_at=None):
@@ -56,14 +56,11 @@ def body_bytes(value):
 
 def write_observation(value: GpoEvidenceObservation, path: Path):
     """Atomically retain one source response beside a local extracted transcript."""
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + '.tmp')
-    try:
-        temporary.write_text(value.model_dump_json(by_alias=True, exclude_unset=True), encoding='utf-8')
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    write_atomic_bytes(
+        path,
+        value.model_dump_json(by_alias=True, exclude_unset=True).encode('utf-8'),
+        temp_mode='fixed',
+    )
 
 
 def read(path: Path | None):

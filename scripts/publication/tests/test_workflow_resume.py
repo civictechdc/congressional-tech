@@ -166,7 +166,7 @@ def test_new_preparation_requires_native_runtime_while_resume_and_noop_skip_it(t
     original=(ROOT/relative).read_bytes()
     setup.write_bytes(original)
     env=dict(PATH=str(Path(sys.executable).parent)+os.pathsep+os.defpath,
-        PYTHONPATH=str(ROOT/'packages/congress_api/src'),PYTHONDONTWRITEBYTECODE='1',
+        PYTHONPATH=os.pathsep.join(str(ROOT/p) for p in ('packages/congress_shared/src','packages/congress_api/src')),PYTHONDONTWRITEBYTECODE='1',
         HOME=str(tmp_path),RUNNER_TEMP=str(tmp_path),GITHUB_ENV=str(tmp_path/'github-env'),
         AWS_EC2_METADATA_DISABLED='true')
     result=subprocess.run(['bash','-e','-c',guard['run']],cwd=tmp_path,

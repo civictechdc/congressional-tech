@@ -22,7 +22,6 @@ on:
       - "scripts/measure/**"
       - "scripts/webharvest/**"
       - "scripts/tests/**"
-      - "docs/youtube-coverage/**"
       - ".github/scripts/**"
       - ".github/tests/**"
       - ".github/workflows/**"

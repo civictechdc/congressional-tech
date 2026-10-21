@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import uuid
 
+from congress_shared.custody import canonical_json_bytes, write_atomic_bytes
+
 MAX_PROGRESS_BYTES = 16384
 MAX_READ_UPDATES = 32
 NEXT_CHECK = {
@@ -19,7 +21,7 @@ NEXT_CHECK = {
 
 
 def binding_digest(binding):
-    return hashlib.sha256(json.dumps(binding, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    return hashlib.sha256(canonical_json_bytes(binding, ensure_ascii=True)).hexdigest()
 
 
 def validate_progress(value):
@@ -71,9 +73,12 @@ class ReconciliationProgress:
         value = dict(value, version=1, scan_id=self.scan_id, binding_sha256=self.binding_sha256,
                      updated_at=datetime.now(timezone.utc).isoformat(), observation_only=True,
                      resume_authorized=False, current_readback_proof=False, public_readback='not_checked')
-        raw = (json.dumps(validate_progress(value), sort_keys=True, separators=(',', ':')) + '\n').encode()
+        raw = canonical_json_bytes(validate_progress(value), ensure_ascii=True, trailing_newline=True)
         if len(raw) > MAX_PROGRESS_BYTES:
             raise ValueError('Reconciliation observation exceeds byte limit')
-        temporary = self.path.with_suffix('.tmp')
-        temporary.write_bytes(raw)
-        temporary.replace(self.path)
+        write_atomic_bytes(
+            self.path,
+            raw,
+            temp_path=self.path.with_suffix('.tmp'),
+            fsync=False,
+        )

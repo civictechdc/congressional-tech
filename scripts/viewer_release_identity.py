@@ -26,8 +26,8 @@ def source_files(root):
             values[str(path.relative_to(root))]=(stat.st_dev,stat.st_ino,stat.st_size,stat.st_mtime_ns,stat.st_ctime_ns)
         return values
     paths=set((root/'packages/viewer_publication/src/viewer_publication').glob('filename*.py'))
+    paths.update((root/'packages/congress_shared/src/congress_shared').rglob('*.py'))
     paths.update((root/'packages/congress_api/src/congress_api').rglob('*.py'))
-    paths.update((root/'docs/youtube-coverage/research/scripts').glob('*.py'))
     paths.update(root/name for name in (
         'scripts/publication/publish-filename-viewer.py','scripts/publication/publish-viewer-r2.py',
         'scripts/publication/publication_cli.py','scripts/viewer_release_identity.py','scripts/publication_preflight.py',
