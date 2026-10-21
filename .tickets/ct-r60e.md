@@ -23,3 +23,9 @@ In packages/news_lake/src/news_lake/storage/docspec_backend.py (DocSpecLake / Do
 -Protected ReleasePins, ExportPins, and active reader grants remain intact across compaction.
 - Add a multi-poll regression test verifying that lifecycle file count and metadata bytes remain bounded across >= 16 sequential polls.
 
+## Notes
+
+**2026-10-21T16:40:00Z**
+
+Implemented in `b28cc9b7`: added `DEFAULT_LIFECYCLE_COMPACT_INTERVAL = 16`, `_mutation_counts`, and automatic/manual `compact_lifecycle()` on `DocSpecLake` (`packages/news_lake/src/news_lake/storage/docspec_backend.py:312-384`) and `DocSpecNewsViews` (`:574-625`). Verified in `packages/news_lake/tests/test_docspec_backend.py::test_threshold_lifecycle_compaction_triggers_after_multi_poll_updates`.
+

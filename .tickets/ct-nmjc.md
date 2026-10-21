@@ -23,3 +23,9 @@ In packages/docspec_client/src/docspec_client/docspec.py, configure producer Par
 - Submitting a 262,144-row in-memory table with 64-300 byte string columns under max_batch_bytes=4 MiB and batch_rows=1024 succeeds without requiring the caller to manually pre-chunk row groups.
 - Add a unit/scale regression test in tests/test_docspec_runtime.py verifying bounded row_group_size in producer Parquet files.
 
+## Notes
+
+**2026-10-21T16:40:00Z**
+
+Implemented in `b28cc9b7`: added `PRODUCER_PARQUET_ROW_GROUP_SIZE = 2048` and `_write_producer_parquet` in `packages/docspec_client/src/docspec_client/docspec.py:34,80-85` and wired into `run_table`, `update_table`, and `update_evidence_table`. Verified in `tests/test_docspec_runtime.py::test_producer_parquet_writes_bound_row_group_size_for_batch_budget` and on the 262,144-row production scale probe with `batch_rows=2048`.
+

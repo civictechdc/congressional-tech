@@ -23,3 +23,9 @@ Make DocSpecLake and DocSpecNewsViews the default production backend in packages
 - PyIceberg coordinator.py and Python analysis/views.py are retained as the reference oracle for differential parity tests.
 - All news_lake contract, backend parity, and CLI tests pass.
 
+## Notes
+
+**2026-10-21T16:40:00Z**
+
+Implemented in `b28cc9b7`: created `packages/news_lake/src/news_lake/cli.py` (`publish`, `views --verify-oracle`, `export`, `compact-lifecycle`), wired `news-lake = "news_lake.cli:main"` in `packages/news_lake/pyproject.toml`, exported `DocSpecClient`, `DocSpecLake`, and `DocSpecNewsViews` from `news_lake` and `news_lake.storage`, updated `packages/news_lake/README.md`, and verified in `packages/news_lake/tests/test_docspec_backend.py::test_news_lake_cli_publish_views_export_and_compact_lifecycle` (319/319 tests pass).
+

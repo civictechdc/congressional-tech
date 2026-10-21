@@ -19,3 +19,9 @@ Independent CS300 audit finding (re-validated): news_lake.storage.coordinator.Co
 - Add a DocSpecLake-native abandon path: restore each content dataset to the exact ReleasePin recorded in the latest available release manifest (releases/<id>.json dataset_pins) via 0-row base-bound update_table against those pins, or explicitly refuse with an actionable error if a dataset has no pinned baseline.
 - Cover: abandon after a failed validation mid-cycle (bad C7 corpus), abandon idempotency, refuse when the release record was already appended, and staged-checkpoint discard.
 - Keep the PyIceberg path unchanged for the Iceberg Lake.
+
+## Notes
+
+**2026-10-21T15:56:05Z**
+
+Fix direction validated (iceberg + refactoring lenses): implement as rollback-expressed-as-new-commit (0-row base-bound update_table against the ReleasePin) exactly as the AC states - no destructive operation on the abandon path, the abandoned generation stays retained, and engine compact_baseline (docspec-rs src/catalog.rs:533) already exists to coalesce superseded revisions afterwards. Route the fix through the existing capability delegation seam (releases.py:186-197 delegates via hasattr(coordinator.lake, 'publish_release')); do NOT add a .table()-shaped PyIceberg adapter to DocSpecLake (it has no table/read_all/fenced_commit, and a fake Iceberg API there invites further reach-throughs from coordinator.py:177,213,299,316,350).

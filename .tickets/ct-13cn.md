@@ -43,3 +43,7 @@ Implemented and verified: added NativeDatasets.compare, changes_batches, and rea
 **2026-10-21T15:21:41Z**
 
 Reopened by independent CS300 audit (re-validated): acceptance requires wiring an actual catalog diagnostic/change consumer, but packages/congress_api/src/congress_api/retention/native_features.py is currently imported only by tests/test_native_features.py. Remaining scope: connect inspect_catalog_changes to a real caller (e.g. raw_changes/catalog dependency preparation feeding only proven changed keys, or an operator diagnostic command) and record read/returned bytes per field group; also fix the ct-9few descriptor field-name mismatch in the same pass.
+
+**2026-10-21T15:56:05Z**
+
+Refactoring-lens caution on remaining scope: an "operator diagnostic command" caller would manufacture a consumer to justify the adapter - the same anti-pattern ct-dmca's own AC forbids on the data side ("Do not manufacture a field simply to exercise an API"). Prefer migrating one existing, measured-expensive caller (e.g. raw_changes / catalog dependency preparation feeding only proven changed keys). If no existing caller justifies migration, the honest outcome is descope with the adapter retained as linked evidence. Closure evidence must cite the production caller at file:line, never a test file.

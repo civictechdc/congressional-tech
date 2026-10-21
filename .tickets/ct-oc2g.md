@@ -23,3 +23,15 @@ Gate this cleanup on completion of ct-2ukk (live v6 cutover qualification). Once
 - deploy-pages.yml stages intermediate pipeline Parquet inputs in a scratch directory outside apps/site/public/.
 - apps/site/src/lib/duckdb.ts requires version 6 native catalog manifests in production while preserving historical test coverage.
 
+## Notes
+
+**2026-10-21T16:40:00Z**
+
+Verified that `.github/workflows/deploy-pages.yml:79-96` already checks out `pipeline-data` at root `path: pipeline-data` (outside `apps/site/public/`) and stages only `pipeline-data/committee-explorer/public` into `apps/site/public/data/explorer`. Remaining scope gated on `ct-2ukk`: retire the runtime `catalog-v5.ts` fallback in `apps/site/src/lib/duckdb.ts` once live v6 cutover completes.
+
+
+## Notes
+
+**2026-10-21T15:55:59Z**
+
+Cross-skill validation + code inspection (main 9e5cf42e): the cited path apps/site/src/lib/duckdb.ts does not exist (apps/site/src/lib/ contains only paths.ts); the v5/v6 parsers live at apps/site/src/components/explorer/reader/filenames/. Cleanup scope is deeper than removing a runtime fallback: catalog-v6.ts:14 imports rangeFile, sourceContext, savedCopyUrl, apiReference and videoReference from catalog-v5.ts, and catalog.ts:3-5 imports and re-exports both parsers. Extract those five helpers before deleting v5, or v6 breaks.

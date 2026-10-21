@@ -29,3 +29,7 @@ Switch the default id source to UUIDv7 (Python 3.14 uuid.uuid7, or a vetted RFC 
 **2026-10-21T15:27:19Z**
 
 Scope correction 2026-10-21: context.new_id() has one caller (adapters/common.py:59, capture ids), so UUIDv7 clusters only news.captures. Every other table derives ids with deterministic uuid5 (named_id), deliberately, for idempotent replay and dedupe without a lookup; those ids stay hash-distributed and do not benefit. Follow-ups: ct-pgxn (measure per-table cost) and ct-xu1o (time-column Update keys for append tables); bloom filters for upsert tables in spicy-stack ss-wie5.
+
+**2026-10-21T16:40:00Z**
+
+Implemented in `b28cc9b7`: added RFC 9562 `uuid7()` and monotonic `_next_uuid7()` in `packages/news_lake/src/news_lake/context.py:79-132`. Verified in `packages/news_lake/tests/test_docspec_backend.py::test_uuidv7_context_ids_prune_disjoint_historical_files_across_polls` (`files_reused == 3`, `files_scanned == 0` on 4th chronological poll).
