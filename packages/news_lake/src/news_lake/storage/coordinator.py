@@ -278,6 +278,13 @@ class Coordinator:
         Idempotent: re-running is a no-op. A released or finished cycle cannot
         be abandoned.
         """
+        if hasattr(self.lake, 'abandon_cycle'):
+            return self.lake.abandon_cycle(
+                self.control,
+                cycle_id,
+                epoch=self.epoch,
+                faults=self.faults,
+            )
         self.control.require_epoch(self.epoch)
         row = self.control.cycle(cycle_id)
         if row is None:
