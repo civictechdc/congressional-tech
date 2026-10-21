@@ -33,8 +33,8 @@ from .docspec_host import (
 SUPPORTED_PLATFORMS = ('linux-amd64', 'darwin-arm64', 'darwin-amd64')
 PRODUCER_PARQUET_ROW_GROUP_SIZE = 2048
 QUALIFIED_DOCSPEC_RUNTIME = {
-    'source_revision': '270a8b627405bfe5819bf41485f8e3848d5be328',
-    'darwin_arm64_binary_sha256': '28d3a2a76e7ba9901e08cedfa8e1ba8039134049fc5e08d7827eaea035ea4ef0',
+    'source_revision': '7b1ed24411f846da18f0579bce5b141e9a770122',
+    'darwin_arm64_binary_sha256': 'b091895371c59d8808b812f1621f5b67a6c5b5d3d3a4582e74cabc3aba6408ee',
     'build_features': ('remote',),
     'required_capabilities': REQUIRED_LOOPBACK_CAPABILITIES,
     'safety_prerequisites': (
@@ -904,6 +904,14 @@ class NativeDatasets:
 
     def latest(self, dataset):
         return self._host_request('GET', f'/datasets/{quote(dataset, safe="")}/latest')
+
+    def try_latest(self, dataset):
+        try:
+            return self.latest(dataset)
+        except DocSpecFailure as error:
+            if getattr(error, 'status_code', None) == 404 or error.code == 'no_release' or 'no_release' in error.stderr:
+                return None
+            raise
 
     def release(self, dataset, operation):
         return self._host_request('GET',

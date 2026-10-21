@@ -2749,15 +2749,14 @@ class DocSpecNewsViews:
             )
             for table_name in bridge_source_tables
         }
-        if not isinstance(records_or_release_read, dict) and all(
-            not rows for rows in delta_tables.values()
-        ):
+        if not isinstance(records_or_release_read, dict):
             raw_records, _, _ = self._unwrap(records_or_release_read, selections)
             for table_name in bridge_source_tables:
-                kind = TABLE_KINDS[table_name]
-                delta_tables[table_name] = [
-                    r for r in raw_records if isinstance(r, dict) and r.get('kind') == kind
-                ]
+                if not delta_tables[table_name]:
+                    kind = TABLE_KINDS[table_name]
+                    delta_tables[table_name] = [
+                        r for r in raw_records if isinstance(r, dict) and r.get('kind') == kind
+                    ]
 
         prior_runs = dict(self._runs)
         delta_runs = delta_tables['news.runs']

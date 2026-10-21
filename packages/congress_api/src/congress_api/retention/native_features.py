@@ -635,6 +635,10 @@ def refresh_catalog_observation_summary(native, *, dataset, operation, source_pi
             "and is not supported on remote R2"
         )
     source_ref = version_ref(source_pin)
+    if base_pin is None and mode == "full" and hasattr(native, "try_latest"):
+        latest_pin = native.try_latest(dataset)
+        if isinstance(latest_pin, dict) and latest_pin.get("id") != operation:
+            base_pin = latest_pin
     base_version = version_ref(base_pin)["version"] if base_pin is not None else None
     if mode == "incremental" and base_version is None:
         raise ValueError("incremental refresh requires base_pin")
@@ -707,6 +711,10 @@ def refresh_catalog_join(native, *, dataset, operation, left_pin, right_pin,
         )
     left_ref = version_ref(left_pin)
     right_ref = version_ref(right_pin)
+    if base_pin is None and mode == "full" and hasattr(native, "try_latest"):
+        latest_pin = native.try_latest(dataset)
+        if isinstance(latest_pin, dict) and latest_pin.get("id") != operation:
+            base_pin = latest_pin
     base_version = version_ref(base_pin)["version"] if base_pin is not None else None
     if mode == "incremental" and base_version is None:
         raise ValueError("incremental refresh requires base_pin")

@@ -438,6 +438,8 @@ def test_producer_parquet_writes_bound_row_group_size_for_batch_budget(tmp_path)
     observed_row_groups = []
 
     def inspect_request(path, request, *, dispatch=None):
+        if path == "/receipts/plan":
+            return {"dataset": request.get("dataset"), "operation": request.get("operation")}
         for field in ("input", "replacements", "deletions"):
             value = request.get(field)
             file_path = value["path"] if isinstance(value, dict) else value

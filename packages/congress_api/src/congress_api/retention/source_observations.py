@@ -452,7 +452,8 @@ class SourceObservationStorage:
                     ).hexdigest()[:16]
                     alias_ds = (
                         f'{self.namespace}-obs-summary-'
-                        f'{sha256(candidate_alias.encode("utf-8")).hexdigest()[:12]}'
+                        f'{sha256(candidate_alias.encode("utf-8")).hexdigest()[:8]}-'
+                        f'{alias_op[4:12]}'
                     )
                     self.summarize_alias(
                         new_root,
