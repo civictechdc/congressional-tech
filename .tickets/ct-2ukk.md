@@ -2,7 +2,7 @@
 id: ct-2ukk
 status: in_progress
 deps: [ct-dat9, ct-7e7q, ct-9vtu, ct-y32m, ct-pki9, ct-87n4, ct-5kb2, ct-i7j2, ct-jufk, ct-kkio, ct-omnp, ct-nc7l, ct-ugqq]
-links: [ct-mi03, ct-czsd, ct-oc2g]
+links: [ct-mi03, ct-czsd, ct-oc2g, ct-a3le, ct-8ax6, ct-xu1o, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-dmca, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
 created: 2026-10-20T02:20:22Z
 type: task
 priority: 1
@@ -64,3 +64,7 @@ Application capability review: production adoption follows ct-nc7l and ct-ugqq. 
 **2026-10-21T07:28:00Z**
 
 All 13 dependency tickets (`ct-dat9`, `ct-7e7q`, `ct-9vtu`, `ct-y32m`, `ct-pki9`, `ct-87n4`, `ct-5kb2`, `ct-i7j2`, `ct-jufk`, `ct-kkio`, `ct-omnp`, `ct-nc7l`, `ct-ugqq`) are now closed and reconciled on `main` (`55ba3479`), and legacy full-table Parquet writers (`raw_archive.py`, `raw_catalog.py`, `publish-filename-viewer.py`) are retired into `tests/historical_*.py`. Only the live R2 production catalog/raw import, readback, and guarded v6 publication cutover receipt remain before closing `ct-2ukk`.
+
+**2026-10-21T20:53:50Z**
+
+Sequencing note (end-state epic ct-8kl2): Complete ct-2ukk and ct-oc2g first without disruption to finish the live catalog-v6.ts cutover and close epic ct-czsd. Follow-up tickets ct-te1p (Public R2 Custom Domain + Worker retirement) and ct-2yl5 (ExportSpec ExportPin replacing filename_native.py's write path) are gated on ct-2ukk completion.
