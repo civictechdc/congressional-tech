@@ -43,8 +43,8 @@ VALID_UPDATE_MERGE_STRATEGIES = ('replace', 'latest_or_backfill', 'min', 'max', 
 SUPPORTED_PLATFORMS = ('linux-amd64', 'darwin-arm64', 'darwin-amd64')
 PRODUCER_PARQUET_ROW_GROUP_SIZE = 2048
 QUALIFIED_DOCSPEC_RUNTIME = {
-    'source_revision': '7b1ed24411f846da18f0579bce5b141e9a770122',
-    'darwin_arm64_binary_sha256': 'b091895371c59d8808b812f1621f5b67a6c5b5d3d3a4582e74cabc3aba6408ee',
+    'source_revision': '4b294826649edd2625513f9b5d3e30d92080a695',
+    'darwin_arm64_binary_sha256': '9bed273bab84138b9d1b3bde7f9c1610adb4244f14b70ebbaf5045f99850ae47',
     'build_features': ('remote',),
     'required_capabilities': REQUIRED_LOOPBACK_CAPABILITIES,
     'safety_prerequisites': (
