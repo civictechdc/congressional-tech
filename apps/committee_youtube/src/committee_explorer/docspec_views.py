@@ -641,7 +641,7 @@ class ExplorerDocSpecWorkspace:
         *,
         tables: Sequence[str] = ("committees", "meetings", "materials", "witnesses", "issues", "sources"),
         channel: str = "public",
-        replace_source_files: bool = True,
+        replace_source_files: bool = False,
     ) -> dict[str, dict[str, Any]]:
         """Create ``ExportPin``s for all staged browser Parquet tables (including all ``sources-*.parquet`` shards)."""
         stage = Path(stage_dir)
@@ -690,4 +690,8 @@ class ExplorerDocSpecWorkspace:
             self.refresh_views(obs_pin)
         else:
             del obs_table
-        return self.export_browser_publication(stage_dir, channel=channel)
+        return self.export_browser_publication(
+            stage_dir,
+            channel=channel,
+            replace_source_files=True,
+        )

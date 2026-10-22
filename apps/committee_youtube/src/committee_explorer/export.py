@@ -823,9 +823,9 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
             del decision_rows
         # Every identity is allocated. Release the registry before publication.
         current_source_ids = (
-            assembly.sources._index
-            if hasattr(assembly.sources, "_index")
-            else {k[1] for k in assembly.sources}
+            catalog.sources.source_ids()
+            if hasattr(catalog.sources, "source_ids")
+            else {s.id for s in catalog.sources}
         )
         class _LiveSourceIds:
             def __contains__(self, item):

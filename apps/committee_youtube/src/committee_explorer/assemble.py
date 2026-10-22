@@ -1144,7 +1144,17 @@ class Assembly:
                         )
                         provenance = now.provenance.model_copy(update={"citations": deduped_cits})
                         self.records[key] = now.model_copy(update={"detected_at": old.detected_at, "provenance": provenance})
-                    for reference in _references(self.records[key]):
+                    refs = list(_references(self.records[key]))
+                    if (
+                        isinstance(old, DataIssue)
+                        and old.resolution is not None
+                        and self.records[key].resolution is None
+                    ):
+                        res_cits = self._dedup_citations(
+                            old.resolution.provenance.citations, previous, identity_cache
+                        )
+                        refs.extend(c.source for c in res_cits)
+                    for reference in refs:
                         refkey = (reference.kind, reference.id)
                         if reference.kind == "source_record":
                             # Sources cite nothing further. As for every record,
