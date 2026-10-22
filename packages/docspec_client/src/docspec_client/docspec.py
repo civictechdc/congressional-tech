@@ -5,6 +5,7 @@ routing. DocSpec owns admission, versions, completion, concurrency and recovery.
 Application publication must select a coherent set of exact completed pins;
 independent native latest results are preparation, not an application snapshot.
 """
+import base64
 from contextlib import contextmanager
 from hashlib import file_digest
 import json
@@ -13,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
 import threading
 import time
@@ -23,6 +25,11 @@ from tempfile import mkdtemp
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+try:
+    import blake3 as _blake3_ext
+except ImportError:
+    _blake3_ext = None
+
 from .docspec_host import (
     REQUIRED_LOOPBACK_CAPABILITIES,
     ArrowResponse,
@@ -30,6 +37,8 @@ from .docspec_host import (
     acquire_host,
 )
 
+ARROW_STREAM_MIME = 'application/vnd.apache.arrow.stream'
+VALID_UPDATE_MERGE_STRATEGIES = ('replace', 'latest_or_backfill', 'min', 'max', 'set_union')
 SUPPORTED_PLATFORMS = ('linux-amd64', 'darwin-arm64', 'darwin-amd64')
 PRODUCER_PARQUET_ROW_GROUP_SIZE = 2048
 QUALIFIED_DOCSPEC_RUNTIME = {
@@ -43,16 +52,126 @@ QUALIFIED_DOCSPEC_RUNTIME = {
     ),
 }
 
+_BLAKE3_IV = (
+    0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A,
+    0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
+)
+_BLAKE3_MSG_PERMUTATION = (2, 6, 3, 10, 7, 0, 4, 13, 1, 11, 12, 5, 9, 14, 15, 8)
+_BLAKE3_CHUNK_START = 1
+_BLAKE3_CHUNK_END = 2
+_BLAKE3_PARENT = 4
+_BLAKE3_ROOT = 8
 
-def native_storage_schema(schema):
+
+def _blake3_rotr32(x, n):
+    return ((x >> n) | ((x << (32 - n)) & 0xFFFFFFFF)) & 0xFFFFFFFF
+
+
+def _blake3_g(state, a, b, c, d, mx, my):
+    state[a] = (state[a] + state[b] + mx) & 0xFFFFFFFF
+    state[d] = _blake3_rotr32(state[d] ^ state[a], 16)
+    state[c] = (state[c] + state[d]) & 0xFFFFFFFF
+    state[b] = _blake3_rotr32(state[b] ^ state[c], 12)
+    state[a] = (state[a] + state[b] + my) & 0xFFFFFFFF
+    state[d] = _blake3_rotr32(state[d] ^ state[a], 8)
+    state[c] = (state[c] + state[d]) & 0xFFFFFFFF
+    state[b] = _blake3_rotr32(state[b] ^ state[c], 7)
+
+
+def _blake3_round(state, m):
+    _blake3_g(state, 0, 4, 8, 12, m[0], m[1])
+    _blake3_g(state, 1, 5, 9, 13, m[2], m[3])
+    _blake3_g(state, 2, 6, 10, 14, m[4], m[5])
+    _blake3_g(state, 3, 7, 11, 15, m[6], m[7])
+    _blake3_g(state, 0, 5, 10, 15, m[8], m[9])
+    _blake3_g(state, 1, 6, 11, 12, m[10], m[11])
+    _blake3_g(state, 2, 7, 8, 13, m[12], m[13])
+    _blake3_g(state, 3, 4, 9, 14, m[14], m[15])
+
+
+def _blake3_compress(cv, block_words, counter, block_len, flags):
+    state = [
+        cv[0], cv[1], cv[2], cv[3],
+        cv[4], cv[5], cv[6], cv[7],
+        _BLAKE3_IV[0], _BLAKE3_IV[1], _BLAKE3_IV[2], _BLAKE3_IV[3],
+        counter & 0xFFFFFFFF, (counter >> 32) & 0xFFFFFFFF, block_len, flags,
+    ]
+    m = list(block_words)
+    for r in range(7):
+        _blake3_round(state, m)
+        if r < 6:
+            m = [m[i] for i in _BLAKE3_MSG_PERMUTATION]
+    for i in range(8):
+        state[i] ^= state[i + 8]
+        state[i + 8] ^= cv[i]
+    return state
+
+
+def _blake3_chunk_output(chunk_bytes, chunk_counter, flags):
+    cv = list(_BLAKE3_IV)
+    num_blocks = max(1, (len(chunk_bytes) + 63) // 64)
+    for b in range(num_blocks):
+        start = b * 64
+        block = chunk_bytes[start:start + 64]
+        block_len = len(block)
+        if block_len < 64:
+            block = block + b'\x00' * (64 - block_len)
+        words = struct.unpack('<16I', block)
+        b_flags = flags
+        if b == 0:
+            b_flags |= _BLAKE3_CHUNK_START
+        if b == num_blocks - 1:
+            b_flags |= _BLAKE3_CHUNK_END
+            return (cv, words, chunk_counter, block_len, b_flags)
+        cv = _blake3_compress(cv, words, chunk_counter, block_len, b_flags)[:8]
+
+
+def blake3_hex(data):
+    """Compute the 64-character lowercase hex BLAKE3 digest of ``data`` in memory."""
+    raw = bytes(data)
+    if _blake3_ext is not None:
+        return _blake3_ext.blake3(raw).hexdigest()
+    num_chunks = max(1, (len(raw) + 1023) // 1024)
+    cv_stack = []
+    for c in range(num_chunks):
+        chunk = raw[c * 1024:(c + 1) * 1024]
+        out = _blake3_chunk_output(chunk, c, 0)
+        if num_chunks == 1:
+            words = _blake3_compress(out[0], out[1], out[2], out[3], out[4] | _BLAKE3_ROOT)[:8]
+            return struct.pack('<8I', *words).hex()
+        cv = _blake3_compress(*out)[:8]
+        total_chunks = c + 1
+        while (total_chunks & 1) == 0 and (len(cv_stack) > 1 or c + 1 < num_chunks):
+            left_cv = cv_stack.pop()
+            block_words = tuple(left_cv) + tuple(cv)
+            cv = _blake3_compress(_BLAKE3_IV, block_words, 0, 64, _BLAKE3_PARENT)[:8]
+            total_chunks >>= 1
+        cv_stack.append(cv)
+    while len(cv_stack) > 1:
+        right_cv = cv_stack.pop()
+        left_cv = cv_stack.pop()
+        block_words = tuple(left_cv) + tuple(right_cv)
+        fl = _BLAKE3_PARENT | (_BLAKE3_ROOT if not cv_stack else 0)
+        if fl & _BLAKE3_ROOT:
+            words = _blake3_compress(_BLAKE3_IV, block_words, 0, 64, fl)[:8]
+            return struct.pack('<8I', *words).hex()
+        cv_stack.append(_blake3_compress(_BLAKE3_IV, block_words, 0, 64, fl)[:8])
+
+
+def native_storage_schema(schema_or_table, *, native_types=False):
     """Use lossless Iceberg types for unsigned values and binary offsets.
 
     The application retains the original schema in its immutable selection.
     Native pins describe the physical representation; schema-bound reads restore
     application types with Arrow's checked cast. UInt64 uses Decimal128(20, 0);
-    Binary uses LargeBinary to match the native nested writer. No floating-point
-    value occurs. Native storage can therefore use wider buffers than the input.
+    Binary uses LargeBinary to match the native nested writer unless ``native_types=True``
+    is requested for a Wave 1D+ runtime.
     """
+    is_table = isinstance(schema_or_table, pa.Table)
+    schema = schema_or_table.schema if is_table else schema_or_table
+    if native_types:
+        return schema_or_table if is_table else schema
+
     def field(value):
         return value.with_type(data_type(value.type))
 
@@ -74,7 +193,253 @@ def native_storage_schema(schema):
                            keys_sorted=value.keys_sorted)
         return value
 
+    target_schema = pa.schema([field(value) for value in schema], metadata=schema.metadata)
+    if is_table:
+        return (
+            schema_or_table
+            if target_schema.equals(schema_or_table.schema, check_metadata=True)
+            else schema_or_table.cast(target_schema, safe=True)
+        )
+    return target_schema
+
+
+def _merge_field_type(physical_type, expected_type):
+    """Validate and resolve a physical Arrow type against an expected application type."""
+    if pa.types.is_struct(physical_type) and pa.types.is_struct(expected_type):
+        if physical_type.num_fields != expected_type.num_fields:
+            raise ValueError(
+                f'Native source storage schema ({physical_type}) differs from '
+                f'the selected application schema ({expected_type})'
+            )
+        for i in range(expected_type.num_fields):
+            _merge_field_type(physical_type[i].type, expected_type[i].type)
+        return expected_type
+    if (pa.types.is_list(physical_type) or pa.types.is_large_list(physical_type)) and (
+            pa.types.is_list(expected_type) or pa.types.is_large_list(expected_type)):
+        _merge_field_type(physical_type.value_type, expected_type.value_type)
+        return expected_type
+    expected_physical = native_storage_schema(pa.schema([pa.field('x', expected_type)])).field(0).type
+    if physical_type != expected_physical and physical_type != expected_type:
+        raise ValueError(
+            f'Native source storage schema ({physical_type}) differs from '
+            f'the selected application schema ({expected_type})'
+        )
+    return expected_type
+
+
+def application_schema(schema, expected_schema=None):
+    """Inverse of :func:`native_storage_schema` for checked readback casts.
+
+    Supports both Wave 1D+ native ``UInt64`` / ``Binary`` columns and legacy
+    ``Decimal128(20, 0)`` / ``LargeBinary`` columns. When ``expected_schema`` is
+    supplied, ``Decimal128(20, 0)`` is restored to ``UInt64`` only where the
+    declared application field is ``UInt64``; genuine ``Decimal128`` fields
+    remain ``Decimal128``.
+    """
+    if expected_schema is not None:
+        fields = []
+        expected_by_name = {f.name: f for f in expected_schema}
+        for physical_field in schema:
+            if physical_field.name.startswith('__docspec_') and physical_field.name not in expected_by_name:
+                fields.append(physical_field)
+                continue
+            target_field = expected_by_name.get(physical_field.name)
+            if target_field is None:
+                raise ValueError(
+                    f'Unexpected field {physical_field.name!r} not in expected application schema'
+                )
+            _merge_field_type(physical_field.type, target_field.type)
+            fields.append(target_field)
+        return pa.schema(fields, metadata=expected_schema.metadata)
+
+    def field(value):
+        return value.with_type(data_type(value.type))
+
+    def data_type(value):
+        if pa.types.is_decimal128(value) and value.precision == 20 and value.scale == 0:
+            return pa.uint64()
+        if pa.types.is_large_binary(value):
+            return pa.binary()
+        if pa.types.is_struct(value):
+            return pa.struct([field(child) for child in value])
+        if pa.types.is_list(value) or pa.types.is_large_list(value):
+            return pa.list_(field(value.value_field))
+        if pa.types.is_fixed_size_list(value):
+            return pa.list_(field(value.value_field), value.list_size)
+        if pa.types.is_map(value):
+            return pa.map_(field(value.key_field), field(value.item_field),
+                           keys_sorted=value.keys_sorted)
+        return value
+
     return pa.schema([field(value) for value in schema], metadata=schema.metadata)
+
+
+def _cast_column(column, target_type):
+    if column.type == target_type:
+        return column
+    try:
+        return column.cast(target_type, safe=True)
+    except pa.ArrowNotImplementedError:
+        if isinstance(column, pa.ChunkedArray):
+            chunks = [_cast_array(chunk, target_type) for chunk in column.chunks]
+            return pa.chunked_array(chunks, type=target_type)
+        return _cast_array(column, target_type)
+
+
+def _cast_array(array, target_type):
+    if array.type == target_type:
+        return array
+    if pa.types.is_struct(target_type):
+        children = [
+            _cast_array(array.field(i), target_type[i].type)
+            for i in range(target_type.num_fields)
+        ]
+        return pa.StructArray.from_arrays(
+            children,
+            fields=list(target_type),
+            mask=array.is_null() if array.null_count else None,
+        )
+    if pa.types.is_list(target_type) or pa.types.is_large_list(target_type):
+        values = _cast_array(array.values, target_type.value_type)
+        if pa.types.is_large_list(target_type):
+            return pa.LargeListArray.from_arrays(array.offsets, values, type=target_type)
+        return pa.ListArray.from_arrays(array.offsets, values, type=target_type)
+    return array.cast(target_type, safe=True)
+
+
+def restore_application_schema(table, expected_schema=None):
+    """Restore an Arrow Table from native storage types to ``expected_schema``."""
+    target_schema = application_schema(table.schema, expected_schema=expected_schema)
+    if table.schema.equals(target_schema, check_metadata=True):
+        return table
+    columns = [
+        _cast_column(table.column(i), target_schema.field(i).type)
+        for i in range(len(target_schema))
+    ]
+    return pa.Table.from_arrays(columns, schema=target_schema)
+
+
+def encode_arrow_ipc_stream(table, *, native_types=False):
+    """Serialize an Arrow Table, RecordBatch, or RecordBatchReader into an Arrow IPC stream."""
+    if isinstance(table, pa.RecordBatch):
+        table = pa.Table.from_batches([table])
+    elif isinstance(table, pa.RecordBatchReader):
+        table = table.read_all()
+    if not isinstance(table, pa.Table):
+        raise TypeError('encode_arrow_ipc_stream requires a pyarrow.Table, RecordBatch, or RecordBatchReader')
+    prepared = table if native_types else native_storage_schema(table)
+    sink = pa.BufferOutputStream()
+    with pa.ipc.new_stream(sink, prepared.schema) as writer:
+        writer.write_table(prepared)
+    return sink.getvalue().to_pybytes()
+
+
+def build_update_merge_spec(*, order_by='recorded_at', columns=None):
+    """Build a canonical DocSpec ``UpdateMergeSpec`` dictionary matching ``src/model.rs``."""
+    spec = {}
+    if order_by is not None:
+        if isinstance(order_by, str):
+            if not order_by.strip():
+                raise ValueError('UpdateMergeSpec order_by must be a non-empty column name or None')
+            spec['order_by'] = order_by
+        elif isinstance(order_by, (list, tuple)):
+            if not order_by:
+                raise ValueError('UpdateMergeSpec order_by list must not be empty')
+            spec['order_by'] = list(order_by)
+        else:
+            raise ValueError('UpdateMergeSpec order_by must be a non-empty column name, list, or None')
+    if columns is not None:
+        if not isinstance(columns, dict):
+            raise ValueError('UpdateMergeSpec columns must be a dict mapping column_name -> strategy')
+        normalized_cols = {}
+        for col_name, strategy in columns.items():
+            if not isinstance(col_name, str) or not col_name.strip():
+                raise ValueError('UpdateMergeSpec column names must be non-empty strings')
+            if isinstance(strategy, dict) and 'kind' in strategy:
+                strategy = strategy['kind']
+            strategy_str = str(strategy).lower()
+            if strategy_str not in VALID_UPDATE_MERGE_STRATEGIES:
+                raise ValueError(
+                    f'Invalid UpdateMergeStrategy {strategy!r}; expected one of {VALID_UPDATE_MERGE_STRATEGIES}'
+                )
+            normalized_cols[col_name] = strategy_str
+        if normalized_cols:
+            spec['columns'] = normalized_cols
+    return spec
+
+
+def build_ipc_run_spec(
+    dataset,
+    *,
+    operation,
+    definition,
+    sql='SELECT * FROM input',
+    base=None,
+    relationship=None,
+    input=None,
+    expected_digest=None,
+):
+    """Build a canonical ``IpcRunSpec`` matching ``src/http/ipc.rs``."""
+    spec = {
+        'dataset': str(dataset),
+        'operation': str(operation),
+        'definition': str(definition),
+        'sql': str(sql),
+    }
+    if base is not None:
+        spec['base'] = str(base)
+    if relationship is not None:
+        spec['relationship'] = dict(relationship)
+    if input is not None:
+        spec['input'] = str(input)
+    if expected_digest is not None:
+        spec['expected_digest'] = str(expected_digest)
+    return spec
+
+
+def build_ipc_update_spec(
+    dataset,
+    *,
+    operation,
+    definition,
+    base,
+    keys,
+    replacement_path=None,
+    replacement_digest=None,
+    relationship=None,
+    deletions=None,
+    merge=None,
+):
+    """Build a canonical ``IpcUpdateSpec`` matching ``src/http/ipc.rs``."""
+    replacements = {}
+    if replacement_path is not None:
+        replacements['path'] = str(replacement_path)
+    if replacement_digest is not None:
+        replacements['digest'] = str(replacement_digest)
+    spec = {
+        'dataset': str(dataset),
+        'operation': str(operation),
+        'definition': str(definition),
+        'base': str(base),
+        'keys': [str(k) for k in keys],
+        'replacements': replacements,
+    }
+    if relationship is not None:
+        spec['relationship'] = dict(relationship)
+    if deletions is not None:
+        spec['deletions'] = dict(deletions)
+    if merge is not None:
+        if hasattr(merge, 'to_dict'):
+            merge = merge.to_dict()
+        spec['merge'] = (
+            build_update_merge_spec(
+                order_by=merge.get('order_by'),
+                columns=merge.get('columns'),
+            )
+            if isinstance(merge, dict)
+            else merge
+        )
+    return spec
 
 
 def _write_producer_parquet(table, path, *, row_group_size=PRODUCER_PARQUET_ROW_GROUP_SIZE):
@@ -806,6 +1171,24 @@ class NativeDatasets:
         return self._host_request('POST', path, content=payload,
             headers={'content-type': 'application/json'}, dispatch=dispatch)
 
+    def _request_ipc(self, path, ipc_bytes, spec, *, blake3_digest=None, dispatch=None):
+        """Send an Arrow IPC stream POST with base64-encoded JSON spec and BLAKE3 digest headers."""
+        spec_json = json.dumps(spec, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+        spec_b64 = base64.b64encode(spec_json.encode('utf-8')).decode('ascii')
+        headers = {
+            'content-type': ARROW_STREAM_MIME,
+            'x-docspec-spec-base64': spec_b64,
+        }
+        if blake3_digest is not None:
+            headers['x-docspec-input-blake3'] = str(blake3_digest)
+        return self._host_request(
+            'POST',
+            path,
+            content=bytes(ipc_bytes),
+            headers=headers,
+            dispatch=dispatch,
+        )
+
     def _host_request(self, method, path, **kwargs):
         deadline = time.monotonic() + self.timeout
         return self._execution_host().request(method, path, deadline=deadline, **kwargs)
@@ -817,14 +1200,48 @@ class NativeDatasets:
     def run(self, request):
         return self._request('/run', request)
 
+    def run_ipc(self, table, *, dataset, operation, definition, sql='SELECT * FROM input',
+                relationship=None, base=None, native_types=False):
+        """Stream one caller-bounded Arrow table directly to ``POST /run`` as an Arrow IPC stream."""
+        ipc_bytes = encode_arrow_ipc_stream(table, native_types=native_types)
+        digest = blake3_hex(ipc_bytes)
+        spec = build_ipc_run_spec(
+            dataset,
+            operation=operation,
+            definition=definition,
+            sql=sql,
+            base=base,
+            relationship=relationship,
+            expected_digest=digest,
+        )
+        return self._request_ipc('/run', ipc_bytes, spec, blake3_digest=digest)
+
     def run_table(self, table, *, dataset, operation, definition, relationship=None,
-                  base=None):
+                  base=None, stream_ipc=False, native_types=False):
         """Pass one caller-bounded Arrow source table to the native Run API.
 
         The caller owns candidate identity, schema and completeness. Input paths
         are locators; native retained expected-digest identity controls replay.
         ``relationship`` and ``base`` are optional source-declaration fields.
+        When ``stream_ipc=True``, streams the table directly over HTTP as an
+        Arrow IPC stream (falling back to staged Parquet if the runtime rejects
+        the Arrow stream content-type).
         """
+        if stream_ipc:
+            try:
+                return self.run_ipc(
+                    table,
+                    dataset=dataset,
+                    operation=operation,
+                    definition=definition,
+                    relationship=relationship,
+                    base=base,
+                    native_types=native_types,
+                )
+            except DocSpecFailure as error:
+                status = getattr(error, 'status', None) or getattr(error, 'status_code', None)
+                if status != 415:
+                    raise
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
         dispatch = {}
@@ -888,8 +1305,27 @@ class NativeDatasets:
                 inputs.append(entry)
         return inputs
 
+    def update_ipc(self, table, *, dataset, operation, definition, base, keys,
+                   deletions=None, relationship=None, merge=None, native_types=False):
+        """Stream one replacement Arrow table directly to ``POST /updates/run`` as an Arrow IPC stream."""
+        ipc_bytes = encode_arrow_ipc_stream(table, native_types=native_types)
+        digest = blake3_hex(ipc_bytes)
+        spec = build_ipc_update_spec(
+            dataset,
+            operation=operation,
+            definition=definition,
+            base=base,
+            keys=keys,
+            replacement_digest=digest,
+            relationship=relationship,
+            deletions=deletions,
+            merge=merge,
+        )
+        return self._request_ipc('/updates/run', ipc_bytes, spec, blake3_digest=digest)
+
     def update_table(self, table=None, *, dataset, operation, definition, base, keys,
-                     replacements=None, deletions=None, relationship=None, merge=None):
+                     replacements=None, deletions=None, relationship=None,
+                     merge=None, stream_ipc=False, native_types=False):
         """Submit one ``UpdateSpec`` with pre-persisted producer custody.
 
         Accepts either an Arrow ``table`` (and optional Arrow ``deletions`` table)
@@ -899,6 +1335,23 @@ class NativeDatasets:
         so an indeterminate outcome can be replayed and every referenced file
         survives caller cleanup.
         """
+        if stream_ipc and replacements is None and deletions is None and table is not None:
+            try:
+                return self.update_ipc(
+                    table,
+                    dataset=dataset,
+                    operation=operation,
+                    definition=definition,
+                    base=base,
+                    keys=keys,
+                    relationship=relationship,
+                    merge=merge,
+                    native_types=native_types,
+                )
+            except DocSpecFailure as error:
+                status = getattr(error, 'status', None) or getattr(error, 'status_code', None)
+                if status != 415:
+                    raise
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
         dispatch = {}
@@ -928,7 +1381,16 @@ class NativeDatasets:
             if deletions_spec is not None:
                 request['deletions'] = deletions_spec
             if merge is not None:
-                request['merge'] = dict(merge)
+                if hasattr(merge, 'to_dict'):
+                    merge = merge.to_dict()
+                request['merge'] = (
+                    build_update_merge_spec(
+                        order_by=merge.get('order_by'),
+                        columns=merge.get('columns'),
+                    )
+                    if isinstance(merge, dict)
+                    else merge
+                )
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
             primary = Path(replacements_spec['path'])
@@ -1436,8 +1898,8 @@ class NativeDatasets:
                         and all(effective_reader_schema.field(f.name).equals(f, check_metadata=False) for f in physical)
                     ):
                         effective_reader_schema = physical
-                    if physical is not None and not effective_reader_schema.equals(physical, check_metadata=False):
-                        raise ValueError('Native source storage schema differs from the selected application schema')
+                    if target_schema is not None:
+                        application_schema(effective_reader_schema, expected_schema=target_schema)
 
                     def batches():
                         for batch in reader:
@@ -1446,7 +1908,14 @@ class NativeDatasets:
                                     [batch.column(reader.schema.get_field_index(f.name)) for f in effective_reader_schema],
                                     schema=effective_reader_schema,
                                 )
-                            yield batch if target_schema is None else batch.cast(target_schema, safe=True)
+                            if target_schema is not None:
+                                tbl = restore_application_schema(
+                                    pa.Table.from_batches([batch], schema=batch.schema),
+                                    expected_schema=target_schema,
+                                )
+                                yield from tbl.to_batches()
+                            else:
+                                yield batch
                         stream.finish()
 
                     with pa.RecordBatchReader.from_batches(
