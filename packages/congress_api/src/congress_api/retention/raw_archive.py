@@ -555,10 +555,10 @@ class _Acquisition:
 
 
     def apply(self, receipt):
+        from .raw_storage import _merge_states
         state = receipt["download_state"]
-        previous = self.state.get(state["url"], {})
-        if (state.get("checked_at") or "") >= (previous.get("checked_at") or ""):
-            self.state[state["url"]] = state
+        previous = self.state.get(state["url"])
+        self.state[state["url"]] = _merge_states(previous, state) if previous is not None else state
         for link in receipt["record"].get("links", []):
             self.seed_links(link, publisher_link=True)
         for cap in receipt["captures"]:

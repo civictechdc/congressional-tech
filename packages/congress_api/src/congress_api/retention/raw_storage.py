@@ -370,6 +370,32 @@ STATE_PARTITIONED_SCHEMA = pa.schema([
 
 def _merge_states(existing, incoming, *, merge_spec=STATE_MERGE_SPEC, state_schema=None, deletions=None):
     """Merge URL-state rows keyed by 64-byte ``state_key_sha256`` using ``UpdateMergeSpec(order_by='checked_at')``."""
+    from collections.abc import Mapping
+    if isinstance(existing, Mapping) and isinstance(incoming, Mapping):
+        from docspec_client.docspec import _merge_row_pair
+        norm_spec = UpdateMergeSpec.normalize(merge_spec) if merge_spec is not None else {'order_by': None, 'columns': {}}
+        if state_schema is not None:
+            field_names = list(state_schema.names)
+        else:
+            field_names = list(dict.fromkeys([*incoming.keys(), *existing.keys()]))
+        active_cols = {
+            col: norm_spec.get('columns', {}).get(
+                col,
+                UpdateMergeStrategy.REPLACE
+                if col in STATE_SCHEMA.names
+                else UpdateMergeStrategy.LATEST_OR_BACKFILL,
+            )
+            for col in field_names
+        }
+        order_by = norm_spec.get('order_by') if norm_spec.get('order_by') in field_names else None
+        return _merge_row_pair(
+            existing,
+            incoming,
+            keys=['url'],
+            order_by=order_by,
+            columns=active_cols,
+            field_names=field_names,
+        )
     existing_rows = existing.to_pylist() if isinstance(existing, pa.Table) else [dict(r) for r in existing]
     incoming_rows = incoming.to_pylist() if isinstance(incoming, pa.Table) else [dict(r) for r in incoming]
     if state_schema is None:
@@ -411,9 +437,13 @@ def _merge_states(existing, incoming, *, merge_spec=STATE_MERGE_SPEC, state_sche
         prepared_incoming.append(row)
     norm_spec = UpdateMergeSpec.normalize(merge_spec) if merge_spec is not None else {'order_by': None, 'columns': {}}
     active_cols = {
-        k: v
-        for k, v in norm_spec.get('columns', {}).items()
-        if k in state_schema.names
+        col: norm_spec.get('columns', {}).get(
+            col,
+            UpdateMergeStrategy.REPLACE
+            if col in STATE_SCHEMA.names
+            else UpdateMergeStrategy.LATEST_OR_BACKFILL,
+        )
+        for col in state_schema.names
     }
     effective_spec = UpdateMergeSpec(
         order_by=(
@@ -886,12 +916,23 @@ class RawStorage:
         if outcome == 'excluded_media':
             counts['excluded_media_urls'] += delta
 
-    def _candidate(self, kind, table, *, operation, prefix, base_id):
+    def _candidate(self, kind, table, *, operation, prefix, base_id, partition_by=None):
         # Keep candidates independent of a previous leaf's native latest. An
         # unselected Update advances that dataset and can make the application's
         # still-selected base stale, even when another raw leaf won publication.
         identity = sha256(encoded([operation, kind, prefix, base_id])).hexdigest()
         dataset = 'raw-' + kind + '-' + identity
+        if partition_by is not None:
+            try:
+                return self.native.run_table(
+                    table,
+                    dataset=dataset,
+                    operation='initial',
+                    definition='raw-native-v1',
+                    partition_by=partition_by,
+                )
+            except TypeError:
+                pass
         return self.native.run_table(table, dataset=dataset, operation='initial', definition='raw-native-v1')
 
     def _merge_states(self, existing, incoming, *, merge_spec=STATE_MERGE_SPEC):
@@ -1066,16 +1107,17 @@ class RawStorage:
             replacement = dict(old)
             next_order = base.manifest['state']['rows']
             for row in updates.to_pylist():
-                original = old.get(row['url'])
-                ordinal = original[STATE_ORDER] if original is not None else next_order
-                if original is None:
+                current = old.get(row['url'])
+                ordinal = current[STATE_ORDER] if current is not None else next_order
+                if current is None:
                     next_order += 1
-                if original is None or {name: original[name] for name in self.state_schema.names} != row:
+                merged = _merge_states(current, row, state_schema=self.state_schema) if current is not None else row
+                if current is None or {name: current[name] for name in self.state_schema.names} != merged:
                     changed_state_urls.append(row['url'])
-                    if original is not None:
-                        self._adjust_state_counts(manifest['state_counts'], original, -1)
-                    self._adjust_state_counts(manifest['state_counts'], row, 1)
-                replacement[row['url']] = {STATE_ORDER: ordinal, STATE_KEY_FIELD: state_key(row['url']), **row}
+                    if current is not None:
+                        self._adjust_state_counts(manifest['state_counts'], current, -1)
+                    self._adjust_state_counts(manifest['state_counts'], merged, 1)
+                replacement[row['url']] = {STATE_ORDER: ordinal, STATE_KEY_FIELD: state_key(row['url']), **merged}
             selected_root = manifest['state']['root']
             grouped = {prefix: [] for prefix in affected}
             for url, row in replacement.items():
@@ -1122,14 +1164,25 @@ class RawStorage:
                         ]
                         ordered_schema = pa.schema([self.state_native_schema.field(name) for name in col_order])
                         delta_table = pa.Table.from_pylist(delta_rows, schema=ordered_schema)
-                        updated_pin = self.native.update_table(
-                            delta_table,
-                            dataset=ref_pin['dataset']['dataset'],
-                            operation=f'{operation}-{child or "root"}-{base_id[:12]}',
-                            definition=ref_pin['dataset']['definition'],
-                            base=ref_pin['id'],
-                            keys=[STATE_KEY_FIELD],
-                        )
+                        try:
+                            updated_pin = self.native.update_table(
+                                delta_table,
+                                dataset=ref_pin['dataset']['dataset'],
+                                operation=f'{operation}-{child or "root"}-{base_id[:12]}',
+                                definition=ref_pin['dataset']['definition'],
+                                base=ref_pin['id'],
+                                keys=[STATE_KEY_FIELD],
+                                merge=STATE_MERGE_SPEC,
+                            )
+                        except TypeError:
+                            updated_pin = self.native.update_table(
+                                delta_table,
+                                dataset=ref_pin['dataset']['dataset'],
+                                operation=f'{operation}-{child or "root"}-{base_id[:12]}',
+                                definition=ref_pin['dataset']['definition'],
+                                base=ref_pin['id'],
+                                keys=[STATE_KEY_FIELD],
+                            )
                         leaves[child] = dict(
                             release=updated_pin,
                             schema_evolved=True,
@@ -1139,7 +1192,14 @@ class RawStorage:
                         )
                     else:
                         leaves[child] = dict(
-                            release=self._candidate('state', part, operation=operation, prefix=child, base_id=base_id),
+                            release=self._candidate(
+                                'state',
+                                part,
+                                operation=operation,
+                                prefix=child,
+                                base_id=base_id,
+                                partition_by=STATE_PARTITION_SPEC,
+                            ),
                             rows=len(part),
                             decoded_bytes=pa.Table.from_pylist(part.to_pylist(), schema=self.state_native_schema).nbytes,
                             schedule=summarize(part.to_pylist()),

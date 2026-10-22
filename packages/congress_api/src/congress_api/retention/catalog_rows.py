@@ -179,7 +179,15 @@ class CatalogRows:
         self.candidate_rows_submitted = self.candidate_arrow_bytes = 0
 
     def _run_native(self, table, **request):
-        release = self.native.run_table(table, **request)
+        if "partition_by" in request and request["partition_by"] is None:
+            request = {k: v for k, v in request.items() if k != "partition_by"}
+        try:
+            release = self.native.run_table(table, **request)
+        except TypeError:
+            if "partition_by" not in request:
+                raise
+            fallback_request = {k: v for k, v in request.items() if k != "partition_by"}
+            release = self.native.run_table(table, **fallback_request)
         self.candidate_rows_submitted += len(table)
         self.candidate_arrow_bytes += table.nbytes
         return release
@@ -227,6 +235,7 @@ class CatalogRows:
         max_rows,
         max_bytes,
         owner_column="source_id",
+        partition_by=None,
     ):
         if (
             type(max_rows) is not int
@@ -244,7 +253,11 @@ class CatalogRows:
             if len(table) > max_rows or table.nbytes > max_bytes:
                 raise ValueError("Catalog core exceeds its native chunk budget")
             return self._run_native(
-                table, dataset=dataset, operation=operation, definition=definition
+                table,
+                dataset=dataset,
+                operation=operation,
+                definition=definition,
+                partition_by=partition_by,
             )
         core = core_table(table).combine_chunks()
         if len(core) > max_rows or core.nbytes > max_bytes:
@@ -363,6 +376,7 @@ class CatalogRows:
             dataset=dataset,
             operation=operation,
             definition=FORMAT + "-" + definition,
+            partition_by=partition_by,
         )
         descriptor = dict(
             format=FORMAT,

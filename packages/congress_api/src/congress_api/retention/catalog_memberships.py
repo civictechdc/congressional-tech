@@ -21,6 +21,7 @@ from .partition_routing import RoutingPages, split_partition, key_hash
 ALIAS_KEY_SHA256_FIELD = 'alias_key_sha256'
 MEMBERSHIP_BUCKET_COUNT = 64
 MEMBERSHIP_PARTITION_SPEC = PartitionSpec.bucket(ALIAS_KEY_SHA256_FIELD, MEMBERSHIP_BUCKET_COUNT)
+MEMBERSHIPS_PARTITION_SPEC = MEMBERSHIP_PARTITION_SPEC
 MEMBERSHIP_MERGE_SPEC = UpdateMergeSpec.first_seen()
 
 
@@ -51,6 +52,7 @@ def with_alias_key_sha256(table, schema=None):
 class CatalogMemberships:
     def __init__(self, *, store, namespace, schema, member_column, max_rows, max_bytes,
                  read, write, validate_alias):
+        self.namespace = namespace
         self.routes = RoutingPages(store, namespace + '-aliases')
         self.members = RoutingPages(store, namespace + '-members')
         self.routes.objects.max_cache_entries = self.members.objects.max_cache_entries = 16
@@ -60,6 +62,13 @@ class CatalogMemberships:
         self._cached_leaves = OrderedDict()
         self._cached_bytes = 0
         self._cached_schema = schema
+
+    def _write_leaf(self, table, kind, *, base=None):
+        partition_by = MEMBERSHIPS_PARTITION_SPEC if base is None else None
+        try:
+            return self._write(table, kind, partition_by=partition_by)
+        except TypeError:
+            return self._write(table, kind)
 
     def _clear_leaf_cache(self):
         self._cached_leaves.clear()
@@ -185,7 +194,7 @@ class CatalogMemberships:
                 table = pa.Table.from_pylist(rows, schema=self.schema)
                 if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
                     if len(table):
-                        yield prefix, self._write(table, 'members')
+                        yield prefix, self._write_leaf(table, 'members')
                     return
                 if len(table) == 1 or len(prefix) == 64:
                     raise DependencyGap('One reverse dependency member exceeds its partition budget')
@@ -244,7 +253,7 @@ class CatalogMemberships:
                             (*query, self.max_rows + 1))]
                         table = pa.Table.from_pylist(rows, schema=self.schema)
                         if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
-                            yield child, dict(kind='rows', release=self._write(table, 'aliases'),
+                            yield child, dict(kind='rows', release=self._write_leaf(table, 'aliases'),
                                               rows=len(table), arrow_bytes=table.nbytes)
                             return
                     if len(child) == 64:
@@ -262,7 +271,7 @@ class CatalogMemberships:
 
     def prepare_partitioned_table(self, native, rows_or_table, *, dataset=None, operation='memberships',
                                   definition='catalog-memberships-partitioned-v1', base_pin=None,
-                                  deletions=None, bucket_count=MEMBERSHIP_BUCKET_COUNT):
+                                  base=None, deletions=None, bucket_count=MEMBERSHIP_BUCKET_COUNT):
         """Maintain reverse memberships in a single bucket-partitioned DocSpec dataset keyed by 64-byte SHA-256."""
         part_schema = partitioned_membership_schema(self.schema)
         if isinstance(rows_or_table, pa.Table):
@@ -278,16 +287,29 @@ class CatalogMemberships:
                     self.member_column: row[self.member_column],
                 })
             table = pa.Table.from_pylist(normalized, schema=part_schema)
-        ds_name = dataset or f'{self.routes.namespace}-partitioned'
-        partition_spec = PartitionSpec.bucket(ALIAS_KEY_SHA256_FIELD, bucket_count)
-        if base_pin is None:
-            return native.run_table(
-                table,
-                dataset=ds_name,
-                operation=operation,
-                definition=definition,
-                partition_by=partition_spec,
-            )
+        ds_name = dataset or f'{self.namespace}-partitioned'
+        partition_spec = (
+            MEMBERSHIPS_PARTITION_SPEC
+            if bucket_count == MEMBERSHIP_BUCKET_COUNT
+            else PartitionSpec.bucket(ALIAS_KEY_SHA256_FIELD, bucket_count)
+        )
+        effective_base = base_pin if base_pin is not None else base
+        if effective_base is None:
+            try:
+                return native.run_table(
+                    table,
+                    dataset=ds_name,
+                    operation=operation,
+                    definition=definition,
+                    partition_by=partition_spec,
+                )
+            except TypeError:
+                return native.run_table(
+                    table,
+                    dataset=ds_name,
+                    operation=operation,
+                    definition=definition,
+                )
         del_table = None
         if deletions is not None:
             if isinstance(deletions, pa.Table):
@@ -313,7 +335,7 @@ class CatalogMemberships:
                         pa.field(self.member_column, pa.string(), nullable=False),
                     ]),
                 ) if del_rows else None
-        base_id = base_pin['id'] if isinstance(base_pin, dict) else base_pin
+        base_id = effective_base['id'] if isinstance(effective_base, dict) else effective_base
         return native.update_table(
             table,
             dataset=ds_name,
@@ -324,3 +346,5 @@ class CatalogMemberships:
             merge=MEMBERSHIP_MERGE_SPEC,
             deletions=del_table,
         )
+
+    prepare = prepare_partitioned_table

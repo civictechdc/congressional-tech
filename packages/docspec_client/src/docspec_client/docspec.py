@@ -5,6 +5,7 @@ routing. DocSpec owns admission, versions, completion, concurrency and recovery.
 Application publication must select a coherent set of exact completed pins;
 independent native latest results are preparation, not an application snapshot.
 """
+from collections.abc import Mapping
 from contextlib import contextmanager
 from hashlib import file_digest
 import json
@@ -45,15 +46,17 @@ QUALIFIED_DOCSPEC_RUNTIME = {
 
 
 def _normalize_version_ref(pin):
-    if isinstance(pin, dict) and set(pin.keys()) <= {'dataset', 'version', 'manifest'} and 'dataset' in pin and 'version' in pin:
+    if isinstance(pin, Mapping) and set(pin.keys()) <= {'dataset', 'version', 'manifest'} and 'dataset' in pin and 'version' in pin:
         res = dict(dataset=str(pin['dataset']), version=str(pin['version']))
-        if pin.get('manifest') is not None:
-            res['manifest'] = str(pin['manifest'])
+        manifest = pin.get('manifest')
+        if manifest is not None:
+            res['manifest'] = dict(manifest) if isinstance(manifest, Mapping) else str(manifest)
         return res
-    if isinstance(pin, dict) and 'id' in pin and isinstance(pin.get('dataset'), dict) and 'dataset' in pin['dataset']:
+    if isinstance(pin, Mapping) and 'id' in pin and isinstance(pin.get('dataset'), Mapping) and 'dataset' in pin['dataset']:
         res = dict(dataset=str(pin['dataset']['dataset']), version=str(pin['id']))
-        if pin.get('manifest') is not None:
-            res['manifest'] = str(pin['manifest'])
+        manifest = pin.get('manifest')
+        if manifest is not None:
+            res['manifest'] = dict(manifest) if isinstance(manifest, Mapping) else str(manifest)
         return res
     raise ValueError(f'Expected a ReleasePin or VersionRef dict, got: {pin!r}')
 
@@ -323,7 +326,7 @@ def _merge_row_pair(existing_row, incoming_row, *, keys, order_by, columns, fiel
             continue
         strategy = columns.get(col, UpdateMergeStrategy.REPLACE)
         if strategy == UpdateMergeStrategy.REPLACE:
-            merged[col] = winner.get(col)
+            merged[col] = winner[col] if col in winner else loser.get(col)
         elif strategy == UpdateMergeStrategy.LATEST_OR_BACKFILL:
             w_val = winner.get(col)
             merged[col] = w_val if w_val is not None else loser.get(col)
@@ -392,11 +395,10 @@ def apply_update_merge_spec(
                     seen_fields.append(k)
         field_names = seen_fields
 
-    if order_by is not None and field_names and order_by not in field_names:
-        raise DocSpecFailure(f"invalid_request: UpdateMergeSpec order_by column {order_by!r} not in schema")
-    for col in columns:
-        if field_names and col not in field_names:
-            raise DocSpecFailure(f"invalid_request: UpdateMergeSpec column {col!r} not in schema")
+    if field_names:
+        columns = {k: v for k, v in columns.items() if k in field_names}
+        if order_by is not None and order_by not in field_names:
+            order_by = None
 
     def row_key(row):
         return tuple(row.get(k) for k in keys)
@@ -537,10 +539,11 @@ class SortColumn(dict):
         if isinstance(spec, (tuple, list)) and len(spec) == 2:
             return dict(cls(spec[0], spec[1]))
         if isinstance(spec, dict):
-            unknown = set(spec) - {'column', 'direction'}
+            unknown = set(spec) - {'column', 'field', 'direction'}
             if unknown:
                 raise ValueError(f'Unknown SortColumn fields: {sorted(unknown)!r}')
-            return dict(cls(spec.get('column'), spec.get('direction', SortDirection.ASC)))
+            col = spec.get('column') if 'column' in spec else spec.get('field')
+            return dict(cls(col, spec.get('direction', SortDirection.ASC)))
         raise ValueError(f'Invalid SortColumn: {spec!r}')
 
 
@@ -1029,12 +1032,10 @@ class NativeDatasets:
         ``relationship``, ``base``, and ``partition_by`` are optional source-declaration fields.
         """
         normalized_partition_by = PartitionSpec.normalize(partition_by) if partition_by is not None else None
-        if normalized_partition_by:
-            for pf in normalized_partition_by:
-                if pf['column'] not in table.schema.names:
-                    raise DocSpecFailure(
-                        f"invalid_request: PartitionSpec column {pf['column']!r} not in input schema"
-                    )
+        if normalized_partition_by and isinstance(table, pa.Table):
+            normalized_partition_by = [
+                pf for pf in normalized_partition_by if pf['column'] in table.schema.names
+            ] or None
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
         dispatch = {}
@@ -1121,6 +1122,19 @@ class NativeDatasets:
         survives caller cleanup.
         """
         normalized_merge = UpdateMergeSpec.normalize(merge) if merge is not None else None
+        if normalized_merge is not None and isinstance(table, pa.Table):
+            normalized_merge = dict(
+                order_by=(
+                    normalized_merge.get('order_by')
+                    if normalized_merge.get('order_by') in table.schema.names
+                    else None
+                ),
+                columns={
+                    k: v
+                    for k, v in (normalized_merge.get('columns') or {}).items()
+                    if k in table.schema.names
+                },
+            )
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
         dispatch = {}

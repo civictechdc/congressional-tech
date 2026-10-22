@@ -26,9 +26,11 @@ from congress_api.acquisition.recovery_queue import completed_from_tables, plan_
 from congress_api.retention import catalog_scope, catalog_staging, document_index as index
 from congress_api.retention.catalog_dependency_storage import (
     ALIAS_PARTITION_SPEC,
+    ALIASES_PARTITION_SPEC,
     DEPENDENCY_BUCKET_COUNT,
     DEPENDENCY_SOURCE_MERGE_SPEC,
     SOURCE_PARTITION_SPEC,
+    SOURCES_PARTITION_SPEC,
     SOURCE_URL_PARTITION_SPEC,
     SOURCE_URL_SHA256_FIELD,
     CatalogDependencyStorage,
@@ -39,6 +41,7 @@ from congress_api.retention.catalog_memberships import (
     MEMBERSHIP_BUCKET_COUNT,
     MEMBERSHIP_MERGE_SPEC,
     MEMBERSHIP_PARTITION_SPEC,
+    MEMBERSHIPS_PARTITION_SPEC,
     CatalogMemberships,
     alias_key_sha256,
     with_alias_key_sha256,
@@ -48,13 +51,14 @@ from congress_api.retention.native_features import (
     prepare_source_component_table,
     refresh_connected_components,
 )
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, Archive
 from congress_api.retention.raw_storage import (
     STATE_BUCKET_COUNT,
     STATE_KEY_SHA256_FIELD,
     STATE_MERGE_SPEC,
     STATE_PARTITION_SPEC,
     STATE_PARTITIONED_SCHEMA,
+    RawStorage,
     _merge_states,
     state_key_sha256,
 )
@@ -82,7 +86,7 @@ class _FakeModernNative:
         pin = {
             "id": pin_id,
             "verified": True,
-            "manifest": f"manifests/{pin_id}.json",
+            "manifest": {"path": f"manifests/{pin_id}.json", "digest": "0" * 64, "bytes": 128},
             "dataset": {"dataset": dataset, "version": pin_id, "definition": definition, "groups": {"source": {"rows": len(table)}}},
             "partition_by": norm_part,
         }
@@ -106,7 +110,7 @@ class _FakeModernNative:
         pin = {
             "id": pin_id,
             "verified": True,
-            "manifest": f"manifests/{pin_id}.json",
+            "manifest": {"path": f"manifests/{pin_id}.json", "digest": "0" * 64, "bytes": 128},
             "dataset": {"dataset": dataset, "version": pin_id, "definition": definition, "groups": {"source": {"rows": len(merged_table)}}},
             "merge": norm_merge,
         }
@@ -171,7 +175,7 @@ class _FakeModernNative:
         pin = {
             "id": pin_id,
             "verified": True,
-            "manifest": f"manifests/{pin_id}.json",
+            "manifest": {"path": f"manifests/{pin_id}.json", "digest": "0" * 64, "bytes": 128},
             "dataset": {"dataset": request["dataset"], "version": pin_id, "definition": request["definition"], "groups": {"source": {"rows": len(out_table)}}},
         }
         self.tables[pin_id] = out_table
@@ -240,6 +244,10 @@ def test_requirement_1_partition_and_update_merge_and_connected_components_specs
     assert cc_dict["document_id_column"] == "document_id"
     assert len(cc_dict["edges"]) == 2
     assert cc_dict["order_by"][0] == {"column": "priority_rank", "direction": "asc"}
+    assert SortColumn.normalize({"field": "priority_rank", "direction": "asc"}) == {
+        "column": "priority_rank",
+        "direction": "asc",
+    }
 
 
 def test_requirement_2_sha256_keys_bucket_partitioning_and_merge_states():
@@ -342,6 +350,122 @@ def test_requirement_2_sha256_keys_bucket_partitioning_and_merge_states():
     assert native.runs[-1]["partition_by"] == [dict(MEMBERSHIP_PARTITION_SPEC)]
     assert ALIAS_KEY_SHA256_FIELD in native.tables[alias_pin_1["id"]].schema.names
 
+    # Verify CatalogMemberships.prepare alias and CatalogDependencyStorage._write_sources / _write_aliases pass partition_by when base is None
+    from test_raw_source_sync import MemoryStore
+    dep_store = MemoryStore()
+    dep_storage_routed = CatalogDependencyStorage(
+        native=native,
+        store=dep_store,
+        namespace="test-cat-routed",
+        source_schema=index.SOURCE_SCHEMA,
+        max_rows=100,
+        max_bytes=1 << 20,
+    )
+    mem_pin = dep_storage_routed.memberships.prepare(
+        native,
+        [{"alias": json.dumps(["body", initial_saved["body_key"]]), "source_id": "src-1"}],
+    )
+    assert native.runs[-1]["partition_by"] == [dict(MEMBERSHIPS_PARTITION_SPEC)]
+    assert mem_pin["partition_by"] == [dict(MEMBERSHIPS_PARTITION_SPEC)]
+
+    from congress_api.retention.catalog_dependencies import dependency_tables
+    src_leaf_tbl, alias_leaf_tbl = dependency_tables(
+        [{"body_key": initial_saved["body_key"], "filename": "doc.pdf", "source_url": long_url}],
+        index.SOURCE_SCHEMA,
+    )
+    dep_storage_routed._write_sources(src_leaf_tbl)
+    assert native.runs[-1]["partition_by"] == [dict(SOURCES_PARTITION_SPEC)]
+    dep_storage_routed._write_aliases(alias_leaf_tbl)
+    assert native.runs[-1]["partition_by"] == [dict(ALIASES_PARTITION_SPEC)]
+
+    # Verify production RawStorage.prepare and Archive.apply preserve body_key, MAX(attempts), and SET_UNION(links_scanned)
+    from contextlib import contextmanager
+    @contextmanager
+    def _fake_source_batches(pin, *, schema=None, columns=None):
+        tbl = native.tables[pin["id"]]
+        if schema is not None:
+            cols = [pa.array([r.get(f.name) for r in tbl.to_pylist()], type=f.type) for f in schema]
+            tbl = pa.Table.from_arrays(cols, schema=schema)
+        yield tbl.to_reader()
+    native.source_batches = _fake_source_batches
+
+    def _make_raw_store():
+        s = MemoryStore()
+        def _put_index_selector(key, data, *, expected_version):
+            old = s.read(key)
+            version = sha256(old).hexdigest() if old is not None else None
+            if version != expected_version:
+                raise RuntimeError("Concurrent raw selection")
+            return s.put(key, data, immutable=False)
+        s.put_index_selector = _put_index_selector
+        return s
+
+    empty_captures = pa.Table.from_pylist([], schema=CAPTURE_SCHEMA)
+    raw_store = _make_raw_store()
+    raw_storage = RawStorage(raw_store, native)
+    snap_0 = raw_storage.snapshot()
+    prep_1 = raw_storage.prepare(
+        snap_0,
+        operation="op-1",
+        captures=empty_captures,
+        states=pa.Table.from_pylist([initial_saved], schema=STATE_SCHEMA),
+    )
+    assert native.runs[-1]["partition_by"] == [dict(STATE_PARTITION_SPEC)]
+    snap_1 = raw_storage.publish(prep_1)
+    prep_2 = raw_storage.prepare(
+        snap_1,
+        operation="op-2",
+        captures=empty_captures,
+        states=pa.Table.from_pylist([later_failure], schema=STATE_SCHEMA),
+    )
+    snap_2 = raw_storage.publish(prep_2)
+    state_rows_2 = snap_2.states().to_pylist()
+    assert len(state_rows_2) == 1
+    assert state_rows_2[0]["outcome"] == "http_error"
+    assert state_rows_2[0]["http_status"] == 503
+    assert state_rows_2[0]["body_key"] == initial_saved["body_key"]
+    assert state_rows_2[0]["sha256"] == initial_saved["sha256"]
+    assert state_rows_2[0]["attempts"] == 2
+    assert state_rows_2[0]["links_scanned"] is True
+
+    # Out-of-order state arrival in RawStorage.prepare
+    raw_store_rev = _make_raw_store()
+    raw_storage_rev = RawStorage(raw_store_rev, native)
+    snap_rev_1 = raw_storage_rev.publish(
+        raw_storage_rev.prepare(
+            raw_storage_rev.snapshot(),
+            operation="op-rev-1",
+            captures=empty_captures,
+            states=pa.Table.from_pylist([later_failure], schema=STATE_SCHEMA),
+        )
+    )
+    snap_rev_2 = raw_storage_rev.publish(
+        raw_storage_rev.prepare(
+            snap_rev_1,
+            operation="op-rev-2",
+            captures=empty_captures,
+            states=pa.Table.from_pylist([initial_saved], schema=STATE_SCHEMA),
+        )
+    )
+    assert snap_rev_2.states().to_pylist() == state_rows_2
+
+    # Production Archive.apply preserves body_key, MAX(attempts), and SET_UNION(links_scanned)
+    archive = Archive(raw_store, "run-fwd", storage=raw_storage)
+    archive.apply({"download_state": initial_saved, "record": {}, "captures": []})
+    archive.apply({"download_state": later_failure, "record": {}, "captures": []})
+    arch_state = archive.state[long_url]
+    assert arch_state["outcome"] == "http_error"
+    assert arch_state["http_status"] == 503
+    assert arch_state["body_key"] == initial_saved["body_key"]
+    assert arch_state["sha256"] == initial_saved["sha256"]
+    assert arch_state["attempts"] == 2
+    assert arch_state["links_scanned"] is True
+
+    archive_rev = Archive(raw_store_rev, "run-rev", storage=raw_storage_rev)
+    archive_rev.apply({"download_state": later_failure, "record": {}, "captures": []})
+    archive_rev.apply({"download_state": initial_saved, "record": {}, "captures": []})
+    assert archive_rev.state[long_url] == arch_state
+
 
 def test_requirement_3_unified_union_find_and_connected_components_transform(tmp_path):
     # 1. Shared 404 / HTML / empty bodies must NEVER collapse unrelated URLs into a giant component
@@ -412,6 +536,8 @@ def test_requirement_3_unified_union_find_and_connected_components_transform(tmp
 
     native = _FakeModernNative()
     cc_res = catalog_scope.refresh_scope_connected_components(native, copy.deepcopy(candidates))
+    assert isinstance(cc_res["spec"]["transform"]["input"]["manifest"], dict)
+    assert cc_res["spec"]["transform"]["input"]["manifest"]["path"].startswith("manifests/pin-")
     cc_rows = native.tables[cc_res["pin"]["id"]].to_pylist()
     cc_doc_ids = {
         sid: comp_row["document_id"]
