@@ -22,13 +22,42 @@ from .catalog_dependencies import (
     extract_pin_changes, summarize_alias_observations, _aggregate_partition_summaries,
     _encoded_alias, _decoded_alias,
 )
+from .docspec import PartitionSpec, UpdateMergeSpec
 from .partition_routing import RoutingPages, key_hash
-from .catalog_memberships import CatalogMemberships
+from .catalog_memberships import (
+    ALIAS_KEY_SHA256_FIELD,
+    MEMBERSHIP_BUCKET_COUNT,
+    MEMBERSHIP_MERGE_SPEC,
+    MEMBERSHIP_PARTITION_SPEC,
+    MEMBERSHIPS_PARTITION_SPEC,
+    CatalogMemberships,
+    alias_key_sha256,
+    partitioned_membership_schema,
+    with_alias_key_sha256,
+)
 from .source_aliases import resolution_candidates
 from .immutable_metadata import MetadataObjects
 from .catalog_batches import can_read_catalog_schema
 from .catalog_availability import package_dependencies
 from .catalog_staging import WorkingCatalog
+
+SOURCE_URL_SHA256_FIELD = 'source_url_sha256'
+DEPENDENCY_BUCKET_COUNT = 64
+SOURCE_PARTITION_SPEC = PartitionSpec.bucket('source_id', DEPENDENCY_BUCKET_COUNT)
+SOURCES_PARTITION_SPEC = SOURCE_PARTITION_SPEC
+SOURCE_URL_PARTITION_SPEC = PartitionSpec.bucket(SOURCE_URL_SHA256_FIELD, DEPENDENCY_BUCKET_COUNT)
+ALIAS_PARTITION_SPEC = PartitionSpec.bucket(ALIAS_KEY_SHA256_FIELD, DEPENDENCY_BUCKET_COUNT)
+ALIASES_PARTITION_SPEC = ALIAS_PARTITION_SPEC
+DEPENDENCY_SOURCE_MERGE_SPEC = UpdateMergeSpec.max_by('source_order')
+
+
+def source_url_sha256(url):
+    """Return a fixed 64-byte hex SHA-256 key (< 128 bytes) for a source URL."""
+    if isinstance(url, bytes):
+        raw = url
+    else:
+        raw = str(url or '').encode('utf-8')
+    return sha256(raw).hexdigest()
 
 
 
@@ -50,7 +79,8 @@ class CatalogDependencyStorage:
         self.aliases, self.members = self.memberships.routes, self.memberships.members
         lookup_options = dict(store=store, schema=alias_schema(), member_column='source_id',
             max_rows=max_rows, max_bytes=max_bytes, read=self._read,
-            write=lambda table, kind: self._write(table, 'lookup-' + kind), validate_alias=lambda key: key)
+            write=lambda table, kind, *, partition_by=None: self._write(table, 'lookup-' + kind, partition_by=partition_by),
+            validate_alias=lambda key: key)
         self.urls = CatalogMemberships(namespace=namespace + '-source-url', **lookup_options)
         self.targets = CatalogMemberships(namespace=namespace + '-resolved-target', **lookup_options)
         self.bodies = CatalogMemberships(namespace=namespace + '-body-key', **lookup_options)
@@ -144,21 +174,59 @@ class CatalogDependencyStorage:
         return (table.cast(schema) if stored_schema.equals(schema,check_metadata=True)
                 else pa.Table.from_pylist(table.to_pylist(),schema=schema))
 
-    def _write(self, table, kind):
+    def _write_sources(self, table, *, base=None, partition_by=None):
         sink = pa.BufferOutputStream()
         with pa.ipc.new_stream(sink, table.schema) as writer:
             writer.write_table(table)
         identity = sha256(sink.getvalue()).hexdigest()
-        before=(self.row_owner.candidate_rows_submitted,self.row_owner.candidate_arrow_bytes)
-        pin = self.row_owner.write(table, dataset=f'catalog-dep-v3-{kind}-{identity}',
-            operation='initial', definition='catalog-dependencies-storage-v3',
-            max_rows=self.max_rows, max_bytes=self.max_bytes)
-        self.candidate_rows_submitted += self.row_owner.candidate_rows_submitted-before[0]
-        self.candidate_arrow_bytes += self.row_owner.candidate_arrow_bytes-before[1]
-        if kind == 'sources':
-            reference = self.schemas.put(dict(source_schema=base64.b64encode(self.schema_bytes).decode()))
-            return dict(release=pin, source_schema=reference)
+        before = (self.row_owner.candidate_rows_submitted, self.row_owner.candidate_arrow_bytes)
+        effective_partition_by = (
+            partition_by
+            if partition_by is not None
+            else (SOURCES_PARTITION_SPEC if base is None else None)
+        )
+        pin = self.row_owner.write(
+            table,
+            dataset=f'catalog-dep-v3-sources-{identity}',
+            operation='initial',
+            definition='catalog-dependencies-storage-v3',
+            max_rows=self.max_rows,
+            max_bytes=self.max_bytes,
+            partition_by=effective_partition_by,
+        )
+        self.candidate_rows_submitted += self.row_owner.candidate_rows_submitted - before[0]
+        self.candidate_arrow_bytes += self.row_owner.candidate_arrow_bytes - before[1]
+        reference = self.schemas.put(dict(source_schema=base64.b64encode(self.schema_bytes).decode()))
+        return dict(release=pin, source_schema=reference)
+
+    def _write_aliases(self, table, kind='aliases', *, base=None, partition_by=None):
+        sink = pa.BufferOutputStream()
+        with pa.ipc.new_stream(sink, table.schema) as writer:
+            writer.write_table(table)
+        identity = sha256(sink.getvalue()).hexdigest()
+        before = (self.row_owner.candidate_rows_submitted, self.row_owner.candidate_arrow_bytes)
+        effective_partition_by = (
+            partition_by
+            if partition_by is not None
+            else (ALIASES_PARTITION_SPEC if base is None else None)
+        )
+        pin = self.row_owner.write(
+            table,
+            dataset=f'catalog-dep-v3-{kind}-{identity}',
+            operation='initial',
+            definition='catalog-dependencies-storage-v3',
+            max_rows=self.max_rows,
+            max_bytes=self.max_bytes,
+            partition_by=effective_partition_by,
+        )
+        self.candidate_rows_submitted += self.row_owner.candidate_rows_submitted - before[0]
+        self.candidate_arrow_bytes += self.row_owner.candidate_arrow_bytes - before[1]
         return pin
+
+    def _write(self, table, kind, *, base=None, partition_by=None):
+        if kind == 'sources':
+            return self._write_sources(table, base=base, partition_by=partition_by)
+        return self._write_aliases(table, kind, base=base, partition_by=partition_by)
 
     def _replace_rows(self, root, pages, *, key, schema, replacements, deletions, kind, basis=None):
         # Partition changes on disk first. Inserting many new rows into an empty
@@ -642,6 +710,7 @@ class CatalogDependencyStorage:
                                 definition='catalog-dependencies-storage-v3',
                                 base=b_pin['id'],
                                 keys=['source_id'],
+                                merge=DEPENDENCY_SOURCE_MERGE_SPEC,
                                 deletions=del_table,
                             )
                             _, _, self.last_change_report = extract_pin_changes(
@@ -743,3 +812,95 @@ class CatalogDependencyStorage:
         summary = _aggregate_partition_summaries(part_summaries)
         self.last_refresh_summary = summary
         return summary
+
+    def prepare_partitioned_sources(self, rows_or_table, *, dataset=None, operation='sources',
+                                    definition='catalog-dependencies-partitioned-v1',
+                                    base_pin=None, deletions=None,
+                                    bucket_count=DEPENDENCY_BUCKET_COUNT):
+        """Maintain dependency source rows in a single bucket-partitioned DocSpec dataset."""
+        part_schema = pa.schema([
+            pa.field('source_id', pa.string(), nullable=False),
+            pa.field('source_order', pa.int64(), nullable=False),
+            pa.field(SOURCE_URL_SHA256_FIELD, pa.string(), nullable=False),
+            pa.field('source_url', pa.string(), nullable=True),
+            pa.field('body_key', pa.string(), nullable=True),
+            pa.field('document_id', pa.string(), nullable=True),
+        ])
+        if isinstance(rows_or_table, pa.Table):
+            rows_list = rows_or_table.to_pylist()
+        else:
+            rows_list = list(rows_or_table)
+        normalized = []
+        for idx, row in enumerate(rows_list):
+            values = row.get('source_values', row) if isinstance(row, dict) else {}
+            sid = row.get('source_id') or index.source_identity(values)
+            s_order = int(row.get('source_order', idx))
+            s_url = values.get('source_url') if isinstance(values, dict) else None
+            normalized.append(dict(
+                source_id=sid,
+                source_order=s_order,
+                source_url_sha256=row.get(SOURCE_URL_SHA256_FIELD) or source_url_sha256(s_url),
+                source_url=s_url,
+                body_key=values.get('body_key') if isinstance(values, dict) else None,
+                document_id=values.get('document_id') if isinstance(values, dict) else None,
+            ))
+        table = pa.Table.from_pylist(normalized, schema=part_schema)
+        ds_name = dataset or f'{self.namespace}-sources-partitioned'
+        partition_spec = (
+            SOURCES_PARTITION_SPEC
+            if bucket_count == DEPENDENCY_BUCKET_COUNT
+            else PartitionSpec.bucket('source_id', bucket_count)
+        )
+        if base_pin is None:
+            try:
+                return self.native.run_table(
+                    table,
+                    dataset=ds_name,
+                    operation=operation,
+                    definition=definition,
+                    partition_by=partition_spec,
+                )
+            except TypeError:
+                return self.native.run_table(
+                    table,
+                    dataset=ds_name,
+                    operation=operation,
+                    definition=definition,
+                )
+        del_table = None
+        if deletions is not None:
+            if isinstance(deletions, pa.Table):
+                del_table = deletions
+            else:
+                del_ids = [item['source_id'] if isinstance(item, dict) else str(item) for item in deletions]
+                del_table = pa.Table.from_pylist(
+                    [dict(source_id=k) for k in del_ids],
+                    schema=pa.schema([pa.field('source_id', pa.string(), nullable=False)]),
+                ) if del_ids else None
+        base_id = base_pin['id'] if isinstance(base_pin, dict) else base_pin
+        return self.native.update_table(
+            table,
+            dataset=ds_name,
+            operation=operation,
+            definition=definition,
+            base=base_id,
+            keys=['source_id'],
+            merge=DEPENDENCY_SOURCE_MERGE_SPEC,
+            deletions=del_table,
+        )
+
+    def prepare_partitioned_aliases(self, rows_or_table, *, dataset=None, operation='aliases',
+                                    definition='catalog-dependencies-partitioned-v1',
+                                    base_pin=None, deletions=None,
+                                    bucket_count=DEPENDENCY_BUCKET_COUNT):
+        """Maintain reverse alias memberships in a single bucket-partitioned DocSpec dataset."""
+        return self.memberships.prepare_partitioned_table(
+            self.native,
+            rows_or_table,
+            dataset=dataset or f'{self.namespace}-aliases-partitioned',
+            operation=operation,
+            definition=definition,
+            base_pin=base_pin,
+            deletions=deletions,
+            bucket_count=bucket_count,
+        )

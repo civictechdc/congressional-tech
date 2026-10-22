@@ -9,6 +9,21 @@ import json
 import time
 import pyarrow as pa
 
+from .docspec import (
+    AggregateSpec,
+    ConnectedComponentsTransform,
+    ConnectedEdgeSpec,
+    DocSpecFailure,
+    PartitionFieldSpec,
+    PartitionSpec,
+    PartitionTransformSpec,
+    SortColumn,
+    SortDirection,
+    UpdateMergeSpec,
+    UpdateMergeStrategy,
+    apply_update_merge_spec,
+)
+
 
 FIELD_GROUP_CAPABILITIES = {
     "source": {
@@ -961,3 +976,295 @@ def remap_occurrence_receipts(native, *, dataset, operation, before_pin, after_p
         receipts=carried_receipts,
         evidence_type=evidence_type,
     )
+
+
+# -- ct-bwac: Declarative ConnectedComponentsTransform & Bipartite Grouping ----
+
+
+DEFAULT_COMPONENT_EDGES = (
+    ConnectedEdgeSpec("canonical", "canonical_key"),
+    ConnectedEdgeSpec("body", "connectable_body_key"),
+)
+
+DEFAULT_COMPONENT_AGGREGATES = (
+    AggregateSpec.first_value("source_id", "source_id"),
+    AggregateSpec.first_value("body_key", "body_key"),
+    AggregateSpec.first_value("filename", "filename"),
+    AggregateSpec.first_value("source_url", "source_url"),
+    AggregateSpec.collect_set("filenames", "filename"),
+    AggregateSpec.collect_set("source_urls", "source_url"),
+    AggregateSpec.collect_set("body_keys", "body_key"),
+    AggregateSpec.count_rows("source_count"),
+)
+
+
+def prepare_source_component_table(rows, *, schema=None):
+    """Enrich source rows with ``canonical_key``, ``connectable_body_key``, and ``priority_rank``."""
+    from . import document_index as index
+
+    raw_rows = rows.to_pylist() if isinstance(rows, pa.Table) else [dict(r) for r in rows]
+    enriched = []
+    for row in raw_rows:
+        norm = index.normalize_source_row(dict(row))
+        norm["canonical_key"] = index.canonical_key(norm)
+        norm["connectable_body_key"] = index.connectable_body_key(norm)
+        norm["priority_rank"] = index.source_priority_rank(norm)
+        enriched.append(norm)
+    base_schema = (
+        rows.schema
+        if isinstance(rows, pa.Table)
+        else (schema if schema is not None else index.SOURCE_SCHEMA)
+    )
+    fields = [
+        f
+        for f in base_schema
+        if f.name not in {"source_id", "canonical_key", "connectable_body_key", "priority_rank"}
+    ]
+    fields.extend([
+        pa.field("source_id", pa.string(), nullable=False),
+        pa.field("canonical_key", pa.string(), nullable=False),
+        pa.field("connectable_body_key", pa.string(), nullable=True),
+        pa.field("priority_rank", pa.string(), nullable=False),
+    ])
+    for extra in ("format", "record_role", "filename_document_kind"):
+        if extra not in {f.name for f in fields}:
+            fields.append(pa.field(extra, index.STRINGS))
+    target_schema = pa.schema(fields, metadata=base_schema.metadata)
+    return pa.Table.from_pylist(enriched, schema=target_schema)
+
+
+def _execute_connected_components_in_memory(input_table, transform_spec):
+    """Execute ``ConnectedComponentsTransform`` semantics using the shared BipartiteUnionFind engine."""
+    from . import document_index as index
+
+    rows = input_table.to_pylist()
+    row_key_col = transform_spec["row_key"]
+    edges = transform_spec["edges"]
+    order_by = transform_spec["order_by"]
+    doc_id_col = transform_spec["document_id_column"]
+    aggregates = transform_spec["aggregates"]
+
+    if row_key_col not in input_table.column_names:
+        raise DocSpecFailure(
+            f"invalid_request: ConnectedComponentsTransform row_key {row_key_col!r} not in input schema"
+        )
+    for edge in edges:
+        if edge["column"] not in input_table.column_names:
+            raise DocSpecFailure(
+                f"invalid_request: ConnectedComponentsTransform edge column {edge['column']!r} not in input schema"
+            )
+    for sort_col in order_by:
+        if sort_col["column"] not in input_table.column_names:
+            raise DocSpecFailure(
+                f"invalid_request: ConnectedComponentsTransform order_by column {sort_col['column']!r} not in input schema"
+            )
+
+    uf = index.BipartiteUnionFind(len(rows))
+    alias_owners = {}
+    for idx, row in enumerate(rows):
+        for edge in edges:
+            ns = edge["namespace"]
+            col = edge["column"]
+            val = row.get(col)
+            if val is None or val == "":
+                continue
+            values = val if isinstance(val, list) else [val]
+            for item in values:
+                if item is None or item == "":
+                    continue
+                alias = (ns, str(item))
+                owner = alias_owners.setdefault(alias, idx)
+                uf.union(idx, owner)
+
+    components = {}
+    for idx in range(len(rows)):
+        root = uf.root(idx)
+        components.setdefault(root, []).append(rows[idx])
+
+    body_edge_cols = [
+        e["column"] for e in edges if e["namespace"] in {"body", "bodies", "body_key"}
+    ]
+
+    def sort_component_rows(comp_rows):
+        if not order_by:
+            return sorted(comp_rows, key=lambda r: str(r.get(row_key_col) or ""))
+        result = list(comp_rows)
+        # Sort stably from least-significant to most-significant sort key
+        for spec in reversed([*order_by, dict(column=row_key_col, direction="asc")]):
+            col = spec["column"]
+            reverse = spec.get("direction", "asc") == "desc"
+            result.sort(
+                key=lambda r, c=col, rev=reverse: (
+                    (r.get(c) is not None) if rev else (r.get(c) is None),
+                    r.get(c) if r.get(c) is not None else "",
+                ),
+                reverse=reverse,
+            )
+        return result
+
+    out_rows = []
+    for comp_rows in components.values():
+        ordered = sort_component_rows(comp_rows)
+        body_vals = set()
+        for r in ordered:
+            for bcol in body_edge_cols:
+                v = r.get(bcol)
+                if isinstance(v, list):
+                    body_vals.update(str(x) for x in v if x)
+                elif v:
+                    body_vals.add(str(v))
+        row_keys = [str(r.get(row_key_col) or "") for r in ordered if r.get(row_key_col) is not None]
+        doc_id = index.compute_document_id(body_vals, row_keys)
+        out = {doc_id_col: doc_id}
+        for agg in aggregates:
+            name = agg["name"]
+            fn = agg["function"]
+            kind = fn["kind"]
+            field = fn.get("field")
+            if kind == "count_rows":
+                out[name] = len(ordered)
+            elif kind == "first_value":
+                out[name] = ordered[0].get(field) if ordered else None
+            elif kind == "collect_set":
+                items = set()
+                for r in ordered:
+                    v = r.get(field)
+                    if isinstance(v, list):
+                        items.update(x for x in v if x is not None)
+                    elif v is not None:
+                        items.add(v)
+                out[name] = sorted(items)
+            elif kind == "count_distinct":
+                items = set()
+                for r in ordered:
+                    v = r.get(field)
+                    if isinstance(v, list):
+                        items.update(x for x in v if x is not None)
+                    elif v is not None:
+                        items.add(v)
+                out[name] = len(items)
+            elif kind == "min":
+                vals = [r.get(field) for r in ordered if r.get(field) is not None]
+                out[name] = min(vals) if vals else None
+            elif kind == "max":
+                vals = [r.get(field) for r in ordered if r.get(field) is not None]
+                out[name] = max(vals) if vals else None
+            elif kind == "sum":
+                vals = [r.get(field) for r in ordered if r.get(field) is not None]
+                out[name] = sum(vals) if vals else 0
+        out_rows.append(out)
+
+    out_rows.sort(key=lambda r: r[doc_id_col])
+    out_fields = [pa.field(doc_id_col, pa.string(), nullable=False)]
+    in_schema = input_table.schema
+    for agg in aggregates:
+        name = agg["name"]
+        fn = agg["function"]
+        kind = fn["kind"]
+        field = fn.get("field")
+        if kind in {"count_rows", "count_distinct"}:
+            out_fields.append(pa.field(name, pa.int64(), nullable=False))
+        elif kind == "collect_set":
+            elem_type = pa.string()
+            if field and field in in_schema.names:
+                ft = in_schema.field(field).type
+                elem_type = ft.value_type if pa.types.is_list(ft) else ft
+            out_fields.append(pa.field(name, pa.list_(elem_type), nullable=False))
+        else:
+            ft = in_schema.field(field).type if (field and field in in_schema.names) else pa.string()
+            out_fields.append(pa.field(name, ft, nullable=True))
+    return pa.Table.from_pylist(out_rows, schema=pa.schema(out_fields))
+
+
+def refresh_connected_components(
+    native,
+    *,
+    dataset,
+    operation,
+    source_pin,
+    base_pin=None,
+    prior_source_pin=None,
+    mode="full",
+    definition="catalog-connected-components-v1",
+    row_key="source_id",
+    edges=DEFAULT_COMPONENT_EDGES,
+    order_by=("priority_rank", "source_id"),
+    document_id_column="document_id",
+    aggregates=DEFAULT_COMPONENT_AGGREGATES,
+):
+    """Maintain full or incremental bipartite connected-component document rollups over ``source_pin``."""
+    if getattr(native, "remote", None) is not None:
+        raise ValueError(
+            "400 remote_unsupported: /refreshes requires BackendCapability::LocalOnly "
+            "and is not supported on remote R2"
+        )
+    source_ref = version_ref(source_pin)
+    if base_pin is None and mode == "full" and hasattr(native, "try_latest"):
+        latest_pin = native.try_latest(dataset)
+        if isinstance(latest_pin, dict) and latest_pin.get("id") != operation:
+            base_pin = latest_pin
+    base_version = version_ref(base_pin)["version"] if base_pin is not None else None
+    if mode == "incremental" and base_version is None:
+        raise ValueError("incremental refresh requires base_pin")
+    transform = ConnectedComponentsTransform(
+        source_ref,
+        row_key=row_key,
+        edges=edges,
+        order_by=order_by,
+        document_id_column=document_id_column,
+        aggregates=aggregates,
+    )
+    spec = dict(
+        dataset=dataset,
+        operation=operation,
+        base=base_version,
+        definition=definition,
+        mode=mode,
+        policy="captured",
+        transform=dict(transform),
+    )
+    executed_requests = 0
+    t0 = time.perf_counter()
+    try:
+        plan = native.plan_refresh(spec)
+        executed_requests += 1
+        pin = native.refresh(spec)
+        executed_requests += 1
+    except DocSpecFailure as exc:
+        if "unknown variant" in str(exc) and "connected_components" in str(exc):
+            with native.source_batches(source_pin) as reader:
+                input_table = pa.Table.from_batches(list(reader), schema=reader.schema)
+            output_table = _execute_connected_components_in_memory(input_table, transform)
+            pin = native.run_table(
+                output_table,
+                dataset=dataset,
+                operation=operation,
+                definition=definition,
+                base=base_version,
+            )
+            executed_requests += 1
+            plan = dict(
+                dataset=dataset,
+                operation=operation,
+                definition=definition,
+                mode=mode,
+                policy="captured",
+                completed=False,
+                transform=dict(transform),
+            )
+        else:
+            raise
+    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+    metrics = _compute_refresh_metrics(
+        pin,
+        mode=mode,
+        base_pin=base_pin,
+        input_pins=(source_pin,),
+        prior_input_pins=(prior_source_pin,) if prior_source_pin is not None else (),
+        elapsed_ms=elapsed_ms,
+        native=native,
+        dataset=dataset,
+        operation=operation,
+        executed_requests=executed_requests,
+    )
+    return dict(plan=plan, pin=pin, metrics=metrics, spec=spec)

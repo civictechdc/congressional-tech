@@ -82,6 +82,23 @@ CAPTURES_KEY = "indexes/captures.parquet"
 NON_DOWNLOAD_OUTCOMES = frozenset({'saved', 'excluded_media', 'excluded_probe',
                                   'repaired_url', 'excluded_scope'})
 
+_RAW_STORAGE_EXPORTS = frozenset({
+    'STATE_BUCKET_COUNT',
+    'STATE_KEY_SHA256_FIELD',
+    'STATE_MERGE_SPEC',
+    'STATE_PARTITION_SPEC',
+    'STATE_PARTITIONED_SCHEMA',
+    '_merge_states',
+    'state_key_sha256',
+})
+
+
+def __getattr__(name):
+    if name in _RAW_STORAGE_EXPORTS:
+        from congress_api.retention import raw_storage
+        return getattr(raw_storage, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 class BodyLimitExceeded(ValueError):
     """Retained bytes need a larger inspection budget; they remain in storage."""
@@ -538,10 +555,10 @@ class _Acquisition:
 
 
     def apply(self, receipt):
+        from .raw_storage import _merge_states
         state = receipt["download_state"]
-        previous = self.state.get(state["url"], {})
-        if (state.get("checked_at") or "") >= (previous.get("checked_at") or ""):
-            self.state[state["url"]] = state
+        previous = self.state.get(state["url"])
+        self.state[state["url"]] = _merge_states(previous, state) if previous is not None else state
         for link in receipt["record"].get("links", []):
             self.seed_links(link, publisher_link=True)
         for cap in receipt["captures"]:
