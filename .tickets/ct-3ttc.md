@@ -1,6 +1,6 @@
 ---
 id: ct-3ttc
-status: in_progress
+status: closed
 deps: [ct-0odd]
 links: [ct-0odd, ct-aia9, ct-ec91, ct-te1p, ct-gi01, ct-8kl2, ct-2yl5, ct-bwac, ct-84xa]
 created: 2026-10-22T04:03:02Z
