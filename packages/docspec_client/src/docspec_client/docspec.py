@@ -1071,9 +1071,13 @@ def _write_producer_parquet(table, path, *, row_group_size=PRODUCER_PARQUET_ROW_
     """Write producer Parquet inputs with bounded row groups so zero-copy Arrow slices stay within max_batch_bytes."""
     physical = native_storage_schema(table.schema)
     stored = table if physical.equals(table.schema, check_metadata=True) else table.cast(physical, safe=True)
+    if row_group_size is None and stored.nbytes <= 8_388_608:
+        pq.write_table(stored, path, compression='zstd')
+        return
+    effective_rg = row_group_size or 4096
     if stored.num_rows > 1 and stored.nbytes > 4_000_000:
         avg_row_bytes = max(1, stored.nbytes // stored.num_rows)
-        default_step = max(1, min(row_group_size, 1_500_000 // avg_row_bytes))
+        default_step = max(1, min(effective_rg, 1_500_000 // avg_row_bytes))
         with pq.ParquetWriter(path, physical, compression='zstd') as writer:
             offset = 0
             total_rows = stored.num_rows
@@ -1086,10 +1090,9 @@ def _write_producer_parquet(table, path, *, row_group_size=PRODUCER_PARQUET_ROW_
                 writer.write_table(chunk, row_group_size=step)
                 offset += step
         return
-    effective_rg = row_group_size
     if stored.num_rows > 1 and stored.nbytes > 1_500_000:
         avg_row_bytes = max(1, stored.nbytes // stored.num_rows)
-        effective_rg = max(1, min(row_group_size, 1_500_000 // avg_row_bytes))
+        effective_rg = max(1, min(effective_rg, 1_500_000 // avg_row_bytes))
     pq.write_table(stored, path, compression='zstd', row_group_size=effective_rg)
 
 
@@ -1861,7 +1864,8 @@ class NativeDatasets:
         return self._request_ipc('/run', ipc_bytes, spec, blake3_digest=digest)
 
     def run_table(self, table, *, dataset, operation, definition, relationship=None,
-                  base=None, partition_by=None, stream_ipc=False, native_types=False):
+                  base=None, partition_by=None, stream_ipc=False, native_types=False,
+                  row_group_size=PRODUCER_PARQUET_ROW_GROUP_SIZE):
         """Pass one caller-bounded Arrow source table to the native Run API.
 
         The caller owns candidate identity, schema and completeness. Input paths
@@ -1898,7 +1902,7 @@ class NativeDatasets:
         request = None
         try:
             source = directory / 'source.parquet'
-            _write_producer_parquet(table, source)
+            _write_producer_parquet(table, source, row_group_size=row_group_size)
             digest = self.hash_input(source)['digest']
             request = dict(dataset=dataset, operation=operation, definition=definition,
                 input=str(source), expected_digest=digest, sql='SELECT * FROM input')

@@ -182,12 +182,15 @@ class CatalogRows:
         if "partition_by" in request and request["partition_by"] is None:
             request = {k: v for k, v in request.items() if k != "partition_by"}
         try:
-            release = self.native.run_table(table, **request)
+            release = self.native.run_table(table, row_group_size=None, **request)
         except TypeError:
-            if "partition_by" not in request:
-                raise
-            fallback_request = {k: v for k, v in request.items() if k != "partition_by"}
-            release = self.native.run_table(table, **fallback_request)
+            try:
+                release = self.native.run_table(table, **request)
+            except TypeError:
+                if "partition_by" not in request:
+                    raise
+                fallback_request = {k: v for k, v in request.items() if k != "partition_by"}
+                release = self.native.run_table(table, **fallback_request)
         self.candidate_rows_submitted += len(table)
         self.candidate_arrow_bytes += table.nbytes
         return release
