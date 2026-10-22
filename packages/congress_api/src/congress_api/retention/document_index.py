@@ -419,29 +419,93 @@ def source_priority(row):
     )
 
 
+def source_priority_key(row):
+    """Canonical tuple ordering key (larger is higher priority) for component representative selection."""
+    return (
+        source_priority(row),
+        row.get("filename") or "",
+        row.get("source_url") or "",
+        row.get("source_id") or "",
+    )
+
+
+def _invert_utf8_hex(value):
+    raw = (value or "").replace("\x00", "").encode("utf-8") + b"\x00"
+    return bytes(0xFF - b for b in raw).hex()
+
+
+def source_priority_rank(row):
+    """Deterministic ascending rank string so ``order_by=['priority_rank', 'source_id']`` selects the preferred row first."""
+    b0, b1, b2, b3 = source_priority(row)
+    flags = f"{int(not b0)}{int(not b1)}{int(not b2)}{int(not b3)}"
+    fname = _invert_utf8_hex(row.get("filename") or "")
+    url = _invert_utf8_hex(row.get("source_url") or "")
+    sid = _invert_utf8_hex(row.get("source_id") or "")
+    return f"{flags}:{fname}:{url}:{sid}"
+
+
+class BipartiteUnionFind:
+    """Shared array-backed Union-Find over bipartite (row <-> namespace:alias) edges."""
+
+    def __init__(self, initial_size=0):
+        from array import array
+        self.parents = array("Q", range(initial_size))
+        self._aliases = {}
+
+    def add(self):
+        idx = len(self.parents)
+        self.parents.append(idx)
+        return idx
+
+    def root(self, key):
+        parents = self.parents
+        visited = []
+        while True:
+            parent = parents[key]
+            if parent == key:
+                break
+            visited.append(key)
+            key = parent
+        for item in visited:
+            parents[item] = key
+        return key
+
+    def union(self, key, target):
+        self.parents[self.root(key)] = self.root(target)
+
+    def union_row(self, row_id, row):
+        while len(self.parents) <= row_id:
+            self.add()
+        for alias in group_aliases(row, row_id):
+            self.union(row_id, self._aliases.setdefault(alias, row_id))
+
+    def components(self):
+        groups, members = {}, []
+        for row_id in range(len(self.parents)):
+            key = self.root(row_id)
+            if key not in groups:
+                groups[key] = len(members)
+                members.append([])
+            members[groups[key]].append(row_id)
+        return members
+
+
 def source_groups(table):
     """Join endpoint variants and identical successful document bodies.
 
     HTML/error bodies are often shared by unrelated URLs, so they cannot join
     entries by hash. Endpoint grouping still connects a wrapper to its download.
     """
-    parents = list(range(len(table)))
-
-    def root(row):
-        while parents[row] != row:
-            parents[row] = parents[parents[row]]
-            row = parents[row]
-        return row
-
+    uf = BipartiteUnionFind(len(table))
     aliases = {}
     fields = GROUP_ALIAS_FIELDS
     for row_id, row in enumerate(table.select(list(dict.fromkeys(
             name for name in fields if name in table.column_names))).to_pylist()):
         for alias in group_aliases(row, row_id):
-            parents[root(row_id)] = root(aliases.setdefault(alias, row_id))
+            uf.union(row_id, aliases.setdefault(alias, row_id))
     groups, members, entry_ids = {}, [], []
     for row_id in range(len(table)):
-        key = root(row_id)
+        key = uf.root(row_id)
         if key not in groups:
             groups[key] = len(members)
             members.append([])
@@ -456,6 +520,58 @@ def source_identity(row):
     return sha256(compact([row.get(k) for k in ('body_key', 'filename', 'source_url')]).encode()).hexdigest()
 
 
+def connectable_body_key(row):
+    """Return ``body_key`` only when the row is a connectable non-HTML/non-error document body."""
+    return document_body(
+        row.get("body_key"),
+        row.get("media_type"),
+        row.get("http_status"),
+        row.get("capture_outcome"),
+        row.get("body_format"),
+        row,
+    )
+
+
+def canonical_key(row, unique_key=None):
+    """Return the canonical endpoint grouping key for ``row``."""
+    uid = unique_key if unique_key is not None else (row.get("source_id") or source_identity(row))
+    endpoint = entry_key(row.get("filename"), row.get("source_url"), uid)
+    resolved = row.get("source_resolved_url")
+    if (
+        endpoint == ("row", uid)
+        and row.get("source_url")
+        and resolved
+        and len(resolved) == 1
+    ):
+        endpoint = entry_key(row.get("filename"), resolved[0], uid)
+    return compact(endpoint)
+
+
+def compute_document_id(bodies, source_ids):
+    """Compute the deterministic SHA-256 document component identifier."""
+    sorted_bodies = sorted(set(bodies))
+    identity = (
+        ["bodies", sorted_bodies]
+        if sorted_bodies
+        else ["sources", sorted(set(source_ids))]
+    )
+    return sha256(compact(identity).encode()).hexdigest()
+
+
+def normalize_source_row(row):
+    """Normalize a source row's record role, restored filename kind, source_id, and format."""
+    apply_capture_record_role(row)
+    restore_filename_kind(row)
+    row["source_id"] = source_identity(row)
+    row["record_role"] = row.get("record_role") or ["document"]
+    row["format"] = (
+        None
+        if row["record_role"] == ["capture-state"]
+        else row.get("body_format") or file_formats(row.get("media_type"), row.get("extension"))
+    )
+    return row
+
+
 def group_aliases(row, unique_key):
     """The one maintained endpoint/body policy used by grouping and lookup.
 
@@ -468,8 +584,7 @@ def group_aliases(row, unique_key):
             and resolved and len(resolved) == 1):
         endpoint = entry_key(row.get('filename'), resolved[0], unique_key)
     result = [('endpoint', endpoint)]
-    body = document_body(row.get('body_key'), row.get('media_type'), row.get('http_status'),
-                         row.get('capture_outcome'), row.get('body_format'), row)
+    body = connectable_body_key(row)
     if body:
         result.append(('body', body))
     return tuple(result)
@@ -495,6 +610,107 @@ def document_body(body, media, statuses, outcomes=None, body_format=None, respon
     )
 
 
+def combine_document_component(rows_factory, *, working=None, mutate_sources=False):
+    """Single shared component combiner used by both resident and disk-staged catalog builds."""
+    import pickle
+
+    if callable(rows_factory):
+        iter_rows = rows_factory
+        materialized = None
+    else:
+        materialized = list(rows_factory)
+        iter_rows = lambda: iter(materialized)
+
+    preferred = None
+    values = defaultdict(set)
+    filenames, urls, bodies, retained_bodies = set(), set(), set(), set()
+    if working is not None:
+        occurrences = working.mapping("combined_occurrences")
+        occurrences.clear()
+    else:
+        occurrences = {}
+    hearing_resources = []
+    filename_kind = False
+
+    for row in iter_rows():
+        if preferred is None or source_priority_key(row) > source_priority_key(preferred):
+            preferred = row
+        for field, value in row.items():
+            if isinstance(value, list) and field not in {"source_occurrences", "hearing_resources"}:
+                values[field].update(value)
+        hearing_resources = merge_values("hearing_resources", hearing_resources, row.get("hearing_resources"))
+        for occurrence in row.get("source_occurrences") or []:
+            occurrences[compact(occurrence)] = occurrence
+        for field, target in (("filename", filenames), ("source_url", urls), ("body_key", retained_bodies)):
+            if row.get(field):
+                target.add(row[field])
+        body = connectable_body_key(row)
+        if body:
+            bodies.add(body)
+        filename_kind |= bool(row.get("document_kind") and not row.get("recovered_filename"))
+
+    if bodies:
+        document_id = compute_document_id(bodies, ())
+    elif working is not None:
+        db = working.connection
+        ids = working.mapping("component_source_ids")
+        ids.clear()
+        for row in iter_rows():
+            ids[row["source_id"]] = True
+        digest = sha256(b'["sources",[')
+        first = True
+        for (key,) in db.execute("SELECT key FROM component_source_ids ORDER BY key"):
+            if not first:
+                digest.update(b",")
+            first = False
+            digest.update(compact(pickle.loads(key)).encode())
+        digest.update(b"]]")
+        document_id = digest.hexdigest()
+    else:
+        document_id = compute_document_id((), (row["source_id"] for row in iter_rows()))
+
+    document = {
+        field: preferred.get(field)
+        for field in ("source_id", "body_key", "filename", "source_url")
+    }
+    document.update(
+        document_id=document_id,
+        filename=display_filename((preferred.get("recovered_filename") or [preferred.get("filename")])[0]),
+    )
+    document.update({field: merge_values(field, items) for field, items in values.items() if items})
+    paired = merge_values("source_occurrences", list(occurrences.values()))
+    if paired:
+        document["source_occurrences"] = paired
+    if hearing_resources:
+        document["hearing_resources"] = hearing_resources
+    roles = values["record_role"]
+    document["record_role"] = [
+        next(
+            role
+            for role in ("document", "source-record", "error-response", "capture-state")
+            if role in roles
+        )
+    ]
+    fill_document_kind(document)
+    if filename_kind and "recovered_filename" in (document.get("document_kind_source") or []):
+        document["document_kind_source"] = sorted(
+            {
+                "filename" if basis == "recovered_filename" else basis
+                for basis in document["document_kind_source"]
+            }
+        )
+    document.update(
+        filenames=sorted(filenames) or None,
+        source_urls=sorted(urls) or None,
+        body_keys=sorted(retained_bodies) or None,
+    )
+    if mutate_sources and materialized is not None:
+        for row in materialized:
+            row["document_id"] = document_id
+            fill_document_kind(row)
+    return document
+
+
 def prepare_document_indexes(rows, schema):
     """Keep exact source rows and create one canonical row per document group."""
     progress.report('group_documents', total=len(rows), unit='source_rows')
@@ -514,98 +730,14 @@ def prepare_document_indexes(rows, schema):
         for row in rows:
             row.pop(redundant, None)
     for row in rows:
-        apply_capture_record_role(row)
-        # Source/content readings can change without reparsing filenames.
-        restore_filename_kind(row)
-        row["source_id"] = source_identity(row)
-        row["record_role"] = row.get("record_role") or ["document"]
-        row["format"] = (None if row["record_role"] == ["capture-state"] else
-                         row.get("body_format") or file_formats(row.get("media_type"), row.get("extension")))
+        normalize_source_row(row)
     grouping_schema = pa.schema([*SOURCE_SCHEMA, ("source_resolved_url", STRINGS),
                                 ("capture_outcome", STRINGS), ("body_format", STRINGS)])
     _, groups = source_groups(pa.Table.from_pylist(rows, schema=grouping_schema))
     documents = []
     for members in progress.track(groups, 'combine_document_metadata', unit='document_groups'):
         sources = [rows[i] for i in members]
-        bodies = sorted(
-            {
-                body
-                for row in sources
-                if (
-                    body := document_body(
-                        row.get("body_key"),
-                        row.get("media_type"),
-                        row.get("http_status"),
-                        row.get("capture_outcome"),
-                        row.get("body_format"),
-                        row,
-                    )
-                )
-            }
-        )
-        # Exact retained document bytes anchor the ID. Adding URL or filename
-        # aliases for those bytes does not change it; unknowns use source IDs.
-        identity = (
-            ["bodies", bodies]
-            if bodies
-            else ["sources", sorted(row["source_id"] for row in sources)]
-        )
-        document_id = sha256(compact(identity).encode()).hexdigest()
-        # Stable tie-breaking makes the result independent of receipt order.
-        preferred = max(
-            sources,
-            key=lambda row: (
-                source_priority(row),
-                row.get("filename") or "",
-                row.get("source_url") or "",
-                row["source_id"],
-            ),
-        )
-        document = {
-            key: preferred.get(key)
-            for key in ("source_id", "body_key", "filename", "source_url")
-        }
-        document.update(
-            document_id=document_id,
-            filename=display_filename((preferred.get("recovered_filename") or [preferred.get("filename")])[0]),
-        )
-        values = defaultdict(set)
-        for row in sources:
-            row["document_id"] = document_id
-            for key, value in row.items():
-                if isinstance(value, list):
-                    if key not in {"source_occurrences", "hearing_resources"}:
-                        values[key].update(value)
-        document.update({key: merge_values(key, value) for key, value in values.items() if value})
-        occurrences = merge_values("source_occurrences", *[row.get("source_occurrences") for row in sources])
-        if occurrences:
-            document["source_occurrences"] = occurrences
-        resources = merge_values("hearing_resources", *[row.get("hearing_resources") for row in sources])
-        if resources:
-            document["hearing_resources"] = resources
-        # A successful document and its error/marker history can share an endpoint.
-        # The group's role describes its usable document; each source keeps its role.
-        roles = values["record_role"]
-        document["record_role"] = [next(role for role in (
-            "document", "source-record", "error-response", "capture-state"
-        ) if role in roles)]
-        # Aggregate filename kinds before filling individual source-row gaps.
-        # A broad native type on an alias must not dilute a more specific name.
-        fill_document_kind(document)
-        if ('recovered_filename' in (document.get('document_kind_source') or [])
-                and any(row.get("document_kind") and not row.get("recovered_filename") for row in sources)):
-            document['document_kind_source'] = sorted({
-                'filename' if basis == 'recovered_filename' else basis for basis in document['document_kind_source']})
-        for row in sources:
-            fill_document_kind(row)
-        for singular, plural in [
-            ("filename", "filenames"),
-            ("source_url", "source_urls"),
-            ("body_key", "body_keys"),
-        ]:
-            document[plural] = (
-                sorted({row[singular] for row in sources if row.get(singular)}) or None
-            )
+        document = combine_document_component(sources, working=None, mutate_sources=True)
         documents.append(document)
     documents.sort(
         key=lambda row: ((row["filename"] or "").casefold(), row["document_id"])
@@ -1798,12 +1930,236 @@ def add_retained_senate_pages(context, captures, read_body):
                 source_receipt_key=receipt, source_receipt_line=line))
 
 
-def retained_records(captures, read_receipt, *, stage='replay_capture_receipts', family=None, suffix=None):
-    """Read referenced receipt lines with an indexed, disposable position map."""
+def record_from_capture_row(row, state_row=None):
+    """Synthesize a structured capture record dict directly from table columns without reading .jsonl.gz."""
+    if not isinstance(row, Mapping):
+        return {}
+    if isinstance(row.get("record"), Mapping):
+        return dict(row["record"])
+    if isinstance(row.get("record_json"), str) and row["record_json"]:
+        try:
+            parsed = json.loads(row["record_json"])
+            if isinstance(parsed, dict):
+                return parsed
+        except ValueError:
+            pass
+    state = state_row if isinstance(state_row, Mapping) else {}
+    url = row.get("context_url") or row.get("url") or state.get("url")
+    status = row.get("http_status") if row.get("http_status") is not None else state.get("http_status")
+    media_type = row.get("media_type") or state.get("media_type")
+    outcome = row.get("resolution") or row.get("outcome") or state.get("outcome")
+    body_key = row.get("body_key") or state.get("body_key")
+    fidelity = row.get("fidelity") or state.get("fidelity")
+    complete = row.get("complete")
+    if complete is None and row.get("body_complete") is not None:
+        complete = row.get("body_complete")
+    if complete is None:
+        complete = bool(body_key and outcome == "saved") if outcome is not None else (True if body_key else None)
+    usable = row.get("usable")
+    if usable is None and outcome is not None:
+        usable = outcome == "saved"
+    record = dict(
+        url=url,
+        requested_url=row.get("requested_url") or url,
+        final_url=row.get("final_url") or url,
+        http_status=status,
+        media_type=media_type,
+        outcome=outcome,
+         retrieved_at=row.get("retrieved_at") or state.get("retrieved_at"),
+    )
+    if complete is not None:
+        record["complete"] = bool(complete)
+        record["body_complete"] = bool(complete)
+    if usable is not None:
+        record["usable"] = bool(usable)
+    if row.get("format"):
+        record["format"] = row["format"]
+    if row.get("result"):
+        record["result"] = row["result"]
+    raw_content = dict(
+        body_key=body_key,
+        sha256=row.get("sha256") or state.get("sha256") or "",
+        media_type=media_type or "",
+        body_encoding="gzip",
+        fidelity=fidelity,
+    )
+    if body_key or row.get("sha256") or media_type:
+        record["content"] = dict(raw_content)
+    pointer_raw = row.get("pointer_json")
+    if isinstance(pointer_raw, str) and pointer_raw:
+        try:
+            pointer_steps = json.loads(pointer_raw)
+        except ValueError:
+            pointer_steps = []
+        if isinstance(pointer_steps, list) and pointer_steps and all(isinstance(s, str) for s in pointer_steps):
+            curr = record
+            for step in pointer_steps:
+                if not isinstance(curr.get(step), dict):
+                    curr[step] = dict(raw_content)
+                else:
+                    for k, v in raw_content.items():
+                        curr[step].setdefault(k, v)
+                curr = curr[step]
+    return record
+
+
+def load_raw_capture_state(
+    root_or_snapshot=None,
+    *,
+    captures=None,
+    states=None,
+    fetch_outcomes=None,
+    read_receipt=None,
+):
+    """Read capture outcomes, URL states, and response metadata directly from raw_archive tables.
+
+    Prefers ``fetch_outcomes``, ``captures``, and ``state`` tables (or a ``RawSnapshot``)
+    and falls back to scanning ``.jsonl.gz`` receipt files only when bootstrapping
+    without a table store.
+    """
+    states_by_url = {}
+    outcomes_by_url = {}
+    capture_rows = []
+    used_tables = False
+
+    if hasattr(root_or_snapshot, "captures") and callable(getattr(root_or_snapshot, "captures", None)):
+        captures = root_or_snapshot.captures()
+        used_tables = True
+    elif hasattr(root_or_snapshot, "captures") and isinstance(getattr(root_or_snapshot, "captures"), pa.Table):
+        captures = root_or_snapshot.captures
+        used_tables = True
+
+    if hasattr(root_or_snapshot, "state") and isinstance(getattr(root_or_snapshot, "state"), Mapping):
+        for url, state_row in root_or_snapshot.state.items():
+            states_by_url[url] = dict(state_row)
+            if state_row.get("outcome"):
+                outcomes_by_url[url] = state_row["outcome"]
+        used_tables = True
+
+    root_path = Path(root_or_snapshot) if isinstance(root_or_snapshot, (str, Path)) else None
+    if root_path is not None:
+        if fetch_outcomes is None and (root_path / "indexes/fetch-outcomes.parquet").exists():
+            fetch_outcomes = pq.read_table(root_path / "indexes/fetch-outcomes.parquet")
+        if states is None and (root_path / "indexes/download-state.parquet").exists():
+            states = pq.read_table(root_path / "indexes/download-state.parquet")
+        if captures is None and (root_path / "indexes/captures.parquet").exists():
+            captures = pq.read_table(root_path / "indexes/captures.parquet")
+
+    for state_src in (fetch_outcomes, states):
+        if state_src is None:
+            continue
+        used_tables = True
+        rows_iter = (
+            state_src.to_pylist()
+            if isinstance(state_src, pa.Table)
+            else (
+                state_src.read().to_pylist()
+                if isinstance(state_src, pq.ParquetFile)
+                else list(state_src)
+            )
+        )
+        for row in rows_iter:
+            url = row.get("url") or row.get("context_url")
+            if not url:
+                continue
+            prev = states_by_url.get(url)
+            if prev is None or (row.get("checked_at") or "") >= (prev.get("checked_at") or ""):
+                states_by_url[url] = dict(row)
+            outcome = row.get("outcome") or row.get("resolution")
+            if outcome:
+                outcomes_by_url[url] = outcome
+
+    if captures is not None:
+        used_tables = True
+        for batch in capture_batches(captures):
+            for row in batch.to_pylist():
+                capture_rows.append(row)
+                url = row.get("context_url") or row.get("url")
+                outcome = row.get("resolution") or row.get("outcome")
+                if url and outcome and url not in outcomes_by_url:
+                    outcomes_by_url[url] = outcome
+                if url and url not in states_by_url:
+                    states_by_url[url] = dict(
+                        url=url,
+                        family=row.get("family"),
+                        body_key=row.get("body_key"),
+                        sha256=row.get("sha256"),
+                        media_type=row.get("media_type"),
+                        fidelity=row.get("fidelity"),
+                        retrieved_at=row.get("retrieved_at"),
+                        outcome=outcome,
+                        http_status=row.get("http_status"),
+                    )
+
+    if used_tables:
+        return dict(
+            states=states_by_url,
+            captures=capture_rows,
+            outcomes=outcomes_by_url,
+            source="table",
+        )
+
+    # Fallback: bootstrap from raw .jsonl.gz receipt files only when no table store exists.
+    receipt_files = []
+    if root_path is not None and (root_path / "receipts").exists():
+        receipt_files = sorted((root_path / "receipts").rglob("*.jsonl.gz"))
+    for path in receipt_files:
+        key = path.relative_to(root_path).as_posix()
+        raw = read_receipt(key) if read_receipt is not None else path.read_bytes()
+        if raw is None:
+            continue
+        with gzip.open(BytesIO(raw), "rt", encoding="utf-8") as stream:
+            for line_num, text in enumerate(stream, 1):
+                receipt = json.loads(text)
+                dl_state = receipt.get("download_state") or {}
+                rec = receipt.get("record") or {}
+                url = dl_state.get("url") or rec.get("requested_url") or rec.get("url")
+                if url:
+                    prev = states_by_url.get(url)
+                    if prev is None or (dl_state.get("checked_at") or "") >= (prev.get("checked_at") or ""):
+                        states_by_url[url] = dict(dl_state, url=url)
+                    if dl_state.get("outcome") or rec.get("outcome"):
+                        outcomes_by_url[url] = dl_state.get("outcome") or rec.get("outcome")
+                for cap in receipt.get("captures") or [{}]:
+                    capture_rows.append(
+                        dict(
+                            **cap,
+                            receipt_key=key,
+                            receipt_line=line_num,
+                            context_url=url,
+                            http_status=rec.get("http_status"),
+                            resolution=dl_state.get("outcome") or rec.get("outcome"),
+                        )
+                    )
+    return dict(
+        states=states_by_url,
+        captures=capture_rows,
+        outcomes=outcomes_by_url,
+        source="receipts",
+    )
+
+
+def retained_records(captures, read_receipt=None, *, stage='replay_capture_receipts', family=None, suffix=None,
+                     fetch_outcomes=None, states=None):
+    """Read referenced capture records from tables directly when available, or indexed receipts."""
     from tempfile import TemporaryDirectory
     import sqlite3
     progress.report(stage, completed=0, unit='capture_rows')
     completed = reported = 0
+    state_by_url = {}
+    for table_src in (fetch_outcomes, states):
+        if table_src is None:
+            continue
+        rows_iter = (
+            table_src.to_pylist()
+            if isinstance(table_src, pa.Table)
+            else (table_src.read().to_pylist() if isinstance(table_src, pq.ParquetFile) else list(table_src))
+        )
+        for srow in rows_iter:
+            u = srow.get('url') or srow.get('context_url')
+            if u:
+                state_by_url[u] = srow
+    table_direct = read_receipt is None or fetch_outcomes is not None or states is not None
     with TemporaryDirectory(prefix="receipt-positions-") as directory:
         db = sqlite3.connect(Path(directory) / "positions.sqlite")
         try:
@@ -1813,35 +2169,52 @@ def retained_records(captures, read_receipt, *, stage='replay_capture_receipts',
             tables = (_capture_tables(captures, family=family, suffix=suffix)
                       if isinstance(captures, (pa.Table, pq.ParquetFile)) else captures)
             position = total = 0
+            has_inline_record = False
             for table in tables:
                 records = []
                 for row in table.to_pylist():
                     if not row.get('receipt_key') or type(row.get('receipt_line')) is not int or row['receipt_line'] < 1:
                         raise ValueError("Invalid capture receipt locator")
+                    if 'record_json' in row or isinstance(row.get('record'), Mapping):
+                        has_inline_record = True
                     records.append((row['receipt_key'],row['receipt_line'],position,pickle.dumps(row)))
                     position += 1
                 db.executemany('INSERT INTO positions VALUES (?,?,?,?)',records)
                 total += len(records)
-            for key, in db.execute('SELECT DISTINCT receipt FROM positions ORDER BY receipt'):
-                payload = read_receipt(key)
-                if payload is None:
-                    raise ValueError(f"Missing capture receipt: {key}")
-                remaining, = db.execute('SELECT count(*) FROM positions WHERE receipt=?',(key,)).fetchone()
-                with gzip.open(BytesIO(payload),"rt",encoding="utf-8") as stream:
-                    for number,line in enumerate(stream,1):
-                        rows = [pickle.loads(value) for value, in db.execute(
-                            'SELECT value FROM positions WHERE receipt=? AND line=? ORDER BY position',(key,number))]
-                        if rows:
-                            yield json.loads(line)['record'],rows,context_values(source_receipt_key=key,source_receipt_line=number)
-                            completed += len(rows)
-                            remaining -= len(rows)
-                            if completed-reported >= 1000:
-                                progress.report(stage,completed=completed,total=total,unit='capture_rows')
-                                reported = completed
-                        if not remaining:
-                            break
-                if remaining:
-                    raise ValueError(f"Capture index references missing receipt lines: {key}")
+            if table_direct or has_inline_record:
+                for key, number in db.execute('SELECT DISTINCT receipt, line FROM positions ORDER BY receipt, line'):
+                    rows = [pickle.loads(value) for value, in db.execute(
+                        'SELECT value FROM positions WHERE receipt=? AND line=? ORDER BY position', (key, number))]
+                    if rows:
+                        first_row = rows[0]
+                        srow = state_by_url.get(first_row.get('context_url') or first_row.get('url'))
+                        record = record_from_capture_row(first_row, srow)
+                        yield record, rows, context_values(source_receipt_key=key, source_receipt_line=number)
+                        completed += len(rows)
+                        if completed - reported >= 1000:
+                            progress.report(stage, completed=completed, total=total, unit='capture_rows')
+                            reported = completed
+            else:
+                for key, in db.execute('SELECT DISTINCT receipt FROM positions ORDER BY receipt'):
+                    payload = read_receipt(key)
+                    if payload is None:
+                        raise ValueError(f"Missing capture receipt: {key}")
+                    remaining, = db.execute('SELECT count(*) FROM positions WHERE receipt=?',(key,)).fetchone()
+                    with gzip.open(BytesIO(payload),"rt",encoding="utf-8") as stream:
+                        for number,line in enumerate(stream,1):
+                            rows = [pickle.loads(value) for value, in db.execute(
+                                'SELECT value FROM positions WHERE receipt=? AND line=? ORDER BY position',(key,number))]
+                            if rows:
+                                yield json.loads(line)['record'],rows,context_values(source_receipt_key=key,source_receipt_line=number)
+                                completed += len(rows)
+                                remaining -= len(rows)
+                                if completed-reported >= 1000:
+                                    progress.report(stage,completed=completed,total=total,unit='capture_rows')
+                                    reported = completed
+                            if not remaining:
+                                break
+                    if remaining:
+                        raise ValueError(f"Capture index references missing receipt lines: {key}")
         finally:
             db.close()
     progress.report(stage,completed=completed,total=total,unit='capture_rows')
@@ -2039,15 +2412,28 @@ def apply_capture_record_role(row):
     recognize_publisher_page(row)
 
 
-def refresh_response_metadata(root, rows):
+def refresh_response_metadata(root, rows, *, captures=None, fetch_outcomes=None, states=None, read_receipt=None):
     """Recover response facts by exact body/URL and locators for unplaced bodies.
 
     A body-only row can recover its capture locations, but cannot borrow one
     response's success/failure from other requests that returned the same bytes.
+    Reads directly from ``captures`` / ``fetch_outcomes`` / ``states`` tables when
+    available without re-opening ``.jsonl.gz`` receipt files.
     """
-    path = root / "indexes/captures.parquet"
-    if not path.exists():
-        return
+    root_path = Path(root) if isinstance(root, (str, Path)) else None
+    if captures is None and hasattr(root, "captures"):
+        captures = root.captures() if callable(root.captures) else root.captures
+    if captures is None:
+        if root_path is None:
+            return
+        path = root_path / "indexes/captures.parquet"
+        if not path.exists():
+            return
+        archive = pq.ParquetFile(path)
+        schema_names = set(archive.schema_arrow.names)
+    else:
+        archive = captures
+        schema_names = set(capture_schema(archive).names)
     targets = defaultdict(list)
     unplaced = set()
     for row in rows:
@@ -2059,56 +2445,100 @@ def refresh_response_metadata(root, rows):
                 unplaced.add(id(row))
     if not targets:
         return
-    archive = pq.ParquetFile(path)
     required = {"body_key", "receipt_key", "receipt_line", "pointer_json", "context_url"}
-    if not required <= set(archive.schema_arrow.names):
+    if not required <= schema_names:
         return
+    state_by_url = {}
+    for table_src in (fetch_outcomes, states):
+        if table_src is None:
+            continue
+        rows_iter = (
+            table_src.to_pylist()
+            if isinstance(table_src, pa.Table)
+            else (table_src.read().to_pylist() if isinstance(table_src, pq.ParquetFile) else list(table_src))
+        )
+        for srow in rows_iter:
+            u = srow.get("url") or srow.get("context_url")
+            if u:
+                state_by_url[u] = srow
     references = defaultdict(lambda: defaultdict(list))
     bodies = pa.array(sorted({key[0] for key in targets}), type=pa.string())
-    columns = required | ({"family", "source_file", "original_path", "media_type", "http_status"}
-                          & set(archive.schema_arrow.names))
-    for batch in archive.iter_batches(columns=sorted(columns)):
+    optional_cols = {
+        "family", "source_file", "original_path", "media_type", "http_status",
+        "resolution", "outcome", "fidelity", "record_json", "usable", "body_complete",
+        "complete", "format", "result",
+    }
+    columns = required | (optional_cols & schema_names)
+    batches = (
+        archive.iter_batches(columns=sorted(columns))
+        if isinstance(archive, pq.ParquetFile)
+        else capture_batches(archive, sorted(columns))
+    )
+    for batch in batches:
         selected = pa.Table.from_batches([batch])
         selected = selected.filter(pc.is_in(pc.cast(selected["body_key"], pa.string()), value_set=bodies))
         for capture in selected.to_pylist():
             references[capture["receipt_key"]][capture["receipt_line"]].append(capture)
+
+    def _apply_capture_facts(receipt, number, capture, record):
+        owner = nearest_record(record, capture["pointer_json"])
+        facts = response_metadata(capture, record)
+        urls = {url for url in (capture["context_url"], owner.get("requested_url"),
+                owner.get("final_url"), owner.get("url")) if isinstance(url, str) and url}
+        for url in urls | {None}:
+            for row in targets.get((capture["body_key"], url), ()):
+                if url is not None:
+                    for field in RESPONSE_FIELDS:
+                        if facts.get(field):
+                            row[field] = merge_values(field, row.get(field), facts[field])
+                if id(row) in unplaced:
+                    occurrence = {key: sorted(values) for key, values in context_values(
+                        source_capture_file=capture.get("source_file"),
+                        source_capture_pointer=capture["pointer_json"],
+                        source_receipt_key=receipt, source_receipt_line=number,
+                        source_occurrence_scope="capture",
+                    ).items()}
+                    if urls:
+                        occurrence["source_capture_url"] = sorted(urls)
+                    row["source_occurrences"] = merge_values(
+                        "source_occurrences", row.get("source_occurrences"), [occurrence])
+                    for field, values in occurrence.items():
+                        row[field] = merge_values(field, row.get(field), values)
+                    if capture.get("original_path"):
+                        row["source_paths"] = merge_values(
+                            "source_paths", row.get("source_paths"), [capture["original_path"]])
+                if (not row.get("source_record_type") and (kind := capture_record_type(
+                        capture.get("family"), capture.get("pointer_json")))):
+                    row["source_record_type"] = [kind]
+                    row["record_role"] = ["source-record"]
+
+    table_only = fetch_outcomes is not None or states is not None
     for receipt, lines in sorted(references.items()):
-        with gzip.open(root / receipt, "rt", encoding="utf-8") as stream:
+        receipt_path = (root_path / receipt) if root_path is not None else None
+        can_read_gz = (
+            not table_only
+            and (read_receipt is not None or (receipt_path is not None and receipt_path.exists()))
+        )
+        if not can_read_gz:
+            for number, cap_list in sorted(lines.items()):
+                for capture in cap_list:
+                    srow = state_by_url.get(capture.get("context_url"))
+                    record = record_from_capture_row(capture, srow)
+                    _apply_capture_facts(receipt, number, capture, record)
+            lines.clear()
+            continue
+        stream_ctx = (
+            gzip.open(BytesIO(read_receipt(receipt)), "rt", encoding="utf-8")
+            if read_receipt is not None
+            else gzip.open(receipt_path, "rt", encoding="utf-8")
+        )
+        with stream_ctx as stream:
             for number, line in enumerate(stream, 1):
-                captures = lines.pop(number, None)
-                if captures is not None:
+                cap_list = lines.pop(number, None)
+                if cap_list is not None:
                     record = json.loads(line)["record"]
-                    for capture in captures:
-                        owner = nearest_record(record, capture["pointer_json"])
-                        facts = response_metadata(capture, record)
-                        urls = {url for url in (capture["context_url"], owner.get("requested_url"),
-                                owner.get("final_url"), owner.get("url")) if isinstance(url, str) and url}
-                        for url in urls | {None}:
-                            for row in targets.get((capture["body_key"], url), ()):
-                                if url is not None:
-                                    for field in RESPONSE_FIELDS:
-                                        if facts.get(field):
-                                            row[field] = merge_values(field, row.get(field), facts[field])
-                                if id(row) in unplaced:
-                                    occurrence = {key: sorted(values) for key, values in context_values(
-                                        source_capture_file=capture.get("source_file"),
-                                        source_capture_pointer=capture["pointer_json"],
-                                        source_receipt_key=receipt, source_receipt_line=number,
-                                        source_occurrence_scope="capture",
-                                    ).items()}
-                                    if urls:
-                                        occurrence["source_capture_url"] = sorted(urls)
-                                    row["source_occurrences"] = merge_values(
-                                        "source_occurrences", row.get("source_occurrences"), [occurrence])
-                                    for field, values in occurrence.items():
-                                        row[field] = merge_values(field, row.get(field), values)
-                                    if capture.get("original_path"):
-                                        row["source_paths"] = merge_values(
-                                            "source_paths", row.get("source_paths"), [capture["original_path"]])
-                                if (not row.get("source_record_type") and (kind := capture_record_type(
-                                        capture.get("family"), capture.get("pointer_json")))):
-                                    row["source_record_type"] = [kind]
-                                    row["record_role"] = ["source-record"]
+                    for capture in cap_list:
+                        _apply_capture_facts(receipt, number, capture, record)
                 if not lines:
                     break
         if lines:

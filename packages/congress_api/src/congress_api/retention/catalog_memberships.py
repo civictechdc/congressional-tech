@@ -5,6 +5,7 @@ member layout. Callers retain meanings, identities, typed schemas and selection.
 """
 from collections import OrderedDict
 from contextlib import closing
+from hashlib import sha256
 from pathlib import Path
 import sqlite3
 import json
@@ -14,7 +15,37 @@ from types import MappingProxyType
 import pyarrow as pa
 
 from .catalog_dependencies import DependencyGap
+from .docspec import PartitionSpec, UpdateMergeSpec
 from .partition_routing import RoutingPages, split_partition, key_hash
+
+ALIAS_KEY_SHA256_FIELD = 'alias_key_sha256'
+MEMBERSHIP_BUCKET_COUNT = 64
+MEMBERSHIP_PARTITION_SPEC = PartitionSpec.bucket(ALIAS_KEY_SHA256_FIELD, MEMBERSHIP_BUCKET_COUNT)
+MEMBERSHIP_MERGE_SPEC = UpdateMergeSpec.first_seen()
+
+
+def alias_key_sha256(alias):
+    """Return a fixed 64-byte hex SHA-256 key (< 128 bytes) for any alias or URL key."""
+    if isinstance(alias, bytes):
+        raw = alias
+    else:
+        raw = str(alias or '').encode('utf-8')
+    return sha256(raw).hexdigest()
+
+
+def partitioned_membership_schema(schema):
+    if ALIAS_KEY_SHA256_FIELD in schema.names:
+        return schema
+    return pa.schema([pa.field(ALIAS_KEY_SHA256_FIELD, pa.string(), nullable=False), *schema])
+
+
+def with_alias_key_sha256(table, schema=None):
+    target_schema = partitioned_membership_schema(schema or table.schema)
+    if ALIAS_KEY_SHA256_FIELD in table.schema.names:
+        return table.cast(target_schema)
+    aliases = table['alias'].to_pylist() if 'alias' in table.schema.names else []
+    hashes = pa.array([alias_key_sha256(alias) for alias in aliases], type=pa.string())
+    return pa.Table.from_arrays([hashes, *table.columns], schema=target_schema)
 
 
 class CatalogMemberships:
@@ -228,3 +259,68 @@ class CatalogMemberships:
                     from itertools import chain
                     root = self.routes.replace_stream(root, prefix, chain([first], generated))
         return root
+
+    def prepare_partitioned_table(self, native, rows_or_table, *, dataset=None, operation='memberships',
+                                  definition='catalog-memberships-partitioned-v1', base_pin=None,
+                                  deletions=None, bucket_count=MEMBERSHIP_BUCKET_COUNT):
+        """Maintain reverse memberships in a single bucket-partitioned DocSpec dataset keyed by 64-byte SHA-256."""
+        part_schema = partitioned_membership_schema(self.schema)
+        if isinstance(rows_or_table, pa.Table):
+            table = with_alias_key_sha256(rows_or_table, part_schema)
+        else:
+            normalized = []
+            for row in rows_or_table:
+                alias = row['alias']
+                self.validate_alias(alias)
+                normalized.append({
+                    ALIAS_KEY_SHA256_FIELD: row.get(ALIAS_KEY_SHA256_FIELD) or alias_key_sha256(alias),
+                    'alias': alias,
+                    self.member_column: row[self.member_column],
+                })
+            table = pa.Table.from_pylist(normalized, schema=part_schema)
+        ds_name = dataset or f'{self.routes.namespace}-partitioned'
+        partition_spec = PartitionSpec.bucket(ALIAS_KEY_SHA256_FIELD, bucket_count)
+        if base_pin is None:
+            return native.run_table(
+                table,
+                dataset=ds_name,
+                operation=operation,
+                definition=definition,
+                partition_by=partition_spec,
+            )
+        del_table = None
+        if deletions is not None:
+            if isinstance(deletions, pa.Table):
+                del_table = deletions
+            else:
+                del_rows = [
+                    {
+                        ALIAS_KEY_SHA256_FIELD: (
+                            item.get(ALIAS_KEY_SHA256_FIELD) or alias_key_sha256(item['alias'])
+                            if isinstance(item, dict)
+                            else alias_key_sha256(item[0])
+                        ),
+                        self.member_column: (
+                            item[self.member_column] if isinstance(item, dict) else item[1]
+                        ),
+                    }
+                    for item in deletions
+                ]
+                del_table = pa.Table.from_pylist(
+                    del_rows,
+                    schema=pa.schema([
+                        pa.field(ALIAS_KEY_SHA256_FIELD, pa.string(), nullable=False),
+                        pa.field(self.member_column, pa.string(), nullable=False),
+                    ]),
+                ) if del_rows else None
+        base_id = base_pin['id'] if isinstance(base_pin, dict) else base_pin
+        return native.update_table(
+            table,
+            dataset=ds_name,
+            operation=operation,
+            definition=definition,
+            base=base_id,
+            keys=[ALIAS_KEY_SHA256_FIELD, self.member_column],
+            merge=MEMBERSHIP_MERGE_SPEC,
+            deletions=del_table,
+        )

@@ -324,12 +324,118 @@ def migrate_pdf_bodies_to_uncompressed(store, *, keys=None, delete_gzip=False, e
 RAW_KEY = 'indexes/raw.json'
 STATE_ORDER = '_state_order'
 STATE_KEY_FIELD = '_state_key'
+STATE_KEY_SHA256_FIELD = 'state_key_sha256'
+STATE_BUCKET_COUNT = 64
 
 def state_key(url):
     return 'null:' if url is None else 'url:' + url
 
+def state_key_sha256(url):
+    """Return a deterministic 64-byte lowercase hex SHA-256 of ``state_key(url)`` (< 128B for Parquet stats)."""
+    return sha256(state_key(url).encode('utf-8')).hexdigest()
+
+from .docspec import PartitionSpec, UpdateMergeSpec, UpdateMergeStrategy, apply_update_merge_spec
+
+STATE_PARTITION_SPEC = PartitionSpec.bucket(STATE_KEY_SHA256_FIELD, STATE_BUCKET_COUNT)
+
+STATE_MERGE_SPEC = UpdateMergeSpec(
+    order_by='checked_at',
+    columns={
+        'outcome': UpdateMergeStrategy.REPLACE,
+        'attempts': UpdateMergeStrategy.MAX,
+        'http_status': UpdateMergeStrategy.REPLACE,
+        'error': UpdateMergeStrategy.REPLACE,
+        'checked_at': UpdateMergeStrategy.MAX,
+        'next_attempt_at': UpdateMergeStrategy.REPLACE,
+        'body_key': UpdateMergeStrategy.LATEST_OR_BACKFILL,
+        'sha256': UpdateMergeStrategy.LATEST_OR_BACKFILL,
+        'media_type': UpdateMergeStrategy.LATEST_OR_BACKFILL,
+        'fidelity': UpdateMergeStrategy.LATEST_OR_BACKFILL,
+        'retrieved_at': UpdateMergeStrategy.LATEST_OR_BACKFILL,
+        'receipt_key': UpdateMergeStrategy.LATEST_OR_BACKFILL,
+        'receipt_line': UpdateMergeStrategy.LATEST_OR_BACKFILL,
+        'links_scanned': UpdateMergeStrategy.SET_UNION,
+    },
+)
+
 STATE_NATIVE_SCHEMA = pa.schema([pa.field(STATE_ORDER, pa.int64(), nullable=False),
                                pa.field(STATE_KEY_FIELD, pa.string(), nullable=False), *STATE_SCHEMA])
+STATE_PARTITIONED_SCHEMA = pa.schema([
+    pa.field(STATE_ORDER, pa.int64(), nullable=False),
+    pa.field(STATE_KEY_FIELD, pa.string(), nullable=False),
+    pa.field(STATE_KEY_SHA256_FIELD, pa.string(), nullable=False),
+    *STATE_SCHEMA,
+])
+
+
+def _merge_states(existing, incoming, *, merge_spec=STATE_MERGE_SPEC, state_schema=None, deletions=None):
+    """Merge URL-state rows keyed by 64-byte ``state_key_sha256`` using ``UpdateMergeSpec(order_by='checked_at')``."""
+    existing_rows = existing.to_pylist() if isinstance(existing, pa.Table) else [dict(r) for r in existing]
+    incoming_rows = incoming.to_pylist() if isinstance(incoming, pa.Table) else [dict(r) for r in incoming]
+    if state_schema is None:
+        all_keys = {k for r in existing_rows + incoming_rows for k in r}
+        extra_fields = [
+            pa.field(k, pa.string(), nullable=True)
+            for k in sorted(all_keys - set(STATE_SCHEMA.names) - {STATE_ORDER, STATE_KEY_FIELD, STATE_KEY_SHA256_FIELD})
+            if not k.startswith('__docspec_supplied_')
+        ]
+        # Infer types for common extra test fields like media_type, fidelity, retrieved_at
+        state_schema = pa.schema([*STATE_SCHEMA, *extra_fields])
+    next_order = max((int(r.get(STATE_ORDER, -1)) for r in existing_rows if r.get(STATE_ORDER) is not None), default=-1) + 1
+    order_by_sha = {}
+    prepared_existing = []
+    for idx, r in enumerate(existing_rows):
+        row = dict(r)
+        for field in state_schema:
+            row.setdefault(field.name, None)
+        row.setdefault(STATE_KEY_FIELD, state_key(row.get('url')))
+        row.setdefault(STATE_KEY_SHA256_FIELD, state_key_sha256(row.get('url')))
+        if STATE_ORDER not in row or row[STATE_ORDER] is None:
+            row[STATE_ORDER] = idx
+            next_order = max(next_order, idx + 1)
+        order_by_sha[row[STATE_KEY_SHA256_FIELD]] = row[STATE_ORDER]
+        prepared_existing.append(row)
+    prepared_incoming = []
+    for r in incoming_rows:
+        row = dict(r)
+        for field in state_schema:
+            row.setdefault(field.name, None)
+        row.setdefault(STATE_KEY_FIELD, state_key(row.get('url')))
+        sha = row.setdefault(STATE_KEY_SHA256_FIELD, state_key_sha256(row.get('url')))
+        if sha in order_by_sha:
+            row[STATE_ORDER] = order_by_sha[sha]
+        elif STATE_ORDER not in row or row[STATE_ORDER] is None:
+            row[STATE_ORDER] = next_order
+            order_by_sha[sha] = next_order
+            next_order += 1
+        prepared_incoming.append(row)
+    norm_spec = UpdateMergeSpec.normalize(merge_spec) if merge_spec is not None else {'order_by': None, 'columns': {}}
+    active_cols = {
+        k: v
+        for k, v in norm_spec.get('columns', {}).items()
+        if k in state_schema.names
+    }
+    effective_spec = UpdateMergeSpec(
+        order_by=(
+            norm_spec.get('order_by')
+            if norm_spec.get('order_by') in state_schema.names
+            else None
+        ),
+        columns={STATE_ORDER: UpdateMergeStrategy.MIN, **active_cols},
+    )
+    part_schema = pa.schema([
+        pa.field(STATE_ORDER, pa.int64(), nullable=False),
+        pa.field(STATE_KEY_FIELD, pa.string(), nullable=False),
+        pa.field(STATE_KEY_SHA256_FIELD, pa.string(), nullable=False),
+        *state_schema,
+    ])
+    return apply_update_merge_spec(
+        pa.Table.from_pylist(prepared_existing, schema=part_schema),
+        pa.Table.from_pylist(prepared_incoming, schema=part_schema),
+        keys=[STATE_KEY_SHA256_FIELD],
+        merge=effective_spec,
+        deletions=deletions,
+    )
 CAPTURE_BATCH_ROWS = 1000
 CAPTURE_BATCH_BYTES = 16 << 20
 DELIVERY_ENTRIES = 128
@@ -787,6 +893,107 @@ class RawStorage:
         identity = sha256(encoded([operation, kind, prefix, base_id])).hexdigest()
         dataset = 'raw-' + kind + '-' + identity
         return self.native.run_table(table, dataset=dataset, operation='initial', definition='raw-native-v1')
+
+    def _merge_states(self, existing, incoming, *, merge_spec=STATE_MERGE_SPEC):
+        """Merge URL-state rows keyed by 64-byte ``state_key_sha256`` using ``UpdateMergeSpec(order_by='checked_at')``."""
+        return _merge_states(
+            existing,
+            incoming,
+            merge_spec=merge_spec,
+            state_schema=self.state_schema,
+        )
+
+    def prepare_partitioned_state_table(
+        self,
+        states,
+        *,
+        dataset='raw-state',
+        operation='initial',
+        base_pin=None,
+        num_buckets=STATE_BUCKET_COUNT,
+        merge_spec=STATE_MERGE_SPEC,
+    ):
+        """Maintain URL state as one bucket-partitioned dataset keyed by 64-byte ``state_key_sha256``."""
+        rows = states.to_pylist() if isinstance(states, pa.Table) else [dict(r) for r in states]
+        existing_rows = []
+        if base_pin is not None and hasattr(self.native, 'source_batches'):
+            with self.native.source_batches(base_pin) as reader:
+                existing_rows = pa.Table.from_batches(list(reader), schema=reader.schema).to_pylist()
+        next_order = max((int(r.get(STATE_ORDER, -1)) for r in existing_rows), default=-1) + 1
+        existing_orders = {
+            r.get(STATE_KEY_SHA256_FIELD) or state_key_sha256(r.get('url')): int(r.get(STATE_ORDER, idx))
+            for idx, r in enumerate(existing_rows)
+        }
+        prepared = []
+        for r in rows:
+            row = dict(r)
+            for field in self.state_schema:
+                row.setdefault(field.name, None)
+            row[STATE_KEY_FIELD] = state_key(row.get('url'))
+            sha = state_key_sha256(row.get('url'))
+            row[STATE_KEY_SHA256_FIELD] = sha
+            if sha in existing_orders:
+                row[STATE_ORDER] = existing_orders[sha]
+            elif STATE_ORDER not in row or row[STATE_ORDER] is None:
+                row[STATE_ORDER] = next_order
+                existing_orders[sha] = next_order
+                next_order += 1
+            prepared.append(row)
+        part_schema = pa.schema([
+            pa.field(STATE_ORDER, pa.int64(), nullable=False),
+            pa.field(STATE_KEY_FIELD, pa.string(), nullable=False),
+            pa.field(STATE_KEY_SHA256_FIELD, pa.string(), nullable=False),
+            *self.state_schema,
+        ])
+        table = pa.Table.from_pylist(prepared, schema=part_schema)
+        partition_by = [PartitionSpec.bucket(STATE_KEY_SHA256_FIELD, num_buckets)]
+        active_cols = {
+            k: v
+            for k, v in (merge_spec or {}).get('columns', {}).items()
+            if k in self.state_schema.names
+        }
+        effective_merge = UpdateMergeSpec(
+            order_by=(
+                merge_spec.get('order_by')
+                if merge_spec and merge_spec.get('order_by') in self.state_schema.names
+                else None
+            ),
+            columns={STATE_ORDER: UpdateMergeStrategy.MIN, **active_cols},
+        )
+        if base_pin is None:
+            import inspect
+            if 'partition_by' in inspect.signature(self.native.run_table).parameters:
+                return self.native.run_table(
+                    table,
+                    dataset=dataset,
+                    operation=operation,
+                    definition='raw-state-partitioned-v1',
+                    partition_by=partition_by,
+                )
+            return self.native.run_table(
+                table,
+                dataset=dataset,
+                operation=operation,
+                definition='raw-state-partitioned-v1',
+            )
+        import inspect
+        if hasattr(self.native, 'update_table') and 'merge' in inspect.signature(self.native.update_table).parameters:
+            return self.native.update_table(
+                table,
+                dataset=dataset,
+                operation=operation,
+                definition='raw-state-partitioned-v1',
+                base=base_pin['id'],
+                keys=[STATE_KEY_SHA256_FIELD],
+                merge=effective_merge,
+            )
+        merged_full = self._merge_states(existing_rows, prepared, merge_spec=merge_spec)
+        return self.native.run_table(
+            merged_full,
+            dataset=dataset,
+            operation=operation,
+            definition='raw-state-partitioned-v1',
+        )
 
     def prepare(self, base, *, operation, captures=None, states=None,
                 indexed_receipts=(), filename_version=None, request_id=None, delivery_result=None,

@@ -371,14 +371,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         CREATE TABLE output_documents(sort_name TEXT,id TEXT PRIMARY KEY,value BLOB);
         CREATE INDEX output_document_order ON output_documents(sort_name,id);''')
 
-    def normalize(row):
-        index.apply_capture_record_role(row)
-        index.restore_filename_kind(row)
-        row['source_id'] = index.source_identity(row)
-        row['record_role'] = row.get('record_role') or ['document']
-        row['format'] = (None if row['record_role'] == ['capture-state'] else
-                         row.get('body_format') or index.file_formats(row.get('media_type'), row.get('extension')))
-        return row
+    normalize = index.normalize_source_row
 
     def signature(row):
         # Family is derived from kind/context during grouping, never an input.
@@ -413,21 +406,9 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
                     input_digest.update(pickle.dumps(('prior-document', row)))
                 db.execute('INSERT OR REPLACE INTO prior_documents VALUES (?,?)', (row['document_id'], pickle.dumps(sparse_row(row))))
 
-    # Only integer parent pointers are resident: eight bytes per source row.
-    # Payloads and aliases remain on disk. Preserve the existing union order.
-    parents = array('Q', [0])
-
-    def root(key):
-        visited = []
-        while True:
-            parent = parents[key]
-            if parent == key:
-                break
-            visited.append(key)
-            key = parent
-        for item in visited:
-            parents[item] = key
-        return key
+    # Shared BipartiteUnionFind keeps only 8-byte integer parent pointers resident;
+    # payloads and aliases remain on disk while preserving union order.
+    uf = index.BipartiteUnionFind(1)
 
     def join(kind, alias, key):
         encoded = json.dumps(alias, separators=(',', ':'))
@@ -435,7 +416,7 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         if previous_alias is None:
             db.execute('INSERT INTO aliases VALUES (?,?,?)', (kind, encoded, key))
         else:
-            parents[root(key)] = root(previous_alias[0])
+            uf.union(key, previous_alias[0])
 
     index.progress.report('group_documents', completed=0, unit='source_rows')
     for key, row in enumerate(rows, 1):
@@ -444,15 +425,15 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
         staged.append(stored)
         if input_digest is not None:
             input_digest.update(pickle.dumps(('source', stored)))
-        parents.append(key)
+        uf.add()
         if reusable and previous_documents is not None:
             db.execute('INSERT INTO current_sources VALUES (?,?,?)', (key,row['source_id'],signature(row)))
         for kind, alias in index.group_aliases(row, key):
             join(kind, alias, key)
         if key % 4096 == 0:
             index.progress.report('group_documents', completed=key, unit='source_rows')
-    db.executemany('INSERT INTO members VALUES (?,?)', ((root(key),key) for key in range(1,len(parents))))
-    del parents
+    db.executemany('INSERT INTO members VALUES (?,?)', ((uf.root(key),key) for key in range(1,len(uf.parents))))
+    del uf
 
     # Streaming interpretation discovers its columns while rows are consumed.
     schema = schema() if callable(schema) else schema
@@ -499,67 +480,11 @@ def write_grouped_indexes(destination, rows, schema, *, working, previous=None, 
             yield pickle.loads(payload)
 
     def combine(component):
-        preferred = None
-        values = defaultdict(set)
-        filenames, urls, bodies, retained_bodies = set(), set(), set(), set()
-        occurrences = working.mapping("combined_occurrences")
-        occurrences.clear()
-        hearing_resources = []
-        filename_kind = False
-        # Only the one resulting document's value sets remain resident. Source
-        # dictionaries and occurrence inputs stream from the component index.
-        for row in component_rows(component):
-            priority = lambda item: (index.source_priority(item), item.get('filename') or '',
-                                     item.get('source_url') or '', item['source_id'])
-            if preferred is None or priority(row) > priority(preferred):
-                preferred = row
-            for field, value in row.items():
-                if isinstance(value, list) and field not in {'source_occurrences', 'hearing_resources'}:
-                    values[field].update(value)
-            hearing_resources = index.merge_values('hearing_resources', hearing_resources, row.get('hearing_resources'))
-            for occurrence in row.get('source_occurrences') or []:
-                occurrences[index.compact(occurrence)] = occurrence
-            for field, target in (('filename', filenames),('source_url', urls),('body_key', retained_bodies)):
-                if row.get(field):
-                    target.add(row[field])
-            body = index.document_body(row.get('body_key'),row.get('media_type'),row.get('http_status'),
-                                       row.get('capture_outcome'),row.get('body_format'),row)
-            if body:
-                bodies.add(body)
-            filename_kind |= bool(row.get('document_kind') and not row.get('recovered_filename'))
-        if bodies:
-            document_id = sha256(index.compact(['bodies', sorted(bodies)]).encode()).hexdigest()
-        else:
-            # Preserve the exact old JSON digest without collecting all IDs.
-            ids = working.mapping("component_source_ids")
-            ids.clear()
-            for row in component_rows(component):
-                ids[row['source_id']] = True
-            digest = sha256(b'["sources",[')
-            first = True
-            for key, in db.execute('SELECT key FROM component_source_ids ORDER BY key'):
-                if not first:
-                    digest.update(b',')
-                first = False
-                digest.update(index.compact(pickle.loads(key)).encode())
-            digest.update(b']]')
-            document_id = digest.hexdigest()
-        document = {field:preferred.get(field) for field in ('source_id','body_key','filename','source_url')}
-        document.update(document_id=document_id,
-            filename=index.display_filename((preferred.get('recovered_filename') or [preferred.get('filename')])[0]))
-        document.update({field:index.merge_values(field, items) for field,items in values.items() if items})
-        paired = index.merge_values('source_occurrences', list(occurrences.values()))
-        if paired:
-            document['source_occurrences'] = paired
-        if hearing_resources:
-            document['hearing_resources'] = hearing_resources
-        document['record_role'] = [next(role for role in ('document','source-record','error-response','capture-state') if role in values['record_role'])]
-        index.fill_document_kind(document)
-        if filename_kind and 'recovered_filename' in (document.get('document_kind_source') or []):
-            document['document_kind_source'] = sorted({
-                'filename' if basis == 'recovered_filename' else basis for basis in document['document_kind_source']})
-        document.update(filenames=sorted(filenames) or None,source_urls=sorted(urls) or None,body_keys=sorted(retained_bodies) or None)
-        return document
+        return index.combine_document_component(
+            lambda: component_rows(component),
+            working=working,
+            mutate_sources=False,
+        )
 
     index.progress.report('compare_document_groups')
     if reusable and previous_documents is not None:

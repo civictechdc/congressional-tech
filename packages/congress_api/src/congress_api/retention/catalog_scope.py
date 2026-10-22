@@ -11,8 +11,55 @@ import pyarrow.parquet as pq
 
 from . import document_index as index
 from .catalog_dependencies import DependencyGap, DependencyWorkingSet
+from .document_index import (
+    BipartiteUnionFind,
+    canonical_key,
+    combine_document_component,
+    compute_document_id,
+    connectable_body_key,
+    normalize_source_row,
+    source_priority_key,
+    source_priority_rank,
+)
+from .native_features import (
+    prepare_source_component_table,
+    refresh_connected_components,
+)
 
 ORDER = '_catalog_order'
+
+
+def refresh_scope_connected_components(
+    native,
+    rows,
+    *,
+    dataset='catalog-scope-components',
+    operation=None,
+    base_pin=None,
+    prior_source_pin=None,
+    mode=None,
+):
+    """Run declarative ``ConnectedComponentsTransform`` over a closed catalog scope."""
+    source_table = (
+        rows if isinstance(rows, pa.Table) else prepare_source_component_table(rows)
+    )
+    effective_mode = mode or ('incremental' if base_pin is not None else 'full')
+    op = operation or f'scope-cc-{effective_mode}'
+    source_pin = native.run_table(
+        source_table,
+        dataset=f'{dataset}-sources',
+        operation=f'{op}-input',
+        definition='catalog-scope-components-input-v1',
+    )
+    return refresh_connected_components(
+        native,
+        dataset=dataset,
+        operation=op,
+        source_pin=source_pin,
+        base_pin=base_pin,
+        prior_source_pin=prior_source_pin,
+        mode=effective_mode,
+    )
 
 
 class ScopeSourceIndex(Mapping):

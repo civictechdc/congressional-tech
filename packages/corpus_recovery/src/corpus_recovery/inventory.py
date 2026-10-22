@@ -136,6 +136,185 @@ def sealed_inputs(batch):
     return files, inventory, dict(receipt_records=len(prepared), capture_rows=len(captures), distinct_bodies=len(inventory))
 
 
+def scan_receipt_history(
+    source_or_store=None,
+    *,
+    captures=None,
+    states=None,
+    fetch_outcomes=None,
+    urls=None,
+    read_receipt=None,
+):
+    """Read URL recovery history from raw_archive tables directly when available.
+
+    Prefers ``fetch_outcomes``, ``states``, and ``captures`` tables (or a ``RawSnapshot``)
+    and falls back to scanning ``.jsonl.gz`` receipt files only when bootstrapping
+    without a table store.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    wanted = set(urls) if urls is not None else None
+    history = {}
+    used_tables = False
+
+    if hasattr(source_or_store, 'captures') and callable(getattr(source_or_store, 'captures', None)):
+        if captures is None:
+            captures = source_or_store.captures()
+        used_tables = True
+    if hasattr(source_or_store, 'states_for') and callable(getattr(source_or_store, 'states_for', None)) and wanted:
+        for url, state_row in source_or_store.states_for(wanted).items():
+            history[url] = dict(
+                attempts=int(state_row.get('attempts') or 0),
+                latest_state=dict(state_row, url=url),
+                outcomes=[state_row['outcome']] if state_row.get('outcome') else [],
+                body_keys=[state_row['body_key']] if state_row.get('body_key') else [],
+                source='table',
+            )
+        used_tables = True
+
+    root_path = Path(source_or_store) if isinstance(source_or_store, (str, Path)) else None
+    if root_path is not None:
+        if fetch_outcomes is None and (root_path / 'indexes/fetch-outcomes.parquet').exists():
+            fetch_outcomes = pq.read_table(root_path / 'indexes/fetch-outcomes.parquet')
+        if states is None and (root_path / 'indexes/download-state.parquet').exists():
+            states = pq.read_table(root_path / 'indexes/download-state.parquet')
+        if captures is None and (root_path / 'indexes/captures.parquet').exists():
+            captures = pq.read_table(root_path / 'indexes/captures.parquet')
+
+    for table_src in (fetch_outcomes, states):
+        if table_src is None:
+            continue
+        used_tables = True
+        rows_iter = (
+            table_src.to_pylist()
+            if isinstance(table_src, pa.Table)
+            else (table_src.read().to_pylist() if isinstance(table_src, pq.ParquetFile) else list(table_src))
+        )
+        for row in rows_iter:
+            url = row.get('url') or row.get('context_url')
+            if not url or (wanted is not None and url not in wanted):
+                continue
+            entry = history.setdefault(
+                url,
+                dict(
+                    attempts=0,
+                    latest_state=dict(row, url=url),
+                    outcomes=[],
+                    body_keys=[],
+                    source='table',
+                ),
+            )
+            attempts = int(row.get('attempts') if row.get('attempts') is not None else 1)
+            entry['attempts'] = max(entry['attempts'], attempts)
+            prev_checked = (entry['latest_state'].get('checked_at') or '')
+            curr_checked = (row.get('checked_at') or '')
+            if curr_checked >= prev_checked:
+                entry['latest_state'] = dict(row, url=url)
+            outcome = row.get('outcome') or row.get('resolution')
+            if outcome and outcome not in entry['outcomes']:
+                entry['outcomes'].append(outcome)
+            if row.get('body_key') and row['body_key'] not in entry['body_keys']:
+                entry['body_keys'].append(row['body_key'])
+
+    if captures is not None:
+        used_tables = True
+        rows_iter = (
+            captures.to_pylist()
+            if isinstance(captures, pa.Table)
+            else (captures.read().to_pylist() if isinstance(captures, pq.ParquetFile) else list(captures))
+        )
+        capture_attempts = Counter()
+        for row in rows_iter:
+            url = row.get('context_url') or row.get('url')
+            if not url or (wanted is not None and url not in wanted):
+                continue
+            capture_attempts[(url, row.get('receipt_key'), row.get('receipt_line'))] += 1
+            entry = history.setdefault(
+                url,
+                dict(
+                    attempts=0,
+                    latest_state=dict(
+                        url=url,
+                        family=row.get('family'),
+                        body_key=row.get('body_key'),
+                        sha256=row.get('sha256'),
+                        media_type=row.get('media_type'),
+                        fidelity=row.get('fidelity'),
+                        retrieved_at=row.get('retrieved_at'),
+                        outcome=row.get('resolution') or row.get('outcome'),
+                        http_status=row.get('http_status'),
+                        attempts=1,
+                    ),
+                    outcomes=[],
+                    body_keys=[],
+                    source='table',
+                ),
+            )
+            outcome = row.get('resolution') or row.get('outcome')
+            if outcome and outcome not in entry['outcomes']:
+                entry['outcomes'].append(outcome)
+            if row.get('body_key') and row['body_key'] not in entry['body_keys']:
+                entry['body_keys'].append(row['body_key'])
+        by_url_attempts = Counter(u for (u, _, _) in capture_attempts)
+        for url, count in by_url_attempts.items():
+            if url in history and history[url]['attempts'] == 0:
+                history[url]['attempts'] = count
+                history[url]['latest_state']['attempts'] = count
+
+    if used_tables:
+        return history
+
+    # Fallback: bootstrap from raw .jsonl.gz receipt files only when no table store exists.
+    receipt_keys = []
+    if root_path is not None and (root_path / 'receipts').exists():
+        receipt_keys = [
+            p.relative_to(root_path).as_posix()
+            for p in sorted((root_path / 'receipts').rglob('*.jsonl.gz'))
+        ]
+    elif hasattr(source_or_store, 'keys'):
+        receipt_keys = sorted(k for k in source_or_store.keys('receipts/') if k.endswith('.jsonl.gz'))
+
+    for key in receipt_keys:
+        if read_receipt is not None:
+            raw = read_receipt(key)
+        elif root_path is not None:
+            raw = (root_path / key).read_bytes()
+        else:
+            raw = source_or_store.read(key)
+        if raw is None:
+            continue
+        with gzip.GzipFile(fileobj=io.BytesIO(raw)) as stream:
+            for raw_line in stream.read().decode('utf-8').splitlines():
+                receipt = json.loads(raw_line)
+                state = receipt.get('download_state') or {}
+                rec = receipt.get('record') or {}
+                url = state.get('url') or rec.get('requested_url') or rec.get('url')
+                if not url or (wanted is not None and url not in wanted):
+                    continue
+                entry = history.setdefault(
+                    url,
+                    dict(
+                        attempts=0,
+                        latest_state=dict(state, url=url),
+                        outcomes=[],
+                        body_keys=[],
+                        source='receipts',
+                    ),
+                )
+                attempts = int(state.get('attempts') if state.get('attempts') is not None else (entry['attempts'] + 1))
+                entry['attempts'] = max(entry['attempts'], attempts)
+                if (state.get('checked_at') or '') >= (entry['latest_state'].get('checked_at') or ''):
+                    entry['latest_state'] = dict(state, url=url, attempts=entry['attempts'])
+                outcome = state.get('outcome') or rec.get('outcome')
+                if outcome and outcome not in entry['outcomes']:
+                    entry['outcomes'].append(outcome)
+                for cap in receipt.get('captures') or ():
+                    if cap.get('body_key') and cap['body_key'] not in entry['body_keys']:
+                        entry['body_keys'].append(cap['body_key'])
+    return history
+
+
 def run(args):
     batch = args.batch.resolve()
     files, inventory, counts = sealed_inputs(batch)

@@ -30,7 +30,8 @@ def retained_path(path):
                   'hearing-text/', path or '')
 
 
-def recover_sources(rows, captures, *, read_receipt, working=None, source_observer=None):
+def recover_sources(rows, captures, *, read_receipt=None, working=None, source_observer=None,
+                    fetch_outcomes=None, states=None):
     """Return source rows with all proved body versions and original evidence kept."""
     from congress_api.retention import document_index as index
 
@@ -86,7 +87,12 @@ def recover_sources(rows, captures, *, read_receipt, working=None, source_observ
     required = {'body_key', 'receipt_key', 'receipt_line', 'pointer_json', 'context_url'}
     if not required <= set(schema.names):
         return rows
-    columns = sorted(required | ({'family', 'source_file', 'original_path', 'media_type', 'http_status'} & set(schema.names)))
+    optional = {
+        'family', 'source_file', 'original_path', 'media_type', 'http_status',
+        'resolution', 'outcome', 'fidelity', 'record_json', 'usable',
+        'body_complete', 'complete', 'format', 'result',
+    }
+    columns = sorted(required | (optional & set(schema.names)))
     batches = (captures.iter_batches(columns=columns) if hasattr(captures, 'iter_batches')
                else captures.select(columns).to_batches(max_chunksize=65536))
     urls = pa.array(sorted(wanted), type=pa.string())
@@ -107,6 +113,19 @@ def recover_sources(rows, captures, *, read_receipt, working=None, source_observ
 
     recovered = {} if working is None else working.mapping("recovered")
     replaced = set() if working is None else working.mapping("replaced")
+    state_by_url = {}
+    for table_src in (fetch_outcomes, states):
+        if table_src is None:
+            continue
+        rows_iter = (
+            table_src.to_pylist()
+            if isinstance(table_src, pa.Table)
+            else (table_src.read().to_pylist() if hasattr(table_src, 'read') else list(table_src))
+        )
+        for srow in rows_iter:
+            u = srow.get('url') or srow.get('context_url')
+            if u:
+                state_by_url[u] = srow
 
     def merge(row, values):
         for field, items in values.items():
@@ -124,8 +143,73 @@ def recover_sources(rows, captures, *, read_receipt, working=None, source_observ
         if source_observer is not None:
             source_observer.source(row, index.context_values(source_receipt_key=capture['receipt_key'], source_receipt_line=number))
 
+    def _apply_capture(capture, record, number):
+        # These collectors explicitly record generated XML candidates.
+        file = capture.get('source_file') or ''
+        if any(file.endswith(f'/{folder}/{name}.jsonl')
+               for folder in ('xml_path_families', 'pdf_xml_probe')
+               for name in ('attempts', 'inventory')):
+            for row in lookup(missing.get(record.get('xml_url'), ())):
+                facts = index.response_metadata({**capture, 'pointer_json': '[]'}, record)
+                merge(row, facts)
+                locate(row, capture, number, source_capture_url=record.get('xml_url'),
+                    source_association_basis='generated_xml_probe',
+                    source_associated_url=record.get('pdf_url'),
+                    source_probe_status=record.get('status') or 'candidate',
+                    source_probe_method=record.get('arm') or 'extension replacement',
+                    source_probe_checked_at=record.get('checked_at'))
+            return  # A diagnostic excerpt is not a recovered XML body.
+        if capture.get('family') not in {*index.FAMILIES, 'senate/pages', 'house/pages', None}:
+            return  # Provider transport bodies are not publisher responses.
+        facts = index.response_metadata(capture, record)
+        owner = index.nearest_record(record, capture['pointer_json'])
+        observed_urls = {u for u in (capture['context_url'], owner.get('requested_url'),
+            owner.get('final_url'), owner.get('url')) if isinstance(u, str) and u}
+        for url in observed_urls:
+            for original in lookup(missing.get(url, ())):
+                if not capture.get('body_key'):
+                    if any(facts.values()):
+                        merge(original, facts)
+                        locate(original, capture, number, source_capture_url=sorted(observed_urls))
+                    continue
+                identity = (capture['body_key'], original.get('filename'), url)
+                row = recovered.setdefault(identity, {**original, 'body_key': capture['body_key']})
+                if source_observer is not None:
+                    source_observer.merged(original, row)
+                merge(row, facts)
+                locate(row, capture, number, source_capture_url=sorted(observed_urls))
+                recovered[identity] = row
+                if working is None:
+                    replaced.add(identify(original))
+                else:
+                    replaced[identify(original)] = True
+        for row in lookup(local.get((capture['body_key'], retained_path(capture.get('original_path'))), ())):
+            merge(row, facts)
+            locate(row, capture, number, source_capture_url=sorted(observed_urls))
+
+    table_direct = (
+        read_receipt is None
+        or fetch_outcomes is not None
+        or states is not None
+        or 'record_json' in schema.names
+    )
     receipts = sorted(references.items()) if working is None else ((key,None) for key in references.receipts())
     for key, lines in receipts:
+        if table_direct:
+            if working is None:
+                for number, selected in sorted(lines.items()):
+                    for capture in selected:
+                        srow = state_by_url.get(capture.get('context_url'))
+                        record = index.record_from_capture_row(capture, srow)
+                        _apply_capture(capture, record, number)
+                lines.clear()
+            else:
+                for number, _ in references.lines(key):
+                    for capture in references.captures(key, number):
+                        srow = state_by_url.get(capture.get('context_url'))
+                        record = index.record_from_capture_row(capture, srow)
+                        _apply_capture(capture, record, number)
+            continue
         remaining = sum(len(rows) for rows in lines.values()) if working is None else references.count(key)
         if working is not None:
             indexed_lines = iter(references.lines(key))
@@ -147,48 +231,7 @@ def recover_sources(rows, captures, *, read_receipt, working=None, source_observ
                     remaining -= selected_count
                     record = json.loads(line)['record']
                     for capture in selected:
-                        # These collectors explicitly record generated XML candidates.
-                        file = capture.get('source_file') or ''
-                        if any(file.endswith(f'/{folder}/{name}.jsonl')
-                               for folder in ('xml_path_families', 'pdf_xml_probe')
-                               for name in ('attempts', 'inventory')):
-                            for row in lookup(missing.get(record.get('xml_url'), ())):
-                                facts = index.response_metadata({**capture, 'pointer_json': '[]'}, record)
-                                merge(row, facts)
-                                locate(row, capture, number, source_capture_url=record.get('xml_url'),
-                                    source_association_basis='generated_xml_probe',
-                                    source_associated_url=record.get('pdf_url'),
-                                    source_probe_status=record.get('status') or 'candidate',
-                                    source_probe_method=record.get('arm') or 'extension replacement',
-                                    source_probe_checked_at=record.get('checked_at'))
-                            continue  # A diagnostic excerpt is not a recovered XML body.
-                        if capture.get('family') not in {*index.FAMILIES, 'senate/pages', 'house/pages', None}:
-                            continue  # Provider transport bodies are not publisher responses.
-                        facts = index.response_metadata(capture, record)
-                        owner = index.nearest_record(record, capture['pointer_json'])
-                        observed_urls = {u for u in (capture['context_url'], owner.get('requested_url'),
-                            owner.get('final_url'), owner.get('url')) if isinstance(u, str) and u}
-                        for url in observed_urls:
-                            for original in lookup(missing.get(url, ())):
-                                if not capture.get('body_key'):
-                                    if any(facts.values()):
-                                        merge(original, facts)
-                                        locate(original, capture, number, source_capture_url=sorted(observed_urls))
-                                    continue
-                                identity = (capture['body_key'], original.get('filename'), url)
-                                row = recovered.setdefault(identity, {**original, 'body_key': capture['body_key']})
-                                if source_observer is not None:
-                                    source_observer.merged(original, row)
-                                merge(row, facts)
-                                locate(row, capture, number, source_capture_url=sorted(observed_urls))
-                                recovered[identity] = row
-                                if working is None:
-                                    replaced.add(identify(original))
-                                else:
-                                    replaced[identify(original)] = True
-                        for row in lookup(local.get((capture['body_key'], retained_path(capture.get('original_path'))), ())):
-                            merge(row, facts)
-                            locate(row, capture, number, source_capture_url=sorted(observed_urls))
+                        _apply_capture(capture, record, number)
                 if not remaining:
                     break
         if remaining:

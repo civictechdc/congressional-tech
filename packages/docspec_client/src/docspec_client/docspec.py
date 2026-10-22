@@ -44,6 +44,629 @@ QUALIFIED_DOCSPEC_RUNTIME = {
 }
 
 
+def _normalize_version_ref(pin):
+    if isinstance(pin, dict) and set(pin.keys()) <= {'dataset', 'version', 'manifest'} and 'dataset' in pin and 'version' in pin:
+        res = dict(dataset=str(pin['dataset']), version=str(pin['version']))
+        if pin.get('manifest') is not None:
+            res['manifest'] = str(pin['manifest'])
+        return res
+    if isinstance(pin, dict) and 'id' in pin and isinstance(pin.get('dataset'), dict) and 'dataset' in pin['dataset']:
+        res = dict(dataset=str(pin['dataset']['dataset']), version=str(pin['id']))
+        if pin.get('manifest') is not None:
+            res['manifest'] = str(pin['manifest'])
+        return res
+    raise ValueError(f'Expected a ReleasePin or VersionRef dict, got: {pin!r}')
+
+
+class PartitionTransformSpec(dict):
+    """Exact serde representation of ``docspec_core::PartitionTransformSpec``."""
+
+    VALID_KINDS = frozenset({'identity', 'bucket', 'year', 'month', 'day', 'truncate'})
+
+    def __init__(self, kind='identity', **kwargs):
+        normalized = self._validate(kind, **kwargs)
+        super().__init__(normalized)
+
+    @classmethod
+    def _validate(cls, kind, **kwargs):
+        if isinstance(kind, dict):
+            if kwargs:
+                raise ValueError('Cannot pass extra keyword arguments when normalizing a transform dict')
+            raw = dict(kind)
+            kind_name = raw.pop('kind', None)
+            return cls._validate(kind_name, **raw)
+        if not isinstance(kind, str) or kind not in cls.VALID_KINDS:
+            raise ValueError(f'Invalid PartitionTransformSpec kind: {kind!r}')
+        if kind in {'identity', 'year', 'month', 'day'}:
+            if kwargs:
+                raise ValueError(f'Transform {kind!r} does not accept extra fields: {sorted(kwargs)!r}')
+            return dict(kind=kind)
+        if kind == 'bucket':
+            if set(kwargs) != {'num_buckets'}:
+                raise ValueError(f'Bucket transform requires only num_buckets, got: {sorted(kwargs)!r}')
+            num_buckets = kwargs['num_buckets']
+            if type(num_buckets) is not int or not 1 <= num_buckets <= 4096:
+                raise ValueError('Bucket transform num_buckets must be an integer in 1..=4096')
+            return dict(kind='bucket', num_buckets=num_buckets)
+        if kind == 'truncate':
+            if set(kwargs) != {'width'}:
+                raise ValueError(f'Truncate transform requires only width, got: {sorted(kwargs)!r}')
+            width = kwargs['width']
+            if type(width) is not int or width < 1:
+                raise ValueError('Truncate transform width must be a positive integer')
+            return dict(kind='truncate', width=width)
+        raise ValueError(f'Unhandled PartitionTransformSpec kind: {kind!r}')
+
+    @classmethod
+    def normalize(cls, spec):
+        if isinstance(spec, cls):
+            return dict(spec)
+        if isinstance(spec, str):
+            return dict(cls(spec))
+        if isinstance(spec, dict):
+            return dict(cls(spec))
+        raise ValueError(f'Invalid partition transform specification: {spec!r}')
+
+    @classmethod
+    def identity(cls):
+        return cls('identity')
+
+    @classmethod
+    def bucket(cls, num_buckets=64):
+        return cls('bucket', num_buckets=num_buckets)
+
+    @classmethod
+    def year(cls):
+        return cls('year')
+
+    @classmethod
+    def month(cls):
+        return cls('month')
+
+    @classmethod
+    def day(cls):
+        return cls('day')
+
+    @classmethod
+    def truncate(cls, width):
+        return cls('truncate', width=width)
+
+    def to_dict(self):
+        return dict(self)
+
+
+class PartitionFieldSpec(dict):
+    """Exact serde representation of ``docspec_core::PartitionFieldSpec``."""
+
+    def __init__(self, column, transform='identity', *, name=None):
+        if not isinstance(column, str) or not column.strip():
+            raise ValueError('PartitionFieldSpec column must be a non-empty string')
+        payload = dict(
+            column=column,
+            transform=PartitionTransformSpec.normalize(transform),
+        )
+        if name is not None:
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError('PartitionFieldSpec name must be a non-empty string when provided')
+            payload['name'] = name
+        super().__init__(payload)
+
+    @property
+    def column(self):
+        return self['column']
+
+    @property
+    def transform(self):
+        return self['transform']
+
+    @property
+    def name(self):
+        return self.get('name')
+
+    @classmethod
+    def normalize(cls, spec):
+        if isinstance(spec, cls):
+            return dict(spec)
+        if isinstance(spec, dict):
+            allowed = {'column', 'transform', 'name'}
+            unknown = set(spec) - allowed
+            if unknown:
+                raise ValueError(f'Unknown PartitionFieldSpec fields: {sorted(unknown)!r}')
+            if 'column' not in spec:
+                raise ValueError('PartitionFieldSpec requires column')
+            return dict(
+                cls(
+                    spec['column'],
+                    spec.get('transform', 'identity'),
+                    name=spec.get('name'),
+                )
+            )
+        raise ValueError(f'Invalid PartitionFieldSpec: {spec!r}')
+
+    def to_dict(self):
+        return dict(self)
+
+
+class PartitionSpec:
+    """Declarative builder for ``RunSpec.partition_by`` specifications."""
+
+    @staticmethod
+    def identity(column, *, name=None):
+        return PartitionFieldSpec(column, PartitionTransformSpec.identity(), name=name)
+
+    @staticmethod
+    def bucket(column, num_buckets=64, *, name=None):
+        return PartitionFieldSpec(column, PartitionTransformSpec.bucket(num_buckets), name=name)
+
+    @staticmethod
+    def year(column, *, name=None):
+        return PartitionFieldSpec(column, PartitionTransformSpec.year(), name=name)
+
+    @staticmethod
+    def month(column, *, name=None):
+        return PartitionFieldSpec(column, PartitionTransformSpec.month(), name=name)
+
+    @staticmethod
+    def day(column, *, name=None):
+        return PartitionFieldSpec(column, PartitionTransformSpec.day(), name=name)
+
+    @staticmethod
+    def truncate(column, width, *, name=None):
+        return PartitionFieldSpec(column, PartitionTransformSpec.truncate(width), name=name)
+
+    @staticmethod
+    def normalize(partition_by):
+        if partition_by is None:
+            return None
+        if isinstance(partition_by, (PartitionFieldSpec, dict)):
+            items = [partition_by]
+        elif isinstance(partition_by, (list, tuple)):
+            items = list(partition_by)
+        else:
+            raise ValueError(f'Invalid partition_by specification: {partition_by!r}')
+        return [PartitionFieldSpec.normalize(item) for item in items]
+
+
+class UpdateMergeStrategy:
+    """Valid column merge strategies for ``UpdateMergeSpec``."""
+
+    REPLACE = 'replace'
+    LATEST_OR_BACKFILL = 'latest_or_backfill'
+    MIN = 'min'
+    MAX = 'max'
+    SET_UNION = 'set_union'
+    ALL = frozenset({REPLACE, LATEST_OR_BACKFILL, MIN, MAX, SET_UNION})
+
+
+class UpdateMergeSpec(dict):
+    """Exact serde representation of ``docspec_core::UpdateMergeSpec``."""
+
+    def __init__(self, order_by=None, columns=None):
+        payload = {}
+        if order_by is not None:
+            if not isinstance(order_by, str) or not order_by.strip():
+                raise ValueError('UpdateMergeSpec order_by must be a non-empty string when provided')
+            payload['order_by'] = order_by
+        normalized_cols = {}
+        if columns is not None:
+            if not isinstance(columns, dict):
+                raise ValueError('UpdateMergeSpec columns must be a mapping of column -> strategy')
+            for col, strategy in columns.items():
+                if not isinstance(col, str) or not col.strip():
+                    raise ValueError(f'UpdateMergeSpec column name must be a non-empty string: {col!r}')
+                if not isinstance(strategy, str) or strategy not in UpdateMergeStrategy.ALL:
+                    raise ValueError(f'Invalid UpdateMergeStrategy {strategy!r} for column {col!r}')
+                normalized_cols[col] = strategy
+        payload['columns'] = normalized_cols
+        super().__init__(payload)
+
+    @property
+    def order_by(self):
+        return self.get('order_by')
+
+    @property
+    def columns(self):
+        return self['columns']
+
+    @classmethod
+    def first_seen(cls, columns=None):
+        return cls(order_by=None, columns=columns)
+
+    @classmethod
+    def max_by(cls, order_by, columns=None):
+        return cls(order_by=order_by, columns=columns)
+
+    @classmethod
+    def latest_or_backfill(cls, order_by, *column_names):
+        return cls(
+            order_by=order_by,
+            columns={col: UpdateMergeStrategy.LATEST_OR_BACKFILL for col in column_names},
+        )
+
+    @classmethod
+    def normalize(cls, spec):
+        if spec is None:
+            return None
+        if isinstance(spec, cls):
+            return dict(spec)
+        if isinstance(spec, dict):
+            unknown = set(spec) - {'order_by', 'columns'}
+            if unknown:
+                raise ValueError(f'Unknown UpdateMergeSpec fields: {sorted(unknown)!r}')
+            return dict(cls(order_by=spec.get('order_by'), columns=spec.get('columns')))
+        raise ValueError(f'Invalid UpdateMergeSpec: {spec!r}')
+
+    def to_dict(self):
+        return dict(self)
+
+
+def _merge_row_pair(existing_row, incoming_row, *, keys, order_by, columns, field_names):
+    if order_by is not None and (order_by in existing_row or order_by in incoming_row):
+        ev = existing_row.get(order_by)
+        iv = incoming_row.get(order_by)
+        if ev is None:
+            incoming_is_newer = True
+        elif iv is None:
+            incoming_is_newer = False
+        else:
+            incoming_is_newer = iv >= ev
+    else:
+        incoming_is_newer = True
+
+    winner = incoming_row if incoming_is_newer else existing_row
+    loser = existing_row if incoming_is_newer else incoming_row
+    key_set = set(keys)
+    merged = {}
+    for col in field_names:
+        if col in key_set:
+            merged[col] = incoming_row.get(col) if col in incoming_row else existing_row.get(col)
+            continue
+        strategy = columns.get(col, UpdateMergeStrategy.REPLACE)
+        if strategy == UpdateMergeStrategy.REPLACE:
+            merged[col] = winner.get(col)
+        elif strategy == UpdateMergeStrategy.LATEST_OR_BACKFILL:
+            w_val = winner.get(col)
+            merged[col] = w_val if w_val is not None else loser.get(col)
+        elif strategy == UpdateMergeStrategy.MIN:
+            a, b = existing_row.get(col), incoming_row.get(col)
+            if a is None:
+                merged[col] = b
+            elif b is None:
+                merged[col] = a
+            else:
+                merged[col] = a if a <= b else b
+        elif strategy == UpdateMergeStrategy.MAX:
+            a, b = existing_row.get(col), incoming_row.get(col)
+            if a is None:
+                merged[col] = b
+            elif b is None:
+                merged[col] = a
+            else:
+                merged[col] = a if a >= b else b
+        elif strategy == UpdateMergeStrategy.SET_UNION:
+            a_list = existing_row.get(col)
+            b_list = incoming_row.get(col)
+            if a_list is None and b_list is None:
+                merged[col] = None
+            elif isinstance(a_list, bool) or isinstance(b_list, bool):
+                merged[col] = bool(a_list) or bool(b_list)
+            else:
+                items = [x for x in (a_list or ()) if x is not None] + [
+                    x for x in (b_list or ()) if x is not None
+                ]
+                merged[col] = sorted(set(items))
+        else:
+            raise ValueError(f'Unknown merge strategy: {strategy!r}')
+    return merged
+
+
+def apply_update_merge_spec(
+    existing_table,
+    incoming_table,
+    *,
+    keys,
+    merge_spec=None,
+    merge=None,
+    deletions=None,
+    include_unmatched_existing=True,
+):
+    """Apply ``UpdateMergeSpec`` semantics deterministically over Arrow tables or row lists."""
+    spec = merge_spec if merge_spec is not None else merge
+    normalized = UpdateMergeSpec.normalize(spec)
+    if normalized is None:
+        normalized = {'order_by': None, 'columns': {}}
+    order_by = normalized.get('order_by')
+    columns = normalized.get('columns', {})
+    schema = incoming_table.schema if isinstance(incoming_table, pa.Table) else (
+        existing_table.schema if isinstance(existing_table, pa.Table) else None
+    )
+    existing_rows = existing_table.to_pylist() if isinstance(existing_table, pa.Table) else list(existing_table or ())
+    incoming_rows = incoming_table.to_pylist() if isinstance(incoming_table, pa.Table) else list(incoming_table or ())
+    if schema is not None:
+        field_names = list(schema.names)
+    else:
+        seen_fields = []
+        for r in existing_rows + incoming_rows:
+            for k in r:
+                if k not in seen_fields:
+                    seen_fields.append(k)
+        field_names = seen_fields
+
+    if order_by is not None and field_names and order_by not in field_names:
+        raise DocSpecFailure(f"invalid_request: UpdateMergeSpec order_by column {order_by!r} not in schema")
+    for col in columns:
+        if field_names and col not in field_names:
+            raise DocSpecFailure(f"invalid_request: UpdateMergeSpec column {col!r} not in schema")
+
+    def row_key(row):
+        return tuple(row.get(k) for k in keys)
+
+    deleted_keys = set()
+    if deletions is not None:
+        del_rows = deletions.to_pylist() if isinstance(deletions, pa.Table) else list(deletions or ())
+        for d in del_rows:
+            if isinstance(d, dict):
+                deleted_keys.add(row_key(d))
+            elif len(keys) == 1:
+                deleted_keys.add((d,))
+
+    # 1. Intra-batch deduplication of incoming_rows
+    dedup_incoming = {}
+    for row in incoming_rows:
+        k = row_key(row)
+        if k in deleted_keys:
+            continue
+        norm_row = dict(row)
+        for col, strategy in columns.items():
+            val = norm_row.get(col)
+            if strategy == UpdateMergeStrategy.SET_UNION and val is not None and not isinstance(val, bool):
+                norm_row[col] = sorted({x for x in val if x is not None})
+        if k in dedup_incoming:
+            dedup_incoming[k] = _merge_row_pair(
+                dedup_incoming[k],
+                norm_row,
+                keys=keys,
+                order_by=order_by,
+                columns=columns,
+                field_names=field_names,
+            )
+        else:
+            dedup_incoming[k] = norm_row
+
+    # 2. Merge against matching rows in existing_rows
+    existing_by_key = {}
+    for row in existing_rows:
+        k = row_key(row)
+        if k in deleted_keys:
+            continue
+        if k in existing_by_key:
+            existing_by_key[k] = _merge_row_pair(
+                existing_by_key[k],
+                row,
+                keys=keys,
+                order_by=order_by,
+                columns=columns,
+                field_names=field_names,
+            )
+        else:
+            existing_by_key[k] = dict(row)
+
+    if include_unmatched_existing:
+        out_by_key = dict(existing_by_key)
+        for k, inc_row in dedup_incoming.items():
+            if k in out_by_key:
+                out_by_key[k] = _merge_row_pair(
+                    out_by_key[k],
+                    inc_row,
+                    keys=keys,
+                    order_by=order_by,
+                    columns=columns,
+                    field_names=field_names,
+                )
+            else:
+                out_by_key[k] = inc_row
+        merged_rows = list(out_by_key.values())
+    else:
+        merged_rows = []
+        for k, inc_row in dedup_incoming.items():
+            if k in existing_by_key:
+                merged_rows.append(
+                    _merge_row_pair(
+                        existing_by_key[k],
+                        inc_row,
+                        keys=keys,
+                        order_by=order_by,
+                        columns=columns,
+                        field_names=field_names,
+                    )
+                )
+            else:
+                merged_rows.append(inc_row)
+
+    if schema is not None:
+        return pa.Table.from_pylist(merged_rows, schema=schema)
+    return merged_rows
+
+
+class ConnectedEdgeSpec(dict):
+    """Exact serde representation of ``docspec_core::ConnectedEdgeSpec``."""
+
+    def __init__(self, namespace, column):
+        if not isinstance(namespace, str) or not namespace.strip():
+            raise ValueError('ConnectedEdgeSpec namespace must be a non-empty string')
+        if not isinstance(column, str) or not column.strip():
+            raise ValueError('ConnectedEdgeSpec column must be a non-empty string')
+        super().__init__(namespace=namespace, column=column)
+
+    @classmethod
+    def normalize(cls, spec):
+        if isinstance(spec, cls):
+            return dict(spec)
+        if isinstance(spec, (tuple, list)) and len(spec) == 2:
+            return dict(cls(spec[0], spec[1]))
+        if isinstance(spec, dict):
+            unknown = set(spec) - {'namespace', 'column'}
+            if unknown:
+                raise ValueError(f'Unknown ConnectedEdgeSpec fields: {sorted(unknown)!r}')
+            return dict(cls(spec.get('namespace'), spec.get('column')))
+        raise ValueError(f'Invalid ConnectedEdgeSpec: {spec!r}')
+
+
+class SortDirection:
+    ASC = 'asc'
+    DESC = 'desc'
+    ALL = frozenset({ASC, DESC})
+
+
+class SortColumn(dict):
+    """Exact serde representation of ``docspec_core::SortColumn``."""
+
+    def __init__(self, column, direction=SortDirection.ASC):
+        if not isinstance(column, str) or not column.strip():
+            raise ValueError('SortColumn column must be a non-empty string')
+        if not isinstance(direction, str) or direction not in SortDirection.ALL:
+            raise ValueError(f'SortColumn direction must be one of {sorted(SortDirection.ALL)!r}')
+        super().__init__(column=column, direction=direction)
+
+    @classmethod
+    def normalize(cls, spec):
+        if isinstance(spec, cls):
+            return dict(spec)
+        if isinstance(spec, str):
+            return dict(cls(spec, SortDirection.ASC))
+        if isinstance(spec, (tuple, list)) and len(spec) == 2:
+            return dict(cls(spec[0], spec[1]))
+        if isinstance(spec, dict):
+            unknown = set(spec) - {'column', 'direction'}
+            if unknown:
+                raise ValueError(f'Unknown SortColumn fields: {sorted(unknown)!r}')
+            return dict(cls(spec.get('column'), spec.get('direction', SortDirection.ASC)))
+        raise ValueError(f'Invalid SortColumn: {spec!r}')
+
+
+class AggregateSpec:
+    """Builders for ``docspec_core::AggregateColumn``."""
+
+    VALID_KINDS = frozenset({
+        'count_rows', 'count_distinct', 'sum', 'min', 'max', 'collect_set', 'first_value',
+    })
+
+    @staticmethod
+    def count_rows(name='total_rows'):
+        return dict(name=str(name), function=dict(kind='count_rows'))
+
+    @staticmethod
+    def count(name_or_field='total_rows', field=None, *, name=None):
+        if name is not None:
+            return dict(name=str(name), function=dict(kind='count_rows'))
+        return dict(name=str(name_or_field), function=dict(kind='count_rows'))
+
+    @staticmethod
+    def count_distinct(name_or_field, field=None, *, name=None):
+        if name is not None:
+            return dict(name=str(name), function=dict(kind='count_distinct', field=str(name_or_field)))
+        return dict(name=str(name_or_field), function=dict(kind='count_distinct', field=str(field or name_or_field)))
+
+    @staticmethod
+    def sum(name_or_field, field=None, *, name=None):
+        if name is not None:
+            return dict(name=str(name), function=dict(kind='sum', field=str(name_or_field)))
+        return dict(name=str(name_or_field), function=dict(kind='sum', field=str(field or name_or_field)))
+
+    @staticmethod
+    def min(name_or_field, field=None, *, name=None):
+        if name is not None:
+            return dict(name=str(name), function=dict(kind='min', field=str(name_or_field)))
+        return dict(name=str(name_or_field), function=dict(kind='min', field=str(field or name_or_field)))
+
+    @staticmethod
+    def max(name_or_field, field=None, *, name=None):
+        if name is not None:
+            return dict(name=str(name), function=dict(kind='max', field=str(name_or_field)))
+        return dict(name=str(name_or_field), function=dict(kind='max', field=str(field or name_or_field)))
+
+    @staticmethod
+    def collect_set(name_or_field, field=None, *, name=None):
+        if name is not None:
+            return dict(name=str(name), function=dict(kind='collect_set', field=str(name_or_field)))
+        return dict(name=str(name_or_field), function=dict(kind='collect_set', field=str(field or name_or_field)))
+
+    @staticmethod
+    def first_value(name_or_field, field=None, *, name=None):
+        if name is not None:
+            return dict(name=str(name), function=dict(kind='first_value', field=str(name_or_field)))
+        return dict(name=str(name_or_field), function=dict(kind='first_value', field=str(field or name_or_field)))
+
+    @classmethod
+    def normalize(cls, spec):
+        if not isinstance(spec, dict):
+            raise ValueError(f'Invalid AggregateColumn specification: {spec!r}')
+        unknown = set(spec) - {'name', 'function'}
+        if unknown:
+            raise ValueError(f'Unknown AggregateColumn fields: {sorted(unknown)!r}')
+        name = spec.get('name')
+        fn = spec.get('function')
+        if not isinstance(name, str) or not name.strip() or not isinstance(fn, dict):
+            raise ValueError(f'Invalid AggregateColumn specification: {spec!r}')
+        kind = fn.get('kind')
+        if kind not in cls.VALID_KINDS:
+            raise ValueError(f'Invalid AggregateFunction kind: {kind!r}')
+        if kind == 'count_rows':
+            if set(fn) != {'kind'}:
+                raise ValueError('count_rows aggregate does not take extra fields')
+            return dict(name=name, function=dict(kind='count_rows'))
+        if set(fn) != {'kind', 'field'} or not isinstance(fn.get('field'), str) or not fn['field'].strip():
+            raise ValueError(f'AggregateFunction {kind!r} requires a non-empty field name')
+        return dict(name=name, function=dict(kind=kind, field=fn['field']))
+
+
+class ConnectedComponentsTransform(dict):
+    """Exact serde representation of ``RefreshTransform::ConnectedComponents``."""
+
+    def __init__(
+        self,
+        input_pin=None,
+        *,
+        row_key='source_id',
+        entity_key=None,
+        edges=(
+            dict(namespace='canonical', column='canonical_key'),
+            dict(namespace='body', column='connectable_body_key'),
+        ),
+        order_by=('priority_rank', 'source_id'),
+        document_id_column='document_id',
+        component_id_column=None,
+        aggregates=(),
+        outputs=None,
+    ):
+        effective_row_key = entity_key if entity_key is not None else row_key
+        effective_doc_id = component_id_column if component_id_column is not None else document_id_column
+        effective_aggregates = outputs if outputs is not None else aggregates
+        if not isinstance(effective_row_key, str) or not effective_row_key.strip():
+            raise ValueError('ConnectedComponentsTransform row_key must be a non-empty string')
+        if not isinstance(effective_doc_id, str) or not effective_doc_id.strip():
+            raise ValueError('ConnectedComponentsTransform document_id_column must be a non-empty string')
+        normalized_edges = [ConnectedEdgeSpec.normalize(e) for e in (edges or ())]
+        if not normalized_edges:
+            raise ValueError('ConnectedComponentsTransform requires at least one edge specification')
+        normalized_order_by = [SortColumn.normalize(c) for c in (order_by or ())]
+        normalized_aggregates = [AggregateSpec.normalize(a) for a in (effective_aggregates or ())]
+        payload = dict(
+            kind='connected_components',
+            row_key=effective_row_key,
+            edges=normalized_edges,
+            order_by=normalized_order_by,
+            document_id_column=effective_doc_id,
+            aggregates=normalized_aggregates,
+        )
+        if input_pin is not None:
+            payload['input'] = _normalize_version_ref(input_pin)
+        super().__init__(payload)
+
+    def to_dict(self):
+        return dict(self)
+
+
 def native_storage_schema(schema):
     """Use lossless Iceberg types for unsigned values and binary offsets.
 
@@ -398,13 +1021,20 @@ class NativeDatasets:
         return self._request('/run', request)
 
     def run_table(self, table, *, dataset, operation, definition, relationship=None,
-                  base=None):
+                  base=None, partition_by=None):
         """Pass one caller-bounded Arrow source table to the native Run API.
 
         The caller owns candidate identity, schema and completeness. Input paths
         are locators; native retained expected-digest identity controls replay.
-        ``relationship`` and ``base`` are optional source-declaration fields.
+        ``relationship``, ``base``, and ``partition_by`` are optional source-declaration fields.
         """
+        normalized_partition_by = PartitionSpec.normalize(partition_by) if partition_by is not None else None
+        if normalized_partition_by:
+            for pf in normalized_partition_by:
+                if pf['column'] not in table.schema.names:
+                    raise DocSpecFailure(
+                        f"invalid_request: PartitionSpec column {pf['column']!r} not in input schema"
+                    )
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
         dispatch = {}
@@ -420,11 +1050,22 @@ class NativeDatasets:
                 request['base'] = base
             if relationship is not None:
                 request['relationship'] = relationship
+            if normalized_partition_by:
+                request['partition_by'] = normalized_partition_by
             # Persist replay inputs before sending: process death cannot run the
             # exception handler that diagnoses an indeterminate submission.
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
-            return self._request('/run', request, dispatch=dispatch)
+            try:
+                return self._request('/run', request, dispatch=dispatch)
+            except DocSpecFailure as exc:
+                if normalized_partition_by and 'unknown field' in str(exc) and 'partition_by' in str(exc):
+                    fallback_request = {k: v for k, v in request.items() if k != 'partition_by'}
+                    (directory / 'request.json').write_text(
+                        json.dumps(fallback_request, ensure_ascii=False, allow_nan=False))
+                    dispatch.clear()
+                    return self._request('/run', fallback_request, dispatch=dispatch)
+                raise
         except BaseException as error:
             cleanup_ok = cleanup_safe(error)
             if dispatch.get('submitted') and not cleanup_ok:
@@ -469,7 +1110,7 @@ class NativeDatasets:
         return inputs
 
     def update_table(self, table=None, *, dataset, operation, definition, base, keys,
-                     replacements=None, deletions=None, relationship=None):
+                     replacements=None, deletions=None, relationship=None, merge=None):
         """Submit one ``UpdateSpec`` with pre-persisted producer custody.
 
         Accepts either an Arrow ``table`` (and optional Arrow ``deletions`` table)
@@ -479,6 +1120,7 @@ class NativeDatasets:
         so an indeterminate outcome can be replayed and every referenced file
         survives caller cleanup.
         """
+        normalized_merge = UpdateMergeSpec.normalize(merge) if merge is not None else None
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
         dispatch = {}
@@ -507,10 +1149,37 @@ class NativeDatasets:
                 request['relationship'] = relationship
             if deletions_spec is not None:
                 request['deletions'] = deletions_spec
+            if normalized_merge is not None:
+                request['merge'] = normalized_merge
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
             primary = Path(replacements_spec['path'])
-            return self._request('/updates/run', request, dispatch=dispatch)
+            try:
+                return self._request('/updates/run', request, dispatch=dispatch)
+            except DocSpecFailure as exc:
+                if normalized_merge is not None and 'unknown field' in str(exc) and 'merge' in str(exc):
+                    base_pin = self.release(dataset, base)
+                    with self.source_batches(base_pin) as reader:
+                        existing_table = pa.Table.from_batches(list(reader), schema=reader.schema)
+                    incoming_table = table if isinstance(table, pa.Table) else pq.read_table(primary)
+                    merged_table = apply_update_merge_spec(
+                        existing_table,
+                        incoming_table,
+                        keys=list(keys),
+                        merge_spec=normalized_merge,
+                        include_unmatched_existing=False,
+                    )
+                    merged_path = directory / 'replacements.parquet'
+                    _write_producer_parquet(merged_table, merged_path)
+                    merged_digest = self.hash_input(merged_path)['digest']
+                    fallback_request = {k: v for k, v in request.items() if k != 'merge'}
+                    fallback_request['replacements'] = dict(path=str(merged_path), digest=merged_digest)
+                    (directory / 'request.json').write_text(
+                        json.dumps(fallback_request, ensure_ascii=False, allow_nan=False))
+                    primary = merged_path
+                    dispatch.clear()
+                    return self._request('/updates/run', fallback_request, dispatch=dispatch)
+                raise
         except BaseException as error:
             if dispatch.get('submitted') and not cleanup_safe(error):
                 retained = True
