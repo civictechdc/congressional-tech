@@ -1,5 +1,5 @@
 """Reuse the originating appearance when inventory repeats a source witness row."""
-from collections import defaultdict
+from collections import ChainMap, defaultdict
 
 
 def reuse_appearances(items, assembly):
@@ -13,10 +13,20 @@ def reuse_appearances(items, assembly):
     for record in assembly.records.values():
         if record.kind == 'appearance':
             known[key(record)].append(record)
-    sources = dict(assembly.sources)
+    local_sources = {}
+    sources = ChainMap(local_sources, assembly.sources)
+
+    def provider_of(sid):
+        local = local_sources.get(('source_record', sid))
+        if local is not None:
+            return local.provider
+        if hasattr(assembly.sources, 'provider_for_id'):
+            return assembly.sources.provider_for_id(sid)
+        return sources['source_record', sid].provider
+
     for record in items:
         if record.kind == 'source_record':
-            sources[record.kind, record.id] = record
+            local_sources[record.kind, record.id] = record
         elif record.kind == 'appearance':
             origin = sources['source_record', record.provenance.citations[0].source.id].payload
             provider = {'docs.house.gov': 'docs.house.gov', 'senate committee page': 'senate.committees'}.get(origin.get('source'))
@@ -24,7 +34,7 @@ def reuse_appearances(items, assembly):
             for existing in known[key(record)]:
                 # A recovered row is a lossy copy of this provider's observation.
                 # Matching names alone, or matching a different provider, is insufficient.
-                if any(sources['source_record', citation.source.id].provider == provider
+                if any(provider_of(citation.source.id) == provider
                        for citation in existing.provenance.citations):
                     candidates.append(existing)
             if len(candidates) == 1:

@@ -17,10 +17,18 @@ FIXTURES = Path(__file__).parent / "fixtures/meeting_inventory"
 
 @pytest.fixture(autouse=True)
 def no_network(monkeypatch):
-    def forbidden(*args, **kwargs):
+    real_create_connection = socket.create_connection
+    real_connect = socket.socket.connect
+    def check_create_connection(address, *args, **kwargs):
+        if isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1", "localhost"):
+            return real_create_connection(address, *args, **kwargs)
         raise AssertionError("offline export attempted network access")
-    monkeypatch.setattr(socket, "create_connection", forbidden)
-    monkeypatch.setattr(socket.socket, "connect", forbidden)
+    def check_connect(self, address):
+        if isinstance(address, tuple) and address[0] in ("127.0.0.1", "::1", "localhost"):
+            return real_connect(self, address)
+        raise AssertionError("offline export attempted network access")
+    monkeypatch.setattr(socket, "create_connection", check_create_connection)
+    monkeypatch.setattr(socket.socket, "connect", check_connect)
 
 
 def write_meetings(tmp_path, rows):
@@ -42,12 +50,17 @@ def run(tmp_path, path, **kw):
     return export(meetings=path, output_dir=tmp_path / "public", state_dir=tmp_path / "state", as_of=NOW, **kw)
 
 
-def published(tmp_path):
-    """The current JSON publication's complete catalog, including retained history sources."""
-    from committee_meeting import Catalog
+def published_sources(tmp_path):
+    """The current Parquet publication's complete source rows, including retained history sources."""
+    import pyarrow.parquet as pq
     pointer = json.loads((tmp_path / "public/CURRENT.json").read_text())
     directory = tmp_path / "public" / Path(pointer["manifest_path"]).parent
-    return Catalog.model_validate_json((directory / "catalog.json").read_bytes())
+    manifest = json.loads((tmp_path / "public" / pointer["manifest_path"]).read_text())
+    rows = []
+    for part in manifest["partitions"]:
+        if part["schema_name"] == "committee_explorer.parquet.source_record":
+            rows.extend(pq.read_table(directory / part["path"]).to_pylist())
+    return rows
 
 
 @pytest.mark.parametrize("valid", [True, False])
@@ -105,11 +118,11 @@ def test_native_and_house_preserve_source_shape(tmp_path):
     assert len([r for r in catalog.records if r.kind == "material" and r.title == "Listed statement without file"]) == 1
     assert all(s.retrieved_at is None for s in catalog.sources)
     assert any(s.status == "not_collected" and s.provider == "transcript-artifact" for s in manifest.source_scopes)
+    import pyarrow.parquet as pq
     pointer = json.loads((tmp_path / "public/CURRENT.json").read_text())
     directory = tmp_path / "public" / Path(pointer["manifest_path"]).parent
-    index = json.loads((directory / "indexes/meetings.json").read_text())
-    assert len(index["rows"]) == 2
-    assert all(p.media_type == "application/json" for p in manifest.partitions)
+    assert pq.read_table(directory / "meetings.parquet").num_rows == 2
+    assert any(p.media_type == "application/vnd.apache.parquet" for p in manifest.partitions)
 
 
 def test_ids_survive_reorder_and_mutable_facts(tmp_path):
@@ -194,8 +207,8 @@ def test_documented_issue_resolution_retains_original_evidence(tmp_path):
     replay = next(r for r in third.records if r.kind == 'data_issue' and r.id == original.id)
     assert replay.resolution == closed.resolution
     assert not any(s.provider == 'curated-issue-decisions' for s in third.sources)  # Retained, not reloaded.
-    decision_sources = [s for s in published(tmp_path).sources if s.provider == 'curated-issue-decisions']
-    assert [s.id for s in decision_sources] == [c.source.id for c in closed.resolution.provenance.citations]
+    decision_sources = [s for s in published_sources(tmp_path) if s["provider"] == "curated-issue-decisions"]
+    assert [s["id"] for s in decision_sources] == [c.source.id for c in closed.resolution.provenance.citations]
 
 
 def test_explicit_youtube_id_unifies_native_link_and_cache_metadata(tmp_path):
@@ -255,26 +268,144 @@ def test_youtube_cache_export_keeps_malformed_input_failures(tmp_path, body, err
     assert not (tmp_path / "public/CURRENT.json").exists()
 
 
-def test_manifest_locations_resolve_every_record_and_source(tmp_path):
-    import hashlib
+def test_manifest_parquet_tables_and_docspec_views_resolve_every_record_and_source(tmp_path):
+    import pyarrow.parquet as pq
+    from committee_explorer.docspec_views import (
+        COMMITTEE_ROLLUP_DATASET,
+        MEETING_SUMMARY_DATASET,
+        ExplorerDocSpecWorkspace,
+    )
+    from committee_explorer.browser import verify
+
     path = write_meetings(tmp_path, [native()])
-    manifest, catalog = run(tmp_path, path)
+    ds_dir = tmp_path / "docspec-ws"
+    manifest, catalog = run(tmp_path, path, docspec_workspace=ds_dir)
+    verify(tmp_path / "public")
     pointer = json.loads((tmp_path / "public/CURRENT.json").read_text())
     directory = tmp_path / "public" / Path(pointer["manifest_path"]).parent
-    descriptor = json.loads((directory / "indexes/locations.json").read_text())
-    assert descriptor["bucket_algorithm"] == "sha256-prefix-2"
-    buckets = {b: json.loads((directory / p).read_text())["locations"] for b,p in descriptor["buckets"].items()}
+    assert not (directory / "catalog.json").exists()
+    assert not (directory / "indexes/locations.json").exists()
+
+    published_ids = set()
+    for table_file in ("meetings.parquet", "committees.parquet", "materials.parquet", "witnesses.parquet", "issues.parquet", "sources.parquet"):
+        assert (directory / table_file).exists()
+        for row in pq.read_table(directory / table_file, columns=["id"]).to_pylist():
+            published_ids.add(row["id"])
     for record in (*catalog.records, *catalog.sources):
-        key = record.kind + "/" + record.id
-        bucket = hashlib.sha256(key.encode()).hexdigest()[:2]
-        chunk = json.loads((directory / buckets[bucket][key]).read_text())
-        assert any(r["id"] == record.id and r["kind"] == record.kind for r in chunk.get("records", chunk.get("sources", [])))
-    for part in manifest.partitions:
-        if part.role in ("details", "sources"):
-            assert part.byte_size <= descriptor["chunk_byte_budget"]
-    from committee_meeting import Catalog
-    reread = Catalog.model_validate_json((directory / "catalog.json").read_bytes())
-    assert reread == catalog
+        if record.kind in ("meeting", "committee_term", "material", "appearance", "data_issue", "source_record"):
+            assert record.id in published_ids
+
+    pins = json.loads((tmp_path / "state/export-pins.json").read_text())
+    assert set(pins) == {"committees", "meetings", "materials", "witnesses", "issues", "sources"}
+
+    # Verify export() automatically populated and refreshed explorer_meeting_summaries & explorer_committee_rollups
+    with ExplorerDocSpecWorkspace(ds_dir) as ds_ws:
+        summary_pin = ds_ws.latest_pin("explorer_meeting_summaries")
+        rollup_pin = ds_ws.latest_pin("explorer_committee_rollups")
+        assert summary_pin is not None
+        assert rollup_pin is not None
+        auto_summaries = ds_ws.datasets.read_arrow(summary_pin).to_pylist()
+        assert len(auto_summaries) == 1
+        assert auto_summaries[0]["committee"] == "Rules"
+
+        # Also verify multi-observation priority & provenance refresh (including differing committee names on same meeting_id)
+        ds_ws.upsert_observations([
+            {
+                "meeting_id": "m-106245",
+                "congress": 115,
+                "chamber": "House",
+                "committee": "Rules",
+                "subcommittee": "Subcommittee",
+                "title": "Official Congress.gov Title",
+                "date": "2017-07-12",
+                "type": "Markup",
+                "status": "Scheduled",
+                "source_rank": 1,
+                "source_id": "src-congress",
+                "source_type": "congress.gov",
+                "witness_name": "Alex Smith",
+            },
+            {
+                "meeting_id": "m-106245",
+                "congress": 115,
+                "chamber": "House",
+                "committee": "House Committee on Rules",
+                "subcommittee": None,
+                "title": "Fallback House XML Title",
+                "date": "2017-07-12",
+                "type": "Markup",
+                "status": "Scheduled",
+                "source_rank": 2,
+                "source_id": "src-house",
+                "source_type": "docs.house.gov",
+                "witness_name": "Alex Smith",
+            },
+        ])
+        refreshed = ds_ws.refresh_views()
+        summary_rows = ds_ws.datasets.read_arrow(refreshed[MEETING_SUMMARY_DATASET]).to_pylist()
+        m_rows = [r for r in summary_rows if r["meeting_id"] == "m-106245"]
+        assert len(m_rows) == 1
+        m_row = m_rows[0]
+        assert m_row["committee"] == "Rules"
+        assert m_row["title"] == "Official Congress.gov Title"
+        assert m_row["witnesses_with_provenance"][0]["value"] == "Alex Smith"
+        rollup_rows = ds_ws.datasets.read_arrow(refreshed[COMMITTEE_ROLLUP_DATASET]).to_pylist()
+        assert len(rollup_rows) >= 1
+
+
+def test_spilled_sources_and_sharded_docspec_publication_keep_checksums(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from committee_explorer.assemble import _SOURCE_CACHE_LIMIT, SpilledSourceSequence, _SpilledSources
+    from committee_explorer.docspec_views import ExplorerDocSpecWorkspace
+    from committee_explorer.parquet import SOURCE_SCHEMA, TABLE_SCHEMAS
+    from committee_meeting.provenance import Identifier, SourceRecord
+
+    spilled = _SpilledSources()
+    total = _SOURCE_CACHE_LIMIT + 300
+    for i in range(total):
+        rec = SourceRecord(
+            id=f"src-{i:04d}",
+            provider="congress.gov" if i % 2 == 0 else "govinfo",
+            input_snapshot_id=f"snap-{i % 3}",
+            identifier=Identifier(scheme="test", value=str(i)),
+            payload={"index": i},
+        )
+        spilled[("source_record", rec.id)] = rec
+
+    assert len(spilled) == total
+    assert len(spilled._cache) <= _SOURCE_CACHE_LIMIT
+    seq = SpilledSourceSequence(spilled)
+    assert len(seq) == total
+    assert seq.provider_counts() == {"congress.gov": total // 2, "govinfo": total - total // 2}
+    assert seq.input_snapshot_ids() == {"snap-0", "snap-1", "snap-2"}
+    assert seq[0].id == "src-0000"
+    assert seq[-1].id == f"src-{total - 1:04d}"
+    assert [r.id for r in seq[:3]] == ["src-0000", "src-0001", "src-0002"]
+    spilled.close()
+
+    # Verify multi-shard sources-1.parquet / sources-2.parquet export and byte-identical preservation
+    stage = tmp_path / "stage"
+    stage.mkdir()
+    for kind, fname in (
+        ("committee_term", "committees.parquet"),
+        ("meeting", "meetings.parquet"),
+        ("material", "materials.parquet"),
+        ("appearance", "witnesses.parquet"),
+        ("data_issue", "issues.parquet"),
+    ):
+        pq.write_table(pa.Table.from_pylist([], schema=TABLE_SCHEMAS[kind]), stage / fname)
+    for shard_idx in (1, 2):
+        pq.write_table(
+            pa.Table.from_pylist([{"id": f"s-{shard_idx}", "kind": "source_record", "provider": "test"}], schema=SOURCE_SCHEMA),
+            stage / f"sources-{shard_idx}.parquet",
+        )
+    before_bytes = {p.name: p.read_bytes() for p in stage.glob("*.parquet")}
+    with ExplorerDocSpecWorkspace(tmp_path / "ds-sharded") as ds_ws:
+        pins = ds_ws.export_browser_publication(stage)
+    after_bytes = {p.name: p.read_bytes() for p in stage.glob("*.parquet")}
+    assert before_bytes == after_bytes
+    assert set(pins["sources"]) == {"sources-1", "sources-2"}
 
 
 def test_curated_recordings_retain_evidence_and_reuse_video_identity(tmp_path):

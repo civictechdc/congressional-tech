@@ -71,17 +71,6 @@ jobs:
             --input pipeline-data/committee-explorer/state \
             --output "$RUNNER_TEMP/committee-explorer-state"
 
-      # The export holds the assembled graph in memory; it peaked at 15.3 GB RSS
-      # on this 16 GB runner on 2026-10-10 and has grown with retained history.
-      - name: Add swap for the in-memory export
-        run: |
-          sudo fallocate -l 20G /mnt/committee-explorer.swap
-          sudo chmod 600 /mnt/committee-explorer.swap
-          sudo mkswap /mnt/committee-explorer.swap
-          sudo swapon /mnt/committee-explorer.swap
-          swapon --show
-          free -h
-
       - name: Export complete retained inputs without acquisition
         env:
           DATA_DIR: apps/committee_youtube/data
@@ -96,11 +85,10 @@ jobs:
           if [[ -f pipeline-data/congress_committees.jsonl.gz ]]; then
             args+=(--committees-path pipeline-data/congress_committees.jsonl.gz)
           fi
-          # A transient scope caps the export at 14 GiB of RAM so the runner keeps
-          # memory for itself: past the cap the export pages to swap, and if swap
-          # fills too the kernel kills only Python (exit 137) and time still reports.
-          # The scope runs as this user; sudo drops PATH and LD_LIBRARY_PATH.
-          scope=(sudo --preserve-env systemd-run --scope --collect --property=MemoryMax=14G
+          # A transient scope enforces the bounded-memory (< 2 GiB RAM, no swap)
+          # Committee Explorer Parquet export. The scope runs as this user; sudo
+          # drops PATH and LD_LIBRARY_PATH.
+          scope=(sudo --preserve-env systemd-run --scope --collect --property=MemoryMax=2G
                  --uid="$(id -u)" --gid="$(id -g)" --setenv=PATH="$PATH")
           if [[ -n "${LD_LIBRARY_PATH:-}" ]]; then
             scope+=(--setenv=LD_LIBRARY_PATH="$LD_LIBRARY_PATH")

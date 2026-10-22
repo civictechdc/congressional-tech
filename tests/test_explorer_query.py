@@ -1,13 +1,12 @@
 """Browser pages preserve graph discovery and encoded artifact integrity."""
-import gzip
-import hashlib
 import json
 from datetime import date, datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+import pyarrow.parquet as pq
 import pytest
 from test_explorer_export import native, run, write_meetings
-from committee_explorer.browser import package, verify, MEDIA_TYPE
+from committee_explorer.browser import package, verify
 from committee_explorer.query import write_queries
 from committee_meeting.common import Identifier, Ref, ReportedTime
 from committee_meeting.committees import CommitteeTerm
@@ -27,17 +26,17 @@ def test_query_rows_share_coverage_states_and_resolve_inverse_relationships(tmp_
     manifest,catalog=run(tmp_path,write_meetings(tmp_path,[row]))
     base,parts=files(tmp_path,manifest)
     query=json.loads((base/parts['committee_explorer.queries'].path).read_text())
-    page=next(p for p in query['partitions'] if p['kind']=='meeting')
-    meeting=json.loads((base/page['path']).read_text())['rows'][0]
+    meeting=pq.read_table(base/parts['committee_explorer.parquet.meeting'].path).to_pylist()[0]
     assert meeting['evidence_states']['recording']=='reported'
     assert 'Alex Smith' in meeting['search_text']
     assert query['committee_labels'][meeting['committee_ids'][0]]
-    root=json.loads((base/parts['committee_explorer.relations'].path).read_text())
-    key='meeting/'+meeting['id'];bucket=hashlib.sha256(key.encode()).hexdigest()[:2]
-    related=json.loads((base/root['buckets'][bucket]).read_text())['relations'][key]
-    assert {'occurrence','appearance','material_link'} <= {r['kind'] for r in related}
+    witnesses=pq.read_table(base/parts['committee_explorer.parquet.appearance'].path).to_pylist()
+    materials=pq.read_table(base/parts['committee_explorer.parquet.material'].path).to_pylist()
+    assert any(w['meeting_id']==meeting['id'] for w in witnesses)
+    assert any(meeting['id'] in m['meeting_ids'] for m in materials)
     ids={(r.kind,r.id) for r in catalog.records}
-    assert all((r['kind'],r['id']) in ids for r in related)
+    assert all(('appearance',w['id']) in ids for w in witnesses)
+    assert all(('material',m['id']) in ids for m in materials)
 
 
 def test_browser_package_is_small_encoded_and_independently_verifiable(tmp_path):
@@ -45,18 +44,14 @@ def test_browser_package_is_small_encoded_and_independently_verifiable(tmp_path)
     browser=tmp_path/'browser';m,size=package(tmp_path/'public',browser)
     _,base,verified=verify(browser)
     assert verified==m
-    assert all(p.role!='download' and p.media_type==MEDIA_TYPE for p in m.partitions)
-    assert all(p.path.endswith('.data') and not p.path.endswith('.gz') for p in m.partitions)
-    parts={p.path:p for p in m.partitions}
+    assert all(p.role!='download' and not p.path.endswith('.data') for p in m.partitions)
+    assert any(p.media_type=='application/vnd.apache.parquet' for p in m.partitions)
     assert all('catalog' not in p.path for p in m.partitions)
     query=next(p for p in m.partitions if p.schema_name=='committee_explorer.queries')
-    root=json.loads(gzip.decompress((base/query.path).read_bytes()))
-    assert all(p['path'] in parts for p in root['partitions'])
-    locations=next(p for p in m.partitions if p.schema_name=='committee_explorer.locations')
-    root=json.loads(gzip.decompress((base/locations.path).read_bytes()))
-    for bucket in root['buckets'].values():
-        values=json.loads(gzip.decompress((base/bucket).read_bytes()))['locations']
-        assert all(path in parts for path in values.values())
+    root=json.loads((base/query.path).read_bytes())
+    assert root['storage'] == 'parquet'
+    meetings_part=next(p for p in m.partitions if p.schema_name=='committee_explorer.parquet.meeting')
+    assert pq.read_table(base/meetings_part.path).num_rows == meetings_part.record_count
     pointer=(browser/'CURRENT.json').read_bytes()
     with pytest.raises(ValueError,match='budget'):
         package(tmp_path/'public',browser,max_bytes=1)
@@ -154,19 +149,13 @@ def test_legacy_query_keeps_committee_codes_parent_terms_and_direct_document_rel
         'parent': Ref(kind='committee_term', id=committee.id)})
     material = Material(id='committee-document', details=DocumentDetails(), provenance=EVIDENCE)
     records = [material, committee, child, link('committee-link', material, committee)]
-    written = {}
-    write_queries(SimpleNamespace(records=records), {(r.kind, r.id) for r in records},
-                  lambda path, data, *a, **k: written.__setitem__(path, data))
-    rows = {row['id']: row for path, data in written.items() if path.startswith('queries/') for row in data['rows']}
+    rows, _ = query_rows(records)
     assert rows[committee.id]['committee_code'] == 'hsru00'
     assert rows[committee.id]['committee_type'] == 'standing'
     assert rows[child.id]['parent_committee_id'] == committee.id
     assert rows[child.id]['committee_level'] == 'subcommittee'
     assert rows[child.id]['committee_types'] == ['standing']
-    related = next(data['relations'][f'committee_term/{committee.id}'] for data in written.values()
-                   if f'committee_term/{committee.id}' in data.get('relations', {}))
-    assert {'kind': 'material', 'id': material.id, 'relation': 'material'} in related
-    assert {'kind': 'committee_term', 'id': child.id, 'relation': 'parent'} in related
+    assert rows[material.id]['committee_ids'] == [committee.id]
     assert rows[material.id]['meeting_id'] is None
 
 

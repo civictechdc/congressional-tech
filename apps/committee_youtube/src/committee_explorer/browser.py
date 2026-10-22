@@ -1,7 +1,5 @@
 """Verify and stage browser data; Parquet files are served unchanged."""
 import argparse
-import gzip
-import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -9,8 +7,6 @@ import tempfile
 from congress_shared.custody import write_atomic_bytes
 from .export import encode, file_sha, sha
 from committee_meeting.publication import PublicationManifest
-
-MEDIA_TYPE = 'application/vnd.committee-explorer+json+gzip'
 
 
 def verify(directory):
@@ -33,28 +29,18 @@ def package(input_dir, output_dir, *, max_bytes=900_000_000):
     output.parent.mkdir(parents=True, exist_ok=True)
     stage = Path(tempfile.mkdtemp(prefix='.browser-', dir=output.parent))
     try:
-        # Catalog and the big compatibility index are downloadable/offline views,
-        # not prerequisites for the browser query/record reader.
         parts = [p for p in manifest.partitions if p.role != 'download' and p.schema_name not in ('committee_explorer.meetings', 'congress_api.print-decisions')]
-        # Opaque suffix keeps static servers from adding Content-Encoding:gzip:
-        # fetch must receive the stored bytes so manifest digests remain valid.
-        parquet = any(p.media_type == 'application/vnd.apache.parquet' for p in parts)
-        replacements = {p.path: p.path if parquet else p.path + '.data' for p in parts}
-        def remap(value):
-            if isinstance(value, dict): return {k: remap(v) for k,v in value.items()}
-            if isinstance(value, list): return [remap(v) for v in value]
-            return replacements.get(value, value) if isinstance(value, str) else value
-        compressed = []
+        if not any(p.media_type == 'application/vnd.apache.parquet' for p in parts):
+            raise ValueError('Browser packaging requires Parquet partitions; legacy sharded JSON (.data) has been retired')
+        staged = []
         for part in parts:
             raw = (source / part.path).read_bytes()
-            if not parquet and part.schema_name in ('committee_explorer.locations','committee_explorer.location-bucket','committee_explorer.queries','committee_explorer.relations','committee_explorer.relation-bucket'):
-                raw = encode(remap(json.loads(raw)))
-            if not parquet: raw = gzip.compress(raw, compresslevel=6, mtime=0)
-            path = replacements[part.path]
-            target = stage / path; target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(raw)
-            compressed.append(part.model_copy(update={'path':path,'media_type':part.media_type if parquet else MEDIA_TYPE,'sha256':sha(raw),'byte_size':len(raw)}))
-        publication_id = sha(encode({'source_publication':manifest.publication_id,'files':[p.sha256 for p in compressed]}))[:24]
-        packaged = manifest.model_copy(update={'publication_id':publication_id, 'partitions':tuple(compressed),
+            target = stage / part.path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(raw)
+            staged.append(part.model_copy(update={'path': part.path, 'media_type': part.media_type, 'sha256': sha(raw), 'byte_size': len(raw)}))
+        publication_id = sha(encode({'source_publication':manifest.publication_id,'files':[p.sha256 for p in staged]}))[:24]
+        packaged = manifest.model_copy(update={'publication_id':publication_id, 'partitions':tuple(staged),
             'limitations':(*manifest.limitations, 'Browser distribution: original publication '+manifest.publication_id+'. Complete Catalog and legacy meeting index are excluded; query pages retain browse coverage.')})
         # Exercise schema validators after edits, before publishing.
         packaged = PublicationManifest.model_validate(packaged)

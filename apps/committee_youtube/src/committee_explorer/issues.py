@@ -8,7 +8,8 @@ def apply_decisions(catalog, rows, context, retained=None):
     """``retained`` maps (kind, id) to sources the catalog cites but issue history holds."""
     retained = {} if retained is None else retained
     records = {(r.kind, r.id): r for r in catalog.records}
-    sources = {source.id: source for source in catalog.sources}
+    lazy_sources = hasattr(catalog.sources, "get_by_id") and hasattr(catalog.sources, "with_additional")
+    sources = {} if lazy_sources else {source.id: source for source in catalog.sources}
     seen = set()
     for row in rows:
         issue_id = row["issue_id"]
@@ -24,6 +25,8 @@ def apply_decisions(catalog, rows, context, retained=None):
         # A replayed decision's source may be retained only by issue history; it
         # stays there and is published from there.
         previous = sources.get(source.id)
+        if previous is None and lazy_sources:
+            previous = catalog.sources.get_by_id(source.id)
         if previous is None:
             previous = retained.get((source.kind, source.id))
         if previous is not None:
@@ -37,5 +40,6 @@ def apply_decisions(catalog, rows, context, retained=None):
         decided = datetime.fromisoformat(row["decided_at"]) if row.get("decided_at") else source.imported_at or context.now
         resolution = IssueResolution(decided_at=decided, explanation=row["explanation"], provenance=context.evidence(source, basis="curated"))
         records[key] = type(records[key]).model_validate(records[key].model_copy(update={"status": row["status"], "resolution": resolution}))
-    return Catalog.model_construct(sources=tuple(sources.values()),
+    new_sources = catalog.sources.with_additional(sources.values()) if lazy_sources else tuple(sources.values())
+    return Catalog.model_construct(sources=new_sources,
                                    records=tuple(records[k] for k in sorted(records))).check_graph_with(retained)
