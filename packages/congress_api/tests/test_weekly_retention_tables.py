@@ -290,3 +290,100 @@ def test_incremental_captions_transcripts_and_rejected_pages_tables(tmp_path: Pa
         assert len(retained_rejected) == 1
         assert retained_rejected[0]["offset"] == 250
         assert retained_rejected[0]["response"] == {"error": "bad gateway"}
+
+
+def test_sync_weekly_tables_cli_and_explorer_state_pack(tmp_path: Path):
+    import gzip
+    from committee_explorer.state import pack, unpack
+    from congress_api.cli import sync_weekly_tables
+
+    pipeline_dir = tmp_path / "pipeline-data"
+    inv_dir = pipeline_dir / "meeting-inventory"
+    yt_dir = pipeline_dir / "youtube"
+    data_dir = tmp_path / "data"
+    inv_dir.mkdir(parents=True)
+    yt_dir.mkdir(parents=True)
+    data_dir.mkdir(parents=True)
+
+    (inv_dir / "house.json.gz").write_bytes(
+        gzip.compress(json.dumps({"118555": {"title": "House Hearing", "checked": "2026-10-01"}}).encode())
+    )
+    (inv_dir / "senate.json.gz").write_bytes(
+        gzip.compress(
+            json.dumps(
+                {
+                    "judiciary.senate.gov": {
+                        "pages": {"https://www.judiciary.senate.gov/h1": {"title": "Senate Hearing", "checked": "2026-10-01"}}
+                    }
+                }
+            ).encode()
+        )
+    )
+    (inv_dir / "inventory.json.gz").write_bytes(
+        gzip.compress(
+            json.dumps(
+                {
+                    "youtube": {"vid01": {"kind": "asr", "checked": "2026-10-01"}},
+                    "caption_observations": {"youtube": {"vid01": {"checked_at": "2026-10-01", "outcome": "present"}}},
+                }
+            ).encode()
+        )
+    )
+    (pipeline_dir / "congress_meetings.jsonl.gz").write_bytes(
+        gzip.compress(
+            (
+                json.dumps(
+                    {
+                        "_url": "https://api.congress.gov/v3/committee-meeting/118/house/118555",
+                        "eventId": "118555",
+                        "congress": 118,
+                        "chamber": "House",
+                        "meetingStatus": "Scheduled",
+                    }
+                )
+                + "\n"
+            ).encode()
+        )
+    )
+    (data_dir / "gpo_hearings.csv").write_text(
+        "package_id,congress,chamber,committee_code,committee_name,event_id,hearing_dates,held_date,title\n"
+        "CHRG-118hhrg1,118,House,hsju00,Judiciary,118555,2024-05-01,2024-05-01,Oversight\n",
+        encoding="utf-8",
+    )
+    (yt_dir / "youtube_00.json").write_text(
+        json.dumps({"youtube_videos_@test": {"1": {"videoId": "vid01", "title": "Hearing Video"}}}),
+        encoding="utf-8",
+    )
+
+    ws_dir = tmp_path / "weekly-ws"
+    rc = sync_weekly_tables.main(
+        [
+            "--workspace",
+            str(ws_dir),
+            "--pipeline-data",
+            str(pipeline_dir),
+            "--data-dir",
+            str(data_dir),
+        ]
+    )
+    assert rc == 0
+
+    with WeeklyRetentionTables(ws_dir) as wt:
+        assert wt.latest_version("house_events") is not None
+        assert wt.latest_version("senate_events") is not None
+        assert wt.latest_version("captions") is not None
+        assert wt.latest_version("congress_meetings") is not None
+        assert wt.latest_version("gpo_hearings") is not None
+        assert wt.latest_version("youtube_videos") is not None
+
+    # Verify committee_explorer.state packs and unpacks export-pins.json alongside publication.json
+    state_in = tmp_path / "state-in"
+    state_packed = tmp_path / "state-packed"
+    state_out = tmp_path / "state-out"
+    state_in.mkdir()
+    (state_in / "ids.json").write_text("{}", encoding="utf-8")
+    (state_in / "publication.json").write_text('{"publication_id": "pub1"}', encoding="utf-8")
+    (state_in / "export-pins.json").write_text('{"meetings": {"id": "pin1"}}', encoding="utf-8")
+    pack(state_in, state_packed)
+    assert unpack(state_packed, state_out) is True
+    assert json.loads((state_out / "export-pins.json").read_text(encoding="utf-8")) == {"meetings": {"id": "pin1"}}

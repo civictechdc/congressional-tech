@@ -1071,7 +1071,11 @@ def _write_producer_parquet(table, path, *, row_group_size=PRODUCER_PARQUET_ROW_
     """Write producer Parquet inputs with bounded row groups so zero-copy Arrow slices stay within max_batch_bytes."""
     physical = native_storage_schema(table.schema)
     stored = table if physical.equals(table.schema, check_metadata=True) else table.cast(physical, safe=True)
-    pq.write_table(stored, path, compression='zstd', row_group_size=row_group_size)
+    effective_rg = row_group_size
+    if stored.num_rows > 1 and stored.nbytes > 1_500_000:
+        avg_row_bytes = max(1, stored.nbytes // stored.num_rows)
+        effective_rg = max(1, min(row_group_size, 1_500_000 // avg_row_bytes))
+    pq.write_table(stored, path, compression='zstd', row_group_size=effective_rg)
 
 
 def producer_input_entry(request_path):

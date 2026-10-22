@@ -181,6 +181,23 @@ jobs:
             --recordings "$DATA_DIR/meeting_recordings_found.csv" \
             --state-dir pipeline-data/meeting-inventory --output-dir "$DATA_DIR"
 
+      - name: Sync weekly retention tables into DocSpec workspace when configured
+        if: ${{ !cancelled() && vars.DOCSPEC_RUNTIME_ARTIFACT != '' && secrets.DOCSPEC_ENGINE_CREDENTIALS != '' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: "174055408ff1560e60601c4d12c561c4"
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+        run: |
+          python .github/scripts/setup-native-runtime.py \
+            --directory "$RUNNER_TEMP/docspec-runtime" \
+            --output "$RUNNER_TEMP/native-runtime-check.json"
+          DOCSPEC_BINARY="$RUNNER_TEMP/docspec-runtime/docspec" \
+            python -m congress_api.cli.sync_weekly_tables \
+            --workspace "${DOCSPEC_RETENTION_WORKSPACE:-$RUNNER_TEMP/weekly-retention-docspec}" \
+            --pipeline-data pipeline-data \
+            --data-dir "$DATA_DIR" \
+            --channels-csv "$CHANNELS_CSV"
+
       - name: Save pipeline data snapshot
         # The readers save the last usable records and each failed check before
         # raising. Persist that evidence even when a later reader/inventory fails;

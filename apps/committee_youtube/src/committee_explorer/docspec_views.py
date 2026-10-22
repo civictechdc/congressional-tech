@@ -245,13 +245,8 @@ def build_browser_export_spec(
             {"column": col, "direction": direction, "nulls_first": False}
             for col, direction in BROWSER_TABLE_SORT_KEYS[table_name]
         ]
-        policy["parquet_profile"] = {
-            "compression": "zstd",
-            "row_group_rows": 2048,
-            "use_dictionary": True,
-            "write_statistics": True,
-            "bloom_filter_columns": list(BROWSER_TABLE_BLOOM_COLUMNS[table_name]),
-        }
+        policy["page_index_columns"] = list(BROWSER_TABLE_BLOOM_COLUMNS[table_name])
+        policy["row_group_rows"] = 256 if table_name == "sources" else 2048
     return {
         "dataset": source_pin["dataset"]["dataset"],
         "operation": operation,
@@ -392,6 +387,7 @@ class ExplorerDocSpecWorkspace:
         rows: Iterable[Mapping[str, Any]],
         *,
         operation: str | None = None,
+        replace_all: bool = False,
     ) -> dict[str, Any]:
         """Admit or incrementally update ``explorer_meeting_observations``."""
         table = build_observations_table(rows)
@@ -400,12 +396,13 @@ class ExplorerDocSpecWorkspace:
             "obs",
             f"{base['id'] if base else 'init'}-{table.num_rows}",
         )
-        if base is None:
+        if base is None or replace_all:
             return self.datasets.run_table(
                 table,
                 dataset=OBSERVATIONS_DATASET,
                 operation=op_id,
                 definition=COMMITTEE_EXPLORER_DEFINITION,
+                base=base["id"] if base else None,
             )
         return self.datasets.update_table(
             table,
@@ -482,23 +479,52 @@ class ExplorerDocSpecWorkspace:
                 base=base["id"] if base else None,
             )
         else:
+            import pyarrow.parquet as pq
+            import pyarrow.compute as pc
+            import tempfile
+
             source_path = Path(parquet_or_table).resolve()
-            digest = self.datasets.hash_input(source_path)["digest"]
-            admit_op = self._op_id(
-                f"admit-{dataset}",
-                f"{base['id'] if base else 'init'}-{digest}",
+            pf = pq.ParquetFile(source_path)
+            needs_rechunk = any(
+                pf.metadata.row_group(i).total_byte_size > 1_500_000 or pf.metadata.row_group(i).num_rows > 256
+                for i in range(pf.metadata.num_row_groups)
             )
-            run_req: dict[str, Any] = {
-                "dataset": dataset,
-                "operation": admit_op,
-                "definition": COMMITTEE_EXPLORER_DEFINITION,
-                "input": str(source_path),
-                "expected_digest": digest,
-                "sql": "SELECT * FROM input",
-            }
-            if base is not None:
-                run_req["base"] = base["id"]
-            source_pin = self.datasets.run(run_req)
+            tmp_rechunk: Path | None = None
+            try:
+                admit_path = source_path
+                if needs_rechunk:
+                    fd, tmp_name = tempfile.mkstemp(prefix=f".rechunk-{dataset}-", suffix=".parquet", dir=self.workspace)
+                    os.close(fd)
+                    tmp_rechunk = Path(tmp_name)
+                    with pq.ParquetWriter(tmp_rechunk, schema, compression="zstd") as writer:
+                        for batch in pf.iter_batches(batch_size=128):
+                            tbl = pa.Table.from_batches([batch], schema=schema)
+                            if "payload" in tbl.schema.names and tbl.nbytes > 2_000_000:
+                                idx = tbl.schema.get_field_index("payload")
+                                col = pc.utf8_slice_codeunits(tbl.column(idx), 0, 250_000)
+                                tbl = tbl.set_column(idx, tbl.schema.field(idx), col)
+                            rg = max(1, min(128, (1_500_000 * max(1, tbl.num_rows)) // max(1, tbl.nbytes)))
+                            writer.write_table(tbl, row_group_size=rg)
+                    admit_path = tmp_rechunk
+                digest = self.datasets.hash_input(admit_path)["digest"]
+                admit_op = self._op_id(
+                    f"admit-{dataset}",
+                    f"{base['id'] if base else 'init'}-{digest}",
+                )
+                run_req: dict[str, Any] = {
+                    "dataset": dataset,
+                    "operation": admit_op,
+                    "definition": COMMITTEE_EXPLORER_DEFINITION,
+                    "input": str(admit_path),
+                    "expected_digest": digest,
+                    "sql": "SELECT * FROM input",
+                }
+                if base is not None:
+                    run_req["base"] = base["id"]
+                source_pin = self.datasets.run(run_req)
+            finally:
+                if tmp_rechunk is not None:
+                    tmp_rechunk.unlink(missing_ok=True)
 
         current_export = self.datasets.try_latest_export(dataset, channel)
         expected = current_export["id"] if current_export is not None else None
@@ -565,6 +591,6 @@ class ExplorerDocSpecWorkspace:
         """Populate ``explorer_meeting_observations``, refresh views, and export all browser Parquet tables."""
         obs_rows = extract_meeting_observations(catalog)
         if obs_rows:
-            obs_pin = self.upsert_observations(obs_rows)
+            obs_pin = self.upsert_observations(obs_rows, replace_all=True)
             self.refresh_views(obs_pin)
         return self.export_browser_publication(stage_dir, channel=channel)

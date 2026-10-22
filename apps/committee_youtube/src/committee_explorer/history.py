@@ -15,14 +15,17 @@ import sqlite3
 import tempfile
 import zlib
 
+from typing import get_args
 from pydantic import TypeAdapter, ValidationError
 
 from committee_meeting import SCHEMA_VERSION
 from committee_meeting.catalog import DomainRecord, _references
 from committee_meeting.provenance import SourceRecord
+from committee_meeting.publication import SchemaVersion
 
 
 FORMAT_VERSION = "1"
+SUPPORTED_SCHEMA_VERSIONS = frozenset(get_args(SchemaVersion)) | {SCHEMA_VERSION}
 _RECORD = TypeAdapter(SourceRecord | DomainRecord)
 
 
@@ -49,10 +52,29 @@ def _initialize(connection):
 
 def _decode(payload):
     try:
-        return _RECORD.validate_json(zlib.decompress(payload))
-    except (ValidationError, zlib.error) as error:
-        detail = error.errors(include_input=False, include_url=False)[:10] if isinstance(error, ValidationError) else str(error)
-        raise ValueError(f"Invalid issue-history record: {detail}") from None
+        raw = zlib.decompress(payload)
+    except zlib.error as error:
+        raise ValueError(f"Invalid issue-history record: {error}") from None
+    try:
+        return _RECORD.validate_json(raw)
+    except ValidationError:
+        try:
+            import json
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                kind = data.get("kind")
+                if (
+                    kind == "appearance"
+                    and isinstance(data.get("affiliation"), dict)
+                    and data["affiliation"].get("organization") is None
+                ):
+                    data["affiliation"].pop("organization", None)
+                elif kind == "material_link" and data.get("extent") is None:
+                    data.pop("extent", None)
+            return _RECORD.validate_python(data)
+        except (ValidationError, ValueError) as error:
+            detail = error.errors(include_input=False, include_url=False)[:10] if isinstance(error, ValidationError) else str(error)
+            raise ValueError(f"Invalid issue-history record: {detail}") from None
 
 
 class IssueHistory(Mapping):
@@ -142,8 +164,11 @@ def load_history(state_dir, publication_id):
     history = IssueHistory(path)
     try:
         metadata = dict(history.connection.execute("SELECT key, value FROM metadata"))
-        expected = {"format_version": FORMAT_VERSION, "schema_version": SCHEMA_VERSION, "publication_id": publication_id}
-        if any(metadata.get(key) != value for key, value in expected.items()):
+        if (
+            metadata.get("format_version") != FORMAT_VERSION
+            or metadata.get("schema_version") not in SUPPORTED_SCHEMA_VERSIONS
+            or metadata.get("publication_id") != publication_id
+        ):
             raise ValueError("Issue history format, schema or publication ID does not match")
         if history.connection.execute("SELECT 1 FROM records WHERE payload IS NULL LIMIT 1").fetchone():
             raise ValueError("Issue history has incomplete records")

@@ -374,12 +374,28 @@ def house_event_to_row(event_id: str, record: Mapping[str, Any]) -> dict[str, An
 
 def senate_event_to_row(record_id: str, record: Mapping[str, Any]) -> dict[str, Any]:
     url = record.get("url") if isinstance(record, Mapping) else None
-    observed_at = record.get("observed_at") if isinstance(record, Mapping) else None
+    observed_at = (record.get("observed_at") or record.get("checked")) if isinstance(record, Mapping) else None
+    payload = canonical_json_str(record)
+    if len(payload) > 1_000_000 and isinstance(record, Mapping):
+        trimmed = dict(record)
+        if isinstance(trimmed.get("lines"), list):
+            trimmed["lines"] = [str(line)[:500] for line in trimmed["lines"][:500]]
+        if isinstance(trimmed.get("pages"), Mapping):
+            new_pages = {}
+            for page_url, page_val in trimmed["pages"].items():
+                if isinstance(page_val, Mapping) and isinstance(page_val.get("lines"), list) and len(page_val["lines"]) > 200:
+                    p_copy = dict(page_val)
+                    p_copy["lines"] = [str(line)[:300] for line in page_val["lines"][:200]]
+                    new_pages[page_url] = p_copy
+                else:
+                    new_pages[page_url] = page_val
+            trimmed["pages"] = new_pages
+        payload = canonical_json_str(trimmed)
     return {
         "record_id": str(record_id),
         "url": str(url) if url is not None else None,
         "observed_at": str(observed_at) if observed_at is not None else None,
-        "payload_json": canonical_json_str(record),
+        "payload_json": payload,
     }
 
 
@@ -517,7 +533,8 @@ class WeeklyRetentionTables:
         digest = sha256(sink.getvalue().to_pybytes()).hexdigest()[:16]
         base = self.latest_version(dataset)
         base_id = base["id"] if base is not None else "init"
-        raw = f"{prefix}-{dataset}-{base_id}-{digest}"
+        combined = sha256(f"{base_id}:{digest}".encode("utf-8")).hexdigest()[:24]
+        raw = f"{prefix}-{dataset}-{combined}"
         return "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in raw)[:64]
 
     def _upsert_batch(
@@ -606,7 +623,29 @@ class WeeklyRetentionTables:
         """Incrementally admit or update ``dataset`` in bounded chunks by primary key and ``UpdateMergeSpec``."""
         last_pin = self.latest_version(dataset)
         saw_chunk = False
-        for idx, chunk in enumerate(batched(rows, max(1, int(chunk_size)))):
+        max_rows = max(1, int(chunk_size))
+        max_chunk_bytes = 2_000_000
+        chunk: list[Mapping[str, Any]] = []
+        chunk_bytes = 0
+        idx = 0
+        for row in rows:
+            row_bytes = sum(len(v) if isinstance(v, (str, bytes)) else 16 for v in row.values())
+            if chunk and (len(chunk) >= max_rows or chunk_bytes + row_bytes > max_chunk_bytes):
+                saw_chunk = True
+                chunk_op = (f"{operation}-{idx}" if idx > 0 else operation) if operation else None
+                last_pin = self._upsert_batch(
+                    dataset,
+                    chunk,
+                    operation=chunk_op,
+                    deletions=deletions if idx == 0 else None,
+                    use_merge=use_merge,
+                )
+                idx += 1
+                chunk = []
+                chunk_bytes = 0
+            chunk.append(row)
+            chunk_bytes += row_bytes
+        if chunk:
             saw_chunk = True
             chunk_op = (f"{operation}-{idx}" if idx > 0 else operation) if operation else None
             last_pin = self._upsert_batch(
