@@ -1071,6 +1071,21 @@ def _write_producer_parquet(table, path, *, row_group_size=PRODUCER_PARQUET_ROW_
     """Write producer Parquet inputs with bounded row groups so zero-copy Arrow slices stay within max_batch_bytes."""
     physical = native_storage_schema(table.schema)
     stored = table if physical.equals(table.schema, check_metadata=True) else table.cast(physical, safe=True)
+    if stored.num_rows > 1 and stored.nbytes > 4_000_000:
+        with pq.ParquetWriter(path, physical, compression='zstd') as writer:
+            sub_rows = []
+            sub_bytes = 0
+            for row_dict in stored.to_pylist():
+                r_bytes = sum(len(v) if isinstance(v, (str, bytes)) else 32 for v in row_dict.values())
+                if sub_rows and (sub_bytes + r_bytes > 1_500_000 or len(sub_rows) >= row_group_size):
+                    writer.write_table(pa.Table.from_pylist(sub_rows, schema=physical), row_group_size=len(sub_rows))
+                    sub_rows = []
+                    sub_bytes = 0
+                sub_rows.append(row_dict)
+                sub_bytes += r_bytes
+            if sub_rows:
+                writer.write_table(pa.Table.from_pylist(sub_rows, schema=physical), row_group_size=len(sub_rows))
+        return
     effective_rg = row_group_size
     if stored.num_rows > 1 and stored.nbytes > 1_500_000:
         avg_row_bytes = max(1, stored.nbytes // stored.num_rows)

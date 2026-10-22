@@ -4,8 +4,9 @@ The source payload is the only JSON column: providers have different raw schemas
 Searches never read that column. Internal model objects are folded into the
 meeting, witness or material they describe, not published as navigation steps.
 """
+import gc
 import json
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from heapq import merge
 from itertools import batched
 from operator import attrgetter, itemgetter
@@ -63,22 +64,57 @@ SOURCE_ROW_GROUP = 512
 
 
 def sources_of(record):
+    import sys
+
     citations = list(record.get('provenance', {}).get('citations', []))
     citations += (record.get('resolution') or {}).get('provenance', {}).get('citations', [])
     for evidence in record.get('field_evidence', []):
         citations += evidence.get('selected', {}).get('citations', [])
         for alternative in evidence.get('alternatives', []):
             citations += alternative.get('provenance', {}).get('citations', [])
-    return {c['source']['id'] for c in citations}
+    return {sys.intern(c['source']['id']) for c in citations}
 
 
-def _write_table(rows, schema, path, *, row_group_size):
+_FILE_KEYS = ('url', 'label', 'role', 'media_type', 'version', 'published_at', 'sha256', 'saved_copy_sha256', 'saved_filename')
+
+
+def _write_table(rows, schema, path, *, row_group_size, prepare_row=None, clear_rows=True):
     """Convert one row group at a time instead of duplicating the full table."""
+    has_files = 'files' in schema.names
+    has_facts = 'facts' in schema.names
     with pq.ParquetWriter(path, schema, compression='snappy', write_statistics=True) as writer:
         # An empty table still needs the same empty row group as write_table.
         for start in range(0, max(1, len(rows)), row_group_size):
-            table = pa.Table.from_pylist(rows[start:start + row_group_size], schema=schema)
+            raw_chunk = rows[start:start + row_group_size]
+            chunk = [prepare_row(r) for r in raw_chunk] if prepare_row is not None else raw_chunk
+            for r in chunk:
+                if has_files:
+                    flist = r.get('files')
+                    if flist and isinstance(flist[0], tuple):
+                        r['files'] = [dict(zip(_FILE_KEYS, f)) if isinstance(f, tuple) else f for f in flist]
+                    elif not flist:
+                        r['files'] = []
+                if has_facts:
+                    fact_list = r.get('facts')
+                    if fact_list:
+                        r['facts'] = [
+                            {'label': k, 'value': v}
+                            for k, v in dict.fromkeys(
+                                (f[0], f[1]) if isinstance(f, tuple) else (f['label'], f['value'])
+                                for f in fact_list
+                            )
+                        ]
+                    else:
+                        r['facts'] = []
+            table = pa.Table.from_pylist(chunk, schema=schema)
             writer.write_table(table, row_group_size=row_group_size)
+            del table
+            if clear_rows:
+                for r in chunk:
+                    if isinstance(r, dict):
+                        r.clear()
+                if rows:
+                    rows[start:start + row_group_size] = [None] * len(raw_chunk)
 
 
 def _source_row(source):
@@ -97,7 +133,21 @@ def _write_sources(rows, stage):
     One file keeps the name sources.parquet; more are sources-1, -2, ... in ID
     order. Returns (path, row count) pairs.
     """
-    batches = (pa.Table.from_pylist(list(batch), schema=SOURCE_SCHEMA) for batch in batched(rows, SOURCE_ROW_GROUP))
+    def _batch_tables():
+        sub_rows = []
+        sub_bytes = 0
+        for row_dict in rows:
+            r_bytes = sum(len(v) if isinstance(v, str) else 32 for v in row_dict.values())
+            if sub_rows and (len(sub_rows) >= SOURCE_ROW_GROUP or sub_bytes + r_bytes > 3_500_000):
+                yield pa.Table.from_pylist(sub_rows, schema=SOURCE_SCHEMA)
+                sub_rows = []
+                sub_bytes = 0
+            sub_rows.append(row_dict)
+            sub_bytes += r_bytes
+        if sub_rows:
+            yield pa.Table.from_pylist(sub_rows, schema=SOURCE_SCHEMA)
+
+    batches = _batch_tables()
     pending = next(batches, None)
     if pending is None:  # An empty table still needs the same empty row group as write_table.
         pending = pa.Table.from_pylist([], schema=SOURCE_SCHEMA)
@@ -109,7 +159,7 @@ def _write_sources(rows, stage):
             # Close the file before a row group whose in-memory size would take
             # it past the target; written row groups are smaller in practice.
             while pending is not None and (not count or sink.tell() + pending.nbytes <= SOURCE_FILE_TARGET):
-                writer.write_table(pending, row_group_size=SOURCE_ROW_GROUP)
+                writer.write_table(pending, row_group_size=max(1, pending.num_rows))
                 count += pending.num_rows
                 pending = next(batches, None)
         files.append((path, count))
@@ -144,11 +194,78 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             yield _source_row(source)
     source_files = _write_sources(source_rows(), stage)
     rows = {kind: {} for kind in TABLES if kind != 'source_record'}
+    appearance_omitted = set(SCHEMA.names) - set(TABLE_SCHEMAS['appearance'].names)
+    issue_omitted = (set(SCHEMA.names) - set(TABLE_SCHEMAS['data_issue'].names)) - {'subject'}
     for row in query_rows:
-        rows[row['kind']][row['id']] = {**row, 'files': [], 'facts': [], 'meeting_ids': [],
-                                      'appearance_ids': [], 'source_ids': []}
+        rkind = row['kind']
+        if rkind == 'appearance':
+            populated = sorted(name for name in appearance_omitted if row.get(name) not in (None, '', [], {}))
+            if populated:
+                raise ValueError(f"appearance {row['id']} has populated fields outside its table schema: {populated}")
+            rows['appearance'][row['id']] = (
+                row['id'],
+                row.get('title'),
+                row.get('congress'),
+                row.get('chamber'),
+                row.get('date'),
+                row.get('meeting_id'),
+                tuple(row.get('committee_ids') or ()),
+                tuple(row.get('roles') or ()),
+                None,
+                None,
+                None,
+                None,
+                None,
+                (),
+                (),
+            )
+            continue
+        if rkind == 'data_issue':
+            populated = sorted(name for name in issue_omitted if row.get(name) not in (None, '', [], {}))
+            if populated:
+                raise ValueError(f"data_issue {row['id']} has populated fields outside its table schema: {populated}")
+            subj = row.get('subject')
+            subj_kind = row.get('subject_kind') or (subj.get('kind') if isinstance(subj, dict) else None)
+            subj_id = row.get('subject_id') or (subj.get('id') if isinstance(subj, dict) else None)
+            rows['data_issue'][row['id']] = [
+                row['id'],
+                row.get('title'),
+                row.get('congress'),
+                row.get('chamber'),
+                row.get('date'),
+                row.get('status'),
+                row.get('meeting_id'),
+                row.get('category'),
+                row.get('selection'),
+                tuple(row.get('committee_ids') or ()),
+                subj_kind,
+                subj_id,
+                None,
+                None,
+                (),
+                (),
+            ]
+            continue
+        row = {k: v for k, v in row.items() if v is not None and k not in ('issue_count', 'committee_types')}
+        if rkind != 'committee_term':
+            row.pop('committee_level', None)
+        rows[rkind][row['id']] = row
+    all_issues_have_subject = bool(rows['data_issue']) and all(
+        r[10] is not None and r[11] is not None for r in rows['data_issue'].values()
+    )
+    track_all_owners = not all_issues_have_subject
+    needed_owners = (
+        None
+        if track_all_owners
+        else {
+            (r[10], r[11])
+            for r in rows['data_issue'].values()
+            if r[10] not in rows
+        }
+    )
     versions, formats, links, occurrences, subjects = {}, defaultdict(list), [], defaultdict(list), {}
     context_records, meeting_subjects, conflict_facts, owners = {}, [], {}, {}
+    amendment_groups = defaultdict(list)
     committee_codes, committee_parents = {}, {}
     for record in records:
         kind, id = record['kind'], record['id']
@@ -161,25 +278,90 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 value = value[int(key)] if isinstance(value, list) else value.get(key) if isinstance(value, dict) else None
             def display(value):
                 return value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
-            facts = [{'label': 'Selected value', 'value': display(value)}]
-            facts += [{'label': f'Alternative {i + 1}', 'value': display(alt['value'])} for i, alt in enumerate(field['alternatives'])]
-            if field.get('selection_reason'): facts.append({'label': 'Selection reason', 'value': field['selection_reason']})
+            facts = [('Selected value', display(value))]
+            facts += [(f'Alternative {i + 1}', display(alt['value'])) for i, alt in enumerate(field['alternatives'])]
+            if field.get('selection_reason'): facts.append(('Selection reason', field['selection_reason']))
             conflict_facts[(kind, id, field['path'])] = facts
         if kind not in rows:
-            owner = record.get('material') or record.get('version') or record.get('meeting') or (record.get('subject') if kind == 'assessment' else None)
-            if owner: owners[(kind, id)] = (owner['kind'], owner['id'])
+            if track_all_owners or (kind, id) in needed_owners:
+                owner = record.get('material') or record.get('version') or record.get('meeting') or (record.get('subject') if kind == 'assessment' else None)
+                if owner:
+                    owner_pair = (owner['kind'], owner['id'])
+                    owners[(kind, id)] = owner_pair
+                    if owner_pair[0] == 'material_version' and owner_pair[1] in versions:
+                        owners[owner_pair] = ('material', versions[owner_pair[1]][0])
+                    elif needed_owners is not None and owner_pair[0] not in rows:
+                        needed_owners.add(owner_pair)
         # Every meeting-owned subject uses its explicit meeting reference.
-        if record.get('meeting'):
+        if (kind != 'appearance' or id not in rows['appearance']) and record.get('meeting'):
             subjects[id] = record['meeting']['id']
-        if kind in ('legislative_item', 'amendment', 'vote', 'amendment_group', 'person'):
+        if kind == 'legislative_item':
+            context_records[id] = {
+                'kind': 'legislative_item',
+                'item_type': record.get('item_type'),
+                'designation': record.get('designation'),
+                'description': record.get('description'),
+                'label': record.get('label'),
+            }
+        elif kind == 'person':
+            context_records[id] = {
+                'kind': 'person',
+                'name': record.get('name'),
+                'identifiers': record.get('identifiers', ()),
+            }
+        elif kind == 'amendment_group':
+            for member in record.get('members', ()):
+                amendment_groups[member['id']].append(record['label'])
+        elif kind in ('amendment', 'vote'):
             context_records[id] = record
-        if kind == 'meeting_subject':
-            meeting_subjects.append(record)
+        elif kind == 'meeting_subject':
+            item = context_records.get(record['item']['id'])
+            if item is not None:
+                row = rows['meeting'].get(record['meeting']['id'])
+                if row is not None:
+                    row.setdefault('facts', []).append(('Related ' + item['item_type'], item['designation']))
+                    row.setdefault('source_ids', []).extend(sources_of(record))
+            else:
+                meeting_subjects.append(record)
         if kind in rows and id in rows[kind]:
             row = rows[kind][id]
             provenance = record.get('provenance', {})
-            row['source_ids'] = sorted(sources_of(record))
-            row['explanation'] = provenance.get('explanation')
+            if kind == 'appearance':
+                affiliation = record.get('affiliation') or {}
+                pos = affiliation.get('position')
+                org = affiliation.get('organization_name')
+                part = record.get('participation')
+                s_text = ' '.join(str(v) for v in (row[1], pos, org) if v)
+                f_list = []
+                for key in ('on_behalf_of', 'location'):
+                    if affiliation.get(key):
+                        f_list.append((key.replace('_', ' '), affiliation[key]))
+                rows['appearance'][id] = (
+                    row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7],
+                    pos, org, part, s_text, provenance.get('explanation'),
+                    tuple(f_list), tuple(sorted(sources_of(record))),
+                )
+            elif kind == 'data_issue':
+                row[12] = record.get('impact')
+                row[13] = record.get('explanation')
+                row[10] = record['subject']['kind']
+                row[11] = record['subject']['id']
+                f_list = []
+                for key in ('expected', 'detected_at', 'last_checked_at', 'field_path'):
+                    value = record.get(key)
+                    if isinstance(value, dict): value = value.get('date')
+                    if value: f_list.append((key.replace('_', ' '), value))
+                if record.get('resolution'):
+                    f_list.append(('Resolution', record['resolution']['explanation']))
+                row[14] = tuple(f_list)
+                row[15] = tuple(sorted(sources_of(record)))
+            else:
+                sids = sources_of(record)
+                if sids:
+                    prev_sids = row.get('source_ids')
+                    row['source_ids'] = [*prev_sids, *sids] if prev_sids else sorted(sids)
+                if provenance.get('explanation') is not None:
+                    row['explanation'] = provenance['explanation']
             if kind == 'committee_term':
                 parent = (record.get('parent') or {}).get('id')
                 committee_type = record.get('committee_type')
@@ -188,9 +370,9 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 row['parent_committee_id'] = parent
                 for key, label in (('start', 'Active from'), ('end', 'Active through')):
                     value = (record.get('active') or {}).get(key)
-                    if value: row['facts'].append({'label': label, 'value': value})
+                    if value: row.setdefault('facts', []).append((label, value))
                 if record.get('website'):
-                    row['facts'].append({'label': 'Official website or archive', 'value': record['website']})
+                    row.setdefault('facts', []).append(('Official website or archive', record['website']))
                 stored_level = record.get('committee_level')
                 if stored_level not in (None, 'unknown'):
                     row['committee_level'] = stored_level
@@ -206,12 +388,12 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                         if row['committee_level'] == 'unknown': row['committee_level'] = level
                         if parent_code: committee_parents[id] = (row.get('congress'), parent_code.lower())
                         if parent:
-                            row['facts'].append({'label': 'Committee hierarchy', 'value': 'The source identifies a parent committee.'})
+                            row.setdefault('facts', []).append(('Committee hierarchy', 'The source identifies a parent committee.'))
                         elif row['committee_level'] == level:
-                            row['facts'].append({'label': 'Committee hierarchy', 'value': f'Congress.gov systemCode {code}: final two digits 00 identify a full committee; other digits identify a subcommittee.'})
-                            row['facts'].append({'label': 'Hierarchy definition', 'value': HIERARCHY_SOURCE})
+                            row.setdefault('facts', []).append(('Committee hierarchy', f'Congress.gov systemCode {code}: final two digits 00 identify a full committee; other digits identify a subcommittee.'))
+                            row.setdefault('facts', []).append(('Hierarchy definition', HIERARCHY_SOURCE))
                 elif parent:
-                    row['facts'].append({'label': 'Committee hierarchy', 'value': 'The source identifies a parent committee.'})
+                    row.setdefault('facts', []).append(('Committee hierarchy', 'The source identifies a parent committee.'))
             if kind == 'meeting':
                 row['access'] = record.get('access') if record.get('access') not in (None, 'unknown') else 'unknown'
                 start = record.get('scheduled_start') or {}
@@ -221,60 +403,105 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 if assembled_type not in (None, 'unknown', 'meeting'):
                     row['type'] = assembled_type
                 if record.get('source_type'):
-                    row['facts'].append({'label': 'Source type', 'value': record['source_type']})
+                    row.setdefault('facts', []).append(('Source type', record['source_type']))
                 for field in record.get('field_evidence') or []:
                     if field.get('path') == '/meeting_type' and field.get('selection_reason'):
-                        row['facts'].append({'label': 'Type based on', 'value': field['selection_reason']})
+                        row.setdefault('facts', []).append(('Type based on', field['selection_reason']))
             if kind == 'material':
                 dates = record.get('proceeding_dates') or []
                 if not row.get('date') and dates:
                     row['date'] = min(d['date'] for d in dates)
                 if record.get('document_type'): row['document_type'] = record['document_type']
-                if record.get('source_document_groups'): row['source_document_groups'] = list(record['source_document_groups'])
-                for file in record.get('files') or []:
+                if record.get('source_document_groups'): row['source_document_groups'] = tuple(record['source_document_groups'])
+                files_list = []
+                for file in record.get('files') or ():
                     if not file.get('url'): continue
                     version = file.get('version_label')
                     if version and version.rstrip('.') in PLACEHOLDER_LABELS: version = None
                     published_at = file.get('published_at') or {}
                     if row.get('type') == 'recording' and not row.get('date') and published_at.get('date'):
                         row['date'] = published_at['date']
-                    row['files'].append({'url': file['url'], 'label': file.get('format_label') or file.get('media_type') or file.get('role'),
-                                         'role': file.get('role'), 'media_type': file.get('media_type'), 'version': version,
-                                         'published_at': published_at.get('date'), 'sha256': file.get('sha256'),
-                                         'saved_copy_sha256': file.get('saved_copy_sha256'), 'saved_filename': file.get('saved_filename')})
+                    files_list.append((file['url'], file.get('format_label') or file.get('media_type') or file.get('role'),
+                                       file.get('role'), file.get('media_type'), version,
+                                       published_at.get('date'), file.get('sha256'),
+                                       file.get('saved_copy_sha256'), file.get('saved_filename')))
+                if files_list:
+                    row['files'] = tuple(files_list)
                 if not row.get('title') or row['title'] == '(Untitled source record)':
                     row['title'] = (row.get('category') if row.get('category') not in (None, 'unknown') else row.get('type') or 'Document').replace('_', ' ').capitalize()
-            if kind == 'appearance':
-                affiliation = record.get('affiliation') or {}
-                row.update(position=affiliation.get('position'), organization=affiliation.get('organization_name'),
-                           participation=record.get('participation'))
-                row['search_text'] = ' '.join(str(v) for v in (row['title'], row['position'], row['organization']) if v)
-                for key in ('on_behalf_of', 'location'):
-                    if affiliation.get(key): row['facts'].append({'label': key.replace('_', ' '), 'value': affiliation[key]})
-            elif kind == 'data_issue':
-                row.update(severity=record.get('impact'), explanation=record.get('explanation'), subject_kind=record['subject']['kind'], subject_id=record['subject']['id'])
-                for key in ('expected', 'detected_at', 'last_checked_at', 'field_path'):
-                    value = record.get(key)
-                    if isinstance(value, dict): value = value.get('date')
-                    if value: row['facts'].append({'label': key.replace('_', ' '), 'value': value})
-                if record.get('resolution'):
-                    row['facts'].append({'label': 'Resolution', 'value': record['resolution']['explanation']})
-            elif kind == 'material':
                 for k in ('medium', 'coverage', 'production'):
                     value = record.get('details', {}).get(k)
-                    if value and value != 'unknown': row['facts'].append({'label': k, 'value': value})
+                    if value and value != 'unknown': row.setdefault('facts', []).append((k, value))
         elif kind == 'material_version':
-            versions[id] = (record['material']['id'], record.get('label'), record.get('published_at'), sources_of(record))
+            versions[id] = [record['material']['id'], record.get('label'), record.get('published_at'), tuple(sources_of(record))]
         elif kind == 'representation':
-            # Field disagreements and ownership were handled above. Retain
-            # only the file fields and citation IDs needed to build links.
-            file_info = {key: record[key] for key in ('locations', 'format_label', 'media_type', 'sha256', 'saved_copy_sha256', 'saved_filename') if key in record}
-            file_info['source_ids'] = sources_of(record)
-            formats[record['version']['id']].append(file_info)
+            vid = record['version']['id']
+            v_entry = versions.get(vid)
+            if v_entry is not None and v_entry[0] in rows['material']:
+                material_id, label, published, version_sources = v_entry
+                row = rows['material'][material_id]
+                if row.get('type') == 'recording' and not row.get('date') and published:
+                    row['date'] = published['date']
+                if label and label.rstrip('.') in PLACEHOLDER_LABELS:
+                    label = None
+                sids_list = row.setdefault('source_ids', [])
+                if version_sources:
+                    sids_list.extend(version_sources)
+                    v_entry[3] = ()
+                sids_list.extend(sources_of(record))
+                if not isinstance(row.get('files'), tuple):
+                    for location in record.get('locations', []):
+                        row.setdefault('files', []).append((location['url'], record.get('format_label') or record.get('media_type') or location['role'],
+                                                            location['role'], record.get('media_type'), label,
+                                                            (published or {}).get('date'), record.get('sha256'),
+                                                            record.get('saved_copy_sha256'), record.get('saved_filename')))
+            else:
+                file_info = {key: record[key] for key in ('locations', 'format_label', 'media_type', 'sha256', 'saved_copy_sha256', 'saved_filename') if key in record}
+                file_info['source_ids'] = sources_of(record)
+                formats[vid].append(file_info)
         elif kind == 'material_link':
-            links.append((record['material']['id'], record['subject']['kind'], record['subject']['id'], sources_of(record)))
+            if versions and not formats:
+                versions.clear()
+            mat_id = record['material']['id']
+            subj_kind = record['subject']['kind']
+            subj_id = record['subject']['id']
+            link_sources = tuple(sources_of(record))
+            mat_row = rows['material'].get(mat_id)
+            if mat_row is not None and (
+                subj_kind in ('meeting', 'committee_term')
+                or (subj_kind == 'appearance' and subj_id in rows['appearance'])
+            ):
+                meeting_id = (
+                    subj_id if subj_kind == 'meeting'
+                    else (rows['appearance'][subj_id][5] if isinstance(rows['appearance'][subj_id], tuple) else rows['appearance'][subj_id].get('meeting_id')) if subj_kind == 'appearance'
+                    else None
+                )
+                if meeting_id: mat_row.setdefault('meeting_ids', []).append(meeting_id)
+                if subj_kind == 'committee_term': mat_row['committee_ids'] = (*(mat_row.get('committee_ids') or ()), subj_id)
+                if subj_kind == 'appearance': mat_row.setdefault('appearance_ids', []).append(subj_id)
+                if link_sources: mat_row.setdefault('source_ids', []).extend(link_sources)
+            else:
+                links.append((mat_id, subj_kind, subj_id, link_sources))
         elif kind == 'occurrence':
-            occurrences[record['meeting']['id']].append(record)
+            start = record.get('scheduled_start') or {}
+            loc_facts = tuple(
+                (key.replace('_', ' '), val)
+                for key, val in (record.get('location') or {}).items()
+                if isinstance(val, str) and val
+            )
+            access_reasons = tuple(
+                f['selection_reason']
+                for f in (record.get('field_evidence') or ())
+                if f.get('path') == '/access' and f.get('selection_reason')
+            )
+            occurrences[record['meeting']['id']].append((
+                start.get('date', '9999'),
+                start.get('original') or start.get('date'),
+                loc_facts,
+                record.get('access'),
+                access_reasons,
+                tuple(sources_of(record)),
+            ))
     for id, entries in formats.items():
         if id not in versions: continue
         material_id, label, published, version_sources = versions[id]
@@ -285,151 +512,218 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         # The routine placeholder is an implementation detail, not an edition label.
         if label and label.rstrip('.') in PLACEHOLDER_LABELS: label = None
         # Assembled materials already carry these files, including saved copies.
-        embedded = bool(row['files'])
+        embedded = isinstance(row.get('files'), tuple)
+        sids_list = row.setdefault('source_ids', [])
         for record in entries:
-            row['source_ids'].extend(version_sources | record['source_ids'])
+            sids_list.extend(version_sources)
+            sids_list.extend(record['source_ids'])
             if embedded: continue
             for location in record.get('locations', []):
-                row['files'].append({'url': location['url'], 'label': record.get('format_label') or record.get('media_type') or location['role'],
-                                     'role': location['role'], 'media_type': record.get('media_type'), 'version': label,
-                                     'published_at': (published or {}).get('date'), 'sha256': record.get('sha256'),
-                                     'saved_copy_sha256': record.get('saved_copy_sha256'), 'saved_filename': record.get('saved_filename')})
-    del versions, formats
-    amendment_groups = defaultdict(list)
-    for record in context_records.values():
-        if record['kind'] == 'amendment_group':
-            for member in record['members']: amendment_groups[member['id']].append(record['label'])
+                row.setdefault('files', []).append((location['url'], record.get('format_label') or record.get('media_type') or location['role'],
+                                                    location['role'], record.get('media_type'), label,
+                                                    (published or {}).get('date'), record.get('sha256'),
+                                                    record.get('saved_copy_sha256'), record.get('saved_filename')))
+    del versions, formats, needed_owners
     attached_actions = set()
     for material_id, kind, id, source_ids in links:
         row = rows['material'].get(material_id)
         if row is None: continue
-        meeting_id = id if kind == 'meeting' else subjects.get(id)
-        if meeting_id: row['meeting_ids'].append(meeting_id)
-        if kind == 'committee_term': row['committee_ids'] = [*(row.get('committee_ids') or []), id]
-        if kind == 'appearance': row['appearance_ids'].append(id)
-        row['source_ids'].extend(source_ids)
+        meeting_id = (
+            id if kind == 'meeting'
+            else (rows['appearance'][id][5] if isinstance(rows['appearance'][id], tuple) else rows['appearance'][id].get('meeting_id')) if kind == 'appearance' and id in rows['appearance']
+            else subjects.get(id)
+        )
+        if meeting_id: row.setdefault('meeting_ids', []).append(meeting_id)
+        if kind == 'committee_term': row['committee_ids'] = (*(row.get('committee_ids') or ()), id)
+        if kind == 'appearance': row.setdefault('appearance_ids', []).append(id)
+        if source_ids: row.setdefault('source_ids', []).extend(source_ids)
         if kind in ('amendment', 'vote') and id in context_records:
             attached_actions.add(id)
             action = context_records[id]
             for key in ('number', 'question', 'description', 'disposition', 'outcome', 'method'):
                 value = action.get(key)
                 if value and value != 'unknown' and value != row['title']:
-                    row['facts'].append({'label': f'{kind.capitalize()} {key}', 'value': value})
+                    row.setdefault('facts', []).append((f'{kind.capitalize()} {key}', value))
             target = context_records.get((action.get('target') or action.get('subject') or {}).get('id'), {})
             title = target.get('designation') or target.get('description') or target.get('label')
-            if title: row['facts'].append({'label': 'Regarding', 'value': title})
+            if title: row.setdefault('facts', []).append(('Regarding', title))
             for sponsor in action.get('sponsors', []):
                 person = context_records.get((sponsor.get('person') or {}).get('id'), {})
                 name = sponsor.get('name') or person.get('name')
-                if name: row['facts'].append({'label': 'Sponsor', 'value': name})
+                if name: row.setdefault('facts', []).append(('Sponsor', name))
                 else:
                     for identifier in person.get('identifiers', []):
-                        if identifier['scheme'] == 'bioguide': row['facts'].append({'label': 'Sponsor Bioguide ID', 'value': identifier['value']})
-            for label in amendment_groups[id]: row['facts'].append({'label': 'En bloc group', 'value': label})
+                        if identifier['scheme'] == 'bioguide': row.setdefault('facts', []).append(('Sponsor Bioguide ID', identifier['value']))
+            for label in amendment_groups[id]: row.setdefault('facts', []).append(('En bloc group', label))
             for label, value in (action.get('tally') or {}).items():
-                if value is not None: row['facts'].append({'label': label.replace('_', ' '), 'value': str(value)})
+                if value is not None: row.setdefault('facts', []).append((label.replace('_', ' '), str(value)))
     for record in meeting_subjects:
         row = rows['meeting'].get(record['meeting']['id'])
         item = context_records.get(record['item']['id'])
         if row is not None and item:
-            row['facts'].append({'label': 'Related ' + item['item_type'], 'value': item['designation']})
+            row.setdefault('facts', []).append(('Related ' + item['item_type'], item['designation']))
             # The agenda association cites this meeting's source. A shared bill
             # also has citations from other meetings; those do not describe this one.
-            row['source_ids'].extend(sources_of(record))
+            row.setdefault('source_ids', []).extend(sources_of(record))
     for id, action in context_records.items():
         if action['kind'] not in ('amendment', 'vote') or id in attached_actions: continue
         row = rows['meeting'].get(action['meeting']['id'])
         if row is not None:
             label = f"{action['kind'].capitalize()} {action.get('number') or ''}".strip()
-            row['facts'].append({'label': label, 'value': (action.get('description') or action.get('question') or 'Listed action') + ' (no attached file)'})
-            row['source_ids'].extend(sources_of(action))
+            row.setdefault('facts', []).append((label, (action.get('description') or action.get('question') or 'Listed action') + ' (no attached file)'))
+            row.setdefault('source_ids', []).extend(sources_of(action))
     del links, context_records, meeting_subjects, subjects, amendment_groups, attached_actions
     for id, entries in occurrences.items():
         row = rows['meeting'].get(id)
         if row is None: continue
-        for record in sorted(entries, key=lambda r: (r.get('scheduled_start') or {}).get('date', '9999')):
-            row['source_ids'].extend(sources_of(record))
-            start = record.get('scheduled_start') or {}
-            if start and not row.get('scheduled_at'):
-                row['scheduled_at'] = start.get('original') or start.get('date')
-            location = record.get('location') or {}
-            for key, value in location.items():
-                if isinstance(value, str) and value: row['facts'].append({'label': key.replace('_', ' '), 'value': value})
-            if row['access'] == 'unknown' and record.get('access') not in (None, 'unknown'):
-                row['access'] = record['access']
-            for field in record.get('field_evidence') or []:
-                if field.get('path') == '/access' and field.get('selection_reason') and row.get('access') not in (None, 'unknown'):
-                    if not any(fact['label'] == 'Access based on' for fact in row['facts']):
-                        row['facts'].append({'label': 'Access based on', 'value': field['selection_reason']})
+        for _, sched_at, loc_facts, occ_access, access_reasons, occ_sources in sorted(entries, key=itemgetter(0)):
+            if occ_sources:
+                row.setdefault('source_ids', []).extend(occ_sources)
+            if sched_at and not row.get('scheduled_at'):
+                row['scheduled_at'] = sched_at
+            if loc_facts:
+                row.setdefault('facts', []).extend(loc_facts)
+            if row.get('access') in (None, 'unknown') and occ_access not in (None, 'unknown'):
+                row['access'] = occ_access
+            if row.get('access') not in (None, 'unknown'):
+                for reason in access_reasons:
+                    if not any((fact[0] if isinstance(fact, tuple) else fact['label']) == 'Access based on' for fact in (row.get('facts') or ())):
+                        row.setdefault('facts', []).append(('Access based on', reason))
     del occurrences
     for row in rows['material'].values():
-        if len(set(row['meeting_ids'])) == 1: row['meeting_id'] = row['meeting_ids'][0]
-        meetings = [rows['meeting'][id] for id in row['meeting_ids'] if id in rows['meeting']]
-        if meetings:
-            active = [r for r in meetings if r.get('status') not in ('canceled', 'postponed', 'not_held')]
-            first = min(active or meetings, key=lambda r: r.get('scheduled_at') or r.get('date') or '9999')
-            row['scheduled_at'] = first.get('scheduled_at')
-            row['meeting_status'] = first.get('status')
-        if row['type'] == 'recording':
+        m_ids = row.get('meeting_ids')
+        if m_ids:
+            if len(set(m_ids)) == 1:
+                row['meeting_id'] = m_ids[0]
+            meetings = [rows['meeting'][id] for id in m_ids if id in rows['meeting']]
+            if meetings:
+                active = [r for r in meetings if r.get('status') not in ('canceled', 'postponed', 'not_held')]
+                first = min(active or meetings, key=lambda r: r.get('scheduled_at') or r.get('date') or '9999')
+                if first.get('scheduled_at') is not None:
+                    row['scheduled_at'] = first['scheduled_at']
+                if first.get('status') is not None:
+                    row['meeting_status'] = first['status']
+        if row.get('type') == 'recording':
+            def _f_url(file):
+                return file[0] if isinstance(file, tuple) else file['url']
             def preference(file):
-                url = urlsplit(file['url'])
+                f_url = _f_url(file)
+                url = urlsplit(f_url)
                 return (0 if url.hostname in ('www.senate.gov', 'senate.gov') and url.path.startswith('/isvp') else
-                        1 if url.hostname in ('www.youtube.com', 'youtube.com', 'youtu.be') else 2, file['url'])
-            candidates = sorted((f for f in row['files'] if not _event_page(f['url'])), key=preference)
-            row['recording_url'] = candidates[0]['url'] if candidates else None
-    for entries in rows.values():
-        for row in entries.values(): row['issue_count'] = 0
+                        1 if url.hostname in ('www.youtube.com', 'youtube.com', 'youtu.be') else 2, f_url)
+            candidates = sorted((f for f in (row.get('files') or ()) if not _event_page(_f_url(f))), key=preference)
+            if candidates:
+                row['recording_url'] = _f_url(candidates[0])
+    issue_counts = Counter()
     for issue in rows['data_issue'].values():
-        field = next((f['value'] for f in issue['facts'] if f['label'] == 'field path'), None)
-        subject = (issue['subject_kind'], issue['subject_id'])
-        disagreement = conflict_facts.get((*subject, field), [])
-        issue['facts'].extend(disagreement)
-        compared = [f['value'] for f in disagreement if f['label'] == 'Selected value' or f['label'].startswith('Alternative ')]
-        if issue.get('status') == 'open' and subject[0] == 'material_version' and field == '/label' and collector_placeholder_conflict(compared):
-            issue['status'] = 'dismissed'
-            issue['title'] = 'Collector placeholder labels differed'
-            issue['explanation'] = 'Collectors assigned different internal edition labels. This is not evidence of a disagreement in source content.'
-            issue['facts'].append({'label': 'Display correction', 'value': 'Automatically dismissed by the Parquet exporter; original values retained below.'})
+        facts = issue[14]
+        field = next((f[1] for f in facts if f[0] == 'field path'), None)
+        subject = (issue[10], issue[11])
+        disagreement = conflict_facts.get((*subject, field), ())
+        if disagreement:
+            facts = (*facts, *disagreement)
+        compared = [f[1] for f in disagreement if f[0] == 'Selected value' or f[0].startswith('Alternative ')]
+        if issue[5] == 'open' and subject[0] == 'material_version' and field == '/label' and collector_placeholder_conflict(compared):
+            issue[5] = 'dismissed'
+            issue[1] = 'Collector placeholder labels differed'
+            issue[13] = 'Collectors assigned different internal edition labels. This is not evidence of a disagreement in source content.'
+            facts = (*facts, ('Display correction', 'Automatically dismissed by the Parquet exporter; original values retained below.'))
+        issue[14] = facts
         visited = set()
         while subject in owners and subject not in visited:
             visited.add(subject)
             subject = owners[subject]
-        owner = rows.get(subject[0], {}).get(subject[1])
-        if owner is not None:
-            issue['subject_kind'], issue['subject_id'] = subject
-            if issue.get('status') == 'open': owner['issue_count'] += 1
+        if subject[0] in rows and subject[1] in rows[subject[0]]:
+            issue[10], issue[11] = subject
+            if issue[5] == 'open':
+                issue_counts[subject] += 1
     del conflict_facts, owners
+    gc.collect()
+    committee_rows = rows['committee_term']
     for id, parent_code in committee_parents.items():
-        row = rows['committee_term'][id]
-        if not row['parent_committee_id']: row['parent_committee_id'] = committee_codes.get(parent_code)
+        row = committee_rows[id]
+        if not row.get('parent_committee_id'): row['parent_committee_id'] = committee_codes.get(parent_code)
     def effective_committee_type(id, seen=()):
         if id in seen: return 'unknown'
-        committee = rows['committee_term'].get(id, {})
+        committee = committee_rows.get(id, {})
         native_type = committee.get('committee_type')
         if native_type not in (None, 'unknown', 'subcommittee'):
             return native_type
         if committee.get('committee_level') == 'subcommittee':
             return effective_committee_type(committee.get('parent_committee_id'), (*seen, id))
         return 'unknown'
-    for kind, entries in rows.items():
-        values = sorted(entries.values(), key=lambda r: (r.get('congress') or 0, r['id']))
-        for row in values:
-            row['committee_types'] = sorted({effective_committee_type(id) for id in row.get('committee_ids') or []}) or ['unknown']
+    written_details = {}
+    write_order = ('material', 'data_issue', 'appearance', 'meeting', 'committee_term')
+    for kind in [k for k in write_order if k in rows] + [k for k in list(rows.keys()) if k not in write_order]:
+        entries = rows.pop(kind)
+        kind_lists = tuple(k for k in LISTS if k in TABLE_COLUMNS[kind] and k != 'committee_types')
+        if kind == 'appearance':
+            values = sorted(entries.values(), key=lambda t: (t[2] or 0, t[0]))
+            entries.clear()
+            def _prep_appearance(t):
+                cids = t[6]
+                levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
+                return {
+                    'id': t[0], 'kind': 'appearance', 'title': t[1], 'congress': t[2],
+                    'chamber': t[3], 'date': t[4], 'meeting_id': t[5],
+                    'committee_ids': sorted(set(cids)), 'roles': sorted(set(t[7])),
+                    'position': t[8], 'organization': t[9], 'participation': t[10],
+                    'search_text': t[11], 'explanation': t[12], 'facts': t[13],
+                    'source_ids': sorted(set(t[14])), 'issue_count': issue_counts[('appearance', t[0])],
+                    'committee_types': sorted({effective_committee_type(cid) for cid in cids}) or ['unknown'],
+                    'committee_level': 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown',
+                }
+            prepare_fn = _prep_appearance
+        elif kind == 'data_issue':
+            values = sorted(entries.values(), key=lambda t: (t[2] or 0, t[0]))
+            entries.clear()
+            def _prep_issue(t):
+                cids = t[9]
+                levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
+                return {
+                    'id': t[0], 'kind': 'data_issue', 'title': t[1], 'congress': t[2],
+                    'chamber': t[3], 'date': t[4], 'status': t[5], 'meeting_id': t[6],
+                    'category': t[7], 'selection': t[8], 'committee_ids': sorted(set(cids)),
+                    'subject_kind': t[10], 'subject_id': t[11], 'severity': t[12],
+                    'explanation': t[13], 'facts': t[14], 'source_ids': sorted(set(t[15])),
+                    'issue_count': issue_counts[('data_issue', t[0])],
+                    'committee_types': sorted({effective_committee_type(cid) for cid in cids}) or ['unknown'],
+                    'committee_level': 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown',
+                }
+            prepare_fn = _prep_issue
+        else:
+            values = sorted(entries.values(), key=lambda r: (r.get('congress') or 0, r['id']))
             if kind != 'committee_term':
-                levels = {rows['committee_term'].get(id, {}).get('committee_level', 'unknown') for id in row.get('committee_ids') or []}
-                row['committee_level'] = 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown'
-            for key in LISTS: row[key] = sorted(set(row.get(key) or []))
-            row['facts'] = [dict(label=k, value=v) for k, v in dict.fromkeys((f['label'], f['value']) for f in row['facts'])]
-        omitted = set(SCHEMA.names) - set(TABLE_SCHEMAS[kind].names)
-        for row in values:
-            populated = sorted(name for name in omitted if row.get(name) not in (None, '', [], {}))
-            if populated:
-                raise ValueError(f"{kind} {row['id']} has populated fields outside its table schema: {populated}")
+                entries.clear()
+            omitted = set(SCHEMA.names) - set(TABLE_SCHEMAS[kind].names)
+            for row in values:
+                populated = sorted(name for name in omitted if row.get(name) not in (None, '', (), [], {}))
+                if populated:
+                    raise ValueError(f"{kind} {row['id']} has populated fields outside its table schema: {populated}")
+            def _prep_dict(row, _kind=kind, _klists=kind_lists):
+                cids = row.get('committee_ids') or ()
+                row['issue_count'] = issue_counts[(_kind, row['id'])]
+                row['committee_types'] = sorted({effective_committee_type(cid) for cid in cids}) or ['unknown']
+                if _kind != 'committee_term':
+                    levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
+                    row['committee_level'] = 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown'
+                for key in _klists:
+                    row[key] = sorted(set(row.get(key) or ()))
+                return row
+            prepare_fn = _prep_dict
         path = TABLES[kind] + '.parquet'
-        _write_table(values, TABLE_SCHEMAS[kind], Path(stage) / path, row_group_size=2048)
+        row_count = len(values)
+        _write_table(values, TABLE_SCHEMAS[kind], Path(stage) / path, row_group_size=2048, prepare_row=prepare_fn, clear_rows=(kind != 'committee_term'))
         if (Path(stage) / path).stat().st_size >= FILE_LIMIT:
             raise ValueError(f'{path} exceeds GitHub file limit; partition this table before publishing')
-        descriptor(path, 'details', 'committee_explorer.parquet.' + kind, len(values), media_type='application/vnd.apache.parquet')
+        written_details[kind] = (path, row_count)
+        del values
+        gc.collect()
+    del committee_rows
+    for kind in TABLES:
+        if kind in written_details:
+            path, row_count = written_details[kind]
+            descriptor(path, 'details', 'committee_explorer.parquet.' + kind, row_count, media_type='application/vnd.apache.parquet')
     # Source files were written first; the manifest still lists them last.
     for path, count in source_files:
         descriptor(path, 'sources', 'committee_explorer.parquet.source_record', count, media_type='application/vnd.apache.parquet')
@@ -442,18 +736,32 @@ def write_catalog(catalog, current, stage, descriptor, write, evidence_states, r
     def collect(path, value, role, schema_name, count, **kwargs):
         if schema_name == 'committee_explorer.query-rows': query_rows.extend(value['rows'])
         elif schema_name == 'committee_explorer.queries': info.update(value)
-    write_queries(catalog, current, collect, evidence_states=evidence_states)
     def consume_query_rows():
-        # The table builder copies each row before enrichment. Release its
-        # original immediately instead of keeping both sets until publication.
+        # Run write_queries only after write_tables has finished streaming sources.parquet,
+        # so 910k query row dicts are not held in RAM during _write_sources.
+        write_queries(catalog, current, collect, evidence_states=evidence_states, paginate=False)
         while query_rows:
             yield query_rows.popleft()
     # Assembly already orders sources by ID; SpilledSourceSequence streams them in
     # ascending ID order without materializing a sorted list in RAM.
-    ordered_sources = iter(catalog.sources) if getattr(catalog.sources, 'is_id_sorted', False) else sorted(catalog.sources, key=attrgetter('id'))
-    sources = merge(ordered_sources, retained_sources, key=attrgetter('id'))
-    write_tables((r.model_dump(mode='json') for r in catalog.records),
-                 (s.model_dump(mode='json') for s in sources), consume_query_rows(), stage, descriptor)
+    if hasattr(catalog.sources, 'iter_json_dicts'):
+        ordered_source_dicts = catalog.sources.iter_json_dicts()
+    elif getattr(catalog.sources, 'is_id_sorted', False):
+        ordered_source_dicts = (s.model_dump(mode='json') for s in catalog.sources)
+    else:
+        ordered_source_dicts = (s.model_dump(mode='json') for s in sorted(catalog.sources, key=attrgetter('id')))
+    retained_source_dicts = (
+        s if isinstance(s, dict) else s.model_dump(mode='json')
+        for s in retained_sources
+    )
+    source_dicts = merge(ordered_source_dicts, retained_source_dicts, key=itemgetter('id'))
+    record_dicts = (
+        catalog.records.iter_json_dicts()
+        if hasattr(catalog.records, 'iter_json_dicts')
+        else (r.model_dump(mode='json') for r in catalog.records)
+    )
+    write_tables(record_dicts,
+                 source_dicts, consume_query_rows(), stage, descriptor)
     info.pop('partitions', None)
     info.update(storage='parquet', query_columns=QUERY_COLUMNS)
     write('queries.json', info, 'index', 'committee_explorer.queries', len(info['kinds']))

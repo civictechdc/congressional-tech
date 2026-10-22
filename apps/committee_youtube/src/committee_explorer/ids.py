@@ -212,7 +212,7 @@ class IdRegistry:
         self.values[scoped] = target
         return True
 
-    def _write(self):
+    def _write(self, *, live_source_ids=None):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(".tmp")
         with tmp.open("w", encoding="utf-8") as stream:
@@ -222,6 +222,12 @@ class IdRegistry:
                 items = ((k, self.values[k]) for k in sorted(self.values))
             first = True
             for k, v in items:
+                if (
+                    live_source_ids is not None
+                    and k.startswith('["source_record",')
+                    and v not in live_source_ids
+                ):
+                    continue
                 if first:
                     stream.write("{\n ")
                     first = False
@@ -236,16 +242,18 @@ class IdRegistry:
                 stream.write("\n}\n")
         return tmp
 
-    def stage(self):
+    def stage(self, *, live_source_ids=None):
         """Write the registry beside ids.json and release it; allocation is over.
 
-        The registry keeps every key ever allocated, so it grows with each
-        re-keyed input snapshot (2.85M keys, 1.35 GB resident on 2026-10-17).
+        The registry keeps every domain key ever allocated, and when
+        ``live_source_ids`` is supplied, prunes superseded prior-snapshot
+        ``source_record`` keys that are neither in the current catalog nor
+        retained by issue history.
         Publication, the export's memory peak, allocates nothing. save() then
         renames the staged file, so ids.json still changes only after the
         publication is verified. Any later lookup fails instead of allocating.
         """
-        staged = self._write()
+        staged = self._write(live_source_ids=live_source_ids)
         if isinstance(self.values, _SpilledIdDict):
             self.values.close()
         self.staged, self.values = staged, _Released()

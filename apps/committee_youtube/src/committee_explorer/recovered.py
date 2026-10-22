@@ -10,9 +10,13 @@ def reuse_appearances(items, assembly):
                 affiliation.organization_name if affiliation else None)
 
     known = defaultdict(list)
-    for record in assembly.records.values():
-        if record.kind == 'appearance':
-            known[key(record)].append(record)
+    appearances = (
+        assembly.records.iter_kind('appearance')
+        if hasattr(assembly.records, 'iter_kind')
+        else (r for r in assembly.records.values() if r.kind == 'appearance')
+    )
+    for record in appearances:
+        known[key(record)].append(record)
     local_sources = {}
     sources = ChainMap(local_sources, assembly.sources)
 

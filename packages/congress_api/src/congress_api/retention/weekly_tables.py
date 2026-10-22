@@ -204,11 +204,12 @@ def resolve_docspec_binary(binary: Path | str | None = None) -> Path:
     """Locate the native ``docspec`` binary for incremental table operations."""
     if binary is not None:
         return Path(binary).resolve()
-    env_bin = os.environ.get("DOCSPEC_BIN")
-    if env_bin and Path(env_bin).exists():
-        return Path(env_bin).resolve()
+    for env_var in ("DOCSPEC_BINARY", "DOCSPEC_BIN"):
+        env_bin = os.environ.get(env_var)
+        if env_bin and Path(env_bin).exists():
+            return Path(env_bin).resolve()
     candidates = (
-        Path("/Users/mikewolfd/.gemini/antigravity/brain/b9128fc0-078b-4f90-8508-e77d78324209/scratch/worktrees/wt-ss-023x-65bz/target/debug/docspec"),
+        Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/release/docspec"),
         Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec"),
     )
     for candidate in candidates:
@@ -375,27 +376,11 @@ def house_event_to_row(event_id: str, record: Mapping[str, Any]) -> dict[str, An
 def senate_event_to_row(record_id: str, record: Mapping[str, Any]) -> dict[str, Any]:
     url = record.get("url") if isinstance(record, Mapping) else None
     observed_at = (record.get("observed_at") or record.get("checked")) if isinstance(record, Mapping) else None
-    payload = canonical_json_str(record)
-    if len(payload) > 1_000_000 and isinstance(record, Mapping):
-        trimmed = dict(record)
-        if isinstance(trimmed.get("lines"), list):
-            trimmed["lines"] = [str(line)[:500] for line in trimmed["lines"][:500]]
-        if isinstance(trimmed.get("pages"), Mapping):
-            new_pages = {}
-            for page_url, page_val in trimmed["pages"].items():
-                if isinstance(page_val, Mapping) and isinstance(page_val.get("lines"), list) and len(page_val["lines"]) > 200:
-                    p_copy = dict(page_val)
-                    p_copy["lines"] = [str(line)[:300] for line in page_val["lines"][:200]]
-                    new_pages[page_url] = p_copy
-                else:
-                    new_pages[page_url] = page_val
-            trimmed["pages"] = new_pages
-        payload = canonical_json_str(trimmed)
     return {
         "record_id": str(record_id),
         "url": str(url) if url is not None else None,
         "observed_at": str(observed_at) if observed_at is not None else None,
-        "payload_json": payload,
+        "payload_json": canonical_json_str(record),
     }
 
 

@@ -49,6 +49,8 @@ def test_plan_and_verify_config_emit_valid_cloudflare_payloads(capsys):
     pdf_disp = transform_rules["public-r2-security-and-disposition-headers-pdf-filename-disposition"]
     assert "Content-Disposition" in pdf_disp["action_parameters"]["headers"]
     assert 'inline; filename=\\"' in pdf_disp["action_parameters"]["headers"]["Content-Disposition"]["expression"]
+    for forbidden in ('\\"', "\\\\", ";", "/", "..", "\\r", "\\n"):
+        assert f'not contains(http.request.uri.args["filename"][0], "{forbidden}")' in pdf_disp["expression"]
 
 
 def test_apply_executes_all_three_cloudflare_api_mutations(capsys):

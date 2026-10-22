@@ -204,6 +204,14 @@ def build_cloudflare_plan(
                     f'(http.host eq "{hostname}") and '
                     f'starts_with(http.request.uri.path, "{transform["filename_disposition"]["path_prefix"]}") and '
                     f'len(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"]) > 0 and '
+                    f'len(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0]) <= 128 and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "\\"") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "\\\\") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], ";") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "/") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "..") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "\\r") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "\\n") and '
                     f'starts_with(lower(http.response.content_type.media_type), "application/pdf")'
                 ),
                 "action": "rewrite",
@@ -227,6 +235,14 @@ def build_cloudflare_plan(
                     f'(http.host eq "{hostname}") and '
                     f'starts_with(http.request.uri.path, "{transform["filename_disposition"]["path_prefix"]}") and '
                     f'len(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"]) > 0 and '
+                    f'len(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0]) <= 128 and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "\\"") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "\\\\") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], ";") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "/") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "..") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "\\r") and '
+                    f'not contains(http.request.uri.args["{transform["filename_disposition"]["query_param"]}"][0], "\\n") and '
                     f'not starts_with(lower(http.response.content_type.media_type), "application/pdf")'
                 ),
                 "action": "rewrite",

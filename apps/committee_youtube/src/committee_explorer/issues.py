@@ -7,7 +7,8 @@ from committee_meeting.issues import IssueResolution
 def apply_decisions(catalog, rows, context, retained=None):
     """``retained`` maps (kind, id) to sources the catalog cites but issue history holds."""
     retained = {} if retained is None else retained
-    records = {(r.kind, r.id): r for r in catalog.records}
+    lazy_records = hasattr(catalog.records, "get_by_key") and hasattr(catalog.records, "with_additional")
+    records = {} if lazy_records else {(r.kind, r.id): r for r in catalog.records}
     lazy_sources = hasattr(catalog.sources, "get_by_id") and hasattr(catalog.sources, "with_additional")
     sources = {} if lazy_sources else {source.id: source for source in catalog.sources}
     seen = set()
@@ -17,7 +18,8 @@ def apply_decisions(catalog, rows, context, retained=None):
             raise ValueError(f"Repeated issue decision: {issue_id}")
         seen.add(issue_id)
         key = ("data_issue", issue_id)
-        if key not in records:
+        existing_issue = catalog.records.get_by_key(key) if lazy_records else records.get(key)
+        if existing_issue is None:
             raise ValueError(f"Decision refers to unknown issue: {issue_id}")
         if row.get("status") not in ("resolved", "dismissed"):
             raise ValueError("Issue decision status must be resolved or dismissed")
@@ -39,7 +41,8 @@ def apply_decisions(catalog, rows, context, retained=None):
             sources[source.id] = source
         decided = datetime.fromisoformat(row["decided_at"]) if row.get("decided_at") else source.imported_at or context.now
         resolution = IssueResolution(decided_at=decided, explanation=row["explanation"], provenance=context.evidence(source, basis="curated"))
-        records[key] = type(records[key]).model_validate(records[key].model_copy(update={"status": row["status"], "resolution": resolution}))
+        records[key] = type(existing_issue).model_validate(existing_issue.model_copy(update={"status": row["status"], "resolution": resolution}))
     new_sources = catalog.sources.with_additional(sources.values()) if lazy_sources else tuple(sources.values())
+    new_records = catalog.records.with_additional(records.values()) if lazy_records else tuple(records[k] for k in sorted(records))
     return Catalog.model_construct(sources=new_sources,
-                                   records=tuple(records[k] for k in sorted(records))).check_graph_with(retained)
+                                   records=new_records).check_graph_with(retained)

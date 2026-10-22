@@ -58,7 +58,9 @@ def committee_records(rows, context, *, existing, review_context=None, evidence_
     committee existed in a Congress without establishing its type or a meeting.
     Only the identified body is added; a parent is not fabricated from its name.
     """
-    known = committee_lookup(existing.values())
+    known = committee_lookup(
+        existing.iter_kind('committee_term') if hasattr(existing, 'iter_kind') else existing.values()
+    )
     for row in rows:
         package = str(row.get('package_id') or '').strip()
         if not package:
@@ -89,17 +91,65 @@ def committee_records(rows, context, *, existing, review_context=None, evidence_
             known[identity] = Ref(kind='committee_term', id=term.id)
 
 
+class _LazyRenditionIndex(Mapping[str, tuple[Material, MaterialVersion]]):
+    """Resolve (Material, MaterialVersion) on demand from a disk-backed record mapping."""
+
+    def __init__(self, records: Mapping[tuple[str, str], Any], pairs_by_url: Mapping[str, tuple[str, str]]):
+        self._records = records
+        self._pairs = dict(pairs_by_url)
+
+    def __getitem__(self, url: str) -> tuple[Material, MaterialVersion]:
+        mat_id, ver_id = self._pairs[url]
+        return (self._records[('material', mat_id)], self._records[('material_version', ver_id)])
+
+    def __iter__(self):
+        return iter(self._pairs)
+
+    def __len__(self) -> int:
+        return len(self._pairs)
+
+
 def primary_rendition_index(records):
     """Only exact known package-level renditions can identify a repeated listing.
 
     A supplemental/part URL does not identify the complete package, and multiple
     candidate versions are left unresolved. No URL is generated from an ID.
     """
+    if hasattr(records, 'iter_kind') and isinstance(records, Mapping):
+        mat_packages = {}
+        for r in records.iter_kind('material'):
+            if r.details.type == 'document':
+                pkgs = tuple(i.value for i in r.identifiers if i.scheme == 'govinfo.package')
+                if pkgs:
+                    mat_packages[r.id] = pkgs
+        ver_mat = {
+            r.id: r.material.id
+            for r in records.iter_kind('material_version')
+            if r.material.id in mat_packages
+        }
+        candidates = {}
+        for item in records.iter_kind('representation'):
+            mat_id = ver_mat.get(item.version.id)
+            if mat_id is None:
+                continue
+            packages = mat_packages[mat_id]
+            for location in item.locations:
+                url = urlsplit(location.url)
+                if url.hostname != 'www.govinfo.gov' or url.query or url.fragment or not any(
+                    url.path in (f'/content/pkg/{package}/pdf/{package}.pdf',
+                                 f'/content/pkg/{package}/html/{package}.htm') for package in packages):
+                    continue
+                candidates.setdefault(location.url, set()).add((mat_id, item.version.id))
+        return _LazyRenditionIndex(
+            records,
+            {url: next(iter(pairs)) for url, pairs in candidates.items() if len(pairs) == 1},
+        )
     materials = {r.id: r for r in records if r.kind == 'material'}
     versions = {r.id: r for r in records if r.kind == 'material_version'}
+    rep_iter = (item for item in records if item.kind == 'representation')
     candidates = {}
-    for item in records:
-        if item.kind != 'representation' or item.version.id not in versions:
+    for item in rep_iter:
+        if item.version.id not in versions:
             continue
         version = versions[item.version.id]
         material = materials.get(version.material.id)

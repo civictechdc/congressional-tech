@@ -7,7 +7,13 @@ from dataclasses import dataclass
 from datetime import date
 from urllib.parse import urlsplit
 
-from congress_api.models.senate import SenatePage, SenateSite, normalize_senate_state
+from congress_api.models.senate import (
+    SenatePage,
+    SenateSite,
+    _PreparedSenateState,
+    normalize_senate_site,
+    normalize_senate_state,
+)
 from congress_api.matching.senate_corrections import selected_date
 from congress_api.parsers.senate_page import DATE, SITE, written_day
 
@@ -23,18 +29,31 @@ def _site_data(site):
 
 def prepared_state(state):
     """Lift workflow off page copies without changing the caller's retained state."""
-    prepared = {}
+    if getattr(state, "_is_prepared_senate_state", False):
+        return state
+    prepared = _PreparedSenateState()
     for host, site in state.items():
-        prepared[host] = deepcopy(_site_data(site))
-    return normalize_senate_state(prepared)
+        if not isinstance(host, str):
+            return normalize_senate_state(dict(state))
+        prepared[host] = normalize_senate_site(_site_data(site), copy=True)
+    return prepared
 
 
 def official_events(state):
     """Validated source-owned events for metadata discovery and offline admission."""
     codes = {host: code for code, host in SITE.items()}
-    state = prepared_state(state)
-    for host, site in sorted(state.items()):
-        site = _site_data(site)
+    is_prepared = getattr(state, "_is_prepared_senate_state", False)
+    if not isinstance(state, dict):
+        state = prepared_state(state)
+        is_prepared = True
+    for host in sorted(state.keys()):
+        if not isinstance(host, str):
+            state = prepared_state(state)
+            is_prepared = True
+            break
+    for host in sorted(state.keys()):
+        raw_site = state[host]
+        site = raw_site if is_prepared else normalize_senate_site(_site_data(raw_site), copy=True)
         if host not in codes:
             continue
         for url, page in sorted((site.get("pages") or {}).items()):

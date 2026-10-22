@@ -519,26 +519,33 @@ def ensure_workflow(site, url) -> dict:
     return record
 
 
-def normalize_senate_state(state):
-    """Lift page workflow onto ``site['workflow'][url]``. Writers then emit only that shape.
+class _PreparedSenateState(dict):
+    _is_prepared_senate_state = True
 
-    A saved match, check, or replay receipt that exists only on the page is copied
-    before the page key is removed. Calling this twice does not drop those values.
-    """
-    if not isinstance(state, dict):
-        return state
-    doc_types = {
-        host: {
+
+def normalize_senate_site(site, *, copy: bool = False):
+    """Normalize and validate one host's SenateSite dictionary."""
+    if isinstance(site, SenateSite):
+        return site.source_dict()
+    if not isinstance(site, dict):
+        return SenateSite.model_validate(site).source_dict()
+    pages_in = site.get("pages")
+    doc_types = (
+        {
             url: [type(doc) for doc in page.get("documents", [])]
-            for url, page in site.get("pages", {}).items()
+            for url, page in pages_in.items()
             if isinstance(page, dict) and isinstance(page.get("documents"), list)
         }
-        for host, site in state.items()
-        if isinstance(site, dict) and isinstance(site.get("pages"), dict)
-    }
-    for site in state.values():
-        if not isinstance(site, dict) or not isinstance(site.get("pages"), dict):
-            continue
+        if isinstance(pages_in, dict)
+        else {}
+    )
+    if copy:
+        site = dict(site)
+        if isinstance(pages_in, dict):
+            site["pages"] = dict(pages_in)
+        if isinstance(site.get("workflow"), dict):
+            site["workflow"] = dict(site["workflow"])
+    if isinstance(site.get("pages"), dict):
         if not site.get("wordpress_posts") and isinstance(site.get("source_bodies"), dict):
             wp_posts = {}
             for body_url, raw_body in sorted(site["source_bodies"].items()):
@@ -554,24 +561,49 @@ def normalize_senate_state(state):
             if wp_posts:
                 site["wordpress_posts"] = wp_posts
         for url, page in list(site["pages"].items()):
-            if not isinstance(page, dict):
+            if isinstance(page, SenatePage):
+                page = page.source_dict()
+                site["pages"][url] = page
+            elif not isinstance(page, dict):
                 continue
             stored = (site.get("workflow") or {}).get(url)
             merged = merged_workflow(stored, page)
             if merged is not None:
                 site.setdefault("workflow", {})[url] = merged
-            for key in PAGE_WORKFLOW_FIELDS:
-                page.pop(key, None)
-    validated = SENATE_SITES.validate_python(state)
-    normalized = {host: site.source_dict() for host, site in validated.items()}
-    for host, url_types in doc_types.items():
-        pages = normalized.get(host, {}).get("pages", {})
-        for url, types_list in url_types.items():
-            if url in pages and "documents" in pages[url] and len(pages[url]["documents"]) == len(types_list):
-                pages[url]["documents"] = [
-                    t(doc) if t in (list, tuple) else doc
-                    for t, doc in zip(types_list, pages[url]["documents"])
-                ]
-    state.clear()
-    state.update(normalized)
+            if any(key in page for key in PAGE_WORKFLOW_FIELDS):
+                if copy:
+                    page = {k: v for k, v in page.items() if k not in PAGE_WORKFLOW_FIELDS}
+                    site["pages"][url] = page
+                else:
+                    for key in PAGE_WORKFLOW_FIELDS:
+                        page.pop(key, None)
+    validated_site = SenateSite.model_validate(site)
+    norm_site = validated_site.source_dict()
+    del validated_site
+    pages_out = norm_site.get("pages", {})
+    for url, types_list in doc_types.items():
+        if url in pages_out and "documents" in pages_out[url] and len(pages_out[url]["documents"]) == len(types_list):
+            pages_out[url]["documents"] = [
+                t(doc) if t in (list, tuple) else doc
+                for t, doc in zip(types_list, pages_out[url]["documents"])
+            ]
+    return norm_site
+
+
+def normalize_senate_state(state):
+    """Lift page workflow onto ``site['workflow'][url]``. Writers then emit only that shape.
+
+    A saved match, check, or replay receipt that exists only on the page is copied
+    before the page key is removed. Calling this twice does not drop those values.
+    """
+    if not isinstance(state, dict):
+        return state
+    for host in list(state.keys()):
+        if not isinstance(host, str):
+            SENATE_SITES.validate_python(state)
+        state[host] = normalize_senate_site(state[host], copy=False)
+    if not isinstance(state, _PreparedSenateState):
+        prepared = _PreparedSenateState(state)
+        state.clear()
+        state.update(prepared)
     return state

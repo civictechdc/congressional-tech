@@ -127,3 +127,34 @@ def test_empty_incoming_value_does_not_supply_evidence_for_retained_value():
     assert retained.title == 'Retained hearing'
     assert not any(field.path == '/title' for field in retained.field_evidence)
     assembly.finish()
+
+
+def test_spilled_records_and_sequence_stream_by_kind_and_json_dicts():
+    from committee_explorer.assemble import SpilledRecordSequence, _SpilledRecords
+
+    assembly = Assembly(ids=lambda kind, key: kind + ":" + key, now=NOW)
+    assert isinstance(assembly.records, _SpilledRecords)
+    assembly.add([
+        source(),
+        meeting().model_copy(update={"id": "m1", "title": "First hearing"}),
+        meeting().model_copy(update={"id": "m2", "title": "Second hearing"}),
+        Appearance(
+            id="a1",
+            meeting=Ref(kind="meeting", id="m1"),
+            name=RecordedName(display="Alex Smith"),
+            provenance=evidence(),
+        ),
+    ])
+    assembly.add([meeting().model_copy(update={"id": "m1", "title": "First hearing revised"})])
+    assert ("meeting", "m1") in assembly.records._conflict_keys
+    assert ("meeting", "m2") not in assembly.records._conflict_keys
+
+    catalog = assembly.finish()
+    assert isinstance(catalog.records, SpilledRecordSequence)
+    assert [r.id for r in catalog.records.iter_kind("meeting")] == ["m1", "m2"]
+    assert [r.id for r in catalog.records.iter_kind("appearance")] == ["a1"]
+    assert len(list(catalog.records.iter_kind("data_issue"))) == 1
+    json_dicts = list(catalog.records.iter_json_dicts())
+    assert [d["kind"] for d in json_dicts] == ["meeting", "meeting", "appearance", "data_issue"]
+    assert catalog.records.get_by_key(("meeting", "m2")).title == "Second hearing"
+    assert catalog.records.get_by_key(("meeting", "nonexistent")) is None

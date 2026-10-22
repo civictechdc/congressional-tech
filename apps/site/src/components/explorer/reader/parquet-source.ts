@@ -1,4 +1,5 @@
 import { parquetMetadataAsync, parquetReadObjects, parquetScan, parquetSchema, rowIndex, type FileMetaData, type ParquetQueryFilter } from 'hyparquet';
+import { compressors } from 'hyparquet-compressors';
 import { presentRecord, recordingDue, recordingVisible } from '../browse/record-presentation.ts';
 import { compareRecordedDate, createSearchMemo, matches, orderSearchRows, pageBounds, selectSearchRows, summarizeCoverage } from '../browse/query-utils.ts';
 import { selectRelatedMaterials } from '../browse/related-materials.ts';
@@ -138,6 +139,7 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
       const readOptions = {
         file: buffer,
         metadata,
+        compressors,
         columns: selectedColumns,
         filter: options.filter,
         includeRowIndex: true as const,
@@ -146,7 +148,7 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
       };
       let batch: StoredRow[];
       if (options.pruningFilter) {
-        const scan = await parquetScan({ file: buffer, metadata, columns: selectedColumns, pruningFilter: options.pruningFilter });
+        const scan = await parquetScan({ file: buffer, metadata, compressors, columns: selectedColumns, pruningFilter: options.pruningFilter });
         const membershipPath = Object.keys(options.pruningFilter)[0];
         let groupStart = 0;
         const emptyGroups = metadata.row_groups.flatMap(group => {

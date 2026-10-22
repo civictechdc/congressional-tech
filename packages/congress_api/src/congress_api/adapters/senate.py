@@ -68,6 +68,10 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
     committee_terms, meeting_records = committee_terms or {}, meeting_records or {}
     emitted_meetings = dict(meeting_records)  # The latest emission of each meeting.
     occurrences = dict(occurrence_records or {})
+    occurrences_by_meeting_day = defaultdict(list)
+    for item in occurrences.values():
+        if item.scheduled_start:
+            occurrences_by_meeting_day[(item.meeting.id, item.scheduled_start.date)].append(item.id)
     state = prepared_state(state)
     events = {event["url"]: event for event in official_events(state)}
     by_event = defaultdict(list)
@@ -247,11 +251,10 @@ def records(state, context, *, meetings, committee_terms=None, meeting_records=N
                 label_evidence = context.evidence(source, selector=access_observation.label_selector)
                 date_evidence = context.evidence(source, selector=access_observation.date_selector)
                 for meeting, match_evidence in matched.values():
-                    sittings = [item for item in occurrences.values() if item.meeting.id == meeting.id
-                                and item.scheduled_start and item.scheduled_start.date == access_observation.day]
-                    if len(sittings) != 1:
+                    occ_ids = occurrences_by_meeting_day.get((meeting.id, access_observation.day), ())
+                    if len(occ_ids) != 1:
                         continue
-                    original = sittings[0]
+                    original = occurrences[occ_ids[0]]
                     selected = label_evidence.model_copy(update={"citations": label_evidence.citations + date_evidence.citations + match_evidence.citations})
                     field = next((field for field in original.field_evidence if field.path == "/access"), None)
                     previous = field.selected if field else original.provenance

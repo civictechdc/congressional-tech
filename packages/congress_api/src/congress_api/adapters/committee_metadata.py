@@ -22,7 +22,9 @@ def adjustment_records(context, existing, *, congresses=None):
     """
     from datetime import date
 
-    lookup = committee_lookup(existing.values())
+    lookup = committee_lookup(
+        existing.iter_kind('committee_term') if hasattr(existing, 'iter_kind') else existing.values()
+    )
     for congress, decision in reviewed_adjustments(lookup, congresses=congresses):
         code = decision['code']
         key = f'congress.gov|{congress}|{code}'

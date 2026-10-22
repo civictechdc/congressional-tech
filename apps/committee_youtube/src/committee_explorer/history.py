@@ -27,6 +27,10 @@ from committee_meeting.publication import SchemaVersion
 FORMAT_VERSION = "1"
 SUPPORTED_SCHEMA_VERSIONS = frozenset(get_args(SchemaVersion)) | {SCHEMA_VERSION}
 _RECORD = TypeAdapter(SourceRecord | DomainRecord)
+_SOURCE_HEADER_RE = re.compile(
+    r'"provider":\s*("(?:[^"\\]|\\.)*"),\s*"identifier":\s*\{\s*"scheme":\s*("(?:[^"\\]|\\.)*"),\s*"value":\s*("(?:[^"\\]|\\.)*")'
+)
+_IMPORTED_AT_RE = re.compile(r'"imported_at":\s*("(?:[^"\\]|\\.)*")')
 
 
 def _path(state_dir, publication_id):
@@ -112,6 +116,44 @@ class IssueHistory(Mapping):
             if identity in ids:
                 yield _decode(payload)
 
+    def iter_json_dicts(self, kind, ids):
+        """Decode JSON dicts of one kind whose IDs are in ``ids``, in ID order, without Pydantic validation."""
+        import json
+
+        for identity, payload in self.connection.execute("SELECT id, payload FROM records WHERE kind=? ORDER BY id", (kind,)):
+            if identity in ids:
+                yield json.loads(zlib.decompress(payload))
+
+    def source_identity(self, sid: str) -> tuple[tuple[str, str, str], str] | None:
+        """Extract ((provider, scheme, value), imported_at) from a source_record prefix without full decode."""
+        row = self.connection.execute(
+            "SELECT payload FROM records WHERE kind='source_record' AND id=?",
+            (sid,),
+        ).fetchone()
+        if row is None or row[0] is None:
+            return None
+        import json
+
+        prefix = zlib.decompressobj().decompress(row[0], 8192).decode("utf-8", errors="ignore")
+        match = _SOURCE_HEADER_RE.search(prefix)
+        if match:
+            imp_match = _IMPORTED_AT_RE.search(prefix)
+            imp = json.loads(imp_match.group(1)) if imp_match else ""
+            return (
+                (
+                    json.loads(match.group(1)),
+                    json.loads(match.group(2)),
+                    json.loads(match.group(3)),
+                ),
+                imp,
+            )
+        raw = json.loads(zlib.decompress(row[0]))
+        ident = raw.get("identifier") or {}
+        return (
+            (raw["provider"], ident["scheme"], ident["value"]),
+            raw.get("imported_at") or "",
+        )
+
     def close(self):
         self.connection.close()
 
@@ -155,6 +197,14 @@ class RetainedSources(Mapping):
             for key in self:
                 yield self.history[key]
 
+    def iter_json_dicts(self):
+        """Yield every retained source as a JSON dict in ascending ID order without Pydantic validation."""
+        if isinstance(self.history, IssueHistory):
+            yield from self.history.iter_json_dicts("source_record", self.ids)
+        else:
+            for key in self:
+                yield self.history[key].model_dump(mode="json")
+
 
 def load_history(state_dir, publication_id):
     """Return None when migration is needed; reject incompatible history."""
@@ -178,21 +228,48 @@ def load_history(state_dir, publication_id):
     return history
 
 
-def _issues(records):
+def _issue_keys(records):
     if hasattr(records, "iter_issues"):
-        yield from records.iter_issues()
+        for issue in records.iter_issues():
+            yield (issue.kind, issue.id)
     elif isinstance(records, ChainMap):
-        # ChainMap.__iter__ constructs a union of all keys. Avoid that allocation
-        # for the large, disjoint source/domain dictionaries used by assembly.
-        # Iterate keys: a disk-backed mapping decodes only the issues it yields.
         for index, mapping in enumerate(records.maps):
-            for key in mapping:
-                if key[0] == "data_issue" and not any(key in earlier for earlier in records.maps[:index]):
-                    yield mapping[key]
+            if hasattr(mapping, "_by_kind"):
+                for rid in sorted(mapping._by_kind.get("data_issue", ())):
+                    key = ("data_issue", rid)
+                    if not any(key in earlier for earlier in records.maps[:index]):
+                        yield key
+            elif hasattr(mapping, "iter_kind"):
+                for issue in mapping.iter_kind("data_issue"):
+                    key = (issue.kind, issue.id)
+                    if not any(key in earlier for earlier in records.maps[:index]):
+                        yield key
+            else:
+                for key in mapping:
+                    if key[0] == "data_issue" and not any(key in earlier for earlier in records.maps[:index]):
+                        yield key
     else:
-        for key, record in records.items():
-            if key[0] == "data_issue":
-                yield record
+        for key in records:
+            if isinstance(key, tuple) and len(key) == 2 and key[0] == "data_issue":
+                yield key
+
+
+def _raw_source_payload(records, sid: str) -> bytes | None:
+    maps = records.maps if isinstance(records, ChainMap) else (records,)
+    key = ("source_record", sid)
+    for mapping in maps:
+        if key not in mapping:
+            continue
+        if hasattr(mapping, "get_compressed_by_id"):
+            return mapping.get_compressed_by_id(sid)
+        if isinstance(mapping, RetainedSources) and isinstance(mapping.history, IssueHistory):
+            row = mapping.history.connection.execute(
+                "SELECT payload FROM records WHERE kind='source_record' AND id=?",
+                (sid,),
+            ).fetchone()
+            return bytes(row[0]) if row and row[0] is not None else None
+        return None
+    return None
 
 
 def save_history(state_dir, publication_id, records):
@@ -214,9 +291,17 @@ def save_history(state_dir, publication_id, records):
     connection = _connect(temporary)
     try:
         _initialize(connection)
-        for issue in _issues(records):
-            connection.execute("INSERT OR IGNORE INTO records(kind,id) VALUES (?,?)", (issue.kind, issue.id))
+        for issue_key in _issue_keys(records):
+            connection.execute("INSERT OR IGNORE INTO records(kind,id) VALUES (?,?)", issue_key)
         while (pending := connection.execute("SELECT kind,id FROM records WHERE payload IS NULL LIMIT 1").fetchone()) is not None:
+            if pending[0] == "source_record":
+                raw_payload = _raw_source_payload(records, pending[1])
+                if raw_payload is not None:
+                    connection.execute(
+                        "UPDATE records SET payload=? WHERE kind=? AND id=?",
+                        (raw_payload, *pending),
+                    )
+                    continue
             try:
                 record = records[pending]
             except KeyError:

@@ -162,6 +162,49 @@ def test_recurring_issue_keeps_first_detection_and_both_source_observations(tmp_
     assert set(assembly.retained.ids) == {"source"}
 
 
+def test_recurring_issue_replaces_superseded_snapshot_source_for_same_identity(tmp_path):
+    first = snapshot()
+    history.save_history(tmp_path, "first", ChainMap(first.records, first.sources))
+    # Re-keyed weekly snapshot for the SAME (provider, scheme, value) ("fixture", "fixture", "source")
+    rekeyed_source = SourceRecord(
+        id="source-week-2",
+        provider="fixture",
+        identifier=Identifier(scheme="fixture", value="source"),
+        input_snapshot_id="snap-2",
+        payload={"value": "source"},
+    )
+    rekeyed_prov = Provenance(
+        basis="reported",
+        citations=(Citation(source=Ref(kind="source_record", id="source-week-2")),),
+    )
+    repeated = first.records[("data_issue", "issue")].model_copy(
+        update={"detected_at": NOW.replace(day=28), "provenance": rekeyed_prov}
+    )
+    with history.load_history(tmp_path, "first") as previous:
+        assembly = Assembly(previous)
+        assembly.add([rekeyed_source, repeated])
+        catalog = assembly.finish()
+        history.save_history(tmp_path, "second", ChainMap(assembly.records, assembly.sources, assembly.retained))
+    issue = next(record for record in catalog.records if record.kind == "data_issue")
+    assert issue.detected_at == NOW
+    assert [citation.source.id for citation in issue.provenance.citations] == ["source-week-2"]
+    assert [source.id for source in catalog.sources] == ["source-week-2"]
+    # The representation/version/material in history still cite "source", unless also rebuilt;
+    # when the domain records are also rebuilt with rekeyed_prov, "source" is dropped completely.
+    with history.load_history(tmp_path, "first") as previous:
+        full_rebuild = Assembly(previous)
+        full_rebuild.add([
+            rekeyed_source,
+            first.records[("material", "material")].model_copy(update={"provenance": rekeyed_prov}),
+            first.records[("material_version", "version")].model_copy(update={"provenance": rekeyed_prov}),
+            first.records[("representation", "representation")].model_copy(update={"provenance": rekeyed_prov}),
+            repeated,
+        ])
+        full_catalog = full_rebuild.finish()
+    assert [source.id for source in full_catalog.sources] == ["source-week-2"]
+    assert set(full_rebuild.retained.ids) == set()
+
+
 def test_closed_issue_stays_closed_when_absent_and_reopens_on_new_finding(tmp_path):
     first = snapshot()
     issue = first.records[("data_issue", "issue")]
