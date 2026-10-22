@@ -70,7 +70,15 @@ from news_lake.contract.records import (
 )
 from news_lake.contract.semantics import check_corpus
 from congress_shared.custody import canonical_json_bytes, verify_local_file, write_atomic_bytes
-from docspec_client.docspec import NativeDatasets, cleanup_safe
+from docspec_client.docspec import (
+    NativeDatasets,
+    application_schema,
+    build_export_spec,
+    build_update_merge_spec,
+    cleanup_safe,
+    native_storage_schema,
+    restore_application_schema,
+)
 from docspec_client.docspec_host import DocSpecFailure
 
 from news_lake.identity.decisions import apply_decisions  # noqa: F401  (bridge input)
@@ -175,125 +183,6 @@ APPEND_UPDATE_KEYS = {
 
 class AppendCollisionError(CommitError, ValueError):
     """Conflicting ID reuse on an append-only dataset (both CommitError and ValueError)."""
-
-
-# The storage-type mapping has one owner: docspec_client. Keep the historical
-# news_lake name for callers and __all__ while delegating every decision there.
-from docspec_client.docspec import native_storage_schema  # noqa: E402  (re-export)
-
-
-def _merge_field_type(physical_type, expected_type):
-    """Validate and resolve a physical Arrow type against an expected application type."""
-    if pa.types.is_struct(physical_type) and pa.types.is_struct(expected_type):
-        if physical_type.num_fields != expected_type.num_fields:
-            raise ValueError(
-                f'Native source storage schema ({physical_type}) differs from '
-                f'the selected application schema ({expected_type})'
-            )
-        for i in range(expected_type.num_fields):
-            _merge_field_type(physical_type[i].type, expected_type[i].type)
-        return expected_type
-    if (pa.types.is_list(physical_type) or pa.types.is_large_list(physical_type)) and (
-            pa.types.is_list(expected_type) or pa.types.is_large_list(expected_type)):
-        _merge_field_type(physical_type.value_type, expected_type.value_type)
-        return expected_type
-    expected_physical = native_storage_schema(pa.schema([pa.field('x', expected_type)])).field(0).type
-    if physical_type != expected_physical and physical_type != expected_type:
-        raise ValueError(
-            f'Native source storage schema ({physical_type}) differs from '
-            f'the selected application schema ({expected_type})'
-        )
-    return expected_type
-
-
-def application_schema(schema, expected_schema=None):
-    """Inverse of :func:`native_storage_schema` for checked readback casts.
-
-    When ``expected_schema`` is supplied, ``Decimal128(20, 0)`` is restored to
-    ``UInt64`` only where the declared application field is ``UInt64``; genuine
-    ``Decimal128`` fields remain ``Decimal128``.
-    """
-    if expected_schema is not None:
-        fields = []
-        expected_by_name = {f.name: f for f in expected_schema}
-        for physical_field in schema:
-            if physical_field.name.startswith('__docspec_') and physical_field.name not in expected_by_name:
-                fields.append(physical_field)
-                continue
-            target_field = expected_by_name.get(physical_field.name)
-            if target_field is None:
-                raise ValueError(
-                    f'Unexpected field {physical_field.name!r} not in expected application schema'
-                )
-            _merge_field_type(physical_field.type, target_field.type)
-            fields.append(target_field)
-        return pa.schema(fields, metadata=expected_schema.metadata)
-
-    def field(value):
-        return value.with_type(data_type(value.type))
-
-    def data_type(value):
-        if pa.types.is_decimal128(value) and value.precision == 20 and value.scale == 0:
-            return pa.uint64()
-        if pa.types.is_large_binary(value):
-            return pa.binary()
-        if pa.types.is_struct(value):
-            return pa.struct([field(child) for child in value])
-        if pa.types.is_list(value) or pa.types.is_large_list(value):
-            return pa.list_(field(value.value_field))
-        if pa.types.is_fixed_size_list(value):
-            return pa.list_(field(value.value_field), value.list_size)
-        if pa.types.is_map(value):
-            return pa.map_(field(value.key_field), field(value.item_field),
-                           keys_sorted=value.keys_sorted)
-        return value
-
-    return pa.schema([field(value) for value in schema], metadata=schema.metadata)
-
-
-def _cast_column(column, target_type):
-    if column.type == target_type:
-        return column
-    try:
-        return column.cast(target_type, safe=True)
-    except pa.ArrowNotImplementedError:
-        if isinstance(column, pa.ChunkedArray):
-            chunks = [_cast_array(chunk, target_type) for chunk in column.chunks]
-            return pa.chunked_array(chunks, type=target_type)
-        return _cast_array(column, target_type)
-
-
-def _cast_array(array, target_type):
-    if array.type == target_type:
-        return array
-    if pa.types.is_struct(target_type):
-        children = [
-            _cast_array(array.field(i), target_type[i].type)
-            for i in range(target_type.num_fields)
-        ]
-        return pa.StructArray.from_arrays(
-            children,
-            fields=list(target_type),
-            mask=array.is_null() if array.null_count else None,
-        )
-    if pa.types.is_list(target_type) or pa.types.is_large_list(target_type):
-        values = _cast_array(array.values, target_type.value_type)
-        if pa.types.is_large_list(target_type):
-            return pa.LargeListArray.from_arrays(array.offsets, values, type=target_type)
-        return pa.ListArray.from_arrays(array.offsets, values, type=target_type)
-    return array.cast(target_type, safe=True)
-
-
-def restore_application_schema(table, expected_schema=None):
-    """Restore an Arrow Table from native storage types to ``expected_schema``."""
-    target_schema = application_schema(table.schema, expected_schema=expected_schema)
-    if table.schema.equals(target_schema, check_metadata=True):
-        return table
-    columns = [
-        _cast_column(table.column(i), target_schema.field(i).type)
-        for i in range(len(target_schema))
-    ]
-    return pa.Table.from_arrays(columns, schema=target_schema)
 
 
 def sanitize_id(value, *, prefix='id'):
@@ -429,6 +318,140 @@ def merge_upsert_batch(existing_records, incoming_records):
         validate_shape(candidate)
         merged.append(candidate)
     return merged
+
+
+def upsert_merge_spec_for_kind(kind):
+    """Build a declarative ``UpdateMergeSpec`` for an upsert record ``kind`` (C1 / ss-023x).
+
+    Maps ``first_seen_at`` to ``'min'``, ``recorded_at`` to ``'max'``, list
+    evidence columns to ``'set_union'``, and remaining non-key columns to
+    ``'latest_or_backfill'`` ordered by ``recorded_at``.
+    """
+    schema = kind_arrow_schema(kind)
+    columns = {}
+    for field in schema:
+        if field.name == 'id':
+            continue
+        if field.name == 'recorded_at':
+            columns[field.name] = 'max'
+        elif field.name == 'first_seen_at':
+            columns[field.name] = 'min'
+        elif pa.types.is_list(field.type) or pa.types.is_large_list(field.type):
+            columns[field.name] = 'set_union'
+        else:
+            columns[field.name] = 'latest_or_backfill'
+    return build_update_merge_spec(order_by='recorded_at', columns=columns)
+
+
+def build_c5_export_policy(kind, *, columns=None, authorized=False, as_of=None,
+                           expired_capture_ids=()):
+    """Build a declarative C5 ``ExportPolicy`` with ``computed_columns`` (ss-6gwu).
+
+    For ``authorized=True`` or non-body tables, returns a standard ``all``-rows
+    policy. For unauthorized exports of ``capture`` and ``version``, constructs
+    ``case_when`` ``computed_columns`` that downgrade restricted or expired
+    rows to ``access='metadata_only'`` and redact payload/body/rights fields
+    without creating duplicate ``export_<dataset>`` staging tables.
+    """
+    if columns is None:
+        columns = list(kind_arrow_schema(kind).names)
+    else:
+        columns = list(columns)
+    base_policy = {
+        'group': 'source',
+        'rows': 'all',
+        'columns': columns,
+    }
+    if authorized or kind not in ('capture', 'version'):
+        return base_policy
+
+    expired_ids = sorted({str(cid) for cid in (expired_capture_ids or ()) if cid is not None})
+    if kind == 'capture':
+        redact_exprs = [{'kind': 'eq', 'field': 'access', 'value': 'restricted'}]
+        if as_of is not None:
+            as_of_str = as_of if isinstance(as_of, str) else as_of.isoformat()
+            redact_exprs.append({
+                'kind': 'and',
+                'exprs': [
+                    {'kind': 'is_not_null', 'field': 'retain_until'},
+                    {'kind': 'lt', 'field': 'retain_until', 'value': as_of_str},
+                ],
+            })
+        if expired_ids:
+            redact_exprs.append({'kind': 'in', 'field': 'id', 'values': expired_ids})
+        redact_all_pred = (
+            redact_exprs[0] if len(redact_exprs) == 1 else {'kind': 'or', 'exprs': redact_exprs}
+        )
+        redact_body_pred = {
+            'kind': 'or',
+            'exprs': [
+                redact_all_pred,
+                {'kind': 'eq', 'field': 'access', 'value': 'metadata_only'},
+            ],
+        }
+        computed_columns = {
+            'access': {
+                'kind': 'case_when',
+                'branches': [
+                    {
+                        'when': redact_all_pred,
+                        'then': {'kind': 'literal', 'value': 'metadata_only'},
+                    }
+                ],
+                'otherwise': {'kind': 'column', 'field': 'access'},
+            },
+            'rights_basis': {
+                'kind': 'case_when',
+                'branches': [{'when': redact_all_pred, 'then': {'kind': 'null'}}],
+                'otherwise': {'kind': 'column', 'field': 'rights_basis'},
+            },
+        }
+        for col in ('payload_uri', 'payload_hash', 'media_type'):
+            computed_columns[col] = {
+                'kind': 'case_when',
+                'branches': [{'when': redact_body_pred, 'then': {'kind': 'null'}}],
+                'otherwise': {'kind': 'column', 'field': col},
+            }
+        return {**base_policy, 'computed_columns': computed_columns}
+
+    # kind == 'version'
+    redact_exprs = [{'kind': 'eq', 'field': 'access', 'value': 'restricted'}]
+    if expired_ids:
+        redact_exprs.append({'kind': 'in', 'field': 'capture_id', 'values': expired_ids})
+    redact_all_pred = (
+        redact_exprs[0] if len(redact_exprs) == 1 else {'kind': 'or', 'exprs': redact_exprs}
+    )
+    redact_body_pred = {
+        'kind': 'or',
+        'exprs': [
+            redact_all_pred,
+            {'kind': 'eq', 'field': 'access', 'value': 'metadata_only'},
+        ],
+    }
+    computed_columns = {
+        'access': {
+            'kind': 'case_when',
+            'branches': [
+                {
+                    'when': redact_all_pred,
+                    'then': {'kind': 'literal', 'value': 'metadata_only'},
+                }
+            ],
+            'otherwise': {'kind': 'column', 'field': 'access'},
+        },
+        'rights_basis': {
+            'kind': 'case_when',
+            'branches': [{'when': redact_all_pred, 'then': {'kind': 'null'}}],
+            'otherwise': {'kind': 'column', 'field': 'rights_basis'},
+        },
+    }
+    for col in ('text', 'text_hash'):
+        computed_columns[col] = {
+            'kind': 'case_when',
+            'branches': [{'when': redact_body_pred, 'then': {'kind': 'null'}}],
+            'otherwise': {'kind': 'column', 'field': col},
+        }
+    return {**base_policy, 'computed_columns': computed_columns}
 
 
 def _file_digest(path):
@@ -632,8 +655,40 @@ class DocSpecClient:
     def capture_inputs(self, inputs):
         return self._native.capture_inputs(inputs)
 
+    def run_ipc(self, table, dataset, operation, definition=DEFINITION,
+                relationship=None, base=None, *, native_types=False):
+        """Stream one caller-bounded Arrow table as a dataset build over ``POST /run`` IPC."""
+        self._dataset_schemas[dataset] = table.schema
+        return self._native.run_ipc(
+            table,
+            dataset=dataset,
+            operation=operation,
+            definition=definition,
+            relationship=relationship,
+            base=base,
+            native_types=native_types,
+        )
+
+    def update_ipc(self, dataset, operation, base, keys, replacements_table,
+                   deletions=None, definition=DEFINITION, relationship=None, *,
+                   merge=None, native_types=False):
+        """Stream replacement rows by key over ``POST /updates/run`` IPC."""
+        self._dataset_schemas[dataset] = replacements_table.schema
+        return self._native.update_ipc(
+            replacements_table,
+            dataset=dataset,
+            operation=operation,
+            definition=definition,
+            base=base,
+            keys=list(keys),
+            deletions=deletions,
+            relationship=relationship,
+            merge=merge,
+            native_types=native_types,
+        )
+
     def run_table(self, table, dataset, operation, definition=DEFINITION,
-                  relationship=None, base=None):
+                  relationship=None, base=None, *, stream_ipc=False, native_types=False):
         """Admit one caller-bounded Arrow table as a dataset build."""
         self._dataset_schemas[dataset] = table.schema
         return self._native.run_table(
@@ -643,10 +698,13 @@ class DocSpecClient:
             definition=definition,
             relationship=relationship,
             base=base,
+            stream_ipc=stream_ipc,
+            native_types=native_types,
         )
 
     def update_table(self, dataset, operation, base, keys, replacements_table,
-                     deletions=None, definition=DEFINITION, relationship=None):
+                     deletions=None, definition=DEFINITION, relationship=None, *,
+                     merge=None, stream_ipc=False, native_types=False):
         """Replace or insert complete rows by key against the exact selected base."""
         self._dataset_schemas[dataset] = replacements_table.schema
         return self._native.update_table(
@@ -658,6 +716,9 @@ class DocSpecClient:
             keys=list(keys),
             deletions=deletions,
             relationship=relationship,
+            merge=merge,
+            stream_ipc=stream_ipc,
+            native_types=native_types,
         )
 
     def retained_producer_inputs(self):
@@ -677,7 +738,9 @@ class DocSpecLake:
     def __init__(self, client, workspace_suffix='', *,
                  lifecycle_compact_interval=DEFAULT_LIFECYCLE_COMPACT_INTERVAL,
                  compact_file_threshold=DEFAULT_COMPACT_FILE_THRESHOLD,
-                 compact_target_file_bytes=DEFAULT_COMPACT_TARGET_FILE_BYTES):
+                 compact_target_file_bytes=DEFAULT_COMPACT_TARGET_FILE_BYTES,
+                 native_upsert_merge=False,
+                 stream_ipc=False):
         self.client = client
         self.workspace_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
         self.lifecycle_compact_interval = lifecycle_compact_interval
@@ -685,6 +748,8 @@ class DocSpecLake:
         self._compact_file_threshold = compact_file_threshold
         self.compact_target_file_bytes = compact_target_file_bytes
         self._compact_target_file_bytes = compact_target_file_bytes
+        self.native_upsert_merge = bool(native_upsert_merge)
+        self.stream_ipc = bool(stream_ipc)
         self._compacted_pins = {}
         self.committed = self._load_committed_state()
         self._mutation_counts = self._load_mutation_counts()
@@ -1076,7 +1141,8 @@ class DocSpecLake:
         return found
 
     def commit_records(self, records, generation=None, family='news', *,
-                       ensure_all_tables=False):
+                       ensure_all_tables=False, native_upsert_merge=None,
+                       stream_ipc=None):
         """Validate and commit one batch; returns ``{dataset: latest ReleasePin}``.
 
         Records route by ``kind`` exactly as the contract's ``x-iceberg``
@@ -1086,6 +1152,12 @@ class DocSpecLake:
         ``generation``, every produced version declares the coupled producer
         relationship so the datasets can be sealed together afterwards.
         """
+        use_native_merge = (
+            self.native_upsert_merge
+            if native_upsert_merge is None
+            else bool(native_upsert_merge)
+        )
+        use_stream_ipc = self.stream_ipc if stream_ipc is None else bool(stream_ipc)
         relationship = ({'kind': 'coupled', 'family': family, 'generation': generation}
                         if generation is not None else None)
         batch = {}
@@ -1111,15 +1183,32 @@ class DocSpecLake:
                         f'admit-empty-{kind}', content_digest([dataset, relationship])
                     )
                     pins[dataset] = self.client.run_table(
-                        records_to_arrow(kind, ()), dataset, operation, relationship=relationship
+                        records_to_arrow(kind, ()),
+                        dataset,
+                        operation,
+                        relationship=relationship,
+                        stream_ipc=use_stream_ipc,
                     )
                     if self._record_dataset_mutation(dataset, prior, pins[dataset]):
                         mutated.append(dataset)
                 continue
             if TABLE_MUTATIONS[KIND_TABLES[kind]] == 'upsert':
-                pins[dataset] = self._commit_upsert(dataset, kind, records_of_kind, relationship)
+                pins[dataset] = self._commit_upsert(
+                    dataset,
+                    kind,
+                    records_of_kind,
+                    relationship,
+                    native_upsert_merge=use_native_merge,
+                    stream_ipc=use_stream_ipc,
+                )
             else:
-                pins[dataset] = self._commit_append(dataset, kind, records_of_kind, relationship)
+                pins[dataset] = self._commit_append(
+                    dataset,
+                    kind,
+                    records_of_kind,
+                    relationship,
+                    stream_ipc=use_stream_ipc,
+                )
             if self._record_dataset_mutation(dataset, prior, pins[dataset]):
                 mutated.append(dataset)
         self.committed = pins
@@ -1157,13 +1246,17 @@ class DocSpecLake:
             relationship=relationship,
         )
 
-    def _commit_append(self, dataset, kind, records, relationship):
+    def _commit_append(self, dataset, kind, records, relationship, *, stream_ipc=False):
         records = self._dedup_incoming(dataset, records, is_append=True)
         prior = self.committed.get(dataset) or self.client.try_latest(dataset)
         if prior is None:
             operation = self._operation(f'admit-{kind}', content_digest(records))
             pin = self.client.run_table(
-                records_to_arrow(kind, records), dataset, operation, relationship=relationship
+                records_to_arrow(kind, records),
+                dataset,
+                operation,
+                relationship=relationship,
+                stream_ipc=stream_ipc,
             )
             self._known_ids.setdefault(dataset, set()).update(r['id'] for r in records)
             return pin
@@ -1195,18 +1288,55 @@ class DocSpecLake:
             self._update_keys_for(kind),
             records_to_arrow(kind, new_records),
             relationship=relationship,
+            stream_ipc=stream_ipc,
         )
         self._known_ids.setdefault(dataset, set()).update(r['id'] for r in new_records)
         return pin
 
-    def _commit_upsert(self, dataset, kind, records, relationship):
+    def _commit_upsert(self, dataset, kind, records, relationship, *,
+                       native_upsert_merge=False, stream_ipc=False):
         records = self._dedup_incoming(dataset, records, is_append=False)
         prior = self.committed.get(dataset) or self.client.try_latest(dataset)
         if prior is None:
             operation = self._operation(f'admit-{kind}', content_digest(records))
             return self.client.run_table(
-                records_to_arrow(kind, records), dataset, operation, relationship=relationship
+                records_to_arrow(kind, records),
+                dataset,
+                operation,
+                relationship=relationship,
+                stream_ipc=stream_ipc,
             )
+        if native_upsert_merge:
+            if self._maybe_compact_table(dataset, prior, incoming_files=1) is not None:
+                self._pending_lifecycle_compactions.add(dataset)
+            base_version = prior['dataset']['version']
+            merge_spec = upsert_merge_spec_for_kind(kind)
+            operation = self._operation(
+                f'upsert-{kind}', content_digest([base_version, records, relationship, merge_spec])
+            )
+            try:
+                pin = self.client.update_table(
+                    dataset,
+                    operation,
+                    base_version,
+                    ['id'],
+                    records_to_arrow(kind, records),
+                    relationship=relationship,
+                    merge=merge_spec,
+                    stream_ipc=stream_ipc,
+                )
+                self.last_lookup_stats[dataset] = {
+                    'requested_ids': len(records),
+                    'requested_keys': 0,
+                    'matched_rows': 0,
+                    'rows_transferred': 0,
+                    'total_rows': prior.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', 0),
+                    'mode': 'native_merge',
+                }
+                return pin
+            except DocSpecFailure as exc:
+                if 'merge' not in (exc.stderr or '') and exc.code != 'invalid_spec':
+                    raise
         existing = self._existing_by_ids(prior, kind, (record['id'] for record in records))
         merged = merge_upsert_batch(list(existing.values()), records)
         changed = [row for row in merged if existing.get(row['id']) != row]
@@ -1225,6 +1355,7 @@ class DocSpecLake:
             ['id'],
             records_to_arrow(kind, changed),
             relationship=relationship,
+            stream_ipc=stream_ipc,
         )
 
     def seal(self, generation_id, family='news'):
@@ -2971,15 +3102,236 @@ class DocSpecNewsViews:
                                 ]}},
         )
 
-    def politician_articles(self, records_or_release_read, mode='full', selections=None):
+    def _refresh_politician_mentions_roots_spec(self, base, mode, mentions_pin=None, roots_pin=None):
+        if mentions_pin is None:
+            mentions_pin = self._bridge_pin_for_refresh(
+                'selected_mentions', 'politician_mentions_roots', mode
+            )
+        if roots_pin is None:
+            roots_pin = self._bridge_pin_for_refresh(
+                'entity_roots', 'politician_mentions_roots', mode
+            )
+        return dict(
+            dataset='politician_mentions_roots', base=base, definition=DEFINITION, mode=mode,
+            operation=self._operation(
+                f'pmr-{mode}',
+                content_digest([base, mode, version_ref(mentions_pin), version_ref(roots_pin)])),
+            transform={'kind': 'join',
+                       'left': version_ref(mentions_pin),
+                       'right': version_ref(roots_pin),
+                       'join': {'keys': [{'left': 'entity_id', 'right': 'entity_id'}],
+                                'kind': 'inner', 'nulls': 'never',
+                                'cardinality': 'many_to_one',
+                                'filter': {
+                                    'kind': 'eq',
+                                    'field': 'entity_type',
+                                    'value': 'person',
+                                },
+                                'fields': [
+                                    {'side': 'left', 'field': 'entity_id',
+                                     'name': 'entity_id'},
+                                    {'side': 'left', 'field': 'mention_id',
+                                     'name': 'mention_id'},
+                                    {'side': 'left', 'field': 'version_id',
+                                     'name': 'version_id'},
+                                    {'side': 'left', 'field': 'run_id', 'name': 'run_id'},
+                                    {'side': 'left', 'field': 'surface', 'name': 'surface'},
+                                    {'side': 'left', 'field': 'aboutness',
+                                     'name': 'aboutness'},
+                                    {'side': 'left', 'field': 'occurrences',
+                                     'name': 'occurrences'},
+                                    {'side': 'right', 'field': 'person_root_id',
+                                     'name': 'person_root_id'},
+                                    {'side': 'right', 'field': 'entity_type',
+                                     'name': 'entity_type'},
+                                ]}},
+        )
+
+    def _refresh_politician_mention_items_spec(self, base, mode, mentions_roots_pin, survivor_pin=None):
+        if survivor_pin is None:
+            survivor_pin = self._bridge_pin_for_refresh(
+                'survivor_items', 'politician_mention_items', mode
+            )
+        return dict(
+            dataset='politician_mention_items', base=base, definition=DEFINITION, mode=mode,
+            operation=self._operation(
+                f'pmi-{mode}',
+                content_digest([base, mode, version_ref(mentions_roots_pin), version_ref(survivor_pin)])),
+            transform={'kind': 'join',
+                       'left': version_ref(mentions_roots_pin),
+                       'right': version_ref(survivor_pin),
+                       'join': {'keys': [{'left': 'version_id', 'right': 'current_version_id'}],
+                                'kind': 'inner', 'nulls': 'never',
+                                'cardinality': 'many_to_one',
+                                'fields': [
+                                    {'side': 'left', 'field': 'mention_id',
+                                     'name': 'mention_id'},
+                                    {'side': 'left', 'field': 'version_id',
+                                     'name': 'version_id'},
+                                    {'side': 'left', 'field': 'run_id', 'name': 'run_id'},
+                                    {'side': 'left', 'field': 'entity_id',
+                                     'name': 'entity_id'},
+                                    {'side': 'left', 'field': 'surface', 'name': 'surface'},
+                                    {'side': 'left', 'field': 'aboutness',
+                                     'name': 'aboutness'},
+                                    {'side': 'left', 'field': 'occurrences',
+                                     'name': 'occurrences'},
+                                    {'side': 'left', 'field': 'person_root_id',
+                                     'name': 'person_root_id'},
+                                    {'side': 'right', 'field': 'item_id',
+                                     'name': 'item_id'},
+                                ]}},
+        )
+
+    def _refresh_politician_articles_groups_spec(self, base, mode, mention_items_pin):
+        return dict(
+            dataset='politician_articles_groups', base=base, definition=DEFINITION, mode=mode,
+            operation=self._operation(
+                f'pag-{mode}',
+                content_digest([base, mode, version_ref(mention_items_pin)])),
+            transform={'kind': 'aggregate',
+                       'input': version_ref(mention_items_pin),
+                       'grouping': {'keys': ['person_root_id', 'item_id'],
+                                    'aggregates': [
+                                        {'name': 'version_id',
+                                         'function': {'kind': 'first_value_by',
+                                                      'field': 'version_id',
+                                                      'order_by': ['mention_id']}},
+                                        {'name': 'entity_ids',
+                                         'function': {'kind': 'collect_set',
+                                                      'field': 'entity_id'}},
+                                        {'name': 'run_ids',
+                                         'function': {'kind': 'collect_set',
+                                                      'field': 'run_id'}},
+                                        {'name': 'aboutness',
+                                         'function': {'kind': 'collect_set',
+                                                      'field': 'aboutness'}},
+                                        {'name': 'surfaces',
+                                         'function': {'kind': 'collect_set',
+                                                      'field': 'surface'}},
+                                    ]}},
+        )
+
+    def refresh_politician_articles_chained(self, records_or_release_read, mode='full', selections=None):
+        """Refresh ``politician_articles`` via chained native Join -> Join -> Aggregate (ss-65bz).
+
+        Stage 1 (``politician_mentions_roots``): ``selected_mentions ⋈ entity_roots``
+        with native ``filter: entity_type == 'person'``.
+        Stage 2 (``politician_mention_items``): ``politician_mentions_roots ⋈ survivor_items``
+        on ``version_id == current_version_id``.
+        Stage 3 (``politician_articles_groups``): ``AggregateTransform`` grouped by
+        ``['person_root_id', 'item_id']`` with ``first_value_by(version_id, order_by=['mention_id'])``
+        and ``collect_set`` over ``entity_ids``, ``run_ids``, ``aboutness``, and ``surfaces``.
+        """
+        _, release_id = self._extract_release_meta(records_or_release_read, selections)
+        source_pins = self._resolve_source_pins(records_or_release_read)
+        versions_pin = source_pins.get('news.versions')
+
+        mentions_pin = self._bridge_pin_for_refresh(
+            'selected_mentions', 'politician_mentions_roots', mode
+        )
+        roots_pin = self._bridge_pin_for_refresh(
+            'entity_roots', 'politician_mentions_roots', mode
+        )
+        survivor_pin = self._bridge_pin_for_refresh(
+            'survivor_items', 'politician_mention_items', mode
+        )
+
+        base_mr = self._base_version('politician_mentions_roots', mode)
+        mr_spec = self._refresh_politician_mentions_roots_spec(
+            base_mr, mode, mentions_pin=mentions_pin, roots_pin=roots_pin
+        )
+        mr_pin = self.client.refresh(mr_spec)
+        self.pins['politician_mentions_roots'] = mr_pin
+
+        base_mi = self._base_version('politician_mention_items', mode)
+        mi_spec = self._refresh_politician_mention_items_spec(
+            base_mi, mode, mr_pin, survivor_pin=survivor_pin
+        )
+        mi_pin = self.client.refresh(mi_spec)
+        self.pins['politician_mention_items'] = mi_pin
+
+        base_pag = self._base_version('politician_articles_groups', mode)
+        pag_spec = self._refresh_politician_articles_groups_spec(base_pag, mode, mi_pin)
+        pag_pin = self.client.refresh(pag_spec)
+        self.pins['politician_articles_groups'] = pag_pin
+        self.pins['politician_articles'] = pag_pin
+
+        self._flush_pending_bridge_compactions(
+            ('selected_mentions', 'entity_roots', 'survivor_items')
+        )
+        self._record_view_mutation('politician_mentions_roots')
+        self._record_view_mutation('politician_mention_items')
+        self._record_view_mutation('politician_articles_groups')
+        self._save_views_state()
+
+        group_cols = [
+            'person_root_id', 'item_id', 'version_id',
+            'entity_ids', 'run_ids', 'aboutness', 'surfaces',
+        ]
+        grouped_rows = list(self.client.iter_records(pag_pin, columns=group_cols))
+        if not grouped_rows:
+            return []
+
+        occ_cols = ['person_root_id', 'item_id', 'surface', 'occurrences']
+        spans_by_key = {}
+        for row in self.client.iter_records(mi_pin, columns=occ_cols):
+            key = (row['person_root_id'], row['item_id'])
+            spans = spans_by_key.setdefault(key, [])
+            for span in (row.get('occurrences') or ()):
+                spans.append({
+                    'field': span['field'],
+                    'surface': row['surface'],
+                    'start': span['start'],
+                    'end': span['end'],
+                })
+
+        grouped_version_ids = sorted({row['version_id'] for row in grouped_rows})
+        if versions_pin is not None:
+            ver_rows = table_records(
+                self.client.read_keys(
+                    versions_pin,
+                    'id',
+                    grouped_version_ids,
+                    columns=['id', 'title', 'text'],
+                    schema=kind_arrow_schema('version'),
+                )
+            )
+            versions = {row['id']: row for row in ver_rows}
+        else:
+            records, _, _ = self._unwrap(records_or_release_read)
+            versions = _by_kind(records, 'version')
+
+        result = []
+        for row in grouped_rows:
+            key = (row['person_root_id'], row['item_id'])
+            version = versions.get(row['version_id'])
+            result.append({
+                'release_id': release_id,
+                'person_root_id': row['person_root_id'],
+                'entity_ids': list(row.get('entity_ids') or ()),
+                'item_id': row['item_id'],
+                'version_id': row['version_id'],
+                'run_ids': list(row.get('run_ids') or ()),
+                'aboutness': list(row.get('aboutness') or ()),
+                'surfaces': list(row.get('surfaces') or ()),
+                'spans': _merge_spans(spans_by_key.get(key, ()), version=version),
+            })
+        return sorted(result, key=lambda r: (r['person_root_id'], r['item_id']))
+
+    def politician_articles(self, records_or_release_read, mode='full', selections=None, *,
+                            chained=False):
         """The ``politician_articles`` view through the native join.
 
         ``mode='incremental'`` replaces only the match groups the changed
         ``entity_roots`` / ``selected_mentions`` rows affect (requires a
-        previous output version). Rows are assembled in Python from the joined
-        output, the pinned ``survivor_items`` dataset and the release's
-        versions, matching ``analysis.views.politician_articles`` field for field.
+        previous output version). When ``chained=True``, executes the 3-stage
+        native Join -> Join -> Aggregate pipeline (ss-65bz).
         """
+        if chained:
+            return self.refresh_politician_articles_chained(
+                records_or_release_read, mode=mode, selections=selections
+            )
         _, release_id = self._extract_release_meta(records_or_release_read, selections)
         source_pins = self._resolve_source_pins(records_or_release_read)
         versions_pin = source_pins.get('news.versions')
@@ -3089,6 +3441,61 @@ class DocSpecNewsViews:
             })
         return sorted(result, key=lambda row: (row['person_root_id'], row['item_id']))
 
+    def _refresh_text_group_counts_spec(self, base, mode, survivor_pin=None):
+        if survivor_pin is None:
+            survivor_pin = self._bridge_pin_for_refresh(
+                'survivor_items', 'text_group_counts', mode
+            )
+        return dict(
+            dataset='text_group_counts', base=base, definition=DEFINITION, mode=mode,
+            operation=self._operation(
+                f'tgc-{mode}',
+                content_digest([base, mode, version_ref(survivor_pin)])),
+            transform={'kind': 'aggregate',
+                       'input': version_ref(survivor_pin),
+                       'grouping': {
+                           'keys': ['text_group_id'],
+                           'filter': {
+                               'kind': 'and',
+                               'exprs': [
+                                   {'kind': 'is_not_null', 'field': 'text_group_id'},
+                                   {'kind': 'gt', 'field': 'item_count', 'value': 1},
+                               ],
+                           },
+                           'aggregates': [
+                               {'name': 'item_count',
+                                'function': {'kind': 'count_distinct', 'field': 'item_id'}},
+                           ],
+                       }},
+        )
+
+    def _refresh_survivor_items_syndicated_spec(self, base, mode, survivor_pin, counts_pin):
+        return dict(
+            dataset='survivor_items_syndicated', base=base, definition=DEFINITION, mode=mode,
+            operation=self._operation(
+                f'sis-{mode}',
+                content_digest([base, mode, version_ref(survivor_pin), version_ref(counts_pin)])),
+            transform={'kind': 'join',
+                       'left': version_ref(survivor_pin),
+                       'right': version_ref(counts_pin),
+                       'join': {'keys': [{'left': 'text_group_id', 'right': 'text_group_id'}],
+                                'kind': 'left', 'nulls': 'never',
+                                'cardinality': 'many_to_one',
+                                'fields': [
+                                    {'side': 'left', 'field': 'item_id', 'name': 'item_id'},
+                                    {'side': 'left', 'field': 'outlet_id', 'name': 'outlet_id'},
+                                    {'side': 'left', 'field': 'current_version_id',
+                                     'name': 'current_version_id'},
+                                    {'side': 'left', 'field': 'effective_pub_date',
+                                     'name': 'effective_pub_date'},
+                                    {'side': 'left', 'field': 'story_id', 'name': 'story_id'},
+                                    {'side': 'left', 'field': 'text_group_id',
+                                     'name': 'text_group_id'},
+                                    {'side': 'right', 'field': 'text_group_id',
+                                     'name': 'identical_text_group_id'},
+                                ]}},
+        )
+
     def _refresh_aggregate_spec(self, base, mode, survivor_pin=None):
         if survivor_pin is None:
             survivor_pin = self._bridge_pin_for_refresh(
@@ -3120,15 +3527,67 @@ class DocSpecNewsViews:
                                     ]}},
         )
 
-    def coverage_daily(self, records_or_release_read, mode='full', selections=None):
+    def refresh_coverage_daily_two_stage(self, records_or_release_read, mode='full', selections=None):
+        """Refresh ``coverage_daily`` via 2-stage native cross-date syndication (ss-65bz).
+
+        Stage 1 (``text_group_counts``): ``AggregateTransform`` grouped by
+        ``['text_group_id']`` with post-aggregate filter
+        ``text_group_id IS NOT NULL AND item_count > 1``.
+        Stage 2 (``survivor_items_syndicated``): left ``JoinTransform`` of
+        ``survivor_items ⟕ text_group_counts`` projecting ``right.text_group_id``
+        as ``identical_text_group_id`` (NULL when ``item_count <= 1``).
+        Stage 3 (``coverage_daily``): ``AggregateTransform`` grouped by
+        ``['effective_pub_date']``.
+        """
+        _, release_id = self._extract_release_meta(records_or_release_read, selections)
+        survivor_pin = self._bridge_pin_for_refresh(
+            'survivor_items', 'text_group_counts', mode
+        )
+        base_tgc = self._base_version('text_group_counts', mode)
+        tgc_spec = self._refresh_text_group_counts_spec(base_tgc, mode, survivor_pin=survivor_pin)
+        tgc_pin = self.client.refresh(tgc_spec)
+        self.pins['text_group_counts'] = tgc_pin
+
+        base_sis = self._base_version('survivor_items_syndicated', mode)
+        sis_spec = self._refresh_survivor_items_syndicated_spec(
+            base_sis, mode, survivor_pin, tgc_pin
+        )
+        sis_pin = self.client.refresh(sis_spec)
+        self.pins['survivor_items_syndicated'] = sis_pin
+
+        base_cov = self._base_version('coverage_daily', mode)
+        cov_spec = self._refresh_aggregate_spec(base_cov, mode, survivor_pin=sis_pin)
+        cov_pin = self.client.refresh(cov_spec)
+        self.pins['coverage_daily'] = cov_pin
+
+        self._flush_pending_bridge_compactions(('survivor_items',))
+        self._record_view_mutation('text_group_counts')
+        self._record_view_mutation('survivor_items_syndicated')
+        self._record_view_mutation('coverage_daily')
+        self._save_views_state()
+
+        cov_cols = [
+            'effective_pub_date', 'items', 'outlets', 'stories', 'identical_text_group_ids',
+        ]
+        aggregate = list(self.client.iter_records(cov_pin, columns=cov_cols))
+        return self._assemble_coverage_daily(release_id, aggregate)
+
+    def coverage_daily(self, records_or_release_read, mode='full', selections=None, *,
+                       two_stage_syndication=False):
         """The ``coverage_daily`` view through the native aggregate.
 
         The grouping key is the ``survivor_items`` ``effective_pub_date``
         Date32 column; NULL keys form exactly one undated group. The native
         ``rows`` count is computed but not emitted (the Python view has no
         such field). ``identical_text_group_ids`` is collected natively via
-        ``collect_set`` over ``identical_text_group_id``.
+        ``collect_set`` over ``identical_text_group_id``. When
+        ``two_stage_syndication=True``, derives ``identical_text_group_id``
+        natively via ``text_group_counts`` -> ``survivor_items_syndicated`` (ss-65bz).
         """
+        if two_stage_syndication:
+            return self.refresh_coverage_daily_two_stage(
+                records_or_release_read, mode=mode, selections=selections
+            )
         _, release_id = self._extract_release_meta(records_or_release_read, selections)
         base = self._base_version('coverage_daily', mode)
         survivor_pin = self._bridge_pin_for_refresh(
@@ -3189,22 +3648,41 @@ class DocSpecNewsViews:
                           dataset_pins=None):
         """Apply C5 rights and capture-expiry rules, then run native Parquet exports.
 
-        Enforces ``news_lake.analysis.export.export_release`` before admitting
-        any export dataset version so restricted or expired captures/versions
-        are downgraded to ``metadata_only`` and stripped of bodies prior to
-        native ``ExportSpec`` materialization.
-
-        ``dataset_pins`` optionally maps a release table name to the exact native
-        ``ReleasePin`` that already retains those rows. When C5 filtering leaves a
-        table unchanged, that pin is exported directly instead of re-admitting a
-        duplicate staging dataset.
+        Enforces ``news_lake.analysis.export.export_release`` and exports
+        unchanged tables directly from their committed ``ReleasePin``s without
+        creating duplicate ``export_<dataset>`` staging datasets. For
+        ``news.captures`` and ``news.versions``, uses declarative C5
+        ``ExportPolicy.computed_columns`` (``build_c5_export_policy``) to redact
+        restricted or expired rows directly from the source pin (falling back to
+        ``export_<dataset>`` only if the runtime binary predates ``ss-6gwu``).
         """
+        from datetime import datetime, timezone
+
         release_read = self._ensure_release_read(records_or_release_read)
-        if dataset_pins is None and isinstance(release_read.get('dataset_pins'), dict):
-            dataset_pins = dict(release_read['dataset_pins'])
-        else:
-            dataset_pins = dict(dataset_pins or {})
+        resolved_pins = self._resolve_source_pins(release_read)
+        if dataset_pins is not None:
+            for key, pin in dataset_pins.items():
+                if isinstance(pin, dict):
+                    resolved_pins[key] = pin
         effective_now = as_of if as_of is not None else now
+        if effective_now is None:
+            moment = datetime.now(timezone.utc)
+        elif isinstance(effective_now, str):
+            moment = parse_instant(effective_now)
+        else:
+            moment = effective_now
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        moment_iso = moment.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+        expired_capture_ids = sorted({
+            record['id']
+            for record in release_read['tables'].get('news.captures', ())
+            if isinstance(record, dict)
+            and record.get('retain_until') is not None
+            and parse_instant(record['retain_until']) < moment
+        })
+
         filtered = export_release(release_read, authorized=authorized, now=effective_now)
         dest_root = Path(destination_dir).resolve() if destination_dir is not None else None
         if dest_root is not None:
@@ -3212,6 +3690,7 @@ class DocSpecNewsViews:
 
         pins = {}
         files = {}
+        channel_id = sanitize_id(channel)
         for table_name, rows in sorted(filtered['tables'].items()):
             if not rows:
                 continue
@@ -3219,45 +3698,90 @@ class DocSpecNewsViews:
             logical_dataset = dataset_id_for(table_name)
             export_dataset = sanitize_id(f'export_{logical_dataset}')
             arrow_table = records_to_arrow(kind, rows)
-            unchanged = rows == release_read['tables'].get(table_name)
-            pinned = dataset_pins.get(table_name)
-            if unchanged and pinned is not None:
-                source_pin = pinned
-            else:
-                admit_digest = content_digest([filtered['release']['id'], table_name, rows])
-                admit_op = self._operation(f'admit-exp-{kind}', admit_digest)
-                prior_pin = self.client.try_latest(export_dataset)
-                if prior_pin is not None and prior_pin['dataset']['version'] == admit_op:
-                    source_pin = prior_pin
-                else:
-                    source_pin = self.client.run_table(arrow_table, export_dataset, admit_op)
-
             columns = list(arrow_table.schema.names)
-            channel_id = sanitize_id(channel)
-            export_op = self._operation(
-                f'exp-{kind}',
-                content_digest([version_ref(source_pin), channel_id, columns]),
-            )
-            existing_export = self.client.try_export_pin(source_pin['dataset']['dataset'], export_op)
-            if existing_export is not None:
-                export_pin = existing_export
-            else:
-                current_channel = self.client.try_latest_export(
-                    source_pin['dataset']['dataset'], channel_id)
-                expected = current_channel['id'] if current_channel is not None else None
-                export_spec = {
-                    'dataset': source_pin['dataset']['dataset'],
-                    'operation': export_op,
-                    'source': version_ref(source_pin),
-                    'channel': channel_id,
-                    'expected': expected,
-                    'policy': {
-                        'group': 'source',
-                        'rows': 'all',
-                        'columns': columns,
-                    },
-                }
-                export_pin = self.client.export(export_spec)
+            orig_rows = release_read['tables'].get(table_name) or ()
+            unchanged = rows == orig_rows
+            pinned = resolved_pins.get(table_name) or resolved_pins.get(logical_dataset)
+            if pinned is None:
+                candidate = self.client.try_latest(logical_dataset)
+                if (
+                    candidate is not None
+                    and candidate.get('dataset', {}).get('groups', {}).get('source', {}).get('rows')
+                    == len(orig_rows)
+                ):
+                    pinned = candidate
+
+            export_pin = None
+            if pinned is not None and not unchanged and kind in ('capture', 'version'):
+                c5_policy = build_c5_export_policy(
+                    kind,
+                    columns=columns,
+                    authorized=authorized,
+                    as_of=moment_iso,
+                    expired_capture_ids=expired_capture_ids,
+                )
+                c5_op = self._operation(
+                    f'exp-{kind}',
+                    content_digest([version_ref(pinned), channel_id, c5_policy]),
+                )
+                existing_c5 = self.client.try_export_pin(pinned['dataset']['dataset'], c5_op)
+                if existing_c5 is not None:
+                    export_pin = existing_c5
+                else:
+                    current_channel = self.client.try_latest_export(
+                        pinned['dataset']['dataset'], channel_id
+                    )
+                    expected = current_channel['id'] if current_channel is not None else None
+                    c5_spec = {
+                        'dataset': pinned['dataset']['dataset'],
+                        'operation': c5_op,
+                        'source': version_ref(pinned),
+                        'channel': channel_id,
+                        'expected': expected,
+                        'policy': c5_policy,
+                    }
+                    try:
+                        export_pin = self.client.export(c5_spec)
+                    except DocSpecFailure as exc:
+                        if 'computed_columns' not in (exc.stderr or '') and exc.code != 'invalid_spec':
+                            raise
+
+            if export_pin is None:
+                if unchanged and pinned is not None:
+                    source_pin = pinned
+                else:
+                    admit_digest = content_digest([filtered['release']['id'], table_name, rows])
+                    admit_op = self._operation(f'admit-exp-{kind}', admit_digest)
+                    prior_pin = self.client.try_latest(export_dataset)
+                    if prior_pin is not None and prior_pin['dataset']['version'] == admit_op:
+                        source_pin = prior_pin
+                    else:
+                        source_pin = self.client.run_table(arrow_table, export_dataset, admit_op)
+
+                export_op = self._operation(
+                    f'exp-{kind}',
+                    content_digest([version_ref(source_pin), channel_id, columns]),
+                )
+                existing_export = self.client.try_export_pin(source_pin['dataset']['dataset'], export_op)
+                if existing_export is not None:
+                    export_pin = existing_export
+                else:
+                    current_channel = self.client.try_latest_export(
+                        source_pin['dataset']['dataset'], channel_id)
+                    expected = current_channel['id'] if current_channel is not None else None
+                    export_spec = {
+                        'dataset': source_pin['dataset']['dataset'],
+                        'operation': export_op,
+                        'source': version_ref(source_pin),
+                        'channel': channel_id,
+                        'expected': expected,
+                        'policy': {
+                            'group': 'source',
+                            'rows': 'all',
+                            'columns': columns,
+                        },
+                    }
+                    export_pin = self.client.export(export_spec)
 
             pins[logical_dataset] = export_pin
             pins[table_name] = export_pin
@@ -3301,6 +3825,7 @@ __all__ = [
     'DocSpecLake',
     'DocSpecNewsViews',
     'application_schema',
+    'build_c5_export_policy',
     'content_digest',
     'dataset_id_for',
     'kind_arrow_schema',
@@ -3310,5 +3835,6 @@ __all__ = [
     'restore_application_schema',
     'sanitize_id',
     'table_records',
+    'upsert_merge_spec_for_kind',
     'version_ref',
 ]

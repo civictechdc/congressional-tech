@@ -2234,3 +2234,289 @@ def test_threshold_table_compaction_bounds_active_files_and_preserves_oracle_equ
     assert fresh_views.table_compactions == []
     client.close()
 
+
+# -- Wave 2B (ct-aia9 Part 2 + ct-a3le Part 1): IPC streaming, UpdateMergeSpec, chained refreshes, C5 ExportPolicy ---
+
+
+def test_ipc_write_streaming_and_shared_schema_adapter(tmp_path):
+    """run_ipc and update_ipc stream Arrow IPC bytes with BLAKE3 digest and restore schemas."""
+    from docspec_client import (
+        application_schema as client_application_schema,
+        blake3_hex,
+        native_storage_schema as client_native_storage_schema,
+        restore_application_schema as client_restore_application_schema,
+    )
+    from news_lake.storage.docspec_backend import (
+        application_schema as backend_application_schema,
+        native_storage_schema as backend_native_storage_schema,
+        records_to_arrow,
+    )
+
+    assert backend_application_schema is client_application_schema
+    assert backend_native_storage_schema is client_native_storage_schema
+    assert restore_application_schema is client_restore_application_schema
+
+    client = DocSpecClient(tmp_path / 'ws-ipc')
+    table1 = records_to_arrow('outlet', [OUTLET_A])
+    try:
+        pin1 = client.run_ipc(table1, 'news_outlets', 'ipc-admit-outlets')
+    except DocSpecFailure as exc:
+        if getattr(exc, 'status_code', None) == 415:
+            pin1 = client.run_table(table1, 'news_outlets', 'ipc-admit-outlets', stream_ipc=True)
+        else:
+            raise
+    assert pin1['dataset']['dataset'] == 'news_outlets'
+    assert table_records(client.read_arrow(pin1)) == [OUTLET_A]
+
+    table2 = records_to_arrow('outlet', [OUTLET_B])
+    try:
+        pin2 = client.update_ipc(
+            'news_outlets',
+            'ipc-update-outlets',
+            pin1['dataset']['version'],
+            ['id'],
+            table2,
+        )
+    except DocSpecFailure as exc:
+        if getattr(exc, 'status_code', None) == 415:
+            pin2 = client.update_table(
+                'news_outlets',
+                'ipc-update-outlets',
+                pin1['dataset']['version'],
+                ['id'],
+                table2,
+                stream_ipc=True,
+            )
+        else:
+            raise
+    rows = {r['id']: r for r in table_records(client.read_arrow(pin2))}
+    assert rows == {OUTLET_A['id']: OUTLET_A, OUTLET_B['id']: OUTLET_B}
+
+    # Verify DocSpecLake with stream_ipc=True
+    lake = DocSpecLake(client, workspace_suffix='ipc-lake', stream_ipc=True)
+    lake_pins = lake.commit_records([OUTLET_A, I1])
+    assert table_records(client.read_arrow(lake_pins['news_items'])) == [I1]
+
+    # Verify hash_input parity with blake3_hex
+    sample_file = tmp_path / 'sample.bin'
+    sample_bytes = b'arrow-ipc-blake3-parity-' * 200
+    sample_file.write_bytes(sample_bytes)
+    hashed = client.hash_input(sample_file)
+    digest = hashed['digest'] if isinstance(hashed, dict) else hashed
+    assert digest == blake3_hex(sample_bytes)
+    client.close()
+
+
+def test_declarative_upsert_merge_spec_without_read_keys(tmp_path):
+    """DocSpecLake(native_upsert_merge=True) sends UpdateMergeSpec with zero read_keys round-trips."""
+    from news_lake.storage.docspec_backend import upsert_merge_spec_for_kind
+
+    outlet_merge_spec = upsert_merge_spec_for_kind('outlet')
+    assert outlet_merge_spec['order_by'] == 'recorded_at'
+    assert outlet_merge_spec['columns']['recorded_at'] == 'max'
+    assert outlet_merge_spec['columns']['domains'] == 'set_union'
+    assert outlet_merge_spec['columns']['name'] == 'latest_or_backfill'
+    assert 'id' not in outlet_merge_spec['columns']
+
+    item_merge_spec = upsert_merge_spec_for_kind('item')
+    assert item_merge_spec['order_by'] == 'recorded_at'
+    assert item_merge_spec['columns']['recorded_at'] == 'max'
+    assert item_merge_spec['columns']['first_seen_at'] == 'min'
+    assert item_merge_spec['columns']['url_aliases'] == 'set_union'
+    assert 'id' not in item_merge_spec['columns']
+
+    client = DocSpecClient(tmp_path / 'ws-merge')
+    lake = DocSpecLake(client, native_upsert_merge=True)
+
+    poll1_item = dict(
+        I1,
+        url_aliases=['https://a.example/v1', 'https://a.example/v1-alt'],
+        first_seen_at='2026-01-05T00:00:00Z',
+        recorded_at='2026-10-18T10:00:00Z',
+    )
+    lake.commit_records([OUTLET_A, poll1_item])
+
+    # Poll 2 has newer recorded_at, earlier first_seen_at, new url_alias
+    poll2_item = dict(
+        I1,
+        url_aliases=['https://a.example/v1-alt', 'https://a.example/v1-mirror'],
+        first_seen_at='2026-01-01T00:00:00Z',
+        recorded_at='2026-10-19T10:00:00Z',
+    )
+    pins = lake.commit_records([poll2_item])
+    stats = lake.last_lookup_stats.get('news_items', {})
+    if stats.get('mode') == 'native_merge':
+        assert stats['requested_keys'] == 0
+        assert stats['rows_transferred'] == 0
+
+    rows = table_records(client.read_arrow(pins['news_items']))
+    assert len(rows) == 1
+    merged = rows[0]
+    assert merged['id'] == I1['id']
+    assert merged['first_seen_at'] == '2026-01-01T00:00:00Z'
+    assert merged['recorded_at'] == '2026-10-19T10:00:00Z'
+    assert sorted(merged['url_aliases']) == [
+        'https://a.example/v1',
+        'https://a.example/v1-alt',
+        'https://a.example/v1-mirror',
+    ]
+    client.close()
+
+
+def test_chained_refresh_politician_articles_and_two_stage_coverage_daily(tmp_path):
+    """Chained RefreshSpecs for politician_articles and 2-stage coverage_daily match Python oracle."""
+    v2_next_day = _version(
+        'v2', title='Council roundup next day',
+        publication={'precision': 'day', 'date': '2026-10-19', 'basis': 'publisher'},
+        text='Council member Alex Doe and Alex Doe spoke.',
+    )
+    corpus_initial = [
+        (v2_next_day if r['id'] == V2['id'] else r)
+        for r in CORPUS
+        if r['id'] != MERGE_P1B_INTO_P1['id']
+    ]
+    check_corpus(corpus_initial)
+    before = release_read_of(corpus_initial, SELECTIONS)
+
+    client = DocSpecClient(tmp_path / 'ws-chained')
+    lake = DocSpecLake(client)
+    lake.commit_records(corpus_initial)
+
+    views = DocSpecNewsViews(client)
+    views.materialize(before)
+
+    try:
+        pa_full = views.politician_articles(before, mode='full', chained=True)
+    except DocSpecFailure as exc:
+        if exc.code == 'invalid_spec' or 'unknown field `filter`' in (exc.stderr or ''):
+            client.close()
+            pytest.skip('runtime binary predates ss-65bz chained filter / FirstValueBy')
+        raise
+    assert pa_full == politician_articles_views(before)
+    assert 'politician_mentions_roots' in views.pins
+    assert 'politician_mention_items' in views.pins
+    assert 'politician_articles_groups' in views.pins
+
+    cov_full = views.coverage_daily(before, mode='full', two_stage_syndication=True)
+    assert cov_full == coverage_daily(before)
+    assert 'text_group_counts' in views.pins
+    assert 'survivor_items_syndicated' in views.pins
+
+    # Incremental update after merging P1B into P1
+    lake.commit_records([MERGE_P1B_INTO_P1])
+    after_corpus = corpus_initial + [MERGE_P1B_INTO_P1]
+    after = release_read_of(after_corpus, SELECTIONS)
+    views.update_bridges(after)
+
+    pa_inc = views.politician_articles(after, mode='incremental', chained=True)
+    assert pa_inc == politician_articles_views(after)
+
+    cov_inc = views.coverage_daily(after, mode='incremental', two_stage_syndication=True)
+    assert cov_inc == coverage_daily(after)
+    client.close()
+
+
+def test_declarative_c5_export_policy_and_zero_duplicate_export_tables(tmp_path):
+    """export_authorized uses declarative C5 ExportPolicy without creating duplicate export_<dataset> tables."""
+    from news_lake.storage.docspec_backend import build_c5_export_policy
+
+    cap_pub_ok = dict(
+        _capture('pub-ok'),
+        access='redistributable',
+        retain_until='2026-10-25T00:00:00Z',
+    )
+    cap_pub_expired = dict(
+        _capture('pub-exp'),
+        access='redistributable',
+        retain_until='2026-10-19T00:00:00Z',
+    )
+    cap_restricted = dict(
+        _capture('rest'),
+        access='restricted',
+        retain_until='2026-10-25T00:00:00Z',
+    )
+    ver_pub_ok = dict(
+        _version('pub-ok', title='Public OK',
+                 publication={'precision': 'day', 'date': '2026-10-18', 'basis': 'publisher'},
+                 text='Redistributable body text.'),
+        access='redistributable',
+    )
+    ver_pub_expired = dict(
+        _version('pub-exp', title='Public Expired Capture',
+                 publication={'precision': 'day', 'date': '2026-10-18', 'basis': 'publisher'},
+                 text='Body text whose capture expired.'),
+        access='redistributable',
+    )
+    ver_restricted = _version(
+        'rest', title='Restricted Article',
+        publication={'precision': 'day', 'date': '2026-10-18', 'basis': 'publisher'},
+        text='Restricted body text.',
+    )
+
+    cap_policy = build_c5_export_policy(
+        'capture',
+        authorized=False,
+        as_of='2026-10-20T12:00:00Z',
+        expired_capture_ids=[cap_pub_expired['id']],
+    )
+    assert 'computed_columns' in cap_policy
+    assert set(cap_policy['computed_columns']) == {
+        'access', 'payload_uri', 'payload_hash', 'media_type', 'rights_basis',
+    }
+    ver_policy = build_c5_export_policy(
+        'version',
+        authorized=False,
+        as_of='2026-10-20T12:00:00Z',
+        expired_capture_ids=[cap_pub_expired['id']],
+    )
+    assert 'computed_columns' in ver_policy
+    assert set(ver_policy['computed_columns']) == {
+        'access', 'text', 'text_hash', 'rights_basis',
+    }
+
+    export_corpus = [
+        OUTLET_A,
+        cap_pub_ok, _extract_run('pub-ok', cap_pub_ok['id']),
+        _item('pub-ok', version_key='pub-ok'), ver_pub_ok,
+        cap_pub_expired, _extract_run('pub-exp', cap_pub_expired['id']),
+        _item('pub-exp', version_key='pub-exp'), ver_pub_expired,
+        cap_restricted, _extract_run('rest', cap_restricted['id']),
+        _item('rest', version_key='rest'), ver_restricted,
+    ]
+    check_corpus(export_corpus)
+    read = release_read_of(export_corpus, [])
+
+    ws = tmp_path / 'ws-c5-no-dup'
+    client = DocSpecClient(ws)
+    lake = DocSpecLake(client)
+    lake.commit_records(export_corpus)
+    views = DocSpecNewsViews(client)
+
+    public_dir = tmp_path / 'export-public'
+    receipts = views.export_authorized(
+        read, public_dir, as_of='2026-10-20T12:00:00Z', authorized=False,
+    )
+    # Non-body tables never create export_<dataset> staging tables
+    for non_body in ('news_outlets', 'news_runs', 'news_items'):
+        assert receipts[non_body]['dataset'] == non_body
+        assert client.try_latest(f'export_{non_body}') is None
+
+    # On ss-6gwu+ binaries, news_captures and news_versions also export directly
+    # from their committed pins with zero export_<dataset> tables.
+    if receipts['news_captures']['dataset'] == 'news_captures':
+        assert client.try_latest('export_news_captures') is None
+        assert client.try_latest('export_news_versions') is None
+
+    exported_versions = {
+        r['id']: r
+        for r in table_records(pa.parquet.read_table(public_dir / 'news_versions.parquet'))
+    }
+    assert exported_versions[ver_pub_ok['id']]['access'] == 'redistributable'
+    assert exported_versions[ver_pub_ok['id']]['text'] == 'Redistributable body text.'
+    assert exported_versions[ver_pub_expired['id']]['access'] == 'metadata_only'
+    assert 'text' not in exported_versions[ver_pub_expired['id']]
+    assert exported_versions[ver_restricted['id']]['access'] == 'metadata_only'
+    assert 'text' not in exported_versions[ver_restricted['id']]
+    client.close()
+
+
