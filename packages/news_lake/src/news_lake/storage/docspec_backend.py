@@ -366,27 +366,49 @@ def build_c5_export_policy(kind, *, columns=None, authorized=False, as_of=None,
         return base_policy
 
     expired_ids = sorted({str(cid) for cid in (expired_capture_ids or ()) if cid is not None})
+    null_lit = {'kind': 'literal', 'value': None}
     if kind == 'capture':
-        redact_exprs = [{'kind': 'eq', 'field': 'access', 'value': 'restricted'}]
+        redact_preds = [{
+            'kind': 'eq',
+            'left': {'kind': 'column', 'name': 'access'},
+            'right': {'kind': 'literal', 'value': 'restricted'},
+        }]
         if as_of is not None:
             as_of_str = as_of if isinstance(as_of, str) else as_of.isoformat()
-            redact_exprs.append({
+            redact_preds.append({
                 'kind': 'and',
-                'exprs': [
-                    {'kind': 'is_not_null', 'field': 'retain_until'},
-                    {'kind': 'lt', 'field': 'retain_until', 'value': as_of_str},
+                'predicates': [
+                    {
+                        'kind': 'is_not_null',
+                        'expr': {'kind': 'column', 'name': 'retain_until'},
+                    },
+                    {
+                        'kind': 'lt',
+                        'left': {'kind': 'column', 'name': 'retain_until'},
+                        'right': {'kind': 'literal', 'value': as_of_str},
+                    },
                 ],
             })
         if expired_ids:
-            redact_exprs.append({'kind': 'in', 'field': 'id', 'values': expired_ids})
+            redact_preds.append({
+                'kind': 'in_list',
+                'expr': {'kind': 'column', 'name': 'id'},
+                'list': [{'kind': 'literal', 'value': cid} for cid in expired_ids],
+            })
         redact_all_pred = (
-            redact_exprs[0] if len(redact_exprs) == 1 else {'kind': 'or', 'exprs': redact_exprs}
+            redact_preds[0]
+            if len(redact_preds) == 1
+            else {'kind': 'or', 'predicates': redact_preds}
         )
         redact_body_pred = {
             'kind': 'or',
-            'exprs': [
+            'predicates': [
                 redact_all_pred,
-                {'kind': 'eq', 'field': 'access', 'value': 'metadata_only'},
+                {
+                    'kind': 'eq',
+                    'left': {'kind': 'column', 'name': 'access'},
+                    'right': {'kind': 'literal', 'value': 'metadata_only'},
+                },
             ],
         }
         computed_columns = {
@@ -398,34 +420,48 @@ def build_c5_export_policy(kind, *, columns=None, authorized=False, as_of=None,
                         'then': {'kind': 'literal', 'value': 'metadata_only'},
                     }
                 ],
-                'otherwise': {'kind': 'column', 'field': 'access'},
+                'else_expr': {'kind': 'column', 'name': 'access'},
             },
             'rights_basis': {
                 'kind': 'case_when',
-                'branches': [{'when': redact_all_pred, 'then': {'kind': 'null'}}],
-                'otherwise': {'kind': 'column', 'field': 'rights_basis'},
+                'branches': [{'when': redact_all_pred, 'then': null_lit}],
+                'else_expr': {'kind': 'column', 'name': 'rights_basis'},
             },
         }
         for col in ('payload_uri', 'payload_hash', 'media_type'):
             computed_columns[col] = {
                 'kind': 'case_when',
-                'branches': [{'when': redact_body_pred, 'then': {'kind': 'null'}}],
-                'otherwise': {'kind': 'column', 'field': col},
+                'branches': [{'when': redact_body_pred, 'then': null_lit}],
+                'else_expr': {'kind': 'column', 'name': col},
             }
         return {**base_policy, 'computed_columns': computed_columns}
 
     # kind == 'version'
-    redact_exprs = [{'kind': 'eq', 'field': 'access', 'value': 'restricted'}]
+    redact_preds = [{
+        'kind': 'eq',
+        'left': {'kind': 'column', 'name': 'access'},
+        'right': {'kind': 'literal', 'value': 'restricted'},
+    }]
     if expired_ids:
-        redact_exprs.append({'kind': 'in', 'field': 'capture_id', 'values': expired_ids})
+        redact_preds.append({
+            'kind': 'in_list',
+            'expr': {'kind': 'column', 'name': 'capture_id'},
+            'list': [{'kind': 'literal', 'value': cid} for cid in expired_ids],
+        })
     redact_all_pred = (
-        redact_exprs[0] if len(redact_exprs) == 1 else {'kind': 'or', 'exprs': redact_exprs}
+        redact_preds[0]
+        if len(redact_preds) == 1
+        else {'kind': 'or', 'predicates': redact_preds}
     )
     redact_body_pred = {
         'kind': 'or',
-        'exprs': [
+        'predicates': [
             redact_all_pred,
-            {'kind': 'eq', 'field': 'access', 'value': 'metadata_only'},
+            {
+                'kind': 'eq',
+                'left': {'kind': 'column', 'name': 'access'},
+                'right': {'kind': 'literal', 'value': 'metadata_only'},
+            },
         ],
     }
     computed_columns = {
@@ -437,19 +473,19 @@ def build_c5_export_policy(kind, *, columns=None, authorized=False, as_of=None,
                     'then': {'kind': 'literal', 'value': 'metadata_only'},
                 }
             ],
-            'otherwise': {'kind': 'column', 'field': 'access'},
+            'else_expr': {'kind': 'column', 'name': 'access'},
         },
         'rights_basis': {
             'kind': 'case_when',
-            'branches': [{'when': redact_all_pred, 'then': {'kind': 'null'}}],
-            'otherwise': {'kind': 'column', 'field': 'rights_basis'},
+            'branches': [{'when': redact_all_pred, 'then': null_lit}],
+            'else_expr': {'kind': 'column', 'name': 'rights_basis'},
         },
     }
     for col in ('text', 'text_hash'):
         computed_columns[col] = {
             'kind': 'case_when',
-            'branches': [{'when': redact_body_pred, 'then': {'kind': 'null'}}],
-            'otherwise': {'kind': 'column', 'field': col},
+            'branches': [{'when': redact_body_pred, 'then': null_lit}],
+            'else_expr': {'kind': 'column', 'name': col},
         }
     return {**base_policy, 'computed_columns': computed_columns}
 
@@ -739,8 +775,8 @@ class DocSpecLake:
                  lifecycle_compact_interval=DEFAULT_LIFECYCLE_COMPACT_INTERVAL,
                  compact_file_threshold=DEFAULT_COMPACT_FILE_THRESHOLD,
                  compact_target_file_bytes=DEFAULT_COMPACT_TARGET_FILE_BYTES,
-                 native_upsert_merge=False,
-                 stream_ipc=False):
+                 native_upsert_merge=True,
+                 stream_ipc=True):
         self.client = client
         self.workspace_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
         self.lifecycle_compact_interval = lifecycle_compact_interval
@@ -754,6 +790,7 @@ class DocSpecLake:
         self.committed = self._load_committed_state()
         self._mutation_counts = self._load_mutation_counts()
         self._known_ids = {}
+        self._known_upsert_records = {}
         self._pending_lifecycle_compactions = set()
         self.last_lookup_stats = {}
         self.lifecycle_compactions = []
@@ -1294,25 +1331,53 @@ class DocSpecLake:
         return pin
 
     def _commit_upsert(self, dataset, kind, records, relationship, *,
-                       native_upsert_merge=False, stream_ipc=False):
+                       native_upsert_merge=True, stream_ipc=True):
         records = self._dedup_incoming(dataset, records, is_append=False)
+        known_records = self._known_upsert_records.setdefault(dataset, {})
         prior = self.committed.get(dataset) or self.client.try_latest(dataset)
         if prior is None:
             operation = self._operation(f'admit-{kind}', content_digest(records))
-            return self.client.run_table(
+            pin = self.client.run_table(
                 records_to_arrow(kind, records),
                 dataset,
                 operation,
                 relationship=relationship,
                 stream_ipc=stream_ipc,
             )
+            for r in records:
+                known_records[r['id']] = r
+            return pin
         if native_upsert_merge:
+            total_rows = prior.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', 0)
+            candidate_records = []
+            merged_known = {}
+            for r in records:
+                rid = r['id']
+                if rid in known_records:
+                    m = merge_upsert_batch([known_records[rid]], [r])[0]
+                    if m == known_records[rid]:
+                        continue
+                    merged_known[rid] = m
+                else:
+                    merged_known[rid] = r
+                candidate_records.append(r)
+            if not candidate_records:
+                self.last_lookup_stats[dataset] = {
+                    'requested_ids': len(records),
+                    'requested_keys': 0,
+                    'matched_rows': len(records),
+                    'rows_transferred': 0,
+                    'total_rows': total_rows,
+                    'mode': 'native_merge',
+                }
+                return self._advance_relationship(dataset, kind, prior, relationship)
             if self._maybe_compact_table(dataset, prior, incoming_files=1) is not None:
                 self._pending_lifecycle_compactions.add(dataset)
             base_version = prior['dataset']['version']
             merge_spec = upsert_merge_spec_for_kind(kind)
             operation = self._operation(
-                f'upsert-{kind}', content_digest([base_version, records, relationship, merge_spec])
+                f'upsert-{kind}',
+                content_digest([base_version, candidate_records, relationship, merge_spec]),
             )
             try:
                 pin = self.client.update_table(
@@ -1320,17 +1385,18 @@ class DocSpecLake:
                     operation,
                     base_version,
                     ['id'],
-                    records_to_arrow(kind, records),
+                    records_to_arrow(kind, candidate_records),
                     relationship=relationship,
                     merge=merge_spec,
                     stream_ipc=stream_ipc,
                 )
+                known_records.update(merged_known)
                 self.last_lookup_stats[dataset] = {
                     'requested_ids': len(records),
                     'requested_keys': 0,
                     'matched_rows': 0,
                     'rows_transferred': 0,
-                    'total_rows': prior.get('dataset', {}).get('groups', {}).get('source', {}).get('rows', 0),
+                    'total_rows': total_rows,
                     'mode': 'native_merge',
                 }
                 return pin
@@ -1339,6 +1405,8 @@ class DocSpecLake:
                     raise
         existing = self._existing_by_ids(prior, kind, (record['id'] for record in records))
         merged = merge_upsert_batch(list(existing.values()), records)
+        for row in merged:
+            known_records[row['id']] = row
         changed = [row for row in merged if existing.get(row['id']) != row]
         if not changed:
             return self._advance_relationship(dataset, kind, prior, relationship)
@@ -2373,7 +2441,7 @@ class DocSpecNewsViews:
             operation = self._operation(
                 f'materialize-{dataset}', content_digest(stripped)
             )
-            pin = self.client.run_table(table, dataset, operation)
+            pin = self.client.run_table(table, dataset, operation, stream_ipc=True)
             pins[dataset] = pin
             self._bridge_versions[dataset] = pin['dataset']['version']
             self._compacted_pins.pop(dataset, None)
@@ -2433,6 +2501,7 @@ class DocSpecNewsViews:
             [key_col],
             replacements_table,
             deletions=deletions_table,
+            stream_ipc=True,
         )
         self.pins[dataset] = pin
         self._bridge_versions[dataset] = pin['dataset']['version']
@@ -3150,10 +3219,10 @@ class DocSpecNewsViews:
     def _refresh_politician_mention_items_spec(self, base, mode, mentions_roots_pin, survivor_pin=None):
         if survivor_pin is None:
             survivor_pin = self._bridge_pin_for_refresh(
-                'survivor_items', 'politician_mention_items', mode
+                'survivor_items', 'politician_articles', mode
             )
         return dict(
-            dataset='politician_mention_items', base=base, definition=DEFINITION, mode=mode,
+            dataset='politician_articles', base=base, definition=DEFINITION, mode=mode,
             operation=self._operation(
                 f'pmi-{mode}',
                 content_digest([base, mode, version_ref(mentions_roots_pin), version_ref(survivor_pin)])),
@@ -3217,8 +3286,8 @@ class DocSpecNewsViews:
 
         Stage 1 (``politician_mentions_roots``): ``selected_mentions ⋈ entity_roots``
         with native ``filter: entity_type == 'person'``.
-        Stage 2 (``politician_mention_items``): ``politician_mentions_roots ⋈ survivor_items``
-        on ``version_id == current_version_id``.
+        Stage 2 (``politician_articles`` / ``politician_mention_items``):
+        ``politician_mentions_roots ⋈ survivor_items`` on ``version_id == current_version_id``.
         Stage 3 (``politician_articles_groups``): ``AggregateTransform`` grouped by
         ``['person_root_id', 'item_id']`` with ``first_value_by(version_id, order_by=['mention_id'])``
         and ``collect_set`` over ``entity_ids``, ``run_ids``, ``aboutness``, and ``surfaces``.
@@ -3234,7 +3303,7 @@ class DocSpecNewsViews:
             'entity_roots', 'politician_mentions_roots', mode
         )
         survivor_pin = self._bridge_pin_for_refresh(
-            'survivor_items', 'politician_mention_items', mode
+            'survivor_items', 'politician_articles', mode
         )
 
         base_mr = self._base_version('politician_mentions_roots', mode)
@@ -3244,24 +3313,24 @@ class DocSpecNewsViews:
         mr_pin = self.client.refresh(mr_spec)
         self.pins['politician_mentions_roots'] = mr_pin
 
-        base_mi = self._base_version('politician_mention_items', mode)
+        base_mi = self._base_version('politician_articles', mode)
         mi_spec = self._refresh_politician_mention_items_spec(
             base_mi, mode, mr_pin, survivor_pin=survivor_pin
         )
         mi_pin = self.client.refresh(mi_spec)
         self.pins['politician_mention_items'] = mi_pin
+        self.pins['politician_articles'] = mi_pin
 
         base_pag = self._base_version('politician_articles_groups', mode)
         pag_spec = self._refresh_politician_articles_groups_spec(base_pag, mode, mi_pin)
         pag_pin = self.client.refresh(pag_spec)
         self.pins['politician_articles_groups'] = pag_pin
-        self.pins['politician_articles'] = pag_pin
 
         self._flush_pending_bridge_compactions(
             ('selected_mentions', 'entity_roots', 'survivor_items')
         )
         self._record_view_mutation('politician_mentions_roots')
-        self._record_view_mutation('politician_mention_items')
+        self._record_view_mutation('politician_articles')
         self._record_view_mutation('politician_articles_groups')
         self._save_views_state()
 
@@ -3320,7 +3389,7 @@ class DocSpecNewsViews:
         return sorted(result, key=lambda r: (r['person_root_id'], r['item_id']))
 
     def politician_articles(self, records_or_release_read, mode='full', selections=None, *,
-                            chained=False):
+                            chained=True):
         """The ``politician_articles`` view through the native join.
 
         ``mode='incremental'`` replaces only the match groups the changed
@@ -3328,10 +3397,18 @@ class DocSpecNewsViews:
         previous output version). When ``chained=True``, executes the 3-stage
         native Join -> Join -> Aggregate pipeline (ss-65bz).
         """
-        if chained:
-            return self.refresh_politician_articles_chained(
-                records_or_release_read, mode=mode, selections=selections
-            )
+        if chained and (
+            mode == 'full'
+            or self.pins.get('politician_mentions_roots') is not None
+            or self.client.try_latest('politician_mentions_roots') is not None
+        ):
+            try:
+                return self.refresh_politician_articles_chained(
+                    records_or_release_read, mode=mode, selections=selections
+                )
+            except DocSpecFailure as exc:
+                if 'unknown field' not in (exc.stderr or '') and exc.code != 'invalid_spec':
+                    raise
         _, release_id = self._extract_release_meta(records_or_release_read, selections)
         source_pins = self._resolve_source_pins(records_or_release_read)
         versions_pin = source_pins.get('news.versions')
@@ -3573,7 +3650,7 @@ class DocSpecNewsViews:
         return self._assemble_coverage_daily(release_id, aggregate)
 
     def coverage_daily(self, records_or_release_read, mode='full', selections=None, *,
-                       two_stage_syndication=False):
+                       two_stage_syndication=True):
         """The ``coverage_daily`` view through the native aggregate.
 
         The grouping key is the ``survivor_items`` ``effective_pub_date``
@@ -3584,10 +3661,18 @@ class DocSpecNewsViews:
         ``two_stage_syndication=True``, derives ``identical_text_group_id``
         natively via ``text_group_counts`` -> ``survivor_items_syndicated`` (ss-65bz).
         """
-        if two_stage_syndication:
-            return self.refresh_coverage_daily_two_stage(
-                records_or_release_read, mode=mode, selections=selections
-            )
+        if two_stage_syndication and (
+            mode == 'full'
+            or self.pins.get('text_group_counts') is not None
+            or self.client.try_latest('text_group_counts') is not None
+        ):
+            try:
+                return self.refresh_coverage_daily_two_stage(
+                    records_or_release_read, mode=mode, selections=selections
+                )
+            except DocSpecFailure as exc:
+                if 'unknown field' not in (exc.stderr or '') and exc.code != 'invalid_spec':
+                    raise
         _, release_id = self._extract_release_meta(records_or_release_read, selections)
         base = self._base_version('coverage_daily', mode)
         survivor_pin = self._bridge_pin_for_refresh(
@@ -3697,8 +3782,7 @@ class DocSpecNewsViews:
             kind = TABLE_KINDS[table_name]
             logical_dataset = dataset_id_for(table_name)
             export_dataset = sanitize_id(f'export_{logical_dataset}')
-            arrow_table = records_to_arrow(kind, rows)
-            columns = list(arrow_table.schema.names)
+            columns = list(kind_arrow_schema(kind).names)
             orig_rows = release_read['tables'].get(table_name) or ()
             unchanged = rows == orig_rows
             pinned = resolved_pins.get(table_name) or resolved_pins.get(logical_dataset)
@@ -3743,20 +3827,23 @@ class DocSpecNewsViews:
                     try:
                         export_pin = self.client.export(c5_spec)
                     except DocSpecFailure as exc:
-                        if 'computed_columns' not in (exc.stderr or '') and exc.code != 'invalid_spec':
+                        if 'unknown field `computed_columns`' not in (exc.stderr or ''):
                             raise
 
             if export_pin is None:
                 if unchanged and pinned is not None:
                     source_pin = pinned
                 else:
+                    arrow_table = records_to_arrow(kind, rows)
                     admit_digest = content_digest([filtered['release']['id'], table_name, rows])
                     admit_op = self._operation(f'admit-exp-{kind}', admit_digest)
                     prior_pin = self.client.try_latest(export_dataset)
                     if prior_pin is not None and prior_pin['dataset']['version'] == admit_op:
                         source_pin = prior_pin
                     else:
-                        source_pin = self.client.run_table(arrow_table, export_dataset, admit_op)
+                        source_pin = self.client.run_table(
+                            arrow_table, export_dataset, admit_op, stream_ipc=True
+                        )
 
                 export_op = self._operation(
                     f'exp-{kind}',

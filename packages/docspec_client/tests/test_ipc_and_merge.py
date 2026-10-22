@@ -21,7 +21,7 @@ from docspec_client import (
 def test_blake3_hex_known_vectors():
     # Official BLAKE3 test vectors for empty, short, and multi-chunk inputs.
     assert blake3_hex(b'') == 'af1349b9f5f9a1a6a0404dea36dcc9499bcb25c9adc112b7cc9a93cae41f3262'
-    assert blake3_hex(b'abc') == '6437b3ac38465133ffb63b75273a8db548ca5cd8457913d764e6bfa0f1831d19' if False else len(blake3_hex(b'abc')) == 64
+    assert blake3_hex(b'abc') == '6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85'
     # Multi-chunk (> 2048 bytes) deterministic digest
     payload = bytes(i % 251 for i in range(10000))
     digest = blake3_hex(payload)

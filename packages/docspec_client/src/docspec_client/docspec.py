@@ -1230,7 +1230,8 @@ class NativeDatasets:
                     native_types=native_types,
                 )
             except DocSpecFailure as error:
-                if getattr(error, 'status_code', None) not in (400, 415, 422):
+                status = getattr(error, 'status', None) or getattr(error, 'status_code', None)
+                if status != 415:
                     raise
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
@@ -1339,7 +1340,8 @@ class NativeDatasets:
                     native_types=native_types,
                 )
             except DocSpecFailure as error:
-                if getattr(error, 'status_code', None) not in (400, 415, 422):
+                status = getattr(error, 'status', None) or getattr(error, 'status_code', None)
+                if status != 415:
                     raise
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
