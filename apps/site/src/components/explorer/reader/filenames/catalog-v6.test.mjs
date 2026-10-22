@@ -303,12 +303,17 @@ table = pa.Table.from_pylist(rows, schema=schema)
 export_viewer_pins(table, table, folder, catalog_id='c' * 32)
 `;
     execFileSync(process.env.PYTHON||'python3',['-c',pyScript,folder]);
+    const manifestJson=JSON.parse(await readFile(join(folder,'manifest.json'),'utf8'));
+    assert.equal(manifestJson.exports.sources.child_tables.occurrences.row_slices,undefined,'native ChildTableExport omits row_slices and relies on browse_ranges');
     const requests=[];
     const manifestUrl=pathToFileURL(join(folder,'manifest.json'));
     const reader=await createFilenameCatalog(manifestUrl,(url,options)=>{requests.push(String(url));return localFetch(url,options);});
     const browse=await reader.search({limit:'2'});
     assert.equal(browse.total,2);
     assert.deepEqual(browse.rows.map(r=>r.filename),['a_first.pdf','b_outlier.pdf']);
+    const filtered=await reader.search({congress:'118',q:'outlier'});
+    assert.equal(filtered.total,1);
+    assert.equal(filtered.rows[0].filename,'b_outlier.pdf');
     const outlierId=createHash('sha256').update('outlier-source').digest('hex');
     const detail=await reader.entry(outlierId);
     assert.equal(detail.filename,'b_outlier.pdf');

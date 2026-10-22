@@ -145,12 +145,120 @@ export function observationReader(index, data, references, {metrics = {}, cache}
 
 /** Read [offset, offset + limit) slices directly from flat occurrences.parquet via HTTP 206 Range requests. */
 export function parquetObservationReader(descriptor, readRows, { metrics = {} } = {}) {
-  const fields = descriptor.fields || [];
-  const rowSlices = descriptor.row_slices || [];
+  const rawFields = descriptor.fields || [];
+  const fields = rawFields
+    .map(f => (typeof f === 'string' ? f : f?.name))
+    .filter(name => name && !['owner_id', 'occurrence_order', 'occurrence_is_null'].includes(name));
+  const rowSlices = Array.isArray(descriptor.row_slices) ? descriptor.row_slices : null;
+  const browseRanges = (descriptor.browse_ranges || []).map(r => ({
+    rowGroup: r.row_group ?? 0,
+    startRow: r.start_row ?? r.row_offset ?? 0,
+    numRows: r.num_rows ?? r.rows ?? 0,
+    minOwner: r.min_values?.owner_id ?? (r.column === 'owner_id' ? r.min : undefined),
+    maxOwner: r.max_values?.owner_id ?? (r.column === 'owner_id' ? r.max : undefined),
+  }));
+  const ownerSliceCache = new Map();
 
-  async function page(row, { offset = 0, limit = 20, columns = fields } = {}, signal) {
+  async function resolveSliceByOwnerId(ownerId, signal) {
+    const key = String(ownerId);
+    if (ownerSliceCache.has(key)) return ownerSliceCache.get(key);
+    const candidates = browseRanges.length
+      ? browseRanges.filter(r => (!r.minOwner || r.minOwner <= key) && (!r.maxOwner || key <= r.maxOwner))
+      : descriptor.rows > 0
+        ? [{ rowGroup: 0, startRow: 0, numRows: descriptor.rows, minOwner: undefined, maxOwner: undefined }]
+        : [];
+    if (!candidates.length) {
+      const empty = [0, 0];
+      ownerSliceCache.set(key, empty);
+      return empty;
+    }
+    const firstRg = candidates[0];
+    const lastRg = candidates[candidates.length - 1];
+    let firstRow = null;
+    let firstRgOwners = null;
+    if (firstRg.minOwner === key && firstRg.maxOwner === key) {
+      firstRow = firstRg.startRow;
+    } else {
+      firstRgOwners = await readRows(
+        descriptor,
+        firstRg.startRow,
+        firstRg.startRow + firstRg.numRows,
+        ['owner_id'],
+        signal
+      );
+      const localFirst = firstRgOwners.findIndex(r => r.owner_id === key);
+      if (localFirst >= 0) {
+        firstRow = firstRg.startRow + localFirst;
+      }
+    }
+    if (firstRow === null) {
+      for (let i = 1; i < candidates.length; i++) {
+        const rg = candidates[i];
+        if (rg.minOwner === key && rg.maxOwner === key) {
+          firstRow = rg.startRow;
+          break;
+        }
+        const rows = await readRows(descriptor, rg.startRow, rg.startRow + rg.numRows, ['owner_id'], signal);
+        const idx = rows.findIndex(r => r.owner_id === key);
+        if (idx >= 0) {
+          firstRow = rg.startRow + idx;
+          if (i === candidates.length - 1) firstRgOwners = rows;
+          break;
+        }
+      }
+    }
+    if (firstRow === null) {
+      const empty = [0, 0];
+      ownerSliceCache.set(key, empty);
+      return empty;
+    }
+    let lastRowExclusive = null;
+    if (lastRg.minOwner === key && lastRg.maxOwner === key) {
+      lastRowExclusive = lastRg.startRow + lastRg.numRows;
+    } else {
+      const lastRgOwners =
+        lastRg === firstRg && firstRgOwners
+          ? firstRgOwners
+          : await readRows(
+              descriptor,
+              lastRg.startRow,
+              lastRg.startRow + lastRg.numRows,
+              ['owner_id'],
+              signal
+            );
+      let localLast = -1;
+      for (let i = lastRgOwners.length - 1; i >= 0; i--) {
+        if (lastRgOwners[i].owner_id === key) {
+          localLast = i;
+          break;
+        }
+      }
+      if (localLast >= 0) {
+        lastRowExclusive = lastRg.startRow + localLast + 1;
+      }
+    }
+    if (lastRowExclusive === null) {
+      lastRowExclusive = firstRow + 1;
+    }
+    const resolved = [firstRow, Math.max(0, lastRowExclusive - firstRow)];
+    ownerSliceCache.set(key, resolved);
+    return resolved;
+  }
+
+  async function resolveSlice(row, ownerId, signal) {
+    if (rowSlices && typeof row === 'number' && row >= 0 && row < rowSlices.length) {
+      return rowSlices[row];
+    }
+    const targetOwner = ownerId ?? (typeof row === 'string' ? row : null);
+    if (targetOwner != null) {
+      return resolveSliceByOwnerId(targetOwner, signal);
+    }
+    throw new Error('Invalid observation row reference.');
+  }
+
+  async function page(row, { offset = 0, limit = 20, columns = fields, ownerId } = {}, signal) {
     signal?.throwIfAborted();
-    const slice = rowSlices[row];
+    const slice = await resolveSlice(row, ownerId, signal);
     if (!slice) throw new Error('Invalid observation row reference.');
     const [startOffset, rawCount] = slice;
     if (rawCount < 0) {
@@ -181,38 +289,40 @@ export function parquetObservationReader(descriptor, readRows, { metrics = {} } 
     };
   }
 
-  async function read(row, signal) {
-    const result = await page(row, { offset: 0, limit: Infinity }, signal);
+  async function read(row, signal, { ownerId } = {}) {
+    const result = await page(row, { offset: 0, limit: Infinity, ownerId }, signal);
     return result.is_null ? null : result.items;
   }
 
   async function* matchingSources(needle, signal) {
     const lowerNeedle = String(needle || '').toLowerCase();
-    for (let parentRow = 0; parentRow < rowSlices.length; parentRow++) {
-      const [startOffset, rawCount] = rowSlices[parentRow];
-      if (rawCount <= 0) continue;
-      for (let cursor = 0; cursor < rawCount; cursor += 2048) {
-        const take = Math.min(2048, rawCount - cursor);
-        const batch = await readRows(
-          descriptor,
-          startOffset + cursor,
-          startOffset + cursor + take,
-          ['occurrence_is_null', ...fields],
-          signal
-        );
-        let matched = false;
-        for (const item of batch) {
-          const restored = item.occurrence_is_null
-            ? null
-            : Object.fromEntries(fields.map(key => [key, item[key] ?? null]));
-          if (JSON.stringify(restored).toLowerCase().includes(lowerNeedle)) {
-            matched = true;
+    if (rowSlices) {
+      for (let parentRow = 0; parentRow < rowSlices.length; parentRow++) {
+        const [startOffset, rawCount] = rowSlices[parentRow];
+        if (rawCount <= 0) continue;
+        for (let cursor = 0; cursor < rawCount; cursor += 2048) {
+          const take = Math.min(2048, rawCount - cursor);
+          const batch = await readRows(
+            descriptor,
+            startOffset + cursor,
+            startOffset + cursor + take,
+            ['occurrence_is_null', ...fields],
+            signal
+          );
+          let matched = false;
+          for (const item of batch) {
+            const restored = item.occurrence_is_null
+              ? null
+              : Object.fromEntries(fields.map(key => [key, item[key] ?? null]));
+            if (JSON.stringify(restored).toLowerCase().includes(lowerNeedle)) {
+              matched = true;
+              break;
+            }
+          }
+          if (matched) {
+            yield parentRow;
             break;
           }
-        }
-        if (matched) {
-          yield parentRow;
-          break;
         }
       }
     }
@@ -221,4 +331,3 @@ export function parquetObservationReader(descriptor, readRows, { metrics = {} } 
 
   return { read, page, matchingSources };
 }
-

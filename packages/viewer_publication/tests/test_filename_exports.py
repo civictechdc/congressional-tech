@@ -11,13 +11,9 @@ from docspec_client import facet_summary, parse_export_pin
 from viewer_publication import ConditionalManifestPublisher, publish_manifest_pointer
 from viewer_publication.filename_exports import (
     OCCURRENCE_ROW_GROUP_ROWS,
-    build_component_export_policy,
     build_component_export_spec,
-    build_source_export_policy,
     build_source_export_spec,
     export_viewer_pins,
-    fold_source_readings_table,
-    publish_occurrence_parquet,
 )
 
 
@@ -167,13 +163,15 @@ def test_export_policies_and_specs_match_docspec_contract(tmp_path):
         version='v-1',
         destination=tmp_path / 'components',
     )
-    assert source_spec['policy']['fold_readings'][0]['name'] == 'filename_readings'
-    assert source_spec['policy']['computed_columns'][0]['name'] == 'filename_field_count'
-    assert source_spec['policy']['child_tables'][0]['name'] == 'occurrences'
-    assert source_spec['policy']['child_tables'][0]['row_group_rows'] == OCCURRENCE_ROW_GROUP_ROWS
+    assert set(source_spec.keys()) == {'dataset', 'operation', 'source', 'channel', 'expected', 'policy'}
+    assert set(comp_spec.keys()) == {'dataset', 'operation', 'source', 'channel', 'expected', 'policy'}
+    assert source_spec['policy']['fold_readings']['target_column'] == 'filename_readings'
+    assert 'filename_field_count' in source_spec['policy']['computed_columns']
+    assert source_spec['policy']['child_tables']['occurrences']['list_column'] == 'source_occurrences'
+    assert source_spec['policy']['child_tables']['occurrences']['row_group_rows'] == OCCURRENCE_ROW_GROUP_ROWS
     assert comp_spec['policy']['order_by'] == [
-        {'column': 'filename', 'descending': False, 'nulls_first': False},
-        {'column': 'document_id', 'descending': False, 'nulls_first': False},
+        {'column': 'filename', 'direction': 'asc', 'nulls_first': False},
+        {'column': 'document_id', 'direction': 'asc', 'nulls_first': False},
     ]
 
 
@@ -184,8 +182,27 @@ def test_export_viewer_pins_sorts_folds_readings_and_writes_flat_occurrences(tmp
     sources_pin = parse_export_pin(exported['sources'])
     components_pin = parse_export_pin(exported['components'])
 
-    assert sources_pin['total_rows'] == 3
-    assert components_pin['total_rows'] == 3
+    # Verify strict docspec-rs ExportPin top-level keys (deny_unknown_fields)
+    expected_pin_keys = {
+        'format',
+        'id',
+        'dataset',
+        'source',
+        'source_revision',
+        'policy',
+        'object',
+        'rows',
+        'fields',
+        'validation',
+        'facets',
+        'browse_ranges',
+        'child_tables',
+    }
+    assert set(sources_pin.keys()) == expected_pin_keys
+    assert set(components_pin.keys()) == expected_pin_keys
+
+    assert sources_pin['rows'] == 3
+    assert components_pin['rows'] == 3
 
     # Verify components.parquet is sorted by (filename ASC NULLS LAST, document_id ASC)
     comp_table = pq.read_table(tmp_path / 'export' / 'components.parquet')
@@ -204,10 +221,18 @@ def test_export_viewer_pins_sorts_folds_readings_and_writes_flat_occurrences(tmp
         {'field': 'response_body_complete', 'values': ['true', 'false']},
     ]
 
-    # Verify flat occurrences.parquet has 2048-row groups and browse_ranges
+    # Verify flat occurrences.parquet has 2048-row groups and strict ChildTableExport keys
     occ_child = sources_pin['child_tables']['occurrences']
-    assert occ_child['total_rows'] == 4500
+    assert set(occ_child.keys()) == {'object', 'rows', 'fields', 'validation', 'browse_ranges'}
+    assert occ_child['rows'] == 4500
     assert len(occ_child['browse_ranges']) == 3  # ceil(4500 / 2048) = 3 row groups
+    assert set(occ_child['browse_ranges'][0].keys()) == {
+        'row_group',
+        'start_row',
+        'num_rows',
+        'min_values',
+        'max_values',
+    }
     with pq.ParquetFile(tmp_path / 'export' / 'occurrences.parquet') as occ_pf:
         assert occ_pf.metadata.num_row_groups == 3
         assert occ_pf.metadata.row_group(0).num_rows == 2048
@@ -215,11 +240,66 @@ def test_export_viewer_pins_sorts_folds_readings_and_writes_flat_occurrences(tmp
         assert occ_pf.metadata.row_group(2).num_rows == 404
 
     # Verify facet summary
-    fmt_facets = facet_summary(sources_pin, facet_set='sources_facets', column='format')
+    fmt_facets = facet_summary(sources_pin, column='format')
     assert fmt_facets == {'values': {'pdf': 2}, 'null_count': 1}
 
 
-def test_conditional_manifest_pointer_uses_single_conditional_put_without_readback():
+def test_export_viewer_pins_delegates_to_native_when_supplied(tmp_path):
+    calls = []
+
+    class FakeNative:
+        def export(self, spec):
+            calls.append(spec)
+            return {
+                'format': 1,
+                'id': spec['operation'],
+                'dataset': spec['dataset'],
+                'source': spec['source'],
+                'source_revision': 1,
+                'policy': spec['policy'],
+                'object': {
+                    'owner': spec['operation'],
+                    'path': f"{spec['dataset']}.parquet",
+                    'digest': 'a' * 64,
+                    'bytes': 512,
+                },
+                'rows': 5,
+                'fields': [{'id': 1, 'name': 'source_id', 'data_type': 'Utf8', 'nullable': False}],
+                'validation': {
+                    'object': {
+                        'owner': spec['operation'],
+                        'path': f"{spec['dataset']}.parquet",
+                        'digest': 'a' * 64,
+                        'bytes': 512,
+                    },
+                    'rows': 5,
+                    'sampled_rows': 5,
+                    'sampled_decoded_bytes': 256,
+                },
+                'facets': [
+                    {'grouping': ['congress'], 'values': {'congress': '118'}, 'count': 5},
+                ],
+                'browse_ranges': [],
+                'child_tables': {},
+            }
+
+    result = export_viewer_pins(
+        target_dir=tmp_path / 'native-export',
+        native=FakeNative(),
+        sources_pin='v-src-99',
+        components_pin='v-cmp-99',
+        version='v-99',
+    )
+    assert len(calls) == 2
+    assert calls[0]['dataset'] == 'filename-sources'
+    assert calls[1]['dataset'] == 'filename-components'
+    assert result['sources']['rows'] == 5
+    assert result['components']['rows'] == 5
+    assert result['manifest']['info']['facets']['congress'] == ['118']
+    assert (tmp_path / 'native-export' / 'manifest.json').is_file()
+
+
+def test_conditional_manifest_pointer_uses_single_conditional_put_without_readback(tmp_path):
     calls = []
 
     class FakeS3:
@@ -269,8 +349,33 @@ def test_conditional_manifest_pointer_uses_single_conditional_put_without_readba
             expected_etag='stale-etag',
         )
 
-    # ConditionalManifestPublisher handles immutable asset deduplication + pointer update
+    # ConditionalManifestPublisher streams Path uploads without reading bytes into memory
     publisher = ConditionalManifestPublisher(client, bucket='test-bucket')
+    sample_file = tmp_path / 'sources.parquet'
+    sample_bytes = b'streamed-parquet-content' * 128
+    sample_file.write_bytes(sample_bytes)
+
+    streamed_body_types = []
+
+    class StreamCheckingS3:
+        def put_object(self, **kwargs):
+            body = kwargs['Body']
+            streamed_body_types.append(type(body).__name__)
+            assert hasattr(body, 'read'), 'Path upload must pass an open file stream, not bytes'
+            assert not isinstance(body, (bytes, bytearray))
+            data = body.read()
+            assert len(data) == kwargs['ContentLength']
+            return {'ETag': '"stream-etag"'}
+
+    stream_publisher = ConditionalManifestPublisher(StreamCheckingS3(), bucket='test-bucket')
+    path_receipt = stream_publisher.put_immutable_asset(
+        'viewer-publications/releases/123/viewer-v2/sources.parquet',
+        sample_file,
+    )
+    assert path_receipt.bytes == len(sample_bytes)
+    assert path_receipt.sha256 == hashlib.sha256(sample_bytes).hexdigest()
+    assert len(streamed_body_types) == 1
+
     asset_receipt = publisher.put_immutable_asset(
         'viewer-publications/releases/123/viewer-v2/sources.parquet',
         b'parquet-bytes',

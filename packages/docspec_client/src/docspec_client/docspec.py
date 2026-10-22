@@ -117,134 +117,249 @@ def producer_input_entry(request_path):
 
 def _normalize_sort_column(item):
     if not isinstance(item, dict) or not isinstance(item.get('column'), str) or not item['column'].strip():
-        raise ValueError('SortColumnSpec requires a non-empty column name')
+        raise ValueError('SortColumn requires a non-empty column name')
+    direction = item.get('direction')
+    if direction is None:
+        direction = 'desc' if item.get('descending', False) else 'asc'
+    direction = str(direction).lower()
+    if direction not in ('asc', 'desc'):
+        raise ValueError("SortColumn direction must be 'asc' or 'desc'")
     return {
         'column': item['column'],
-        'descending': bool(item.get('descending', False)),
+        'direction': direction,
         'nulls_first': bool(item.get('nulls_first', False)),
     }
 
 
-def _normalize_computed_column(item):
-    if (
-        not isinstance(item, dict)
-        or not isinstance(item.get('name'), str)
-        or not item['name'].strip()
-        or not isinstance(item.get('expression'), dict)
-    ):
-        raise ValueError('ComputedColumnSpec requires a non-empty name and expression dict')
-    return {
-        'name': item['name'],
-        'expression': dict(item['expression']),
-    }
+def _normalize_scalar_expr(expr):
+    if isinstance(expr, str):
+        if not expr.strip():
+            raise ValueError('ScalarExpr SQL string must not be empty')
+        return expr
+    if not isinstance(expr, dict):
+        raise ValueError('ScalarExpr must be a SQL string or a tagged AST dict')
+    if 'kind' in expr:
+        return dict(expr)
+    if expr.get('fn') == 'count_non_null' and isinstance(expr.get('columns'), (list, tuple)):
+        cols = [str(c) for c in expr['columns'] if str(c).strip()]
+        if not cols:
+            return '0'
+        terms = [f'CASE WHEN "{c}" IS NOT NULL THEN 1 ELSE 0 END' for c in cols]
+        return ' + '.join(terms)
+    if 'sql' in expr and isinstance(expr['sql'], str):
+        return {'kind': 'sql', 'expression': expr['sql']}
+    if 'expression' in expr and isinstance(expr['expression'], str):
+        return {'kind': 'sql', 'expression': expr['expression']}
+    raise ValueError('ScalarExpr dict requires a valid kind or SQL expression')
 
 
-def _normalize_fold_readings(item):
-    if (
-        not isinstance(item, dict)
-        or not isinstance(item.get('name'), str)
-        or not item['name'].strip()
-        or not isinstance(item.get('fields'), (list, tuple))
-        or not item['fields']
-        or any(not isinstance(field, str) or not field.strip() for field in item['fields'])
-    ):
-        raise ValueError('FoldReadingsSpec requires a non-empty name and non-empty fields list')
-    return {
-        'name': item['name'],
-        'fields': [str(field) for field in item['fields']],
-    }
+def _normalize_computed_columns(computed_columns):
+    if isinstance(computed_columns, dict):
+        result = {}
+        for name, expr in computed_columns.items():
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError('computed_columns keys must be non-empty column names')
+            result[name] = _normalize_scalar_expr(expr)
+        return result
+    if isinstance(computed_columns, (list, tuple)):
+        result = {}
+        for item in computed_columns:
+            if (
+                not isinstance(item, dict)
+                or not isinstance(item.get('name'), str)
+                or not item['name'].strip()
+                or 'expression' not in item
+            ):
+                raise ValueError('computed_columns list item requires name and expression')
+            result[item['name']] = _normalize_scalar_expr(item['expression'])
+        return result
+    raise ValueError('computed_columns must be a dict mapping column_name -> ScalarExpr or a sequence of specs')
 
 
-def _normalize_facet_set(item):
-    if (
-        not isinstance(item, dict)
-        or not isinstance(item.get('name'), str)
-        or not item['name'].strip()
-        or not isinstance(item.get('columns'), (list, tuple))
-        or not item['columns']
-        or any(not isinstance(col, str) or not col.strip() for col in item['columns'])
-    ):
-        raise ValueError('FacetSetSpec requires a non-empty name and non-empty columns list')
+def _normalize_fold_readings(fold_readings):
+    if isinstance(fold_readings, (list, tuple)):
+        if len(fold_readings) != 1:
+            raise ValueError('fold_readings must be a single ReadingsFoldSpec dict')
+        fold_readings = fold_readings[0]
+    if not isinstance(fold_readings, dict):
+        raise ValueError('fold_readings must be a ReadingsFoldSpec dict')
+    target_column = fold_readings.get('target_column') or fold_readings.get('name')
+    if not isinstance(target_column, str) or not target_column.strip():
+        raise ValueError('ReadingsFoldSpec requires a non-empty target_column')
+    raw_cols = fold_readings.get('columns') if 'columns' in fold_readings else fold_readings.get('fields', ())
+    columns = [str(c) for c in (raw_cols or ()) if str(c).strip()]
+    include_suffixes = [str(s) for s in (fold_readings.get('include_suffixes') or ()) if str(s).strip()]
+    include_prefixes = [str(p) for p in (fold_readings.get('include_prefixes') or ()) if str(p).strip()]
+    if not columns and not include_suffixes and not include_prefixes:
+        raise ValueError('ReadingsFoldSpec requires non-empty columns, include_suffixes, or include_prefixes')
     spec = {
-        'name': item['name'],
-        'columns': [str(col) for col in item['columns']],
+        'target_column': target_column,
+        'strip_suffix': bool(fold_readings.get('strip_suffix', False)),
+        'drop_source_columns': bool(fold_readings.get('drop_source_columns', True)),
     }
-    if item.get('filter') is not None:
-        if not isinstance(item['filter'], dict):
-            raise ValueError('FacetSetSpec filter must be a predicate dict')
-        spec['filter'] = dict(item['filter'])
+    if columns:
+        spec['columns'] = columns
+    if include_suffixes:
+        spec['include_suffixes'] = include_suffixes
+    if include_prefixes:
+        spec['include_prefixes'] = include_prefixes
     return spec
 
 
-def _normalize_child_table(item):
-    if (
-        not isinstance(item, dict)
-        or not isinstance(item.get('name'), str)
-        or not item['name'].strip()
-        or not isinstance(item.get('group'), str)
-        or not item['group'].strip()
-        or not isinstance(item.get('destination'), (str, Path))
-        or not str(item['destination']).strip()
-    ):
-        raise ValueError('ChildTableExportSpec requires non-empty name, group, and destination')
-    spec = {
-        'name': item['name'],
-        'group': item['group'],
-        'destination': str(item['destination']),
+def _normalize_predicate(predicate):
+    if isinstance(predicate, str):
+        if not predicate.strip():
+            raise ValueError('Predicate SQL string must not be empty')
+        return predicate
+    if not isinstance(predicate, dict):
+        raise ValueError('Predicate must be a SQL string or a tagged AST dict')
+    if 'kind' in predicate:
+        return dict(predicate)
+    op = predicate.get('op')
+    col = predicate.get('column')
+    if op in ('is_not_null', 'is_null') and isinstance(col, str) and col.strip():
+        return {'kind': op, 'expr': {'kind': 'column', 'name': col}}
+    if 'sql' in predicate and isinstance(predicate['sql'], str):
+        return {'kind': 'sql', 'expression': predicate['sql']}
+    raise ValueError('Predicate dict requires a valid kind')
+
+
+def _normalize_facet_sets(facet_sets):
+    if not isinstance(facet_sets, (list, tuple)):
+        raise ValueError('facet_sets must be a list of grouping column lists')
+    normalized = []
+    for item in facet_sets:
+        if isinstance(item, str) and item.strip():
+            normalized.append([item])
+        elif isinstance(item, (list, tuple)):
+            cols = [str(col) for col in item if isinstance(col, str) and col.strip()]
+            if not cols:
+                raise ValueError('facet_sets grouping list must not be empty')
+            normalized.append(cols)
+        elif isinstance(item, dict) and isinstance(item.get('columns'), (list, tuple)):
+            cols = [str(col) for col in item['columns'] if isinstance(col, str) and col.strip()]
+            if not cols:
+                raise ValueError('FacetSetSpec columns must not be empty')
+            for col in cols:
+                if [col] not in normalized:
+                    normalized.append([col])
+        else:
+            raise ValueError('Each facet_sets entry must be a non-empty list of column names')
+    return normalized
+
+
+def _normalize_child_table_spec(spec):
+    if not isinstance(spec, dict):
+        raise ValueError('ChildTableExportSpec must be a dict')
+    list_column = spec.get('list_column') or 'source_occurrences'
+    parent_key_columns = [
+        str(c) for c in (spec.get('parent_key_columns') or ('source_id',)) if str(c).strip()
+    ]
+    child_key_columns = [
+        str(c) for c in (spec.get('child_key_columns') or ('owner_id',)) if str(c).strip()
+    ]
+    ordinal_column = str(spec.get('ordinal_column') or 'occurrence_order')
+    row_group_rows = int(spec.get('row_group_rows', PRODUCER_PARQUET_ROW_GROUP_SIZE))
+    if row_group_rows <= 0:
+        raise ValueError('ChildTableExportSpec row_group_rows must be positive')
+    normalized = {
+        'list_column': str(list_column),
+        'parent_key_columns': parent_key_columns,
+        ' ordinal_column'.strip(): ordinal_column,
+        'row_group_rows': row_group_rows,
+        'drop_parent_column': bool(spec.get('drop_parent_column', True)),
     }
-    if item.get('columns'):
-        spec['columns'] = [str(col) for col in item['columns']]
-    if item.get('order_by'):
-        spec['order_by'] = [_normalize_sort_column(col) for col in item['order_by']]
-    if item.get('browse_range_columns'):
-        spec['browse_range_columns'] = [str(col) for col in item['browse_range_columns']]
-    if item.get('row_group_rows') is not None:
-        row_group_rows = int(item['row_group_rows'])
-        if row_group_rows <= 0:
-            raise ValueError('ChildTableExportSpec row_group_rows must be positive')
-        spec['row_group_rows'] = row_group_rows
-    return spec
+    if child_key_columns:
+        normalized['child_key_columns'] = child_key_columns
+    struct_cols = spec.get('struct_columns')
+    if struct_cols is None and spec.get('columns'):
+        excluded = set(parent_key_columns) | set(child_key_columns) | {ordinal_column, 'occurrence_is_null'}
+        struct_cols = [str(c) for c in spec['columns'] if str(c) not in excluded]
+    if struct_cols is not None:
+        normalized['struct_columns'] = [str(c) for c in struct_cols]
+    if spec.get('replace_with_count_column') is not None:
+        normalized['replace_with_count_column'] = str(spec['replace_with_count_column'])
+    return normalized
+
+
+def _normalize_child_tables(child_tables):
+    if isinstance(child_tables, dict):
+        result = {}
+        for name, spec in child_tables.items():
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError('child_tables key must be a non-empty table name')
+            result[name] = _normalize_child_table_spec(spec)
+        return result
+    if isinstance(child_tables, (list, tuple)):
+        result = {}
+        for item in child_tables:
+            if not isinstance(item, dict) or not isinstance(item.get('name'), str) or not item['name'].strip():
+                raise ValueError('child_tables list item requires a non-empty name')
+            result[item['name']] = _normalize_child_table_spec(item)
+        return result
+    raise ValueError('child_tables must be a dict mapping name -> ChildTableExportSpec')
 
 
 def build_export_policy(
     *,
-    groups=('source',),
+    group='source',
+    groups=(),
+    rows='all',
+    columns=(),
     filter=None,
-    computed_columns=(),
-    fold_readings=(),
+    computed_columns=None,
+    fold_readings=None,
     order_by=(),
     page_index_columns=(),
     facet_sets=(),
     browse_range_columns=(),
-    child_tables=(),
+    child_tables=None,
     row_group_rows=None,
 ):
-    """Build a canonical DocSpec ``ExportPolicy`` dictionary (ss-6gwu + ss-yjvy)."""
-    if not isinstance(groups, (list, tuple)) or not groups or any(
-        not isinstance(group, str) or not group.strip() for group in groups
-    ):
-        raise ValueError('ExportPolicy requires at least one data group name')
+    """Build a canonical DocSpec ``ExportPolicy`` dictionary matching ``src/export.rs``."""
+    resolved_groups = [str(g) for g in (groups or ()) if str(g).strip()]
+    resolved_group = str(group or (resolved_groups[0] if resolved_groups else 'source'))
+    if not resolved_group.strip():
+        raise ValueError('ExportPolicy requires a non-empty group name')
+    if rows != 'all':
+        raise ValueError("ExportPolicy rows must be 'all'")
+    resolved_columns = [str(c) for c in (columns or ()) if str(c).strip()]
+    if not resolved_columns:
+        inferred = []
+        for col in page_index_columns or ():
+            if str(col) not in inferred:
+                inferred.append(str(col))
+        for item in order_by or ():
+            col = item.get('column') if isinstance(item, dict) else None
+            if col and str(col) not in inferred:
+                inferred.append(str(col))
+        for col in browse_range_columns or ():
+            if str(col) not in inferred:
+                inferred.append(str(col))
+        resolved_columns = inferred or ['source_id']
     policy = {
-        'groups': [str(group) for group in groups],
+        'group': resolved_group,
+        'rows': 'all',
+        'columns': resolved_columns,
     }
+    if resolved_groups:
+        policy['groups'] = resolved_groups
     if filter is not None:
-        if not isinstance(filter, dict):
-            raise ValueError('ExportPolicy filter must be a predicate dict')
-        policy['filter'] = dict(filter)
+        policy['filter'] = _normalize_predicate(filter)
     if computed_columns:
-        policy['computed_columns'] = [_normalize_computed_column(col) for col in computed_columns]
+        policy['computed_columns'] = _normalize_computed_columns(computed_columns)
     if fold_readings:
-        policy['fold_readings'] = [_normalize_fold_readings(spec) for spec in fold_readings]
+        policy['fold_readings'] = _normalize_fold_readings(fold_readings)
     if order_by:
         policy['order_by'] = [_normalize_sort_column(spec) for spec in order_by]
     if page_index_columns:
         policy['page_index_columns'] = [str(col) for col in page_index_columns]
     if facet_sets:
-        policy['facet_sets'] = [_normalize_facet_set(spec) for spec in facet_sets]
+        policy['facet_sets'] = _normalize_facet_sets(facet_sets)
     if browse_range_columns:
         policy['browse_range_columns'] = [str(col) for col in browse_range_columns]
     if child_tables:
-        policy['child_tables'] = [_normalize_child_table(spec) for spec in child_tables]
+        policy['child_tables'] = _normalize_child_tables(child_tables)
     if row_group_rows is not None:
         resolved_rows = int(row_group_rows)
         if resolved_rows <= 0:
@@ -253,32 +368,72 @@ def build_export_policy(
     return policy
 
 
+def _resolve_version_ref(dataset, source_or_version):
+    if isinstance(source_or_version, dict):
+        if {'dataset', 'version', 'manifest'} <= source_or_version.keys() and isinstance(source_or_version['dataset'], str):
+            return {
+                'dataset': source_or_version['dataset'],
+                'version': source_or_version['version'],
+                'manifest': dict(source_or_version['manifest']),
+            }
+        ds_field = source_or_version.get('dataset')
+        resolved_ds = ds_field.get('dataset') if isinstance(ds_field, dict) else (ds_field if isinstance(ds_field, str) else dataset)
+        resolved_ver = (
+            ds_field.get('version')
+            if isinstance(ds_field, dict) and 'version' in ds_field
+            else source_or_version.get('id') or source_or_version.get('version')
+        )
+        manifest = source_or_version.get('manifest')
+        if not isinstance(manifest, dict) or not {'owner', 'path', 'digest', 'bytes'} <= manifest.keys():
+            raw_digest = (manifest or {}).get('digest', '0' * 64) if isinstance(manifest, dict) else '0' * 64
+            raw_bytes = int((manifest or {}).get('bytes', (manifest or {}).get('size', 0))) if isinstance(manifest, dict) else 0
+            raw_path = (manifest or {}).get('path', f'versions/{resolved_ver}/manifest.json') if isinstance(manifest, dict) else f'versions/{resolved_ver}/manifest.json'
+            manifest = {
+                'owner': str(resolved_ver or resolved_ds),
+                'path': str(raw_path),
+                'digest': str(raw_digest),
+                'bytes': raw_bytes,
+            }
+        return {
+            'dataset': str(resolved_ds),
+            'version': str(resolved_ver),
+            'manifest': manifest,
+        }
+    if isinstance(source_or_version, str) and source_or_version.strip():
+        ver = source_or_version.strip()
+        return {
+            'dataset': str(dataset),
+            'version': ver,
+            'manifest': {
+                'owner': ver,
+                'path': f'versions/{ver}/manifest.json',
+                'digest': '0' * 64,
+                'bytes': 0,
+            },
+        }
+    raise ValueError('ExportSpec requires a valid source VersionRef, ReleasePin, or version identifier')
+
+
 def build_export_spec(
     dataset,
     *,
     operation,
-    version,
-    channel,
-    destination,
+    source=None,
+    version=None,
+    channel='viewer',
+    expected=None,
+    destination=None,
     policy=None,
     **policy_kwargs,
 ):
-    """Build a canonical DocSpec ``ExportSpec`` request dictionary."""
-    resolved_version = (
-        version['dataset']['version']
-        if isinstance(version, dict) and isinstance(version.get('dataset'), dict) and 'version' in version['dataset']
-        else (version['id'] if isinstance(version, dict) and 'id' in version else version)
-    )
+    """Build a canonical DocSpec ``ExportSpec`` request dictionary matching ``src/export.rs``."""
     if not isinstance(dataset, str) or not dataset.strip():
         raise ValueError('ExportSpec requires a non-empty dataset name')
     if not isinstance(operation, str) or not operation.strip():
         raise ValueError('ExportSpec requires a non-empty operation identifier')
-    if not isinstance(resolved_version, str) or not resolved_version.strip():
-        raise ValueError('ExportSpec requires a non-empty version identifier')
     if not isinstance(channel, str) or not channel.strip():
         raise ValueError('ExportSpec requires a non-empty channel name')
-    if destination is None or not str(destination).strip():
-        raise ValueError('ExportSpec requires a non-empty destination path')
+    resolved_source = _resolve_version_ref(dataset, source if source is not None else version)
     if policy is None:
         resolved_policy = build_export_policy(**policy_kwargs)
     elif policy_kwargs:
@@ -289,9 +444,9 @@ def build_export_spec(
     return {
         'dataset': dataset,
         'operation': operation,
-        'version': resolved_version,
+        'source': resolved_source,
         'channel': channel,
-        'destination': str(destination),
+        'expected': expected,
         'policy': resolved_policy,
     }
 
@@ -300,22 +455,32 @@ def parse_export_pin(pin):
     """Validate and normalize a completed DocSpec ``ExportPin`` response."""
     if not isinstance(pin, dict):
         raise ValueError('ExportPin must be a dictionary')
-    for required in ('id', 'operation', 'channel'):
+    for required in ('id', 'dataset'):
         if required not in pin:
             raise ValueError(f'ExportPin is missing required field {required!r}')
-    if 'dataset' not in pin and 'source' not in pin:
-        raise ValueError("ExportPin requires 'dataset' or 'source' version reference")
-    if 'files' not in pin and 'object' not in pin:
-        raise ValueError("ExportPin requires 'files' or 'object' metadata")
+    if 'source' not in pin and not isinstance(pin.get('dataset'), dict):
+        raise ValueError("ExportPin requires 'source' VersionRef")
+    if 'object' not in pin and 'files' not in pin:
+        raise ValueError("ExportPin requires 'object' ObjectRef")
     normalized = dict(pin)
-    files = normalized.get('files')
-    if isinstance(files, list):
-        normalized.setdefault('total_rows', sum(int(f.get('rows', 0)) for f in files if isinstance(f, dict)))
-        normalized.setdefault('total_bytes', sum(int(f.get('bytes', 0)) for f in files if isinstance(f, dict)))
-    elif isinstance(normalized.get('object'), dict):
+    if 'object' in normalized and isinstance(normalized['object'], dict):
         obj = normalized['object']
-        normalized.setdefault('total_rows', int(obj.get('rows', 0)))
-        normalized.setdefault('total_bytes', int(obj.get('bytes', 0)))
+        rows = int(normalized.get('rows', obj.get('rows', 0)))
+        normalized['rows'] = rows
+    elif isinstance(normalized.get('files'), list) and normalized['files']:
+        first = normalized['files'][0]
+        rows = sum(int(f.get('rows', 0)) for f in normalized['files'] if isinstance(f, dict))
+        bytes_total = sum(int(f.get('bytes', 0)) for f in normalized['files'] if isinstance(f, dict))
+        normalized.setdefault(
+            'object',
+            {
+                'owner': str(normalized['id']),
+                'path': str(first.get('path', '')),
+                'digest': str(first.get('digest') or first.get('sha256') or ''),
+                'bytes': bytes_total,
+            },
+        )
+        normalized.setdefault('rows', rows)
     normalized.setdefault('facets', [])
     normalized.setdefault('browse_ranges', [])
     normalized.setdefault('child_tables', {})
@@ -324,31 +489,50 @@ def parse_export_pin(pin):
 
 def facet_summary(pin, *, facet_set=None, column=None):
     """Project ``FacetCountEntry`` items from an ``ExportPin`` into a lookup map."""
-    parsed = parse_export_pin(pin) if isinstance(pin, dict) and 'policy_digest' in pin else {'facets': list(pin.get('facets', ())) if isinstance(pin, dict) else list(pin)}
-    entries = parsed.get('facets') or []
-    result = {}
+    if isinstance(pin, dict):
+        entries = list(pin.get('facets') or ())
+    else:
+        entries = list(pin or ())
+    by_column = {}
     for entry in entries:
         if not isinstance(entry, dict):
             continue
-        set_name = entry.get('facet_set')
-        col_name = entry.get('column')
-        if facet_set is not None and set_name != facet_set:
-            continue
-        if column is not None and col_name != column:
-            continue
-        set_bucket = result.setdefault(set_name, {})
-        col_bucket = set_bucket.setdefault(col_name, {'values': {}, 'null_count': 0})
-        value = entry.get('value')
         count = int(entry.get('count', 0))
-        if value is None:
-            col_bucket['null_count'] += count
+        if 'grouping' in entry and isinstance(entry.get('values'), dict):
+            grouping = entry.get('grouping') or []
+            values_map = entry['values']
+            if len(grouping) == 1:
+                col_name = str(grouping[0])
+                if column is not None and col_name != column:
+                    continue
+                bucket = by_column.setdefault(col_name, {'values': {}, 'null_count': 0})
+                val = values_map.get(col_name)
+                if val is None:
+                    bucket['null_count'] += count
+                else:
+                    bucket['values'][str(val)] = bucket['values'].get(str(val), 0) + count
+            elif column is not None and column in values_map:
+                bucket = by_column.setdefault(column, {'values': {}, 'null_count': 0})
+                val = values_map.get(column)
+                if val is None:
+                    bucket['null_count'] += count
+                else:
+                    bucket['values'][str(val)] = bucket['values'].get(str(val), 0) + count
         else:
-            col_bucket['values'][str(value)] = col_bucket['values'].get(str(value), 0) + count
-    if facet_set is not None and column is not None:
-        return result.get(facet_set, {}).get(column, {'values': {}, 'null_count': 0})
+            col_name = entry.get('column')
+            if not col_name or (column is not None and col_name != column):
+                continue
+            bucket = by_column.setdefault(col_name, {'values': {}, 'null_count': 0})
+            val = entry.get('value')
+            if val is None:
+                bucket['null_count'] += count
+            else:
+                bucket['values'][str(val)] = bucket['values'].get(str(val), 0) + count
+    if column is not None:
+        return by_column.get(column, {'values': {}, 'null_count': 0})
     if facet_set is not None:
-        return result.get(facet_set, {})
-    return result
+        return by_column
+    return by_column
 
 
 def cleanup_safe(error):
@@ -1033,28 +1217,32 @@ class NativeDatasets:
     def read_occurrences(self, pin, *, schema=None):
         return self._read_pin_endpoint(pin, '/occurrences', schema=schema)
 
-    def export(self, request, *, operation=None, version=None, channel=None,
-               destination=None, policy=None, **policy_kwargs):
+    def export(self, request, *, operation=None, source=None, version=None, channel='viewer',
+               expected=None, destination=None, policy=None, **policy_kwargs):
         if isinstance(request, str):
             request = build_export_spec(
                 request,
                 operation=operation,
+                source=source,
                 version=version,
                 channel=channel,
+                expected=expected,
                 destination=destination,
                 policy=policy,
                 **policy_kwargs,
             )
         return parse_export_pin(self._request('/exports/run', request))
 
-    def export_table(self, dataset, *, operation, version, channel, destination,
-                     policy=None, **policy_kwargs):
+    def export_table(self, dataset, *, operation, source=None, version=None, channel='viewer',
+                     expected=None, destination=None, policy=None, **policy_kwargs):
         """Submit one declarative ``ExportSpec`` and return its normalized ``ExportPin``."""
         spec = build_export_spec(
             dataset,
             operation=operation,
+            source=source,
             version=version,
             channel=channel,
+            expected=expected,
             destination=destination,
             policy=policy,
             **policy_kwargs,

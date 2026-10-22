@@ -183,11 +183,34 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     signal?.throwIfAborted();metrics.decodedRows+=rows.length;
     return rows.map(row=>normalize(columns?Object.fromEntries(columns.map(name=>[name,row[name]??null])):row));
   }
+  function present(row,reviewed) {
+    const output=structuredClone(row), flag=output._flags;delete output._flags;
+    output._row=output.source_id;output.api_reference=flag&16?apiReference(output.source_url):null;output.video_reference=flag&32?videoReference(output.source_url):null;
+    const recovered=recovery.groups.get(output.document_id);
+    if(recovered)Object.assign(output,{retained:true,recovery:recovered[0],recoveries:recovered});
+    const review=reviewed && reviews.groups.get(output.document_id);
+    if(review){output._review_status=review.status;if(review.status==='candidate_applied'){output.catalog_document_kind=output.document_kind;Object.assign(output,structuredClone(review.selected));}}
+    return output;
+  }
+  function normalizeExportPinAsset(pin) {
+    if (!pin) return null;
+    if (pin.object) {
+      return {
+        ...pin.object,
+        sha256: pin.object.digest || pin.object.sha256,
+        rows: pin.rows,
+        fields: pin.fields || [],
+        browse_ranges: pin.browse_ranges || [],
+      };
+    }
+    return pin.file || (Array.isArray(pin.files) ? pin.files[0] : null);
+  }
   if (isExportPinManifest) {
     const sourcesPin = manifest.exports.sources, componentsPin = manifest.exports.components;
-    const sourcesFile = sourcesPin.files[0], componentsFile = componentsPin.files[0];
-    const sourceOccFile = sourcesPin.child_tables?.occurrences?.file ?? null;
-    const docOccFile = componentsPin.child_tables?.occurrences?.file ?? null;
+    const sourcesFile = normalizeExportPinAsset(sourcesPin);
+    const componentsFile = normalizeExportPinAsset(componentsPin);
+    const sourceOccFile = normalizeExportPinAsset(sourcesPin.child_tables?.occurrences);
+    const docOccFile = normalizeExportPinAsset(componentsPin.child_tables?.occurrences);
     const sourceObs = sourceOccFile ? parquetObservationReader(sourceOccFile, read, { metrics }) : {
       read: async () => null,
       page: async (_, { offset = 0 } = {}) => ({ items: [], total: 0, offset, next: null, is_null: true }),
@@ -211,15 +234,23 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       checkCatalog(catalog);
       if (!sourceId(id)) throw new Error('Source record is not present in this catalog.');
       return cached(`export-source:${id}`, async () => {
-        const ranges = (sourcesPin.browse_ranges || []).filter(r => r.column === 'source_id');
+        const rawRanges = sourcesPin.browse_ranges || [];
+        const ranges = rawRanges
+          .filter(r => r.min_values?.source_id !== undefined || r.column === 'source_id')
+          .map(r => ({
+            start: r.start_row ?? r.row_offset ?? 0,
+            count: r.num_rows ?? r.rows ?? sourcesFile.rows,
+            min: r.min_values?.source_id ?? r.min ?? null,
+            max: r.max_values?.source_id ?? r.max ?? null,
+          }));
         const candidateRanges = ranges.length
           ? ranges.filter(r => (!r.min || r.min <= id) && (!r.max || id <= r.max))
-          : [{ row_offset: 0, rows: sourcesFile.rows }];
+          : [{ start: 0, count: sourcesFile.rows }];
         for (const rg of candidateRanges) {
-          const ids = await read(sourcesFile, rg.row_offset, rg.row_offset + rg.rows, ['source_id', 'document_id'], signal);
+          const ids = await read(sourcesFile, rg.start, rg.start + rg.count, ['source_id', 'document_id'], signal);
           const localIdx = ids.findIndex(v => v.source_id === id);
           if (localIdx >= 0) {
-            return { bundle: exportBundle, row: rg.row_offset + localIdx, documentId: ids[localIdx].document_id };
+            return { bundle: exportBundle, row: rg.start + localIdx, documentId: ids[localIdx].document_id, sourceId: id };
           }
         }
         throw new Error('Source record is not present in this catalog.');
@@ -227,20 +258,60 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     }
     async function resolveExportComponentRow(documentId, signal) {
       return cached(`export-component:${documentId}`, async () => {
-        const ids = await read(componentsFile, 0, componentsFile.rows, ['document_id', 'source_id', 'filename'], signal);
-        const row = ids.findIndex(v => v.document_id === documentId);
-        if (row < 0) throw new Error('Document is not present in this catalog.');
-        return { row, summary: ids[row] };
+        const rawRanges = componentsPin.browse_ranges || [];
+        const ranges = rawRanges
+          .filter(r => r.min_values?.document_id !== undefined || r.column === 'document_id')
+          .map(r => ({
+            start: r.start_row ?? r.row_offset ?? 0,
+            count: r.num_rows ?? r.rows ?? componentsFile.rows,
+            min: r.min_values?.document_id ?? r.min ?? null,
+            max: r.max_values?.document_id ?? r.max ?? null,
+          }));
+        const candidateRanges = ranges.length
+          ? ranges.filter(r => (!r.min || r.min <= documentId) && (!r.max || documentId <= r.max))
+          : [{ start: 0, count: componentsFile.rows }];
+        for (const rg of candidateRanges) {
+          const ids = await read(componentsFile, rg.start, rg.start + rg.count, ['document_id', 'source_id', 'filename'], signal);
+          const localIdx = ids.findIndex(v => v.document_id === documentId);
+          if (localIdx >= 0) {
+            return { row: rg.start + localIdx, summary: ids[localIdx], documentId };
+          }
+        }
+        throw new Error('Document is not present in this catalog.');
       }, signal);
     }
     async function exportSearch(query = {}, signal) {
       signal?.throwIfAborted();
+      const reviewed = reviewedMode(query, info);
       const limit = positiveInteger(query.limit, 50, 100), requested = positiveInteger(query.page);
-      const total = componentsFile.rows, pages = Math.max(1, Math.ceil(total / limit)), page = Math.min(requested, pages);
-      const start = (page - 1) * limit, end = Math.min(total, start + limit);
-      const rawRows = await read(componentsFile, start, end, undefined, signal);
-      const rows = rawRows.map(r => ({ ...r, _row: r.source_id }));
-      return { rows, total, page, pages, limit };
+      const selectedFilters = filters.filter(k => query[k] && query[k] !== '__null__');
+      for (const name of selectedFilters) {
+        if (!(info.review_facets?.[name] || info.facets?.[name] || []).includes(query[name])) {
+          throw new Error(`Unknown ${name} filter.`);
+        }
+      }
+      const needle = (query.q || '').slice(0, 2000).toLowerCase();
+      const field = query.field || 'filename';
+      if (!needle && !selectedFilters.length && !query.retained && !['document_kind', 'document_family'].some(k => query[k] === '__null__')) {
+        const total = componentsFile.rows, pages = Math.max(1, Math.ceil(total / limit)), page = Math.min(requested, pages);
+        const start = (page - 1) * limit, end = Math.min(total, start + limit);
+        const rawRows = await read(componentsFile, start, end, undefined, signal);
+        const rows = rawRows.map(r => present(r, reviewed));
+        return { rows, total, page, pages, limit };
+      }
+      const allRows = await read(componentsFile, 0, componentsFile.rows, undefined, signal);
+      const matched = [];
+      for (const raw of allRows) {
+        const rendered = present(raw, reviewed);
+        if (needle && !text(rendered[field]).includes(needle)) continue;
+        if (!selectedFilters.every(k => values(rendered[k]).some(v => (k === 'format' ? String(v).toLowerCase() : String(v)) === query[k]))) continue;
+        if (query.retained && Boolean(rendered.retained) !== (query.retained === 'yes')) continue;
+        if (['document_kind', 'document_family'].some(k => query[k] === '__null__' && rendered[k]?.length)) continue;
+        matched.push(rendered);
+      }
+      const total = matched.length, pages = Math.max(1, Math.ceil(total / limit)), page = Math.min(requested, pages);
+      const start = (page - 1) * limit;
+      return { rows: matched.slice(start, start + limit), total, page, pages, limit };
     }
     async function exportDetail(id, catalog, signal) {
       const { row } = await resolveExportSource(id, catalog, signal);
@@ -249,19 +320,37 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     }
     async function exportObservationPage(id, catalog, query = {}, signal) {
       const { row } = await resolveExportSource(id, catalog, signal);
-      return sourceObs.page(row, { offset: positiveInteger(query.offset, 0), limit: positiveInteger(query.limit, 20, 100), ...(query.origin ? { columns: origins } : {}) }, signal);
+      return sourceObs.page(
+        row,
+        {
+          offset: positiveInteger(query.offset, 0),
+          limit: positiveInteger(query.limit, 20, 100),
+          ownerId: id,
+          ...(query.origin ? { columns: origins } : {}),
+        },
+        signal
+      );
     }
     async function exportDocumentObservationPage(id, catalog, query = {}, signal) {
       const { documentId } = sourceId(id) ? await resolveExportSource(id, catalog, signal) : { documentId: id };
       const { row } = await resolveExportComponentRow(documentId, signal);
-      return docObs.page(row, { offset: positiveInteger(query.offset, 0), limit: positiveInteger(query.limit, 20, 100) }, signal);
+      return docObs.page(
+        row,
+        {
+          offset: positiveInteger(query.offset, 0),
+          limit: positiveInteger(query.limit, 20, 100),
+          ownerId: documentId,
+          ...(query.origin ? { columns: origins } : {}),
+        },
+        signal
+      );
     }
     async function exportDocumentRecord(id, catalog, signal) {
       const { documentId } = sourceId(id) ? await resolveExportSource(id, catalog, signal) : { documentId: id };
       const { row } = await resolveExportComponentRow(documentId, signal);
       const record = (await read(componentsFile, row, row + 1, undefined, signal))[0];
       if (docOccFile) {
-        record.source_occurrences = await docObs.read(row, signal);
+        record.source_occurrences = await docObs.read(row, signal, { ownerId: documentId });
       }
       return Object.fromEntries(info.document_fields.map(name => [name, record[name] ?? null]));
     }
@@ -269,7 +358,7 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       const value = await exportDetail(id, catalog, signal);
       const { documentId } = await resolveExportSource(id, catalog, signal);
       const { row: compRow } = await resolveExportComponentRow(documentId, signal);
-      const doc = (await read(componentsFile, compRow, compRow + 1, undefined, signal))[0];
+      const doc = present((await read(componentsFile, compRow, compRow + 1, undefined, signal))[0], false);
       const part = await exportObservationPage(id, catalog, { limit: 20, origin: true }, signal);
       const origin = sourceContext({ ...value.record, source_occurrences: part.items.filter(Boolean) });
       return {
@@ -437,15 +526,6 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       current=value.children.find(child=>compare(child.first,entry.key)<=0 && compare(entry.key,child.last)<=0);
     }
     throw new Error('Document browse row differs from selected membership.');
-  }
-  function present(row,reviewed) {
-    const output=structuredClone(row), flag=output._flags;delete output._flags;
-    output._row=output.source_id;output.api_reference=flag&16?apiReference(output.source_url):null;output.video_reference=flag&32?videoReference(output.source_url):null;
-    const recovered=recovery.groups.get(output.document_id);
-    if(recovered)Object.assign(output,{retained:true,recovery:recovered[0],recoveries:recovered});
-    const review=reviewed && reviews.groups.get(output.document_id);
-    if(review){output._review_status=review.status;if(review.status==='candidate_applied'){output.catalog_document_kind=output.document_kind;Object.assign(output,structuredClone(review.selected));}}
-    return output;
   }
   async function search(query,signal) {
     signal?.throwIfAborted();const reviewed=reviewedMode(query,info), limit=positiveInteger(query.limit,50,100), requested=positiveInteger(query.page);

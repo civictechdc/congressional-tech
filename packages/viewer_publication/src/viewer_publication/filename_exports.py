@@ -62,6 +62,51 @@ DEFAULT_COMPONENT_FACET_COLUMNS = (
     'format',
 )
 
+DEFAULT_SOURCE_EXPORT_COLUMNS = (
+    'source_id',
+    'document_id',
+    'filename',
+    'source_url',
+    'body_key',
+    'record_role',
+    'document_kind',
+    'document_family',
+    'format',
+    'congress',
+    'http_status',
+    'response_usable',
+    'response_body_complete',
+    'state_checked_at',
+    'fact_alternatives',
+    'filename_readings',
+    'filename_field_count',
+)
+
+DEFAULT_COMPONENT_EXPORT_COLUMNS = (
+    'document_id',
+    'source_id',
+    'filename',
+    'source_url',
+    'body_key',
+    'record_role',
+    'document_kind',
+    'document_family',
+    'format',
+    'congress',
+)
+
+
+def _arrow_schema_to_export_fields(schema):
+    return [
+        {
+            'id': idx + 1,
+            'name': field.name,
+            'data_type': str(field.type),
+            'nullable': bool(field.nullable),
+        }
+        for idx, field in enumerate(schema)
+    ]
+
 
 def visible_reading_fields(schema_names):
     """Select the visible filename reading columns folded into ``filename_readings``."""
@@ -91,108 +136,89 @@ def visible_reading_fields(schema_names):
 
 def build_source_export_policy(
     *,
-    destination_dir=None,
+    columns=DEFAULT_SOURCE_EXPORT_COLUMNS,
     reading_fields=DEFAULT_SOURCE_READING_FIELDS,
     facet_columns=DEFAULT_SOURCE_FACET_COLUMNS,
     occurrence_columns=None,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
+    destination_dir=None,
 ):
-    """Build the declarative ``ExportPolicy`` for ``filename-sources``."""
+    """Build the declarative ``ExportPolicy`` for ``filename-sources`` matching ``docspec-rs``."""
+    _ = destination_dir
     fields = [str(f) for f in (reading_fields or DEFAULT_SOURCE_READING_FIELDS)]
-    facets = [str(c) for c in (facet_columns or DEFAULT_SOURCE_FACET_COLUMNS)]
-    occ_dest = (
-        str(Path(destination_dir) / 'occurrences.parquet')
-        if destination_dir is not None
-        else 'occurrences.parquet'
-    )
+    facets = [[str(c)] for c in (facet_columns or DEFAULT_SOURCE_FACET_COLUMNS)]
+    cols = [str(c) for c in (columns or DEFAULT_SOURCE_EXPORT_COLUMNS)]
     child_spec = {
-        'name': 'occurrences',
-        'group': 'occurrences',
-        'destination': occ_dest,
-        'order_by': [
-            {'column': 'owner_id', 'descending': False, 'nulls_first': False},
-            {'column': 'occurrence_order', 'descending': False, 'nulls_first': False},
-        ],
-        'browse_range_columns': ['owner_id'],
+        'list_column': 'source_occurrences',
+        'parent_key_columns': ['source_id'],
+        'child_key_columns': ['owner_id'],
+        'ordinal_column': 'occurrence_order',
         'row_group_rows': int(row_group_rows),
+        'drop_parent_column': True,
     }
     if occurrence_columns:
-        child_spec['columns'] = [str(c) for c in occurrence_columns]
+        child_spec['struct_columns'] = [str(c) for c in occurrence_columns]
     return build_export_policy(
+        group='source',
         groups=('source',),
-        computed_columns=[
-            {
-                'name': 'filename_field_count',
-                'expression': {
-                    'fn': 'count_non_null',
-                    'columns': fields,
-                },
+        columns=cols,
+        computed_columns={
+            'filename_field_count': {
+                'fn': 'count_non_null',
+                'columns': fields,
             }
-        ],
-        fold_readings=[
-            {
-                'name': 'filename_readings',
-                'fields': fields,
-            }
-        ],
+        },
+        fold_readings={
+            'target_column': 'filename_readings',
+            'columns': fields,
+            'strip_suffix': False,
+            'drop_source_columns': True,
+        },
         order_by=[
-            {'column': 'source_id', 'descending': False, 'nulls_first': False},
+            {'column': 'source_id', 'direction': 'asc', 'nulls_first': False},
         ],
         page_index_columns=['source_id', 'document_id', 'filename'],
-        facet_sets=[
-            {
-                'name': 'sources_facets',
-                'columns': facets,
-            }
-        ],
+        facet_sets=facets,
         browse_range_columns=['source_id', 'document_id'],
-        child_tables=[child_spec],
+        child_tables={'occurrences': child_spec},
         row_group_rows=int(row_group_rows),
     )
 
 
 def build_component_export_policy(
     *,
-    destination_dir=None,
+    columns=DEFAULT_COMPONENT_EXPORT_COLUMNS,
     facet_columns=DEFAULT_COMPONENT_FACET_COLUMNS,
     occurrence_columns=None,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
+    destination_dir=None,
 ):
-    """Build the declarative ``ExportPolicy`` for ``filename-components``."""
-    facets = [str(c) for c in (facet_columns or DEFAULT_COMPONENT_FACET_COLUMNS)]
-    occ_dest = (
-        str(Path(destination_dir) / 'document_occurrences.parquet')
-        if destination_dir is not None
-        else 'document_occurrences.parquet'
-    )
+    """Build the declarative ``ExportPolicy`` for ``filename-components`` matching ``docspec-rs``."""
+    _ = destination_dir
+    facets = [[str(c)] for c in (facet_columns or DEFAULT_COMPONENT_FACET_COLUMNS)]
+    cols = [str(c) for c in (columns or DEFAULT_COMPONENT_EXPORT_COLUMNS)]
     child_spec = {
-        'name': 'occurrences',
-        'group': 'occurrences',
-        'destination': occ_dest,
-        'order_by': [
-            {'column': 'owner_id', 'descending': False, 'nulls_first': False},
-            {'column': 'occurrence_order', 'descending': False, 'nulls_first': False},
-        ],
-        'browse_range_columns': ['owner_id'],
+        'list_column': 'source_occurrences',
+        'parent_key_columns': ['document_id'],
+        'child_key_columns': ['owner_id'],
+        'ordinal_column': 'occurrence_order',
         'row_group_rows': int(row_group_rows),
+        'drop_parent_column': True,
     }
     if occurrence_columns:
-        child_spec['columns'] = [str(c) for c in occurrence_columns]
+        child_spec['struct_columns'] = [str(c) for c in occurrence_columns]
     return build_export_policy(
+        group='source',
         groups=('source',),
+        columns=cols,
         order_by=[
-            {'column': 'filename', 'descending': False, 'nulls_first': False},
-            {'column': 'document_id', 'descending': False, 'nulls_first': False},
+            {'column': 'filename', 'direction': 'asc', 'nulls_first': False},
+            {'column': 'document_id', 'direction': 'asc', 'nulls_first': False},
         ],
         page_index_columns=['filename', 'document_id', 'source_id'],
-        facet_sets=[
-            {
-                'name': 'components_facets',
-                'columns': facets,
-            }
-        ],
+        facet_sets=facets,
         browse_range_columns=['filename', 'document_id'],
-        child_tables=[child_spec],
+        child_tables={'occurrences': child_spec},
         row_group_rows=int(row_group_rows),
     )
 
@@ -201,16 +227,20 @@ def build_source_export_spec(
     dataset,
     *,
     operation,
-    version,
-    destination,
+    source=None,
+    version=None,
+    destination=None,
     channel='viewer',
+    expected=None,
+    columns=DEFAULT_SOURCE_EXPORT_COLUMNS,
     reading_fields=DEFAULT_SOURCE_READING_FIELDS,
     facet_columns=DEFAULT_SOURCE_FACET_COLUMNS,
     occurrence_columns=None,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
 ):
+    _ = destination
     policy = build_source_export_policy(
-        destination_dir=destination,
+        columns=columns,
         reading_fields=reading_fields,
         facet_columns=facet_columns,
         occurrence_columns=occurrence_columns,
@@ -219,9 +249,9 @@ def build_source_export_spec(
     return build_export_spec(
         dataset,
         operation=operation,
-        version=version,
+        source=source if source is not None else version,
         channel=channel,
-        destination=destination,
+        expected=expected,
         policy=policy,
     )
 
@@ -230,15 +260,19 @@ def build_component_export_spec(
     dataset,
     *,
     operation,
-    version,
-    destination,
+    source=None,
+    version=None,
+    destination=None,
     channel='viewer',
+    expected=None,
+    columns=DEFAULT_COMPONENT_EXPORT_COLUMNS,
     facet_columns=DEFAULT_COMPONENT_FACET_COLUMNS,
     occurrence_columns=None,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
 ):
+    _ = destination
     policy = build_component_export_policy(
-        destination_dir=destination,
+        columns=columns,
         facet_columns=facet_columns,
         occurrence_columns=occurrence_columns,
         row_group_rows=row_group_rows,
@@ -246,9 +280,9 @@ def build_component_export_spec(
     return build_export_spec(
         dataset,
         operation=operation,
-        version=version,
+        source=source if source is not None else version,
         channel=channel,
-        destination=destination,
+        expected=expected,
         policy=policy,
     )
 
@@ -358,15 +392,11 @@ def _publish_occurrence_parquet(
         owners_col = [row['owner_id'] for row in pending_rows]
         browse_ranges.append(
             {
-                'group': 'occurrences',
-                'path': path.name,
                 'row_group': row_group_index,
-                'row_offset': row_group_start,
-                'rows': len(pending_rows),
-                'column': 'owner_id',
-                'min': min(owners_col),
-                'max': max(owners_col),
-                'null_count': 0,
+                'start_row': row_group_start,
+                'num_rows': len(pending_rows),
+                'min_values': {'owner_id': min(owners_col)},
+                'max_values': {'owner_id': max(owners_col)},
             }
         )
         row_group_index += 1
@@ -436,6 +466,7 @@ def _publish_occurrence_parquet(
         'rows': total_occurrences,
         'parent_rows': len(row_slices),
         'fields': fields,
+        'export_fields': _arrow_schema_to_export_fields(flat_schema),
         'row_slices': row_slices,
         'browse_ranges': browse_ranges,
     }
@@ -443,6 +474,7 @@ def _publish_occurrence_parquet(
 
 def compute_browse_ranges(parquet_path, columns, *, group='source'):
     """Extract per-row-group ``ExportKeyRange`` statistics from a written Parquet file."""
+    _ = group
     ranges = []
     parquet_path = Path(parquet_path)
     with pq.ParquetFile(parquet_path) as pf:
@@ -454,30 +486,29 @@ def compute_browse_ranges(parquet_path, columns, *, group='source'):
             rg = meta.row_group(rg_idx)
             rg_rows = rg.num_rows
             rg_table = pf.read_row_group(rg_idx, columns=target_cols) if target_cols else None
+            min_values = {}
+            max_values = {}
             for col_name in target_cols:
                 values = [v for v in rg_table[col_name].to_pylist() if v is not None]
-                null_count = rg_rows - len(values)
-                min_val = str(min(values)) if values else None
-                max_val = str(max(values)) if values else None
-                ranges.append(
-                    {
-                        'group': group,
-                        'path': parquet_path.name,
-                        'row_group': rg_idx,
-                        'row_offset': row_offset,
-                        'rows': rg_rows,
-                        'column': col_name,
-                        'min': min_val,
-                        'max': max_val,
-                        'null_count': null_count,
-                    }
-                )
+                if values:
+                    min_values[col_name] = str(min(values))
+                    max_values[col_name] = str(max(values))
+            ranges.append(
+                {
+                    'row_group': rg_idx,
+                    'start_row': row_offset,
+                    'num_rows': rg_rows,
+                    'min_values': min_values,
+                    'max_values': max_values,
+                }
+            )
             row_offset += rg_rows
     return ranges
 
 
-def compute_facet_entries(table_or_rows, columns, *, facet_set):
+def compute_facet_entries(table_or_rows, columns, *, facet_set=None):
     """Compute ``FacetCountEntry`` list across ``columns`` matching ``docspec-rs``."""
+    _ = facet_set
     rows = table_or_rows.to_pylist() if isinstance(table_or_rows, pa.Table) else list(table_or_rows)
     entries = []
     for col in columns:
@@ -488,7 +519,11 @@ def compute_facet_entries(table_or_rows, columns, *, facet_set):
             if val is None or val == []:
                 null_count += 1
             elif isinstance(val, list):
-                non_empty = [str(item.lower() if col == 'format' and isinstance(item, str) else item) for item in val if item]
+                non_empty = [
+                    str(item.lower() if col == 'format' and isinstance(item, str) else item)
+                    for item in val
+                    if item
+                ]
                 if not non_empty:
                     null_count += 1
                 else:
@@ -500,18 +535,16 @@ def compute_facet_entries(table_or_rows, columns, *, facet_set):
         for value in sorted(counts):
             entries.append(
                 {
-                    'facet_set': facet_set,
-                    'column': col,
-                    'value': value,
+                    'grouping': [col],
+                    'values': {col: value},
                     'count': counts[value],
                 }
             )
         if null_count > 0:
             entries.append(
                 {
-                    'facet_set': facet_set,
-                    'column': col,
-                    'value': None,
+                    'grouping': [col],
+                    'values': {col: None},
                     'count': null_count,
                 }
             )
@@ -559,7 +592,11 @@ def fold_source_readings_table(table, *, has_observations_list=None):
     py_rows = table.to_pylist()
     out_rows = []
     for idx, row in enumerate(py_rows):
-        has_obs = bool(has_observations_list[idx]) if has_observations_list is not None else bool(row.get('source_occurrences'))
+        has_obs = (
+            bool(has_observations_list[idx])
+            if has_observations_list is not None
+            else bool(row.get('source_occurrences'))
+        )
         record = {}
         for field in base_fields:
             name = field.name
@@ -591,43 +628,65 @@ def build_export_pin_descriptor(
     dataset,
     version,
     operation,
-    channel,
-    destination,
     policy,
     primary_file,
+    fields=(),
     facets=(),
     browse_ranges=(),
     child_tables=None,
+    channel='viewer',
+    destination=None,
 ):
-    """Construct a normalized ``ExportPin`` dictionary matching ``docspec-rs``."""
-    policy_bytes = json.dumps(policy, sort_keys=True, separators=(',', ':')).encode('utf-8')
-    policy_digest = sha256(policy_bytes).hexdigest()
-    manifest_bytes = json.dumps(
-        {
+    """Construct a canonical ``ExportPin`` dictionary matching ``docspec-rs`` ``src/export.rs``."""
+    _ = (channel, destination)
+    if isinstance(version, dict) and {'dataset', 'version', 'manifest'} <= version.keys():
+        source_ref = dict(version)
+        version_id = str(version['version'])
+    else:
+        version_id = str(version)
+        manifest_bytes = json.dumps(
+            {
+                'dataset': dataset,
+                'version': version_id,
+                'operation': operation,
+            },
+            sort_keys=True,
+            separators=(',', ':'),
+        ).encode('utf-8')
+        source_ref = {
             'dataset': dataset,
-            'version': version,
-            'operation': operation,
-            'primary_file': primary_file,
-        },
-        sort_keys=True,
-        separators=(',', ':'),
-    ).encode('utf-8')
+            'version': version_id,
+            'manifest': {
+                'owner': version_id,
+                'path': f'versions/{version_id}/manifest.json',
+                'digest': sha256(manifest_bytes).hexdigest(),
+                'bytes': len(manifest_bytes),
+            },
+        }
+    object_ref = {
+        'owner': str(operation),
+        'path': str(primary_file['path']),
+        'digest': str(primary_file.get('digest') or primary_file.get('sha256')),
+        'bytes': int(primary_file['bytes']),
+    }
+    rows = int(primary_file['rows'])
     return parse_export_pin(
         {
+            'format': 1,
             'id': operation,
-            'operation': operation,
-            'channel': channel,
-            'dataset': {'dataset': dataset, 'version': version},
-            'manifest': {
-                'path': f'{destination}/manifest.json',
-                'digest': sha256(manifest_bytes).hexdigest(),
-                'size': len(manifest_bytes),
+            'dataset': dataset,
+            'source': source_ref,
+            'source_revision': 1,
+            'policy': policy,
+            'object': object_ref,
+            'rows': rows,
+            'fields': list(fields),
+            'validation': {
+                'object': dict(object_ref),
+                'rows': rows,
+                'sampled_rows': rows,
+                'sampled_decoded_bytes': int(primary_file['bytes']),
             },
-            'policy_digest': policy_digest,
-            'destination': str(destination),
-            'files': [primary_file],
-            'total_rows': int(primary_file['rows']),
-            'total_bytes': int(primary_file['bytes']),
             'facets': list(facets),
             'browse_ranges': list(browse_ranges),
             'child_tables': dict(child_tables or {}),
@@ -658,11 +717,36 @@ def _sort_components_table(table):
     return table.take(pa.array(order, type=pa.int64()))
 
 
+def _build_child_table_export(operation, path_name, ident, occ_info):
+    obj = {
+        'owner': str(operation),
+        'path': str(path_name),
+        'digest': str(ident['sha256']),
+        'bytes': int(ident['bytes']),
+    }
+    rows = int(occ_info['rows'])
+    return {
+        'object': obj,
+        'rows': rows,
+        'fields': list(occ_info.get('export_fields') or ()),
+        'validation': {
+            'object': dict(obj),
+            'rows': rows,
+            'sampled_rows': rows,
+            'sampled_decoded_bytes': int(ident['bytes']),
+        },
+        'browse_ranges': list(occ_info['browse_ranges']),
+    }
+
+
 def export_viewer_pins(
-    sources_table,
-    components_table,
-    target_dir,
+    sources_table=None,
+    components_table=None,
+    target_dir=None,
     *,
+    native=None,
+    sources_pin=None,
+    components_pin=None,
     catalog_id='export-pin-catalog',
     version='v-export-01',
     channel='viewer',
@@ -670,16 +754,83 @@ def export_viewer_pins(
     policy=DEFAULT_DECODED_POLICY,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
 ):
-    """Materialize sorted ``sources.parquet``, ``components.parquet``, and flat ``occurrences.parquet`` with ``ExportPin`` metadata."""
+    """Materialize sorted ``sources.parquet``, ``components.parquet``, and flat ``occurrences.parquet`` with ``ExportPin`` metadata.
+
+    When ``native`` (`NativeDatasets`) is provided, delegates to ``native.export(...)``
+    using ``build_source_export_spec`` and ``build_component_export_spec``.
+    """
     from datetime import datetime, timezone
     from congress_api.retention.derived_files import file_identity
 
-    target_dir = Path(target_dir)
-    target_dir.mkdir(parents=True, exist_ok=True)
-    compression = validate_compression(compression_policy)
+    if target_dir is not None:
+        target_dir = Path(target_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
 
+    if native is not None:
+        sources_spec = build_source_export_spec(
+            'filename-sources',
+            operation=f'exp-sources-{version}',
+            source=sources_pin if sources_pin is not None else version,
+            channel=channel,
+            row_group_rows=row_group_rows,
+        )
+        components_spec = build_component_export_spec(
+            'filename-components',
+            operation=f'exp-components-{version}',
+            source=components_pin if components_pin is not None else version,
+            channel=channel,
+            row_group_rows=row_group_rows,
+        )
+        out_sources_pin = parse_export_pin(native.export(sources_spec))
+        out_components_pin = parse_export_pin(native.export(components_spec))
+        facets_map = {}
+        for col in DEFAULT_SOURCE_FACET_COLUMNS:
+            col_summary = facet_summary(out_sources_pin, column=col)
+            facets_map[col] = sorted(col_summary['values'])
+        manifest = {
+            'version': 6,
+            'published_at': datetime.now(timezone.utc).isoformat(),
+            'info': {
+                'catalog_id': catalog_id,
+                'rows': int(out_sources_pin.get('rows', 0)),
+                'entries': int(out_components_pin.get('rows', 0)),
+                'documents': int(out_components_pin.get('rows', 0)),
+                'capture_records': 0,
+                'api_reference_groups': 0,
+                'video_reference_groups': 0,
+                'fields': [f['name'] for f in out_sources_pin.get('fields', ()) if isinstance(f, dict) and 'name' in f],
+                'document_fields': [f['name'] for f in out_components_pin.get('fields', ()) if isinstance(f, dict) and 'name' in f],
+                'facets': facets_map,
+                'bytes': int(out_sources_pin['object']['bytes']) + int(out_components_pin['object']['bytes']),
+                'generation': str(version),
+                'house_naming_version': 'export-pin-v1',
+            },
+            'exports': {
+                'sources': out_sources_pin,
+                'components': out_components_pin,
+            },
+        }
+        if target_dir is not None:
+            (target_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2))
+        return {
+            'manifest': manifest,
+            'sources': out_sources_pin,
+            'components': out_components_pin,
+            'specs': {
+                'sources': sources_spec,
+                'components': components_spec,
+            },
+        }
+
+    if sources_table is None or components_table is None or target_dir is None:
+        raise ValueError('export_viewer_pins requires sources_table, components_table, and target_dir when native is None')
+
+    compression = validate_compression(compression_policy)
     sorted_sources = _sort_sources_table(sources_table)
     sorted_components = _sort_components_table(components_table)
+
+    sources_op = f'exp-sources-{version}'
+    components_op = f'exp-components-{version}'
 
     source_occ_child = {}
     has_source_obs = None
@@ -695,24 +846,12 @@ def export_viewer_pins(
         )
         has_source_obs = [count > 0 for _, count in occ_info['row_slices']]
         occ_ident = file_identity(occ_path)
-        source_occ_child['occurrences'] = {
-            'name': 'occurrences',
-            'group': 'occurrences',
-            'file': {
-                'group': 'occurrences',
-                'path': 'occurrences.parquet',
-                'digest': occ_ident['sha256'],
-                'sha256': occ_ident['sha256'],
-                'bytes': occ_ident['bytes'],
-                'rows': occ_info['rows'],
-                'parent_rows': occ_info['parent_rows'],
-                'fields': occ_info['fields'],
-                'row_slices': occ_info['row_slices'],
-            },
-            'total_rows': occ_info['rows'],
-            'total_bytes': occ_ident['bytes'],
-            'browse_ranges': occ_info['browse_ranges'],
-        }
+        source_occ_child['occurrences'] = _build_child_table_export(
+            sources_op,
+            'occurrences.parquet',
+            occ_ident,
+            occ_info,
+        )
 
     folded_sources = fold_source_readings_table(sorted_sources, has_observations_list=has_source_obs)
     sources_path = target_dir / 'sources.parquet'
@@ -728,35 +867,30 @@ def export_viewer_pins(
     sources_ident = file_identity(sources_path)
     _, visible_fields = visible_reading_fields(sorted_sources.schema.names)
     source_policy = build_source_export_policy(
-        destination_dir=target_dir,
+        columns=list(folded_sources.schema.names),
         reading_fields=visible_fields or DEFAULT_SOURCE_READING_FIELDS,
         row_group_rows=row_group_rows,
     )
     source_facets = compute_facet_entries(
         sorted_sources,
         [c for c in DEFAULT_SOURCE_FACET_COLUMNS if c in sorted_sources.schema.names],
-        facet_set='sources_facets',
     )
     source_ranges = compute_browse_ranges(
         sources_path,
         ['source_id', 'document_id'],
-        group='source',
     )
-    sources_pin = build_export_pin_descriptor(
+    out_sources_pin = build_export_pin_descriptor(
         dataset='filename-sources',
-        version=version,
-        operation=f'exp-sources-{version}',
-        channel=channel,
-        destination=target_dir,
+        version=sources_pin if sources_pin is not None else version,
+        operation=sources_op,
         policy=source_policy,
         primary_file={
-            'group': 'source',
             'path': 'sources.parquet',
             'digest': sources_ident['sha256'],
-            'sha256': sources_ident['sha256'],
             'bytes': sources_ident['bytes'],
             'rows': len(folded_sources),
         },
+        fields=_arrow_schema_to_export_fields(folded_sources.schema),
         facets=source_facets,
         browse_ranges=source_ranges,
         child_tables=source_occ_child,
@@ -774,24 +908,12 @@ def export_viewer_pins(
             row_group_rows=row_group_rows,
         )
         doc_occ_ident = file_identity(doc_occ_path)
-        comp_occ_child['occurrences'] = {
-            'name': 'occurrences',
-            'group': 'occurrences',
-            'file': {
-                'group': 'occurrences',
-                'path': 'document_occurrences.parquet',
-                'digest': doc_occ_ident['sha256'],
-                'sha256': doc_occ_ident['sha256'],
-                'bytes': doc_occ_ident['bytes'],
-                'rows': doc_occ_info['rows'],
-                'parent_rows': doc_occ_info['parent_rows'],
-                'fields': doc_occ_info['fields'],
-                'row_slices': doc_occ_info['row_slices'],
-            },
-            'total_rows': doc_occ_info['rows'],
-            'total_bytes': doc_occ_ident['bytes'],
-            'browse_ranges': doc_occ_info['browse_ranges'],
-        }
+        comp_occ_child['occurrences'] = _build_child_table_export(
+            components_op,
+            'document_occurrences.parquet',
+            doc_occ_ident,
+            doc_occ_info,
+        )
 
     comp_core_schema = pa.schema(
         [f for f in sorted_components.schema if f.name != 'source_occurrences'],
@@ -810,34 +932,29 @@ def export_viewer_pins(
     )
     components_ident = file_identity(components_path)
     component_policy = build_component_export_policy(
-        destination_dir=target_dir,
+        columns=list(comp_core_table.schema.names),
         row_group_rows=row_group_rows,
     )
     component_facets = compute_facet_entries(
         comp_core_table,
         [c for c in DEFAULT_COMPONENT_FACET_COLUMNS if c in comp_core_table.schema.names],
-        facet_set='components_facets',
     )
     component_ranges = compute_browse_ranges(
         components_path,
         ['filename', 'document_id'],
-        group='source',
     )
-    components_pin = build_export_pin_descriptor(
+    out_components_pin = build_export_pin_descriptor(
         dataset='filename-components',
-        version=version,
-        operation=f'exp-components-{version}',
-        channel=channel,
-        destination=target_dir,
+        version=components_pin if components_pin is not None else version,
+        operation=components_op,
         policy=component_policy,
         primary_file={
-            'group': 'source',
             'path': 'components.parquet',
             'digest': components_ident['sha256'],
-            'sha256': components_ident['sha256'],
             'bytes': components_ident['bytes'],
             'rows': len(comp_core_table),
         },
+        fields=_arrow_schema_to_export_fields(comp_core_table.schema),
         facets=component_facets,
         browse_ranges=component_ranges,
         child_tables=comp_occ_child,
@@ -845,7 +962,7 @@ def export_viewer_pins(
 
     facets_map = {}
     for col in DEFAULT_SOURCE_FACET_COLUMNS:
-        col_summary = facet_summary(sources_pin, facet_set='sources_facets', column=col)
+        col_summary = facet_summary(out_sources_pin, column=col)
         facets_map[col] = sorted(col_summary['values'])
 
     manifest = {
@@ -863,37 +980,36 @@ def export_viewer_pins(
             'document_fields': list(sorted_components.schema.names),
             'facets': facets_map,
             'bytes': sources_ident['bytes'] + components_ident['bytes'],
-            'generation': version,
+            'generation': str(version),
             'house_naming_version': 'export-pin-v1',
         },
         'exports': {
-            'sources': sources_pin,
-            'components': components_pin,
+            'sources': out_sources_pin,
+            'components': out_components_pin,
         },
     }
     (target_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2))
     return {
         'manifest': manifest,
-        'sources': sources_pin,
-        'components': components_pin,
+        'sources': out_sources_pin,
+        'components': out_components_pin,
         'specs': {
             'sources': build_source_export_spec(
                 'filename-sources',
-                operation=f'exp-sources-{version}',
-                version=version,
-                destination=target_dir,
+                operation=sources_op,
+                source=sources_pin if sources_pin is not None else version,
                 channel=channel,
+                columns=list(folded_sources.schema.names),
                 reading_fields=visible_fields or DEFAULT_SOURCE_READING_FIELDS,
                 row_group_rows=row_group_rows,
             ),
             'components': build_component_export_spec(
                 'filename-components',
-                operation=f'exp-components-{version}',
-                version=version,
-                destination=target_dir,
+                operation=components_op,
+                source=components_pin if components_pin is not None else version,
                 channel=channel,
+                columns=list(comp_core_table.schema.names),
                 row_group_rows=row_group_rows,
             ),
         },
     }
-

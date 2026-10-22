@@ -1,7 +1,4 @@
 """Unit tests for the DocSpec ExportPolicy / ExportSpec / ExportPin client surface."""
-from pathlib import Path
-import pytest
-
 from docspec_client import (
     NativeDatasets,
     build_export_policy,
@@ -13,103 +10,142 @@ from docspec_client import (
 
 def test_build_export_policy_full_surface():
     policy = build_export_policy(
+        group='source',
         groups=('source',),
+        columns=['source_key', 'document_id', 'collection', 'filename_readings', 'filename_field_count'],
         filter={'op': 'is_not_null', 'column': 'source_key'},
-        computed_columns=[
-            {
-                'name': 'filename_field_count',
-                'expression': {
-                    'fn': 'count_non_null',
-                    'columns': ['raw_leaf', 'normalized_leaf', 'header_leaf'],
-                },
+        computed_columns={
+            'filename_field_count': {
+                'fn': 'count_non_null',
+                'columns': ['raw_leaf', 'normalized_leaf', 'header_leaf'],
             }
-        ],
-        fold_readings=[
-            {
-                'name': 'filename_readings',
-                'fields': ['raw_leaf', 'normalized_leaf', 'header_leaf'],
-            }
-        ],
+        },
+        fold_readings={
+            'target_column': 'filename_readings',
+            'columns': ['raw_leaf', 'normalized_leaf', 'header_leaf'],
+            'strip_suffix': False,
+            'drop_source_columns': True,
+        },
         order_by=[
-            {'column': 'source_key', 'descending': False, 'nulls_first': False},
+            {'column': 'source_key', 'direction': 'asc', 'nulls_first': False},
         ],
         page_index_columns=['source_key', 'document_id', 'collection'],
         facet_sets=[
-            {
-                'name': 'sources_facets',
-                'columns': ['collection', 'source_role', 'recovery_status'],
-            }
+            ['collection'],
+            ['source_role'],
+            ['recovery_status'],
         ],
         browse_range_columns=['source_key', 'collection'],
-        child_tables=[
-            {
-                'name': 'occurrences',
-                'group': 'occurrences',
-                'destination': '/tmp/export/occurrences.parquet',
-                'columns': ['owner_id', 'occurrence_order', 'source_id', 'block', 'page'],
-                'order_by': [
-                    {'column': 'owner_id'},
-                    {'column': 'occurrence_order'},
-                ],
-                'browse_range_columns': ['owner_id'],
+        child_tables={
+            'occurrences': {
+                'list_column': 'source_occurrences',
+                'parent_key_columns': ['source_id'],
+                'child_key_columns': ['owner_id'],
+                'ordinal_column': 'occurrence_order',
+                'struct_columns': ['source_id', 'block', 'page'],
                 'row_group_rows': 2048,
+                'replace_with_count_column': 'occurrence_count',
+                'drop_parent_column': True,
             }
-        ],
+        },
         row_group_rows=2048,
     )
+    assert set(policy.keys()) <= {
+        'group',
+        'groups',
+        'rows',
+        'columns',
+        'filter',
+        'computed_columns',
+        'fold_readings',
+        'order_by',
+        'page_index_columns',
+        'facet_sets',
+        'browse_range_columns',
+        'child_tables',
+        'row_group_rows',
+    }
+    assert policy['group'] == 'source'
     assert policy['groups'] == ['source']
-    assert policy['filter'] == {'op': 'is_not_null', 'column': 'source_key'}
-    assert policy['computed_columns'][0]['name'] == 'filename_field_count'
-    assert policy['fold_readings'] == [
-        {
-            'name': 'filename_readings',
-            'fields': ['raw_leaf', 'normalized_leaf', 'header_leaf'],
-        }
-    ]
+    assert policy['rows'] == 'all'
+    assert policy['filter'] == {
+        'kind': 'is_not_null',
+        'expr': {'kind': 'column', 'name': 'source_key'},
+    }
+    assert isinstance(policy['computed_columns'], dict)
+    assert 'filename_field_count' in policy['computed_columns']
+    assert policy['fold_readings'] == {
+        'target_column': 'filename_readings',
+        'columns': ['raw_leaf', 'normalized_leaf', 'header_leaf'],
+        'strip_suffix': False,
+        'drop_source_columns': True,
+    }
     assert policy['order_by'] == [
-        {'column': 'source_key', 'descending': False, 'nulls_first': False}
+        {'column': 'source_key', 'direction': 'asc', 'nulls_first': False}
     ]
     assert policy['page_index_columns'] == ['source_key', 'document_id', 'collection']
     assert policy['facet_sets'] == [
-        {
-            'name': 'sources_facets',
-            'columns': ['collection', 'source_role', 'recovery_status'],
-        }
+        ['collection'],
+        ['source_role'],
+        ['recovery_status'],
     ]
     assert policy['browse_range_columns'] == ['source_key', 'collection']
-    assert policy['child_tables'][0]['name'] == 'occurrences'
-    assert policy['child_tables'][0]['row_group_rows'] == 2048
-    assert policy['child_tables'][0]['order_by'] == [
-        {'column': 'owner_id', 'descending': False, 'nulls_first': False},
-        {'column': 'occurrence_order', 'descending': False, 'nulls_first': False},
-    ]
+    assert policy['child_tables']['occurrences'] == {
+        'list_column': 'source_occurrences',
+        'parent_key_columns': ['source_id'],
+        'child_key_columns': ['owner_id'],
+        'ordinal_column': 'occurrence_order',
+        'struct_columns': ['source_id', 'block', 'page'],
+        'row_group_rows': 2048,
+        'replace_with_count_column': 'occurrence_count',
+        'drop_parent_column': True,
+    }
     assert policy['row_group_rows'] == 2048
 
 
-def test_build_export_spec_accepts_pin_or_version_string(tmp_path):
+def test_build_export_spec_accepts_pin_or_version_string():
     pin = {
         'id': 'v-sources-01',
-        'dataset': {'dataset': 'filename-sources', 'version': 'v-sources-01'},
+        'dataset': 'filename-sources',
+        'manifest': {
+            'owner': 'v-sources-01',
+            'path': 'versions/v-sources-01/manifest.json',
+            'digest': 'a' * 64,
+            'bytes': 512,
+        },
     }
     spec = build_export_spec(
         'filename-sources',
         operation='exp-sources-01',
-        version=pin,
+        source=pin,
         channel='viewer',
-        destination=tmp_path / 'sources',
+        columns=['source_key'],
         groups=('source',),
         order_by=[{'column': 'source_key'}],
         row_group_rows=2048,
     )
+    assert set(spec.keys()) == {'dataset', 'operation', 'source', 'channel', 'expected', 'policy'}
     assert spec == {
         'dataset': 'filename-sources',
         'operation': 'exp-sources-01',
-        'version': 'v-sources-01',
+        'source': {
+            'dataset': 'filename-sources',
+            'version': 'v-sources-01',
+            'manifest': {
+                'owner': 'v-sources-01',
+                'path': 'versions/v-sources-01/manifest.json',
+                'digest': 'a' * 64,
+                'bytes': 512,
+            },
+        },
         'channel': 'viewer',
-        'destination': str(tmp_path / 'sources'),
+        'expected': None,
         'policy': {
+            'group': 'source',
             'groups': ['source'],
-            'order_by': [{'column': 'source_key', 'descending': False, 'nulls_first': False}],
+            'rows': 'all',
+            'columns': ['source_key'],
+            'order_by': [{'column': 'source_key', 'direction': 'asc', 'nulls_first': False}],
             'row_group_rows': 2048,
         },
     }
@@ -117,57 +153,103 @@ def test_build_export_spec_accepts_pin_or_version_string(tmp_path):
 
 def test_parse_export_pin_and_facet_summary():
     raw_pin = {
+        'format': 1,
         'id': 'exp-01',
-        'operation': 'exp-01',
-        'channel': 'viewer',
-        'dataset': {'dataset': 'filename-sources', 'version': 'v-01'},
-        'manifest': {'path': '/tmp/m.json', 'digest': 'a' * 64, 'size': 100},
-        'policy_digest': 'b' * 64,
-        'destination': '/tmp/out',
-        'files': [
-            {'group': 'source', 'path': '/tmp/out/source.parquet', 'digest': 'c' * 64, 'bytes': 4096, 'rows': 10},
+        'dataset': 'filename-sources',
+        'source': {
+            'dataset': 'filename-sources',
+            'version': 'v-01',
+            'manifest': {
+                'owner': 'v-01',
+                'path': 'versions/v-01/manifest.json',
+                'digest': 'a' * 64,
+                'bytes': 100,
+            },
+        },
+        'source_revision': 1,
+        'policy': {
+            'group': 'source',
+            'rows': 'all',
+            'columns': ['source_key', 'collection'],
+        },
+        'object': {
+            'owner': 'exp-01',
+            'path': 'exports/exp-01/source.parquet',
+            'digest': 'c' * 64,
+            'bytes': 4096,
+        },
+        'rows': 10,
+        'fields': [
+            {'id': 1, 'name': 'source_key', 'data_type': 'Utf8', 'nullable': False},
+            {'id': 2, 'name': 'collection', 'data_type': 'Utf8', 'nullable': True},
         ],
+        'validation': {
+            'object': {
+                'owner': 'exp-01',
+                'path': 'exports/exp-01/source.parquet',
+                'digest': 'c' * 64,
+                'bytes': 4096,
+            },
+            'rows': 10,
+            'sampled_rows': 10,
+            'sampled_decoded_bytes': 512,
+        },
         'facets': [
-            {'facet_set': 'sources_facets', 'column': 'collection', 'value': 'house', 'count': 6},
-            {'facet_set': 'sources_facets', 'column': 'collection', 'value': 'senate', 'count': 3},
-            {'facet_set': 'sources_facets', 'column': 'collection', 'value': None, 'count': 1},
+            {'grouping': ['collection'], 'values': {'collection': 'house'}, 'count': 6},
+            {'grouping': ['collection'], 'values': {'collection': 'senate'}, 'count': 3},
+            {'grouping': ['collection'], 'values': {'collection': None}, 'count': 1},
         ],
         'browse_ranges': [
             {
-                'group': 'source',
-                'path': '/tmp/out/source.parquet',
                 'row_group': 0,
-                'row_offset': 0,
-                'rows': 10,
-                'column': 'source_key',
-                'min': 'doc-001',
-                'max': 'doc-010',
-                'null_count': 0,
+                'start_row': 0,
+                'num_rows': 10,
+                'min_values': {'source_key': 'doc-001'},
+                'max_values': {'source_key': 'doc-010'},
             }
         ],
         'child_tables': {
             'occurrences': {
-                'name': 'occurrences',
-                'group': 'occurrences',
-                'file': {
-                    'group': 'occurrences',
-                    'path': '/tmp/out/occurrences.parquet',
+                'object': {
+                    'owner': 'exp-01',
+                    'path': 'exports/exp-01/occurrences.parquet',
                     'digest': 'd' * 64,
                     'bytes': 8192,
-                    'rows': 42,
                 },
-                'total_rows': 42,
-                'total_bytes': 8192,
-                'browse_ranges': [],
+                'rows': 42,
+                'fields': [
+                    {'id': 1, 'name': 'owner_id', 'data_type': 'Utf8', 'nullable': False},
+                    {'id': 2, 'name': 'occurrence_order', 'data_type': 'Int64', 'nullable': False},
+                ],
+                'validation': {
+                    'object': {
+                        'owner': 'exp-01',
+                        'path': 'exports/exp-01/occurrences.parquet',
+                        'digest': 'd' * 64,
+                        'bytes': 8192,
+                    },
+                    'rows': 42,
+                    'sampled_rows': 42,
+                    'sampled_decoded_bytes': 2048,
+                },
+                'browse_ranges': [
+                    {
+                        'row_group': 0,
+                        'start_row': 0,
+                        'num_rows': 42,
+                        'min_values': {'owner_id': 'doc-001'},
+                        'max_values': {'owner_id': 'doc-010'},
+                    }
+                ],
             }
         },
     }
     parsed = parse_export_pin(raw_pin)
-    assert parsed['total_rows'] == 10
-    assert parsed['total_bytes'] == 4096
-    assert parsed['child_tables']['occurrences']['total_rows'] == 42
+    assert parsed['rows'] == 10
+    assert parsed['object']['bytes'] == 4096
+    assert parsed['child_tables']['occurrences']['rows'] == 42
 
-    summary = facet_summary(parsed, facet_set='sources_facets', column='collection')
+    summary = facet_summary(parsed, column='collection')
     assert summary == {
         'values': {'house': 6, 'senate': 3},
         'null_count': 1,
@@ -182,31 +264,58 @@ def test_export_table_dispatches_normalized_request(tmp_path, monkeypatch):
         captured['path'] = path
         captured['request'] = request
         return {
+            'format': 1,
             'id': request['operation'],
-            'operation': request['operation'],
-            'channel': request['channel'],
-            'dataset': {'dataset': request['dataset'], 'version': request['version']},
-            'manifest': {'path': '/tmp/m', 'digest': '0' * 64, 'size': 1},
-            'policy_digest': '1' * 64,
-            'destination': request['destination'],
-            'files': [{'group': 'source', 'path': '/tmp/s.parquet', 'digest': '2' * 64, 'bytes': 128, 'rows': 3}],
+            'dataset': request['dataset'],
+            'source': request['source'],
+            'source_revision': 1,
+            'policy': request['policy'],
+            'object': {
+                'owner': request['operation'],
+                'path': 'exports/s.parquet',
+                'digest': '2' * 64,
+                'bytes': 128,
+            },
+            'rows': 3,
+            'fields': [],
+            'validation': {
+                'object': {
+                    'owner': request['operation'],
+                    'path': 'exports/s.parquet',
+                    'digest': '2' * 64,
+                    'bytes': 128,
+                },
+                'rows': 3,
+                'sampled_rows': 3,
+                'sampled_decoded_bytes': 64,
+            },
         }
 
     monkeypatch.setattr(client, '_request', fake_request)
     pin = client.export_table(
         'filename-components',
         operation='exp-comp-01',
-        version='v-comp-01',
+        source={
+            'dataset': 'filename-components',
+            'version': 'v-comp-01',
+            'manifest': {
+                'owner': 'v-comp-01',
+                'path': 'versions/v-comp-01/manifest.json',
+                'digest': '0' * 64,
+                'bytes': 1,
+            },
+        },
         channel='viewer',
-        destination=tmp_path / 'out',
+        columns=['filename', 'document_id'],
         groups=('source',),
         order_by=[{'column': 'filename'}, {'column': 'document_id'}],
     )
     assert captured['path'] == '/exports/run'
+    assert set(captured['request'].keys()) == {'dataset', 'operation', 'source', 'channel', 'expected', 'policy'}
     assert captured['request']['dataset'] == 'filename-components'
     assert captured['request']['policy']['order_by'] == [
-        {'column': 'filename', 'descending': False, 'nulls_first': False},
-        {'column': 'document_id', 'descending': False, 'nulls_first': False},
+        {'column': 'filename', 'direction': 'asc', 'nulls_first': False},
+        {'column': 'document_id', 'direction': 'asc', 'nulls_first': False},
     ]
-    assert pin['total_rows'] == 3
-    assert pin['total_bytes'] == 128
+    assert pin['rows'] == 3
+    assert pin['object']['bytes'] == 128

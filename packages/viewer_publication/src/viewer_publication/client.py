@@ -316,17 +316,58 @@ class ConditionalManifestPublisher:
         self.client = client
         self.bucket = bucket
 
-    def put_immutable_asset(self, key, body, *, content_type='application/octet-stream'):
+    def put_immutable_asset(self, key, body, *, content_type='application/octet-stream', validation=None):
         if not key.startswith('viewer-publications/releases/'):
             raise ValueError(f'Immutable viewer asset key must live under viewer-publications/releases/: {key}')
-        raw = Path(body).read_bytes() if isinstance(body, Path) else (body if isinstance(body, bytes) else body.read())
-        size = len(raw)
-        digest = hashlib.sha256(raw).hexdigest()
+        if isinstance(body, Path) or (isinstance(body, str) and Path(body).exists()):
+            path = Path(body)
+            if path.stat().st_size >= 5 * 1024**3:
+                raise ValueError('Immutable viewer asset exceeds single-PUT limit')
+            if validation is not None:
+                validation.require(path)
+                size, digest = int(validation['bytes']), str(validation['sha256'])
+            else:
+                size = path.stat().st_size
+                with path.open('rb') as digest_stream:
+                    digest = hashlib.file_digest(digest_stream, 'sha256').hexdigest()
+            try:
+                with path.open('rb') as stream:
+                    response = self.client.put_object(
+                        Bucket=self.bucket,
+                        Key=key,
+                        Body=stream,
+                        ContentLength=size,
+                        ContentType=content_type,
+                        IfNoneMatch='*',
+                    )
+                etag = (response or {}).get('ETag') or ''
+            except Exception as error:
+                code = getattr(error, 'response', {}).get('Error', {}).get('Code')
+                if code not in {'PreconditionFailed', '412'}:
+                    raise
+                etag = 'existing-immutable'
+            return VerifiedTransfer(bucket=self.bucket, key=key, bytes=size, sha256=digest, etag=etag)
+
+        if hasattr(body, 'read') and hasattr(body, 'seek') and hasattr(body, 'tell'):
+            start = body.tell()
+            digestor = hashlib.sha256()
+            size = 0
+            while chunk := body.read(1024 * 1024):
+                size += len(chunk)
+                digestor.update(chunk)
+            body.seek(start)
+            digest = digestor.hexdigest()
+            payload = body
+        else:
+            raw = bytes(body) if isinstance(body, (bytes, bytearray)) else body.read()
+            size = len(raw)
+            digest = hashlib.sha256(raw).hexdigest()
+            payload = raw
         try:
             response = self.client.put_object(
                 Bucket=self.bucket,
                 Key=key,
-                Body=raw,
+                Body=payload,
                 ContentLength=size,
                 ContentType=content_type,
                 IfNoneMatch='*',
