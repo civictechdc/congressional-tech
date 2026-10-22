@@ -1,15 +1,13 @@
-"""Bounded browse pages and inverse domain links for static site readers."""
+"""Scoped query rows and index metadata for Committee Explorer Parquet tables."""
 from collections import Counter, defaultdict
-from hashlib import sha256
 import json
 
 from committee_meeting import SCHEMA_VERSION
-from committee_meeting.catalog import _references
 
 KINDS = ('committee_term', 'meeting', 'appearance', 'material', 'data_issue')
 
 
-def write_queries(catalog, current, write, *, evidence_states=None, include_relations=True):
+def write_queries(catalog, current, write, *, evidence_states=None):
     records = {(r.kind, r.id): r for r in catalog.records}
     material_subjects = defaultdict(set)
     for record in catalog.records:
@@ -59,17 +57,7 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
         if record.committee_type not in ('unknown', 'subcommittee'): return record.committee_type
         return committee_type(record.parent.id, (*seen, id)) if record.parent else 'unknown'
     dates, statuses, witness_names, issue_counts = {}, {}, defaultdict(set), Counter()
-    relations = defaultdict(lambda: defaultdict(dict))
-    def relate(target, record, relation):
-        key = target.kind + '/' + target.id
-        if target.kind == 'source_record': return
-        bucket = sha256(key.encode()).hexdigest()[:2]
-        value = {'kind': record.kind, 'id': record.id, 'relation': relation}
-        relations[bucket][key][(record.kind, record.id, relation)] = value
     for record in catalog.records:
-        if include_relations and record.kind == 'material_link' and record.subject.kind == 'committee_term':
-            material = records.get(('material', record.material.id))
-            if material: relate(record.subject, material, 'material')
         if record.kind == 'occurrence' and record.scheduled_start:
             dates.setdefault(record.meeting.id, record.scheduled_start.date.isoformat())
             statuses.setdefault(record.meeting.id, record.status)
@@ -78,12 +66,6 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
             if record.status != 'unknown': statuses.setdefault(record.id, record.status)
         if record.kind == 'appearance': witness_names[record.meeting.id].add(record.name.display)
         if record.kind == 'data_issue' and record.status == 'open': issue_counts[(record.subject.kind, record.subject.id)] += 1
-        # Inverse links let views find appearances/materials/issues without
-        # scanning the graph. Exclude citation and field-evidence trees.
-        for field in type(record).model_fields if include_relations else ():
-            if field in ('provenance', 'field_evidence', 'identifiers'): continue
-            for target in _references(getattr(record, field)):
-                relate(target, record, field)
     partitions, counts, congresses = [], Counter(), set()
     pages, sizes, numbers = defaultdict(list), defaultdict(int), Counter()
     def flush(group):
@@ -140,12 +122,4 @@ def write_queries(catalog, current, write, *, evidence_states=None, include_rela
           'kinds': [{'kind': k, 'count': counts[k]} for k in KINDS], 'congresses': sorted(congresses, reverse=True),
           'committee_labels': {r.id: r.name or 'Committee name not recorded' for r in catalog.records if r.kind == 'committee_term'},
           'partitions': partitions}, 'index', 'committee_explorer.queries', len(partitions))
-    if not include_relations: return
-    buckets = {}
-    for bucket, entries in sorted(relations.items()):
-        path = f'indexes/relations/{bucket}.json'
-        values = {key: list(v.values()) for key,v in sorted(entries.items())}
-        write(path, {'schema_version': SCHEMA_VERSION, 'relations': values}, 'index', 'committee_explorer.relation-bucket', len(values))
-        buckets[bucket] = path
-    write('indexes/relations.json', {'schema_version': SCHEMA_VERSION, 'key_format': '<kind>/<id>',
-          'bucket_algorithm': 'sha256-prefix-2', 'buckets': buckets}, 'index', 'committee_explorer.relations', len(buckets))
+

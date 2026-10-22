@@ -127,56 +127,14 @@ def _event_page(url):
     return parsed.hostname in ('congress.gov', 'www.congress.gov') and parsed.path.startswith('/event/')
 
 
-def legacy_payloads(sources):
-    """Index raw payloads for a publication that predates stored Explorer fields.
+from congress_api.matching.committees import HIERARCHY_SOURCE, hierarchy_from_code
 
-    Only migrate() calls this. A current export copies fields the adapters stored.
+
+def write_tables(records, sources, query_rows, stage, descriptor):
+    """Write the six browser Parquet tables from streamed records, sources, and query rows.
+
+    Sources must arrive in ascending ID order.
     """
-    from congress_api.adapters.meetings import category, document_title
-    from congress_api.matching.committees import HIERARCHY_SOURCE, hierarchy_from_code
-    from congress_api.matching.meetings import meeting_access, meeting_type
-    from congress_api.parsers.house_documents import XML_KINDS
-    native_documents, native_meetings, reviewed_document_types, committee_documents = {}, {}, {}, {}
-    for source in sources:
-        if source['provider'] == 'congress.gov' and isinstance(source.get('payload'), dict):
-            native_meetings[source['id']] = {k: source['payload'].get(k) for k in ('type', 'title')}
-            for group in ('meetingDocuments', 'witnessDocuments'):
-                for i, document in enumerate(source['payload'].get(group) or []):
-                    native_documents[(source['id'], f'/{group}/{i}')] = (group, document)
-        payload = source.get('payload') or {}
-        if source['provider'] == 'docs.house.gov':
-            for i, group in enumerate((payload.get('evidence') or {}).get('document_groups', [])):
-                code = group.get('type')
-                label = XML_KINDS.get(code, code)
-                if label: label = label[:1].upper() + label[1:]
-                origin = {'meeting_xml': 'Meeting documents', 'witness_xml': 'Witness documents'}.get(group.get('source'))
-                committee_documents[source['id'], f'/evidence/document_groups/{i}'] = (label, origin, code, [])
-        if source['provider'] == 'senate.committees':
-            for url, metadata in (payload.get('document_metadata') or {}).items():
-                selector = '/document_metadata/' + url.replace('~', '~0').replace('/', '~1')
-                labels = metadata.get('labels') or []
-                committee_documents[source['id'], selector] = (
-                    None, 'Witness documents' if metadata.get('witness_indexes') else None, None, labels)
-        if source['provider'] == 'gpo.committee-review' and isinstance(source.get('payload'), dict):
-            label = source['payload'].get('source_document_type')
-            if isinstance(label, str) and label: reviewed_document_types[source['id']] = label
-    return {'native_documents': native_documents, 'native_meetings': native_meetings,
-            'reviewed_document_types': reviewed_document_types, 'committee_documents': committee_documents,
-            'hierarchy_from_code': hierarchy_from_code, 'HIERARCHY_SOURCE': HIERARCHY_SOURCE,
-            'category': category, 'document_title': document_title, 'meeting_access': meeting_access, 'meeting_type': meeting_type}
-
-
-def write_tables(records, sources, query_rows, stage, descriptor, legacy=None):
-    """Accept iterables so a retained JSON publication can migrate without reassembly.
-
-    Sources must arrive in ascending ID order. Pass legacy_payloads(sources) only
-    when repairing a publication that lacks the stored Explorer fields.
-    """
-    repair = legacy or {}
-    native_documents = repair.get('native_documents', {})
-    native_meetings = repair.get('native_meetings', {})
-    reviewed_document_types = repair.get('reviewed_document_types', {})
-    committee_documents = repair.get('committee_documents', {})
     def source_rows():
         previous = None
         for source in sources:
@@ -186,8 +144,6 @@ def write_tables(records, sources, query_rows, stage, descriptor, legacy=None):
             yield _source_row(source)
     source_files = _write_sources(source_rows(), stage)
     rows = {kind: {} for kind in TABLES if kind != 'source_record'}
-    # Records assembled after the model carried these fields. Older publications
-    # still need the payload scan below; migrate() reads them without reassembly.
     for row in query_rows:
         rows[row['kind']][row['id']] = {**row, 'files': [], 'facts': [], 'meeting_ids': [],
                                       'appearance_ids': [], 'source_ids': []}
@@ -243,8 +199,8 @@ def write_tables(records, sources, query_rows, stage, descriptor, legacy=None):
                                               'full' if committee_type not in (None, 'unknown') else 'unknown')
                 code = record.get('committee_code') or next((i['value'] for i in record.get('identifiers', []) if i['scheme'] == 'congress.gov:committee'), None)
                 row['committee_code'] = code
-                if legacy is not None and stored_level in (None, 'unknown'):
-                    level, parent_code = repair['hierarchy_from_code'](code)
+                if stored_level in (None, 'unknown') and code:
+                    level, parent_code = hierarchy_from_code(code)
                     if level != 'unknown':
                         committee_codes[(row.get('congress'), code.lower())] = id
                         if row['committee_level'] == 'unknown': row['committee_level'] = level
@@ -253,7 +209,7 @@ def write_tables(records, sources, query_rows, stage, descriptor, legacy=None):
                             row['facts'].append({'label': 'Committee hierarchy', 'value': 'The source identifies a parent committee.'})
                         elif row['committee_level'] == level:
                             row['facts'].append({'label': 'Committee hierarchy', 'value': f'Congress.gov systemCode {code}: final two digits 00 identify a full committee; other digits identify a subcommittee.'})
-                            row['facts'].append({'label': 'Hierarchy definition', 'value': repair['HIERARCHY_SOURCE']})
+                            row['facts'].append({'label': 'Hierarchy definition', 'value': HIERARCHY_SOURCE})
                 elif parent:
                     row['facts'].append({'label': 'Committee hierarchy', 'value': 'The source identifies a parent committee.'})
             if kind == 'meeting':
@@ -269,22 +225,6 @@ def write_tables(records, sources, query_rows, stage, descriptor, legacy=None):
                 for field in record.get('field_evidence') or []:
                     if field.get('path') == '/meeting_type' and field.get('selection_reason'):
                         row['facts'].append({'label': 'Type based on', 'value': field['selection_reason']})
-                if legacy is not None and (assembled_type in (None, 'unknown', 'meeting') or not record.get('source_type') or row['access'] == 'unknown'):
-                    for source_id in row['source_ids']:
-                        if source_id not in native_meetings: continue
-                        native = native_meetings[source_id]
-                        native_type, field = repair['meeting_type'](native)
-                        if assembled_type in (None, 'unknown', 'meeting'):
-                            row['type'] = native_type
-                        if native.get('type') and not record.get('source_type'):
-                            row['facts'].append({'label': 'Source type', 'value': native['type']})
-                        if field == '/title' and row['type'] == native_type:
-                            row['facts'].append({'label': 'Type based on', 'value': 'The source title explicitly identifies this meeting type.'})
-                        payload_access, access_field = repair['meeting_access'](native)
-                        if row['access'] == 'unknown': row['access'] = payload_access
-                        if access_field == '/title' and row['access'] == payload_access:
-                            row['facts'].append({'label': 'Access based on', 'value': 'The source title explicitly identifies this access state.'})
-                        break
             if kind == 'material':
                 dates = record.get('proceeding_dates') or []
                 if not row.get('date') and dates:
@@ -302,26 +242,6 @@ def write_tables(records, sources, query_rows, stage, descriptor, legacy=None):
                                          'role': file.get('role'), 'media_type': file.get('media_type'), 'version': version,
                                          'published_at': published_at.get('date'), 'sha256': file.get('sha256'),
                                          'saved_copy_sha256': file.get('saved_copy_sha256'), 'saved_filename': file.get('saved_filename')})
-                carried = bool(record.get('document_type') or record.get('source_document_groups'))
-                if legacy is not None and not carried:
-                    documents = [native_documents[key] for citation in provenance.get('citations', [])
-                                 if (key := (citation['source']['id'], citation.get('selector'))) in native_documents]
-                    row['source_document_groups'] = sorted({group for group, _ in documents})
-                    row['document_type'] = next((reviewed_document_types[citation['source']['id']]
-                        for citation in provenance.get('citations', []) if citation['source']['id'] in reviewed_document_types), row.get('document_type'))
-                    if documents:
-                        document = documents[0][1]
-                        row['title'] = repair['document_title'](document) or row['title']
-                        row['category'] = repair['category'](document)
-                        if isinstance(document.get('documentType'), str): row['document_type'] = document['documentType']
-                    for citation in provenance.get('citations', []):
-                        metadata = committee_documents.get((citation['source']['id'], citation.get('selector')))
-                        if metadata:
-                            label, origin, code, labels = metadata
-                            if label and not row.get('document_type'): row['document_type'] = label
-                            if origin: row['source_document_groups'].append(origin)
-                            if code: row['facts'].append({'label': 'Source document type code', 'value': code})
-                            for source_label in labels: row['facts'].append({'label': 'Source link label', 'value': source_label})
                 if not row.get('title') or row['title'] == '(Untitled source record)':
                     row['title'] = (row.get('category') if row.get('category') not in (None, 'unknown') else row.get('type') or 'Document').replace('_', ' ').capitalize()
             if kind == 'appearance':
@@ -355,7 +275,6 @@ def write_tables(records, sources, query_rows, stage, descriptor, legacy=None):
             links.append((record['material']['id'], record['subject']['kind'], record['subject']['id'], sources_of(record)))
         elif kind == 'occurrence':
             occurrences[record['meeting']['id']].append(record)
-    del native_documents, native_meetings, reviewed_document_types, committee_documents
     for id, entries in formats.items():
         if id not in versions: continue
         material_id, label, published, version_sources = versions[id]
@@ -523,7 +442,7 @@ def write_catalog(catalog, current, stage, descriptor, write, evidence_states, r
     def collect(path, value, role, schema_name, count, **kwargs):
         if schema_name == 'committee_explorer.query-rows': query_rows.extend(value['rows'])
         elif schema_name == 'committee_explorer.queries': info.update(value)
-    write_queries(catalog, current, collect, evidence_states=evidence_states, include_relations=False)
+    write_queries(catalog, current, collect, evidence_states=evidence_states)
     def consume_query_rows():
         # The table builder copies each row before enrichment. Release its
         # original immediately instead of keeping both sets until publication.
@@ -539,69 +458,3 @@ def write_catalog(catalog, current, stage, descriptor, write, evidence_states, r
     info.update(storage='parquet', query_columns=QUERY_COLUMNS)
     write('queries.json', info, 'index', 'committee_explorer.queries', len(info['kinds']))
 
-
-def migrate(input_dir, output_dir):
-    """Convert an existing release once, without acquisition or rebuilding records."""
-    import gzip
-    import shutil
-    import tempfile
-
-    from committee_meeting.publication import ExportPartition
-
-    from .browser import verify
-    from .export import encode, file_sha, sha
-    _, root, manifest = verify(input_dir)
-    output = Path(output_dir)
-    output.mkdir(parents=True, exist_ok=True)
-    stage = Path(tempfile.mkdtemp(prefix='.parquet-', dir=output))
-    partitions = []
-    def read(part):
-        body = (root / part.path).read_bytes()
-        return json.loads(gzip.decompress(body) if body.startswith(b'\x1f\x8b') else body)
-    def values(schema, field):
-        for part in manifest.partitions:
-            if part.schema_name == schema: yield from read(part)[field]
-    def descriptor(path, role, schema_name, count, media_type='application/json'):
-        dest = stage / path
-        partitions.append(ExportPartition(path=path, role=role, schema_name=schema_name, schema_version=manifest.schema_version,
-            record_count=count, byte_size=dest.stat().st_size, sha256=file_sha(dest), media_type=media_type))
-    try:
-        retained_sources = sorted(values('committee_explorer.sources', 'sources'), key=itemgetter('id'))
-        write_tables(values('committee_explorer.records', 'records'), retained_sources,
-                     values('committee_explorer.query-rows', 'rows'), stage, descriptor, legacy=legacy_payloads(retained_sources))
-        info = read(next(p for p in manifest.partitions if p.schema_name == 'committee_explorer.queries'))
-        info.pop('partitions', None)
-        info.update(storage='parquet', query_columns=QUERY_COLUMNS)
-        (stage / 'queries.json').write_bytes(encode(info))
-        descriptor('queries.json', 'index', 'committee_explorer.queries', len(info['kinds']))
-        publication_id = sha(encode([p.sha256 for p in partitions]))[:24]
-        updated = manifest.model_copy(update={'partitions': tuple(partitions), 'publication_id': publication_id})
-        raw = encode(updated.model_dump(mode='json'))
-        (stage / 'manifest.json').write_bytes(raw)
-        release = output / 'releases' / publication_id
-        release.parent.mkdir(exist_ok=True)
-        if release.exists(): shutil.rmtree(stage)
-        else: stage.rename(release)
-        pointer = {'schema_version': manifest.schema_version, 'publication_id': publication_id,
-                   'manifest_path': f'releases/{publication_id}/manifest.json', 'manifest_sha256': sha(raw)}
-        from congress_shared.custody import write_atomic_bytes
-        write_atomic_bytes(
-            output / 'CURRENT.json',
-            encode(pointer),
-            temp_path=output / '.CURRENT.json.tmp',
-            fsync=False,
-        )
-        verify(output)
-        return updated
-    finally:
-        if stage.exists(): shutil.rmtree(stage)
-
-
-if __name__ == '__main__':
-    import argparse
-    parser = argparse.ArgumentParser(description='Convert a retained Explorer release directly to Parquet.')
-    parser.add_argument('--input', type=Path, required=True)
-    parser.add_argument('--output', type=Path, required=True)
-    args = parser.parse_args()
-    result = migrate(args.input, args.output)
-    print(f'{result.publication_id}: {len(result.partitions)} files, {sum(p.byte_size for p in result.partitions):,} bytes')

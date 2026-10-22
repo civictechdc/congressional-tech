@@ -193,17 +193,15 @@ def _recording_urls(records):
 
 def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=None, house_state=None, senate_state=None,
            youtube_dir=None, inventory_state=None, recovered_witnesses=None, video_matches_path=None, recordings_path=None,
-           transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="json", reuse_from=None, committees_path=None,
-           document_filenames=None):
-    if format not in ("json", "parquet"):
-        raise ValueError("format must be json or parquet")
+           transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="parquet", reuse_from=None, committees_path=None,
+           document_filenames=None, docspec_workspace=None):
+    if format != "parquet":
+        raise ValueError("Committee Explorer export requires parquet format; legacy sharded json export has been retired")
     now = as_of or datetime.now(timezone.utc)
     if now.tzinfo is None:
         raise ValueError("as_of must include a timezone")
     if limit is not None and limit < 1:
         raise ValueError("limit must be positive")
-    if reuse_from is not None and format != "parquet":
-        raise ValueError("publication reuse requires parquet format")
     transcript_files = tuple(transcript_files)
     attempt_receipt = json.loads(Path(attempts).read_text()) if attempts else {}
     provider_jobs = {'youtube':'youtube', 'congress.gov':'congress', 'govinfo':'congress', 'gpo-video-matches':'congress',
@@ -545,9 +543,6 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
         # Every identity is allocated. Release the registry before publication.
         ids.stage()
         cleanup.callback(ids.discard)
-        def published_sources():
-            # Assembly orders sources by ID; documented decisions append theirs.
-            return chain(merge(catalog.sources[:assembled], retained.records(), key=attrgetter("id")), catalog.sources[assembled:])
         retained_providers, retained_inputs = validate_selectors(catalog, retained)
         # Previous issue evidence may reference earlier inputs. Preserve those
         # snapshots from the previous manifest instead of inventing freshness.
@@ -557,20 +552,6 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
             snapshots += [s for s in previous_manifest.inputs if s.id in used and s.id not in known]
         if not used <= {s.id for s in snapshots}:
             raise ValueError("A source refers to an input absent from the manifest")
-        if format == "json":
-            current_records = [r for r in catalog.records if (r.kind, r.id) in assembly.current]
-            dated, appearances, materials, issues = defaultdict(list), defaultdict(int), defaultdict(set), defaultdict(list)
-            for r in current_records:
-                if r.kind == "occurrence" and r.scheduled_start:
-                    dated[r.meeting.id].append(r.scheduled_start.model_dump(mode="json"))
-                elif r.kind == "appearance": appearances[r.meeting.id] += 1
-                elif r.kind == "material_link" and r.subject.kind == "meeting": materials[r.subject.id].add(r.material.id)
-            for r in catalog.records:
-                if r.kind == "data_issue" and r.status == "open": issues[r.subject.id].append(r.id)
-            index = [{"id": r.id, "title": r.title, "congress": r.congress, "chamber": r.chamber,
-                      "scheduled_dates": dated[r.id], "committee_ids": [v.committee.id for v in r.committees],
-                      "appearance_count": appearances[r.id], "material_count": len(materials[r.id]), "issue_ids": issues[r.id]}
-                     for r in current_records if r.kind == "meeting"]
         stage = Path(tempfile.mkdtemp(prefix=".building-", dir=output))
         partitions = []
         try:
@@ -584,74 +565,24 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(raw)
                 descriptor(path, role, schema_name, count, congress)
-            if format == "json":
-                # Serialize records individually: a full Python JSON tree would
-                # duplicate the largest artifact in memory before writing any bytes.
-                with (stage / "catalog.json").open("wb") as stream:
-                    stream.write(b'{"schema_version":' + json.dumps(SCHEMA_VERSION).encode())
-                    for field, values in (("sources", published_sources()), ("records", catalog.records)):
-                        stream.write(b',"' + field.encode() + b'":[')
-                        for i, record in enumerate(values):
-                            if i: stream.write(b',')
-                            stream.write(record.model_dump_json().encode())
-                        stream.write(b']')
-                    stream.write(b'}\n')
-                descriptor("catalog.json", "download", "committee_meeting.Catalog", len(catalog.records))
-                if print_decisions:
-                    write("inputs/print-decisions.json", print_decisions, "sources", "congress_api.print-decisions", len(print_decisions))
-                if attempt_receipt:
-                    write("inputs/collection-attempt.json", attempt_receipt, "sources", "committee_explorer.collection-attempt", 1)
-                write("indexes/meetings.json", {"schema_version": SCHEMA_VERSION, "rows": index}, "index", "committee_explorer.meetings", len(index))
-                del index, dated, appearances, materials, issues, current_records
-                locations, oversized = defaultdict(dict), []
-                chunk_budget = 2 * 1024 * 1024
-                def chunks(values, field, role, schema_name):
-                    parts, keys, size, number = [], [], 0, 0
-                    prefix = b'{"schema_version":' + json.dumps(SCHEMA_VERSION).encode() + b',"' + field.encode() + b'":['
-                    def flush():
-                        nonlocal parts, keys, size, number
-                        if not parts: return
-                        path = f"{role}/{number:05d}.json"
-                        raw = prefix + b','.join(parts) + b']}\n'
-                        write(path, None, role, schema_name, len(parts), raw=raw)
-                        for key in keys:
-                            locations[sha(key.encode())[:2]][key] = path
-                        if len(raw) > chunk_budget:
-                            oversized.append({"path": path, "byte_size": len(raw), "record_keys": keys})
-                        number += 1
-                        parts, keys, size = [], [], 0
-                    for record in values:
-                        raw = record.model_dump_json().encode()
-                        if parts and size + len(raw) + len(prefix) + 4 > chunk_budget:
-                            flush()
-                        parts.append(raw)
-                        keys.append(record.kind + "/" + record.id)
-                        size += len(raw) + 1
-                    flush()
-                chunks(published_sources(), "sources", "sources", "committee_explorer.sources")
-                chunks(catalog.records, "records", "details", "committee_explorer.records")
-                buckets = {}
-                for bucket, entries in sorted(locations.items()):
-                    path = f"indexes/locations/{bucket}.json"
-                    buckets[bucket] = path
-                    write(path, {"schema_version": SCHEMA_VERSION, "locations": entries}, "index", "committee_explorer.location-bucket", len(entries))
-                write("indexes/locations.json", {"schema_version": SCHEMA_VERSION, "key_format": "<kind>/<id>",
-                    "bucket_algorithm": "sha256-prefix-2", "buckets": buckets, "chunk_byte_budget": chunk_budget,
-                    "oversized_single_records": oversized}, "index", "committee_explorer.locations", len(buckets))
-                # The query and inverse-link indexes need their own working maps.
-                # Release the completed locator maps before constructing those.
-                del locations, buckets
             evidence_states = {}
             report = coverage(catalog, assembly.current, [s.id for s in snapshots], states_out=evidence_states)
             report["input_reconciliation"] = reconciliation
             report["source_observation_counts"] = dict(Counter(s.provider for s in catalog.sources) + retained_providers)
             write("coverage.json", report, "coverage", "committee_explorer.coverage", len(report["metrics"]))
-            if format == "parquet":
-                from .parquet import write_catalog
-                LOGGER.info('Writing Parquet publication')
-                write_catalog(catalog, assembly.current, stage, descriptor, write, evidence_states, retained.records())
-            else:
-                write_queries(catalog, assembly.current, write, evidence_states=evidence_states)
+            from .parquet import write_catalog
+            LOGGER.info('Writing Parquet publication')
+            write_catalog(catalog, assembly.current, stage, descriptor, write, evidence_states, retained.records())
+            if docspec_workspace is not None:
+                from .docspec_views import ExplorerDocSpecWorkspace
+                with ExplorerDocSpecWorkspace(docspec_workspace) as ds_ws:
+                    export_pins = ds_ws.export_browser_publication(stage)
+                write_atomic_bytes(
+                    state / "export-pins.json",
+                    encode(export_pins),
+                    temp_path=state / ".export-pins.json.tmp",
+                    fsync=False,
+                )
             publication_id = sha(encode({"inputs": [s.id for s in snapshots], "partitions": [p.sha256 for p in partitions], "generated_at": now.isoformat()}))[:24]
             manifest = PublicationManifest(publication_id=publication_id, generated_at=now, producer=Method(name="committee-explorer-export", version=VERSION),
                 inputs=tuple(snapshots), source_scopes=tuple(scopes), partitions=tuple(partitions), previous_publication_id=previous_id,
@@ -705,7 +636,7 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
 def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s: %(message)s')
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--format", choices=("json", "parquet"), default="parquet")
+    p.add_argument("--format", choices=("parquet",), default="parquet")
     p.add_argument("--meetings", type=Path, required=True)
     p.add_argument("--committees-path", type=Path, help="Retained Congress-scoped committee metadata JSON Lines, optionally gzipped.")
     p.add_argument("--output-dir", type=Path, required=True)
@@ -727,6 +658,7 @@ def main():
     p.add_argument("--revision", help="Revision of supplied native/House/Senate/YouTube/inventory state. Separate CSV/body inputs are pinned by digest.")
     p.add_argument("--reuse-from", type=Path, help="Reuse an unchanged verified Parquet publication from this directory or the local output. Changed inputs, options, code or state rebuild it.")
     p.add_argument("--document-filenames", type=Path, help="Optional document-filenames table. Matching representation URLs receive a viewer-data saved copy.")
+    p.add_argument("--docspec-workspace", type=Path, help="Optional docspec-rs workspace to publish immutable ExportPins for the six Parquet browser tables.")
     args = p.parse_args()
     manifest, catalog = export(**vars(args))
     if catalog is None:
@@ -734,7 +666,7 @@ def main():
     else:
         # The returned catalog holds current sources only; count what was published.
         sources = sum(p.record_count for p in manifest.partitions
-                      if p.schema_name in ("committee_explorer.sources", "committee_explorer.parquet.source_record"))
+                      if p.schema_name == "committee_explorer.parquet.source_record")
         print(f"Published locally {manifest.publication_id}: {len(catalog.records)} records, {sources} source observations")
 
 

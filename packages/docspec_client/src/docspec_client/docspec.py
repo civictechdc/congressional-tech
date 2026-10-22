@@ -469,7 +469,7 @@ class NativeDatasets:
         return inputs
 
     def update_table(self, table=None, *, dataset, operation, definition, base, keys,
-                     replacements=None, deletions=None, relationship=None):
+                     replacements=None, deletions=None, relationship=None, merge=None):
         """Submit one ``UpdateSpec`` with pre-persisted producer custody.
 
         Accepts either an Arrow ``table`` (and optional Arrow ``deletions`` table)
@@ -507,6 +507,8 @@ class NativeDatasets:
                 request['relationship'] = relationship
             if deletions_spec is not None:
                 request['deletions'] = deletions_spec
+            if merge is not None:
+                request['merge'] = dict(merge)
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
             primary = Path(replacements_spec['path'])
