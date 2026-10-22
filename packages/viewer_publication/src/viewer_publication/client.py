@@ -261,3 +261,90 @@ class ContinuedPublicationClient(GuardedPublicationClient):
                     return self.verified_result(reused, bucket=kwargs['Bucket'], key=kwargs['Key'],
                         size=saved['bytes'], sha256=saved['sha256'], etag=saved['etag'])
             return super().put_object(**kwargs)
+
+
+def publish_manifest_pointer(
+    client,
+    *,
+    bucket,
+    pointer,
+    key='viewer-publications/manifest.json',
+    expected_etag=None,
+    content_type='application/json',
+    cache_control='no-store',
+):
+    """Commit the viewer manifest pointer via a single conditional PUT (Ruling A.2).
+
+    Uses ``IfMatch=expected_etag`` when advancing an existing pointer or
+    ``IfNoneMatch='*'`` when creating the initial pointer, without performing
+    2x ``get_object`` readback or WAL journaling.
+    """
+    import json
+
+    if isinstance(pointer, (bytes, bytearray)):
+        raw = bytes(pointer)
+    elif isinstance(pointer, dict):
+        raw = json.dumps(pointer, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+    else:
+        raise TypeError('Manifest pointer payload must be a dict or bytes')
+
+    if expected_etag is not None and (not isinstance(expected_etag, str) or not expected_etag.strip()):
+        raise ValueError('expected_etag must be a non-empty ETag string or None')
+
+    condition = {'IfMatch': expected_etag} if expected_etag is not None else {'IfNoneMatch': '*'}
+    size = len(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    response = client.put_object(
+        Bucket=bucket,
+        Key=key,
+        Body=raw,
+        ContentLength=size,
+        ContentType=content_type,
+        CacheControl=cache_control,
+        **condition,
+    )
+    etag = (response or {}).get('ETag') or ''
+    return VerifiedTransfer(bucket=bucket, key=key, bytes=size, sha256=digest, etag=etag)
+
+
+class ConditionalManifestPublisher:
+    """Thin conditional-PUT publisher for content-addressed viewer assets and manifest pointers (Ruling A.2)."""
+
+    def __init__(self, client, *, bucket):
+        if not callable(getattr(client, 'put_object', None)):
+            raise TypeError('ConditionalManifestPublisher requires a client with put_object')
+        self.client = client
+        self.bucket = bucket
+
+    def put_immutable_asset(self, key, body, *, content_type='application/octet-stream'):
+        if not key.startswith('viewer-publications/releases/'):
+            raise ValueError(f'Immutable viewer asset key must live under viewer-publications/releases/: {key}')
+        raw = Path(body).read_bytes() if isinstance(body, Path) else (body if isinstance(body, bytes) else body.read())
+        size = len(raw)
+        digest = hashlib.sha256(raw).hexdigest()
+        try:
+            response = self.client.put_object(
+                Bucket=self.bucket,
+                Key=key,
+                Body=raw,
+                ContentLength=size,
+                ContentType=content_type,
+                IfNoneMatch='*',
+            )
+            etag = (response or {}).get('ETag') or ''
+        except Exception as error:
+            code = getattr(error, 'response', {}).get('Error', {}).get('Code')
+            if code not in {'PreconditionFailed', '412'}:
+                raise
+            etag = 'existing-immutable'
+        return VerifiedTransfer(bucket=self.bucket, key=key, bytes=size, sha256=digest, etag=etag)
+
+    def publish_pointer(self, pointer, *, key='viewer-publications/manifest.json', expected_etag=None):
+        return publish_manifest_pointer(
+            self.client,
+            bucket=self.bucket,
+            pointer=pointer,
+            key=key,
+            expected_etag=expected_etag,
+        )
+

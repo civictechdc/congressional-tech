@@ -22,7 +22,9 @@ class ViewerAssets:
 
     def put_file(self, source, *, name):
         if name not in ('filenames.parquet', 'documents.parquet', 'details.parquet', 'observations.bin',
-                        'observation_rows.bin', 'observation_index.json'):
+                        'observation_rows.bin', 'observation_index.json',
+                        'occurrences.parquet', 'document_occurrences.parquet',
+                        'sources.parquet', 'components.parquet'):
             raise ValueError('Unknown bounded viewer asset kind')
         identity = file_identity(source)
         digest = identity['sha256']
@@ -278,6 +280,7 @@ def typed_observations(schema, identities, occurrences):
     from viewer_publication.filename_observations import ObservationSequence
     class Source:
         schema_arrow = schema
+        owner_ids = [identity.as_py() if hasattr(identity, 'as_py') else str(identity) for identity in identities]
         metadata = SimpleNamespace(num_rows=len(identities))
         def observation_rows(self):
             for identity in identities:
@@ -288,11 +291,22 @@ def typed_observations(schema, identities, occurrences):
 
 def publish_occurrence_assets(source, folder, assets, *, policy, metrics, counts=None):
     from viewer_publication.filename_observations import publish_observations
+    from viewer_publication.filename_exports import publish_occurrence_parquet
     publish_observations(source, folder, counts=counts, policy=policy, metrics=metrics)
-    return {name: assets.put_file(folder / filename, name=name + suffix)
-            for name, filename, suffix in [('observations', 'observations.bin', '.bin'),
-                ('observation_rows', 'observation-rows.bin', '.bin'),
-                ('observation_index', 'observation-index.json', '.json')]}
+    flat = publish_occurrence_parquet(source, folder / 'occurrences.parquet', policy=policy, metrics=metrics)
+    result = {name: assets.put_file(folder / filename, name=name + suffix)
+              for name, filename, suffix in [('observations', 'observations.bin', '.bin'),
+                  ('observation_rows', 'observation-rows.bin', '.bin'),
+                  ('observation_index', 'observation-index.json', '.json')]}
+    result['occurrences'] = dict(
+        assets.put_file(folder / 'occurrences.parquet', name='occurrences.parquet'),
+        rows=flat['rows'],
+        parent_rows=flat['parent_rows'],
+        fields=flat['fields'],
+        row_slices=flat['row_slices'],
+        browse_ranges=flat['browse_ranges'],
+    )
+    return result
 
 
 class NativeSourceAssets:
@@ -706,7 +720,7 @@ def native_requirements(viewer, policy, compression=DEFAULT_COMPRESSION_POLICY):
     import pyarrow
     from congress_api.retention import saved_responses, docspec, catalog_partitions, catalog_rows
     files = [Path(__file__).with_name(name) for name in
-             ('filename_observations.py', 'filename_details.py', 'filename_budget.py', 'filename_json_stream.py', 'filename_compression.py', 'filename_renderer_state.py')]
+             ('filename_observations.py', 'filename_details.py', 'filename_exports.py', 'filename_budget.py', 'filename_json_stream.py', 'filename_compression.py', 'filename_renderer_state.py')]
     files += [Path(__file__), *[Path(module.__file__) for module in (saved_responses, docspec, catalog_partitions, catalog_rows)]]
     return dict(renderer='native-viewer-v2', policy=asdict(policy), compression=compression._asdict(), pyarrow=pyarrow.__version__,
         implementation=sha256(encoded(dict(
@@ -808,7 +822,9 @@ def iterator_inventory(assets, inventory):
             if (not isinstance(digest, str) or len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest)
                     or path not in [f'releases/{digest[:32]}/{digest[32:]}/viewer-v2/{name}' for name in
                         ('page.json', 'filenames.parquet', 'documents.parquet', 'details.parquet', 'observations.bin',
-                         'observation_rows.bin', 'observation_index.json')]
+                         'observation_rows.bin', 'observation_index.json',
+                         'occurrences.parquet', 'document_occurrences.parquet',
+                         'sources.parquet', 'components.parquet')]
                     or type(ref['bytes']) is not int or ref['bytes'] < 0 or path in visited):
                 raise ValueError('Invalid or repeated viewer inventory asset')
             visited.add(path)

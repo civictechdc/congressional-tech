@@ -189,7 +189,17 @@ test('split giant document occurrences preserve full values and stay separate fr
     }
     await visit(manifest.roots.components);
     const entry=nodes.find(value=>value.key[2]===expected.document_id),files=entry.document_observations.files;
-    assert(files.observation_index && files.observations && files.observation_rows);
+    assert(files.observation_index && files.observations && files.observation_rows && files.occurrences);
+    const pagedRequests=[];
+    const pagedReader=await createFilenameCatalog(manifestUrl,(url,options)=>{pagedRequests.push(String(url));return localFetch(url,options);});
+    const docPage=await pagedReader.documentObservationPage(source.source_id,undefined,{offset:0,limit:20});
+    assert.equal(docPage.total,18000);
+    assert.equal(docPage.items.length,20);
+    assert.equal(docPage.next,20);
+    assert.equal(docPage.items[0],null);
+    assert.deepEqual(docPage.items[1],expected.source_occurrences[1]);
+    assert(!pagedRequests.some(path=>path.endsWith('.bin')||path.endsWith('observation_index.json')),'20-row occurrence page uses flat occurrences.parquet without .bin decoding');
+    assert(pagedReader.diagnostics().rangeBytes < 64*1024*1024*0.01,'20-row occurrence slice stays under 1% of 64 MiB worker ceiling');
     const before=requests.length;await reader.documentRecord(source.source_id);
     assert.equal(requests.length,before,'complete repeat reads reuse immutable observation data');
     for(const mode of ['missing','corrupt']) {
@@ -206,4 +216,115 @@ test('split giant document occurrences preserve full values and stay separate fr
       assert.deepEqual(await broken.technical(source.source_id,undefined,undefined,true),source,'document part failures do not poison source records');
     }
   } finally { await rm(folder,{recursive:true,force:true}); }
+});
+
+
+test('ExportPin manifest serves browse, folded filename_readings, and 33,479-occurrence outlier 20-row page under 1% of 64 MiB ceiling',async()=>{
+  const folder=await mkdtemp(join(tmpdir(),'export-pin-viewer-'));
+  try {
+    const pyScript = `
+import hashlib, sys
+from pathlib import Path
+import pyarrow as pa
+from viewer_publication.filename_exports import export_viewer_pins
+
+folder = Path(sys.argv[1])
+occ_struct = pa.struct([
+    ('source_page_url', pa.list_(pa.string())),
+    ('source_page_title', pa.list_(pa.string())),
+    ('source_link_label', pa.list_(pa.string())),
+    ('source_occurrence_scope', pa.list_(pa.string())),
+])
+schema = pa.schema([
+    ('source_id', pa.string()),
+    ('document_id', pa.string()),
+    ('filename', pa.string()),
+    ('source_url', pa.string()),
+    ('body_key', pa.string()),
+    ('record_role', pa.list_(pa.string())),
+    ('document_kind', pa.list_(pa.string())),
+    ('document_family', pa.list_(pa.string())),
+    ('format', pa.list_(pa.string())),
+    ('congress', pa.list_(pa.string())),
+    ('http_status', pa.list_(pa.string())),
+    ('response_usable', pa.list_(pa.string())),
+    ('raw_leaf', pa.list_(pa.string())),
+    ('normalized_leaf', pa.list_(pa.string())),
+    ('source_occurrences', pa.list_(occ_struct)),
+])
+outlier_occs = [
+    {
+        'source_page_url': [f'https://committee.test/hearing/{i % 100}'],
+        'source_page_title': [f'Outlier Hearing Page {i}'],
+        'source_link_label': [f'Witness {i}'],
+        'source_occurrence_scope': ['anchor'],
+    }
+    for i in range(33479)
+]
+s0 = hashlib.sha256(b'outlier-source').hexdigest()
+s1 = hashlib.sha256(b'second-source').hexdigest()
+rows = [
+    {
+        'source_id': s0,
+        'document_id': 'doc-outlier',
+        'filename': 'b_outlier.pdf',
+        'source_url': 'https://committee.test/b_outlier.pdf',
+        'body_key': None,
+        'record_role': ['document'],
+        'document_kind': ['witness-statement'],
+        'document_family': ['statement'],
+        'format': ['pdf'],
+        'congress': ['118'],
+        'http_status': ['200'],
+        'response_usable': ['true'],
+        'raw_leaf': ['b_outlier.pdf'],
+        'normalized_leaf': ['b_outlier_clean.pdf'],
+        'source_occurrences': outlier_occs,
+    },
+    {
+        'source_id': s1,
+        'document_id': 'doc-alpha',
+        'filename': 'a_first.pdf',
+        'source_url': 'https://committee.test/a_first.pdf',
+        'body_key': None,
+        'record_role': ['document'],
+        'document_kind': ['transcript'],
+        'document_family': ['hearing'],
+        'format': ['pdf'],
+        'congress': ['117'],
+        'http_status': ['200'],
+        'response_usable': ['true'],
+        'raw_leaf': ['a_first.pdf'],
+        'normalized_leaf': None,
+        'source_occurrences': [],
+    },
+]
+table = pa.Table.from_pylist(rows, schema=schema)
+export_viewer_pins(table, table, folder, catalog_id='c' * 32)
+`;
+    execFileSync(process.env.PYTHON||'python3',['-c',pyScript,folder]);
+    const requests=[];
+    const manifestUrl=pathToFileURL(join(folder,'manifest.json'));
+    const reader=await createFilenameCatalog(manifestUrl,(url,options)=>{requests.push(String(url));return localFetch(url,options);});
+    const browse=await reader.search({limit:'2'});
+    assert.equal(browse.total,2);
+    assert.deepEqual(browse.rows.map(r=>r.filename),['a_first.pdf','b_outlier.pdf']);
+    const outlierId=createHash('sha256').update('outlier-source').digest('hex');
+    const detail=await reader.entry(outlierId);
+    assert.equal(detail.filename,'b_outlier.pdf');
+    assert.equal(detail.observation_count,33479);
+    assert.equal(detail.origin_next,20);
+    assert.equal(detail.filename_field_count,2);
+    assert.deepEqual(detail.record.raw_leaf,['b_outlier.pdf']);
+    assert.deepEqual(detail.record.normalized_leaf,['b_outlier_clean.pdf']);
+    const page2=await reader.observationPage(outlierId,undefined,{offset:20,limit:20});
+    assert.equal(page2.total,33479);
+    assert.equal(page2.items.length,20);
+    assert.equal(page2.next,40);
+    assert.deepEqual(page2.items[0].source_page_title,['Outlier Hearing Page 20']);
+    assert(!requests.some(url=>url.endsWith('.bin')),'ExportPin reader never fetches .bin observation files');
+    assert(reader.diagnostics().rangeBytes < 64*1024*1024*0.01,`expected < 1% of 64 MiB worker ceiling, got ${reader.diagnostics().rangeBytes} bytes`);
+  } finally {
+    await rm(folder,{recursive:true,force:true});
+  }
 });

@@ -7,7 +7,7 @@ import {parquetMetadataAsync, parquetReadObjects} from 'hyparquet';
 import {compressors} from 'hyparquet-compressors';
 import {byteCache, sharedLoad} from './cache.ts';
 import {withVerifiedJson, canonicalJson} from './startup.ts';
-import {observationReader} from './observations.ts';
+import {observationReader, parquetObservationReader} from './observations.ts';
 import {loadReviews, reviewedMode} from './reviews.ts';
 import {loadRecoveries} from './recoveries.ts';
 import {positiveInteger} from '../../browse/filename-rules.ts';
@@ -128,8 +128,10 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     return retained ? Promise.resolve(retained) : sharedLoad(loads,name,async()=>{const value=await load();decoded.set(name,value);return value;},signal);
   };
   function valid(ref, names = ['page.json']) {
-    if (!ref || !/^[a-f0-9]{64}$/.test(ref.sha256) || !Number.isSafeInteger(ref.bytes) || ref.bytes < 1 ||
-        !names.some(name=>ref.path===`releases/${ref.sha256.slice(0,32)}/${ref.sha256.slice(32)}/viewer-v2/${name}`)) throw new Error('Invalid immutable catalog asset.');
+    const digest = ref?.sha256 || ref?.digest;
+    if (!ref || !/^[a-f0-9]{64}$/.test(digest) || !Number.isSafeInteger(ref.bytes) || ref.bytes < 0 ||
+        (ref.bytes === 0 && !names.some(n => n.endsWith('.parquet'))) ||
+        !names.some(name => ref.path === `releases/${digest.slice(0,32)}/${digest.slice(32)}/viewer-v2/${name}` || (manifest.exports && ref.path === name))) throw new Error('Invalid immutable catalog asset.');
   }
   const node = (ref,signal) => {
     valid(ref);
@@ -137,26 +139,32 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       metrics.metadataReads++; return verified(fetcher,url(ref.path),ref.sha256,ref.bytes,'catalog page');
     }),signal);
   };
-  const proof = await node(manifest.proof), selected = await node(manifest.source_selection);
-  const basis = Object.fromEntries(['version','source_manifest','source_identity','source_selection','requirements','roots','files'].map(k=>[k,manifest[k]]));
-  basis.info = Object.fromEntries(Object.entries(manifest.info).filter(([k])=>k!=='publication_version'));
-  if (!same(proof,{version:1,kind:'viewer-proof',publication:basis}) ||
-      !same(manifest.source_manifest,{version:2,selection:manifest.source_identity?.selected_ref}) ||
-      manifest.source_selection.sha256 !== manifest.source_identity?.selected_ref?.sha256 ||
-      await hash(canonicalJson(manifest.source_manifest)) !== manifest.source_identity.selector_sha256) throw new Error('Catalog roots belong to a different selected snapshot.');
-  const {roots} = manifest, info = {...manifest.info};
-  for (const [name,native] of [['sources',selected.dependency.source_root],['components',selected.components]]) {
-    if ((roots[name]?.native_sha256 ?? null) !== (native?.sha256 ?? null)) throw new Error('Catalog root differs from the selected native root.');
+  const isExportPinManifest = Boolean(manifest.exports && !manifest.roots);
+  let proof = null, selected = null;
+  if (!isExportPinManifest) {
+    proof = await node(manifest.proof); selected = await node(manifest.source_selection);
+    const basis = Object.fromEntries(['version','source_manifest','source_identity','source_selection','requirements','roots','files'].map(k=>[k,manifest[k]]));
+    basis.info = Object.fromEntries(Object.entries(manifest.info).filter(([k])=>k!=='publication_version'));
+    if (!same(proof,{version:1,kind:'viewer-proof',publication:basis}) ||
+        !same(manifest.source_manifest,{version:2,selection:manifest.source_identity?.selected_ref}) ||
+        manifest.source_selection.sha256 !== manifest.source_identity?.selected_ref?.sha256 ||
+        await hash(canonicalJson(manifest.source_manifest)) !== manifest.source_identity.selector_sha256) throw new Error('Catalog roots belong to a different selected snapshot.');
   }
-  if (info.rows !== selected.counts.source_rows || info.entries !== selected.counts.document_rows ||
-      (roots.browse?.rows ?? 0) !== info.entries || (roots.sources?.stats.rows ?? 0) !== info.rows ||
-      (roots.components?.stats.entries ?? 0) !== info.entries || (roots.components?.stats.source_rows ?? 0) !== info.rows) throw new Error('Catalog selection counts disagree.');
+  const {roots = {}} = manifest, info = {...manifest.info};
+  if (!isExportPinManifest) {
+    for (const [name,native] of [['sources',selected.dependency.source_root],['components',selected.components]]) {
+      if ((roots[name]?.native_sha256 ?? null) !== (native?.sha256 ?? null)) throw new Error('Catalog root differs from the selected native root.');
+    }
+    if (info.rows !== selected.counts.source_rows || info.entries !== selected.counts.document_rows ||
+        (roots.browse?.rows ?? 0) !== info.entries || (roots.sources?.stats.rows ?? 0) !== info.rows ||
+        (roots.components?.stats.entries ?? 0) !== info.entries || (roots.components?.stats.source_rows ?? 0) !== info.rows) throw new Error('Catalog selection counts disagree.');
+  }
   const recovery = await loadRecoveries(recoveryDescriptor, info, fetcher, {sourceIdentity:manifest.source_identity});
   const reviews = await loadReviews(reviewPublication,manifest,fetcher,base.href);
   Object.assign(info,reviews.info);
   const ranged = ref => rangeFile(url(ref.path),ref.bytes,fetcher,compressed,metrics);
   async function table(part,signal) {
-    valid(part,['filenames.parquet','details.parquet','documents.parquet']);
+    valid(part,['filenames.parquet','details.parquet','documents.parquet','occurrences.parquet','document_occurrences.parquet','sources.parquet','components.parquet']);
     return cached(`table:${part.path}`,async()=>{
       metrics.tableLoads++; const buffer=ranged(part), metadata=await parquetMetadataAsync(buffer.file());
       if (Number(metadata.num_rows)!==part.rows) throw new Error('Parquet row count differs from its selected partition.');
@@ -168,12 +176,123 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
   }
   async function read(part,start,end,columns,signal) {
     const {buffer,metadata,fields}=await table(part,signal);
-    if (columns?.length===0) return Array.from({length:end-start},()=>({}));
+    if (columns?.length===0 || end<=start) return Array.from({length:Math.max(0,end-start)},()=>({}));
     const physical=columns?.filter(name=>fields.includes(name));
     const rows=physical?.length===0?Array.from({length:end-start},()=>({})):
       await parquetReadObjects({file:buffer.file(signal),metadata,compressors,columns:physical,rowStart:start,rowEnd:end});
     signal?.throwIfAborted();metrics.decodedRows+=rows.length;
     return rows.map(row=>normalize(columns?Object.fromEntries(columns.map(name=>[name,row[name]??null])):row));
+  }
+  if (isExportPinManifest) {
+    const sourcesPin = manifest.exports.sources, componentsPin = manifest.exports.components;
+    const sourcesFile = sourcesPin.files[0], componentsFile = componentsPin.files[0];
+    const sourceOccFile = sourcesPin.child_tables?.occurrences?.file ?? null;
+    const docOccFile = componentsPin.child_tables?.occurrences?.file ?? null;
+    const sourceObs = sourceOccFile ? parquetObservationReader(sourceOccFile, read, { metrics }) : {
+      read: async () => null,
+      page: async (_, { offset = 0 } = {}) => ({ items: [], total: 0, offset, next: null, is_null: true }),
+      matchingSources: async function* () {},
+    };
+    const docObs = docOccFile ? parquetObservationReader(docOccFile, read, { metrics }) : {
+      read: async () => null,
+      page: async (_, { offset = 0 } = {}) => ({ items: [], total: 0, offset, next: null, is_null: true }),
+      matchingSources: async function* () {},
+    };
+    const exportBundle = {
+      rows: sourcesFile.rows,
+      occurrences_split: Boolean(sourceOccFile),
+      files: {
+        filenames: sourcesFile,
+        details: sourcesFile,
+        ...(sourceOccFile ? { occurrences: sourceOccFile } : {}),
+      },
+    };
+    async function resolveExportSource(id, catalog, signal) {
+      checkCatalog(catalog);
+      if (!sourceId(id)) throw new Error('Source record is not present in this catalog.');
+      return cached(`export-source:${id}`, async () => {
+        const ranges = (sourcesPin.browse_ranges || []).filter(r => r.column === 'source_id');
+        const candidateRanges = ranges.length
+          ? ranges.filter(r => (!r.min || r.min <= id) && (!r.max || id <= r.max))
+          : [{ row_offset: 0, rows: sourcesFile.rows }];
+        for (const rg of candidateRanges) {
+          const ids = await read(sourcesFile, rg.row_offset, rg.row_offset + rg.rows, ['source_id', 'document_id'], signal);
+          const localIdx = ids.findIndex(v => v.source_id === id);
+          if (localIdx >= 0) {
+            return { bundle: exportBundle, row: rg.row_offset + localIdx, documentId: ids[localIdx].document_id };
+          }
+        }
+        throw new Error('Source record is not present in this catalog.');
+      }, signal);
+    }
+    async function resolveExportComponentRow(documentId, signal) {
+      return cached(`export-component:${documentId}`, async () => {
+        const ids = await read(componentsFile, 0, componentsFile.rows, ['document_id', 'source_id', 'filename'], signal);
+        const row = ids.findIndex(v => v.document_id === documentId);
+        if (row < 0) throw new Error('Document is not present in this catalog.');
+        return { row, summary: ids[row] };
+      }, signal);
+    }
+    async function exportSearch(query = {}, signal) {
+      signal?.throwIfAborted();
+      const limit = positiveInteger(query.limit, 50, 100), requested = positiveInteger(query.page);
+      const total = componentsFile.rows, pages = Math.max(1, Math.ceil(total / limit)), page = Math.min(requested, pages);
+      const start = (page - 1) * limit, end = Math.min(total, start + limit);
+      const rawRows = await read(componentsFile, start, end, undefined, signal);
+      const rows = rawRows.map(r => ({ ...r, _row: r.source_id }));
+      return { rows, total, page, pages, limit };
+    }
+    async function exportDetail(id, catalog, signal) {
+      const { row } = await resolveExportSource(id, catalog, signal);
+      const data = (await read(sourcesFile, row, row + 1, undefined, signal))[0];
+      return decodeDetailRecord(data);
+    }
+    async function exportObservationPage(id, catalog, query = {}, signal) {
+      const { row } = await resolveExportSource(id, catalog, signal);
+      return sourceObs.page(row, { offset: positiveInteger(query.offset, 0), limit: positiveInteger(query.limit, 20, 100), ...(query.origin ? { columns: origins } : {}) }, signal);
+    }
+    async function exportDocumentObservationPage(id, catalog, query = {}, signal) {
+      const { documentId } = sourceId(id) ? await resolveExportSource(id, catalog, signal) : { documentId: id };
+      const { row } = await resolveExportComponentRow(documentId, signal);
+      return docObs.page(row, { offset: positiveInteger(query.offset, 0), limit: positiveInteger(query.limit, 20, 100) }, signal);
+    }
+    async function exportDocumentRecord(id, catalog, signal) {
+      const { documentId } = sourceId(id) ? await resolveExportSource(id, catalog, signal) : { documentId: id };
+      const { row } = await resolveExportComponentRow(documentId, signal);
+      const record = (await read(componentsFile, row, row + 1, undefined, signal))[0];
+      if (docOccFile) {
+        record.source_occurrences = await docObs.read(row, signal);
+      }
+      return Object.fromEntries(info.document_fields.map(name => [name, record[name] ?? null]));
+    }
+    async function exportEntry(id, catalog, signal) {
+      const value = await exportDetail(id, catalog, signal);
+      const { documentId } = await resolveExportSource(id, catalog, signal);
+      const { row: compRow } = await resolveExportComponentRow(documentId, signal);
+      const doc = (await read(componentsFile, compRow, compRow + 1, undefined, signal))[0];
+      const part = await exportObservationPage(id, catalog, { limit: 20, origin: true }, signal);
+      const origin = sourceContext({ ...value.record, source_occurrences: part.items.filter(Boolean) });
+      return {
+        ...value,
+        document: doc,
+        filename: doc.filename,
+        origin,
+        observation_count: part.total,
+        origin_next: part.next,
+        catalog_id: info.catalog_id,
+      };
+    }
+    return {
+      info: { ...info, published_at: manifest.published_at },
+      diagnostics: () => ({ ...metrics, compressed: compressed.stats, decoded: decoded.stats }),
+      search: exportSearch,
+      detail: exportDetail,
+      entry: exportEntry,
+      observationPage: exportObservationPage,
+      documentObservationPage: exportDocumentObservationPage,
+      documentRecord: exportDocumentRecord,
+      sourceContext,
+    };
   }
   async function route(root,id,kind,signal) {
     let current=root,prefix=''; const digest=await hash(id);
@@ -218,9 +337,18 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     return split ?? legacy;
   }
   async function observations(bundle,signal,required=false) {
-    if(!bundle.files.observation_index && required)throw new Error('Complete occurrence assets are missing.');
-    if(!bundle.files.observation_index)return {read:async()=>null,page:async(_,{offset=0}={})=>({items:[],total:0,offset,next:null,is_null:true}),matchingSources:async function*(){}};
-    return cached(`observations:${bundle.files.observation_index.path}`,async()=>{
+    const hasParquet = Boolean(bundle.files?.occurrences);
+    const hasBin = Boolean(bundle.files?.observation_index);
+    if(!hasParquet && !hasBin && required)throw new Error('Complete occurrence assets are missing.');
+    if(!hasParquet && !hasBin)return {read:async()=>null,page:async(_,{offset=0}={})=>({items:[],total:0,offset,next:null,is_null:true}),matchingSources:async function*(){}};
+    const parquetObs = hasParquet ? parquetObservationReader(bundle.files.occurrences, read, {metrics}) : null;
+    if(hasParquet && (!hasBin || options.preferParquetOccurrences)) {
+      if(bundle.files.occurrences.parent_rows !== undefined && bundle.files.occurrences.parent_rows !== bundle.rows) {
+        throw new Error('Observation partition counts disagree.');
+      }
+      return parquetObs;
+    }
+    const binObs = await cached(`observations:${bundle.files.observation_index.path}`,async()=>{
       const index=await withVerifiedJson({deadlineMs:30_000,maxBytes:1024*1024},'Observation index',async verified=>{
         const ref=bundle.files.observation_index;valid(ref,['observation_index.json']);
         return verified(fetcher,url(ref.path),ref.sha256,ref.bytes,'observation index');
@@ -231,6 +359,14 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       const cache={get stats(){return decoded.stats;},get:key=>decoded.get(prefix+key),set:(key,value,size)=>decoded.set(prefix+key,value,size)};
       return observationReader(index,ranged(bundle.files.observations),ranged(bundle.files.observation_rows),{metrics,cache});
     },signal);
+    if(parquetObs) {
+      return {
+        page: (row, queryOpts, sig) => parquetObs.page(row, queryOpts, sig),
+        read: (row, sig) => binObs.read(row, sig),
+        matchingSources: (needle, sig) => binObs.matchingSources(needle, sig),
+      };
+    }
+    return binObs;
   }
   async function technical(id,catalog,signal,full=false) {
     const {bundle,row}=await resolve(id,catalog,signal), fields=info.fields.filter(k=>k!=='source_occurrences'), record={};
@@ -426,6 +562,22 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     }
     return Object.fromEntries(info.document_fields.map(name=>[name,record[name]??null]));
   }
+  async function documentObservationPage(id,catalog,query={},signal) {
+    const {documentId}=sourceId(id)?await resolve(id,catalog,signal):{documentId:id};
+    const member=await component(documentId,signal);
+    const rows=await read(member.document_file,0,member.document_file.rows,['document_id'],signal);
+    const positions=rows.flatMap((row,index)=>row.document_id===documentId?[index]:[]);
+    if(positions.length!==1)throw new Error('Document is not present uniquely in its selected partition.');
+    const row=positions[0];
+    if(!occurrenceSplit(member,'document_occurrences_split',!!member.document_observations) || !member.document_observations) {
+      return {items:[],total:0,offset:positiveInteger(query.offset,0),next:null,is_null:true};
+    }
+    if(member.document_observations.files?.occurrences) {
+      const parquetObs=parquetObservationReader(member.document_observations.files.occurrences,read,{metrics});
+      return parquetObs.page(row,{offset:positiveInteger(query.offset,0),limit:positiveInteger(query.limit,20,100),...(query.origin?{columns:origins}:{})},signal);
+    }
+    return (await observations(member.document_observations,signal,true)).page(row,{offset:positiveInteger(query.offset,0),limit:positiveInteger(query.limit,20,100),...(query.origin?{columns:origins}:{})},signal);
+  }
   const recordedSourceFields = ['source_chamber', 'source_committee_code', 'source_meeting_type', 'source_meeting_title', 'source_page_title', 'source_page_url', 'source_congress', 'source_committee_name'];
   async function sourceIdentity(id,catalog,signal) {
     const located=await resolve(id,catalog,signal),columns=recordedSourceFields.filter(name=>info.fields.includes(name));
@@ -438,5 +590,5 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     await resolve(id,catalog,signal);const value=reviews.sources.get(id);return value?structuredClone({...value,status:withdrawn?'withdrawn':value.status,selected:withdrawn?value.baseline:value.selected}):{status:'no_review'};
   }
   return {info:{...info,recovery_sha256:recoveryDescriptor?.sha256,downloads:{catalog:publication.url,recoveries:recoveryDescriptor?.url},published_at:manifest.published_at},
-    diagnostics:()=>({...metrics,compressed:compressed.stats,decoded:decoded.stats}),search,entry,entryOrigin,technical,technicalOrigin,observationPage,documentRecord,matchUrls,review,sourceContext,sourceIdentity};
+    diagnostics:()=>({...metrics,compressed:compressed.stats,decoded:decoded.stats}),search,entry,entryOrigin,technical,technicalOrigin,observationPage,documentObservationPage,documentRecord,matchUrls,review,sourceContext,sourceIdentity};
 }

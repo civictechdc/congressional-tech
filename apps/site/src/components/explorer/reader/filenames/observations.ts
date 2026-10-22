@@ -142,3 +142,83 @@ export function observationReader(index, data, references, {metrics = {}, cache}
   }
   return { read, page, matchingSources };
 }
+
+/** Read [offset, offset + limit) slices directly from flat occurrences.parquet via HTTP 206 Range requests. */
+export function parquetObservationReader(descriptor, readRows, { metrics = {} } = {}) {
+  const fields = descriptor.fields || [];
+  const rowSlices = descriptor.row_slices || [];
+
+  async function page(row, { offset = 0, limit = 20, columns = fields } = {}, signal) {
+    signal?.throwIfAborted();
+    const slice = rowSlices[row];
+    if (!slice) throw new Error('Invalid observation row reference.');
+    const [startOffset, rawCount] = slice;
+    if (rawCount < 0) {
+      return { items: [], total: 0, offset, next: null, is_null: true };
+    }
+    if (rawCount === 0) {
+      return { items: [], total: 0, offset, next: null, is_null: false };
+    }
+    const total = rawCount;
+    const clampedStart = Math.min(offset, total);
+    const clampedEnd = Math.min(Number.isFinite(limit) ? offset + limit : total, total);
+    const rowStart = startOffset + clampedStart;
+    const rowEnd = startOffset + clampedEnd;
+    const physicalCols = ['occurrence_is_null', ...columns.filter(name => fields.includes(name))];
+    const rows = rowStart < rowEnd ? await readRows(descriptor, rowStart, rowEnd, physicalCols, signal) : [];
+    metrics.parquetOccurrenceRowsRead = (metrics.parquetOccurrenceRowsRead || 0) + rows.length;
+    const items = rows.map(item =>
+      item.occurrence_is_null
+        ? null
+        : Object.fromEntries(columns.map(key => [key, item[key] ?? null]))
+    );
+    return {
+      items,
+      total,
+      offset,
+      next: offset + items.length < total ? offset + items.length : null,
+      is_null: false,
+    };
+  }
+
+  async function read(row, signal) {
+    const result = await page(row, { offset: 0, limit: Infinity }, signal);
+    return result.is_null ? null : result.items;
+  }
+
+  async function* matchingSources(needle, signal) {
+    const lowerNeedle = String(needle || '').toLowerCase();
+    for (let parentRow = 0; parentRow < rowSlices.length; parentRow++) {
+      const [startOffset, rawCount] = rowSlices[parentRow];
+      if (rawCount <= 0) continue;
+      for (let cursor = 0; cursor < rawCount; cursor += 2048) {
+        const take = Math.min(2048, rawCount - cursor);
+        const batch = await readRows(
+          descriptor,
+          startOffset + cursor,
+          startOffset + cursor + take,
+          ['occurrence_is_null', ...fields],
+          signal
+        );
+        let matched = false;
+        for (const item of batch) {
+          const restored = item.occurrence_is_null
+            ? null
+            : Object.fromEntries(fields.map(key => [key, item[key] ?? null]));
+          if (JSON.stringify(restored).toLowerCase().includes(lowerNeedle)) {
+            matched = true;
+            break;
+          }
+        }
+        if (matched) {
+          yield parentRow;
+          break;
+        }
+      }
+    }
+    signal?.throwIfAborted();
+  }
+
+  return { read, page, matchingSources };
+}
+
