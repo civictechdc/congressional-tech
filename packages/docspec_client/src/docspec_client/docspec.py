@@ -2014,11 +2014,16 @@ class NativeDatasets:
                     filtered_merge['order_by'] = ord_col
                 elif isinstance(ord_col, (list, tuple)):
                     filtered_merge['order_by'] = list(ord_col)
-                filtered_cols = {
-                    k: v
-                    for k, v in (normalized_merge.get('columns') or {}).items()
-                    if k in table.schema.names
-                }
+                filtered_cols = {}
+                for k, v in (normalized_merge.get('columns') or {}).items():
+                    if k not in table.schema.names:
+                        continue
+                    field_type = table.schema.field(k).type
+                    if v == UpdateMergeStrategy.SET_UNION and not (
+                        pa.types.is_list(field_type) or pa.types.is_large_list(field_type)
+                    ):
+                        v = UpdateMergeStrategy.MAX
+                    filtered_cols[k] = v
                 if filtered_cols:
                     filtered_merge['columns'] = filtered_cols
                 normalized_merge = filtered_merge

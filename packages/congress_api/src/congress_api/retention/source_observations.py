@@ -331,12 +331,13 @@ class SourceObservationStorage:
 
     def prepare(self, root, trace):
         """Replace complete observations; retain every unaffected owner edge."""
-        replayed_obs = set(trace.observations())
         desired_receipts = {}
         if (
-            hasattr(self.native, 'read_receipts')
+            getattr(self.native, 'remote', None) is None
+            and hasattr(self.native, 'read_receipts')
             and hasattr(self.native, 'update_evidence_table')
         ):
+            replayed_obs = set(trace.observations())
             if root is not None:
                 for entry in self.read_receipts(root):
                     locator = entry.get('locator')
@@ -380,12 +381,15 @@ class SourceObservationStorage:
                 return (row[0] for row in db.execute('SELECT alias FROM observation_changed_aliases ORDER BY alias'))
             def __getitem__(self, alias):
                 return (row[0] for row in db.execute('SELECT member FROM observation_changes WHERE alias=? ORDER BY member', (alias,)))
-        changed_aliases = [
-            row[0] for row in db.execute('SELECT alias FROM observation_changed_aliases ORDER BY alias')
-        ]
+        changed_aliases = (
+            [row[0] for row in db.execute('SELECT alias FROM observation_changed_aliases ORDER BY alias')]
+            if getattr(self.native, 'remote', None) is None
+            else []
+        )
         if (
             root is not None
             and changed_aliases
+            and getattr(self.native, 'remote', None) is None
             and hasattr(self.native, 'changes_batches')
             and hasattr(self.native, 'update_table')
         ):

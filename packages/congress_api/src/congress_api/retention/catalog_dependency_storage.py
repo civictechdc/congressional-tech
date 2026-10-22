@@ -174,7 +174,7 @@ class CatalogDependencyStorage:
         return (table.cast(schema) if stored_schema.equals(schema,check_metadata=True)
                 else pa.Table.from_pylist(table.to_pylist(),schema=schema))
 
-    def _write_sources(self, table, *, base=None, partition_by=None):
+    def _write_sources(self, table, *, base=None, partition_by=None, _default_partition=True):
         sink = pa.BufferOutputStream()
         with pa.ipc.new_stream(sink, table.schema) as writer:
             writer.write_table(table)
@@ -183,7 +183,7 @@ class CatalogDependencyStorage:
         effective_partition_by = (
             partition_by
             if partition_by is not None
-            else (SOURCES_PARTITION_SPEC if base is None else None)
+            else (SOURCES_PARTITION_SPEC if (base is None and _default_partition) else None)
         )
         pin = self.row_owner.write(
             table,
@@ -225,7 +225,7 @@ class CatalogDependencyStorage:
 
     def _write(self, table, kind, *, base=None, partition_by=None):
         if kind == 'sources':
-            return self._write_sources(table, base=base, partition_by=partition_by)
+            return self._write_sources(table, base=base, partition_by=partition_by, _default_partition=False)
         return self._write_aliases(table, kind, base=base, partition_by=partition_by)
 
     def _replace_rows(self, root, pages, *, key, schema, replacements, deletions, kind, basis=None):
@@ -614,6 +614,7 @@ class CatalogDependencyStorage:
                     selection is not None
                     and before_pin is None
                     and after_pin is None
+                    and getattr(self.native, 'remote', None) is None
                     and hasattr(self.native, 'changes_batches')
                     and hasattr(self.native, 'update_table')
                     and scope.before
