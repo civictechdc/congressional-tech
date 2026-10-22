@@ -56,24 +56,37 @@ def _write_receipt(
 
 def upsert_captions(state: dict, weekly_tables: WeeklyRetentionTables):
     """Incrementally admit or update ``captions`` rows from a state dict."""
-    rows = []
     obs_by_source = state.get("caption_observations") or {}
-    for source in ("youtube", "senate"):
-        kinds = state.get(source) or {}
-        receipts = obs_by_source.get(source) or {}
-        all_ids = sorted(set(kinds) | set(receipts))
-        for native_id in all_ids:
-            rows.append(
-                caption_to_row(
+
+    def _rows():
+        for source in ("youtube", "senate"):
+            kinds = state.get(source) if isinstance(state.get(source), dict) else {}
+            receipts = obs_by_source.get(source) if isinstance(obs_by_source.get(source), dict) else {}
+            all_ids = sorted(set(kinds) | set(receipts))
+            for native_id in all_ids:
+                yield caption_to_row(
                     source,
                     native_id,
                     kind=kinds.get(native_id),
                     receipt=receipts.get(native_id),
                 )
-            )
-    if rows:
-        return weekly_tables.upsert_rows("captions", rows)
-    return weekly_tables.latest_version("captions")
+
+    return weekly_tables.upsert_rows("captions", _rows())
+
+
+def read_captions(weekly_tables: WeeklyRetentionTables) -> dict:
+    """Read caption kinds and receipt observations from the incremental ``captions`` table."""
+    result: dict = {}
+    for row in weekly_tables.iter_rows("captions"):
+        source = row.get("source")
+        native_id = row.get("native_id")
+        if not source or not native_id:
+            continue
+        if row.get("kind") is not None:
+            result.setdefault(source, {})[native_id] = row["kind"]
+        if row.get("receipt_json"):
+            result.setdefault("caption_observations", {}).setdefault(source, {})[native_id] = json.loads(row["receipt_json"])
+    return result
 
 
 def import_observations(

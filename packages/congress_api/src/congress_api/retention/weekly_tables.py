@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from hashlib import sha256
+from itertools import batched
 import json
 import os
 from pathlib import Path
@@ -519,23 +520,18 @@ class WeeklyRetentionTables:
         raw = f"{prefix}-{dataset}-{base_id}-{digest}"
         return "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in raw)[:64]
 
-    def upsert_rows(
+    def _upsert_batch(
         self,
         dataset: str,
-        rows: Iterable[Mapping[str, Any]],
+        chunk: Sequence[Mapping[str, Any]],
         *,
         operation: str | None = None,
         deletions: pa.Table | None = None,
         use_merge: bool = True,
     ) -> dict[str, Any] | None:
-        """Incrementally admit or update ``dataset`` by primary key and ``UpdateMergeSpec``."""
-        materialized = list(rows)
-        if not materialized and deletions is None:
-            return self.latest_version(dataset)
-
         keys = WEEKLY_TABLE_KEYS[dataset]
         deduped: dict[tuple[Any, ...], dict[str, Any]] = {}
-        for row in materialized:
+        for row in chunk:
             key_tuple = tuple(row.get(k) for k in keys)
             deduped[key_tuple] = merge_row_with_policy(dataset, deduped.get(key_tuple), row)
         table = build_arrow_table(dataset, deduped.values())
@@ -596,6 +592,39 @@ class WeeklyRetentionTables:
                 deletions=deletions,
                 merge=None,
             )
+
+    def upsert_rows(
+        self,
+        dataset: str,
+        rows: Iterable[Mapping[str, Any]],
+        *,
+        operation: str | None = None,
+        deletions: pa.Table | None = None,
+        use_merge: bool = True,
+        chunk_size: int = 10_000,
+    ) -> dict[str, Any] | None:
+        """Incrementally admit or update ``dataset`` in bounded chunks by primary key and ``UpdateMergeSpec``."""
+        last_pin = self.latest_version(dataset)
+        saw_chunk = False
+        for idx, chunk in enumerate(batched(rows, max(1, int(chunk_size)))):
+            saw_chunk = True
+            chunk_op = (f"{operation}-{idx}" if idx > 0 else operation) if operation else None
+            last_pin = self._upsert_batch(
+                dataset,
+                chunk,
+                operation=chunk_op,
+                deletions=deletions if idx == 0 else None,
+                use_merge=use_merge,
+            )
+        if not saw_chunk and deletions is not None:
+            return self._upsert_batch(
+                dataset,
+                (),
+                operation=operation,
+                deletions=deletions,
+                use_merge=use_merge,
+            )
+        return last_pin
 
     def read_table(
         self,

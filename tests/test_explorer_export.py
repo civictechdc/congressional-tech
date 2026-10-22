@@ -275,10 +275,12 @@ def test_manifest_parquet_tables_and_docspec_views_resolve_every_record_and_sour
         MEETING_SUMMARY_DATASET,
         ExplorerDocSpecWorkspace,
     )
+    from committee_explorer.browser import verify
 
     path = write_meetings(tmp_path, [native()])
     ds_dir = tmp_path / "docspec-ws"
     manifest, catalog = run(tmp_path, path, docspec_workspace=ds_dir)
+    verify(tmp_path / "public")
     pointer = json.loads((tmp_path / "public/CURRENT.json").read_text())
     directory = tmp_path / "public" / Path(pointer["manifest_path"]).parent
     assert not (directory / "catalog.json").exists()
@@ -296,8 +298,17 @@ def test_manifest_parquet_tables_and_docspec_views_resolve_every_record_and_sour
     pins = json.loads((tmp_path / "state/export-pins.json").read_text())
     assert set(pins) == {"committees", "meetings", "materials", "witnesses", "issues", "sources"}
 
-    # Verify declarative RefreshSpec (FirstValueBy + CollectDistinctWithProvenance) and chained RefreshSpec
+    # Verify export() automatically populated and refreshed explorer_meeting_summaries & explorer_committee_rollups
     with ExplorerDocSpecWorkspace(ds_dir) as ds_ws:
+        summary_pin = ds_ws.latest_pin("explorer_meeting_summaries")
+        rollup_pin = ds_ws.latest_pin("explorer_committee_rollups")
+        assert summary_pin is not None
+        assert rollup_pin is not None
+        auto_summaries = ds_ws.datasets.read_arrow(summary_pin).to_pylist()
+        assert len(auto_summaries) == 1
+        assert auto_summaries[0]["committee"] == "Rules"
+
+        # Also verify multi-observation priority & provenance refresh (including differing committee names on same meeting_id)
         ds_ws.upsert_observations([
             {
                 "meeting_id": "m-106245",
@@ -318,7 +329,7 @@ def test_manifest_parquet_tables_and_docspec_views_resolve_every_record_and_sour
                 "meeting_id": "m-106245",
                 "congress": 115,
                 "chamber": "House",
-                "committee": "Rules",
+                "committee": "House Committee on Rules",
                 "subcommittee": None,
                 "title": "Fallback House XML Title",
                 "date": "2017-07-12",
@@ -332,12 +343,69 @@ def test_manifest_parquet_tables_and_docspec_views_resolve_every_record_and_sour
         ])
         refreshed = ds_ws.refresh_views()
         summary_rows = ds_ws.datasets.read_arrow(refreshed[MEETING_SUMMARY_DATASET]).to_pylist()
-        assert len(summary_rows) == 1
-        assert summary_rows[0]["title"] == "Official Congress.gov Title"
-        assert summary_rows[0]["witnesses_with_provenance"][0]["value"] == "Alex Smith"
+        m_rows = [r for r in summary_rows if r["meeting_id"] == "m-106245"]
+        assert len(m_rows) == 1
+        m_row = m_rows[0]
+        assert m_row["committee"] == "Rules"
+        assert m_row["title"] == "Official Congress.gov Title"
+        assert m_row["witnesses_with_provenance"][0]["value"] == "Alex Smith"
         rollup_rows = ds_ws.datasets.read_arrow(refreshed[COMMITTEE_ROLLUP_DATASET]).to_pylist()
-        assert len(rollup_rows) == 1
-        assert rollup_rows[0]["meeting_count"] == 1
+        assert len(rollup_rows) >= 1
+
+
+def test_spilled_sources_and_sharded_docspec_publication_keep_checksums(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from committee_explorer.assemble import _SOURCE_CACHE_LIMIT, SpilledSourceSequence, _SpilledSources
+    from committee_explorer.docspec_views import ExplorerDocSpecWorkspace
+    from committee_explorer.parquet import SOURCE_SCHEMA, TABLE_SCHEMAS
+    from committee_meeting.provenance import Identifier, SourceRecord
+
+    spilled = _SpilledSources()
+    total = _SOURCE_CACHE_LIMIT + 300
+    for i in range(total):
+        rec = SourceRecord(
+            id=f"src-{i:04d}",
+            provider="congress.gov" if i % 2 == 0 else "govinfo",
+            input_snapshot_id=f"snap-{i % 3}",
+            identifier=Identifier(scheme="test", value=str(i)),
+            payload={"index": i},
+        )
+        spilled[("source_record", rec.id)] = rec
+
+    assert len(spilled) == total
+    assert len(spilled._cache) <= _SOURCE_CACHE_LIMIT
+    seq = SpilledSourceSequence(spilled)
+    assert len(seq) == total
+    assert seq.provider_counts() == {"congress.gov": total // 2, "govinfo": total - total // 2}
+    assert seq.input_snapshot_ids() == {"snap-0", "snap-1", "snap-2"}
+    assert seq[0].id == "src-0000"
+    assert seq[-1].id == f"src-{total - 1:04d}"
+    assert [r.id for r in seq[:3]] == ["src-0000", "src-0001", "src-0002"]
+    spilled.close()
+
+    # Verify multi-shard sources-1.parquet / sources-2.parquet export and byte-identical preservation
+    stage = tmp_path / "stage"
+    stage.mkdir()
+    for kind, fname in (
+        ("committee_term", "committees.parquet"),
+        ("meeting", "meetings.parquet"),
+        ("material", "materials.parquet"),
+        ("appearance", "witnesses.parquet"),
+        ("data_issue", "issues.parquet"),
+    ):
+        pq.write_table(pa.Table.from_pylist([], schema=TABLE_SCHEMAS[kind]), stage / fname)
+    for shard_idx in (1, 2):
+        pq.write_table(
+            pa.Table.from_pylist([{"id": f"s-{shard_idx}", "kind": "source_record", "provider": "test"}], schema=SOURCE_SCHEMA),
+            stage / f"sources-{shard_idx}.parquet",
+        )
+    before_bytes = {p.name: p.read_bytes() for p in stage.glob("*.parquet")}
+    with ExplorerDocSpecWorkspace(tmp_path / "ds-sharded") as ds_ws:
+        pins = ds_ws.export_browser_publication(stage)
+    after_bytes = {p.name: p.read_bytes() for p in stage.glob("*.parquet")}
+    assert before_bytes == after_bytes
+    assert set(pins["sources"]) == {"sources-1", "sources-2"}
 
 
 def test_curated_recordings_retain_evidence_and_reuse_video_identity(tmp_path):

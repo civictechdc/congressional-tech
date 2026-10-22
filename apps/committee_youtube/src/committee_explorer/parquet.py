@@ -448,10 +448,10 @@ def write_catalog(catalog, current, stage, descriptor, write, evidence_states, r
         # original immediately instead of keeping both sets until publication.
         while query_rows:
             yield query_rows.popleft()
-    # Assembly already orders sources by ID, so this sorts references in linear
-    # time; apply_decisions appends its decision sources. Retained sources join
-    # in the same pass, one decoded row at a time.
-    sources = merge(sorted(catalog.sources, key=attrgetter('id')), retained_sources, key=attrgetter('id'))
+    # Assembly already orders sources by ID; SpilledSourceSequence streams them in
+    # ascending ID order without materializing a sorted list in RAM.
+    ordered_sources = iter(catalog.sources) if getattr(catalog.sources, 'is_id_sorted', False) else sorted(catalog.sources, key=attrgetter('id'))
+    sources = merge(ordered_sources, retained_sources, key=attrgetter('id'))
     write_tables((r.model_dump(mode='json') for r in catalog.records),
                  (s.model_dump(mode='json') for s in sources), consume_query_rows(), stage, descriptor)
     info.pop('partitions', None)

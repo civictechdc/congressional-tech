@@ -47,6 +47,9 @@ def read_youtube_videos(
         for _, row in decode_cache(tables).videos():
             if weekly_tables is not None:
                 pending_rows.append(youtube_video_to_row(channel["systemCode"], row))
+                if len(pending_rows) >= 10_000:
+                    weekly_tables.upsert_rows("youtube_videos", pending_rows)
+                    pending_rows.clear()
             yield channel["systemCode"], row
     if weekly_tables is not None and pending_rows:
         weekly_tables.upsert_rows("youtube_videos", pending_rows)
@@ -62,6 +65,19 @@ def write_csv(path, rows, fields):
     write_atomic_bytes(path, buf.getvalue().encode("utf-8"), temp_mode="fixed", fsync=False)
 
 
+def _state_kind(path) -> str:
+    if path is None:
+        return "generic"
+    name = Path(path).name.lower()
+    if "house" in name and "sites" not in name:
+        return "house"
+    if "senate" in name:
+        return "senate"
+    if "inventory" in name:
+        return "inventory"
+    return "generic"
+
+
 def read_state(
     path,
     *,
@@ -72,10 +88,30 @@ def read_state(
         with gzip.open(path, "rt", encoding="utf-8") as f:
             state = json.load(f)
     if weekly_tables is not None:
-        if weekly_tables.latest_version("house_events") is not None:
-            state.setdefault("house", {}).update(house_retention.read_events(weekly_tables))
-        if weekly_tables.latest_version("senate_events") is not None:
-            state.setdefault("senate", {}).update(senate_retention.read_events(weekly_tables))
+        kind = _state_kind(path)
+        if kind == "house":
+            if weekly_tables.latest_version("house_events") is not None:
+                state.update(house_retention.read_events(weekly_tables))
+        elif kind == "senate":
+            if weekly_tables.latest_version("senate_events") is not None:
+                state.update(senate_retention.read_events(weekly_tables))
+        elif kind == "inventory":
+            if weekly_tables.latest_version("captions") is not None:
+                from congress_api.retention import captions as captions_retention
+
+                loaded = captions_retention.read_captions(weekly_tables)
+                for source in ("youtube", "senate"):
+                    if source in loaded:
+                        state.setdefault(source, {}).update(loaded[source])
+                if "caption_observations" in loaded:
+                    obs = state.setdefault("caption_observations", {})
+                    for source, receipts in loaded["caption_observations"].items():
+                        obs.setdefault(source, {}).update(receipts)
+        else:
+            if weekly_tables.latest_version("house_events") is not None:
+                state.setdefault("house", {}).update(house_retention.read_events(weekly_tables))
+            if weekly_tables.latest_version("senate_events") is not None:
+                state.setdefault("senate", {}).update(senate_retention.read_events(weekly_tables))
     return state
 
 
@@ -86,11 +122,21 @@ def write_state(
     compresslevel=9,
     weekly_tables: WeeklyRetentionTables | None = None,
 ):
-    if weekly_tables is not None and isinstance(state, dict):
-        if isinstance(state.get("house"), dict) and state["house"]:
-            house_retention.upsert_events(state["house"], weekly_tables)
-        if isinstance(state.get("senate"), dict) and state["senate"]:
-            senate_retention.upsert_events(state["senate"], weekly_tables)
+    if weekly_tables is not None and isinstance(state, dict) and state:
+        kind = _state_kind(path)
+        if kind == "house":
+            house_retention.upsert_events(state, weekly_tables)
+        elif kind == "senate":
+            senate_retention.upsert_events(state, weekly_tables)
+        elif kind == "inventory":
+            from congress_api.retention import captions as captions_retention
+
+            captions_retention.upsert_captions(state, weekly_tables)
+        else:
+            if isinstance(state.get("house"), dict) and state["house"]:
+                house_retention.upsert_events(state["house"], weekly_tables)
+            if isinstance(state.get("senate"), dict) and state["senate"]:
+                senate_retention.upsert_events(state["senate"], weekly_tables)
     if path is not None:
         write_atomic_bytes(
             path,

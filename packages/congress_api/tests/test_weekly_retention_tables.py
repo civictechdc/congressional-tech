@@ -167,27 +167,53 @@ def test_incremental_gpo_house_senate_and_youtube_tables(tmp_path: Path) -> None
         loaded_obs = gpo.read(weekly_tables=wt, package_ids=["CHRG-118hhrg1"])
         assert "CHRG-118hhrg1" in loaded_obs
 
-        # House and Senate state via tables.write_state / tables.read_state
-        state = {
-            "house": {
-                "115001": {
-                    "imported_at": "2026-01-10T00:00:00Z",
-                    "witness_status": "present",
-                    "seed": "research cache",
-                    "urls": [],
-                }
-            },
-            "senate": {
-                "sen-1": {
-                    "url": "https://www.energy.senate.gov/hearings/test",
-                    "observed_at": "2026-01-10T00:00:00Z",
-                    "title": "Senate Hearing",
-                }
-            },
+        # House, Senate, and Inventory state via realistic path-dispatched tables.write_state / tables.read_state
+        house_payload = {
+            "115001": {
+                "imported_at": "2026-01-10T00:00:00Z",
+                "witness_status": "present",
+                "seed": "research cache",
+                "urls": [],
+            }
         }
-        tables.write_state(tmp_path / "state.json.gz", state, weekly_tables=wt)
+        senate_payload = {
+            "www.energy.senate.gov": {
+                "pages": {"https://www.energy.senate.gov/hearings/test": {"title": "Senate Hearing"}},
+                "listings": {},
+                "workflow": {},
+            }
+        }
+        inventory_payload = {
+            "youtube": {"vid-abc": "asr"},
+            "senate": {"energy011026": "srt"},
+            "probes": {"energy|2026-01-10": {"urls": [], "checked": "2026-01-10", "source": "cache"}},
+        }
+        tables.write_state(tmp_path / "house.json.gz", house_payload, weekly_tables=wt)
+        tables.write_state(tmp_path / "senate.json.gz", senate_payload, weekly_tables=wt)
+        tables.write_state(tmp_path / "inventory.json.gz", inventory_payload, weekly_tables=wt)
+
         assert house.read_events(wt, event_ids=["115001"])["115001"]["witness_status"] == "present"
-        assert senate.read_events(wt, record_ids=["sen-1"])["sen-1"]["title"] == "Senate Hearing"
+        assert senate.read_events(wt, record_ids=["www.energy.senate.gov"])["www.energy.senate.gov"]["pages"][
+            "https://www.energy.senate.gov/hearings/test"
+        ]["title"] == "Senate Hearing"
+        assert tables.read_state(tmp_path / "house.json.gz", weekly_tables=wt)["115001"]["witness_status"] == "present"
+        assert "www.energy.senate.gov" in tables.read_state(tmp_path / "senate.json.gz", weekly_tables=wt)
+        loaded_inv = tables.read_state(tmp_path / "inventory.json.gz", weekly_tables=wt)
+        assert loaded_inv["youtube"]["vid-abc"] == "asr"
+        assert loaded_inv["senate"]["energy011026"] == "srt"
+
+        # Verify chunked upsert_rows over a generator does not require materializing all rows at once
+        from congress_api.retention.weekly_tables import house_event_to_row
+
+        wt.upsert_rows(
+            "house_events",
+            (
+                house_event_to_row(f"11500{i}", {"imported_at": "2026-01-12T00:00:00Z", "witness_status": "absent"})
+                for i in range(2, 7)
+            ),
+            chunk_size=2,
+        )
+        assert wt.read_table("house_events").num_rows == 6
 
 
 def test_incremental_captions_transcripts_and_rejected_pages_tables(tmp_path: Path) -> None:

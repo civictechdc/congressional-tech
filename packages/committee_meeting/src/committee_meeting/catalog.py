@@ -105,15 +105,37 @@ class Catalog(Model):
         identity may not repeat one in this catalog.
         """
         index = {}
-        for item in (*self.sources, *self.records):
-            key = (item.kind, item.id)
+        has_lazy_sources = hasattr(self.sources, "source_ids") and hasattr(self.sources, "get_by_id")
+        if has_lazy_sources:
+            source_ids = self.sources.source_ids()
+            for sid in source_ids:
+                if ("source_record", sid) in external_sources:
+                    raise ValueError(f"duplicate record identity: {('source_record', sid)}")
+            for item in self.records:
+                key = (item.kind, item.id)
+                if key in index or key in external_sources or (key[0] == "source_record" and key[1] in source_ids):
+                    raise ValueError(f"duplicate record identity: {key}")
+                index[key] = item
+        else:
+            source_ids = None
+            for item in (*self.sources, *self.records):
+                key = (item.kind, item.id)
+                if key in index or key in external_sources:
+                    raise ValueError(f"duplicate record identity: {key}")
+                index[key] = item
+
+        def has_key(key):
             if key in index or key in external_sources:
-                raise ValueError(f"duplicate record identity: {key}")
-            index[key] = item
+                return True
+            return source_ids is not None and key[0] == "source_record" and key[1] in source_ids
 
         def resolve(ref):
             key = (ref.kind, ref.id)
-            return index[key] if key in index else external_sources[key]
+            if key in index:
+                return index[key]
+            if source_ids is not None and key[0] == "source_record" and key[1] in source_ids:
+                return self.sources.get_by_id(key[1])
+            return external_sources[key]
 
         def require(condition, message):
             if not condition:
@@ -122,7 +144,7 @@ class Catalog(Model):
         for item in self.records:
             for ref in _references(item):
                 key = (ref.kind, ref.id)
-                require(key in index or key in external_sources, f"{item.kind}/{item.id}: missing {ref.kind}/{ref.id}")
+                require(has_key(key), f"{item.kind}/{item.id}: missing {ref.kind}/{ref.id}")
             paths = [e.path for e in item.field_evidence]
             require(len(paths) == len(set(paths)), f"{item.id}: duplicate field evidence paths")
             if paths:

@@ -29,14 +29,20 @@ from .parquet import SOURCE_SCHEMA, TABLE_SCHEMAS
 
 COMMITTEE_EXPLORER_DEFINITION = "committee-explorer-v1"
 OBSERVATIONS_DATASET = "explorer_meeting_observations"
-MEETING_SUMMARY_DATASET = "explorer_meeting_summary"
-COMMITTEE_ROLLUP_DATASET = "explorer_committee_rollup"
+MEETING_SUMMARY_DATASET = "explorer_meeting_summaries"
+COMMITTEE_ROLLUP_DATASET = "explorer_committee_rollups"
+
+_DATASET_ALIASES: dict[str, str] = {
+    "explorer_meeting_summary": MEETING_SUMMARY_DATASET,
+    "explorer_committee_rollup": COMMITTEE_ROLLUP_DATASET,
+}
 
 SOURCE_RANK_BY_PROVIDER: dict[str, int] = {
     "congress.gov": 1,
     "docs.house.gov": 2,
     "senate.committees": 3,
     "govinfo.gov": 4,
+    "govinfo": 4,
     "gpo.committee-review": 5,
     "youtube": 6,
 }
@@ -44,7 +50,7 @@ SOURCE_RANK_BY_PROVIDER: dict[str, int] = {
 COMMITTEE_EXPLORER_OBSERVATIONS_SCHEMA = pa.schema([
     pa.field("meeting_id", pa.string(), nullable=False),
     pa.field("congress", pa.int64(), nullable=False),
-    pa.field("chamber", pa.string(), nullable=True),
+    pa.field("chamber", pa.string(), nullable=False),
     pa.field("committee", pa.string(), nullable=True),
     pa.field("subcommittee", pa.string(), nullable=True),
     pa.field("title", pa.string(), nullable=True),
@@ -140,7 +146,7 @@ def build_meeting_summary_refresh_spec(
     rosters with source provenance.
     """
     order_by = _rank_order_by()
-    first_value_fields = ("chamber", "committee", "subcommittee", "title", "date", "type", "status")
+    first_value_fields = ("committee", "subcommittee", "title", "date", "type", "status")
     aggregates: list[dict[str, Any]] = [
         {
             "name": field,
@@ -177,7 +183,7 @@ def build_meeting_summary_refresh_spec(
             "kind": "aggregate",
             "input": version_ref(observations_pin),
             "grouping": {
-                "keys": ["meeting_id", "congress"],
+                "keys": ["meeting_id", "congress", "chamber"],
                 "aggregates": aggregates,
             },
         },
@@ -193,7 +199,7 @@ def build_committee_rollup_refresh_spec(
     base: str | None = None,
     mode: str = "full",
 ) -> dict[str, Any]:
-    """Build a chained ``RefreshSpec`` (``ss-65bz``) consuming ``explorer_meeting_summary``."""
+    """Build a chained ``RefreshSpec`` (``ss-65bz``) consuming ``explorer_meeting_summaries``."""
     return {
         "dataset": COMMITTEE_ROLLUP_DATASET,
         "operation": operation,
@@ -258,7 +264,10 @@ def build_browser_export_spec(
 
 def build_observations_table(rows: Iterable[Mapping[str, Any]]) -> pa.Table:
     """Build a sorted Arrow table matching ``COMMITTEE_EXPLORER_OBSERVATIONS_SCHEMA``."""
-    materialized = list(rows)
+    materialized = [
+        {**r, "chamber": str(r.get("chamber") or "unknown")}
+        for r in rows
+    ]
     materialized.sort(
         key=lambda r: (
             str(r.get("meeting_id") or ""),
@@ -272,6 +281,83 @@ def build_observations_table(rows: Iterable[Mapping[str, Any]]) -> pa.Table:
         for field in COMMITTEE_EXPLORER_OBSERVATIONS_SCHEMA
     }
     return pa.Table.from_pydict(columns, schema=COMMITTEE_EXPLORER_OBSERVATIONS_SCHEMA)
+
+
+def extract_meeting_observations(catalog: Any) -> list[dict[str, Any]]:
+    """Extract normalized ``explorer_meeting_observations`` rows from an assembled ``Catalog``."""
+    from collections import defaultdict
+
+    committees = {r.id: r for r in catalog.records if r.kind == "committee_term"}
+    dates: dict[str, str] = {}
+    statuses: dict[str, str] = {}
+    witnesses: dict[str, list[str]] = defaultdict(list)
+
+    for r in catalog.records:
+        if r.kind == "occurrence":
+            if r.scheduled_start and getattr(r.scheduled_start, "date", None):
+                dates.setdefault(r.meeting.id, r.scheduled_start.date.isoformat())
+            if getattr(r, "status", None):
+                statuses.setdefault(r.meeting.id, r.status)
+        elif r.kind == "meeting":
+            if r.scheduled_start and getattr(r.scheduled_start, "date", None):
+                dates.setdefault(r.id, r.scheduled_start.date.isoformat())
+            if getattr(r, "status", None) and r.status != "unknown":
+                statuses.setdefault(r.id, r.status)
+        elif r.kind == "appearance" and getattr(r, "name", None):
+            witnesses[r.meeting.id].append(r.name.display)
+
+    if hasattr(catalog.sources, "provider_for_id"):
+        provider_lookup = catalog.sources.provider_for_id
+    else:
+        provider_map = {s.id: s.provider for s in catalog.sources}
+        provider_lookup = provider_map.get
+
+    rows: list[dict[str, Any]] = []
+    for r in catalog.records:
+        if r.kind != "meeting":
+            continue
+        comm_name: str | None = None
+        sub_name: str | None = None
+        for conv in getattr(r, "committees", ()):
+            term = committees.get(conv.committee.id)
+            if term is None:
+                continue
+            t_name = term.name or conv.committee.id
+            if term.parent or term.committee_type == "subcommittee" or term.committee_level == "subcommittee":
+                if sub_name is None:
+                    sub_name = t_name
+            else:
+                if comm_name is None:
+                    comm_name = t_name
+        if comm_name is None and getattr(r, "committees", ()):
+            first_id = r.committees[0].committee.id
+            first_term = committees.get(first_id)
+            comm_name = (first_term.name if first_term else None) or first_id
+
+        cited_ids = [c.source.id for c in r.provenance.citations] if getattr(r, "provenance", None) else []
+        if not cited_ids:
+            cited_ids = [f"meeting:{r.id}"]
+        meeting_witnesses = sorted(set(witnesses.get(r.id) or ())) or [None]
+        for src_id in dict.fromkeys(cited_ids):
+            provider = str(provider_lookup(src_id) or getattr(r.provenance, "basis", None) or "unknown")
+            rank = int(SOURCE_RANK_BY_PROVIDER.get(provider, 99))
+            for w_name in meeting_witnesses:
+                rows.append({
+                    "meeting_id": r.id,
+                    "congress": int(r.congress or 0),
+                    "chamber": str(r.chamber or "unknown"),
+                    "committee": comm_name or "Unknown",
+                    "subcommittee": sub_name,
+                    "title": r.title,
+                    "date": dates.get(r.id),
+                    "type": r.meeting_type,
+                    "status": statuses.get(r.id) or r.status,
+                    "source_rank": rank,
+                    "source_id": src_id,
+                    "source_type": provider,
+                    "witness_name": w_name,
+                })
+    return rows
 
 
 class ExplorerDocSpecWorkspace:
@@ -290,6 +376,11 @@ class ExplorerDocSpecWorkspace:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
+
+    def latest_pin(self, dataset: str) -> dict[str, Any] | None:
+        """Return the latest ``ReleasePin`` for ``dataset`` (supporting singular/plural aliases)."""
+        canonical = _DATASET_ALIASES.get(dataset, dataset)
+        return self.datasets.try_latest(canonical)
 
     def _op_id(self, prefix: str, token: str) -> str:
         digest = sha256(token.encode("utf-8")).hexdigest()[:16]
@@ -331,7 +422,7 @@ class ExplorerDocSpecWorkspace:
         *,
         mode: str = "full",
     ) -> dict[str, dict[str, Any]]:
-        """Execute chained ``RefreshSpec``s: ``explorer_meeting_summary`` -> ``explorer_committee_rollup``."""
+        """Execute chained ``RefreshSpec``s: ``explorer_meeting_summaries`` -> ``explorer_committee_rollups``."""
         obs_pin = observations_pin or self.datasets.latest(OBSERVATIONS_DATASET)
         summary_base = self.datasets.try_latest(MEETING_SUMMARY_DATASET)
         summary_op = self._op_id(
@@ -360,40 +451,58 @@ class ExplorerDocSpecWorkspace:
         rollup_pin = self.datasets.refresh(rollup_spec)
         return {
             MEETING_SUMMARY_DATASET: summary_pin,
+            "explorer_meeting_summary": summary_pin,
             COMMITTEE_ROLLUP_DATASET: rollup_pin,
+            "explorer_committee_rollup": rollup_pin,
         }
 
     def export_browser_table(
         self,
         table_name: str,
-        parquet_or_table: Path | pa.Table,
+        parquet_or_table: Path | str | pa.Table,
         *,
         channel: str = "public",
+        dataset_override: str | None = None,
     ) -> dict[str, Any]:
-        """Admit a browser table and publish an immutable ``ExportPin``."""
-        import pyarrow.parquet as pq
-
-        dataset = BROWSER_TABLE_DATASETS[table_name]
+        """Admit a browser table without loading multi-MB Parquet files into Python RAM, and publish an ``ExportPin``."""
+        dataset = dataset_override or BROWSER_TABLE_DATASETS[table_name]
         schema = BROWSER_TABLE_SCHEMAS[table_name]
+        base = self.datasets.try_latest(dataset)
         if isinstance(parquet_or_table, pa.Table):
             table = parquet_or_table.cast(schema, safe=False)
+            admit_op = self._op_id(
+                f"admit-{dataset}",
+                f"{base['id'] if base else 'init'}-{table.num_rows}",
+            )
+            source_pin = self.datasets.run_table(
+                table,
+                dataset=dataset,
+                operation=admit_op,
+                definition=COMMITTEE_EXPLORER_DEFINITION,
+                base=base["id"] if base else None,
+            )
         else:
-            table = pq.read_table(parquet_or_table, schema=schema)
-        base = self.datasets.try_latest(dataset)
-        admit_op = self._op_id(
-            f"admit-{table_name}",
-            f"{base['id'] if base else 'init'}-{table.num_rows}",
-        )
-        source_pin = self.datasets.run_table(
-            table,
-            dataset=dataset,
-            operation=admit_op,
-            definition=COMMITTEE_EXPLORER_DEFINITION,
-            base=base["id"] if base else None,
-        )
+            source_path = Path(parquet_or_table).resolve()
+            digest = self.datasets.hash_input(source_path)["digest"]
+            admit_op = self._op_id(
+                f"admit-{dataset}",
+                f"{base['id'] if base else 'init'}-{digest}",
+            )
+            run_req: dict[str, Any] = {
+                "dataset": dataset,
+                "operation": admit_op,
+                "definition": COMMITTEE_EXPLORER_DEFINITION,
+                "input": str(source_path),
+                "expected_digest": digest,
+                "sql": "SELECT * FROM input",
+            }
+            if base is not None:
+                run_req["base"] = base["id"]
+            source_pin = self.datasets.run(run_req)
+
         current_export = self.datasets.try_latest_export(dataset, channel)
         expected = current_export["id"] if current_export is not None else None
-        export_op = self._op_id(f"export-{table_name}", f"{source_pin['id']}-{expected or 'init'}")
+        export_op = self._op_id(f"export-{dataset}", f"{source_pin['id']}-{expected or 'init'}")
         spec = build_browser_export_spec(
             table_name,
             source_pin,
@@ -410,7 +519,7 @@ class ExplorerDocSpecWorkspace:
             compat_spec = build_browser_export_spec(
                 table_name,
                 source_pin,
-                operation=self._op_id(f"export-compat-{table_name}", f"{source_pin['id']}-{expected or 'init'}"),
+                operation=self._op_id(f"export-compat-{dataset}", f"{source_pin['id']}-{expected or 'init'}"),
                 channel=channel,
                 expected=expected,
                 include_extended_policy=False,
@@ -424,15 +533,38 @@ class ExplorerDocSpecWorkspace:
         tables: Sequence[str] = ("committees", "meetings", "materials", "witnesses", "issues", "sources"),
         channel: str = "public",
     ) -> dict[str, dict[str, Any]]:
-        """Create ``ExportPin``s for the staged browser Parquet tables in ``stage_dir``."""
+        """Create ``ExportPin``s for all staged browser Parquet tables (including all ``sources-*.parquet`` shards)."""
         stage = Path(stage_dir)
         pins: dict[str, dict[str, Any]] = {}
         for name in tables:
             candidate = stage / f"{name}.parquet"
-            if not candidate.exists() and name == "sources":
-                shards = sorted(stage.glob("sources-*.parquet"))
-                if shards:
-                    candidate = shards[0]
             if candidate.exists():
                 pins[name] = self.export_browser_table(name, candidate, channel=channel)
+            elif name == "sources":
+                shards = sorted(stage.glob("sources-*.parquet"))
+                for shard in shards:
+                    shard_stem = shard.stem
+                    shard_dataset = f"explorer_browser_{shard_stem.replace('-', '_')}"
+                    pins[shard_stem] = self.export_browser_table(
+                        "sources",
+                        shard,
+                        channel=channel,
+                        dataset_override=shard_dataset,
+                    )
+                if shards:
+                    pins["sources"] = {shard.stem: pins[shard.stem] for shard in shards}
         return pins
+
+    def sync_export(
+        self,
+        catalog: Any,
+        stage_dir: Path | str,
+        *,
+        channel: str = "public",
+    ) -> dict[str, dict[str, Any]]:
+        """Populate ``explorer_meeting_observations``, refresh views, and export all browser Parquet tables."""
+        obs_rows = extract_meeting_observations(catalog)
+        if obs_rows:
+            obs_pin = self.upsert_observations(obs_rows)
+            self.refresh_views(obs_pin)
+        return self.export_browser_publication(stage_dir, channel=channel)

@@ -1,7 +1,15 @@
 """Assemble source-owned records; retain disagreements and open issue history."""
-from collections import defaultdict
-from collections.abc import Mapping, MutableMapping
+from collections import ChainMap, Counter, OrderedDict, defaultdict
+from collections.abc import Mapping, MutableMapping, Sequence
+from heapq import merge
+from operator import attrgetter
 import json
+import os
+from pathlib import Path
+import sqlite3
+import tempfile
+import weakref
+import zlib
 
 from committee_meeting import Catalog
 from committee_meeting.catalog import DomainRecord, _references
@@ -120,9 +128,217 @@ class _ValidatedRecords(MutableMapping):
         return len(self._records)
 
 
+_SOURCE_CACHE_LIMIT = 256
+_SOURCE_FLUSH_BATCH = 512
+
+
+def _cleanup_spilled_sqlite(connection, path: Path):
+    try:
+        connection.close()
+    except Exception:
+        pass
+    for suffix in ("", "-journal", "-wal", "-shm"):
+        Path(str(path) + suffix).unlink(missing_ok=True)
+
+
+class _SpilledSources(MutableMapping):
+    """Disk-backed MutableMapping of ('source_record', id) -> SourceRecord.
+
+    Keeps only lightweight (provider, input_snapshot_id) metadata and a small
+    bounded LRU cache in Python RAM while spilling compressed source payloads to
+    a temporary SQLite B-tree indexed by source ID.
+    """
+
+    def __init__(self):
+        fd, name = tempfile.mkstemp(prefix=".explorer-sources-", suffix=".sqlite")
+        os.close(fd)
+        self._path = Path(name)
+        self._conn = sqlite3.connect(self._path)
+        self._conn.execute("PRAGMA journal_mode=OFF")
+        self._conn.execute("PRAGMA synchronous=OFF")
+        self._conn.execute("PRAGMA temp_store=FILE")
+        self._conn.execute("PRAGMA cache_size=-2048")
+        self._conn.execute("CREATE TABLE sources (id TEXT PRIMARY KEY, payload BLOB NOT NULL) WITHOUT ROWID")
+        self._meta: dict[str, tuple[str, str | None]] = {}
+        self._pending: dict[str, bytes] = {}
+        self._cache: OrderedDict[str, SourceRecord] = OrderedDict()
+        self._finalizer = weakref.finalize(self, _cleanup_spilled_sqlite, self._conn, self._path)
+
+    def _flush(self):
+        if not self._pending:
+            return
+        with self._conn:
+            self._conn.executemany(
+                "INSERT OR REPLACE INTO sources(id, payload) VALUES (?, ?)",
+                self._pending.items(),
+            )
+        self._pending.clear()
+
+    def _cache_put(self, record: SourceRecord):
+        sid = record.id
+        self._cache[sid] = record
+        self._cache.move_to_end(sid)
+        while len(self._cache) > _SOURCE_CACHE_LIMIT:
+            self._cache.popitem(last=False)
+
+    def get_by_id(self, sid: str) -> SourceRecord | None:
+        if sid not in self._meta:
+            return None
+        cached = self._cache.get(sid)
+        if cached is not None:
+            self._cache.move_to_end(sid)
+            return cached
+        compressed = self._pending.get(sid)
+        if compressed is None:
+            row = self._conn.execute("SELECT payload FROM sources WHERE id=?", (sid,)).fetchone()
+            if row is None:
+                return None
+            compressed = row[0]
+        record = SourceRecord.model_validate_json(zlib.decompress(compressed))
+        _share_field_names(record)
+        self._cache_put(record)
+        return record
+
+    def provider_for_id(self, sid: str) -> str | None:
+        meta = self._meta.get(sid)
+        return meta[0] if meta is not None else None
+
+    def __contains__(self, key):
+        return isinstance(key, tuple) and len(key) == 2 and key[0] == "source_record" and key[1] in self._meta
+
+    def __getitem__(self, key):
+        if not (isinstance(key, tuple) and len(key) == 2 and key[0] == "source_record"):
+            raise KeyError(key)
+        record = self.get_by_id(key[1])
+        if record is None:
+            raise KeyError(key)
+        return record
+
+    def __setitem__(self, key, record):
+        record = validated(record)
+        if key != (record.kind, record.id) or not isinstance(record, SourceRecord):
+            raise ValueError("Assembly record does not match its identity or collection")
+        sid = record.id
+        self._meta[sid] = (record.provider, record.input_snapshot_id)
+        self._pending[sid] = zlib.compress(record.model_dump_json().encode(), level=1)
+        self._cache_put(record)
+        if len(self._pending) >= _SOURCE_FLUSH_BATCH:
+            self._flush()
+
+    def __delitem__(self, key):
+        if key not in self:
+            raise KeyError(key)
+        sid = key[1]
+        del self._meta[sid]
+        self._pending.pop(sid, None)
+        self._cache.pop(sid, None)
+        with self._conn:
+            self._conn.execute("DELETE FROM sources WHERE id=?", (sid,))
+
+    def __iter__(self):
+        for sid in self._meta:
+            yield ("source_record", sid)
+
+    def __len__(self):
+        return len(self._meta)
+
+    def iter_ordered(self):
+        self._flush()
+        for (compressed,) in self._conn.execute("SELECT payload FROM sources ORDER BY id"):
+            record = SourceRecord.model_validate_json(zlib.decompress(compressed))
+            _share_field_names(record)
+            yield record
+
+    def close(self):
+        self._pending.clear()
+        self._cache.clear()
+        self._finalizer()
+
+
+class SpilledSourceSequence(Sequence):
+    """Lazy, ID-sorted Sequence view over _SpilledSources for Catalog.sources."""
+
+    is_id_sorted = True
+
+    def __init__(self, spilled: _SpilledSources, extra: Mapping[str, SourceRecord] | None = None):
+        self._spilled = spilled
+        self._extra: dict[str, SourceRecord] = dict(extra) if extra else {}
+        self._sorted_ids: tuple[str, ...] | None = None
+
+    def source_ids(self):
+        if not self._extra:
+            return self._spilled._meta.keys()
+        return self._spilled._meta.keys() | self._extra.keys()
+
+    def get_by_id(self, sid: str) -> SourceRecord | None:
+        if sid in self._extra:
+            return self._extra[sid]
+        return self._spilled.get_by_id(sid)
+
+    def provider_for_id(self, sid: str) -> str | None:
+        if sid in self._extra:
+            return self._extra[sid].provider
+        return self._spilled.provider_for_id(sid)
+
+    def provider_counts(self) -> Counter:
+        counts = Counter()
+        for sid, (provider, _) in self._spilled._meta.items():
+            if sid not in self._extra:
+                counts[provider] += 1
+        for record in self._extra.values():
+            counts[record.provider] += 1
+        return counts
+
+    def input_snapshot_ids(self) -> set[str]:
+        inputs = {inp for sid, (_, inp) in self._spilled._meta.items() if sid not in self._extra}
+        inputs.update(record.input_snapshot_id for record in self._extra.values())
+        return inputs
+
+    def with_additional(self, sources) -> "SpilledSourceSequence":
+        merged = dict(self._extra)
+        for src in sources:
+            src = validated(src)
+            merged[src.id] = src
+        return SpilledSourceSequence(self._spilled, merged)
+
+    def as_mapping(self) -> Mapping[tuple[str, str], SourceRecord]:
+        if not self._extra:
+            return self._spilled
+        return ChainMap({("source_record", sid): rec for sid, rec in self._extra.items()}, self._spilled)
+
+    def __len__(self) -> int:
+        if not self._extra:
+            return len(self._spilled)
+        return len(self.source_ids())
+
+    def __iter__(self):
+        if not self._extra:
+            yield from self._spilled.iter_ordered()
+            return
+        spilled_iter = (r for r in self._spilled.iter_ordered() if r.id not in self._extra)
+        extra_sorted = sorted(self._extra.values(), key=attrgetter("id"))
+        yield from merge(spilled_iter, extra_sorted, key=attrgetter("id"))
+
+    def __getitem__(self, index):
+        if self._sorted_ids is None:
+            self._sorted_ids = tuple(sorted(self.source_ids()))
+        if isinstance(index, slice):
+            return tuple(self.get_by_id(sid) for sid in self._sorted_ids[index])
+        return self.get_by_id(self._sorted_ids[index])
+
+    def __eq__(self, other):
+        if self is other:
+            return True
+        if isinstance(other, (SpilledSourceSequence, tuple, list)):
+            if len(self) != len(other):
+                return False
+            return all(a == b for a, b in zip(self, other))
+        return NotImplemented
+
+
 class Assembly:
     def __init__(self, previous=None, *, ids=None, now=None):
-        self.sources = _ValidatedRecords(sources=True)
+        self.sources = _SpilledSources()
         self.records = _ValidatedRecords()
         self.current = set()
         self.previous = previous
@@ -257,8 +473,15 @@ class Assembly:
         if self.previous is not None:
             # Production uses a disk-backed Mapping; Catalog compatibility is
             # useful for small callers but must not load a previous full export.
-            previous = self.previous if isinstance(self.previous, Mapping) else {
-                (v.kind, v.id): v for values in (self.previous.sources, self.previous.records) for v in values}
+            if isinstance(self.previous, Mapping):
+                previous = self.previous
+            elif hasattr(self.previous.sources, "as_mapping"):
+                previous = ChainMap(
+                    {(v.kind, v.id): v for v in self.previous.records},
+                    self.previous.sources.as_mapping(),
+                )
+            else:
+                previous = {(v.kind, v.id): v for values in (self.previous.sources, self.previous.records) for v in values}
             issues = previous.iter_issues() if hasattr(previous, "iter_issues") else (v for k, v in previous.items() if k[0] == "data_issue")
             # Old sources are not loaded. Each weekly input snapshot re-keys whole
             # providers, so sources that only old issues cite grow with every
@@ -301,9 +524,14 @@ class Assembly:
                                 raise ValueError(f"Issue history is missing {reference.kind}/{reference.id}") from None
             self.retained = RetainedSources(previous, retained)
         self._project_materials()
-        # Every record crossed validated() individually. Constructing the tuples
+        # Every record crossed validated() individually. Constructing the sequence
         # must not ask Pydantic to copy the entire corpus a second time. The full
         # graph validator still checks all links, ownership rules and cycles.
-        catalog = Catalog.model_construct(sources=tuple(self.sources[k] for k in sorted(self.sources)),
+        sources_seq = (
+            SpilledSourceSequence(self.sources)
+            if isinstance(self.sources, _SpilledSources)
+            else tuple(self.sources[k] for k in sorted(self.sources))
+        )
+        catalog = Catalog.model_construct(sources=sources_seq,
                                           records=tuple(self.records[k] for k in sorted(self.records)))
         return catalog.check_graph_with(self.retained)

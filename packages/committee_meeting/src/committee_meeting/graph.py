@@ -19,8 +19,9 @@ class CatalogGraph:
         self._outgoing: dict[tuple[str, str], list[tuple[str, Ref, object]]] = {}
         self._incoming: dict[tuple[str, str], list[tuple[str, Ref, object]]] = {}
 
-        for src in catalog.sources:
-            self._by_ref[(src.kind, src.id)] = src
+        if not hasattr(catalog.sources, "get_by_id"):
+            for src in catalog.sources:
+                self._by_ref[(src.kind, src.id)] = src
         for rec in catalog.records:
             self._by_ref[(rec.kind, rec.id)] = rec
 
@@ -50,7 +51,10 @@ class CatalogGraph:
 
     def resolve(self, node: Ref | tuple[str, str]):
         key = (node.kind, node.id) if isinstance(node, Ref) else node
-        return self._by_ref.get(key)
+        found = self._by_ref.get(key)
+        if found is None and key[0] == "source_record" and hasattr(self.catalog.sources, "get_by_id"):
+            return self.catalog.sources.get_by_id(key[1])
+        return found
 
     def neighbors(
         self,
