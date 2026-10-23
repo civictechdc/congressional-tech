@@ -14,6 +14,14 @@ from .io import loads
 from .extraction import bind_extraction_rules
 
 
+_APPROPRIATION_PREFIX = re.compile(r'^fy[0-9]{2,4}-')
+
+
+def strip_appropriation_prefix(token: str) -> str:
+    """Strip fiscal year prefix (e.g. 'fy2020-', 'fy24-') from appropriation subject tokens."""
+    return _APPROPRIATION_PREFIX.sub('', token)
+
+
 def _error(message: str) -> None:
     raise NamingError('invalid-catalog', message)
 

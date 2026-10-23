@@ -11,8 +11,8 @@ class ConveningCommittee(Model):
     provenance: Provenance
 
 
-class MeetingSitting(Model):
-    """Additional sitting/day when a proceeding spans multiple sittings."""
+class SittingFields(Model):
+    """Shared sitting fields describing schedule, status, access, and location."""
 
     label: str | None = None
     status: Literal["scheduled", "rescheduled", "postponed", "canceled", "held", "not_held", "unknown"] = "unknown"
@@ -22,6 +22,10 @@ class MeetingSitting(Model):
     actual_start: ReportedTime | None = None
     actual_end: ReportedTime | None = None
     location: Location | None = None
+
+
+class MeetingSitting(SittingFields):
+    """Additional sitting/day when a proceeding spans multiple sittings."""
 
 
 class Meeting(Record):
@@ -46,7 +50,7 @@ class Meeting(Record):
     committees: tuple[ConveningCommittee, ...] = ()
 
 
-class MeetingOccurrence(Record):
+class MeetingOccurrence(Record, SittingFields):
     """One scheduled sitting/day; changes to its schedule remain in source versions.
 
     Retained for multi-sitting or separate sitting provenance when needed; single-sitting
@@ -55,14 +59,6 @@ class MeetingOccurrence(Record):
 
     kind: Literal["occurrence"] = "occurrence"
     meeting: Ref[Literal["meeting"]]
-    label: str | None = None
-    status: Literal["scheduled", "rescheduled", "postponed", "canceled", "held", "not_held", "unknown"] = "unknown"
-    access: Literal["open", "closed", "partly_closed", "unknown"] = "unknown"
-    scheduled_start: ReportedTime | None = None
-    scheduled_end: ReportedTime | None = None
-    actual_start: ReportedTime | None = None
-    actual_end: ReportedTime | None = None
-    location: Location | None = None
 
 
 class Panel(Record):

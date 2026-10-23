@@ -1,8 +1,10 @@
+include README.md
 include FILENAME_PATTERNS.md
 include tests/records.json
 recursive-include tests *.py
 recursive-include tests/fixtures *.json
 recursive-include examples *.json
-recursive-include notes *.md *.json
-recursive-include tools *.py
+recursive-include scripts *.py
+include tools/build.py
 include tools/check_ecmascript.mjs
+

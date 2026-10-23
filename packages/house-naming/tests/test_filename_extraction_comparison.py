@@ -1,4 +1,7 @@
-"""The head-to-head check must see differences hidden by equal code tokens."""
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+
 from compare_filename_extraction import field_metadata
 from compare_filename_extraction import strict_results_equal
 from compare_filename_extraction import reviewed_strict_change

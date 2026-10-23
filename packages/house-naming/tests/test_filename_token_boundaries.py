@@ -4,6 +4,10 @@ import re
 
 import pytest
 
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+
 from audit_filename_token_boundaries import TokenIndex, independent_tokens
 
 

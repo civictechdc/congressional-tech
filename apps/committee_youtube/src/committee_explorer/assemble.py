@@ -170,38 +170,6 @@ def validated(record):
     return record
 
 
-class _ValidatedRecords(MutableMapping):
-    """Every replacement, including a caller's model_copy, crosses validation."""
-
-    def __init__(self, *, sources=False):
-        self._records = {}
-        self._sources = sources
-
-    def __getitem__(self, key):
-        return self._records[key]
-
-    def __setitem__(self, key, record):
-        record = validated(record)
-        if key != (record.kind, record.id) or isinstance(record, SourceRecord) != self._sources:
-            raise ValueError("Assembly record does not match its identity or collection")
-        self._records[key] = record
-
-    def __delitem__(self, key):
-        del self._records[key]
-
-    def __iter__(self):
-        return iter(self._records)
-
-    def __len__(self):
-        return len(self._records)
-
-    def identity_for_id(self, sid: str) -> tuple[str, str, str] | None:
-        record = self._records.get(("source_record", sid))
-        if isinstance(record, SourceRecord):
-            return (record.provider, record.identifier.scheme, record.identifier.value)
-        return None
-
-
 _SOURCE_CACHE_LIMIT = 128
 _ARENA_BUFFER_BYTES = 262_144
 
@@ -269,6 +237,31 @@ def _source_identity_hash(provider: str, scheme: str, value: str) -> int:
     )
 
 
+# 64-bit integer bit-packing constants for bounded-memory arena indexing.
+# Bounded memory design per Lead Architect defense:
+# Storing hundreds of thousands of records using (offset, length, meta_idx)
+# tuples in RAM costs 72+ bytes per entry. Packing into a single 64-bit integer
+# reduces per-entry overhead to 28 bytes while maintaining O(1) random access via pread.
+#
+# _SpilledSources packing: (offset << 44) | (length << 16) | meta_idx
+#   - offset:   44 bits -> file offset up to 16 TiB
+#   - length:   28 bits -> compressed payload up to 256 MiB
+#   - meta_idx: 16 bits -> up to 65,536 interned (provider, input_snapshot_id) pairs
+SOURCE_OFFSET_SHIFT = 44
+SOURCE_LENGTH_SHIFT = 16
+SOURCE_LENGTH_MASK = (1 << 28) - 1   # 0xFFFFFFF (28 bits)
+SOURCE_META_MASK = (1 << 16) - 1     # 0xFFFF (16 bits)
+MAX_SOURCE_LENGTH = 1 << 28          # 268,435,456 bytes (256 MiB)
+MAX_SOURCE_META_IDX = 1 << 16        # 65,536 items
+
+# _SpilledRecords packing: (offset << 28) | length
+#   - offset:   36 bits -> file offset up to 64 GiB
+#   - length:   28 bits -> compressed payload up to 256 MiB
+RECORD_OFFSET_SHIFT = 28
+RECORD_LENGTH_MASK = (1 << 28) - 1   # 0xFFFFFFF (28 bits)
+MAX_RECORD_LENGTH = 1 << 28          # 268,435,456 bytes (256 MiB)
+
+
 class _SpilledSources(MutableMapping):
     """Disk-backed MutableMapping of ('source_record', id) -> SourceRecord.
 
@@ -312,7 +305,10 @@ class _SpilledSources(MutableMapping):
         packed = self._index.get(sid)
         if packed is None:
             return None
-        return self._arena.read(packed >> 44, (packed >> 16) & 0xFFFFFFF)
+        return self._arena.read(
+            packed >> SOURCE_OFFSET_SHIFT,
+            (packed >> SOURCE_LENGTH_SHIFT) & SOURCE_LENGTH_MASK,
+        )
 
     def get_by_id(self, sid: str) -> SourceRecord | None:
         packed = self._index.get(sid)
@@ -322,7 +318,10 @@ class _SpilledSources(MutableMapping):
         if cached is not None:
             self._cache.move_to_end(sid)
             return cached
-        compressed = self._arena.read(packed >> 44, (packed >> 16) & 0xFFFFFFF)
+        compressed = self._arena.read(
+            packed >> SOURCE_OFFSET_SHIFT,
+            (packed >> SOURCE_LENGTH_SHIFT) & SOURCE_LENGTH_MASK,
+        )
         record = SourceRecord.model_validate_json(zlib.decompress(compressed))
         _share_field_names(record)
         self._cache_put(record)
@@ -330,11 +329,7 @@ class _SpilledSources(MutableMapping):
 
     def provider_for_id(self, sid: str) -> str | None:
         packed = self._index.get(sid)
-        return self._meta_list[packed & 0xFFFF][0] if packed is not None else None
-
-    def meta_for_id(self, sid: str) -> tuple[str, str | None] | None:
-        packed = self._index.get(sid)
-        return self._meta_list[packed & 0xFFFF] if packed is not None else None
+        return self._meta_list[packed & SOURCE_META_MASK][0] if packed is not None else None
 
     def identity_for_id(self, sid: str) -> int | None:
         return self._identity_by_id.get(sid)
@@ -361,7 +356,12 @@ class _SpilledSources(MutableMapping):
         meta_idx = self._intern_meta(record.provider, record.input_snapshot_id)
         compressed = zlib.compress(record.model_dump_json().encode(), level=1)
         offset, length = self._arena.append(compressed)
-        self._index[sid] = (offset << 44) | (length << 16) | meta_idx
+        if length >= MAX_SOURCE_LENGTH or meta_idx >= MAX_SOURCE_META_IDX:
+            raise ValueError(
+                f"Source record exceeds bit-packing capacity: length={length} (max {MAX_SOURCE_LENGTH}), "
+                f"meta_idx={meta_idx} (max {MAX_SOURCE_META_IDX})"
+            )
+        self._index[sid] = (offset << SOURCE_OFFSET_SHIFT) | (length << SOURCE_LENGTH_SHIFT) | meta_idx
         ident_hash = _source_identity_hash(
             record.provider,
             record.identifier.scheme,
@@ -391,7 +391,10 @@ class _SpilledSources(MutableMapping):
     def iter_ordered(self):
         for sid in sorted(self._index):
             packed = self._index[sid]
-            compressed = self._arena.read(packed >> 44, (packed >> 16) & 0xFFFFFFF)
+            compressed = self._arena.read(
+                packed >> SOURCE_OFFSET_SHIFT,
+                (packed >> SOURCE_LENGTH_SHIFT) & SOURCE_LENGTH_MASK,
+            )
             record = SourceRecord.model_validate_json(zlib.decompress(compressed))
             _share_field_names(record)
             yield record
@@ -399,7 +402,10 @@ class _SpilledSources(MutableMapping):
     def iter_ordered_json_dicts(self):
         for sid in sorted(self._index):
             packed = self._index[sid]
-            compressed = self._arena.read(packed >> 44, (packed >> 16) & 0xFFFFFFF)
+            compressed = self._arena.read(
+                packed >> SOURCE_OFFSET_SHIFT,
+                (packed >> SOURCE_LENGTH_SHIFT) & SOURCE_LENGTH_MASK,
+            )
             yield json.loads(zlib.decompress(compressed))
 
     def iter_payloads_for_ids(self, sids):
@@ -407,7 +413,11 @@ class _SpilledSources(MutableMapping):
         for sid in sids:
             packed = self._index.get(sid)
             if packed is not None:
-                items.append((packed >> 44, (packed >> 16) & 0xFFFFFFF, sid))
+                items.append((
+                    packed >> SOURCE_OFFSET_SHIFT,
+                    (packed >> SOURCE_LENGTH_SHIFT) & SOURCE_LENGTH_MASK,
+                    sid,
+                ))
         items.sort()
         for offset, length, sid in items:
             compressed = self._arena.read(offset, length)
@@ -468,7 +478,7 @@ class SpilledSourceSequence(Sequence):
         meta_list = self._spilled._meta_list
         for sid, packed in self._spilled._index.items():
             if sid not in self._extra:
-                counts[meta_list[packed & 0xFFFF][0]] += 1
+                counts[meta_list[packed & SOURCE_META_MASK][0]] += 1
         for record in self._extra.values():
             counts[record.provider] += 1
         return counts
@@ -476,7 +486,7 @@ class SpilledSourceSequence(Sequence):
     def input_snapshot_ids(self) -> set[str]:
         meta_list = self._spilled._meta_list
         inputs = {
-            meta_list[packed & 0xFFFF][1]
+            meta_list[packed & SOURCE_META_MASK][1]
             for sid, packed in self._spilled._index.items()
             if sid not in self._extra
         }
@@ -554,9 +564,6 @@ class _SpilledRecords(MutableMapping):
         while len(self._cache) > _RECORD_CACHE_LIMIT:
             self._cache.popitem(last=False)
 
-    def clear_cache(self) -> None:
-        self._cache.clear()
-
     def has_key(self, key: tuple[str, str]) -> bool:
         if not (isinstance(key, tuple) and len(key) == 2):
             return False
@@ -568,17 +575,6 @@ class _SpilledRecords(MutableMapping):
             ikind = sys.intern(kind)
             for rid in sorted(self._by_kind[kind]):
                 yield (ikind, rid)
-
-    def get_compressed_by_key(self, key: tuple[str, str]) -> bytes | None:
-        if not (isinstance(key, tuple) and len(key) == 2):
-            return None
-        kind_map = self._by_kind.get(key[0])
-        if not kind_map:
-            return None
-        packed = kind_map.get(key[1])
-        if packed is None:
-            return None
-        return self._arena.read(packed >> 28, packed & 0xFFFFFFF)
 
     def get_by_key(self, key: tuple[str, str]) -> DomainRecord | None:
         if not (isinstance(key, tuple) and len(key) == 2):
@@ -598,7 +594,10 @@ class _SpilledRecords(MutableMapping):
             self._cache.move_to_end(ikey)
             return cached
         packed = kind_map[rid]
-        compressed = self._arena.read(packed >> 28, packed & 0xFFFFFFF)
+        compressed = self._arena.read(
+            packed >> RECORD_OFFSET_SHIFT,
+            packed & RECORD_LENGTH_MASK,
+        )
         record = _DOMAIN_RECORD.validate_json(zlib.decompress(compressed))
         _share_field_names(record)
         self._cache_put(ikey, record)
@@ -633,7 +632,11 @@ class _SpilledRecords(MutableMapping):
             self._conflict_keys.discard(ikey)
         compressed = zlib.compress(record.model_dump_json().encode(), level=1)
         offset, length = self._arena.append(compressed)
-        kind_map[rid] = (offset << 28) | length
+        if length >= MAX_RECORD_LENGTH:
+            raise ValueError(
+                f"Domain record exceeds bit-packing capacity: length={length} (max {MAX_RECORD_LENGTH})"
+            )
+        kind_map[rid] = (offset << RECORD_OFFSET_SHIFT) | length
         self._cache_put(ikey, record)
 
     def __delitem__(self, key):
@@ -671,7 +674,10 @@ class _SpilledRecords(MutableMapping):
                 yield cached
                 continue
             packed = kind_map[rid]
-            compressed = self._arena.read(packed >> 28, packed & 0xFFFFFFF)
+            compressed = self._arena.read(
+                packed >> RECORD_OFFSET_SHIFT,
+                packed & RECORD_LENGTH_MASK,
+            )
             record = _DOMAIN_RECORD.validate_json(zlib.decompress(compressed))
             _share_field_names(record)
             yield record
@@ -705,7 +711,10 @@ class _SpilledRecords(MutableMapping):
             return
         for rid in sorted(kind_map):
             packed = kind_map[rid]
-            compressed = self._arena.read(packed >> 28, packed & 0xFFFFFFF)
+            compressed = self._arena.read(
+                packed >> RECORD_OFFSET_SHIFT,
+                packed & RECORD_LENGTH_MASK,
+            )
             yield json.loads(zlib.decompress(compressed))
 
     def iter_json_dicts(self):
@@ -713,6 +722,9 @@ class _SpilledRecords(MutableMapping):
         ordered_kinds.extend(sorted(k for k in self._by_kind if k not in self._JSON_DICT_KIND_ORDER))
         for kind in ordered_kinds:
             yield from self.iter_kind_json_dicts(kind)
+
+    def kinds(self) -> set[str]:
+        return set(self._by_kind)
 
     def close(self):
         self._cache.clear()
@@ -729,6 +741,9 @@ class SpilledRecordSequence(Sequence):
         self._spilled = spilled
         self._extra: dict[tuple[str, str], DomainRecord] = dict(extra) if extra else {}
         self._sorted_keys: tuple[tuple[str, str], ...] | None = None
+
+    def kinds(self) -> set[str]:
+        return set(self._spilled.kinds()) | {k[0] for k in self._extra}
 
     def has_key(self, key: tuple[str, str]) -> bool:
         return key in self._extra or self._spilled.has_key(key)

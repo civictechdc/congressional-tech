@@ -16,6 +16,7 @@ from pathlib import Path
 import re
 import sys
 
+from .cli import cli_error_boundary
 from .corpus import DESCRIPTIVE_FIELDS, audit_check, filename_review_category, residual_fields as _residual_fields
 from .errors import NamingError
 from .io import read_json, dumps
@@ -392,16 +393,7 @@ def _main():
 
 
 def main():
-    try:
-        return _main()
-    except NamingError as exc:
-        sys.stderr.write(dumps({'error': exc.as_dict()}))
-        return 2 if exc.code in {'input-too-large', 'invalid-catalog', 'extraction-limit'} else 1
-    except BrokenPipeError:
-        return 0
-    except (OSError, UnicodeError, ValueError) as exc:
-        sys.stderr.write(dumps({'error': {'code': 'io-or-configuration-error', 'message': str(exc), 'details': []}}))
-        return 2
+    return cli_error_boundary(_main)
 
 
 if __name__ == '__main__':

@@ -14,13 +14,6 @@ DocumentCategory = Literal[
 
 TextCategory = Literal["transcript", "captions", "translation", "summary", "other", "unknown"]
 
-MaterialCategory = Literal[
-    "transcript", "statement", "biography", "disclosure", "questions_for_record",
-    "responses_for_record", "notice", "agenda", "amendment", "vote", "report",
-    "bill_text", "witness_list", "hearing_record", "committee_print", "supporting", "errata",
-    "captions", "translation", "summary", "other", "unknown",
-]
-
 MaterialRole = Literal[
     "recording", "transcript", "captions", "statement", "biography", "disclosure",
     "questions_for_record", "responses_for_record", "notice", "agenda", "amendment",
@@ -55,12 +48,9 @@ class ContentSchema(Model):
     url: WebUrl | None = None
 
 
-class MaterialFile(Model):
-    """An embedded file/encoding of a material, including viewer-data saved copies."""
+class PayloadArtifactBase(Model):
+    """Shared fields and digest validator for payload artifacts/encodings."""
 
-    url: WebUrl | None = None
-    resolved_url: WebUrl | None = None
-    role: Literal["landing", "download", "player", "stream", "api", "other", "unknown"] = "unknown"
     format_label: str | None = None
     media_type: str | None = None
     encoding: str | None = None
@@ -68,19 +58,27 @@ class MaterialFile(Model):
     sha256: Sha256 | None = None
     saved_copy_sha256: Sha256 | None = None
     saved_filename: str | None = None
-    usable: bool | None = None
-    recovery_status: Literal["captured", "recovered", "group_recovered", "error_page", "unverified"] | None = None
-    version_label: str | None = None
-    published_at: ReportedTime | None = None
-    duration_seconds: Seconds | None = None
     retained: RetainedContent | None = None
     content_schema: ContentSchema | None = None
 
     @model_validator(mode="after")
     def retained_digest_matches(self):
         if self.retained and self.sha256 and self.retained.sha256 != self.sha256:
-            raise ValueError("file and retained content must have the same digest")
+            raise ValueError(f"{'representation' if getattr(self, 'kind', None) == 'representation' else 'file'} and retained content must have the same digest")
         return self
+
+
+class MaterialFile(PayloadArtifactBase):
+    """An embedded file/encoding of a material, including viewer-data saved copies."""
+
+    url: WebUrl | None = None
+    resolved_url: WebUrl | None = None
+    role: Literal["landing", "download", "player", "stream", "api", "other", "unknown"] = "unknown"
+    usable: bool | None = None
+    recovery_status: Literal["captured", "recovered", "group_recovered", "error_page", "unverified"] | None = None
+    version_label: str | None = None
+    published_at: ReportedTime | None = None
+    duration_seconds: Seconds | None = None
 
 
 class Material(Record):
@@ -129,27 +127,12 @@ class MaterialLocation(Model):
     role: Literal["landing", "download", "player", "stream", "api", "other", "unknown"] = "unknown"
 
 
-class Representation(Record):
+class Representation(Record, PayloadArtifactBase):
     """A standalone file/encoding record when tracked independently of Material.files."""
 
     kind: Literal["representation"] = "representation"
     version: Ref[Literal["material_version"]]
     locations: tuple[MaterialLocation, ...] = ()
-    media_type: str | None = None
-    format_label: str | None = None
-    encoding: str | None = None
-    byte_size: Count | None = None
-    sha256: Sha256 | None = None
-    saved_copy_sha256: Sha256 | None = None
-    saved_filename: str | None = None
-    retained: RetainedContent | None = None
-    content_schema: ContentSchema | None = None
-
-    @model_validator(mode="after")
-    def retained_digest_matches(self):
-        if self.retained and self.sha256 and self.retained.sha256 != self.sha256:
-            raise ValueError("representation and retained content must have the same digest")
-        return self
 
 
 def representation_files(representation, *, version_label=None, published_at=None, duration_seconds=None):

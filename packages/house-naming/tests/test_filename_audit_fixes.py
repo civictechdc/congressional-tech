@@ -170,7 +170,7 @@ def command_inputs(tmp_path):
 
 def run_comparison(inputs, trial, *extra):
     baseline, inventory, ref = inputs
-    return subprocess.run([sys.executable, 'packages/house-naming/tools/compare_filename_families.py', trial, '--root', str(baseline),
+    return subprocess.run([sys.executable, 'packages/house-naming/archive/tools/compare_filename_families.py', trial, '--root', str(baseline),
         '--inventory', str(inventory), '--legislators', str(ref), '--minimum-useful', '0', *extra], capture_output=True, text=True)
 
 

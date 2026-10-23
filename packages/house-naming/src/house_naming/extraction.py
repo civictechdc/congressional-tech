@@ -141,6 +141,48 @@ def date_candidates(raw: str) -> tuple[list[str], bool, str]:
 
 
 
+def validate_http_url(
+    url: Any,
+    *,
+    max_bytes: int = MAX_SOURCE_BYTES,
+    allowed_ports: set[int | None] | None = None,
+    error_code: str = 'invalid-url',
+    error_message: str = 'Expected a syntactically valid absolute HTTP(S) URL without credentials',
+):
+    """Validate that a URL is a syntactically valid absolute HTTP(S) URL without credentials.
+
+    Ensures ASCII URI spelling, valid percent escapes, absence of whitespace and control characters,
+    valid HTTP/HTTPS scheme, valid hostname, and no embedded credentials.
+    """
+    try:
+        if not isinstance(url, str):
+            raise ValueError('URL must be a string')
+        try:
+            encoded = url.encode('utf-8')
+        except UnicodeError as exc:
+            raise ValueError('URL is not UTF-8 encodable') from exc
+        if len(encoded) > max_bytes:
+            raise ValueError(f'URL exceeds {max_bytes} UTF-8 bytes')
+        if any(c.isspace() or ord(c) < 32 for c in url):
+            raise ValueError('Whitespace or controls in URL')
+        if re.search(r'[\s\\\x00-\x1f\x7f\u0085\uFEFF]', url):
+            raise ValueError('Whitespace or controls in URL')
+        if re.fullmatch(r"[A-Za-z0-9:/?#\[\]@!$&'()*+,;=._~%+-]+", url) is None:
+            raise ValueError('URL must use ASCII URI spelling')
+        if re.search(r'%(?![0-9A-Fa-f]{2})', url):
+            raise ValueError('Invalid percent escape')
+        parsed = urlsplit(url)
+        if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username is not None or parsed.password is not None:
+            raise ValueError('Expected absolute HTTP(S) URL without credentials')
+        if allowed_ports is not None and parsed.port not in allowed_ports:
+            raise ValueError(f'Port {parsed.port} is not in allowed ports')
+        else:
+            _ = parsed.port
+        return parsed
+    except (ValueError, UnicodeError) as exc:
+        raise NamingError(error_code, error_message) from exc
+
+
 class Extractor:
     def __init__(self, guide: dict):
         self.guide = guide
@@ -758,8 +800,21 @@ class Extractor:
                     note='Remaining subject text, not a resolved person name; internal name/topic boundaries are unchanged.')]))
         return results
 
-    def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
-                source_url: str | None = None) -> dict:
+    def _validate_and_split_envelope(
+        self,
+        filename: str,
+        member_surnames: Mapping[str, Sequence[str]] | None,
+        source_url: str | None,
+    ) -> tuple[int, int, str | None, list[dict], list[dict], list[dict]]:
+        """Stage 1: Validate input envelope, extract query suffix and extensions.
+
+        Invariants:
+        - The input must be a string basename, encodable in UTF-8 and under 16 KiB.
+        - Directory separators ('/', '\\') and null bytes are rejected.
+        - Surnames must be a Mapping if supplied.
+        - Source URLs must be valid HTTP(S) without credentials, checked via validate_http_url.
+        - Query strings and extensions are preserved as transport/extension observations without modifying source text.
+        """
         if not isinstance(filename, str):
             raise NamingError('invalid-filename', 'Filename must be a string basename')
         try:
@@ -771,40 +826,60 @@ class Extractor:
             raise NamingError('invalid-filename', 'Expected a literal basename, not a path or URL')
         if member_surnames is not None and not isinstance(member_surnames, Mapping):
             raise NamingError('invalid-member-reference', 'Member surnames must be a Congress-keyed mapping')
+
         source_host = None
         if source_url is not None:
-            try:
-                if not isinstance(source_url, str) or len(source_url.encode('utf-8')) > MAX_SOURCE_BYTES:
-                    raise ValueError
-                if any(c.isspace() or ord(c) < 32 for c in source_url):
-                    raise ValueError
-                source = urlsplit(source_url)
-                if (source.scheme not in {'http', 'https'} or not source.hostname
-                        or source.username is not None or source.password is not None):
-                    raise ValueError
-                if source.port not in {None, 80, 443}:
-                    raise ValueError
-                source_host = source.hostname
-            except (ValueError, UnicodeError) as exc:
-                raise NamingError('invalid-source-url', 'Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes') from exc
-        observations = []
-        source_readings = []
-        ignored = []
+            source = validate_http_url(
+                source_url,
+                max_bytes=MAX_SOURCE_BYTES,
+                allowed_ports={None, 80, 443},
+                error_code='invalid-source-url',
+                error_message='Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes',
+            )
+            source_host = source.hostname
+
+        observations: list[dict] = []
+        source_readings: list[dict] = []
+        ignored: list[dict] = []
         start = len(filename) - len(filename.lstrip())
         end = len(filename.rstrip())
         if query := QUERY.search(filename, start, end):
-            observations.append({'rule': 'query-shaped-suffix', 'scope': 'transport', 'start': query.start(), 'end': query.end(),
-                                 'description': 'Query-shaped text retained separately; not proof of a URL or file format.',
-                                 'fields': [self._field('query_text', query[0], query.start(), query.end())]})
+            observations.append({
+                'rule': 'query-shaped-suffix', 'scope': 'transport', 'start': query.start(), 'end': query.end(),
+                'description': 'Query-shaped text retained separately; not proof of a URL or file format.',
+                'fields': [self._field('query_text', query[0], query.start(), query.end())],
+            })
             end = query.start()
         stem_end = end
         while hit := EXTENSION.search(filename, start, stem_end):
-            observations.append({'rule': 'extension', 'scope': 'extension', 'start': hit.start(), 'end': hit.end(),
-                                 'description': 'Literal extension; does not verify the file contents.',
-                                 'fields': [self._field('extension', hit['extension'], hit.start('extension'), hit.end('extension'))]})
+            observations.append({
+                'rule': 'extension', 'scope': 'extension', 'start': hit.start(), 'end': hit.end(),
+                'description': 'Literal extension; does not verify the file contents.',
+                'fields': [self._field('extension', hit['extension'], hit.start('extension'), hit.end('extension'))],
+            })
             stem_end = hit.start()
-        stem = filename[start:stem_end]
-        payloads = []
+        return start, stem_end, source_host, observations, source_readings, ignored
+
+    def _match_stem_and_payloads(
+        self,
+        filename: str,
+        start: int,
+        stem_end: int,
+        stem: str,
+        source_url: str | None,
+        source_host: str | None,
+        observations: list[dict],
+        source_readings: list[dict],
+    ) -> list[tuple[str, str, int]]:
+        """Stage 2: Match publisher source-stem rules, stem layouts, and initial payload slots.
+
+        Invariants:
+        - Publisher source-stem rules match whole stems against allowed host/url configurations.
+        - Stem rules match in descending priority (0, 1, 2); the first matching priority group halts stem search.
+        - Payload slots (descriptive, legislative) are queued with their offsets into the original filename.
+        - If no stem rule matched, collection-prefix rules are evaluated.
+        """
+        payloads: list[tuple[str, str, int]] = []
         # Local publisher aliases qualify whole basenames, never a token inside
         # an official witness/member slot. The supplied URL is not dereferenced.
         if source_url is not None:
@@ -823,6 +898,7 @@ class Extractor:
                     # been read through their usual paths.
                     target = source_readings if rule.get('scan_stage') == 'supplemental' else observations
                     target.append(self._match(rule, hit, start))
+
         for priority in (() if any(m['scope'] == 'source-stem' for m in observations) else STEM_PRIORITIES):
             found = False
             for rule, regex in self.rules:
@@ -835,6 +911,7 @@ class Extractor:
                             payloads.append((scope, hit['payload'], start + hit.start('payload')))
             if found:
                 break
+
         for scope, payload, offset in payloads:
             if scope == 'descriptive-payload':
                 for priority in STEM_PRIORITIES:
@@ -872,13 +949,28 @@ class Extractor:
                                         for rule, regex in self.rules
                                         if rule['id'] == self.roles['substitute_target'][0]['id']
                                         and (hit := regex.fullmatch(payload[pos:])))
+
         if not any(m['rule'] in self.stem_ids for m in observations):
             for rule, regex in self.rules:
                 if rule['scope'] == 'collection-prefix' and (hit := regex.fullmatch(stem)):
                     observations.append(self._match(rule, hit, start))
+        return payloads
 
-        # Specific payload slots must be visible even when a broader layout
-        # matched first. Reserve their source spans before generic date/ID scans.
+    def _refine_payload_slots(
+        self,
+        filename: str,
+        stem_end: int,
+        payloads: list[tuple[str, str, int]],
+        observations: list[dict],
+        ignored: list[dict],
+    ) -> None:
+        """Stage 3: Refine legislative payload slots, publication components, and numeric components.
+
+        Invariants:
+        - Specific payload slots are reserved before generic date/identifier scans.
+        - Numeric component splitting guard ensures complete date tokens don't fracture adjacent digits.
+        - Publication components and numeric report subjects are extracted with their assigned roles.
+        """
         for scope, payload, offset in payloads:
             if scope != 'legislative-payload':
                 continue
@@ -891,7 +983,6 @@ class Extractor:
                 else:
                     continue
                 for hit in hits:
-                    # The normal priority pass may already have selected it.
                     if not any(m['rule'] == rule['id'] and m['start'] == offset + hit.start()
                                and m['end'] == offset + hit.end() for m in observations):
                         observations.append(self._match(rule, hit, offset))
@@ -899,8 +990,6 @@ class Extractor:
         for parent in tuple(observations):
             self._refine(parent, filename, observations, 'before-search')
 
-        # Keep useful label/subject slots, but never establish a date by cutting
-        # a longer numeric component. Retain the old split as an alternative.
         for match in observations:
             if not self._uses(match, 'complete-date-token'):
                 continue
@@ -921,8 +1010,6 @@ class Extractor:
                     if suffix['name'] == 'suffix' and suffix['start'] == old_end:
                         suffix.update(raw=filename[complete_end:suffix['end']], start=complete_end)
 
-        # Publication component numbers have explicit roles. Reserve them before
-        # free-text date scans, just like the package's main publication number.
         for parent in tuple(observations):
             if not self._uses(parent, 'publication-components'):
                 continue
@@ -945,8 +1032,6 @@ class Extractor:
                                     self._read_vocabularies(part, options, hit.groupdict())
                                 observations.append(component)
 
-        # Loose report subjects may be report numbers, measure numbers or local
-        # IDs. Preserve them whole; only printed part wording supplies a role.
         for parent in tuple(observations):
             if not self._uses(parent, 'numeric-subject-parts'):
                 continue
@@ -966,10 +1051,25 @@ class Extractor:
         for parent in tuple(observations):
             self._refine(parent, filename, observations, 'local-reference')
 
-        # Only free text slots can contain additional references or dates. Known
-        # person IDs and dates must not produce accidental bills or revisions.
-        # RCP uses short measure spellings that would be too broad to scan in
-        # arbitrary prose. Read them only after a printed RCP prefix.
+    def _scan_free_text_and_qualifiers(
+        self,
+        filename: str,
+        start: int,
+        stem: str,
+        stem_end: int,
+        payloads: list[tuple[str, str, int]],
+        observations: list[dict],
+        ignored: list[dict],
+        measure_spans: list[tuple[int, int]],
+    ) -> list[tuple[int, int]]:
+        """Stage 4: Scan free-text slots for references, dates, measures, and qualifiers.
+
+        Invariants:
+        - Only unassigned free-text slots can match dates, measures, and descriptors.
+        - Protected spans prevent structured tokens from producing accidental bills or revisions.
+        - Qualifiers and document labels are grouped by contiguous word boundaries without crossing terminal spans.
+        - Deduplication rules remove redundant whole-slot matches when component rules expose finer syntax.
+        """
         if 'short_measure' in self.roles and 'print_prefix' in self.roles:
             owned_spans = [(f['start'], f['end']) for m in observations for f in m['fields']
                            if not self._searchable(m, f)]
@@ -982,14 +1082,13 @@ class Extractor:
                     if self._overlaps(start + hit.start(), start + hit.end(), owned_spans):
                         break
                     observations.append(self._match(rcp_rule, hit, start))
-                    # Further references must be consecutive components,
-                    # not unrelated short tokens later in prose.
                     pos = hit.end()
                     while pos < len(stem) and stem[pos] in '_-':
                         pos += 1
                     if pos == hit.end():
                         break
-        protected = []
+
+        protected: list[tuple[int, int]] = []
         for match in observations:
             for field in match['fields']:
                 numeric_subject = (match['scope'] == 'legislative-payload'
@@ -999,9 +1098,6 @@ class Extractor:
 
         searches = [(r, rx) for r, rx in self.rules if r['scope'] == 'search']
         separated_date = self.roles['separated_date'][1]
-        measure_regex = self.roles['measure'][1]
-        measure_spans = [(start + m.start(), start + m.end()) for m in measure_regex.finditer(stem)]
-        # Complete identifier/date forms reserve their spans before other scans.
         date_rules = {r['id'] for r, _ in searches if 'numeric-date' in r.get('processors', ())}
         revision_dates = [rx for r, rx in searches if r['id'] in date_rules and r.get('revision_candidate', True)]
 
@@ -1013,8 +1109,6 @@ class Extractor:
                         preceding_word = re.search(r'[A-Za-z]+\Z', stem[:hit.start()])
                         if preceding_word and not preceding_word[0][0].isupper():
                             continue
-                    # A complete malformed shape still needs a possible month
-                    # in one of its first two components. Its year stays raw.
                     if 'malformed-date' in rule.get('processors', ()) and min(
                             map(int, re.split(r'[._-]', hit['date_token'])[:2])) > 12:
                         continue
@@ -1025,14 +1119,10 @@ class Extractor:
             while hit := regex.search(stem, pos):
                 hits.append(hit)
                 pos = hit.start() + 1
-            # An earlier numeric prefix can resemble a date only by crossing
-            # the separator before the real date. Prefer consistent date
-            # separators; retain all other candidates as observations/receipts.
+
             def priority(hit):
                 raw = hit.groupdict().get('date_token', hit.groupdict().get('short_date_token'))
                 separators = set(re.findall(r'[ ._-]', raw))
-                # Prefer a complete four-digit-year reading over a crossing
-                # short-date fragment, without assuming a century for either.
                 return (not bool(date_candidates(raw)[0]), len(separators) > 1, hit.start())
             yield from sorted(hits, key=priority)
 
@@ -1071,15 +1161,11 @@ class Extractor:
                 if not any(self._option(m, 'leading_date')
                            and m['start'] == start and m['end'] <= a for m in observations):
                     continue
-                # A delimited abbreviation may already expose the same label.
                 if any(m['rule'] == self.roles['statement_label'][0]['id'] and m['start'] <= a
                        and m['end'] == b for m in observations):
                     continue
             reason = None
             if number := rule.get('reference_number'):
-                # Attachment 3-27-19 contains a complete separated date, not
-                # an established attachment 3. A compact numeric reference
-                # remains whole even when its digits also resemble a date.
                 date_hit = separated_date.match(stem, hit.start(number))
                 if date_hit and date_hit.end() > hit.end(number) and date_candidates(date_hit['date_token'])[1]:
                     reason = 'Reference would consume only a prefix of a complete separated date.'
@@ -1101,9 +1187,9 @@ class Extractor:
                                       if (d := rx.match(stem, hit.start('revision_number')))
                                       and date_candidates(d.groupdict().get('date_token', d.groupdict().get('short_date_token')))[1]), None)
                 if possible_date:
-                    ignored.append({'rule':rule['id'], 'raw':hit[0], 'start':a, 'end':b,
-                                    'reason':'Date follows revision wording; no sequence number inferred.',
-                                    'fields':[dict(f) for f in observed['fields']]})
+                    ignored.append({'rule': rule['id'], 'raw': hit[0], 'start': a, 'end': b,
+                                    'reason': 'Date follows revision wording; no sequence number inferred.',
+                                    'fields': [dict(f) for f in observed['fields']]})
                     observed['fields'] = [f for f in observed['fields'] if f['name'] != 'revision_number']
                     observed['end'] = start + hit.end('revision_marker')
                     observed['fields'][0]['note'] = 'Revision wording followed by date-shaped text; no revision number inferred.'
@@ -1113,8 +1199,6 @@ class Extractor:
                 protected.append((a, b) if reserve == 'match' else
                                  (start + hit.start(reserve), start + hit.end(reserve)))
 
-        # An explicit measure reference also supplies legislative context in
-        # descriptive names. Reuse the bounded marker, outside assigned fields.
         if not payloads and any(m['rule'] == self.roles['measure'][0]['id'] for m in observations):
             for role in ('descriptive_substitute', 'substitute_marker'):
                 rule, regex = self.roles[role]
@@ -1124,11 +1208,7 @@ class Extractor:
                         observations.append(self._match(rule, hit, start))
                         protected.append((a, b))
 
-        # Qualifiers belong to their filename wording, not to a verified access
-        # or publication state. Group only neighboring words; names may precede
-        # a terminal qualifier group, but unrelated title words cannot follow it.
-        label_patterns = [rx for r, rx in self.rules
-                          if r.get('qualifier_anchor')]
+        label_patterns = [rx for r, rx in self.rules if r.get('qualifier_anchor')]
         document_labels = [{'start': f['start'], 'end': f['end'], 'rule': m['rule']}
                            for m in observations for f in m['fields']
                            if f['name'] == 'label' and any(rx.fullmatch(f['raw']) for rx in label_patterns)]
@@ -1136,12 +1216,12 @@ class Extractor:
         qualifier_hits = [self._match(qualifier_rule, h, start) for h in qualifier_regex.finditer(stem)
                           if not self._overlaps(start + h.start(), start + h.end(), protected)]
         terminal_spans = [(f['start'], f['end']) for m in observations for f in m['fields']
-                          if f['name'] in {'opaque_uuid','opaque_hex','date_token','short_date_token','time_token','fraction_token','filename_format_token',
-                                           'fiscal_marker','fiscal_year_token'}]
+                          if f['name'] in {'opaque_uuid', 'opaque_hex', 'date_token', 'short_date_token', 'time_token',
+                                           'fraction_token', 'filename_format_token', 'fiscal_marker', 'fiscal_year_token'}]
         terminal_end = stem_end
         if hanging := re.search(r'pdf(?:-[0-9]+)?\Z', stem, re.I):
             terminal_end = start + hanging.start()
-        groups = []
+        groups: list[list[dict]] = []
         for match in sorted([*document_labels, *qualifier_hits], key=lambda m: (m['start'], m['end'])):
             if groups and re.fullmatch(r'[ ._()\[\]-]*', filename[groups[-1][-1]['end']:match['start']]):
                 groups[-1].append(match)
@@ -1149,33 +1229,24 @@ class Extractor:
                 groups.append([match])
         for group in groups:
             terminal = (all(filename[i] in ' ._()-[]0123456789'
-                                or any(a <= i < b for a, b in terminal_spans)
-                                for i in range(group[-1]['end'], terminal_end)))
+                            or any(a <= i < b for a, b in terminal_spans)
+                            for i in range(group[-1]['end'], terminal_end)))
             for match in group:
-                # Remarks may be followed by a topic, such as Public Health.
-                # Only preceding or terminal qualifiers are unambiguous here.
                 adjacent = any(m['rule'] != self.roles['qualifier'][0]['id']
                                and (not self._option(m, 'qualifier_before_only') or match['end'] <= m['start'])
                                for m in group)
                 public = any(f['raw'].lower() == 'public' for f in match.get('fields', ()))
-                prefix = all(c in ' ._()-[]0123456789' or any(a <= i < b for a,b in terminal_spans)
-                             for i,c in enumerate(filename[start:match['start']], start))
-                # A leading qualifier can precede an unstructured subject and
-                # its document label. Other topic labels (e.g. Final report
-                # discusses Smith SJQ) make that interpretation unsupported.
+                prefix = all(c in ' ._()-[]0123456789' or any(a <= i < b for a, b in terminal_spans)
+                             for i, c in enumerate(filename[start:match['start']], start))
                 labels_after = [f for m in observations for f in m['fields']
                                 if f['name'] == 'label' and f['start'] >= match['end']]
                 prefix = prefix and all(f.get('category') in {
                     'testimony', 'statement', 'witness-statement', 'witness-list',
                     'questions-for-record', 'questions-for-record-response', 'questionnaire'} for f in labels_after)
-                # Processing words at the start of a title can name its topic
-                # (OCR Technology, Opt Out). Require a document or suffix context.
                 processing = any(f['raw'].lower() in {'ocr', 'sanitized', 'scrubbed', 'opt'}
                                  for f in match.get('fields', ()))
                 allowed = adjacent or terminal or prefix and not processing
                 if public:
-                    # Public servants / Public health describes a topic. A
-                    # trailing Public or Public before the label is different.
                     allowed = terminal and bool(document_labels) or any(
                         m['rule'] != self.roles['qualifier'][0]['id'] and match['end'] <= m['start']
                         for m in group)
@@ -1210,9 +1281,6 @@ class Extractor:
         for parent in tuple(observations):
             self._refine(parent, filename, observations, 'targets')
 
-        # Bare ANS_01 already has a whole-slot interpretation. Keep the new
-        # component rule only when it exposes syntax not already available.
-        # A qualified reading on the whole-slot marker is not a second number.
         for match in tuple(observations):
             if self._option(match, 'deduplicate_fields') == 'syntax' and all(
                 any(all(field[key] == other[key] for key in ('name', 'raw', 'start', 'end'))
@@ -1226,15 +1294,28 @@ class Extractor:
                     for m in observations if m is not match for other in m['fields'])
                 for field in match['fields']
             ):
-                # Whole-slot rules already provide the same placeholder.
                 observations.remove(match)
+        return protected
 
-        # References discovered inside free text also take precedence over
-        # generic numeric assumptions made by the final fallback.
-        protected = list(set(protected) | {(f['start'], f['end'])
-                         for m in observations for f in m['fields'] if not self._searchable(m, f)})
+    def _apply_fallbacks_and_remainders(
+        self,
+        filename: str,
+        start: int,
+        stem: str,
+        stem_end: int,
+        observations: list[dict],
+    ) -> None:
+        """Stage 5: Apply date/unmatched fallbacks, remainders, and iterative refinement.
+
+        Invariants:
+        - Free text references take precedence over generic numeric assumptions.
+        - ZIP stems are never assigned person name fallbacks.
+        - Iterative remainder refinement enforces safety bounds (MAX_REMAINDER_REFINEMENTS, MAX_REMAINDER_TEXT).
+        """
+        protected = list(set([(f['start'], f['end'])
+                          for m in observations for f in m['fields'] if not self._searchable(m, f)]))
         selected_dates = {(f['start'], f['end']) for m in observations for f in m['fields']
-                          if f['name'] in {'date_token','short_date_token'}}
+                          if f['name'] in {'date_token', 'short_date_token'}}
         local_numbers = {(f['start'], f['end']) for m in observations for f in m['fields']
                          if f['name'] == 'local_number_token'}
 
@@ -1243,12 +1324,10 @@ class Extractor:
             return (date_candidates(hit['date_token'])[1]
                     and (span in selected_dates or not self._overlaps(*span, protected)))
 
-        # A document label gives the remaining text a subject slot, but must
-        # not hide dates or numeric prefixes previously exposed by fallback.
         def fallback(left, right):
             text = filename[left:right]
             for rule, regex in self.rules:
-                if rule['scope'] not in {'unmatched-date','unmatched-stem'} or not (hit := regex.fullmatch(text)):
+                if rule['scope'] not in {'unmatched-date', 'unmatched-stem'} or not (hit := regex.fullmatch(text)):
                     continue
                 if rule['scope'] == 'unmatched-date' and not fallback_date_allowed(hit, left):
                     continue
@@ -1270,8 +1349,8 @@ class Extractor:
 
         def selected_date_remainder(left, right, *, subject=False):
             selected = next((m for m in observations
-                           if self._option(m, 'leading_date')
-                           and m['start'] == left and m['end'] < right), None)
+                             if self._option(m, 'leading_date')
+                             and m['start'] == left and m['end'] < right), None)
             if selected is None:
                 selected = next((m for m in observations if self._uses(m, 'malformed-date')
                                  and (m['start'] == left and m['end'] < right
@@ -1310,11 +1389,9 @@ class Extractor:
                     observations.append(refined)
                     continue
                 for rule, regex in self.rules:
-                    if (rule['scope'] not in {'unmatched-date','unmatched-stem'}
+                    if (rule['scope'] not in {'unmatched-date', 'unmatched-stem'}
                             or not (hit := regex.fullmatch(field['raw']))):
                         continue
-                    # Reuse the existing hanging-suffix policy inside an explicit
-                    # subject; a bare assumed-name match adds no new information.
                     suffix_only = 'suffix-only-fallback' in rule.get('processors', ())
                     if suffix_only and not hit['ignored_suffix']:
                         continue
@@ -1337,19 +1414,15 @@ class Extractor:
                     observations.append(refined)
                     break
 
-        # These are the user's explicit final assumptions, after source layouts
-        # and calendar-aware token recognition. ZIP stems are never person names.
         is_zip = any(f['name'] == 'extension' and f['raw'].lower() == 'zip' for m in observations for f in m['fields'])
         if stem and not is_zip and not any(m['rule'] in self.stem_ids or m['scope'] == 'collection-prefix' for m in observations):
             if refined := selected_date_remainder(start, stem_end) or fallback(start, stem_end):
                 observations.append(refined)
 
-        # Removing a prefix can expose a trailing date/ID or another prefix.
-        # Keep the parent text and reuse the same fallback on shorter remainders.
         pending = [f for m in observations
-                   if m['scope'] in {'unmatched-date','unmatched-stem','subject-refinement'}
-                   for f in m['fields'] if f['name'] in {'name_token','subject_token'} and f['raw']]
-        seen = set()
+                   if m['scope'] in {'unmatched-date', 'unmatched-stem', 'subject-refinement'}
+                   for f in m['fields'] if f['name'] in {'name_token', 'subject_token'} and f['raw']]
+        seen: set[tuple[str, int, int]] = set()
         pos = 0
         retained_text = sum(len(f['raw']) for m in observations for f in m['fields'])
         while pos < len(pending):
@@ -1361,7 +1434,7 @@ class Extractor:
             seen.add(key)
             refined = selected_date_remainder(field['start'], field['end'], subject=field['name'] == 'subject_token') or fallback(field['start'], field['end'])
             if not refined or (refined['rule'] != 'local-number-remainder'
-                               and not any(f['name'] in {'date_token','generic_identifier'} for f in refined['fields'])):
+                               and not any(f['name'] in {'date_token', 'generic_identifier'} for f in refined['fields'])):
                 continue
             retained_text += sum(len(f['raw']) for f in refined['fields'])
             if pos > MAX_REMAINDER_REFINEMENTS or retained_text > MAX_REMAINDER_TEXT:
@@ -1379,9 +1452,27 @@ class Extractor:
                     if part['raw'] and (part['start'] > field['start'] or part['end'] < field['end']):
                         pending.append(part)
             observations.append(refined)
+
+    def _apply_supplemental_and_transports(
+        self,
+        filename: str,
+        start: int,
+        stem: str,
+        stem_end: int,
+        payloads: list[tuple[str, str, int]],
+        observations: list[dict],
+        member_surnames: Mapping[str, Sequence[str]] | None,
+        measure_spans: list[tuple[int, int]],
+        source_readings: list[dict],
+    ) -> None:
+        """Stage 6: Apply supplemental wording, member surnames, transports, and role wording.
+
+        Invariants:
+        - Supplemental wording rules decorate descriptive text without overwriting earlier fallback readings.
+        - Surnames, transport fragments, and role wordings retain source offsets and notes.
+        - Deferred source readings from publisher rules are appended at the end.
+        """
         observations.extend(self._support_references(filename, start, stem_end, observations, measure_spans))
-        # Supplement descriptive text without rewriting earlier fallback readings.
-        # Complete dates and concrete IDs already own their spans.
         supplemental_hits = [(r, h) for r, rx in self.rules
                              if r['scope'] != 'source-stem' and (r.get('scan_stage') == 'supplemental' or (r['scope'] == 'document-wording-search' and r.get('scan_stage') != 'context'))
                              for h in rx.finditer(stem)]
@@ -1415,21 +1506,16 @@ class Extractor:
                     ):
                         continue
                 if 'heading-abbreviation' in rule.get('processors', ()) and hit.groupdict().get('meeting_abbreviation'):
-                    # The abbreviation alone has no established meeting meaning.
-                    # Reuse the existing results-heading boundary as context.
                     a, b = hit.span('meeting_abbreviation')
                     if not any(self._option(m, 'reserve_field') == 'result_wording'
                                and m['start'] <= start + a and start + b <= m['end']
                                for m in observations):
                         continue
                 if rule.get('reserve_field'):
-                    # Heading context may contain existing dates and session
-                    # fields; only the newly captured word must be unclaimed.
                     a, b = hit.span(rule['reserve_field'])
                     if not self._overlaps(start + a, start + b, protected):
                         observations.append(self._match(rule, hit, start))
                     continue
-                # Keep generic labels alongside more specific phrases and context.
                 reserved = [(f['start'], f['end']) for f in protected_fields
                             if f['name'] not in rule.get('allow_overlap_fields', ())]
                 if rule.get('unique_label'):
@@ -1442,21 +1528,18 @@ class Extractor:
                     if (a > start and filename[a - 1].isalnum()
                             or b < stem_end and filename[b].isalpha() and not filename[b].isascii()):
                         continue
-                    # A manager's phrase already includes the narrower wording.
-                    # Numbered amendment markers can coexist with the full label.
                     if any(f['name'] == 'label' and f['start'] <= a and b <= f['end']
                            for m in observations for f in m['fields']):
                         continue
                 if not self._overlaps(start + hit.start(), start + hit.end(), reserved):
                     observations.append(self._match(rule, hit, start))
                     self._refine(observations[-1], filename, observations, 'supplemental')
+
         observations.extend(self._subject_remainders(filename, observations))
         observations.extend(self._description_remainders(filename, observations))
         if member_surnames:
             observations.extend(self._members(filename, observations, member_surnames))
-        # A concatenated URL can leave a recognizable prefix without yielding a
-        # valid filename. Preserve the original boundaries and expose fragments
-        # separately; reuse the ordinary extension and payload rules.
+
         for rule, regex in self.rules:
             if rule['scope'] != 'transport-search' or not (hit := regex.search(stem)):
                 continue
@@ -1491,10 +1574,49 @@ class Extractor:
                                 description=fragment['description'] + ' Readable prefix before extension-like text and a protocol marker; the full source name remains malformed.')
                             observations.append(fragment)
                     break
+
         observations.extend(self._role_wording(filename, observations, start, stem_end))
         observations.extend(self._role_subject_remainders(filename, observations))
         observations.extend(source_readings)
-        pieces = [{'kind': hit.lastgroup, 'raw': hit[0], 'start': hit.start(), 'end': hit.end()} for hit in TOKEN.finditer(filename)]
-        return {'input': filename, **({'source_url': source_url} if source_url is not None else {}),
-                'stem_end': stem_end, 'observations': observations,
-                'pieces': pieces, 'suppressed': ignored}
+
+    def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
+                source_url: str | None = None) -> dict:
+        """Extract metadata from congressional document filenames preserving source evidence.
+
+        The extraction pipeline processes the filename in six distinct stages:
+        1. Validate envelope and separate transport query / file extensions.
+        2. Match stem rules, publisher source-stem rules, and initial payloads.
+        3. Refine payload slots, publication components, and numeric components.
+        4. Scan free-text slots for references, dates, measures, and qualifiers.
+        5. Apply date/unmatched remainders and iterative fallback refinement.
+        6. Apply supplemental wording, member surnames, transports, and role wording.
+        """
+        start, stem_end, source_host, observations, source_readings, ignored = (
+            self._validate_and_split_envelope(filename, member_surnames, source_url)
+        )
+        stem = filename[start:stem_end]
+        measure_regex = self.roles['measure'][1]
+        measure_spans = [(start + m.start(), start + m.end()) for m in measure_regex.finditer(stem)]
+
+        payloads = self._match_stem_and_payloads(
+            filename, start, stem_end, stem, source_url, source_host, observations, source_readings
+        )
+        self._refine_payload_slots(filename, stem_end, payloads, observations, ignored)
+        self._scan_free_text_and_qualifiers(
+            filename, start, stem, stem_end, payloads, observations, ignored, measure_spans
+        )
+        self._apply_fallbacks_and_remainders(filename, start, stem, stem_end, observations)
+        self._apply_supplemental_and_transports(
+            filename, start, stem, stem_end, payloads, observations, member_surnames, measure_spans, source_readings
+        )
+
+        pieces = [{'kind': hit.lastgroup, 'raw': hit[0], 'start': hit.start(), 'end': hit.end()}
+                  for hit in TOKEN.finditer(filename)]
+        return {
+            'input': filename,
+            **({'source_url': source_url} if source_url is not None else {}),
+            'stem_end': stem_end,
+            'observations': observations,
+            'pieces': pieces,
+            'suppressed': ignored,
+        }

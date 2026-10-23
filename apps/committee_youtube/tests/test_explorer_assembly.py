@@ -158,3 +158,31 @@ def test_spilled_records_and_sequence_stream_by_kind_and_json_dicts():
     assert [d["kind"] for d in json_dicts] == ["meeting", "meeting", "appearance", "data_issue"]
     assert catalog.records.get_by_key(("meeting", "m2")).title == "Second hearing"
     assert catalog.records.get_by_key(("meeting", "nonexistent")) is None
+
+
+def test_bit_packing_overflow_raises_value_error(monkeypatch):
+    from committee_explorer.assemble import MAX_SOURCE_LENGTH, MAX_SOURCE_META_IDX, MAX_RECORD_LENGTH, _SpilledSources, _SpilledRecords
+
+    spilled_src = _SpilledSources()
+    src = source()
+
+    # Test source length overflow
+    monkeypatch.setattr(spilled_src._arena, "append", lambda data: (0, MAX_SOURCE_LENGTH))
+    with pytest.raises(ValueError, match="exceeds bit-packing capacity"):
+        spilled_src[("source_record", src.id)] = src
+
+    # Test source meta_idx overflow
+    monkeypatch.setattr(spilled_src._arena, "append", lambda data: (0, 100))
+    monkeypatch.setattr(spilled_src, "_intern_meta", lambda p, s: MAX_SOURCE_META_IDX)
+    with pytest.raises(ValueError, match="exceeds bit-packing capacity"):
+        spilled_src[("source_record", src.id)] = src
+    spilled_src.close()
+
+    # Test domain record length overflow
+    spilled_rec = _SpilledRecords()
+    m = meeting()
+    monkeypatch.setattr(spilled_rec._arena, "append", lambda data: (0, MAX_RECORD_LENGTH))
+    with pytest.raises(ValueError, match="exceeds bit-packing capacity"):
+        spilled_rec[("meeting", m.id)] = m
+    spilled_rec.close()
+

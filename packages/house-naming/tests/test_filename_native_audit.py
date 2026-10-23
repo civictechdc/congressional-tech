@@ -3,6 +3,10 @@ from copy import deepcopy
 
 import pytest
 
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+
 from audit_filename_extraction import native_refinement_reason
 from house_naming import Engine
 

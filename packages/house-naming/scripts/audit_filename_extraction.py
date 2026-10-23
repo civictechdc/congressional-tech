@@ -9,9 +9,6 @@ import json
 from pathlib import Path
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from compare_filename_families import load_baseline
-
 
 def signature(field):
     return field['name'], field['raw'], field['start'], field['end']
@@ -53,6 +50,9 @@ def native_refinement_reason(field, observations):
 
 
 def main():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'archive/tools'))
+    from compare_filename_families import load_baseline
+
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('run', type=Path)
     ap.add_argument('--previous-extraction', type=Path,

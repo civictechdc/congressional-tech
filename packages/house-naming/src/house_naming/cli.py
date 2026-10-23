@@ -17,7 +17,22 @@ class Parser(argparse.ArgumentParser):
         raise NamingError('usage', message)
 
 
-def main(argv: list[str] | None = None) -> int:
+def cli_error_boundary(func, *args, **kwargs) -> int:
+    """Execute a CLI function within standard House naming error boundaries."""
+    try:
+        res = func(*args, **kwargs)
+        return 0 if res is None else res
+    except NamingError as exc:
+        sys.stderr.write(dumps({'error': exc.as_dict()}))
+        return 2 if exc.code in {'usage', 'input-too-large', 'invalid-catalog', 'extraction-limit'} else 1
+    except BrokenPipeError:
+        return 0
+    except (OSError, UnicodeError, ValueError) as exc:
+        sys.stderr.write(dumps({'error': {'code': 'io-or-configuration-error', 'message': str(exc), 'details': []}}))
+        return 2
+
+
+def _run_cli(argv: list[str] | None = None) -> int:
     parser = Parser(prog='house-naming', description='Offline House naming guide: 2012 source conventions')
     parser.add_argument('--version', action='version', version=__version__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -42,57 +57,52 @@ def main(argv: list[str] | None = None) -> int:
     sub = commands.add_parser('schema', help='Emit the standalone record schema')
     sub.add_argument('--filename-lexical', action='store_true', help='Emit the weaker filename candidate schema instead')
 
-    try:
-        args = parser.parse_args(argv)
-        if args.command == 'check':
-            data = {'status': 'passed', **check_catalog(load_guide())}
-        elif args.command == 'schema':
-            compile_schema = filename_schema if args.filename_lexical else records_schema
-            data = compile_schema(load_guide())
-        else:
-            engine = Engine()
-            command = args.command
-            if command == 'kinds':
-                data = engine.kinds()
-            elif command in ('validate', 'render'):
-                record = read_json(args.record)
-                if command == 'validate':
-                    data = {'valid': True, 'record': engine.validate(record)}
-                else:
-                    output = engine.render(record)
-                    if args.plain:
-                        print(output)
-                        return 0
-                    rule = engine.guide['patterns'][record['kind']]
-                    data = {'kind': record['kind'], 'action': rule['action'], 'output': output,
-                            'requires_interpretation': rule['requires_interpretation'], 'decisions': rule['decisions']}
-            elif command == 'parse':
-                data = engine.parse(args.filename)
-                sys.stdout.write(dumps(data))
-                return 0 if data['valid'] else 1
-            elif command == 'extract':
-                reference = read_json(args.member_surnames) if args.member_surnames else None
-                data = engine.extract(args.filename, member_surnames=reference, source_url=args.source_url)
-            elif command == 'lookup':
-                data = engine.lookup(args.context, args.token)
-            elif command == 'contexts':
-                data = engine.contexts(args.token)
-            elif command == 'committee':
-                data = engine.committee(args.folder_code)
-            elif command == 'source':
-                data = engine.source(args.source_id)
+    args = parser.parse_args(argv)
+    if args.command == 'check':
+        data = {'status': 'passed', **check_catalog(load_guide())}
+    elif args.command == 'schema':
+        compile_schema = filename_schema if args.filename_lexical else records_schema
+        data = compile_schema(load_guide())
+    else:
+        engine = Engine()
+        command = args.command
+        if command == 'kinds':
+            data = engine.kinds()
+        elif command in ('validate', 'render'):
+            record = read_json(args.record)
+            if command == 'validate':
+                data = {'valid': True, 'record': engine.validate(record)}
             else:
-                data = engine.examples(args.value)
-        sys.stdout.write(dumps(data))
-        return 0
-    except NamingError as exc:
-        sys.stderr.write(dumps({'error': exc.as_dict()}))
-        return 2 if exc.code in ('usage', 'input-too-large', 'invalid-catalog', 'extraction-limit') else 1
-    except BrokenPipeError:
-        return 0
-    except (OSError, UnicodeError, ValueError) as exc:
-        sys.stderr.write(dumps({'error': {'code': 'io-or-configuration-error', 'message': str(exc), 'details': []}}))
-        return 2
+                output = engine.render(record)
+                if args.plain:
+                    print(output)
+                    return 0
+                rule = engine.guide['patterns'][record['kind']]
+                data = {'kind': record['kind'], 'action': rule['action'], 'output': output,
+                        'requires_interpretation': rule['requires_interpretation'], 'decisions': rule['decisions']}
+        elif command == 'parse':
+            data = engine.parse(args.filename)
+            sys.stdout.write(dumps(data))
+            return 0 if data['valid'] else 1
+        elif command == 'extract':
+            reference = read_json(args.member_surnames) if args.member_surnames else None
+            data = engine.extract(args.filename, member_surnames=reference, source_url=args.source_url)
+        elif command == 'lookup':
+            data = engine.lookup(args.context, args.token)
+        elif command == 'contexts':
+            data = engine.contexts(args.token)
+        elif command == 'committee':
+            data = engine.committee(args.folder_code)
+        elif command == 'source':
+            data = engine.source(args.source_id)
+        else:
+            data = engine.examples(args.value)
+    sys.stdout.write(dumps(data))
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    return cli_error_boundary(_run_cli, argv)
 
 
 if __name__ == '__main__':

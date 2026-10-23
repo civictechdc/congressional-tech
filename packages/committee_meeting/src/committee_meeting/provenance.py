@@ -72,6 +72,19 @@ class Provenance(Model):
             raise ValueError("derived/inferred values require a named, versioned method")
         return self
 
+    @staticmethod
+    def _resolve_source_and_selector(
+        source_id: str | SourceRecord | Ref[Literal["source_record"]],
+        selector: str | None,
+        selector_type: Literal["json_pointer", "xpath", "css", "row_key", "page", "time", "text"] | None,
+    ) -> tuple[Ref[Literal["source_record"]], str | None]:
+        source_ref = (
+            source_id if isinstance(source_id, Ref)
+            else Ref(kind="source_record", id=source_id.id if isinstance(source_id, SourceRecord) else source_id)
+        )
+        sel_type = selector_type or ("json_pointer" if selector else None)
+        return source_ref, sel_type
+
     @classmethod
     def reported(
         cls,
@@ -81,11 +94,7 @@ class Provenance(Model):
         selector_type: Literal["json_pointer", "xpath", "css", "row_key", "page", "time", "text"] | None = None,
         explanation: str | None = None,
     ) -> Provenance:
-        source_ref = (
-            source_id if isinstance(source_id, Ref)
-            else Ref(kind="source_record", id=source_id.id if isinstance(source_id, SourceRecord) else source_id)
-        )
-        sel_type = selector_type or ("json_pointer" if selector else None)
+        source_ref, sel_type = cls._resolve_source_and_selector(source_id, selector, selector_type)
         return cls(
             citations=(Citation(source=source_ref, selector_type=sel_type, selector=selector),),
             basis="reported",
@@ -104,11 +113,7 @@ class Provenance(Model):
         basis: Literal["derived", "inferred"] = "derived",
         explanation: str | None = None,
     ) -> Provenance:
-        source_ref = (
-            source_id if isinstance(source_id, Ref)
-            else Ref(kind="source_record", id=source_id.id if isinstance(source_id, SourceRecord) else source_id)
-        )
-        sel_type = selector_type or ("json_pointer" if selector else None)
+        source_ref, sel_type = cls._resolve_source_and_selector(source_id, selector, selector_type)
         return cls(
             citations=(Citation(source=source_ref, selector_type=sel_type, selector=selector),),
             basis=basis,

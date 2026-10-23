@@ -30,16 +30,6 @@ This is a [Turborepo](https://turborepo.com) monorepo using npm workspaces, in t
 | **`viewer_publication`** | Publishes the public filename viewer without rewriting archive objects. Commands are in [`scripts/publication`](scripts/publication/README.md). |
 | **`news_lake`** | Political news lake: record contract, Iceberg storage boundary, and offline adapter/identity/analysis cores from the [design packet](packages/news-lake/docs/packet.md) (proposed; see `docs/adr/news-lake-contract.md`). |
 
-## Submodules
-
-Some org-native tools are vendored in as git submodules rather than living in the monorepo directly:
-
-| Submodule | What it is |
-| --- | --- |
-| **`submodules/congress_meeting_map`** | Maps congressional committee discussions into an explorable, interactive knowledge graph. |
-
-Clone the repo with its submodules — `git clone --recurse-submodules <url>` — or, in an existing checkout, run `git submodule update --init --recursive`.
-
 ## The project catalog
 
 The work is grouped into five themes. The site renders 19 proposals (each with a problem and a proposed solution) plus the tools already shipped. The source of truth is plain markdown you can read right here on GitHub: **[`apps/site/src/content/`](apps/site/src/content)**.

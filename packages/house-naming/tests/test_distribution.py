@@ -33,10 +33,9 @@ def test_source_archive_contains_a_working_development_tree(tmp_path, source_tre
     root, = unpacked.iterdir()
     for path in ['tests/records.json', 'tests/fixtures/verified_local_conventions.json',
                  'examples/witness.json', 'tools/build.py',
-                 'tools/check_ecmascript.mjs', 'FILENAME_PATTERNS.md',
-                 'tests/compare_filename_extraction.py', 'tests/audit_filename_extraction.py',
-                 'tests/audit_filename_token_boundaries.py', 'tools/compare_filename_families.py',
-                 'notes/house-naming-extraction.md', 'notes/filename-engine-comparison.md']:
+                 'tools/check_ecmascript.mjs', 'FILENAME_PATTERNS.md', 'README.md',
+                 'scripts/compare_filename_extraction.py', 'scripts/audit_filename_extraction.py',
+                 'scripts/audit_filename_token_boundaries.py']:
         assert (root / path).is_file(), path
     env = dict(os.environ, PYTHONPATH=str(root / 'src'), PYTEST_DISABLE_PLUGIN_AUTOLOAD='1')
     pytest_probe = r'''
@@ -57,7 +56,7 @@ raise SystemExit(pytest.main(sys.argv[1:]))
     for args in [
         ['tools/build.py', '--check'],
         ['-c', pytest_probe, '--collect-only', '-q', 'tests'],
-        ['-c', pytest_probe, '-q', 'tests/test_research_note_paths.py',
+        ['-c', pytest_probe, '-q',
          'tests/test_filename_extraction_comparison.py', 'tests/test_filename_native_audit.py',
          'tests/test_filename_token_boundaries.py'],
         ['-m', 'house_naming', 'render', 'examples/witness.json', '--plain'],

@@ -12,8 +12,6 @@ import shutil
 import sys
 from time import perf_counter
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
-from compare_filename_families import load_baseline
 from house_naming.corpus import shared_token_pattern
 
 # These expressions consume no characters. Any other serialized shape must be
@@ -115,6 +113,9 @@ def digest(path):
 
 
 def main():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'archive/tools'))
+    from compare_filename_families import load_baseline
+
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('extraction', type=Path)
     ap.add_argument('corpus', type=Path)
@@ -126,7 +127,7 @@ def main():
     started = perf_counter()
     inputs = [args.extraction/'extractions.jsonl.gz', args.corpus/'shared-tokens.jsonl.gz',
               Path(__file__), Path('packages/house-naming/src/house_naming/corpus.py'),
-              Path('packages/house-naming/tools/compare_filename_families.py'),
+              Path('packages/house-naming/archive/tools/compare_filename_families.py'),
               Path('packages/house-naming/tests/test_filename_token_boundaries.py'),
               Path('packages/house-naming/notes/house-naming-token-boundaries.md'), args.baseline/'summary.json']
     hashes = {str(p.resolve()): digest(p) for p in inputs}

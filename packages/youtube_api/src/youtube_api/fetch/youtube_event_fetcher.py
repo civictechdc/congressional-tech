@@ -8,7 +8,7 @@ from pathlib import Path
 from tinydb import where
 from tinydb.table import Table
 
-from congress_api.models.transcription import (
+from youtube_api.models import (
     YoutubeChannelItem,
     YoutubePlaylistItem,
     YoutubeVideoItem,

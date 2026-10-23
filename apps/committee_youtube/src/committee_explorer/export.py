@@ -11,13 +11,15 @@ import logging
 import shutil
 import tempfile
 from collections import ChainMap, Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from contextlib import ExitStack
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from heapq import merge
 from itertools import chain
 from operator import attrgetter
 from pathlib import Path
+from typing import Any
 
 from committee_meeting import SCHEMA_VERSION
 from committee_meeting.common import Ref
@@ -103,12 +105,14 @@ def validate_selectors(catalog, retained=RetainedSources()):
             raise ValueError(f"Citation does not resolve: {sid} {selector}")
     def check(source, selector):
         check_payload(source.id, source.payload, selector)
-    precollected = getattr(catalog.records, "_cited_json_pointers", None)
+    precollected = getattr(catalog, "cited_json_pointers", None) or getattr(catalog.records, "_cited_json_pointers", None)
     if lazy_sources and precollected is not None and not getattr(catalog.records, "_extra", None):
-        try:
-            delattr(catalog.records, "_cited_json_pointers")
-        except AttributeError:
-            pass
+        if hasattr(catalog.records, "_cited_json_pointers"):
+            try:
+                delattr(catalog.records, "_cited_json_pointers")
+            except AttributeError:
+                pass
+        precollected = dict(precollected)
         cited_current = {}
         waiting = {}
         for sid in list(precollected):
@@ -257,8 +261,17 @@ def _recording_urls(records):
     return {url: next(iter(matches.values())) for url, matches in urls.items() if len(matches) == 1}
 
 
+GPO_RECORD_OFFSET_SHIFT = 28
+GPO_RECORD_LENGTH_MASK = (1 << 28) - 1
+MAX_GPO_RECORD_LENGTH = 1 << 28
+
+
 class _SpilledGpoEvidence(Mapping):
-    """Stream GPO upstream observations to an unlinked arena file; decode one package at a time."""
+    """Stream GPO upstream observations to an unlinked arena file; decode one package at a time.
+
+    Packs (offset << 28) | length into a single 64-bit Python integer with explicit overflow
+    bounds checks so that large memory footprints are avoided during bulk GPO ingestion.
+    """
 
     def __init__(self, path):
         from congress_api.models.gpo import GpoEvidenceRecord
@@ -276,7 +289,9 @@ class _SpilledGpoEvidence(Mapping):
                     raise ValueError(f"Duplicate GPO evidence package: {package}")
                 raw = line.encode("utf-8") if isinstance(line, str) else bytes(line)
                 offset, length = self._arena.append(raw)
-                self._index[package] = (offset << 28) | length
+                if length >= MAX_GPO_RECORD_LENGTH:
+                    raise ValueError(f"GPO record length {length} exceeds maximum {MAX_GPO_RECORD_LENGTH}")
+                self._index[package] = (offset << GPO_RECORD_OFFSET_SHIFT) | length
         except BaseException:
             self.close()
             raise
@@ -286,7 +301,7 @@ class _SpilledGpoEvidence(Mapping):
 
     def __getitem__(self, key):
         packed = self._index[key]
-        raw = self._arena.read(packed >> 28, packed & 0xFFFFFFF)
+        raw = self._arena.read(packed >> GPO_RECORD_OFFSET_SHIFT, packed & GPO_RECORD_LENGTH_MASK)
         return self._record_cls.model_validate_json(raw).source_dict()
 
     def __iter__(self):
@@ -300,10 +315,62 @@ class _SpilledGpoEvidence(Mapping):
         self._arena.close()
 
 
-def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=None, house_state=None, senate_state=None,
-           youtube_dir=None, inventory_state=None, recovered_witnesses=None, video_matches_path=None, recordings_path=None,
-           transcript_files=(), issue_decisions=None, attempts=None, limit=None, as_of=None, revision=None, format="parquet", reuse_from=None, committees_path=None,
-           document_filenames=None, docspec_workspace=None):
+@dataclass(slots=True)
+class ExportOptions:
+    """Options and parameters for committee explorer offline Parquet export."""
+
+    meetings: Any
+    output_dir: Any
+    state_dir: Any
+    gpo_path: Any = None
+    gpo_evidence_path: Any = None
+    house_state: Any = None
+    senate_state: Any = None
+    youtube_dir: Any = None
+    inventory_state: Any = None
+    recovered_witnesses: Any = None
+    video_matches_path: Any = None
+    recordings_path: Any = None
+    transcript_files: Sequence[Any] = ()
+    issue_decisions: Any = None
+    attempts: Any = None
+    limit: int | None = None
+    as_of: datetime | None = None
+    revision: Any = None
+    format: str = "parquet"
+    reuse_from: Any = None
+    committees_path: Any = None
+    document_filenames: Any = None
+    docspec_workspace: Any = None
+
+
+def export(options: ExportOptions | None = None, **kwargs):
+    """Run offline export, validated before an atomic local publication pointer changes."""
+    opts = options if options is not None else ExportOptions(**kwargs)
+    meetings = opts.meetings
+    output_dir = opts.output_dir
+    state_dir = opts.state_dir
+    gpo_path = opts.gpo_path
+    gpo_evidence_path = opts.gpo_evidence_path
+    house_state = opts.house_state
+    senate_state = opts.senate_state
+    youtube_dir = opts.youtube_dir
+    inventory_state = opts.inventory_state
+    recovered_witnesses = opts.recovered_witnesses
+    video_matches_path = opts.video_matches_path
+    recordings_path = opts.recordings_path
+    transcript_files = opts.transcript_files
+    issue_decisions = opts.issue_decisions
+    attempts = opts.attempts
+    limit = opts.limit
+    as_of = opts.as_of
+    revision = opts.revision
+    format = opts.format
+    reuse_from = opts.reuse_from
+    committees_path = opts.committees_path
+    document_filenames = opts.document_filenames
+    docspec_workspace = opts.docspec_workspace
+
     if format != "parquet":
         raise ValueError("Committee Explorer export requires parquet format; legacy sharded json export has been retired")
     now = as_of or datetime.now(timezone.utc)

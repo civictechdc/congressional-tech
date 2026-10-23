@@ -6,11 +6,11 @@ from datetime import date
 import math
 import re
 from typing import Any
-from urllib.parse import urlsplit
 from jsonschema import Draft202012Validator
-from .catalog import load_guide
+from .catalog import load_guide, strip_appropriation_prefix
 from .compiler import record_schema, stem_pattern
 from .errors import NamingError
+from .extraction import validate_http_url
 from .metadata import derived_values
 
 MAX_FILENAME_BYTES = 255
@@ -43,7 +43,7 @@ class Engine:
                           for k, r in self._guide['patterns'].items()}
         self._extensions = {e for r in self._guide['patterns'].values() if r['action'] == 'filename'
                             for e in self._guide['field_types'][r['fields']['extension']]['enum']}
-        self._subjects = tuple(sorted({re.sub(r'^fy[0-9]{2,4}-', '', token)
+        self._subjects = tuple(sorted({strip_appropriation_prefix(token)
                                        for token in self._guide['codes']['appropriation-subject']}, key=len, reverse=True))
         self._measures = tuple(sorted(self._guide['codes']['measure'], key=len, reverse=True))
 
@@ -179,22 +179,7 @@ class Engine:
                 if field == 'weekOf' and day.weekday() != 0:
                     raise NamingError('not-monday', 'weekOf must be a Monday, including holiday weeks')
         if self._guide['patterns'][kind]['action'] == 'reference':
-            try:
-                raw_url = normalized['url']
-                # Deterministic structural HTTP(S) checks. Optional jsonschema
-                # format plugins must not change this package's acceptance.
-                if re.fullmatch(r"[A-Za-z0-9:/?#\[\]@!$&'()*+,;=._~%+-]+", raw_url) is None:
-                    raise ValueError('URL must use ASCII URI spelling')
-                if re.search(r'%(?![0-9A-Fa-f]{2})', raw_url):
-                    raise ValueError('Invalid percent escape')
-                url = urlsplit(raw_url)
-                if url.scheme not in ('http', 'https') or not url.hostname or url.username is not None or url.password is not None:
-                    raise ValueError('Expected absolute HTTP(S) URL without credentials')
-                _ = url.port
-                if re.search(r'[\s\\\x00-\x1f\x7f\u0085\uFEFF]', normalized['url']):
-                    raise ValueError('Whitespace or controls in URL')
-            except ValueError as exc:
-                raise NamingError('invalid-url', 'Expected a syntactically valid absolute HTTP(S) URL without credentials') from exc
+            validate_http_url(normalized['url'])
         else:
             name = self._render(normalized)
             try:
