@@ -32,7 +32,7 @@ class AcceptedViewerPlan:
         return self
 
 
-def accept_viewer_plan(publisher, root, manifest, *, validation, context, protected,
+def accept_viewer_plan(publisher=None, root=None, manifest=None, *, validation, context, protected,
                        source_pins, release_plan, conditions, mode='full'):
     """Wrap existing file/status acceptance; never infer artifact or resume authority.
 
@@ -42,6 +42,8 @@ def accept_viewer_plan(publisher, root, manifest, *, validation, context, protec
     unchanged files again. Callers admit supported output sizes before issuing
     inventory proof; serialized dictionaries cannot issue an inventory.
     """
+    if publisher is None:
+        from viewer_publication import publish_viewer_r2 as publisher
     root = Path(root).resolve()
     if not isinstance(validation, InventoryValidation):
         raise ValueError('Accepted viewer plan requires an issued inventory')

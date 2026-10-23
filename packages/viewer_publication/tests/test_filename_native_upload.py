@@ -8,7 +8,7 @@ import sys
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path[:0] = [str(ROOT / 'apps/site/scripts'), str(ROOT / 'tests'),
+sys.path[:0] = [str(ROOT / 'tests'),
                 str(ROOT / 'packages/viewer_publication/tests')]
 from viewer_publication.filename_native import ViewerAssets, validate_publication
 from congress_api.retention.catalog_cache import LocalStore
@@ -18,17 +18,8 @@ from test_catalog_coalesced_batches import Native
 from test_native_catalog_selection import seed
 from test_recovery_viewer_transfers import Remote
 from viewer_publication.client import GuardedPublicationClient
-
-
-def load(name, path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-builder = load('stable_upload_builder', ROOT / 'scripts/publication/publish-filename-viewer.py')
-publisher = load('stable_upload_publisher', ROOT / 'scripts/publication/publish-viewer-r2.py')
+from viewer_publication import publish_filename_viewer as builder
+from viewer_publication import publish_viewer_r2 as publisher
 
 
 def prepared(tmp_path):

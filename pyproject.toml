@@ -6,6 +6,7 @@ dependencies = [
     "house-naming-guide[test]",
     "committee-meeting",
     "congress-shared",
+    "docspec-client",
     "youtube-api",
     "congress-api[archive,test]",
     "congress-youtube",

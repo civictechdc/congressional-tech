@@ -18,9 +18,7 @@ from viewer_publication.filename_json_stream import ObservationCounts, block_ite
 import viewer_publication.filename_details as details
 import viewer_publication.filename_observations as observations
 
-spec = importlib.util.spec_from_file_location('budget_publication',
-    Path(__file__).resolve().parents[3] / 'scripts/publication/publish-filename-viewer.py')
-publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
+from viewer_publication import publish_filename_viewer as publisher
 
 
 def source_file(folder, rows):

@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'tests'))
 
 from viewer_publication.filename_native import NativeSourceAssets, ViewerAssets
 from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY
+from viewer_publication import publish_filename_viewer as builder
 from congress_api.retention.catalog_cache import LocalStore
 from congress_api.retention.catalog_publication import read_catalog
 from test_catalog_coalesced_batches import Native
@@ -78,12 +79,7 @@ def test_components_read_shared_new_pins_once_and_retain_unrelated_browse_member
 
 
 def test_native_builder_publishes_stable_roots_and_mapping_only_reuses_all_payloads(tmp_path):
-    import importlib.util
     import json
-    script = Path(__file__).resolve().parents[3] / 'scripts/publication/publish-filename-viewer.py'
-    spec = importlib.util.spec_from_file_location('native_viewer_builder', script)
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
     store, native = LocalStore(tmp_path / 'store'), Native()
     owner, _ = seed(tmp_path, store, native)
     selected = read_catalog(store, native=native)
@@ -109,12 +105,7 @@ def test_native_builder_publishes_stable_roots_and_mapping_only_reuses_all_paylo
 
 
 def test_native_builder_refuses_rule_upgrade_without_hidden_full_rebuild(tmp_path):
-    import importlib.util
     import pytest
-    script = Path(__file__).resolve().parents[3] / 'scripts/publication/publish-filename-viewer.py'
-    spec = importlib.util.spec_from_file_location('native_viewer_upgrade', script)
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
     store, native = LocalStore(tmp_path / 'store'), Native()
     seed(tmp_path, store, native)
     selected = read_catalog(store, native=native)
@@ -133,11 +124,6 @@ from test_docspec_boundary import native
 
 
 def test_actual_native_builder_preserves_typed_source_assets(native, tmp_path):
-    import importlib.util
-    script = Path(__file__).resolve().parents[3] / 'scripts/publication/publish-filename-viewer.py'
-    spec = importlib.util.spec_from_file_location('actual_native_viewer_builder', script)
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
     store = LocalStore(tmp_path / 'store')
     seed(tmp_path, store, native)
     selected = read_catalog(store, native=native)
@@ -164,12 +150,7 @@ def test_actual_native_builder_preserves_typed_source_assets(native, tmp_path):
 
 
 def test_public_lookup_returns_stable_members_and_one_bounded_source_asset(tmp_path):
-    import importlib.util
     from viewer_publication.filename_native import public_component, component_source_ids, locate_source_asset
-    script = Path(__file__).resolve().parents[3] / 'scripts/publication/publish-filename-viewer.py'
-    spec = importlib.util.spec_from_file_location('lookup_native_viewer', script)
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
     store, native = LocalStore(tmp_path / 'store'), Native()
     seed(tmp_path, store, native)
     selected = read_catalog(store, native=native)
@@ -185,13 +166,8 @@ def test_public_lookup_returns_stable_members_and_one_bounded_source_asset(tmp_p
 
 
 def test_native_builder_rejects_mixed_previous_roots_before_native_reads(tmp_path):
-    import importlib.util
     import copy
     import pytest
-    script = Path(__file__).resolve().parents[3] / 'scripts/publication/publish-filename-viewer.py'
-    spec = importlib.util.spec_from_file_location('mixed_native_viewer', script)
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
     store, native = LocalStore(tmp_path / 'store'), Native()
     seed(tmp_path, store, native)
     selected = read_catalog(store, native=native)
@@ -224,13 +200,8 @@ def test_asset_inventory_pages_are_bounded_and_hash_checked(tmp_path):
 
 
 def test_native_publication_requires_exact_selector_byte_identity(tmp_path):
-    import importlib.util
     import pytest
     from viewer_publication.filename_native import publication_basis, validate_publication
-    script = Path(__file__).resolve().parents[3] / 'scripts/publication/publish-filename-viewer.py'
-    spec = importlib.util.spec_from_file_location('selector_identity_viewer', script)
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
     store, native = LocalStore(tmp_path / 'store'), Native()
     seed(tmp_path, store, native)
     manifest = builder.publish_selected(read_catalog(store, native=native), tmp_path / 'public', review_identities=None)
@@ -242,12 +213,7 @@ def test_native_publication_requires_exact_selector_byte_identity(tmp_path):
 
 
 def test_native_builder_refuses_dangling_output_link_before_native_reads(tmp_path):
-    import importlib.util
     import pytest
-    script = Path(__file__).resolve().parents[3] / 'scripts/publication/publish-filename-viewer.py'
-    spec = importlib.util.spec_from_file_location('linked_output_native_viewer', script)
-    builder = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(builder)
     store, native = LocalStore(tmp_path / 'store'), Native()
     seed(tmp_path, store, native)
     target = tmp_path / 'output'

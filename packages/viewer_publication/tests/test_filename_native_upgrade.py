@@ -7,14 +7,12 @@ import sys
 import pytest
 
 ROOT=Path(__file__).resolve().parents[3]
-sys.path[:0]=[str(ROOT/'apps/site/scripts'),str(ROOT/'tests')]
+sys.path[:0]=[str(ROOT/'tests')]
 from congress_api.retention.catalog_cache import LocalStore
 from congress_api.retention.catalog_publication import read_catalog
 from test_catalog_coalesced_batches import Native
 from test_native_catalog_selection import seed
-
-spec=importlib.util.spec_from_file_location('upgrade_viewer_builder',ROOT/'scripts/publication/publish-filename-viewer.py')
-builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)
+from viewer_publication import publish_filename_viewer as builder
 
 
 def prepared(tmp_path):
@@ -110,12 +108,11 @@ from hashlib import sha256
 import importlib.util,json,os,sys
 from pathlib import Path
 repo,folder,binary,workspace,limits,event,mode=map(str,sys.argv[1:])
-folder=Path(folder);sys.path[:0]=[str(Path(repo)/p) for p in ('apps/site/scripts','tests')]
+folder=Path(folder);sys.path[:0]=[str(Path(repo)/'tests')]
 from congress_api.retention.docspec import NativeDatasets
 from congress_api.retention.catalog_cache import LocalStore
 from congress_api.retention.catalog_publication import read_catalog
-spec=importlib.util.spec_from_file_location('worker_upgrade',Path(repo)/'scripts/publication/publish-filename-viewer.py')
-builder=importlib.util.module_from_spec(spec);spec.loader.exec_module(builder)
+from viewer_publication import publish_filename_viewer as builder
 native=NativeDatasets(binary,workspace,limits=limits)
 original=native.source_batches;reads=[]
 @contextmanager
@@ -153,7 +150,6 @@ def test_abrupt_exit_inside_asset_copy_keeps_partials_outside_publication(tmp_pa
 import json,os,sys
 from pathlib import Path
 repo,folder,kind,window,mode=sys.argv[1:]
-sys.path.insert(0,str(Path(repo)/'apps/site/scripts'))
 from viewer_publication.filename_native import ViewerAssets
 import viewer_publication.filename_renderer_state as stages
 folder=Path(folder);target=folder/'publication';target.mkdir(exist_ok=True)

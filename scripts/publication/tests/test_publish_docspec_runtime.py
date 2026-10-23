@@ -21,10 +21,8 @@ def _load_module(name: str, path: Path):
     return module
 
 
-publish_runtime = _load_module(
-    "publish_docspec_runtime",
-    ROOT / "scripts" / "publication" / "publish-docspec-runtime.py",
-)
+from viewer_publication import publish_docspec_runtime as publish_runtime
+
 setup_runtime = _load_module(
     "setup_native_runtime",
     ROOT / ".github" / "scripts" / "setup-native-runtime.py",

@@ -13,9 +13,7 @@ import pytest
 
 from viewer_publication.filename_recoveries import ACCEPTED_KEY, accepted_rows, index_recoveries
 
-spec = importlib.util.spec_from_file_location('recovery_publisher', Path(__file__).resolve().parents[3] / 'scripts/publication/publish-viewer-r2.py')
-publisher = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(publisher)
+from viewer_publication import publish_viewer_r2 as publisher
 
 
 def fixture(tmp_path):

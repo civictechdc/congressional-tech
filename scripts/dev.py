@@ -157,6 +157,8 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='command', required=True)
     check = sub.add_parser('doctor')
     check.add_argument('--lane', choices=config['lanes'])
+    chk = sub.add_parser('check', help='Run doctor environment checks followed by test inventory')
+    chk.add_argument('--lane', choices=config['lanes'])
     sub.add_parser('inventory')
     sub.add_parser('prepare-baseline', help='Fetch only the exact historical parser commit when absent, then verify its hash')
     tests = sub.add_parser('test')
@@ -172,6 +174,9 @@ def main(argv=None):
         if args.command == 'doctor':
             doctor(config, args.lane)
         elif args.command == 'inventory':
+            inventory(config)
+        elif args.command == 'check':
+            doctor(config, getattr(args, 'lane', None))
             inventory(config)
         elif args.command == 'prepare-baseline':
             print('Baseline verified: ' + baseline(config, fetch=True))

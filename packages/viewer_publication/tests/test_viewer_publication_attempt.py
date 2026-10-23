@@ -17,13 +17,11 @@ from botocore.exceptions import ClientError
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path[:0] = [str(ROOT / 'apps/site/scripts'), str(ROOT / 'tests')]
+sys.path[:0] = [str(ROOT / 'tests')]
 _NATIVE_FIXTURES = {}
 import viewer_publication.attempt as attempts
 from viewer_publication.continuation import Continuation, DurableJournal
-
-spec = importlib.util.spec_from_file_location('attempt_publisher', ROOT / 'scripts/publication/publish-viewer-r2.py')
-publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
+from viewer_publication import publish_viewer_r2 as publisher
 
 
 class Remote:

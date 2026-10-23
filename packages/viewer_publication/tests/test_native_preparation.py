@@ -12,24 +12,16 @@ from types import SimpleNamespace
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path[:0] = [str(ROOT / 'apps/site/scripts'), str(ROOT / 'tests')]
+sys.path[:0] = [str(ROOT / 'tests')]
 from congress_api.retention.catalog_cache import LocalStore
 from congress_api.retention.catalog_publication import read_catalog
 from congress_api.retention.viewer_inventory import issue_inventory
 from test_catalog_coalesced_batches import Native
 from test_native_catalog_selection import seed
 from viewer_publication.native import prepare_native_output
+from viewer_publication import publish_viewer_r2 as publisher
+from viewer_publication import publish_filename_viewer as builder
 
-
-def load(name, path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-publisher = load('native_preparation_publisher', ROOT / 'scripts/publication/publish-viewer-r2.py')
-builder = load('native_preparation_builder', ROOT / 'scripts/publication/publish-filename-viewer.py')
 # The synthetic catalog is independent of the live review corpus.
 fixture_builder = SimpleNamespace(publish_selected=partial(builder.publish_selected, review_identities=None))
 ABSENT = (None, None, None, None)

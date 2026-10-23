@@ -1,26 +1,11 @@
-"""Tests for scripts/publication/apply-r2-edge-rules.py (ct-84xa)."""
 from __future__ import annotations
 
-import importlib.util
 import json
 from pathlib import Path
 
 import pytest
 from congress_api.retention.r2_edge_rules import evaluate_response_headers, evaluate_waf_request
-
-ROOT = Path(__file__).resolve().parents[3]
-
-
-def _load_edge_script():
-    path = ROOT / "scripts" / "publication" / "apply-r2-edge-rules.py"
-    spec = importlib.util.spec_from_file_location("apply_r2_edge_rules", path)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-edge_cli = _load_edge_script()
+from viewer_publication import apply_r2_edge_rules as edge_cli
 
 
 def test_plan_and_verify_config_emit_valid_cloudflare_payloads(capsys):

@@ -39,9 +39,11 @@ def record_input(publisher, client, key, optional=False):
     return {'value': value, 'etag': etag, 'modified': modified, 'sha256': digest}
 
 
-def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=None,
+def prepare(publisher=None, client=None, root=None, *, run_id, run_attempt, public_url, native=None,
             renderer_upgrade=False, resume_preparation=False):
     """Read inputs and accept complete local output; perform no publication writes."""
+    if publisher is None:
+        from viewer_publication import publish_viewer_r2 as publisher
     if resume_preparation and not renderer_upgrade:
         raise ValueError('Preparation resume requires an explicit renderer upgrade')
     selected = record_input(publisher, client, 'indexes/catalog.json')
@@ -51,8 +53,9 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=
     binding = {'version': 1, 'code_runtime': content_identity(publisher), 'source': selected,
                'viewer': previous, 'accepted': accepted, 'run_id': str(run_id), 'run_attempt': str(run_attempt),
                'publisher_version': publisher.PUBLISHER_VERSION}
+    repo_root = Path(__file__).resolve().parents[4]
     binding['provenance_revision'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'],
-        cwd=Path(publisher.__file__).resolve().parents[2], text=True, timeout=10).strip()
+        cwd=repo_root, text=True, timeout=10).strip()
     mode = 'full'
     if (not renderer_upgrade and previous['value'] and previous['value'].get('source_manifest') == selected['value']
             and previous['value'].get('publisher_version') == publisher.PUBLISHER_VERSION
@@ -89,10 +92,8 @@ def prepare(publisher, client, root, *, run_id, run_attempt, public_url, native=
     def build():
         nonlocal inventory_proof
         identities = {}
-        import importlib.util
         from viewer_publication.native import prepare_native_output
-        spec = importlib.util.spec_from_file_location('prepared_viewer_builder', Path(publisher.__file__).with_name('publish-filename-viewer.py'))
-        builder = importlib.util.module_from_spec(spec); spec.loader.exec_module(builder)
+        from viewer_publication import publish_filename_viewer as builder
         upgrade_options = dict(renderer_upgrade=True,resume_upgrade=resume_preparation) if renderer_upgrade else {}
         manifest, recovery = prepare_native_output(publisher, builder, client, snapshot, publication,
             accepted_record=tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')),

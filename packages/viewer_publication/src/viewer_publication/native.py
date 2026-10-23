@@ -22,7 +22,7 @@ def _read(client, publisher, path, *, kind, expected=None, digest=None):
     return raw
 
 
-def prepare_native_output(publisher, builder, client, snapshot, target, *, accepted_record, viewer_record,
+def prepare_native_output(publisher=None, builder=None, client=None, snapshot=None, target=None, *, accepted_record, viewer_record,
                           recovery_only=False, renderer_upgrade=False, resume_upgrade=False):
     """Reuse only a hash-verified prior release; leave selection to the caller.
 
@@ -30,6 +30,10 @@ def prepare_native_output(publisher, builder, client, snapshot, target, *, accep
     artifact checks, conditional writes and continuation. This function owns no
     remote write and never interprets a missing prior result as a rebuild request.
     """
+    if publisher is None:
+        from viewer_publication import publish_viewer_r2 as publisher
+    if builder is None:
+        from viewer_publication import publish_filename_viewer as builder
     if resume_upgrade and not renderer_upgrade:
         raise ValueError('Renderer upgrade resume requires an explicit upgrade')
     from congress_api.retention.catalog_selection import NativeCatalogSnapshot

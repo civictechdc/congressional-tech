@@ -1,5 +1,4 @@
 """Exercise both browser representations from the same complete typed fixture."""
-import importlib.util
 import json
 from pathlib import Path
 import runpy
@@ -7,7 +6,7 @@ import os
 import sys
 
 ROOT = Path(__file__).resolve().parents[3]
-sys.path[:0] = [str(ROOT / 'packages/congress_shared/src'), str(ROOT / 'packages/congress_api/src'), str(ROOT / 'tests'), str(ROOT / 'apps/site/scripts')]
+sys.path[:0] = [str(ROOT / 'packages/congress_shared/src'), str(ROOT / 'packages/congress_api/src'), str(ROOT / 'tests')]
 import pyarrow as pa
 import pyarrow.parquet as pq
 from congress_api.retention.catalog_batches import prepare_native_catalog_components, iterator_prepared_components
@@ -18,13 +17,11 @@ from congress_api.retention.catalog_publication import read_catalog
 from congress_api.retention.catalog_cache import LocalStore
 from congress_api.retention.immutable_metadata import MetadataObjects, encoded
 from test_catalog_coalesced_batches import Native
+from viewer_publication import publish_filename_viewer as builder
 
 folder = Path(sys.argv[1])
 os.environ['FILENAME_FIXTURE_NATIVE_IDENTITIES'] = '1'
 runpy.run_path(str(ROOT / 'scripts/publication/filename-test-fixture.py'), run_name='native_legacy_fixture')
-spec = importlib.util.spec_from_file_location('stable_fixture_builder', ROOT / 'scripts/publication/publish-filename-viewer.py')
-builder = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(builder)
 legacy = json.loads((folder / 'indexes/catalog.json').read_bytes())
 sources = pq.read_table(folder / legacy['files']['filenames']['key'])
 documents = pq.read_table(folder / legacy['files']['documents']['key'])

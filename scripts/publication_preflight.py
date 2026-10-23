@@ -5,7 +5,6 @@ The result can skip expensive setup for a verified no-op. It never authorizes a
 later write; preparation and the original fresh conditional gate remain required.
 """
 import argparse
-import ast
 from datetime import datetime,timezone
 import hashlib
 import hmac
@@ -13,16 +12,26 @@ import json
 import os
 from pathlib import Path
 import re
+import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from viewer_release_identity import encoded,source_files,locked_runtime
 
-LIMITS={'manifest':4*1024**2,'accepted':16*1024**2,'recovery':32*1024**2}
-PREFIX='viewer-publications/'
-ACCEPTED=PREFIX+'recoveries/accepted.json'
-BUCKET='congressional-tech-raw'
+_PKG = Path(__file__).resolve().parents[1] / 'packages/viewer_publication/src'
+if str(_PKG) not in sys.path:
+    sys.path.insert(0, str(_PKG))
+
+from viewer_publication.constants import (
+    BUCKET,
+    PREFIX,
+    PUBLIC_URL,
+    PUBLISHER_VERSION,
+    USER_AGENT,
+    ACCEPTED_KEY as ACCEPTED,
+    LIMITS,
+)
+from viewer_release_identity import encoded,source_files,locked_runtime
 
 
 def object_kind(key):
@@ -41,17 +50,14 @@ class NoRedirects(urllib.request.HTTPRedirectHandler):
 
 
 
-def constants(root):
-    tree=ast.parse((root/'scripts/publication/publish-viewer-r2.py').read_text())
-    values={}
-    for node in tree.body:
-        if isinstance(node,ast.Assign) and isinstance(node.value,ast.Constant):
-            for name in node.targets:
-                if isinstance(name,ast.Name) and name.id in ('PUBLISHER_VERSION','PUBLIC_URL'):
-                    values[name.id]=node.value.value
-    if type(values.get('PUBLISHER_VERSION')) is not int or not isinstance(values.get('PUBLIC_URL'),str):
-        raise ValueError('Publisher constants require validated full setup')
-    return values
+def constants(root=None):
+    return {
+        'PUBLISHER_VERSION': PUBLISHER_VERSION,
+        'PUBLIC_URL': PUBLIC_URL,
+        'PREFIX': PREFIX,
+        'BUCKET': BUCKET,
+        'ACCEPTED_KEY': ACCEPTED,
+    }
 
 
 def bounded(response,limit):

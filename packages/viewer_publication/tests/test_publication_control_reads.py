@@ -1,11 +1,7 @@
-"""Complete control reads enforce both declared and streamed byte bounds."""
-import importlib.util
 import io
-from pathlib import Path
 import pytest
 
-spec = importlib.util.spec_from_file_location('bounded_publisher', Path(__file__).resolve().parents[3] / 'scripts/publication/publish-viewer-r2.py')
-publisher = importlib.util.module_from_spec(spec); spec.loader.exec_module(publisher)
+from viewer_publication import publish_viewer_r2 as publisher
 
 
 @pytest.mark.parametrize('status,attempt_count', [(404, 1), (503, 4)])

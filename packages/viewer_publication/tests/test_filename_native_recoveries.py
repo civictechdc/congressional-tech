@@ -10,8 +10,6 @@ import sys
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'apps/site/scripts'))
 from viewer_publication.filename_recoveries import index_recoveries
 from congress_api.retention.source_aliases import resolution_candidates
 

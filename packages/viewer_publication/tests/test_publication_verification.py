@@ -87,7 +87,6 @@ def test_live_observation_uses_explicit_checkout_for_node_verifier(tmp_path, mon
 
 @pytest.fixture
 def native_observed(tmp_path, monkeypatch):
-    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[3] / 'apps/site/scripts'))
     from viewer_publication.filename_native import ViewerAssets, publication_basis
     from congress_api.retention.immutable_metadata import encoded
     source, value, _ = observed(tmp_path)
