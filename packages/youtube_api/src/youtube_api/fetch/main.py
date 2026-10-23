@@ -85,7 +85,7 @@ def main(
         sys.exit(1)
 
 
-def parse_args_and_run():
+def parse_args_and_run(argv: list[str] | None = None):
     configure_logging()
     parser = argparse.ArgumentParser(
         description="Fetch all YouTube videos from a channel and store them to record_path."
@@ -113,7 +113,7 @@ def parse_args_and_run():
     )
 
     ## ignore the unknown args
-    args = parser.parse_known_args()[0]
+    args = parser.parse_known_args(argv)[0]
 
     main(**vars(args))
 

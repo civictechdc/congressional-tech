@@ -17,8 +17,8 @@ from congress_shared.cli import add_global_args, add_youtube_args, configure_log
 from congress_shared.resources import CONGRESS_METADATA, DEFAULT_CHANNELS_CSV
 
 from youtube_api.tables import (
-    get_all_commitee_names,
-    get_all_committee_handless,
+    get_all_committee_names,
+    get_all_committee_handles,
     map_system_code_committee_handles,
     open_tinydb_for_committee,
 )
@@ -32,8 +32,7 @@ EVENT_ID_REGEX = ".*(\\d{6}|eventid).*"
 ## system codes start with the chamber: hsag00 (house), jsec00 (joint), ssfr00 (senate)
 CHAMBER_BY_CODE_PREFIX = {"h": "house", "j": "joint", "s": "senate"}
 
-
-_TINYDB: TinyDB = None
+_TINYDB: TinyDB | None = None
 
 
 ## define columns in row of final report
@@ -69,12 +68,12 @@ def main(
         nthreads = multiprocessing.cpu_count()
 
     ## load all the names & their indices
-    committee_names = get_all_commitee_names(
+    committee_names = get_all_committee_names(
         csv_path=channels_csv_path
     )
 
     ## load all the corresponding handles and system codes
-    committee_handless = get_all_committee_handless(channels_csv_path)
+    committee_handles = get_all_committee_handles(channels_csv_path)
     committee_codes = list(map_system_code_committee_handles(channels_csv_path))
     for committee_index, committee_name in enumerate(committee_names):
         try:
@@ -83,15 +82,13 @@ def main(
                 committee_name_or_index=committee_index,
                 csv_path=channels_csv_path,
                 tinydb_dir=tinydb_dir,
-                assert_exists=True,
+                require_exists=True,
             )
-            ## set the global _TINYDB for this process
-            global _TINYDB
-            _TINYDB = open_tinydb_for_committee(**tinydb_args)
+            committee_db = open_tinydb_for_committee(**tinydb_args)
 
             chamber = CHAMBER_BY_CODE_PREFIX[committee_codes[committee_index][0]]
 
-            handles = committee_handless[committee_index]
+            handles = committee_handles[committee_index]
             for handle in handles:
                 if handle == "":
                     ## skip when we're in a row that has fewer
@@ -99,7 +96,7 @@ def main(
                     continue
 
                 ## load the tinydb table
-                all_videos = _TINYDB.table(f"youtube_videos_{handle}")
+                all_videos = committee_db.table(f"youtube_videos_{handle}")
 
                 ## keep track of # of videos for validation at the end
                 total_count = len(all_videos)
@@ -107,30 +104,14 @@ def main(
 
                 ## loop through each congress to split metrics by congress #
                 ##  define the args for generating each row of the report
-                argss = zip(
-                    itertools.repeat(committee_name),
-                    itertools.repeat(handle),
-                    CONGRESS_METADATA.keys(),
-                    CONGRESS_METADATA.values(),
-                    itertools.repeat(chamber),
-                    itertools.repeat(date_basis),
-                )
+                argss = [
+                    (committee_name, handle, int(congress_num), congress_meta, chamber, date_basis, committee_db)
+                    for congress_num, congress_meta in CONGRESS_METADATA.items()
+                ]
 
-                if nthreads > 1:
-                    ## in parallel...
-                    ## have to open tinydb separately in each process
-                    with multiprocessing.Pool(
-                        nthreads, initializer=set_global_tinydb, initargs=[tinydb_args]
-                    ) as pool:
-                        reports = pool.starmap(
-                            generate_report_for_congress_number, argss
-                        )
-                else:
-                    ## in series...
-                    ## can share the existing tinydb in single process
-                    reports = [
-                        generate_report_for_congress_number(*args) for args in argss
-                    ]
+                reports = [
+                    generate_report_for_congress_number(*args) for args in argss
+                ]
 
                 ## concatenate the rows
                 running_count = sum([report.total_videos for report in reports])
@@ -165,13 +146,19 @@ def generate_report_for_congress_number(
     meta: dict[str, any],
     chamber: str,
     date_basis: DateBasis = "playlist_added",
+    db: TinyDB | None = None,
 ):
     if date_basis not in DATE_FIELDS:
         raise ValueError(f"Unknown YouTube date basis: {date_basis}")
+    if db is None:
+        if _TINYDB is not None:
+            db = _TINYDB
+        else:
+            raise ValueError("Database instance required for report generation")
     start_date = datetime.date.fromisoformat(meta["start"])
     end_date = (None if meta["end"] == "present"
                 else datetime.date.fromisoformat(meta["end"]))
-    all_videos = _TINYDB.table(f"youtube_videos_{handle}")
+    all_videos = db.table(f"youtube_videos_{handle}")
     # Keep the historical playlist-added default explicit. Publication reports
     # do not fall back to that field when videoPublishedAt is missing.
     videos_in_date_range = [
@@ -226,7 +213,7 @@ def write_to_csv(report: list[EventIdReport], output_path: Path):
             writer.writerow(asdict(row))
 
 
-def parse_args_and_run():
+def parse_args_and_run(argv: list[str] | None = None):
     configure_logging()
     parser = argparse.ArgumentParser(
         description="Generates report on committee videos with missing event ids"
@@ -260,7 +247,7 @@ def parse_args_and_run():
     )
 
     ## ignore the unknown args
-    args = parser.parse_known_args()[0]
+    args = parser.parse_known_args(argv)[0]
 
     main(**vars(args))
 

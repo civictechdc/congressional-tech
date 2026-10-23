@@ -7,6 +7,7 @@ import re
 from dataclasses import dataclass
 from datetime import date, datetime
 
+from congress_shared.dates import congress_to_years
 from congress_api.models.gpo import ModsDocument, ModsScope
 from congress_api.parsers.gpo import parse_mods_document
 
@@ -228,7 +229,7 @@ def hearing_days(text: str, congress: int, volume: bool = False) -> list[str]:
     A multi-hearing volume mixes the two, and every header counts. Headers are taken as printed:
     checking the weekday against the date drops more real days, whose weekday was misprinted,
     than false ones."""
-    first_year = 1789 + 2 * (congress - 1)
+    first_year, _ = congress_to_years(congress)
     capitals, ordinary = set(), set()
     for header in list(DAY_HEADER.finditer(text)) + (list(RUNNING_HEAD_DAY.finditer(text)) if volume else []):
         _, month, day, year = header.groups()

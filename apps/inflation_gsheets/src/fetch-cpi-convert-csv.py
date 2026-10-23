@@ -1,9 +1,16 @@
-import pandas as pd
-import requests
 from datetime import datetime
 from pathlib import Path
+import sys
+
+import pandas as pd
+import requests
 
 script_dir = Path(__file__).resolve().parent
+if str(script_dir) not in sys.path:
+    sys.path.insert(0, str(script_dir))
+
+from sources.bls import MONTH_ORDER
+
 output_dir = script_dir / "data"
 
 def fetch_cpi_range(start_year, end_year):
@@ -45,11 +52,7 @@ df_recent["year"] = df_recent["year"].astype(int)
 df_pivot = df_recent.pivot(index="year", columns="periodName", values="value")
 
 # Ensure correct month order
-month_order = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-]
-df_pivot = df_pivot[month_order]
+df_pivot = df_pivot[MONTH_ORDER]
 
 # Append only new rows
 df_combined = pd.concat([df_baseline, df_pivot])

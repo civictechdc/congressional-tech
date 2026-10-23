@@ -19,6 +19,7 @@ import csv
 from datetime import datetime, timezone
 import gzip
 from hashlib import sha256
+import io
 import json
 import logging
 import sys
@@ -29,29 +30,19 @@ from pathlib import Path
 import yt_dlp
 from yt_dlp import YoutubeDL
 
-from congress_shared.webvtt import cue_lines
+from congress_shared.custody import write_atomic_bytes
+from congress_shared.webvtt import cue_lines, vtt_to_text
 
 INDEX = "captions_index.csv"
 CAPTURE_VERSION = "2"
 RECEIPTS = "caption_receipts"
 
 
-def vtt_to_text(vtt: str) -> str:
-    """Plain text from a WebVTT file. YouTube's automatic captions repeat each line as it
-    scrolls (with per-word timing tags), so consecutive duplicates are dropped."""
-    lines, last = [], None
-    for cue in cue_lines(vtt):
-        for line in cue:
-            if line != last:
-                lines.append(line)
-                last = line
-    return "\n".join(lines) + "\n"
-
-
-YDL_OPTS: dict = {}  # extra yt-dlp options from the command line (proxy, sleep)
-
-
-def fetch_one(video_id: str, out_dir: Path) -> tuple[str, str, int]:
+def fetch_one(
+    video_id: str,
+    out_dir: Path,
+    extra_ydl_opts: dict | None = None,
+) -> tuple[str, str, int]:
     """Download the English caption track for one video. Returns (video_id, kind, characters);
     kind is manual, auto, none (no English track) or error (blocked or failed; retry later)."""
     out_dir = Path(out_dir)
@@ -76,17 +67,29 @@ def fetch_one(video_id: str, out_dir: Path) -> tuple[str, str, int]:
             successful = previous.get('last_successful') if previous.get('kind') == 'error' else previous
             if successful and successful.get('kind') in ('manual', 'auto', 'none'):
                 receipt['last_successful'] = {k: v for k, v in successful.items() if k != 'last_successful'}
-        temporary = path.with_suffix('.json.tmp')
-        temporary.write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + '\n')
-        temporary.replace(path)
+        write_atomic_bytes(
+            path,
+            (json.dumps(receipt, ensure_ascii=False, indent=2) + "\n").encode("utf-8"),
+            temp_mode="fixed",
+        )
         return video_id, kind, characters
     with tempfile.TemporaryDirectory() as tmp:
-        opts = {"skip_download": True, "writesubtitles": True, "writeautomaticsub": True, "subtitleslangs": ["en.*"],
-                "subtitlesformat": "vtt", "outtmpl": f"{tmp}/%(id)s", "quiet": True, "no_warnings": True, "logger": logging.getLogger("yt_dlp"), **YDL_OPTS}
+        opts = {
+            "skip_download": True,
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": ["en.*"],
+            "subtitlesformat": "vtt",
+            "outtmpl": f"{tmp}/%(id)s",
+            "quiet": True,
+            "no_warnings": True,
+            "logger": logging.getLogger("yt_dlp"),
+            **(extra_ydl_opts or {}),
+        }
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=True)
-        except yt_dlp.utils.DownloadError as e:
+        except (yt_dlp.utils.DownloadError, Exception) as e:
             msg = str(e).splitlines()[-1]
             kind = "error"  # A failed request never establishes absence of captions.
             logging.warning(f"{video_id}: {msg[:120]}")
@@ -98,9 +101,11 @@ def fetch_one(video_id: str, out_dir: Path) -> tuple[str, str, int]:
         metadata_dir.mkdir(exist_ok=True)
         metadata_bytes = json.dumps(YoutubeDL.sanitize_info(info), ensure_ascii=False).encode('utf-8')
         metadata_path = metadata_dir / f'{video_id}.{sha256(metadata_bytes).hexdigest()}.info.json.gz'
-        metadata_temporary = metadata_path.with_suffix('.gz.tmp')
-        metadata_temporary.write_bytes(gzip.compress(metadata_bytes, mtime=0))
-        metadata_temporary.replace(metadata_path)
+        write_atomic_bytes(
+            metadata_path,
+            gzip.compress(metadata_bytes, mtime=0),
+            temp_mode="fixed",
+        )
         metadata_file = str(metadata_path.relative_to(out_dir))
         files = sorted(Path(tmp).glob(f"{video_id}*.vtt"))
         manual = {k for k in (info.get("subtitles") or {}) if k == 'en' or k.startswith('en-')}
@@ -141,7 +146,7 @@ def current_capture(out_dir, video_id):
     return receipt
 
 
-def main(out_dir, video_ids, nthreads=3):
+def main(out_dir, video_ids, nthreads=3, extra_ydl_opts: dict | None = None):
     out_dir = Path(out_dir).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
     index = out_dir / INDEX
@@ -157,24 +162,26 @@ def main(out_dir, video_ids, nthreads=3):
     counts = {"manual": 0, "auto": 0, "none": 0, "error": 0}
     try:
         with ThreadPoolExecutor(nthreads) as pool:
-            for n, (vid, kind, chars) in enumerate(pool.map(lambda v: fetch_one(v, out_dir), todo), 1):
+            for n, (vid, kind, chars) in enumerate(
+                pool.map(lambda v: fetch_one(v, out_dir, extra_ydl_opts=extra_ydl_opts), todo),
+                1,
+            ):
                 if kind != "error":
                     saved[vid] = {'video_id': vid, 'kind': kind, 'characters': chars}
                 counts[kind] += 1
                 if n % 50 == 0:
                     logging.info(f"{n}/{len(todo)}: {counts}")
     finally:
-        temporary = index.with_suffix('.csv.tmp')
-        with temporary.open('w', newline='') as stream:
-            writer = csv.DictWriter(stream, fieldnames=['video_id', 'kind', 'characters'])
-            writer.writeheader()
-            writer.writerows(saved.values())
-        temporary.replace(index)
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=['video_id', 'kind', 'characters'])
+        writer.writeheader()
+        writer.writerows(saved.values())
+        write_atomic_bytes(index, buf.getvalue().encode('utf-8'), temp_mode="fixed")
     logging.info(f"done: {counts}" + (" (errors are retried on the next run)" if counts["error"] else ""))
     return counts
 
 
-def parse_args_and_run():
+def parse_args_and_run(argv: list[str] | None = None):
     parser = argparse.ArgumentParser(description="Download YouTube caption tracks as plain text.")
     parser.add_argument("--out-dir", required=True, help="Folder for <videoId>.txt files and the index.")
     parser.add_argument("--video-ids", nargs="*", default=[])
@@ -182,17 +189,18 @@ def parse_args_and_run():
     parser.add_argument("--nthreads", type=int, default=3)
     parser.add_argument("--proxy", help="Proxy URL for yt-dlp, e.g. Zyte's proxy mode when YouTube asks for a sign-in.")
     parser.add_argument("--sleep", type=float, default=0, help="Seconds to pause between requests (yt-dlp sleep_interval).")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    extra_opts = {}
     if args.proxy:
-        YDL_OPTS.update(proxy=args.proxy, nocheckcertificate=True)
+        extra_opts.update(proxy=args.proxy, nocheckcertificate=True)
     if args.sleep:
-        YDL_OPTS.update(sleep_interval_requests=args.sleep)
+        extra_opts.update(sleep_interval_requests=args.sleep)
     ids = list(args.video_ids) + ([l.strip() for l in args.ids_file.read_text().splitlines() if l.strip()] if args.ids_file else [])
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(asctime)s : %(message)s")
     logging.getLogger("yt_dlp").setLevel(logging.ERROR)
     if not ids:
         sys.exit("No video IDs given.")
-    main(args.out_dir, ids, args.nthreads)
+    return main(args.out_dir, ids, args.nthreads, extra_ydl_opts=extra_opts)
 
 
 if __name__ == "__main__":

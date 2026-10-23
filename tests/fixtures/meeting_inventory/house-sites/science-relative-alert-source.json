@@ -11,7 +11,7 @@
   "documents": 13,
   "retrieved_at": "2026-10-07T23:14:35.412739+00:00",
   "source_checkpoint": {
-    "source": "/Users/mikewolfd/Work/congressional-tech/.cache/house-committee-fallback-20261007/collection/house-sites.json.gz",
+    "source": "/var/data/congressional-tech/.cache/house-committee-fallback-20261007/collection/house-sites.json.gz",
     "inode": 757465923,
     "compressed_bytes": 553578180,
     "compressed_sha256": "a95f68fe759df7059afd6623c2892dfe20d2c40321423ae61b2a04e3fb8971df",

@@ -13,6 +13,7 @@ from .docspec import (
     ConnectedComponentsTransform,
     ConnectedEdgeSpec,
     NativeDatasets,
+    PRE_ADMISSION_ERROR_CODES,
     PartitionFieldSpec,
     PartitionSpec,
     PartitionTransformSpec,
@@ -36,6 +37,7 @@ from .docspec import (
     producer_input_entry,
     restore_application_schema,
 )
+from .binary import resolve_docspec_binary
 from .docspec_host import (
     REQUIRED_LOOPBACK_CAPABILITIES,
     ArrowResponse,
@@ -53,6 +55,7 @@ __all__ = [
     'ConnectedComponentsTransform',
     'ConnectedEdgeSpec',
     'NativeDatasets',
+    'PRE_ADMISSION_ERROR_CODES',
     'PartitionFieldSpec',
     'PartitionSpec',
     'PartitionTransformSpec',
@@ -80,4 +83,5 @@ __all__ = [
     'DocSpecFailure',
     'Host',
     'acquire_host',
+    'resolve_docspec_binary',
 ]

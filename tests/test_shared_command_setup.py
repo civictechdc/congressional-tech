@@ -33,7 +33,7 @@ def run_python(code, *args):
 def test_imports_preserve_root_logging_and_do_not_write(existing_handler):
     modules = [
         'congress_shared', 'congress_shared.auth', 'congress_shared.resources',
-        'congress_shared.paths', 'congress_shared.cli', 'congress_shared.globals',
+        'congress_shared.paths', 'congress_shared.cli', 'congress_shared.dates',
         'congress_shared.webvtt', 'youtube_api.tables',
         'youtube_api.fetch.youtube_event_fetcher', 'congress_api.acquisition.gpo',
         'congress_api.acquisition.meetings', 'congress_api.transcripts.context',
@@ -105,25 +105,22 @@ assert root.level == logging.ERROR
 
 
 def test_paths_aliases_resources_and_argument_types(tmp_path, monkeypatch):
-    from congress_shared import cli, globals as legacy, paths, resources
+    from congress_shared import cli, paths, resources
 
     package = Path(resources.__file__).resolve().parent
-    assert legacy.PACKAGE_DIR == resources.PACKAGE_DIR == package
-    assert legacy.DATA_DIR == resources.RESOURCE_DATA_DIR == paths.DEFAULT_OUTPUT_DIR == package / 'data'
-    assert legacy.CONGRESS_METADATA is resources.CONGRESS_METADATA
+    assert resources.PACKAGE_DIR == package
+    assert resources.RESOURCE_DATA_DIR == paths.DEFAULT_OUTPUT_DIR == package / 'data'
     assert resources.CONGRESS_METADATA == json.loads((package / 'data/congress_metadata.json').read_text())
-    assert legacy.DEFAULT_CHANNELS_CSV == resources.DEFAULT_CHANNELS_CSV == package / 'youtube/youtube-accounts.csv'
+    assert resources.DEFAULT_CHANNELS_CSV == package / 'youtube/youtube-accounts.csv'
     assert resources.DEFAULT_CHANNELS_CSV.is_file()
     for name, filename in {
         'DEFAULT_TINYDB_DIR': '', 'DEFAULT_YOUTUBE_REPORT_FILE': 'youtube_event_id_report.csv',
         'DEFAULT_GPO_HEARINGS_FILE': 'gpo_hearings.csv', 'DEFAULT_MEETINGS_FILE': 'congress_meetings.jsonl.gz',
         'DEFAULT_HEARING_VIDEOS_FILE': 'gpo_hearing_videos.csv',
     }.items():
-        assert getattr(legacy, name) == getattr(paths, name) == package / 'data' / filename
+        assert getattr(paths, name) == package / 'data' / filename
     from congress_api.cli import gpo_match
     assert gpo_match.DEFAULT_OVERRIDES_FILE == paths.DEFAULT_OVERRIDES_FILE == package / 'data/hearing_video_overrides.csv'
-    assert legacy.add_global_args is cli.add_global_args
-    assert legacy.add_youtube_args is cli.add_youtube_args
     parser = argparse.ArgumentParser()
     cli.add_global_args(parser)
     cli.add_youtube_args(parser)
@@ -133,8 +130,8 @@ def test_paths_aliases_resources_and_argument_types(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     explicit = parser.parse_args(['--tinydb_dir', './cache', '--channels-csv-path', './channels.csv'])
     assert explicit.tinydb_dir == tmp_path / 'cache'
-    assert explicit.channels_csv_path == './channels.csv'
-    assert isinstance(explicit.channels_csv_path, str)
+    assert explicit.channels_csv_path == Path('./channels.csv')
+    assert isinstance(explicit.channels_csv_path, Path)
     assert isinstance(defaults.channels_csv_path, Path)
     assert not (tmp_path / 'cache').exists()
 

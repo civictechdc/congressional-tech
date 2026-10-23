@@ -1,7 +1,7 @@
 # Congress API integration: execution receipt
 
 Implemented and validated locally on 2026-09-27 in
-`/Users/mikewolfd/Work/congressional-tech-production`, on
+`congressional-tech-production`, on
 `codex/committee-explorer`, preserving the existing model and Explorer work.
 The first adapter/export validation used source baseline `98db974`; the final
 production integration adds bounded browser queries, persistent issue history,

@@ -2,11 +2,9 @@
 
 `congress-shared` is the shared library for the Congress and YouTube tooling. It loads API keys, defines the default file paths, and ships the committee YouTube list and the congress date table. It has no console scripts. `congress-api` and `youtube-api` import it.
 
-The install name is `congress-shared`. The import name is `congress_shared`. Version `0.1.0`. Python 3.12 or newer. `[project].dependencies` is empty. `import congress_shared` exports nothing. Use `congress_shared.auth` for credentials, `resources` for bundled data, `paths` for output defaults, and `cli` for command setup. `globals` retains the existing public imports for compatibility.
+The install name is `congress-shared`. The import name is `congress_shared`. Version `0.1.0`. Python 3.12 or newer. `[project].dependencies` is empty; optional `storage` extra provides `boto3`. `import congress_shared` exports custody, storage, and date primitives. Use `congress_shared.auth` for credentials, `resources` for bundled data, `paths` for output defaults, `dates` for date/Congress calculations, and `cli` for command setup.
 
 ## Install
-
-From the repository root:
 
 ```bash
 uv pip install -e packages/congress_shared
@@ -25,7 +23,7 @@ uv pip install -e packages/congress_shared
 | `load_congress_api_key` | `--congress-api-key` | `DATA_GOV_API_KEY` | `~/.data.gov.api.key`, then `~/.data.gov.key` |
 | `load_youtube_api_key` | `--youtube-api-key` | `YOUTUBE_API_KEY` | `~/.youtube.api.key` |
 
-Each loader builds its own `ArgumentParser` and calls `parse_known_args`, so the flag can sit on a command that never declared it. A missing key raises `RuntimeError`. The Congress error names only `~/.data.gov.api.key`, even though `~/.data.gov.key` is also checked.
+Each loader inspects `sys.argv` directly for `--{flag}` and `--{flag}=...`, so the flag can sit on a command that never declared it. A missing key raises `RuntimeError`. The Congress error names only `~/.data.gov.api.key`, even though `~/.data.gov.key` is also checked.
 
 Callers: `congress-committees`, `gpo-fetch`, and `congress-meetings` use `load_congress_api_key`. `youtube-fetch` uses `load_youtube_api_key`.
 
@@ -33,7 +31,7 @@ Callers: `congress-committees`, `gpo-fetch`, and `congress-meetings` use `load_c
 
 `congress_shared.resources` resolves bundled reference paths from the installed package directory. `congress_shared.paths` defines default writable locations from the same directory, preserving every historical location. Neither module creates directories or files.
 
-`PACKAGE_DIR` is the `congress_shared` package directory. `resources.RESOURCE_DATA_DIR` and `paths.DEFAULT_OUTPUT_DIR` both currently equal `PACKAGE_DIR / "data"`. They name separate uses of the existing location; no stored data moves. The compatibility name `globals.DATA_DIR` retains that path.
+`PACKAGE_DIR` is the `congress_shared` package directory. `resources.RESOURCE_DATA_DIR` and `paths.DEFAULT_OUTPUT_DIR` both currently equal `PACKAGE_DIR / "data"`. They name separate uses of the existing location; no stored data moves.
 
 | Constant | Path | What lives there |
 | --- | --- | --- |
@@ -47,11 +45,11 @@ Callers: `congress-committees`, `gpo-fetch`, and `congress-meetings` use `load_c
 
 The two bundled files are `congress_metadata.json` and `youtube-accounts.csv`. The CSV and gzip paths above are where the other packages write. They are not in this package's tree until a command creates them.
 
-`congress_shared.cli.add_global_args` adds `--tinydb_dir` (a resolved `Path`, default `DEFAULT_TINYDB_DIR`). `add_youtube_args` adds `--channels-csv-path` (destination `channels_csv_path`). That flag's type is `str` and its default is a `Path`, so an explicit value arrives as a string and the default arrives as a `Path`.
+`congress_shared.cli.add_global_args` adds `--tinydb_dir` (a resolved `Path`, default `DEFAULT_TINYDB_DIR`). `add_youtube_args` adds `--channels-csv-path` (destination `channels_csv_path`). That flag's type is `Path` and its default is a `Path`, so explicit values and defaults both arrive as `Path`.
 
 `youtube-fetch`, `youtube-analyze`, and `gpo-match` call `add_global_args`. The two YouTube commands also call `add_youtube_args`. `gpo-match` declares its own `--channels-csv-path` as a `Path` instead.
 
-Imports leave root logging unchanged and create no files. `resources` reads `congress_metadata.json`; a missing or invalid JSON file still fails the import. The compatibility module `globals` reexports the same metadata object, paths, and argument helpers.
+Imports leave root logging unchanged and create no files. `resources` reads `congress_metadata.json`; a missing or invalid JSON file still fails the import.
 
 The command entrypoints for `youtube-fetch`, `youtube-analyze`, `congress-meetings`, `congress-committees`, `gpo-fetch`, `gpo-match`, `gpo-transcripts`, `meeting-inventory`, and `hearing-transcribe` explicitly call `cli.configure_logging()`. This retains INFO logging to stdout with `%(levelname)s %(asctime)s : [%(name)s.%(funcName)s] %(message)s`. Existing root handlers still take precedence. Library callers choose their own logging setup.
 
@@ -83,16 +81,16 @@ Row order is the TinyDB index. The first data row is `youtube_00.json`. Append n
 
 ### Package root
 
-- `pyproject.toml` defines `congress-shared` 0.1.0, Python `>=3.12`, an empty dependency list, setuptools package discovery under `src`, and package data `data/*.json` and `youtube/*.csv`. It declares no console scripts.
-- `src/congress_shared/__init__.py` is empty.
+- `pyproject.toml` defines `congress-shared` 0.1.0, Python `>=3.12`, an empty base dependency list, optional `boto3` for storage, setuptools package discovery under `src`, and package data `data/*.json` and `youtube/*.csv`. It declares no console scripts.
+- `src/congress_shared/__init__.py` exposes custody, storage, and date primitives.
 
 ### Library
 
 - `src/congress_shared/auth.py` is the two key loaders above. `_load_api_key` is the shared helper.
+- `src/congress_shared/dates.py` implements Congress and date calculation helpers (`year_to_congress`, `congress_to_years`, `parse_utc_timestamp`).
 - `src/congress_shared/resources.py` locates bundled references and loads `CONGRESS_METADATA`.
 - `src/congress_shared/paths.py` defines the existing default output and cache locations.
 - `src/congress_shared/cli.py` owns argument helpers and explicit logging setup.
-- `src/congress_shared/globals.py` reexports existing public names for compatibility.
 
 ### Bundled data
 

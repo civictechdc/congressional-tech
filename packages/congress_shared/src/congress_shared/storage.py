@@ -118,8 +118,6 @@ class R2Config:
             options["retries"] = {"total_max_attempts": 1}
         if self.max_pool_connections is not None:
             options["max_pool_connections"] = self.max_pool_connections
-        elif "PYTEST_CURRENT_TEST" not in os.environ:
-            options["max_pool_connections"] = 128
         if self.checksum_when_required:
             options["request_checksum_calculation"] = "when_required"
             options["response_checksum_validation"] = "when_required"

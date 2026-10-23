@@ -1,7 +1,7 @@
 """Tier 4: Scenario 6 — Canonical Catalog Compaction & Footer Bloat Elimination on Incremental Adoption Inputs.
 
 Verifies:
-- Inspecting real adoption inputs at /Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/
+- Inspecting real adoption inputs at output/incremental-updates-20261019/adoption-inputs/
 - Demonstrating 100% derivation of redundant 'body_key' from 'sha256' across captures.parquet and state.parquet (F20, ct-jnw5)
 - Inspecting filenames.parquet: discovering 53 redundant top-level source_* columns and 1,644 tiny row groups causing an 81.3 MB footer
 - Compacting and pruning top-level source_* columns according to FORBIDDEN_CATALOG_TOP_LEVEL_COLUMNS

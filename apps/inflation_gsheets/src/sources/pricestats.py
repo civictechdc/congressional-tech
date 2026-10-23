@@ -22,17 +22,18 @@ See README for the Dataverse DOI and how to derive YoY % from the BPP index.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import pandas as pd
 
 from .base import InflationSource, SourceConfig
 from .manual import load_manual_series
 
 
+@dataclass
 class PriceStatsSource(InflationSource):
-    key = "pricestats"
-    label = "PriceStats / MIT BPP (manual drop-file)"
-    columns = ["pricestats"]
-    requires_key = False
+    key: str = "pricestats"
+    label: str = "PriceStats / MIT BPP (manual drop-file)"
+    columns: list[str] = field(default_factory=lambda: ["pricestats"])
 
     def fetch(self, config: SourceConfig) -> pd.DataFrame:
         path = config.manual_dir / "pricestats-bpp.csv"

@@ -12,7 +12,7 @@ from congress_api.retention.raw_storage import RAW_KEY
 # Shared offline transport fixture; real native coverage is in test_raw_storage.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tests"))
 from native_memory_helpers import memory_raw_storage
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, CAPTURES_KEY, STATE_KEY
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA, STATE_SCHEMA, CAPTURES_KEY, STATE_KEY
 
 
 def import_batch(store, *, captures, state, **kwargs):
@@ -216,7 +216,7 @@ def test_arrow_append_preserves_types_nulls_and_capture_multiplicity():
             pa.field('large', pa.uint64()), pa.field('nested', pa.list_(pa.binary()))])))
         old = pa.Table.from_pylist([dict(url='untouched', outcome='failed', attempts=7,
             extra=dict(large=2**64-1, nested=[None, b'exact'])), dict(url=None, outcome=None)], schema=state_schema)
-        cap = pa.Table.from_pylist([dict(body_key='duplicate', bytes=None)] * 2, schema=CAPTURE_SCHEMA)
+        cap = pa.Table.from_pylist([dict(body_key='duplicate', bytes=None)] * 2, schema=LEGACY_CAPTURE_SCHEMA)
         store = Store()
         result = import_batch(store, prepared=fixture.prepared, body_paths=fixture.paths,
             captures=cap, state=old, source_file='test', receipt_prefix='receipts/test',

@@ -21,14 +21,14 @@ from congress_api.retention.native_features import (
 
 
 def _binary():
-    candidate = (
-        os.environ.get("DOCSPEC_BINARY")
-        or shutil.which("docspec")
-        or "/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec"
-    )
+    from docspec_client import resolve_docspec_binary
+    try:
+        candidate = resolve_docspec_binary()
+    except FileNotFoundError:
+        candidate = None
     if not candidate or not Path(candidate).is_file():
         pytest.skip("Set DOCSPEC_BINARY to the qualified maintained CLI")
-    return candidate
+    return str(candidate)
 
 
 def test_ct_13cn_inspect_catalog_changes_preserves_duplicates_nulls_and_affected_keys(tmp_path):
@@ -250,7 +250,7 @@ def test_ct_dmca_schema_evolution_and_scalar_backfill_without_source_rewrite(tmp
 
 
 def test_ct_dmca_raw_storage_evolve_state_schema_and_scalar_backfill(tmp_path):
-    from congress_api.retention.raw_archive import STATE_SCHEMA
+    from congress_api.retention.raw_archive import LEGACY_STATE_SCHEMA as STATE_SCHEMA
     from congress_api.retention.raw_storage import RawStorage
     from test_raw_storage import SelectorStore
 

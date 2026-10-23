@@ -22,7 +22,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 from congress_shared.custody import write_atomic_bytes
-from docspec_client import DocSpecFailure, NativeDatasets
+from docspec_client import DocSpecFailure, NativeDatasets, resolve_docspec_binary
 
 WEEKLY_TABLE_DEFINITION = "weekly-retention-v1"
 PARQUET_ROW_GROUP_SIZE = 2048
@@ -202,27 +202,6 @@ WEEKLY_TABLE_MERGES: dict[str, dict[str, Any]] = {
         },
     },
 }
-
-
-def resolve_docspec_binary(binary: Path | str | None = None) -> Path:
-    """Locate the native ``docspec`` binary for incremental table operations."""
-    if binary is not None:
-        return Path(binary).resolve()
-    for env_var in ("DOCSPEC_BINARY", "DOCSPEC_BIN"):
-        env_bin = os.environ.get(env_var)
-        if env_bin and Path(env_bin).exists():
-            return Path(env_bin).resolve()
-    candidates = (
-        Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/release/docspec"),
-        Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec"),
-    )
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate.resolve()
-    found = shutil.which("docspec")
-    if found:
-        return Path(found).resolve()
-    raise FileNotFoundError("Unable to locate native docspec binary")
 
 
 def is_parquet_path(path: Path | str | None) -> bool:

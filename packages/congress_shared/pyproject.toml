@@ -5,6 +5,9 @@ description = "Shared auth, globals, and bundled config data (committee CSV + co
 requires-python = ">=3.12"
 dependencies = []
 
+[project.optional-dependencies]
+storage = ["boto3"]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"

@@ -194,7 +194,8 @@ class DependencyPreparation:
 
     def _restore(self):
         complete = self.directory / 'complete.json'
-        cached_sqlite = Path('/Users/mikewolfd/Work/congressional-tech/.cache/docspec-catalog/cached-keys.sqlite')
+        repo_root = Path(__file__).resolve().parents[5]
+        cached_sqlite = repo_root / '.cache' / 'docspec-catalog' / 'cached-keys.sqlite'
         if ('PYTEST_CURRENT_TEST' not in os.environ
                 and complete.exists()
                 and cached_sqlite.is_file()):

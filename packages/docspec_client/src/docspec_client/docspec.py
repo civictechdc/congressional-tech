@@ -476,6 +476,16 @@ def _merge_row_pair(existing_row, incoming_row, *, keys, order_by, columns, fiel
     return merged
 
 
+def _iter_table_rows(table_or_rows):
+    if isinstance(table_or_rows, pa.Table):
+        for batch in table_or_rows.to_batches():
+            yield from batch.to_pylist()
+    elif isinstance(table_or_rows, pa.RecordBatch):
+        yield from table_or_rows.to_pylist()
+    elif table_or_rows is not None:
+        yield from table_or_rows
+
+
 def apply_update_merge_spec(
     existing_table,
     incoming_table,
@@ -496,13 +506,15 @@ def apply_update_merge_spec(
     schema = incoming_table.schema if isinstance(incoming_table, pa.Table) else (
         existing_table.schema if isinstance(existing_table, pa.Table) else None
     )
-    existing_rows = existing_table.to_pylist() if isinstance(existing_table, pa.Table) else list(existing_table or ())
-    incoming_rows = incoming_table.to_pylist() if isinstance(incoming_table, pa.Table) else list(incoming_table or ())
     if schema is not None:
         field_names = list(schema.names)
     else:
         seen_fields = []
-        for r in existing_rows + incoming_rows:
+        for r in _iter_table_rows(existing_table):
+            for k in r:
+                if k not in seen_fields:
+                    seen_fields.append(k)
+        for r in _iter_table_rows(incoming_table):
             for k in r:
                 if k not in seen_fields:
                     seen_fields.append(k)
@@ -518,16 +530,24 @@ def apply_update_merge_spec(
 
     deleted_keys = set()
     if deletions is not None:
-        del_rows = deletions.to_pylist() if isinstance(deletions, pa.Table) else list(deletions or ())
-        for d in del_rows:
-            if isinstance(d, dict):
-                deleted_keys.add(row_key(d))
-            elif len(keys) == 1:
-                deleted_keys.add((d,))
+        if isinstance(deletions, (pa.Table, pa.RecordBatch)):
+            del_keys_table = deletions.select(keys) if all(k in deletions.schema.names for k in keys) else deletions
+            for batch in (del_keys_table.to_batches() if isinstance(del_keys_table, pa.Table) else [del_keys_table]):
+                for d in batch.to_pylist():
+                    if isinstance(d, dict):
+                        deleted_keys.add(row_key(d))
+                    elif len(keys) == 1:
+                        deleted_keys.add((d,))
+        else:
+            for d in deletions:
+                if isinstance(d, dict):
+                    deleted_keys.add(row_key(d))
+                elif len(keys) == 1:
+                    deleted_keys.add((d,))
 
     # 1. Intra-batch deduplication of incoming_rows
     dedup_incoming = {}
-    for row in incoming_rows:
+    for row in _iter_table_rows(incoming_table):
         k = row_key(row)
         if k in deleted_keys:
             continue
@@ -550,7 +570,7 @@ def apply_update_merge_spec(
 
     # 2. Merge against matching rows in existing_rows
     existing_by_key = {}
-    for row in existing_rows:
+    for row in _iter_table_rows(existing_table):
         k = row_key(row)
         if k in deleted_keys:
             continue
@@ -599,6 +619,12 @@ def apply_update_merge_spec(
                 merged_rows.append(inc_row)
 
     if schema is not None:
+        if len(merged_rows) > 16384:
+            batches = [
+                pa.RecordBatch.from_pylist(merged_rows[i:i + 16384], schema=schema)
+                for i in range(0, len(merged_rows), 16384)
+            ]
+            return pa.Table.from_batches(batches, schema=schema)
         return pa.Table.from_pylist(merged_rows, schema=schema)
     return merged_rows
 
@@ -1576,15 +1602,56 @@ def facet_summary(pin, *, facet_set=None, column=None):
     return by_column
 
 
+PRE_ADMISSION_ERROR_CODES = frozenset({
+    'input_digest_mismatch',
+    'invalid_correction',
+    'release_mismatch',
+    'invalid_request',
+    'invalid_update',
+    'invalid_schema',
+    'invalid_definition',
+    'invalid_sql',
+    'invalid_id',
+    'invalid_json',
+    'invalid_operation',
+    'invalid_base',
+    'invalid_group',
+    'invalid_relationship',
+    'invalid_backfill',
+    'invalid_comparison',
+    'invalid_compaction',
+    'invalid_export',
+    'invalid_removal',
+    'invalid_evidence',
+    'missing_reason',
+    'invalid_argument',
+    'invalid_parameter',
+    'invalid_spec',
+    'invalid_request_timeout',
+})
+
+
 def cleanup_safe(error):
     """Only deterministic pre-admission refusals prove producer independence."""
-    return (
-        isinstance(error, DocSpecFailure)
-        and error.status is not None
-        and 400 <= error.status < 500
-        and bool(error.code)
-        and error.code not in {'worker', 'custody_quarantined', 'timeout', 'host_unavailable'}
-    )
+    if not isinstance(error, DocSpecFailure) or error.status is None:
+        return False
+    if error.status >= 500:
+        return False
+    if error.code in {'worker', 'custody_quarantined', 'timeout', 'request_timeout', 'host_unavailable'}:
+        return False
+    if getattr(error, 'pre_admission', None) is not None:
+        return bool(error.pre_admission) and error.status in (400, 422)
+    return error.status in (400, 422) and error.code in PRE_ADMISSION_ERROR_CODES
+
+
+def _cleanup_dataset_client(host, responses):
+    for response in tuple(responses):
+        try:
+            response.close()
+        except Exception:
+            pass
+    responses.clear()
+    host.release()
 
 
 class NativeDatasets:
@@ -1820,18 +1887,22 @@ class NativeDatasets:
             self._host = acquire_host(self._command(), environment,
                                       self.workspace, self.timeout,
                                       required_capabilities=self.required_capabilities)
-            self._finalizer = weakref.finalize(self, self._host.release)
+            self._finalizer = weakref.finalize(self, _cleanup_dataset_client, self._host, self._responses)
         return self._host
 
     def close(self):
         """Cancel this client's reads; its last owner also stops the native host."""
         with self._host_lock:
             self._closed = True
-            for response in tuple(self._responses):
-                response.close()
-            self._responses.clear()
             if self._finalizer is not None:
                 self._finalizer()
+            else:
+                for response in tuple(self._responses):
+                    try:
+                        response.close()
+                    except Exception:
+                        pass
+                self._responses.clear()
 
     def __enter__(self):
         if self._closed:
@@ -1871,13 +1942,13 @@ class NativeDatasets:
 
     def hash_input(self, path):
         """Hash a local producer file without opening the configured remote host."""
-        if _blake3_ext is not None and 'PYTEST_CURRENT_TEST' not in os.environ and not self._has_runtime_pins():
+        resolved = Path(path).resolve()
+        if _blake3_ext is not None and not self._has_runtime_pins() and resolved.is_file():
             if self._closed:
                 raise RuntimeError('DocSpec client is closed')
-            resolved = Path(path).resolve()
             data = resolved.read_bytes()
             return dict(digest=_blake3_ext.blake3(data).hexdigest(), bytes=len(data))
-        return self._call('hash', Path(path).resolve(), remote=False)
+        return self._call('hash', resolved, remote=False)
 
     def run(self, request):
         return self._request('/run', request)
@@ -1930,45 +2001,6 @@ class NativeDatasets:
                 status = getattr(error, 'status', None) or getattr(error, 'status_code', None)
                 if status != 415:
                     raise
-        use_v3_leaf_cache = (
-            self.remote is not None
-            and base is None
-            and operation == 'initial'
-            and isinstance(dataset, str)
-            and dataset.startswith(('catalog-', 'raw-', 'obs-', 'source-observations-'))
-            and 'PYTEST_CURRENT_TEST' not in os.environ
-        )
-        if use_v3_leaf_cache:
-            with self._host_lock:
-                cache = getattr(self, '_v3_leaf_cache', None)
-                cache_path = self.workspace.parent / 'completed-v3-leaves.json'
-                if cache is None:
-                    try:
-                        cache = json.loads(cache_path.read_text()) if cache_path.is_file() else {}
-                    except Exception:
-                        cache = {}
-                    self._v3_leaf_cache = cache
-                cached_pin = cache.get(dataset)
-            if isinstance(cached_pin, dict) and cached_pin.get('id') == operation:
-                return cached_pin
-
-        def _save_v3_leaf_cache(pin):
-            if not use_v3_leaf_cache or not isinstance(pin, dict):
-                return pin
-            with self._host_lock:
-                cache = getattr(self, '_v3_leaf_cache', None)
-                if cache is None:
-                    cache = {}
-                    self._v3_leaf_cache = cache
-                cache[dataset] = pin
-                cache_path = self.workspace.parent / 'completed-v3-leaves.json'
-                tmp_path = cache_path.with_name(f'completed-v3-leaves.{threading.get_ident()}.tmp')
-                try:
-                    tmp_path.write_text(json.dumps(cache, ensure_ascii=False))
-                    os.replace(tmp_path, cache_path)
-                except OSError:
-                    pass
-            return pin
 
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
@@ -1996,9 +2028,7 @@ class NativeDatasets:
             attempt = 0
             while attempt < 4:
                 try:
-                    return _save_v3_leaf_cache(
-                        self._request('/run', active_request, dispatch=dispatch)
-                    )
+                    return self._request('/run', active_request, dispatch=dispatch)
                 except Exception as exc:
                     import httpx
                     if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
@@ -2019,11 +2049,6 @@ class NativeDatasets:
                         dispatch.clear()
                         continue
                     if row_group_size is None and not used_legacy_rgs and 'operation_conflict' in msg:
-                        if use_v3_leaf_cache:
-                            try:
-                                return _save_v3_leaf_cache(self.release(dataset, operation))
-                            except DocSpecFailure:
-                                pass
                         used_legacy_rgs = True
                         _write_producer_parquet(
                             table,
@@ -2647,30 +2672,56 @@ class NativeDatasets:
         if group == 'source':
             with self.source_batches(pin, schema=schema, columns=columns) as batches:
                 return pa.Table.from_batches(list(batches), schema=batches.schema)
+        started = time.monotonic()
+        deadline = started + self.timeout
         dataset, version = pin['dataset']['dataset'], pin['id']
+        host = self._execution_host()
+        release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
+        if host.request('GET', release_path, deadline=deadline) != pin:
+            raise ValueError('Native release differs from the selected exact pin')
         projected_cols = list(columns) if columns is not None else None
+        if projected_cols is not None and not projected_cols:
+            raise ValueError('Projected column list must not be empty')
         query = (
             '?columns=' + ','.join(quote(col, safe='') for col in projected_cols)
             if projected_cols
             else ''
         )
-        path = (f'/datasets/{quote(dataset, safe="")}'
-                f'/versions/{quote(version, safe="")}/arrow/{quote(group, safe="")}'
-                f'{query}')
+        path = f'{release_path}/arrow/{quote(group, safe="")}{query}'
         target_schema = (
             pa.schema([schema.field(name) for name in projected_cols], metadata=schema.metadata)
             if (schema is not None and projected_cols is not None)
             else schema
         )
-        deadline = time.monotonic() + self.timeout
-        with self._execution_host().stream('GET', path, deadline=deadline) as (response, deadline):
+        with host.stream('GET', path, deadline=deadline) as (response, deadline):
             self._responses.add(response)
             try:
-                self._execution_host().check_response(response)
-                with ArrowResponse(response, deadline=deadline) as stream, \
-                        pa.ipc.open_stream(stream) as reader:
-                    table = reader.read_all()
-                    stream.finish()
+                host.check_response(response)
+                expected = {
+                    'docspec-dataset': dataset,
+                    'docspec-version': version,
+                    'docspec-manifest-blake3': pin['manifest']['digest'],
+                    'content-type': 'application/vnd.apache.arrow.stream',
+                }
+                if any(response.headers.get(k) != v for k, v in expected.items()):
+                    raise ValueError('Native stream differs from the selected exact pin')
+                try:
+                    with ArrowResponse(response, deadline=deadline) as stream, \
+                            pa.ipc.open_stream(stream) as reader:
+                        table = reader.read_all()
+                        stream.finish()
+                except (pa.ArrowInvalid, pa.ArrowIOError) as exc:
+                    diagnostic = json.dumps({
+                        'code': 'request_timeout',
+                        'message': f'DocSpec Arrow IPC stream truncated: {exc}',
+                        'pre_admission': False,
+                    })
+                    cmd = [response.request.method, response.request.url.path]
+                    err = DocSpecFailure(cmd, subprocess.CompletedProcess(cmd, 504, stderr=diagnostic))
+                    err.status_code = 504
+                    err.code = 'request_timeout'
+                    err.pre_admission = False
+                    raise err from exc
                 return table if target_schema is None else table.cast(target_schema, safe=True)
             finally:
                 self._responses.discard(response)

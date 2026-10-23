@@ -23,10 +23,12 @@ def implementation_digest():
     return sha(encode({'files': files, 'versions': versions, 'python': list(sys.version_info[:3])}))
 
 
-def request_key(*, files, youtube_dir, transcript_files, format, limit, as_of):
+def request_key(*, files, youtube_dir, transcript_files, format, limit, as_of, document_filenames=None):
     # Ordinary input paths are machine-local. Transcript URIs are retained in
     # source evidence, so moving those files must also invalidate reuse.
     inputs = {name: file_sha(path) if path is not None else None for name, path in files.items()}
+    if document_filenames is not None or 'document_filenames' not in inputs:
+        inputs['document_filenames'] = file_sha(document_filenames) if document_filenames is not None else inputs.get('document_filenames')
     inputs['youtube'] = None if youtube_dir is None else [(p.name, file_sha(p)) for p in sorted(Path(youtube_dir).glob('youtube_*.json'))]
     inputs['transcripts'] = [(Path(p).resolve().as_uri(), file_sha(p)) for p in transcript_files]
     return sha(encode({'version': 1, 'inputs': inputs, 'implementation': implementation_digest(),

@@ -1,7 +1,7 @@
 """Tier 4: Scenario 1 — YouTube Channel Weekly Sync against Real Production Data.
 
 Verifies:
-- Loading real production cache files from /Users/mikewolfd/Work/pipeline-data/youtube/
+- Loading real production cache files from pipeline-data/youtube/
 - CamelCase videoId and publishedAt / videoPublishedAt extraction
 - Preserves all 67,351 videos with 0 empty video_id and 0 NULL published_at
 - Offloads upstream envelopes to local R2 CAS

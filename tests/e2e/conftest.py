@@ -1,6 +1,7 @@
 """Pytest Configuration and Shared Fixtures for Opaque-Box E2E Test Suite."""
 
 from __future__ import annotations
+import os
 import sys
 from pathlib import Path
 
@@ -56,7 +57,9 @@ def generator() -> SyntheticDataGenerator:
 @pytest.fixture
 def pipeline_data_dir() -> Path:
     """Path to real production datasets for Tier 4 scenarios."""
-    path = Path("/Users/mikewolfd/Work/pipeline-data")
+    repo_root = Path(__file__).resolve().parents[2]
+    env_path = os.environ.get("PIPELINE_DATA_DIR")
+    path = Path(env_path) if env_path else repo_root.parent / "pipeline-data"
     if not path.exists():
         pytest.skip(f"Production dataset directory not found: {path}")
     return path
@@ -65,7 +68,9 @@ def pipeline_data_dir() -> Path:
 @pytest.fixture
 def adoption_inputs_dir() -> Path:
     """Path to incremental updates adoption inputs."""
-    path = Path("/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs")
+    repo_root = Path(__file__).resolve().parents[2]
+    env_path = os.environ.get("ADOPTION_INPUTS_DIR")
+    path = Path(env_path) if env_path else repo_root / "output" / "incremental-updates-20261019" / "adoption-inputs"
     if not path.exists():
         pytest.skip(f"Adoption inputs directory not found: {path}")
     return path
@@ -74,7 +79,9 @@ def adoption_inputs_dir() -> Path:
 @pytest.fixture
 def docspec_rs_dir() -> Path:
     """Path to native Rust docspec-rs repository."""
-    path = Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs")
+    repo_root = Path(__file__).resolve().parents[2]
+    env_path = os.environ.get("DOCSPEC_RS_DIR")
+    path = Path(env_path) if env_path else repo_root.parent / "spicy-stack" / "docspec-rs"
     if not path.exists():
         pytest.skip(f"docspec-rs repository not found: {path}")
     return path

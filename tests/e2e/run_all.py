@@ -156,7 +156,7 @@ def main() -> int:
         print("✓ Tier 1 (145 tests): 100% of F1-F29 covered (>=5 tests per feature)")
         print("✓ Tier 2 (145 tests): 100% of F1-F29 covered for boundaries & corner cases")
         print("✓ Tier 3 (14 tests): Pairwise & end-to-end multi-module combinations verified")
-        print("✓ Tier 4 (6 scenarios): Production dataset execution against /Users/mikewolfd/Work/pipeline-data")
+        print("✓ Tier 4 (6 scenarios): Production dataset execution against pipeline-data")
         print("✓ Total 310 tests passed without live R2 mutations (100% local CAS staging compliance)")
 
     return exit_code

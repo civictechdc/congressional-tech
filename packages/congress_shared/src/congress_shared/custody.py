@@ -295,18 +295,15 @@ def write_bound_receipt(
     fsync_dir: bool = False,
 ) -> VerifiedFile:
     """Atomically write ``payload`` as canonical JSON and return its :class:`VerifiedFile`."""
-    raw = canonical_json_bytes(
+    return write_atomic_json(
+        path,
         payload,
+        temp_mode=temp_mode,
+        temp_path=temp_path,
         ensure_ascii=ensure_ascii,
         trailing_newline=trailing_newline,
         allow_nan=allow_nan,
         default=default,
-    )
-    return write_atomic_bytes(
-        path,
-        raw,
-        temp_mode=temp_mode,
-        temp_path=temp_path,
         fsync=fsync,
         fsync_dir=fsync_dir,
     )
@@ -384,26 +381,82 @@ def copy_checked(
     fsync: bool = True,
     fsync_dir: bool = False,
 ) -> VerifiedFile:
-    """Stream-verify ``src`` and atomically write its exact bytes to ``dst``."""
-    verified_src = verify_local_file(
-        src,
-        expected_sha256=expected_sha256,
-        expected_size=expected_bytes,
-    )
-    chunks: list[bytes] = []
-    with Path(src).open("rb") as stream:
-        for chunk in iter(lambda: stream.read(chunk_size), b""):
-            chunks.append(chunk)
-    raw = b"".join(chunks)
-    if len(raw) != verified_src.size_bytes or sha256(raw).hexdigest() != verified_src.sha256:
-        raise ValueError(f"Source file changed during checked copy: {src}")
-    return write_atomic_bytes(
-        dst,
-        raw,
-        temp_mode=temp_mode,
-        temp_path=temp_path,
-        fsync=fsync,
-        fsync_dir=fsync_dir,
+    """Stream-copy ``src`` to ``dst`` and verify custody in a single pass."""
+    resolved_src = Path(src)
+    target = Path(dst)
+    before_src = custody_identity(resolved_src)
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if temp_path is not None:
+        temporary = Path(temp_path)
+        temporary.parent.mkdir(parents=True, exist_ok=True)
+        fd = None
+    elif temp_mode == "fixed":
+        temporary = target.with_suffix(target.suffix + ".tmp")
+        fd = None
+    elif temp_mode == "unique":
+        fd, raw_name = tempfile.mkstemp(
+            prefix=f".{target.name}.", suffix=".tmp", dir=target.parent
+        )
+        temporary = Path(raw_name)
+    else:
+        raise ValueError(f"Unsupported temp_mode: {temp_mode!r}")
+
+    digest = sha256()
+    size = 0
+    try:
+        if fd is not None:
+            out_file = os.fdopen(fd, "wb")
+            fd = None
+        else:
+            out_file = temporary.open("wb")
+
+        with out_file as out_stream, resolved_src.open("rb") as in_stream:
+            for chunk in iter(lambda: in_stream.read(chunk_size), b""):
+                size += len(chunk)
+                digest.update(chunk)
+                out_stream.write(chunk)
+            out_stream.flush()
+            if fsync:
+                os.fsync(out_stream.fileno())
+
+        after_src = custody_identity(resolved_src)
+        if before_src != after_src or resolved_src.stat().st_size != size:
+            raise ValueError(f"Source file changed during checked copy: {src}")
+
+        actual_sha256 = digest.hexdigest()
+        if expected_bytes is not None and size != expected_bytes:
+            raise ValueError(
+                f"File size mismatch for {src}: expected {expected_bytes}, got {size}"
+            )
+        if expected_sha256 is not None and actual_sha256 != expected_sha256:
+            raise ValueError(
+                f"SHA-256 mismatch for {src}: expected {expected_sha256}, got {actual_sha256}"
+            )
+
+        temporary.replace(target)
+        if fsync_dir:
+            descriptor = os.open(target.parent, os.O_RDONLY)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+    except BaseException:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        temporary.unlink(missing_ok=True)
+        raise
+
+    return VerifiedFile(
+        target,
+        actual_sha256,
+        size,
+        pid=os.getpid(),
+        target=target.resolve(),
+        identity=custody_identity(target),
     )
 
 

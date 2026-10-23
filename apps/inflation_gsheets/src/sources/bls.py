@@ -12,6 +12,7 @@ YoY% for month m = (index[m] / index[m-12] - 1) * 100.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import pandas as pd
 
 from .base import InflationSource, SourceConfig, SourceUnavailable, to_month_start
@@ -22,11 +23,11 @@ MONTH_ORDER = [
 ]
 
 
+@dataclass
 class BLSSource(InflationSource):
-    key = "bls"
-    label = "BLS CPI-U (CUUR0000SA0)"
-    columns = ["bls_yoy"]
-    requires_key = False
+    key: str = "bls"
+    label: str = "BLS CPI-U (CUUR0000SA0)"
+    columns: list[str] = field(default_factory=lambda: ["bls_yoy"])
 
     def fetch(self, config: SourceConfig) -> pd.DataFrame:
         path = config.data_dir / "historical-cpi.csv"

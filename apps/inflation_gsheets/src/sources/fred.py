@@ -21,6 +21,7 @@ come through.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import io
 
 import pandas as pd
@@ -55,11 +56,11 @@ def _fetch_one(series_id: str, colname: str, timeout: int) -> pd.DataFrame:
     return out.round(4).to_frame()
 
 
+@dataclass
 class FREDSource(InflationSource):
-    key = "fred"
-    label = "FRED alt-CPI (Cleveland median/trimmed, Atlanta sticky)"
-    columns = list(FRED_SERIES.keys())
-    requires_key = False
+    key: str = "fred"
+    label: str = "FRED alt-CPI (Cleveland median/trimmed, Atlanta sticky)"
+    columns: list[str] = field(default_factory=lambda: list(FRED_SERIES.keys()))
 
     def fetch(self, config: SourceConfig) -> pd.DataFrame:
         frames = []

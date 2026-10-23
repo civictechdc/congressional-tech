@@ -9,17 +9,16 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Literal
 
+from congress_shared.dates import parse_utc_timestamp
+
 DateBasis = Literal["playlist_added", "video_publication"]
 DATE_FIELDS = {"playlist_added": "publishedAt", "video_publication": "videoPublishedAt"}
 
 
 def _instant(value: Any) -> datetime | None:
-    if not isinstance(value, str):
-        return None
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        return parsed if parsed.tzinfo is not None else None
-    except ValueError:
+        return parse_utc_timestamp(value)
+    except (ValueError, TypeError):
         return None
 
 

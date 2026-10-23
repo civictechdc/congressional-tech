@@ -388,7 +388,8 @@ def prepare_capture(response, *, outcome, links, context=None, mode="fetch", sca
 
     def retain(data):
         digest = data.sha256 if isinstance(data, CapturedFile) else hashlib.sha256(data).hexdigest()
-        key = f"bodies/sha256/{digest[:2]}/{digest}.gz"
+        m_type = (response.get('content', {}).get('media_type') if isinstance(response, dict) else None) or getattr(data, 'media_type', None)
+        key = derive_body_key(digest, m_type)
         bodies.setdefault(key, data)
         return key
 

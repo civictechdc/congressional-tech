@@ -121,7 +121,6 @@ def main() -> int:
     weights = parse_weights(args.weights)
 
     frames: list[pd.DataFrame] = []
-    available_cols: list[str] = []
     status: list[tuple[str, str]] = []
 
     for source in SOURCES:
@@ -132,7 +131,6 @@ def main() -> int:
                 raise SourceUnavailable("returned no data")
             frames.append(frame)
             got = [c for c in frame.columns]
-            available_cols.extend(got)
             n = len(frame)
             latest = frame.index.max().date().isoformat()
             status.append((source.key, f"OK   {got} ({n} months, latest {latest})"))

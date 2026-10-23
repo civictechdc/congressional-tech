@@ -19,7 +19,7 @@ from corpus_recovery.guards import GuardedNative
 from congress_api.retention.immutable_metadata import encoded
 from congress_api.retention.raw_storage import RawStorage, RawSnapshot, RAW_KEY
 from congress_api.retention.raw_archive import (
-    CAPTURE_SCHEMA, body_payload,
+    LEGACY_CAPTURE_SCHEMA, body_payload, prepare_state_table,
 )
 
 
@@ -156,8 +156,8 @@ def import_batch(store, *, prepared, body_paths, raw_storage, operation, source_
                   new_pending_states=len(states.added), already_applied=False,
                   catalog_and_viewer_publication_complete=False)
     candidate = selected_owner.prepare(selected_base, operation=operation,
-        captures=pa.Table.from_pylist(additions, schema=CAPTURE_SCHEMA),
-        states=pa.Table.from_pylist(list(states.added.values()), schema=raw_storage.state_schema),
+        captures=pa.Table.from_pylist(additions, schema=LEGACY_CAPTURE_SCHEMA),
+        states=prepare_state_table(list(states.added.values()), schema=raw_storage.state_schema),
         indexed_receipts={row['receipt_key'] for row in additions},
         request_id=request_id, delivery_result=result)
     selected = selected_owner.publish(candidate)

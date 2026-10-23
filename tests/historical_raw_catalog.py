@@ -91,6 +91,7 @@ def _rebuild_catalog_owned(store, captures, *, seeds, workers, repair, inspect_b
         del data
     if captures.schema.remove_metadata() not in (CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA):
         raise ValueError("Unexpected capture index schema")
+    raw_captures = captures
     captures = _to_legacy_capture_table(captures)
     snapshot = owners.enter_context(read_catalog(store, read=read))
     # Verified owned files stay alive through interpretation and archival.
@@ -124,7 +125,8 @@ def _rebuild_catalog_owned(store, captures, *, seeds, workers, repair, inspect_b
     cursor = int(meta.get(b'raw_capture_rows', b'0'))
     checkpoint = b'raw_capture_rows' in meta or b'capture_digest' in meta
     reusable = (not repair and previous is not None and b'raw_capture_rows' in meta and 0 <= cursor <= capture_rows
-                and capture_digest_matches(captures.slice(0, cursor), meta.get(b'capture_digest')))
+                and (capture_digest_matches(captures.slice(0, cursor), meta.get(b'capture_digest'))
+                     or capture_digest_matches(raw_captures.slice(0, cursor), meta.get(b'capture_digest'))))
     if checkpoint and not repair and not reusable:
         raise ValueError('Catalog capture checkpoint digest mismatch or invalid cursor; verify legacy checkpoints '
                          'with their original PyArrow writer, or explicitly rebuild after investigation')

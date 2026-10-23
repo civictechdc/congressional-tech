@@ -285,12 +285,17 @@ def test_host_refuses_readiness_missing_required_loopback_capability(tmp_path, m
 
 
 def test_live_unified_docspec_binary_matches_qualified_contract(tmp_path):
-    binary_env = os.environ.get('DOCSPEC_BINARY')
-    candidate = Path(binary_env) if binary_env else Path('/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec')
-    if not candidate.is_file():
+    from docspec_client import resolve_docspec_binary
+    try:
+        candidate = resolve_docspec_binary()
+    except FileNotFoundError:
+        candidate = None
+    if not candidate or not candidate.is_file():
         pytest.skip('Local unified docspec binary not present')
     with candidate.open('rb') as source:
         actual_sha = sha256(source.read()).hexdigest()
+    if actual_sha != QUALIFIED_DOCSPEC_RUNTIME['darwin_arm64_binary_sha256']:
+        pytest.skip('Local docspec binary differs from pinned darwin-arm64 qualified release')
     native = NativeDatasets(
         candidate,
         tmp_path / 'workspace',
@@ -493,3 +498,195 @@ def test_producer_parquet_writes_bound_row_group_size_for_batch_budget(tmp_path)
         else:
             assert num_rgs == 2
             assert rg_counts == [PRODUCER_PARQUET_ROW_GROUP_SIZE, 5]
+
+
+def test_cleanup_safe_matrix():
+    from docspec_client import DocSpecFailure, cleanup_safe, PRE_ADMISSION_ERROR_CODES
+    import subprocess
+
+    def make_err(code, status, pre_admission=None):
+        payload = {'code': code}
+        if pre_admission is not None:
+            payload['pre_admission'] = pre_admission
+        err = DocSpecFailure(['test'], subprocess.CompletedProcess(['test'], status, stderr=json.dumps(payload)))
+        err.status_code = status
+        return err
+
+    # Deterministic pre-admission refusals (HTTP 400, 422 with pre_admission=True)
+    assert cleanup_safe(make_err('invalid_schema', 422, pre_admission=True)) is True
+    assert cleanup_safe(make_err('invalid_request', 400, pre_admission=True)) is True
+    # Without pre_admission field, fallback allowlist
+    assert cleanup_safe(make_err('invalid_schema', 422)) is True
+    assert cleanup_safe(make_err('invalid_schema', 400)) is True
+
+    # Post-admission refusals (pre_admission=False) must NEVER cleanup safe
+    assert cleanup_safe(make_err('runtime_err', 422, pre_admission=False)) is False
+    assert cleanup_safe(make_err('invalid_schema', 422, pre_admission=False)) is False
+
+    # Status >= 500 must NEVER cleanup safe
+    assert cleanup_safe(make_err('worker', 500, pre_admission=True)) is False
+    assert cleanup_safe(make_err('worker', 500)) is False
+    assert cleanup_safe(make_err('request_timeout', 504)) is False
+
+    # Excluded transient/worker error codes must NEVER cleanup safe
+    for code in ('worker', 'custody_quarantined', 'timeout', 'request_timeout', 'host_unavailable'):
+        assert cleanup_safe(make_err(code, 422, pre_admission=True)) is False
+        assert cleanup_safe(make_err(code, 400, pre_admission=True)) is False
+
+    # Other HTTP errors: 404, 409 must NOT cleanup safe
+    assert cleanup_safe(make_err('not_found', 404)) is False
+    assert cleanup_safe(make_err('conflict', 409)) is False
+
+    # Non-DocSpecFailure or missing status
+    assert cleanup_safe(ValueError("boom")) is False
+    assert cleanup_safe(TimeoutError("timeout")) is False
+
+
+def test_read_arrow_pin_and_header_verification():
+    from docspec_client import NativeDatasets, DocSpecFailure
+    import pyarrow as pa
+    import pyarrow.ipc as ipc
+
+    client = NativeDatasets.__new__(NativeDatasets)
+    client._closed = False
+    client.timeout = 10
+    client._responses = set()
+
+    pin = {
+        'id': 'v1',
+        'dataset': {'dataset': 'test_ds'},
+        'manifest': {'digest': 'abc123blake3'},
+    }
+
+    class MockHost:
+        def __init__(self, release_ret=pin, headers_mod=None, stream_bytes=None):
+            self.release_ret = release_ret
+            self.headers_mod = headers_mod or {}
+            self.stream_bytes = stream_bytes
+
+        def request(self, method, path, **kwargs):
+            return self.release_ret
+
+        def stream(self, method, path, **kwargs):
+            from contextlib import contextmanager
+            @contextmanager
+            def _stream():
+                headers = {
+                    'docspec-dataset': 'test_ds',
+                    'docspec-version': 'v1',
+                    'docspec-manifest-blake3': 'abc123blake3',
+                    'content-type': 'application/vnd.apache.arrow.stream',
+                }
+                headers.update(self.headers_mod)
+                table = pa.table({'a': [1, 2, 3]})
+                sink = io.BytesIO()
+                with ipc.new_stream(sink, table.schema) as writer:
+                    writer.write_table(table)
+                raw = self.stream_bytes if self.stream_bytes is not None else sink.getvalue()
+
+                class MockResponse:
+                    is_success = True
+                    def __init__(self, headers, body):
+                        self.headers = headers
+                        self._body = body
+                        class Req:
+                            method = 'GET'
+                            url = type('Url', (), {'path': '/test'})()
+                        self.request = Req()
+                    def iter_bytes(self):
+                        yield self._body
+                    def close(self):
+                        pass
+
+                resp = MockResponse(headers, raw)
+                yield resp, 999999999.0
+            return _stream()
+
+        def check_response(self, resp):
+            pass
+
+    # 1. Projected cols empty raises ValueError
+    client._execution_host = lambda: MockHost()
+    with pytest.raises(ValueError, match='Projected column list must not be empty'):
+        client.read_arrow(pin, group='evidence', columns=[])
+
+    # 2. Release differs raises ValueError
+    client._execution_host = lambda: MockHost(release_ret={'id': 'v2'})
+    with pytest.raises(ValueError, match='Native release differs'):
+        client.read_arrow(pin, group='evidence')
+
+    # 3. Headers differ raises ValueError
+    client._execution_host = lambda: MockHost(headers_mod={'docspec-version': 'mismatch'})
+    with pytest.raises(ValueError, match='Native stream differs'):
+        client.read_arrow(pin, group='evidence')
+
+    # 4. Valid read succeeds
+    client._execution_host = lambda: MockHost()
+    table = client.read_arrow(pin, group='evidence')
+    assert table.num_rows == 3
+
+    # 5. Truncated stream raises DocSpecFailure with request_timeout
+    client._execution_host = lambda: MockHost(stream_bytes=b'truncated')
+    with pytest.raises(DocSpecFailure) as exc_info:
+        client.read_arrow(pin, group='evidence')
+    assert exc_info.value.code == 'request_timeout'
+
+
+def test_host_lifecycle_and_transport_guards(tmp_path):
+    from docspec_client import Host, ArrowResponse, DocSpecFailure
+    from docspec_client.docspec_host import RESPONSE_LIMIT
+    import subprocess
+
+    # _ready_address checks
+    host = Host.__new__(Host)
+    host.required_capabilities = ('request-deadline', 'owned-stdin-eof')
+    class Proc:
+        pid = 12345
+    host.process = Proc()
+
+    with pytest.raises(ValueError, match='bound loopback address'):
+        host._ready_address({
+            'protocol': 'docspec-loopback',
+            'version': 1,
+            'pid': 12345,
+            'capabilities': ['request-deadline', 'owned-stdin-eof'],
+            'address': '127.0.0.1:8080%zone',
+        })
+    with pytest.raises(ValueError, match='bound loopback address'):
+        host._ready_address({
+            'protocol': 'docspec-loopback',
+            'version': 1,
+            'pid': 12345,
+            'capabilities': ['request-deadline', 'owned-stdin-eof'],
+            'address': '127.0.0.1:8080 ',
+        })
+
+    # ArrowResponse finish without terminator raises DocSpecFailure
+    class FakeResp:
+        def iter_bytes(self):
+            yield b'some_bytes'
+        class Req:
+            method = 'GET'
+            url = type('Url', (), {'path': '/test'})()
+        request = Req()
+
+    ar = ArrowResponse(FakeResp())
+    data = ar.read()
+    with pytest.raises(DocSpecFailure) as exc_info:
+        ar.finish()
+    assert exc_info.value.code == 'request_timeout'
+    assert exc_info.value.status_code == 504
+
+
+def test_apply_update_merge_spec_streaming_memory():
+    from docspec_client import apply_update_merge_spec
+    import pyarrow as pa
+
+    existing = pa.table({'id': [1, 2], 'val': ['a', 'b']})
+    incoming = pa.table({'id': [2, 3], 'val': ['b_upd', 'c']})
+    deletions = pa.table({'id': [1], 'unused_extra_col': ['x']})
+
+    merged = apply_update_merge_spec(existing, incoming, keys=['id'], deletions=deletions)
+    assert isinstance(merged, pa.Table)
+    rows = merged.to_pylist()
+    assert rows == [{'id': 2, 'val': 'b_upd'}, {'id': 3, 'val': 'c'}]

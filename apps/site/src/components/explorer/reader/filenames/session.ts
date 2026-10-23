@@ -12,6 +12,21 @@ declare global {
 
 const manifest = import.meta.env.PUBLIC_FILENAME_MANIFEST_URL || filenameManifestUrl;
 
+let resolveApi: ((api: FilenameApi) => void) | null = null;
+let apiPromise: Promise<FilenameApi> | null = null;
+
+function getApiPromise(): Promise<FilenameApi> {
+  if (typeof window !== 'undefined' && window.filenameViewerApi) {
+    return Promise.resolve(window.filenameViewerApi);
+  }
+  if (!apiPromise) {
+    apiPromise = new Promise<FilenameApi>(resolve => {
+      resolveApi = resolve;
+    });
+  }
+  return apiPromise;
+}
+
 /** One worker for the page. The dashboard bootstrap mounts it; Explorer calls through the same global. */
 export function mountFilenameCatalog(): void {
   if (typeof window === 'undefined' || window.filenameViewerApi) return;
@@ -36,7 +51,12 @@ export function mountFilenameCatalog(): void {
     onError: () => { if (snapshot) showPublicationUpdate({ message: 'This review could not be loaded.' }); },
   });
   window.addEventListener('pagehide', event => { if (!event.persisted) client.dispose(); });
-  window.filenameViewerApi = (url, signal) => client.request(url, signal);
+  const api: FilenameApi = (url, signal) => client.request(url, signal);
+  window.filenameViewerApi = api;
+  if (resolveApi) {
+    resolveApi(api);
+    resolveApi = null;
+  }
   void client.request('/api/info');
 }
 
@@ -54,23 +74,31 @@ export async function filenameRequest<T = unknown>(url: string, signal?: AbortSi
 }
 
 function callFilenameApi(url: string, signal?: AbortSignal): Promise<unknown> {
-  const ready = window.filenameViewerApi;
+  const ready = typeof window !== 'undefined' ? window.filenameViewerApi : undefined;
   if (ready) return ready(url, signal);
+  if (signal?.aborted) {
+    return Promise.reject(signal.reason || new DOMException('Aborted', 'AbortError'));
+  }
   return new Promise((resolve, reject) => {
-    const started = performance.now();
-    const timer = window.setInterval(() => {
-      if (signal?.aborted) {
-        window.clearInterval(timer);
-        reject(signal.reason || new DOMException('Aborted', 'AbortError'));
-        return;
-      }
-      if (window.filenameViewerApi) {
-        window.clearInterval(timer);
-        window.filenameViewerApi(url, signal).then(resolve, reject);
-      } else if (performance.now() - started > 8000) {
-        window.clearInterval(timer);
-        reject(new Error('The file list could not be opened. Reload this page to try again.'));
-      }
-    }, 16);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onAbort = () => {
+      if (timer) clearTimeout(timer);
+      reject(signal?.reason || new DOMException('Aborted', 'AbortError'));
+    };
+    if (signal) {
+      signal.addEventListener('abort', onAbort, { once: true });
+    }
+    timer = setTimeout(() => {
+      if (signal) signal.removeEventListener('abort', onAbort);
+      reject(new Error('The file list could not be opened. Reload this page to try again.'));
+    }, 8000);
+
+    getApiPromise()
+      .then(api => {
+        if (timer) clearTimeout(timer);
+        if (signal) signal.removeEventListener('abort', onAbort);
+        return api(url, signal);
+      })
+      .then(resolve, reject);
   });
 }

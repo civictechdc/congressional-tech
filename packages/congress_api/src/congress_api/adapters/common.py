@@ -8,6 +8,8 @@ from datetime import date, datetime
 from typing import Callable, Mapping
 from urllib.parse import urlsplit
 
+from congress_shared.dates import parse_utc_timestamp
+
 # Adapter meeting maps: (congress, chamber, event id). Not the congress.gov string id.
 MeetingLookupKey = tuple[int, str, str]
 
@@ -75,7 +77,7 @@ def reported_time(value):
     value = str(value)
     if len(value) == 10:
         return ReportedTime(date=date.fromisoformat(value), original=value)
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    parsed = parse_utc_timestamp(value)
     zone = "UTC" if value.endswith("Z") else str(parsed.tzinfo) if parsed.tzinfo else None
     return ReportedTime(date=parsed.date(), time=parsed.time().replace(tzinfo=None), timezone=zone,
                         precision="second" if len(value.split("T")[-1].split("+")[0]) >= 8 else "minute", original=value)

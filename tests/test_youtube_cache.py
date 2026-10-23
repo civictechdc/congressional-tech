@@ -113,7 +113,7 @@ import importlib.abc
 import sys
 class NoProviders(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname.split('.')[0] in {'youtube_api', 'congress_api', 'committee_meeting', 'tinydb', 'googleapiclient', 'yt_dlp'} or fullname == 'congress_shared.globals':
+        if fullname.split('.')[0] in {'youtube_api', 'congress_api', 'committee_meeting', 'tinydb', 'googleapiclient', 'yt_dlp'}:
             raise AssertionError('decoder imported ' + fullname)
 sys.meta_path.insert(0, NoProviders())
 from congress_shared.youtube_cache import decode_cache

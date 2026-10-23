@@ -20,17 +20,18 @@ drop a wider export renamed to this file. See README for the source URL.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import pandas as pd
 
 from .base import InflationSource, SourceConfig
 from .manual import load_manual_series
 
 
+@dataclass
 class AdobeSource(InflationSource):
-    key = "adobe"
-    label = "Adobe Digital Price Index (manual drop-file)"
-    columns = ["adobe"]
-    requires_key = False
+    key: str = "adobe"
+    label: str = "Adobe Digital Price Index (manual drop-file)"
+    columns: list[str] = field(default_factory=lambda: ["adobe"])
 
     def fetch(self, config: SourceConfig) -> pd.DataFrame:
         path = config.manual_dir / "adobe-dpi.csv"

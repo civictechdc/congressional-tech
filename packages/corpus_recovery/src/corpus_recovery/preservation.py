@@ -283,7 +283,7 @@ def verify(destination, *, raw_storage):
             for url in set(new) - set(old):
                 row = new[url]
                 if (url not in changed_urls or row['outcome'] != 'pending'
-                        or row['body_key'] is not None or row['attempts'] != 0):
+                        or row.get('body_key') is not None or row['attempts'] != 0):
                     raise ValueError('New state incorrectly claims a live download')
                 added += 1
         if (added != complete['new_pending_states']

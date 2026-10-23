@@ -23,3 +23,15 @@ def cue_lines(vtt: str) -> list[list[str]]:
         if any(text):
             result.append([line for line in text if line])
     return result
+
+
+def vtt_to_text(vtt: str) -> str:
+    """Plain text from a WebVTT file. YouTube's automatic captions repeat each line as it
+    scrolls (with per-word timing tags), so consecutive duplicates are dropped."""
+    lines, last = [], None
+    for cue in cue_lines(vtt):
+        for line in cue:
+            if line != last:
+                lines.append(line)
+                last = line
+    return "\n".join(lines) + "\n"

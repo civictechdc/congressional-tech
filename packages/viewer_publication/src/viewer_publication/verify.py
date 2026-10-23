@@ -185,10 +185,14 @@ def verify(raw_manifest, observed, *, current_raw=False, read=control, raw_diges
         'withdrawn_reasons':observed.get('withdrawn',[])}
 
 
-def live_observation(viewer_url,pages_url,descriptor,*,root,node='node'):
-    root=Path(root)
+def live_observation(viewer_url, pages_url, descriptor, *, verifier_script=None, root=None, node='node'):
+    if verifier_script is None:
+        if root is None:
+            raise ValueError('Either verifier_script or root must be provided')
+        verifier_script = Path(root) / 'apps/site/scripts/verify-live-publication.mjs'
+    verifier_script = Path(verifier_script)
     with tempfile.TemporaryDirectory(prefix='publication-live-status-') as folder:
-        output=Path(folder)/'live.json'
-        subprocess.run([node,str(root/'apps/site/scripts/verify-live-publication.mjs'),'--viewer-url',viewer_url,
-            '--pages-url',pages_url,'--review-descriptor',str(descriptor),'--output',str(output)],check=True,timeout=180,capture_output=True)
-        return json.loads(control(output,limit=32*1024**2))
+        output = Path(folder) / 'live.json'
+        subprocess.run([node, str(verifier_script), '--viewer-url', viewer_url,
+            '--pages-url', pages_url, '--review-descriptor', str(descriptor), '--output', str(output)], check=True, timeout=180, capture_output=True)
+        return json.loads(control(output, limit=32 * 1024 ** 2))

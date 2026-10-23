@@ -704,7 +704,7 @@ From `congress_shared.paths` (output/cache defaults) and `congress_shared.resour
 - `transport.http` / `transport.zyte` provide retries, pacing and optional Zyte access.
 - `parsers.congress` parses typed Congress.gov XML; `meeting_from_xml` retains the original bytes.
 - `parsers.xml` owns BOM-safe XML reading and ordered typed XML conversion.
-- `parsers.witness_names` and `parsers.speaker_names` read person-name tokens for source and transcript interpretation.
+- `parsers.witness_names` and `matching.speaker_names` read person-name tokens for source and transcript interpretation.
 - `matching.committees` owns `parent_code`, `codes_of` and recording aliases.
 - `matching.meetings` owns meeting type, access, hearing eligibility and inventory scope, including the source field behind each classification.
 

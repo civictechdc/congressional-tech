@@ -13,6 +13,7 @@ dependencies = [
     "viewer-publication",
     "corpus-recovery",
     "news-lake",
+    "inflation-gsheets",
 ]
 
 [dependency-groups]
@@ -34,6 +35,7 @@ members = [
     "packages/corpus_recovery",
     "packages/news_lake",
     "apps/committee_youtube",
+    "apps/inflation_gsheets",
 ]
 
 [tool.uv.sources]
@@ -47,3 +49,4 @@ congress-youtube = { workspace = true }
 viewer-publication = { workspace = true }
 corpus-recovery = { workspace = true }
 news-lake = { workspace = true }
+inflation-gsheets = { workspace = true }

@@ -329,7 +329,8 @@ def export(*, meetings, output_dir, state_dir, gpo_path=None, gpo_evidence_path=
                 'inventory': inventory_state, 'recovered_witnesses': recovered_witnesses,
                 'video_matches': video_matches_path, 'recordings': recordings_path,
                 'issue_decisions': issue_decisions, 'attempts': attempts, 'committees': committees_path,
-            }, youtube_dir=youtube_dir, transcript_files=transcript_files, format=format, limit=limit, as_of=as_of)
+                'document_filenames': document_filenames,
+            }, youtube_dir=youtube_dir, transcript_files=transcript_files, format=format, limit=limit, as_of=as_of, document_filenames=document_filenames)
             if reused := try_reuse(output, state, reuse_from, reuse_key):
                 return reused, None
         ids = IdRegistry(state / "ids.json")

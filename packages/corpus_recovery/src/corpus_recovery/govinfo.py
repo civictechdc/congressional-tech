@@ -6,6 +6,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from congress_shared.dates import parse_utc_timestamp
+
 from congress_api.models.content import CapturedBody
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.raw_archive import prepare_capture
@@ -44,9 +46,7 @@ def prepare_packages(recoveries, input_hashes):
                 or response.get('http_status') != 200
                 or response.get('url') != url or response.get('requested_url') != url):
             raise ValueError('GovInfo package receipt is incomplete or identifies another source')
-        at = datetime.fromisoformat(response['retrieved_at'].replace('Z', '+00:00'))
-        if at.tzinfo is None:
-            raise ValueError('GovInfo package capture time lacks timezone')
+        at = parse_utc_timestamp(response['retrieved_at'])
         parent_path = Path(response['local_body_path']).resolve()
         raw = _read_bounded(parent_path, ZipLimits().max_archive_bytes)
         digest = hashlib.sha256(raw).hexdigest()

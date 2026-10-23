@@ -503,8 +503,11 @@ def test_native_projected_read_pushes_column_selection_and_bounds_bytes_read(tmp
     import shutil
     from native_test_helpers import native_test_client
 
-    default_bin = Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec")
-    binary = os.environ.get("DOCSPEC_BINARY") or shutil.which("docspec") or (str(default_bin) if default_bin.exists() else None)
+    from docspec_client import resolve_docspec_binary
+    try:
+        binary = resolve_docspec_binary()
+    except FileNotFoundError:
+        binary = None
     if not binary:
         pytest.skip("Set DOCSPEC_BINARY to maintained local CLI")
     native = native_test_client(binary, tmp_path / "native")

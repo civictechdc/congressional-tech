@@ -191,7 +191,8 @@ def capture_digest(table):
 
     def add(value):
         digest.update(json.dumps(value, ensure_ascii=True, allow_nan=False,
-                                 separators=(',', ':')).encode('ascii'))
+                                 separators=(',', ':'),
+                                 default=lambda x: x.hex() if isinstance(x, (bytes, bytearray)) else (x.isoformat() if hasattr(x, 'isoformat') else str(x))).encode('ascii'))
         digest.update(b'\n')
 
     add([[field.name, str(field.type), field.nullable] for field in table.schema])

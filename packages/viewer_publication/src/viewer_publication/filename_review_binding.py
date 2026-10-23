@@ -16,8 +16,9 @@ import json
 import re
 from pathlib import Path
 
-IDENTITIES = Path(__file__).resolve().parents[4] / 'apps/site/document-review-identities.json'
-DESCRIPTOR = IDENTITIES.with_name('document-review-publication.json')
+DATA_DIR = Path(__file__).resolve().parent / 'data'
+IDENTITIES = DATA_DIR / 'document-review-identities.json'
+DESCRIPTOR = DATA_DIR / 'document-review-publication.json'
 
 
 def validate_identities(value, descriptor=None):

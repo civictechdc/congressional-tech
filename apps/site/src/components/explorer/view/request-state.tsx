@@ -13,11 +13,9 @@ export function useRequest<T>(load: (signal: AbortSignal) => Promise<T>, depende
   const request = [...dependencies, retry];
   const previous = useRef(request);
   const same = previous.current.length === request.length && previous.current.every((item, index) => Object.is(item, request[index]));
-  if (!same) {
-    previous.current = request;
-    setState({ status: 'loading' });
-  }
+
   useEffect(() => {
+    previous.current = request;
     const controller = new AbortController();
     setState({ status: 'loading' });
     load(controller.signal).then(value => {
@@ -27,6 +25,7 @@ export function useRequest<T>(load: (signal: AbortSignal) => Promise<T>, depende
     });
     return () => controller.abort();
   }, [...dependencies, retry]);
+
   return [same ? state : { status: 'loading' }, () => setRetry(value => value + 1)];
 }
 

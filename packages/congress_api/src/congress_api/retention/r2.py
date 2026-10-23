@@ -182,23 +182,16 @@ class AsyncBodies:
 
 
 class R2Store:
-    def __init__(self, client, bucket, *, async_client=None, excluded_body_hashes=None, store_uncompressed_pdfs=False):
+    def __init__(self, client, bucket, *, async_client=None, excluded_body_hashes=None, store_uncompressed_pdfs=False, cache_dir=None):
         self.client, self.bucket = client, bucket
         _configure_retries(client)
         self.async_client = async_client
         self.excluded_body_hashes = excluded_body_hashes
         self.store_uncompressed_pdfs = store_uncompressed_pdfs
         self.index_etags = {}
-        self._manifest_cache_dir = (
-            Path('.cache/docspec-catalog/r2-native-manifests')
-            if 'PYTEST_CURRENT_TEST' not in os.environ
-            else None
-        )
-        self._immutable_cache_dir = (
-            Path('.cache/docspec-catalog/r2-immutable')
-            if 'PYTEST_CURRENT_TEST' not in os.environ
-            else None
-        )
+        self.cache_dir = Path(cache_dir) if cache_dir is not None else None
+        self._manifest_cache_dir = self.cache_dir / 'r2-native-manifests' if self.cache_dir is not None else None
+        self._immutable_cache_dir = self.cache_dir / 'r2-immutable' if self.cache_dir is not None else None
         self._manifest_lock = threading.Lock()
         self._manifest_mem = {}
         self._manifest_pool = None

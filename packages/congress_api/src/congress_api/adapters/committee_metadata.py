@@ -8,6 +8,7 @@ from congress_api.matching.committee_adjustments import reviewed_adjustments
 from congress_api.matching.committees import committee_level
 from congress_api.adapters.committees import committee_lookup
 from congress_api.adapters.meetings import chamber
+from congress_shared.dates import year_to_congress
 
 TYPES = {'Standing': 'standing', 'Select': 'select', 'Special': 'special', 'Joint': 'joint',
          'Subcommittee': 'subcommittee', 'Commission or Caucus': 'commission_or_caucus',
@@ -44,7 +45,7 @@ def adjustment_records(context, existing, *, congresses=None):
         values = dict(decision['values'])
         if decision.get('terminated'):
             end = date.fromisoformat(decision['terminated'])
-            if congress == (end.year - 1789) // 2 + 1:
+            if congress == year_to_congress(end.year):
                 values['active'] = DateRange(start=old.active.start if old and old.active else None, end=end)
         fields = list(old.field_evidence) if old else []
         for field, value in values.items():

@@ -1,14 +1,12 @@
 import csv
 import json
 import logging
-import os
-import tempfile
-
 from pathlib import Path
 from tinydb import TinyDB
 from tinydb.storages import Storage
 from typing import TypedDict
 
+from congress_shared.custody import write_atomic_bytes
 from congress_shared.resources import DEFAULT_CHANNELS_CSV
 from congress_shared.paths import DEFAULT_TINYDB_DIR
 
@@ -27,15 +25,7 @@ class AtomicJSONStorage(Storage):
 
     def write(self, data):
         encoded = json.dumps(data, ensure_ascii=False).encode("utf-8")
-        with tempfile.NamedTemporaryFile(dir=self.path.parent, prefix="." + self.path.name, delete=False) as stream:
-            temporary = Path(stream.name)
-            try:
-                stream.write(encoded)
-                stream.flush()
-                os.fsync(stream.fileno())
-                temporary.replace(self.path)
-            finally:
-                temporary.unlink(missing_ok=True)
+        write_atomic_bytes(self.path, encoded, temp_mode="unique")
 
 
 class YoutubeChannelMetadata(TypedDict):
@@ -72,7 +62,7 @@ def map_system_code_committee_handles(
     return system_code_mapper
 
 
-def get_all_committee_handless(
+def get_all_committee_handles(
     csv_path: Path = DEFAULT_CHANNELS_CSV,
     include_member_channels: bool = False,
 ) -> list[list[str]]:
@@ -83,7 +73,10 @@ def get_all_committee_handless(
     ]
 
 
-def get_all_commitee_names(
+get_all_committee_handless = get_all_committee_handles
+
+
+def get_all_committee_names(
     csv_path: Path = DEFAULT_CHANNELS_CSV,
     with_index: bool = False,
 ) -> list[str] | list[tuple[str, int]]:
@@ -96,10 +89,13 @@ def get_all_commitee_names(
     return names
 
 
+get_all_commitee_names = get_all_committee_names
+
+
 def get_committee_index(
     committee_name: str, csv_path: Path = DEFAULT_CHANNELS_CSV
 ) -> int:
-    committee_names: list[str] = get_all_commitee_names(csv_path=csv_path)
+    committee_names: list[str] = get_all_committee_names(csv_path=csv_path)
     try:
         return committee_names.index(committee_name)
     except ValueError:
@@ -111,7 +107,10 @@ def open_tinydb_for_committee(
     csv_path: Path = DEFAULT_CHANNELS_CSV,
     tinydb_dir: Path = DEFAULT_TINYDB_DIR,
     assert_exists: bool = False,
+    require_exists: bool | None = None,
 ) -> TinyDB:
+    must_exist = assert_exists if require_exists is None else require_exists
+
     ## convert the name to an index
     if isinstance(committee_name_or_index, str):
         committee_name_or_index = get_committee_index(committee_name_or_index, csv_path)
@@ -121,9 +120,9 @@ def open_tinydb_for_committee(
 
     ## check for existence, when analyzing we want to break on
     ##  non-existent DBs, when fetching we want to create them
-    if os.path.exists(path=path):
+    if path.exists():
         logging.info(f"Using existing tinydb at {path}")
-    elif assert_exists:
+    elif must_exist:
         raise ValueError(
             f"No existing tinydb file for index {committee_name_or_index} at {path}"
         )

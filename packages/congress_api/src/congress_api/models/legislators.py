@@ -3,6 +3,7 @@
 from collections import defaultdict
 from datetime import date
 
+from congress_shared.dates import congress_to_years, year_to_congress
 from pydantic import Field, TypeAdapter
 
 from .base import SourceModel
@@ -100,12 +101,13 @@ def member_surnames_by_congress(legislators: list[Legislator]) -> dict[str, tupl
     """Use retained service dates to select surname vocabulary for each Congress."""
     names = defaultdict(set)
     def start_of(congress):
-        return date(1789 + 2 * (congress - 1), 1, 3) if congress >= 74 else date(1789 + 2 * (congress - 1), 3, 4)
+        first_year, _ = congress_to_years(congress)
+        return date(first_year, 1, 3) if congress >= 74 else date(first_year, 3, 4)
     for member in legislators:
         for term in member.terms:
             start, end = date.fromisoformat(term.start), date.fromisoformat(term.end)
-            first = max(1, (start.year - 1789) // 2)
-            last = (end.year - 1789) // 2 + 1
+            first = max(1, year_to_congress(start.year) - 1)
+            last = year_to_congress(end.year)
             for congress in range(first, last + 1):
                 if start < start_of(congress + 1) and end > start_of(congress):
                     names[str(congress)].add(member.name.last)

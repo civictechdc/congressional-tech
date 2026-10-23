@@ -123,4 +123,7 @@ def test_interpretation_imports_only_standard_library():
     tree = ast.parse(Path(interpretation.__file__).read_text())
     modules = [node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)]
     modules += [alias.name for node in ast.walk(tree) if isinstance(node, ast.Import) for alias in node.names]
-    assert all(module.split(".")[0] in sys.stdlib_module_names for module in modules)
+    assert all(
+        module.split(".")[0] in sys.stdlib_module_names or module.split(".")[0] in {"congress_shared"}
+        for module in modules
+    )

@@ -23,7 +23,7 @@ import shutil
 from typing import Any
 
 import pyarrow as pa
-from docspec_client import DocSpecFailure, NativeDatasets
+from docspec_client import DocSpecFailure, NativeDatasets, resolve_docspec_binary
 
 from .parquet import SOURCE_SCHEMA, TABLE_SCHEMAS
 
@@ -94,27 +94,6 @@ BROWSER_TABLE_BLOOM_COLUMNS: dict[str, tuple[str, ...]] = {
     "issues": ("id", "meeting_id", "category"),
     "sources": ("id", "provider"),
 }
-
-
-def resolve_docspec_binary(binary: Path | str | None = None) -> Path:
-    """Resolve the native ``docspec`` binary supporting RefreshSpec and ExportSpec."""
-    if binary is not None:
-        return Path(binary).resolve()
-    for env_var in ("DOCSPEC_BINARY", "DOCSPEC_BIN"):
-        env_bin = os.environ.get(env_var)
-        if env_bin and Path(env_bin).exists():
-            return Path(env_bin).resolve()
-    candidates = (
-        Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/release/docspec"),
-        Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec"),
-    )
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate.resolve()
-    found = shutil.which("docspec")
-    if found:
-        return Path(found).resolve()
-    raise FileNotFoundError("Unable to locate native docspec binary")
 
 
 def version_ref(pin: Mapping[str, Any]) -> dict[str, Any]:

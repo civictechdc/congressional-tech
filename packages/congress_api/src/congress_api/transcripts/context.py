@@ -24,6 +24,8 @@ from functools import lru_cache
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from congress_shared.dates import parse_utc_timestamp
+
 from congress_shared.paths import DEFAULT_GPO_HEARINGS_FILE, DEFAULT_MEETINGS_FILE
 
 from congress_api.matching import speaker_names as names
@@ -151,10 +153,8 @@ def roster_for(committee_code: str, congress: int, exclude_package: str = "") ->
 def et_time(iso: str) -> str:
     """Format an aware timestamp in Eastern time, applying the date's daylight-saving rules."""
     try:
-        t = dt.datetime.fromisoformat(iso.replace("Z", "+00:00"))
-    except ValueError:
-        return ""
-    if t.tzinfo is None:
+        t = parse_utc_timestamp(iso)
+    except (ValueError, TypeError):
         return ""
     east = t.astimezone(ZoneInfo("America/New_York"))
     return f"{east.hour % 12 or 12}:{east.minute:02d} {'a.m.' if east.hour < 12 else 'p.m.'}"

@@ -7,13 +7,15 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 
+from congress_shared.dates import parse_utc_timestamp
+
 
 def observed_time(raw, now):
     """Accept explicit zoned source times no later than the evaluation time."""
     try:
-        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
-        return parsed if parsed.tzinfo is not None and parsed <= now else None
-    except (AttributeError, TypeError, ValueError):
+        parsed = parse_utc_timestamp(raw)
+        return parsed if parsed <= now else None
+    except (ValueError, TypeError):
         return None
 
 

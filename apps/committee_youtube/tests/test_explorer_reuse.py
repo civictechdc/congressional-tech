@@ -62,7 +62,7 @@ def test_changed_native_data_refreshes_records_and_preserves_ids(tmp_path):
     assert first.publication_id != second.publication_id
 
 
-@pytest.mark.parametrize('change', ['limit', 'as_of', 'format', 'decisions', 'attempts', 'youtube_added', 'youtube_removed', 'transcript_name', 'code'])
+@pytest.mark.parametrize('change', ['limit', 'as_of', 'format', 'decisions', 'attempts', 'youtube_added', 'youtube_removed', 'transcript_name', 'code', 'document_filenames'])
 def test_changed_request_invalidates_receipt(tmp_path, monkeypatch, change):
     path = tmp_path / 'source.json'
     path.write_text('{}')
@@ -82,6 +82,10 @@ def test_changed_request_invalidates_receipt(tmp_path, monkeypatch, change):
     elif change == 'attempts': options['files']['attempts'] = path
     elif change == 'youtube_added': (youtube / 'youtube_two.json').write_text('{}')
     elif change == 'youtube_removed': video.unlink()
+    elif change == 'document_filenames':
+        doc = tmp_path / 'documents.parquet'
+        doc.write_text('parquet-data')
+        options['document_filenames'] = doc
     elif change == 'transcript_name':
         renamed = tmp_path / 'renamed.json'
         transcript.rename(renamed)
@@ -132,3 +136,29 @@ def test_missing_receipt_rebuilds_and_json_reuse_is_rejected(tmp_path):
     assert export(**args)[1] is not None
     with pytest.raises(ValueError, match='requires parquet'):
         export(**{**args, 'format': 'json'})
+
+
+def test_reuse_from_invalidates_when_document_filenames_changes(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    args = inputs(tmp_path)
+    doc_path1 = tmp_path / 'docs_v1.parquet'
+    doc_path2 = tmp_path / 'docs_v2.parquet'
+    table1 = pa.table({'filename': ['test1.pdf'], 'source_url': ['https://example.com/1']})
+    table2 = pa.table({'filename': ['test2.pdf'], 'source_url': ['https://example.com/2']})
+    pq.write_table(table1, doc_path1)
+    pq.write_table(table2, doc_path2)
+
+    args['document_filenames'] = doc_path1
+    first, catalog1 = export(**args)
+    assert catalog1 is not None
+
+    # Re-running with same document_filenames reuses cached publication
+    second, catalog2 = export(**{**args, 'state_dir': tmp_path / 'state', 'output_dir': tmp_path / 'full'})
+    assert catalog2 is None
+    assert second == first
+
+    # Re-running with modified document_filenames invalidates reuse and re-assembles
+    third, catalog3 = export(**{**args, 'document_filenames': doc_path2})
+    assert catalog3 is not None

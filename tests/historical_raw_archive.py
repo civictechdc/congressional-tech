@@ -12,8 +12,9 @@ import pyarrow.parquet as pq
 from congress_api.parsers.archive_links import allowed_url
 from congress_api.retention.raw_archive import (
     _Acquisition, CAPTURE_SCHEMA, STATE_SCHEMA, CAPTURES_KEY, STATE_KEY,
-    decode_table, encode_table, capture_rank,
+    decode_table, encode_table, capture_rank, with_derived_body_keys,
 )
+from congress_api.retention.raw_values import _to_legacy_capture_table
 
 
 class LegacyArchiveSeed(_Acquisition):
@@ -30,7 +31,8 @@ class LegacyArchiveSeed(_Acquisition):
         saved = store.read(STATE_KEY)
         saved_table = decode_table(saved) if saved else None
         saved_metadata = (saved_table.schema.metadata or {}) if saved_table is not None else {}
-        saved_state = {r['url']: r for r in saved_table.to_pylist()} if saved_table is not None else {}
+        from congress_api.retention.raw_storage import format_state_row_for_python
+        saved_state = {r['url']: format_state_row_for_python(r) for r in saved_table.to_pylist()} if saved_table is not None else {}
         cursor = int(saved_metadata.get(b'capture_rows', b'0'))
         from congress_api.retention.catalog_cache import capture_digest_matches
         checkpoint = b'capture_rows' in saved_metadata or b'capture_digest' in saved_metadata
@@ -48,7 +50,8 @@ class LegacyArchiveSeed(_Acquisition):
         self.day = datetime.now(timezone.utc).date().isoformat()
         indexed = set()
         position = 0
-        for batch in self.captures.to_batches(max_chunksize=65536):
+        legacy_captures = _to_legacy_capture_table(self.captures)
+        for batch in legacy_captures.to_batches(max_chunksize=65536):
             for row in batch.to_pylist():
                 position += 1
                 if row["receipt_key"]:
@@ -184,21 +187,22 @@ class LegacyArchiveSeed(_Acquisition):
     @property
     def retained_body_count(self):
         import pyarrow.compute as pc
-        keys = self.captures['body_key']
+        keys = with_derived_body_keys(self.captures)['body_key']
         return pc.count_distinct(pc.filter(keys, pc.not_equal(keys, ''))).as_py()
 
 
     def save(self):
         from congress_api.retention.catalog_cache import capture_digest
+        from congress_api.retention.raw_archive import prepare_capture_table, prepare_state_table
         self.flush()
         combined = self.captures
         if self.additions:
-            appended = pa.Table.from_pylist(self.additions, schema=CAPTURE_SCHEMA)
+            appended = prepare_capture_table(self.additions)
             combined = pa.concat_tables([combined, appended])
         metadata = {'capture_rows': str(len(combined)), 'capture_digest': capture_digest(combined)}
         if self.filename_version is not None:
             metadata['filename_version'] = str(self.filename_version)
-        self.store.put(STATE_KEY, encode_table(pa.Table.from_pylist(
+        self.store.put(STATE_KEY, encode_table(prepare_state_table(
             list(self.state.values()), schema=STATE_SCHEMA.with_metadata(metadata))))
         if self.additions:
             self.store.put(CAPTURES_KEY, encode_table(combined))

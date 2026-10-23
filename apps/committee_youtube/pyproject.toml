@@ -13,7 +13,7 @@ dependencies = [
   "congress-api",
   "congress-shared",
   "youtube-api",
-  "tinydb",
+  "docspec-client",
   "pyarrow>=19,<26",
 ]
 

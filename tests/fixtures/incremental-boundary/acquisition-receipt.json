@@ -190,7 +190,7 @@
       "body_encoding": "base64",
       "sha256": "8a67ee40e36853796f025f47e99ee1760212a063ad07dad447fb0056a1753f9f"
     },
-    "local_body_path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/8a67ee40e36853796f025f47e99ee1760212a063ad07dad447fb0056a1753f9f.body",
+    "local_body_path": "/var/data/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/8a67ee40e36853796f025f47e99ee1760212a063ad07dad447fb0056a1753f9f.body",
     "body_sha256": "8a67ee40e36853796f025f47e99ee1760212a063ad07dad447fb0056a1753f9f"
   },
   "outcome": "saved",
@@ -198,7 +198,7 @@
     {
       "name": "CRPT-118srpt180/dip.xml",
       "status": "completed",
-      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/5b0c6906afb758c8a7b594248a1f3cc1b580ed246b4f4335376ac9983a6752b1",
+      "path": "/var/data/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/5b0c6906afb758c8a7b594248a1f3cc1b580ed246b4f4335376ac9983a6752b1",
       "sha256": "5b0c6906afb758c8a7b594248a1f3cc1b580ed246b4f4335376ac9983a6752b1",
       "bytes": 2202,
       "expected_pdf": false
@@ -206,7 +206,7 @@
     {
       "name": "CRPT-118srpt180/html/CRPT-118srpt180.htm",
       "status": "completed",
-      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/9ae6819a60267170b1d08dbfa2271dc1db8158050a5901f10ea8481ea0f2e18e",
+      "path": "/var/data/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/9ae6819a60267170b1d08dbfa2271dc1db8158050a5901f10ea8481ea0f2e18e",
       "sha256": "9ae6819a60267170b1d08dbfa2271dc1db8158050a5901f10ea8481ea0f2e18e",
       "bytes": 10438,
       "expected_pdf": false
@@ -214,7 +214,7 @@
     {
       "name": "CRPT-118srpt180/pdf/CRPT-118srpt180.pdf",
       "status": "completed",
-      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/5028e461bf6dc87059304d42183ab67c73df4d7e521268295dd92aa0c3f46d8a",
+      "path": "/var/data/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/5028e461bf6dc87059304d42183ab67c73df4d7e521268295dd92aa0c3f46d8a",
       "sha256": "5028e461bf6dc87059304d42183ab67c73df4d7e521268295dd92aa0c3f46d8a",
       "bytes": 409949,
       "expected_pdf": true
@@ -222,7 +222,7 @@
     {
       "name": "CRPT-118srpt180/premis.xml",
       "status": "completed",
-      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/8b40c27f9642fc29843c51a853e16fc9c3b56bf2670ecef8b7f0cfdf3039e993",
+      "path": "/var/data/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/8b40c27f9642fc29843c51a853e16fc9c3b56bf2670ecef8b7f0cfdf3039e993",
       "sha256": "8b40c27f9642fc29843c51a853e16fc9c3b56bf2670ecef8b7f0cfdf3039e993",
       "bytes": 116029,
       "expected_pdf": false
@@ -230,7 +230,7 @@
     {
       "name": "CRPT-118srpt180/mods.xml",
       "status": "completed",
-      "path": "/Users/mikewolfd/Work/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/6e91d6ac14d68ff77a169d9a861f5d116b928cb388213b780059f2bb0a02b449",
+      "path": "/var/data/congressional-tech/output/corpus-retry-20261015/official-packages/CRPT-118srpt180/6e91d6ac14d68ff77a169d9a861f5d116b928cb388213b780059f2bb0a02b449",
       "sha256": "6e91d6ac14d68ff77a169d9a861f5d116b928cb388213b780059f2bb0a02b449",
       "bytes": 9655,
       "expected_pdf": false

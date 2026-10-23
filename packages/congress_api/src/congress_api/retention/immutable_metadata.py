@@ -47,10 +47,20 @@ class MetadataObjects:
         self.max_cache_entries = max_cache_entries
         self._cache = OrderedDict()
         self._lock = threading.RLock()
+        cache_dir = getattr(store, 'cache_dir', None)
         self._disk_cache_dir = (
-            Path('.cache/docspec-catalog/r2-native-manifests') / namespace
-            if 'PYTEST_CURRENT_TEST' not in os.environ and getattr(store, 'bucket', None)
+            Path(cache_dir) / 'r2-native-manifests' / namespace
+            if cache_dir is not None and getattr(store, 'bucket', None)
             else None
+        )
+
+    @property
+    def supports_batch_put(self):
+        return (
+            self._disk_cache_dir is not None
+            and 'put' not in self.__dict__
+            and 'prepare_put' not in self.__dict__
+            and type(self).put is MetadataObjects.put
         )
 
     def _remember(self, key, raw):
@@ -101,7 +111,7 @@ class MetadataObjects:
     def put_batch(self, prepared_items):
         if not prepared_items:
             return
-        if 'PYTEST_CURRENT_TEST' in os.environ or len(prepared_items) == 1:
+        if not self.supports_batch_put or len(prepared_items) == 1:
             for digest, key, raw in prepared_items:
                 self._upload_prepared(digest, key, raw)
             return

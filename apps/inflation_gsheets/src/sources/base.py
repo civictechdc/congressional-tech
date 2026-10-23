@@ -65,13 +65,13 @@ def monthly_from_daily(dates, values, colname: str) -> pd.DataFrame:
     return monthly.to_frame()
 
 
+@dataclass
 class InflationSource:
     """Base class / interface every source adapter implements.
 
     Subclass contract:
       * ``key``          - short machine id for the source (also log label)
       * ``columns``      - the output column name(s) this adapter emits
-      * ``requires_key`` - True if it needs a secret to run at all
       * ``fetch(config)``- return a month-indexed DataFrame of YoY% floats,
                             or raise ``SourceUnavailable`` to be skipped.
     """
@@ -79,7 +79,6 @@ class InflationSource:
     key: str = "base"
     label: str = "base"
     columns: list[str] = field(default_factory=list)
-    requires_key: bool = False
 
     def fetch(self, config: SourceConfig) -> pd.DataFrame:  # pragma: no cover
         raise NotImplementedError

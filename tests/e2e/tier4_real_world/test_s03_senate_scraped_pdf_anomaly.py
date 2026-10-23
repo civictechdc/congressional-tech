@@ -1,7 +1,7 @@
 """Tier 4: Scenario 3 — Senate Scraped PDF Anomaly & 256 KiB Limit Enforcement.
 
 Verifies:
-- Loading real production dataset /Users/mikewolfd/Work/pipeline-data/meeting-inventory/senate.json.gz (22 domains, 5,232 pages)
+- Loading real production dataset pipeline-data/meeting-inventory/senate.json.gz (22 domains, 5,232 pages)
 - Detection of corrupted binary PDF in intelligence.senate.gov (sites-default-files-hearings-105290.pdf)
 - High U+FFFD ratio (> 40% vs 5% threshold) triggers offload to CAS bodies/sha256/<xx>/<sha256>.gz
 - Parquet table generation guarantees ZERO string cells > 256 KiB (F2, F4, F10)

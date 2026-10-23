@@ -306,6 +306,7 @@ def connect_storage(args, log):
         store = R2Store(
             connect_r2(r2_cfg),
             args.bucket,
+            cache_dir=args.native_config.parent if getattr(args, 'native_config', None) is not None else None,
             **async_options,
         )
         if not args.plan_only:

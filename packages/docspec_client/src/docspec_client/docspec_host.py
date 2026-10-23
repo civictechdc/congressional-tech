@@ -20,22 +20,29 @@ from urllib.parse import urlsplit
 import httpx
 
 
+RESPONSE_LIMIT = 1 << 20  # 1 MiB bounded metadata response limit
+
+
 class DocSpecFailure(RuntimeError):
     """Native refusal or host failure, retaining its original diagnostic."""
 
     def __init__(self, command, result):
         self.command = tuple(command)
-        self.returncode = result.returncode
-        self.stderr = result.stderr
+        self.returncode = result.returncode if result is not None else 1
+        self.stderr = result.stderr if result is not None else ''
         self.status_code = None
         self.code = None
+        self.pre_admission = None
         try:
-            payload = json.loads(result.stderr)
+            payload = json.loads(self.stderr)
         except (TypeError, ValueError):
             payload = None
-        if isinstance(payload, dict) and isinstance(payload.get('code'), str) and payload['code']:
-            self.code = payload['code']
-        super().__init__(result.stderr.strip() or f'DocSpec exited {result.returncode}')
+        if isinstance(payload, dict):
+            if isinstance(payload.get('code'), str) and payload['code']:
+                self.code = payload['code']
+            if isinstance(payload.get('pre_admission'), bool):
+                self.pre_admission = payload['pre_admission']
+        super().__init__(self.stderr.strip() or f'DocSpec exited {self.returncode}')
 
     @property
     def status(self):
@@ -74,7 +81,7 @@ def acquire_host(command, environment, workspace, timeout, *,
     with _lock:
         host = _hosts.get(key)
         if host is None:
-            host = Host(command, environment, timeout, settings,
+            host = Host(command, environment, workspace, timeout, settings,
                         required_capabilities=capabilities)
             _hosts[key] = host
         elif host.settings != settings:
@@ -85,8 +92,9 @@ def acquire_host(command, environment, workspace, timeout, *,
 
 
 class Host:
-    def __init__(self, command, environment, timeout, settings, *,
+    def __init__(self, command, environment, workspace, timeout, settings, *,
                  required_capabilities=REQUIRED_LOOPBACK_CAPABILITIES):
+        self.workspace = str(workspace)
         self.settings = settings
         self.timeout = timeout
         self.required_capabilities = tuple(required_capabilities)
@@ -144,7 +152,7 @@ class Host:
             raise ValueError('DocSpec loopback protocol 1 with request-deadline '
                              'and owned-stdin-eof support is required')
         address = value.get('address')
-        if not isinstance(address, str):
+        if not isinstance(address, str) or any(c.isspace() for c in address) or '%' in address:
             raise ValueError('DocSpec readiness requires an explicit bound loopback address')
         parsed = urlsplit(f'http://{address}')
         if (parsed.username is not None or parsed.password is not None or parsed.path
@@ -190,7 +198,9 @@ class Host:
     def request(self, method, path, *, deadline=None, **kwargs):
         with self.stream(method, path, deadline=deadline, **kwargs) as (response, deadline):
             with ArrowResponse(response, deadline=deadline) as stream:
-                body = stream.read()
+                body = stream.read(RESPONSE_LIMIT + 1)
+                if len(body) > RESPONSE_LIMIT:
+                    raise ValueError('DocSpec response exceeded its metadata allowance')
             self.check_response(response, body=body)
             return json.loads(body)
 
@@ -216,7 +226,7 @@ class Host:
         if self.closed or os.getpid() != self.pid:
             return
         self.closed = True
-        key = (self.pid, self.command[self.command.index('--workspace') + 1])
+        key = (self.pid, str(self.workspace))
         with _lock:
             if _hosts.get(key) is self:
                 del _hosts[key]
@@ -228,6 +238,10 @@ class Host:
         if self.process is not None and self.process.stdin is not None:
             # The pipe also closes on abrupt Python exit, before finalizers can run.
             self.process.stdin.close()
+            try:
+                self.process.wait(timeout=min(self.timeout, 2.0))
+            except subprocess.TimeoutExpired:
+                pass
         if self.process is not None and self.process.poll() is None:
             try:
                 self.process.send_signal(signal.SIGINT)
@@ -263,6 +277,7 @@ class ArrowResponse(io.RawIOBase):
 
     def __init__(self, response, *, deadline=None):
         super().__init__()
+        self.response = response
         self.chunks = response.iter_bytes()
         self.pending = b''
         self.tail = b''
@@ -300,4 +315,14 @@ class ArrowResponse(io.RawIOBase):
     def finish(self):
         """Require both Arrow's success terminator and complete HTTP framing."""
         if self.read(1) or self.tail != b'\xff\xff\xff\xff\x00\x00\x00\x00':
-            raise OSError('DocSpec Arrow response lacks a complete stream terminator')
+            diagnostic = json.dumps({
+                'code': 'request_timeout',
+                'message': 'DocSpec Arrow response lacks a complete stream terminator',
+                'pre_admission': False,
+            })
+            cmd = [self.response.request.method, self.response.request.url.path] if hasattr(self, 'response') and self.response is not None else []
+            err = DocSpecFailure(cmd, subprocess.CompletedProcess(cmd, 504, stderr=diagnostic))
+            err.status_code = 504
+            err.code = 'request_timeout'
+            err.pre_admission = False
+            raise err

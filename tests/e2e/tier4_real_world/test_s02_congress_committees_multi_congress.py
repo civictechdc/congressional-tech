@@ -1,7 +1,7 @@
 """Tier 4: Scenario 2 — Congress Committees Multi-Congress Sync against Real Production Data.
 
 Verifies:
-- Loading real production dataset /Users/mikewolfd/Work/pipeline-data/congress_committees.jsonl.gz (3,424 rows)
+- Loading real production dataset pipeline-data/congress_committees.jsonl.gz (3,424 rows)
 - Nested record['committee'] extraction for systemCode, chamber, and updateDate
 - Compound primary key ('congress', 'system_code') yields 3,424 distinct rows (0 nulls, no 14-row collapse)
 - Deduplication of 460 unique detail objects offloaded via detail_sha256 to local CAS

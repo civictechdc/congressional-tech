@@ -1,9 +1,9 @@
 """Tier 4: Scenario 4 — House Event Inventory & GPO Evidence Watermarking against Production Data.
 
 Verifies:
-- Loading real production dataset /Users/mikewolfd/Work/pipeline-data/meeting-inventory/house.json.gz (5,741 events)
+- Loading real production dataset pipeline-data/meeting-inventory/house.json.gz (5,741 events)
 - 100% fallback to 'checked' date watermark when timestamp fields are evaluated
-- Loading real production dataset /Users/mikewolfd/Work/pipeline-data/gpo-evidence.jsonl.gz (644 records)
+- Loading real production dataset pipeline-data/gpo-evidence.jsonl.gz (644 records)
 - Watermark extraction from GPO listing payloads (dateIssued / lastModified) and MODS acquisition
 - Offloading GPO evidence documents to local CAS bodies/sha256/<xx>/<sha256>.gz
 - Generating house_events and gpo_observations weekly tables

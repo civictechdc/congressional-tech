@@ -1,7 +1,7 @@
 """Tier 4: Scenario 5 — Browser Publication Release ca4748be Optimization & Cartesian Elimination.
 
 Verifies:
-- Inspecting production release at /Users/mikewolfd/Work/pipeline-data/committee-explorer/public/releases/ca4748be7105a94345815382
+- Inspecting production release at pipeline-data/committee-explorer/public/releases/ca4748be7105a94345815382
 - Detecting legacy redundant columns across production tables:
   - meetings.parquet: kind, explanation, meeting_id
   - materials.parquet: kind, explanation, appearance_ids

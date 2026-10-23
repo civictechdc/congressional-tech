@@ -37,14 +37,12 @@ class YoutubeEventFetcher:
         youtube: The YouTube API service client.
 
     Methods:
-        get_event(): Search for a YouTube video by title and optional channel ID.
         get_channel(): Retrieve channel information by handle.
     """
 
     API_SERVICE_NAME = "youtube"
     API_VERSION = "v3"
 
-    videos_tbs = {}
     channels_tb: Table = None
     force = False
 
@@ -71,7 +69,6 @@ class YoutubeEventFetcher:
             tinydb_dir=tinydb_dir,
         )
 
-        self.videos_tbs = {}
         self.channels_tb = self.tinydb.table("youtube_channels")
 
     def get_channel(self, channel_handle: str) -> dict | None:
@@ -113,32 +110,31 @@ class YoutubeEventFetcher:
                 }
             }
         """
-        try:
-            search_results = self.channels_tb.search(where("handle") == channel_handle)
+        search_results = self.channels_tb.search(where("handle") == channel_handle)
 
-            ## Refresh retained channel metadata once per run.
-            if len(search_results) > 1 and not self.force:
-                raise ValueError(
-                    f"{len(search_results)} entries with same channel handle in {self.channels_tb}."
-                )
-
-            ## Keep the complete current item, including channel ID and thumbnails.
-            channel_response = (
-                self.youtube.channels()
-                .list(part=["snippet", "contentDetails"], forHandle=channel_handle)
-                .execute()
+        ## Refresh retained channel metadata once per run.
+        if len(search_results) > 1 and not self.force:
+            raise ValueError(
+                f"{len(search_results)} entries with same channel handle in {self.channels_tb}."
             )
 
-            ## a handle that doesn't exist returns no "items" key at all
-            channel_details = channel_response.get("items", [])[0]
+        ## Keep the complete current item, including channel ID and thumbnails.
+        channel_response = (
+            self.youtube.channels()
+            .list(part=["snippet", "contentDetails"], forHandle=channel_handle)
+            .execute()
+        )
 
-            ## store the channel details
-            self.store_channel(channel_handle, channel_details)
+        items = channel_response.get("items", [])
+        if not items:
+            return None
 
-            return channel_details
+        channel_details = items[0]
 
-        except (HttpError, IndexError) as ex:
-            logging.error(f"Could not fetch channel {channel_handle}: {type(ex).__name__}")
+        ## store the channel details
+        self.store_channel(channel_handle, channel_details)
+
+        return channel_details
 
     def store_channel(self, channel_handle: str, channel_details: dict) -> None:
         doc = parse_channel_details(channel_details)
@@ -187,9 +183,6 @@ class YoutubeEventFetcher:
 
         # A forced scan refreshes every page while retaining previously captured
         # records. Missing playlist entries and request failures are not deletion.
-
-        ## bind it so we can access it later
-        self.videos_tbs[channel_handle] = videos_tb
 
         ## pagination loop
         pageToken = None
@@ -389,11 +382,11 @@ def parse_video_details(video_details: dict) -> dict:
 
 
 def parse_iso8601_duration(value: str | None) -> int | None:
-    """'PT2H3M1S' -> 7381 seconds. Upcoming livestreams report 'P0D' -> 0."""
-    if not value:
+    """'PT2H3M1S' -> 7381 seconds. 'P1DT2H' -> 93600 seconds. Upcoming livestreams report 'P0D' -> 0."""
+    if not value or not isinstance(value, str):
         return None
-    m = re.fullmatch(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?", value)
-    if not m:
+    m = re.fullmatch(r"P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?", value)
+    if not m or not any(m.groups()):
         return None
-    days, hours, minutes, seconds = (int(g or 0) for g in m.groups())
-    return ((days * 24 + hours) * 60 + minutes) * 60 + seconds
+    weeks, days, hours, minutes, seconds = (int(g or 0) for g in m.groups())
+    return (((weeks * 7 + days) * 24 + hours) * 60 + minutes) * 60 + seconds

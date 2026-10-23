@@ -1,16 +1,17 @@
 import os
 import pathlib
-import argparse
+import sys
 
 
 def _load_api_key(arg_name: str, env_var: str, *default_filenames: str) -> str:
-    parser = argparse.ArgumentParser(description="API Key Loader")
-    parser.add_argument(f"--{arg_name}", help=f"{env_var} key")
-    args, _ = parser.parse_known_args()
-
-    arg_val = getattr(args, arg_name.replace("-", "_"))
-    if arg_val:
-        return arg_val
+    flag = f"--{arg_name}"
+    prefix = f"--{arg_name}="
+    args = sys.argv[1:] if hasattr(sys, "argv") and sys.argv else []
+    for idx, arg in enumerate(args):
+        if arg == flag and idx + 1 < len(args):
+            return args[idx + 1]
+        if arg.startswith(prefix):
+            return arg[len(prefix):]
 
     api_key = os.environ.get(env_var)
     if api_key:

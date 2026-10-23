@@ -161,11 +161,11 @@ def test_write_candidates_attaches_and_remaps_native_provenance_receipts_preserv
         remap_review_provenance_receipts,
     )
 
-    binary = (
-        os.environ.get('DOCSPEC_BINARY')
-        or shutil.which('docspec')
-        or '/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/debug/docspec'
-    )
+    from docspec_client import resolve_docspec_binary
+    try:
+        binary = resolve_docspec_binary()
+    except FileNotFoundError:
+        binary = None
     if not binary or not Path(binary).is_file():
         pytest.skip('Set DOCSPEC_BINARY to the qualified maintained CLI')
 

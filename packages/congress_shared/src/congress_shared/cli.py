@@ -32,7 +32,7 @@ def add_global_args(parser: ArgumentParser) -> None:
 def add_youtube_args(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--channels-csv-path",  ## dashes are automatically converted to underscores
-        type=str,
+        type=Path,
         default=DEFAULT_CHANNELS_CSV,
         help="Path to the CSV file mapping committee names to their YouTube handles",
     )

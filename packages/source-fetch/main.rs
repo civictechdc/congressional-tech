@@ -24,6 +24,7 @@ use tokio_util::io::StreamReader;
 #[global_allocator]
 static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+/// Thread-safe rate limiter managing minimum spacing between outbound requests.
 #[derive(Debug)]
 struct RateLimit {
     next: Mutex<Instant>,
@@ -31,6 +32,7 @@ struct RateLimit {
 }
 
 impl RateLimit {
+    /// Create a new rate limiter with the given maximum operations per second.
     fn new(per_second: u32) -> Self {
         Self {
             next: Mutex::new(Instant::now()),
@@ -38,6 +40,7 @@ impl RateLimit {
         }
     }
 
+    /// Wait until the scheduled release time and update the next available slot.
     async fn wait(&self) {
         let mut next = self.next.lock().await;
         sleep_until(*next).await;
@@ -45,6 +48,7 @@ impl RateLimit {
         *next = Instant::now() + self.gap;
     }
 
+    /// Conditionally wait for rate limit pacing if `new_file` starts a new request sequence.
     async fn wait_for_start(&self, new_file: bool) {
         if new_file {
             self.wait().await;
@@ -52,6 +56,7 @@ impl RateLimit {
     }
 }
 
+/// Outbound HTTP transport selection.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum Transport {
@@ -59,6 +64,7 @@ enum Transport {
     Zyte,
 }
 
+/// Inbound JSON request descriptor sent over stdin.
 #[derive(Debug, Deserialize)]
 struct Request {
     id: u64,
@@ -82,12 +88,14 @@ fn default_timeout_ms() -> u64 {
     300_000
 }
 
+/// Serialized HTTP header key-value pair for metadata fidelity.
 #[derive(Debug, Serialize)]
 struct Header {
     name: String,
     value: String,
 }
 
+/// Map a reqwest error into a stable error kind category string.
 fn error_kind(error: &reqwest::Error) -> &'static str {
     if error.is_timeout() {
         "timeout"
@@ -146,6 +154,7 @@ fn oversized_identity_response(response: &Response, request: &Request) -> Option
         .filter(|&length| length > request.max_bytes as u64)
 }
 
+/// Stream and decode the HTTP response body into a body file, collecting metadata.
 async fn save_response(
     response: Response,
     request: &Request,
@@ -238,6 +247,7 @@ async fn save_response(
     Ok(metadata)
 }
 
+/// Execute a single HTTP request using the specified transport, pacing, and limits.
 async fn fetch(
     client: &Client,
     limit: &RateLimit,

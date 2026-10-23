@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import date
 from urllib.parse import urlsplit
 
+from congress_shared.dates import year_to_congress
+
 from congress_api.models.senate import (
     SenatePage,
     SenateSite,
@@ -71,7 +73,7 @@ def official_events(state):
             if day.year < 1935:
                 continue
             year = day.year - (1 if (day.month, day.day) < (1, 3) else 0)
-            congress = (year - 1789) // 2 + 1
+            congress = year_to_congress(year)
             yield {"host": host, "url": url, "page": page, "event": event,
                    "congress": congress, "committee_code": codes[host]}
 
