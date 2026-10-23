@@ -149,9 +149,15 @@ class RoutingPages:
         def put_page(page_dict):
             if in_pytest:
                 return self.objects.put(page_dict)
-            ref, digest, key, raw = self.objects.prepare_put(page_dict)
-            if len(self._parsed_cache) < 65536:
-                self._parsed_cache[(digest, page_dict['prefix'])] = page_dict
+            prepared = self.objects.prepare_put(page_dict)
+            if len(prepared) == 5:
+                ref, digest, key, raw, stored_page = prepared
+            else:
+                ref, digest, key, raw = prepared
+                stored_page = page_dict
+            cache = getattr(self, '_parsed_cache', None)
+            if cache is not None and len(cache) < 65536:
+                cache[(digest, page_dict['prefix'])] = stored_page
             pending_uploads.append((digest, key, raw))
             if len(pending_uploads) >= 256:
                 self.objects.put_batch(pending_uploads)

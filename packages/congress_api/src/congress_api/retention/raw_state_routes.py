@@ -90,6 +90,12 @@ class StateMetadata(MetadataObjects):
         summary = self.summary(page)
         return dict(super().put(dict(page, schedule=summary)), schedule=summary)
 
+    def prepare_put(self, page):
+        summary = self.summary(page)
+        stored_page = dict(page, schedule=summary)
+        ref, digest, key, raw = super().prepare_put(stored_page)
+        return dict(ref, schedule=summary), digest, key, raw, stored_page
+
     def read(self, reference):
         page = super().read(reference)
         if page.get('schedule') != reference.get('schedule') or page['schedule'] != self.summary(page):
@@ -100,6 +106,7 @@ class StateMetadata(MetadataObjects):
 class StateRoutes(RoutingPages):
     def __init__(self, store):
         self.objects = StateMetadata(store, 'raw-state-v1', max_cache_entries=32)
+        self._parsed_cache = {}
 
     def candidates(self, snapshot, *, outcomes, now=None, urls=None, invalid_only=False):
         outcomes = frozenset(outcomes)
