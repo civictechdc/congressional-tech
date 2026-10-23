@@ -117,16 +117,16 @@ export type Access1 = 'open' | 'closed' | 'partly_closed' | 'unknown';
 export type Occurrences = MeetingSitting[];
 export type Role = 'host' | 'cohost' | 'participating' | 'unknown';
 export type Committees = ConveningCommittee[];
+export type Label3 = string | null;
+export type Status2 =
+  'scheduled' | 'rescheduled' | 'postponed' | 'canceled' | 'held' | 'not_held' | 'unknown';
+export type Access2 = 'open' | 'closed' | 'partly_closed' | 'unknown';
 export type Id8 = string;
 export type Identifiers4 = Identifier[];
 export type FieldEvidence5 = FieldEvidence1[];
 export type Kind8 = 'occurrence';
 export type Kind9 = 'meeting';
 export type Id9 = string;
-export type Label3 = string | null;
-export type Status2 =
-  'scheduled' | 'rescheduled' | 'postponed' | 'canceled' | 'held' | 'not_held' | 'unknown';
-export type Access2 = 'open' | 'closed' | 'partly_closed' | 'unknown';
 export type Id10 = string;
 export type Identifiers5 = Identifier[];
 export type FieldEvidence6 = FieldEvidence1[];
@@ -224,9 +224,6 @@ export type SourceDocumentGroups = string[];
 export type Languages = string[];
 export type DurationSeconds = number | null;
 export type PageCount = number | null;
-export type Url2 = string | null;
-export type ResolvedUrl = string | null;
-export type Role1 = 'landing' | 'download' | 'player' | 'stream' | 'api' | 'other' | 'unknown';
 export type FormatLabel = string | null;
 export type MediaType = string | null;
 export type Encoding = string | null;
@@ -234,14 +231,17 @@ export type ByteSize = number | null;
 export type Sha2561 = string | null;
 export type SavedCopySha256 = string | null;
 export type SavedFilename = string | null;
+export type Name3 = string;
+export type Version1 = string;
+export type Url2 = string | null;
+export type Url3 = string | null;
+export type ResolvedUrl = string | null;
+export type Role1 = 'landing' | 'download' | 'player' | 'stream' | 'api' | 'other' | 'unknown';
 export type Usable = boolean | null;
 export type RecoveryStatus =
   ('captured' | 'recovered' | 'group_recovered' | 'error_page' | 'unverified') | null;
 export type VersionLabel = string | null;
 export type DurationSeconds1 = number | null;
-export type Name3 = string;
-export type Version1 = string;
-export type Url3 = string | null;
 export type Files = MaterialFile[];
 export type MeetingIds = string[];
 export type AppearanceIds = string[];
@@ -259,6 +259,13 @@ export type Id20 = string;
 export type Languages1 = string[];
 export type DurationSeconds2 = number | null;
 export type PageCount1 = number | null;
+export type FormatLabel1 = string | null;
+export type MediaType1 = string | null;
+export type Encoding1 = string | null;
+export type ByteSize1 = number | null;
+export type Sha2562 = string | null;
+export type SavedCopySha2561 = string | null;
+export type SavedFilename1 = string | null;
 export type Id21 = string;
 export type Identifiers10 = Identifier[];
 export type FieldEvidence11 = FieldEvidence1[];
@@ -266,13 +273,6 @@ export type Kind21 = 'representation';
 export type Url4 = string;
 export type Role2 = 'landing' | 'download' | 'player' | 'stream' | 'api' | 'other' | 'unknown';
 export type Locations = MaterialLocation[];
-export type MediaType1 = string | null;
-export type FormatLabel1 = string | null;
-export type Encoding1 = string | null;
-export type ByteSize1 = number | null;
-export type Sha2562 = string | null;
-export type SavedCopySha2561 = string | null;
-export type SavedFilename1 = string | null;
 export type Id22 = string;
 export type Identifiers11 = Identifier[];
 export type FieldEvidence12 = FieldEvidence1[];
@@ -658,12 +658,6 @@ export interface ConveningCommittee {
  * proceedings fold sitting fields directly into Meeting.
  */
 export interface MeetingOccurrence {
-  id: Id8;
-  identifiers?: Identifiers4;
-  provenance: Provenance;
-  field_evidence?: FieldEvidence5;
-  kind?: Kind8;
-  meeting: RefLiteralMeeting;
   label?: Label3;
   status?: Status2;
   access?: Access2;
@@ -672,6 +666,12 @@ export interface MeetingOccurrence {
   actual_start?: ReportedTime | null;
   actual_end?: ReportedTime | null;
   location?: Location | null;
+  id: Id8;
+  identifiers?: Identifiers4;
+  provenance: Provenance;
+  field_evidence?: FieldEvidence5;
+  kind?: Kind8;
+  meeting: RefLiteralMeeting;
 }
 export interface RefLiteralMeeting {
   kind: Kind9;
@@ -810,9 +810,6 @@ export interface TextDetails {
  * An embedded file/encoding of a material, including viewer-data saved copies.
  */
 export interface MaterialFile {
-  url?: Url2;
-  resolved_url?: ResolvedUrl;
-  role?: Role1;
   format_label?: FormatLabel;
   media_type?: MediaType;
   encoding?: Encoding;
@@ -820,18 +817,21 @@ export interface MaterialFile {
   sha256?: Sha2561;
   saved_copy_sha256?: SavedCopySha256;
   saved_filename?: SavedFilename;
+  retained?: RetainedContent | null;
+  content_schema?: ContentSchema | null;
+  url?: Url3;
+  resolved_url?: ResolvedUrl;
+  role?: Role1;
   usable?: Usable;
   recovery_status?: RecoveryStatus;
   version_label?: VersionLabel;
   published_at?: ReportedTime | null;
   duration_seconds?: DurationSeconds1;
-  retained?: RetainedContent | null;
-  content_schema?: ContentSchema | null;
 }
 export interface ContentSchema {
   name: Name3;
   version: Version1;
-  url?: Url3;
+  url?: Url2;
 }
 /**
  * An edition or revision of a material, retained when distinct editions require separate identity.
@@ -864,15 +864,8 @@ export interface RefLiteralMaterialVersion {
  * A standalone file/encoding record when tracked independently of Material.files.
  */
 export interface Representation {
-  id: Id21;
-  identifiers?: Identifiers10;
-  provenance: Provenance;
-  field_evidence?: FieldEvidence11;
-  kind?: Kind21;
-  version: RefLiteralMaterialVersion;
-  locations?: Locations;
-  media_type?: MediaType1;
   format_label?: FormatLabel1;
+  media_type?: MediaType1;
   encoding?: Encoding1;
   byte_size?: ByteSize1;
   sha256?: Sha2562;
@@ -880,6 +873,13 @@ export interface Representation {
   saved_filename?: SavedFilename1;
   retained?: RetainedContent | null;
   content_schema?: ContentSchema | null;
+  id: Id21;
+  identifiers?: Identifiers10;
+  provenance: Provenance;
+  field_evidence?: FieldEvidence11;
+  kind?: Kind21;
+  version: RefLiteralMaterialVersion;
+  locations?: Locations;
 }
 export interface MaterialLocation {
   url: Url4;

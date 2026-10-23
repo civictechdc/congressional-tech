@@ -18,7 +18,110 @@ from urllib.parse import urlsplit
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from dataclasses import dataclass
+from typing import Any
+
 from .collector_labels import PLACEHOLDER_LABELS, collector_placeholder_conflict
+
+
+@dataclass(slots=True)
+class AppearanceRow:
+    """Typed row model replacing 15-element mutable lists for witness appearances."""
+    id: str
+    title: str | None = None
+    congress: int | None = None
+    chamber: str | None = None
+    date: str | None = None
+    meeting_id: str | None = None
+    committee_ids: tuple[str, ...] = ()
+    roles: tuple[str, ...] = ()
+    position: str | None = None
+    organization: str | None = None
+    participation: str | None = None
+    search_text: str | None = None
+    explanation: str | None = None
+    facts: tuple[tuple[str, str], ...] = ()
+    source_ids: tuple[str, ...] = ()
+
+    def __getitem__(self, idx: Any) -> Any:
+        if isinstance(idx, str):
+            try:
+                return getattr(self, idx)
+            except AttributeError:
+                raise KeyError(idx)
+        fields = (
+            self.id, self.title, self.congress, self.chamber, self.date,
+            self.meeting_id, self.committee_ids, self.roles, self.position,
+            self.organization, self.participation, self.search_text,
+            self.explanation, self.facts, self.source_ids,
+        )
+        return fields[idx]
+
+    def __setitem__(self, idx: Any, value: Any) -> None:
+        if isinstance(idx, str):
+            setattr(self, idx, value)
+            return
+        attrs = (
+            "id", "title", "congress", "chamber", "date",
+            "meeting_id", "committee_ids", "roles", "position",
+            "organization", "participation", "search_text",
+            "explanation", "facts", "source_ids",
+        )
+        setattr(self, attrs[idx], value)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+
+@dataclass(slots=True)
+class DataIssueRow:
+    """Typed row model replacing 16-element mutable lists for data issues."""
+    id: str
+    title: str | None = None
+    congress: int | None = None
+    chamber: str | None = None
+    date: str | None = None
+    status: str | None = None
+    meeting_id: str | None = None
+    category: str | None = None
+    selection: str | None = None
+    committee_ids: tuple[str, ...] = ()
+    subject_kind: str | None = None
+    subject_id: str | None = None
+    severity: str | None = None
+    explanation: str | None = None
+    facts: tuple[tuple[str, str], ...] = ()
+    source_ids: tuple[str, ...] = ()
+
+    def __getitem__(self, idx: Any) -> Any:
+        if isinstance(idx, str):
+            try:
+                return getattr(self, idx)
+            except AttributeError:
+                raise KeyError(idx)
+        fields = (
+            self.id, self.title, self.congress, self.chamber, self.date,
+            self.status, self.meeting_id, self.category, self.selection,
+            self.committee_ids, self.subject_kind, self.subject_id,
+            self.severity, self.explanation, self.facts, self.source_ids,
+        )
+        return fields[idx]
+
+    def __setitem__(self, idx: Any, value: Any) -> None:
+        if isinstance(idx, str):
+            setattr(self, idx, value)
+            return
+        attrs = (
+            "id", "title", "congress", "chamber", "date",
+            "status", "meeting_id", "category", "selection",
+            "committee_ids", "subject_kind", "subject_id",
+            "severity", "explanation", "facts", "source_ids",
+        )
+        setattr(self, attrs[idx], value)
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
 
 TABLES = {'meeting': 'meetings', 'committee_term': 'committees', 'material': 'materials',
           'appearance': 'witnesses', 'data_issue': 'issues', 'source_record': 'sources'}
@@ -392,9 +495,9 @@ def _write_sources(rows, stage):
 
 
 def _event_page(url):
-    """Same host and /event/ rule as congress_api.adapters.meetings.event_page."""
-    parsed = urlsplit(url or '')
-    return parsed.hostname in ('congress.gov', 'www.congress.gov') and parsed.path.startswith('/event/')
+    """Delegate to congress_api.adapters.meetings.event_page."""
+    from congress_api.adapters.meetings import event_page
+    return event_page(url)
 
 
 from congress_api.matching.committees import HIERARCHY_SOURCE, hierarchy_from_code
@@ -415,22 +518,15 @@ def write_tables(records, sources, query_rows, stage, descriptor, *, filter_orph
             populated = sorted(name for name in appearance_omitted if row.get(name) not in (None, '', [], {}))
             if populated:
                 raise ValueError(f"appearance {row['id']} has populated fields outside its table schema: {populated}")
-            rows['appearance'][row['id']] = (
-                row['id'],
-                row.get('title'),
-                row.get('congress'),
-                row.get('chamber'),
-                row.get('date'),
-                row.get('meeting_id'),
-                tuple(row.get('committee_ids') or ()),
-                tuple(row.get('roles') or ()),
-                None,
-                None,
-                None,
-                None,
-                None,
-                (),
-                (),
+            rows['appearance'][row['id']] = AppearanceRow(
+                id=row['id'],
+                title=row.get('title'),
+                congress=row.get('congress'),
+                chamber=row.get('chamber'),
+                date=row.get('date'),
+                meeting_id=row.get('meeting_id'),
+                committee_ids=tuple(row.get('committee_ids') or ()),
+                roles=tuple(row.get('roles') or ()),
             )
             continue
         if rkind == 'data_issue':
@@ -440,24 +536,20 @@ def write_tables(records, sources, query_rows, stage, descriptor, *, filter_orph
             subj = row.get('subject')
             subj_kind = row.get('subject_kind') or (subj.get('kind') if isinstance(subj, dict) else None)
             subj_id = row.get('subject_id') or (subj.get('id') if isinstance(subj, dict) else None)
-            rows['data_issue'][row['id']] = [
-                row['id'],
-                row.get('title'),
-                row.get('congress'),
-                row.get('chamber'),
-                row.get('date'),
-                row.get('status'),
-                row.get('meeting_id'),
-                row.get('category'),
-                row.get('selection'),
-                tuple(row.get('committee_ids') or ()),
-                subj_kind,
-                subj_id,
-                None,
-                None,
-                (),
-                (),
-            ]
+            rows['data_issue'][row['id']] = DataIssueRow(
+                id=row['id'],
+                title=row.get('title'),
+                congress=row.get('congress'),
+                chamber=row.get('chamber'),
+                date=row.get('date'),
+                status=row.get('status'),
+                meeting_id=row.get('meeting_id'),
+                category=row.get('category'),
+                selection=row.get('selection'),
+                committee_ids=tuple(row.get('committee_ids') or ()),
+                subject_kind=subj_kind,
+                subject_id=subj_id,
+            )
             continue
         row = {k: v for k, v in row.items() if v is not None and k not in ('issue_count', 'committee_types')}
         if rkind != 'committee_term':
@@ -544,15 +636,27 @@ def write_tables(records, sources, query_rows, stage, descriptor, *, filter_orph
                 pos = affiliation.get('position')
                 org = affiliation.get('organization_name')
                 part = record.get('participation')
-                s_text = ' '.join(str(v) for v in (row[1], pos, org) if v)
+                s_text = ' '.join(str(v) for v in (row.title if isinstance(row, AppearanceRow) else row[1], pos, org) if v)
                 f_list = []
                 for key in ('on_behalf_of', 'location'):
                     if affiliation.get(key):
                         f_list.append((key.replace('_', ' '), affiliation[key]))
-                rows['appearance'][id] = (
-                    row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7],
-                    pos, org, part, s_text, provenance.get('explanation'),
-                    tuple(f_list), tuple(sorted(sources_of(record))),
+                rows['appearance'][id] = AppearanceRow(
+                    id=row.id if isinstance(row, AppearanceRow) else row[0],
+                    title=row.title if isinstance(row, AppearanceRow) else row[1],
+                    congress=row.congress if isinstance(row, AppearanceRow) else row[2],
+                    chamber=row.chamber if isinstance(row, AppearanceRow) else row[3],
+                    date=row.date if isinstance(row, AppearanceRow) else row[4],
+                    meeting_id=row.meeting_id if isinstance(row, AppearanceRow) else row[5],
+                    committee_ids=row.committee_ids if isinstance(row, AppearanceRow) else row[6],
+                    roles=row.roles if isinstance(row, AppearanceRow) else row[7],
+                    position=pos,
+                    organization=org,
+                    participation=part,
+                    search_text=s_text,
+                    explanation=provenance.get('explanation'),
+                    facts=tuple(f_list),
+                    source_ids=tuple(sorted(sources_of(record))),
                 )
             elif kind == 'data_issue':
                 row[12] = record.get('impact')
@@ -905,9 +1009,22 @@ def write_tables(records, sources, query_rows, stage, descriptor, *, filter_orph
         entries = rows.pop(kind)
         kind_lists = tuple(k for k in LISTS if k in TABLE_COLUMNS[kind] and k != 'committee_types')
         if kind == 'appearance':
-            values = sorted(entries.values(), key=lambda t: (t[2] or 0, t[0]))
+            values = sorted(entries.values(), key=lambda t: (t.congress or 0, t.id) if isinstance(t, AppearanceRow) else (t[2] or 0, t[0]))
             entries.clear()
             def _prep_appearance(t):
+                if isinstance(t, AppearanceRow):
+                    cids = t.committee_ids
+                    levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
+                    return {
+                        'id': t.id, 'title': t.title, 'congress': t.congress,
+                        'chamber': t.chamber, 'date': t.date, 'meeting_id': t.meeting_id,
+                        'committee_ids': sorted(set(cids)), 'roles': sorted(set(t.roles)),
+                        'position': t.position, 'organization': t.organization, 'participation': t.participation,
+                        'facts': t.facts,
+                        'source_ids': sorted(set(t.source_ids)),
+                        'committee_types': sorted({effective_committee_type(cid) for cid in cids}) or ['unknown'],
+                        'committee_level': 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown',
+                    }
                 cids = t[6]
                 levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
                 return {
@@ -922,9 +1039,21 @@ def write_tables(records, sources, query_rows, stage, descriptor, *, filter_orph
                 }
             prepare_fn = _prep_appearance
         elif kind == 'data_issue':
-            values = sorted(entries.values(), key=lambda t: (t[2] or 0, t[0]))
+            values = sorted(entries.values(), key=lambda t: (t.congress or 0, t.id) if isinstance(t, DataIssueRow) else (t[2] or 0, t[0]))
             entries.clear()
             def _prep_issue(t):
+                if isinstance(t, DataIssueRow):
+                    cids = t.committee_ids
+                    levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
+                    return {
+                        'id': t.id, 'title': t.title, 'congress': t.congress,
+                        'chamber': t.chamber, 'date': t.date, 'status': t.status, 'meeting_id': t.meeting_id,
+                        'category': t.category, 'selection': t.selection, 'committee_ids': sorted(set(cids)),
+                        'subject_kind': t.subject_kind, 'subject_id': t.subject_id, 'severity': t.severity,
+                        'facts': t.facts, 'source_ids': sorted(set(t.source_ids)),
+                        'committee_types': sorted({effective_committee_type(cid) for cid in cids}) or ['unknown'],
+                        'committee_level': 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown',
+                    }
                 cids = t[9]
                 levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
                 return {

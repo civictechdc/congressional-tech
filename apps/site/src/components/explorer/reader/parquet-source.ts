@@ -3,6 +3,7 @@ import { compressors } from 'hyparquet-compressors';
 import { presentRecord, recordingDue, recordingVisible } from '../browse/record-presentation.ts';
 import { compareRecordedDate, createSearchMemo, matches, orderSearchRows, pageBounds, selectSearchRows, summarizeCoverage } from '../browse/query-utils.ts';
 import { selectRelatedMaterials } from '../browse/related-materials.ts';
+import { byteCache } from './filenames/cache.ts';
 import type { ArtifactPart, ExplorerQuery, ExplorerReader, ExplorerRecordRef, Fetcher, PublicationHandle, QueryInfo, QueryKind, QueryRow, RelatedOptions } from './types.ts';
 
 const rowLocation = Symbol('rowLocation');
@@ -25,8 +26,7 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
   const positions = new Map<string, RowPosition>();
   const records = new Map<string, StoredRow>();
   const pending = new Map<string, { controller: AbortController; users: number; promise: Promise<unknown> }>();
-  const ranges = new Map<string, ArrayBuffer>();
-  let rangeBytes = 0;
+  const rangeCache = byteCache<ArrayBuffer>(64 * 1024 * 1024);
 
   function shared<T>(key: string, signal: AbortSignal | undefined, load: (signal: AbortSignal) => Promise<T>): Promise<T> {
     signal?.throwIfAborted();
@@ -96,7 +96,7 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
       async slice(start: number, end = part.byte_size) {
         signal?.throwIfAborted();
         const key = `${part.path}/${start}/${end}`;
-        const cached = ranges.get(key);
+        const cached = rangeCache.get(key);
         if (cached) return cached;
         return shared(`range/${key}`, signal, async sharedSignal => {
           const response = await fetcher(new URL(part.path, manifestUrl), { signal: sharedSignal, headers: { Range: `bytes=${start}-${end - 1}` } });
@@ -107,16 +107,7 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
           const bytes = await response.arrayBuffer();
           if (bytes.byteLength !== end - start) throw new Error('Incomplete Parquet byte range.');
           sharedSignal.throwIfAborted();
-          if (bytes.byteLength <= 64 * 1024 * 1024) {
-            ranges.set(key, bytes);
-            rangeBytes += bytes.byteLength;
-            while (rangeBytes > 64 * 1024 * 1024) {
-              const oldest = ranges.keys().next().value;
-              if (oldest === undefined) break;
-              rangeBytes -= ranges.get(oldest)?.byteLength || 0;
-              ranges.delete(oldest);
-            }
-          }
+          rangeCache.set(key, bytes, bytes.byteLength);
           return bytes;
         });
       },

@@ -16,10 +16,12 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def declaration():
+    """Load and parse the project test-suites.toml configuration."""
     return tomllib.loads((ROOT / 'test-suites.toml').read_text())
 
 
 def run(command, *, timeout=15):
+    """Execute a subprocess command in the project root with standard timeouts."""
     return subprocess.run(command, cwd=ROOT, check=True, capture_output=True, text=True, timeout=timeout)
 
 
@@ -71,6 +73,7 @@ def inventory(config):
 
 
 def doctor(config, lane_name=None):
+    """Verify local runtime prerequisites, Python version, native CLI dependencies, and imports."""
     errors = []
     version_file = config['environment']['python_version_file']
     expected_python = (ROOT / version_file).read_text().strip()
@@ -126,6 +129,7 @@ def doctor(config, lane_name=None):
 
 
 def test(config, name, paths, pytest_args):
+    """Execute pytest against the selected test lane with environment tripwires."""
     lane = config['lanes'][name]
     if not lane['roots']:
         raise ValueError(f'{name}: {lane["rationale"]} Requirements: {lane["requirements"]}')
@@ -151,7 +155,63 @@ def test(config, name, paths, pytest_args):
     return result.returncode
 
 
+def clean(*, dry_run=True):
+    """Scan and reclaim stale build directories, egg-info, and bytecode caches."""
+    targets = []
+    # Find build/ and *.egg-info in packages and apps (excluding cargo target/ and node_modules/)
+    for parent in [ROOT / 'packages', ROOT / 'apps']:
+        if parent.exists():
+            for p in parent.rglob('build'):
+                if p.is_dir() and 'target' not in p.parts and 'node_modules' not in p.parts:
+                    targets.append(p)
+            for p in parent.rglob('*.egg-info'):
+                if p.is_dir():
+                    targets.append(p)
+    # Find __pycache__ and .pytest_cache (excluding .venv, node_modules, output, and .cache)
+    for p in ROOT.rglob('__pycache__'):
+        if p.is_dir() and not any(part in p.parts for part in ('.venv', 'node_modules', 'output', '.cache')):
+            targets.append(p)
+    pytest_cache = ROOT / '.pytest_cache'
+    if pytest_cache.is_dir():
+        targets.append(pytest_cache)
+
+    total_bytes = 0
+    for target in sorted(set(targets)):
+        size = 0
+        if target.is_dir():
+            for f in target.rglob('*'):
+                if f.is_file():
+                    size += f.stat().st_size
+        elif target.is_file():
+            size = target.stat().st_size
+        total_bytes += size
+        action_prefix = '[DRY-RUN] Would remove' if dry_run else 'Removing'
+        try:
+            rel = target.relative_to(ROOT)
+        except ValueError:
+            rel = target
+        print(f'{action_prefix}: {rel} ({size:,} bytes)')
+        if not dry_run:
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+
+    # Report cache/output retention status without deleting them
+    cache_dir = ROOT / '.cache'
+    output_dir = ROOT / 'output'
+    print('\n--- Cache & Output Retention Status ---')
+    if cache_dir.exists():
+        print('Preserving .cache/ (retention rule: data preservation active)')
+    if output_dir.exists():
+        print('Preserving output/ (retention rule: data preservation active)')
+    print(f'Total reclaimable space in scanned targets: {total_bytes:,} bytes')
+    if dry_run:
+        print('Dry-run complete. No files were deleted. Pass --execute to remove scanned build artifacts.')
+
+
 def main(argv=None):
+    """Main CLI entrypoint for scripts/dev.py."""
     config = declaration()
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -161,6 +221,9 @@ def main(argv=None):
     chk.add_argument('--lane', choices=config['lanes'])
     sub.add_parser('inventory')
     sub.add_parser('prepare-baseline', help='Fetch only the exact historical parser commit when absent, then verify its hash')
+    clean_p = sub.add_parser('clean', help='Scan and reclaim stale build, egg-info, and cache artifacts')
+    clean_p.add_argument('--execute', action='store_true', help='Execute deletion of stale artifacts (default is dry-run)')
+    clean_p.add_argument('--dry-run', action='store_true', default=True, help='Simulate cleanup without deleting (default)')
     tests = sub.add_parser('test')
     tests.add_argument('lane', choices=config['lanes'], nargs='?', default='production-offline')
     tests.add_argument('--path', action='append', default=[], help='Restrict to a path or node within this lane (repeatable)')
@@ -178,6 +241,9 @@ def main(argv=None):
         elif args.command == 'check':
             doctor(config, getattr(args, 'lane', None))
             inventory(config)
+        elif args.command == 'clean':
+            is_dry_run = not getattr(args, 'execute', False)
+            clean(dry_run=is_dry_run)
         elif args.command == 'prepare-baseline':
             print('Baseline verified: ' + baseline(config, fetch=True))
         else:

@@ -1,12 +1,11 @@
-// @ts-nocheck
 import { retainedBytes, sharedLoad } from './cache.ts';
 import { yieldToMessages, scanBatchRows } from './cooperative.ts';
 import { decompressBrotli } from 'hyparquet-compressors';
 
 /** Decode only bounded blocks containing the selected source's observations. */
-export function observationReader(index, data, references, {metrics = {}, cache} = {}) {
+export function observationReader(index: any, data: any, references: any, {metrics = {}, cache}: {metrics?: any, cache?: any} = {}): any {
   if (index.version !== 1 || !Number.isSafeInteger(index.max_part_bytes) || index.max_part_bytes < 1 || index.max_part_bytes > 1024 * 1024) throw new Error('Unsupported observation index.');
-  function locate(blocks, row) {
+  function locate(blocks: any[], row: number) {
     let low = 0, high = blocks.length;
     while (low < high) {
       const middle = (low + high) >>> 1;
@@ -17,7 +16,7 @@ export function observationReader(index, data, references, {metrics = {}, cache}
     return block;
   }
   const pending = new Map();
-  async function decode(file, block, signal) {
+  async function decode(file: any, block: any, signal?: AbortSignal): Promise<any> {
     signal?.throwIfAborted();
     const key=`${file===references?'reference':'observation'}-block:${block.start}`;
     const retained=cache?.get(key);
@@ -144,13 +143,13 @@ export function observationReader(index, data, references, {metrics = {}, cache}
 }
 
 /** Read [offset, offset + limit) slices directly from flat occurrences.parquet via HTTP 206 Range requests. */
-export function parquetObservationReader(descriptor, readRows, { metrics = {} } = {}) {
+export function parquetObservationReader(descriptor: any, readRows: any, { metrics = {} }: any = {}): any {
   const rawFields = descriptor.fields || [];
   const fields = rawFields
-    .map(f => (typeof f === 'string' ? f : f?.name))
-    .filter(name => name && !['owner_id', 'occurrence_order', 'occurrence_is_null'].includes(name));
+    .map((f: any) => (typeof f === 'string' ? f : f?.name))
+    .filter((name: any): name is string => Boolean(name && !['owner_id', 'occurrence_order', 'occurrence_is_null'].includes(name)));
   const rowSlices = Array.isArray(descriptor.row_slices) ? descriptor.row_slices : null;
-  const browseRanges = (descriptor.browse_ranges || []).map(r => ({
+  const browseRanges = (descriptor.browse_ranges || []).map((r: any) => ({
     rowGroup: r.row_group ?? 0,
     startRow: r.start_row ?? r.row_offset ?? 0,
     numRows: r.num_rows ?? r.rows ?? 0,
@@ -159,11 +158,11 @@ export function parquetObservationReader(descriptor, readRows, { metrics = {} } 
   }));
   const ownerSliceCache = new Map();
 
-  async function resolveSliceByOwnerId(ownerId, signal) {
+  async function resolveSliceByOwnerId(ownerId: any, signal?: AbortSignal) {
     const key = String(ownerId);
     if (ownerSliceCache.has(key)) return ownerSliceCache.get(key);
     const candidates = browseRanges.length
-      ? browseRanges.filter(r => (!r.minOwner || r.minOwner <= key) && (!r.maxOwner || key <= r.maxOwner))
+      ? browseRanges.filter((r: any) => (!r.minOwner || r.minOwner <= key) && (!r.maxOwner || key <= r.maxOwner))
       : descriptor.rows > 0
         ? [{ rowGroup: 0, startRow: 0, numRows: descriptor.rows, minOwner: undefined, maxOwner: undefined }]
         : [];
@@ -245,7 +244,7 @@ export function parquetObservationReader(descriptor, readRows, { metrics = {} } 
     return resolved;
   }
 
-  async function resolveSlice(row, ownerId, signal) {
+  async function resolveSlice(row: any, ownerId: any, signal?: AbortSignal) {
     if (rowSlices && typeof row === 'number' && row >= 0 && row < rowSlices.length) {
       return rowSlices[row];
     }
@@ -256,7 +255,7 @@ export function parquetObservationReader(descriptor, readRows, { metrics = {} } 
     throw new Error('Invalid observation row reference.');
   }
 
-  async function page(row, { offset = 0, limit = 20, columns = fields, ownerId } = {}, signal) {
+  async function page(row: any, { offset = 0, limit = 20, columns = fields, ownerId }: any = {}, signal?: AbortSignal) {
     signal?.throwIfAborted();
     const slice = await resolveSlice(row, ownerId, signal);
     if (!slice) throw new Error('Invalid observation row reference.');
@@ -272,13 +271,13 @@ export function parquetObservationReader(descriptor, readRows, { metrics = {} } 
     const clampedEnd = Math.min(Number.isFinite(limit) ? offset + limit : total, total);
     const rowStart = startOffset + clampedStart;
     const rowEnd = startOffset + clampedEnd;
-    const physicalCols = ['occurrence_is_null', ...columns.filter(name => fields.includes(name))];
+    const physicalCols = ['occurrence_is_null', ...columns.filter((name: string) => fields.includes(name))];
     const rows = rowStart < rowEnd ? await readRows(descriptor, rowStart, rowEnd, physicalCols, signal) : [];
     metrics.parquetOccurrenceRowsRead = (metrics.parquetOccurrenceRowsRead || 0) + rows.length;
-    const items = rows.map(item =>
+    const items = rows.map((item: any) =>
       item.occurrence_is_null
         ? null
-        : Object.fromEntries(columns.map(key => [key, item[key] ?? null]))
+        : Object.fromEntries(columns.map((key: string) => [key, item[key] ?? null]))
     );
     return {
       items,
@@ -289,12 +288,12 @@ export function parquetObservationReader(descriptor, readRows, { metrics = {} } 
     };
   }
 
-  async function read(row, signal, { ownerId } = {}) {
+  async function read(row: any, signal?: AbortSignal, { ownerId }: any = {}) {
     const result = await page(row, { offset: 0, limit: Infinity, ownerId }, signal);
     return result.is_null ? null : result.items;
   }
 
-  async function* matchingSources(needle, signal) {
+  async function* matchingSources(needle: any, signal?: AbortSignal) {
     const lowerNeedle = String(needle || '').toLowerCase();
     if (rowSlices) {
       for (let parentRow = 0; parentRow < rowSlices.length; parentRow++) {

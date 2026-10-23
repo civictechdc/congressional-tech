@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {withVerifiedJson, canonicalJson} from './startup.ts';
 
 // Saved sidecars reach 12.6 MB. Allow bounded growth and a separate mandatory
@@ -6,19 +5,19 @@ import {withVerifiedJson, canonicalJson} from './startup.ts';
 export const recoveryStartupPolicy = Object.freeze({deadlineMs: 30_000, maxBytes: 32 * 1024 * 1024});
 
 /** A status overlay leaves every original catalog and fetch field intact. */
-export async function loadRecoveries(descriptor, info, fetcher, configuredPolicy = {}) {
+export async function loadRecoveries(descriptor: any, info: any, fetcher: any, configuredPolicy: any = {}): Promise<{ sources: Map<any, any>; groups: Map<any, any> }> {
   if (!descriptor) return {sources: new Map(), groups: new Map()};
   const policy = {...recoveryStartupPolicy, ...configuredPolicy};
-  return withVerifiedJson(policy, 'Recovered document status', async verified => {
+  return withVerifiedJson(policy, 'Recovered document status', async (verified: any) => {
     const data = await verified(fetcher, descriptor.url, descriptor.sha256, descriptor.bytes, 'recovered document status');
     if (data.version !== (configuredPolicy.sourceIdentity ? 2 : 1) || data.catalog_id !== info.catalog_id || data.rows !== info.rows || data.entries !== info.entries) throw new Error('Recovered document status belongs to a different catalog.');
-    const recovery = index => {
+    const recovery = (index: number) => {
       const value = data.recoveries[index];
       if (!Number.isSafeInteger(index) || index < 0 || !value || value.recovery_status !== 'recovered') throw new Error('Invalid recovered document status.');
       return value;
     };
     if (configuredPolicy.sourceIdentity && (data.version !== 2 || canonicalJson(data.source_identity) !== canonicalJson(configuredPolicy.sourceIdentity))) throw new Error('Recovered document status belongs to a different selected snapshot.');
-    const positions = (pairs, maximum, value, source = false) => {
+    const positions = (pairs: any[], maximum: number, value: (match: any) => any, source: boolean = false) => {
       const result = new Map();
       for (const pair of pairs) {
         const [position, match] = data.version === 2 && source ? [pair[0], pair[2]] : pair;
@@ -28,11 +27,11 @@ export async function loadRecoveries(descriptor, info, fetcher, configuredPolicy
       }
       return result;
     };
-    const sources = positions(data.sources, info.rows, recovery, true), groups = positions(data.groups, info.entries, matches => {
+    const sources = positions(data.sources, info.rows, recovery, true), groups = positions(data.groups, info.entries, (matches: any[]) => {
       if (!Array.isArray(matches) || !matches.length || new Set(matches).size !== matches.length) throw new Error('Empty recovery group.');
       return matches.map(recovery);
     });
-    if (sources.size > info.rows || groups.size > info.entries || data.version === 2 && data.sources.some(([id,document,index])=>!groups.get(document)?.includes(recovery(index)))) throw new Error('Recovery source and document memberships differ.');
+    if (sources.size > info.rows || groups.size > info.entries || (data.version === 2 && data.sources.some(([id,document,index]: [any, any, any])=>!groups.get(document)?.includes(recovery(index))))) throw new Error('Recovery source and document memberships differ.');
     return {sources, groups};
   }, configuredPolicy.signal);
 }

@@ -23,7 +23,7 @@ import shutil
 from typing import Any
 
 import pyarrow as pa
-from docspec_client import DocSpecFailure, NativeDatasets, resolve_docspec_binary
+from docspec_client import NativeDatasets, resolve_docspec_binary
 
 from .parquet import SOURCE_SCHEMA, TABLE_SCHEMAS
 

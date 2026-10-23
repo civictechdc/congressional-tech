@@ -62,7 +62,7 @@ offline = true
 purpose = "Production regression with an in-process Python socket tripwire; child processes are not network-isolated."
 
 [lanes.native-loopback]
-roots = ["tests"]
+roots = ["packages/congress_api/tests", "tests"]
 marker = "loopback"
 offline = false
 required_binary_env = "SOURCE_FETCH_BINARY"

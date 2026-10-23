@@ -16,6 +16,7 @@ const python = process.env.EXPLORER_PYTHON || process.env.COMMITTEE_PYTHON || (e
 execFileSync(python, ['-c', `
 import sys, gzip, json
 from pathlib import Path
+sys.path.insert(0, 'packages/congress_api/tests')
 sys.path.insert(0, 'tests')
 from test_explorer_export import native, write_meetings, NOW
 from committee_explorer.export import export

@@ -112,7 +112,7 @@ def write_queries(catalog, current, write, *, evidence_states=None, paginate=Tru
 
     def scope_for_key(key, trail=(), record_obj=None):
         if key in scope_cache:
-            return scope_cache.pop(key) if record_obj is not None and key[0] == 'material' else scope_cache[key]
+            return scope_cache[key]
         if key in trail:
             return (None, 'unknown', None, ())
         if key[0] == 'appearance' and key[1] in appearance_meetings:
@@ -124,11 +124,7 @@ def write_queries(catalog, current, write, *, evidence_states=None, paginate=Tru
         if key[0] == 'material':
             if record_obj is None and key not in records:
                 return (None, 'unknown', None, ())
-            subjects_for_mat = (
-                material_subjects.pop(key[1], None)
-                if record_obj is not None
-                else material_subjects.get(key[1])
-            )
+            subjects_for_mat = material_subjects.get(key[1])
             if not subjects_for_mat:
                 return (None, 'unknown', None, ())
             subject_iter = (subjects_for_mat,) if isinstance(subjects_for_mat, tuple) else sorted(subjects_for_mat)
@@ -145,8 +141,7 @@ def write_queries(catalog, current, write, *, evidence_states=None, paginate=Tru
             meeting_id = next(iter(linked_meetings)) if len(linked_meetings) == 1 else None
             committees = tuple(sorted({committee for s in linked for committee in s[3]}))
             result = (congress, chamber, meeting_id, committees)
-            if record_obj is None:
-                scope_cache[key] = result
+            scope_cache[key] = result
             return result
         info = scope_info.get(key)
         if info is None:
@@ -158,8 +153,7 @@ def write_queries(catalog, current, write, *, evidence_states=None, paginate=Tru
         if target_key and target_key in records:
             congress, chamber, meeting_id, committees = scope_for_key(target_key, (*trail, key))
         result = (congress, chamber, meeting_id, committees)
-        if record_obj is None and key[0] != 'data_issue':
-            scope_cache[key] = result
+        scope_cache[key] = result
         return result
 
     def scope(record):

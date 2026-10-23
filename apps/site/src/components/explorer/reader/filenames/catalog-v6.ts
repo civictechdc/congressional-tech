@@ -1,5 +1,11 @@
-// @ts-nocheck
 /** Stable-ID reader for the selected native catalog's bounded delivery assets. */
+export const FLAG_RETAINED = 1;
+export const FLAG_HAS_DOCUMENT = 2;
+export const FLAG_HAS_DOCUMENT_KIND = 4;
+export const FLAG_HAS_DOCUMENT_FAMILY = 8;
+export const FLAG_HAS_API_REFERENCE = 16;
+export const FLAG_HAS_VIDEO_REFERENCE = 32;
+
 import {sourceContext, provenanceUrlKey} from '../../browse/provenance.ts';
 export {sourceContext};
 import {decodeDetailRecord} from './detail-record.ts';
@@ -13,7 +19,7 @@ import {loadRecoveries} from './recoveries.ts';
 import {positiveInteger} from '../../browse/filename-rules.ts';
 import {yieldToMessages} from './cooperative.ts';
 
-const validUrl = value => { try { const url = new URL(value); return /^https?:$/.test(url.protocol) && !url.username && !url.password ? url : null; } catch { return null; } };
+const validUrl = (value: any) => { try { const url = new URL(value); return /^https?:$/.test(url.protocol) && !url.username && !url.password ? url : null; } catch { return null; } };
 
 function isPdfSavedCopy(record, recovery) {
   const rawFormats = [recovery?.kind, record?.body_format, record?.format, record?.content_type, record?.media_type]
@@ -183,9 +189,9 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
     signal?.throwIfAborted();metrics.decodedRows+=rows.length;
     return rows.map(row=>normalize(columns?Object.fromEntries(columns.map(name=>[name,row[name]??null])):row));
   }
-  function present(row,reviewed) {
+  function present(row: any, reviewed?: any) {
     const output=structuredClone(row), flag=output._flags;delete output._flags;
-    output._row=output.source_id;output.api_reference=flag&16?apiReference(output.source_url):null;output.video_reference=flag&32?videoReference(output.source_url):null;
+    output._row=output.source_id;output.api_reference=flag&FLAG_HAS_API_REFERENCE?apiReference(output.source_url):null;output.video_reference=flag&FLAG_HAS_VIDEO_REFERENCE?videoReference(output.source_url):null;
     const recovered=recovery.groups.get(output.document_id);
     if(recovered)Object.assign(output,{retained:true,recovery:recovered[0],recoveries:recovered});
     const review=reviewed && reviews.groups.get(output.document_id);
@@ -553,19 +559,19 @@ export async function createStableFilenameCatalog(publication, fetcher, reviewPu
       }
     }
     if(!matches && !(query.retained && recovery.groups.size) && !(reviewed && ['document_kind','document_family'].some(k=>query[k]==='__null__'))) {
-      const accept=flag=>(!query.retained || !!(flag&1)===(query.retained==='yes')) &&
-        (query.scope==='all' || (query.scope==='capture-records'?!(flag&2):!!(flag&2))) &&
-        (query.document_kind!=='__null__'||!!(flag&4)) && (query.document_family!=='__null__'||!!(flag&8));
+      const accept=(flag: number)=>(!query.retained || !!(flag&FLAG_RETAINED)===(query.retained==='yes')) &&
+        (query.scope==='all' || (query.scope==='capture-records'?!(flag&FLAG_HAS_DOCUMENT):!!(flag&FLAG_HAS_DOCUMENT))) &&
+        (query.document_kind!=='__null__'||!!(flag&FLAG_HAS_DOCUMENT_KIND)) && (query.document_family!=='__null__'||!!(flag&FLAG_HAS_DOCUMENT_FAMILY));
       const total=flaggedCount(roots.browse,accept),pages=Math.max(1,Math.ceil(total/limit)),page=Math.min(requested,pages),rows=[];
       for await(const row of flaggedRows(roots.browse,accept,(page-1)*limit,limit,signal))rows.push(present(row,reviewed));
       return {rows,total,page,pages,limit};
     }
-    const wanted=(requested-1)*limit;let total=0,chosen=[],last=[];
+    const wanted=(requested-1)*limit;let total=0,chosen: any[]=[],last: any[]=[];
     for await(const row of browseRows(roots.browse,signal)) {
       metrics.groupScanVisits++;if(metrics.groupScanVisits%2048===0)await yieldToMessages(signal,metrics);
       const rendered=present(row,reviewed),flag=row._flags;
       if(matches&&!matches.has(row.document_id)||query.retained&&rendered.retained!==(query.retained==='yes')||
-          !query.scope&&!(flag&2)||query.scope==='capture-records'&&(flag&2)||
+          !query.scope&&!(flag&FLAG_HAS_DOCUMENT)||query.scope==='capture-records'&&(flag&FLAG_HAS_DOCUMENT)||
           ['document_kind','document_family'].some(k=>query[k]==='__null__'&&rendered[k]?.length))continue;
       if(total%limit===0)last=[];last.push(rendered);if(total>=wanted&&total<wanted+limit)chosen.push(rendered);total++;
     }

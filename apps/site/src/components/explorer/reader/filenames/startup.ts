@@ -1,16 +1,15 @@
-// @ts-nocheck
 // Both status loaders verify decoded JSON bytes. Their callers own whether a
 // failure is mandatory and choose independent byte and startup-time policies.
-function cancel(stream) {
+function cancel(stream: any) {
   // A broken transport can ignore abort or leave cancel() pending forever.
   // Request cleanup without allowing that promise to block the caller.
   try { Promise.resolve(stream?.cancel()).catch(() => {}); } catch {}
 }
 
-export async function withVerifiedJson(policy, label, run, callerSignal) {
+export async function withVerifiedJson(policy: any, label: string, run: (verified: any) => Promise<any>, callerSignal?: AbortSignal): Promise<any> {
   if (!Number.isFinite(policy.deadlineMs) || policy.deadlineMs <= 0 || !Number.isSafeInteger(policy.maxBytes) || policy.maxBytes < 1) throw new Error(`Invalid ${label.toLowerCase()} startup policy.`);
   const controller = new AbortController(), {signal} = controller;
-  const abort = () => controller.abort(callerSignal.reason);
+  const abort = () => controller.abort(callerSignal?.reason);
   callerSignal?.addEventListener('abort', abort, {once: true});
   if (callerSignal?.aborted) abort();
   const deadlineError = new Error(`${label} exceeded the startup deadline.`);
@@ -20,22 +19,22 @@ export async function withVerifiedJson(policy, label, run, callerSignal) {
     if (performance.now() >= expires) controller.abort(deadlineError);
     signal.throwIfAborted();
   };
-  const wait = async promise => {
-    let interrupted;
-    const stopped = new Promise((_, reject) => {
+  const wait = async <T>(promise: Promise<T>): Promise<T> => {
+    let interrupted: (() => void) | undefined;
+    const stopped = new Promise<never>((_, reject) => {
       interrupted = () => reject(signal.reason);
       if (signal.aborted) interrupted();
       else signal.addEventListener('abort', interrupted, {once: true});
     });
     try { return await Promise.race([promise, stopped]); }
-    finally { signal.removeEventListener('abort', interrupted); }
+    finally { if (interrupted) signal.removeEventListener('abort', interrupted); }
   };
-  const verified = async (fetcher, url, sha256, length, name) => {
+  const verified = async (fetcher: any, url: string, sha256: string, length: number, name: string) => {
     if (!Number.isSafeInteger(length) || length < 1 || length > policy.maxBytes) throw new Error(`${name} exceeds the startup byte limit.`);
     check();
     const pending = Promise.resolve(fetcher(url, {signal}));
     // A fetch implementation may resolve only after its caller has timed out.
-    pending.then(response => { if (signal.aborted) cancel(response.body); }, () => {});
+    pending.then((response: any) => { if (signal.aborted) cancel(response.body); }, () => {});
     const response = await wait(pending);
     if (!response.ok) { cancel(response.body); throw new Error(`Could not load the ${name}.`); }
     const declared = response.headers.get('Content-Length');
@@ -77,8 +76,8 @@ export async function withVerifiedJson(policy, label, run, callerSignal) {
 }
 
 // Compare parsed control data independently of object key insertion order.
-export function canonicalJson(value) {
-  const ordered = value => Array.isArray(value) ? value.map(ordered) : value && typeof value === 'object'
-    ? Object.fromEntries(Object.keys(value).sort().map(key=>[key,ordered(value[key])])) : value;
+export function canonicalJson(value: any): string {
+  const ordered = (val: any): any => Array.isArray(val) ? val.map(ordered) : val && typeof val === 'object'
+    ? Object.fromEntries(Object.keys(val).sort().map(key=>[key,ordered(val[key])])) : val;
   return JSON.stringify(ordered(value));
 }

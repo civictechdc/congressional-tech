@@ -1,4 +1,3 @@
-// @ts-nocheck
 import {withVerifiedJson} from './startup.ts';
 
 export const reviewStartupPolicy = Object.freeze({deadlineMs: 15_000, maxBytes: 16 * 1024 * 1024});
@@ -10,13 +9,13 @@ export const reviewStartupPolicy = Object.freeze({deadlineMs: 15_000, maxBytes: 
  * reviews keep the original categories. Without a binding, the reviews apply
  * only to the exact catalog pair they were exported from.
  */
-export async function loadReviews(descriptor, manifest, fetcher, manifestUrl, configuredPolicy = {}) {
+export async function loadReviews(descriptor: any, manifest: any, fetcher: any, manifestUrl: any, configuredPolicy: any = {}): Promise<any> {
   const empty = {groups: new Map(), sources: new Map(), info: {}};
   const bound = manifest.files?.review_binding;
   if (!descriptor || (!bound && descriptor.catalog_id !== manifest.info.catalog_id)) return empty;
   const policy = {...reviewStartupPolicy, ...configuredPolicy};
   try {
-    return await withVerifiedJson(policy, 'Document reviews', async verified => {
+    return await withVerifiedJson(policy, 'Document reviews', async (verified: any) => {
       let placement = null;
       if (bound) {
         const binding = await verified(fetcher, new URL(bound.path, manifestUrl).href, bound.sha256, bound.bytes, 'document review binding');
@@ -30,7 +29,7 @@ export async function loadReviews(descriptor, manifest, fetcher, manifestUrl, co
           ['filenames','documents'].some(name => data.baseline[name] !== manifest.source_manifest?.files[name]?.sha256)))) {
         throw new Error('Document reviews belong to a different catalog pair.');
       }
-      const groups = new Map(), sources = new Map(), facets = {};
+      const groups = new Map(), sources = new Map(), facets: Record<string, string[]> = {};
       for (const [index, row] of data.rows.entries()) {
         if (placement) {
           const place = placement.get(index);
@@ -52,7 +51,7 @@ export async function loadReviews(descriptor, manifest, fetcher, manifestUrl, co
           sources.set(source, row);
         }
         const links = {...row.evidence, pages: {...row.evidence.pages}};
-        const evidenceUrl = path => {
+        const evidenceUrl = (path: string) => {
           if (!/^evidence\/[a-f0-9]{64}\.(pdf|png|txt)$/.test(path) || !data.files[path]) throw new Error('Invalid review evidence link.');
           return new URL(path, descriptor.url).href;
         };
@@ -67,12 +66,12 @@ export async function loadReviews(descriptor, manifest, fetcher, manifestUrl, co
       return {groups, sources, info: {complete_body_reviews: true, reviewed_search: true, review_sha256: data.review_sha256,
         reviewed_groups: [...groups.values()].filter(row => row.status === 'candidate_applied').length, review_facets: facets}};
     }, configuredPolicy.signal);
-  } catch (error) {
+  } catch (error: any) {
     return {...empty, info: {complete_body_reviews: true, reviewed_search: false, review_error: error.message}};
   }
 }
 
-export function reviewedMode(query, info) {
+export function reviewedMode(query: any, info: any) {
   if (!['', 'reviewed'].includes(query.classification || '')) throw new Error('Unknown classification mode.');
   if (query.classification !== 'reviewed') return false;
   if (!info.reviewed_search) throw new Error(info.review_error || 'Reviewed-category search is not configured.');

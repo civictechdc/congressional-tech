@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createFilenameCatalog } from './catalog.ts';
 
 interface WorkerRequest {
