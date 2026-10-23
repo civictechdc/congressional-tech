@@ -13,7 +13,5 @@ from viewer_publication.publish_viewer_r2 import *
 import viewer_publication.publish_viewer_r2 as _impl
 
 if __name__ == '__main__':
-    sys.path.insert(0, str(_ROOT / 'scripts'))
-    sys.path.insert(0, str(_ROOT / 'scripts/publication'))
-    from publication_cli import main
+    from viewer_publication.publication_cli import main
     raise SystemExit(main(_impl))

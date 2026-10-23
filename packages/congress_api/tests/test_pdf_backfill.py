@@ -177,13 +177,7 @@ def test_pdf_backfill_rejects_sha256_mismatch(tmp_path: Path):
 
 
 def test_backfill_cli_writes_output_report(tmp_path: Path):
-    spec = importlib.util.spec_from_file_location(
-        "backfill_uncompressed_pdfs_cli",
-        ROOT / "scripts" / "publication" / "backfill-uncompressed-pdfs.py",
-    )
-    assert spec and spec.loader
-    cli_mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(cli_mod)
+    from viewer_publication import backfill_uncompressed_pdfs as cli_mod
 
     store_dir = tmp_path / "local-store"
     store = LocalStore(store_dir, store_uncompressed_pdfs=True)

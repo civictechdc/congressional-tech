@@ -28,10 +28,16 @@ def source_files(root):
     paths = set((root / 'packages/viewer_publication/src/viewer_publication').glob('filename*.py'))
     paths.update((root / 'packages/congress_shared/src/congress_shared').rglob('*.py'))
     paths.update((root / 'packages/congress_api/src/congress_api').rglob('*.py'))
+    pub_scripts = root / 'scripts' / 'publication'
+    paths.update(pub_scripts / name for name in (
+        'publish-filename-viewer.py', 'publish-viewer-r2.py',
+        'publication_cli.py', 'prepare_workflow_resume.py'))
+    paths.update(root / 'scripts' / name for name in (
+        'viewer_release_identity.py', 'publication_preflight.py'))
     paths.update(root / name for name in (
-        'scripts/publication/publish-filename-viewer.py', 'scripts/publication/publish-viewer-r2.py',
-        'scripts/publication/publication_cli.py', 'scripts/viewer_release_identity.py', 'scripts/publication_preflight.py',
         'packages/viewer_publication/src/viewer_publication/__init__.py',
+        'packages/viewer_publication/src/viewer_publication/publication_cli.py',
+        'packages/viewer_publication/src/viewer_publication/cli.py',
         'packages/viewer_publication/src/viewer_publication/client.py',
         'packages/viewer_publication/src/viewer_publication/native.py',
         'packages/viewer_publication/src/viewer_publication/continuation.py',
@@ -39,7 +45,6 @@ def source_files(root):
         'packages/viewer_publication/src/viewer_publication/plan.py',
         'packages/viewer_publication/src/viewer_publication/reconciliation.py',
         'packages/viewer_publication/src/viewer_publication/resume.py',
-        'scripts/publication/prepare_workflow_resume.py',
         'packages/viewer_publication/src/viewer_publication/verify.py',
         'apps/site/document-review-identities.json', 'apps/site/document-review-publication.json',
         '.python-version', 'pyproject.toml', 'uv.lock', '.github/actions/setup-python-project/action.yml'))

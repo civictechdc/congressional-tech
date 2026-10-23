@@ -9,6 +9,7 @@ from array import array
 import time
 
 from viewer_publication.filename_compression import CompressionPolicy, DEFAULT_COMPRESSION_POLICY, validate_compression
+import argparse
 import hashlib
 import importlib.util
 import json
@@ -177,5 +178,56 @@ def publish_selected(snapshot, target, *, previous=None, read_asset=None, prior_
         stage_timings=stage_timings, stage_event=stage_event, memory_metrics=memory_metrics)
 
 
+RETIREMENT_MESSAGE = (
+    'Direct viewer generation is retired; use publish-viewer-r2.py prepare with explicit native storage.'
+)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog='publish-filename-viewer.py',
+        description=(
+            'Prepare native viewer output and retain shared verified-file utilities.\n\n'
+            'DEPRECATION / RETIREMENT NOTICE:\n'
+            f'  {RETIREMENT_MESSAGE}'
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        '--source',
+        type=Path,
+        help='Deprecated source catalog directory.',
+    )
+    parser.add_argument(
+        '--output',
+        type=Path,
+        help='Deprecated output viewer directory.',
+    )
+    parser.add_argument(
+        '--fetch',
+        action='store_true',
+        help='Deprecated flag to fetch latest catalog from R2.',
+    )
+    parser.add_argument(
+        '--compression-level',
+        type=int,
+        choices=(3, 9, 19),
+        help='Deprecated viewer compression level.',
+    )
+    parser.add_argument(
+        'extra_args',
+        nargs='*',
+        help=argparse.SUPPRESS,
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    tokens = sys.argv[1:] if argv is None else list(argv)
+    parser.parse_known_args(tokens)
+    raise SystemExit(RETIREMENT_MESSAGE)
+
+
 if __name__ == '__main__':
-    raise SystemExit('Direct viewer generation is retired; use publish-viewer-r2.py prepare with explicit native storage.')
+    raise SystemExit(main())

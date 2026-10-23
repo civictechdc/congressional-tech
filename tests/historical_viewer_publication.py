@@ -21,10 +21,7 @@ from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, DecodedBu
 from viewer_publication.filename_json_stream import ObservationCounts
 from viewer_publication.filename_compression import CompressionPolicy, DEFAULT_COMPRESSION_POLICY
 
-ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('historical_viewer_shared', ROOT / 'scripts/publication/publish-filename-viewer.py')
-shared = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(shared)
+import viewer_publication.publish_filename_viewer as shared
 viewer, observations, details = shared.viewer, shared.observations, shared.details
 navigation, review_binding = shared.navigation, shared.review_binding
 digest, verify, fetch = shared.digest, shared.verify, shared.fetch

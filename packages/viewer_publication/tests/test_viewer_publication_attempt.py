@@ -435,10 +435,7 @@ def test_bounded_fixture_complete_publication_cost_receipt(source, tmp_path, mon
     measure = str(ROOT / 'scripts/measure')
     if measure not in sys.path:
         sys.path.insert(0, measure)
-    spec = importlib.util.spec_from_file_location('publication_costs', ROOT / 'scripts/measure/publication_costs.py')
-    publication_costs = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(publication_costs)
-    PublicationCosts = publication_costs.PublicationCosts
+    from publication_costs import PublicationCosts
     remote = Remote(source)
     metrics = PublicationCosts(tmp_path)
     original_get, original_put, original_download = remote.get_object, remote.put_object, remote.download_file

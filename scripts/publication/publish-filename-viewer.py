@@ -13,4 +13,4 @@ from viewer_publication.publish_filename_viewer import *
 import viewer_publication.publish_filename_viewer as _impl
 
 if __name__ == '__main__':
-    raise SystemExit('Direct viewer generation is retired; use publish-viewer-r2.py prepare with explicit native storage.')
+    raise SystemExit(_impl.main())

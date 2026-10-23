@@ -7,10 +7,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pytest
 
-SPEC = importlib.util.spec_from_file_location(
-    'filename_review_binding', Path(__file__).resolve().parents[3] / 'packages/viewer_publication/src/viewer_publication/filename_review_binding.py')
-binding = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(binding)
+import viewer_publication.filename_review_binding as binding
 
 
 def catalog(documents, sources, catalog_id='next'):

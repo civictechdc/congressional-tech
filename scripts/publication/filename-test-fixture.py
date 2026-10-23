@@ -12,5 +12,7 @@ if str(_PKG) not in sys.path:
 from viewer_publication.filename_test_fixture import *
 import viewer_publication.filename_test_fixture as _impl
 
-if __name__ in ('__main__', 'native_legacy_fixture'):
+if __name__ == '__main__':
+    raise SystemExit(_impl.main(sys.argv[1:]))
+elif __name__ == 'native_legacy_fixture':
     _impl.main(sys.argv[1:])

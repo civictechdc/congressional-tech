@@ -1,6 +1,6 @@
 """Small catalog covering group retention, API scope and source provenance."""
+import argparse
 import hashlib
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -12,17 +12,36 @@ import pyarrow.parquet as pq
 ROOT = Path(__file__).resolve().parents[4]
 
 
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog='filename-test-fixture.py',
+        description='Small catalog covering group retention, API scope and source provenance.',
+    )
+    parser.add_argument(
+        'root',
+        type=Path,
+        help='Root directory where the test fixture catalog structure will be created.',
+    )
+    return parser
+
+
 def main(argv=None):
     if argv is None:
-        argv = sys.argv[1:]
+        tokens = sys.argv[1:]
+    elif isinstance(argv, (str, Path)):
+        tokens = [str(argv)]
+    else:
+        tokens = [str(a) for a in argv]
+
+    parser = build_parser()
+    args = parser.parse_args(tokens)
+    root = args.root
+
     if str(ROOT / 'tests') not in sys.path:
         sys.path.insert(0, str(ROOT / 'tests'))
-    spec = importlib.util.spec_from_file_location('publisher', ROOT / 'tests/historical_viewer_publication.py')
-    publisher = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(publisher)
+    import historical_viewer_publication as publisher
     # Small parts exercise multi-part values in the real Python-to-browser path.
     publisher.observations.BLOCK_BYTES = 128
-    root = Path(argv[0])
     generation = 'a' * 32
     catalog_id = 'b' * 32
     folder = root / 'catalog-generations' / generation
@@ -88,7 +107,10 @@ def main(argv=None):
     expected = [dict(query=query, result=catalog.search(query)) for query in queries]
     (root / 'expected.json').write_text(json.dumps(expected))
     (root / 'source-records.json').write_text(json.dumps(rows))
+    return 0
 
 
-if __name__ in ('__main__', 'native_legacy_fixture'):
+if __name__ == '__main__':
+    raise SystemExit(main())
+elif __name__ == 'native_legacy_fixture':
     main()

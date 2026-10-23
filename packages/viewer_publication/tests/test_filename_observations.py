@@ -7,10 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-spec = importlib.util.spec_from_file_location('observation_publication',
-    Path(__file__).resolve().parents[3] / 'packages/viewer_publication/src/viewer_publication/filename_observations.py')
-observations = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(observations)
+import viewer_publication.filename_observations as observations
 
 
 def publication(tmp_path, monkeypatch):

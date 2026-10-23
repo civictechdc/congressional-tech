@@ -581,8 +581,5 @@ def check_selected_publication(client, pointer, *, public_url=PUBLIC_URL, record
 
 if __name__ == '__main__':
     import sys
-    repo_root = Path(__file__).resolve().parents[4]
-    sys.path.insert(0, str(repo_root / 'scripts'))
-    sys.path.insert(0, str(repo_root / 'scripts/publication'))
-    from publication_cli import main
+    from viewer_publication.publication_cli import main
     raise SystemExit(main(sys.modules[__name__]))

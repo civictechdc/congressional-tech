@@ -319,15 +319,13 @@ def main(argv=None):
         parser.exit(1, f'Invalid status evidence: {error}\n')
     if args.verify_publication:
         # Native readback reuses the same file/route owners as the publisher.
-        import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts/publication'))
         from viewer_publication import verify as publication_verification
         control, live_observation, verify = (
             publication_verification.control,
             publication_verification.live_observation,
             publication_verification.verify,
         )
-        from publication_cli import save_report
+        from viewer_publication.publication_cli import save_report
         try:
             raw_bytes = control(args.raw_manifest)
             raw_manifest = json.loads(raw_bytes)
