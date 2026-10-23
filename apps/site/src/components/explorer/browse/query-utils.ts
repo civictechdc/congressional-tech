@@ -76,7 +76,7 @@ function searchBlob(row: QueryRow): string {
   const partText = [filePartNote(row), landingPageNote(row)].filter(Boolean).join(' ');
   const sourceType = sourceTypeNote(row);
   const sourceCount = sourceCountNote(row);
-  const text = `${row.title} ${row.committee_code || ''} ${(row.files || []).map(recordedFileName).filter(Boolean).join(' ')} ${recordedPlace(row)} ${scheduleNote(row)} ${recordedMeasureValues(row).join(' ')} ${recordedAction(row)} ${publishedNote(row)} ${recordedVotes(row).join(' ')} ${recordedAmendments(row).join(' ')} ${level} ${witnessNotes(row).join(' ')} ${notableRoles(row).join(' ')} ${participationNote(row)} ${issueText} ${committeeText} ${materialNote} ${row.search_text || ''} ${row.document_type || ''} ${categoryText} ${severityText} ${statusText} ${providerText} ${partText} ${sourceType} ${sourceCount} ${documentSourceLabel(row)} ${(row.source_document_groups || []).join(' ')}`.toLocaleLowerCase();
+  const text = `${row.title} ${row.position || ''} ${row.organization || ''} ${row.committee_code || ''} ${(row.files || []).map(recordedFileName).filter(Boolean).join(' ')} ${recordedPlace(row)} ${scheduleNote(row)} ${recordedMeasureValues(row).join(' ')} ${recordedAction(row)} ${publishedNote(row)} ${recordedVotes(row).join(' ')} ${recordedAmendments(row).join(' ')} ${level} ${witnessNotes(row).join(' ')} ${notableRoles(row).join(' ')} ${participationNote(row)} ${issueText} ${committeeText} ${materialNote} ${row.search_text || ''} ${row.document_type || ''} ${categoryText} ${severityText} ${statusText} ${providerText} ${partText} ${sourceType} ${sourceCount} ${documentSourceLabel(row)} ${(row.source_document_groups || []).join(' ')}`.toLocaleLowerCase();
   textCache.set(row, text);
   return text;
 }

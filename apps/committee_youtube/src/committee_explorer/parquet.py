@@ -5,6 +5,8 @@ Searches never read that column. Internal model objects are folded into the
 meeting, witness or material they describe, not published as navigation steps.
 """
 import gc
+import gzip
+import hashlib
 import json
 from collections import Counter, defaultdict, deque
 from heapq import merge
@@ -27,32 +29,81 @@ STRINGS = ('id', 'kind', 'title', 'chamber', 'date', 'type', 'status', 'meeting_
 LISTS = ('committee_ids', 'roles', 'meeting_ids', 'appearance_ids', 'source_ids', 'source_document_groups', 'committee_types')
 LINK = pa.struct([(k, pa.string()) for k in ('url', 'label', 'role', 'media_type', 'version', 'published_at', 'sha256', 'saved_copy_sha256', 'saved_filename')])
 NOTE = pa.struct([(k, pa.string()) for k in ('label', 'value')])
+SOURCE_LINK = pa.struct([(k, pa.string()) for k in ('group', 'label', 'href')])
+MAX_CELL_SIZE = 262_144
+
+
+def _check_cell_size(val, col_name):
+    """Recursively enforce that no string or bytes cell exceeds MAX_CELL_SIZE."""
+    if val is None:
+        return
+    if isinstance(val, (str, bytes, bytearray)):
+        if len(val) > MAX_CELL_SIZE:
+            raise ValueError(f"Cell in column {col_name} exceeds 256 KiB limit: {len(val)} bytes")
+    elif isinstance(val, (list, tuple, set)):
+        for item in val:
+            _check_cell_size(item, col_name)
+    elif isinstance(val, dict):
+        for v in val.values():
+            _check_cell_size(v, col_name)
+
+
 SCHEMA = pa.schema([(k, pa.string()) for k in STRINGS] + [('congress', pa.int32()), ('issue_count', pa.int32())]
                    + [(k, pa.list_(pa.string())) for k in LISTS]
                    + [('evidence_states', pa.struct([(k, pa.string()) for k in ASPECTS])),
                       ('files', pa.list_(LINK)), ('facts', pa.list_(NOTE))])
-SOURCE_SCHEMA = pa.schema([(k, pa.string()) for k in
-    ('id', 'kind', 'provider', 'url', 'retrieved_at', 'source_modified_at', 'imported_at', 'input_snapshot_id', 'identifier', 'retained_uri', 'retained_sha256', 'payload')])
+SOURCE_SCHEMA = pa.schema([
+    ('id', pa.string()),
+    ('kind', pa.string()),
+    ('provider', pa.string()),
+    ('url', pa.string()),
+    ('title', pa.string()),
+    ('retrieved_at', pa.string()),
+    ('source_modified_at', pa.string()),
+    ('imported_at', pa.string()),
+    ('input_snapshot_id', pa.string()),
+    ('identifier_scheme', pa.string()),
+    ('identifier_value', pa.string()),
+    ('identifier_scope', pa.string()),
+    ('facts', pa.list_(NOTE)),
+    ('links', pa.list_(SOURCE_LINK)),
+    ('retained_uri', pa.string()),
+    ('retained_sha256', pa.string()),
+])
 QUERY_COLUMNS = [*STRINGS[:12], 'congress', 'issue_count', 'committee_ids', 'roles', 'evidence_states', 'scheduled_at', 'meeting_status', 'recording_url', 'position', 'organization', 'document_type', 'source_document_groups', 'committee_level', 'access', 'committee_type', 'source_committee_type', 'committee_types', 'committee_code', 'parent_committee_id']
 
 
 # Shared field types, explicit table shapes. Optional domain fields remain even
 # when today's sources do not populate them (for example witness document links).
-COMMON_COLUMNS = ('id', 'kind', 'title', 'chamber', 'congress', 'committee_ids',
-                  'committee_level', 'committee_types', 'source_ids', 'explanation',
-                  'issue_count', 'facts')
 TABLE_COLUMNS = {
-    'meeting': (*COMMON_COLUMNS, 'date', 'type', 'status', 'meeting_id',
-                'search_text', 'scheduled_at', 'access', 'evidence_states'),
-    'committee_term': (*COMMON_COLUMNS, 'committee_type', 'source_committee_type',
-                       'committee_code', 'parent_committee_id'),
-    'appearance': (*COMMON_COLUMNS, 'date', 'meeting_id', 'search_text', 'position',
-                   'organization', 'participation', 'roles'),
-    'material': (*COMMON_COLUMNS, 'date', 'type', 'meeting_id', 'provider', 'category',
-                 'scheduled_at', 'meeting_status', 'recording_url', 'document_type',
-                 'meeting_ids', 'appearance_ids', 'source_document_groups', 'files'),
-    'data_issue': (*COMMON_COLUMNS, 'date', 'status', 'meeting_id', 'category',
-                   'selection', 'severity', 'subject_kind', 'subject_id'),
+    'meeting': (
+        'id', 'title', 'chamber', 'congress', 'committee_ids',
+        'committee_level', 'committee_types', 'source_ids', 'facts',
+        'date', 'type', 'status', 'search_text', 'scheduled_at', 'access', 'evidence_states',
+    ),
+    'committee_term': (
+        'id', 'title', 'chamber', 'congress', 'committee_level',
+        'committee_types', 'source_ids', 'facts', 'committee_type',
+        'source_committee_type', 'committee_code', 'parent_committee_id',
+    ),
+    'appearance': (
+        'id', 'title', 'chamber', 'congress', 'committee_ids',
+        'committee_level', 'committee_types', 'source_ids', 'facts',
+        'date', 'meeting_id', 'position', 'organization', 'participation', 'roles',
+    ),
+    'material': (
+        'id', 'title', 'chamber', 'congress', 'committee_ids',
+        'committee_level', 'committee_types', 'source_ids', 'facts',
+        'date', 'type', 'provider', 'category', 'scheduled_at',
+        'meeting_status', 'recording_url', 'document_type',
+        'meeting_ids', 'source_document_groups', 'files',
+    ),
+    'data_issue': (
+        'id', 'title', 'chamber', 'congress', 'committee_ids',
+        'committee_level', 'committee_types', 'source_ids', 'facts',
+        'date', 'status', 'meeting_id', 'category', 'selection',
+        'severity', 'subject_kind', 'subject_id',
+    ),
 }
 TABLE_SCHEMAS = {kind: pa.schema([SCHEMA.field(name) for name in names])
                  for kind, names in TABLE_COLUMNS.items()}
@@ -78,16 +129,18 @@ def sources_of(record):
 _FILE_KEYS = ('url', 'label', 'role', 'media_type', 'version', 'published_at', 'sha256', 'saved_copy_sha256', 'saved_filename')
 
 
-def _write_table(rows, schema, path, *, row_group_size, prepare_row=None, clear_rows=True):
+def _write_table(rows, schema, path, *, row_group_size, prepare_row=None, clear_rows=False):
     """Convert one row group at a time instead of duplicating the full table."""
     has_files = 'files' in schema.names
-    has_facts = 'facts' in schema.names
-    with pq.ParquetWriter(path, schema, compression='snappy', write_statistics=True) as writer:
+    has_facts = 'facts' in schema.names and 'files' in schema.names
+    with pq.ParquetWriter(path, schema, compression='zstd', compression_level=3, write_statistics=True) as writer:
         # An empty table still needs the same empty row group as write_table.
         for start in range(0, max(1, len(rows)), row_group_size):
             raw_chunk = rows[start:start + row_group_size]
             chunk = [prepare_row(r) for r in raw_chunk] if prepare_row is not None else raw_chunk
             for r in chunk:
+                for col, val in r.items():
+                    _check_cell_size(val, col)
                 if has_files:
                     flist = r.get('files')
                     if flist and isinstance(flist[0], tuple):
@@ -117,13 +170,178 @@ def _write_table(rows, schema, path, *, row_group_size, prepare_row=None, clear_
                     rows[start:start + row_group_size] = [None] * len(raw_chunk)
 
 
-def _source_row(source):
-    row = {key: source.get(key) for key in SOURCE_SCHEMA.names}
-    row['source_modified_at'] = (source.get('source_modified_at') or {}).get('date')
-    row['identifier'] = json.dumps(source.get('identifier'), ensure_ascii=False)
-    row['retained_uri'] = (source.get('retained') or {}).get('uri')
-    row['retained_sha256'] = (source.get('retained') or {}).get('sha256')
-    row['payload'] = json.dumps(source.get('payload'), ensure_ascii=False, separators=(',', ':'))
+def _extract_source_title(payload, source):
+    if not isinstance(payload, dict):
+        return None
+    for key in ('title', 'name', 'heading', 'caption', 'label'):
+        val = payload.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    return None
+
+
+def _source_facts(payload, source):
+    if not isinstance(payload, dict):
+        return []
+    facts = []
+    seen = {}
+    def add(label, val):
+        if val is None or val == '' or val == [] or val == {}:
+            return
+        if isinstance(val, (list, tuple)):
+            val = ', '.join(str(x) for x in val if x is not None)
+        else:
+            val = str(val)
+        if not val.strip():
+            return
+        if label in seen:
+            prev = facts[seen[label]]['value']
+            if val not in prev.split('\n'):
+                facts[seen[label]]['value'] = f"{prev}\n{val}"
+        else:
+            seen[label] = len(facts)
+            facts.append({'label': label, 'value': val})
+
+    order = [
+        ('source_document_type', 'Document type'),
+        ('record_type', 'Type at the source'),
+        ('type', 'Type at the source'),
+        ('meetingStatus', 'Status at the source'),
+        ('meeting_status', 'Status at the source'),
+        ('documentType', 'Document type'),
+        ('category', 'Category'),
+        ('chamber', 'Chamber'),
+        ('congress', 'Congress'),
+        ('event_id', 'Event ID'),
+        ('eventId', 'Event ID'),
+        ('held_date', 'Held date'),
+        ('hearing_dates', 'Hearing dates'),
+        ('date_ingested', 'Ingested date'),
+        ('updateDate', 'Updated at the source'),
+        ('committee_code_gpo', 'GPO committee code'),
+        ('committee_codes', 'Committee codes'),
+        ('text_read', 'Text read'),
+        ('explanation', 'Explanation'),
+    ]
+    for key, label in order:
+        if key in payload:
+            add(label, payload[key])
+    for key, val in sorted(payload.items()):
+        if key in {k for k, _ in order} or key in ('title', 'name', 'heading', 'caption', 'label', 'url', 'html_url', 'pdf_url', 'source_urls', 'witnesses', 'meetingDocuments', 'documents', 'noise'):
+            continue
+        if isinstance(val, (str, int, float, bool)):
+            label = key.replace('_', ' ').capitalize()
+            add(label, str(val))
+    return facts
+
+
+def _source_links(payload, source):
+    links = []
+    if not isinstance(payload, dict):
+        return links
+    if 'url' in payload and isinstance(payload['url'], str):
+        links.append({'group': 'source', 'label': 'Source URL', 'href': payload['url']})
+    if 'html_url' in payload and isinstance(payload['html_url'], str):
+        links.append({'group': 'source', 'label': 'HTML version', 'href': payload['html_url']})
+    if 'pdf_url' in payload and isinstance(payload['pdf_url'], str):
+        links.append({'group': 'source', 'label': 'PDF version', 'href': payload['pdf_url']})
+    if 'source_urls' in payload and isinstance(payload['source_urls'], list):
+        for u in payload['source_urls']:
+            if isinstance(u, str):
+                lbl = u.split('/')[-1] if '/' in u else u
+                links.append({'group': 'source', 'label': lbl or 'Source Link', 'href': u})
+    return links
+
+
+def _source_row(source, stage=None):
+    row = {key: None for key in SOURCE_SCHEMA.names}
+    row['id'] = source.get('id')
+    row['kind'] = source.get('kind', 'source_record')
+    row['provider'] = source.get('provider')
+    row['url'] = source.get('url')
+    row['title'] = source.get('title')
+    row['retrieved_at'] = source.get('retrieved_at')
+    if hasattr(row['retrieved_at'], 'isoformat'):
+        row['retrieved_at'] = row['retrieved_at'].isoformat()
+    row['source_modified_at'] = source.get('source_modified_at')
+    if isinstance(row['source_modified_at'], dict):
+        row['source_modified_at'] = row['source_modified_at'].get('date')
+    elif hasattr(row['source_modified_at'], 'isoformat'):
+        row['source_modified_at'] = row['source_modified_at'].isoformat()
+    row['imported_at'] = source.get('imported_at')
+    if hasattr(row['imported_at'], 'isoformat'):
+        row['imported_at'] = row['imported_at'].isoformat()
+    row['input_snapshot_id'] = source.get('input_snapshot_id')
+
+    ident = source.get('identifier')
+    scheme, val, scope = None, None, None
+    if isinstance(ident, dict):
+        scheme = ident.get('scheme')
+        val = ident.get('value')
+        scope = ident.get('scope')
+    elif ident is not None:
+        scheme = getattr(ident, 'scheme', None)
+        val = getattr(ident, 'value', None)
+        scope = getattr(ident, 'scope', None)
+    row['identifier_scheme'] = str(scheme) if scheme is not None else None
+    row['identifier_value'] = str(val) if val is not None else None
+    row['identifier_scope'] = str(scope) if scope is not None else None
+
+    payload = source.get('payload')
+    if not row['title']:
+        row['title'] = _extract_source_title(payload, source)
+
+    retained = source.get('retained')
+    sha, uri = None, None
+    if isinstance(retained, dict):
+        sha = retained.get('sha256')
+        uri = retained.get('uri')
+    elif retained is not None:
+        sha = getattr(retained, 'sha256', None)
+        uri = getattr(retained, 'uri', None)
+
+    if payload is not None:
+        if isinstance(payload, bytes):
+            raw_bytes = payload
+        elif isinstance(payload, str):
+            raw_bytes = payload.encode('utf-8')
+        else:
+            raw_bytes = json.dumps(payload, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+        calc_sha = hashlib.sha256(raw_bytes).hexdigest()
+        if not sha or len(sha) != 64:
+            sha = calc_sha
+        is_pdf = raw_bytes[:5] == b'%PDF-'
+        ext = 'pdf' if is_pdf else 'gz'
+        cas_rel = f"bodies/sha256/{sha[:2]}/{sha}.{ext}"
+        if not uri or not uri.startswith('bodies/sha256/'):
+            uri = cas_rel
+        if stage is not None:
+            cas_path = Path(stage) / cas_rel
+            if not cas_path.exists():
+                cas_path.parent.mkdir(parents=True, exist_ok=True)
+                if is_pdf:
+                    cas_path.write_bytes(raw_bytes)
+                else:
+                    cas_path.write_bytes(gzip.compress(raw_bytes, mtime=0))
+    else:
+        if sha and (not uri or not uri.startswith('bodies/sha256/')):
+            uri = f"bodies/sha256/{sha[:2]}/{sha}.gz"
+
+    row['retained_sha256'] = sha
+    row['retained_uri'] = uri
+
+    existing_facts = source.get('facts')
+    if existing_facts:
+        row['facts'] = [{'label': f['label'], 'value': f['value']} if isinstance(f, dict) else {'label': f[0], 'value': f[1]} for f in existing_facts]
+    else:
+        row['facts'] = _source_facts(payload, source)
+
+    existing_links = source.get('links')
+    if existing_links:
+        row['links'] = [{'group': l['group'], 'label': l['label'], 'href': l['href']} if isinstance(l, dict) else {'group': l[0], 'label': l[1], 'href': l[2]} for l in existing_links]
+    else:
+        row['links'] = _source_links(payload, source)
+
     return row
 
 
@@ -137,7 +355,9 @@ def _write_sources(rows, stage):
         sub_rows = []
         sub_bytes = 0
         for row_dict in rows:
-            r_bytes = sum(len(v) if isinstance(v, str) else 32 for v in row_dict.values())
+            for col, val in row_dict.items():
+                _check_cell_size(val, col)
+            r_bytes = sum(len(v) if isinstance(v, (str, bytes)) else 32 for v in row_dict.values())
             if sub_rows and (len(sub_rows) >= SOURCE_ROW_GROUP or sub_bytes + r_bytes > 3_500_000):
                 yield pa.Table.from_pylist(sub_rows, schema=SOURCE_SCHEMA)
                 sub_rows = []
@@ -155,7 +375,7 @@ def _write_sources(rows, stage):
     while pending is not None:
         path, count = Path(stage) / f'sources-{len(files) + 1}.parquet', 0
         with pa.OSFile(str(path), 'wb') as sink, \
-                pq.ParquetWriter(sink, SOURCE_SCHEMA, compression='snappy', write_statistics=True) as writer:
+                pq.ParquetWriter(sink, SOURCE_SCHEMA, compression='zstd', compression_level=3, write_statistics=True) as writer:
             # Close the file before a row group whose in-memory size would take
             # it past the target; written row groups are smaller in practice.
             while pending is not None and (not count or sink.tell() + pending.nbytes <= SOURCE_FILE_TARGET):
@@ -180,22 +400,15 @@ def _event_page(url):
 from congress_api.matching.committees import HIERARCHY_SOURCE, hierarchy_from_code
 
 
-def write_tables(records, sources, query_rows, stage, descriptor):
+def write_tables(records, sources, query_rows, stage, descriptor, *, filter_orphans=False):
     """Write the six browser Parquet tables from streamed records, sources, and query rows.
 
     Sources must arrive in ascending ID order.
     """
-    def source_rows():
-        previous = None
-        for source in sources:
-            if previous is not None and source['id'] <= previous:
-                raise ValueError(f"Sources must be unique and in ascending ID order: {source['id']} follows {previous}")
-            previous = source['id']
-            yield _source_row(source)
-    source_files = _write_sources(source_rows(), stage)
     rows = {kind: {} for kind in TABLES if kind != 'source_record'}
-    appearance_omitted = set(SCHEMA.names) - set(TABLE_SCHEMAS['appearance'].names)
-    issue_omitted = (set(SCHEMA.names) - set(TABLE_SCHEMAS['data_issue'].names)) - {'subject'}
+    pruned_common = {'kind', 'explanation', 'search_text', 'appearance_ids', 'meeting_id', 'committee_ids', 'issue_count'}
+    appearance_omitted = set(SCHEMA.names) - set(TABLE_SCHEMAS['appearance'].names) - pruned_common
+    issue_omitted = (set(SCHEMA.names) - set(TABLE_SCHEMAS['data_issue'].names)) - {'subject'} - pruned_common
     for row in query_rows:
         rkind = row['kind']
         if rkind == 'appearance':
@@ -293,7 +506,7 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                     elif needed_owners is not None and owner_pair[0] not in rows:
                         needed_owners.add(owner_pair)
         # Every meeting-owned subject uses its explicit meeting reference.
-        if (kind != 'appearance' or id not in rows['appearance']) and record.get('meeting'):
+        if record.get('meeting'):
             subjects[id] = record['meeting']['id']
         if kind == 'legislative_item':
             context_records[id] = {
@@ -460,8 +673,6 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 file_info['source_ids'] = sources_of(record)
                 formats[vid].append(file_info)
         elif kind == 'material_link':
-            if versions and not formats:
-                versions.clear()
             mat_id = record['material']['id']
             subj_kind = record['subject']['kind']
             subj_id = record['subject']['id']
@@ -473,10 +684,12 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             ):
                 meeting_id = (
                     subj_id if subj_kind == 'meeting'
-                    else (rows['appearance'][subj_id][5] if isinstance(rows['appearance'][subj_id], tuple) else rows['appearance'][subj_id].get('meeting_id')) if subj_kind == 'appearance'
+                    else ((rows['appearance'][subj_id][5] if isinstance(rows['appearance'][subj_id], tuple) else rows['appearance'][subj_id].get('meeting_id')) or subjects.get(subj_id)) if subj_kind == 'appearance'
                     else None
                 )
-                if meeting_id: mat_row.setdefault('meeting_ids', []).append(meeting_id)
+                if meeting_id:
+                    mat_row.setdefault('meeting_ids', []).append(meeting_id)
+                    if not mat_row.get('meeting_id'): mat_row['meeting_id'] = meeting_id
                 if subj_kind == 'committee_term': mat_row['committee_ids'] = (*(mat_row.get('committee_ids') or ()), subj_id)
                 if subj_kind == 'appearance': mat_row.setdefault('appearance_ids', []).append(subj_id)
                 if link_sources: mat_row.setdefault('source_ids', []).extend(link_sources)
@@ -530,10 +743,12 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         if row is None: continue
         meeting_id = (
             id if kind == 'meeting'
-            else (rows['appearance'][id][5] if isinstance(rows['appearance'][id], tuple) else rows['appearance'][id].get('meeting_id')) if kind == 'appearance' and id in rows['appearance']
+            else ((rows['appearance'][id][5] if isinstance(rows['appearance'][id], tuple) else rows['appearance'][id].get('meeting_id')) or subjects.get(id)) if kind == 'appearance' and id in rows['appearance']
             else subjects.get(id)
         )
-        if meeting_id: row.setdefault('meeting_ids', []).append(meeting_id)
+        if meeting_id:
+            row.setdefault('meeting_ids', []).append(meeting_id)
+            if not row.get('meeting_id'): row['meeting_id'] = meeting_id
         if kind == 'committee_term': row['committee_ids'] = (*(row.get('committee_ids') or ()), id)
         if kind == 'appearance': row.setdefault('appearance_ids', []).append(id)
         if source_ids: row.setdefault('source_ids', []).extend(source_ids)
@@ -652,6 +867,38 @@ def write_tables(records, sources, query_rows, stage, descriptor):
         if committee.get('committee_level') == 'subcommittee':
             return effective_committee_type(committee.get('parent_committee_id'), (*seen, id))
         return 'unknown'
+    referenced_source_ids = set()
+    has_published_tables = False
+    for kind in ('committee_term', 'meeting', 'material'):
+        if kind in rows and rows[kind]:
+            has_published_tables = True
+            for r in rows[kind].values():
+                sids = r.get('source_ids')
+                if sids:
+                    referenced_source_ids.update(str(s) for s in sids if s)
+    if 'appearance' in rows and rows['appearance']:
+        has_published_tables = True
+        for r in rows['appearance'].values():
+            sids = r[14] if isinstance(r, (tuple, list)) else r.get('source_ids')
+            if sids:
+                referenced_source_ids.update(str(s) for s in sids if s)
+    if 'data_issue' in rows and rows['data_issue']:
+        has_published_tables = True
+        for r in rows['data_issue'].values():
+            sids = r[15] if isinstance(r, (tuple, list)) else r.get('source_ids')
+            if sids:
+                referenced_source_ids.update(str(s) for s in sids if s)
+
+    def source_rows():
+        previous = None
+        for source in sources:
+            if previous is not None and source['id'] <= previous:
+                raise ValueError(f"Sources must be unique and in ascending ID order: {source['id']} follows {previous}")
+            previous = source['id']
+            if filter_orphans and has_published_tables and source['id'] not in referenced_source_ids:
+                continue
+            yield _source_row(source, stage=stage)
+    source_files = _write_sources(source_rows(), stage)
     written_details = {}
     write_order = ('material', 'data_issue', 'appearance', 'meeting', 'committee_term')
     for kind in [k for k in write_order if k in rows] + [k for k in list(rows.keys()) if k not in write_order]:
@@ -664,12 +911,12 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 cids = t[6]
                 levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
                 return {
-                    'id': t[0], 'kind': 'appearance', 'title': t[1], 'congress': t[2],
+                    'id': t[0], 'title': t[1], 'congress': t[2],
                     'chamber': t[3], 'date': t[4], 'meeting_id': t[5],
                     'committee_ids': sorted(set(cids)), 'roles': sorted(set(t[7])),
                     'position': t[8], 'organization': t[9], 'participation': t[10],
-                    'search_text': t[11], 'explanation': t[12], 'facts': t[13],
-                    'source_ids': sorted(set(t[14])), 'issue_count': issue_counts[('appearance', t[0])],
+                    'facts': t[13],
+                    'source_ids': sorted(set(t[14])),
                     'committee_types': sorted({effective_committee_type(cid) for cid in cids}) or ['unknown'],
                     'committee_level': 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown',
                 }
@@ -681,12 +928,11 @@ def write_tables(records, sources, query_rows, stage, descriptor):
                 cids = t[9]
                 levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
                 return {
-                    'id': t[0], 'kind': 'data_issue', 'title': t[1], 'congress': t[2],
+                    'id': t[0], 'title': t[1], 'congress': t[2],
                     'chamber': t[3], 'date': t[4], 'status': t[5], 'meeting_id': t[6],
                     'category': t[7], 'selection': t[8], 'committee_ids': sorted(set(cids)),
                     'subject_kind': t[10], 'subject_id': t[11], 'severity': t[12],
-                    'explanation': t[13], 'facts': t[14], 'source_ids': sorted(set(t[15])),
-                    'issue_count': issue_counts[('data_issue', t[0])],
+                    'facts': t[14], 'source_ids': sorted(set(t[15])),
                     'committee_types': sorted({effective_committee_type(cid) for cid in cids}) or ['unknown'],
                     'committee_level': 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown',
                 }
@@ -695,21 +941,22 @@ def write_tables(records, sources, query_rows, stage, descriptor):
             values = sorted(entries.values(), key=lambda r: (r.get('congress') or 0, r['id']))
             if kind != 'committee_term':
                 entries.clear()
-            omitted = set(SCHEMA.names) - set(TABLE_SCHEMAS[kind].names)
+            pruned_cols = {'kind', 'explanation', 'search_text', 'appearance_ids', 'meeting_id', 'committee_ids', 'issue_count'}
+            omitted = set(SCHEMA.names) - set(TABLE_SCHEMAS[kind].names) - pruned_cols
             for row in values:
                 populated = sorted(name for name in omitted if row.get(name) not in (None, '', (), [], {}))
                 if populated:
                     raise ValueError(f"{kind} {row['id']} has populated fields outside its table schema: {populated}")
             def _prep_dict(row, _kind=kind, _klists=kind_lists):
                 cids = row.get('committee_ids') or ()
-                row['issue_count'] = issue_counts[(_kind, row['id'])]
                 row['committee_types'] = sorted({effective_committee_type(cid) for cid in cids}) or ['unknown']
                 if _kind != 'committee_term':
                     levels = {committee_rows.get(cid, {}).get('committee_level', 'unknown') for cid in cids}
                     row['committee_level'] = 'subcommittee' if 'subcommittee' in levels else 'full' if levels == {'full'} else 'unknown'
                 for key in _klists:
                     row[key] = sorted(set(row.get(key) or ()))
-                return row
+                target_cols = TABLE_COLUMNS[_kind]
+                return {k: row[k] for k in target_cols if k in row}
             prepare_fn = _prep_dict
         path = TABLES[kind] + '.parquet'
         row_count = len(values)
@@ -761,7 +1008,7 @@ def write_catalog(catalog, current, stage, descriptor, write, evidence_states, r
         else (r.model_dump(mode='json') for r in catalog.records)
     )
     write_tables(record_dicts,
-                 source_dicts, consume_query_rows(), stage, descriptor)
+                 source_dicts, consume_query_rows(), stage, descriptor, filter_orphans=True)
     info.pop('partitions', None)
     info.update(storage='parquet', query_columns=QUERY_COLUMNS)
     write('queries.json', info, 'index', 'committee_explorer.queries', len(info['kinds']))

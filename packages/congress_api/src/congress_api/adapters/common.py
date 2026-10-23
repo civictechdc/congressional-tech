@@ -91,9 +91,12 @@ class AdapterContext:
     known_materials: Mapping[str, tuple[Material, MaterialVersion]] | None = None
 
     def source(self, native_key, payload, url=None):
-        key = f"{self.provider}|{self.input_id}|{native_key}|{digest(payload)}"
+        scheme = f"{self.provider}:record"
+        value = str(native_key)
+        payload_sha256 = digest(payload)
+        key = f"{self.provider}|{scheme}|{value}|{payload_sha256}"
         return SourceRecord(id=self.ids("source_record", key), provider=self.provider,
-                            identifier=Identifier(scheme=f"{self.provider}:record", value=str(native_key)),
+                            identifier=Identifier(scheme=scheme, value=value),
                             input_snapshot_id=self.input_id, imported_at=self.now,
                             url=web_url(url), payload=payload)
 

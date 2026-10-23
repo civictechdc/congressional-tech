@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 from pathlib import Path
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -37,7 +38,7 @@ from viewer_publication.filename_observations import (
 )
 from viewer_publication.filename_resources import owned_resources
 
-OCCURRENCE_ROW_GROUP_ROWS = 2048
+OCCURRENCE_ROW_GROUP_ROWS = 16384
 
 DEFAULT_SOURCE_READING_FIELDS = (
     'raw_leaf',
@@ -1013,3 +1014,248 @@ def export_viewer_pins(
             ),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Canonical Catalog Compaction & Normalization Helpers (ct-8od2)
+# ---------------------------------------------------------------------------
+
+SOURCE_OCCURRENCE_FIELDS = frozenset({
+    "source_associated_url",
+    "source_association_basis",
+    "source_capture_file",
+    "source_capture_pointer",
+    "source_capture_url",
+    "source_chamber",
+    "source_committee_code",
+    "source_committee_name",
+    "source_committee_url",
+    "source_congress",
+    "source_document_added_at",
+    "source_document_format",
+    "source_document_group",
+    "source_document_label",
+    "source_document_published_at",
+    "source_document_type",
+    "source_document_type_basis",
+    "source_label_document_kind",
+    "source_link_context",
+    "source_link_heading",
+    "source_link_href",
+    "source_link_label",
+    "source_link_url",
+    "source_meeting_date",
+    "source_meeting_id",
+    "source_meeting_key",
+    "source_meeting_title",
+    "source_meeting_type",
+    "source_occurrence_scope",
+    "source_original_page_url",
+    "source_package_id",
+    "source_page_date",
+    "source_page_sha256",
+    "source_page_title",
+    "source_page_type",
+    "source_page_url",
+    "source_participant_label",
+    "source_probe_checked_at",
+    "source_probe_method",
+    "source_probe_status",
+    "source_publisher_committee_code",
+    "source_receipt_key",
+    "source_receipt_line",
+    "source_resolved_url",
+    "source_witness_name",
+    "source_witness_organization",
+    "source_witness_position",
+})
+
+FORBIDDEN_CATALOG_TOP_LEVEL_COLUMNS = frozenset(
+    SOURCE_OCCURRENCE_FIELDS
+    | {
+        f"source_{field}" for field in (
+            "associated_url", "attempt", "auth", "boundary", "branch", "bundle",
+            "category", "chamber", "classification", "collection", "committee",
+            "congress", "context", "date", "description", "disposition", "document",
+            "family", "file", "fingerprint", "format", "group", "header", "id",
+            "identifier", "index", "item", "key", "kind", "label", "layer", "line",
+            "link", "location", "media", "metadata", "mode", "modified", "name",
+            "number", "observation", "occurrence", "offset", "order", "origin",
+            "package", "page", "parent", "part", "path", "period", "phase",
+            "pipeline", "pointer", "position", "prefix", "probe", "program",
+            "project", "protocol", "provenance", "provider", "publication",
+            "publisher", "purpose", "qualifier", "range", "rate", "raw",
+            "reading", "receipt", "record", "reference", "region", "release",
+            "repaired", "report", "representation", "resolution", "resource",
+            "response", "result", "retained", "revision", "role", "root", "route",
+            "row", "rule", "sample", "scale", "scenario", "schema", "scope",
+            "score", "section", "seed", "segment", "selection", "sequence",
+            "series", "server", "session", "shard", "signature", "site", "size",
+            "snapshot", "source", "stage", "stamp", "state", "status", "step",
+            "storage", "stream", "string", "structure", "subcommittee", "subject",
+            "summary", "system", "table", "tag", "target", "task", "term",
+            "tier", "time", "timestamp", "title", "token", "topic", "trace",
+            "track", "transcript", "type", "unit", "update", "upstream", "uri",
+            "url", "value", "variable", "variant", "vector", "version", "view",
+            "viewer", "volume", "watermark", "witness", "zone"
+        )
+    }
+) - {"source_occurrences", "source_id", "source_url"}
+
+
+FORBIDDEN_CATALOG_DUPLICATE_DIGESTS = frozenset({
+    "state_sha256", "state_body_key", "stored_sha256"
+})
+
+DEFAULT_CATALOG_ROW_GROUP_SIZE = 32768
+
+
+def prune_catalog_top_level_source_columns(table: pa.Table) -> pa.Table:
+    """Drop the 47 top-level source_* columns duplicating source_occurrences fields."""
+    kept = [
+        name for name in table.schema.names
+        if name not in FORBIDDEN_CATALOG_TOP_LEVEL_COLUMNS or name in ("source_occurrences", "source_id", "source_url")
+    ]
+    return table.select(kept)
+
+
+def deduplicate_catalog_sha_and_body_keys(table: pa.Table, *, drop_body_key: bool = False) -> pa.Table:
+    """Deduplicate copies of sha256 and body_key."""
+    drop_set = set(FORBIDDEN_CATALOG_DUPLICATE_DIGESTS)
+    if drop_body_key and "sha256" in table.schema.names:
+        drop_set.add("body_key")
+    kept = [name for name in table.schema.names if name not in drop_set]
+    return table.select(kept)
+
+
+def prune_catalog_null_columns(table: pa.Table) -> pa.Table:
+    """Prune 100% NULL columns from a catalog table."""
+    num_rows = len(table)
+    if num_rows == 0:
+        return table
+    kept = [
+        name for name in table.schema.names
+        if table[name].null_count < num_rows
+    ]
+    return table.select(kept)
+
+
+def scalarize_catalog_columns(table: pa.Table) -> pa.Table:
+    """Convert single-valued list<string> columns (max_len <= 1) to typed scalars."""
+    arrays = []
+    fields = []
+    num_rows = len(table)
+
+    for field in table.schema:
+        name = field.name
+        col = table[name]
+
+        # Only inspect list / large_list columns, but never scalarize struct lists like source_occurrences
+        if (pa.types.is_list(col.type) or pa.types.is_large_list(col.type)) and not pa.types.is_struct(col.type.value_type):
+            pylist = col.to_pylist()
+            lens = [len(x) for x in pylist if x is not None]
+            max_len = max(lens, default=0)
+
+            if max_len > 1:
+                # Do NOT scalarize multi-valued columns
+                arrays.append(col)
+                fields.append(field)
+            else:
+                # Scalarize: extract element 0 if list is nonempty, else None
+                scalar_vals = [item[0] if item else None for item in pylist]
+                if name in ("http_status", "state_status"):
+                    try:
+                        int_vals = [int(v) if v is not None else None for v in scalar_vals]
+                        arr = pa.array(int_vals, type=pa.int16())
+                    except (ValueError, TypeError):
+                        arr = pa.array(scalar_vals, type=pa.string())
+                elif name == "congress":
+                    try:
+                        int_vals = [int(v) if v is not None else None for v in scalar_vals]
+                        arr = pa.array(int_vals, type=pa.int32())
+                    except (ValueError, TypeError):
+                        arr = pa.array(scalar_vals, type=pa.string())
+                elif name == "source_receipt_line":
+                    try:
+                        int_vals = [int(v) if v is not None else None for v in scalar_vals]
+                        arr = pa.array(int_vals, type=pa.int64())
+                    except (ValueError, TypeError):
+                        arr = pa.array(scalar_vals, type=pa.string())
+                else:
+                    arr = pa.array(scalar_vals, type=pa.string())
+
+                arrays.append(arr)
+                fields.append(pa.field(name, arr.type, nullable=True))
+        else:
+            arrays.append(col)
+            fields.append(field)
+
+    return pa.Table.from_arrays(arrays, schema=pa.schema(fields, metadata=table.schema.metadata))
+
+
+def project_source_slice(row_or_table: Any, field_name: str) -> list[Any]:
+    """On-read projection helper reconstructing top-level slice from source_occurrences."""
+    if isinstance(row_or_table, dict):
+        occs = row_or_table.get("source_occurrences") or []
+        return [occ.get(field_name) for occ in occs if isinstance(occ, dict) and field_name in occ]
+    elif isinstance(row_or_table, pa.Table):
+        occs_col = row_or_table["source_occurrences"].to_pylist()
+        return [
+            [occ.get(field_name) for occ in occ_list if isinstance(occ, dict) and field_name in occ]
+            if occ_list else []
+            for occ_list in occs_col
+        ]
+    return []
+
+
+def compact_catalog_table(
+    table: pa.Table,
+    *,
+    prune_sources: bool = True,
+    deduplicate_digests: bool = True,
+    prune_nulls: bool = True,
+    scalarize: bool = True,
+    drop_body_key: bool = False,
+) -> pa.Table:
+    """Normalize and compact a canonical catalog table."""
+    result = table
+    if prune_sources:
+        result = prune_catalog_top_level_source_columns(result)
+    if deduplicate_digests:
+        result = deduplicate_catalog_sha_and_body_keys(result, drop_body_key=drop_body_key)
+    if prune_nulls:
+        result = prune_catalog_null_columns(result)
+    if scalarize:
+        result = scalarize_catalog_columns(result)
+    return result
+
+
+def compact_catalog_file(
+    source_path: Path | str,
+    destination_path: Path | str,
+    *,
+    row_group_size: int = DEFAULT_CATALOG_ROW_GROUP_SIZE,
+    compression: str = "zstd",
+    compression_level: int = 3,
+    drop_body_key: bool = False,
+) -> pa.Table:
+    """Read, compact, and write a canonical catalog file with >= 16k row groups."""
+    row_group_size = max(16384, int(row_group_size))
+    source_p = Path(source_path)
+    dest_p = Path(destination_path)
+    dest_p.parent.mkdir(parents=True, exist_ok=True)
+
+    table = pq.read_table(source_p)
+    compacted = compact_catalog_table(table, drop_body_key=drop_body_key)
+
+    pq.write_table(
+        compacted,
+        dest_p,
+        compression=compression,
+        compression_level=compression_level,
+        row_group_size=row_group_size,
+        write_page_index=True,
+        write_statistics=True,
+    )
+    return compacted
+

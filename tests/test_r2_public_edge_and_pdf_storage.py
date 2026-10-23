@@ -352,3 +352,50 @@ def test_cloudflare_r2_custom_domain_waf_and_transform_rules():
     assert export_parquet_headers["Cache-Control"] == "public, max-age=31536000, immutable"
     assert export_parquet_headers["Content-Type"] == "application/vnd.apache.parquet"
     assert export_parquet_headers["Content-Security-Policy"] == "sandbox; default-src 'none'"
+
+
+def test_senate_seed_fetch_detects_pdf_magic_and_stores_cas_pdf(tmp_path):
+    from congress_api.retention.senate import cached_html_path, seed_fetch
+    url = "https://www.senate.gov/isvp/hearing.pdf"
+    cache_path = cached_html_path(tmp_path, url)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    pdf_content = b"%PDF-1.4\n%Binary stream\n%%EOF"
+    cache_path.write_bytes(pdf_content)
+
+    result = seed_fetch(tmp_path, url)
+    assert result == ""
+    digest = hashlib.sha256(pdf_content).hexdigest()
+    cas_pdf = tmp_path / "bodies" / "sha256" / digest[:2] / f"{digest}.pdf"
+    assert cas_pdf.is_file()
+    assert cas_pdf.read_bytes() == pdf_content
+
+
+def test_senate_seed_fetch_detects_corrupt_replacement_characters_and_stores_cas_pdf(tmp_path):
+    from congress_api.retention.senate import cached_html_path, seed_fetch
+    url = "https://www.senate.gov/isvp/corrupt_binary.html"
+    cache_path = cached_html_path(tmp_path, url)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    # Binary with high invalid byte count, resulting in > 5% U+FFFD characters
+    binary_content = b"<html>" + (b"\xff\xfe\x80\x81\x82\x83" * 50) + b"</html>"
+    cache_path.write_bytes(binary_content)
+
+    result = seed_fetch(tmp_path, url)
+    assert result == ""
+    digest = hashlib.sha256(binary_content).hexdigest()
+    cas_pdf = tmp_path / "bodies" / "sha256" / digest[:2] / f"{digest}.pdf"
+    assert cas_pdf.is_file()
+    assert cas_pdf.read_bytes() == binary_content
+
+
+def test_senate_seed_fetch_preserves_valid_text_html(tmp_path):
+    from congress_api.retention.senate import cached_html_path, seed_fetch
+    url = "https://www.senate.gov/isvp/valid.html"
+    cache_path = cached_html_path(tmp_path, url)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    html_content = "<html><body><h1>Senate Committee Hearing</h1></body></html>"
+    cache_path.write_bytes(html_content.encode("utf-8"))
+
+    result = seed_fetch(tmp_path, url)
+    assert result == html_content
+    assert not (tmp_path / "bodies").exists()
+

@@ -171,6 +171,10 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
       }
       options.signal?.throwIfAborted();
       for (const row of batch) {
+        if (!row.kind && kind) row.kind = kind as QueryKind;
+        if (kind === 'committee_term' && !row.committee_ids && row.id) row.committee_ids = [row.id];
+        if (kind === 'meeting' && !row.meeting_id && row.id) row.meeting_id = row.id;
+        if (kind === 'material' && (row.meeting_id === undefined || row.meeting_id === null)) row.meeting_id = row.meeting_ids?.length ? row.meeting_ids[0] : null;
         const position = { path: part.path, index: Number(row[rowIndex]) };
         row[rowLocation] = position;
         if (row.id) positions.set(`${kind}/${row.id}`, position);
@@ -247,7 +251,13 @@ export function createParquetReader(publication: PublicationHandle, fetcher: Fet
         if (missing.length) await read(kind, { columns: ['id'], filter: { id: { $in: missing } }, signal: sharedSignal });
         const rows = await readSelected(kind, ids, undefined, sharedSignal);
         for (const row of rows) {
-          if (kind === 'source_record' && typeof row.payload === 'string') row.payload = JSON.parse(row.payload);
+          if (!row.kind) row.kind = kind as QueryKind;
+          if (kind === 'committee_term' && !row.committee_ids && row.id) row.committee_ids = [row.id];
+          if (kind === 'meeting' && !row.meeting_id && row.id) row.meeting_id = row.id;
+          if (kind === 'material' && (row.meeting_id === undefined || row.meeting_id === null)) row.meeting_id = row.meeting_ids?.length ? row.meeting_ids[0] : null;
+          if (kind === 'source_record' && typeof row.payload === 'string') {
+            try { row.payload = JSON.parse(row.payload); } catch {}
+          }
           records.set(`${kind}/${row.id}`, row);
           if (records.size > 2000) {
             const oldest = records.keys().next().value;

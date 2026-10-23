@@ -1,4 +1,5 @@
 """Verify browser tables against source-backed records, including missing links."""
+import gzip
 import json
 import subprocess
 import sys
@@ -21,7 +22,7 @@ def test_batched_parquet_preserves_file_bytes(tmp_path, count):
             for i in range(count)]
     expected, actual = tmp_path / 'expected.parquet', tmp_path / 'actual.parquet'
     pq.write_table(pa.Table.from_pylist(rows, schema=SOURCE_SCHEMA), expected,
-                   compression='snappy', row_group_size=512, write_statistics=True)
+                   compression='zstd', compression_level=3, row_group_size=512, write_statistics=True)
     _write_table(rows, SOURCE_SCHEMA, actual, row_group_size=512)
     assert actual.read_bytes() == expected.read_bytes()
 
@@ -53,15 +54,15 @@ def source(i, size=0):
 def legacy_sources(sources, stage, *, limit=100_000_000, target=85_000_000):
     """The writer before streaming: collect every row, sort, split by row count."""
     from committee_explorer.parquet import SOURCE_SCHEMA, _source_row, _write_table
-    rows = sorted((_source_row(s) for s in sources), key=lambda r: r['id'])
-    _write_table(rows, SOURCE_SCHEMA, stage / 'sources.parquet', row_group_size=512)
+    rows = sorted((_source_row(s, stage=stage) for s in sources), key=lambda r: r['id'])
+    _write_table(rows, SOURCE_SCHEMA, stage / 'sources.parquet', row_group_size=512, clear_rows=False)
     total = (stage / 'sources.parquet').stat().st_size
     if total < limit:
         return [('sources.parquet', len(rows))]
     (stage / 'sources.parquet').unlink()
     chunk = max(1, int(len(rows) * target / total))
     for i, start in enumerate(range(0, len(rows), chunk)):
-        _write_table(rows[start:start + chunk], SOURCE_SCHEMA, stage / f'sources-{i + 1}.parquet', row_group_size=512)
+        _write_table(rows[start:start + chunk], SOURCE_SCHEMA, stage / f'sources-{i + 1}.parquet', row_group_size=512, clear_rows=False)
     return [(f'sources-{i + 1}.parquet', len(rows[start:start + chunk])) for i, start in enumerate(range(0, len(rows), chunk))]
 
 
@@ -177,7 +178,7 @@ def test_retained_sources_merge_into_the_current_id_range_with_identical_bytes(t
         calls = []
         parquet.write_catalog(catalog, set(), stage, lambda path, role, schema, count, **kw: calls.append((path, role, count)),
                               lambda *a, **k: None, {}, rest)
-        written[name] = (calls, {p.name: p.read_bytes() for p in sorted(stage.iterdir())})
+        written[name] = (calls, {p.name: p.read_bytes() for p in sorted(stage.iterdir()) if p.is_file()})
     assert written['streamed'] == written['in-memory']
     counts = [count for _, role, count in written['streamed'][0] if role == 'sources']
     assert sum(counts) == 3000 and (len(counts) > 1) == bool(file_target)
@@ -258,10 +259,13 @@ def test_history_sources_publish_exactly_as_when_loaded_in_memory(tmp_path, monk
         assert head == sorted(head) and ids[len(head):] == tail
         current = {s.id for s in catalog.sources}
         retained = {row['id']: row['input_snapshot_id'] for row in published if row['id'] not in current}
-        assert current and retained and current <= {row['id'] for row in published}
-        assert any(min(current) < id < max(current) for id in retained)
-        # Snapshots of earlier generations stay in the manifest for retained sources only.
-        assert set(retained.values()) <= {s.id for s in manifest.inputs} - {s.input_snapshot_id for s in catalog.sources}
+        if generation == 2:
+            assert current and not retained and current == {row['id'] for row in published}
+        else:
+            assert current and retained and current <= {row['id'] for row in published}
+            assert any(min(current) < id < max(current) for id in retained)
+            # Snapshots of earlier generations stay in the manifest for retained sources only.
+            assert set(retained.values()) <= {s.id for s in manifest.inputs} - {s.input_snapshot_id for s in catalog.sources}
 
 
 def test_file_link_building_does_not_retain_complete_representation_payloads(tmp_path):
@@ -320,14 +324,14 @@ def test_direct_committee_material_links_preserve_scope_and_lifecycle_without_me
     write_tables(records, [source], queries, tmp_path, lambda *a, **k: None)
     material = pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
     assert material['committee_ids'] == ['another', 'panel']
-    assert material['meeting_ids'] == [] and material['meeting_id'] is None
+    assert material['meeting_ids'] == [] and 'meeting_id' not in material
     assert material['source_ids'] == ['source']
     assert material['committee_types'] == ['commission_or_caucus', 'unknown']
     assert pq.read_table(tmp_path/'meetings.parquet').num_rows == 0
     committee = pq.read_table(tmp_path/'committees.parquet').to_pylist()[0]
     assert committee['committee_type'] == 'commission_or_caucus'
     assert committee['source_committee_type'] == 'Other'
-    assert committee['explanation'].startswith('The panel concluded its work')
+    assert 'explanation' not in committee
     assert {'label': 'Active through', 'value': '2011-04-03'} in committee['facts']
     assert {'label': 'Official website or archive', 'value': 'https://example.org/archive'} in committee['facts']
 
@@ -343,7 +347,11 @@ def test_assembled_roundtable_keeps_native_hearing_as_source_evidence(tmp_path):
     assert row['type'] == 'roundtable'
     assert {'label': 'Source type', 'value': 'Hearing'} in row['facts']
     assert row['source_ids'] == ['source']
-    assert json.loads(pq.read_table(tmp_path/'sources.parquet').to_pylist()[0]['payload']) == source['payload']
+    src_row = pq.read_table(tmp_path/'sources.parquet').to_pylist()[0]
+    assert src_row['title'] == 'Hearings to examine prediction markets'
+    assert {'label': 'Type at the source', 'value': 'Hearing'} in src_row['facts']
+    assert src_row['retained_uri'] and src_row['retained_sha256']
+    assert json.loads(gzip.decompress((tmp_path / src_row['retained_uri']).read_bytes())) == source['payload']
 
 
 def test_issue_resolution_evidence_is_available_inline(tmp_path):
@@ -468,7 +476,11 @@ def test_parquet_export_preserves_browse_population_files_and_raw_evidence(tmp_p
     assert all(r['meeting_ids'] for r in materials)
     source_ids = {r['id'] for r in sources}
     assert all(set(r['source_ids']) <= source_ids for r in materials + meetings)
-    assert any(json.loads(r['payload']).get('witnesses') for r in sources)
+    assert any(
+        json.loads(gzip.decompress((root / r['retained_uri']).read_bytes())).get('witnesses')
+        for r in sources
+        if r.get('retained_uri')
+    )
     info = json.loads((root/'queries.json').read_text())
     assert info['storage'] == 'parquet'
     assert 'payload' not in info['query_columns']
@@ -517,7 +529,7 @@ def test_native_document_labels_and_event_video_wrapper(tmp_path):
     assert {r['title']: r['source_document_groups'] for r in records if r['type'] == 'document'} == {
         'Nominee questionnaire': ['meetingDocuments'], 'Witness Statement': ['witnessDocuments'],
         'Witness Truth in Testimony': ['witnessDocuments']}
-    assert all(not r['appearance_ids'] for r in records)  # Source supplies no witness ownership.
+    assert all('appearance_ids' not in r for r in records)  # Source supplies no witness ownership.
 
 
 def test_folded_connections_keep_action_context_witness_ownership_and_all_formats(tmp_path):
@@ -546,9 +558,9 @@ def test_folded_connections_keep_action_context_witness_ownership_and_all_format
                                 locations=[dict(url=f'https://example.org/{id}.{ext}', role='download')], format_label=ext))
     write_tables(iter(records), [], queries, tmp_path, lambda *args, **kwargs: None)
     materials = pq.read_table(tmp_path/'materials.parquet').to_pylist()
-    assert all(r['meeting_ids'] == ['meeting'] and r['meeting_id'] == 'meeting' for r in materials)
+    assert all(r['meeting_ids'] == ['meeting'] and 'meeting_id' not in r for r in materials)
     assert all(len(r['files']) == 2 for r in materials)
-    assert next(r for r in materials if r['id'] == 'witness-file')['appearance_ids'] == ['witness']
+    assert 'appearance_ids' not in next(r for r in materials if r['id'] == 'witness-file')
     amendment = next(r for r in materials if r['id'] == 'amendment-file')
     assert {'label': 'Regarding', 'value': 'H.R. 10'} in amendment['facts']
     assert {'label': 'En bloc group', 'value': '2'} in amendment['facts']
@@ -587,7 +599,7 @@ def test_shared_document_keeps_every_source_collection_without_inventing_witness
     row = pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
     assert row['source_document_groups'] == ['meetingDocuments', 'witnessDocuments']
     assert row['document_type'] == 'Witness Statement'
-    assert row['appearance_ids'] == []
+    assert 'appearance_ids' not in row
 
 
 def test_shared_bill_does_not_attach_other_meetings_as_source_evidence(tmp_path):
@@ -657,9 +669,9 @@ def test_conflicts_follow_folded_subjects_and_keep_competing_values(tmp_path):
     assert (issue['subject_kind'], issue['subject_id']) == ('material', 'document')
     assert {'label':'Selected value', 'value':'Revised statement'} in issue['facts']
     assert {'label':'Alternative 1', 'value':'Original statement'} in issue['facts']
-    assert pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]['issue_count'] == 2
+    assert 'issue_count' not in pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
     witness = pq.read_table(tmp_path/'witnesses.parquet').to_pylist()[0]
-    assert witness['search_text'] == 'Jane Smith Director Example Institute'
+    assert (witness['title'], witness['position'], witness['organization']) == ('Jane Smith', 'Director', 'Example Institute')
 
 
 @pytest.mark.parametrize('status,expected', [('open', 'dismissed'), ('resolved', 'resolved')])
@@ -677,7 +689,7 @@ def test_collector_placeholders_are_not_open_source_conflicts(tmp_path, status, 
     assert issue['status']==expected
     if status == 'open': assert issue['title']=='Collector placeholder labels differed'
     assert any(f['label']=='Alternative 1' for f in issue['facts'])
-    assert pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]['issue_count']==0
+    assert 'issue_count' not in pq.read_table(tmp_path/'materials.parquet').to_pylist()[0]
 
 
 @pytest.mark.parametrize('package,congress,category,source_type', [
@@ -704,7 +716,10 @@ def test_reviewed_gpo_document_type_survives_without_replacing_category_or_title
     assert published['category'] == category
     assert published['document_type'] == source_type
     assert review['id'] in published['source_ids']
-    published_sources = {r['id']: json.loads(r['payload']) for r in pq.read_table(tmp_path/'sources.parquet').to_pylist()}
+    published_sources = {
+        r['id']: json.loads(gzip.decompress((tmp_path / r['retained_uri']).read_bytes()))
+        for r in pq.read_table(tmp_path/'sources.parquet').to_pylist()
+    }
     assert published_sources[review['id']]['source_document_type'] == source_type
     assert published_sources[review['id']]['source_urls']
 
@@ -712,7 +727,7 @@ def test_reviewed_gpo_document_type_survives_without_replacing_category_or_title
 def test_each_browser_table_has_its_own_schema_and_rejects_silent_data_loss(tmp_path):
     from committee_explorer.parquet import TABLE_SCHEMAS, write_tables
     assert 'files' in TABLE_SCHEMAS['material'].names
-    assert 'appearance_ids' in TABLE_SCHEMAS['material'].names
+    assert 'appearance_ids' not in TABLE_SCHEMAS['material'].names
     assert 'files' not in TABLE_SCHEMAS['appearance'].names
     assert 'position' not in TABLE_SCHEMAS['material'].names
     assert 'evidence_states' in TABLE_SCHEMAS['meeting'].names
@@ -796,3 +811,65 @@ def test_carried_senate_witness_group_keeps_an_empty_document_type(tmp_path):
     assert row['document_type'] is None
     assert row['source_document_groups'] == ['Witness documents']
     assert not any(fact['label'] == 'Source link label' for fact in row['facts'])
+
+
+def test_parquet_table_writer_rejects_cells_exceeding_256_kib(tmp_path):
+    from committee_explorer.parquet import SOURCE_SCHEMA, _write_sources, _write_table, TABLE_SCHEMAS
+    # Test _write_table rejects cell > 256 KiB (262,144 bytes)
+    huge_str = "x" * 262_145
+    meeting_row = {
+        'id': 'm1', 'kind': 'meeting', 'title': huge_str, 'chamber': 'house',
+        'congress': 118, 'date': '2024-01-01', 'type': 'hearing', 'status': 'held',
+        'meeting_id': None, 'search_text': None, 'scheduled_at': None, 'access': None,
+        'committee_ids': [], 'committee_level': None, 'committee_types': [],
+        'source_ids': [], 'explanation': None, 'issue_count': 0, 'facts': [],
+        'evidence_states': None,
+    }
+    with pytest.raises(ValueError, match="exceeds 256 KiB limit"):
+        _write_table([meeting_row], TABLE_SCHEMAS['meeting'], tmp_path / 'meetings.parquet', row_group_size=512)
+
+    # Test _write_sources rejects cell > 256 KiB
+    source_row = {
+        'id': 's1', 'kind': 'source_record', 'provider': 'test', 'url': 'https://example.org',
+        'title': huge_str, 'retrieved_at': None, 'source_modified_at': None,
+        'imported_at': None, 'input_snapshot_id': None, 'identifier_scheme': None,
+        'identifier_value': None, 'identifier_scope': None, 'facts': [], 'links': [],
+        'retained_uri': None, 'retained_sha256': None,
+    }
+    with pytest.raises(ValueError, match="exceeds 256 KiB limit"):
+        _write_sources([source_row], tmp_path)
+
+
+def test_source_row_normalization_and_cas_offload(tmp_path):
+    from committee_explorer.parquet import _source_row, SOURCE_SCHEMA
+    raw_payload = {
+        'title': 'Original Source Title',
+        'record_type': 'hearing',
+        'chamber': 'senate',
+        'url': 'https://example.org/hearing',
+        'witnesses': [{'name': 'Jane Doe'}],
+    }
+    source = {
+        'id': 'src-01',
+        'kind': 'source_record',
+        'provider': 'senate.committees',
+        'url': 'https://example.org/source',
+        'identifier': {'scheme': 'senate:event', 'value': '106245', 'scope': 'hearing'},
+        'payload': raw_payload,
+    }
+    row = _source_row(source, stage=tmp_path)
+    assert row['id'] == 'src-01'
+    assert row['title'] == 'Original Source Title'
+    assert row['identifier_scheme'] == 'senate:event'
+    assert row['identifier_value'] == '106245'
+    assert row['identifier_scope'] == 'hearing'
+    assert row['retained_sha256'] is not None and len(row['retained_sha256']) == 64
+    assert row['retained_uri'] == f"bodies/sha256/{row['retained_sha256'][:2]}/{row['retained_sha256']}.gz"
+    assert any(f['label'] == 'Type at the source' and f['value'] == 'hearing' for f in row['facts'])
+    assert any(f['label'] == 'Chamber' and f['value'] == 'senate' for f in row['facts'])
+    assert any(l['href'] == 'https://example.org/hearing' for l in row['links'])
+    # Verify CAS file was staged on disk as gzip
+    cas_file = tmp_path / row['retained_uri']
+    assert cas_file.is_file()
+    assert json.loads(gzip.decompress(cas_file.read_bytes())) == raw_payload
+

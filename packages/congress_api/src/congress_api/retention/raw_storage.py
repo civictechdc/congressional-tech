@@ -6,6 +6,7 @@ unselected. Captures append as ordered batches. Only changed URL-state leaves
 are reconstructed, and a full leaf splits locally through immutable routing.
 """
 from copy import deepcopy
+from datetime import datetime, timezone
 import base64
 import gzip
 from hashlib import sha256
@@ -25,10 +26,48 @@ from congress_api.retention.body_keys import (
 )
 from congress_api.retention.immutable_metadata import encoded
 from congress_api.retention.partition_routing import RoutingPages, split_partition, key_hash
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA
+from congress_api.retention.raw_archive import (
+    CAPTURE_SCHEMA,
+    STATE_SCHEMA,
+    RAW_ARCHIVE_ROW_GROUP_SIZE,
+    parse_sha256,
+    format_sha256,
+    parse_timestamp,
+    format_timestamp,
+    parse_http_status,
+    derive_body_key,
+    with_derived_body_keys,
+    normalize_state_dict,
+    prepare_capture_table,
+    prepare_state_table,
+)
 from congress_api.retention.raw_capture_pages import CapturePages
 from congress_api.retention.raw_changes import RawChanges
 from congress_api.retention.raw_state_routes import StateRoutes, summarize, schedule_basis
+import congress_api.retention.raw_state_routes as _rsr
+
+_orig_due_time = _rsr.due_time
+def _compatible_due_time(value, *, strict=True):
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            if strict:
+                raise ValueError('Scheduled state due time requires an explicit timezone')
+            return ''
+        return value.astimezone(timezone.utc).isoformat()
+    return _orig_due_time(value, strict=strict)
+_rsr.due_time = _compatible_due_time
+
+_orig_priority = _rsr.priority
+def _compatible_priority(row):
+    outcome_match = row['outcome'] == 'retained'
+    checked = row.get('checked_at')
+    if isinstance(checked, datetime):
+        checked = checked.astimezone(timezone.utc).isoformat()
+    elif checked is None:
+        checked = ''
+    return outcome_match, checked, row.get('url') or ''
+_rsr.priority = _compatible_priority
+
 from congress_api.retention.raw_values import capture_table, ordered_captures, NATIVE_CAPTURE_SCHEMA
 from congress_api.retention.write_recovery import reconcile_lost_acknowledgment
 
@@ -402,18 +441,34 @@ def _merge_states(existing, incoming, *, merge_spec=STATE_MERGE_SPEC, state_sche
         all_keys = {k for r in existing_rows + incoming_rows for k in r}
         extra_fields = [
             pa.field(k, pa.string(), nullable=True)
-            for k in sorted(all_keys - set(STATE_SCHEMA.names) - {STATE_ORDER, STATE_KEY_FIELD, STATE_KEY_SHA256_FIELD})
+            for k in sorted(all_keys - set(STATE_SCHEMA.names) - {STATE_ORDER, STATE_KEY_FIELD, STATE_KEY_SHA256_FIELD, 'body_key'})
             if not k.startswith('__docspec_supplied_')
         ]
         # Infer types for common extra test fields like media_type, fidelity, retrieved_at
         state_schema = pa.schema([*STATE_SCHEMA, *extra_fields])
     next_order = max((int(r.get(STATE_ORDER, -1)) for r in existing_rows if r.get(STATE_ORDER) is not None), default=-1) + 1
     order_by_sha = {}
-    prepared_existing = []
-    for idx, r in enumerate(existing_rows):
+
+    def _normalize_row_for_merge(r):
         row = dict(r)
         for field in state_schema:
             row.setdefault(field.name, None)
+        if 'sha256' in state_schema.names and row.get('sha256') is not None:
+            row['sha256'] = parse_sha256(row['sha256'])
+        for ts_col in ('retrieved_at', 'checked_at', 'next_attempt_at'):
+            if ts_col in state_schema.names and row.get(ts_col) is not None:
+                row[ts_col] = parse_timestamp(row[ts_col])
+        if 'http_status' in state_schema.names and row.get('http_status') is not None:
+            row['http_status'] = parse_http_status(row['http_status'])
+        if 'attempts' in state_schema.names and row.get('attempts') is not None:
+            row['attempts'] = int(row['attempts'])
+        if 'links_scanned' in state_schema.names and row.get('links_scanned') is not None:
+            row['links_scanned'] = bool(row['links_scanned'])
+        return row
+
+    prepared_existing = []
+    for idx, r in enumerate(existing_rows):
+        row = _normalize_row_for_merge(r)
         row.setdefault(STATE_KEY_FIELD, state_key(row.get('url')))
         row.setdefault(STATE_KEY_SHA256_FIELD, state_key_sha256(row.get('url')))
         if STATE_ORDER not in row or row[STATE_ORDER] is None:
@@ -423,9 +478,7 @@ def _merge_states(existing, incoming, *, merge_spec=STATE_MERGE_SPEC, state_sche
         prepared_existing.append(row)
     prepared_incoming = []
     for r in incoming_rows:
-        row = dict(r)
-        for field in state_schema:
-            row.setdefault(field.name, None)
+        row = _normalize_row_for_merge(r)
         row.setdefault(STATE_KEY_FIELD, state_key(row.get('url')))
         sha = row.setdefault(STATE_KEY_SHA256_FIELD, state_key_sha256(row.get('url')))
         if sha in order_by_sha:
@@ -471,8 +524,33 @@ CAPTURE_BATCH_BYTES = 16 << 20
 DELIVERY_ENTRIES = 128
 SELECTOR_BYTES = 1 << 20
 BODY_FIELDS = ['body_key', 'sha256', 'bytes', 'stored_sha256', 'stored_bytes']
-BODY_SCHEMA = pa.schema([pa.field('key', pa.string(), nullable=False),
-                         *(CAPTURE_SCHEMA.field(name) for name in BODY_FIELDS)])
+BODY_SCHEMA = pa.schema([
+    pa.field('key', pa.string(), nullable=False),
+    pa.field('body_key', pa.string()),
+    pa.field('sha256', pa.string()),
+    pa.field('bytes', pa.int64()),
+    pa.field('stored_sha256', pa.string()),
+    pa.field('stored_bytes', pa.int64()),
+])
+
+
+def format_state_row_for_python(row):
+    """Restore derived body_key, format sha256 to 64-hex string, format timestamps to ISO strings, and int status."""
+    if row is None:
+        return None
+    formatted = dict(row)
+    sha_val = formatted.get('sha256')
+    if sha_val is not None:
+        formatted['sha256'] = format_sha256(sha_val)
+    if not formatted.get('body_key') and sha_val is not None:
+        formatted['body_key'] = derive_body_key(sha_val, formatted.get('media_type'))
+    for ts_field in ('retrieved_at', 'checked_at', 'next_attempt_at'):
+        val = formatted.get(ts_field)
+        if isinstance(val, datetime):
+            formatted[ts_field] = format_timestamp(val)
+    if 'http_status' in formatted and formatted['http_status'] is not None:
+        formatted['http_status'] = int(formatted['http_status'])
+    return formatted
 
 
 
@@ -556,7 +634,7 @@ class RawSnapshot:
         for reference, requested in groups.values():
             for row in self.owner._read_states(reference).select(self.owner.state_schema.names).to_pylist():
                 if row['url'] in requested:
-                    result[row['url']] = row
+                    result[row['url']] = format_state_row_for_python(row)
         return result
 
     def iter_states_for(self, urls):
@@ -590,7 +668,7 @@ class RawSnapshot:
                     if db.execute('SELECT 1 FROM requested WHERE identity=?', (row[STATE_KEY_FIELD],)).fetchone():
                         db.execute('INSERT INTO rows VALUES (?,?)', (row[STATE_ORDER], pickle.dumps(row)))
             for payload, in db.execute('SELECT value FROM rows ORDER BY ordinal'):
-                yield pickle.loads(payload)
+                yield format_state_row_for_python(pickle.loads(payload))
 
     def has_receipt(self, key):
         hashed, _, entries = self.owner._delivery(self.manifest['deliveries'], 'receipt:' + key)
@@ -631,7 +709,7 @@ class RawSnapshot:
         table = self.owner._read_states(reference)
         mask = pc.is_null(table['url']) if url is None else pc.equal(table['url'], url)
         selected = table.filter(mask).select(self.owner.state_schema.names)
-        return selected.to_pylist()[0] if len(selected) else None
+        return format_state_row_for_python(selected.to_pylist()[0]) if len(selected) else None
 
     def state_supplied(self, url):
         """Read one URL-state row including native ``__docspec_supplied_*`` provenance flags."""
@@ -642,7 +720,7 @@ class RawSnapshot:
             raw_table = pa.Table.from_batches(list(reader), schema=reader.schema)
         mask = pc.is_null(raw_table['url']) if url is None else pc.equal(raw_table['url'], url)
         selected = raw_table.filter(mask)
-        return selected.to_pylist()[0] if len(selected) else None
+        return format_state_row_for_python(selected.to_pylist()[0]) if len(selected) else None
 
 
 class RawStorage:
@@ -815,21 +893,33 @@ class RawStorage:
 
     def _prepare_bodies(self, base, captures, *, operation, base_id):
         updates = {}
-        for row in captures.to_pylist():
-            if row['body_key']:
+        for r in captures.to_pylist():
+            row = dict(r)
+            sha_hex = format_sha256(row.get('sha256'))
+            body_key = row.get('body_key') or (derive_body_key(sha_hex, row.get('media_type')) if sha_hex else None)
+            if body_key:
                 if self.excluded_body_hashes or getattr(self.store, 'excluded_body_hashes', None):
                     enforce_body_ingest_gate(
                         self.store,
-                        row['body_key'],
+                        body_key,
                         excluded_hashes=self.excluded_body_hashes or None,
                         quarantine=False,
                     )
-                info = {name: row[name] for name in BODY_FIELDS}
-                key = 'body:' + row['body_key']
-                if key not in updates or row['sha256']:
+                stored_sha = row.get('stored_sha256')
+                if stored_sha is None and row.get('is_stored'):
+                    stored_sha = sha_hex
+                info = {
+                    'body_key': body_key,
+                    'sha256': sha_hex,
+                    'bytes': row.get('bytes'),
+                    'stored_sha256': stored_sha,
+                    'stored_bytes': row.get('stored_bytes'),
+                }
+                key = 'body:' + body_key
+                if key not in updates or sha_hex:
                     updates[key] = dict(key=key, **info)
-                if row['sha256']:
-                    key = 'sha:' + row['sha256']
+                if sha_hex:
+                    key = 'sha:' + sha_hex
                     updates[key] = dict(key=key, **info)
         affected = {}
         for key, row in updates.items():
@@ -970,6 +1060,17 @@ class RawStorage:
             row = dict(r)
             for field in self.state_schema:
                 row.setdefault(field.name, None)
+            if 'sha256' in self.state_schema.names and row.get('sha256') is not None:
+                row['sha256'] = parse_sha256(row['sha256'])
+            for ts_col in ('retrieved_at', 'checked_at', 'next_attempt_at'):
+                if ts_col in self.state_schema.names and row.get(ts_col) is not None:
+                    row[ts_col] = parse_timestamp(row[ts_col])
+            if 'http_status' in self.state_schema.names and row.get('http_status') is not None:
+                row['http_status'] = parse_http_status(row['http_status'])
+            if 'attempts' in self.state_schema.names and row.get('attempts') is not None:
+                row['attempts'] = int(row['attempts'])
+            if 'links_scanned' in self.state_schema.names and row.get('links_scanned') is not None:
+                row['links_scanned'] = bool(row['links_scanned'])
             row[STATE_KEY_FIELD] = state_key(row.get('url'))
             sha = state_key_sha256(row.get('url'))
             row[STATE_KEY_SHA256_FIELD] = sha
@@ -1054,11 +1155,13 @@ class RawStorage:
         changed_state_urls = []
         updates = None
         if states is not None and len(states):
-            updates = states if isinstance(states, pa.Table) else pa.Table.from_pylist(states, schema=self.state_schema)
+            updates = states if isinstance(states, pa.Table) else prepare_state_table(states, schema=self.state_schema)
             if (not updates.schema.equals(self.state_schema, check_metadata=False)
                     or pc.count_distinct(updates['url'], mode='all').as_py() != len(updates)):
                 raise ValueError('Unexpected state schema or duplicate URL keys')
             updates = updates.cast(self.state_schema)
+        if captures is not None and len(captures) and not isinstance(captures, pa.Table):
+            captures = prepare_capture_table(captures)
         incoming = capture_table(captures, first_order=0) if captures is not None and len(captures) else None
         request = sha256(encoded([self._request_digest(incoming, updates),
                                  sorted(indexed_receipts), filename_version, request_id, reading_parts,
@@ -1273,9 +1376,14 @@ class RawStorage:
         )
         type_map = {
             pa.bool_(): 'boolean',
+            pa.int16(): 'short',
+            pa.int32(): 'integer',
             pa.int64(): 'long',
             pa.float64(): 'double',
             pa.string(): 'string',
+            pa.binary(32): 'binary',
+            pa.timestamp('us', tz='UTC'): 'timestamp',
+            pa.timestamp('us'): 'timestamp',
         }
         if additions is None:
             existing = set(self.state_schema.names)

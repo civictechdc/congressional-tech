@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { filenameManifestUrl } from '../reader/filenames/publication.ts';
 import { ExternalIcon, ForwardIcon } from './icons';
-import { categoryNote, collapseRepeatedFacts, committeeHierarchyNote, committeeLevelLabel, committeeTypeLabel, congressName, disagreementSummary, distinctRecordedFacts, documentSourceLabel, evidenceStateLabels, factLabel, issueStatusLabel, severityLabel, fileLinkName, filePartNote, listedDocumentType, listTitle, meetingStatusNote, orderRecordedFiles, parentCommitteeId, plainRecordedNote, providerLabel, recordedTitlePreview, recordedWhen, recordingEmbedUrl, recordingIdentity, savedCopyHref, scheduleNote, sourceFacts, sourceLinks, sourcePageUrl, sourceTypeNote, type SourceLink } from '../browse/record-presentation.ts';
+import { categoryNote, collapseRepeatedFacts, committeeHierarchyNote, committeeLevelLabel, committeeTypeLabel, congressName, disagreementSummary, distinctRecordedFacts, documentSourceLabel, evidenceStateLabels, factLabel, issueStatusLabel, severityLabel, fileLinkName, filePartNote, listedDocumentType, listTitle, meetingStatusNote, orderRecordedFiles, parentCommitteeId, plainRecordedNote, providerLabel, recordedTitlePreview, recordedWhen, recordingEmbedUrl, recordingIdentity, savedCopyHref, savedOriginalUrl, scheduleNote, sourceFacts, sourceLinks, sourcePageUrl, sourceTypeNote, type SourceLink } from '../browse/record-presentation.ts';
 import type { ExplorerRecordRef, LoadedRecord } from '../reader/data-source.ts';
 
 export type DetailRecord = LoadedRecord;
@@ -27,6 +27,7 @@ export function documentType(record: unknown): string {
 export function recordTitle(value: unknown): string {
   const row = fields(value);
   if (row.kind === 'source_record') {
+    if (typeof row.title === 'string' && row.title.trim()) return row.title.trim();
     const recorded = fields(row.payload).title;
     if (typeof recorded === 'string' && recorded.trim()) return recorded.trim();
     const filename = typeof row.url === 'string' ? decodeURIComponent(row.url.split('/').pop()?.split('?')[0] || '') : '';
@@ -127,8 +128,55 @@ function EvidenceNotes({ states }: { states: Fields }) {
 
 function RawRecord({ record }: { record: DetailRecord }) {
   const [open, setOpen] = useState(false);
+  const [fetchedPayload, setFetchedPayload] = useState<unknown>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const row = record as Record<string, unknown>;
+    if (row.kind === 'source_record' && !row.payload && row.retained_uri && typeof row.retained_uri === 'string') {
+      const uri = row.retained_uri;
+      setLoading(true);
+      setError(null);
+      const url = uri.startsWith('/') || uri.startsWith('http') ? uri : `/${uri}`;
+      fetch(url)
+        .then(async res => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          if (uri.endsWith('.gz') && typeof DecompressionStream !== 'undefined') {
+            const decompressed = res.body?.pipeThrough(new DecompressionStream('gzip'));
+            const text = await new Response(decompressed).text();
+            return JSON.parse(text);
+          } else if (uri.endsWith('.pdf')) {
+            return { _info: 'Raw PDF body stored in CAS', uri };
+          } else {
+            return await res.json();
+          }
+        })
+        .then(payload => {
+          setFetchedPayload(payload);
+          setLoading(false);
+        })
+        .catch(err => {
+          setError(String(err));
+          setLoading(false);
+        });
+    }
+  }, [open, record]);
+
+  const displayRecord = useMemo(() => {
+    if (fetchedPayload !== null) {
+      return { ...record, payload: fetchedPayload };
+    }
+    return record;
+  }, [record, fetchedPayload]);
+
   return <details onToggle={event => setOpen(event.currentTarget.open)}><summary>See everything saved<span className="explorer-field-reason">The complete saved record, in a technical format. You do not need it to read this page.</span></summary>
-    {open ? <pre><code>{JSON.stringify(record, null, 2)}</code></pre> : null}</details>;
+    {open ? (
+      loading ? <p className="explorer-note">Loading payload...</p> :
+      error ? <p className="explorer-note">Could not load payload: {error}</p> :
+      <pre><code>{JSON.stringify(displayRecord, null, 2)}</code></pre>
+    ) : null}</details>;
 }
 
 export function SourceLinkGroups({ links }: { links: readonly SourceLink[] }) {
@@ -358,6 +406,7 @@ export function RecordDetail({ record, onSelect, sourceEvidence, catalogEvidence
   const files = Array.isArray(row.files) ? row.files : [];
   const explanation = row.explanation || fields(row.provenance).explanation;
   const sourceUrl = publicUrl(sourcePageUrl(row.url));
+  const savedUrl = record.kind === 'source_record' ? savedOriginalUrl(record) : undefined;
   const parentId = record.kind === 'committee_term' ? parentCommitteeId(row) : '';
   const parentName = parentId ? committeeLabels?.[parentId] || '' : '';
   const affected = record.kind !== 'data_issue' ? null
@@ -372,6 +421,7 @@ export function RecordDetail({ record, onSelect, sourceEvidence, catalogEvidence
     <RecordingPlayer record={record} />
     <FileLinks record={record} />
     {sourceUrl ? <p className="explorer-actions"><a href={sourceUrl} target="_blank" rel="noreferrer">Open original source <ExternalIcon /></a></p> : null}
+    {savedUrl ? <p className="explorer-actions"><a href={savedUrl} target="_blank" rel="noreferrer">Open saved original <ExternalIcon /></a></p> : null}
     {sheetFacts.length ? <FactGroups facts={sheetFacts} eyebrow={kind} /> : null}
     {measureFactsSplit.rests.map(rest => <details className="explorer-detail-section" key={rest.label}><summary>{rest.values.length} more related {rest.values.length === 1 ? rest.noun : `${rest.noun}s`}<span className="explorer-field-reason">The remaining {rest.noun}s recorded for this meeting.</span></summary><dl className="explorer-facts"><div><dt>{readableLabel(rest.label)}</dt><dd className="explorer-inline-values">{rest.values.map(value => <span key={value}>{value}</span>)}</dd></div></dl></details>)}
     {row.committee_code ? <details><summary>Committee code<span className="explorer-field-reason">A short code recorded for this committee. You do not need it to browse.</span></summary><p className="explorer-note">{String(row.committee_code)}</p></details> : null}

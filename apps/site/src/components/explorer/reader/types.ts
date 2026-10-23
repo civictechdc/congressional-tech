@@ -83,14 +83,20 @@ export interface BrowserSourceRecord {
   id: string;
   provider: string;
   url?: string | null;
+  title?: string | null;
   retrieved_at?: string | null;
   imported_at?: string | null;
   source_modified_at?: string | null;
   input_snapshot_id?: string | null;
   identifier?: string | null;
+  identifier_scheme?: string | null;
+  identifier_value?: string | null;
+  identifier_scope?: string | null;
   retained_uri?: string | null;
   retained_sha256?: string | null;
-  payload: unknown;
+  facts?: readonly { label: string; value: string }[] | null;
+  links?: readonly { group: string; label: string; href: string }[] | null;
+  payload?: unknown;
 }
 
 export type ExplorerSourceRecord = Readonly<(NonNullable<Catalog['sources']>[number] | BrowserSourceRecord) & { kind: 'source_record'; id: string }>;

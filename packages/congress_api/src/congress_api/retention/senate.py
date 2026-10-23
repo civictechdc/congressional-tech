@@ -2,6 +2,7 @@
 
 from collections.abc import Sequence
 import datetime as dt
+from hashlib import sha256
 import json
 import re
 from pathlib import Path
@@ -22,7 +23,38 @@ def seed_fetch(
     tables: WeeklyRetentionTables | None = None,
 ):
     path = cached_html_path(cache, url)
-    text = path.read_bytes().decode("utf-8", "replace") if path.exists() else ""
+    if not path.exists():
+        return ""
+    data = path.read_bytes()
+    if not data:
+        return ""
+
+    is_pdf = data[:5] == b"%PDF-"
+    is_binary = False
+    text = ""
+    if is_pdf:
+        is_binary = True
+    else:
+        decoded = data.decode("utf-8", "replace")
+        fffd_count = decoded.count("\ufffd")
+        if fffd_count > 0 and (fffd_count / max(1, len(decoded)) > 0.05):
+            is_binary = True
+        else:
+            text = decoded
+
+    if is_binary:
+        digest = sha256(data).hexdigest()
+        rel_key = Path("bodies") / "sha256" / digest[:2] / f"{digest}.pdf"
+        dest = Path(cache) / rel_key
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+        if tables is not None and hasattr(tables, "workspace") and tables.workspace:
+            tables_dest = Path(tables.workspace) / rel_key
+            if tables_dest != dest:
+                tables_dest.parent.mkdir(parents=True, exist_ok=True)
+                tables_dest.write_bytes(data)
+        return ""
+
     if tables is not None and text:
         rid = record_id or re.sub(r"\W+", "_", url)[-180:]
         observed = dt.datetime.fromtimestamp(path.stat().st_mtime, dt.UTC).isoformat()

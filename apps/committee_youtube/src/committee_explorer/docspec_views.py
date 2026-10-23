@@ -61,6 +61,7 @@ COMMITTEE_EXPLORER_OBSERVATIONS_SCHEMA = pa.schema([
     pa.field("source_id", pa.string(), nullable=False),
     pa.field("source_type", pa.string(), nullable=False),
     pa.field("witness_name", pa.string(), nullable=True),
+    pa.field("witness_names", pa.list_(pa.string()), nullable=True),
 ])
 
 BROWSER_TABLE_SCHEMAS: dict[str, pa.Schema] = {
@@ -86,9 +87,9 @@ BROWSER_TABLE_SORT_KEYS: dict[str, tuple[tuple[str, str], ...]] = {
 }
 
 BROWSER_TABLE_BLOOM_COLUMNS: dict[str, tuple[str, ...]] = {
-    "meetings": ("id", "meeting_id", "chamber"),
+    "meetings": ("id", "chamber"),
     "committees": ("id", "committee_code", "chamber"),
-    "materials": ("id", "meeting_id", "provider"),
+    "materials": ("id", "provider"),
     "witnesses": ("id", "meeting_id", "organization"),
     "issues": ("id", "meeting_id", "category"),
     "sources": ("id", "provider"),
@@ -246,7 +247,7 @@ def build_browser_export_spec(
             for col, direction in BROWSER_TABLE_SORT_KEYS[table_name]
         ]
         policy["page_index_columns"] = list(BROWSER_TABLE_BLOOM_COLUMNS[table_name])
-        policy["row_group_rows"] = 256 if table_name == "sources" else 2048
+        policy["row_group_rows"] = 32768 if table_name == "sources" else 16384
     return {
         "dataset": source_pin["dataset"]["dataset"],
         "operation": operation,
@@ -264,11 +265,13 @@ def build_observations_table(rows: Iterable[Mapping[str, Any]]) -> pa.Table:
     batches: list[pa.RecordBatch] = []
     is_sorted = True
     prev_key: tuple[str, int, int, str] | None = None
+    allowed_names = set(COMMITTEE_EXPLORER_OBSERVATIONS_SCHEMA.names)
     for chunk in batched(rows, 8192):
         normalized = []
         for r in chunk:
             chamber = str(r.get("chamber") or "unknown")
-            row_dict = r if r.get("chamber") == chamber else {**r, "chamber": chamber}
+            row_dict = {k: v for k, v in r.items() if k in allowed_names}
+            row_dict["chamber"] = chamber
             key = (
                 str(row_dict.get("meeting_id") or ""),
                 int(row_dict.get("congress") or 0),
@@ -370,7 +373,10 @@ def iter_meeting_observations(catalog: Any):
         cited_ids = [c.source.id for c in r.provenance.citations] if getattr(r, "provenance", None) else []
         if not cited_ids:
             cited_ids = [f"meeting:{r.id}"]
-        meeting_witnesses = sorted(set(witnesses.pop(r.id, None) or ())) or [None]
+        raw_witnesses = sorted(set(witnesses.pop(r.id, None) or ()))
+        meeting_witnesses = [w for w in raw_witnesses if w]
+        w_names = meeting_witnesses if meeting_witnesses else [None]
+        primary_w = meeting_witnesses[0] if meeting_witnesses else None
         source_entries = []
         for src_id in dict.fromkeys(cited_ids):
             provider = str(provider_lookup(src_id) or getattr(r.provenance, "basis", None) or "unknown")
@@ -378,22 +384,23 @@ def iter_meeting_observations(catalog: Any):
             source_entries.append((rank, src_id, provider))
         source_entries.sort()
         for rank, src_id, provider in source_entries:
-            for w_name in meeting_witnesses:
-                yield {
-                    "meeting_id": r.id,
-                    "congress": int(r.congress or 0),
-                    "chamber": str(r.chamber or "unknown"),
-                    "committee": comm_name or "Unknown",
-                    "subcommittee": sub_name,
-                    "title": r.title,
-                    "date": m_date,
-                    "type": r.meeting_type,
-                    "status": m_status,
-                    "source_rank": rank,
-                    "source_id": src_id,
-                    "source_type": provider,
-                    "witness_name": w_name,
-                }
+            yield {
+                "meeting_id": r.id,
+                "congress": int(r.congress or 0),
+                "chamber": str(r.chamber or "unknown"),
+                "committee": comm_name or "Unknown",
+                "subcommittee": sub_name,
+                "title": r.title,
+                "date": m_date,
+                "type": r.meeting_type,
+                "status": m_status,
+                "source_rank": rank,
+                "source_id": src_id,
+                "source_type": provider,
+                "witness_name": primary_w,
+                "witness_names": meeting_witnesses,
+                "witnesses": w_names,
+            }
 
 
 def extract_meeting_observations(catalog: Any) -> list[dict[str, Any]]:
@@ -448,24 +455,28 @@ def extract_meeting_observations_from_stage(
                 if comm_name is None:
                     comm_name = t_name
         cited_ids = list(r.get("source_ids") or ()) or [f"meeting:{r['id']}"]
-        meeting_witnesses = sorted(set(witnesses.get(r["id"]) or ())) or [None]
-        for src_id in dict.fromkeys(cited_ids):
-            for w_name in meeting_witnesses:
-                rows.append({
-                    "meeting_id": r["id"],
-                    "congress": int(r.get("congress") or 0),
-                    "chamber": str(r.get("chamber") or "unknown"),
-                    "committee": comm_name or "Unknown",
-                    "subcommittee": sub_name,
-                    "title": r.get("title"),
-                    "date": r.get("date"),
-                    "type": r.get("type"),
-                    "status": r.get("status"),
-                    "source_rank": 1,
-                    "source_id": src_id,
-                    "source_type": "unknown",
-                    "witness_name": w_name,
-                })
+        raw_witnesses = sorted(set(witnesses.get(r["id"]) or ()))
+        meeting_witnesses = [w for w in raw_witnesses if w]
+        w_names = meeting_witnesses if meeting_witnesses else [None]
+        primary_w = meeting_witnesses[0] if meeting_witnesses else None
+        for rank, src_id in enumerate(dict.fromkeys(cited_ids), start=1):
+            rows.append({
+                "meeting_id": r["id"],
+                "congress": int(r.get("congress") or 0),
+                "chamber": str(r.get("chamber") or "unknown"),
+                "committee": comm_name or "Unknown",
+                "subcommittee": sub_name,
+                "title": r.get("title"),
+                "date": r.get("date"),
+                "type": r.get("type"),
+                "status": r.get("status"),
+                "source_rank": rank,
+                "source_id": src_id,
+                "source_type": "unknown",
+                "witness_name": primary_w,
+                "witness_names": meeting_witnesses,
+                "witnesses": w_names,
+            })
     return rows
 
 
@@ -693,5 +704,5 @@ class ExplorerDocSpecWorkspace:
         return self.export_browser_publication(
             stage_dir,
             channel=channel,
-            replace_source_files=True,
+            replace_source_files=False,
         )

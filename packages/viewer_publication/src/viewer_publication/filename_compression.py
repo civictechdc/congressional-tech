@@ -2,7 +2,7 @@
 from collections import namedtuple
 
 CompressionPolicy = namedtuple('CompressionPolicy', 'codec level batch_size row_group_size',
-                               defaults=('zstd', 3, 8192, 8192))
+                                defaults=('zstd', 3, 16384, 16384))
 DEFAULT_COMPRESSION_POLICY = CompressionPolicy()
 
 

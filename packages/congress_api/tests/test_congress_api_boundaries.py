@@ -86,7 +86,7 @@ def test_digest_and_source_key_preserve_publisher_values():
         return '994fa51d-96df-4fe1-9bc0-b2e6d31248fb'
     context = AdapterContext(datetime(2026, 9, 30, tzinfo=timezone.utc), 'snapshot', 'publisher', ids)
     source = context.source('native', payload)
-    assert calls == [('source_record', f'publisher|snapshot|native|{expected}')]
+    assert calls == [('source_record', f'publisher|publisher:record|native|{expected}')]
     assert source.payload == payload
 
 

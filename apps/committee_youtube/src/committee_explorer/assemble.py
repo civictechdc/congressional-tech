@@ -27,10 +27,12 @@ from .history import RetainedSources
 
 def saved_copy_from_body_key(key, filename=None):
     """Digest and filename for a retained bodies/sha256 object, or nothing."""
-    from congress_api.retention.body_keys import body_key_digest
+    from congress_api.retention.body_keys import body_object_digest
+    if isinstance(key, (bytes, bytearray, memoryview)) and len(key) == 32:
+        key = bytes(key).hex()
     if not isinstance(key, str):
         return None
-    digest = body_key_digest(key)
+    digest = body_object_digest(key)
     if not digest:
         return None
     name = filename if isinstance(filename, str) and filename and not any(
@@ -43,27 +45,83 @@ def apply_saved_copies(assembly, filenames_path):
     import pyarrow.parquet as pq
     by_url = {}
     pf = pq.ParquetFile(filenames_path)
-    for batch in pf.iter_batches(columns=["source_url", "body_key", "filename"], batch_size=4096):
+    avail_cols = set(pf.schema.names)
+    cols = [c for c in ["source_url", "url", "body_key", "sha256", "filename"] if c in avail_cols]
+    for batch in pf.iter_batches(columns=cols, batch_size=4096):
         for row in batch.to_pylist():
-            found = saved_copy_from_body_key(row.get("body_key"), row.get("filename"))
-            url = row.get("source_url")
+            found = saved_copy_from_body_key(row.get("body_key") or row.get("sha256"), row.get("filename"))
+            url = row.get("source_url") or row.get("url")
             if url and found and url not in by_url:
                 by_url[url] = found
     representations = (
         assembly.records.iter_kind("representation")
         if hasattr(assembly.records, "iter_kind")
-        else [assembly.records[k] for k in list(assembly.records) if assembly.records[k].kind == "representation"]
+        else [
+            assembly.records[k]
+            for k in list(assembly.records)
+            if (assembly.records[k].kind if hasattr(assembly.records[k], "kind") else assembly.records[k].get("kind")) == "representation"
+        ]
     )
     for record in representations:
-        if record.saved_copy_sha256:
+        if getattr(record, "saved_copy_sha256", None):
             continue
-        match = next((by_url[location.url] for location in record.locations if location.url in by_url), None)
+        locations = getattr(record, "locations", ()) or ()
+        match = next((by_url[loc.url] for loc in locations if hasattr(loc, "url") and loc.url in by_url), None)
         if match is None:
             continue
         digest, name = match
-        assembly.records[(record.kind, record.id)] = record.model_copy(
-            update={"saved_copy_sha256": digest, "saved_filename": name or record.saved_filename}
-        )
+        rec_id = getattr(record, "id", None)
+        rec_kind = getattr(record, "kind", "representation")
+        if hasattr(record, "model_copy"):
+            assembly.records[(rec_kind, rec_id)] = record.model_copy(
+                update={"saved_copy_sha256": digest, "saved_filename": name or getattr(record, "saved_filename", None)}
+            )
+        elif isinstance(record, dict):
+            record["saved_copy_sha256"] = digest
+            record["saved_filename"] = name or record.get("saved_filename")
+    materials = (
+        assembly.records.iter_kind("material")
+        if hasattr(assembly.records, "iter_kind")
+        else [
+            assembly.records[k]
+            for k in list(assembly.records)
+            if (assembly.records[k].kind if hasattr(assembly.records[k], "kind") else assembly.records[k].get("kind")) == "material"
+        ]
+    )
+    for record in materials:
+        files = getattr(record, "files", None)
+        if files:
+            updated_files = []
+            changed = False
+            for f in files:
+                f_url = getattr(f, "url", None) if hasattr(f, "url") else f.get("url") if isinstance(f, dict) else None
+                f_saved = getattr(f, "saved_copy_sha256", None) if hasattr(f, "saved_copy_sha256") else f.get("saved_copy_sha256") if isinstance(f, dict) else None
+                if not f_saved and f_url and f_url in by_url:
+                    digest, name = by_url[f_url]
+                    if hasattr(f, "model_copy"):
+                        updated_files.append(f.model_copy(update={
+                            "saved_copy_sha256": digest,
+                            "saved_filename": name or getattr(f, "saved_filename", None),
+                        }))
+                    elif isinstance(f, dict):
+                        f_copy = dict(f)
+                        f_copy["saved_copy_sha256"] = digest
+                        f_copy["saved_filename"] = name or f_copy.get("saved_filename")
+                        updated_files.append(f_copy)
+                    else:
+                        updated_files.append(f)
+                    changed = True
+                else:
+                    updated_files.append(f)
+            if changed:
+                rec_id = getattr(record, "id", None) if hasattr(record, "id") else record.get("id")
+                rec_kind = getattr(record, "kind", "material") if hasattr(record, "kind") else record.get("kind", "material")
+                if hasattr(record, "model_copy"):
+                    assembly.records[(rec_kind, rec_id)] = record.model_copy(
+                        update={"files": tuple(updated_files)}
+                    )
+                elif isinstance(record, dict):
+                    record["files"] = updated_files
 
 
 _DOMAIN_RECORD = TypeAdapter(DomainRecord)
@@ -223,6 +281,7 @@ class _SpilledSources(MutableMapping):
         self._arena = _ArenaLog(".explorer-sources-")
         self._index: dict[str, int] = {}
         self._identity_by_id: dict[str, int] = {}
+        self._id_by_identity: dict[int, str] = {}
         self._meta_pool: dict[tuple[str, str | None], int] = {}
         self._meta_list: list[tuple[str, str | None]] = []
         self._cache: OrderedDict[str, SourceRecord] = OrderedDict()
@@ -280,6 +339,9 @@ class _SpilledSources(MutableMapping):
     def identity_for_id(self, sid: str) -> int | None:
         return self._identity_by_id.get(sid)
 
+    def id_for_identity(self, ident: int) -> str | None:
+        return self._id_by_identity.get(ident)
+
     def __contains__(self, key):
         return isinstance(key, tuple) and len(key) == 2 and key[0] == "source_record" and key[1] in self._index
 
@@ -300,11 +362,13 @@ class _SpilledSources(MutableMapping):
         compressed = zlib.compress(record.model_dump_json().encode(), level=1)
         offset, length = self._arena.append(compressed)
         self._index[sid] = (offset << 44) | (length << 16) | meta_idx
-        self._identity_by_id[sid] = _source_identity_hash(
+        ident_hash = _source_identity_hash(
             record.provider,
             record.identifier.scheme,
             record.identifier.value,
         )
+        self._identity_by_id[sid] = ident_hash
+        self._id_by_identity[ident_hash] = sid
         self._cache_put(record)
 
     def __delitem__(self, key):
@@ -312,7 +376,9 @@ class _SpilledSources(MutableMapping):
             raise KeyError(key)
         sid = key[1]
         del self._index[sid]
-        self._identity_by_id.pop(sid, None)
+        ident_hash = self._identity_by_id.pop(sid, None)
+        if ident_hash is not None and self._id_by_identity.get(ident_hash) == sid:
+            del self._id_by_identity[ident_hash]
         self._cache.pop(sid, None)
 
     def __iter__(self):
@@ -984,6 +1050,54 @@ class Assembly:
                 if merged != material.files:
                     self.records[key] = material.model_copy(update={"files": merged})
 
+    def _source_id_for_identity(self, ident: int) -> str | None:
+        if hasattr(self.sources, "id_for_identity"):
+            return self.sources.id_for_identity(ident)
+        if not hasattr(self, "_fallback_ident_map"):
+            self._fallback_ident_map = {}
+            for k, src in self.sources.items():
+                if isinstance(k, tuple) and len(k) == 2 and k[0] == "source_record":
+                    h = _source_identity_hash(src.provider, src.identifier.scheme, src.identifier.value)
+                    self._fallback_ident_map[h] = src.id
+        return self._fallback_ident_map.get(ident)
+
+    def _source_identity_for_id(self, sid: str, previous=None, identity_cache=None) -> tuple[int, str] | None:
+        if ("source_record", sid) in self.sources:
+            ident = (
+                self.sources.identity_for_id(sid)
+                if hasattr(self.sources, "identity_for_id")
+                else None
+            )
+            if ident is None:
+                src = self.sources[("source_record", sid)]
+                ident = _source_identity_hash(src.provider, src.identifier.scheme, src.identifier.value)
+            elif isinstance(ident, tuple):
+                ident = _source_identity_hash(*ident)
+            return (ident, "")
+        if identity_cache is not None and sid in identity_cache:
+            return identity_cache[sid]
+        if previous is not None:
+            cached = None
+            if hasattr(previous, "source_identity"):
+                found = previous.source_identity(sid)
+                if found is not None:
+                    raw_ident, imp = found
+                    cached = (
+                        _source_identity_hash(*raw_ident) if isinstance(raw_ident, tuple) else raw_ident,
+                        imp,
+                    )
+            elif ("source_record", sid) in previous:
+                src = previous[("source_record", sid)]
+                cached = (
+                    _source_identity_hash(src.provider, src.identifier.scheme, src.identifier.value),
+                    src.imported_at.isoformat() if src.imported_at else "",
+                )
+            if cached is not None:
+                if identity_cache is not None:
+                    identity_cache[sid] = cached
+                return cached
+        return None
+
     def _dedup_citations(self, citations, previous, identity_cache):
         """Deduplicate citations by (source_identity, selector_type, selector, quote).
 
@@ -992,51 +1106,26 @@ class Assembly:
         When an issue recurs across snapshots, the current observation replaces the
         prior snapshot observation for the same source identity and selector.
         """
-        if len(citations) <= 1:
-            return citations
-        by_json = {c.model_dump_json(): c for c in citations}
-        if len(by_json) <= 1:
-            return tuple(by_json[k] for k in sorted(by_json))
+        if not citations:
+            return ()
         best = {}
         unresolved = []
         for c in citations:
             sid = c.source.id
+            resolved = self._source_identity_for_id(sid, previous, identity_cache)
+            if resolved is None:
+                unresolved.append(c)
+                continue
+            ident, imp = resolved
             if ("source_record", sid) in self.sources:
-                ident = (
-                    self.sources.identity_for_id(sid)
-                    if hasattr(self.sources, "identity_for_id")
-                    else None
-                )
-                if ident is None:
-                    src = self.sources[("source_record", sid)]
-                    ident = _source_identity_hash(src.provider, src.identifier.scheme, src.identifier.value)
-                elif isinstance(ident, tuple):
-                    ident = _source_identity_hash(*ident)
                 rank = (1, "", sid)
             else:
-                cached = identity_cache.get(sid)
-                if cached is None:
-                    if hasattr(previous, "source_identity"):
-                        found = previous.source_identity(sid)
-                        if found is not None:
-                            raw_ident, imp = found
-                            cached = (
-                                _source_identity_hash(*raw_ident) if isinstance(raw_ident, tuple) else raw_ident,
-                                imp,
-                            )
-                    elif ("source_record", sid) in previous:
-                        src = previous[("source_record", sid)]
-                        cached = (
-                            _source_identity_hash(src.provider, src.identifier.scheme, src.identifier.value),
-                            src.imported_at.isoformat() if src.imported_at else "",
-                        )
-                    if cached is not None:
-                        identity_cache[sid] = cached
-                if cached is None:
-                    unresolved.append(c)
-                    continue
-                ident, imp = cached
-                rank = (0, imp, sid)
+                current_sid = self._source_id_for_identity(ident)
+                if current_sid is not None:
+                    c = c.model_copy(update={"source": Ref(kind="source_record", id=current_sid)})
+                    rank = (1, "", current_sid)
+                else:
+                    rank = (0, imp, sid)
             dkey = (ident, c.selector_type, c.selector, c.quote)
             prev = best.get(dkey)
             if prev is None or rank >= prev[0]:
@@ -1128,6 +1217,12 @@ class Assembly:
                                         )
                                     }
                                 )
+                            if old.subject.kind == "source_record" and ("source_record", old.subject.id) not in self.sources:
+                                resolved_subj = self._source_identity_for_id(old.subject.id, previous, identity_cache)
+                                if resolved_subj is not None:
+                                    curr_subj_sid = self._source_id_for_identity(resolved_subj[0])
+                                    if curr_subj_sid is not None:
+                                        updates["subject"] = Ref(kind="source_record", id=curr_subj_sid)
                             if updates:
                                 old = old.model_copy(update=updates)
                         self.records[key] = old
@@ -1143,7 +1238,23 @@ class Assembly:
                             identity_cache,
                         )
                         provenance = now.provenance.model_copy(update={"citations": deduped_cits})
-                        self.records[key] = now.model_copy(update={"detected_at": old.detected_at, "provenance": provenance})
+                        updates = {"detected_at": old.detected_at, "provenance": provenance}
+                        if old.resolution is not None and now.resolution is not None:
+                            deduped_res_cits = self._dedup_citations(
+                                (*old.resolution.provenance.citations, *now.resolution.provenance.citations),
+                                previous,
+                                identity_cache,
+                            )
+                            updates["resolution"] = now.resolution.model_copy(
+                                update={"provenance": now.resolution.provenance.model_copy(update={"citations": deduped_res_cits})}
+                            )
+                        if now.subject.kind == "source_record" and ("source_record", now.subject.id) not in self.sources:
+                            resolved_subj = self._source_identity_for_id(now.subject.id, previous, identity_cache)
+                            if resolved_subj is not None:
+                                curr_subj_sid = self._source_id_for_identity(resolved_subj[0])
+                                if curr_subj_sid is not None:
+                                    updates["subject"] = Ref(kind="source_record", id=curr_subj_sid)
+                        self.records[key] = now.model_copy(update=updates)
                     refs = list(_references(self.records[key]))
                     if (
                         isinstance(old, DataIssue)
@@ -1173,6 +1284,10 @@ class Assembly:
             del identity_cache, seen
         if hasattr(self.sources, "_identity_by_id"):
             self.sources._identity_by_id.clear()
+        if hasattr(self.sources, "_id_by_identity"):
+            self.sources._id_by_identity.clear()
+        if hasattr(self, "_fallback_ident_map"):
+            self._fallback_ident_map.clear()
         if hasattr(self.sources, "clear_cache"):
             self.sources.clear_cache()
         gc.collect()

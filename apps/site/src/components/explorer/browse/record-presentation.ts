@@ -468,11 +468,19 @@ export function sourceFacts(value: object): [string, string][] {
   for (const [key, label] of sourceEnvelope) {
     if (typeof row[key] !== 'string' || !row[key].trim()) continue;
     const recorded = row[key].trim();
-    if (label === 'Saved original' && !/^https?:\/\//i.test(recorded)) continue;
+    if (label === 'Saved original' && !/^https?:\/\/|^\/?bodies\/sha256\//i.test(recorded)) continue;
     facts.push([label, ['Fetched', 'Added here', 'Changed at the source'].includes(label) ? recordedInstant(recorded) : recorded]);
   }
-  const identifier = identifierLine(row.identifier);
+  const identifier = identifierLine(row.identifier || (row.identifier_value ? { scheme: row.identifier_scheme, value: row.identifier_value, scope: row.identifier_scope } : null));
   if (identifier) facts.push(['Record number', identifier]);
+  if (Array.isArray(row.facts) && row.facts.length > 0) {
+    for (const f of row.facts as readonly { label: string; value: string }[]) {
+      if (f && typeof f.label === 'string' && typeof f.value === 'string') {
+        facts.push([f.label, f.value]);
+      }
+    }
+    return mergeFacts(facts);
+  }
   const payload = payloadOf(value);
   if (!payload) return facts;
   const place = addressLine(payload.location);
@@ -722,6 +730,10 @@ export interface SourceLink { group: string; label: string; href: string }
 
 /** Documents and videos the source recorded with an http(s) URL. */
 export function sourceLinks(value: object): { links: SourceLink[] } {
+  const row = value as Record<string, unknown>;
+  if (Array.isArray(row.links) && row.links.length > 0) {
+    return { links: row.links as SourceLink[] };
+  }
   const payload = payloadOf(value);
   if (!payload) return { links: [] };
   const links: SourceLink[] = [];
@@ -1455,6 +1467,18 @@ export function savedCopyHref(
 }
 
 const sourceGroupLabels: Record<string, string> = { meetingDocuments: 'Meeting document', witnessDocuments: 'Witness document' };
+
+export function savedOriginalUrl(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const uri = (value as { retained_uri?: unknown }).retained_uri;
+  if (typeof uri !== 'string' || !uri.trim()) return undefined;
+  const trimmed = uri.trim();
+  if (trimmed.startsWith('//')) return undefined;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('/')) return trimmed;
+  if (trimmed.startsWith('bodies/')) return `/${trimmed}`;
+  return undefined;
+}
 
 export function documentSourceLabel(row: DisplayRow): string {
   return (row.source_document_groups || []).map(group => sourceGroupLabels[group] || group).join(' · ');

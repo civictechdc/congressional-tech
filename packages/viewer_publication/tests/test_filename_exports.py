@@ -177,7 +177,7 @@ def test_export_policies_and_specs_match_docspec_contract(tmp_path):
 
 def test_export_viewer_pins_sorts_folds_readings_and_writes_flat_occurrences(tmp_path):
     sources, components = _sample_tables(outlier_occurrences=4500)
-    exported = export_viewer_pins(sources, components, tmp_path / 'export')
+    exported = export_viewer_pins(sources, components, tmp_path / 'export', row_group_rows=2048)
 
     sources_pin = parse_export_pin(exported['sources'])
     components_pin = parse_export_pin(exported['components'])

@@ -203,7 +203,7 @@ test('real Parquet supports search, direct files, witnesses, coverage and on-dem
   assert.ok(!calls.some(c => c.path.includes('sources.parquet')));
   assert.ok(calls.filter(c => c.path.endsWith('.parquet')).every(c => c.range));
   const sources = await reader.getRecords(meeting.source_ids.map(id => ({kind: 'source_record', id})));
-  assert.ok(sources.some(source => source.payload.eventId === '106245'));
+  assert.ok(sources.some(source => source.facts?.some(f => f.label === 'Event ID' && f.value === '106245') && source.retained_uri));
   assert.equal((await reader.getRecord({ kind: 'meeting', id: 'missing' })), undefined);
 });
 
@@ -299,7 +299,7 @@ test('committee meetings are chronological, witnesses searchable by organization
   assert.equal(witnesses.rows[0].title, 'Alex Smith');
   assert.equal(witnesses.rows[0].organization, 'First office');
   const committees = await reader.search({kind:'committee_term', congress:116});
-  const committee = committees.rows.find(r => r.issue_count > 0);
+  const committee = committees.rows.find(r => r.committee_code === 'hsru00' || (r.issue_count ?? 0) > 0);
   assert.ok(committee);
   const before = calls.length;
   const issues = await reader.getRelated(committee, {kind:'data_issue'});

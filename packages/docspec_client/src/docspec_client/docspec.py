@@ -783,7 +783,7 @@ class ConnectedComponentsTransform(dict):
         return dict(self)
 
 
-def native_storage_schema(schema_or_table, *, native_types=False):
+def native_storage_schema(schema_or_table, *, native_types=True):
     """Use lossless Iceberg types for unsigned values and binary offsets.
 
     The application retains the original schema in its immutable selection.

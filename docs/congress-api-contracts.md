@@ -288,7 +288,7 @@ records the compatibility decision.
   `ensure_ascii=False`, and compact separators using SHA-256. Object key order
   does not change the hash; array order, spelling, nulls, absence and scalar types
   do. Source-model `source_dict()` preserves publisher keys and field presence.
-* `AdapterContext.source` uses `provider|input_id|native_key|digest(payload)` for
+* `AdapterContext.source` uses `provider|identifier.scheme|identifier.value|digest(payload)` for
   a **source observation**, not for every domain object's identity.
 * Domain keys, such as `govinfo:{package}` and `{key}:published`, are passed to
   the application's `IdRegistry`. It persists random opaque UUIDs indexed by

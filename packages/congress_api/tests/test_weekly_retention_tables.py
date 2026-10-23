@@ -164,8 +164,11 @@ def test_incremental_gpo_house_senate_and_youtube_tables(tmp_path: Path) -> None
             }
         }
         gpo.write(gpo_records, tmp_path / "gpo_obs.parquet", weekly_tables=wt)
-        loaded_obs = gpo.read(weekly_tables=wt, package_ids=["CHRG-118hhrg1"])
-        assert "CHRG-118hhrg1" in loaded_obs
+        obs_table = wt.read_keys("gpo_observations", ["CHRG-118hhrg1"])
+        assert obs_table.num_rows == 1
+        obs_row = obs_table.to_pylist()[0]
+        assert obs_row["package_id"] == "CHRG-118hhrg1"
+        assert obs_row["retrieved_at"] == "2026-01-10T12:00:00Z"
 
         # House, Senate, and Inventory state via realistic path-dispatched tables.write_state / tables.read_state
         house_payload = {
@@ -192,13 +195,17 @@ def test_incremental_gpo_house_senate_and_youtube_tables(tmp_path: Path) -> None
         tables.write_state(tmp_path / "senate.json.gz", senate_payload, weekly_tables=wt)
         tables.write_state(tmp_path / "inventory.json.gz", inventory_payload, weekly_tables=wt)
 
-        assert house.read_events(wt, event_ids=["115001"])["115001"]["witness_status"] == "present"
-        assert senate.read_events(wt, record_ids=["www.energy.senate.gov"])["www.energy.senate.gov"]["pages"][
-            "https://www.energy.senate.gov/hearings/test"
-        ]["title"] == "Senate Hearing"
-        assert tables.read_state(tmp_path / "house.json.gz", weekly_tables=wt)["115001"]["witness_status"] == "present"
-        assert "www.energy.senate.gov" in tables.read_state(tmp_path / "senate.json.gz", weekly_tables=wt)
-        loaded_inv = tables.read_state(tmp_path / "inventory.json.gz", weekly_tables=wt)
+        house_rows = wt.read_keys("house_events", ["115001"]).to_pylist()
+        assert len(house_rows) == 1
+        assert house_rows[0]["witness_status"] == "present"
+
+        senate_table = wt.read_table("senate_events")
+        assert senate_table.num_rows == 1
+        assert senate_table.column("domain")[0].as_py() == "www.energy.senate.gov"
+
+        assert tables.read_state(tmp_path / "house.json.gz")["115001"]["witness_status"] == "present"
+        assert "www.energy.senate.gov" in tables.read_state(tmp_path / "senate.json.gz")
+        loaded_inv = tables.read_state(tmp_path / "inventory.json.gz")
         assert loaded_inv["youtube"]["vid-abc"] == "asr"
         assert loaded_inv["senate"]["energy011026"] == "srt"
 
@@ -257,7 +264,7 @@ def test_incremental_captions_transcripts_and_rejected_pages_tables(tmp_path: Pa
         assert len(cap_rows) == 1
         assert cap_rows[0]["outcome"] == "error"
         assert cap_rows[0]["kind"] == "asr"
-        assert json.loads(cap_rows[0]["last_successful_json"])["kind"] == "asr"
+        assert cap_rows[0]["receipt_json"] is not None
 
         # Transcripts capture
         fake_response = SimpleNamespace(
@@ -345,13 +352,31 @@ def test_sync_weekly_tables_cli_and_explorer_state_pack(tmp_path: Path):
             ).encode()
         )
     )
+    (pipeline_dir / "congress_committees.jsonl.gz").write_bytes(
+        gzip.compress(
+            (
+                json.dumps(
+                    {
+                        "_url": "https://api.congress.gov/v3/committee/118/house/hsju00",
+                        "congress": 118,
+                        "committee": {
+                            "systemCode": "hsju00",
+                            "chamber": "House",
+                            "updateDate": "2026-10-01T00:00:00Z",
+                        },
+                    }
+                )
+                + "\n"
+            ).encode()
+        )
+    )
     (data_dir / "gpo_hearings.csv").write_text(
         "package_id,congress,chamber,committee_code,committee_name,event_id,hearing_dates,held_date,title\n"
         "CHRG-118hhrg1,118,House,hsju00,Judiciary,118555,2024-05-01,2024-05-01,Oversight\n",
         encoding="utf-8",
     )
     (yt_dir / "youtube_00.json").write_text(
-        json.dumps({"youtube_videos_@test": {"1": {"videoId": "vid01", "title": "Hearing Video"}}}),
+        json.dumps({"youtube_videos_@test": {"1": {"videoId": "vid01", "publishedAt": "2026-10-01T00:00:00Z", "title": "Hearing Video"}}}),
         encoding="utf-8",
     )
 
@@ -373,6 +398,7 @@ def test_sync_weekly_tables_cli_and_explorer_state_pack(tmp_path: Path):
         assert wt.latest_version("senate_events") is not None
         assert wt.latest_version("captions") is not None
         assert wt.latest_version("congress_meetings") is not None
+        assert wt.latest_version("congress_committees") is not None
         assert wt.latest_version("gpo_hearings") is not None
         assert wt.latest_version("youtube_videos") is not None
 

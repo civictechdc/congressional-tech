@@ -8,8 +8,13 @@ from __future__ import annotations
 import gzip
 from pathlib import Path
 
+from typing import TYPE_CHECKING
+
 from congress_api.models.congress import CommitteeSnapshot
 from congress_api.retention.jsonl import write as write_jsonl
+
+if TYPE_CHECKING:
+    from congress_api.retention.weekly_tables import WeeklyRetentionTables
 
 
 def read(path: Path) -> list[dict]:
@@ -24,9 +29,15 @@ def read(path: Path) -> list[dict]:
         return [CommitteeSnapshot.model_validate_json(line).source_dict() for line in stream if line.strip()]
 
 
-def write(records: dict[str, dict], path: Path) -> None:
+def write(
+    records: dict[str, dict],
+    path: Path,
+    *,
+    tables: WeeklyRetentionTables | None = None,
+) -> None:
     """Write committee snapshots keyed by ``congress|systemCode``.
 
     Keys are not meeting source URLs. Bytes go through the shared JSONL writer.
     """
-    write_jsonl(records, path)
+    write_jsonl(records, path, dataset="congress_committees", tables=tables)
+
