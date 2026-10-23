@@ -26,7 +26,7 @@ from congress_api.retention.body_keys import (
 )
 from congress_api.retention.immutable_metadata import encoded
 from congress_api.retention.partition_routing import RoutingPages, split_partition, key_hash
-from congress_api.retention.raw_archive import (
+from congress_api.retention.raw_schemas import (
     CAPTURE_SCHEMA,
     LEGACY_CAPTURE_SCHEMA,
     STATE_SCHEMA,
@@ -42,6 +42,7 @@ from congress_api.retention.raw_archive import (
     normalize_state_dict,
     prepare_capture_table,
     prepare_state_table,
+    encode_table,
 )
 from congress_api.retention.raw_capture_pages import CapturePages
 from congress_api.retention.raw_changes import RawChanges
@@ -70,8 +71,6 @@ def _compatible_priority(row):
     return outcome_match, checked, row.get('url') or ''
 _rsr.priority = _compatible_priority
 
-from congress_api.retention.raw_values import capture_table, ordered_captures, NATIVE_CAPTURE_SCHEMA
-from congress_api.retention.write_recovery import reconcile_lost_acknowledgment
 
 DEFAULT_ACCEPTED_FILES_PATH = (
     Path(__file__).resolve().parents[5]
@@ -375,7 +374,7 @@ def state_key_sha256(url):
     """Return a deterministic 64-byte lowercase hex SHA-256 of ``state_key(url)`` (< 128B for Parquet stats)."""
     return sha256(state_key(url).encode('utf-8')).hexdigest()
 
-from .docspec import PartitionSpec, UpdateMergeSpec, UpdateMergeStrategy, apply_update_merge_spec
+from docspec_client import PartitionSpec, UpdateMergeSpec, UpdateMergeStrategy, apply_update_merge_spec
 
 STATE_PARTITION_SPEC = PartitionSpec.bucket(STATE_KEY_SHA256_FIELD, STATE_BUCKET_COUNT)
 
@@ -556,6 +555,10 @@ def format_state_row_for_python(row):
 
 
 
+from congress_api.retention.raw_values import capture_table, ordered_captures, NATIVE_CAPTURE_SCHEMA
+from congress_api.retention.write_recovery import reconcile_lost_acknowledgment
+
+
 class RawSnapshot:
     def __init__(self, owner, manifest, version, delivery=None):
         self.owner, self.manifest, self.version = owner, manifest, version
@@ -564,29 +567,6 @@ class RawSnapshot:
 
     def capture_batch(self, entry):
         """Read one exact changed batch, retaining stable observation ordinals."""
-        import os
-        from pathlib import Path
-        if (
-            'PYTEST_CURRENT_TEST' not in os.environ
-            and isinstance(entry, dict)
-            and entry.get('release', {}).get('dataset', {}).get('dataset', '').startswith('raw-captures-adopt-raw-')
-        ):
-            local_cap = Path('output/incremental-updates-20261019/adoption-inputs/captures.parquet')
-            if local_cap.is_file():
-                cached_tbl = getattr(self.owner, '_local_adopt_captures_table', None)
-                if cached_tbl is None:
-                    try:
-                        tbl = pq.read_table(local_cap)
-                        if len(tbl) == self.manifest['captures']['rows']:
-                            cached_tbl = tbl
-                            self.owner._local_adopt_captures_table = cached_tbl
-                    except Exception:
-                        cached_tbl = None
-                if cached_tbl is not None:
-                    first_order = entry['first_order']
-                    rows = entry['rows']
-                    if 0 <= first_order and first_order + rows <= len(cached_tbl):
-                        return capture_table(cached_tbl.slice(first_order, rows), first_order=first_order)
         stored = self.owner._read_table(entry['release'], entry['rows'],
             schema=NATIVE_CAPTURE_SCHEMA, max_rows=self.owner.max_capture_rows,
             max_bytes=self.owner.max_capture_bytes, decoded_bytes=entry['decoded_bytes'])
@@ -670,35 +650,10 @@ class RawSnapshot:
         order/key fields remain available to callers that stage logical rows.
         """
         from contextlib import closing
-        import os
         from pathlib import Path
         from tempfile import TemporaryDirectory
         import pickle
         from .catalog_staging import WorkingCatalog
-        if 'PYTEST_CURRENT_TEST' not in os.environ:
-            wanted = {url for url in urls if isinstance(url, str) and url}
-            if not wanted:
-                return
-            local_state = Path('output/incremental-updates-20261019/adoption-inputs/state.parquet')
-            if len(wanted) > 512 and local_state.is_file():
-                try:
-                    with pq.ParquetFile(local_state) as pf:
-                        if pf.metadata.num_rows == self.manifest['state']['rows']:
-                            ordinal = 0
-                            for batch in pf.iter_batches(batch_size=65536):
-                                url_col = batch['url'].to_pylist()
-                                match_indices = [i for i, u in enumerate(url_col) if u in wanted]
-                                if match_indices:
-                                    sub = batch.take(pa.array(match_indices, type=pa.int64())).to_pylist()
-                                    for idx, row in zip(match_indices, sub):
-                                        row[STATE_ORDER] = ordinal + idx
-                                        row[STATE_KEY_FIELD] = state_key(row['url'])
-                                        row[STATE_KEY_SHA256_FIELD] = state_key_sha256(row['url'])
-                                        yield format_state_row_for_python(row)
-                                ordinal += len(batch)
-                            return
-                except Exception:
-                    pass
         with TemporaryDirectory(prefix='raw-requested-state-') as directory, closing(
                 WorkingCatalog(Path(directory) / 'states.sqlite')) as work:
             db = work.connection
@@ -774,6 +729,11 @@ class RawSnapshot:
 
 
 class RawStorage:
+    """Storage layer coordinating append-only raw capture tables and state indexes.
+
+    Maintains partition routing, byte limits, and native dataset synchronization
+    for immutable source receipts and mutable download states.
+    """
     def __init__(self, store, native, *, max_state_rows=16384, max_state_bytes=32 << 20,
                  max_capture_rows=CAPTURE_BATCH_ROWS, max_capture_bytes=CAPTURE_BATCH_BYTES,
                  state_schema=STATE_SCHEMA, excluded_body_hashes=None,
@@ -819,15 +779,6 @@ class RawStorage:
             self.store,
             data,
             content_type_or_format=content_type_or_format,
-            excluded_hashes=self.excluded_body_hashes,
-        )
-
-    def migrate_pdf_bodies(self, *, keys=None, delete_gzip=False):
-        """Idempotently migrate retained PDF bodies to uncompressed .pdf objects."""
-        return migrate_pdf_bodies_to_uncompressed(
-            self.store,
-            keys=keys,
-            delete_gzip=delete_gzip,
             excluded_hashes=self.excluded_body_hashes,
         )
 
@@ -1082,109 +1033,6 @@ class RawStorage:
             incoming,
             merge_spec=merge_spec,
             state_schema=self.state_schema,
-        )
-
-    def prepare_partitioned_state_table(
-        self,
-        states,
-        *,
-        dataset='raw-state',
-        operation='initial',
-        base_pin=None,
-        num_buckets=STATE_BUCKET_COUNT,
-        merge_spec=STATE_MERGE_SPEC,
-    ):
-        """Maintain URL state as one bucket-partitioned dataset keyed by 64-byte ``state_key_sha256``."""
-        rows = states.to_pylist() if isinstance(states, pa.Table) else [dict(r) for r in states]
-        existing_rows = []
-        if base_pin is not None and hasattr(self.native, 'source_batches'):
-            with self.native.source_batches(base_pin) as reader:
-                existing_rows = pa.Table.from_batches(list(reader), schema=reader.schema).to_pylist()
-        next_order = max((int(r.get(STATE_ORDER, -1)) for r in existing_rows), default=-1) + 1
-        existing_orders = {
-            r.get(STATE_KEY_SHA256_FIELD) or state_key_sha256(r.get('url')): int(r.get(STATE_ORDER, idx))
-            for idx, r in enumerate(existing_rows)
-        }
-        prepared = []
-        for r in rows:
-            row = dict(r)
-            for field in self.state_schema:
-                row.setdefault(field.name, None)
-            if 'sha256' in self.state_schema.names and row.get('sha256') is not None:
-                row['sha256'] = parse_sha256(row['sha256'])
-            for ts_col in ('retrieved_at', 'checked_at', 'next_attempt_at'):
-                if ts_col in self.state_schema.names and row.get(ts_col) is not None:
-                    row[ts_col] = parse_timestamp(row[ts_col])
-            if 'http_status' in self.state_schema.names and row.get('http_status') is not None:
-                row['http_status'] = parse_http_status(row['http_status'])
-            if 'attempts' in self.state_schema.names and row.get('attempts') is not None:
-                row['attempts'] = int(row['attempts'])
-            if 'links_scanned' in self.state_schema.names and row.get('links_scanned') is not None:
-                row['links_scanned'] = bool(row['links_scanned'])
-            row[STATE_KEY_FIELD] = state_key(row.get('url'))
-            sha = state_key_sha256(row.get('url'))
-            row[STATE_KEY_SHA256_FIELD] = sha
-            if sha in existing_orders:
-                row[STATE_ORDER] = existing_orders[sha]
-            elif STATE_ORDER not in row or row[STATE_ORDER] is None:
-                row[STATE_ORDER] = next_order
-                existing_orders[sha] = next_order
-                next_order += 1
-            prepared.append(row)
-        part_schema = pa.schema([
-            pa.field(STATE_ORDER, pa.int64(), nullable=False),
-            pa.field(STATE_KEY_FIELD, pa.string(), nullable=False),
-            pa.field(STATE_KEY_SHA256_FIELD, pa.string(), nullable=False),
-            *self.state_schema,
-        ])
-        table = pa.Table.from_pylist(prepared, schema=part_schema)
-        partition_by = [PartitionSpec.bucket(STATE_KEY_SHA256_FIELD, num_buckets)]
-        active_cols = {
-            k: v
-            for k, v in (merge_spec or {}).get('columns', {}).items()
-            if k in self.state_schema.names
-        }
-        effective_merge = UpdateMergeSpec(
-            order_by=(
-                merge_spec.get('order_by')
-                if merge_spec and merge_spec.get('order_by') in self.state_schema.names
-                else None
-            ),
-            columns={STATE_ORDER: UpdateMergeStrategy.MIN, **active_cols},
-        )
-        if base_pin is None:
-            import inspect
-            if 'partition_by' in inspect.signature(self.native.run_table).parameters:
-                return self.native.run_table(
-                    table,
-                    dataset=dataset,
-                    operation=operation,
-                    definition='raw-state-partitioned-v1',
-                    partition_by=partition_by,
-                )
-            return self.native.run_table(
-                table,
-                dataset=dataset,
-                operation=operation,
-                definition='raw-state-partitioned-v1',
-            )
-        import inspect
-        if hasattr(self.native, 'update_table') and 'merge' in inspect.signature(self.native.update_table).parameters:
-            return self.native.update_table(
-                table,
-                dataset=dataset,
-                operation=operation,
-                definition='raw-state-partitioned-v1',
-                base=base_pin['id'],
-                keys=[STATE_KEY_SHA256_FIELD],
-                merge=effective_merge,
-            )
-        merged_full = self._merge_states(existing_rows, prepared, merge_spec=merge_spec)
-        return self.native.run_table(
-            merged_full,
-            dataset=dataset,
-            operation=operation,
-            definition='raw-state-partitioned-v1',
         )
 
     def prepare(self, base, *, operation, captures=None, states=None,

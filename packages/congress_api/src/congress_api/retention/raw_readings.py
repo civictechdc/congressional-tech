@@ -26,13 +26,13 @@ _READING_PART_ROWS_CACHE = {}
 
 
 def read_reading_part_bytes(store, key, *, expected_sha256=None):
-    import os
     from pathlib import Path
-    if 'PYTEST_CURRENT_TEST' not in os.environ and getattr(store, 'bucket', None):
+    raw_cache_dir = getattr(store, 'cache_dir', None)
+    if raw_cache_dir is not None:
         cached = _READING_PART_CACHE.get(key)
         if cached is not None:
             return cached
-        cache_dir = Path('.cache/docspec-catalog/reading-parts')
+        cache_dir = Path(raw_cache_dir) / 'reading-parts'
         cache_file = cache_dir / (sha256(key.encode()).hexdigest() + '.parquet')
         if cache_file.is_file():
             try:
@@ -49,7 +49,7 @@ def read_reading_part_bytes(store, key, *, expected_sha256=None):
                 cache_dir.mkdir(parents=True, exist_ok=True)
                 tmp = cache_file.with_suffix('.tmp')
                 tmp.write_bytes(raw)
-                os.replace(tmp, cache_file)
+                tmp.replace(cache_file)
             except OSError:
                 pass
             if len(_READING_PART_CACHE) < 4096:
@@ -59,7 +59,6 @@ def read_reading_part_bytes(store, key, *, expected_sha256=None):
 
 
 def part_rows(store, reference):
-    import os
     key, size, digest, rows = (reference.get(name) for name in ('key', 'bytes', 'sha256', 'rows'))
     if (not isinstance(key, str) or not key.startswith((PREFIX, READER_PREFIX)) or '..' in PurePosixPath(key).parts
             or type(size) is not int or not 0 < size <= PART_BYTES
@@ -68,7 +67,7 @@ def part_rows(store, reference):
             or any(char not in '0123456789abcdef' for char in digest)
             or not key.endswith('-' + digest + '.parquet')):
         raise ValueError('Retained reading part identity or bounds differ')
-    use_cache = 'PYTEST_CURRENT_TEST' not in os.environ and getattr(store, 'bucket', None)
+    use_cache = getattr(store, 'cache_dir', None) is not None
     if use_cache:
         cached_rows = _READING_PART_ROWS_CACHE.get((key, size, digest, rows))
         if cached_rows is not None:
@@ -154,11 +153,10 @@ class RawReadings:
         return result
 
     def rows(self, root, bodies):
-        import os
         selected = defaultdict(set)
         references = {}
         unique_bodies = list(dict.fromkeys(bodies))
-        if 'PYTEST_CURRENT_TEST' not in os.environ and len(unique_bodies) > 256 and root is not None:
+        if len(unique_bodies) > 256 and root is not None:
             wanted = set(unique_bodies)
             for prefix, value in self.routes.leaf_items(root):
                 for body, reference in self._entries(prefix, value).items():

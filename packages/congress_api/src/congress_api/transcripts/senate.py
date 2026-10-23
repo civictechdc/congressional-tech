@@ -53,10 +53,6 @@ def _segment_source(url: str) -> MediaTextSource:
     return source
 
 
-def _segment(url: str) -> str:
-    return _segment_source(url).text
-
-
 def fetch_one(url: str, out_dir: Path, nthreads: int = 16) -> tuple[str, str, str, int]:
     """Return an index row only after a complete, scoped acquisition check.
 

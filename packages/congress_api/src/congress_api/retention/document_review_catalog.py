@@ -245,7 +245,7 @@ def main(argv=None):
         pin_text = Path(source_pin_arg).read_text() if Path(source_pin_arg).is_file() else source_pin_arg
         pin_obj = json.loads(pin_text)
     if native_cfg_arg is not None:
-        from .docspec import NativeDatasets
+        from docspec_client import NativeDatasets
         cfg_text = Path(native_cfg_arg).read_text() if Path(native_cfg_arg).is_file() else native_cfg_arg
         cfg = json.loads(cfg_text)
         with NativeDatasets(cfg['binary'], Path(cfg['workspace'])) as native:

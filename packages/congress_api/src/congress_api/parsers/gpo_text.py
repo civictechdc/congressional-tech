@@ -41,11 +41,6 @@ def has_proceeding_text(text: str) -> bool:
                 and re.search(r'\bWhereupon,.*?\b(?:adjourned|recessed)\b', text, re.I | re.S))
 
 
-def to_text(page: str) -> str:
-    """GPO transcript HTML is one <pre> block; strip tags and entities."""
-    return parse_transcript_html(page).text.strip() + "\n"
-
-
 TIME_RE = r"(\d{1,2}(?::\d{2})?\s?[ap]\.?\s?m\.?)"
 
 

@@ -17,6 +17,7 @@ from .immutable_metadata import encoded
 from .raw_values import NATIVE_CAPTURE_SCHEMA
 from .source_capture_inputs import SourceCaptureInputs
 from .source_observations import SourceObservationTrace
+from .source_update_proof import source_update_requirements
 
 
 def retain_source_seeds(working, values):
@@ -106,7 +107,6 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
             max_rows=observations.max_rows, max_bytes=observations.max_bytes,
             changes_sha256=change_hash.hexdigest(), dependencies_sha256=dependency_hash.hexdigest(),
             seeds_sha256=seed_sha)
-        from .source_update_proof import source_update_requirements
         request['requirements'] = source_update_requirements()
         checkpoint = directory / 'replay-complete.json'
         binding = directory / 'replay-request.json'

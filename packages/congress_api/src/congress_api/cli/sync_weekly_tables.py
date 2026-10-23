@@ -11,6 +11,7 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from congress_shared.resources import DEFAULT_CHANNELS_CSV
 from congress_shared.youtube_cache import decode_cache
 
 from congress_api.retention import captions as captions_retention
@@ -315,7 +316,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--channels-csv",
         type=Path,
-        default=Path("packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv"),
+        default=DEFAULT_CHANNELS_CSV,
         help="Optional YouTube accounts CSV for channel systemCode lookup",
     )
     parser.add_argument("--chunk-size", type=int, default=10_000)

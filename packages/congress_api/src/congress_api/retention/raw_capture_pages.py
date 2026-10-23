@@ -46,7 +46,6 @@ class CapturePages:
 
     def append(self, head, entries):
         """Append bounded references, reading at most the existing partial page."""
-        import os
         entries = list(entries)
         if not entries:
             return head
@@ -60,10 +59,9 @@ class CapturePages:
         pending_bytes = sum(len(encoded(value)) for value in pending)
         base_bytes = len(encoded(dict(version=1, previous=previous, batches=[])))
         pending_uploads = []
-        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
 
         def _enqueue_write(prev, batches):
-            if in_pytest:
+            if not self.objects.supports_batch_put:
                 return self._write(prev, batches)
             self._check_order(batches, prev['end_order'] if prev else 0)
             ref, digest, key, raw = self.objects.prepare_put(dict(version=1, previous=prev, batches=list(batches)))

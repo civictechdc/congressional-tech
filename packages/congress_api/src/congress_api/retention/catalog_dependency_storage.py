@@ -25,7 +25,7 @@ from .catalog_dependencies import (
     extract_pin_changes, summarize_alias_observations, _aggregate_partition_summaries,
     _encoded_alias, _decoded_alias,
 )
-from .docspec import PartitionSpec, UpdateMergeSpec
+from docspec_client import PartitionSpec, UpdateMergeSpec
 from .partition_routing import RoutingPages, key_hash
 from .catalog_memberships import (
     ALIAS_KEY_SHA256_FIELD,

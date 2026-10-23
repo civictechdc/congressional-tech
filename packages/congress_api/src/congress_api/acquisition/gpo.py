@@ -174,7 +174,7 @@ def main(
             try:
                 mods_doc = parse_mods_document(mods)
                 hearing = parse_mods(package_id, mods_doc, last_modified)
-            except Exception as ex:
+            except (ValueError, KeyError, TypeError, OSError, RuntimeError) as ex:
                 # Keep rejected response bytes without replacing the last valid
                 # MODS record or marking its CSV row freshly parsed.
                 captured['failed_mods'] = {**observation, 'error': str(ex)}
@@ -197,9 +197,9 @@ def main(
                         parsed_manifest = parse_package_manifest(mets_bytes)
                         captured['manifest'] = manifest_obs
                         captured['manifest_files'] = [f.source_dict() for f in parsed_manifest.files]
-                    except Exception as mets_ex:
+                    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as mets_ex:
                         captured['manifest'] = {**manifest_obs, 'error': str(mets_ex)}
-                except Exception as mets_ex:
+                except (requests.RequestException, OSError, ValueError, RuntimeError) as mets_ex:
                     captured['manifest'] = {
                         **upstream_evidence.observation(
                             b"", mets_url, "application/xml",
@@ -228,7 +228,7 @@ def main(
                 result.update(parser_version=PARSER_VERSION, hearing_dates=hearing.hearing_dates,
                               text_read=hearing.text_read, witness_count=hearing.witness_count)
             return result, None, captured if evidence_path is not None else None
-        except Exception as ex:
+        except (requests.RequestException, OSError, ValueError, KeyError, TypeError, RuntimeError) as ex:
             return None, f"{package_id}: {ex!r}", captured if evidence_path is not None and captured is not None else None
 
     completed = set()
@@ -259,7 +259,7 @@ def main(
                 transcripts = {} if evidence_path else None
                 read = read_transcript(session, row, transcripts)
                 return row, read, transcripts, None
-            except Exception as ex:
+            except (requests.RequestException, OSError, ValueError, KeyError, TypeError, RuntimeError) as ex:
                 return row, None, None, f"{row['package_id']} hearing days: {ex!r}"
 
         with ThreadPoolExecutor(nthreads) as pool:

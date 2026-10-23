@@ -50,51 +50,33 @@ def inventory_references(db):
 
 
 def select_inventory(storage, db):
-    import os
     from bisect import bisect_left
     if db.execute('SELECT 1 FROM reading_rows LIMIT 1').fetchone() is None:
         return None
-    if 'PYTEST_CURRENT_TEST' not in os.environ:
-        all_rows = db.execute('SELECT digest, body, reference, bytes FROM reading_rows').fetchall()
-        all_rows.sort(key=lambda item: item[0])
-        digests = [item[0] for item in all_rows]
-        byte_prefix = [0] * (len(all_rows) + 1)
-        acc = 0
-        for idx, item in enumerate(all_rows):
-            acc += item[3]
-            byte_prefix[idx + 1] = acc
-
-        def fast_leaves(prefix):
-            lo = bisect_left(digests, prefix)
-            hi = bisect_left(digests, prefix + 'g', lo)
-            rows = hi - lo
-            if not rows:
-                return
-            size = byte_prefix[hi] - byte_prefix[lo]
-            if rows > LEAF_ENTRIES or size > LEAF_BYTES:
-                if len(prefix) == 64:
-                    raise ValueError('Adopted reading references exceed their hash partition budget')
-                for char in '0123456789abcdef':
-                    yield from fast_leaves(prefix + char)
-                return
-            slice_rows = sorted(all_rows[lo:hi], key=lambda item: item[1])
-            entries = {body: json.loads(reference) for _, body, reference, _ in slice_rows}
-            yield prefix, dict(entries=entries)
-
-        return storage.readings.routes.replace_stream(None, '', fast_leaves(''))
+    all_rows = db.execute('SELECT digest, body, reference, bytes FROM reading_rows').fetchall()
+    all_rows.sort(key=lambda item: item[0])
+    digests = [item[0] for item in all_rows]
+    byte_prefix = [0] * (len(all_rows) + 1)
+    acc = 0
+    for idx, item in enumerate(all_rows):
+        acc += item[3]
+        byte_prefix[idx + 1] = acc
 
     def leaves(prefix):
-        where, args = 'digest>=? AND digest<?', (prefix, prefix + 'g')
-        rows, size = db.execute(f'SELECT count(*),coalesce(sum(bytes),0) FROM reading_rows WHERE {where}', args).fetchone()
+        lo = bisect_left(digests, prefix)
+        hi = bisect_left(digests, prefix + 'g', lo)
+        rows = hi - lo
         if not rows:
             return
+        size = byte_prefix[hi] - byte_prefix[lo]
         if rows > LEAF_ENTRIES or size > LEAF_BYTES:
             if len(prefix) == 64:
                 raise ValueError('Adopted reading references exceed their hash partition budget')
             for char in '0123456789abcdef':
                 yield from leaves(prefix + char)
             return
-        entries = {body: json.loads(reference) for body, reference in db.execute(
-            f'SELECT body,reference FROM reading_rows WHERE {where} ORDER BY body', args)}
+        slice_rows = sorted(all_rows[lo:hi], key=lambda item: item[1])
+        entries = {body: json.loads(reference) for _, body, reference, _ in slice_rows}
         yield prefix, dict(entries=entries)
+
     return storage.readings.routes.replace_stream(None, '', leaves(''))

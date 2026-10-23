@@ -10,7 +10,6 @@ dependencies = [
     "docspec-client",
     "lxml",
     "requests",
-    "httpx>=0.28,<1",
     "pydantic>=2.11,<3",
     "pypdf[fonts]>=6,<7",
     "Pillow>=12.3,<13",

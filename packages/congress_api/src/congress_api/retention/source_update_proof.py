@@ -12,11 +12,11 @@ from .catalog_staging import WorkingCatalog
 
 
 def source_update_requirements():
-    from . import source_inputs, source_observations, source_replay, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata, catalog_qualification
+    from . import source_inputs, source_observations, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata, catalog_qualification
     digest = sha256()
-    for module in (source_inputs, source_observations, source_replay, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata, catalog_qualification):
+    for module in (source_inputs, source_observations, document_index, source_capture_inputs, document_recovery, catalog_availability, capture_metadata, catalog_qualification):
         digest.update(Path(module.__file__).read_bytes())
-    for path in (Path(__file__), Path(__file__).with_name('catalog_raw_updates.py')):
+    for path in (Path(__file__), Path(__file__).with_name('source_replay.py'), Path(__file__).with_name('catalog_raw_updates.py')):
         digest.update(path.read_bytes())
     from .catalog_cache import source_fingerprint
     return dict(implementation_sha256=digest.hexdigest(), format='retained-source-update-v1', pyarrow=pa.__version__,

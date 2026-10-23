@@ -67,11 +67,24 @@ def add_catalog_modes(mode):
                       help='Qualify all retained source contributions against exact selected source/document values')
     mode.add_argument('--upgrade-source-rules', metavar='VERSION',
                       help='Explicitly apply named source rules to the complete retained inventory after qualification')
+    mode.add_argument('--operator-status', action='store_true',
+                      help='Inspect operator status and capacity limits')
+    mode.add_argument('--retention-plan', action='store_true',
+                      help='Plan protected retention for native datasets')
+    mode.add_argument('--import-retained', action='store_true',
+                      help='Capture a batch of retained URLs directly into raw storage')
+    mode.add_argument('--recovery-plan', action='store_true',
+                      help='Plan recovery campaigns from state tables and historical captures')
+    mode.add_argument('--streamed-recovery', action='store_true',
+                      help='Run streamed range-based recovery for multi-part large files')
 
 
 def operation_mode(args):
     for field, label in (('adopt_raw', 'adopt-raw'), ('adopt_catalog', 'adopt-catalog'),
                          ('qualify_sources', 'qualify-sources'), ('upgrade_source_rules', 'upgrade-source-rules'),
+                         ('operator_status', 'operator-status'), ('retention_plan', 'retention-plan'),
+                         ('import_retained', 'import-retained'), ('recovery_plan', 'recovery-plan'),
+                         ('streamed_recovery', 'streamed-recovery'),
                          ('update_only', 'update'), ('plan_only', 'plan')):
         if getattr(args, field, None):
             return label
@@ -202,8 +215,8 @@ def parser():
                    help='Retain exact catalog continuation inputs here; defaults beside the summary')
     p.add_argument("--repair", action="store_true",
                    help=argparse.SUPPRESS)
-    p.add_argument("--inspect-bodies", action="store_true",
-                   help=argparse.SUPPRESS)
+    p.add_argument('--dataset', default='default',
+                   help='Target dataset name for operator status and retention planning')
     p.add_argument("--summary", type=Path, default=Path("raw-capture-summary.json"))
     return p
 
@@ -327,7 +340,7 @@ def run(args, log, *, store=None, raw_storage=None):
     mode = operation_mode(args)
     if args.retained_catalog is not None and mode != 'adopt-catalog':
         raise SystemExit('--retained-catalog requires --adopt-catalog')
-    metadata_only = mode not in {'capture', 'plan'}
+    metadata_only = mode not in {'capture', 'plan', 'streamed-recovery', 'import-retained'}
     if args.capture_only and metadata_only:
         raise SystemExit('--capture-only cannot be combined with catalog or adoption modes')
     if args.upgrade_source_rules is not None and not args.upgrade_source_rules.strip():
@@ -362,7 +375,7 @@ def run(args, log, *, store=None, raw_storage=None):
     if raw_storage is None:
         if args.native_config is None:
             raise SystemExit('--native-config is required; raw archive adoption is explicit')
-        from congress_api.retention.docspec import NativeDatasets
+        from docspec_client import NativeDatasets
         from congress_api.retention.raw_storage import RawStorage
         native = NativeDatasets.from_config(args.native_config)
     if store is None:
@@ -405,7 +418,57 @@ def run(args, log, *, store=None, raw_storage=None):
                 save_summary(args.summary, summary)
                 summary.update(capture_sources(args, store, run_id, raw_storage=raw_storage))
                 summary['acquisition_status'] = 'completed'
-            if mode == 'adopt-raw':
+            if mode == 'operator-status':
+                active_stage = 'operator_status'
+                summary[active_stage] = 'running'
+                save_summary(args.summary, summary)
+                from congress_api.retention.native_capacity import inspect_operator_status
+                dataset = getattr(args, 'dataset', 'default') or 'default'
+                status = inspect_operator_status(native, dataset)
+                summary['operator_status'] = status
+                summary[active_stage] = 'completed'
+            elif mode == 'retention-plan':
+                active_stage = 'retention_plan'
+                summary[active_stage] = 'running'
+                save_summary(args.summary, summary)
+                from congress_api.retention.native_capacity import plan_protected_retention
+                dataset = getattr(args, 'dataset', 'default') or 'default'
+                plan = plan_protected_retention(native, dataset)
+                summary['retention_plan'] = plan
+                summary[active_stage] = 'completed'
+            elif mode == 'import-retained':
+                active_stage = 'retained_import'
+                summary[active_stage] = 'running'
+                save_summary(args.summary, summary)
+                from congress_api.acquisition.retained_import import capture_retained_batch
+                archive = Archive(store, run_id, storage=raw_storage)
+                urls = args.selected_urls or []
+                if not urls and args.seed:
+                    urls = [link['url'] for item in seed_files(args.seed) for link in item.get('links', []) if 'url' in link]
+                batch_result = capture_retained_batch(archive, urls)
+                summary['retained_import'] = batch_result
+                summary[active_stage] = 'completed'
+            elif mode == 'recovery-plan':
+                active_stage = 'recovery_plan'
+                summary[active_stage] = 'running'
+                save_summary(args.summary, summary)
+                from congress_api.acquisition.recovery_queue import plan_recovery
+                archive = Archive(store, run_id, storage=raw_storage)
+                rows = archive.state.values()
+                plan = plan_recovery(rows)
+                summary['recovery_plan'] = plan
+                summary[active_stage] = 'completed'
+            elif mode == 'streamed-recovery':
+                active_stage = 'streamed_recovery'
+                summary[active_stage] = 'running'
+                save_summary(args.summary, summary)
+                from congress_api.acquisition.streamed_recovery import download_ranges
+                archive = Archive(store, run_id, storage=raw_storage)
+                with RustFetcher(args.fetcher_binary, workers=args.workers) as fetcher:
+                    result = download_ranges(archive, args.selected_urls or (), fetch=fetcher.fetch)
+                summary['streamed_recovery'] = result
+                summary[active_stage] = 'completed'
+            elif mode == 'adopt-raw':
                 from congress_api.retention.raw_adoption import adopt_archive
                 active_stage = 'raw_adoption_status'
                 summary[active_stage] = 'running'

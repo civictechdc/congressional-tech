@@ -125,7 +125,7 @@ def prepare_reading_input(store, *, directory):
             from concurrent.futures import ThreadPoolExecutor
             from .raw_readings import read_reading_part_bytes
             key_list = list(_keys(store, db))
-            if 'PYTEST_CURRENT_TEST' not in os.environ and getattr(store, 'bucket', None) and len(key_list) > 1:
+            if getattr(store, 'cache_dir', None) is not None and len(key_list) > 1:
                 with ThreadPoolExecutor(max_workers=24) as pool:
                     list(pool.map(lambda k: read_reading_part_bytes(store, k), key_list))
             for key in key_list:

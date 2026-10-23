@@ -29,11 +29,8 @@ def main(argv=None):
     raw_sync.add_catalog_modes(parser.add_mutually_exclusive_group())
     parser.add_argument('--native-config', type=Path, help='Explicit maintained native runtime for raw archive updates')
     parser.add_argument('--catalog-directory', type=Path, help='Retain exact native catalog continuation inputs here')
-    # Old invocations remain valid, but all refresh modes use the same updater.
-    for flag in ('--documents-only', '--metadata-only', '--source-metadata-only'):
-        parser.add_argument(flag, action='store_true', help=argparse.SUPPRESS)
     parser.add_argument("--workers", type=int, default=4)
-    args = parser.parse_args(argv)
+    args, _ = parser.parse_known_args(argv)
     if args.workers < 1:
         parser.error("--workers must be positive")
     native_mode = (args.native_config is not None or raw_sync.operation_mode(args) != 'capture'

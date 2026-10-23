@@ -9,7 +9,7 @@ import json
 import time
 import pyarrow as pa
 
-from .docspec import (
+from docspec_client import (
     AggregateSpec,
     ConnectedComponentsTransform,
     ConnectedEdgeSpec,

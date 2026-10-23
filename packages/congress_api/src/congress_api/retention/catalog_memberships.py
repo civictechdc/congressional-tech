@@ -17,7 +17,7 @@ from types import MappingProxyType
 import pyarrow as pa
 
 from .catalog_dependencies import DependencyGap
-from .docspec import PartitionSpec, UpdateMergeSpec
+from docspec_client import PartitionSpec, UpdateMergeSpec
 from .partition_routing import RoutingPages, split_partition, key_hash
 
 ALIAS_KEY_SHA256_FIELD = 'alias_key_sha256'

@@ -38,31 +38,24 @@ class SourceCaptureInputs:
 
     def attach(self, trace, entry, captures, *, _reference=None):
         """Attach a batch read by RawSnapshot.capture_batch to its observations."""
-        import os
         if not captures.schema.equals(NATIVE_CAPTURE_SCHEMA, check_metadata=True):
             raise ValueError('Source capture input requires the exact raw logical schema')
         orders = captures['_capture_order'].to_pylist()
         if orders != list(range(entry['first_order'], entry['first_order'] + entry['rows'])):
             raise ValueError('Source capture input ordinal/count differs from the raw batch')
         reference = _reference if _reference is not None else self.objects.put(dict(version=1, entry=entry))
-        if 'PYTEST_CURRENT_TEST' not in os.environ:
-            prefix = 'native:{"batch":' + encoded(reference).decode() + ',"order":'
-            rkeys = captures['receipt_key'].to_pylist()
-            rlines = captures['receipt_line'].to_pylist()
-            for rkey, rline, order in zip(rkeys, rlines, orders):
-                trace(dict(receipt_key=rkey, receipt_line=rline, kind='capture',
-                           value=f'{prefix}{order}}}', access='write'))
-            return reference
-        for row in captures.select(['receipt_key', 'receipt_line', '_capture_order']).to_pylist():
-            trace(dict(receipt_key=row['receipt_key'], receipt_line=row['receipt_line'], kind='capture',
-                       value=capture_input(reference, row['_capture_order']), access='write'))
+        prefix = 'native:{"batch":' + encoded(reference).decode() + ',"order":'
+        rkeys = captures['receipt_key'].to_pylist()
+        rlines = captures['receipt_line'].to_pylist()
+        for rkey, rline, order in zip(rkeys, rlines, orders):
+            trace(dict(receipt_key=rkey, receipt_line=rline, kind='capture',
+                       value=f'{prefix}{order}}}', access='write'))
         return reference
 
     def changed(self, snapshot, change, trace):
         """Yield only appended exact batches from one durable raw change."""
-        import os
         entries = list(snapshot.changed_capture_batches(change))
-        if 'PYTEST_CURRENT_TEST' not in os.environ and len(entries) > 1:
+        if self.objects.supports_batch_put and len(entries) > 1:
             refs = []
             uploads = []
             for entry in entries:

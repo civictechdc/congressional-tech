@@ -70,83 +70,210 @@ class _ByteBudget:
         self.changed.set()
 
 
+class SyncBackpressurePolicy:
+    """Calculates and validates byte/spool buffer reservations and limits.
+
+    Ensures that parent body payloads and spooled temporary response files
+    respect memory limits during concurrent fetches and body extractions.
+    """
+
+    def __init__(
+        self,
+        max_bytes,
+        max_buffer_bytes,
+        max_spool_bytes,
+        *,
+        resource_bounded=False,
+        fetch_spooled=None,
+    ):
+        self.max_bytes = max_bytes
+        self.reservation = max_bytes * 3 + 1024**2
+        self.spool_reservation = max_bytes * 7 // 3 + 1024**2
+        self.resource_bounded = resource_bounded
+        if max_buffer_bytes < self.reservation:
+            raise ValueError("Body buffer must hold three maximum file sizes plus 1 MiB")
+        if fetch_spooled is not None and max_spool_bytes < self.spool_reservation:
+            raise ValueError(
+                "Spool buffer must hold direct and provider/compressed response files"
+            )
+        self.archive_limits = (
+            ZipLimits(
+                max_archive_bytes=max_bytes,
+                max_member_bytes=self.reservation // 2,
+                max_total_bytes=self.reservation,
+            )
+            if resource_bounded
+            else None
+        )
+
+
+class SyncQueueManager:
+    """Manages acquisition candidate queue, seed discovery, and URL scope filtering."""
+
+    @staticmethod
+    def initialize_queue(
+        archive,
+        seeds,
+        *,
+        urls=None,
+        retry_outcomes=(),
+        initial_only=False,
+        reinspect_retained=False,
+        retry_now=False,
+        limit=5000,
+        now=None,
+    ):
+        if now is None:
+            now = datetime.now(timezone.utc)
+        context = {}
+        for item in seeds:
+            if retry_outcomes:
+                raise ValueError("Retry selection cannot add seeds")
+            if reinspect_retained:
+                raise ValueError("Retained reinspection cannot add seeds")
+            for link in archive.seed_links(item, publisher_link=True):
+                context.setdefault(link["url"], []).append(link)
+        for link in (
+            ()
+            if retry_outcomes or reinspect_retained
+            else archive.admit_pending_urls(urls)
+        ):
+            if link not in context.get(link["url"], []):
+                context.setdefault(link["url"], []).append(link)
+        if hasattr(archive, "capture_queue"):
+            candidates, refusals = archive.capture_queue(
+                now=now,
+                limit=limit,
+                urls=urls,
+                retry_outcomes=retry_outcomes,
+                initial_only=initial_only,
+                reinspect_retained=reinspect_retained,
+                retry_now=retry_now,
+            )
+            queue = deque(candidates)
+        else:
+            queue = deque(
+                sorted(
+                    (
+                        s
+                        for s in archive.state.values()
+                        if (urls is None or s["url"] in urls)
+                        and (
+                            True
+                            if reinspect_retained
+                            else s["outcome"] in retry_outcomes
+                            if retry_outcomes
+                            else s["outcome"] == "pending"
+                            if initial_only
+                            else s["outcome"] not in NON_DOWNLOAD_OUTCOMES
+                        )
+                        and (
+                            reinspect_retained
+                            or retry_now
+                            or not s.get("next_attempt_at")
+                            or datetime.fromisoformat(s["next_attempt_at"]) <= now
+                        )
+                    ),
+                    key=lambda s: (
+                        s["outcome"] == "retained",
+                        s.get("checked_at") or "",
+                        s["url"],
+                    ),
+                )
+            )
+            refusals = []
+        for state in queue:
+            if not archive_links.allowed_url(state["url"]):
+                refusals.append(
+                    dict(
+                        url=state["url"],
+                        previous_outcome=state["outcome"],
+                        reason="outside_capture_scope",
+                    )
+                )
+                state.update(outcome="excluded_scope", next_attempt_at=None)
+        refused = {row["url"] for row in refusals}
+        filtered_queue = deque(state for state in queue if state["url"] not in refused)
+        return filtered_queue, context, refusals
+
+
 def run_sync(archive, seeds, **options):
     """Synchronous CLI boundary; the capture lifecycle runs on one event loop."""
     return asyncio.run(run_async(archive, seeds, **options))
 
 
 async def run_async(
-    archive, seeds, *, fetch=None, fetch_spooled=None, limit=5000, workers=8, max_seconds=5400,
-    stop=None, max_bytes=64 * 1024**2, max_buffer_bytes=2 * 1024**3,
-    download_workers=16, max_spool_bytes=2 * 1024**3, metadata_workers=3, initial_only=False,
-    retry_outcomes=(), urls=None, reinspect_retained=False, retry_now=False,
+    archive,
+    seeds,
+    *,
+    fetch=None,
+    fetch_spooled=None,
+    limit=5000,
+    workers=8,
+    max_seconds=5400,
+    stop=None,
+    max_bytes=64 * 1024**2,
+    max_buffer_bytes=2 * 1024**3,
+    download_workers=16,
+    max_spool_bytes=2 * 1024**3,
+    metadata_workers=3,
+    initial_only=False,
+    retry_outcomes=(),
+    urls=None,
+    reinspect_retained=False,
+    retry_now=False,
     resource_bounded=False,
 ):
+    """Asynchronously sync missing linked sources into the raw capture archive.
+
+    Coordinates concurrent downloads, memory and disk spool backpressure,
+    metadata extraction processes, and atomic checkpoint persistence.
+    """
     retry_outcomes = frozenset(retry_outcomes)
     urls = None if urls is None else frozenset(urls)
     if urls is not None and any(not isinstance(url, str) or not url for url in urls):
-        raise ValueError('URL selection must contain nonempty strings')
+        raise ValueError("URL selection must contain nonempty strings")
     if reinspect_retained and (urls is None or retry_outcomes or initial_only):
-        raise ValueError('Retained reinspection requires explicit URLs without retry or initial selection')
-    if reinspect_retained and any(not archive.state.get(url, {}).get('body_key') for url in urls):
-        raise ValueError('Every retained reinspection URL must have a retained body')
+        raise ValueError(
+            "Retained reinspection requires explicit URLs without retry or initial selection"
+        )
+    if reinspect_retained and any(
+        not archive.state.get(url, {}).get("body_key") for url in urls
+    ):
+        raise ValueError("Every retained reinspection URL must have a retained body")
     if retry_outcomes and (initial_only or not retry_outcomes <= RETRY_OUTCOMES):
-        raise ValueError('Retry selection requires failed outcomes and no initial_only')
-    if retry_outcomes - {'retry_later', 'request_failed'} and urls is None:
-        raise ValueError('Historical outcome retries require explicit URLs')
+        raise ValueError("Retry selection requires failed outcomes and no initial_only")
+    if retry_outcomes - {"retry_later", "request_failed"} and urls is None:
+        raise ValueError("Historical outcome retries require explicit URLs")
     if retry_now and (urls is None or not retry_outcomes or reinspect_retained):
-        raise ValueError('Immediate retry requires explicit URLs and retry outcomes')
-    # Reserve for a direct body plus the bounded Zyte response and decoded body.
-    # After separation, retain only the actual distinct byte payload reservation.
-    reservation = max_bytes * 3 + 1024**2
-    if max_buffer_bytes < reservation:
-        raise ValueError('Body buffer must hold three maximum file sizes plus 1 MiB')
+        raise ValueError("Immediate retry requires explicit URLs and retry outcomes")
     if workers < 1 or download_workers < 1 or metadata_workers < 1:
-        raise ValueError('Capture workers must be positive')
+        raise ValueError("Capture workers must be positive")
     if (fetch is None) == (fetch_spooled is None):
-        raise ValueError('Supply exactly one capture fetcher')
-    # Keep the direct attempt through fallback, plus provider JSON or compressed
-    # scratch. This reservation lasts until upload AND metadata reading finish.
-    spool_reservation = max_bytes * 7 // 3 + 1024**2
-    if fetch_spooled is not None and max_spool_bytes < spool_reservation:
-        raise ValueError('Spool buffer must hold direct and provider/compressed response files')
-    archive_limits = (ZipLimits(max_archive_bytes=max_bytes,
-        max_member_bytes=reservation // 2, max_total_bytes=reservation)
-        if resource_bounded else None)
-    context = {}
-    for item in seeds:
-        if retry_outcomes:
-            raise ValueError('Retry selection cannot add seeds')
-        if reinspect_retained:
-            raise ValueError('Retained reinspection cannot add seeds')
-        for link in archive.seed_links(item, publisher_link=True):
-            context.setdefault(link['url'], []).append(link)
-    for link in (() if retry_outcomes or reinspect_retained else archive.admit_pending_urls(urls)):
-        if link not in context.get(link['url'], []):
-            context.setdefault(link['url'], []).append(link)
-    now = datetime.now(timezone.utc)
-    if hasattr(archive, 'capture_queue'):
-        candidates, refusals = archive.capture_queue(now=now, limit=limit, urls=urls,
-            retry_outcomes=retry_outcomes, initial_only=initial_only,
-            reinspect_retained=reinspect_retained, retry_now=retry_now)
-        queue = deque(candidates)
-    else:
-        queue = deque(sorted(
-            (s for s in archive.state.values()
-             if (urls is None or s['url'] in urls)
-             and (True if reinspect_retained else s['outcome'] in retry_outcomes if retry_outcomes else
-                 s['outcome'] == 'pending' if initial_only else s['outcome'] not in NON_DOWNLOAD_OUTCOMES)
-             and (reinspect_retained or retry_now or not s.get('next_attempt_at') or datetime.fromisoformat(s['next_attempt_at']) <= now)),
-            key=lambda s: (s['outcome'] == 'retained', s.get('checked_at') or '', s['url'])))
-        refusals = []
-    for state in queue:
-        if not archive_links.allowed_url(state['url']):
-            refusals.append(dict(url=state['url'], previous_outcome=state['outcome'],
-                                 reason='outside_capture_scope'))
-            state.update(outcome='excluded_scope', next_attempt_at=None)
-    refused = {row['url'] for row in refusals}
-    queue = deque(state for state in queue if state['url'] not in refused)
-    scheduled = {s['url'] for s in queue}
+        raise ValueError("Supply exactly one capture fetcher")
+
+    policy = SyncBackpressurePolicy(
+        max_bytes,
+        max_buffer_bytes,
+        max_spool_bytes,
+        resource_bounded=resource_bounded,
+        fetch_spooled=fetch_spooled,
+    )
+    reservation = policy.reservation
+    spool_reservation = policy.spool_reservation
+    archive_limits = policy.archive_limits
+
+    queue, context, refusals = SyncQueueManager.initialize_queue(
+        archive,
+        seeds,
+        urls=urls,
+        retry_outcomes=retry_outcomes,
+        initial_only=initial_only,
+        reinspect_retained=reinspect_retained,
+        retry_now=retry_now,
+        limit=limit,
+    )
+    scheduled = {s["url"] for s in queue}
     delayed, retries = [], Counter()
     deadline = time.monotonic() + max_seconds
     counts, timings = Counter(), Counter()
@@ -438,7 +565,7 @@ async def run_async(
                     for task in list(active):
                         try:
                             await collect(task)
-                        except Exception:
+                        except (OSError, RuntimeError, ValueError, asyncio.CancelledError):
                             pass  # Original failure remains authoritative.
                     raise
         finally:

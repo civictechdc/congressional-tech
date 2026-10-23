@@ -93,10 +93,10 @@ def iter_adopted_body_readings(store, parts, *, cache_path, expected, directory)
                 raise ValueError('Adopted reader part exceeds stored-byte budget')
             digest = sha256(data).hexdigest()
             key = READER_PREFIX + 'adopted-' + digest + '.parquet'
-            import os
             from .raw_readings import _READING_PART_CACHE
-            if 'PYTEST_CURRENT_TEST' not in os.environ and getattr(store, 'bucket', None):
-                cache_dir = Path('.cache/docspec-catalog/reading-parts')
+            raw_cache_dir = getattr(store, 'cache_dir', None)
+            if raw_cache_dir is not None:
+                cache_dir = Path(raw_cache_dir) / 'reading-parts'
                 cache_file = cache_dir / (sha256(key.encode()).hexdigest() + '.parquet')
                 if not cache_file.is_file():
                     store.put(key, data, immutable=True)
@@ -104,7 +104,7 @@ def iter_adopted_body_readings(store, parts, *, cache_path, expected, directory)
                         cache_dir.mkdir(parents=True, exist_ok=True)
                         tmp = cache_file.with_suffix('.tmp')
                         tmp.write_bytes(data)
-                        os.replace(tmp, cache_file)
+                        tmp.replace(cache_file)
                     except OSError:
                         pass
                 if len(_READING_PART_CACHE) < 4096:

@@ -14,7 +14,7 @@ import weakref
 import pyarrow
 import pyarrow.parquet as pq
 
-from .catalog_publication import _manifest
+from .catalog_types import _manifest
 
 _issued = weakref.WeakValueDictionary()
 

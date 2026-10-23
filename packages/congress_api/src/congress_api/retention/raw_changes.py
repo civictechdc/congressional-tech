@@ -13,13 +13,11 @@ class RawChanges:
         self.objects = MetadataObjects(store, 'raw-changes-v1')
 
     def _keys(self, keys):
-        import os
         head, pending = None, []
         pending_uploads = []
-        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
 
         def _put_page(value):
-            if in_pytest:
+            if not self.objects.supports_batch_put:
                 return self.objects.put(value)
             ref, digest, key, raw = self.objects.prepare_put(value)
             pending_uploads.append((digest, key, raw))

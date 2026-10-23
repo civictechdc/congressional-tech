@@ -10,7 +10,7 @@ from tempfile import TemporaryDirectory
 import pyarrow as pa
 
 from .catalog_batches import CatalogComponentReader, SelectedCatalogTable, same_logical_catalog_schema, can_read_catalog_schema
-from .catalog_publication import MANIFEST_KEY
+from .catalog_types import MANIFEST_KEY, read_adoption_proof
 from .catalog_validation import CatalogReferenceCheck, catalog_reference_requirements
 from .immutable_metadata import MetadataObjects, encoded
 from .partition_routing import RoutingPages, key_hash
@@ -398,7 +398,6 @@ def publish_native_catalog(store, scope_reference, *, previous, adoption_referen
         if previous.manifest is not None or previous.files:
             if adoption_reference is None:
                 raise ValueError('Existing file catalog requires qualified explicit native adoption')
-            from .catalog_adoption import read_adoption_proof
             read_adoption_proof(store, adoption_reference, previous=previous,
                                 scope_reference=scope_reference, scope=proof)
         root, dependency, counts = None, None, dict(source_rows=0, document_rows=0)

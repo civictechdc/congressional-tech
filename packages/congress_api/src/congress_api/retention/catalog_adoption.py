@@ -17,12 +17,9 @@ from .catalog_scope import _component_pages, catalog_scope_requirements
 from .catalog_validation import catalog_reference_requirements
 from .immutable_metadata import MetadataObjects, encoded
 from .derived_files import VerifiedFile, check_identity, file_identity
+from .catalog_selection import NativeCatalogSnapshot, publish_native_catalog
+from .catalog_types import adoption_requirements, read_adoption_proof
 from .native_capacity import preparation_budget, recheck_adoption_capacity, require_adoption_capacity
-
-
-def adoption_requirements():
-    return dict(validator='catalog-native-adoption-v1',
-                implementation_sha256=sha256(Path(__file__).read_bytes() + Path(__file__).with_name('catalog_rows.py').read_bytes()).hexdigest())
 
 
 def _save_preparation(path, request, dependency=None):
@@ -160,33 +157,9 @@ def qualify_adoption_readback(store, native, prepared, files, *, max_bytes):
         return result
 
 
-def read_adoption_proof(store, reference, *, previous, scope_reference, scope):
-    proof = MetadataObjects(store, 'catalog-adoption-v1', max_cache_entries=1).read(reference)
-    binding = proof.get('binding')
-    if (proof.get('version') != 1 or proof.get('requirements') != adoption_requirements()
-            or binding != sha256(encoded({k: v for k, v in proof.items() if k != 'binding'})).hexdigest()
-            or proof.get('base') != previous.identity or proof.get('files') != previous.files
-            or proof.get('scope_reference') != scope_reference or proof.get('schemas') != scope['schemas']
-            or proof.get('dependency_after') != scope['dependency_after']
-            or scope['dependency_before'] is not None or scope['retired']['count'] != 0):
-        raise ValueError('Native adoption proof differs from the exact selected file basis')
-    for label, count in [('filenames', 'source'), ('documents', 'document')]:
-        evidence = proof['readback'][label]
-        with pq.ParquetFile(previous.filenames_path if label == 'filenames' else previous.documents_path) as old:
-            old_count = old.metadata.num_rows
-            old_schema = base64.b64encode(old.schema_arrow.serialize().to_pybytes()).decode()
-        if (evidence['rows'] != old_count or proof['schemas'][label] != old_schema
-                or evidence['rows'] != scope['counts']['prepared_' + count + '_rows']
-                or any(not isinstance(evidence.get(name), str) or len(evidence[name]) != 64
-                       for name in ('all_fields_sha256', 'ordered_ids_sha256'))):
-            raise ValueError('Native adoption completeness or mapping proof differs')
-    return proof
-
-
 def adopt_native_catalog(store, *, native, previous, dependencies, candidate, directory,
                          max_chunk_rows, max_chunk_bytes, rules, on_progress=None):
     """Preserve the exact existing pair; no grouping or classification replay."""
-    from .catalog_selection import NativeCatalogSnapshot, publish_native_catalog
     if not isinstance(candidate, str) or not candidate or not isinstance(rules, dict) or not rules:
         raise ValueError('Native adoption requires a candidate and explicit preserved interpretation rules')
     if type(max_chunk_rows) is not int or max_chunk_rows < 1 or type(max_chunk_bytes) is not int or max_chunk_bytes < 1:
