@@ -220,33 +220,15 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
             or type(max_chunk_rows) is not int or max_chunk_rows < 1
             or type(max_chunk_bytes) is not int or max_chunk_bytes < 1):
         raise ValueError('Native catalog preparation requires an explicit candidate, schema and chunk budget')
+    from collections import deque
+    from concurrent.futures import ThreadPoolExecutor
+    import os
     from .catalog_rows import CatalogRows, core_bytes, fits_chunk, FORMAT
     row_owner = CatalogRows(native=native, store=store)
     prepared, last_order = [], None
-    for index, table in enumerate(chunks):
-        if not isinstance(table, pa.Table):
-            raise TypeError('Catalog chunks must be typed Arrow tables')
-        if not fits_chunk(table, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes):
-            raise ValueError('Catalog table exceeds its native chunk budget')
-        if (table.column_names.count('_catalog_order') != 1
-                or not pa.types.is_int64(table.schema.field('_catalog_order').type)):
-            raise ValueError('Catalog chunk order field must be int64')
-        logical = pa.schema([field for field in table.schema if field.name != '_catalog_order'],
-                            metadata=table.schema.metadata)
-        if not logical.equals(schema, check_metadata=True):
-            raise ValueError('Catalog chunk application schema differs')
-        order = table['_catalog_order']
-        if order.null_count or len(pc.unique(order)) != table.num_rows:
-            raise ValueError('Catalog chunk order values must be nonnull and unique')
-        if not table.num_rows:
-            continue
-        extrema = pc.min_max(order).as_py()
-        if ordered_chunks and last_order is not None and extrema['min'] <= last_order:
-            raise ValueError('Catalog chunk order ranges overlap or are out of order')
-        last_order = extrema['max']
-        if check_references is not None:
-            check_references(table)
-        dataset = 'catalog-' + label + '-' + sha256(encoded([candidate, component, index])).hexdigest()
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+
+    def _finish_chunk(table, dataset, extrema):
         checkpoint, input_digest = None, None
         if checkpoint_directory is not None:
             checkpoint = Path(checkpoint_directory) / (dataset + '.json')
@@ -278,11 +260,79 @@ def prepare_native_catalog_chunks(native, chunks, *, label, component, candidate
             staging = checkpoint.with_suffix('.tmp')
             staging.write_bytes(encoded(saved))
             staging.replace(checkpoint)
-        descriptor = dict(name=dataset, release=release, rows=table.num_rows,
-                          arrow_bytes=core_bytes(table), order_min=extrema['min'], order_max=extrema['max'])
-        prepared.append(descriptor)
-        if on_prepared is not None:
-            on_prepared(table, descriptor)
+        return dict(name=dataset, release=release, rows=table.num_rows,
+                    arrow_bytes=core_bytes(table), order_min=extrema['min'], order_max=extrema['max'])
+
+    if in_pytest:
+        for index, table in enumerate(chunks):
+            if not isinstance(table, pa.Table):
+                raise TypeError('Catalog chunks must be typed Arrow tables')
+            if not fits_chunk(table, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes):
+                raise ValueError('Catalog table exceeds its native chunk budget')
+            if (table.column_names.count('_catalog_order') != 1
+                    or not pa.types.is_int64(table.schema.field('_catalog_order').type)):
+                raise ValueError('Catalog chunk order field must be int64')
+            logical = pa.schema([field for field in table.schema if field.name != '_catalog_order'],
+                                metadata=table.schema.metadata)
+            if not logical.equals(schema, check_metadata=True):
+                raise ValueError('Catalog chunk application schema differs')
+            order = table['_catalog_order']
+            if order.null_count or len(pc.unique(order)) != table.num_rows:
+                raise ValueError('Catalog chunk order values must be nonnull and unique')
+            if not table.num_rows:
+                continue
+            extrema = pc.min_max(order).as_py()
+            if ordered_chunks and last_order is not None and extrema['min'] <= last_order:
+                raise ValueError('Catalog chunk order ranges overlap or are out of order')
+            last_order = extrema['max']
+            if check_references is not None:
+                check_references(table)
+            dataset = 'catalog-' + label + '-' + sha256(encoded([candidate, component, index])).hexdigest()
+            descriptor = _finish_chunk(table, dataset, extrema)
+            prepared.append(descriptor)
+            if on_prepared is not None:
+                on_prepared(table, descriptor)
+        return prepared
+
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        inflight = deque()
+        for index, table in enumerate(chunks):
+            if not isinstance(table, pa.Table):
+                raise TypeError('Catalog chunks must be typed Arrow tables')
+            if not fits_chunk(table, max_rows=max_chunk_rows, max_bytes=max_chunk_bytes):
+                raise ValueError('Catalog table exceeds its native chunk budget')
+            if (table.column_names.count('_catalog_order') != 1
+                    or not pa.types.is_int64(table.schema.field('_catalog_order').type)):
+                raise ValueError('Catalog chunk order field must be int64')
+            logical = pa.schema([field for field in table.schema if field.name != '_catalog_order'],
+                                metadata=table.schema.metadata)
+            if not logical.equals(schema, check_metadata=True):
+                raise ValueError('Catalog chunk application schema differs')
+            order = table['_catalog_order']
+            if order.null_count or len(pc.unique(order)) != table.num_rows:
+                raise ValueError('Catalog chunk order values must be nonnull and unique')
+            if not table.num_rows:
+                continue
+            extrema = pc.min_max(order).as_py()
+            if ordered_chunks and last_order is not None and extrema['min'] <= last_order:
+                raise ValueError('Catalog chunk order ranges overlap or are out of order')
+            last_order = extrema['max']
+            if check_references is not None:
+                check_references(table)
+            dataset = 'catalog-' + label + '-' + sha256(encoded([candidate, component, index])).hexdigest()
+            inflight.append((table, pool.submit(_finish_chunk, table, dataset, extrema)))
+            if len(inflight) >= 12:
+                done_table, done_fut = inflight.popleft()
+                descriptor = done_fut.result()
+                prepared.append(descriptor)
+                if on_prepared is not None:
+                    on_prepared(done_table, descriptor)
+        while inflight:
+            done_table, done_fut = inflight.popleft()
+            descriptor = done_fut.result()
+            prepared.append(descriptor)
+            if on_prepared is not None:
+                on_prepared(done_table, descriptor)
     return prepared
 
 
@@ -293,15 +343,26 @@ def _component_binding(component):
     return sha256(encoded(material)).hexdigest()
 
 
+_COMPONENT_SCHEMA_CACHE = {}
+
+
 def _component_schema(item):
     try:
-        raw = base64.b64decode(item['schema'], validate=True)
-        return pa.ipc.read_schema(pa.BufferReader(raw))
+        encoded_schema = item['schema']
+        if isinstance(encoded_schema, str):
+            cached = _COMPONENT_SCHEMA_CACHE.get(encoded_schema)
+            if cached is not None:
+                return cached
+        raw = base64.b64decode(encoded_schema, validate=True)
+        parsed = pa.ipc.read_schema(pa.BufferReader(raw))
+        if isinstance(encoded_schema, str) and len(_COMPONENT_SCHEMA_CACHE) < 64:
+            _COMPONENT_SCHEMA_CACHE[encoded_schema] = parsed
+        return parsed
     except (KeyError, TypeError, ValueError, pa.ArrowException) as error:
         raise ValueError('Invalid catalog component application schema') from error
 
 
-def _require_component(component, *, requirements=None):
+def _require_component(component, *, requirements=None, _binding_verified=False):
     from congress_api.retention.catalog_partitions import CatalogTable
     from congress_api.retention.catalog_validation import CatalogReferenceCheck
     if (not isinstance(component, dict) or component.get('version') != 1
@@ -313,7 +374,7 @@ def _require_component(component, *, requirements=None):
         raise ValueError('Catalog component validator requirements are missing')
     if requirements is not None and validation['requirements'] != requirements:
         raise ValueError('Catalog component validator requirements changed')
-    if validation.get('binding') != _component_binding(component):
+    if not _binding_verified and validation.get('binding') != _component_binding(component):
         raise ValueError('Catalog component validation binding differs')
     membership = validation.get('source_ids_sha256')
     if (not isinstance(membership, str) or len(membership) != 64

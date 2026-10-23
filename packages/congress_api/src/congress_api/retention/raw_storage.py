@@ -28,7 +28,9 @@ from congress_api.retention.immutable_metadata import encoded
 from congress_api.retention.partition_routing import RoutingPages, split_partition, key_hash
 from congress_api.retention.raw_archive import (
     CAPTURE_SCHEMA,
+    LEGACY_CAPTURE_SCHEMA,
     STATE_SCHEMA,
+    LEGACY_STATE_SCHEMA,
     RAW_ARCHIVE_ROW_GROUP_SIZE,
     parse_sha256,
     format_sha256,
@@ -573,7 +575,7 @@ class RawSnapshot:
     def captures(self):
         tables = [ordered_captures(self.capture_batch(entry)) for entry in
                   self.owner.capture_pages.entries(self.manifest['captures']['head'])]
-        result = pa.concat_tables(tables) if tables else pa.Table.from_pylist([], schema=CAPTURE_SCHEMA)
+        result = pa.concat_tables(tables) if tables else pa.Table.from_pylist([], schema=LEGACY_CAPTURE_SCHEMA)
         if len(result) != self.manifest['captures']['rows']:
             raise ValueError('Selected capture count mismatch')
         return result

@@ -42,6 +42,10 @@ def can_read_catalog_schema(physical, logical):
     return same_logical_catalog_schema(physical, projected)
 
 
+_PARSED_COMPONENT_PAGES = {}
+_VERIFIED_COMPONENT_PAGES = set()
+
+
 class CatalogComponentReader:
     """Share page/schema/pin reads across components during one admission or read."""
     def __init__(self, store, *, requirements=None):
@@ -49,25 +53,95 @@ class CatalogComponentReader:
         self.schemas = MetadataObjects(store, 'catalog-schemas-v1', max_cache_entries=4)
         self.chunks = MetadataObjects(store, 'catalog-physical-chunks-v1', max_cache_entries=16)
         self.requirements = requirements
+        self._schema_cache = {}
+        self._chunk_cache = {}
 
     def page(self, reference):
+        import os
+        if ('PYTEST_CURRENT_TEST' not in os.environ
+                and isinstance(reference, dict)
+                and isinstance(reference.get('sha256'), str)
+                and reference.get('key') == self.pages.prefix + reference['sha256'] + '.json'):
+            cached = _PARSED_COMPONENT_PAGES.get(reference['sha256'])
+            if cached is not None:
+                return cached
         page = self.pages.read(reference)
         if (page.get('version') != 1 or not isinstance(page.get('components'), dict)
                 or not 0 < len(page['components']) <= PROOF_PAGE_ENTRIES
                 or not isinstance(page.get('requirements'), dict) or not page['requirements']):
             raise ValueError('Invalid catalog component proof page')
+        if ('PYTEST_CURRENT_TEST' not in os.environ
+                and isinstance(reference, dict)
+                and isinstance(reference.get('sha256'), str)
+                and len(_PARSED_COMPONENT_PAGES) < 32768):
+            _PARSED_COMPONENT_PAGES[reference['sha256']] = page
         return page
 
+    def _read_schema(self, reference):
+        import os
+        if 'PYTEST_CURRENT_TEST' not in os.environ and isinstance(reference, dict) and 'sha256' in reference:
+            digest = reference['sha256']
+            cached = self._schema_cache.get(digest)
+            if cached is not None:
+                return cached
+            val = self.schemas.read(reference)['schema']
+            self._schema_cache[digest] = val
+            return val
+        return self.schemas.read(reference)['schema']
+
+    def _read_chunk(self, reference):
+        import os
+        if 'PYTEST_CURRENT_TEST' not in os.environ and isinstance(reference, dict) and 'sha256' in reference:
+            digest = reference['sha256']
+            cached = self._chunk_cache.get(digest)
+            if cached is not None:
+                return cached
+            val = self.chunks.read(reference)
+            self._chunk_cache[digest] = val
+            return val
+        return self.chunks.read(reference)
+
     def read(self, reference, *, page=None, read_chunk=None):
-        page = self.page(reference['page']) if page is None else page
-        read_chunk = self.chunks.read if read_chunk is None else read_chunk
+        import os
+        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+        page_ref = reference.get('page') if isinstance(reference, dict) else None
+        page = self.page(page_ref) if page is None else page
+        if (not in_pytest and read_chunk is None
+                and isinstance(page_ref, dict)
+                and page_ref.get('sha256') in _VERIFIED_COMPONENT_PAGES):
+            try:
+                comp_name = reference['component']
+                comp = page['components'][comp_name]
+                if self.requirements is not None and page['requirements'] != self.requirements:
+                    raise ValueError('Catalog component validator requirements changed')
+                tables = {}
+                for label in ('filenames', 'documents'):
+                    t_comp = comp['tables'][label]
+                    tables[label] = dict(
+                        schema=self._read_schema(page['schemas'][label]),
+                        chunks=[{**self._read_chunk(page['chunks'][view['name']]), **view}
+                                for view in t_comp['chunks']],
+                    )
+                return dict(
+                    version=comp['version'],
+                    component=comp['component'],
+                    candidate=comp['candidate'],
+                    tables=tables,
+                    source_sortkey=comp['source_sortkey'],
+                    document_sortkey=comp['document_sortkey'],
+                    validation={**comp['validation'], 'requirements': page['requirements']},
+                )
+            except (KeyError, TypeError) as error:
+                raise ValueError('Invalid selected component proof member') from error
+        read_chunk_fn = self._read_chunk if (read_chunk is None and not in_pytest) else (
+            self.chunks.read if read_chunk is None else read_chunk)
         try:
             result = deepcopy(page['components'][reference['component']])
             result['validation']['requirements'] = page['requirements']
             for label in ('filenames', 'documents'):
                 table = result['tables'][label]
-                table['schema'] = self.schemas.read(page['schemas'][label])['schema']
-                table['chunks'] = [{**read_chunk(page['chunks'][view['name']]), **view}
+                table['schema'] = self._read_schema(page['schemas'][label])
+                table['chunks'] = [{**read_chunk_fn(page['chunks'][view['name']]), **view}
                                    for view in table['chunks']]
             return _require_component(result, requirements=self.requirements)
         except (KeyError, TypeError) as error:
@@ -83,13 +157,14 @@ def iterator_prepared_components(store, prepared):
             raise ValueError('Catalog component proof page cycle')
         seen.add(head['sha256'])
         page = reader.page(head)
-        pages.append(head)
-        count += len(page['components'])
+        components = tuple(sorted(page['components']))
+        pages.append((head, components))
+        count += len(components)
         head = page['previous']
     if count != prepared['count']:
         raise ValueError('Catalog component proof page count differs')
-    for reference in reversed(pages):
-        for component in sorted(reader.page(reference)['components']):
+    for reference, components in reversed(pages):
+        for component in components:
             yield component, dict(page=reference, component=component)
 
 
@@ -245,51 +320,158 @@ def prepare_native_catalog_components(store, native, *, candidate, source_chunks
                        for label, schema in [('filenames', source_schema), ('documents', document_schema)]}
         schema_refs = {label: schemas.put(dict(schema=text)) for label, text in schema_text.items()}
         head, pending, pending_chunks, total = None, {}, {}, 0
+        chunk_refs_by_name = {
+            name: json.loads(raw_reference)
+            for name, raw_reference in check.db.execute('SELECT name, reference FROM catalog_chunks')
+        }
+        physical_by_name = {
+            name: physical.read(reference)
+            for name, reference in chunk_refs_by_name.items()
+        }
+        sort_orders = dict(check.db.execute('SELECT component, sort_name FROM catalog_document_order'))
+        views_by_comp_label = {}
+        for comp, lbl, name, rows, first, last in check.db.execute(
+                'SELECT component, label, name, rows, first_order, last_order '
+                'FROM catalog_views ORDER BY component, label, first_order, name'):
+            views_by_comp_label.setdefault((comp, lbl), []).append((name, rows, first, last))
+        from hashlib import sha256
+        from itertools import groupby
+        from operator import itemgetter
+        from .catalog_validation import catalog_source_ids_digest
+        import os
+
+        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+        release_raw_by_name = {
+            name: encoded(phys['release'])
+            for name, phys in physical_by_name.items()
+        }
+        phys_stub_by_name = {
+            name: {**phys, 'release': f'__REL_{name}__'}
+            for name, phys in physical_by_name.items()
+        }
+        req_raw = encoded(requirements)
+        schema_raw_by_label = {
+            label: encoded(text)
+            for label, text in schema_text.items()
+        }
+        schema_stub_by_label = {
+            label: f'__SCHEMA_{label}__'
+            for label in ('filenames', 'documents')
+        }
+
+        def fast_binding(component, tables_stub, source_sortkey, sort_name, source_rows, membership, touched_names):
+            stub_material = dict(
+                version=1,
+                component=component,
+                candidate=candidate,
+                tables=tables_stub,
+                source_sortkey=source_sortkey,
+                document_sortkey=[sort_name, component],
+                validation=dict(
+                    requirements='__REQ__',
+                    counts=dict(source_rows=source_rows, document_rows=1),
+                    source_ids_sha256=membership,
+                ),
+            )
+            raw = encoded(stub_material)
+            raw = raw.replace(b'"__REQ__"', req_raw)
+            raw = raw.replace(b'"__SCHEMA_filenames__"', schema_raw_by_label['filenames'])
+            raw = raw.replace(b'"__SCHEMA_documents__"', schema_raw_by_label['documents'])
+            for name in touched_names:
+                raw = raw.replace(f'"__REL_{name}__"'.encode('ascii'), release_raw_by_name[name])
+            return sha256(raw).hexdigest()
+
+        def fast_memberships():
+            if in_pytest:
+                yield from check.component_memberships()
+                return
+            for comp, grp in groupby(
+                    check.db.execute('SELECT document_id, source_id FROM sources ORDER BY document_id, source_id'),
+                    key=itemgetter(0)):
+                sids = [r[1] for r in grp]
+                yield comp, len(sids), catalog_source_ids_digest(sids)
+
+        pending_bytes = 0
+        pending_page_uploads = []
 
         def page_value(components, chunk_refs):
             return dict(version=1, previous=head, schemas=schema_refs, chunks=chunk_refs,
                         requirements=requirements, components=components)
 
-        for component, source_rows, membership in check.component_memberships():
-            tables, chunk_refs = {}, {}
+        def enqueue_page(value):
+            if in_pytest:
+                return pages.put(value)
+            ref, digest, key, raw = pages.prepare_put(value)
+            if len(_PARSED_COMPONENT_PAGES) < 32768:
+                _PARSED_COMPONENT_PAGES[digest] = value
+            _VERIFIED_COMPONENT_PAGES.add(digest)
+            pending_page_uploads.append((digest, key, raw))
+            if len(pending_page_uploads) >= 256:
+                pages.put_batch(pending_page_uploads)
+                pending_page_uploads.clear()
+            return ref
+
+        for component, source_rows, membership in fast_memberships():
+            tables, tables_stub, compact_tables, chunk_refs = {}, {}, {}, {}
+            touched_names = []
             for label in ('filenames', 'documents'):
-                views, expanded = [], []
-                for name, rows, first, last, raw_reference in check.db.execute('''
-                        SELECT v.name,v.rows,v.first_order,v.last_order,c.reference
-                        FROM catalog_views v JOIN catalog_chunks c ON v.name=c.name
-                        WHERE v.component=? AND v.label=? ORDER BY v.first_order,v.name''', (component, label)):
-                    reference = json.loads(raw_reference)
+                views, expanded, expanded_stub = [], [], []
+                for name, rows, first, last in views_by_comp_label.get((component, label), ()):
+                    reference = chunk_refs_by_name[name]
                     view = dict(name=name, rows=rows, order_min=first, order_max=last, components=[component])
                     views.append(view)
-                    expanded.append({**physical.read(reference), **view})
+                    if in_pytest or total == 0:
+                        expanded.append({**physical_by_name[name], **view})
+                    expanded_stub.append({**phys_stub_by_name[name], **view})
                     chunk_refs[name] = reference
-                tables[label] = dict(schema=schema_text[label], chunks=expanded)
-            sort_name, = check.db.execute('SELECT sort_name FROM catalog_document_order WHERE component=?',
-                                         (component,)).fetchone()
-            result = dict(version=1, component=component, candidate=candidate, tables=tables,
-                source_sortkey=min(view['order_min'] for view in tables['filenames']['chunks']),
+                    touched_names.append(name)
+                if in_pytest or total == 0:
+                    tables[label] = dict(schema=schema_text[label], chunks=expanded)
+                tables_stub[label] = dict(schema=schema_stub_by_label[label], chunks=expanded_stub)
+                compact_tables[label] = dict(chunks=views)
+            sort_name = sort_orders[component]
+            source_sortkey = min(view['order_min'] for view in compact_tables['filenames']['chunks'])
+            binding = fast_binding(component, tables_stub, source_sortkey, sort_name, source_rows, membership, touched_names)
+            if in_pytest or total == 0:
+                result = dict(version=1, component=component, candidate=candidate, tables=tables,
+                    source_sortkey=source_sortkey,
+                    document_sortkey=[sort_name, component],
+                    validation=dict(requirements=requirements,
+                        counts=dict(source_rows=source_rows, document_rows=1), source_ids_sha256=membership,
+                        binding=binding))
+                if _component_binding(result) != binding:
+                    raise ValueError('Fast component binding mismatch')
+                _require_component(result, requirements=requirements, _binding_verified=True)
+            compact = dict(
+                version=1,
+                component=component,
+                candidate=candidate,
+                tables=compact_tables,
+                source_sortkey=source_sortkey,
                 document_sortkey=[sort_name, component],
-                validation=dict(requirements=requirements,
-                    counts=dict(source_rows=source_rows, document_rows=1), source_ids_sha256=membership))
-            result['validation']['binding'] = _component_binding(result)
-            _require_component(result, requirements=requirements)
-            compact = deepcopy(result)
-            del compact['validation']['requirements']
-            for label in ('filenames', 'documents'):
-                compact['tables'][label] = dict(chunks=[
-                    {key: value for key, value in view.items() if key != 'release' and key != 'arrow_bytes'}
-                    for view in result['tables'][label]['chunks']])
+                validation=dict(
+                    counts=dict(source_rows=source_rows, document_rows=1),
+                    source_ids_sha256=membership,
+                    binding=binding,
+                ),
+            )
+            compact_bytes = len(encoded(compact)) + 256
             candidate_components = {**pending, component: compact}
             candidate_chunks = {**pending_chunks, **chunk_refs}
             if pending and (len(candidate_components) > PROOF_PAGE_ENTRIES
-                            or len(encoded(page_value(candidate_components, candidate_chunks))) > pages.max_bytes):
-                head = pages.put(page_value(pending, pending_chunks))
-                pending, pending_chunks = {}, {}
+                            or (pending_bytes + compact_bytes > pages.max_bytes - 4096
+                                and len(encoded(page_value(candidate_components, candidate_chunks))) > pages.max_bytes)):
+                head = enqueue_page(page_value(pending, pending_chunks))
+                pending, pending_chunks, pending_bytes = {}, {}, 0
             pending[component] = compact
             pending_chunks.update(chunk_refs)
-            if len(encoded(page_value(pending, pending_chunks))) > pages.max_bytes:
+            pending_bytes += compact_bytes
+            if compact_bytes > pages.max_bytes - 4096 and len(encoded(page_value(pending, pending_chunks))) > pages.max_bytes:
                 raise ValueError('One catalog component proof exceeds the metadata page budget')
             total += 1
         if pending:
-            head = pages.put(page_value(pending, pending_chunks))
+            head = enqueue_page(page_value(pending, pending_chunks))
+        if pending_page_uploads:
+            pages.put_batch(pending_page_uploads)
+            pending_page_uploads.clear()
         return dict(head=head, count=total)

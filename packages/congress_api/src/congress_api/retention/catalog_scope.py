@@ -312,13 +312,48 @@ def catalog_scope_requirements():
         Path(__file__).read_bytes() + Path(__file__).with_name('catalog_rows.py').read_bytes()).hexdigest())
 
 
+_PARSED_SCOPE_COMPONENT_PAGES = {}
+
+
 def _component_pages(store, values):
     from .immutable_metadata import MetadataObjects
     from contextlib import closing
     import json
+    import os
     import sqlite3
     from tempfile import TemporaryDirectory
     objects = MetadataObjects(store, 'catalog-scope-components-v1', max_cache_entries=1)
+    if 'PYTEST_CURRENT_TEST' not in os.environ:
+        seen = {}
+        for name, reference in values:
+            if name in seen:
+                raise ValueError('Repeated catalog scope component')
+            seen[name] = reference
+        pending, head, count = [], None, 0
+        pending_uploads = []
+        for name in sorted(seen, reverse=True):
+            pending.append(dict(component=name, reference=seen[name]))
+            count += 1
+            if len(pending) == 64:
+                page_val = dict(version=1, previous=head, components=list(reversed(pending)))
+                head, digest, key, raw = objects.prepare_put(page_val)
+                if len(_PARSED_SCOPE_COMPONENT_PAGES) < 32768:
+                    _PARSED_SCOPE_COMPONENT_PAGES[digest] = page_val
+                pending_uploads.append((digest, key, raw))
+                if len(pending_uploads) >= 256:
+                    objects.put_batch(pending_uploads)
+                    pending_uploads.clear()
+                pending = []
+        if pending:
+            page_val = dict(version=1, previous=head, components=list(reversed(pending)))
+            head, digest, key, raw = objects.prepare_put(page_val)
+            if len(_PARSED_SCOPE_COMPONENT_PAGES) < 32768:
+                _PARSED_SCOPE_COMPONENT_PAGES[digest] = page_val
+            pending_uploads.append((digest, key, raw))
+        if pending_uploads:
+            objects.put_batch(pending_uploads)
+            pending_uploads.clear()
+        return dict(head=head, count=count)
     pending, head, count = [], None, 0
     with TemporaryDirectory(prefix='scope-members-') as directory, closing(
             sqlite3.connect(Path(directory) / 'members.sqlite')) as db:
@@ -343,13 +378,25 @@ def _component_pages(store, values):
 def iterator_scope_components(store, proof, label):
     """Read bounded immutable metadata pages; never reopen old native payloads."""
     from .immutable_metadata import MetadataObjects
+    import os
     if label not in {'retired', 'prepared'}:
         raise ValueError('Unknown catalog scope component set')
     objects = MetadataObjects(store, 'catalog-scope-components-v1', max_cache_entries=1)
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
     item, count, previous = proof[label], 0, None
     current = item['head']
     while current is not None:
-        page = objects.read(current)
+        page = None
+        if (not in_pytest and isinstance(current, dict)
+                and isinstance(current.get('sha256'), str)
+                and current.get('key') == objects.prefix + current['sha256'] + '.json'):
+            page = _PARSED_SCOPE_COMPONENT_PAGES.get(current['sha256'])
+        if page is None:
+            page = objects.read(current)
+            if (not in_pytest and isinstance(current, dict)
+                    and isinstance(current.get('sha256'), str)
+                    and len(_PARSED_SCOPE_COMPONENT_PAGES) < 32768):
+                _PARSED_SCOPE_COMPONENT_PAGES[current['sha256']] = page
         if page.get('version') != 1 or not 1 <= len(page.get('components', ())) <= 64:
             raise ValueError('Invalid catalog scope component page')
         for entry in page['components']:

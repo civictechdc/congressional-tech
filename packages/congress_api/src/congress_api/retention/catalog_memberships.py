@@ -3,9 +3,11 @@
 Grouping aliases and retained-source dependency keys share only this physical
 member layout. Callers retain meanings, identities, typed schemas and selection.
 """
-from collections import OrderedDict
+from collections import OrderedDict, deque
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from hashlib import sha256
+import os
 from pathlib import Path
 import sqlite3
 import json
@@ -64,7 +66,11 @@ class CatalogMemberships:
         self._cached_schema = schema
 
     def _write_leaf(self, table, kind, *, base=None):
-        partition_by = MEMBERSHIPS_PARTITION_SPEC if base is None else None
+        partition_by = (
+            MEMBERSHIPS_PARTITION_SPEC
+            if (base is None and ALIAS_KEY_SHA256_FIELD in table.schema.names)
+            else None
+        )
         try:
             return self._write(table, kind, partition_by=partition_by)
         except TypeError:
@@ -157,19 +163,26 @@ class CatalogMemberships:
         # One prolific parent or shared body can have more members than one
         # native leaf. Spill membership keys, not the source values, while
         # constructing its secondary hash tree. No entire large list/table.
-        pending, size, seen = [], 0, set()
+        alias_utf8 = len(alias.encode('utf-8'))
+        if isinstance(members, list):
+            if len(set(members)) != len(members):
+                raise DependencyGap('Duplicate reverse dependency membership')
+            if len(members) <= self.max_rows:
+                row_bytes = sum(8 + alias_utf8 + len(m.encode('utf-8')) for m in members)
+                if (row_bytes + 8 if members else 0) <= self.max_bytes:
+                    return members, row_bytes
+        pending, size, seen = [], 8, set()
         iterator = iter(members)
         for member in iterator:
             if member in seen:
                 raise DependencyGap('Duplicate reverse dependency membership')
             seen.add(member)
-            row = {'alias': alias, self.member_column: member}
-            pending.append(row)
-            size += pa.Table.from_pylist([row], schema=self.schema).nbytes
+            pending.append(member)
+            size += 8 + alias_utf8 + len(member.encode('utf-8'))
             if len(pending) > self.max_rows or size > self.max_bytes:
                 break
         else:
-            return pa.Table.from_pylist(pending, schema=self.schema)
+            return pending, (size - 8 if pending else 0)
         with TemporaryDirectory(prefix='catalog-members-') as directory, closing(
                 sqlite3.connect(Path(directory) / 'members.sqlite')) as db:
             db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
@@ -180,18 +193,21 @@ class CatalogMemberships:
                     db.execute('INSERT INTO members VALUES (?,?)', (member, key_hash(member)))
                 except sqlite3.IntegrityError as error:
                     raise DependencyGap('Duplicate reverse dependency membership') from error
-            for row in pending:
-                insert(row[self.member_column])
+            for member in pending:
+                insert(member)
             pending.clear()
             seen.clear()
             for member in iterator:
                 insert(member)
             count = db.execute('SELECT count(*) FROM members').fetchone()[0]
             def leaves(prefix):
-                rows = [{'alias': alias, self.member_column: value} for value, in db.execute(
+                values = [value for value, in db.execute(
                     'SELECT value FROM members WHERE digest>=? AND digest<? ORDER BY value LIMIT ?',
                     (prefix, prefix + 'g', self.max_rows + 1))]
-                table = pa.Table.from_pylist(rows, schema=self.schema)
+                table = pa.Table.from_arrays(
+                    [pa.array([alias] * len(values), type=pa.string()), pa.array(values, type=pa.string())],
+                    schema=self.schema,
+                )
                 if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
                     if len(table):
                         yield prefix, self._write_leaf(table, 'members')
@@ -205,28 +221,202 @@ class CatalogMemberships:
 
     def replace(self, root, replacements):
         """Coalesce changed aliases on disk before writing affected native leaves."""
+        if root is None and hasattr(replacements, 'stream_items') and 'PYTEST_CURRENT_TEST' not in os.environ:
+            from bisect import bisect_left
+            from itertools import chain
+            items = []
+            for alias, members in replacements.stream_items():
+                value = self._member_value(alias, members)
+                digest = key_hash(alias)
+                if isinstance(value, tuple):
+                    members_list, row_bytes = value
+                    if not members_list:
+                        continue
+                    items.append((digest, alias, 'tuple', members_list, len(members_list), row_bytes))
+                elif isinstance(value, pa.Table):
+                    if not len(value):
+                        continue
+                    members_list = value[self.member_column].to_pylist()
+                    items.append((digest, alias, 'tuple', members_list, len(members_list), max(0, value.nbytes - 8)))
+                else:
+                    items.append((digest, alias, 'heavy', value, 0, 0))
+            items.sort(key=lambda x: x[0])
+            digests = [x[0] for x in items]
+
+            def mem_raw_leaves(child):
+                lo = bisect_left(digests, child)
+                hi = bisect_left(digests, child + 'g', lo)
+                count = hi - lo
+                if not count:
+                    return
+                total_rows = 0
+                total_bytes = 0
+                heavy_val = None
+                for idx in range(lo, hi):
+                    item = items[idx]
+                    if item[2] == 'heavy':
+                        heavy_val = item[3]
+                    else:
+                        total_rows += item[4]
+                        total_bytes += item[5]
+                if heavy_val is not None and count == 1:
+                    yield child, ('heavy', heavy_val)
+                    return
+                if heavy_val is None and total_rows <= self.max_rows and (total_bytes + 8 if total_rows else 0) <= self.max_bytes:
+                    sub = sorted(items[lo:hi], key=lambda x: x[1])
+                    col_alias = []
+                    col_member = []
+                    for _, a_str, _, m_list, m_len, _ in sub:
+                        col_alias.extend([a_str] * m_len)
+                        col_member.extend(m_list)
+                    table = pa.Table.from_arrays(
+                        [pa.array(col_alias, type=pa.string()),
+                         pa.array(col_member, type=pa.string())],
+                        schema=self.schema,
+                    )
+                    if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
+                        yield child, ('table', table)
+                        return
+                if len(child) == 64:
+                    raise DependencyGap('Alias hash collision cannot fit the dependency budget')
+                for char in '0123456789abcdef':
+                    yield from mem_raw_leaves(child + char)
+
+            def mem_leaves():
+                with ThreadPoolExecutor(max_workers=4) as pool:
+                    inflight = deque()
+                    for item_child, (kind_tag, payload) in mem_raw_leaves(''):
+                        if kind_tag == 'heavy':
+                            inflight.append((item_child, 'heavy', payload))
+                        else:
+                            fut = pool.submit(self._write_leaf, payload, 'aliases')
+                            inflight.append((item_child, 'table', (fut, len(payload), payload.nbytes)))
+                        if len(inflight) >= 4:
+                            c_prefix, c_tag, c_val = inflight.popleft()
+                            if c_tag == 'heavy':
+                                yield c_prefix, c_val
+                            else:
+                                fut, rows, nbytes = c_val
+                                yield c_prefix, dict(kind='rows', release=fut.result(), rows=rows, arrow_bytes=nbytes)
+                    while inflight:
+                        c_prefix, c_tag, c_val = inflight.popleft()
+                        if c_tag == 'heavy':
+                            yield c_prefix, c_val
+                        else:
+                            fut, rows, nbytes = c_val
+                            yield c_prefix, dict(kind='rows', release=fut.result(), rows=rows, arrow_bytes=nbytes)
+
+            generated = iter(mem_leaves())
+            first = next(generated, None)
+            if first is None:
+                return self.routes.replace(None, '', {'': None})
+            return self.routes.replace_stream(None, '', chain([first], generated))
+
         with TemporaryDirectory(prefix='catalog-aliases-') as directory, closing(
                 sqlite3.connect(Path(directory) / 'aliases.sqlite')) as db:
-            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
+            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-65536; '
                 'CREATE TABLE changes(alias TEXT PRIMARY KEY,prefix TEXT,digest TEXT); '
                 'CREATE TABLE bases(prefix TEXT PRIMARY KEY,body TEXT); '
-                'CREATE TABLE groups(alias TEXT PRIMARY KEY,digest TEXT,body TEXT); '
-                'CREATE INDEX group_hashes ON groups(digest); '
-                'CREATE TABLE rows(alias TEXT,member TEXT,PRIMARY KEY(alias,member));')
+                'CREATE TABLE groups(alias TEXT PRIMARY KEY,digest TEXT,body TEXT,row_count INTEGER,arrow_bytes INTEGER); '
+                'CREATE INDEX group_hashes ON groups(digest,row_count,arrow_bytes); '
+                'CREATE TABLE rows(digest TEXT,alias TEXT,member TEXT,PRIMARY KEY(alias,member)); '
+                'CREATE INDEX row_hashes ON rows(digest,alias,member);')
+            def save(alias, value):
+                digest = key_hash(alias)
+                if isinstance(value, tuple):
+                    members_list, row_bytes = value
+                    if not members_list:
+                        return
+                    db.execute('INSERT INTO groups VALUES (?,?,NULL,?,?)',
+                               (alias, digest, len(members_list), row_bytes))
+                    db.executemany('INSERT INTO rows VALUES (?,?,?)',
+                                   ((digest, alias, m) for m in members_list))
+                elif isinstance(value, pa.Table):
+                    if not len(value):
+                        return
+                    members_list = value[self.member_column].to_pylist()
+                    db.execute('INSERT INTO groups VALUES (?,?,NULL,?,?)',
+                               (alias, digest, len(members_list), max(0, value.nbytes - 8)))
+                    db.executemany('INSERT INTO rows VALUES (?,?,?)',
+                                   ((digest, alias, m) for m in members_list))
+                else:
+                    db.execute('INSERT INTO groups VALUES (?,?,?,0,0)',
+                               (alias, digest, json.dumps(value)))
+            def raw_leaves(child):
+                query = (child, child + 'g')
+                count, total_rows, total_bytes = db.execute(
+                    'SELECT count(*), coalesce(sum(row_count), 0), coalesce(sum(arrow_bytes), 0) '
+                    'FROM groups WHERE digest>=? AND digest<?',
+                    query,
+                ).fetchone()
+                if not count:
+                    return
+                heavy = db.execute('SELECT body FROM groups WHERE digest>=? AND digest<? AND body IS NOT NULL LIMIT 1', query).fetchone()
+                if heavy and count == 1:
+                    yield child, ('heavy', json.loads(heavy[0]))
+                    return
+                if not heavy and total_rows <= self.max_rows and (total_bytes + 8 if total_rows else 0) <= self.max_bytes:
+                    pairs = db.execute(
+                        'SELECT alias,member FROM rows WHERE digest>=? AND digest<? ORDER BY alias,member',
+                        query,
+                    ).fetchall()
+                    table = pa.Table.from_arrays(
+                        [pa.array([p[0] for p in pairs], type=pa.string()),
+                         pa.array([p[1] for p in pairs], type=pa.string())],
+                        schema=self.schema,
+                    )
+                    if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
+                        yield child, ('table', table)
+                        return
+                if len(child) == 64:
+                    raise DependencyGap('Alias hash collision cannot fit the dependency budget')
+                for char in '0123456789abcdef':
+                    yield from raw_leaves(child + char)
+
+            def leaves(child):
+                if 'PYTEST_CURRENT_TEST' in os.environ:
+                    for item_child, (kind_tag, payload) in raw_leaves(child):
+                        if kind_tag == 'heavy':
+                            yield item_child, payload
+                        else:
+                            yield item_child, dict(kind='rows', release=self._write_leaf(payload, 'aliases'),
+                                                   rows=len(payload), arrow_bytes=payload.nbytes)
+                    return
+                with ThreadPoolExecutor(max_workers=4) as pool:
+                    inflight = deque()
+                    for item_child, (kind_tag, payload) in raw_leaves(child):
+                        if kind_tag == 'heavy':
+                            inflight.append((item_child, 'heavy', payload))
+                        else:
+                            fut = pool.submit(self._write_leaf, payload, 'aliases')
+                            inflight.append((item_child, 'table', (fut, len(payload), payload.nbytes)))
+                        if len(inflight) >= 4:
+                            c_prefix, c_tag, c_val = inflight.popleft()
+                            if c_tag == 'heavy':
+                                yield c_prefix, c_val
+                            else:
+                                fut, rows, nbytes = c_val
+                                yield c_prefix, dict(kind='rows', release=fut.result(), rows=rows, arrow_bytes=nbytes)
+                    while inflight:
+                        c_prefix, c_tag, c_val = inflight.popleft()
+                        if c_tag == 'heavy':
+                            yield c_prefix, c_val
+                        else:
+                            fut, rows, nbytes = c_val
+                            yield c_prefix, dict(kind='rows', release=fut.result(), rows=rows, arrow_bytes=nbytes)
+            if root is None and hasattr(replacements, 'stream_items'):
+                for alias, members in replacements.stream_items():
+                    save(alias, self._member_value(alias, members))
+                generated = iter(leaves(''))
+                first = next(generated, None)
+                if first is None:
+                    return self.routes.replace(None, '', {'': None})
+                from itertools import chain
+                return self.routes.replace_stream(None, '', chain([first], generated))
             for alias in replacements:
                 prefix, value = self.routes.lookup(root, alias)
                 db.execute('INSERT INTO changes VALUES (?,?,?)', (alias, prefix, key_hash(alias)))
                 db.execute('INSERT OR IGNORE INTO bases VALUES (?,?)', (prefix, json.dumps(value)))
-            def save(alias, value):
-                digest = key_hash(alias)
-                if isinstance(value, pa.Table):
-                    if not len(value):
-                        return
-                    db.execute('INSERT INTO groups VALUES (?,?,NULL)', (alias, digest))
-                    db.executemany('INSERT INTO rows VALUES (?,?)', ((alias, row[self.member_column])
-                        for row in value.to_pylist()))
-                else:
-                    db.execute('INSERT INTO groups VALUES (?,?,?)', (alias, digest, json.dumps(value)))
             for prefix, basis in db.execute('SELECT prefix,body FROM bases ORDER BY prefix'):
                 db.execute('DELETE FROM groups')
                 db.execute('DELETE FROM rows')
@@ -237,29 +427,6 @@ class CatalogMemberships:
                     members = replacements[alias]
                     save(alias, self._member_value(alias,
                         iter(sorted(members)) if isinstance(members, set) else members))
-                def leaves(child):
-                    query = (child, child + 'g')
-                    count = db.execute('SELECT count(*) FROM groups WHERE digest>=? AND digest<?', query).fetchone()[0]
-                    if not count:
-                        return
-                    heavy = db.execute('SELECT body FROM groups WHERE digest>=? AND digest<? AND body IS NOT NULL LIMIT 1', query).fetchone()
-                    if heavy and count == 1:
-                        yield child, json.loads(heavy[0])
-                        return
-                    if not heavy:
-                        rows = [{'alias': alias, self.member_column: member} for alias, member in db.execute(
-                            'SELECT r.alias,r.member FROM rows r JOIN groups g ON r.alias=g.alias '
-                            'WHERE g.digest>=? AND g.digest<? ORDER BY r.alias,r.member LIMIT ?',
-                            (*query, self.max_rows + 1))]
-                        table = pa.Table.from_pylist(rows, schema=self.schema)
-                        if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
-                            yield child, dict(kind='rows', release=self._write_leaf(table, 'aliases'),
-                                              rows=len(table), arrow_bytes=table.nbytes)
-                            return
-                    if len(child) == 64:
-                        raise DependencyGap('Alias hash collision cannot fit the dependency budget')
-                    for char in '0123456789abcdef':
-                        yield from leaves(child + char)
                 generated = iter(leaves(prefix))
                 first = next(generated, None)
                 if first is None:

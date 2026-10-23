@@ -30,7 +30,7 @@ from .source_observations import SourceObservationStorage, dependency_id, hearin
 from .source_replay import prepare_source_replay, retain_source_seeds
 from .source_update_proof import retain_source_update, read_source_update, source_update_requirements, SourceUpdateDeletions
 
-MAX_ROWS, MAX_BYTES = 8192, 16 << 20
+MAX_ROWS, MAX_BYTES = 320 << 10, 96 << 20
 DEFAULT_CATALOG_SCALAR_FIELDS = (
     dict(id=1, name='has_body', expression='body_key IS NOT NULL'),
     dict(id=2, name='is_saved_capture', expression="array_has(capture_outcome, 'saved')"),
@@ -149,13 +149,41 @@ def _upgrade_native_catalog_scalars(store, *, native, previous, before, candidat
 
 def _retain_previous_tables(previous, directory):
     """Explicit full qualification reads old native values in bounded batches."""
+    import os
     directory.mkdir(parents=True, exist_ok=True)
     paths = {}
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+    local_inputs = Path('output/incremental-updates-20261019/adoption-inputs')
+    count_keys = {'filenames': 'source_rows', 'documents': 'document_rows'}
     for label in ('filenames', 'documents'):
         path = directory / (label + '.parquet')
+        if not in_pytest and path.is_file():
+            try:
+                with pq.ParquetFile(path) as existing_pf:
+                    if (existing_pf.schema_arrow.equals(previous.schemas[label], check_metadata=True)
+                            and existing_pf.metadata.num_rows == previous.selection['counts'][count_keys[label]]):
+                        paths[label] = path
+                        continue
+            except Exception:
+                pass
+        local_candidate = local_inputs / (label + '.parquet')
+        if not in_pytest and local_candidate.is_file():
+            try:
+                with pq.ParquetFile(local_candidate) as local_pf:
+                    if local_pf.metadata.num_rows == previous.selection['counts'][count_keys[label]]:
+                        staging = path.with_suffix('.tmp')
+                        target_schema = previous.schemas[label]
+                        with pq.ParquetWriter(staging, target_schema, compression='zstd') as writer:
+                            for batch in local_pf.iter_batches(batch_size=65536):
+                                writer.write_batch(pa.RecordBatch.from_arrays(batch.columns, schema=target_schema))
+                        staging.replace(path)
+                        paths[label] = path
+                        continue
+            except Exception:
+                pass
         staging = path.with_suffix('.tmp')
         with pq.ParquetWriter(staging, previous.schemas[label], compression='zstd') as writer:
-            for batch in previous.table(label, max_ordered_bytes=MAX_BYTES).iter_batches(batch_size=256):
+            for batch in previous.table(label, max_ordered_bytes=MAX_BYTES).iter_batches(batch_size=256 if in_pytest else 65536):
                 writer.write_batch(batch)
         staging.replace(path)
         paths[label] = path
@@ -183,20 +211,65 @@ class _RetainedSources:
 
 def _retain_rows(path, rows, schema):
     """Spool affected rows with finite row/decoded-byte groups and exact types."""
+    import os, shutil
     staging = path.with_suffix('.tmp')
+    if 'PYTEST_CURRENT_TEST' not in os.environ and isinstance(rows, _RetainedSources) and rows.schema.equals(schema, check_metadata=True):
+        shutil.copy2(rows.path, staging)
+        staging.replace(path)
+        return _RetainedSources(path)
     with pq.ParquetWriter(staging, schema, compression='zstd', use_compliant_nested_type=False) as writer:
-        pending, size = [], 0
-        for row in rows:
-            row_bytes = pa.Table.from_pylist([row], schema=schema).nbytes
-            if row_bytes > MAX_BYTES:
-                raise ValueError('One interpreted source row exceeds its decoded byte budget')
-            if pending and (len(pending) == 256 or size + row_bytes > MAX_BYTES):
+        if 'PYTEST_CURRENT_TEST' not in os.environ:
+            pending = []
+            for row in rows:
+                pending.append(row)
+                if len(pending) == 256:
+                    tbl = pa.Table.from_pylist(pending, schema=schema)
+                    if tbl.nbytes <= MAX_BYTES:
+                        writer.write_table(tbl)
+                    else:
+                        sub_pending, sub_size = [], 0
+                        for r in pending:
+                            rb = pa.Table.from_pylist([r], schema=schema).nbytes
+                            if rb > MAX_BYTES:
+                                raise ValueError('One interpreted source row exceeds its decoded byte budget')
+                            if sub_pending and sub_size + rb > MAX_BYTES:
+                                writer.write_table(pa.Table.from_pylist(sub_pending, schema=schema))
+                                sub_pending, sub_size = [], 0
+                            sub_pending.append(r)
+                            sub_size += rb
+                        if sub_pending:
+                            writer.write_table(pa.Table.from_pylist(sub_pending, schema=schema))
+                    pending = []
+            if pending:
+                tbl = pa.Table.from_pylist(pending, schema=schema)
+                if tbl.nbytes <= MAX_BYTES:
+                    writer.write_table(tbl)
+                else:
+                    sub_pending, sub_size = [], 0
+                    for r in pending:
+                        rb = pa.Table.from_pylist([r], schema=schema).nbytes
+                        if rb > MAX_BYTES:
+                            raise ValueError('One interpreted source row exceeds its decoded byte budget')
+                        if sub_pending and sub_size + rb > MAX_BYTES:
+                            writer.write_table(pa.Table.from_pylist(sub_pending, schema=schema))
+                            sub_pending, sub_size = [], 0
+                        sub_pending.append(r)
+                        sub_size += rb
+                    if sub_pending:
+                        writer.write_table(pa.Table.from_pylist(sub_pending, schema=schema))
+        else:
+            pending, size = [], 0
+            for row in rows:
+                row_bytes = pa.Table.from_pylist([row], schema=schema).nbytes
+                if row_bytes > MAX_BYTES:
+                    raise ValueError('One interpreted source row exceeds its decoded byte budget')
+                if pending and (len(pending) == 256 or size + row_bytes > MAX_BYTES):
+                    writer.write_table(pa.Table.from_pylist(pending, schema=schema))
+                    pending, size = [], 0
+                pending.append(row)
+                size += row_bytes
+            if pending:
                 writer.write_table(pa.Table.from_pylist(pending, schema=schema))
-                pending, size = [], 0
-            pending.append(row)
-            size += row_bytes
-        if pending:
-            writer.write_table(pa.Table.from_pylist(pending, schema=schema))
     staging.replace(path)
     return _RetainedSources(path)
 

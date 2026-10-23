@@ -289,10 +289,10 @@ def connect_storage(args, log):
             r2_cfg = R2Config.from_env(
                 account_id=args.account_id,
                 bucket=args.bucket,
-                connect_timeout=None,
-                read_timeout=None,
+                connect_timeout=30,
+                read_timeout=60,
                 retries={"mode": "standard", "max_attempts": 5},
-                max_pool_connections=args.workers + 4,
+                max_pool_connections=max(128, args.workers + 4),
             )
         except ValueError as exc:
             raise SystemExit(str(exc)) from exc

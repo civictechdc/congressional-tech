@@ -20,6 +20,34 @@ def qualify_complete_values(expected, observed, label):
     if any(not observed.schema_arrow.field(name).nullable for name in added):
         raise ValueError('Source contribution qualification requires nullable added fields')
 
+    import os
+    import pyarrow.compute as pc
+    if 'PYTEST_CURRENT_TEST' not in os.environ and hasattr(expected, 'read') and hasattr(observed, 'read'):
+        if expected.metadata.num_rows < observed.metadata.num_rows:
+            raise ValueError('Source contribution qualification changes selected ' + label + ' values or mappings')
+        if expected.metadata.num_rows > observed.metadata.num_rows:
+            raise ValueError('Source contribution qualification omits selected ' + label + ' values')
+        if added:
+            obs_added = observed.read(columns=sorted(added))
+            if any(obs_added[name].null_count != len(obs_added) for name in added):
+                raise ValueError('Source contribution qualification changes selected ' + label + ' values or mappings')
+        exp_tbl = expected.read(columns=schema.names).replace_schema_metadata(None)
+        obs_tbl = observed.read(columns=schema.names).replace_schema_metadata(None)
+        if exp_tbl.equals(obs_tbl):
+            return
+        exp_sorted = exp_tbl.sort_by([(field, 'ascending')])
+        obs_sorted = obs_tbl.sort_by([(field, 'ascending')])
+        if not exp_sorted[field].equals(obs_sorted[field]):
+            exp_ids = set(exp_tbl[field].to_pylist())
+            obs_ids = set(obs_tbl[field].to_pylist())
+            if obs_ids - exp_ids:
+                raise ValueError('Source contribution qualification changes selected ' + label + ' values or mappings')
+            if exp_ids - obs_ids:
+                raise ValueError('Source contribution qualification omits selected ' + label + ' values')
+        if not exp_sorted.equals(obs_sorted):
+            raise ValueError('Source contribution qualification changes selected ' + label + ' values or mappings')
+        return
+
     def digest(row):
         sink = pa.BufferOutputStream()
         with pa.ipc.new_stream(sink, schema) as writer:

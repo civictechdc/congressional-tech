@@ -5,10 +5,13 @@ reassemble it; projected core reads never fetch occurrence data.
 """
 
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 import base64
 from copy import deepcopy
 from hashlib import sha256
 import inspect
+import os
+import threading
 
 import pyarrow as pa
 import pyarrow.compute as pc
@@ -167,6 +170,9 @@ class Occurrences:
         )
 
 
+_NATIVE_OCC_POOL = ThreadPoolExecutor(max_workers=8)
+
+
 class CatalogRows:
     def __init__(self, *, native, store):
         self.native, self.store = native, store
@@ -177,6 +183,7 @@ class CatalogRows:
         self._children = OrderedDict()
         self.rows_read = self.bytes_read = 0
         self.candidate_rows_submitted = self.candidate_arrow_bytes = 0
+        self._lock = threading.RLock()
 
     def _run_native(self, table, **request):
         if "partition_by" in request and request["partition_by"] is None:
@@ -191,8 +198,9 @@ class CatalogRows:
                     raise
                 fallback_request = {k: v for k, v in request.items() if k != "partition_by"}
                 release = self.native.run_table(table, **fallback_request)
-        self.candidate_rows_submitted += len(table)
-        self.candidate_arrow_bytes += table.nbytes
+        with self._lock:
+            self.candidate_rows_submitted += len(table)
+            self.candidate_arrow_bytes += table.nbytes
         return release
 
     def _record_read(self, batch):
@@ -330,57 +338,101 @@ class CatalogRows:
             size = 0
             pending_rows = 0
 
-        for position, value in enumerate(original):
-            if not value.is_valid:
-                continue
-            values = value.values
-            start = 0
-            while start < len(values):
-                # Find a byte-bounded prefix without materializing Python structs.
-                take = min(max_rows, len(values) - start)
-
-                def child(count):
-                    return pa.Table.from_arrays(
-                        [
-                            pa.array([position] * count, type=pa.int64()),
-                            pa.array([ids[position]] * count),
-                            pa.array(range(start, start + count), type=pa.int64()),
-                            values.slice(start, count),
-                        ],
-                        schema=child_schema,
-                    )
-
-                piece = child(take)
-                while piece.nbytes > max_bytes and take > 1:
-                    take = max(1, take // 2)
-                    piece = child(take)
-                if piece.nbytes > max_bytes:
-                    raise ValueError(
-                        "One catalog occurrence exceeds its native chunk budget"
-                    )
-                if pending and (
-                    pending_rows + take > max_rows or size + piece.nbytes > max_bytes
-                ):
-                    flush()
-                pending.append(piece)
-                size += piece.nbytes
-                pending_rows += take
-                occurrence_count += take
-                start += take
-                if pending_rows == max_rows:
-                    flush()
-        flush()
-        roots = [reference for level in reversed(levels) for reference in level]
-        while len(roots) > 16:
-            roots = [self._node(roots[i : i + 16]) for i in range(0, len(roots), 16)]
-        root = self._node(roots) if roots else None
-        release = self._run_native(
-            core,
-            dataset=dataset,
-            operation=operation,
-            definition=FORMAT + "-" + definition,
-            partition_by=partition_by,
+        core_future = (
+            _NATIVE_OCC_POOL.submit(
+                self._run_native,
+                core,
+                dataset=dataset,
+                operation=operation,
+                definition=FORMAT + "-" + definition,
+                partition_by=partition_by,
+            )
+            if "PYTEST_CURRENT_TEST" not in os.environ
+            else None
         )
+        try:
+            flat_values = original.flatten() if original.null_count == 0 else None
+            fast_done = False
+            if flat_values is not None and len(flat_values) == 0:
+                fast_done = True
+            elif flat_values is not None and len(flat_values) <= max_rows:
+                owner_rows = pc.list_parent_indices(original).cast(pa.int64())
+                owner_ids = pc.take(core[owner_column], owner_rows)
+                lengths = pc.list_value_length(original).to_pylist()
+                occ_orders = pa.array(
+                    [j for n in lengths if n for j in range(n)],
+                    type=pa.int64(),
+                )
+                full_child = pa.Table.from_arrays(
+                    [owner_rows, owner_ids, occ_orders, flat_values],
+                    schema=child_schema,
+                )
+                if full_child.nbytes <= max_bytes:
+                    pending.append(full_child)
+                    size = full_child.nbytes
+                    pending_rows = len(full_child)
+                    occurrence_count = len(full_child)
+                    flush()
+                    fast_done = True
+            if not fast_done:
+                for position, value in enumerate(original):
+                    if not value.is_valid:
+                        continue
+                    values = value.values
+                    start = 0
+                    while start < len(values):
+                        # Find a byte-bounded prefix without materializing Python structs.
+                        take = min(max_rows, len(values) - start)
+
+                        def child(count):
+                            return pa.Table.from_arrays(
+                                [
+                                    pa.array([position] * count, type=pa.int64()),
+                                    pa.array([ids[position]] * count),
+                                    pa.array(range(start, start + count), type=pa.int64()),
+                                    values.slice(start, count),
+                                ],
+                                schema=child_schema,
+                            )
+
+                        piece = child(take)
+                        while piece.nbytes > max_bytes and take > 1:
+                            take = max(1, take // 2)
+                            piece = child(take)
+                        if piece.nbytes > max_bytes:
+                            raise ValueError(
+                                "One catalog occurrence exceeds its native chunk budget"
+                            )
+                        if pending and (
+                            pending_rows + take > max_rows or size + piece.nbytes > max_bytes
+                        ):
+                            flush()
+                        pending.append(piece)
+                        size += piece.nbytes
+                        pending_rows += take
+                        occurrence_count += take
+                        start += take
+                        if pending_rows == max_rows:
+                            flush()
+                flush()
+            roots = [reference for level in reversed(levels) for reference in level]
+            while len(roots) > 16:
+                roots = [self._node(roots[i : i + 16]) for i in range(0, len(roots), 16)]
+            root = self._node(roots) if roots else None
+            release = (
+                core_future.result()
+                if core_future is not None
+                else self._run_native(
+                    core,
+                    dataset=dataset,
+                    operation=operation,
+                    definition=FORMAT + "-" + definition,
+                    partition_by=partition_by,
+                )
+            )
+        finally:
+            if core_future is not None and not core_future.done():
+                core_future.cancel()
         descriptor = dict(
             format=FORMAT,
             schema=base64.b64encode(table.schema.serialize()).decode(),

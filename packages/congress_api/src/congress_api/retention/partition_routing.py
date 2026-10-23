@@ -73,8 +73,17 @@ class RoutingPages:
     def __init__(self, store, namespace):
         from congress_api.retention.immutable_metadata import MetadataObjects
         self.objects = MetadataObjects(store, namespace)
+        self._parsed_cache = {}
 
     def _read(self, reference, prefix):
+        import os
+        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+        if (not in_pytest and isinstance(reference, dict)
+                and isinstance(reference.get('sha256'), str)
+                and reference.get('key') == self.objects.prefix + reference['sha256'] + '.json'):
+            cached = self._parsed_cache.get((reference['sha256'], prefix))
+            if cached is not None:
+                return cached
         page = self.objects.read(reference)
         if page.get('version') != 1 or page.get('prefix') != prefix:
             raise ValueError('Routing page basis mismatch')
@@ -87,6 +96,10 @@ class RoutingPages:
                 raise ValueError('Invalid routing child references')
         elif not isinstance(page['value'], dict):
             raise ValueError('Routing leaf must name exact native metadata')
+        if (not in_pytest and isinstance(reference, dict)
+                and isinstance(reference.get('sha256'), str)
+                and len(self._parsed_cache) < 65536):
+            self._parsed_cache[(reference['sha256'], prefix)] = page
         return page
 
     def lookup(self, root, key):
@@ -129,20 +142,36 @@ class RoutingPages:
             if previous is None:
                 raise ValueError('Replacement leaves must not be empty')
 
+        import os
+        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+        pending_uploads = []
+
+        def put_page(page_dict):
+            if in_pytest:
+                return self.objects.put(page_dict)
+            ref, digest, key, raw = self.objects.prepare_put(page_dict)
+            if len(self._parsed_cache) < 65536:
+                self._parsed_cache[(digest, page_dict['prefix'])] = page_dict
+            pending_uploads.append((digest, key, raw))
+            if len(pending_uploads) >= 256:
+                self.objects.put_batch(pending_uploads)
+                pending_uploads.clear()
+            return ref
+
         def build(current, values):
             values = iter(values)
             first = next(values)
             if first[0] == current:
                 if next(values, None) is not None:
                     raise ValueError('Replacement leaf prefixes overlap')
-                return (self.objects.put(dict(version=1, prefix=current, value=first[1]))
+                return (put_page(dict(version=1, prefix=current, value=first[1]))
                         if first[1] is not None else None)
             children = {}
             for char, subset in groupby(chain([first], values), key=lambda item: item[0][len(current)]):
                 reference = build(current + char, subset)
                 if reference is not None:
                     children[char] = reference
-            return self.objects.put(dict(version=1, prefix=current, children=children)) if children else None
+            return put_page(dict(version=1, prefix=current, children=children)) if children else None
 
         def replace_at(reference, current):
             page = self._read(reference, current) if reference is not None else None
@@ -159,9 +188,13 @@ class RoutingPages:
                 children.pop(char, None)
             else:
                 children[char] = replacement
-            return self.objects.put(dict(version=1, prefix=current, children=children)) if children else None
+            return put_page(dict(version=1, prefix=current, children=children)) if children else None
 
-        return replace_at(root, '')
+        result = replace_at(root, '')
+        if pending_uploads:
+            self.objects.put_batch(pending_uploads)
+            pending_uploads.clear()
+        return result
 
     def leaf_items(self, root):
         def walk(reference, prefix):

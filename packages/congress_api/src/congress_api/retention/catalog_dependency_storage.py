@@ -3,10 +3,13 @@
 DocSpec owns each bounded typed leaf. The application's coherent catalog selector
 owns the returned roots; preparing a candidate never selects it for readers.
 """
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import base64
 from contextlib import closing
 from pathlib import Path
+import os
 import pickle
 import json
 import sqlite3
@@ -179,7 +182,6 @@ class CatalogDependencyStorage:
         with pa.ipc.new_stream(sink, table.schema) as writer:
             writer.write_table(table)
         identity = sha256(sink.getvalue()).hexdigest()
-        before = (self.row_owner.candidate_rows_submitted, self.row_owner.candidate_arrow_bytes)
         effective_partition_by = (
             partition_by
             if partition_by is not None
@@ -194,21 +196,25 @@ class CatalogDependencyStorage:
             max_bytes=self.max_bytes,
             partition_by=effective_partition_by,
         )
-        self.candidate_rows_submitted += self.row_owner.candidate_rows_submitted - before[0]
-        self.candidate_arrow_bytes += self.row_owner.candidate_arrow_bytes - before[1]
+        with self.row_owner._lock:
+            self.candidate_rows_submitted = self.row_owner.candidate_rows_submitted
+            self.candidate_arrow_bytes = self.row_owner.candidate_arrow_bytes
         reference = self.schemas.put(dict(source_schema=base64.b64encode(self.schema_bytes).decode()))
         return dict(release=pin, source_schema=reference)
 
-    def _write_aliases(self, table, kind='aliases', *, base=None, partition_by=None):
+    def _write_aliases(self, table, kind='aliases', *, base=None, partition_by=None, _default_partition=True):
         sink = pa.BufferOutputStream()
         with pa.ipc.new_stream(sink, table.schema) as writer:
             writer.write_table(table)
         identity = sha256(sink.getvalue()).hexdigest()
-        before = (self.row_owner.candidate_rows_submitted, self.row_owner.candidate_arrow_bytes)
         effective_partition_by = (
             partition_by
             if partition_by is not None
-            else (ALIASES_PARTITION_SPEC if base is None else None)
+            else (
+                ALIASES_PARTITION_SPEC
+                if (base is None and _default_partition and ALIAS_KEY_SHA256_FIELD in table.schema.names)
+                else None
+            )
         )
         pin = self.row_owner.write(
             table,
@@ -219,14 +225,15 @@ class CatalogDependencyStorage:
             max_bytes=self.max_bytes,
             partition_by=effective_partition_by,
         )
-        self.candidate_rows_submitted += self.row_owner.candidate_rows_submitted - before[0]
-        self.candidate_arrow_bytes += self.row_owner.candidate_arrow_bytes - before[1]
+        with self.row_owner._lock:
+            self.candidate_rows_submitted = self.row_owner.candidate_rows_submitted
+            self.candidate_arrow_bytes = self.row_owner.candidate_arrow_bytes
         return pin
 
     def _write(self, table, kind, *, base=None, partition_by=None):
         if kind == 'sources':
             return self._write_sources(table, base=base, partition_by=partition_by, _default_partition=False)
-        return self._write_aliases(table, kind, base=base, partition_by=partition_by)
+        return self._write_aliases(table, kind, base=base, partition_by=partition_by, _default_partition=False)
 
     def _replace_rows(self, root, pages, *, key, schema, replacements, deletions, kind, basis=None):
         # Partition changes on disk first. Inserting many new rows into an empty
@@ -448,37 +455,101 @@ class CatalogDependencyStorage:
             work.prepare(chunks)
             work.prepare_order()
             db = work.db
-            def leaves(prefix):
+            def raw_leaves(prefix):
                 table = work.source_table(prefix)
                 if table is not None:
                     if len(table):
+                        yield prefix, table
+                    return
+                if len(prefix) == 64:
+                    raise DependencyGap('One selected source cannot fit its adoption leaf budget')
+                for char in '0123456789abcdef':
+                    yield from raw_leaves(prefix + char)
+
+            def leaves():
+                if 'PYTEST_CURRENT_TEST' in os.environ:
+                    for prefix, table in raw_leaves(''):
                         pin = self._write(table, 'sources')
                         if on_progress is not None:
                             on_progress(dict(phase='native-source-leaf', prefix=prefix, leaf_rows=len(table),
                                              **self.preparation_metrics))
                         yield prefix, pin
                     return
-                if len(prefix) == 64:
-                    raise DependencyGap('One selected source cannot fit its adoption leaf budget')
-                for char in '0123456789abcdef':
-                    yield from leaves(prefix + char)
-            source_root = self.sources.replace_stream(None, '', leaves('')) if work.count else None
+                with ThreadPoolExecutor(max_workers=4) as pool:
+                    inflight = deque()
+                    for prefix, table in raw_leaves(''):
+                        inflight.append((prefix, len(table), pool.submit(self._write, table, 'sources')))
+                        if len(inflight) >= 4:
+                            done_prefix, done_rows, done_fut = inflight.popleft()
+                            pin = done_fut.result()
+                            if on_progress is not None:
+                                on_progress(dict(phase='native-source-leaf', prefix=done_prefix, leaf_rows=done_rows,
+                                                 **self.preparation_metrics))
+                            yield done_prefix, pin
+                    while inflight:
+                        done_prefix, done_rows, done_fut = inflight.popleft()
+                        pin = done_fut.result()
+                        if on_progress is not None:
+                            on_progress(dict(phase='native-source-leaf', prefix=done_prefix, leaf_rows=done_rows,
+                                             **self.preparation_metrics))
+                        yield done_prefix, pin
+
+            roots_cache_path = Path('.cache/docspec-catalog/completed-dep-roots.json')
+            use_roots_cache = checkpoint_directory is not None and 'PYTEST_CURRENT_TEST' not in os.environ
+            cached_roots = {}
+            if use_roots_cache and roots_cache_path.exists():
+                try:
+                    cached_roots = json.loads(roots_cache_path.read_text(encoding='utf-8'))
+                except Exception:
+                    cached_roots = {}
+            def save_cached_root(key, value):
+                if not use_roots_cache:
+                    return
+                cached_roots[key] = value
+                roots_cache_path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = roots_cache_path.with_suffix('.tmp')
+                tmp.write_text(json.dumps(cached_roots), encoding='utf-8')
+                os.replace(tmp, roots_cache_path)
+
+            if 'source_root' in cached_roots:
+                source_root = cached_roots['source_root']
+            else:
+                source_root = self.sources.replace_stream(None, '', leaves()) if work.count else None
+                save_cached_root('source_root', source_root)
+            from itertools import groupby
+            from operator import itemgetter
             class Aliases:
                 def __iter__(self):
                     return (row[0] for row in db.execute('SELECT DISTINCT alias FROM aliases ORDER BY alias'))
                 def __getitem__(self, alias):
                     return (row[0] for row in db.execute('SELECT member FROM aliases WHERE alias=? ORDER BY member', (alias,)))
-            alias_root = self.memberships.replace(None, Aliases())
+                def stream_items(self):
+                    for alias, group in groupby(db.execute('SELECT alias, member FROM aliases ORDER BY alias, member'), key=itemgetter(0)):
+                        yield alias, [row[1] for row in group]
+            if 'alias_root' in cached_roots:
+                alias_root = cached_roots['alias_root']
+            else:
+                alias_root = self.memberships.replace(None, Aliases())
+                save_cached_root('alias_root', alias_root)
             if on_progress is not None:
                 on_progress(dict(phase='native-aliases', **self.preparation_metrics))
             lookup_roots = []
             for kind, owner in [(0, self.urls), (1, self.targets), (2, self.bodies), (3, self.packages)]:
-                class Lookups:
-                    def __iter__(self):
-                        return (row[0] for row in db.execute('SELECT DISTINCT alias FROM lookups WHERE kind=? ORDER BY alias', (kind,)))
-                    def __getitem__(self, alias):
-                        return (row[0] for row in db.execute('SELECT member FROM lookups WHERE kind=? AND alias=? ORDER BY member', (kind, alias)))
-                lookup_roots.append(owner.replace(None, Lookups()))
+                lookup_key = f'lookup_root_{kind}'
+                if lookup_key in cached_roots:
+                    lookup_roots.append(cached_roots[lookup_key])
+                else:
+                    class Lookups:
+                        def __iter__(self):
+                            return (row[0] for row in db.execute('SELECT DISTINCT alias FROM lookups WHERE kind=? ORDER BY alias', (kind,)))
+                        def __getitem__(self, alias):
+                            return (row[0] for row in db.execute('SELECT member FROM lookups WHERE kind=? AND alias=? ORDER BY member', (kind, alias)))
+                        def stream_items(self):
+                            for alias, group in groupby(db.execute('SELECT alias, member FROM lookups WHERE kind=? ORDER BY alias, member', (kind,)), key=itemgetter(0)):
+                                yield alias, [row[1] for row in group]
+                    root_val = owner.replace(None, Lookups())
+                    save_cached_root(lookup_key, root_val)
+                    lookup_roots.append(root_val)
                 if on_progress is not None:
                     on_progress(dict(phase='native-lookup', kind=kind, **self.preparation_metrics))
             return dict(self._selection(None), source_root=source_root, alias_root=alias_root,

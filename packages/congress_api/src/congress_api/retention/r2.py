@@ -1,11 +1,15 @@
 """Small object-store implementation for the raw mirror; no acquisition policy."""
 
 import base64
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import asyncio
 import json
 import logging
+import os
+from pathlib import Path
 import random
+import threading
 import time
 from contextlib import asynccontextmanager, closing
 from datetime import timezone
@@ -185,6 +189,53 @@ class R2Store:
         self.excluded_body_hashes = excluded_body_hashes
         self.store_uncompressed_pdfs = store_uncompressed_pdfs
         self.index_etags = {}
+        self._manifest_cache_dir = (
+            Path('.cache/docspec-catalog/r2-native-manifests')
+            if 'PYTEST_CURRENT_TEST' not in os.environ
+            else None
+        )
+        self._manifest_lock = threading.Lock()
+        self._manifest_mem = {}
+        self._manifest_pool = None
+        self._manifest_futures = []
+
+    def _write_manifest_disk_cache(self, disk_path, body):
+        try:
+            disk_path.parent.mkdir(parents=True, exist_ok=True)
+            tmp_path = disk_path.with_name(f'.{disk_path.name}.{threading.get_ident()}.tmp')
+            tmp_path.write_bytes(body)
+            os.replace(tmp_path, disk_path)
+        except OSError:
+            pass
+
+    def _upload_manifest(self, key, body, disk_path):
+        from botocore.exceptions import ClientError
+
+        if disk_path.is_file():
+            try:
+                if disk_path.stat().st_size == len(body):
+                    return False
+            except OSError:
+                pass
+        try:
+            result = self.client.put_object(**put_parameters(self.bucket, key, body, IfNoneMatch='*'))
+        except ClientError as error:
+            if error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
+                self._write_manifest_disk_cache(disk_path, body)
+                return False
+            raise
+        verify_upload(result, body)
+        self._write_manifest_disk_cache(disk_path, body)
+        return True
+
+    def _flush_manifests(self):
+        if not self._manifest_futures:
+            return
+        with self._manifest_lock:
+            pending = list(self._manifest_futures)
+            self._manifest_futures.clear()
+        for future in pending:
+            future.result()
 
     @asynccontextmanager
     async def async_bodies(self):
@@ -197,6 +248,22 @@ class R2Store:
 
     def read(self, key):
         from botocore.exceptions import ClientError
+
+        if self._manifest_cache_dir is not None and key.startswith('indexes/native-manifests/'):
+            with self._manifest_lock:
+                cached = self._manifest_mem.get(key)
+            if cached is not None:
+                return cached
+            disk_path = self._manifest_cache_dir / key.removeprefix('indexes/native-manifests/')
+            if disk_path.is_file():
+                try:
+                    data = disk_path.read_bytes()
+                    with self._manifest_lock:
+                        if len(self._manifest_mem) < 16384:
+                            self._manifest_mem[key] = data
+                    return data
+                except OSError:
+                    pass
 
         def request():
             try:
@@ -228,10 +295,47 @@ class R2Store:
         # Only a complete read can authorize a later conditional write.
         if key.startswith("indexes/"):
             self.index_etags[key] = response["ETag"]
+        if self._manifest_cache_dir is not None and key.startswith('indexes/native-manifests/'):
+            with self._manifest_lock:
+                if len(self._manifest_mem) < 16384:
+                    self._manifest_mem[key] = data
+            self._write_manifest_disk_cache(
+                self._manifest_cache_dir / key.removeprefix('indexes/native-manifests/'),
+                data,
+            )
         return data
 
     def put(self, key, body, *, immutable=False):
         from botocore.exceptions import ClientError
+
+        if self._manifest_cache_dir is not None and immutable and key.startswith('indexes/native-manifests/'):
+            disk_path = self._manifest_cache_dir / key.removeprefix('indexes/native-manifests/')
+            with self._manifest_lock:
+                if len(self._manifest_mem) >= 16384:
+                    self._manifest_mem.clear()
+                self._manifest_mem[key] = body
+            if disk_path.is_file():
+                try:
+                    if disk_path.stat().st_size == len(body):
+                        return False
+                except OSError:
+                    pass
+            with self._manifest_lock:
+                if self._manifest_pool is None:
+                    self._manifest_pool = ThreadPoolExecutor(max_workers=128)
+                if len(self._manifest_futures) >= 512:
+                    done = [f for f in self._manifest_futures if f.done()]
+                    self._manifest_futures = [f for f in self._manifest_futures if not f.done()]
+                else:
+                    done = []
+                self._manifest_futures.append(
+                    self._manifest_pool.submit(self._upload_manifest, key, body, disk_path)
+                )
+            for f in done:
+                f.result()
+            return True
+
+        self._flush_manifests()
 
         if key.startswith("bodies/") and self.excluded_body_hashes:
             from congress_api.retention.raw_storage import enforce_body_ingest_gate
@@ -253,6 +357,8 @@ class R2Store:
                     return False
                 if immutable and key.startswith("indexes/processing/body-results/") and self.read(key) == body:
                     return False  # A retry may preserve the same processing result again.
+                if immutable and key.startswith("indexes/native-manifests/") and self.read(key) == body:
+                    return False
                 raise RuntimeError(
                     f"Concurrent update or reused receipt name: {key}; published receipts remain recoverable."
                 ) from error

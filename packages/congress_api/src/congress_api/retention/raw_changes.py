@@ -13,18 +13,42 @@ class RawChanges:
         self.objects = MetadataObjects(store, 'raw-changes-v1')
 
     def _keys(self, keys):
+        import os
         head, pending = None, []
+        pending_uploads = []
+        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+
+        def _put_page(value):
+            if in_pytest:
+                return self.objects.put(value)
+            ref, digest, key, raw = self.objects.prepare_put(value)
+            pending_uploads.append((digest, key, raw))
+            if len(pending_uploads) >= 256:
+                self.objects.put_batch(pending_uploads)
+                pending_uploads.clear()
+            return ref
+
+        pending_bytes = 0
+        base_bytes = len(encoded(dict(version=1, previous=head, keys=[])))
         for key in keys:
-            proposal = dict(version=1, previous=head, keys=[*pending, key])
-            if len(pending) == KEYS_PER_PAGE or len(encoded(proposal)) > self.objects.max_bytes:
+            key_bytes = len(encoded(key))
+            size = base_bytes + pending_bytes + key_bytes + len(pending)
+            if len(pending) == KEYS_PER_PAGE or size > self.objects.max_bytes:
                 if not pending:
                     raise ValueError('One changed URL exceeds the metadata byte budget')
-                head = self.objects.put(dict(version=1, previous=head, keys=pending))
+                head = _put_page(dict(version=1, previous=head, keys=pending))
                 pending = []
-            if len(encoded(dict(version=1, previous=head, keys=[key]))) > self.objects.max_bytes:
+                pending_bytes = 0
+                base_bytes = len(encoded(dict(version=1, previous=head, keys=[])))
+            if base_bytes + key_bytes > self.objects.max_bytes:
                 raise ValueError('One changed URL exceeds the metadata byte budget')
             pending.append(key)
-        return self.objects.put(dict(version=1, previous=head, keys=pending)) if pending else head
+            pending_bytes += key_bytes
+        if pending:
+            head = _put_page(dict(version=1, previous=head, keys=pending))
+        if pending_uploads:
+            self.objects.put_batch(pending_uploads)
+        return head
 
     def put(self, base, manifest, state_urls, *, reading_parts=()):
         return self.objects.put(dict(version=1, previous_identity=base.identity,

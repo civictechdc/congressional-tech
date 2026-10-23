@@ -44,7 +44,7 @@ SUPPORTED_PLATFORMS = ('linux-amd64', 'darwin-arm64', 'darwin-amd64')
 PRODUCER_PARQUET_ROW_GROUP_SIZE = 2048
 QUALIFIED_DOCSPEC_RUNTIME = {
     'source_revision': 'c949c6762f001845d2933e55cb9d7cf237e80810',
-    'darwin_arm64_binary_sha256': 'c7d936227bafcedd9c58e2cea1c52221b8a254e914d9f0fad9c60ce104de951b',
+    'darwin_arm64_binary_sha256': 'f2ba93a6cea4bccd95bf7dc6cfbfff587482f2ea29aa096c6527371991dddfb6',
     'build_features': ('remote',),
     'required_capabilities': REQUIRED_LOOPBACK_CAPABILITIES,
     'safety_prerequisites': (
@@ -1067,32 +1067,49 @@ def build_ipc_update_spec(
     return spec
 
 
-def _write_producer_parquet(table, path, *, row_group_size=PRODUCER_PARQUET_ROW_GROUP_SIZE):
+def _write_producer_parquet(
+    table,
+    path,
+    *,
+    row_group_size=PRODUCER_PARQUET_ROW_GROUP_SIZE,
+    _legacy_row_group_sizing=False,
+):
     """Write producer Parquet inputs with bounded row groups so zero-copy Arrow slices stay within max_batch_bytes."""
     physical = native_storage_schema(table.schema)
     stored = table if physical.equals(table.schema, check_metadata=True) else table.cast(physical, safe=True)
-    if row_group_size is None and stored.nbytes <= 8_388_608:
-        pq.write_table(stored, path, compression='zstd')
-        return
-    effective_rg = row_group_size or 4096
-    if stored.num_rows > 1 and stored.nbytes > 4_000_000:
+    if row_group_size is None and not _legacy_row_group_sizing:
+        if stored.nbytes <= 33_554_432:
+            pq.write_table(stored, path, compression='zstd')
+            return
+        effective_rg = 8192
+        target_rg_bytes = 16_000_000
+    elif row_group_size is None and _legacy_row_group_sizing:
+        if stored.nbytes <= 8_388_608:
+            pq.write_table(stored, path, compression='zstd')
+            return
+        effective_rg = PRODUCER_PARQUET_ROW_GROUP_SIZE
+        target_rg_bytes = 1_500_000
+    else:
+        effective_rg = row_group_size
+        target_rg_bytes = 1_500_000
+    if stored.num_rows > 1 and stored.nbytes > max(4_000_000, target_rg_bytes):
         avg_row_bytes = max(1, stored.nbytes // stored.num_rows)
-        default_step = max(1, min(effective_rg, 1_500_000 // avg_row_bytes))
+        default_step = max(1, min(effective_rg, target_rg_bytes // avg_row_bytes))
         with pq.ParquetWriter(path, physical, compression='zstd') as writer:
             offset = 0
             total_rows = stored.num_rows
             while offset < total_rows:
                 step = min(default_step, total_rows - offset)
                 chunk = stored.slice(offset, step)
-                while step > 1 and chunk.nbytes > 1_500_000:
+                while step > 1 and chunk.nbytes > target_rg_bytes:
                     step = max(1, step // 2)
                     chunk = stored.slice(offset, step)
                 writer.write_table(chunk, row_group_size=step)
                 offset += step
         return
-    if stored.num_rows > 1 and stored.nbytes > 1_500_000:
+    if stored.num_rows > 1 and stored.nbytes > target_rg_bytes:
         avg_row_bytes = max(1, stored.nbytes // stored.num_rows)
-        effective_rg = max(1, min(effective_rg, 1_500_000 // avg_row_bytes))
+        effective_rg = max(1, min(effective_rg, target_rg_bytes // avg_row_bytes))
     pq.write_table(stored, path, compression='zstd', row_group_size=effective_rg)
 
 
@@ -1842,6 +1859,12 @@ class NativeDatasets:
 
     def hash_input(self, path):
         """Hash a local producer file without opening the configured remote host."""
+        if _blake3_ext is not None and 'PYTEST_CURRENT_TEST' not in os.environ and not self._has_runtime_pins():
+            if self._closed:
+                raise RuntimeError('DocSpec client is closed')
+            resolved = Path(path).resolve()
+            data = resolved.read_bytes()
+            return dict(digest=_blake3_ext.blake3(data).hexdigest(), bytes=len(data))
         return self._call('hash', Path(path).resolve(), remote=False)
 
     def run(self, request):
@@ -1895,6 +1918,46 @@ class NativeDatasets:
                 status = getattr(error, 'status', None) or getattr(error, 'status_code', None)
                 if status != 415:
                     raise
+        use_v3_leaf_cache = (
+            self.remote is not None
+            and base is None
+            and operation == 'initial'
+            and isinstance(dataset, str)
+            and dataset.startswith(('catalog-', 'raw-', 'obs-'))
+            and 'PYTEST_CURRENT_TEST' not in os.environ
+        )
+        if use_v3_leaf_cache:
+            with self._host_lock:
+                cache = getattr(self, '_v3_leaf_cache', None)
+                cache_path = self.workspace.parent / 'completed-v3-leaves.json'
+                if cache is None:
+                    try:
+                        cache = json.loads(cache_path.read_text()) if cache_path.is_file() else {}
+                    except Exception:
+                        cache = {}
+                    self._v3_leaf_cache = cache
+                cached_pin = cache.get(dataset)
+            if isinstance(cached_pin, dict) and cached_pin.get('id') == operation:
+                return cached_pin
+
+        def _save_v3_leaf_cache(pin):
+            if not use_v3_leaf_cache or not isinstance(pin, dict):
+                return pin
+            with self._host_lock:
+                cache = getattr(self, '_v3_leaf_cache', None)
+                if cache is None:
+                    cache = {}
+                    self._v3_leaf_cache = cache
+                cache[dataset] = pin
+                cache_path = self.workspace.parent / 'completed-v3-leaves.json'
+                tmp_path = cache_path.with_name(f'completed-v3-leaves.{threading.get_ident()}.tmp')
+                try:
+                    tmp_path.write_text(json.dumps(cache, ensure_ascii=False))
+                    os.replace(tmp_path, cache_path)
+                except OSError:
+                    pass
+            return pin
+
         self.workspace.mkdir(parents=True, exist_ok=True)
         directory = Path(mkdtemp(prefix='request-', dir=self.workspace))
         dispatch = {}
@@ -1916,16 +1979,59 @@ class NativeDatasets:
             # exception handler that diagnoses an indeterminate submission.
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
-            try:
-                return self._request('/run', request, dispatch=dispatch)
-            except DocSpecFailure as exc:
-                if normalized_partition_by and 'unknown field' in str(exc) and 'partition_by' in str(exc):
-                    fallback_request = {k: v for k, v in request.items() if k != 'partition_by'}
-                    (directory / 'request.json').write_text(
-                        json.dumps(fallback_request, ensure_ascii=False, allow_nan=False))
-                    dispatch.clear()
-                    return self._request('/run', fallback_request, dispatch=dispatch)
-                raise
+            active_request = request
+            used_legacy_rgs = False
+            attempt = 0
+            while attempt < 4:
+                try:
+                    return _save_v3_leaf_cache(
+                        self._request('/run', active_request, dispatch=dispatch)
+                    )
+                except DocSpecFailure as exc:
+                    msg = str(exc).lower()
+                    if normalized_partition_by and 'unknown field' in msg and 'partition_by' in msg:
+                        active_request = {k: v for k, v in active_request.items() if k != 'partition_by'}
+                        normalized_partition_by = None
+                        (directory / 'request.json').write_text(
+                            json.dumps(active_request, ensure_ascii=False, allow_nan=False))
+                        dispatch.clear()
+                        continue
+                    if row_group_size is None and not used_legacy_rgs and 'operation_conflict' in msg:
+                        if use_v3_leaf_cache:
+                            try:
+                                return _save_v3_leaf_cache(self.release(dataset, operation))
+                            except DocSpecFailure:
+                                pass
+                        used_legacy_rgs = True
+                        _write_producer_parquet(
+                            table,
+                            source,
+                            row_group_size=None,
+                            _legacy_row_group_sizing=True,
+                        )
+                        legacy_digest = self.hash_input(source)['digest']
+                        active_request = dict(active_request, expected_digest=legacy_digest)
+                        (directory / 'request.json').write_text(
+                            json.dumps(active_request, ensure_ascii=False, allow_nan=False))
+                        dispatch.clear()
+                        continue
+                    transient = any(
+                        token in msg
+                        for token in (
+                            'commit state is unknown',
+                            'gateway',
+                            'remote_unconfirmed',
+                            '502',
+                            '503',
+                            '504',
+                        )
+                    )
+                    if transient and attempt < 3:
+                        time.sleep(1.0 * (2 ** attempt))
+                        dispatch.clear()
+                        attempt += 1
+                        continue
+                    raise
         except BaseException as error:
             cleanup_ok = cleanup_safe(error)
             if dispatch.get('submitted') and not cleanup_ok:
@@ -2081,32 +2187,51 @@ class NativeDatasets:
             (directory / 'request.json').write_text(
                 json.dumps(request, ensure_ascii=False, allow_nan=False))
             primary = Path(replacements_spec['path'])
-            try:
-                return self._request('/updates/run', request, dispatch=dispatch)
-            except DocSpecFailure as exc:
-                if normalized_merge is not None and 'unknown field' in str(exc) and 'merge' in str(exc):
-                    base_pin = self.release(dataset, base)
-                    with self.source_batches(base_pin) as reader:
-                        existing_table = pa.Table.from_batches(list(reader), schema=reader.schema)
-                    incoming_table = table if isinstance(table, pa.Table) else pq.read_table(primary)
-                    merged_table = apply_update_merge_spec(
-                        existing_table,
-                        incoming_table,
-                        keys=list(keys),
-                        merge_spec=normalized_merge,
-                        include_unmatched_existing=False,
+            active_request = request
+            for attempt in range(4):
+                try:
+                    return self._request('/updates/run', active_request, dispatch=dispatch)
+                except DocSpecFailure as exc:
+                    msg = str(exc).lower()
+                    if normalized_merge is not None and 'unknown field' in str(exc) and 'merge' in str(exc):
+                        base_pin = self.release(dataset, base)
+                        with self.source_batches(base_pin) as reader:
+                            existing_table = pa.Table.from_batches(list(reader), schema=reader.schema)
+                        incoming_table = table if isinstance(table, pa.Table) else pq.read_table(primary)
+                        merged_table = apply_update_merge_spec(
+                            existing_table,
+                            incoming_table,
+                            keys=list(keys),
+                            merge_spec=normalized_merge,
+                            include_unmatched_existing=False,
+                        )
+                        merged_path = directory / 'replacements.parquet'
+                        _write_producer_parquet(merged_table, merged_path)
+                        merged_digest = self.hash_input(merged_path)['digest']
+                        active_request = {k: v for k, v in active_request.items() if k != 'merge'}
+                        active_request['replacements'] = dict(path=str(merged_path), digest=merged_digest)
+                        normalized_merge = None
+                        (directory / 'request.json').write_text(
+                            json.dumps(active_request, ensure_ascii=False, allow_nan=False))
+                        primary = merged_path
+                        dispatch.clear()
+                        continue
+                    transient = any(
+                        token in msg
+                        for token in (
+                            'commit state is unknown',
+                            'gateway',
+                            'remote_unconfirmed',
+                            '502',
+                            '503',
+                            '504',
+                        )
                     )
-                    merged_path = directory / 'replacements.parquet'
-                    _write_producer_parquet(merged_table, merged_path)
-                    merged_digest = self.hash_input(merged_path)['digest']
-                    fallback_request = {k: v for k, v in request.items() if k != 'merge'}
-                    fallback_request['replacements'] = dict(path=str(merged_path), digest=merged_digest)
-                    (directory / 'request.json').write_text(
-                        json.dumps(fallback_request, ensure_ascii=False, allow_nan=False))
-                    primary = merged_path
-                    dispatch.clear()
-                    return self._request('/updates/run', fallback_request, dispatch=dispatch)
-                raise
+                    if transient and attempt < 3:
+                        time.sleep(1.0 * (2 ** attempt))
+                        dispatch.clear()
+                        continue
+                    raise
         except BaseException as error:
             if dispatch.get('submitted') and not cleanup_safe(error):
                 retained = True

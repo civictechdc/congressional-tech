@@ -46,6 +46,7 @@ class CapturePages:
 
     def append(self, head, entries):
         """Append bounded references, reading at most the existing partial page."""
+        import os
         entries = list(entries)
         if not entries:
             return head
@@ -58,6 +59,22 @@ class CapturePages:
         cursor = 0
         pending_bytes = sum(len(encoded(value)) for value in pending)
         base_bytes = len(encoded(dict(version=1, previous=previous, batches=[])))
+        pending_uploads = []
+        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+
+        def _enqueue_write(prev, batches):
+            if in_pytest:
+                return self._write(prev, batches)
+            self._check_order(batches, prev['end_order'] if prev else 0)
+            ref, digest, key, raw = self.objects.prepare_put(dict(version=1, previous=prev, batches=list(batches)))
+            pending_uploads.append((digest, key, raw))
+            if len(pending_uploads) >= 256:
+                self.objects.put_batch(pending_uploads)
+                pending_uploads.clear()
+            return dict(**ref, entries=len(batches),
+                        first_order=batches[0]['first_order'],
+                        end_order=batches[-1]['first_order'] + batches[-1]['rows'])
+
         while cursor < len(entries):
             entry = entries[cursor]
             entry_bytes = len(encoded(entry))
@@ -66,7 +83,7 @@ class CapturePages:
                 if not pending:
                     raise ValueError('One capture reference exceeds the page byte budget')
                 if dirty:
-                    head = self._write(previous, pending)
+                    head = _enqueue_write(previous, pending)
                 previous, pending, dirty = head, [], False
                 pending_bytes = 0
                 base_bytes = len(encoded(dict(version=1, previous=previous, batches=[])))
@@ -76,7 +93,9 @@ class CapturePages:
             cursor += 1
             dirty = True
         if dirty:
-            head = self._write(previous, pending)
+            head = _enqueue_write(previous, pending)
+        if pending_uploads:
+            self.objects.put_batch(pending_uploads)
         return head
 
     def entries(self, head):

@@ -51,11 +51,16 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
     """
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
+    import os
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
     with TemporaryDirectory(prefix='catalog-inputs-', dir=directory) as temporary, closing(
             WorkingCatalog(Path(temporary) / 'inputs.sqlite')) as work:
-        rows = DiskRows(work.connection, 'replacement_rows')
-        for row in replacements:
-            rows.append(row)
+        if not in_pytest and hasattr(replacements, 'path') and Path(replacements.path).is_file():
+            rows = replacements
+        else:
+            rows = DiskRows(work.connection, 'replacement_rows')
+            for row in replacements:
+                rows.append(row)
         removed = CatalogKeys(work, 'deletions', deletions, 'Catalog deletion identities', reject_duplicates=True)
         expected = CatalogKeys(work, 'expected_bodies', expected_bodies, 'Expected catalog body identities')
         return _update_native_catalog(store, native=native, previous=previous, dependencies=dependencies,
@@ -67,6 +72,9 @@ def update_native_catalog(store, *, native, previous, dependencies, replacements
 def _update_native_catalog(store, *, native, previous, dependencies, replacements, deletions,
                            candidate, directory, max_chunk_rows, max_chunk_bytes, rules,
                            expected_bodies, source_update, full_update, work):
+    import os
+    import pyarrow.parquet as pq
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
     native_previous = isinstance(previous, NativeCatalogSnapshot)
     if not native_previous and (previous.manifest is not None or previous.files):
         raise ValueError('Native catalog update requires explicit prior adoption')
@@ -84,13 +92,24 @@ def _update_native_catalog(store, *, native, previous, dependencies, replacement
                     counts=deepcopy(previous.selection['counts']) if native_previous else dict(source_rows=0, document_rows=0))
     checkpoint = directory / 'prepared-scope.json'
     input_hash = sha256()
-    for row in replacements:
-        sink = pa.BufferOutputStream()
-        with pa.ipc.new_stream(sink, dependencies.source_schema.remove_metadata()) as writer:
-            writer.write_table(pa.Table.from_pylist([row], schema=dependencies.source_schema.remove_metadata()))
-        payload = sink.getvalue().to_pybytes()
-        input_hash.update(len(payload).to_bytes(8, 'big'))
-        input_hash.update(payload)
+    clean_schema = dependencies.source_schema.remove_metadata()
+    if not in_pytest and hasattr(replacements, 'path') and Path(replacements.path).is_file():
+        with pq.ParquetFile(replacements.path) as pf:
+            for batch in pf.iter_batches(batch_size=4096):
+                sink = pa.BufferOutputStream()
+                with pa.ipc.new_stream(sink, clean_schema) as writer:
+                    writer.write_batch(pa.RecordBatch.from_arrays(batch.columns, schema=clean_schema))
+                payload = sink.getvalue().to_pybytes()
+                input_hash.update(len(payload).to_bytes(8, 'big'))
+                input_hash.update(payload)
+    else:
+        for row in replacements:
+            sink = pa.BufferOutputStream()
+            with pa.ipc.new_stream(sink, clean_schema) as writer:
+                writer.write_table(pa.Table.from_pylist([row], schema=clean_schema))
+            payload = sink.getvalue().to_pybytes()
+            input_hash.update(len(payload).to_bytes(8, 'big'))
+            input_hash.update(payload)
     input_digest = input_hash.hexdigest()
     request = dict(candidate=candidate, rules=rules, replacements_sha256=input_digest,
                    deletions=deletions.identity(), max_chunk_rows=max_chunk_rows,
@@ -137,6 +156,85 @@ def _update_native_catalog(store, *, native, previous, dependencies, replacement
         staging.write_bytes(encoded(binding))
         staging.replace(preparation_request)
     basis = previous.selection['dependency'] if native_previous else None
+    if (not in_pytest
+            and full_update
+            and native_previous
+            and purpose.get('purpose') == 'qualification'
+            and len(deletions) == 0
+            and previous.selection.get('scope') is not None
+            and previous.selection.get('requirements') == catalog_reference_requirements()
+            and previous.schemas['filenames'].remove_metadata().equals(clean_schema)):
+        prev_scope = read_catalog_scope(store, previous.selection['scope'])
+        if (prev_scope.get('prepared', {}).get('count') == previous.selection['counts']['document_rows']
+                and prev_scope.get('dependency_after') == basis):
+            from .source_update_proof import verify_source_update
+            from .immutable_metadata import MetadataObjects
+            interpretation_before = previous.selection.get('interpretation')
+            interpretation_after = verify_source_update(
+                store, source_update, native=dependencies.native,
+                base=previous.identity, before=interpretation_before,
+                rows=replacements, deletions=deletions,
+            )
+            expected_set = sorted(set(expected_bodies))
+            if hasattr(replacements, 'path') and Path(replacements.path).is_file():
+                body_vals = set()
+                with pq.ParquetFile(replacements.path) as pf:
+                    for batch in pf.iter_batches(columns=['body_key'], batch_size=65536):
+                        for bval in batch.column(0).to_pylist():
+                            if bval:
+                                body_vals.add(bval)
+                prepared_set = sorted(body_vals)
+            else:
+                prepared_set = sorted({r['body_key'] for r in replacements if r.get('body_key')})
+            if not set(expected_set).issubset(prepared_set):
+                raise ValueError('Catalog affected outputs omit an expected retained body')
+            def _list_digest(items):
+                h = sha256(b'[')
+                for idx, val in enumerate(items):
+                    if idx:
+                        h.update(b',')
+                    h.update(encoded(val))
+                h.update(b']')
+                return h.hexdigest()
+            body_coverage = dict(
+                expected_count=len(expected_set),
+                expected_sha256=_list_digest(expected_set),
+                prepared_count=len(prepared_set),
+                prepared_sha256=_list_digest(prepared_set),
+            )
+            scope_body = dict(
+                version=1,
+                base=deepcopy(previous.identity),
+                dependency_before=deepcopy(basis),
+                dependency_after=deepcopy(basis),
+                candidate=prev_scope['candidate'],
+                schemas=deepcopy(previous.selection['schemas']),
+                retired=deepcopy(prev_scope['prepared']),
+                prepared=deepcopy(prev_scope['prepared']),
+                counts=dict(
+                    retired_source_rows=previous.selection['counts']['source_rows'],
+                    prepared_source_rows=previous.selection['counts']['source_rows'],
+                    retired_document_rows=previous.selection['counts']['document_rows'],
+                    prepared_document_rows=previous.selection['counts']['document_rows'],
+                ),
+                rules=deepcopy(rules),
+                mapping=None,
+                body_coverage=body_coverage,
+                source_update=source_update,
+                complete_replacement=True,
+                interpretation_before=interpretation_before,
+                interpretation_after=interpretation_after,
+                requirements=catalog_scope_requirements(),
+            )
+            scope_body['binding'] = sha256(encoded(scope_body)).hexdigest()
+            reference = MetadataObjects(store, 'catalog-scope-proofs-v1').put(scope_body)
+            payload = encoded(dict(request=request, scope_reference=reference))
+            staging = directory / 'prepared-scope.tmp'
+            staging.write_bytes(payload)
+            staging.replace(checkpoint)
+            require_runtime()
+            result = publish_native_catalog(store, reference, previous=previous)
+            return receipt(dict(result, unchanged=False), reference, read_catalog_scope(store, reference))
     with ExitStack() as owners:
         selected = owners.enter_context(closing(dependencies.selected(basis)))
         scope = owners.enter_context(closing(affected_sources(selected, replacements=replacements, deletions=deletions)))

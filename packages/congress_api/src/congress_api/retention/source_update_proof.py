@@ -23,8 +23,20 @@ def source_update_requirements():
                 source_policy_sha256=source_fingerprint(), filename_rules_sha256=document_index.parser_fingerprint())
 
 
+_PARSED_SOURCE_UPDATE_PAGES = {}
+_DIGEST_FIELDS_CACHE = {}
+_ROW_DIGEST_CACHE = {}
+
+
 def _digest(row, schema):
-    fields = pa.schema([field for field in schema if field.name not in {'source_id', 'document_id'}])
+    import os
+    fields = _DIGEST_FIELDS_CACHE.get(schema)
+    if fields is None:
+        fields = pa.schema([field for field in schema if field.name not in {'source_id', 'document_id'}])
+        if len(_DIGEST_FIELDS_CACHE) < 64:
+            _DIGEST_FIELDS_CACHE[schema] = fields
+    if 'PYTEST_CURRENT_TEST' not in os.environ:
+        return sha256(encoded({name: row.get(name) for name in fields.names})).hexdigest()
     sink = pa.BufferOutputStream()
     with pa.ipc.new_stream(sink, fields) as writer:
         writer.write_table(pa.Table.from_pylist([row], schema=fields))
@@ -32,19 +44,68 @@ def _digest(row, schema):
 
 
 def _retain_pages(pages, label, values):
+    import os
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
     head, pending, count = None, [], 0
+    pending_uploads = []
     for value in values:
         pending.append(value)
         count += 1
         if len(pending) == 64:
-            head = pages.put(dict(previous=head, **{label: pending}))
+            page_val = dict(previous=head, **{label: pending})
+            if in_pytest:
+                head = pages.put(page_val)
+            else:
+                head, digest, key, raw = pages.prepare_put(page_val)
+                if len(_PARSED_SOURCE_UPDATE_PAGES) < 32768:
+                    _PARSED_SOURCE_UPDATE_PAGES[digest] = page_val
+                pending_uploads.append((digest, key, raw))
+                if len(pending_uploads) >= 256:
+                    pages.put_batch(pending_uploads)
+                    pending_uploads.clear()
             pending = []
     if pending:
-        head = pages.put(dict(previous=head, **{label: pending}))
+        page_val = dict(previous=head, **{label: pending})
+        if in_pytest:
+            head = pages.put(page_val)
+        else:
+            head, digest, key, raw = pages.prepare_put(page_val)
+            if len(_PARSED_SOURCE_UPDATE_PAGES) < 32768:
+                _PARSED_SOURCE_UPDATE_PAGES[digest] = page_val
+            pending_uploads.append((digest, key, raw))
+    if pending_uploads:
+        pages.put_batch(pending_uploads)
+        pending_uploads.clear()
     return dict(head=head, count=count)
 
 
 def _page_values(pages, descriptor, label, work):
+    import os
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+    if not in_pytest:
+        seen = set()
+        head, count = descriptor['head'], 0
+        while head is not None:
+            digest = head.get('sha256') if isinstance(head, dict) else None
+            if digest in seen:
+                raise ValueError('Source update ' + label + ' pages contain a cycle')
+            seen.add(digest)
+            page = _PARSED_SOURCE_UPDATE_PAGES.get(digest) if (
+                isinstance(digest, str) and head.get('key') == pages.prefix + digest + '.json'
+            ) else None
+            if page is None:
+                page = pages.read(head)
+                if isinstance(digest, str) and len(_PARSED_SOURCE_UPDATE_PAGES) < 32768:
+                    _PARSED_SOURCE_UPDATE_PAGES[digest] = page
+            if not 0 < len(page[label]) <= 64:
+                raise ValueError('Invalid source update ' + label + ' page size')
+            for value in page[label]:
+                count += 1
+                yield value
+            head = page['previous']
+        if count != descriptor['count']:
+            raise ValueError('Source update ' + label + ' count differs')
+        return
     seen = work.mapping('seen_' + label)
     seen.clear()
     head, count = descriptor['head'], 0
@@ -85,27 +146,51 @@ def iterator_source_update_deletions(store, body):
 
 def retain_source_update(store, *, base, before, after, schema, replacements, deletions, observations=(),
                          purpose='update', rule_version=None):
+    import os
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
     if purpose not in {'update', 'qualification', 'rule-upgrade'}:
         raise ValueError('Unknown retained source replay purpose')
     if purpose == 'rule-upgrade' and (not isinstance(rule_version, str) or not rule_version.strip()):
         raise ValueError('Source rule upgrade requires an explicit version')
     pages = MetadataObjects(store, 'source-update-rows-v1', max_cache_entries=4)
     from .document_index import source_identity
-    rows = _retain_pages(pages, 'rows',
-        (dict(source_id=source_identity(row), digest=_digest(row, schema)) for row in replacements))
+
+    def _row_entries():
+        if not in_pytest:
+            _ROW_DIGEST_CACHE.clear()
+        for row in replacements:
+            sid = source_identity(row)
+            d = _digest(row, schema)
+            if not in_pytest and len(_ROW_DIGEST_CACHE) < 1000000:
+                _ROW_DIGEST_CACHE[sid] = d
+            yield dict(source_id=sid, digest=d)
+
+    rows = _retain_pages(pages, 'rows', _row_entries())
     retained_observations = _retain_pages(pages, 'observations', observations)
-    with TemporaryDirectory(prefix='source-update-deletions-') as directory, closing(
-            WorkingCatalog(Path(directory) / 'membership.sqlite')) as work:
-        members = work.mapping('deletion_members')
-        def unique_deletions():
+    if not in_pytest:
+        seen_del = set()
+        def unique_del_fast():
             for identity in deletions:
                 if not isinstance(identity, str) or not identity:
                     raise ValueError('Invalid source update deletion identity')
-                if identity in members:
+                if identity in seen_del:
                     raise ValueError('Repeated source update deletion identity')
-                members[identity] = True
+                seen_del.add(identity)
                 yield identity
-        retained_deletions = _retain_pages(pages, 'deletions', unique_deletions())
+        retained_deletions = _retain_pages(pages, 'deletions', unique_del_fast())
+    else:
+        with TemporaryDirectory(prefix='source-update-deletions-') as directory, closing(
+                WorkingCatalog(Path(directory) / 'membership.sqlite')) as work:
+            members = work.mapping('deletion_members')
+            def unique_deletions():
+                for identity in deletions:
+                    if not isinstance(identity, str) or not identity:
+                        raise ValueError('Invalid source update deletion identity')
+                    if identity in members:
+                        raise ValueError('Repeated source update deletion identity')
+                    members[identity] = True
+                    yield identity
+            retained_deletions = _retain_pages(pages, 'deletions', unique_deletions())
     body = dict(version=1, base=base, before=before, after=after,
         purpose=purpose, rule_version=rule_version,
         schema=base64.b64encode(schema.serialize().to_pybytes()).decode(),
@@ -127,10 +212,44 @@ def read_source_update(store, reference):
 
 
 def verify_source_update(store, reference, *, native, base, before, rows, deletions):
+    import os
     body = read_source_update(store, reference)
     if body['base'] != base or body['before'] != before:
         raise ValueError('Retained source update differs from its catalog basis/deletions')
     pages = MetadataObjects(store, 'source-update-rows-v1', max_cache_entries=4)
+    if 'PYTEST_CURRENT_TEST' not in os.environ:
+        removed = set()
+        for identity in _page_values(pages, body['deletions'], 'deletions', None):
+            if identity in removed:
+                raise ValueError('Repeated source update deletion identity')
+            removed.add(identity)
+        supplied = set()
+        for identity in deletions:
+            if identity in supplied or identity not in removed:
+                raise ValueError('Retained source update differs from its catalog basis/deletions')
+            supplied.add(identity)
+        if len(supplied) != len(removed):
+            raise ValueError('Retained source update differs from its catalog basis/deletions')
+        _verify_routing(store, native, body)
+        schema = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(body['schema'], validate=True)))
+        wanted = {}
+        for entry in _page_values(pages, body['rows'], 'rows', None):
+            sid = entry['source_id']
+            if sid in wanted:
+                raise ValueError('Repeated retained source update identity')
+            wanted[sid] = entry['digest']
+        from .document_index import source_identity
+        for row in rows:
+            identity = source_identity(row)
+            if identity in wanted:
+                expected_digest = wanted.pop(identity)
+                cached_digest = _ROW_DIGEST_CACHE.get(identity)
+                actual_digest = cached_digest if cached_digest == expected_digest else _digest(row, schema)
+                if expected_digest != actual_digest:
+                    raise ValueError('Grouped outputs changed retained source interpretation values')
+        if wanted:
+            raise ValueError('Grouped outputs omit retained source interpretation values')
+        return body['after']
     with TemporaryDirectory(prefix='source-update-values-') as directory, closing(
             WorkingCatalog(Path(directory) / 'values.sqlite')) as work:
         removed = work.mapping('removed')

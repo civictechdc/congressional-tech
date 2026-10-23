@@ -65,6 +65,45 @@ STATE_SCHEMA = pa.schema([
     ("links_scanned", pa.bool_()),
 ])
 
+LEGACY_CAPTURE_SCHEMA = pa.schema([
+    ("family", pa.string()),
+    ("capture_date", pa.string()),
+    ("source_file", pa.string()),
+    ("source_line", pa.int64()),
+    ("receipt_key", pa.string()),
+    ("receipt_line", pa.int64()),
+    ("reference_kind", pa.string()),
+    ("pointer_json", pa.string()),
+    ("context_url", pa.string()),
+    ("body_key", pa.string()),
+    ("sha256", pa.string()),
+    ("bytes", pa.int64()),
+    ("stored_sha256", pa.string()),
+    ("stored_bytes", pa.int64()),
+    ("fidelity", pa.string()),
+    ("media_type", pa.string()),
+    ("retrieved_at", pa.string()),
+    ("http_status", pa.int64()),
+    ("resolution", pa.string()),
+    ("original_path", pa.string()),
+])
+
+LEGACY_STATE_SCHEMA = pa.schema([
+    ("url", pa.string()),
+    ("family", pa.string()),
+    ("body_key", pa.string()),
+    ("sha256", pa.string()),
+    ("media_type", pa.string()),
+    ("fidelity", pa.string()),
+    ("retrieved_at", pa.string()),
+    ("outcome", pa.string()),
+    ("checked_at", pa.string()),
+    ("next_attempt_at", pa.string()),
+    ("http_status", pa.int64()),
+    ("attempts", pa.int64()),
+    ("links_scanned", pa.bool_()),
+])
+
 RAW_ARCHIVE_ROW_GROUP_SIZE = 65536
 
 

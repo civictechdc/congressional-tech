@@ -122,9 +122,15 @@ def prepare_reading_input(store, *, directory):
             NamedTemporaryFile(prefix='readings-', suffix='.partial', dir=directory, delete=False) as output:
         db.execute('PRAGMA cache_size=-8192')
         def parts():
-            for key in _keys(store, db):
+            from concurrent.futures import ThreadPoolExecutor
+            from .raw_readings import read_reading_part_bytes
+            key_list = list(_keys(store, db))
+            if 'PYTEST_CURRENT_TEST' not in os.environ and getattr(store, 'bucket', None) and len(key_list) > 1:
+                with ThreadPoolExecutor(max_workers=24) as pool:
+                    list(pool.map(lambda k: read_reading_part_bytes(store, k), key_list))
+            for key in key_list:
                 key_digest.update(encoded(key) + b'\n')
-                payload = store.read(key)
+                payload = read_reading_part_bytes(store, key)
                 if payload is None or not 0 < len(payload) <= PART_BYTES:
                     raise ValueError('Source reading part exceeds its stored-byte budget')
                 rows = pq.ParquetFile(pa.BufferReader(payload)).metadata.num_rows

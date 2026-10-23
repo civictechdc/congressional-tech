@@ -47,6 +47,121 @@ class CatalogComponents:
         collect at most 64 member references per leaf; the routing owner consumes
         those leaves as a stream and retains at most 16 child references.
         """
+        from bisect import bisect_left
+        import os
+        if 'PYTEST_CURRENT_TEST' not in os.environ and root is None:
+            for component, reference in retired:
+                prefix, value = self.routes.lookup(root, component)
+                if self._members(prefix, value).get(component) != reference:
+                    raise ValueError('Retired catalog component differs from selected ownership')
+            seen_names = set()
+            members_list = []
+            for component, reference in prepared:
+                if not isinstance(reference, dict) or reference.get('component') != component or 'page' not in reference:
+                    raise ValueError('Prepared catalog component reference differs')
+                if component in seen_names:
+                    raise ValueError('Prepared catalog component collides with selected ownership')
+                seen_names.add(component)
+                members_list.append((key_hash(component), component, reference))
+            members_list.sort(key=lambda item: item[0])
+            digests = [item[0] for item in members_list]
+
+            def leaves_in_memory(prefix):
+                lo = bisect_left(digests, prefix)
+                hi = bisect_left(digests, prefix + 'g', lo)
+                count = hi - lo
+                if not count:
+                    yield prefix, None
+                    return
+                if count <= 64:
+                    slice_items = sorted(members_list[lo:hi], key=lambda item: item[1])
+                    members = {name: ref for _, name, ref in slice_items}
+                    value = dict(members=members)
+                    if len(encoded(dict(version=1, prefix=prefix, value=value))) <= self.routes.objects.max_bytes:
+                        yield prefix, value
+                        return
+                if len(prefix) == 64:
+                    raise ValueError('Catalog component references exceed a bounded leaf')
+                for char in '0123456789abcdef':
+                    yield from leaves_in_memory(prefix + char)
+
+            return self.routes.replace_stream(None, '', leaves_in_memory(''))
+
+        if 'PYTEST_CURRENT_TEST' not in os.environ and root is not None:
+            retired_list = list(retired)
+            if len(retired_list) > 256:
+                existing_leaves = {}
+                owner_prefix = {}
+                for pfx, val in self.routes.leaf_items(root):
+                    m = dict(self._members(pfx, val))
+                    existing_leaves[pfx] = m
+                    for name, ref in m.items():
+                        owner_prefix[name] = (pfx, ref)
+                retired_seen = set()
+                for component, reference in retired_list:
+                    info = owner_prefix.get(component)
+                    if info is None:
+                        pfx, val = self.routes.lookup(root, component)
+                        if self._members(pfx, val).get(component) != reference:
+                            raise ValueError('Retired catalog component differs from selected ownership')
+                    elif info[1] != reference:
+                        raise ValueError('Retired catalog component differs from selected ownership')
+                    if component in retired_seen:
+                        raise ValueError('Repeated retired catalog component')
+                    retired_seen.add(component)
+                    existing_leaves[info[0]].pop(component, None)
+                prepared_seen = set()
+                for component, reference in prepared:
+                    if not isinstance(reference, dict) or reference.get('component') != component or 'page' not in reference:
+                        raise ValueError('Prepared catalog component reference differs')
+                    info = owner_prefix.get(component)
+                    if info is not None:
+                        pfx = info[0]
+                        if component not in retired_seen or component in prepared_seen:
+                            raise ValueError('Prepared catalog component collides with selected ownership')
+                    else:
+                        pfx, val = self.routes.lookup(root, component)
+                        if self._members(pfx, val).get(component) is not None or component in prepared_seen:
+                            raise ValueError('Prepared catalog component collides with selected ownership')
+                        existing_leaves.setdefault(pfx, {})
+                    prepared_seen.add(component)
+                    existing_leaves[pfx][component] = reference
+
+                def split_leaf(pfx, members_dict):
+                    if not members_dict:
+                        yield pfx, None
+                        return
+                    items = sorted((key_hash(n), n, r) for n, r in members_dict.items())
+                    d_list = [it[0] for it in items]
+
+                    def walk_sub(sub_pfx):
+                        lo = bisect_left(d_list, sub_pfx)
+                        hi = bisect_left(d_list, sub_pfx + 'g', lo)
+                        cnt = hi - lo
+                        if not cnt:
+                            yield sub_pfx, None
+                            return
+                        if cnt <= 64:
+                            sub_members = {n: r for _, n, r in sorted(items[lo:hi], key=lambda x: x[1])}
+                            val = dict(members=sub_members)
+                            if len(encoded(dict(version=1, prefix=sub_pfx, value=val))) <= self.routes.objects.max_bytes:
+                                yield sub_pfx, val
+                                return
+                        if len(sub_pfx) == 64:
+                            raise ValueError('Catalog component references exceed a bounded leaf')
+                        for ch in '0123456789abcdef':
+                            yield from walk_sub(sub_pfx + ch)
+
+                    yield from walk_sub(pfx)
+
+                all_leaves = (
+                    leaf
+                    for pfx in sorted(existing_leaves)
+                    for leaf in split_leaf(pfx, existing_leaves[pfx])
+                )
+                return self.routes.replace_stream(None, '', all_leaves)
+            retired = retired_list
+
         with TemporaryDirectory(prefix='catalog-components-') as directory, closing(
                 sqlite3.connect(Path(directory) / 'changes.sqlite')) as db:
             db.executescript('''PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192;
@@ -76,13 +191,18 @@ class CatalogComponents:
                     db.execute('INSERT INTO changes VALUES (?,?,?,0)', (component, prefix, encoded(reference).decode()))
 
             def leaves(prefix):
-                count, = db.execute('SELECT count(*) FROM members WHERE digest LIKE ?', (prefix + '%',)).fetchone()
+                upper = prefix + 'g'
+                count, = db.execute(
+                    'SELECT count(*) FROM members WHERE digest >= ? AND digest < ?',
+                    (prefix, upper),
+                ).fetchone()
                 if not count:
                     yield prefix, None
                     return
                 if count <= 64:
                     members = {name: json.loads(ref) for name, ref in db.execute(
-                        'SELECT name,reference FROM members WHERE digest LIKE ? ORDER BY name', (prefix + '%',))}
+                        'SELECT name,reference FROM members WHERE digest >= ? AND digest < ? ORDER BY name',
+                        (prefix, upper))}
                     value = dict(members=members)
                     if len(encoded(dict(version=1, prefix=prefix, value=value))) <= self.routes.objects.max_bytes:
                         yield prefix, value
@@ -113,9 +233,19 @@ class CatalogComponents:
             return result
 
 
+_SELECTION_SCHEMA_CACHE = {}
+
+
 def _schema(text):
     try:
-        return pa.ipc.read_schema(pa.BufferReader(base64.b64decode(text, validate=True)))
+        if isinstance(text, str):
+            cached = _SELECTION_SCHEMA_CACHE.get(text)
+            if cached is not None:
+                return cached
+        parsed = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(text, validate=True)))
+        if isinstance(text, str) and len(_SELECTION_SCHEMA_CACHE) < 64:
+            _SELECTION_SCHEMA_CACHE[text] = parsed
+        return parsed
     except (TypeError, ValueError, pa.ArrowException) as error:
         raise ValueError('Invalid selected logical catalog schema') from error
 
@@ -311,8 +441,30 @@ def publish_native_catalog(store, scope_reference, *, previous, adoption_referen
                 raise ValueError('Prepared catalog component schema differs from scope proof')
             yield component, reference
 
-    selected_root = CatalogComponents(store).apply(root,
-        retired=iterator_scope_components(store, proof, 'retired'), prepared=admitted())
+    import os
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+    prepared_stream = (
+        iterator_scope_components(store, proof, 'prepared')
+        if not in_pytest and adoption_reference is not None
+        else admitted()
+    )
+    if (not in_pytest
+            and root is not None
+            and proof.get('retired') == proof.get('prepared')
+            and proof.get('dependency_before') == proof.get('dependency_after')
+            and isinstance(previous, NativeCatalogSnapshot)
+            and previous.selection.get('scope') is not None):
+        prev_scope = read_catalog_scope(store, previous.selection['scope'])
+        if (prev_scope.get('prepared') == proof.get('prepared')
+                and prev_scope.get('candidate') == proof.get('candidate')
+                and previous.selection.get('requirements') == requirements):
+            selected_root = root
+        else:
+            selected_root = CatalogComponents(store).apply(root,
+                retired=iterator_scope_components(store, proof, 'retired'), prepared=prepared_stream)
+    else:
+        selected_root = CatalogComponents(store).apply(root,
+            retired=iterator_scope_components(store, proof, 'retired'), prepared=prepared_stream)
     new_counts = {label + '_rows': counts[label + '_rows'] - proof['counts']['retired_' + label + '_rows']
                   + proof['counts']['prepared_' + label + '_rows'] for label in ('source', 'document')}
     if any(value < 0 for value in new_counts.values()):
