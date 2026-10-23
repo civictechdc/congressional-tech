@@ -2398,13 +2398,6 @@ def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=N
                     references = body_references.get(identity, set())
                     references.add((row['body_key'], row['context_url']))
                     body_references[identity] = references
-    import os
-    if 'PYTEST_CURRENT_TEST' not in os.environ and read_body is not None and body_references:
-        store_obj = getattr(read_body, '_store', None) or getattr(read_body, '__self__', None)
-        if hasattr(store_obj, 'prefetch_immutable'):
-            store_obj.prefetch_immutable([
-                bkey for refs in body_references.values() for bkey, _ in refs if bkey
-            ])
     for record, receipt in records(None, "/receipts.jsonl"):
         context.add_redirect(record, receipt)
         context.add_associations(record, receipt)

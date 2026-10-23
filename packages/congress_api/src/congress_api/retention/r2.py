@@ -251,15 +251,24 @@ class R2Store:
             async with self.async_client() as client:
                 yield AsyncBodies(client, self.bucket)
 
+    def _immutable_cache_path(self, key):
+        if (
+            self._immutable_cache_dir is None
+            or not isinstance(key, str)
+            or key.endswith('.pdf')
+            or not key.startswith(('receipts/', 'bodies/sha256/'))
+        ):
+            return None
+        return self._immutable_cache_dir / key
+
     def prefetch_immutable(self, keys, *, max_workers=64):
         if self._immutable_cache_dir is None:
             return
-        missing = [
-            k for k in dict.fromkeys(keys)
-            if isinstance(k, str)
-            and k.startswith(('receipts/', 'bodies/sha256/'))
-            and not (self._immutable_cache_dir / k).is_file()
-        ]
+        missing = []
+        for k in dict.fromkeys(keys):
+            cache_path = self._immutable_cache_path(k)
+            if cache_path is not None and not cache_path.is_file():
+                missing.append(k)
         if not missing:
             return
         with ThreadPoolExecutor(max_workers=min(max_workers, len(missing))) as pool:
@@ -268,13 +277,12 @@ class R2Store:
     def read(self, key):
         from botocore.exceptions import ClientError
 
-        if self._immutable_cache_dir is not None and isinstance(key, str) and key.startswith(('receipts/', 'bodies/sha256/')):
-            disk_path = self._immutable_cache_dir / key
-            if disk_path.is_file():
-                try:
-                    return disk_path.read_bytes()
-                except OSError:
-                    pass
+        immutable_path = self._immutable_cache_path(key)
+        if immutable_path is not None and immutable_path.is_file():
+            try:
+                return immutable_path.read_bytes()
+            except OSError:
+                pass
 
         if self._manifest_cache_dir is not None and key.startswith('indexes/native-manifests/'):
             with self._manifest_lock:
@@ -330,8 +338,8 @@ class R2Store:
                 self._manifest_cache_dir / key.removeprefix('indexes/native-manifests/'),
                 data,
             )
-        elif self._immutable_cache_dir is not None and isinstance(key, str) and key.startswith(('receipts/', 'bodies/sha256/')):
-            self._write_manifest_disk_cache(self._immutable_cache_dir / key, data)
+        elif immutable_path is not None:
+            self._write_manifest_disk_cache(immutable_path, data)
         return data
 
     def put(self, key, body, *, immutable=False):
