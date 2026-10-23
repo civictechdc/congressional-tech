@@ -239,7 +239,9 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None,
                 position, head, pending = 0, None, []
                 receipts_set = set()
                 body_map = {}
-                with ThreadPoolExecutor(max_workers=12) as pool:
+                import sys
+                cap_done = 0
+                with ThreadPoolExecutor(max_workers=24) as pool:
                     inflight = deque()
                     for source in captures.iter_batches(batch_size=storage.max_capture_rows):
                         incoming = capture_table(pa.Table.from_batches([source]), first_order=position)
@@ -272,9 +274,12 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None,
                                         sdict = dict(key=skey, **info)
                                         body_map[skey] = (batch_pos, sdict, _row_arrow_bytes(sdict, BODY_SCHEMA))
                             position += len(canonical)
-                            if len(inflight) >= 12:
+                            if len(inflight) >= 24:
                                 bpos, nrows, nbytes, rcpts, fut = inflight.popleft()
                                 pin = fut.result()
+                                cap_done += 1
+                                if cap_done % 20 == 0:
+                                    print(f'[adopt-raw] captures leaf {cap_done} completed (rows={position})', file=sys.stderr, flush=True)
                                 pending.append(dict(release=pin, rows=nrows, decoded_bytes=nbytes,
                                                     receipt_keys=rcpts, first_order=bpos))
                                 if len(pending) == 64:
@@ -283,6 +288,9 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None,
                     while inflight:
                         bpos, nrows, nbytes, rcpts, fut = inflight.popleft()
                         pin = fut.result()
+                        cap_done += 1
+                        if cap_done % 20 == 0 or not inflight:
+                            print(f'[adopt-raw] captures leaf {cap_done} completed (rows={position})', file=sys.stderr, flush=True)
                         pending.append(dict(release=pin, rows=nrows, decoded_bytes=nbytes,
                                             receipt_keys=rcpts, first_order=bpos))
                         if len(pending) == 64:
@@ -301,7 +309,8 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None,
                         ('state', state_entries, storage.state_native_schema, storage.state_routes, 'state'),
                         ('body', body_entries, BODY_SCHEMA, storage.body_routes, 'bodies')):
                     def fast_references(entries_list=entries_list, schema=schema, kind=kind, native_kind=native_kind):
-                        with ThreadPoolExecutor(max_workers=12) as pool:
+                        leaf_done = 0
+                        with ThreadPoolExecutor(max_workers=24) as pool:
                             leaf_q = deque()
                             for prefix, table in _fast_leaves(entries_list, schema, storage.max_state_rows, storage.max_state_bytes):
                                 sched = summarize(table.to_pylist()) if kind == 'state' else None
@@ -313,9 +322,12 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None,
                                     pool.submit(_qualified_candidate, storage, native_kind, table,
                                                 operation=operation, prefix=prefix, base_id=request),
                                 ))
-                                if len(leaf_q) >= 12:
+                                if len(leaf_q) >= 24:
                                     pfx, nrows, nbytes, sch, fut = leaf_q.popleft()
                                     pin = fut.result()
+                                    leaf_done += 1
+                                    if leaf_done % 20 == 0:
+                                        print(f'[adopt-raw] {native_kind} leaf {leaf_done} completed (prefix={pfx})', file=sys.stderr, flush=True)
                                     ref = dict(release=pin, rows=nrows, decoded_bytes=nbytes)
                                     if sch is not None:
                                         ref['schedule'] = sch
@@ -323,6 +335,9 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None,
                             while leaf_q:
                                 pfx, nrows, nbytes, sch, fut = leaf_q.popleft()
                                 pin = fut.result()
+                                leaf_done += 1
+                                if leaf_done % 20 == 0 or not leaf_q:
+                                    print(f'[adopt-raw] {native_kind} leaf {leaf_done} completed (prefix={pfx})', file=sys.stderr, flush=True)
                                 ref = dict(release=pin, rows=nrows, decoded_bytes=nbytes)
                                 if sch is not None:
                                     ref['schedule'] = sch

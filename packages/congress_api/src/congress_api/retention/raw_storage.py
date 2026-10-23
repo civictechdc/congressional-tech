@@ -521,8 +521,8 @@ def _merge_states(existing, incoming, *, merge_spec=STATE_MERGE_SPEC, state_sche
         merge=effective_spec,
         deletions=deletions,
     )
-CAPTURE_BATCH_ROWS = 1000
-CAPTURE_BATCH_BYTES = 16 << 20
+CAPTURE_BATCH_ROWS = 16384
+CAPTURE_BATCH_BYTES = 32 << 20
 DELIVERY_ENTRIES = 128
 SELECTOR_BYTES = 1 << 20
 BODY_FIELDS = ['body_key', 'sha256', 'bytes', 'stored_sha256', 'stored_bytes']
@@ -726,7 +726,7 @@ class RawSnapshot:
 
 
 class RawStorage:
-    def __init__(self, store, native, *, max_state_rows=8192, max_state_bytes=16 << 20,
+    def __init__(self, store, native, *, max_state_rows=16384, max_state_bytes=32 << 20,
                  max_capture_rows=CAPTURE_BATCH_ROWS, max_capture_bytes=CAPTURE_BATCH_BYTES,
                  state_schema=STATE_SCHEMA, excluded_body_hashes=None,
                  deferred_exclusions_path=None):
