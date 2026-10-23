@@ -72,7 +72,7 @@ def test_actual_native_raw_capture_reference_replays_only_selected_old_input(tmp
     store = SelectorStore()
     raw = RawStorage(store, native, max_capture_rows=2)
     old = raw.snapshot()
-    selected = raw.publish(raw.prepare(old, operation='retained-inputs', captures=batch(0, 2).drop(['_capture_order']).cast(CAPTURE_SCHEMA)))
+    selected = raw.publish(raw.prepare(old, operation='retained-inputs', captures=batch(0, 2).drop(['_capture_order'])))
     owner = SourceObservationStorage(native=native, store=store, namespace='actual-raw-inputs', max_rows=64, max_bytes=1 << 20)
     with closing(WorkingCatalog(tmp_path / 'actual-trace.sqlite')) as work:
         trace = SourceObservationTrace(work)

@@ -257,7 +257,9 @@ class DependencyPreparation:
         return False
 
     def _bounded(self, table):
-        sources, _ = dependency_tables(table, self.owner.source_schema, first_order=self.count)
+        from . import catalog_dependency_storage as storage
+        helper = getattr(storage, 'dependency_tables', dependency_tables)
+        sources, _ = helper(table, self.owner.source_schema, first_order=self.count)
         if fits_chunk(sources, max_rows=self.owner.max_rows, max_bytes=self.owner.max_bytes):
             yield sources
         elif len(table) <= 1:

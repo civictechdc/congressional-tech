@@ -254,7 +254,7 @@ def dependency_tables(rows, source_schema, *, first_order=0):
             raise ValueError('Source row fields are not declared in the application schema')
         key = index.source_identity(row)
         if key in seen:
-            raise ValueError(f'Duplicate dependency source identity: {key}')
+            raise DependencyGap('Repeated selected source identity during adoption')
         seen.add(key)
         aliases_for_row = list(index.group_aliases(row, key))
         if row.get('document_id'):

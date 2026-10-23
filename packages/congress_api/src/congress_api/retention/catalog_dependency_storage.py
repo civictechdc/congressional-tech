@@ -212,7 +212,7 @@ class CatalogDependencyStorage:
             if partition_by is not None
             else (
                 ALIASES_PARTITION_SPEC
-                if (base is None and _default_partition and ALIAS_KEY_SHA256_FIELD in table.schema.names)
+                if (base is None and _default_partition)
                 else None
             )
         )

@@ -35,7 +35,7 @@ APPEND_UPDATE_KEYS = {
     'mention': ('recorded_at', 'id'),
     'classification': ('recorded_at', 'id'),
     'identity_decision': ('recorded_at', 'id'),
-    'run': ('finished_at', 'id'),
+    'run': ('started_at', 'id'),
     'story': ('recorded_at', 'id'),
     'story_member': ('recorded_at', 'id'),
 }

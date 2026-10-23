@@ -18,6 +18,23 @@ from congress_api.retention.index import (
     sources,
 )
 
+# Re-exports for historical root tests and source_observations
+from house_naming import Engine, __version__, document_families
+from house_naming.values import filename_metadata as flatten
+from house_naming.extraction import QUERY
+import pyarrow.parquet as pq
+from congress_api.parsers.document_links import http_url, feed_link
+from congress_api.retention.document_evidence import (
+    evidence_fingerprint,
+    read_retained_body,
+    body_evidence_key,
+    cached_body_fields,
+    enrich_sources,
+    enrich_document_covers,
+    response_failed,
+    apply_response_role,
+)
+
 _SUBMODULES = (
     bipartite,
     builder,

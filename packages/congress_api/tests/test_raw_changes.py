@@ -62,7 +62,7 @@ def test_open_restores_frozen_state_schema_without_adopting_or_writing():
 
 def test_body_lookups_reuse_one_bounded_native_leaf():
     import pyarrow as pa
-    from congress_api.retention.raw_archive import CAPTURE_SCHEMA
+    from congress_api.retention.raw_archive import LEGACY_CAPTURE_SCHEMA as CAPTURE_SCHEMA
     storage = memory_raw_storage(SelectorStore())
     table = pa.Table.from_pylist([dict(body_key='bodies/a', sha256='a'),
                                  dict(body_key='bodies/b', sha256='b')], schema=CAPTURE_SCHEMA)

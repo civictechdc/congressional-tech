@@ -218,6 +218,7 @@ def parser():
     p.add_argument('--dataset', default='default',
                    help='Target dataset name for operator status and retention planning')
     p.add_argument("--summary", type=Path, default=Path("raw-capture-summary.json"))
+    p.add_argument("--inspect-bodies", action="store_true", help=argparse.SUPPRESS)
     return p
 
 

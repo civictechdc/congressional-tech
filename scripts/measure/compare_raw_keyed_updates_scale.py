@@ -163,7 +163,7 @@ def row(ordinal, *, correction=False):
     url = None if ordinal == 0 else 'https://example.gov/generated/' + str(ordinal)
     result = dict.fromkeys(SCHEMA.names)
     result.update(_state_order=ordinal, _state_key='null:' if url is None else 'url:' + url,
-        url=url, family='generated-only', body_key='bodies/' + digest.hex() + '.gz', sha256=digest.hex(),
+        url=url, family='generated-only', sha256=digest,
         media_type='application/pdf', outcome='saved', attempts=ordinal % 5,
         links_scanned=bool(ordinal % 2), http_status=200,
         exact=dict(number=2**64 - 1 - ordinal, values=[None, b'', digest, digest]))

@@ -52,6 +52,12 @@ from congress_api.retention.native_features import (
     refresh_connected_components,
 )
 from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, Archive
+from congress_api.retention.raw_schemas import (
+    LEGACY_CAPTURE_SCHEMA,
+    LEGACY_STATE_SCHEMA,
+    prepare_state_table,
+    with_derived_body_keys,
+)
 from congress_api.retention.raw_storage import (
     STATE_BUCKET_COUNT,
     STATE_KEY_SHA256_FIELD,
@@ -311,7 +317,7 @@ def test_requirement_2_sha256_keys_bucket_partitioning_and_merge_states():
     assert row["outcome"] == "http_error"
     assert row["http_status"] == 503
     assert row["body_key"] == initial_saved["body_key"]
-    assert row["sha256"] == initial_saved["sha256"]
+    assert (row["sha256"].hex() if isinstance(row["sha256"], bytes) else row["sha256"]) == initial_saved["sha256"]
     assert row["media_type"] == "application/pdf"
     assert row["attempts"] == 2
     assert row["links_scanned"] is True
@@ -408,7 +414,7 @@ def test_requirement_2_sha256_keys_bucket_partitioning_and_merge_states():
         snap_0,
         operation="op-1",
         captures=empty_captures,
-        states=pa.Table.from_pylist([initial_saved], schema=STATE_SCHEMA),
+        states=prepare_state_table([initial_saved]),
     )
     assert native.runs[-1]["partition_by"] == [dict(STATE_PARTITION_SPEC)]
     snap_1 = raw_storage.publish(prep_1)
@@ -416,15 +422,15 @@ def test_requirement_2_sha256_keys_bucket_partitioning_and_merge_states():
         snap_1,
         operation="op-2",
         captures=empty_captures,
-        states=pa.Table.from_pylist([later_failure], schema=STATE_SCHEMA),
+        states=prepare_state_table([later_failure]),
     )
     snap_2 = raw_storage.publish(prep_2)
-    state_rows_2 = snap_2.states().to_pylist()
+    state_rows_2 = with_derived_body_keys(snap_2.states()).to_pylist()
     assert len(state_rows_2) == 1
     assert state_rows_2[0]["outcome"] == "http_error"
     assert state_rows_2[0]["http_status"] == 503
     assert state_rows_2[0]["body_key"] == initial_saved["body_key"]
-    assert state_rows_2[0]["sha256"] == initial_saved["sha256"]
+    assert (state_rows_2[0]["sha256"].hex() if isinstance(state_rows_2[0]["sha256"], bytes) else state_rows_2[0]["sha256"]) == initial_saved["sha256"]
     assert state_rows_2[0]["attempts"] == 2
     assert state_rows_2[0]["links_scanned"] is True
 
@@ -436,7 +442,7 @@ def test_requirement_2_sha256_keys_bucket_partitioning_and_merge_states():
             raw_storage_rev.snapshot(),
             operation="op-rev-1",
             captures=empty_captures,
-            states=pa.Table.from_pylist([later_failure], schema=STATE_SCHEMA),
+            states=prepare_state_table([later_failure]),
         )
     )
     snap_rev_2 = raw_storage_rev.publish(
@@ -444,10 +450,10 @@ def test_requirement_2_sha256_keys_bucket_partitioning_and_merge_states():
             snap_rev_1,
             operation="op-rev-2",
             captures=empty_captures,
-            states=pa.Table.from_pylist([initial_saved], schema=STATE_SCHEMA),
+            states=prepare_state_table([initial_saved]),
         )
     )
-    assert snap_rev_2.states().to_pylist() == state_rows_2
+    assert with_derived_body_keys(snap_rev_2.states()).to_pylist() == state_rows_2
 
     # Production Archive.apply preserves body_key, MAX(attempts), and SET_UNION(links_scanned)
     archive = Archive(raw_store, "run-fwd", storage=raw_storage)
@@ -579,7 +585,7 @@ def test_requirement_4_table_backed_capture_state_and_recovery_without_jsonl_gz(
                 "original_path": None,
             }
         ],
-        schema=CAPTURE_SCHEMA,
+        schema=LEGACY_CAPTURE_SCHEMA,
     )
     states_table = pa.Table.from_pylist(
         [
@@ -614,7 +620,7 @@ def test_requirement_4_table_backed_capture_state_and_recovery_without_jsonl_gz(
                 "links_scanned": False,
             },
         ],
-        schema=STATE_SCHEMA,
+        schema=LEGACY_STATE_SCHEMA,
     )
 
     def forbid_receipt_read(key):

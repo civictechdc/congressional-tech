@@ -18,7 +18,7 @@ from congress_api.retention.derived_files import (
     file_identity,
     require_derived_key,
 )
-from congress_api.retention.raw_storage import CAPTURE_SCHEMA, encode_table
+from congress_api.retention.raw_storage import CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA, encode_table
 
 
 class MemoryStore:
@@ -169,7 +169,7 @@ def captures(label: str) -> pa.Table:
     """Build a synthetic captures table row for raw storage tests."""
     return pa.Table.from_pylist([dict(body_key=f'bodies/{label}.gz', receipt_key=f'receipts/{label}.gz',
         receipt_line=1, context_url=f'https://example.gov/{label}', http_status=200, resolution='saved')],
-        schema=CAPTURE_SCHEMA)
+        schema=LEGACY_CAPTURE_SCHEMA)
 
 
 def states(*labels: str) -> pa.Table:
@@ -198,6 +198,7 @@ class MemoryNative:
         dataset: str,
         operation: str | None = None,
         definition: str | None = None,
+        **kwargs: Any,
     ) -> dict[str, Any]:
         self.calls.append(dataset)
         if dataset in self.tables and not self.tables[dataset].equals(table):

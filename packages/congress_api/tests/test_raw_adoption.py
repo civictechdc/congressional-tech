@@ -5,7 +5,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, LEGACY_CAPTURE_SCHEMA
 from congress_api.retention.raw_storage import RAW_KEY, RawStorage
 from native_memory_helpers import memory_raw_storage
 from testing_fakes import SelectorStore
@@ -13,7 +13,7 @@ from testing_fakes import SelectorStore
 
 def inputs(tmp_path):
     captures = pa.Table.from_pylist([dict(receipt_key=f'receipts/{i // 2}.gz', receipt_line=1,
-        body_key=f'bodies/{i % 3}.gz', sha256=str(i % 3), bytes=i) for i in range(9)], schema=CAPTURE_SCHEMA)
+        body_key=f'bodies/{i % 3}.gz', sha256=str(i % 3), bytes=i) for i in range(9)], schema=LEGACY_CAPTURE_SCHEMA)
     extra = pa.schema([*STATE_SCHEMA, pa.field('opaque', pa.struct([('unsigned', pa.uint64()), ('raw', pa.binary())]))])
     states = pa.Table.from_pylist([dict(url=None if i == 0 else f'https://example.gov/{i}', outcome='saved', attempts=i,
         opaque=dict(unsigned=2**64-1-i, raw=b'\x00\xff')) for i in range(7)], schema=extra)

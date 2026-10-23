@@ -490,10 +490,9 @@ class NativeDatasets:
                     return self._request('/run', active_request, dispatch=dispatch)
                 except Exception as exc:
                     import httpx
-                    if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
+                    if isinstance(exc, httpx.TransportError) and not isinstance(exc, httpx.TimeoutException) and not dispatch.get('submitted'):
                         if attempt < 3:
                             time.sleep(1.0 * (2 ** attempt))
-                            dispatch.clear()
                             attempt += 1
                             continue
                         raise
@@ -596,12 +595,11 @@ class NativeDatasets:
             definition=definition,
             base=base,
             keys=keys,
+            replacement_digest=digest,
+            relationship=relationship,
             deletions=deletions,
             merge=merge,
         )
-        spec['replacement_digest'] = digest
-        if relationship is not None:
-            spec['relationship'] = relationship
         return self._request_ipc('/updates/run', ipc_bytes, spec, blake3_digest=digest)
 
     def update_table(
@@ -710,10 +708,9 @@ class NativeDatasets:
                     return self._request('/updates/run', active_request, dispatch=dispatch)
                 except Exception as exc:
                     import httpx
-                    if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
+                    if isinstance(exc, httpx.TransportError) and not isinstance(exc, httpx.TimeoutException) and not dispatch.get('submitted'):
                         if attempt < 3:
                             time.sleep(1.0 * (2 ** attempt))
-                            dispatch.clear()
                             attempt += 1
                             continue
                         raise

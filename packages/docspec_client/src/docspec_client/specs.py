@@ -15,7 +15,10 @@ from .models import (
 
 
 def _normalize_sort_column(item: Any) -> dict[str, Any]:
-    return SortColumn.normalize(item)
+    norm = SortColumn.normalize(item)
+    if 'nulls_first' not in norm:
+        norm = dict(norm, nulls_first=False)
+    return norm
 
 
 def _normalize_scalar_expr(expr: Any) -> Any:
@@ -282,17 +285,26 @@ def build_ipc_run_spec(
     operation: str,
     definition: str,
     sql: str = 'SELECT * FROM input',
+    base: Any = None,
     relationship: Any = None,
+    input: Any = None,
+    expected_digest: Any = None,
 ) -> dict[str, Any]:
-    """Build a canonical DocSpec ``RunSpec`` request dictionary for streamed Arrow IPC admission."""
+    """Build a canonical ``IpcRunSpec`` matching ``src/http/ipc.rs``."""
     spec: dict[str, Any] = {
         'dataset': str(dataset),
         'operation': str(operation),
         'definition': str(definition),
         'sql': str(sql),
     }
+    if base is not None:
+        spec['base'] = str(base)
     if relationship is not None:
-        spec['relationship'] = relationship
+        spec['relationship'] = dict(relationship)
+    if input is not None:
+        spec['input'] = str(input)
+    if expected_digest is not None:
+        spec['expected_digest'] = str(expected_digest)
     return spec
 
 
@@ -303,27 +315,39 @@ def build_ipc_update_spec(
     definition: str,
     base: Any,
     keys: Sequence[str],
+    replacement_path: Any = None,
+    replacement_digest: Any = None,
+    relationship: Any = None,
     merge: Any = None,
-    sql: str = 'SELECT * FROM input',
     replacements: Any = None,
     deletions: Any = None,
 ) -> dict[str, Any]:
-    """Build a canonical DocSpec ``UpdateSpec`` request dictionary for streamed Arrow IPC admission."""
+    """Build a canonical ``IpcUpdateSpec`` matching ``src/http/ipc.rs``."""
+    resolved_replacements: dict[str, Any] = dict(replacements) if isinstance(replacements, Mapping) else {}
+    if replacement_path is not None:
+        resolved_replacements['path'] = str(replacement_path)
+    if replacement_digest is not None:
+        resolved_replacements['digest'] = str(replacement_digest)
     spec: dict[str, Any] = {
         'dataset': str(dataset),
         'operation': str(operation),
         'definition': str(definition),
         'base': base['dataset']['version'] if isinstance(base, Mapping) and 'dataset' in base else str(base),
         'keys': [str(k) for k in keys],
-        'sql': str(sql),
+        'replacements': resolved_replacements,
     }
-    if replacements is not None:
-        spec['replacements'] = replacements
+    if relationship is not None:
+        spec['relationship'] = dict(relationship)
     if deletions is not None:
-        spec['deletions'] = deletions
+        spec['deletions'] = dict(deletions) if isinstance(deletions, Mapping) else deletions
     if merge is not None:
+        if hasattr(merge, 'to_dict'):
+            merge = merge.to_dict()
         spec['merge'] = (
-            UpdateMergeSpec.normalize(merge)
+            build_update_merge_spec(
+                order_by=merge.get('order_by'),
+                columns=merge.get('columns'),
+            )
             if isinstance(merge, Mapping)
             else merge
         )

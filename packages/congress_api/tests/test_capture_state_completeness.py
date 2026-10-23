@@ -3,7 +3,7 @@
 import json
 import pyarrow as pa
 import pytest
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_KEY, encode_table
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_KEY, encode_table, prepare_capture_table
 from historical_raw_archive import LegacyArchiveSeed as Archive
 from testing_fakes import MemoryStore, response
 
@@ -43,7 +43,7 @@ def test_indexed_failed_capture_never_seeds_retained_body(resolution, pointer):
     a = Archive(store, "seed")
     key = a.put_body(b"%PDF-1.4\npartial")
     store.objects["indexes/captures.parquet"] = encode_table(
-        pa.Table.from_pylist(
+        prepare_capture_table(
             [
                 dict(
                     family="documents",
@@ -57,8 +57,7 @@ def test_indexed_failed_capture_never_seeds_retained_body(resolution, pointer):
                     pointer_json=json.dumps(pointer),
                     retrieved_at="2026-10-05",
                 )
-            ],
-            schema=CAPTURE_SCHEMA,
+            ]
         )
     )
     loaded = Archive(store, "load")

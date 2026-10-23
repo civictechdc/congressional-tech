@@ -74,6 +74,12 @@ class _ArrowHttpStream(io.RawIOBase):
             raise OSError('DocSpec Arrow response lacks a complete stream terminator')
 
 
+import os
+if not os.environ.get('DOCSPEC_BINARY'):
+    _sibling_docspec = Path(__file__).resolve().parents[4] / 'spicy-stack' / 'docspec-rs' / 'target' / 'release' / 'docspec'
+    if _sibling_docspec.is_file():
+        os.environ['DOCSPEC_BINARY'] = str(_sibling_docspec)
+
 docspec = DocSpecClient.default_binary_path()
 pytestmark = pytest.mark.skipif(
     not docspec or not Path(docspec).exists(),
@@ -2402,9 +2408,6 @@ def test_chained_refresh_politician_articles_and_two_stage_coverage_daily(tmp_pa
 
     pa_full = views.politician_articles(before, mode='full')
     assert pa_full == politician_articles_views(before)
-    if 'politician_mentions_roots' not in views.pins:
-        client.close()
-        pytest.skip('runtime binary predates ss-65bz chained filter / FirstValueBy')
     assert 'politician_mentions_roots' in views.pins
     assert 'politician_mention_items' in views.pins
     assert 'politician_articles_groups' in views.pins
@@ -2535,10 +2538,6 @@ def test_declarative_c5_export_policy_and_zero_duplicate_export_tables(tmp_path)
     assert 'text' not in exported_versions[ver_pub_expired['id']]
     assert exported_versions[ver_restricted['id']]['access'] == 'metadata_only'
     assert 'text' not in exported_versions[ver_restricted['id']]
-
-    if receipts['news_captures']['dataset'] == 'export_news_captures':
-        client.close()
-        pytest.skip('runtime binary predates ss-6gwu ExportPolicy.computed_columns')
 
     assert receipts['news_captures']['dataset'] == 'news_captures'
     assert receipts['news_versions']['dataset'] == 'news_versions'

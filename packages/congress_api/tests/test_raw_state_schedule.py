@@ -5,6 +5,7 @@ import pyarrow as pa
 import pytest
 
 from congress_api.retention.raw_archive import STATE_SCHEMA, NON_DOWNLOAD_OUTCOMES
+from congress_api.retention.raw_schemas import prepare_state_table
 from native_memory_helpers import memory_raw_storage
 from testing_fakes import SelectorStore, response
 
@@ -15,7 +16,7 @@ def seed(rows, *, max_rows=4):
     store = SelectorStore()
     owner = memory_raw_storage(store, max_state_rows=max_rows)
     selected = owner.publish(owner.prepare(owner.snapshot(), operation='seed',
-        states=pa.Table.from_pylist(rows, schema=STATE_SCHEMA), qualify_readings=True,
+        states=prepare_state_table(rows), qualify_readings=True,
         filename_version=dict(selector_sha256=None, selected_ref=None)))
     owner.native.reads.clear()
     return store, owner, selected

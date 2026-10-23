@@ -13,7 +13,21 @@ from test_raw_catalog import table
 from test_raw_rebuild import retain
 
 
+from congress_api.retention.raw_schemas import LEGACY_STATE_SCHEMA
+
+
 def state(*rows):
+    if any('body_key' in r for r in rows):
+        legacy_rows = []
+        for r in rows:
+            row = dict(r)
+            if isinstance(row.get('sha256'), bytes):
+                row['sha256'] = row['sha256'].hex()
+            for ts_col in ('retrieved_at', 'checked_at', 'next_attempt_at'):
+                if row.get(ts_col) is not None:
+                    row[ts_col] = str(row[ts_col])
+            legacy_rows.append(row)
+        return pa.Table.from_pylist(legacy_rows, schema=LEGACY_STATE_SCHEMA)
     return pa.Table.from_pylist(rows, schema=STATE_SCHEMA)
 
 

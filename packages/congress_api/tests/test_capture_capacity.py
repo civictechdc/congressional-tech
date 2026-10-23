@@ -5,8 +5,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 import threading
+from pathlib import Path
 
 import pytest
+
+_DEFAULT_SOURCE_FETCH = Path(__file__).resolve().parents[2] / "source-fetch/target/release/source-fetch"
+if not os.environ.get('SOURCE_FETCH_BINARY') and _DEFAULT_SOURCE_FETCH.is_file():
+    os.environ['SOURCE_FETCH_BINARY'] = str(_DEFAULT_SOURCE_FETCH)
 
 from congress_api.acquisition.raw_sync import response_capacity, run_sync
 from congress_api.cli import raw_sync

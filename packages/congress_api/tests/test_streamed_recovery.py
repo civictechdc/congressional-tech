@@ -40,6 +40,7 @@ def fixed_capture_clock(monkeypatch):
     monkeypatch.setattr(
         "congress_api.acquisition.streamed_recovery.datetime", FixtureClock
     )
+    monkeypatch.setattr("historical_raw_archive.datetime", FixtureClock)
 
 
 class FileStore(MemoryStore):

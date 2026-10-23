@@ -1,6 +1,7 @@
 """Mutable acquisition working rows backed by exact selected native state keys."""
 from collections.abc import MutableMapping
 from copy import deepcopy
+from congress_api.retention.raw_storage import format_state_row_for_python
 
 
 class RawStateMap(MutableMapping):
@@ -43,7 +44,8 @@ class RawStateMap(MutableMapping):
     def __iter__(self):
         # This is the declared full-export boundary, never a key lookup.
         existing = set()
-        for row in self.snapshot.states().to_pylist():
+        for raw_row in self.snapshot.states().to_pylist():
+            row = format_state_row_for_python(raw_row)
             key = row['url']
             existing.add(key)
             if key not in self.rows:

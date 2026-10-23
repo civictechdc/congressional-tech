@@ -87,20 +87,24 @@ class TestM4IsStoredAndBodyKeyDerivation:
         assert STATE_SCHEMA.field("retrieved_at").type == pa.timestamp("us", tz="UTC")
 
     def test_derive_body_key_pdf_vs_gzip(self):
-        """Derives .pdf for application/pdf and .gz for other media types."""
+        """Logical body_key is always .gz; physical_body_object_key derives .pdf for PDFs."""
+        from congress_api.retention.body_keys import physical_body_object_key
         sample_sha = hashlib.sha256(b"sample").hexdigest()
 
         # Non-PDF -> .gz
         gz_key = derive_body_key(sample_sha, media_type="text/html")
         assert gz_key == f"bodies/sha256/{sample_sha[:2]}/{sample_sha}.gz"
 
-        # PDF -> .pdf
-        pdf_key = derive_body_key(sample_sha, media_type="application/pdf")
-        assert pdf_key == f"bodies/sha256/{sample_sha[:2]}/{sample_sha}.pdf"
+        # PDF logical key -> still .gz (ct-te1p invariant)
+        pdf_logical_key = derive_body_key(sample_sha, media_type="application/pdf")
+        assert pdf_logical_key == f"bodies/sha256/{sample_sha[:2]}/{sample_sha}.gz"
+
+        # PDF physical key -> .pdf
+        assert physical_body_object_key(pdf_logical_key, content_type_or_format="application/pdf") == f"bodies/sha256/{sample_sha[:2]}/{sample_sha}.pdf"
 
         # From 32-byte binary input
         binary_sha = bytes.fromhex(sample_sha)
-        assert derive_body_key(binary_sha, media_type="application/pdf") == pdf_key
+        assert derive_body_key(binary_sha, media_type="application/pdf") == pdf_logical_key
 
     def test_with_derived_body_keys_arrow_table(self):
         """with_derived_body_keys appends body_key column to PyArrow Table."""
@@ -115,7 +119,7 @@ class TestM4IsStoredAndBodyKeyDerivation:
         assert "body_key" in augmented.column_names
         derived_val = augmented["body_key"][0].as_py()
         hex_str = sha_bytes.hex()
-        assert derived_val == f"bodies/sha256/{hex_str[:2]}/{hex_str}.pdf"
+        assert derived_val == f"bodies/sha256/{hex_str[:2]}/{hex_str}.gz"
 
 
 class TestM4RowGroupStatisticsPruning:

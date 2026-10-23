@@ -9,7 +9,7 @@ import pytest
 
 from congress_api.acquisition.raw_sync import run_sync
 from congress_api.parsers.archive_links import related_links, allowed_url
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, encode_table
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA, encode_table
 from historical_raw_archive import LegacyArchiveSeed as Archive
 from congress_api.models.content import RawContent
 
@@ -22,7 +22,7 @@ def test_accounting_counts_legacy_body_references_without_digests():
     store.objects["indexes/captures.parquet"] = encode_table(pa.Table.from_pylist([
         {"body_key": "bodies/legacy.gz"}, {"body_key": "bodies/legacy.gz"},
         {"body_key": "bodies/other.gz"}, {"body_key": None}, {"body_key": ""},
-    ], schema=CAPTURE_SCHEMA))
+    ], schema=LEGACY_CAPTURE_SCHEMA))
     result = run_sync(Archive(store, "legacy-accounting"), [],
                       fetch=lambda _: pytest.fail("No URL was scheduled"), limit=0)
     assert result["accounting"]["unique_retained_body_keys"] == 2
@@ -236,7 +236,7 @@ def test_replay_preserves_unknown_capture_date_and_saved_text_fidelity():
                     http_status=None,
                 )
             ],
-            schema=CAPTURE_SCHEMA,
+            schema=LEGACY_CAPTURE_SCHEMA,
         )
     )
     run_sync(
@@ -279,7 +279,7 @@ def test_filename_alias_cannot_mix_body_identity_or_replace_better_capture():
             )
         )
     store.objects["indexes/captures.parquet"] = encode_table(
-        pa.Table.from_pylist(rows, schema=CAPTURE_SCHEMA)
+        pa.Table.from_pylist(rows, schema=LEGACY_CAPTURE_SCHEMA)
     )
     store.objects["indexes/document-filenames.parquet"] = encode_table(
         pa.Table.from_pylist(

@@ -58,11 +58,15 @@ def read_youtube_videos(
 def write_csv(path, rows, fields):
     import io
 
-    buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=fields, lineterminator="\r\n")
-    writer.writeheader()
-    writer.writerows(rows)
-    write_atomic_bytes(path, buf.getvalue().encode("utf-8"), temp_mode="fixed", fsync=False)
+    path = Path(path)
+    try:
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=fields, lineterminator="\r\n")
+        writer.writeheader()
+        writer.writerows(rows)
+        write_atomic_bytes(path, buf.getvalue().encode("utf-8"), temp_mode="fixed", fsync=False)
+    finally:
+        path.with_suffix(path.suffix + ".tmp").unlink(missing_ok=True)
 
 
 def _state_kind(path) -> str:

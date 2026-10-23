@@ -47,7 +47,7 @@ def test_assembled_fields_agree_with_the_published_tables(tmp_path):
                 link.subject.kind == 'meeting' or any(
                     (record.kind, record.id) == (link.subject.kind, link.subject.id) and getattr(record, 'meeting', None)
                     for record in catalog.records))})
-        assert sorted(published['appearance_ids']) == sorted(
+        assert sorted(published.get('appearance_ids', [])) == sorted(
             link.subject.id for link in catalog.records
             if link.kind == 'material_link' and link.material.id == material.id and link.subject.kind == 'appearance')
         assert sorted({f.url for f in material.files}) == sorted({f['url'] for f in published['files']})

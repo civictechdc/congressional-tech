@@ -75,7 +75,7 @@ def test_cli_publishes_status_with_run_identity_and_bounded_network_timeouts(tmp
         configs.append(kwargs['config'])
         return object()
     class Store:
-        def __init__(self, *_):
+        def __init__(self, *_, **__):
             pass
         def put(self, key, payload):
             uploads.append((key, json.loads(payload)))

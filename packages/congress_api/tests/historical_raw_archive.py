@@ -11,7 +11,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from congress_api.parsers.archive_links import allowed_url
 from congress_api.retention.raw_archive import (
-    _Acquisition, CAPTURE_SCHEMA, STATE_SCHEMA, CAPTURES_KEY, STATE_KEY,
+    _Acquisition, CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA, STATE_SCHEMA, CAPTURES_KEY, STATE_KEY,
     decode_table, encode_table, capture_rank, with_derived_body_keys,
 )
 from congress_api.retention.raw_values import _to_legacy_capture_table
@@ -26,13 +26,14 @@ class LegacyArchiveSeed(_Acquisition):
                 "The initial mirror upload must finish before recurring capture starts."
             )
         self.captures = decode_table(data)
-        if self.captures.schema.remove_metadata() != CAPTURE_SCHEMA:
+        if (self.captures.schema.remove_metadata() != CAPTURE_SCHEMA
+                and self.captures.schema.remove_metadata() != LEGACY_CAPTURE_SCHEMA):
             raise ValueError("Unexpected capture index schema")
         saved = store.read(STATE_KEY)
         saved_table = decode_table(saved) if saved else None
         saved_metadata = (saved_table.schema.metadata or {}) if saved_table is not None else {}
         from congress_api.retention.raw_storage import format_state_row_for_python
-        saved_state = {r['url']: format_state_row_for_python(r) for r in saved_table.to_pylist()} if saved_table is not None else {}
+        saved_state = {r['url']: {'body_key': None, **format_state_row_for_python(r)} for r in saved_table.to_pylist()} if saved_table is not None else {}
         cursor = int(saved_metadata.get(b'capture_rows', b'0'))
         from congress_api.retention.catalog_cache import capture_digest_matches
         checkpoint = b'capture_rows' in saved_metadata or b'capture_digest' in saved_metadata
@@ -197,7 +198,10 @@ class LegacyArchiveSeed(_Acquisition):
         self.flush()
         combined = self.captures
         if self.additions:
-            appended = prepare_capture_table(self.additions)
+            if combined.schema.equals(LEGACY_CAPTURE_SCHEMA, check_metadata=False):
+                appended = _to_legacy_capture_table(prepare_capture_table(self.additions))
+            else:
+                appended = prepare_capture_table(self.additions)
             combined = pa.concat_tables([combined, appended])
         metadata = {'capture_rows': str(len(combined)), 'capture_digest': capture_digest(combined)}
         if self.filename_version is not None:

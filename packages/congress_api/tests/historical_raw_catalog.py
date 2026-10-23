@@ -127,6 +127,7 @@ def _rebuild_catalog_owned(store, captures, *, seeds, workers, repair, inspect_b
     reusable = (not repair and previous is not None and b'raw_capture_rows' in meta and 0 <= cursor <= capture_rows
                 and (capture_digest_matches(captures.slice(0, cursor), meta.get(b'capture_digest'))
                      or capture_digest_matches(raw_captures.slice(0, cursor), meta.get(b'capture_digest'))))
+    del raw_captures
     if checkpoint and not repair and not reusable:
         raise ValueError('Catalog capture checkpoint digest mismatch or invalid cursor; verify legacy checkpoints '
                          'with their original PyArrow writer, or explicitly rebuild after investigation')

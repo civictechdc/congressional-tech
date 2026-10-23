@@ -147,7 +147,7 @@ def _write_producer_parquet(
     _legacy_row_group_sizing: bool = False,
 ) -> None:
     """Write producer Parquet inputs with bounded row groups so zero-copy Arrow slices stay within max_batch_bytes."""
-    physical = native_storage_schema(table.schema)
+    physical = native_storage_schema(table.schema, native_types=False)
     stored = table if physical.equals(table.schema, check_metadata=True) else table.cast(physical, safe=True)
     if row_group_size is None and not _legacy_row_group_sizing:
         if stored.nbytes <= 33_554_432:

@@ -52,6 +52,7 @@ PRE_ADMISSION_ERROR_CODES = frozenset({
     'invalid_request_timeout',
     'invalid_input',
     'operation_conflict',
+    'validation',
 })
 
 
@@ -101,8 +102,8 @@ class PartitionTransformSpec(dict):
                 raise ValueError(f'PartitionTransformSpec identity accepts no parameters: {kwargs!r}')
         elif kind == 'bucket':
             num_buckets = kwargs.get('num_buckets')
-            if not isinstance(num_buckets, int) or isinstance(num_buckets, bool) or num_buckets <= 0:
-                raise ValueError(f'PartitionTransformSpec bucket num_buckets must be a positive integer: {num_buckets!r}')
+            if not isinstance(num_buckets, int) or isinstance(num_buckets, bool) or not 1 <= num_buckets <= 4096:
+                raise ValueError(f'Bucket transform num_buckets must be an integer in 1..=4096, got: {num_buckets!r}')
             unknown = set(kwargs) - {'num_buckets'}
             if unknown:
                 raise ValueError(f'Unknown bucket transform parameters: {sorted(unknown)!r}')
@@ -163,15 +164,15 @@ class PartitionFieldSpec(dict):
     def __init__(self, column: str, transform: Any = 'identity', *, name: str | None = None) -> None:
         if not isinstance(column, str) or not column.strip():
             raise ValueError('PartitionFieldSpec column must be a non-empty string')
-        norm_transform = PartitionTransformSpec.normalize(transform)
-        norm_name = str(name).strip() if name is not None else str(column)
-        if not norm_name:
-            raise ValueError('PartitionFieldSpec name must be a non-empty string')
-        super().__init__(
-            column=str(column),
-            transform=norm_transform,
-            name=norm_name,
-        )
+        payload: dict[str, Any] = {
+            'column': str(column),
+            'transform': PartitionTransformSpec.normalize(transform),
+        }
+        if name is not None:
+            if not isinstance(name, str) or not name.strip():
+                raise ValueError('PartitionFieldSpec name must be a non-empty string when provided')
+            payload['name'] = str(name).strip()
+        super().__init__(payload)
 
     @property
     def column(self) -> str:
@@ -182,8 +183,8 @@ class PartitionFieldSpec(dict):
         return self['transform']
 
     @property
-    def name(self) -> str:
-        return self['name']
+    def name(self) -> str | None:
+        return self.get('name')
 
     @classmethod
     def normalize(cls, spec: Any) -> dict[str, Any]:
@@ -357,7 +358,7 @@ class SortDirection:
 class SortColumn(dict):
     """Exact serde representation of ``docspec_core::SortColumn``."""
 
-    def __init__(self, column: str, direction: str = SortDirection.ASC, *, nulls_first: bool = False) -> None:
+    def __init__(self, column: str, direction: str = SortDirection.ASC, *, nulls_first: bool | None = None) -> None:
         if not isinstance(column, str) or not column.strip():
             raise ValueError('SortColumn column must be a non-empty string')
         if not isinstance(direction, str):
@@ -365,7 +366,10 @@ class SortColumn(dict):
         dir_lower = direction.lower()
         if dir_lower not in SortDirection.ALL:
             raise ValueError(f'SortColumn direction must be one of {sorted(SortDirection.ALL)!r}')
-        super().__init__(column=column.strip(), direction=dir_lower, nulls_first=bool(nulls_first))
+        payload: dict[str, Any] = {'column': column.strip(), 'direction': dir_lower}
+        if nulls_first is not None:
+            payload['nulls_first'] = bool(nulls_first)
+        super().__init__(payload)
 
     @property
     def column(self) -> str:
@@ -395,88 +399,139 @@ class SortColumn(dict):
             direction = spec.get('direction')
             if direction is None:
                 direction = SortDirection.DESC if spec.get('descending', False) else SortDirection.ASC
-            nulls_first = bool(spec.get('nulls_first', False))
-            return dict(cls(str(col), str(direction), nulls_first=nulls_first))
+            nulls_first = spec.get('nulls_first')
+            if nulls_first is not None:
+                return dict(cls(str(col), str(direction), nulls_first=bool(nulls_first)))
+            return dict(cls(str(col), str(direction)))
         raise ValueError(f'Invalid SortColumn: {spec!r}')
 
 
 class AggregateSpec:
     """Builder methods for supported target-column aggregation specifications."""
 
+    VALID_KINDS = frozenset({
+        'count_rows', 'count_distinct', 'sum', 'min', 'max', 'collect_set', 'first_value', 'count',
+    })
+
     @staticmethod
     def count_rows(name: str = 'total_rows') -> dict[str, Any]:
-        return {'kind': 'count_rows', 'name': name}
+        return {'name': str(name), 'function': {'kind': 'count_rows'}}
 
     @staticmethod
     def count(name_or_field: str = 'total_rows', field: str | None = None, *, name: str | None = None) -> dict[str, Any]:
-        target = field if field is not None else (None if name is not None else name_or_field)
-        alias = name if name is not None else name_or_field
-        return {'kind': 'count', 'field': target, 'name': alias}
+        if name is not None:
+            return {'name': str(name), 'function': {'kind': 'count_rows'}}
+        return {'name': str(name_or_field), 'function': {'kind': 'count_rows'}}
 
     @staticmethod
     def count_distinct(name_or_field: str, field: str | None = None, *, name: str | None = None) -> dict[str, Any]:
-        target = field if field is not None else (None if name is not None else name_or_field)
-        alias = name if name is not None else name_or_field
-        return {'kind': 'count_distinct', 'field': target, 'name': alias}
+        if name is not None:
+            return {'name': str(name), 'function': {'kind': 'count_distinct', 'field': str(name_or_field)}}
+        return {'name': str(name_or_field), 'function': {'kind': 'count_distinct', 'field': str(field or name_or_field)}}
 
     @staticmethod
     def sum(name_or_field: str, field: str | None = None, *, name: str | None = None) -> dict[str, Any]:
-        target = field if field is not None else (None if name is not None else name_or_field)
-        alias = name if name is not None else name_or_field
-        return {'kind': 'sum', 'field': target, 'name': alias}
+        if name is not None:
+            return {'name': str(name), 'function': {'kind': 'sum', 'field': str(name_or_field)}}
+        return {'name': str(name_or_field), 'function': {'kind': 'sum', 'field': str(field or name_or_field)}}
 
     @staticmethod
     def min(name_or_field: str, field: str | None = None, *, name: str | None = None) -> dict[str, Any]:
-        target = field if field is not None else (None if name is not None else name_or_field)
-        alias = name if name is not None else name_or_field
-        return {'kind': 'min', 'field': target, 'name': alias}
+        if name is not None:
+            return {'name': str(name), 'function': {'kind': 'min', 'field': str(name_or_field)}}
+        return {'name': str(name_or_field), 'function': {'kind': 'min', 'field': str(field or name_or_field)}}
 
     @staticmethod
     def max(name_or_field: str, field: str | None = None, *, name: str | None = None) -> dict[str, Any]:
-        target = field if field is not None else (None if name is not None else name_or_field)
-        alias = name if name is not None else name_or_field
-        return {'kind': 'max', 'field': target, 'name': alias}
+        if name is not None:
+            return {'name': str(name), 'function': {'kind': 'max', 'field': str(name_or_field)}}
+        return {'name': str(name_or_field), 'function': {'kind': 'max', 'field': str(field or name_or_field)}}
 
     @staticmethod
     def collect_set(name_or_field: str, field: str | None = None, *, name: str | None = None) -> dict[str, Any]:
-        target = field if field is not None else (None if name is not None else name_or_field)
-        alias = name if name is not None else name_or_field
-        return {'kind': 'collect_set', 'field': target, 'name': alias}
+        if name is not None:
+            return {'name': str(name), 'function': {'kind': 'collect_set', 'field': str(name_or_field)}}
+        return {'name': str(name_or_field), 'function': {'kind': 'collect_set', 'field': str(field or name_or_field)}}
 
     @staticmethod
     def first_value(name_or_field: str, field: str | None = None, *, name: str | None = None) -> dict[str, Any]:
-        target = field if field is not None else (None if name is not None else name_or_field)
-        alias = name if name is not None else name_or_field
-        return {'kind': 'first_value', 'field': target, 'name': alias}
+        if name is not None:
+            return {'name': str(name), 'function': {'kind': 'first_value', 'field': str(name_or_field)}}
+        return {'name': str(name_or_field), 'function': {'kind': 'first_value', 'field': str(field or name_or_field)}}
 
     @classmethod
     def normalize(cls, spec: Any) -> dict[str, Any]:
-        if isinstance(spec, dict) and 'kind' in spec:
-            return dict(spec)
-        raise ValueError(f'Invalid AggregateSpec: {spec!r}')
+        if not isinstance(spec, dict):
+            raise ValueError(f'Invalid AggregateColumn specification: {spec!r}')
+        if 'kind' in spec and 'field' in spec and 'name' in spec:
+            return {'name': str(spec['name']), 'function': {'kind': str(spec['kind']), 'field': str(spec['field'])}}
+        if 'kind' in spec and 'name' in spec and len(spec) == 2:
+            return {'name': str(spec['name']), 'function': {'kind': str(spec['kind'])}}
+        unknown = set(spec) - {'name', 'function'}
+        if unknown:
+            raise ValueError(f'Unknown AggregateColumn fields: {sorted(unknown)!r}')
+        name = spec.get('name')
+        fn = spec.get('function')
+        if not isinstance(name, str) or not name.strip() or not isinstance(fn, dict):
+            raise ValueError(f'Invalid AggregateColumn specification: {spec!r}')
+        kind = fn.get('kind')
+        if kind not in cls.VALID_KINDS:
+            raise ValueError(f'Invalid AggregateFunction kind: {kind!r}')
+        if kind == 'count_rows':
+            if set(fn) != {'kind'}:
+                raise ValueError('count_rows aggregate does not take extra fields')
+            return {'name': name, 'function': {'kind': 'count_rows'}}
+        if set(fn) != {'kind', 'field'} or not isinstance(fn.get('field'), str) or not fn['field'].strip():
+            raise ValueError(f'AggregateFunction {kind!r} requires a non-empty field name')
+        return {'name': name, 'function': {'kind': kind, 'field': fn['field']}}
 
 
 class ConnectedComponentsTransform(dict):
-    """Declarative specification for connected-components graph partitioning."""
+    """Exact serde representation of ``RefreshTransform::ConnectedComponents``."""
 
     def __init__(
         self,
+        input_pin: Any = None,
         *,
-        edges: Any,
-        component_id_column: str = 'component_id',
-        component_size_column: str | None = 'component_size',
+        row_key: str = 'source_id',
+        entity_key: str | None = None,
+        edges: Any = (
+            dict(namespace='canonical', column='canonical_key'),
+            dict(namespace='body', column='connectable_body_key'),
+        ),
+        order_by: Any = ('priority_rank', 'source_id'),
+        document_id_column: str = 'document_id',
+        component_id_column: str | None = None,
+        component_size_column: str | None = None,
         max_iterations: int = 20,
+        aggregates: Any = (),
+        outputs: Any = None,
     ) -> None:
-        if not isinstance(edges, (list, tuple)) or not edges:
-            raise ValueError('ConnectedComponentsTransform requires at least one ConnectedEdgeSpec')
-        norm_edges = [ConnectedEdgeSpec.normalize(edge) for edge in edges]
+        effective_row_key = entity_key if entity_key is not None else row_key
+        effective_doc_id = component_id_column if component_id_column is not None else document_id_column
+        effective_aggregates = outputs if outputs is not None else aggregates
+        if not isinstance(effective_row_key, str) or not effective_row_key.strip():
+            raise ValueError('ConnectedComponentsTransform row_key must be a non-empty string')
+        if not isinstance(effective_doc_id, str) or not effective_doc_id.strip():
+            raise ValueError('ConnectedComponentsTransform document_id_column must be a non-empty string')
+        normalized_edges = [ConnectedEdgeSpec.normalize(e) for e in (edges or ())]
+        if not normalized_edges:
+            raise ValueError('ConnectedComponentsTransform requires at least one edge specification')
+        normalized_order_by = [SortColumn.normalize(c) for c in (order_by or ())]
+        normalized_aggregates = [AggregateSpec.normalize(a) for a in (effective_aggregates or ())]
         payload: dict[str, Any] = {
-            'edges': norm_edges,
-            'component_id_column': str(component_id_column),
+            'kind': 'connected_components',
+            'row_key': effective_row_key,
+            'edges': normalized_edges,
+            'order_by': normalized_order_by,
+            'document_id_column': effective_doc_id,
+            'aggregates': normalized_aggregates,
             'max_iterations': int(max_iterations),
         }
         if component_size_column is not None:
             payload['component_size_column'] = str(component_size_column)
+        if input_pin is not None:
+            payload['input'] = VersionRef.normalize(input_pin)
         super().__init__(payload)
 
     def to_dict(self) -> dict[str, Any]:

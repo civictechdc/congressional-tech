@@ -174,14 +174,18 @@ def parse_http_status(val):
 
 
 def derive_body_key(sha256_val, media_type=None):
-    """Derive CAS body_key dynamically from sha256 and media_type."""
+    """Derive CAS logical body_key dynamically from sha256.
+
+    Logical row['body_key'] is always 'bodies/sha256/<xx>/<sha256>.gz' across all
+    content types (ct-te1p architectural invariant). Physical R2 storage keys
+    (bodies/sha256/<xx>/<sha256>.pdf) are derived via physical_body_object_key.
+    """
     if sha256_val is None:
         return None
     hex_str = format_sha256(sha256_val)
     if not hex_str:
         return None
-    from congress_api.retention.body_keys import physical_body_object_key
-    return physical_body_object_key(hex_str, content_type_or_format=media_type)
+    return f"bodies/sha256/{hex_str[:2]}/{hex_str}.gz"
 
 
 def with_derived_body_keys(table_or_rows):
@@ -230,13 +234,12 @@ def normalize_capture_dict(d):
     if "is_stored" in d and d["is_stored"] is not None:
         is_stored = bool(d["is_stored"])
     elif stored_sha is not None:
-        sha_hex = format_sha256(sha)
-        stored_hex = format_sha256(stored_sha)
-        is_stored = bool(stored_hex and (sha_hex is None or stored_hex == sha_hex))
+        is_stored = bool(stored_sha)
     else:
         is_stored = False if sha is not None else None
 
-    return {
+    result = dict(d)
+    result.update({
         "family": d.get("family"),
         "capture_date": d.get("capture_date"),
         "source_file": d.get("source_file"),
@@ -256,14 +259,16 @@ def normalize_capture_dict(d):
         "http_status": parse_http_status(d.get("http_status")),
         "resolution": d.get("resolution"),
         "original_path": d.get("original_path"),
-    }
+    })
+    return result
 
 
 def normalize_state_dict(d):
     """Normalize a state record dictionary to match STATE_SCHEMA."""
     if not isinstance(d, dict):
         return d
-    return {
+    result = dict(d)
+    result.update({
         "url": d.get("url"),
         "family": d.get("family"),
         "sha256": parse_sha256(d.get("sha256")),
@@ -276,7 +281,8 @@ def normalize_state_dict(d):
         "http_status": parse_http_status(d.get("http_status")),
         "attempts": int(d["attempts"]) if d.get("attempts") is not None else None,
         "links_scanned": bool(d["links_scanned"]) if d.get("links_scanned") is not None else None,
-    }
+    })
+    return result
 
 
 def prepare_capture_table(rows):

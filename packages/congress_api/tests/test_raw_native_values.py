@@ -2,7 +2,7 @@
 import pyarrow as pa
 import pytest
 
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA
+from congress_api.retention.raw_archive import LEGACY_CAPTURE_SCHEMA as CAPTURE_SCHEMA, STATE_SCHEMA
 from congress_api.retention.raw_values import capture_table, ordered_captures, state_table
 
 

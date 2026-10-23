@@ -26,6 +26,9 @@ from news_lake.storage.docspec.compaction import _DocSpecDatasetManager
 from news_lake.storage.docspec.schema import (
     APPEND_UPDATE_KEYS,
     AppendCollisionError,
+    DEFAULT_COMPACT_FILE_THRESHOLD,
+    DEFAULT_COMPACT_TARGET_FILE_BYTES,
+    DEFAULT_LIFECYCLE_COMPACT_INTERVAL,
     content_digest,
     dataset_id_for,
     kind_arrow_schema,
@@ -56,30 +59,32 @@ class DocSpecLake(_DocSpecDatasetManager):
 
     def __init__(
         self,
-        workspace: Path | str,
-        binary: str | None = None,
-        client: DocSpecClient | None = None,
+        client: DocSpecClient | Path | str,
+        workspace_suffix: str = '',
         *,
+        binary: str | None = None,
         timeout: int = 120,
         limits: Any = None,
         stream_ipc: bool = True,
         native_upsert_merge: bool = True,
-        compact_target_file_bytes: int | None = None,
-        compact_file_threshold: int | None = None,
-        lifecycle_compact_interval: int | None = None,
-        workspace_suffix: str | None = None,
+        compact_target_file_bytes: int = DEFAULT_COMPACT_TARGET_FILE_BYTES,
+        compact_file_threshold: int = DEFAULT_COMPACT_FILE_THRESHOLD,
+        lifecycle_compact_interval: int = DEFAULT_LIFECYCLE_COMPACT_INTERVAL,
     ) -> None:
-        if client is None:
-            client = DocSpecClient(workspace, binary=binary, timeout=timeout, limits=limits)
+        if not isinstance(client, DocSpecClient):
+            client = DocSpecClient(client, binary=binary, timeout=timeout, limits=limits)
+        clean_suffix = sanitize_id(workspace_suffix) if workspace_suffix else ''
         super().__init__(
             client,
             compact_target_file_bytes=compact_target_file_bytes,
             compact_file_threshold=compact_file_threshold,
             lifecycle_compact_interval=lifecycle_compact_interval,
-            workspace_suffix=workspace_suffix,
+            workspace_suffix=clean_suffix,
         )
-        self.stream_ipc = stream_ipc
-        self.native_upsert_merge = native_upsert_merge
+        self._compact_file_threshold = compact_file_threshold
+        self._compact_target_file_bytes = compact_target_file_bytes
+        self.stream_ipc = bool(stream_ipc)
+        self.native_upsert_merge = bool(native_upsert_merge)
         self._known_ids: dict[str, set[str]] = {}
         self._known_upsert_records: dict[str, dict[str, Any]] = {}
         self.last_lookup_stats: dict[str, dict[str, Any]] = {}
@@ -109,18 +114,23 @@ class DocSpecLake(_DocSpecDatasetManager):
         self._committed = dict(value)
 
     def _committed_state_path(self) -> Path:
-        return Path(self.client.workspace) / 'committed_pins.json'
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return Path(self.client.workspace) / f'.news_lake_committed{suffix}.json'
 
     def _mutation_counts_path(self) -> Path:
-        return Path(self.client.workspace) / 'mutation_counts.json'
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return Path(self.client.workspace) / f'.news_lake_mutations{suffix}.json'
 
     def _compacted_pins_path(self) -> Path:
-        return Path(self.client.workspace) / 'compacted_pins.json'
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return Path(self.client.workspace) / f'.news_lake_compacted{suffix}.json'
 
     def _release_manifest_path(self, release_id: str) -> Path:
-        folder = Path(self.client.workspace) / 'releases'
-        folder.mkdir(parents=True, exist_ok=True)
-        return folder / f'{release_id}.json'
+        return self._releases_dir() / f'{sanitize_id(release_id)}.json'
+
+    def _releases_dir(self) -> Path:
+        suffix = f'-{self.workspace_suffix}' if self.workspace_suffix else ''
+        return Path(self.client.workspace) / f'releases{suffix}'
 
     def _load_committed_state(self) -> dict[str, Any]:
         path = self._committed_state_path()
@@ -566,11 +576,9 @@ class DocSpecLake(_DocSpecDatasetManager):
 
     def seal(self, generation_id: str, family: str = 'news') -> dict[str, Any]:
         """Seal the committed datasets as one generation of ``family``."""
-        members = [
-            {'dataset': dataset, 'version': pin_version(pin)}
-            for dataset, pin in sorted(self.committed.items())
-            if pin is not None and pin_version(pin) is not None
-        ]
+        if not self.committed:
+            raise ValueError('seal requires committed datasets')
+        members = {dataset: version_ref(pin) for dataset, pin in self.committed.items()}
         return self.client.seal_generation(
             {'family': family, 'generation': generation_id, 'members': members}
         )
@@ -815,7 +823,7 @@ class DocSpecLake(_DocSpecDatasetManager):
                         f'cannot abandon cycle without an available baseline for dirtied dataset {dataset}',
                     )
                 raise CommitError(
-                    'missing_baseline_pin',
+                    'no_available_baseline',
                     f'dataset {dataset} was dirtied but is missing from baseline release {baseline_release_id}',
                 )
             work_plan.append((table_name, dataset, kind, current_pin, baseline_pin))
@@ -865,7 +873,11 @@ class DocSpecLake(_DocSpecDatasetManager):
                 to_restore = [rec for rid, rec in baseline_by_id.items() if current_by_id.get(rid) != rec]
                 deleted_rows = [rec for rid, rec in current_by_id.items() if rid not in baseline_by_id]
                 replacements_table = records_to_arrow(kind, to_restore)
-                deletions_table = records_to_arrow(kind, deleted_rows) if deleted_rows else None
+                deletions_table = (
+                    records_to_arrow(kind, deleted_rows).select(list(keys))
+                    if deleted_rows
+                    else None
+                )
 
             operation = self._operation(
                 f'rollback-{dataset}',

@@ -7,7 +7,7 @@ import pyarrow as pa
 import pytest
 
 from native_test_helpers import native_test_client
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA, STATE_SCHEMA
 from congress_api.retention.docspec import DocSpecFailure
 from congress_api.retention.raw_storage import RawStorage, RAW_KEY
 from testing_fakes import SelectorStore, captures, states, MemoryStore
@@ -182,7 +182,7 @@ def test_unchanged_state_with_reversed_native_order_has_zero_writes(storage):
     original_batches = storage.native.source_batches
     @contextmanager
     def reversed_batches(pin, *, schema=None):
-        with original_batches(pin) as reader:
+        with original_batches(pin, schema=schema) as reader:
             table = reader.read_all()
         yield pa.RecordBatchReader.from_batches(table.schema, table.take(pa.array(list(reversed(range(len(table)))))).to_batches())
     storage.native.source_batches = reversed_batches
@@ -198,7 +198,7 @@ def test_body_lookup_and_count_do_not_read_capture_history(storage):
     table[0].update(sha256='a' * 64, bytes=7, stored_sha256='b' * 64, stored_bytes=12)
     table += [dict(body_key='bodies/legacy.gz'), dict(body_key='bodies/legacy.gz')]
     selected = storage.publish(storage.prepare(storage.snapshot(), operation='body-seed',
-        captures=pa.Table.from_pylist(table, schema=CAPTURE_SCHEMA)))
+        captures=pa.Table.from_pylist(table, schema=LEGACY_CAPTURE_SCHEMA)))
     storage.capture_pages.entries = lambda *args: pytest.fail('Hidden full capture history read')
     assert selected.body_info('a' * 64)['body_key'] == 'bodies/a.gz'
     assert selected.body_count == 2

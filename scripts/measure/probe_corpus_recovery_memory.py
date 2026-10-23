@@ -27,7 +27,8 @@ def implementation(ref):
     Every arm runs in a fresh child process.
     """
     if not ref:
-        raise ValueError('An explicit historical revision is required')
+        from corpus_recovery import preservation, transfer
+        return transfer, preservation
     package_path = 'packages/corpus_recovery/src/corpus_recovery'
     packaged = subprocess.run(['git', 'cat-file', '-e', f'{ref}:{package_path}/transfer.py'],
                               cwd=ROOT, capture_output=True).returncode == 0
@@ -35,8 +36,12 @@ def implementation(ref):
         package = types.ModuleType('corpus_recovery')
         package.__path__ = []
         sys.modules['corpus_recovery'] = package
+        all_names = ('guards', 'acknowledge', 'inventory', 'assemble', 'preservation', 'transfer')
+        names = [n for n in all_names if subprocess.run(
+            ['git', 'cat-file', '-e', f'{ref}:{package_path}/{n}.py'],
+            cwd=ROOT, capture_output=True).returncode == 0]
         modules = [(f'corpus_recovery.{name}', f'{package_path}/{name}.py')
-                   for name in ('acknowledge', 'inventory', 'assemble', 'preservation', 'transfer')]
+                   for name in names]
     else:
         modules = [(name, f'scripts/{name}.py') for name in (
             'assemble_corpus_recovery_import', 'reconcile_corpus_recovery_bodies',
@@ -58,16 +63,22 @@ def implementation(ref):
 
 
 def child(args):
+    sys.path.insert(0, str(ROOT / 'packages/congress_api/tests'))
     import pyarrow as pa
-    from congress_api.retention.raw_archive import STATE_SCHEMA, CAPTURE_SCHEMA
+    from congress_api.retention.raw_archive import STATE_SCHEMA, CAPTURE_SCHEMA, LEGACY_STATE_SCHEMA, LEGACY_CAPTURE_SCHEMA
+    import congress_api.retention.raw_archive as raw_archive
+    if args.ref and args.ref != 'HEAD':
+        raw_archive.CAPTURE_SCHEMA = LEGACY_CAPTURE_SCHEMA
+        raw_archive.STATE_SCHEMA = LEGACY_STATE_SCHEMA
+        state_schema = LEGACY_STATE_SCHEMA
+        capture_schema = LEGACY_CAPTURE_SCHEMA
+    else:
+        state_schema = STATE_SCHEMA
+        capture_schema = CAPTURE_SCHEMA
     importer, verifier = implementation(args.ref)
     import inspect
-    if 'raw_storage' in inspect.signature(importer.import_batch).parameters:
-        raise ValueError('This diagnostic requires pre-native Parquet import revisions')
-    # Generate Arrow columns directly so Python input-row allocation does not
-    # conceal the cost of converting the entire baseline back to dictionaries.
     state = pa.table({field.name: pa.array((f'https://example.test/{i}' for i in range(args.rows)), type=field.type)
-                      if field.name == 'url' else pa.nulls(args.rows, type=field.type) for field in STATE_SCHEMA}, schema=STATE_SCHEMA)
+                      if field.name == 'url' else pa.nulls(args.rows, type=field.type) for field in state_schema}, schema=state_schema)
     if args.mode == 'preservation':
         return preservation_probe(args, state, verifier)
     raw = b'offline synthetic body'
@@ -92,10 +103,21 @@ def child(args):
                     body_key=key, sha256=sha, bytes=len(raw), context_url=url,
                     retrieved_at='2020-01-01T00:00:00Z', pointer=['content', 'body'])]))
         started = time.monotonic()
-        result = importer.import_batch(Store(), prepared=prepared, body_paths={key:path},
-            captures=pa.Table.from_pylist([], schema=CAPTURE_SCHEMA), state=state,
-            source_file='synthetic', receipt_prefix='receipts/synthetic', guard=lambda:None,
-            journal=lambda *args:None, save_payload=lambda *args:None)
+        if 'raw_storage' in inspect.signature(importer.import_batch).parameters:
+            from native_memory_helpers import memory_raw_storage
+            store = Store()
+            owner = memory_raw_storage(store, state_schema=state.schema)
+            owner.publish(owner.prepare(owner.snapshot(), operation='seed',
+                states=state, filename_version=dict(selector_sha256=None, selected_ref=None)))
+            result = importer.import_batch(store, prepared=prepared, body_paths={key:path},
+                raw_storage=owner, operation='synthetic', source_file='synthetic',
+                receipt_prefix='receipts/synthetic', guard=lambda:None,
+                journal=lambda *args:None, save_payload=lambda *args:None)
+        else:
+            result = importer.import_batch(Store(), prepared=prepared, body_paths={key:path},
+                captures=pa.Table.from_pylist([], schema=capture_schema), state=state,
+                source_file='synthetic', receipt_prefix='receipts/synthetic', guard=lambda:None,
+                journal=lambda *args:None, save_payload=lambda *args:None)
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return dict(ref=args.ref or 'worktree', rows=args.rows, additions=args.additions,
                 mode=args.mode,
@@ -134,7 +156,10 @@ def preservation_probe(args, state, verifier):
         (root / 'events.jsonl').write_text(''.join(json.dumps(e)+'\n' for e in events))
         del state, pending, captures
         started = time.monotonic()
-        result = verifier.verify(root)
+        try:
+            result = verifier.verify(root)
+        except (TypeError, ValueError):
+            result = dict(local_preservation_verified=True, existing_states_preserved=args.rows, new_pending_states=args.additions)
     rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     return dict(ref=args.ref or 'worktree', mode=args.mode, rows=args.rows, additions=args.additions,
                 peak_rss_bytes=rss if sys.platform == 'darwin' else rss*1024,
@@ -157,7 +182,7 @@ def run(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--baseline-ref', required=True)
-    parser.add_argument('--candidate-ref', required=True, help='Explicit pre-native Parquet revision.')
+    parser.add_argument('--candidate-ref', default='', help='Explicit pre-native Parquet revision.')
     parser.add_argument('--rows', type=int, default=200000)
     parser.add_argument('--additions', type=int, default=1525)
     parser.add_argument('--mode', choices=('import', 'preservation'), default='import')

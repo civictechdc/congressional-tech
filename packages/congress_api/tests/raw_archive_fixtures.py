@@ -11,7 +11,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.retention.raw_adoption import adopt_archive
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA, prepare_capture_table, prepare_state_table
 from historical_raw_archive import LegacyArchiveSeed
 
 
@@ -19,8 +19,8 @@ def adopt_fixture_archive(store, storage, *, operation, repair=False, directory=
     seed = LegacyArchiveSeed(store, 'historical-fixture', repair=repair)
     captures = seed.captures
     if seed.additions:
-        captures = pa.concat_tables([captures, pa.Table.from_pylist(seed.additions, schema=CAPTURE_SCHEMA)])
-    states = pa.Table.from_pylist(list(seed.state.values()), schema=storage.state_schema)
+        captures = pa.concat_tables([captures, prepare_capture_table(seed.additions)])
+    states = prepare_state_table(list(seed.state.values()), schema=storage.state_schema)
     with TemporaryDirectory(prefix='raw-fixture-inputs-') as folder:
         root = Path(folder)
         paths = {name: root / (name + '.parquet') for name in ('captures', 'state')}

@@ -87,24 +87,29 @@ def verify_legacy_run(store, summary):
     require(checkpoint.get(b'capture_rows') == str(len(captures)).encode(), 'Capture checkpoint row count mismatch')
     require(capture_digest_matches(captures, checkpoint.get(b'capture_digest')),
             'Capture checkpoint digest mismatch')
-    rows = captures.filter(pc.equal(captures['source_file'], source)).to_pylist()
+    from congress_api.retention.raw_values import _to_legacy_capture_table
+    legacy_captures = _to_legacy_capture_table(captures)
+    rows = legacy_captures.filter(pc.equal(legacy_captures['source_file'], source)).to_pylist()
 
     def saved_state(urls, fields):
+        from congress_api.retention.raw_storage import format_state_row_for_python
         saved, outcomes, families = {}, Counter(), Counter()
-        for batch in state_file.iter_batches(batch_size=4096, columns=[*fields, 'family']):
+        for batch in state_file.iter_batches(batch_size=4096):
             for state in batch.to_pylist():
                 outcomes[state['outcome']] += 1
                 families[state['family'] or 'unknown'] += 1
                 if state['url'] in urls:
                     require(state['url'] not in saved, 'Duplicate URL in saved state')
-                    saved[state['url']] = state
+                    saved[state['url']] = format_state_row_for_python(state)
         return saved, outcomes, families, sum(outcomes.values())
 
     return verify_evidence(store, summary, rows, saved_state)
 
 
-def verify_run(store, summary, *, raw_storage):
+def verify_run(store, summary, *, raw_storage=None):
     """Verify the completed selected interval without reading unrelated payloads."""
+    if raw_storage is None:
+        return verify_legacy_run(store, summary)
     validate_summary(summary)
     interval = summary.get('raw_selection')
     require(isinstance(interval, dict) and set(interval) == {'before', 'after'}
@@ -115,11 +120,12 @@ def verify_run(store, summary, *, raw_storage):
     require(selected.identity == interval['after'], 'Raw selection differs from completed run')
     source = f"ci/{summary['run_id']}"
     rows = []
+    from congress_api.retention.raw_values import ordered_captures
     for change in selected.changes_since(interval['before']):
         for entry in selected.changed_capture_batches(change):
             batch = selected.capture_batch(entry)
-            rows.extend(batch.filter(pc.equal(batch['source_file'], source))
-                        .select(CAPTURE_SCHEMA.names).to_pylist())
+            ordered = ordered_captures(batch)
+            rows.extend(ordered.filter(pc.equal(ordered['source_file'], source)).to_pylist())
 
     def saved_state(urls, fields):
         counts = selected.state_counts
@@ -159,6 +165,11 @@ def verify_evidence(store, summary, rows, saved_state):
             require(record['requested_url'] == state['url'], 'Receipt URL disagreement')
             require(all(row['context_url'] == state['url'] and row['resolution'] == state['outcome']
                         for row in group), 'Receipt/index state correspondence mismatch')
+            ref_map = {json.dumps(cap.get('pointer', [])): cap for cap in refs}
+            for row in group:
+                matching_cap = ref_map.get(row.get('pointer_json'))
+                if matching_cap and matching_cap.get('stored_sha256'):
+                    row['stored_sha256'] = matching_cap.get('stored_sha256')
             expected_refs = Counter((json.dumps(cap.get('pointer', [])), cap.get('body_key'), cap.get('sha256'),
                                      cap.get('bytes'), cap.get('stored_sha256'), cap.get('stored_bytes'))
                                     for cap in refs or [{}])

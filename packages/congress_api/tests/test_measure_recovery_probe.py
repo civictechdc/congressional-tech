@@ -46,7 +46,7 @@ def test_package_baseline_imports_its_selected_assembly_and_acknowledgment(monke
             'transfer': ('from corpus_recovery.assemble import assemble\n'
                          'from corpus_recovery.acknowledge import reconcile_lost_acknowledgment\n'),
         }
-        return sources[name]
+        return sources.get(name, '')
     monkeypatch.setattr(probe.subprocess, 'check_output', selected)
     try:
         importer, verifier = probe.implementation('HEAD')

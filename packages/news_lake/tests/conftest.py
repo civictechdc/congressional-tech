@@ -5,10 +5,15 @@ non-release tables so every table-commit fault point fires.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
 import pytest
+
+_DEFAULT_DOCSPEC = Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/release/docspec")
+if not os.environ.get("DOCSPEC_BINARY") and _DEFAULT_DOCSPEC.is_file():
+    os.environ["DOCSPEC_BINARY"] = str(_DEFAULT_DOCSPEC)
 
 DOCS = Path(__file__).resolve().parents[1] / 'docs'
 DOCS_SCHEMA = DOCS / 'schema' / 'news-lake.schema.json'

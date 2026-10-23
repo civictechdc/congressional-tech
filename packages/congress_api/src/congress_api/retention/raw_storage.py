@@ -442,7 +442,7 @@ def _merge_states(existing, incoming, *, merge_spec=STATE_MERGE_SPEC, state_sche
         all_keys = {k for r in existing_rows + incoming_rows for k in r}
         extra_fields = [
             pa.field(k, pa.string(), nullable=True)
-            for k in sorted(all_keys - set(STATE_SCHEMA.names) - {STATE_ORDER, STATE_KEY_FIELD, STATE_KEY_SHA256_FIELD, 'body_key'})
+            for k in sorted(all_keys - set(STATE_SCHEMA.names) - {STATE_ORDER, STATE_KEY_FIELD, STATE_KEY_SHA256_FIELD})
             if not k.startswith('__docspec_supplied_')
         ]
         # Infer types for common extra test fields like media_type, fidelity, retrieved_at
@@ -543,8 +543,10 @@ def format_state_row_for_python(row):
     sha_val = formatted.get('sha256')
     if sha_val is not None:
         formatted['sha256'] = format_sha256(sha_val)
-    if not formatted.get('body_key') and sha_val is not None:
-        formatted['body_key'] = derive_body_key(sha_val, formatted.get('media_type'))
+        if not formatted.get('body_key'):
+            formatted['body_key'] = derive_body_key(sha_val, formatted.get('media_type'))
+    elif 'body_key' in formatted:
+        formatted['body_key'] = None
     for ts_field in ('retrieved_at', 'checked_at', 'next_attempt_at'):
         val = formatted.get(ts_field)
         if isinstance(val, datetime):

@@ -138,15 +138,15 @@ def test_corrupt_dependency_completion_refuses_before_native_work(tmp_path, monk
 def test_qualified_checkpoint_reuses_import_but_refuses_changed_runtime_or_input(tmp_path, monkeypatch, change):
     from congress_api.retention import catalog_selection
     store, native, options, runtime = setup_adoption(tmp_path, monkeypatch)
-    publish = catalog_selection.publish_native_catalog
-    monkeypatch.setattr(catalog_selection, 'publish_native_catalog',
+    publish = adoption.publish_native_catalog
+    monkeypatch.setattr(adoption, 'publish_native_catalog',
         lambda *a, **k: (_ for _ in ()).throw(OSError('stopped before selection')))
     before = store.read(MANIFEST_KEY)
     with pytest.raises(OSError, match='before selection'):
         adoption.adopt_native_catalog(store, **options)
     assert store.read(MANIFEST_KEY) == before
     assert (options['directory'] / 'qualified-adoption.json').exists()
-    monkeypatch.setattr(catalog_selection, 'publish_native_catalog', publish)
+    monkeypatch.setattr(adoption, 'publish_native_catalog', publish)
     monkeypatch.setattr(native, 'run_table', lambda *a, **k: pytest.fail('Qualified native import was repeated'))
     if change == 'runtime':
         runtime.write_bytes(b'changed-runtime')

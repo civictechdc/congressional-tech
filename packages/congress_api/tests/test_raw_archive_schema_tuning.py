@@ -188,10 +188,10 @@ def test_derive_body_key_gz():
 
 
 def test_derive_body_key_pdf():
-    """Verify derive_body_key produces .pdf key for PDF media types."""
+    """Verify derive_body_key produces logical .gz key even for PDF media types (ct-te1p invariant)."""
     hex_digest = "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0"
     key = derive_body_key(hex_digest, media_type="application/pdf")
-    assert key == f"bodies/sha256/{hex_digest[:2]}/{hex_digest}.pdf"
+    assert key == f"bodies/sha256/{hex_digest[:2]}/{hex_digest}.gz"
 
 
 def test_derive_body_key_from_binary_bytes():

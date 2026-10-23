@@ -20,10 +20,13 @@ class ReadTrackingStore(MemoryStore):
         return super().read(key)
 
 
-def publish(store, directory, urls):
+def publish(store, directory, urls, body_key=None):
+    import hashlib
     (directory / "indexes").mkdir(parents=True)
+    digest = hashlib.sha256(b"fixture").hexdigest()
+    key = body_key or f"bodies/sha256/{digest[:2]}/{digest}.gz"
     result = index.write_filename_metadata(directory, [
-        dict(body_key="bodies/fixture.gz", filename=url.rsplit("/", 1)[-1],
+        dict(body_key=key, filename=url.rsplit("/", 1)[-1],
              source_url=url, media_type=["application/pdf"], http_status=["200"])
         for url in urls
     ], workers=1)
@@ -55,7 +58,7 @@ def test_probe_reads_selected_generation_with_stale_legacy_roots(tmp_path):
     probe = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(probe)
     url = "https://example.gov/retained.pdf"
-    publish(LocalStore(tmp_path), tmp_path / "build", [url])
+    publish(LocalStore(tmp_path), tmp_path / "build", [url], body_key="bodies/fixture.gz")
     body = tmp_path / "bodies/fixture.gz"
     body.parent.mkdir()
     content = b"%PDF-1.7\nretained body\n%%EOF"

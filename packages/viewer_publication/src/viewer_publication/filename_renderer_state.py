@@ -5,9 +5,9 @@ import json
 from pathlib import Path, PurePosixPath
 import sqlite3
 
+from congress_api.retention.derived_files import copy_checked
 from congress_shared.custody import (
     canonical_json_bytes as encoded,
-    copy_checked,
     file_identity,
 )
 

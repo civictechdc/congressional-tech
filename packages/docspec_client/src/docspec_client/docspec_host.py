@@ -1,6 +1,6 @@
 """Process ownership and bounded HTTP I/O for the maintained local DocSpec API."""
 import httpx
-from .host import ArrowResponse, Host, acquire_host
+from .host import ArrowResponse, Host, acquire_host, _hosts
 from .models import (
     REQUIRED_LOOPBACK_CAPABILITIES,
     RESPONSE_LIMIT,
@@ -15,4 +15,5 @@ __all__ = [
     'Host',
     'acquire_host',
     'httpx',
+    '_hosts',
 ]

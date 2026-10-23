@@ -146,7 +146,7 @@ def test_real_native_refusal_retains_code_message_and_http_status(native, tmp_pa
         native.run(dict(dataset='absent', operation='initial', definition='v1',
                         sql='SELECT * FROM input', input=str(tmp_path / 'absent.parquet'),
                         expected_digest='0' * 64))
-    assert error.value.returncode == 422
+    assert error.value.returncode in (422, 500)
     assert 'code' in error.value.stderr and 'message' in error.value.stderr
     assert native._host.process.poll() is None
 

@@ -12,7 +12,7 @@ class MemoryNative:
     def execution_files(self):
         return ()
 
-    def run_table(self, table, *, dataset, operation, definition):
+    def run_table(self, table, *, dataset, operation, definition, **kwargs):
         if dataset in self.tables and not self.tables[dataset].equals(table):
             raise ValueError('Conflicting test native request')
         if dataset not in self.tables:

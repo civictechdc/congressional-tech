@@ -9,10 +9,14 @@ import pytest
 from congress_api.retention.body_files import content_bytes
 from congress_api.transport.rust_fetch import RustFetcher
 from congress_api.retention.raw_archive import metadata_body_keys, prepare_capture
+from pathlib import Path
 from historical_raw_archive import LegacyArchiveSeed as Archive
 from testing_fakes import MemoryStore
 
-BINARY = os.environ.get('SOURCE_FETCH_BINARY')
+_DEFAULT_SOURCE_FETCH = Path(__file__).resolve().parents[2] / "source-fetch/target/release/source-fetch"
+BINARY = os.environ.get('SOURCE_FETCH_BINARY') or (str(_DEFAULT_SOURCE_FETCH) if _DEFAULT_SOURCE_FETCH.is_file() else None)
+if BINARY and 'SOURCE_FETCH_BINARY' not in os.environ:
+    os.environ['SOURCE_FETCH_BINARY'] = BINARY
 pytestmark = [pytest.mark.loopback,
               pytest.mark.skipif(not BINARY, reason='Set SOURCE_FETCH_BINARY for native loopback checks')]
 

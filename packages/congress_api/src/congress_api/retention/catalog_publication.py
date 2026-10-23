@@ -26,7 +26,6 @@ from congress_api.retention.catalog_batches import (
 )
 from congress_api.retention.catalog_selection import read_native_catalog
 from congress_api.retention.catalog_validation import validate_references, CatalogReferenceCheck
-from congress_api.retention.index.builder import validate_document_indexes
 
 MANIFEST_KEY = 'indexes/catalog.json'
 FILENAMES = 'indexes/document-filenames.parquet'
@@ -165,14 +164,15 @@ def read_catalog(store, *, read=None, native=None, retained_directory=None):
 
 def publish_catalog(store, filenames_path, documents_path, *, previous, validation=None):
     """Upload immutable pair, then conditionally select it as the final write."""
+    from congress_api.retention import document_index as index
     if hasattr(previous, 'selection'):
         raise ValueError('Native catalog updates require the retained scope publication path')
     if not callable(getattr(store, 'put_catalog_manifest', None)) or not callable(getattr(store, 'put_derived_file', None)):
         raise TypeError('Catalog publication requires conditional selector and exclusive immutable file operations')
     if validation is None:
-        validation = validate_references(filenames_path, documents_path, validator=validate_document_indexes)
+        validation = validate_references(filenames_path, documents_path, validator=index.validate_document_indexes)
     else:
-        validation.require(filenames_path, documents_path, validator=validate_document_indexes)
+        validation.require(filenames_path, documents_path, validator=index.validate_document_indexes)
     paths = {'filenames': Path(filenames_path), 'documents': Path(documents_path)}
     properties = {label: _properties(path) for label, path in paths.items()}
     content_validation = validation.content(properties)

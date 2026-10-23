@@ -9,13 +9,17 @@ import time
 
 import pytest
 
+from pathlib import Path
+
 from congress_api.models.content import RawContent
 from congress_api.transport.rust_fetch import RustFetcher
 from congress_api.transport.source_capture import fetch_source
 from testing_fakes import MemoryStore
 
-
-BINARY = os.environ.get('SOURCE_FETCH_BINARY')
+_DEFAULT_SOURCE_FETCH = Path(__file__).resolve().parents[2] / "source-fetch/target/release/source-fetch"
+BINARY = os.environ.get('SOURCE_FETCH_BINARY') or (str(_DEFAULT_SOURCE_FETCH) if _DEFAULT_SOURCE_FETCH.is_file() else None)
+if BINARY and 'SOURCE_FETCH_BINARY' not in os.environ:
+    os.environ['SOURCE_FETCH_BINARY'] = BINARY
 pytestmark = [pytest.mark.loopback,
               pytest.mark.skipif(not BINARY, reason='Set SOURCE_FETCH_BINARY to run native loopback checks')]
 

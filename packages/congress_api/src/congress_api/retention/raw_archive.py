@@ -277,9 +277,11 @@ class _Acquisition:
                 "zip",
                 "rtf",
             }:
+                sha_candidate = row["body_key"].rsplit("/", 1)[-1].removesuffix(".gz") if row.get("body_key") else None
+                sha_val = sha_candidate if (sha_candidate is not None and len(sha_candidate) == 64) else None
                 self.state[url].update(
                     body_key=row["body_key"],
-                    sha256=row["body_key"].rsplit("/", 1)[-1].removesuffix(".gz"),
+                    sha256=sha_val,
                     media_type=next(iter(row["media_type"] or []), None),
                     # The filename index aggregates observations; it does not
                     # associate one HTTP status with this particular body.

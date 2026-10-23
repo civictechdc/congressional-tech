@@ -123,15 +123,20 @@ def test_catalog_adoption_feeds_bounded_grouped_original_schema(tmp_path, monkey
             source_schema=schema, max_rows=64, max_bytes=1 << 20)
         original = dependencies.adopt
         sizes = []
-        def checked(chunks):
-            def observed():
-                for chunk in chunks:
+        def checked(chunks, *args, **kwargs):
+            def wrap_chunk_stream(stream):
+                for chunk in stream:
                     assert chunk.schema.equals(schema, check_metadata=True)
                     assert len(chunk) <= 64 and core_table(chunk).nbytes <= 1 << 20
                     assert chunk.nbytes <= 1 << 20 or len(chunk) == 1
                     sizes.append(len(chunk))
                     yield chunk
-            return original(observed())
+
+            if callable(chunks):
+                wrapped = lambda start: wrap_chunk_stream(chunks(start))
+            else:
+                wrapped = wrap_chunk_stream(chunks)
+            return original(wrapped, *args, **kwargs)
         monkeypatch.setattr(dependencies, 'adopt', checked)
         adoption.adopt_native_catalog(store, native=native, previous=previous, dependencies=dependencies,
             candidate='bounded-input', directory=tmp_path / 'adopt', max_chunk_rows=64,

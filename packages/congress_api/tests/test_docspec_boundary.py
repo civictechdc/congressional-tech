@@ -77,7 +77,7 @@ def test_native_refusals_preserve_error_and_cleanup_request_files(native, tmp_pa
 
 
 def test_raw_values_roundtrip_native_source_without_losing_occurrences(native, tmp_path):
-    from congress_api.retention.raw_archive import CAPTURE_SCHEMA
+    from congress_api.retention.raw_archive import LEGACY_CAPTURE_SCHEMA as CAPTURE_SCHEMA
     from congress_api.retention.raw_values import capture_table, ordered_captures
 
     original = pa.Table.from_pylist([
