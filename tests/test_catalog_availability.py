@@ -18,10 +18,14 @@ def state(*rows):
 
 
 def saved(package, kind='pdf'):
+    from hashlib import sha256
+    from congress_api.retention.raw_archive import derive_body_key
     suffix = 'pdf' if kind == 'pdf' else 'htm'
+    media = 'application/pdf' if kind == 'pdf' else 'text/html'
+    digest = sha256(f'{package}.{suffix}'.encode()).digest()
     return dict(url=f'https://www.govinfo.gov/content/pkg/{package}/{kind}/{package}.{suffix}',
-                body_key='bodies/' + package + '.' + suffix, outcome='retained', http_status=200,
-                media_type='application/pdf' if kind == 'pdf' else 'text/html')
+                body_key=derive_body_key(digest, media), sha256=digest, outcome='retained', http_status=200,
+                media_type=media)
 
 
 def test_endpoint_candidate_never_changes_api_response_or_merges_documents(tmp_path):

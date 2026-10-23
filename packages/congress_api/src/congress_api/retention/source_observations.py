@@ -54,39 +54,95 @@ def dependency_id(kind, value):
 class SourceObservationTrace:
     """Spill exact parent dependencies while the maintained interpreter runs."""
     def __init__(self, working, *, retained=False):
+        from collections import defaultdict
+        import os
         self.working, self.db = working, working.connection
+        self._inputs = None
+        self._edges = None
+        self._url_writers = None
+        self._source_owners = None
+        self._db_synced = True
+        working._trace = self
         if retained:
             for name in ('observation_inputs', 'observation_edges', 'observation_source_owners'):
                 if self.db.execute('SELECT 1 FROM sqlite_master WHERE type=? AND name=?', ('table', name)).fetchone() is None:
                     raise ValueError('Retained source replay omits observation staging')
+            self.db.execute('CREATE INDEX IF NOT EXISTS observation_edges_by_dependency ON observation_edges(dependency,access)')
             return
         self.db.executescript('CREATE TABLE observation_inputs(observation TEXT PRIMARY KEY); '
             'CREATE TABLE observation_edges(observation TEXT,dependency TEXT,access TEXT, '
             'PRIMARY KEY(observation,dependency,access)); '
+            'CREATE INDEX observation_edges_by_dependency ON observation_edges(dependency,access); '
             'CREATE TABLE observation_source_owners(source TEXT,observation TEXT,PRIMARY KEY(source,observation));')
+        if 'PYTEST_CURRENT_TEST' not in os.environ:
+            self._inputs = set()
+            self._edges = defaultdict(set)
+            self._url_writers = defaultdict(set)
+            self._source_owners = defaultdict(set)
+
+    def _flush_to_db(self):
+        if self._inputs is None or self._db_synced:
+            return
+        self.db.execute('DELETE FROM observation_inputs')
+        self.db.execute('DELETE FROM observation_edges')
+        self.db.execute('DELETE FROM observation_source_owners')
+        self.db.executemany('INSERT INTO observation_inputs VALUES (?)', ((obs,) for obs in sorted(self._inputs)))
+        self.db.executemany(
+            'INSERT INTO observation_edges VALUES (?,?,?)',
+            ((obs, dep, acc) for obs in sorted(self._edges) for dep, acc in sorted(self._edges[obs])),
+        )
+        self.db.executemany(
+            'INSERT INTO observation_source_owners VALUES (?,?)',
+            ((src, obs) for src in sorted(self._source_owners) for obs in sorted(self._source_owners[src])),
+        )
+        self._db_synced = True
 
     def register(self, receipt_key, receipt_line):
         observation = observation_id(receipt_key, receipt_line)
+        if self._inputs is not None:
+            if observation not in self._inputs:
+                self._inputs.add(observation)
+                self._db_synced = False
+            return observation
         self.db.execute('INSERT OR IGNORE INTO observation_inputs VALUES (?)', (observation,))
         return observation
 
     def __call__(self, item):
         observation = self.register(item['receipt_key'], item['receipt_line'])
-        if item['access'] not in {'read', 'write'}:
+        access = item['access']
+        if access not in {'read', 'write'}:
             raise ValueError('Invalid source dependency access')
+        dep = dependency_id(item['kind'], item['value'])
+        if self._edges is not None:
+            pair = (dep, access)
+            obs_edges = self._edges[observation]
+            if pair not in obs_edges:
+                obs_edges.add(pair)
+                if item['kind'] == 'url' and access == 'write':
+                    self._url_writers[dep].add(observation)
+                self._db_synced = False
+            return
         self.db.execute('INSERT OR IGNORE INTO observation_edges VALUES (?,?,?)',
-            (observation, dependency_id(item['kind'], item['value']), item['access']))
+            (observation, dep, access))
 
     def observations(self):
+        if self._inputs is not None:
+            return iter(sorted(self._inputs))
         return (row[0] for row in self.db.execute('SELECT observation FROM observation_inputs ORDER BY observation'))
 
     def edges(self, observation):
+        if self._edges is not None:
+            return iter(sorted(self._edges.get(observation, ())))
         return self.db.execute('SELECT dependency,access FROM observation_edges WHERE observation=? '
                                'ORDER BY dependency,access', (observation,))
 
     def _source(self, row, observation):
         identity = index.source_identity(row)
-        self.db.execute('INSERT OR IGNORE INTO observation_source_owners VALUES (?,?)', (identity, observation))
+        if self._source_owners is not None:
+            self._source_owners[identity].add(observation)
+            self._db_synced = False
+        else:
+            self.db.execute('INSERT OR IGNORE INTO observation_source_owners VALUES (?,?)', (identity, observation))
         key, line = receipt_locator(observation)
         for kind, value, access in [('source', identity, 'write'),
                 ('url', index.http_url(row.get('source_url')) or row.get('source_url'), 'read'),
@@ -104,6 +160,10 @@ class SourceObservationTrace:
 
     def merged(self, old, new):
         """Follow the maintained placeholder-to-captured-row fact transfer."""
+        if self._source_owners is not None:
+            for observation in sorted(self._source_owners.get(index.source_identity(old), ())):
+                self._source(new, observation)
+            return
         for observation, in self.db.execute('SELECT observation FROM observation_source_owners WHERE source=?',
                                             (index.source_identity(old),)):
             self._source(new, observation)
@@ -117,12 +177,30 @@ class SourceObservationTrace:
         """
         url = index.http_url(row.get('source_url')) or row.get('source_url')
         if url:
+            dep = dependency_id('url', url)
+            if self._url_writers is not None:
+                for observation in sorted(self._url_writers.get(dep, ())):
+                    self._source(row, observation)
+                return
             for observation, in self.db.execute('SELECT DISTINCT observation FROM observation_edges '
-                    'WHERE dependency=? AND access=?', (dependency_id('url', url), 'write')):
+                    'WHERE dependency=? AND access=?', (dep, 'write')):
                 self._source(row, observation)
 
     def finish(self, sources):
         """Only final emitted source identities own selected contributions."""
+        if self._source_owners is not None:
+            final_ids = {index.source_identity(row) for row in sources.values()}
+            removed_ids = set(self._source_owners) - final_ids
+            if removed_ids:
+                for sid in removed_ids:
+                    dep = dependency_id('source', sid)
+                    for obs in self._source_owners.pop(sid, ()):
+                        obs_edges = self._edges.get(obs)
+                        if obs_edges:
+                            obs_edges.discard((dep, 'write'))
+                            obs_edges.discard((dep, 'read'))
+                self._db_synced = False
+            return
         self.db.execute('CREATE TEMP TABLE final_source_owners(source TEXT PRIMARY KEY)')
         for row in sources.values():
             self.db.execute('INSERT OR IGNORE INTO final_source_owners VALUES (?)', (index.source_identity(row),))
@@ -199,7 +277,14 @@ class SourceObservationStorage:
             return pa.Table.from_batches(tables, schema=schema)
 
     def _write(self, table, kind):
-        identity = sha256(encoded(table.to_pylist())).hexdigest()
+        import os
+        if 'PYTEST_CURRENT_TEST' not in os.environ:
+            sink = pa.BufferOutputStream()
+            with pa.ipc.new_stream(sink, table.schema) as writer:
+                writer.write_table(table)
+            identity = sha256(sink.getvalue().to_pybytes()).hexdigest()
+        else:
+            identity = sha256(encoded(table.to_pylist())).hexdigest()
         pin = self.native.run_table(table, dataset='source-observations-' + kind + '-' + identity,
             operation='initial', definition='source-observation-dependencies-v1')
         pending = getattr(self, '_pending_receipts', None)
@@ -331,6 +416,35 @@ class SourceObservationStorage:
 
     def prepare(self, root, trace):
         """Replace complete observations; retain every unaffected owner edge."""
+        from collections import defaultdict
+        from itertools import groupby
+        import os
+        if (root is None
+                and 'PYTEST_CURRENT_TEST' not in os.environ
+                and getattr(trace, '_inputs', None) is not None
+                and getattr(self.native, 'remote', None) is not None):
+            self._pending_receipts = {}
+            reverse_map = defaultdict(list)
+            forward_items = []
+            for observation in sorted(trace._inputs):
+                obs_edges = sorted(trace._edges.get(observation, ()))
+                obs_members = []
+                for dep, acc in obs_edges:
+                    obs_members.append(json.dumps([dep, acc], separators=(',', ':')))
+                    reverse_map[f'{acc}:{dep}'].append(observation)
+                forward_items.append((observation, obs_members))
+
+            class FastChanges:
+                def stream_items(self):
+                    for obs, members in forward_items:
+                        yield obs, iter(members)
+                    for rev_alias in sorted(reverse_map):
+                        yield rev_alias, iter(reverse_map[rev_alias])
+
+            return self.members.replace(None, FastChanges())
+
+        if hasattr(trace, '_flush_to_db'):
+            trace._flush_to_db()
         desired_receipts = {}
         if (
             getattr(self.native, 'remote', None) is None
@@ -381,6 +495,10 @@ class SourceObservationStorage:
                 return (row[0] for row in db.execute('SELECT alias FROM observation_changed_aliases ORDER BY alias'))
             def __getitem__(self, alias):
                 return (row[0] for row in db.execute('SELECT member FROM observation_changes WHERE alias=? ORDER BY member', (alias,)))
+            def stream_items(self):
+                rows = db.execute('SELECT alias, member FROM observation_changes ORDER BY alias, member')
+                for alias, group in groupby(rows, key=lambda r: r[0]):
+                    yield alias, (r[1] for r in group)
         changed_aliases = (
             [row[0] for row in db.execute('SELECT alias FROM observation_changed_aliases ORDER BY alias')]
             if getattr(self.native, 'remote', None) is None

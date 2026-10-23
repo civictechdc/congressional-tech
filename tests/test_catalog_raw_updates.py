@@ -220,9 +220,9 @@ def test_package_state_correction_replays_retained_api_receipt_and_complete_sibl
                                        {'type': 'HTML', 'url': publisher[:-3] + 'htm'}]})
     receipt = retain(store, record, family='congress/hearings', source_file='api.json', url=api,
                     body=json.dumps(record).encode(), pointer=['content', 'body'])
-    captures = decode_table(store.read(CAPTURES_KEY))
+    captures = decode_table(store.read(CAPTURES_KEY), derive_body_key=True)
     pdf, html = saved(package), saved(package, 'html')
-    api_state = dict(url=api, outcome='retained', body_key='api-body', http_status=200)
+    api_state = dict(url=api, outcome='retained', body_key=captures['body_key'][0].as_py(), sha256=captures['sha256'][0].as_py(), http_status=200)
     raw.publish(raw.prepare(raw.snapshot(), operation='initial', captures=captures,
         states=pa.Table.from_pylist([api_state, pdf, html], schema=STATE_SCHEMA)))
     monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))

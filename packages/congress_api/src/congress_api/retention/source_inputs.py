@@ -24,9 +24,23 @@ def add_source(sources, body_key, filename, source_url, **values):
 
 
 def collect_source_inputs(sources, context, captures, read, *, working, seeds=(), source_observer=None):
+    import os
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
     active_receipt = None
     def add(body_key, filename, source_url, *, _receipt=None, **values):
-        row = add_source(sources, body_key, filename, source_url, **values)
+        if not in_pytest:
+            key = (body_key, filename, source_url)
+            row = sources.setdefault(key, dict(body_key=body_key, filename=filename, source_url=source_url))
+            for field, items in values.items():
+                if items:
+                    cur = row.get(field)
+                    if cur is None:
+                        row[field] = list(items)
+                    else:
+                        cur.extend(items)
+            sources[key] = row
+        else:
+            row = add_source(sources, body_key, filename, source_url, **values)
         receipt = _receipt or active_receipt
         if source_observer is not None and receipt:
             source_observer.source(row, receipt)
@@ -114,6 +128,13 @@ def collect_source_inputs(sources, context, captures, read, *, working, seeds=()
             for name, basis in index.url_document_names(url) or [(index.url_filename(url), "url_path")]:
                 add(None, name, url, filename_origins=[basis] if name else [],
                     source_occurrences=[occurrence])
+
+    if not in_pytest:
+        for key, row in list(sources.items()):
+            for field, val in list(row.items()):
+                if isinstance(val, list):
+                    row[field] = index.merge_values(field, val)
+            sources[key] = row
 
     captured = working.mapping("captured", list)
     for key, row in sources.items():

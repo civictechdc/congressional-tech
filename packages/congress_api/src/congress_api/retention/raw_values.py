@@ -25,7 +25,11 @@ def _to_legacy_capture_table(rows):
     if isinstance(rows, pa.Table):
         if rows.schema.equals(LEGACY_CAPTURE_SCHEMA, check_metadata=False):
             return rows
-        if not rows.schema.equals(CAPTURE_SCHEMA, check_metadata=False):
+        is_capture_schema = rows.schema.equals(CAPTURE_SCHEMA, check_metadata=False) or (
+            'body_key' in rows.column_names
+            and rows.drop(['body_key']).schema.equals(CAPTURE_SCHEMA, check_metadata=False)
+        )
+        if not is_capture_schema:
             raise ValueError('Unexpected capture index schema')
         py_rows = []
         for r in rows.to_pylist():

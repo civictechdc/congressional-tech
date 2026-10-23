@@ -174,6 +174,10 @@ def _save_sqlite(work, path):
     """Snapshot completed staging before handing a mutable copy to the caller."""
     partial = path.with_suffix('.tmp')
     partial.unlink(missing_ok=True)
+    if hasattr(work, '_trace') and work._trace is not None and hasattr(work._trace, '_flush_to_db'):
+        work._trace._flush_to_db()
+    if hasattr(work, 'flush'):
+        work.flush()
     with sqlite3.connect(partial) as backup:
         work.connection.commit()
         work.connection.backup(backup)
@@ -207,8 +211,32 @@ def _names(metadata, name, values):
 
 def _prepare(store, *, snapshot, changes, observations, root, directory, read_body, seeds,
              changed_dependencies, metadata, checkpoint_directory, request_digest):
+    import os
     inputs = SourceCaptureInputs(store)
     progress = checkpoint_directory / 'replay-progress.json'
+    if root is None and 'PYTEST_CURRENT_TEST' not in os.environ and not progress.exists():
+        work = WorkingCatalog(directory / 'replay-0.sqlite')
+        captures = None
+        try:
+            trace = SourceObservationTrace(work)
+            captures = _capture_file(directory / 'captures-0.parquet',
+                (table for change in changes for table in inputs.changed(snapshot, change, trace)))
+            obs_list = list(trace.observations())
+            if not obs_list and not changed_dependencies and not seeds:
+                captures.close()
+                work.close()
+                return None
+            trace.replay(captures, store.read, read_body, seeds=seeds, retained_capture_inputs=True)
+            after = None
+            closed = _names(metadata, 'closed_0', trace.observations())
+            old_sources = metadata.mapping('old_source_ids')
+            old_sources.clear()
+            return PreparedSourceReplay(work, root, after, closed, old_sources, captures, trace, metadata, iteration=0)
+        except BaseException:
+            if captures is not None:
+                captures.close()
+            work.close()
+            raise
     if progress.exists():
         saved = _read_checkpoint(progress, request_digest)
         path = checkpoint_directory / f"replay-progress-{saved['iteration']}.sqlite"

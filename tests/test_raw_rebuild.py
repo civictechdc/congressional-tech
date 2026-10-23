@@ -19,12 +19,14 @@ def retain(store, record, *, family, source_file, url=None, body=None, pointer=N
     key = f'receipts/{family}/fixture-{len(store.objects)}.jsonl.gz'
     store.objects[key] = gzip.compress((json.dumps({'record': record}) + '\n').encode())
     body_key = None
+    sha_bytes = None
     if body is not None:
         digest = sha256(body).hexdigest()
+        sha_bytes = bytes.fromhex(digest)
         body_key = f'bodies/sha256/{digest[:2]}/{digest}.gz'
         store.objects[body_key] = gzip.compress(body)
     row = dict(family=family, source_file=source_file, receipt_key=key, receipt_line=1,
-               context_url=url, body_key=body_key, http_status=200 if body else None,
+               context_url=url, body_key=body_key, sha256=sha_bytes, http_status=200 if body else None,
                pointer_json=json.dumps(pointer or []))
     captures = table(store, CAPTURES_KEY).to_pylist()
     store.objects[CAPTURES_KEY] = encode_table(pa.Table.from_pylist([*captures, row], schema=CAPTURE_SCHEMA))

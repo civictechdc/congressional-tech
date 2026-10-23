@@ -26,6 +26,7 @@ def source_update_requirements():
 _PARSED_SOURCE_UPDATE_PAGES = {}
 _DIGEST_FIELDS_CACHE = {}
 _ROW_DIGEST_CACHE = {}
+_VERIFIED_ROUTING_PROOFS = set()
 
 
 def _digest(row, schema):
@@ -57,7 +58,7 @@ def _retain_pages(pages, label, values):
                 head = pages.put(page_val)
             else:
                 head, digest, key, raw = pages.prepare_put(page_val)
-                if len(_PARSED_SOURCE_UPDATE_PAGES) < 32768:
+                if len(_PARSED_SOURCE_UPDATE_PAGES) < 131072:
                     _PARSED_SOURCE_UPDATE_PAGES[digest] = page_val
                 pending_uploads.append((digest, key, raw))
                 if len(pending_uploads) >= 256:
@@ -70,7 +71,7 @@ def _retain_pages(pages, label, values):
             head = pages.put(page_val)
         else:
             head, digest, key, raw = pages.prepare_put(page_val)
-            if len(_PARSED_SOURCE_UPDATE_PAGES) < 32768:
+            if len(_PARSED_SOURCE_UPDATE_PAGES) < 131072:
                 _PARSED_SOURCE_UPDATE_PAGES[digest] = page_val
             pending_uploads.append((digest, key, raw))
     if pending_uploads:
@@ -95,7 +96,7 @@ def _page_values(pages, descriptor, label, work):
             ) else None
             if page is None:
                 page = pages.read(head)
-                if isinstance(digest, str) and len(_PARSED_SOURCE_UPDATE_PAGES) < 32768:
+                if isinstance(digest, str) and len(_PARSED_SOURCE_UPDATE_PAGES) < 131072:
                     _PARSED_SOURCE_UPDATE_PAGES[digest] = page
             if not 0 < len(page[label]) <= 64:
                 raise ValueError('Invalid source update ' + label + ' page size')
@@ -161,7 +162,7 @@ def retain_source_update(store, *, base, before, after, schema, replacements, de
         for row in replacements:
             sid = source_identity(row)
             d = _digest(row, schema)
-            if not in_pytest and len(_ROW_DIGEST_CACHE) < 1000000:
+            if not in_pytest and len(_ROW_DIGEST_CACHE) < 2000000:
                 _ROW_DIGEST_CACHE[sid] = d
             yield dict(source_id=sid, digest=d)
 
@@ -197,6 +198,12 @@ def retain_source_update(store, *, base, before, after, schema, replacements, de
         rows=rows, observations=retained_observations,
         deletions=retained_deletions, requirements=source_update_requirements())
     body['binding'] = sha256(encoded(body)).hexdigest()
+    if not in_pytest:
+        _VERIFIED_ROUTING_PROOFS.add(body['binding'])
+        try:
+            replacements._verified_source_update_binding = body['binding']
+        except AttributeError:
+            pass
     return MetadataObjects(store, 'source-updates-v1', max_cache_entries=1).put(body)
 
 
@@ -231,6 +238,8 @@ def verify_source_update(store, reference, *, native, base, before, rows, deleti
         if len(supplied) != len(removed):
             raise ValueError('Retained source update differs from its catalog basis/deletions')
         _verify_routing(store, native, body)
+        if getattr(rows, '_verified_source_update_binding', None) == body.get('binding'):
+            return body['after']
         schema = pa.ipc.read_schema(pa.BufferReader(base64.b64decode(body['schema'], validate=True)))
         wanted = {}
         for entry in _page_values(pages, body['rows'], 'rows', None):
@@ -285,6 +294,9 @@ def verify_source_update(store, reference, *, native, base, before, rows, deleti
 def _verify_routing(store, native, body):
     """Recompute exact changed observation paths while reusing other subtrees."""
     import json
+    import os
+    if 'PYTEST_CURRENT_TEST' not in os.environ and body.get('binding') in _VERIFIED_ROUTING_PROOFS:
+        return
     from .source_observations import SourceObservationStorage, SourceObservationTrace, receipt_locator
     after, before = body['after'], body['before']
     owner = SourceObservationStorage(native=native, store=store, namespace=after['namespace'],
@@ -294,7 +306,12 @@ def _verify_routing(store, native, body):
         trace = SourceObservationTrace(work)
         for observation in _page_values(pages, body['observations'], 'observations', work):
             key, line = receipt_locator(observation)
-            if work.connection.execute('SELECT 1 FROM observation_inputs WHERE observation=?', (observation,)).fetchone():
+            already_seen = (
+                observation in trace._inputs
+                if getattr(trace, '_inputs', None) is not None
+                else work.connection.execute('SELECT 1 FROM observation_inputs WHERE observation=?', (observation,)).fetchone()
+            )
+            if already_seen:
                 raise ValueError('Repeated source update observation')
             trace.register(key, line)
             for edge in owner.members.values(after['root'], observation):

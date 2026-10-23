@@ -24,7 +24,11 @@ from congress_api.retention.document_recovery import recover_sources, recovery_f
 from congress_api.retention.catalog_cache import (
     capture_digest, capture_digest_matches, source_fingerprint,
 )
-from congress_api.retention.raw_archive import CAPTURES_KEY, CAPTURE_SCHEMA, STATE_KEY, STATE_SCHEMA, decode_table
+from congress_api.retention.raw_archive import (
+    CAPTURES_KEY, CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA,
+    STATE_KEY, STATE_SCHEMA, LEGACY_STATE_SCHEMA, decode_table,
+)
+from congress_api.retention.raw_values import _to_legacy_capture_table
 from congress_api.retention.catalog_availability import annotate_availability
 from historical_catalog_lineage import refresh_lineage_pair, replay_discovery
 
@@ -85,8 +89,9 @@ def _rebuild_catalog_owned(store, captures, *, seeds, workers, repair, inspect_b
             raise ValueError("Missing retained capture index")
         captures = decode_table(data)
         del data
-    if captures.schema.remove_metadata() != CAPTURE_SCHEMA:
+    if captures.schema.remove_metadata() not in (CAPTURE_SCHEMA, LEGACY_CAPTURE_SCHEMA):
         raise ValueError("Unexpected capture index schema")
+    captures = _to_legacy_capture_table(captures)
     snapshot = owners.enter_context(read_catalog(store, read=read))
     # Verified owned files stay alive through interpretation and archival.
     previous = pq.ParquetFile(snapshot.filenames_path) if snapshot.filenames_path else None
@@ -100,8 +105,11 @@ def _rebuild_catalog_owned(store, captures, *, seeds, workers, repair, inspect_b
     state_bytes = read(STATE_KEY)
     state_digest = sha256(state_bytes or b'').hexdigest()
     state = decode_table(state_bytes) if state_bytes is not None else pa.Table.from_pylist([], schema=STATE_SCHEMA)
-    if state.schema.remove_metadata() != STATE_SCHEMA:
+    if state.schema.remove_metadata() not in (STATE_SCHEMA, LEGACY_STATE_SCHEMA):
         raise ValueError('Unexpected download state schema')
+    if state.schema.remove_metadata() == STATE_SCHEMA:
+        from congress_api.retention.raw_storage import format_state_row_for_python
+        state = pa.Table.from_pylist([format_state_row_for_python(r) for r in state.to_pylist()], schema=LEGACY_STATE_SCHEMA)
     del state_bytes
     if body_readings:
         present = set(captures.filter(pc.is_in(captures['body_key'], value_set=pa.array(

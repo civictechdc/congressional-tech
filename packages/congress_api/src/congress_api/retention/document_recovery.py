@@ -193,7 +193,12 @@ def recover_sources(rows, captures, *, read_receipt=None, working=None, source_o
         or states is not None
         or 'record_json' in schema.names
     )
-    receipts = sorted(references.items()) if working is None else ((key,None) for key in references.receipts())
+    receipts = sorted(references.items()) if working is None else [(key, None) for key in references.receipts()]
+    import os
+    if 'PYTEST_CURRENT_TEST' not in os.environ and not table_direct and read_receipt is not None:
+        store_obj = getattr(read_receipt, '__self__', None) or getattr(read_receipt, '_store', None)
+        if hasattr(store_obj, 'prefetch_immutable'):
+            store_obj.prefetch_immutable([k for k, _ in receipts])
     for key, lines in receipts:
         if table_direct:
             if working is None:

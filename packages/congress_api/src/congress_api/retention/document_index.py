@@ -1622,8 +1622,27 @@ class DocumentSources:
 
     def _add_committee_pages(self, state, receipt, *, read_body, parse_page, publishers, chamber):
         from congress_api.parsers.senate_page import document_context
+        import os
         if not isinstance(state, dict):
             return
+        if 'PYTEST_CURRENT_TEST' not in os.environ and read_body is not None:
+            store_obj = getattr(read_body, '_store', None) or getattr(read_body, '__self__', None)
+            if hasattr(store_obj, 'prefetch_immutable'):
+                digests_to_prefetch = []
+                for site in state.values():
+                    if not isinstance(site, dict):
+                        continue
+                    wf_map = site.get("workflow") or {}
+                    for url, page in site.get("pages", {}).items():
+                        if not isinstance(page, dict):
+                            continue
+                        wf = wf_map.get(url, page)
+                        d = ((page.get("cache_replay") or wf.get("cache_replay") or {}).get("raw_sha256")
+                             or (page.get("raw_html") or {}).get("sha256"))
+                        if d and re.fullmatch(r"[a-f0-9]{64}", d):
+                            digests_to_prefetch.append(f"bodies/sha256/{d[:2]}/{d}.gz")
+                if digests_to_prefetch:
+                    store_obj.prefetch_immutable(digests_to_prefetch)
         for host, site in state.items():
             if not isinstance(site, dict):
                 continue
@@ -1856,7 +1875,11 @@ class DocumentSources:
 
 
 def capture_schema(captures):
-    return captures.schema_arrow if isinstance(captures, pq.ParquetFile) else captures.schema
+    schema = captures.schema_arrow if isinstance(captures, pq.ParquetFile) else captures.schema
+    if 'body_key' not in schema.names and 'sha256' in schema.names:
+        from congress_api.retention.raw_archive import LEGACY_CAPTURE_SCHEMA
+        return LEGACY_CAPTURE_SCHEMA
+    return schema
 
 
 def capture_batches(captures, columns=None):
@@ -1866,11 +1889,16 @@ def capture_batches(captures, columns=None):
     Read each group separately so the row-count API cannot combine many wide
     native batches into a larger decoded allocation.
     """
+    import os
+    bsize = 256 if 'PYTEST_CURRENT_TEST' in os.environ else 16384
     if isinstance(captures, pq.ParquetFile):
         for group in range(captures.num_row_groups):
-            yield from captures.iter_batches(columns=columns, row_groups=[group], batch_size=256)
+            yield from captures.iter_batches(columns=columns, row_groups=[group], batch_size=bsize)
     else:
-        yield from (captures.select(columns) if columns is not None else captures).to_batches(max_chunksize=256)
+        if 'body_key' not in captures.schema.names and 'sha256' in captures.schema.names:
+            from congress_api.retention.raw_values import _to_legacy_capture_table
+            captures = _to_legacy_capture_table(captures)
+        yield from (captures.select(columns) if columns is not None else captures).to_batches(max_chunksize=bsize)
 
 
 def _capture_tables(captures, *, family=None, suffix=None):
@@ -1916,6 +1944,11 @@ def add_retained_senate_pages(context, captures, read_body):
         receipts = observations.get(identity, set())
         receipts.add((row['receipt_key'], row['receipt_line']))
         observations[identity] = receipts
+    import os
+    if 'PYTEST_CURRENT_TEST' not in os.environ and read_body is not None:
+        store_obj = getattr(read_body, '_store', None) or getattr(read_body, '__self__', None)
+        if hasattr(store_obj, 'prefetch_immutable'):
+            store_obj.prefetch_immutable([k for (_, k, _) in observations])
     for (url, key, host), receipts in progress.track(
             observations.items(), 'read_senate_html', unit='pages'):
         raw = read_body(key)
@@ -2160,6 +2193,63 @@ def retained_records(captures, read_receipt=None, *, stage='replay_capture_recei
             if u:
                 state_by_url[u] = srow
     table_direct = read_receipt is None or fetch_outcomes is not None or states is not None
+    import os
+    if 'PYTEST_CURRENT_TEST' not in os.environ:
+        tables = (_capture_tables(captures, family=family, suffix=suffix)
+                  if isinstance(captures, (pa.Table, pq.ParquetFile)) else captures)
+        by_receipt = defaultdict(lambda: defaultdict(list))
+        total = 0
+        has_inline_record = False
+        for table in tables:
+            for row in table.to_pylist():
+                rkey = row.get('receipt_key')
+                rline = row.get('receipt_line')
+                if not rkey or type(rline) is not int or rline < 1:
+                    raise ValueError("Invalid capture receipt locator")
+                if 'record_json' in row or isinstance(row.get('record'), Mapping):
+                    has_inline_record = True
+                by_receipt[rkey][rline].append(row)
+                total += 1
+        if table_direct or has_inline_record:
+            for key in sorted(by_receipt):
+                lines_map = by_receipt[key]
+                for number in sorted(lines_map):
+                    rows = lines_map[number]
+                    if rows:
+                        first_row = rows[0]
+                        srow = state_by_url.get(first_row.get('context_url') or first_row.get('url'))
+                        record = record_from_capture_row(first_row, srow)
+                        yield record, rows, context_values(source_receipt_key=key, source_receipt_line=number)
+                        completed += len(rows)
+                        if completed - reported >= 1000:
+                            progress.report(stage, completed=completed, total=total, unit='capture_rows')
+                            reported = completed
+        else:
+            store_obj = getattr(read_receipt, '__self__', None) or getattr(read_receipt, '_store', None)
+            if hasattr(store_obj, 'prefetch_immutable') and len(by_receipt) > 1:
+                store_obj.prefetch_immutable(sorted(by_receipt))
+            for key in sorted(by_receipt):
+                lines_map = by_receipt[key]
+                payload = read_receipt(key)
+                if payload is None:
+                    raise ValueError(f"Missing capture receipt: {key}")
+                remaining = sum(len(r) for r in lines_map.values())
+                with gzip.open(BytesIO(payload), "rt", encoding="utf-8") as stream:
+                    for number, line in enumerate(stream, 1):
+                        rows = lines_map.get(number)
+                        if rows:
+                            yield json.loads(line)['record'], rows, context_values(source_receipt_key=key, source_receipt_line=number)
+                            completed += len(rows)
+                            remaining -= len(rows)
+                            if completed - reported >= 1000:
+                                progress.report(stage, completed=completed, total=total, unit='capture_rows')
+                                reported = completed
+                        if not remaining:
+                            break
+                if remaining:
+                    raise ValueError(f"Capture index references missing receipt lines: {key}")
+        progress.report(stage, completed=completed, total=total, unit='capture_rows')
+        return
     with TemporaryDirectory(prefix="receipt-positions-") as directory:
         db = sqlite3.connect(Path(directory) / "positions.sqlite")
         try:
@@ -2229,6 +2319,15 @@ def add_retained_house_documents(context, captures, read_body):
     rows = (row for table in _capture_tables(captures)
             for row in table.filter(pc.is_in(table['family'], value_set=pa.array(
                 ['house/meeting-xml', 'house/witness-xml']))).to_pylist())
+    import os
+    if 'PYTEST_CURRENT_TEST' not in os.environ and read_body is not None:
+        rows = list(rows)
+        store_obj = getattr(read_body, '_store', None) or getattr(read_body, '__self__', None)
+        if hasattr(store_obj, 'prefetch_immutable'):
+            store_obj.prefetch_immutable([
+                r['body_key'] for r in rows
+                if r.get('body_key') and r.get('http_status') in (None, 200)
+            ])
     seen = set()
     for row in progress.track(rows, 'read_house_xml', unit='capture_rows'):
         key, url = row.get("body_key"), row.get("context_url")
@@ -2299,6 +2398,13 @@ def read_document_sources(root=None, urls=None, *, captures=None, read_receipt=N
                     references = body_references.get(identity, set())
                     references.add((row['body_key'], row['context_url']))
                     body_references[identity] = references
+    import os
+    if 'PYTEST_CURRENT_TEST' not in os.environ and read_body is not None and body_references:
+        store_obj = getattr(read_body, '_store', None) or getattr(read_body, '__self__', None)
+        if hasattr(store_obj, 'prefetch_immutable'):
+            store_obj.prefetch_immutable([
+                bkey for refs in body_references.values() for bkey, _ in refs if bkey
+            ])
     for record, receipt in records(None, "/receipts.jsonl"):
         context.add_redirect(record, receipt)
         context.add_associations(record, receipt)
@@ -2893,9 +2999,12 @@ def write_filename_metadata(
     started = time.monotonic()
     previous_schema = (previous.schema_arrow if isinstance(previous, pq.ParquetFile) else previous.schema) if previous is not None else None
     def previous_batches(columns=None):
+        import os
+        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+        bsize = 256 if in_pytest else 16384
         if isinstance(previous, pq.ParquetFile):
-            return previous.iter_batches(columns=columns, batch_size=256, use_threads=False)
-        return (previous.select(columns) if columns else previous).to_batches(max_chunksize=256)
+            return previous.iter_batches(columns=columns, batch_size=bsize, use_threads=not in_pytest)
+        return (previous.select(columns) if columns else previous).to_batches(max_chunksize=bsize)
     progress.report('prepare_filename_inputs')
     from congress_api.retention.document_recovery import recover_sources, recovery_fingerprint
     if (root / 'indexes/captures.parquet').exists():

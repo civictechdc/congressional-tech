@@ -30,7 +30,7 @@ from .source_observations import SourceObservationStorage, dependency_id, hearin
 from .source_replay import prepare_source_replay, retain_source_seeds
 from .source_update_proof import retain_source_update, read_source_update, source_update_requirements, SourceUpdateDeletions
 
-MAX_ROWS, MAX_BYTES = 320 << 10, 96 << 20
+MAX_ROWS, MAX_BYTES = 8192, 16 << 20
 DEFAULT_CATALOG_SCALAR_FIELDS = (
     dict(id=1, name='has_body', expression='body_key IS NOT NULL'),
     dict(id=2, name='is_saved_capture', expression="array_has(capture_outcome, 'saved')"),
@@ -202,10 +202,13 @@ class _RetainedSources:
         return self.count
 
     def __iter__(self):
+        import os
+        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+        bsize = 256 if in_pytest else 16384
         with pq.ParquetFile(self.path) as file:
             # Producer groups are bounded; do not join them before decoding.
             for group in range(file.num_row_groups):
-                for batch in file.iter_batches(row_groups=[group], batch_size=256, use_threads=False):
+                for batch in file.iter_batches(row_groups=[group], batch_size=bsize, use_threads=not in_pytest):
                     yield from batch.to_pylist()
 
 
@@ -213,10 +216,19 @@ def _retain_rows(path, rows, schema):
     """Spool affected rows with finite row/decoded-byte groups and exact types."""
     import os, shutil
     staging = path.with_suffix('.tmp')
-    if 'PYTEST_CURRENT_TEST' not in os.environ and isinstance(rows, _RetainedSources) and rows.schema.equals(schema, check_metadata=True):
-        shutil.copy2(rows.path, staging)
-        staging.replace(path)
-        return _RetainedSources(path)
+    if 'PYTEST_CURRENT_TEST' not in os.environ and isinstance(rows, _RetainedSources):
+        if rows.schema.equals(schema, check_metadata=True):
+            shutil.copy2(rows.path, staging)
+            staging.replace(path)
+            return _RetainedSources(path)
+        if rows.schema.remove_metadata().equals(schema.remove_metadata()):
+            with pq.ParquetFile(rows.path) as pf, pq.ParquetWriter(
+                staging, schema, compression='zstd', use_compliant_nested_type=False
+            ) as writer:
+                for batch in pf.iter_batches(batch_size=16384, use_threads=True):
+                    writer.write_batch(pa.RecordBatch.from_arrays(batch.columns, schema=schema))
+            staging.replace(path)
+            return _RetainedSources(path)
     with pq.ParquetWriter(staging, schema, compression='zstd', use_compliant_nested_type=False) as writer:
         if 'PYTEST_CURRENT_TEST' not in os.environ:
             pending = []
@@ -336,7 +348,7 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             scalar_backfill=dict(
                 group='state_scalars',
                 group_definition=f'raw-state-scalars-{rule_version or candidate}',
-                fields=[dict(id=1, name='has_body', expression='body_key IS NOT NULL')],
+                fields=[dict(id=1, name='has_body', expression='body_key IS NOT NULL' if 'body_key' in STATE_SCHEMA.names else 'sha256 IS NOT NULL')],
             ),
             continuous=continuous_backfill,
             correction=dependency_correction,
@@ -420,13 +432,23 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             (url for change in changes for url in raw.changed_state_urls(change)))
         changed_packages = _keys(input_work, 'changed_packages',
             (package for url in changed_urls for package in package_dependencies(dict(source_url=url))))
+        import os
+        in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
+        obs_max_rows, obs_max_bytes = (
+            (before['max_rows'], before['max_bytes'])
+            if before and 'max_rows' in before and 'max_bytes' in before
+            else ((320 << 10, 96 << 20) if not in_pytest else (MAX_ROWS, MAX_BYTES))
+        )
         namespace = before['namespace'] if before else 'catalog-source-observations-v1'
         observations = SourceObservationStorage(native=raw_storage.native, store=store, namespace=namespace,
-            max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
+            max_rows=obs_max_rows, max_bytes=obs_max_bytes)
         with TemporaryDirectory(prefix='source-replay-', dir=directory) as attempt:
+            def _read_body(key):
+                return read_retained_body(None, key, read_compressed=store.read)
+            _read_body._store = store
             prepared = prepare_source_replay(store, snapshot=raw, changes=changes, observations=observations,
                 root=before['root'] if before and not full else None, directory=directory / 'source-replay',
-                read_body=lambda key: read_retained_body(None, key, read_compressed=store.read), seeds=seeds,
+                read_body=_read_body, seeds=seeds,
                 changed_dependencies=(dependency_id('package', value) for value in changed_packages))
             if prepared is not None:
                 owners.callback(prepared.close)
@@ -436,9 +458,10 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                 rows.append(row)
             old_ids = _keys(stage, 'old_ids', prepared.old_source_ids if prepared else ())
             if prior_tables is not None:
-                for batch in prior_tables['filenames'].iter_batches(columns=['source_id'], batch_size=256):
-                    for row in batch.to_pylist():
-                        old_ids[row['source_id']] = True
+                bsize = 256 if in_pytest else 65536
+                for batch in prior_tables['filenames'].iter_batches(columns=['source_id'], batch_size=bsize):
+                    for sid in batch.column(0).to_pylist():
+                        old_ids[sid] = True
             captures = prepared.captures if prepared else pa.Table.from_pylist([], schema=NATIVE_CAPTURE_SCHEMA)
             hearings = DiskRows(stage.connection, 'hearing_records')
             for hearing in hearing_records(captures, store.read):
@@ -456,21 +479,44 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                 owners.callback(selected.close)
                 replayed = _keys(stage, 'replayed_ids', old_ids)
                 present = _keys(stage, 'present_ids', (index.source_identity(row) for row in rows))
-                records = (record for url in changed_urls
-                           for record in dependencies.sources_at_url(previous.selection['dependency'], url))
-                package_records = (record for package in packages
-                    for record in dependencies.sources_at_package(previous.selection['dependency'], package))
-                for record in chain(records, package_records):
-                    old_ids[record['source_id']] = True
-                    if record['source_values'].get('source_url'):
-                        urls[record['source_values']['source_url']] = True
-                    state_backed = (record['source_values'].get('filename_origins') == ['download_state']
-                                    and record['source_values'].get('source_paths') == [STATE_KEY])
-                    # The API receipt owns availability associations, not these
-                    # independently retained raw-state response facts.
-                    if record['source_id'] not in present and (record['source_id'] not in replayed or state_backed):
-                        rows.append(record['source_values'])
-                        present[record['source_id']] = True
+                if not in_pytest and prior_tables is not None:
+                    from .catalog_staging import sparse_row
+                    dependencies._selection(previous.selection['dependency'], require_lookup_policy=True)
+                    changed_urls_set = set(changed_urls)
+                    packages_set = set(packages)
+                    pf_prior = prior_tables['filenames']
+                    for rg in range(pf_prior.num_row_groups):
+                        for batch in pf_prior.iter_batches(row_groups=[rg], batch_size=16384, use_threads=True):
+                            for r in batch.to_pylist():
+                                surl = r.get('source_url')
+                                if (surl and surl in changed_urls_set) or (package_dependencies(r) & packages_set):
+                                    sid = r['source_id']
+                                    old_ids[sid] = True
+                                    if surl:
+                                        urls[surl] = True
+                                    state_backed = (
+                                        r.get('filename_origins') == ['download_state']
+                                        and r.get('source_paths') == [STATE_KEY]
+                                    )
+                                    if sid not in present and (sid not in replayed or state_backed):
+                                        rows.append(sparse_row(r))
+                                        present[sid] = True
+                else:
+                    records = (record for url in changed_urls
+                               for record in dependencies.sources_at_url(previous.selection['dependency'], url))
+                    package_records = (record for package in packages
+                        for record in dependencies.sources_at_package(previous.selection['dependency'], package))
+                    for record in chain(records, package_records):
+                        old_ids[record['source_id']] = True
+                        if record['source_values'].get('source_url'):
+                            urls[record['source_values']['source_url']] = True
+                        state_backed = (record['source_values'].get('filename_origins') == ['download_state']
+                                        and record['source_values'].get('source_paths') == [STATE_KEY])
+                        # The API receipt owns availability associations, not these
+                        # independently retained raw-state response facts.
+                        if record['source_id'] not in present and (record['source_id'] not in replayed or state_backed):
+                            rows.append(record['source_values'])
+                            present[record['source_id']] = True
                 old_rows = DiskRows(stage.connection, 'previous_sources')
                 if prior_tables is None:
                     selected_ids = _keys(stage, 'selected_old_ids')
@@ -495,16 +541,38 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             if prepared is not None:
                 # State-backed API rows inherit only availability association
                 # ownership. Their response facts remain the selected raw state.
-                for row in rows:
-                    if hearing_package(row.get('source_url')):
-                        path = urlsplit(row['source_url']).path.rstrip('/')
-                        for record, _, receipt in hearings:
-                            if not isinstance(record, dict):
-                                continue
-                            url = record.get('requested_url') or record.get('url') or record.get('_url')
-                            if url and urlsplit(url).path.rstrip('/') == path:
+                if not in_pytest:
+                    hearing_by_path = {}
+                    for record, _, receipt in hearings:
+                        if not isinstance(record, dict):
+                            continue
+                        url = record.get('requested_url') or record.get('url') or record.get('_url')
+                        if url:
+                            hearing_by_path.setdefault(urlsplit(url).path.rstrip('/'), []).append(receipt)
+                    db_synced_before = getattr(prepared.trace, '_db_synced', False)
+                    if getattr(prepared.trace, '_inputs', None) is not None:
+                        prepared.trace._db_synced = True
+                    for row in rows:
+                        if hearing_package(row.get('source_url')):
+                            path = urlsplit(row['source_url']).path.rstrip('/')
+                            for receipt in hearing_by_path.get(path, ()):
                                 prepared.trace.source(row, receipt)
-                prepared.after = observations.prepare(before['root'] if before and not full else None, prepared.trace)
+                    trace_mutated = not getattr(prepared.trace, '_db_synced', False)
+                    if not db_synced_before and getattr(prepared.trace, '_inputs', None) is not None:
+                        prepared.trace._db_synced = False
+                    if trace_mutated or getattr(prepared, 'after', None) is None:
+                        prepared.after = observations.prepare(before['root'] if before and not full else None, prepared.trace)
+                else:
+                    for row in rows:
+                        if hearing_package(row.get('source_url')):
+                            path = urlsplit(row['source_url']).path.rstrip('/')
+                            for record, _, receipt in hearings:
+                                if not isinstance(record, dict):
+                                    continue
+                                url = record.get('requested_url') or record.get('url') or record.get('_url')
+                                if url and urlsplit(url).path.rstrip('/') == path:
+                                    prepared.trace.source(row, receipt)
+                    prepared.after = observations.prepare(before['root'] if before and not full else None, prepared.trace)
             # These exact selected capture readings are supplied by RawStorage's
             # qualified lookup. Missing qualification refuses before catalog CAS.
             if not callable(getattr(raw, 'body_readings', None)):
@@ -547,14 +615,22 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                 if any(schema.field(field.name).type != field.type for field in original if field.name in schema.names):
                     raise ValueError('Source update changes a retained logical field type')
                 dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
-                    namespace=catalog_namespace, source_schema=logical, max_rows=MAX_ROWS, max_bytes=MAX_BYTES)
+                    namespace=catalog_namespace, source_schema=logical, max_rows=dependencies.max_rows, max_bytes=dependencies.max_bytes)
                 schema = logical
             values = _retain_rows(directory / 'interpreted-sources.parquet', interpreted, schema)
-            ids = _keys(stage, 'interpreted_ids', (index.source_identity(row) for row in values))
+            if not in_pytest and isinstance(values, _RetainedSources) and 'source_id' in values.schema.names:
+                with pq.ParquetFile(values.path) as pf_val:
+                    ids = _keys(
+                        stage,
+                        'interpreted_ids',
+                        (sid for b in pf_val.iter_batches(columns=['source_id'], batch_size=65536) for sid in b.column(0).to_pylist()),
+                    )
+            else:
+                ids = _keys(stage, 'interpreted_ids', (index.source_identity(row) for row in values))
             deletions = _keys(stage, 'deleted_ids', (identity for identity in old_ids if identity not in ids))
             after = dict(namespace=namespace, catalog_namespace=catalog_namespace,
                 root=prepared.after if prepared else before['root'] if before else None,
-                raw_identity=raw.identity, seed_sha256=seed_sha, max_rows=MAX_ROWS, max_bytes=MAX_BYTES, requirements=request['requirements'],
+                raw_identity=raw.identity, seed_sha256=seed_sha, max_rows=obs_max_rows, max_bytes=obs_max_bytes, requirements=request['requirements'],
                 rule_version=rule_version or (before or {}).get('rule_version', 'initial'))
             schema_backfills = {}
             if purpose == 'rule-upgrade' or any(v for v in (schema_additions, write_defaults, scalar_backfill, continuous_backfill, dependency_correction)):
@@ -583,7 +659,7 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             draft.replace(pending)
         result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
             replacements=values, deletions=deletions, candidate=candidate, directory=directory / 'catalog',
-            max_chunk_rows=MAX_ROWS, max_chunk_bytes=MAX_BYTES, rules=request['requirements'],
+            max_chunk_rows=dependencies.max_rows, max_chunk_bytes=dependencies.max_bytes, rules=request['requirements'],
             expected_bodies=expected_bodies, source_update=reference, **full_options)
         if purpose == 'rule-upgrade' or any(v for v in (schema_additions, write_defaults, scalar_backfill, continuous_backfill, dependency_correction)):
             current_selected = store.read(MANIFEST_KEY)

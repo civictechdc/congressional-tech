@@ -94,7 +94,7 @@ class MetadataObjects:
         self._remember(key, raw)
 
     def put(self, value):
-        ref, digest, key, raw = self.prepare_put(value)
+        ref, digest, key, raw = MetadataObjects.prepare_put(self, value)
         self._upload_prepared(digest, key, raw)
         return ref
 

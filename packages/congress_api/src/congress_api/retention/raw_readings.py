@@ -154,14 +154,25 @@ class RawReadings:
         return result
 
     def rows(self, root, bodies):
+        import os
         selected = defaultdict(set)
         references = {}
-        for body in dict.fromkeys(bodies):
-            reference = self.lookup(root, body)
-            if reference is not None:
-                identity = reference['key']
-                references[identity] = reference
-                selected[identity].add(body)
+        unique_bodies = list(dict.fromkeys(bodies))
+        if 'PYTEST_CURRENT_TEST' not in os.environ and len(unique_bodies) > 256 and root is not None:
+            wanted = set(unique_bodies)
+            for prefix, value in self.routes.leaf_items(root):
+                for body, reference in self._entries(prefix, value).items():
+                    if body in wanted:
+                        identity = reference['key']
+                        references[identity] = reference
+                        selected[identity].add(body)
+        else:
+            for body in unique_bodies:
+                reference = self.lookup(root, body)
+                if reference is not None:
+                    identity = reference['key']
+                    references[identity] = reference
+                    selected[identity].add(body)
         for key in sorted(selected):
             found = set()
             readers = set()

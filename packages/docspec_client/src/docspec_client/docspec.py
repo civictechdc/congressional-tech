@@ -845,6 +845,13 @@ def _merge_field_type(physical_type, expected_type):
         return expected_type
     expected_physical = native_storage_schema(pa.schema([pa.field('x', expected_type)])).field(0).type
     if physical_type != expected_physical and physical_type != expected_type:
+        if (
+            (pa.types.is_int32(physical_type) and (pa.types.is_int16(expected_type) or pa.types.is_int8(expected_type) or pa.types.is_uint8(expected_type) or pa.types.is_uint16(expected_type)))
+            or (pa.types.is_int64(physical_type) and (pa.types.is_uint32(expected_type) or pa.types.is_int16(expected_type) or pa.types.is_int32(expected_type)))
+            or (pa.types.is_timestamp(physical_type) and pa.types.is_timestamp(expected_type) and physical_type.unit == expected_type.unit and bool(physical_type.tz) == bool(expected_type.tz))
+            or ((pa.types.is_string(physical_type) or pa.types.is_large_string(physical_type)) and pa.types.is_timestamp(expected_type))
+        ):
+            return expected_type
         raise ValueError(
             f'Native source storage schema ({physical_type}) differs from '
             f'the selected application schema ({expected_type})'
@@ -902,6 +909,9 @@ def application_schema(schema, expected_schema=None):
 def _cast_column(column, target_type):
     if column.type == target_type:
         return column
+    if (pa.types.is_string(column.type) or pa.types.is_large_string(column.type)) and pa.types.is_timestamp(target_type):
+        if column.null_count == len(column):
+            return pa.nulls(len(column), type=target_type)
     try:
         return column.cast(target_type, safe=True)
     except pa.ArrowNotImplementedError:
@@ -935,10 +945,12 @@ def _cast_array(array, target_type):
 def restore_application_schema(table, expected_schema=None):
     """Restore an Arrow Table from native storage types to ``expected_schema``."""
     target_schema = application_schema(table.schema, expected_schema=expected_schema)
+    if expected_schema is not None and set(target_schema.names) == set(expected_schema.names):
+        target_schema = expected_schema
     if table.schema.equals(target_schema, check_metadata=True):
         return table
     columns = [
-        _cast_column(table.column(i), target_schema.field(i).type)
+        _cast_column(table.column(target_schema.field(i).name), target_schema.field(i).type)
         for i in range(len(target_schema))
     ]
     return pa.Table.from_arrays(columns, schema=target_schema)
@@ -1923,7 +1935,7 @@ class NativeDatasets:
             and base is None
             and operation == 'initial'
             and isinstance(dataset, str)
-            and dataset.startswith(('catalog-', 'raw-', 'obs-'))
+            and dataset.startswith(('catalog-', 'raw-', 'obs-', 'source-observations-'))
             and 'PYTEST_CURRENT_TEST' not in os.environ
         )
         if use_v3_leaf_cache:

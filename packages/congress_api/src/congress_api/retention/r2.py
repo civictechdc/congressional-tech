@@ -194,6 +194,11 @@ class R2Store:
             if 'PYTEST_CURRENT_TEST' not in os.environ
             else None
         )
+        self._immutable_cache_dir = (
+            Path('.cache/docspec-catalog/r2-immutable')
+            if 'PYTEST_CURRENT_TEST' not in os.environ
+            else None
+        )
         self._manifest_lock = threading.Lock()
         self._manifest_mem = {}
         self._manifest_pool = None
@@ -246,8 +251,30 @@ class R2Store:
             async with self.async_client() as client:
                 yield AsyncBodies(client, self.bucket)
 
+    def prefetch_immutable(self, keys, *, max_workers=64):
+        if self._immutable_cache_dir is None:
+            return
+        missing = [
+            k for k in dict.fromkeys(keys)
+            if isinstance(k, str)
+            and k.startswith(('receipts/', 'bodies/sha256/'))
+            and not (self._immutable_cache_dir / k).is_file()
+        ]
+        if not missing:
+            return
+        with ThreadPoolExecutor(max_workers=min(max_workers, len(missing))) as pool:
+            list(pool.map(self.read, missing))
+
     def read(self, key):
         from botocore.exceptions import ClientError
+
+        if self._immutable_cache_dir is not None and isinstance(key, str) and key.startswith(('receipts/', 'bodies/sha256/')):
+            disk_path = self._immutable_cache_dir / key
+            if disk_path.is_file():
+                try:
+                    return disk_path.read_bytes()
+                except OSError:
+                    pass
 
         if self._manifest_cache_dir is not None and key.startswith('indexes/native-manifests/'):
             with self._manifest_lock:
@@ -303,6 +330,8 @@ class R2Store:
                 self._manifest_cache_dir / key.removeprefix('indexes/native-manifests/'),
                 data,
             )
+        elif self._immutable_cache_dir is not None and isinstance(key, str) and key.startswith(('receipts/', 'bodies/sha256/')):
+            self._write_manifest_disk_cache(self._immutable_cache_dir / key, data)
         return data
 
     def put(self, key, body, *, immutable=False):

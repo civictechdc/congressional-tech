@@ -117,6 +117,9 @@ def annotate_availability(rows, state, *, hearing_records=(), working=None):
     # full rebuild callers still supply an Arrow table.
     states = (item for batch in state.to_batches(max_chunksize=4096) for item in batch.to_pylist()) if hasattr(state, 'to_batches') else state
     for item in states:
+        if 'body_key' not in item and item.get('sha256') is not None:
+            from congress_api.retention.raw_storage import format_state_row_for_python
+            item = format_state_row_for_python(item)
         if not item.get('url'):
             continue
         if item['url'] in by_url:

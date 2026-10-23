@@ -241,6 +241,11 @@ def normalize_capture_dict(d):
     if not isinstance(d, dict):
         return d
     sha = parse_sha256(d.get("sha256"))
+    if sha is None and d.get("body_key"):
+        from congress_api.retention.body_keys import body_key_digest
+        b_digest = body_key_digest(d.get("body_key"))
+        if b_digest:
+            sha = parse_sha256(b_digest)
     stored_sha = d.get("stored_sha256")
     if "is_stored" in d and d["is_stored"] is not None:
         is_stored = bool(d["is_stored"])

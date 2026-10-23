@@ -183,6 +183,47 @@ class CatalogMemberships:
                 break
         else:
             return pending, (size - 8 if pending else 0)
+        if 'PYTEST_CURRENT_TEST' not in os.environ:
+            from bisect import bisect_left
+            for member in iterator:
+                if member in seen:
+                    raise DependencyGap('Duplicate reverse dependency membership')
+                seen.add(member)
+                pending.append(member)
+            seen.clear()
+            count = len(pending)
+            hashed = sorted((key_hash(m), m) for m in pending)
+            pending.clear()
+            h_keys = [x[0] for x in hashed]
+            leaf_tables = []
+
+            def collect_leaves(prefix):
+                lo = bisect_left(h_keys, prefix)
+                hi = bisect_left(h_keys, prefix + 'g', lo)
+                if lo >= hi:
+                    return
+                if hi - lo <= self.max_rows:
+                    values = sorted(hashed[i][1] for i in range(lo, hi))
+                    table = pa.Table.from_arrays(
+                        [pa.array([alias] * len(values), type=pa.string()), pa.array(values, type=pa.string())],
+                        schema=self.schema,
+                    )
+                    if len(table) <= self.max_rows and table.nbytes <= self.max_bytes:
+                        leaf_tables.append((prefix, table))
+                        return
+                    if len(table) == 1 or len(prefix) == 64:
+                        raise DependencyGap('One reverse dependency member exceeds its partition budget')
+                elif len(prefix) == 64:
+                    raise DependencyGap('One reverse dependency member exceeds its partition budget')
+                for char in '0123456789abcdef':
+                    collect_leaves(prefix + char)
+
+            collect_leaves('')
+            with ThreadPoolExecutor(max_workers=12) as pool:
+                futs = [(prefix, pool.submit(self._write_leaf, tbl, 'members')) for prefix, tbl in leaf_tables]
+                built_leaves = [(prefix, fut.result()) for prefix, fut in futs]
+            root = self.members.replace_stream(None, '', iter(built_leaves))
+            return dict(kind='members', alias=alias, count=count, root=root)
         with TemporaryDirectory(prefix='catalog-members-') as directory, closing(
                 sqlite3.connect(Path(directory) / 'members.sqlite')) as db:
             db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
@@ -283,7 +324,7 @@ class CatalogMemberships:
                     yield from mem_raw_leaves(child + char)
 
             def mem_leaves():
-                with ThreadPoolExecutor(max_workers=4) as pool:
+                with ThreadPoolExecutor(max_workers=12) as pool:
                     inflight = deque()
                     for item_child, (kind_tag, payload) in mem_raw_leaves(''):
                         if kind_tag == 'heavy':
@@ -291,7 +332,7 @@ class CatalogMemberships:
                         else:
                             fut = pool.submit(self._write_leaf, payload, 'aliases')
                             inflight.append((item_child, 'table', (fut, len(payload), payload.nbytes)))
-                        if len(inflight) >= 4:
+                        if len(inflight) >= 12:
                             c_prefix, c_tag, c_val = inflight.popleft()
                             if c_tag == 'heavy':
                                 yield c_prefix, c_val
