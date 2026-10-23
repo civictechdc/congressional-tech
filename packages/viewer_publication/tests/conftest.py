@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 
-_DEFAULT_DOCSPEC = Path("/Users/mikewolfd/Work/spicy-stack/docspec-rs/target/release/docspec")
+_DEFAULT_DOCSPEC = Path(__file__).resolve().parents[4] / "spicy-stack/docspec-rs/target/release/docspec"
 if not os.environ.get("DOCSPEC_BINARY") and _DEFAULT_DOCSPEC.is_file():
     os.environ["DOCSPEC_BINARY"] = str(_DEFAULT_DOCSPEC)
 

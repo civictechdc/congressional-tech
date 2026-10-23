@@ -1,0 +1,31 @@
+---
+id: ct-syem
+status: closed
+deps: []
+links: [ss-yjut]
+created: 2026-10-22T17:33:29Z
+type: epic
+priority: 1
+assignee: mikewolfd
+tags: [audit, architecture, hygiene, dx, docspec]
+---
+# CS300 Capstone Audit: congressional-tech deadcode, bloat, duplication, DX, comments & code smells
+
+Parent epic tracking findings from the 13-subagent CS300 Capstone Code Quality Audit across `congressional-tech` (**Overall Repo Grade: C+, 75.4 / 100**).
+
+## CS300 Subsystem Grades & Child Tickets
+
+| Subsystem | Auditor Role | Grade | Child Tickets |
+| :--- | :--- | :---: | :--- |
+| **`packages/docspec_client` & Cross-Repo DocSpec Boundary** | DocSpec Client & Boundary Auditor | **C- (71/100)** | `ct-0n0y` (P0 bug), `ct-4fcl` |
+| **`packages/congress_api`, `packages/congress_shared` & `packages/source-fetch`** | Congress API & Shared Auditor | **C+ (78/100)** | `ct-imdo` (P1 bug), `ct-fsbf` |
+| **`packages/corpus_recovery`, `packages/viewer_publication` & `packages/news_lake`** | Corpus, Viewer & News Lake Auditor | **C+ (78/100)** | `ct-0bce`, `ct-wxhg` |
+| **`packages/committee_meeting`, `packages/house-naming` & `packages/youtube_api`** | Committee, Naming & YouTube Auditor | **C+ (78/100)** | `ct-ne06`, `ct-tcs4`, `ct-elhm` |
+| **`apps/site`, `apps/committee_youtube`, `apps/inflation_gsheets` & `infra/`** | Apps, Frontend & Infra Auditor | **C+ (78/100)** | `ct-3bfx` (P0 bug), `ct-4g55` |
+| **Root `scripts/`, Root `tests/`, Workspace Config & Repo Hygiene** | Scripts, Root Tests & DX Auditor | **C- (71/100)** | `ct-unv0` (P0 bug), `ct-sbdp` |
+| **Quantitative AST & Static Metrics (`congressional-tech` Slice)** | Quantitative AST & Metrics Auditor | **C (73/100)** | `ct-bzl9` |
+
+## Acceptance Criteria
+
+1. All P0/P1 runtime, cache-poisoning, and test-runner bugs (`ct-0n0y`, `ct-unv0`, `ct-3bfx`, `ct-imdo`) are fixed and verified by automated tests.
+2. All P1/P2 architectural decomposition, circular-import removal, dead-code purging, DRY consolidation, un-minification, and repo hygiene tickets (`ct-4fcl`, `ct-fsbf`, `ct-0bce`, `ct-wxhg`, `ct-ne06`, `ct-tcs4`, `ct-elhm`, `ct-4g55`, `ct-sbdp`, `ct-bzl9`) are resolved and verified by `.venv/bin/python scripts/dev.py check`.
