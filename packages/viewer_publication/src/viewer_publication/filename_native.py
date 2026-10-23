@@ -1,9 +1,10 @@
 """Stable viewer assets derived from one exact selected native catalog."""
+import ast
+from collections import OrderedDict
 from hashlib import sha256
 import json
 from pathlib import Path
 import tempfile
-from collections import OrderedDict
 
 from congress_api.retention.derived_files import file_identity, copy_checked
 from congress_api.retention.immutable_metadata import encoded
@@ -424,7 +425,22 @@ class NativeSourceAssets:
 
 
 class NativeComponents:
-    """Stage changed component metadata, then read each changed physical pin once."""
+    """Stage changed component metadata, then read each changed physical pin once.
+
+    Manages the lifecycle and disk layout of document components derived from a native
+    catalog snapshot. Maintains eight SQLite staging tables:
+      - ``components``: active component IDs, partition routing page, proof, and entry metadata
+      - ``retired``: historical component records retired in incremental builds
+      - ``chunks``: Parquet chunk boundaries, partition labels, pin references, and Arrow schemas
+      - ``views``: mapping from chunk views to document components and row counts
+      - ``stats``: component-level aggregations (total observations, saved responses, API/video refs)
+      - ``plans``: serializable JSON publication execution plans
+      - ``chunk_assets``: content-addressed object storage keys for emitted component Parquet files
+      - ``member_ids``: ordered mapping of component source IDs to global catalog row ordering
+
+    Emits binary-packed navigation indices and verified Parquet component shards
+    with deterministic row grouping and compression.
+    """
     def __init__(self, snapshot, assets, browse, db, *, viewer=None, policy, metrics, compression_policy=DEFAULT_COMPRESSION_POLICY):
         if viewer is None:
             import viewer_publication.filename_viewer as viewer
@@ -711,6 +727,25 @@ def public_component(assets, root, document_id):
     return None
 
 
+def _strip_docstrings(node: ast.AST) -> ast.AST:
+    """Recursively strip docstrings from Module, ClassDef, and FunctionDef nodes."""
+    for n in ast.walk(node):
+        if isinstance(n, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            if n.body and isinstance(n.body[0], ast.Expr):
+                val = n.body[0].value
+                if isinstance(val, ast.Constant) and isinstance(val.value, str):
+                    n.body = n.body[1:]
+    return node
+
+
+def _normalized_ast_hash(source: str) -> str:
+    """Hash normalized AST with comments, docstrings, formatting, and line numbers stripped."""
+    tree = ast.parse(source)
+    _strip_docstrings(tree)
+    dumped = ast.dump(tree, annotate_fields=False, include_attributes=False)
+    return sha256(dumped.encode('utf-8')).hexdigest()
+
+
 def native_requirements(viewer, policy, compression=DEFAULT_COMPRESSION_POLICY):
     """Compute reuse requirements once, separately from native operation names."""
     if viewer is None:
@@ -724,10 +759,10 @@ def native_requirements(viewer, policy, compression=DEFAULT_COMPRESSION_POLICY):
     files += [Path(__file__), *[Path(module.__file__) for module in (saved_responses, docspec, catalog_partitions, catalog_rows)]]
     return dict(renderer='native-viewer-v2', policy=asdict(policy), compression=compression._asdict(), pyarrow=pyarrow.__version__,
         implementation=sha256(encoded(dict(
-            owners=[inspect.getsource(owner) for owner in (NativeSourceAssets, NativeComponents, BrowsePages,
+            owners=[_normalized_ast_hash(inspect.getsource(owner)) for owner in (NativeSourceAssets, NativeComponents, BrowsePages,
                                                            browse_key, build_page_levels, typed_observations, publish_occurrence_assets,
                                                            viewer.api_reference, viewer.video_reference)],
-            files={str(path.name): sha256(path.read_bytes()).hexdigest() for path in files}))).hexdigest())
+            files={str(path.name): _normalized_ast_hash(path.read_text(encoding='utf-8')) for path in files}))).hexdigest())
 
 
 def _reachable_assets(assets, roots):

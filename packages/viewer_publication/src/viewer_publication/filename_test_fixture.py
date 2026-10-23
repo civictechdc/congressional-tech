@@ -37,8 +37,9 @@ def main(argv=None):
     args = parser.parse_args(tokens)
     root = args.root
 
-    if str(ROOT / 'tests') not in sys.path:
-        sys.path.insert(0, str(ROOT / 'tests'))
+    for candidate in (ROOT / 'packages/congress_api/tests', ROOT / 'tests'):
+        if candidate.exists() and str(candidate) not in sys.path:
+            sys.path.insert(0, str(candidate))
     import historical_viewer_publication as publisher
     # Small parts exercise multi-part values in the real Python-to-browser path.
     publisher.observations.BLOCK_BYTES = 128

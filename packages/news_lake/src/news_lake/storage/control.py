@@ -298,6 +298,3 @@ class ControlStore:
                 )
 
 
-def table_commit_order():
-    """Deterministic per-batch table order, derived from the schema."""
-    return [KIND_TABLES[kind] for kind in KIND_ORDER]

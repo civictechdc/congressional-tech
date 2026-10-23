@@ -4,10 +4,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import hashlib
-import importlib.util
 import json
-import os
-import subprocess
 from pathlib import Path, PurePosixPath
 import tempfile
 import time
@@ -49,13 +46,15 @@ def open_public(request, *, timeout=60):
         time.sleep(2 ** attempt)
 
 
+from congress_shared.custody import canonical_json_bytes, file_identity
+
+
 def encoded(value):
-    return json.dumps(value, sort_keys=True, separators=(',', ':')).encode()
+    return canonical_json_bytes(value, ensure_ascii=True)
 
 
 def digest(path):
-    with path.open('rb') as stream:
-        return hashlib.file_digest(stream, 'sha256').hexdigest()
+    return file_identity(path).sha256
 
 
 def public_control(response, *, kind='manifest', expected=None):
@@ -69,6 +68,16 @@ class ProtectedIdentity(NamedTuple):
     etag: str | None
     modified: str | None
     sha256: str | None
+
+
+def as_protected(record):
+    if record is None:
+        return None
+    if isinstance(record, ProtectedIdentity):
+        return record
+    if isinstance(record, dict):
+        return ProtectedIdentity(record.get('value'), record.get('etag'), record.get('modified'), record.get('sha256'))
+    return ProtectedIdentity(*record)
 
 
 def validate_prepared_output(root, manifest):
@@ -263,12 +272,13 @@ def store_recovery_index(client, value):
 
 
 def recovery_preparation_inputs(manifest, accepted_record):
+    accepted_record = as_protected(accepted_record)
     basis = (dict(version=2, source_identity=manifest['source_identity'], roots=manifest['roots'])
              if manifest.get('version') == 6 else
              dict(version=1, files={name: manifest['files'][name] for name in ('filenames', 'groups')}))
     return dict(basis, source_manifest=manifest['source_manifest'],
         catalog={key: manifest['info'][key] for key in ('catalog_id', 'rows', 'entries')},
-        accepted_present=accepted_record[0] is not None, accepted_sha256=accepted_record[3])
+        accepted_present=accepted_record.value is not None, accepted_sha256=accepted_record.sha256)
 
 
 def require_native_recovery(value, manifest):
@@ -279,17 +289,18 @@ def require_native_recovery(value, manifest):
 
 
 def prepare_recovery(root, manifest, accepted_record, *, validation=None, index=None):
+    accepted_record = as_protected(accepted_record)
     if manifest.get('version') == 6:
         if index is None:
             raise ValueError('Native publication requires an explicitly prepared stable recovery index')
         require_native_recovery(index, manifest)
-        if index.get('accepted') != validated_accepted(accepted_record[0]):
+        if index.get('accepted') != validated_accepted(accepted_record.value):
             raise ValueError('Stable recovery acceptance differs from its selected inputs')
         value = index
     else:
         if index is not None:
             raise ValueError('Historical recovery preparation requires verified source files')
-        value = index_recoveries(root, manifest, validated_accepted(accepted_record[0]),
+        value = index_recoveries(root, manifest, validated_accepted(accepted_record.value),
                                 **({'validation': validation} if validation is not None else {}))
     prepared = dict(version=1, inputs=recovery_preparation_inputs(manifest, accepted_record), value=value)
     payload = encoded(prepared)
@@ -300,6 +311,7 @@ def prepare_recovery(root, manifest, accepted_record, *, validation=None, index=
 
 
 def load_prepared_recovery(root, manifest, accepted_record, *, validation):
+    accepted_record = as_protected(accepted_record)
     path = root / 'recovery-prepared.json'
     validation.file(path)
     prepared = json.loads(path.read_bytes())
@@ -308,7 +320,7 @@ def load_prepared_recovery(root, manifest, accepted_record, *, validation):
     value = prepared['value']
     if manifest.get('version') == 6:
         require_native_recovery(value, manifest)
-        if value.get('accepted') != validated_accepted(accepted_record[0]):
+        if value.get('accepted') != validated_accepted(accepted_record.value):
             raise ValueError('Stable recovery acceptance differs from its selected inputs')
     if (value.get('catalog_id') != manifest['info']['catalog_id'] or value.get('rows') != manifest['info']['rows']
             or value.get('entries') != manifest['info']['entries']):
@@ -317,7 +329,7 @@ def load_prepared_recovery(root, manifest, accepted_record, *, validation):
 
 
 def recovery_for_publication(client, root, manifest, *, validation=None, plan=None):
-    accepted_record = read_identity(client, ACCEPTED_KEY, optional=True)
+    accepted_record = as_protected(read_identity(client, ACCEPTED_KEY, optional=True))
     if plan is not None:
         # upload already required complete plan custody before any write.
         if tuple(accepted_record) != tuple(plan.protected['accepted']):
@@ -327,14 +339,17 @@ def recovery_for_publication(client, root, manifest, *, validation=None, plan=No
         if manifest.get('version') == 6 and validation is None:
             raise ValueError('Native recovery publication requires verified prepared status')
         index = (load_prepared_recovery(root, manifest, accepted_record, validation=validation)
-                 if validation is not None else index_recoveries(root, manifest, validated_accepted(accepted_record[0])))
+                 if validation is not None else index_recoveries(root, manifest, validated_accepted(accepted_record.value)))
     return store_recovery_index(client, index), accepted_record
 
 
 def select_recoveries(client, root, manifest, selected_record, accepted_record, pointer_record,
                       manifest_digest, *, public_url, index=None):
-    pointer, pointer_etag = pointer_record[:2]
-    accepted = validated_accepted(accepted_record[0])
+    selected_record = as_protected(selected_record)
+    accepted_record = as_protected(accepted_record)
+    pointer_record = as_protected(pointer_record)
+    pointer, pointer_etag = pointer_record.value, pointer_record.etag
+    accepted = validated_accepted(accepted_record.value)
     if index is None:
         if manifest.get('version') == 6:
             raise ValueError('Native publication requires an explicitly prepared stable recovery index')
@@ -345,7 +360,7 @@ def select_recoveries(client, root, manifest, selected_record, accepted_record, 
             raise ValueError('Stable recovery acceptance differs from its selected inputs')
     descriptor = store_recovery_index(client, index)
     updated = dict(pointer, recovery=descriptor,
-                   recovery_inputs=recovery_inputs(selected_record[3], manifest_digest, manifest, accepted_record[0]))
+                   recovery_inputs=recovery_inputs(selected_record.sha256, manifest_digest, manifest, accepted_record.value))
     verify_recovery_status(client, descriptor, updated, public_url=public_url)
     check_recovery_inputs(client, selected_record, accepted_record, pointer_record)
     if updated != pointer:
@@ -474,12 +489,13 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     recovery, accepted_record = recovery_for_publication(client, root, recovery_manifest,
         **({'plan': plan} if plan is not None else {'validation': validation} if validation is not None else {}))
     pointer['recovery'] = recovery
-    selected_record = read_identity(client, 'indexes/catalog.json')
+    selected_record = as_protected(read_identity(client, 'indexes/catalog.json'))
+    accepted_record = as_protected(accepted_record)
     pointer['recovery_inputs'] = recovery_inputs(
         hashlib.sha256(encoded(manifest['source_manifest'])).hexdigest(),
-        hashlib.sha256(encoded(manifest)).hexdigest(), manifest, accepted_record[0])
-    if selected_record[0] == manifest['source_manifest']:
-        pointer['recovery_inputs']['raw_manifest_sha256'] = selected_record[3]
+        hashlib.sha256(encoded(manifest)).hexdigest(), manifest, accepted_record.value)
+    if selected_record.value == manifest['source_manifest']:
+        pointer['recovery_inputs']['raw_manifest_sha256'] = selected_record.sha256
 
     def transfer(item):
         name, path = item
@@ -537,8 +553,14 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     if read_identity(client, ACCEPTED_KEY, optional=True) != accepted_record:
         return dict(result, status='superseded', reason='Accepted recovery mappings changed before selection.')
     try:
-        put_json(client, PREFIX + 'manifest.json', pointer,
-                 **({'IfMatch': previous_etag} if previous_etag else {'IfNoneMatch': '*'}))
+        from viewer_publication.client import publish_manifest_pointer
+        publish_manifest_pointer(
+            client,
+            bucket=BUCKET,
+            pointer=pointer,
+            key=PREFIX + 'manifest.json',
+            expected_etag=previous_etag,
+        )
     except ClientError as error:
         if error.response['Error']['Code'] in ('PreconditionFailed', '412'):
             return dict(result, status='superseded', reason='Another viewer publisher advanced the manifest.')
@@ -554,21 +576,26 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
 
 def check_selected_publication(client, pointer, *, public_url=PUBLIC_URL, records=None, release_identity=None):
     """Read-only: verify exact reuse, or require a new accepted preparation."""
-    selected_record, accepted_record, pointer_record = records or (
-        read_identity(client, 'indexes/catalog.json'), read_identity(client, ACCEPTED_KEY, optional=True),
-        read_identity(client, PREFIX + 'manifest.json'))
-    if pointer_record[0] != pointer or pointer['source_manifest'] != selected_record[0]:
+    if records is not None:
+        selected_record = as_protected(records[0])
+        accepted_record = as_protected(records[1])
+        pointer_record = as_protected(records[2])
+    else:
+        selected_record = as_protected(read_identity(client, 'indexes/catalog.json'))
+        accepted_record = as_protected(read_identity(client, ACCEPTED_KEY, optional=True))
+        pointer_record = as_protected(read_identity(client, PREFIX + 'manifest.json'))
+    if pointer_record.value != pointer or pointer['source_manifest'] != selected_record.value:
         raise ValueError('Recovery status requires the currently selected viewer publication.')
-    rows = validated_accepted(accepted_record[0])
+    rows = validated_accepted(accepted_record.value)
     manifest, _, _, manifest_digest = read_identity(client, PREFIX + pointer['manifest'])
-    if (manifest['source_manifest'] != selected_record[0]
+    if (manifest['source_manifest'] != selected_record.value
             or manifest['info']['catalog_id'] != pointer['catalog_id']):
         raise ValueError('Selected viewer manifest differs from the catalog.')
     if (manifest.get('version') == 6 and
             (pointer.get('source_identity') != manifest.get('source_identity')
-             or manifest['source_identity'].get('selector_sha256') != selected_record[3])):
+             or manifest['source_identity'].get('selector_sha256') != selected_record.sha256)):
         raise ValueError('Selected viewer source identity differs from the exact catalog.')
-    inputs = recovery_inputs(selected_record[3], manifest_digest, manifest, accepted_record[0], release_identity=release_identity)
+    inputs = recovery_inputs(selected_record.sha256, manifest_digest, manifest, accepted_record.value, release_identity=release_identity)
     if pointer.get('recovery_inputs') == inputs:
         index = verify_recovery_status(client, pointer.get('recovery'), pointer, public_url=public_url)
         with open_public(public_request(public_url + 'manifest.json')) as response:

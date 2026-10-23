@@ -17,8 +17,7 @@ from datetime import date
 import pyarrow as pa
 
 from news_lake.analysis.cluster import text_group_key
-from news_lake.analysis.selection import select_runs
-from news_lake.analysis.views import _by_kind, _publication_date, _survivor
+from news_lake.analysis.views import _ReleaseScope, _by_kind, _publication_date, _survivor
 from news_lake.identity.decisions import apply_decisions
 
 ENTITY_ROOTS_SCHEMA = pa.schema([
@@ -54,17 +53,6 @@ SELECTED_MENTIONS_SCHEMA = pa.schema([
     pa.field('occurrences', pa.list_(pa.field('element', SPAN_STRUCT_TYPE, nullable=False)), nullable=False),
 ])
 
-BRIDGE_KEYS = {
-    'entity_roots': 'entity_id',
-    'selected_mentions': 'mention_id',
-    'survivor_items': 'item_id',
-}
-
-BRIDGE_SCHEMAS = {
-    'entity_roots': ENTITY_ROOTS_SCHEMA,
-    'selected_mentions': SELECTED_MENTIONS_SCHEMA,
-    'survivor_items': SURVIVOR_ITEMS_SCHEMA,
-}
 
 
 def _unwrap_records_and_selections(records, selections=None):
@@ -108,42 +96,14 @@ def entity_roots_arrow(records, decision_result=None):
 def survivor_items_rows(records, selections=None):
     """Emit one relational bridge row per terminal survivor item."""
     flat_records, selections = _unwrap_records_and_selections(records, selections)
-    items = _by_kind(flat_records, 'item')
-    versions = _by_kind(flat_records, 'version')
-    runs = _by_kind(flat_records, 'run')
-
-    discoveries_by_item = {}
-    for record in flat_records:
-        if record.get('kind') == 'discovery':
-            discoveries_by_item.setdefault(record['item_id'], []).append(record)
-
-    selection = select_runs(flat_records, selections)
-    pinned_processors = {entry['processor'] for entry in selections}
-
-    story_by_version = {}
-    for record in flat_records:
-        if record.get('kind') != 'story_member':
-            continue
-        run = runs.get(record['run_id'])
-        if run is None or run['processor'] not in pinned_processors:
-            continue
-        if selection['assignments'].get((run['processor'], 'version', record['version_id'])) == record['run_id']:
-            story_by_version.setdefault(record['version_id'], record['story_id'])
-
-    seen = set()
-    survivors = []
-    for item in items.values():
-        survivor = _survivor(item, items)
-        if survivor['id'] not in seen:
-            seen.add(survivor['id'])
-            survivors.append(survivor)
-    survivors.sort(key=lambda item: item['id'])
+    scope = _ReleaseScope({'release': {'selections': selections, 'id': None}, 'tables': {'all': flat_records}})
+    survivors = sorted(scope.survivor_items(), key=lambda item: item['id'])
 
     text_group_counts = {}
     text_group_by_item = {}
     for item in survivors:
         version_id = item.get('current_version_id')
-        version = versions.get(version_id) if version_id is not None else None
+        version = scope.versions.get(version_id) if version_id is not None else None
         if version is not None and isinstance(version.get('text'), str):
             group_id = text_group_key(version['text'])
             text_group_by_item[item['id']] = group_id
@@ -152,18 +112,12 @@ def survivor_items_rows(records, selections=None):
     rows = []
     for item in survivors:
         version_id = item.get('current_version_id')
-        version = versions.get(version_id) if version_id is not None else None
+        version = scope.versions.get(version_id) if version_id is not None else None
         pub_date_str = _publication_date(version.get('publication')) if version is not None else None
         if pub_date_str is None:
-            discovery_dates = {
-                d
-                for discovery in discoveries_by_item.get(item['id'], ())
-                if (d := _publication_date(discovery.get('reported_publication'))) is not None
-            }
-            if len(discovery_dates) == 1:
-                pub_date_str = discovery_dates.pop()
+            pub_date_str = scope.discovery_date(item['id'])
         effective_pub_date = date.fromisoformat(pub_date_str) if pub_date_str is not None else None
-        story_id = story_by_version.get(version['id']) if version is not None else None
+        story_id = scope.selected_story(version['id']) if version is not None else None
         text_group_id = text_group_by_item.get(item['id'])
         identical_text_group_id = (
             text_group_id
@@ -193,9 +147,7 @@ def survivor_items_arrow(records, selections=None):
 def selected_mentions_rows(records, selections=None):
     """Emit one relational bridge row per resolved mention from a selected run."""
     flat_records, selections = _unwrap_records_and_selections(records, selections)
-    runs = _by_kind(flat_records, 'run')
-    selection = select_runs(flat_records, selections)
-    pinned_processors = {entry['processor'] for entry in selections}
+    scope = _ReleaseScope({'release': {'selections': selections, 'id': None}, 'tables': {'all': flat_records}})
 
     rows = []
     for record in flat_records:
@@ -203,10 +155,7 @@ def selected_mentions_rows(records, selections=None):
             continue
         if record.get('resolution') != 'resolved' or record.get('entity_id') is None:
             continue
-        run = runs.get(record['run_id'])
-        if run is None or run['processor'] not in pinned_processors:
-            continue
-        if selection['assignments'].get((run['processor'], 'version', record['version_id'])) != record['run_id']:
+        if not scope.is_selected(record):
             continue
         rows.append({
             'mention_id': record['id'],

@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 import subprocess
 import sys
-import tempfile
 
 from congress_shared.custody import write_atomic_bytes
 from congress_shared.storage import connect_r2
@@ -26,7 +25,7 @@ def save_report(path, result):
 
 def arguments(argv):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('prepare', 'verify-prepared', 'publish', 'describe-attempt'))
+    parser.add_argument('command', choices=('prepare', 'verify-prepared', 'publish', 'describe-attempt', 'export-pins'))
     parser.add_argument('--directory', type=Path)
     parser.add_argument('--public-url')
     parser.add_argument('--native-config', type=Path, default=os.environ.get('DOCSPEC_CONFIG'))
@@ -39,6 +38,11 @@ def arguments(argv):
     parser.add_argument('--repository', default=os.environ.get('GITHUB_REPOSITORY'))
     parser.add_argument('--resume', action='store_true'); parser.add_argument('--attempt')
     parser.add_argument('--resume-descriptor', type=Path)
+    parser.add_argument('--version', default='v-export-01')
+    parser.add_argument('--catalog-id', default='export-pin-catalog')
+    parser.add_argument('--sources-pin')
+    parser.add_argument('--components-pin')
+    parser.add_argument('--publish-to-r2', action='store_true')
     tokens = list(sys.argv[1:] if argv is None else argv)
     result = parser.parse_args(tokens)
     result.explicit_options = {token.split('=', 1)[0] for token in tokens if token.startswith('--')}
@@ -50,8 +54,8 @@ def validate(args, attempts):
         raise ValueError('Renderer upgrade options require prepare')
     if args.resume_preparation and not args.renderer_upgrade:
         raise ValueError('--resume-preparation requires --renderer-upgrade')
-    if args.command != 'prepare' and '--native-config' in args.explicit_options:
-        raise ValueError('--native-config is used only for preparation')
+    if args.command not in ('prepare', 'export-pins') and '--native-config' in args.explicit_options:
+        raise ValueError('--native-config is used only for preparation and export-pins')
     if args.command != 'describe-attempt' and args.directory is None:
         raise ValueError(args.command + ' requires --directory')
     if args.command == 'prepare' and (not args.run_id or not args.run_attempt):
@@ -122,6 +126,60 @@ def main(publisher, argv=None):
         elif args.command == 'verify-prepared':
             receipt, manifest, prepared = attempts.verify_prepared(publisher, args.directory)
             result = dict(prepared, status='verified_prepared', files=len(receipt['files']))
+        elif args.command == 'export-pins':
+            from viewer_publication.filename_exports import export_viewer_pins
+            native = None
+            if args.native_config:
+                from congress_api.retention.docspec import NativeDatasets
+                native = NativeDatasets.from_config(args.native_config)
+            sources_table = None
+            components_table = None
+            if native is None and args.directory:
+                import pyarrow.parquet as pq
+                src_file = args.directory / 'sources.parquet'
+                cmp_file = args.directory / 'components.parquet'
+                if src_file.is_file() and cmp_file.is_file():
+                    sources_table = pq.read_table(src_file)
+                    components_table = pq.read_table(cmp_file)
+            export_result = export_viewer_pins(
+                sources_table=sources_table,
+                components_table=components_table,
+                target_dir=args.directory,
+                native=native,
+                sources_pin=args.sources_pin,
+                components_pin=args.components_pin,
+                catalog_id=args.catalog_id or 'export-pin-catalog',
+                version=args.version or 'v-export-01',
+            )
+            result = dict(export_result, status='exported_pins', directory=str(args.directory))
+            if args.publish_to_r2:
+                from viewer_publication.client import ConditionalManifestPublisher
+                from viewer_publication.constants import BUCKET
+                client = make_client()
+                cond_pub = ConditionalManifestPublisher(client, bucket=BUCKET)
+                manifest = export_result['manifest']
+                rel_prefix = f"viewer-publications/releases/{args.version or 'v-export-01'}/viewer-v2/"
+                for fname in ('sources.parquet', 'components.parquet', 'occurrences.parquet'):
+                    fpath = args.directory / fname
+                    if fpath.exists():
+                        cond_pub.put_immutable_asset(rel_prefix + fname, fpath)
+                pointer = {
+                    'version': manifest['version'],
+                    'catalog_id': manifest['info']['catalog_id'],
+                    'manifest': f"releases/{args.version or 'v-export-01'}/manifest.json",
+                    'published_at': manifest['published_at'],
+                }
+                pointer_receipt = cond_pub.publish_pointer(pointer)
+                result['published'] = {
+                    'pointer': pointer,
+                    'receipt': {
+                        'bucket': pointer_receipt.bucket,
+                        'key': pointer_receipt.key,
+                        'bytes': pointer_receipt.bytes,
+                        'sha256': pointer_receipt.sha256,
+                        'etag': pointer_receipt.etag,
+                    },
+                }
         else:
             client = make_client()
             if args.command == 'prepare':

@@ -1,4 +1,7 @@
-"""Range-readable navigation: one 16-byte record and one group membership slice."""
+"""Range-readable navigation: one 16-byte record and one group membership slice.
+
+Maintained for historical v5 navigation generation and runtime ownership verification.
+"""
 from array import array
 import struct
 import sys

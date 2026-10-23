@@ -262,56 +262,6 @@ def scan_receipt_history(
                 history[url]['attempts'] = count
                 history[url]['latest_state']['attempts'] = count
 
-    if used_tables:
-        return history
-
-    # Fallback: bootstrap from raw .jsonl.gz receipt files only when no table store exists.
-    receipt_keys = []
-    if root_path is not None and (root_path / 'receipts').exists():
-        receipt_keys = [
-            p.relative_to(root_path).as_posix()
-            for p in sorted((root_path / 'receipts').rglob('*.jsonl.gz'))
-        ]
-    elif hasattr(source_or_store, 'keys'):
-        receipt_keys = sorted(k for k in source_or_store.keys('receipts/') if k.endswith('.jsonl.gz'))
-
-    for key in receipt_keys:
-        if read_receipt is not None:
-            raw = read_receipt(key)
-        elif root_path is not None:
-            raw = (root_path / key).read_bytes()
-        else:
-            raw = source_or_store.read(key)
-        if raw is None:
-            continue
-        with gzip.GzipFile(fileobj=io.BytesIO(raw)) as stream:
-            for raw_line in stream.read().decode('utf-8').splitlines():
-                receipt = json.loads(raw_line)
-                state = receipt.get('download_state') or {}
-                rec = receipt.get('record') or {}
-                url = state.get('url') or rec.get('requested_url') or rec.get('url')
-                if not url or (wanted is not None and url not in wanted):
-                    continue
-                entry = history.setdefault(
-                    url,
-                    dict(
-                        attempts=0,
-                        latest_state=dict(state, url=url),
-                        outcomes=[],
-                        body_keys=[],
-                        source='receipts',
-                    ),
-                )
-                attempts = int(state.get('attempts') if state.get('attempts') is not None else (entry['attempts'] + 1))
-                entry['attempts'] = max(entry['attempts'], attempts)
-                if (state.get('checked_at') or '') >= (entry['latest_state'].get('checked_at') or ''):
-                    entry['latest_state'] = dict(state, url=url, attempts=entry['attempts'])
-                outcome = state.get('outcome') or rec.get('outcome')
-                if outcome and outcome not in entry['outcomes']:
-                    entry['outcomes'].append(outcome)
-                for cap in receipt.get('captures') or ():
-                    if cap.get('body_key') and cap['body_key'] not in entry['body_keys']:
-                        entry['body_keys'].append(cap['body_key'])
     return history
 
 

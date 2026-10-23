@@ -142,10 +142,8 @@ def build_source_export_policy(
     facet_columns=DEFAULT_SOURCE_FACET_COLUMNS,
     occurrence_columns=None,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
-    destination_dir=None,
 ):
     """Build the declarative ``ExportPolicy`` for ``filename-sources`` matching ``docspec-rs``."""
-    _ = destination_dir
     fields = [str(f) for f in (reading_fields or DEFAULT_SOURCE_READING_FIELDS)]
     facets = [[str(c)] for c in (facet_columns or DEFAULT_SOURCE_FACET_COLUMNS)]
     cols = [str(c) for c in (columns or DEFAULT_SOURCE_EXPORT_COLUMNS)]
@@ -192,10 +190,8 @@ def build_component_export_policy(
     facet_columns=DEFAULT_COMPONENT_FACET_COLUMNS,
     occurrence_columns=None,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
-    destination_dir=None,
 ):
     """Build the declarative ``ExportPolicy`` for ``filename-components`` matching ``docspec-rs``."""
-    _ = destination_dir
     facets = [[str(c)] for c in (facet_columns or DEFAULT_COMPONENT_FACET_COLUMNS)]
     cols = [str(c) for c in (columns or DEFAULT_COMPONENT_EXPORT_COLUMNS)]
     child_spec = {
@@ -239,7 +235,6 @@ def build_source_export_spec(
     occurrence_columns=None,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
 ):
-    _ = destination
     policy = build_source_export_policy(
         columns=columns,
         reading_fields=reading_fields,
@@ -271,7 +266,6 @@ def build_component_export_spec(
     occurrence_columns=None,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
 ):
-    _ = destination
     policy = build_component_export_policy(
         columns=columns,
         facet_columns=facet_columns,
@@ -636,10 +630,9 @@ def build_export_pin_descriptor(
     browse_ranges=(),
     child_tables=None,
     channel='viewer',
-    destination=None,
 ):
     """Construct a canonical ``ExportPin`` dictionary matching ``docspec-rs`` ``src/export.rs``."""
-    _ = (channel, destination)
+    _ = channel
     if isinstance(version, dict) and {'dataset', 'version', 'manifest'} <= version.keys():
         source_ref = dict(version)
         version_id = str(version['version'])

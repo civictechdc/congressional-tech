@@ -37,108 +37,23 @@ def require(condition: bool, message: str) -> None:
         raise ValueError(message)
 
 
+from news_lake.contract.records import ContractError, validate_shape
+from news_lake.contract.semantics import check_corpus
+
+
 def shape(record: dict[str, Any]) -> None:
-    def finite(value: Any) -> None:
-        if isinstance(value, float):
-            require(math.isfinite(value), 'Non-finite JSON number')
-        elif isinstance(value, dict):
-            for child in value.values(): finite(child)
-        elif isinstance(value, list):
-            for child in value: finite(child)
-    finite(record)
-    errors = list(VALIDATOR.iter_errors(record))
-    require(not errors, f"Invalid {record.get('kind')}: {errors[0].message if errors else ''}")
+    try:
+        validate_shape(record)
+    except ContractError as exc:
+        raise ValueError(f"Invalid {record.get('kind')}: {exc}") from exc
 
 
 def corpus(records: list[dict[str, Any]]) -> None:
-    """Check a deliberately limited subset of local semantic invariants."""
-    by_id: dict[str, dict[str, Any]] = {}
-    for record in records:
-        shape(record)
-        require(record['id'] not in by_id, 'Duplicate record ID in the candidate snapshot')
-        by_id[record['id']] = record
-
-    def get(identifier: str, kind: str) -> dict[str, Any]:
-        require(identifier in by_id, f'Missing {kind} reference')
-        result = by_id[identifier]
-        require(result['kind'] == kind, f'Wrong reference kind: expected {kind}')
-        return result
-
-    def run_input(record: dict[str, Any], kind: str, identifier: str) -> None:
-        run = get(record['run_id'], 'run')
-        require(run['status'] == 'succeeded', 'Output points to a non-successful run')
-        require({'kind':kind, 'id':identifier} in run['inputs'], 'Output input absent from run')
-
-    fk = {
-        'outlet_id':'outlet', 'capture_id':'capture', 'item_id':'item', 'run_id':'run',
-        'version_id':'version', 'current_version_id':'version', 'superseded_by':'item',
-        'entity_id':'entity', 'target_entity_id':'entity', 'left_id':'entity',
-        'right_id':'entity', 'prior_decision_id':'identity_decision', 'story_id':'story'
-    }
-    memberships: set[tuple[str, str]] = set()
-    for record in records:
-        for field, kind in fk.items():
-            if field in record:
-                get(record[field], kind)
-        kind = record['kind']
-        if kind == 'item':
-            if 'current_version_id' in record:
-                require(get(record['current_version_id'], 'version')['item_id'] == record['id'],
-                        'Current version belongs to another item')
-            seen: set[str] = set()
-            node = record
-            while 'superseded_by' in node:
-                require(node['id'] not in seen, 'Cyclic item redirect')
-                seen.add(node['id'])
-                node = get(node['superseded_by'], 'item')
-        elif kind == 'entity':
-            for field in ('tenures', 'affiliations'):
-                for interval in record.get(field, []):
-                    if 'from' in interval and 'to' in interval:
-                        require(interval['from'] < interval['to'], 'Invalid dated interval')
-        elif kind == 'identity_decision':
-            if 'left_id' in record:
-                require(record['left_id'] != record['right_id'], 'Reflexive identity decision')
-            for identifier in record.get('evidence_capture_ids', []):
-                get(identifier, 'capture')
-        elif kind == 'run':
-            for input_ref in record['inputs']:
-                get(input_ref['id'], input_ref['kind'])
-            start = datetime.fromisoformat(record['started_at'].replace('Z', '+00:00'))
-            finish = datetime.fromisoformat(record['finished_at'].replace('Z', '+00:00'))
-            require(start <= finish, 'Run finishes before it starts')
-        elif kind == 'version':
-            run_input(record, 'capture', record['capture_id'])
-            if 'text' in record:
-                actual = hashlib.sha256(record['text'].encode('utf-8')).hexdigest()
-                require(actual == record['text_hash'], 'Text hash mismatch')
-        elif kind in ('mention', 'classification'):
-            run_input(record, 'version', record['version_id'])
-            if kind == 'mention':
-                source = get(record['version_id'], 'version')
-                for span in record['occurrences']:
-                    require(span['field'] in source, 'Mention references absent text field')
-                    text = source[span['field']]
-                    require(0 <= span['start'] < span['end'] <= len(text), 'Span out of bounds')
-                    require(text[span['start']:span['end']] == record['surface'], 'Surface mismatch')
-        elif kind == 'story':
-            require(get(record['run_id'], 'run')['status'] == 'succeeded', 'Failed story run')
-        elif kind == 'story_member':
-            run_input(record, 'version', record['version_id'])
-            require(get(record['story_id'], 'story')['run_id'] == record['run_id'], 'Story/member run mismatch')
-            key = (record['run_id'], record['version_id'])
-            require(key not in memberships, 'Multiple memberships in one clustering run')
-            memberships.add(key)
-        elif kind == 'release':
-            names = [entry['table'] for entry in record['snapshots']]
-            require(len(names) == len(set(names)) and set(names) == EXPECTED_TABLES,
-                    'Release snapshot table set is incomplete or duplicated')
-            for entry in record['snapshots']:
-                if 'snapshot_id' in entry:
-                    require(0 < int(entry['snapshot_id']) <= 9223372036854775807,
-                            'Snapshot ID exceeds signed 64-bit range')
-            processors = [entry['processor'] for entry in record['selections']]
-            require(len(processors) == len(set(processors)), 'Multiple selections for one processor')
+    """Check local semantic invariants via canonical contract checker."""
+    try:
+        check_corpus(records)
+    except ContractError as exc:
+        raise ValueError(str(exc)) from exc
 
 
 def reject(test, value: Any, name: str) -> str:

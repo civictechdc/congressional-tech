@@ -1,6 +1,5 @@
 """Update stable recovery links from affected URLs and retained row ownership."""
 import json
-from contextlib import closing
 from pathlib import Path
 import pickle
 import sqlite3
@@ -21,6 +20,21 @@ class CatalogRecoverySources:
         self.snapshot, self.max_ordered_bytes = snapshot, max_ordered_bytes
         self.owner = CatalogDependencyStorage.for_snapshot(snapshot)
         self.selection = snapshot.selection['dependency']
+        self._temp_dir = None
+        self._spill_db = None
+
+    def _get_spill_db(self):
+        if self._spill_db is None:
+            self._temp_dir = TemporaryDirectory(prefix='recovery-spill-')
+            db = sqlite3.connect(Path(self._temp_dir.name) / 'spill.sqlite')
+            db.executescript(
+                'PRAGMA journal_mode=OFF; '
+                'PRAGMA synchronous=OFF; '
+                'PRAGMA cache_size=-8192; '
+                'CREATE TABLE spill_sources(position INTEGER PRIMARY KEY, body BLOB);'
+            )
+            self._spill_db = db
+        return self._spill_db
 
     def urls(self):
         # Initial adoption only. Subsequent updates use the exact change cursor.
@@ -30,20 +44,63 @@ class CatalogRecoverySources:
 
     def at_url(self, url):
         # URL membership is hash routed, while the historical content-kind rule
-        # uses the last encounter. Spill a prolific URL's rows before ordering.
-        with TemporaryDirectory(prefix='recovery-url-') as directory, closing(
-                sqlite3.connect(Path(directory) / 'sources.sqlite')) as db:
-            db.executescript('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-8192; '
-                             'CREATE TABLE sources(position INTEGER PRIMARY KEY,body BLOB);')
-            for record in self.owner.sources_at_url(self.selection, url):
-                db.execute('INSERT INTO sources VALUES (?,?)',
-                           (record['source_order'], pickle.dumps(record['source_values'])))
-            for body, in db.execute('SELECT body FROM sources ORDER BY position'):
+        # uses the last encounter. Hybrid fast-path: in-memory sort for small sets
+        # (<256 rows and <64 KiB), spilling to a reusable SQLite connection for prolific URLs.
+        MAX_IN_MEMORY_ROWS = 256
+        MAX_IN_MEMORY_BYTES = 64 * 1024
+
+        buffered = []
+        buffered_bytes = 0
+        spilled = False
+        db = None
+
+        iterator = self.owner.sources_at_url(self.selection, url)
+        for record in iterator:
+            pos = record['source_order']
+            val = record['source_values']
+            if not spilled:
+                pickled = pickle.dumps(val)
+                buffered.append((pos, val, pickled))
+                buffered_bytes += len(pickled)
+                if len(buffered) >= MAX_IN_MEMORY_ROWS or buffered_bytes >= MAX_IN_MEMORY_BYTES:
+                    spilled = True
+                    db = self._get_spill_db()
+                    db.execute('DELETE FROM spill_sources')
+                    for b_pos, _, b_pickled in buffered:
+                        db.execute('INSERT INTO spill_sources VALUES (?, ?)', (b_pos, b_pickled))
+                    buffered = None
+            else:
+                db.execute('INSERT INTO spill_sources VALUES (?, ?)', (pos, pickle.dumps(val)))
+
+        if not spilled:
+            buffered.sort(key=lambda item: item[0])
+            for _, val, _ in buffered:
+                yield val
+        else:
+            for body, in db.execute('SELECT body FROM spill_sources ORDER BY position'):
                 yield pickle.loads(body)
+            db.execute('DELETE FROM spill_sources')
 
     def targeting(self, url):
         for record in self.owner.originals_targeting(self.selection, url):
             yield record['source_values']
+
+    def close(self):
+        if self._spill_db is not None:
+            try:
+                self._spill_db.close()
+            except Exception:
+                pass
+            self._spill_db = None
+        if self._temp_dir is not None:
+            try:
+                self._temp_dir.cleanup()
+            except Exception:
+                pass
+            self._temp_dir = None
+
+    def __del__(self):
+        self.close()
 
 
 def index_catalog_recoveries(snapshot, rows, *, max_ordered_bytes, previous=None, metrics=None):

@@ -23,10 +23,27 @@ Install it with the workspace (`uv sync --locked`).
 | `plan` | `AcceptedViewerPlan` binds protected source/mapping/viewer identities, code pins, accepted recovery status, exact file inventory and original release/selector conditions using the existing issued inventory proof. Both local and cloud routes consume it; cloud artifact custody remains separately required. |
 | `attempt` | Identifies one publish attempt (run, revision, artifact digest) so a later publish cannot claim a different attempt. |
 | `verify` | Read-only checks that a published viewer object matches the attempt that was prepared. |
-| `filename_budget`, `filename_resources`, `filename_json_stream` | Bounded Arrow/JSON decoding admission (`DEFAULT_DECODED_POLICY`, `bounded_batches`, `ArrowStager`, `open_parquet`), deterministic resource ownership (`owned_resources`), and streaming observation counts (`ObservationCounts`). |
-| `filename_observations`, `filename_details`, `filename_navigation` | Serving-table builders and verifiers used by `scripts/publication/publish-filename-viewer.py` to emit bounded provenance blocks, detail Parquet tables, and binary group/member navigation indexes. |
-| `filename_aliases`, `filename_alias_index`, `filename_recoveries` | URL/identity alias resolution, disk-backed SQLite alias lookup (`AliasIndex`), and accepted corpus-recovery indexing (`accepted_rows`, `index_recoveries`). |
-| `filename_reviews`, `filename_review_binding` | Public review archive verification/extraction (`export_reviews`, `verify_directory`, `extract_archive`) and catalog-version identity rebinding (`load_identities`, `bind`, `identities_from`). |
+| `publication_cli` | CLI workflows for `prepare`, `verify-prepared`, `publish`, `describe-attempt`, and C5 `export-pins` with conditional R2 publishing. |
+| `filename_alias_index` | SQLite-backed alias index for fast lookups across large document sets. |
+| `filename_aliases` | Identity and URL alias resolution helpers. |
+| `filename_budget` | Bounded Arrow/JSON decoding memory budget (`DEFAULT_DECODED_POLICY`, `ArrowStager`, `failure_receipt`). |
+| `filename_compression` | Compression policy enforcement and gzip validation for viewer artifacts. |
+| `filename_details` | Detail Parquet table serialization and column definitions. |
+| `filename_exports` | C5 export pin builders (`build_source_export_policy`, `build_component_export_policy`, `export_viewer_pins`, `publish_occurrence_parquet`). |
+| `filename_json_stream` | Streaming JSON decoding and observation counting (`ObservationCounts`). |
+| `filename_native` | Native C5 components builder (`NativeComponents`) with normalized AST requirements hashing (`native_requirements`). |
+| `filename_native_recoveries` | Hybrid fast-path recovery source lookup (`CatalogRecoverySources.at_url` with in-memory fast path for <256 rows and persistent SQLite tempdb for spills). Fixed casing from `filename_Native_recoveries.py`. |
+| `filename_observations` | Provenance blocks and observation record formatting for viewer tables. |
+| `filename_recoveries` | Accepted corpus-recovery indexing and row extraction (`accepted_rows`, `index_recoveries`). |
+| `filename_renderer_state` | Retained SQLite state tracking across renderer upgrade stages (`build`, `progress`, `assets`, `discarded`). |
+| `filename_resources` | Deterministic file and handle cleanup managers (`owned_resources`). |
+| `filename_review_binding` | Catalog-version identity rebinding (`load_identities`, `bind`, `identities_from`). |
+| `filename_reviews` | Public review archive verification and extraction (`export_reviews`, `verify_directory`, `extract_archive`). |
+| `filename_test_fixture` | Synthetic test datasets and fixtures for viewer test suites. |
+| `filename_viewer` | End-to-end filename viewer generation orchestration and verification. |
+
+> **Note on navigation**: `filename_navigation.py` generates 16-byte records and group membership slices maintained for historical v5 navigation generation and runtime isolation verification, while native C5 rendering (`filename_native.py`) generates current binary viewer structures.
+
 
 ## What has to stay outside this package
 

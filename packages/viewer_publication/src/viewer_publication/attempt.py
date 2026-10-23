@@ -39,6 +39,11 @@ def record_input(publisher, client, key, optional=False):
     return {'value': value, 'etag': etag, 'modified': modified, 'sha256': digest}
 
 
+def as_protected(record_dict):
+    from viewer_publication.publish_viewer_r2 import ProtectedIdentity
+    return ProtectedIdentity(record_dict['value'], record_dict['etag'], record_dict['modified'], record_dict['sha256'])
+
+
 def prepare(publisher=None, client=None, root=None, *, run_id, run_attempt, public_url, native=None,
             renderer_upgrade=False, resume_preparation=False):
     """Read inputs and accept complete local output; perform no publication writes."""
@@ -61,9 +66,7 @@ def prepare(publisher=None, client=None, root=None, *, run_id, run_attempt, publ
             and previous['value'].get('publisher_version') == publisher.PUBLISHER_VERSION
             and previous['value'].get('full_release_inputs') == binding['code_runtime']):
         result = publisher.check_selected_publication(client, previous['value'], public_url=public_url,
-            records=(tuple(selected[k] for k in ('value', 'etag', 'modified', 'sha256')),
-                     tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')),
-                     tuple(previous[k] for k in ('value', 'etag', 'modified', 'sha256'))),
+            records=(as_protected(selected), as_protected(accepted), as_protected(previous)),
             release_identity=binding['code_runtime'])
         if result['status'] == 'unchanged':
             return result
@@ -96,15 +99,15 @@ def prepare(publisher=None, client=None, root=None, *, run_id, run_attempt, publ
         from viewer_publication import publish_filename_viewer as builder
         upgrade_options = dict(renderer_upgrade=True,resume_upgrade=resume_preparation) if renderer_upgrade else {}
         manifest, recovery = prepare_native_output(publisher, builder, client, snapshot, publication,
-            accepted_record=tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')),
-            viewer_record=tuple(previous[k] for k in ('value', 'etag', 'modified', 'sha256')),
+            accepted_record=as_protected(accepted),
+            viewer_record=as_protected(previous),
             recovery_only=mode == 'recovery', **upgrade_options)
         for path, identity in native_inputs.items():
             identity.require(path)
         identities = dict(manifest.identities)
         proof = issue_inventory(publication, identities, context=binding)
         publisher.prepare_recovery(publication, manifest,
-            tuple(accepted[k] for k in ('value', 'etag', 'modified', 'sha256')), validation=proof, index=recovery)
+            as_protected(accepted), validation=proof, index=recovery)
         publisher.validate_prepared_output(publication, manifest)
         for name in ('manifest.json', 'recovery-prepared.json'):
             identities[name] = file_identity(publication / name)
@@ -171,12 +174,11 @@ def verify_prepared(publisher, root, *, validation=None):
                 'catalog_id': manifest['info']['catalog_id']}
     if result != expected:
         raise ValueError('Prepared receipt digest or attempt identity differs')
-    protected = {name: tuple(receipt['binding'][name][key] for key in ('value', 'etag', 'modified', 'sha256'))
-                 for name in ('source', 'accepted', 'viewer')}
+    protected = {name: as_protected(receipt['binding'][name]) for name in ('source', 'accepted', 'viewer')}
     plan = accept_viewer_plan(publisher, root / 'publication', manifest,
         validation=validation, context=receipt['binding'], protected=protected,
         source_pins=receipt['binding']['code_runtime'], release_plan=receipt['release_plan'],
-        conditions=dict(previous_etag=protected['viewer'][1], selected_etag=protected['source'][1]),
+        conditions=dict(previous_etag=protected['viewer'].etag, selected_etag=protected['source'].etag),
         mode=receipt['binding']['mode'])
     return PreparedVerification(receipt, manifest, result, validation, plan)
 
@@ -315,9 +317,9 @@ def publish(publisher, client, root, *, artifact, public_url, resume=False, atte
             result = publisher.recovery_result(pointer, index, publisher.validated_accepted(binding['accepted']['value']),
                                                status='recovery_updated')
         elif binding['mode'] == 'recovery':
-            pointer_record = tuple(binding['viewer'][key] for key in ('value', 'etag', 'modified', 'sha256'))
-            selected_record = tuple(binding['source'][key] for key in ('value', 'etag', 'modified', 'sha256'))
-            accepted_record = tuple(binding['accepted'][key] for key in ('value', 'etag', 'modified', 'sha256'))
+            pointer_record = as_protected(binding['viewer'])
+            selected_record = as_protected(binding['source'])
+            accepted_record = as_protected(binding['accepted'])
             # Require prepared manifest values; bind the current raw-byte digest below.
             remote, _, _, manifest_digest = publisher.read_identity(client, publisher.PREFIX + binding['viewer']['value']['manifest'])
             if remote != manifest:

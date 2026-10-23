@@ -40,6 +40,12 @@ class PreservedStates(Mapping):
 
 
 def assemble(prepared, existing_states, verified_bodies, source_file):
+    """Assemble recovery receipts from prepared records, download state, and verified bodies.
+
+    Validates that each prepared recovery preserves download state, includes an original
+    source association, contains non-empty captures matching verified remote body metadata,
+    and references the retained body pointer accurately. Returns a tuple of (receipts, states).
+    """
     states = PreservedStates(existing_states)
     receipts = []
     for item in prepared:

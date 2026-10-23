@@ -11,14 +11,12 @@ import time
 from viewer_publication.filename_compression import CompressionPolicy, DEFAULT_COMPRESSION_POLICY, validate_compression
 import argparse
 import hashlib
-import importlib.util
 import json
 import os
 from pathlib import Path
 import re
 import sys
-from congress_api.retention.derived_files import VerifiedFile, copy_checked, custody_identity, file_identity
-from congress_shared.custody import write_atomic_bytes
+from congress_shared.custody import VerifiedFile, copy_checked, custody_identity, file_identity, write_atomic_bytes
 from viewer_publication.filename_resources import owned_resources
 from viewer_publication.filename_budget import DEFAULT_DECODED_POLICY, ArrowStager, DecodedBudgetExceeded, bounded_batches, failure_receipt, open_parquet
 
@@ -31,8 +29,8 @@ ROOT = Path(__file__).resolve().parents[4]
 import viewer_publication.filename_viewer as viewer
 import viewer_publication.filename_observations as observations
 import viewer_publication.filename_details as details
-import viewer_publication.filename_navigation as navigation
 import viewer_publication.filename_review_binding as review_binding
+import viewer_publication.filename_navigation as navigation
 
 
 def digest(path):

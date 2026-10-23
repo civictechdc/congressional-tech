@@ -135,15 +135,3 @@ def load_jsonl(path):
     return parse_jsonl(Path(path).read_text(encoding='utf-8'))
 
 
-def table_for_kind(kind):
-    try:
-        return KIND_TABLES[kind]
-    except KeyError:
-        raise ContractError('unknown_kind', f'no x-iceberg routing for kind {kind!r}') from None
-
-
-def mutation_for_table(table):
-    try:
-        return TABLE_MUTATIONS[table]
-    except KeyError:
-        raise ContractError('unknown_table', f'no x-iceberg routing for table {table!r}') from None

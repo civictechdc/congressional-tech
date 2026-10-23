@@ -1,5 +1,4 @@
 """CLI failures replace stale success reports before any mutation client exists."""
-import importlib.util
 import json
 from pathlib import Path
 import sys
@@ -136,3 +135,77 @@ def test_explicit_upgrade_flags_reach_existing_preparation(tmp_path,monkeypatch)
         '--run-id','upgrade','--run-attempt','1','--renderer-upgrade','--resume-preparation'])==0
     assert calls[0][1]==dict(run_id='upgrade',run_attempt='1',public_url='fixture-public',
         renderer_upgrade=True,resume_preparation=True)
+
+
+def test_export_pins_cli_requires_directory():
+    with pytest.raises(ValueError, match='export-pins requires --directory'):
+        cli.arguments(['export-pins'])
+        cli.validate(cli.arguments(['export-pins']), attempts)
+
+
+def test_export_pins_cli_workflow(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    target = tmp_path / 'pins_out'
+    target.mkdir()
+    sources = pa.Table.from_pylist([
+        {'source_id': 's1', 'document_id': 'd1', 'filename': 'a.pdf', 'source_url': 'http://a', 'body_key': None,
+         'record_role': ['doc'], 'document_kind': ['kind'], 'document_family': ['fam'], 'format': ['PDF'],
+         'congress': ['118'], 'http_status': ['200'], 'response_usable': ['true'],
+         'response_body_complete': ['true'], 'state_checked_at': ['2026-10-23T12:00:00Z'],
+         'raw_leaf': ['l'], 'normalized_leaf': ['nl'], 'header_leaf': ['hl']}
+    ])
+    components = pa.Table.from_pylist([
+        {'component_id': 'c1', 'document_id': 'd1', 'source_id': 's1', 'filename': 'a.pdf',
+         'file_bytes': 100, 'sha256': 'a' * 64}
+    ])
+    pq.write_table(sources, target / 'sources.parquet')
+    pq.write_table(components, target / 'components.parquet')
+
+    exit_code = cli.main(SimpleNamespace(PUBLIC_URL='http://test.public/'), ['export-pins', '--directory', str(target)])
+    assert exit_code == 0
+    assert (target / 'manifest.json').is_file()
+    manifest = json.loads((target / 'manifest.json').read_text())
+    assert manifest['version'] == 6
+    assert 'sources' in manifest['exports']
+    assert 'components' in manifest['exports']
+
+
+def test_export_pins_cli_publish_to_r2(tmp_path, monkeypatch):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    target = tmp_path / 'pins_out_r2'
+    target.mkdir()
+    sources = pa.Table.from_pylist([
+        {'source_id': 's1', 'document_id': 'd1', 'filename': 'b.pdf', 'source_url': 'http://b', 'body_key': None,
+         'record_role': ['doc'], 'document_kind': ['kind'], 'document_family': ['fam'], 'format': ['PDF'],
+         'congress': ['118'], 'http_status': ['200'], 'response_usable': ['true'],
+         'response_body_complete': ['true'], 'state_checked_at': ['2026-10-23T12:00:00Z'],
+         'raw_leaf': ['l'], 'normalized_leaf': ['nl'], 'header_leaf': ['hl']}
+    ])
+    components = pa.Table.from_pylist([
+        {'component_id': 'c1', 'document_id': 'd1', 'source_id': 's1', 'filename': 'b.pdf',
+         'file_bytes': 200, 'sha256': 'b' * 64}
+    ])
+    pq.write_table(sources, target / 'sources.parquet')
+    pq.write_table(components, target / 'components.parquet')
+
+    puts = []
+    class FakeS3:
+        def put_object(self, **kwargs):
+            puts.append(kwargs)
+            return {'ETag': '"etag-123"'}
+
+    monkeypatch.setattr(cli, 'make_client', lambda: FakeS3())
+    exit_code = cli.main(
+        SimpleNamespace(PUBLIC_URL='http://test.public/'),
+        ['export-pins', '--directory', str(target), '--publish-to-r2', '--version', 'v-test-export'],
+    )
+    assert exit_code == 0
+    # Must have uploaded immutable assets (sources, components) and manifest pointer
+    keys = [p['Key'] for p in puts]
+    assert any('viewer-publications/releases/v-test-export/viewer-v2/sources.parquet' in k for k in keys)
+    assert any('viewer-publications/manifest.json' in k for k in keys)
+

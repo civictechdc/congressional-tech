@@ -9,9 +9,7 @@ from news_lake.contract.records import (
     TABLE_MUTATIONS,
     UPSERT_TABLES,
     load_jsonl,
-    mutation_for_table,
     parse_jsonl,
-    table_for_kind,
     validate_shape,
 )
 from news_lake.contract.semantics import check_corpus
@@ -27,8 +25,6 @@ __all__ = [
     'UPSERT_TABLES',
     'check_corpus',
     'load_jsonl',
-    'mutation_for_table',
     'parse_jsonl',
-    'table_for_kind',
     'validate_shape',
 ]
