@@ -310,7 +310,7 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None,
                         ('body', body_entries, BODY_SCHEMA, storage.body_routes, 'bodies')):
                     def fast_references(entries_list=entries_list, schema=schema, kind=kind, native_kind=native_kind):
                         leaf_done = 0
-                        with ThreadPoolExecutor(max_workers=24) as pool:
+                        with ThreadPoolExecutor(max_workers=12) as pool:
                             leaf_q = deque()
                             for prefix, table in _fast_leaves(entries_list, schema, storage.max_state_rows, storage.max_state_bytes):
                                 sched = summarize(table.to_pylist()) if kind == 'state' else None
@@ -322,7 +322,7 @@ def adopt_tables(storage, *, paths, sha256s, operation, filename_version=None,
                                     pool.submit(_qualified_candidate, storage, native_kind, table,
                                                 operation=operation, prefix=prefix, base_id=request),
                                 ))
-                                if len(leaf_q) >= 24:
+                                if len(leaf_q) >= 12:
                                     pfx, nrows, nbytes, sch, fut = leaf_q.popleft()
                                     pin = fut.result()
                                     leaf_done += 1

@@ -1987,7 +1987,17 @@ class NativeDatasets:
                     return _save_v3_leaf_cache(
                         self._request('/run', active_request, dispatch=dispatch)
                     )
-                except DocSpecFailure as exc:
+                except Exception as exc:
+                    import httpx
+                    if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
+                        if attempt < 3:
+                            time.sleep(1.0 * (2 ** attempt))
+                            dispatch.clear()
+                            attempt += 1
+                            continue
+                        raise
+                    if not isinstance(exc, DocSpecFailure):
+                        raise
                     msg = str(exc).lower()
                     if normalized_partition_by and 'unknown field' in msg and 'partition_by' in msg:
                         active_request = {k: v for k, v in active_request.items() if k != 'partition_by'}
@@ -2191,7 +2201,17 @@ class NativeDatasets:
             for attempt in range(4):
                 try:
                     return self._request('/updates/run', active_request, dispatch=dispatch)
-                except DocSpecFailure as exc:
+                except Exception as exc:
+                    import httpx
+                    if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
+                        if attempt < 3:
+                            time.sleep(1.0 * (2 ** attempt))
+                            dispatch.clear()
+                            attempt += 1
+                            continue
+                        raise
+                    if not isinstance(exc, DocSpecFailure):
+                        raise
                     msg = str(exc).lower()
                     if normalized_merge is not None and 'unknown field' in str(exc) and 'merge' in str(exc):
                         base_pin = self.release(dataset, base)
