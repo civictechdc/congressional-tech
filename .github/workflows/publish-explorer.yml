@@ -50,7 +50,7 @@ jobs:
       - name: Install local model, source packages and exporter
         run: >-
           pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared
-          -e packages/docspec_client -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
+          -e packages/docspec_client -e packages/youtube_api -e 'packages/congress_api[archive]' -e apps/committee_youtube
 
       - name: Install native DocSpec runtime when configured
         if: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT != '' }}
