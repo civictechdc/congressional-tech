@@ -127,13 +127,6 @@ jobs:
             packages/viewer_publication/tests/test_publication_state_bounds.py
             packages/viewer_publication/tests/test_publication_control_reads.py
           )
-          # Original attempts may predate the test relocation. Both routes stay
-          # inside the exact selected checkout; no other checkout supplies tests.
-          for index in "${!tests[@]}"; do
-            if [ ! -f "${tests[$index]}" ] && [ -f "tests/${tests[$index]##*/}" ]; then
-              tests[$index]="tests/${tests[$index]##*/}"
-            fi
-          done
           PYTHONPATH=scripts/publication:scripts python -m pytest -q "${tests[@]}"
       - name: Require approved native runtime for preparation
         if: steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required'

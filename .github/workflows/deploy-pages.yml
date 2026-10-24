@@ -86,11 +86,9 @@ jobs:
           source = Path('pipeline-data/committee-explorer/public')
           target = Path('apps/site/public/data/explorer')
           _, _, manifest = verify(source)
-          if any(p.media_type == 'application/vnd.apache.parquet' for p in manifest.partitions):
-              shutil.copytree(source, target, dirs_exist_ok=True)
-          else:
-              from committee_explorer.parquet import migrate
-              migrate(source, target)
+          if not any(p.media_type == 'application/vnd.apache.parquet' for p in manifest.partitions):
+              raise ValueError('Browser publication must use Parquet partitions')
+          shutil.copytree(source, target, dirs_exist_ok=True)
           PYTHON
       - uses: ./.github/actions/setup-node-project
       - name: Verify review controls and static reader
