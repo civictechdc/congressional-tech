@@ -1,10 +1,11 @@
 # Engine-first data model
 
-Status: proposed, revision 2, 2026-10-24. The column-level companion to
+Status: proposed, revision 3, 2026-10-24. The column-level companion to
 `docs/engine-first-architecture.md` (cited as "design §n"). It starts from the CS300
 reviewer's sketch (`docs/reviews/2026-10-24-design-review/cs300-data-model.md`), applies the
-Iceberg/Parquet reviewer's review of it (`iceberg-parquet-data-model-review.md`), and
-applies the owner's decisions through Oct 24. Sizes are measured on the Oct 19 snapshot unless
+Iceberg/Parquet reviewer's two reviews of it (`iceberg-parquet-data-model-review.md`,
+`iceberg-parquet-data-model-final-review.md`), and applies the owner's decisions through
+Oct 24. Sizes are measured on the Oct 19 snapshot unless
 marked *est.*
 
 Conventions: Arrow types; `fsb(n)` is `fixed_size_binary(n)`; `dict` is a
@@ -95,6 +96,13 @@ an old one by `id`.
 ## 2. Lake
 
 Iceberg tables in Basin Catalog, append-only (design §5).
+
+**Writer settings.** Every table uses Iceberg format version 2 (every reader is
+iceberg-rust 0.10.1), a 128 MB target file size, zstd level 3, chunk statistics and no
+Bloom filters. Row groups hold 131,072 rows for `captures` and `page_links`, and 65,536 for
+`readings` and `filename_readings`. Nothing depends on sort order, because Basin compaction
+may not keep it. The primary keys below can be declared as identifier fields, for
+documentation only.
 
 ### 2.1 `captures`: one row per capture entry, and one per line without a body
 
@@ -188,7 +196,10 @@ Iceberg tables in Basin Catalog, append-only (design §5).
 | `doc_type`, `add_date`, `publish_date` | dict, string, string | From the link's attributes where the page gives them. |
 
 - Filled from receipts' `links[]` (owner decision: show link context).
-- **Work list:** the same receipt keys as `captures`, in the same ingest commit pass.
+- **Work list:** receipt keys not yet in `page_links`, its own list and its own commit;
+  Iceberg has no multi-table transaction. A `page_links` that lags `captures` means
+  missing link context, not an error. Both tables' high-water marks go in the inputs
+  record.
 - **Size:** *est.* 3–5M rows, 60–120 MB.
 
 ### 2.5 `pdf_text` (deferred)
@@ -203,6 +214,26 @@ text already (2.2).
 
 One SQL plan over `captures c`, `readings r`, `filename_readings f`, `page_links l` and
 provenance `p`. The logical body key is the string `bodies/sha256/<aa>/<sha>.gz`.
+
+### 3.0 `url_key`: the normalized URL every link join uses
+
+```
+url_key(url) := lowercase scheme and host; drop "www.", the default port, the fragment
+                and a trailing slash; keep the path's case; drop every query parameter
+                not on the allowlist
+```
+
+- **Every link join uses it** (owner decision): `page_links.child_url` to member URLs,
+  recoveries' original links to source files, and endpoint matching. On the Oct 19 data,
+  64,860 of 1,158,426 captured URLs (5.6%) sit in groups that differ only by scheme,
+  `www.`, case or a trailing slash, such as both `http://` and `https://docs.house.gov`.
+- **Identity keeps the exact URL:** `source_id`, `requested_url` and `url_state` never use
+  `url_key`.
+- **The query allowlist** comes from an aggregate of every query string in the captured
+  URLs, picked by the owner. It is SQL, computed in the model rather than stored, so
+  changing it rewrites nothing in the lake.
+- Provenance `url_variants` still adds accepted variants beyond what normalization
+  catches.
 
 ### 3.1 `real_files` (a CTE)
 
@@ -328,19 +359,22 @@ at 1.24M.
 
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
-| `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_code`, `congress`, `format`, `first_captured` (date32, dictionary), `date_kind`, `saved_kind`. No ID. | list order | defaults; no page index | 1.7 MB (3.9 MB measured at 1.24M) |
+| `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_code`, `congress`, `format`, `first_captured` (date32, dictionary), `date_kind`, `saved_kind`. No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding (2.54 MB against 3.22 MB with a dictionary, measured on 1.13M sorted filenames); facets keep dictionaries; 65,536-row groups so a phone can decode as it goes; no page index | about 1.5 MB |
 | `detail.parquet` | typed core: `document_id` fsb(32), `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>; plus one fold of the sparse facts: `link_key`, `source_url`, `saved_key`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 8 concurrent page reads per view |
 | `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | offset index and column index (page-level statistics) on `link_key`, about 25 KB together and read once per session, so hyparquet's `$eq` lookup skips to one page; 16 KB pages; one row group | 5–7 MB |
-| `occurrences.parquet` | `list_row`, `ordinal`, `url`, `member_path`, `filename`, `first_fetched`, `last_fetched`, `outcome`, `is_saved`, `linked_from` (parent URL), `link_text`, `doc_type`, `add_date` | `(list_row, ordinal)` | offset index on every column; 64 KB pages | *est.* 15–25 MB with link context |
-| `url_state.parquet` | 3.5 | `url` | defaults | 10 MB |
+| `occurrences.parquet` | `list_row`, `ordinal`, `url`, `member_path`, `filename`, `first_fetched`, `last_fetched`, `outcome`, `is_saved`, `linked_from` (parent URL), `link_text`, `doc_type`, `add_date` | `(list_row, ordinal)` | offset index on every column; 64 KB pages with a page row limit of 512–1,024 and the write batch no larger | *est.* 15–25 MB with link context |
+| `url_state.parquet` | 3.5 | `requested_url` | defaults | 10 MB |
 | `manifest.json` | `schema_version`; `files[]` {name, sha256, md5, size, rows, row_range, shard}; `facet_counts`; `release_id` | — | deterministic, content only | 5–20 KB |
 | `inputs/<input_digest>.json` | receipt-keys digest, row counts per parser version and catalog version, provenance digest, versions, snapshot IDs, run | — | one per input identity | about 2 KB |
 
 - **`link_key`:** the first 8 bytes of a real file's SHA-256, one key per real file of
   every listed document. A document with no real file (recovery only) uses its
   `document_id`'s prefix. Recovery bodies are never keys.
-- **`linked_from`:** for each member source file, its earliest `page_links` row by
-  `(retrieved_at, parent_url)`, so "where each copy was seen" names the page and the label.
+- **`linked_from`:** for each member source file, its earliest `page_links` row matched on
+  `url_key`, by `(retrieved_at, parent_url)`, so "where each copy was seen" names the page
+  and the label.
+- **No per-view byte budget** (owner decision): the canary enforces the heap budget only;
+  page sizes and row limits are layout settings, not gates.
 - A day with changes uploads about 70 MB.
 
 ## 5. Relationships and invariants
@@ -365,7 +399,7 @@ erDiagram
   BODY ||--o{ LINK : "link_key = sha256[0:8]"
   PROVENANCE_RECOVERY }o--|| DOCUMENT : "original_url"
   PROVENANCE_REVIEW }o--|| DOCUMENT : "link_key or document_id"
-  URL_STATE ||--|| ENDPOINT : "url"
+  URL_STATE ||--|{ CAPTURE : "requested_url"
   PDF_TEXT ||--|| BODY : "deferred"
 ```
 

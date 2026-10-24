@@ -1,6 +1,6 @@
 # Simplification plan: congressional-tech and docspec-rs
 
-Revision 4, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 6)
+Revision 4, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 7)
 and `docs/engine-first-data-model.md`, and replaces earlier revisions of this file (in git
 history). Evidence: `docs/reviews/2026-10-24-ticket-audit/` (the audit, with measured line
 counts) and `docs/reviews/2026-10-24-design-review/` (six design reviews). Below, "design
@@ -58,6 +58,8 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 26 | Any content format counts, including Word, web archives and images | The real-file rule in E1. |
 | 27 | Identical real web pages are one document | Same-body edges include HTML (E1); every real body is in one document. |
 | 28 | The text check reads PDF text for its candidates only (about 297 bodies) | The `fingerprint` parser in D2; the every-PDF pass stays parked (G). |
+| 29 | Every link join normalizes the URL with `url_key`, including a query-parameter allowlist | E1; the allowlist comes from an aggregate of every captured query string (open question 3). |
+| 30 | No per-view byte budget; the heap budget stays | A3 and A4 check heap only. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -259,7 +261,7 @@ files (ss-k1f0; this is also C5).
 |---|---|---|---|
 | C1 | Multi-input SQL plans over Basin tables and Parquet files in one context | 0.5–1.5 weeks | A plan joining two tables and a file |
 | C2 | Append through the REST catalog, with the conflict retry | 0.5 week | M1's two tests |
-| C3 | Deterministic multi-file export: SHA-256 and MD5 while writing; per-file writer settings, including offset and column indexes and page sizes; fixed row counts per row group; unique sort keys; row-range shards | 1–1.5 weeks | Byte equality across threads, input orders, batch sizes and a forced spill; hyparquet page reads on the output |
+| C3 | Deterministic multi-file export: SHA-256 and MD5 while writing; per-file writer settings, including offset and column indexes, page sizes and row limits, and per-column encodings such as delta-encoded filenames; fixed row counts per row group; unique sort keys; row-range shards | 1–1.5 weeks | Byte equality across threads, input orders, batch sizes and a forced spill; hyparquet page reads on the output |
 | C4 | ConnectedComponents in memory over 32-bit IDs, refusing above a node cap | 0.5 week | M2's graph; a refusal test |
 | C5 | Streaming I/O: no re-read or HEAD of immutable files | in C0 | Request counts in a test |
 | C6 | Bounded threads, memory pool and scratch; wide folded columns kept off hash-join build sides | 0.5 week | A join at the pool limit fails clearly; M2's build sizes |
@@ -291,8 +293,8 @@ threads, input orders and batch sizes and with a forced spill, on the smallest r
      restores the statuses today's index dropped for 1.04M bodiless lines;
    - recovery imports keep `mode`, `publisher_requested`, the recovery category and the
      original link as columns;
-   - **`page_links`** is filled in the same pass and commit, from each line's links
-     (decision 25);
+   - **`page_links`** is filled from each line's links (decision 25), with its own work
+     list and commit; a lag shows as missing link context, not a failure;
    - the rebuild-equivalence test;
    - **compare with the pinned old capture index** (3,909,134 rows) as row multisets, on
      receipt-derived columns only. A row that exists only in the old index is a fact raw
@@ -331,6 +333,7 @@ comparisons pass.
      `url_state`, fingerprint candidates, link keys or capture dates; the written
      recovery-kind mapping, where an unmapped category fails the build;
    - the import day, defined by the import run's ID, not by its date;
+   - `url_key` for every link join (decision 29), with the query-parameter allowlist;
    - the edge set: identical real files connect, web pages included (decision 27);
      placeholders (*k* = 100) connect nothing; a shared endpoint connects two complete
      files only when their text fingerprints match (decision 10);
@@ -467,6 +470,8 @@ These survive the switch unchanged:
    CORS policy either way.
 2. **Only if needed:** if D1 or E4 finds facts that exist only in derived tables, record
    them as provenance first, or accept losing them?
+3. **Query-parameter allowlist** for `url_key`: the Iceberg/Parquet review session is
+   aggregating every captured query string to propose it.
 
 ## 8. Schedule
 

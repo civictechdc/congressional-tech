@@ -1,6 +1,6 @@
 # Engine-first architecture
 
-Status: proposed, revision 6, 2026-10-24. Owner: Mike Deeb. This document describes the
+Status: proposed, revision 7, 2026-10-24. Owner: Mike Deeb. This document describes the
 target system as it should be, independent of how the current code works. Column-level
 schemas, derivations and test invariants are in `docs/engine-first-data-model.md`. The
 path from today is in `docs/plans/simplification-plan-20261024.md`, and the appendix
@@ -263,7 +263,9 @@ become orphans (5.5).
 - **Why a table.** Receipts already record these links. The owner wants document pages to
   show where each copy was linked from and under what label, which helps a reader find the
   hearing a file belongs to.
-- **Ingest:** in the same pass and commit as `captures`. *Est.* 3–5M rows, 60–120 MB.
+- **Ingest:** from the same receipts as `captures`, but with its own work list and its own
+  commit, since Iceberg has no multi-table transaction. If it lags `captures`, pages show
+  less link context; nothing fails. *Est.* 3–5M rows, 60–120 MB.
 
 ### 5.5 Maintenance
 - **Basin Catalog maintains the tables:** compaction (target 128 MB) and snapshot
@@ -358,6 +360,12 @@ become orphans (5.5).
   addresses connects like any other file: 265 pages at 2–44 addresses each on the Oct 19
   data. Every real body is then in exactly one document, so a file link always resolves to
   one place.
+- **Every link join normalizes the URL** (owner decision). A `url_key` lowercases the
+  scheme and host, drops `www.`, the default port, the fragment, a trailing slash and every
+  query parameter not on an allowlist, and keeps the path's case. 64,860 captured URLs
+  (5.6%) differ from another only by scheme, `www.`, case or a trailing slash. Identity
+  (`source_id`, `requested_url`) keeps the exact URL. The allowlist is SQL, drawn from an
+  aggregate of every captured query string (data model §3.0).
 
   An earlier measurement, with HTML excluded and before the real-file rule, gave 1.26M
   components with at most 456 source files each; the rule leaves about 0.5M listed
@@ -384,10 +392,10 @@ the list row number links them.
 
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
-| `list.parquet` (about 1.7 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, first-captured date and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | Defaults; no page index |
+| `list.parquet` (about 1.5 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, first-captured date and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | `filename` delta-encoded without a dictionary (21% smaller, measured); 65,536-row groups; no page index |
 | `detail.parquet` (30–40 MB) | Same row order as `list` | A small typed core (`document_id`, occurrence start and length, recoveries as a list of kind, file key and date) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
 | `links.parquet` (5–7 MB) | `link_key` | 8-byte link key and list row | Point lookup: the column index's page statistics find the page | Offset index and column index (page-level statistics) on `link_key`, about 25 KB together; small pages |
-| `occurrences.parquet` (15–25 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, path inside an archive, filename, capture dates, and the page that linked it with the link's label | The range named in `detail` | Offset index on every column; 64 KB pages |
+| `occurrences.parquet` (15–25 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, path inside an archive, filename, capture dates, and the page that linked it with the link's label | The range named in `detail` | Offset index on every column; 64 KB pages of at most 512–1,024 rows |
 | `url_state.parquet` (about 10 MB) | `url` | Latest outcome and retry schedule per URL; no body hash, because the 412 tells capture whether a body is new | Read whole by the capture job, not the site | Defaults |
 
 Sizes are estimates at about 0.5M documents, scaled from measurements at 1.24M. Exact
@@ -459,7 +467,7 @@ Unfiltered facet counts go in the release manifest.
 
 ### 6.4 Release and publish
 - **Input identity.** Every publish run computes it before doing any work:
-  - the digest of ingested receipt keys;
+  - the digests of the receipt keys ingested into `captures` and into `page_links`;
   - row counts per `(parser, parser_version)` and per filename catalog version;
   - the provenance digest;
   - the SQL, engine, parser and catalog versions.
@@ -503,7 +511,7 @@ Unfiltered facet counts go in the release manifest.
   arrays and dictionary codes, because objects would cost hundreds of MB of heap on a
   phone. Details and lookups use HTTP Range reads.
 - **Devices:** desktop and mid-range phones. The contract test and the canary enforce the
-  heap budget.
+  heap budget. There is no per-view byte budget (owner decision).
 - **Stale tabs.** Only two releases exist at a time, so a tab left open across two
   publishes can lose its files. On a 404 for a release file, the reader re-reads the
   pointer and reloads.
@@ -671,8 +679,10 @@ error signals; `document_id` keeps today's formula; cut-off copies re-fetched; r
 shown, labeled by kind; PDF reading deferred until full-text extraction; two releases
 kept; the explorer lists real documents only (about 0.5M); any content format counts,
 including Word, web archives and images; link context shown; identical real web pages are
-one document; PDF text read for fingerprint candidates only; hyparquet in the browser; uncompressed copies of older PDFs only; no early
-launch on the converted Oct 19 release.
+one document; PDF text read for fingerprint candidates only; every link join normalizes
+the URL, with a query-parameter allowlist; no per-view byte budget; hyparquet in the
+browser; uncompressed copies of older PDFs only; no early launch on the converted Oct 19
+release.
 
 ## Reviews
 
@@ -687,7 +697,8 @@ Seven reviews shaped this design. All are in `docs/reviews/2026-10-24-design-rev
 - of revision 5: a third efficiency pass with a full data-model sketch
   (`cs300-rereview-rev5.md`, `cs300-data-model.md`), graded A− (90) for the architecture and
   A− (88) for the plan. The sketch became `docs/engine-first-data-model.md`, and the
-  Iceberg/Parquet reviewer reviewed it (`iceberg-parquet-data-model-review.md`).
+  Iceberg/Parquet reviewer reviewed it twice (`iceberg-parquet-data-model-review.md`,
+  `iceberg-parquet-data-model-final-review.md`).
 
 Revision 4 applied the efficiency review (F1–F12). Revision 5 applies the two re-reviews
 and the owner's decisions:
@@ -718,6 +729,7 @@ three more owner decisions:
 | Smaller gaps | Import day by run ID; `url_state` without a hash; receipts trimmed to about 1 KB; sniff every older body once; failed candidates deleted by publish; large legacy bodies as downloads (4.2, 5.2, 6.2, 6.4, 7) |
 | Owner decisions | Real documents only; link context shown; any content format counts (5.4, 6.1) |
 | Iceberg/Parquet review of the data model | Identical real web pages are one document; PDF text read for fingerprint candidates; one row per receipt line even without a body, and `url_state` counted over lines; typed detail core; page statistics on `link_key` (5.1, 5.2, 6.1, 6.2) |
+| Final data-model review (revision 7) | `url_key` for every link join; `page_links` as its own commit; delta-encoded filenames in `list`; a page row limit on `occurrences`; lake writer settings in the data model; no per-view byte budget (5.4, 6.1, 6.2, 6.4, 7) |
 
 ## Appendix: path from the current system
 
