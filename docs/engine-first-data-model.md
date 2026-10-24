@@ -219,8 +219,9 @@ provenance `p`. The logical body key is the string `bodies/sha256/<aa>/<sha>.gz`
 
 ```
 url_key(url) := lowercase scheme and host; drop "www.", the default port, the fragment
-                and a trailing slash; keep the path's case; drop every query parameter
-                not on the allowlist
+                and a trailing slash; keep the path's case; drop known tracker
+                parameters (utm_*, _gl, gclid, fbclid, mc_cid, mc_eid, _ga); sort the
+                remaining parameters and keep them all
 ```
 
 - **Every link join uses it** (owner decision): `page_links.child_url` to member URLs,
@@ -229,9 +230,16 @@ url_key(url) := lowercase scheme and host; drop "www.", the default port, the fr
   `www.`, case or a trailing slash, such as both `http://` and `https://docs.house.gov`.
 - **Identity keeps the exact URL:** `source_id`, `requested_url` and `url_state` never use
   `url_key`.
-- **The query allowlist** comes from an aggregate of every query string in the captured
-  URLs, picked by the owner. It is SQL, computed in the model rather than stored, so
-  changing it rewrites nothing in the lake.
+- **Only trackers are stripped** (owner decision, from an aggregate of every captured
+  query string). 13,930 captured URLs (1.2%) carry a query string, with dozens of keys
+  across 22+ hosts. Where two URLs differ by one parameter, that parameter almost always
+  changes the body: `download` in 916 of 916 groups (a Senate landing page against the
+  `?download=1` PDF), `file_id`, `id`, `docid` and the rest in every case, and only `_gl`
+  ever matched. A keep-list would need 40+ keys and would merge different documents for
+  any key it missed; a strip-list can at worst miss a match. The tracker list is SQL,
+  computed in the model rather than stored, so changing it rewrites nothing in the lake.
+- **The rest of the normalization holds up:** 25,287 of 25,355 groups that differ only by
+  scheme or `www.` (99.7%) served identical bytes.
 - Provenance `url_variants` still adds accepted variants beyond what normalization
   catches.
 

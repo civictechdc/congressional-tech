@@ -361,11 +361,13 @@ become orphans (5.5).
   data. Every real body is then in exactly one document, so a file link always resolves to
   one place.
 - **Every link join normalizes the URL** (owner decision). A `url_key` lowercases the
-  scheme and host, drops `www.`, the default port, the fragment, a trailing slash and every
-  query parameter not on an allowlist, and keeps the path's case. 64,860 captured URLs
-  (5.6%) differ from another only by scheme, `www.`, case or a trailing slash. Identity
-  (`source_id`, `requested_url`) keeps the exact URL. The allowlist is SQL, drawn from an
-  aggregate of every captured query string (data model §3.0).
+  scheme and host, drops `www.`, the default port, the fragment, a trailing slash and known
+  tracker parameters (`utm_*`, `gclid` and the like), sorts the remaining query parameters
+  and keeps them, and keeps the path's case. 64,860 captured URLs (5.6%) differ from
+  another only by scheme, `www.`, case or a trailing slash. Other query parameters are
+  kept because they almost always change the document: `download` alone separates 916
+  Senate landing pages from their PDFs. Identity (`source_id`, `requested_url`) keeps the
+  exact URL (data model §3.0).
 
   An earlier measurement, with HTML excluded and before the real-file rule, gave 1.26M
   components with at most 456 source files each; the rule leaves about 0.5M listed
@@ -680,7 +682,7 @@ shown, labeled by kind; PDF reading deferred until full-text extraction; two rel
 kept; the explorer lists real documents only (about 0.5M); any content format counts,
 including Word, web archives and images; link context shown; identical real web pages are
 one document; PDF text read for fingerprint candidates only; every link join normalizes
-the URL, with a query-parameter allowlist; no per-view byte budget; hyparquet in the
+the URL, stripping only tracker parameters; no per-view byte budget; hyparquet in the
 browser; uncompressed copies of older PDFs only; no early launch on the converted Oct 19
 release.
 

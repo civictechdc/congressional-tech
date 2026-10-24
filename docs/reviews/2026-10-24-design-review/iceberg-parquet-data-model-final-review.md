@@ -133,3 +133,24 @@ throwaway harness should confirm each row of this table and report the hash-join
   (analysis to follow). Identity keeps the exact URL.
 - **Finding 2, no per-view byte budget.** The canary does not enforce bytes per view. The
   `occurrences` page row limit stays a recommended layout setting, not a gate.
+
+## Query-string analysis and decision (2026-10-24)
+
+Script: this session's scratchpad `qparams.py` and `qstrip.py`, over successful captured URLs
+on Oct 19.
+
+- 13,930 of 1,158,426 captured URLs (1.2%) carry a query string, with dozens of keys across
+  22+ hosts.
+- **Most parameters change content.** Among URL groups that differ only by one parameter:
+  - `download`: 916 groups, all serving different bodies (the Senate `/download/<slug>` landing
+    page vs the `?download=1` PDF);
+  - `file_id` 19, `id` 9, `docid` 8, `offsetmark` 4, `documentid` 2, and `dbname`, `date`,
+    `file`, `newsid`, `url` and `v` 1 each: all different bodies;
+  - only `_gl` (Google Analytics linker) served the same body (1 of 1).
+- **Scheme and `www.` variants are safe:** 25,287 of 25,355 http/https and `www.` groups served
+  identical bytes (99.7%).
+
+**Decision (owner): strip only trackers.** `url_key` drops `utm_*`, `_gl`, `gclid`, `fbclid`,
+`mc_cid`, `mc_eid` and `_ga`, sorts the remaining parameters, and keeps every other parameter.
+This replaces the earlier "allowlist" wording. A keep-list would need 40+ keys, and any key it
+missed would merge different documents. With a strip-list, the worst failure is a missed match.
