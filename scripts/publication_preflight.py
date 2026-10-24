@@ -135,7 +135,6 @@ ALLOWED_PUBLIC_URLS = frozenset(
     {
         "https://congressional-data.spicygov.ai/viewer-publications/",
         "https://congressional-data.spicygov.ai/",
-        "https://congressional-viewer-data.mdeeb.workers.dev/",
     }
 )
 

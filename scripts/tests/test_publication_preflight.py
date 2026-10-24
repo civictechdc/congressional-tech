@@ -167,14 +167,14 @@ def test_signed_fixed_get_surface_matches_botocore_across_utc_day_boundary(monke
     'indexes/catalog.json#fragment','viewer-publications/releases/'+'A'*32+'/manifest.json',
     'viewer-publications/releases/'+'a'*32+'/filenames.parquet','raw/secret','viewer-publications/accepted.json'])
 def test_adapter_refuses_unlisted_key_before_request_or_signing(key):
-    reader=preflight.ReadOnlyR2('a'*32,'FAKEACCESS','fake-secret',public_url='https://congressional-viewer-data.mdeeb.workers.dev/')
+    reader=preflight.ReadOnlyR2('a'*32,'FAKEACCESS','fake-secret',public_url='https://congressional-data.spicygov.ai/viewer-publications/')
     with pytest.raises(ValueError,match='allowlist'):reader.read(key)
     with pytest.raises(ValueError,match='allowlist'):reader.public(key)
     assert reader.requests==0
 
 
 def test_adapter_refuses_wrong_kind_optional_source_naive_time_and_unsafe_headers():
-    reader=preflight.ReadOnlyR2('a'*32,'FAKEACCESS','fake-secret',public_url='https://congressional-viewer-data.mdeeb.workers.dev/')
+    reader=preflight.ReadOnlyR2('a'*32,'FAKEACCESS','fake-secret',public_url='https://congressional-data.spicygov.ai/viewer-publications/')
     with pytest.raises(ValueError,match='kind'):reader.read(preflight.ACCEPTED)
     with pytest.raises(ValueError,match='absent'):reader.read('indexes/catalog.json',optional=True)
     with pytest.raises(ValueError,match='timezone'):preflight.sigv4_request('a'*32,'indexes/catalog.json','FAKEACCESS','secret',datetime(2026,10,18))
@@ -186,7 +186,7 @@ def test_adapter_refuses_wrong_kind_optional_source_naive_time_and_unsafe_header
 @pytest.mark.parametrize('status',[301,302,303,307,308,403,404,429,503])
 def test_http_errors_close_body_and_never_retry_or_follow_redirect(status,monkeypatch):
     import urllib.error
-    reader=preflight.ReadOnlyR2('a'*32,'FAKEACCESS','fake-secret',public_url='https://congressional-viewer-data.mdeeb.workers.dev/')
+    reader=preflight.ReadOnlyR2('a'*32,'FAKEACCESS','fake-secret',public_url='https://congressional-data.spicygov.ai/viewer-publications/')
     calls=[];body=io.BytesIO(b'failure')
     def fail(request,**kwargs):
         calls.append(request)
@@ -199,7 +199,7 @@ def test_http_errors_close_body_and_never_retry_or_follow_redirect(status,monkey
 
 def test_optional_not_found_is_only_nonfatal_private_http_error(monkeypatch):
     import urllib.error
-    reader=preflight.ReadOnlyR2('a'*32,'FAKEACCESS','fake-secret',public_url='https://congressional-viewer-data.mdeeb.workers.dev/')
+    reader=preflight.ReadOnlyR2('a'*32,'FAKEACCESS','fake-secret',public_url='https://congressional-data.spicygov.ai/viewer-publications/')
     body=io.BytesIO(b'not found')
     def missing(request,**kwargs):raise urllib.error.HTTPError(request.full_url,404,'absent',{},body)
     monkeypatch.setattr(reader.opener,'open',missing)
