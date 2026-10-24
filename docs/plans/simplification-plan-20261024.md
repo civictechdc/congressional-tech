@@ -1,10 +1,10 @@
 # Simplification plan: congressional-tech and docspec-rs
 
-Revision 3, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 5)
-and replaces earlier revisions of this file (in git history). Evidence:
-`docs/reviews/2026-10-24-ticket-audit/` (the audit, with measured line counts) and
-`docs/reviews/2026-10-24-design-review/` (five design reviews). Below, "design §n" cites
-the design document.
+Revision 4, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 6)
+and `docs/engine-first-data-model.md`, and replaces earlier revisions of this file (in git
+history). Evidence: `docs/reviews/2026-10-24-ticket-audit/` (the audit, with measured line
+counts) and `docs/reviews/2026-10-24-design-review/` (six design reviews). Below, "design
+§n" cites the design document and "data model §n" its companion.
 
 ## 1. Strategy: build beside, switch, delete
 
@@ -53,6 +53,9 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 21 | `document_id` keeps today's body-set formula | E3's golden vectors; links don't depend on it. |
 | 22 | No PDF reading for now; full-text extraction of every PDF comes later | D2 has no PDF parser; the full-text job is parked (G). |
 | 23 | Keep two releases: the live one and the last good one | F1's weekly job; the reader reloads on a 404 (A1, A3, A4). |
+| 24 | The explorer lists real documents only: at least one real file or recovery, about 0.5M | Record roles in D2; the listing rule in E1. |
+| 25 | Show link context: the page that linked each copy, and the link's label | `page_links` in D1; occurrences in E2; A8. |
+| 26 | Any content format counts, including Word, web archives and images | The real-file rule in E1. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -101,19 +104,20 @@ older-PDF copies start the site work at the same time.
 Decides: Iceberg stays (manifests bounded), or the three logs move to dated Parquet with an
 `If-Match` manifest (design §13).
 
-**M2. Export and grouping on the wide real data** (docspec-rs).
+**M2. Wide joins and grouping in a throwaway DataFusion harness.** The engine can't run
+the full export until C1, C3 and C4 exist, so week one measures with a short standalone
+DataFusion program instead.
 - Inputs: the pinned Oct 19 snapshot (captures `db033173…`, catalog generation
   `596f08fa…`), including today's filename readings.
-- Group the real graph with the design's rule (*k* = 100, HTML and errors excluded).
-  Record time, peak memory and the largest components.
-- Export every release file, including the folded `detail` with readings and the 4.7M
-  `occurrences`. Report the size of every hash-join build.
-- Bytes must be identical across 1, 2 and 4 threads, shuffled input and different batch
-  sizes, and with a forced spill. Record time and peak memory on `ubuntu-24.04`
-  (4 vCPU, 16 GB), the smallest runner class.
+- Run the model's joins, including filename readings, the folded `detail` and the 4.7M
+  `occurrences`, and report the size of every hash-join build.
+- Group the real graph with the design's rule. Record time, peak memory and the largest
+  components.
+- Run on `ubuntu-24.04` (4 vCPU, 16 GB), the smallest runner class.
 
 Decides: the size of track C, and whether DataFusion handles the wide joins within the
-pool.
+pool. The harness is deleted afterwards. Byte-for-byte determinism becomes C3's acceptance
+test.
 
 **F0. The first release, converted from the pinned catalog** (congressional-tech).
 - Convert the pinned catalog pair into the release format (design §6.2), with the final
@@ -156,7 +160,8 @@ run beside C. Estimated total: **8–16 weeks**.
    exists.
 5. **Saved copies:** link the document's saved file. Older gzip PDFs open their `.pdf` copy
    (B13). Other older gzip bodies are fetched, unpacked with `DecompressionStream`, and
-   opened with the media type from `detail`.
+   opened with the media type from `detail`. Those over 100 MB (579) are offered as a
+   labeled compressed download instead.
 6. **Capture dates:** the first-captured date in list rows, so same-filename editions
    read apart, and the first and last capture dates on the document page. Labels say what
    we know: "Captured <date>", "In our archive since Sept 29, 2026 (original capture date
@@ -164,6 +169,8 @@ run beside C. Estimated total: **8–16 weeks**.
 7. **Recoveries:** each one on its original link's page, labeled by kind (recovered copy,
    excerpt from the official hearing record, or the named official substitute), with its
    evidence and a link to the recovered file.
+8. **Link context:** "where each copy was seen" names the page that linked it and the
+   link's label (decision 25).
 
 **Done when:** the site loads F0 locally on desktop and in a phone-sized profile, and the
 canary passes against F0 in under a minute.
@@ -175,7 +182,8 @@ paths in `worker.ts`, and `verify-live-publication.mjs`. Keep `cache.ts`,
 
 This code survives, so it is fixed now.
 
-1. **Bucket lock** (owner, ct-1l1h) on `bodies/`, `receipts/` and `provenance/`.
+1. **Bucket lock** (owner, ct-1l1h) on `bodies/`, `receipts/` and `provenance/`. This is
+   the single most protective step in the plan, and it gates B13.
 2. **Receipts and bodies to the design (§4.1–4.2):**
    - every receipt line records the format sniffed from the body's first bytes, beside the
      server's media type and the HTTP status;
@@ -186,7 +194,11 @@ This code survives, so it is fixed now.
    - a 412 is recorded as `unchanged`, with no HEAD and no comparison (ct-klql);
    - the fetcher spools each body to a temporary file and never cuts one off; a
      `size_limit` or `request_failed` outcome is retried;
-   - receipt keys use the UTC write date.
+   - receipt keys use the UTC write date;
+   - lines carry the run ID and writer identity, one entry per referenced body with its
+     path inside an archive, and the links found with their labels; they drop the
+     provider metadata, duplicated headers and old raw-index row, so a line is about 1 KB
+     (data model §1.2).
 3. **One namespace policy for raw keys.** Write the refusal matrix first: every writer
    (`R2Store.put`, `put_file`, `put_pdf_body`, `AsyncBodies.put`, `LocalStore.put`) refuses
    a write that is not create-only under `bodies/`, `receipts/` or `provenance/`, before
@@ -212,12 +224,14 @@ This code survives, so it is fixed now.
 12. **Owed while the old capture path runs:** ct-63hg (repair wrong `stored_sha256` index
     rows in place) and ct-j9c4 (confirm the daily capture writes correct values). The
     target reads receipts, so these matter only until the switch.
-13. **Uncompressed copies of older gzip PDFs** (weeks 1–2; track A's saved copies need
-    them). First fold `migrate_pdf_bodies_to_uncompressed` into
+13. **Uncompressed copies of older gzip PDFs** (after B1 and B3; track A's saved copies
+    need them). It is the largest raw write in the plan, so the lock and the refusal
+    matrix come first. First fold `migrate_pdf_bodies_to_uncompressed` into
     `backfill_uncompressed_pdfs` (`pdf_backfill.py`), so one path remains. Then run it over
     every older gzip PDF: create-only to `bodies/sha256/<aa>/<sha>.pdf`, with Content-MD5,
-    and the decompressed SHA-256 checked before upload. About 261k uploads and 365 GB, a few
-    hours. Copies that already exist return 412 and are skipped.
+    and the decompressed SHA-256 checked before upload. About 261k uploads ($1.20) and
+    403 GB once decompressed, about $72 a year of storage kept under the lock; a few hours.
+    Copies that already exist return 412 and are skipped.
 14. **Re-fetch the cut-off files** (week 1, in today's capture path): the 62 URLs whose only
     copy was cut off at 64 MiB. The cut-off copies stay in raw.
 15. **The Oct 15 recovery run: done, no correction needed.** The Iceberg/Parquet review
@@ -257,8 +271,8 @@ The engine's current export disables the offset index unless page-index columns 
 (ss-eyhn) and insert-if-absent (ss-jxvn). The target has no engine lifecycle store, no
 updates and no news_lake work. Close them unless another consumer needs them.
 
-**Done when:** one CLI job runs the M2 export from Basin tables, byte-identical across
-threads and batch sizes, on the smallest runner.
+**Done when:** one CLI job runs the full export from Basin tables, byte-identical across
+threads, input orders and batch sizes and with a forced spill, on the smallest runner.
 
 ### D. Lake tables and backfills
 
@@ -267,34 +281,48 @@ threads and batch sizes, on the smallest runner.
    - backfill from all 2,289 receipts (1.08 GB compressed), including the non-date
      segments (`undated/`, `mixed-dates/`: 49 files, 2.2M rows); older receipt shapes are
      mapped in the ingest SQL, with a test sample of each shape;
-   - recovery imports keep `mode`, `publisher_requested`, the recovery kind and the
+   - the key is `(receipt_key, receipt_line, capture_index)`, because one line can
+     reference many bodies; each row carries `member_path`, so the endpoint is
+     `(context_url, member_path)`, and `run_id`;
+   - recovery imports keep `mode`, `publisher_requested`, the recovery category and the
      original link as columns;
+   - **`page_links`** is filled in the same pass and commit, from each line's links
+     (decision 25);
    - the rebuild-equivalence test;
    - **compare with the pinned old capture index** (3,909,134 rows) as row multisets, on
      receipt-derived columns only. A row that exists only in the old index is a fact raw
      doesn't hold, and it blocks the switch until the owner decides (open question 2).
 2. **`readings`** (design §5.2): one parser and version per media family; partitioned by
    `(parser, parser_version)`; a version is complete when its work list is empty. The scope
-   in the model SQL excludes ZIPs, captions and untyped bodies. First give every older body
-   without a recorded format one ranged read of its first bytes, which the real-files rule
-   needs (decision 13). Then backfill HTML, XML and JSON (about 5 GB). There is no PDF
-   parser for now (decision 22). The HTML reading records the generic
-   error-page signals (decision 19). The `fingerprint` parser reads only the bodies at URLs
-   with two or more complete files (dozens today).
+   in the model SQL excludes ZIPs and captions.
+   - First the `sniff` parser runs once over every older body: one ranged read of its first
+     bytes, about 1.04M GETs (about $0.37), under an hour. The real-file rule needs a
+     sniffed format and record role for every body (decisions 13 and 24).
+   - Then backfill HTML, XML and JSON (about 5 GB). There is no PDF parser for now
+     (decision 22).
+   - The readings core carries what the rules read: format, record role, title, heading,
+     visible-text size, error signals and fingerprint (data model §2.2).
+   - The `fingerprint` parser reads only the bodies at endpoints with two or more complete
+     real files: 148 endpoints, 297 bodies, 1.4 GB today.
    The parser functions survive; the adoption machinery around them goes in F3.
 3. **`filename_readings`** (design §5.3): a producer that runs `house-naming` over the
    work list and appends through the engine. Backfill is about 7 minutes over 1.39M pairs.
-4. Enable Basin compaction and snapshot expiration on all three tables.
+4. Enable Basin compaction and snapshot expiration on all four tables.
 
-**Done when:** all three tables exist with complete backfills, and both `captures`
+**Done when:** all four tables exist with complete backfills, and both `captures`
 comparisons pass.
 
 ### E. Model SQL and parity
 
 1. **Write the grouping rule down first,** as SQL with a short rationale:
-   - which responses are real files (decision 13), including the two web-page checks
-     (decision 19: link shape first, then generic error signs); recovery imports are evidence for their original link, never real files,
-     `url_state`, fingerprint candidates or link keys;
+   - which responses are real files (decisions 13 and 26): record role `document`, any
+     content format, and the two web-page checks (decision 19), with the link-shape
+     patterns as an exact list of regular expressions;
+   - which documents are listed (decision 24): at least one real file or one recovery;
+   - recovery imports are evidence for their original link, never real files,
+     `url_state`, fingerprint candidates, link keys or capture dates; the written
+     recovery-kind mapping, where an unmapped category fails the build;
+   - the import day, defined by the import run's ID, not by its date;
    - the edge set, in which placeholders (*k* = 100) and HTML connect nothing, and a
      shared endpoint connects two complete files only when their text fingerprints match
      (decision 10);
@@ -308,16 +336,21 @@ comparisons pass.
    checked in the engine's tests. The formulas keep the logical body key string
    `bodies/sha256/<aa>/<sha>.gz`.
 4. **Parity against F0,** on browser-visible fields, joined by link key so that documents
-   regrouped by the new rule still pair up. Expect many `document_id`s to change, all from
-   rule changes: about 30k documents lose error pages from their body sets, about 4,900
-   lose Senate landing pages, cut-off copies and recovery imports drop out of body sets,
-   and the HTML rule gives about 1.26M documents against 1.24M. Classify each difference:
-   - a rule change: fine, recorded with the rule;
-   - an old-pipeline error: the new model wins;
-   - a fact that exists only in derived tables: a blocker (open question 2).
+   regrouped by the new rule still pair up. Expect large, explained changes: about 560k
+   catalog rows leave the list (captions, metadata records, playlists, API responses),
+   about 30k documents lose error pages from their body sets, about 4,900 lose Senate
+   landing pages, and cut-off copies and recovery imports drop out of body sets.
+   - **The comparison reports by cause, not by document:** each known cause with its count
+     and a few sampled examples, and every difference that fits no known cause listed
+     separately. Only that last group needs reading one by one.
+   - Classify each unexplained difference:
+     - a rule change: fine, recorded with the rule;
+     - an old-pipeline error: the new model wins;
+     - a fact that exists only in derived tables: a blocker (open question 2).
 
-**Done when:** every difference is classified with no blocker left, and the model runs as
-a CLI job on the smallest runner.
+**Done when:** every known cause has its count and samples, every unexplained difference is
+classified with no blocker left, and the model runs as a CLI job on the smallest
+runner.
 
 The 38–95 minute Python rebuild from revision 1 (Step 0) is not needed: the pinned
 catalog pair, converted in F0, is the oracle.
@@ -428,8 +461,8 @@ These survive the switch unchanged:
 
 | When | Work |
 |---|---|
-| Week 1 | P4 lock; M1; M2; F0; C0; B13 and B14 start; A and B start |
-| Weeks 2–3 | A and B done, including B13 and B14; C under way |
+| Week 1 | P4 lock; M1; M2; F0; C0; B14; A and B start |
+| Weeks 2–3 | B13 once B1 and B3 are done; A and B done; C under way |
 | Weeks 2–6 | C (3.5–5.5 weeks) |
 | Then | D (1–2 weeks), E (2–4 weeks), F (1–2 weeks) |
 
