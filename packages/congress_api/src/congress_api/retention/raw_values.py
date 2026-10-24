@@ -35,9 +35,7 @@ def _to_legacy_capture_table(rows):
         for r in rows.to_pylist():
             sha_hex = format_sha256(r.get('sha256'))
             bkey = r.get('body_key') or (derive_body_key(sha_hex, r.get('media_type')) if sha_hex else None)
-            stored_sha = r.get('stored_sha256')
-            if stored_sha is None and r.get('is_stored'):
-                stored_sha = sha_hex
+            stored_sha = format_sha256(r.get('stored_sha256'))
             py_rows.append({
                 'family': r.get('family'),
                 'capture_date': r.get('capture_date'),

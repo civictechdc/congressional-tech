@@ -3,7 +3,7 @@
 Covers:
 - CAPTURE_SCHEMA & STATE_SCHEMA tightened field types
 - body_key omission on disk and lossless on-read derivation
-- is_stored: bool replacement for stored_sha256
+- stored_sha256 carried as FixedSizeBinary(32), never derived from sha256
 - sha256 FixedSizeBinary(32) with bidirectional Python boundary conversion
 - http_status int16 and UTC microsecond timestamp conversions
 - Row-group tuning (65,536 rows) and statistics configuration
@@ -45,10 +45,31 @@ from congress_api.retention.raw_storage import (
 # 1. Schema Definitions & Field Types
 # ---------------------------------------------------------------------------
 
-def test_capture_schema_omits_derivable_columns():
-    """Verify body_key and stored_sha256 are excluded on disk from CAPTURE_SCHEMA."""
+def test_capture_schema_omits_only_derivable_columns():
+    """body_key derives from sha256 and media type; the stored digest does not (gzip bytes differ)."""
     assert "body_key" not in CAPTURE_SCHEMA.names
-    assert "stored_sha256" not in CAPTURE_SCHEMA.names
+    assert CAPTURE_SCHEMA.field("stored_sha256").type.equals(pa.binary(32))
+
+
+def test_gzip_stored_digest_survives_the_capture_write_path():
+    """A capture's stored digest reaches the native table unchanged (ct-v9ua regression)."""
+    from congress_api.retention.raw_values import capture_table
+
+    content, stored = "aa" * 32, "bb" * 32
+    rows = [dict(family="house", sha256=content, bytes=8, stored_sha256=stored, stored_bytes=6,
+                 receipt_key="receipts/house/x.jsonl.gz", receipt_line=1, media_type="text/html")]
+    native = capture_table(prepare_capture_table(rows), first_order=0)
+    assert native["sha256"].to_pylist() == [content]
+    assert native["stored_sha256"].to_pylist() == [stored]
+
+
+def test_missing_stored_digest_stays_unknown():
+    """A stored capture without its stored digest is not given the content digest instead."""
+    from congress_api.retention.raw_values import capture_table
+
+    rows = [dict(family="house", sha256="aa" * 32, bytes=8, is_stored=True, stored_bytes=6)]
+    native = capture_table(prepare_capture_table(rows), first_order=0)
+    assert native["stored_sha256"].to_pylist() == [None]
 
 
 def test_state_schema_omits_derivable_columns():
@@ -241,6 +262,7 @@ def test_prepare_capture_table_normalizes_records():
     assert table.schema.equals(CAPTURE_SCHEMA, check_metadata=False)
     assert table["sha256"].to_pylist()[0] == bytes.fromhex(hex_dig)
     assert table["is_stored"].to_pylist()[0] is True
+    assert table["stored_sha256"].to_pylist()[0] == bytes.fromhex(hex_dig)
     assert table["http_status"].to_pylist()[0] == 200
     assert "body_key" not in table.column_names
 

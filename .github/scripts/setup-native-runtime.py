@@ -10,7 +10,7 @@ import re
 import sys
 
 from congress_api.retention.derived_files import copy_checked
-from congress_api.retention.docspec import REQUIRED_LOOPBACK_CAPABILITIES, NativeDatasets
+from congress_api.retention.docspec import QUALIFIED_DOCSPEC_RUNTIME, REQUIRED_LOOPBACK_CAPABILITIES, NativeDatasets
 
 MAX_BINARY_BYTES = 1024**3
 SECRET_NAMES = {'DOCSPEC_CATALOG_TOKEN', 'DOCSPEC_S3_ACCESS_KEY_ID', 'DOCSPEC_S3_SECRET_ACCESS_KEY'}
@@ -52,6 +52,11 @@ def artifact_descriptor(raw):
     expected = f"runtime/docspec/{value['source_revision']}/linux-amd64/{value['sha256']}/docspec"
     if value['key'] != expected:
         raise SetupFailure('Runtime artifact key differs from its revision, platform or digest')
+    # The descriptor only proves the bytes match itself; the application decides
+    # which engine revision it is qualified against.
+    if value['source_revision'] != QUALIFIED_DOCSPEC_RUNTIME['source_revision']:
+        raise SetupFailure('Runtime artifact revision differs from the qualified DocSpec revision '
+                           f"{QUALIFIED_DOCSPEC_RUNTIME['source_revision']}")
     return {**value, 'build_features': list(dict.fromkeys(features)),
             'required_capabilities': list(dict.fromkeys(capabilities))}
 

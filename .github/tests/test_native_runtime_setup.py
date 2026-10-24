@@ -23,7 +23,7 @@ def module():
 @pytest.fixture
 def inputs():
     binary = b'\x7fELF-qualified-private-runtime-fixture'
-    digest, revision = sha256(binary).hexdigest(), '1' * 40
+    digest, revision = sha256(binary).hexdigest(), module().QUALIFIED_DOCSPEC_RUNTIME['source_revision']
     descriptor = dict(version=1, platform='linux-amd64', source_revision=revision,
         bucket='private-runtime-fixture', key=f'runtime/docspec/{revision}/linux-amd64/{digest}/docspec',
         bytes=len(binary), sha256=digest)
@@ -79,6 +79,16 @@ def test_descriptor_refuses_unpinned_or_changed_distribution(inputs, change):
     _, descriptor, _ = inputs
     with pytest.raises(ValueError):
         module().artifact_descriptor(json.dumps({**descriptor, **change}))
+
+
+def test_descriptor_refuses_a_self_consistent_artifact_from_another_revision(inputs):
+    _, descriptor, _ = inputs
+    stale = '9' * 40
+    assert stale != module().QUALIFIED_DOCSPEC_RUNTIME['source_revision']
+    changed = {**descriptor, 'source_revision': stale,
+               'key': f"runtime/docspec/{stale}/linux-amd64/{descriptor['sha256']}/docspec"}
+    with pytest.raises(ValueError, match='qualified DocSpec revision'):
+        module().artifact_descriptor(json.dumps(changed))
 
 
 @pytest.mark.parametrize('fault',['size', 'truncated', 'extra', 'digest'])

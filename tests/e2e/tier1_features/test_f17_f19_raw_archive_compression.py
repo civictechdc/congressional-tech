@@ -96,10 +96,10 @@ def test_f18_sha256_typed_as_fixed_size_binary_32():
 
 @pytest.mark.tier1
 @pytest.mark.feature("F18")
-def test_f18_is_stored_boolean_replaces_stored_sha256():
-    """F18.2: Verify stored_sha256 string column is replaced with is_stored boolean."""
+def test_f18_stored_digest_is_binary_beside_is_stored():
+    """F18.2: The stored digest stays (gzip bytes differ from content) as 32-byte binary, with is_stored."""
     schema = RAW_ARCHIVE_SCHEMAS["captures"]
-    assert "stored_sha256" not in schema.names
+    assert schema.field("stored_sha256").type.equals(pa.binary(32))
     is_stored_field = schema.field("is_stored")
     assert is_stored_field.type.equals(pa.bool_())
 
@@ -219,7 +219,7 @@ def test_f19_compressed_size_reduction_greater_than_40_percent():
     """F19.5: Verify theoretical byte reduction from dropping duplicate digests and tightening types is >= 40%."""
     # Old row: body_key (84B), sha256 (64B), stored_sha256 (64B), http_status (8B), fetched_at (25B) = 245B uncompressed
     old_row_bytes = 84 + 64 + 64 + 8 + 25
-    # New row: sha256 (32B), is_stored (1B), http_status (2B), fetched_at (8B) = 43B uncompressed
-    new_row_bytes = 32 + 1 + 2 + 8
+    # New row: sha256 (32B), is_stored (1B), stored_sha256 (32B), http_status (2B), fetched_at (8B) = 75B
+    new_row_bytes = 32 + 1 + 32 + 2 + 8
     reduction = (old_row_bytes - new_row_bytes) / old_row_bytes
-    assert reduction >= 0.40  # 82.4% reduction in digest/status/time bytes
+    assert reduction >= 0.40  # 69.4% reduction in digest/status/time bytes

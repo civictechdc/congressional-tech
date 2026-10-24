@@ -277,8 +277,11 @@ def store_public_body(store, data, *, content_type_or_format=None, excluded_hash
     )
 
 
-def migrate_pdf_bodies_to_uncompressed(store, *, keys=None, delete_gzip=False, excluded_hashes=None):
-    """Idempotently decompress retained PDF bodies (and ZIP-member PDFs) to bodies/sha256/<xx>/<sha256>.pdf."""
+def migrate_pdf_bodies_to_uncompressed(store, *, keys=None, excluded_hashes=None):
+    """Idempotently decompress retained PDF bodies (and ZIP-member PDFs) to bodies/sha256/<xx>/<sha256>.pdf.
+
+    The canonical gzip body is never removed: it is the raw record the PDF copy derives from.
+    """
     from congress_api.retention.archive_members import ArchiveReadError, ZipLimits, is_office_zip, iter_archive_members
 
     active_exclusions = (
@@ -312,8 +315,6 @@ def migrate_pdf_bodies_to_uncompressed(store, *, keys=None, delete_gzip=False, e
         pdf_key = physical_body_object_key(key, is_pdf=True)
         if _object_exists(pdf_key):
             already_present.append(pdf_key)
-            if delete_gzip and hasattr(store, 'delete'):
-                store.delete(key)
             continue
         compressed = store.read(key)
         if compressed is None:
@@ -327,8 +328,6 @@ def migrate_pdf_bodies_to_uncompressed(store, *, keys=None, delete_gzip=False, e
             else:
                 store.put(pdf_key, raw_bytes, immutable=True)
             migrated_pdfs.append(pdf_key)
-            if delete_gzip and hasattr(store, 'delete'):
-                store.delete(key)
             continue
         if raw_bytes.startswith((b'PK\x03\x04', b'PK\x05\x06')) and not is_office_zip(raw_bytes, limits=ZipLimits()):
             try:
@@ -955,8 +954,6 @@ class RawStorage:
                         quarantine=False,
                     )
                 stored_sha = row.get('stored_sha256')
-                if stored_sha is None and row.get('is_stored'):
-                    stored_sha = sha_hex
                 info = {
                     'body_key': body_key,
                     'sha256': sha_hex,

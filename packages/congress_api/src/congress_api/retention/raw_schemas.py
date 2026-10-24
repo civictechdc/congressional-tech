@@ -21,6 +21,9 @@ CAPTURE_SCHEMA = pa.schema([
     ("sha256", pa.binary(32)),
     ("bytes", pa.int64()),
     ("is_stored", pa.bool_()),
+    # The stored object's own digest. For gzip bodies it differs from sha256,
+    # so it is carried from the receipt and never derived.
+    ("stored_sha256", pa.binary(32)),
     ("stored_bytes", pa.int64()),
     ("fidelity", pa.string()),
     ("media_type", pa.string()),
@@ -252,6 +255,7 @@ def normalize_capture_dict(d):
         "sha256": sha,
         "bytes": d.get("bytes"),
         "is_stored": is_stored,
+        "stored_sha256": parse_sha256(stored_sha),
         "stored_bytes": d.get("stored_bytes"),
         "fidelity": d.get("fidelity"),
         "media_type": d.get("media_type"),

@@ -248,7 +248,8 @@ RAW_ARCHIVE_SCHEMAS: dict[str, pa.Schema] = {
         ("context_url", pa.string()),
         ("sha256", pa.binary(32)),             # FixedSizeBinary(32)
         ("bytes", pa.int64()),
-        ("is_stored", pa.bool_()),             # Replaces stored_sha256
+        ("is_stored", pa.bool_()),
+        ("stored_sha256", pa.binary(32)),      # Stored object digest; differs from sha256 for gzip
         ("stored_bytes", pa.int64()),
         ("fidelity", pa.string()),
         ("media_type", pa.string()),
@@ -273,7 +274,7 @@ RAW_ARCHIVE_SCHEMAS: dict[str, pa.Schema] = {
     ]),
 }
 
-FORBIDDEN_RAW_ARCHIVE_COLUMNS = frozenset({"body_key", "stored_sha256"})
+FORBIDDEN_RAW_ARCHIVE_COLUMNS = frozenset({"body_key"})
 
 # ---------------------------------------------------------------------------
 # 5. Canonical Catalog & Review Schemas (F20-F23 & ct-8od2)
