@@ -39,11 +39,14 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 7 | Documents only | No per-copy pages and no `sources` file. Per-copy filename readings stay in the lake. |
 | 8 | Links point at a file; 16-hex keys | `links.parquet` maps every body's key to its document. F0 uses it, so links survive the switch. |
 | 9 | Desktop and mid-range phones | The reader decodes `list` column by column; the canary and contract test enforce a heap budget. |
-| 10 | One representative saved file per page | The rule is written with the grouping rule (E1). |
+| 10 | A document is one distinct content; its page links its newest real file | Text fingerprints only where one URL gave 2+ complete files (D2); the rule is part of E1. |
 | 11 | hyparquet stays in the browser | Page reads through offset indexes (A1, C3). |
 | 12 | Older gzip PDFs get uncompressed copies; other older bodies unpack in the browser | B13 and A5. |
-| 13 | Only real files count as a document's files: 2xx responses of the document's own type | Receipts record the sniffed format (B2); older bodies without one get a ranged sniff (D2); the rule is part of E1. |
+| 13 | Only real files count as a document's files: complete, 2xx, a document type by sniffed format, non-empty, not a placeholder, API metadata or playlist, and not corrected away | Receipts record the sniffed format (B2); older bodies without one get a ranged sniff (D2); the rule is part of E1. |
 | 14 | No early launch: the explorer waits for the engine-built release | F0 is the reader's fixture and the parity oracle only. |
+| 15 | Re-fetch the 62 URLs that only have a 64 MiB cut-off copy; a size-limit outcome means retry | B2 and B14. |
+| 16 | Investigate, then correct, the Oct 15 recovery run | B15; corrections are new provenance records. |
+| 17 | Show capture dates | A6 and E2. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -144,9 +147,11 @@ run beside C. Estimated total: **8–16 weeks**.
 4. **A CI contract test:** the real site in a headless browser against F0, within the heap
    budget. It moves to a release built from a fixed sample of real receipts once track E
    exists.
-5. **Saved copies:** link the representative file. Older gzip PDFs open their `.pdf` copy
+5. **Saved copies:** link the document's saved file. Older gzip PDFs open their `.pdf` copy
    (B13). Other older gzip bodies are fetched, unpacked with `DecompressionStream`, and
    opened with the media type from `detail`.
+6. **Capture dates:** the first-captured date in list rows, so same-filename editions
+   read apart, and the first and last capture dates on the document page.
 
 **Done when:** the site loads F0 locally on desktop and in a phone-sized profile, and the
 canary passes against F0 in under a minute.
@@ -167,6 +172,8 @@ This code survives, so it is fixed now.
      `Content-Type`; new PDFs are stored as-is;
    - one create-only PUT per body with Content-MD5, never multipart;
    - a 412 is recorded as `unchanged`, with no HEAD and no comparison (ct-klql);
+   - the fetcher spools each body to a temporary file and never cuts one off; a
+     `size_limit` or `request_failed` outcome is retried;
    - receipt keys use the UTC write date.
 3. **One namespace policy for raw keys.** Write the refusal matrix first: every writer
    (`R2Store.put`, `put_file`, `put_pdf_body`, `AsyncBodies.put`, `LocalStore.put`) refuses
@@ -199,9 +206,18 @@ This code survives, so it is fixed now.
     every older gzip PDF: create-only to `bodies/sha256/<aa>/<sha>.pdf`, with Content-MD5,
     and the decompressed SHA-256 checked before upload. About 261k uploads and 365 GB, a few
     hours. Copies that already exist return 412 and are skipped.
+14. **Re-fetch the cut-off files** (week 1, in today's capture path): the 62 URLs whose only
+    copy was cut off at 64 MiB. The cut-off copies stay in raw.
+15. **Audit the Oct 15 recovery run** (`receipts/documents/2026-10-15/download-filename-recovery-all-*`):
+    trace what produced 2-page PDFs recorded as exact copies of six Ways and Means
+    transcripts; check the run's 5,587 captures, for example page counts against the
+    publisher's current size by HEAD; then write capture-correction records under
+    `provenance/` (design §4.3). Nothing is edited or deleted. The Iceberg/Parquet review
+    session offered the owner a separate session for this.
 
 **Done when:** the refusal matrix passes, the lock is on, one capture run's `stored` lines
-carry MD5s that match the stored ETags, and every older gzip PDF has its copy.
+carry MD5s that match the stored ETags, every older gzip PDF has its copy, the 62 cut-off
+URLs have complete copies or a recorded reason, and the Oct 15 corrections are recorded.
 
 ### C. Engine capabilities (docspec-rs)
 
@@ -249,7 +265,8 @@ threads and batch sizes, on the smallest runner.
    in the model SQL excludes ZIPs, captions and untyped bodies. First give every older body
    without a recorded format one ranged read of its first bytes, which the real-files rule
    needs (decision 13). Then backfill HTML, XML and JSON (about 5 GB), then PDF titles and
-   page counts as a background job (about 335 GB).
+   page counts as a background job (about 335 GB). The `fingerprint` parser reads only the
+   bodies at URLs with two or more complete files (dozens today).
    The parser functions survive; the adoption machinery around them goes in F3.
 3. **`filename_readings`** (design §5.3): a producer that runs `house-naming` over the
    work list and appends through the engine. Backfill is about 7 minutes over 1.39M pairs.
@@ -261,21 +278,24 @@ comparisons pass.
 ### E. Model SQL and parity
 
 1. **Write the grouping rule down first,** as SQL with a short rationale:
-   - which responses are real files (decision 13: 2xx, sniffed format of the document's
-     own type);
-   - the edge set, in which placeholders (*k* = 100) and HTML connect nothing;
-   - the fixed rule, with logical tie-breaks only, that picks each document's
-     representative file (decision 10).
+   - which responses are real files (decision 13), including how a web page is
+     recognized and how capture corrections exclude a body;
+   - the edge set, in which placeholders (*k* = 100) and HTML connect nothing, and a
+     shared endpoint connects two complete files only when their text fingerprints match
+     (decision 10);
+   - the saved file: the newest real file, ties broken by body hash.
 2. **The model SQL** (design §6.1): `url_state`, `filenames`, `documents`, `members`,
-   `recoveries`, `reviews`, and the release files.
+   `recoveries`, `reviews`, and the release files, with `list` sorted by filename and then
+   first-captured date.
 3. **Golden vectors** for `source_id` and `document_id`, generated from Python
    `source_identity` and `compute_document_id` (`retention/index/bipartite.py:165,197`) and
    checked in the engine's tests. The formulas keep the logical body key string
    `bodies/sha256/<aa>/<sha>.gz`.
 4. **Parity against F0,** on browser-visible fields, joined by link key so that documents
    regrouped by the new rule still pair up. Expect many `document_id`s to change, all from
-   rule changes: about 30k documents lose error pages from their body sets, and the HTML
-   rule gives about 1.26M documents against 1.24M. Classify each difference:
+   rule changes: about 30k documents lose error pages from their body sets, about 4,900
+   lose Senate landing pages, cut-off and corrected copies drop out, and the HTML rule
+   gives about 1.26M documents against 1.24M. Classify each difference:
    - a rule change: fine, recorded with the rule;
    - an old-pipeline error: the new model wins;
    - a fact that exists only in derived tables: a blocker (open question 3).
@@ -391,8 +411,8 @@ These survive the switch unchanged:
 
 | When | Work |
 |---|---|
-| Week 1 | P4 lock; M1; M2; F0; C0; B13 starts; A and B start |
-| Weeks 2–3 | A, B and B13 done; C under way |
+| Week 1 | P4 lock; M1; M2; F0; C0; B13, B14 and B15 start; A and B start |
+| Weeks 2–3 | A and B done, including B13–B15; C under way |
 | Weeks 2–6 | C (3.5–5.5 weeks) |
 | Then | D (1–2 weeks), E (2–4 weeks), F (1–2 weeks) |
 

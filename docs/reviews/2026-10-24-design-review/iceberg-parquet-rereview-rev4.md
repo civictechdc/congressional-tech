@@ -47,8 +47,8 @@ None of these blocks week one. Fold R1 and R3 into M1 and M2 before they run.
      HTML and 4,125 PDF plus HTML. The HTML was mostly HTTP 503 "retry later" pages: 25,236
      bodies, about 14 KB each, unique bytes per URL.
    - About 3,600 more HTML bodies were 404, 503 request-failed, 522 and 410 pages.
-   - Real multi-version documents (two distinct PDFs, ZIPs or JSON files) number about 320.
-   - Decision 4 (one representative file) therefore affects about 320 documents, not 40k.
+   - The "about 320" figure first recorded here was wrong. The full trace is under decisions
+     6–9 below.
    - Scripts: `multi_bodies.py` and `html_status.py` in this session's scratchpad. Reproduce them
      before citing in the repo.
 
@@ -213,3 +213,74 @@ pool from 16 MB.
 | C3 | Per-file offset-index and page settings (R4); fixed-row rechunking (R9) |
 | D2 | Partition `readings` by `(parser, parser_version)` (R8) |
 | §6.4 | Early-skip key and input high-water marks (R6, R7) |
+
+## Decisions 6–9 and the multi-file trace (2026-10-24, later)
+
+These were traced on the Oct 19 catalog (documents.parquet joined to captures.parquet in DuckDB
+from the project venv). Samples were sniffed by reading the first bytes of public bodies on
+`congressional-data.spicygov.ai` with an anonymous user agent. Scripts are in this session's
+scratchpad (`real_versions.py`, `rv2.py`–`rv6.py`, `trunc.py`, `the46.py`, `sniff46.py`,
+`wm_small.py`, `wm_caps.py`, `recov_run.py`, `two_versions.py`); reproduce them before citing in
+the repo.
+
+**The 39,853 "multi-file" documents, traced:**
+- **30,303:** the real ZIP or PDF plus an HTTP error page from the same URL. 25,236 are govinfo
+  503 "retry later" pages, about 14 KB each, unique bytes per URL.
+- **About 4,900:** Senate committee `/download/<slug>` landing pages, saved with no media type.
+  The real PDF came from the `?download=1` form of the link.
+- **413:** an empty body (`e3b0c442…`, SHA-256 of zero bytes) from Senate video playlist URLs,
+  seen at 2,817 URLs.
+- **120:** congress.gov API JSON re-fetched day to day. This is metadata, not a document file.
+- **43:** glued by placeholder bodies seen at 5+ URLs.
+- **About 236:** downloads cut short. 201 bodies are exactly 67,108,864 bytes (64 MiB), recorded
+  with HTTP 200 but outcome `size_limit` or `request_failed`, and fidelity still labeled
+  "exact-bytes". Of the 207 URLs involved, 145 later got the full file and 62 have only the
+  cut-off copy.
+- **46 left, sniffed one by one:**
+  - 38 are more untyped error and landing pages (govinfo retry 8; congress.gov Cloudflare 520,
+    7,347 B, 8; 62-byte "Service Unavailable" 4; Senate Finance landing pages only 6; Aging and
+    Banking landing page plus the real PDF 5; CBO, GAO and DOL block pages 6; one docs.house.gov
+    HTML page that glued 78 unrelated documents together);
+  - 6 are Ways and Means transcripts with a 2-page copy (see decision 7);
+  - 2 are genuine publisher versions: Education and Labor committee rules (Jan 2007 committee
+    draft, 15 pages, vs the Dec 2007 GPO committee print, 20 pages, 81% the same text) and
+    BILLS-112hr1063ih (identical text; GPO re-processed the PDF with iText in Jan 2023).
+
+**Rule refinements this forces (decision 5, made concrete).** A document file must be all of:
+- a complete fetch: receipt outcome stored or verified, never `size_limit` or `request_failed`,
+  whatever the HTTP status;
+- typed by its sniffed bytes, not the server's Content-Type;
+- non-empty;
+- below the placeholder threshold;
+- not API metadata or a playlist.
+
+**Decision 6:** re-fetch the 62 URLs that have only a cut-off copy. From now on, capture treats a
+`size_limit` outcome as retry. The cut-off copies stay in raw as evidence.
+
+**Decision 7:** investigate, then correct, the Oct 15 run `download-filename-recovery-all-20261015`.
+- Its receipts record 2-page PDFs as exact-bytes HTTP 200 captures of six Ways and Means
+  transcript URLs.
+- docs.house.gov still serves the full files: a HEAD on Oct 24 returned 341,551,303 and
+  5,439,384 bytes, the same as our Sept 29 copies, which have 196 and 112 pages.
+- The run wrote 5,587 captures for 5,437 URLs. Only 93 of those URLs have another successful
+  copy to compare against: in 6 the other copy is more than double the size, and in 16 the run's
+  copy is.
+- The code that produced the 2-page files was not found in the current tree.
+- Corrections go under `provenance/` as new records that supersede by ID. Nothing is deleted or
+  rewritten.
+
+**Decision 8 (supersedes decision 4, the one-representative-file rule):** a document is one
+distinct content.
+- When one URL yields 2+ complete files, compare the normalized text fingerprint (for ZIPs, the
+  member hashes). The fingerprint is computed by the readings parser only for those candidates.
+- Same text means the same document; show the newest bytes, and older bytes still resolve.
+- Different text means separate documents.
+- Files with no extractable text stay separate.
+- There is no full-corpus text pass (owner choice).
+
+**Decision 9:** show when a file was captured.
+- `detail` keeps it, as today's site does (`detail-record.ts:5`).
+- `list` rows add the first-captured date, so editions that share a filename are
+  distinguishable.
+- There are no separate "other editions" links: same-filename editions sort side by side.
+- Caveat: about 1M files from the Sept 29 backfill carry the import day as their capture time.

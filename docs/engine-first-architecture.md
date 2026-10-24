@@ -112,6 +112,11 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
   and moves on, with no HEAD and no comparison. The object was verified when it was
   created, and the weekly check compares it with the receipt line that created it. Over
   half of body-bearing attempts hit an existing body, so this path must cost nothing.
+- **Nothing is cut off.** The fetcher spools each body to a temporary file, so any size up
+  to the single-PUT limit is stored whole. Older runs cut 201 bodies off at exactly
+  64 MiB and recorded them as HTTP 200 with outcome `size_limit` or `request_failed`.
+  Those copies stay in raw as evidence; they are never document files, and capture
+  retries their URLs.
 
 ### 4.2 Receipts
 - One immutable file per fetch run, keyed by its UTC write date. Each line records:
@@ -131,6 +136,10 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
 - **Contents:** every decision a person or a reviewed process makes about sources, such as
   accepted URL variants, recovery bases and document review decisions, as append-only,
   timestamped records.
+- **Capture corrections** are provenance records too. One marks a receipt line's body as
+  not a faithful copy of its URL, and the model then never treats that body as the URL's
+  document file. Example: an Oct 15 recovery run recorded 2-page PDFs as exact copies of
+  six Ways and Means transcripts that the House still serves in full.
 - **Corrections are new records** that supersede old ones by ID. Old records are never
   edited.
 
@@ -190,6 +199,10 @@ become orphans (5.4).
   - Every body has a sniffed format: the one its receipt or older capture row recorded,
     or, where none was recorded, one ranged read of its first bytes during the backfill.
     The grouping rule (6.1) depends on it.
+  - **Text fingerprints, for candidates only.** A `fingerprint` parser reads the bodies at
+    URLs that produced two or more complete files, and records a normalized text
+    fingerprint (for a ZIP, its sorted member hashes). Today that is dozens of files.
+    There is no full-corpus text pass.
 - **Work list:** an anti-join on `(sha, parser, parser_version)`. A daily run appends once.
   A backfill appends once per batch, so it always resumes.
 - **New parser versions** are backfilled in background batches. A version is complete when
@@ -210,7 +223,7 @@ become orphans (5.4).
 - **Work list:** pairs in `captures` that have no row for the current catalog version.
   Daily cost is under a second. A new catalog version is one background job of about 7
   minutes over 1.39M pairs.
-- **Scope in releases.** The model uses each document's representative reading. Per-copy
+- **Scope in releases.** The model uses the reading of each document's saved file. Per-copy
   readings stay in the lake.
 
 ### 5.4 Maintenance
@@ -235,7 +248,7 @@ become orphans (5.4).
 
 | Output | Content |
 |---|---|
-| `url_state` | Latest outcome and retry schedule per URL |
+| `url_state` | Latest outcome and retry schedule per URL; `size_limit` and `request_failed` outcomes are retried |
 | `filenames` | One row per source file: a `(body, filename, source URL)` triple, whose SHA-256 is `source_id` |
 | `documents` | Source files grouped by the engine's ConnectedComponents; `document_id` is the SHA-256 of the sorted body set, or of the sorted source IDs when there is no body |
 | `members` | `(document_id, source_id)` |
@@ -243,20 +256,42 @@ become orphans (5.4).
 
 - **ID formulas** keep today's exact inputs, including the logical body key string
   `bodies/sha256/<aa>/<sha>.gz`, whatever the physical key. IDs then match the pinned
-  catalog wherever the grouping agrees.
+  catalog wherever the grouping agrees. Links don't depend on `document_id` (6.2), so an
+  ID that changes when re-packaged bytes join costs nothing. A fingerprint-keyed ID would
+  cover only the few documents that have a fingerprint.
 
-- **A document is a group of source files** the model treats as one document. Source files
-  connect through identical document bodies and through shared canonical endpoints
-  (filename plus URL); connections chain.
-- **A document's files are real files only:** 2xx responses whose sniffed format is the
-  document's own type (PDF, ZIP, XML, JSON or video playlist, and HTML only for documents
-  that are web pages). The classification uses the sniffed format and the receipt's HTTP
-  status and outcome, never the server's `Content-Type`, which mislabels error pages.
-  Error and "retry later" pages stay in raw and `captures` as evidence. They never enter a
-  document's body set, so they never change its ID, its saved file or its links. On the
-  Oct 19 data, most documents with several bodies were a real ZIP or PDF beside a govinfo
-  503 page (25,236 such pages, unique bytes per URL); real multi-version documents number
-  about 320.
+- **A document is one distinct content.** Its files are the real files (below) with that
+  content. Source files connect through identical real files, and through a shared
+  canonical endpoint (filename plus URL) when the files there have the same content.
+  Connections chain.
+- **Real files.** A body is a document file only if all of these hold:
+  - the fetch was complete: outcome `stored` or `unchanged`, never `size_limit` or
+    `request_failed`, whatever the HTTP status;
+  - the HTTP status was 2xx;
+  - its sniffed format is a document type: PDF, ZIP or XML, or HTML for documents that are
+    web pages. The server's `Content-Type` is never used, because it mislabels error pages.
+    E1 writes down how a web page is recognized, so that a landing page in front of a PDF
+    doesn't count;
+  - it is not empty, not a placeholder, and not API metadata or a playlist;
+  - no capture correction excludes it (4.3).
+
+  Everything else stays in raw and `captures` as evidence. It never enters a document's
+  body set, so it never changes the document's ID, saved file or links.
+- **Why, measured on the Oct 19 catalog.** Of 39,853 documents with more than one body:
+  - 30,303 were a real ZIP or PDF beside an HTTP error page, including 25,236 govinfo
+    "retry later" pages;
+  - about 4,900 were Senate landing pages saved with no media type;
+  - 413 shared an empty body from playlist URLs, and 120 were API JSON;
+  - about 236 were cut-off downloads, and 43 were placeholders;
+  - 38 were other error or block pages (one glued 78 unrelated documents together);
+  - 6 were bad transcript captures from the Oct 15 run.
+
+  Two were genuinely different publisher versions.
+- **One URL, several complete files.** Their text fingerprints (5.2) decide:
+  - same text: one document whose bytes were re-packaged. The page shows the newest
+    bytes, and older bytes still resolve through links;
+  - different text: separate documents, since a new edition is a new document;
+  - no text: separate documents.
 - **Grouping rule.** The edge set is SQL and is written down before anything is compared
   with the old catalog. Only real files connect, and two kinds of real file connect
   nothing:
@@ -268,10 +303,8 @@ become orphans (5.4).
 
   With these rules the real graph gives about 1.26M documents, and the largest has 456
   source files.
-- **Representative file.** Each document names one representative saved file, chosen in
-  SQL by a fixed rule with logical tie-breaks only, never physical file order, so every run
-  picks the same one. The page links that file. The other versions of the roughly 320
-  multi-version documents stay in R2, unlinked; `document_id` still covers them all.
+- **Saved file.** The page links the document's newest real file, with ties broken by
+  body hash, never by physical file order. Most documents have exactly one.
 - **Grouping runs in memory** over 32-bit IDs and refuses above a configured node count.
   The parent array is 16 MB at 4M nodes. Assigning dense IDs to the node keys is a hash
   aggregation of a few hundred MB, which sizes the memory pool. Spilling would be wasted
@@ -283,21 +316,25 @@ the list row number links them.
 
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
-| `list.parquet` (about 4 MB) | `(filename, document_id)` | Display name and facet fields; no ID | Downloaded whole, decoded column by column in a Web Worker | Defaults; no page index |
-| `detail.parquet` | Same row order as `list` | One folded `List<Struct<field, value>>` per row of document-level facts: representative original URL, representative saved file (key, media type), the document's readings, occurrence row range | One page per leaf column, located by the offset index | Offset index on every column; pages of about 16 KB or 256 rows, with the write batch no larger |
+| `list.parquet` (about 4 MB) | `(filename, first_captured, document_id)` | Display name, facet fields and first-captured date; no ID | Downloaded whole, decoded column by column in a Web Worker | Defaults; no page index |
+| `detail.parquet` | Same row order as `list` | One folded `List<Struct<field, value>>` per row of document-level facts: original URL, saved file (key, media type), first and last capture dates, the document's readings, occurrence row range | One page per leaf column, located by the offset index | Offset index on every column; pages of about 16 KB or 256 rows, with the write batch no larger |
 | `links.parquet` (about 14 MB) | `link_key` | 8-byte link key and list row | Point lookup via the column index | Offset index and page statistics on `link_key`; small pages |
 | `occurrences.parquet` (about 30 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, filename, capture date | The range named in `detail` | Offset index on every column |
 | `url_state.parquet` (about 40 MB) | `url` | Latest outcome and retry schedule per URL | Read whole by the capture job, not the site | Defaults |
 
-- **Documents only.** There are no per-copy pages. A document page shows its
-  representative file, its readings and where each copy was seen.
+- **Documents only.** There are no per-copy pages. A document page shows its saved file,
+  its capture dates, its readings and where each copy was seen.
+- **Editions sit together.** `list` sorts by filename and then first-captured date, so two
+  editions with the same filename appear side by side with their dates. There are no
+  "other editions" links. The date column is dictionary-encoded and adds well under 1 MB.
+  Files from the Sept 29 backfill (about 1M) carry the import day as their capture date.
 - **Links point at a file.** A document's ID changes whenever a version joins its group.
   A file's fingerprint never changes. So a public link carries `link_key`: the first 8
   bytes (16 hex characters) of a body's SHA-256. `links.parquet` maps every real file of
   every document to that document's row, so old links keep resolving when the group or its
-  representative changes. Error pages are never keys. A document with no saved file uses a prefix of its
-  `document_id`. An HTML body shared by two documents resolves to the first in list order.
-  The export refuses if two keys collide.
+  saved file changes. Error pages are never keys. A document with no saved file uses a
+  prefix of its `document_id`. An HTML body shared by two documents resolves to the first
+  in list order. The export refuses if two keys collide.
 - **No ID in `list`.** Measured on the real documents: 4.05 MB without an ID, 15.8 MB with
   an 8-byte ID and 45.9 MB with hex IDs.
 - **Detail reads.** hyparquet reads single pages when a file has an offset index
@@ -531,15 +568,20 @@ today's scale and at 10 times it.
 
 1. **PDF readings:** title and page count, or nothing. Each new PDF parser version re-reads
    about 335 GB.
-2. **Representative file rule:** written with the grouping rule (plan, step E1).
-3. **Retention numbers:** releases kept and snapshot age.
-4. **R2 token scoping:** confirm with current Cloudflare docs.
-5. **news_lake** adopts the same three layers later; out of scope here.
+2. **Web pages:** how the grouping rule recognizes a document that is a web page (plan,
+   step E1).
+3. **Backfill dates:** how the site labels the import-day capture date of the files from
+   the Sept 29 backfill.
+4. **Retention numbers:** releases kept and snapshot age.
+5. **R2 token scoping:** confirm with current Cloudflare docs.
+6. **news_lake** adopts the same three layers later; out of scope here.
 
 Decided by the owner on Oct 24: one bucket; `r2.dev` open; documents only; links by file
-fingerprint; 16-hex public keys; desktop and mid-range phones; one representative saved
-file per page; only real files count as a document's files; hyparquet in the browser;
-uncompressed copies of older PDFs only; no early launch on the converted Oct 19 release.
+fingerprint; 16-hex public keys; desktop and mid-range phones; only real files count as a
+document's files; a document is one distinct content, showing its newest bytes; capture
+dates shown; cut-off copies re-fetched; the Oct 15 recovery run investigated and
+corrected; hyparquet in the browser; uncompressed copies of older PDFs only; no early
+launch on the converted Oct 19 release.
 
 ## Reviews
 
@@ -567,7 +609,7 @@ and the owner's decisions:
 | Determinism missing chunking | Fixed row counts per row group; batch sizes and spills tested (6.3) |
 | `list` decoded as objects | Column-by-column decode, heap budget in canary and contract test (7) |
 | Grouping rule and untyped bodies unspecified | *k* = 100 from measurement, HTML reason, untyped bodies out of scope (5.2, 6.1) |
-| Owner decisions | Documents only, file links, representative file, real files only, older-copy handling (4.2, 5.2, 6.1, 6.2, 7) |
+| Owner decisions | Documents only, file links, real files only, one document per distinct content, capture dates, no cut-off copies, capture corrections, older-copy handling (4.1–4.3, 5.2, 6.1, 6.2, 7) |
 
 ## Appendix: path from the current system
 
