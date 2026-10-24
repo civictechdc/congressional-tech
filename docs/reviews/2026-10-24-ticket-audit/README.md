@@ -29,10 +29,10 @@ commits. Code was read at congressional-tech `c858a5a2` and docspec-rs `d9c6719`
 | kl2a1aa | ct-8kl2 (single bucket), ct-a1aa (news_lake) | 29 | 3 | 14 | 9 | 0 | 2 | 84.4 | 75.0 |
 | syem | ct-syem (CS300 audit), ct-d3un, ct-4t6s | 33 | 11 | 6 | 15 | 0 | 1 | 78.7 | 72.9 |
 | docspec | docspec-rs (ss-yjut, ss-55jg, others) | 37 | 6 | 18 | 12 | 0 | 1 | 82.5 → 81.5 | 77.4 → 77.2 |
-| **All** | | **253** | **90** | **93** | **55** | **10** | **4** | **≈81 (B-)** | **≈79 (C+)** |
+| **All** | | **253** | **90** | **93** | **55** | **10** | **4** | **83.3 → 80.9 (B-)** | **79.1 → 78.9 (C+)** |
 
 kl2a1aa and syem applied the greenfield lens in their first pass. One kl2a1aa ticket
-could not be verified. All averages are weighted by ticket count.
+could not be verified. All averages are weighted by ticket count (`compiled.json`).
 
 ## Raw-data status (checked directly, not by a reviewer)
 
@@ -45,6 +45,22 @@ could not be verified. All averages are weighted by ticket count.
   on Oct 24; the next scheduled capture is the first chance to resume.
 - No finding showed a raw body or receipt being lost, overwritten or deleted.
 
+## Actions taken on Oct 24
+
+- **`54a68ac7`, pushed to main:**
+  - The capture schema carries `stored_sha256`, and the two places that inferred it now leave it null when unknown (risk 3).
+  - Hosted setup refuses any engine revision other than `QUALIFIED_DOCSPEC_RUNTIME` (risk 2).
+  - `delete_gzip` is removed (risk 5).
+  - Checks: capture workflow offline suites (6207 + 84 passed); the affected raw, edge, recovery and e2e files (175 passed); engine-backed raw storage tests (38 passed); the hosted capture validation passed.
+- **Recovery decisions backup:** a verified create-only copy is at
+  `provenance/recoveries/accepted-00922c1e….json` (9,638,187 bytes, sha256
+  `00922c1eb29d84cdf68b1d17fb00e050f443942f13b3d35e775192ff42b73864`), with a local copy
+  in `output/provenance-backup-20261024/`.
+- **Owner action pending:** R2 bucket lock rules on `receipts/`, `bodies/` and
+  `provenance/` (indefinite).
+- **Still to check:** whether the selected native capture index holds rows written
+  with the wrong `stored_sha256` between Oct 22 and Oct 24.
+
 ## Raw-data risks, ranked (consensus across batches)
 
 | # | Risk | Reachable today? | Verified by |
@@ -54,7 +70,7 @@ could not be verified. All averages are weighted by ticket count.
 | 3 | `raw_values._to_legacy_capture_table` fills `stored_sha256` with the content hash when a new capture row has none, which is wrong for gzip bodies. Receipts are correct; the native capture index can be rebuilt from them. Since `48137619` (Oct 22). | Yes, for new captures | syem; confirmed in code |
 | 4 | `raw_sync --upgrade-source-rules` rewrites the raw-state selector with no old/new comparison. Production-only branches trust local raw files by row count, and `R2Store.read` can serve raw checks from a local cache. | Yes | mi03a, standalone |
 | 5 | Latent traps: `migrate_pdf_bodies_to_uncompressed(delete_gzip=True)` deletes the `.gz` body without verifying the `.pdf`; the retention planner treats unknown objects as reclaimable; the `VerifiedFile` constructor trusts caller-supplied hashes; engine `pre_admission` is set by error kind; `R2Store.put` overwrites by default. | No callers today | Several batches; delete_gzip, VerifiedFile and pre_admission confirmed in code |
-| 6 | `viewer-publications/recoveries/accepted.json` is mutable, sits under a derived prefix and may hold manual recovery decisions found nowhere else. | Unknown | d8z3b, standalone |
+| 6 | `viewer-publications/recoveries/accepted.json` is mutable and sits under a derived prefix. Checked directly: only 11,597 of its 24,028 recoveries appear in receipts (`record.recovery_evidence` or `source_associations`). **12,431 exist nowhere else**, 12,419 of them `user_accepted_url_variant`. 1,172 receipt recoveries are missing from the file, and 269 bases and 57 recovered URLs differ. | Yes; backed up Oct 24 | d8z3b, standalone; checked directly |
 | 7 | docspec-rs after `c949c67`: 60 `cfg(all(not(test), not(feature = "test-util")))` production branches that `scripts/check` never runs, including name-based verification skips for `raw-`, `catalog-`, `obs-` and `source-observations-`. The pinned engine has 1 such branch. | Only if the pin moves past `c949c67` | docspec; confirmed in code |
 
 ## Problems confirmed directly (derived data; low priority under greenfield)
