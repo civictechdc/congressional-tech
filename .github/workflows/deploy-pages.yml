@@ -83,14 +83,13 @@ jobs:
           from pathlib import Path
           import shutil
           from committee_explorer.browser import verify
-          from committee_explorer.parquet import migrate
           source = Path('pipeline-data/committee-explorer/public')
           target = Path('apps/site/public/data/explorer')
           _, _, manifest = verify(source)
           if any(p.media_type == 'application/vnd.apache.parquet' for p in manifest.partitions):
               shutil.copytree(source, target, dirs_exist_ok=True)
           else:
-              # First rollout can reuse the existing catalog without reassembly.
+              from committee_explorer.parquet import migrate
               migrate(source, target)
           PYTHON
       - uses: ./.github/actions/setup-node-project

@@ -407,11 +407,13 @@ def test_loopback_tests_run_in_a_native_step():
         'tests/test_document_review_viewer.py', 'tests/test_rust_fetch_native.py',
         'tests/test_rust_fetch_size_admission_native.py',
     }
-    marked = {f'tests/{path.name}' for path in (ROOT / 'tests').glob('test_*.py')
-              if 'pytest.mark.loopback' in path.read_text()}
     lane = tomllib.loads((ROOT / 'test-suites.toml').read_text())['lanes']['native-loopback']
     assert lane['marker'] == 'loopback' and lane['offline'] is False
     assert lane['required_binary_env'] == 'SOURCE_FETCH_BINARY'
+    marked = {path.relative_to(ROOT).as_posix()
+              for root in lane['roots'] if (ROOT / root).exists()
+              for path in (ROOT / root).glob('test_*.py')
+              if 'pytest.mark.loopback' in path.read_text()}
     covered = {name for name in marked if any(
         name == root or name.startswith(root.rstrip('/') + '/') for root in lane['roots'])}
     assert marked and marked == covered, sorted(marked - covered)

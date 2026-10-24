@@ -13,7 +13,7 @@ from congress_api.retention.raw_archive import CAPTURE_SCHEMA, STATE_SCHEMA, enc
 from congress_api.retention.catalog_cache import capture_digest
 from congress_api.retention.raw_storage import RawSnapshot, RawStorage
 
-HELPERS = Path(__file__).resolve().parents[2] / "tests/native_memory_helpers.py"
+HELPERS = Path(__file__).resolve().parents[2] / "packages/congress_api/tests/native_memory_helpers.py"
 SPEC = importlib.util.spec_from_file_location("capture_native_fixture", HELPERS)
 helpers = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(helpers)

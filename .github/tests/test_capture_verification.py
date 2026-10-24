@@ -15,7 +15,12 @@ import pytest
 from congress_api.models.content import RawContent
 from congress_api.retention.capture_metadata import MetadataWriter, PREFIX
 from congress_api.retention.catalog_cache import capture_digest, legacy_capture_digest
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA, encode_table
+from congress_api.retention.raw_archive import (
+    CAPTURE_SCHEMA,
+    LEGACY_CAPTURE_SCHEMA,
+    derive_body_key,
+    encode_table,
+)
 from historical_raw_archive import LegacyArchiveSeed as Archive
 from congress_api.retention.derived_files import copy_checked, require_derived_key
 
@@ -184,7 +189,7 @@ def test_receipt_index_body_correspondence_is_checked(checkpoint):
     store, summary = checkpoint
     table = pq.read_table(pa.BufferReader(store.objects['indexes/captures.parquet']))
     rows = table.to_pylist()
-    rows[0]['sha256'] = '0' * 64
+    rows[0]['sha256'] = b'\x00' * 32
     store.objects['indexes/captures.parquet'] = encode_table(pa.Table.from_pylist(rows, schema=CAPTURE_SCHEMA))
     rehash_checkpoint(store)
     with pytest.raises(verifier.VerificationError, match='body correspondence'):
@@ -265,7 +270,8 @@ def test_sample_checks_raw_hash_even_when_stored_facts_agree(checkpoint):
     table = pq.read_table(pa.BufferReader(store.objects['indexes/captures.parquet']))
     rows = table.to_pylist()
     for row in rows:
-        if row['body_key'] == key: row.update(facts)
+        if derive_body_key(row['sha256'], row.get('media_type')) == key:
+            row['stored_bytes'] = facts['stored_bytes']
     store.objects['indexes/captures.parquet'] = encode_table(pa.Table.from_pylist(rows, schema=CAPTURE_SCHEMA))
     for receipt_key in list(store.objects):
         if receipt_key.startswith('receipts/'):
@@ -284,10 +290,10 @@ def test_sample_checks_raw_hash_even_when_stored_facts_agree(checkpoint):
 def test_retained_local_checkpoint_digest_survives_ci_reader():
     # Produced with PyArrow 25.0.1 on macOS. Re-encoding with 23.0.1 changes
     # only created_by metadata yet breaks the persisted checkpoint digest.
-    path = Path(__file__).resolve().parents[2] / 'tests/fixtures/capture-checkpoint-arrow25.parquet'
+    path = Path(__file__).resolve().parents[2] / 'packages/congress_api/tests/fixtures/capture-checkpoint-arrow25.parquet'
     table = pq.read_table(path)
     assert len(table) == 3
-    assert table.schema.equals(CAPTURE_SCHEMA, check_metadata=False)
+    assert table.schema.equals(LEGACY_CAPTURE_SCHEMA, check_metadata=False)
     assert legacy_capture_digest(table) == '66290a18d1000a475414221adc13259a347b3d6998623aed122ce79f313f2358'
 
 

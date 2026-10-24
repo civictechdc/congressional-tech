@@ -53,17 +53,19 @@ jobs:
           -e packages/docspec_client -e packages/youtube_api -e packages/congress_api -e apps/committee_youtube
 
       - name: Install native DocSpec runtime when configured
-        if: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT != '' && secrets.DOCSPEC_ENGINE_CREDENTIALS != '' }}
+        if: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT != '' }}
         env:
           CLOUDFLARE_ACCOUNT_ID: "174055408ff1560e60601c4d12c561c4"
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
         run: |
-          python .github/scripts/setup-native-runtime.py \
-            --directory "$RUNNER_TEMP/docspec-runtime" \
-            --output "$RUNNER_TEMP/native-runtime-check.json" \
-            --github-env "$GITHUB_ENV"
-          echo "DOCSPEC_BINARY=$RUNNER_TEMP/docspec-runtime/docspec" >> "$GITHUB_ENV"
+          if [[ -n "${DOCSPEC_ENGINE_CREDENTIALS:-}" ]]; then
+            python .github/scripts/setup-native-runtime.py \
+              --directory "$RUNNER_TEMP/docspec-runtime" \
+              --output "$RUNNER_TEMP/native-runtime-check.json" \
+              --github-env "$GITHUB_ENV"
+            echo "DOCSPEC_BINARY=$RUNNER_TEMP/docspec-runtime/docspec" >> "$GITHUB_ENV"
+          fi
 
       - name: Retain completed collection-job outcomes
         if: github.event_name == 'workflow_run'

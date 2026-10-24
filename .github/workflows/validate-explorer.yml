@@ -10,6 +10,7 @@ on:
       - "packages/congress_api/**"
       - "packages/house-naming/**"
       - "packages/congress_shared/**"
+      - "packages/docspec_client/**"
       - "packages/youtube_api/**"
       - "packages/corpus_recovery/**"
       - "packages/news_lake/**"

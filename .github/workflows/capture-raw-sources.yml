@@ -179,9 +179,11 @@ jobs:
       - name: Install bounded PDF fallback tools
         run: sudo apt-get update && sudo apt-get install --yes poppler-utils
       - name: Install capture and update tools
-        run: >-
-          pip install -e 'packages/house-naming[test]' -e packages/committee_meeting
-          -e packages/congress_shared -e 'packages/congress_api[archive,test]' 'PyYAML>=6,<7'
+        run: |
+          pip install -e packages/docspec_client -e 'packages/house-naming[test]' -e packages/committee_meeting \
+            -e packages/congress_shared -e packages/viewer_publication -e 'packages/congress_api[archive,test]' 'PyYAML>=6,<7'
+          mkdir -p tests
+          ln -sfn "$PWD"/packages/congress_api/tests/* "$PWD"/packages/viewer_publication/tests/* tests/
       - name: Identify installed validation environment
         id: runtime
         run: |
@@ -434,7 +436,7 @@ jobs:
           python-version: '3.12'
       - name: Install metadata update tools
         run: >-
-          pip install -e packages/house-naming -e packages/committee_meeting
+          pip install -e packages/docspec_client -e packages/house-naming -e packages/committee_meeting
           -e packages/congress_shared -e 'packages/congress_api[archive]'
       - name: Require an approved native runtime before archive access
         env:
