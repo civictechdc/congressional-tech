@@ -175,6 +175,10 @@ boundary, key pruning, merge and compaction.
 | Viewer publication route | Finish `export-pins` and make it the only route; delete the journal and resume route. |
 | Raw protection | R2 bucket lock on `receipts/` and `bodies/`; keep one bucket (no separate derived bucket for now). |
 | Public `r2.dev` access | Leave it open. |
+| Engine first | congressional-tech always uses docspec-rs and keeps little or no custom code that overlaps it. Incremental catalog updates move onto engine operations; the Python incremental layer is deleted. |
+| Raw index rows with a wrong `stored_sha256` | Repair in place; don't regenerate. |
+| Exclusion-list hook | Delete it; no list will exist. |
+| Recovery-import code identity | Refuse uncommitted code; record the git commit plus `uv.lock`. |
 
 ### Decisions the reviewers left to the owner
 
