@@ -22,7 +22,8 @@ Conventions:
   field repeated for multi-valued facts. It holds display-only facts; anything the model
   filters, joins or sorts on, or the site acts on, is a native column. Parquet's variant
   type isn't usable in this stack yet (iceberg-rust 0.10.1, DataFusion 53 and docspec's
-  parquet build lack it), so folds plus native hot fields stand in for it.
+  parquet build lack it), so folds plus native hot fields stand in for it. The plan parks a revisit with its
+  triggers (plan, track G).
 - "PK" is the uniqueness a test asserts.
 
 ## 1. Raw log

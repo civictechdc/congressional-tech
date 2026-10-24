@@ -415,6 +415,11 @@ and the deleted line counts are recorded.
   user or a measured failure on real data.
 - **ct-gi01** (committee explorer and weekly retention onto incremental tables): its
   approach conflicts with the design. Re-scope it before starting.
+- **Parquet variant for the folds:** revisit when all three hold: an iceberg-rust release
+  writes variant through its Parquet writer (0.10.1, the pinned and latest release, has no
+  variant type; 0.11 is expected to add it), Basin Catalog accepts format-version 3
+  tables, and DataFusion core or a maintained crate can query variant. The candidates are
+  `readings.fields` and `filename_readings.fields`.
 - **Full-text extraction of every PDF** (decision 22): one later read of about 403 GB into
   its own text table. It gives page counts, and text fingerprints for every PDF, which
   makes dedupe across sites cheap to revisit.
