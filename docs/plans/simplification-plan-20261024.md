@@ -34,7 +34,7 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 2 | news_lake keeps the DocSpec backend | Parked: no work until news_lake adopts the three layers (design §14). |
 | 3 | Publishing moves to export-pins | The release pipeline (design §6.4) is its finished form. The journal and resume route is deleted (F3). |
 | 4 | Raw protection is a bucket lock; one bucket | Step B1. |
-| 5 | `r2.dev` stays open | Every key is public, so a path allowlist on the custom domain protects nothing (open question 3). |
+| 5 | `r2.dev` stays open | Every key is public, so a path allowlist on the custom domain protects nothing (open question 2). |
 | 6 | Engine first | The target is built in docspec-rs; congressional-tech keeps no code that overlaps it. |
 | 7 | Documents only | No per-copy pages and no `sources` file. Per-copy filename readings stay in the lake. |
 | 8 | Links point at a file; 16-hex keys | `links.parquet` maps every body's key to its document. F0 uses it, so links survive the switch. |
@@ -42,6 +42,8 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 10 | One representative saved file per page | The rule is written with the grouping rule (E1). |
 | 11 | hyparquet stays in the browser | Page reads through offset indexes (A1, C3). |
 | 12 | Older gzip PDFs get uncompressed copies; other older bodies unpack in the browser | B13 and A5. |
+| 13 | Only real files count as a document's files: 2xx responses of the document's own type | Receipts record the sniffed format (B2); older bodies without one get a ranged sniff (D2); the rule is part of E1. |
+| 14 | No early launch: the explorer waits for the engine-built release | F0 is the reader's fixture and the parity oracle only. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -111,11 +113,7 @@ pool.
   `measurements/build_list.py` built `list`, `ids` and `detail` in 24 s, and
   `size_occ_captures.py` built `occurrences`.
 - This release is the reader's fixture (track A) and the parity oracle (E4). Its manifest
-  records that it came from the pinned catalog. It has no `url_state`, so capture keeps
-  reading the raw index until F2.
-- If the owner agrees (open question 1), it goes live as the first release, so the
-  explorer works on Oct 19 data while the rest is built. Its links use file fingerprints,
-  so they keep working after the switch.
+  records that it came from the pinned catalog. It does not go live (decision 14).
 - The converter is a migration tool. It is deleted at the switch.
 
 ## 4. Tracks
@@ -162,6 +160,8 @@ This code survives, so it is fixed now.
 
 1. **Bucket lock** (owner, ct-1l1h) on `bodies/`, `receipts/` and `provenance/`.
 2. **Receipts and bodies to the design (§4.1–4.2):**
+   - every receipt line records the format sniffed from the body's first bytes, beside the
+     server's media type and the HTTP status;
    - `stored` receipt lines record the stored MD5 and size;
    - new compressible bodies are stored with `Content-Encoding: gzip` and the original
      `Content-Type`; new PDFs are stored as-is;
@@ -243,11 +243,13 @@ threads and batch sizes, on the smallest runner.
    - the rebuild-equivalence test;
    - **compare with the pinned old capture index** (3,909,134 rows) as row multisets, on
      receipt-derived columns only. A row that exists only in the old index is a fact raw
-     doesn't hold, and it blocks the switch until the owner decides (open question 4).
+     doesn't hold, and it blocks the switch until the owner decides (open question 3).
 2. **`readings`** (design §5.2): one parser and version per media family; partitioned by
    `(parser, parser_version)`; a version is complete when its work list is empty. The scope
-   in the model SQL excludes ZIPs, captions and untyped bodies. Backfill HTML, XML and JSON
-   first (about 5 GB), then PDF titles and page counts as a background job (about 335 GB).
+   in the model SQL excludes ZIPs, captions and untyped bodies. First give every older body
+   without a recorded format one ranged read of its first bytes, which the real-files rule
+   needs (decision 13). Then backfill HTML, XML and JSON (about 5 GB), then PDF titles and
+   page counts as a background job (about 335 GB).
    The parser functions survive; the adoption machinery around them goes in F3.
 3. **`filename_readings`** (design §5.3): a producer that runs `house-naming` over the
    work list and appends through the engine. Backfill is about 7 minutes over 1.39M pairs.
@@ -258,9 +260,12 @@ comparisons pass.
 
 ### E. Model SQL and parity
 
-1. **Write the grouping rule down first,** as SQL with a short rationale: the edge set;
-   errors, placeholders (*k* = 100) and HTML connect nothing; and the fixed rule that picks
-   each document's representative file (decision 10).
+1. **Write the grouping rule down first,** as SQL with a short rationale:
+   - which responses are real files (decision 13: 2xx, sniffed format of the document's
+     own type);
+   - the edge set, in which placeholders (*k* = 100) and HTML connect nothing;
+   - the fixed rule, with logical tie-breaks only, that picks each document's
+     representative file (decision 10).
 2. **The model SQL** (design §6.1): `url_state`, `filenames`, `documents`, `members`,
    `recoveries`, `reviews`, and the release files.
 3. **Golden vectors** for `source_id` and `document_id`, generated from Python
@@ -268,12 +273,12 @@ comparisons pass.
    checked in the engine's tests. The formulas keep the logical body key string
    `bodies/sha256/<aa>/<sha>.gz`.
 4. **Parity against F0,** on browser-visible fields, joined by link key so that documents
-   regrouped by the new rule still pair up. Expect at least 1.5% of `document_id`s to
-   change: the HTML rule alone gives 1.26M documents against 1.24M. Classify each
-   difference:
+   regrouped by the new rule still pair up. Expect many `document_id`s to change, all from
+   rule changes: about 30k documents lose error pages from their body sets, and the HTML
+   rule gives about 1.26M documents against 1.24M. Classify each difference:
    - a rule change: fine, recorded with the rule;
    - an old-pipeline error: the new model wins;
-   - a fact that exists only in derived tables: a blocker (open question 4).
+   - a fact that exists only in derived tables: a blocker (open question 3).
 
 **Done when:** every difference is classified with no blocker left, and the model runs as
 a CLI job on the smallest runner.
@@ -338,7 +343,7 @@ and the deleted line counts are recorded.
 | WS2 raw write rules | ct-syx8 | B2–B6 and B13; the planner and `raw.json` steps go with the old layers |
 | WS3 custody client | ct-tw3r | Deleted with the HTTP custody path (F3) |
 | WS4 provenance pinning | ct-70kc | B7; the fingerprints go with the old catalog |
-| WS5 WAF allowlist | ct-t906 | Open question 3 |
+| WS5 WAF allowlist | ct-t906 | Open question 2 |
 | WS6 export-pins | ct-qqk2 | A, design §6.4 built in E and F; the journal route deleted in F3 |
 | WS7 incremental catalog | ct-7uit | Replaced by D and E; the Python layer deleted in F3 |
 | WS8 news_lake | ct-d8cf | Parked (G) |
@@ -374,22 +379,20 @@ These survive the switch unchanged:
 
 ## 7. Open questions for the owner
 
-1. **First release:** publish F0 (converted from the pinned Oct 19 catalog) as the live
-   release, so the explorer works in two to three weeks? Recommended.
-2. **PDF readings:** title and page count, or nothing (design §14).
-3. **Custom-domain path allowlist:** delete it and its tooling? `r2.dev` already serves
+1. **PDF readings:** title and page count, or nothing (design §14).
+2. **Custom-domain path allowlist:** delete it and its tooling? `r2.dev` already serves
    every key (decision 5), and saved copies need `bodies/` on the custom domain. Keep the
    CORS policy either way.
-4. **Only if needed:** if D1 or E4 finds facts that exist only in derived tables, record
+3. **Only if needed:** if D1 or E4 finds facts that exist only in derived tables, record
    them as provenance first, or accept losing them?
-5. **Retention numbers:** releases kept and snapshot age.
+4. **Retention numbers:** releases kept and snapshot age.
 
 ## 8. Schedule
 
 | When | Work |
 |---|---|
 | Week 1 | P4 lock; M1; M2; F0; C0; B13 starts; A and B start |
-| Weeks 2–3 | A, B and B13 done; the explorer goes live on F0 if approved; C under way |
+| Weeks 2–3 | A, B and B13 done; C under way |
 | Weeks 2–6 | C (3.5–5.5 weeks) |
 | Then | D (1–2 weeks), E (2–4 weeks), F (1–2 weeks) |
 

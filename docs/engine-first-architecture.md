@@ -117,7 +117,8 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
 - One immutable file per fetch run, keyed by its UTC write date. Each line records:
   - requested URL, final URL, time, HTTP status and outcome (stored, unchanged, failed,
     retry-later);
-  - body SHA-256, media type, and, for `stored` lines, the stored MD5 and size;
+  - body SHA-256, the server's media type, the format sniffed from the body's first
+    bytes, and, for `stored` lines, the stored MD5 and size;
   - an allowlisted set of response headers (never cookies or authorization);
   - writer identity: job, code commit and lockfile digest.
 - Receipts are the authoritative history of what was captured and when.
@@ -186,6 +187,9 @@ become orphans (5.4).
     335 GB, so the PDF parser changes rarely and backfills run in the background.
   - ZIP containers, captions and untyped bodies (74k bodies, 37 GB): none. ZIP members are
     captured as their own attempts.
+  - Every body has a sniffed format: the one its receipt or older capture row recorded,
+    or, where none was recorded, one ranged read of its first bytes during the backfill.
+    The grouping rule (6.1) depends on it.
 - **Work list:** an anti-join on `(sha, parser, parser_version)`. A daily run appends once.
   A backfill appends once per batch, so it always resumes.
 - **New parser versions** are backfilled in background batches. A version is complete when
@@ -244,20 +248,30 @@ become orphans (5.4).
 - **A document is a group of source files** the model treats as one document. Source files
   connect through identical document bodies and through shared canonical endpoints
   (filename plus URL); connections chain.
+- **A document's files are real files only:** 2xx responses whose sniffed format is the
+  document's own type (PDF, ZIP, XML, JSON or video playlist, and HTML only for documents
+  that are web pages). The classification uses the sniffed format and the receipt's HTTP
+  status and outcome, never the server's `Content-Type`, which mislabels error pages.
+  Error and "retry later" pages stay in raw and `captures` as evidence. They never enter a
+  document's body set, so they never change its ID, its saved file or its links. On the
+  Oct 19 data, most documents with several bodies were a real ZIP or PDF beside a govinfo
+  503 page (25,236 such pages, unique bytes per URL); real multi-version documents number
+  about 320.
 - **Grouping rule.** The edge set is SQL and is written down before anything is compared
-  with the old catalog. Three kinds of body connect nothing:
-  - error responses;
+  with the old catalog. Only real files connect, and two kinds of real file connect
+  nothing:
   - placeholders: any body seen at more than *k* = 100 URLs. One error page sits at 87,161
     URLs and, unchecked, glues together 174,323 source files. Measured: any *k* from 50 to
     200 excludes the same dozen placeholder bodies;
   - HTML bodies. HTML is pages, not files. Shared listing and landing pages glue unrelated
     sources, so identical HTML at two URLs stays two documents, by intent.
 
-  With this rule the real graph gives 1.26M documents, and the largest has 456 source files.
-- **Representative file.** Each document names one representative saved file, chosen by a
-  fixed rule written with the grouping rule, so every run picks the same one. The page
-  links that file. The document's other versions stay in R2, unlinked; `document_id` still
-  covers them all.
+  With these rules the real graph gives about 1.26M documents, and the largest has 456
+  source files.
+- **Representative file.** Each document names one representative saved file, chosen in
+  SQL by a fixed rule with logical tie-breaks only, never physical file order, so every run
+  picks the same one. The page links that file. The other versions of the roughly 320
+  multi-version documents stay in R2, unlinked; `document_id` still covers them all.
 - **Grouping runs in memory** over 32-bit IDs and refuses above a configured node count.
   The parent array is 16 MB at 4M nodes. Assigning dense IDs to the node keys is a hash
   aggregation of a few hundred MB, which sizes the memory pool. Spilling would be wasted
@@ -270,7 +284,7 @@ the list row number links them.
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
 | `list.parquet` (about 4 MB) | `(filename, document_id)` | Display name and facet fields; no ID | Downloaded whole, decoded column by column in a Web Worker | Defaults; no page index |
-| `detail.parquet` | Same row order as `list` | One folded `List<Struct<field, value>>` per row: representative original URL, representative saved file (key, media type), readings, occurrence row range | One page per leaf column, located by the offset index | Offset index on every column; pages of about 16 KB |
+| `detail.parquet` | Same row order as `list` | One folded `List<Struct<field, value>>` per row of document-level facts: representative original URL, representative saved file (key, media type), the document's readings, occurrence row range | One page per leaf column, located by the offset index | Offset index on every column; pages of about 16 KB or 256 rows, with the write batch no larger |
 | `links.parquet` (about 14 MB) | `link_key` | 8-byte link key and list row | Point lookup via the column index | Offset index and page statistics on `link_key`; small pages |
 | `occurrences.parquet` (about 30 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, filename, capture date | The range named in `detail` | Offset index on every column |
 | `url_state.parquet` (about 40 MB) | `url` | Latest outcome and retry schedule per URL | Read whole by the capture job, not the site | Defaults |
@@ -279,9 +293,9 @@ the list row number links them.
   representative file, its readings and where each copy was seen.
 - **Links point at a file.** A document's ID changes whenever a version joins its group.
   A file's fingerprint never changes. So a public link carries `link_key`: the first 8
-  bytes (16 hex characters) of a body's SHA-256. `links.parquet` maps every body of every
-  document to that document's row, so old links keep resolving when the group or its
-  representative changes. A document with no saved file uses a prefix of its
+  bytes (16 hex characters) of a body's SHA-256. `links.parquet` maps every real file of
+  every document to that document's row, so old links keep resolving when the group or its
+  representative changes. Error pages are never keys. A document with no saved file uses a prefix of its
   `document_id`. An HTML body shared by two documents resolves to the first in list order.
   The export refuses if two keys collide.
 - **No ID in `list`.** Measured on the real documents: 4.05 MB without an ID, 15.8 MB with
@@ -524,7 +538,8 @@ today's scale and at 10 times it.
 
 Decided by the owner on Oct 24: one bucket; `r2.dev` open; documents only; links by file
 fingerprint; 16-hex public keys; desktop and mid-range phones; one representative saved
-file per page; hyparquet in the browser; uncompressed copies of older PDFs only.
+file per page; only real files count as a document's files; hyparquet in the browser;
+uncompressed copies of older PDFs only; no early launch on the converted Oct 19 release.
 
 ## Reviews
 
@@ -552,7 +567,7 @@ and the owner's decisions:
 | Determinism missing chunking | Fixed row counts per row group; batch sizes and spills tested (6.3) |
 | `list` decoded as objects | Column-by-column decode, heap budget in canary and contract test (7) |
 | Grouping rule and untyped bodies unspecified | *k* = 100 from measurement, HTML reason, untyped bodies out of scope (5.2, 6.1) |
-| Owner decisions | Documents only, file links, representative file, older-copy handling (6.1, 6.2, 7) |
+| Owner decisions | Documents only, file links, representative file, real files only, older-copy handling (4.2, 5.2, 6.1, 6.2, 7) |
 
 ## Appendix: path from the current system
 
@@ -566,8 +581,8 @@ The order is:
    grouping on the wide real data.
 2. **Now, in parallel:** the release format, reader and canary, built against a release
    converted from the pinned Oct 19 catalog with the final writer settings. That release
-   is also the parity oracle, and it can go live first. Its links already use file
-   fingerprints, so they survive the switch.
+   is the reader's fixture and the parity oracle. It does not go live; the explorer waits
+   for the engine-built release.
 3. The raw writer changes (MD5 in receipts, 412 handling, encoding, write-date keys) and
    the weekly check.
 4. The engine capabilities in section 9.
