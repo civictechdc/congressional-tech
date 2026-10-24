@@ -1,9 +1,10 @@
 # Engine-first data model
 
-Status: proposed, revision 1, 2026-10-24. The column-level companion to
+Status: proposed, revision 2, 2026-10-24. The column-level companion to
 `docs/engine-first-architecture.md` (cited as "design §n"). It starts from the CS300
-reviewer's sketch (`docs/reviews/2026-10-24-design-review/cs300-data-model.md`) and applies
-the owner's decisions through Oct 24. Sizes are measured on the Oct 19 snapshot unless
+reviewer's sketch (`docs/reviews/2026-10-24-design-review/cs300-data-model.md`), applies the
+Iceberg/Parquet reviewer's review of it (`iceberg-parquet-data-model-review.md`), and
+applies the owner's decisions through Oct 24. Sizes are measured on the Oct 19 snapshot unless
 marked *est.*
 
 Conventions: Arrow types; `fsb(n)` is `fixed_size_binary(n)`; `dict` is a
@@ -95,13 +96,13 @@ an old one by `id`.
 
 Iceberg tables in Basin Catalog, append-only (design §5).
 
-### 2.1 `captures`: one row per capture entry
+### 2.1 `captures`: one row per capture entry, and one per line without a body
 
 | Column | Type | Notes |
 |---|---|---|
 | `receipt_key` | dict | — |
 | `receipt_line` | int32 | — |
-| `capture_index` | int16 | Position in `captures[]`. A line can hold many captures, so the line alone isn't unique: 3,909,134 rows over 2,596,054 lines. |
+| `capture_index` | int32 | Position in `captures[]` (up to 22,354 today). A line whose `captures[]` is empty yields one line-only row with index 0 and a null `sha256`: 1,041,863 of 2,596,054 lines. |
 | `pointer` | string | Informative. |
 | `run_id` | dict | — |
 | `family`, `mode`, `transport`, `outcome`, `fidelity` | dict | — |
@@ -120,6 +121,9 @@ Iceberg tables in Basin Catalog, append-only (design §5).
 | `h_content_type`, `h_last_modified`, `h_etag`, `h_content_length` | dict, string, string, int64 | The header allowlist as columns. |
 
 - **PK:** `(receipt_key, receipt_line, capture_index)`.
+- **Line fields on every row:** `requested_url`, `retrieved_at`, `http_status`, `outcome`
+  and `mode` come from the line, so every attempt keeps its status. Today's index stores
+  bodiless lines with a null status; the backfill from receipts restores them.
 - No `body_key` (derivable) and no `stored_sha256` (replaced by MD5).
 - Not partitioned; sorted within a commit by `(url, retrieved_at)`.
 - **Work list:** receipt keys not yet ingested, listed from date-shaped prefixes.
@@ -147,7 +151,9 @@ Iceberg tables in Basin Catalog, append-only (design §5).
   decompressing the start of a `.gz`. That is about 1.04M ranged GETs (about $0.37) and a few
   GB, under an hour. New bodies are sniffed by the fetcher.
 - **`fingerprint`** scope: bodies at endpoints with two or more distinct complete real files.
-  Today that is 148 endpoints, 297 bodies and 1.38 GB.
+  Today that is 148 endpoints, 297 bodies and 1.38 GB. For a PDF candidate it extracts the
+  text (owner decision), so re-packaged PDFs such as BILLS-112hr1063ih merge without the
+  deferred every-PDF pass.
 - **Size:** today's 491,710 rows fold to 16.5 MB.
 
 ### 2.3 `filename_readings`: one row per `(filename, source_url, catalog_version)`
@@ -190,8 +196,8 @@ Iceberg tables in Basin Catalog, append-only (design §5).
 `body_sha` fsb(32), `parser_version` dict, `page_count` int32, `text_fingerprint` fsb(32),
 `text` large_string. PK `(body_sha, parser_version)`. One read of about 403 GB when the owner
 schedules full-text extraction. *Est.* 1–5 GB compressed. Keep its text off hash-join build
-sides. Until it exists, PDFs have no fingerprint, so PDFs at the same endpoint stay separate
-documents (75 endpoints today).
+sides. Fingerprint candidates don't wait for it: the `fingerprint` parser reads their PDF
+text already (2.2).
 
 ## 3. Model outputs
 
@@ -215,12 +221,17 @@ real_files  := rows of c where
     and (format <> 'html' or (page_shaped(url) and not error_signs(r)))
 ```
 
+Every condition is joined by `and`, so no HTML row skips the fetch, completeness, status or
+size checks.
+
 - Any content format counts (owner decision): PDF, ZIP, document XML, web pages, Word,
   web archives, images, text and others. Only the record roles above, error and landing
   pages, empty bodies and placeholders are excluded.
 - `page_shaped(url)` is an exact list of regular expressions in the SQL. With only `.pdf`,
   `.zip`, `.doc`, `.docx`, `.xml`, `/download/`, `download=1` and `file_id=`, 16,775 HTML
-  bodies are file-shaped; E1 writes the full list and records the count.
+  bodies are file-shaped; a broader list (adding `/files/`, `/uploadedfiles/`,
+  `/media/doc/` and more extensions) gives 44,047. E1 starts from the broader list,
+  samples the roughly 27k bodies between the two, and records the final count.
 - `error_signs` := `text_bytes < 2048`, a generic error word in `title` or `heading`, or a
   placeholder body.
 
@@ -242,14 +253,17 @@ real_files  := rows of c where
 ### 3.3 Edges and `documents`
 
 ```
-same_body    := source files with the same body, where the body is a real file and not HTML
+same_body    := source files with the same body, where the body is a real file (web pages
+                included: the same real page at several addresses is one document)
 same_text    := source files at the same endpoint whose real files have equal fingerprints
 components   := ConnectedComponents(nodes = source files, edges = same_body ∪ same_text)
 listed       := components with at least one real file or at least one recovery
 document_id  := sha256(sorted logical body keys of the component's real files),
                 or sha256(sorted source_ids) when it has none
-saved_file   := the component's real file with the latest first_fetched; ties by body_sha
-first_captured, last_captured := min and max first_fetched over its real files
+saved_file   := the component's real file ordered by first_fetched desc nulls last, then
+                body_sha; with no fetch dates at all, the body hash decides
+first_captured := min(first_fetched) over its real files
+last_captured  := max(last_fetched) over its real files
 date_kind    := 'captured'   if the saved file has a fetch date from a non-import run
                 'import_day' if its only rows come from the Sept 29 import run
                 'unknown'    otherwise
@@ -272,10 +286,15 @@ file's filename reading.
 `(document_id, source_id)`, each fsb(32). Every source file of a listed document appears
 exactly once.
 
-### 3.5 `url_state`: one row per URL
+### 3.5 `url_state`: one row per requested URL
 
-`url` string, `attempts` int32, `last_attempt` ts, `last_status` int16, `last_outcome` dict,
-`next_attempt_at` ts, `links_scanned` bool. The latest `mode = fetch` row per URL. Retryable
+`requested_url` string, `attempts` int32, `last_attempt` ts, `last_status` int16,
+`last_outcome` dict, `next_attempt_at` ts, `links_scanned` bool.
+- Keyed by `requested_url`, the fetcher's own key.
+- Aggregated over distinct `(receipt_key, receipt_line)`, so an attempt counts once however
+  many bodies its line references.
+- The latest `mode = fetch` attempt wins, in the total order `(retrieved_at nulls first,
+  receipt_key, receipt_line)`. Retryable
 outcomes (`retry_later`, `size_limit`, `request_failed`) are due now; a 2xx waits the
 family's recheck interval. No body hash: the 412 tells capture whether a body is new.
 1,158,426 rows, *est.* 10 MB.
@@ -310,8 +329,8 @@ at 1.24M.
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
 | `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_code`, `congress`, `format`, `first_captured` (date32, dictionary), `date_kind`, `saved_kind`. No ID. | list order | defaults; no page index | 1.7 MB (3.9 MB measured at 1.24M) |
-| `detail.parquet` | one fold: `document_id`, `link_key`, `source_url`, `saved_key`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`), recoveries (`kind\|key\|imported_at`), `occ_range` (`start:len`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M); offset index about 100 KB; 11–43 KB per view |
-| `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | offset index and statistics on `link_key`; 16 KB pages; one row group | 5–7 MB |
+| `detail.parquet` | typed core: `document_id` fsb(32), `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>; plus one fold of the sparse facts: `link_key`, `source_url`, `saved_key`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 8 concurrent page reads per view |
+| `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | offset index and column index (page-level statistics) on `link_key`, about 25 KB together and read once per session, so hyparquet's `$eq` lookup skips to one page; 16 KB pages; one row group | 5–7 MB |
 | `occurrences.parquet` | `list_row`, `ordinal`, `url`, `member_path`, `filename`, `first_fetched`, `last_fetched`, `outcome`, `is_saved`, `linked_from` (parent URL), `link_text`, `doc_type`, `add_date` | `(list_row, ordinal)` | offset index on every column; 64 KB pages | *est.* 15–25 MB with link context |
 | `url_state.parquet` | 3.5 | `url` | defaults | 10 MB |
 | `manifest.json` | `schema_version`; `files[]` {name, sha256, md5, size, rows, row_range, shard}; `facet_counts`; `release_id` | — | deterministic, content only | 5–20 KB |
@@ -377,7 +396,7 @@ Raw and lake:
 Model:
 6. Every source file of a listed document is in exactly one document; every listed
    document has at least one member, and at least one real file or recovery.
-7. A non-HTML real body belongs to exactly one document.
+7. Every real body belongs to exactly one document, web pages included.
 8. No document's body set contains a non-2xx body, an incomplete body, a recovery import, a
    placeholder, an empty body, or a body whose `record_role` isn't `document`.
 9. `document_id` and `source_id` recompute from today's formulas (golden vectors).

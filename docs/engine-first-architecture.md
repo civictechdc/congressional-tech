@@ -184,9 +184,11 @@ could duplicate rows when two runs ingest the same receipts. Files from a losing
 become orphans (5.5).
 
 ### 5.1 `captures`
-- **Rows:** one per body a receipt line references. Unique on
-  `(receipt_key, receipt_line, capture_index)`: one line can reference many bodies (3.9M
-  rows over 2.6M lines, up to 22,354 on one line). Sorted by `(url, retrieved_at)`, with
+- **Rows:** one per body a receipt line references, plus one line-only row (no body) for
+  each line that references none: 1.04M of today's 2.6M lines. Unique on
+  `(receipt_key, receipt_line, capture_index)`: one line can reference many bodies (up to
+  22,354). The line's own fields (requested URL, time, HTTP status, outcome, mode) are on
+  every row, so no attempt loses its status. Sorted by `(url, retrieved_at)`, with
   hashes as binary. No derivable columns. A compact form measured 157 MB for all rows and
   315 KB for a normal day.
 - **Endpoint.** A body's endpoint is `(context_url, member_path)`: an archive member is
@@ -227,8 +229,9 @@ become orphans (5.5).
     never used instead.
   - **Text fingerprints, for candidates only.** A `fingerprint` parser reads the bodies at
     endpoints that produced two or more complete real files, and records a normalized text
-    fingerprint (for a ZIP, its sorted member hashes). Today that is 148 endpoints, 297
-    bodies and 1.4 GB. Keyed by URL alone it would be 34,428 URLs and 545 GB, because
+    fingerprint: for a ZIP, its sorted member hashes; for a PDF, its extracted text, read
+    for these candidates only (owner decision). Today that is 148 endpoints, 297 bodies
+    and 1.4 GB. The full pass over every PDF stays deferred. Keyed by URL alone it would be 34,428 URLs and 545 GB, because
     archive members share their container's URL. There is no full-corpus text pass.
 - **Work list:** an anti-join on `(sha, parser, parser_version)`. A daily run appends once.
   A backfill appends once per batch, so it always resumes.
@@ -283,7 +286,7 @@ become orphans (5.5).
 
 | Output | Content |
 |---|---|
-| `url_state` | Latest outcome and retry schedule per URL; `size_limit` and `request_failed` outcomes are retried |
+| `url_state` | Latest outcome and retry schedule per requested URL, counted over attempts (receipt lines), not capture rows; `size_limit` and `request_failed` outcomes are retried |
 | `filenames` | One row per source file: a `(body, filename, source URL)` triple, whose SHA-256 is `source_id` |
 | `documents` | Source files grouped by the engine's ConnectedComponents; `document_id` is the SHA-256 of the sorted body set, or of the sorted source IDs when there is no body |
 | `members` | `(document_id, source_id)` |
@@ -346,18 +349,22 @@ become orphans (5.5).
   - different text: separate documents, since a new edition is a new document;
   - no text: separate documents.
 - **Grouping rule.** The edge set is SQL and is written down before anything is compared
-  with the old catalog. Only real files connect, and two kinds of real file connect
-  nothing:
-  - placeholders: any body seen at more than *k* = 100 URLs. One error page sits at 87,161
-    URLs and, unchecked, glues together 174,323 source files. Measured: any *k* from 50 to
-    200 excludes the same dozen placeholder bodies;
-  - HTML bodies. HTML is pages, not files. Shared listing and landing pages glue unrelated
-    sources, so identical HTML at two URLs stays two documents, by intent.
+  with the old catalog. Only real files connect, and placeholders connect nothing: any body
+  seen at more than *k* = 100 URLs. One error page sits at 87,161 URLs and, unchecked,
+  glues together 174,323 source files. Measured: any *k* from 50 to 200 excludes the same
+  dozen placeholder bodies.
+- **Identical web pages are one document** (owner decision). The real-file rule already
+  removes listing, landing and error pages, so the same real page saved at several
+  addresses connects like any other file: 265 pages at 2–44 addresses each on the Oct 19
+  data. Every real body is then in exactly one document, so a file link always resolves to
+  one place.
 
-  Before the real-file rule, these edges gave 1.26M components with at most 456 source
-  files each; the rule leaves about 0.5M listed documents.
-- **Saved file.** The page links the document's newest real file, with ties broken by
-  body hash, never by physical file order. Most documents have exactly one.
+  An earlier measurement, with HTML excluded and before the real-file rule, gave 1.26M
+  components with at most 456 source files each; the rule leaves about 0.5M listed
+  documents.
+- **Saved file.** The page links the document's newest real file by first fetch, with
+  files that have no fetch date last and ties broken by body hash, never by physical file
+  order. Most documents have exactly one.
 - **Recoveries are evidence for the original link,** never files the recovering URL
   served. They stay out of `url_state`, text comparison, `links` and capture dates (an
   import's timestamp is the recovered copy's own). Every recovery is shown on the original
@@ -378,8 +385,8 @@ the list row number links them.
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
 | `list.parquet` (about 1.7 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, first-captured date and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | Defaults; no page index |
-| `detail.parquet` (30–40 MB) | Same row order as `list` | One folded `List<Struct<field, value>>` per row of document-level facts: original URL, saved file (key, media type), first and last capture dates, the document's readings, recoveries (kind, evidence, file key), occurrence row range | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
-| `links.parquet` (5–7 MB) | `link_key` | 8-byte link key and list row | Point lookup via the column index | Offset index and page statistics on `link_key`; small pages |
+| `detail.parquet` (30–40 MB) | Same row order as `list` | A small typed core (`document_id`, occurrence start and length, recoveries as a list of kind, file key and date) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
+| `links.parquet` (5–7 MB) | `link_key` | 8-byte link key and list row | Point lookup: the column index's page statistics find the page | Offset index and column index (page-level statistics) on `link_key`, about 25 KB together; small pages |
 | `occurrences.parquet` (15–25 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, path inside an archive, filename, capture dates, and the page that linked it with the link's label | The range named in `detail` | Offset index on every column; 64 KB pages |
 | `url_state.parquet` (about 10 MB) | `url` | Latest outcome and retry schedule per URL; no body hash, because the 412 tells capture whether a body is new | Read whole by the capture job, not the site | Defaults |
 
@@ -405,16 +412,17 @@ columns are in the data model, §4.
   bytes (16 hex characters) of a body's SHA-256. `links.parquet` maps every real file of
   every document to that document's row, so old links keep resolving when the group or its
   saved file changes. Error pages and recovery bodies are never keys. A document whose
-  only content is a recovery uses a prefix of its `document_id`. An HTML body shared by two documents resolves to the first
-  in list order. The export refuses if two keys collide.
+  only content is a recovery uses a prefix of its `document_id`. The export refuses if two
+  keys collide.
 - **No ID in `list`.** Measured on the real documents: 4.05 MB without an ID, 15.8 MB with
   an 8-byte ID and 45.9 MB with hex IDs.
 - **Detail reads.** hyparquet reads single pages when a file has an offset index
   (`useOffsetIndex`, 1.31.2). The reader fetches `detail`'s offset index once per session:
   about 100 KB at 64 KB pages (16 KB pages would make it about 870 KB at today's rows).
-  After that, a detail view is one round trip of 3 page reads, 11–43 KB. A flat layout
-  would read 9 pages, because Parquet stores each column, and each field of a flat struct,
-  as its own chunk; the folded list has 3 leaf columns.
+  After that, a detail view is one round trip of about 8 concurrent page reads, a few tens
+  of KB. Parquet stores each column, and each field of a flat struct, as its own chunk, so
+  a flat layout of the hundred-odd sparse fields would read a page per field. The typed
+  core stays typed so the reader never parses packed strings; the fold holds the rest.
 - **Binary keys** everywhere else. Hex hashes were 160 of 187 MB in a measured flat detail
   file.
 - **Shards.** `detail` and `occurrences` can be split into fixed row-range files, which
@@ -662,12 +670,13 @@ dates shown, saying what we know; HTML web pages recognized by link shape and ge
 error signals; `document_id` keeps today's formula; cut-off copies re-fetched; recoveries
 shown, labeled by kind; PDF reading deferred until full-text extraction; two releases
 kept; the explorer lists real documents only (about 0.5M); any content format counts,
-including Word, web archives and images; link context shown; hyparquet in the browser; uncompressed copies of older PDFs only; no early
+including Word, web archives and images; link context shown; identical real web pages are
+one document; PDF text read for fingerprint candidates only; hyparquet in the browser; uncompressed copies of older PDFs only; no early
 launch on the converted Oct 19 release.
 
 ## Reviews
 
-Six reviews shaped this design. All are in `docs/reviews/2026-10-24-design-review/`:
+Seven reviews shaped this design. All are in `docs/reviews/2026-10-24-design-review/`:
 - of revision 2: a general architecture review (`fable-review.md`) and an Iceberg, Parquet
   and query-plan review (`iceberg-parquet-review.md`);
 - of revision 3: an efficiency review with measurements on the real data
@@ -677,7 +686,8 @@ Six reviews shaped this design. All are in `docs/reviews/2026-10-24-design-revie
   up from B+ (84);
 - of revision 5: a third efficiency pass with a full data-model sketch
   (`cs300-rereview-rev5.md`, `cs300-data-model.md`), graded A− (90) for the architecture and
-  A− (88) for the plan. The sketch became `docs/engine-first-data-model.md`.
+  A− (88) for the plan. The sketch became `docs/engine-first-data-model.md`, and the
+  Iceberg/Parquet reviewer reviewed it (`iceberg-parquet-data-model-review.md`).
 
 Revision 4 applied the efficiency review (F1–F12). Revision 5 applies the two re-reviews
 and the owner's decisions:
@@ -707,6 +717,7 @@ three more owner decisions:
 | Detail offset index too big at 16 KB pages | 64 KB pages: about 100 KB index, 11–43 KB per view (6.2) |
 | Smaller gaps | Import day by run ID; `url_state` without a hash; receipts trimmed to about 1 KB; sniff every older body once; failed candidates deleted by publish; large legacy bodies as downloads (4.2, 5.2, 6.2, 6.4, 7) |
 | Owner decisions | Real documents only; link context shown; any content format counts (5.4, 6.1) |
+| Iceberg/Parquet review of the data model | Identical real web pages are one document; PDF text read for fingerprint candidates; one row per receipt line even without a body, and `url_state` counted over lines; typed detail core; page statistics on `link_key` (5.1, 5.2, 6.1, 6.2) |
 
 ## Appendix: path from the current system
 

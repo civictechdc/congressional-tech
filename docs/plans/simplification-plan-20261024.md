@@ -56,6 +56,8 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 24 | The explorer lists real documents only: at least one real file or recovery, about 0.5M | Record roles in D2; the listing rule in E1. |
 | 25 | Show link context: the page that linked each copy, and the link's label | `page_links` in D1; occurrences in E2; A8. |
 | 26 | Any content format counts, including Word, web archives and images | The real-file rule in E1. |
+| 27 | Identical real web pages are one document | Same-body edges include HTML (E1); every real body is in one document. |
+| 28 | The text check reads PDF text for its candidates only (about 297 bodies) | The `fingerprint` parser in D2; the every-PDF pass stays parked (G). |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -284,6 +286,9 @@ threads, input orders and batch sizes and with a forced spill, on the smallest r
    - the key is `(receipt_key, receipt_line, capture_index)`, because one line can
      reference many bodies; each row carries `member_path`, so the endpoint is
      `(context_url, member_path)`, and `run_id`;
+   - a line with no body still yields one line-only row, and the line's own fields
+     (requested URL, time, HTTP status, outcome, mode) are on every row; the backfill
+     restores the statuses today's index dropped for 1.04M bodiless lines;
    - recovery imports keep `mode`, `publisher_requested`, the recovery category and the
      original link as columns;
    - **`page_links`** is filled in the same pass and commit, from each line's links
@@ -303,7 +308,8 @@ threads, input orders and batch sizes and with a forced spill, on the smallest r
    - The readings core carries what the rules read: format, record role, title, heading,
      visible-text size, error signals and fingerprint (data model §2.2).
    - The `fingerprint` parser reads only the bodies at endpoints with two or more complete
-     real files: 148 endpoints, 297 bodies, 1.4 GB today.
+     real files: 148 endpoints, 297 bodies, 1.4 GB today. For PDFs it extracts the text
+     (decision 28).
    The parser functions survive; the adoption machinery around them goes in F3.
 3. **`filename_readings`** (design §5.3): a producer that runs `house-naming` over the
    work list and appends through the engine. Backfill is about 7 minutes over 1.39M pairs.
@@ -316,19 +322,24 @@ comparisons pass.
 
 1. **Write the grouping rule down first,** as SQL with a short rationale:
    - which responses are real files (decisions 13 and 26): record role `document`, any
-     content format, and the two web-page checks (decision 19), with the link-shape
-     patterns as an exact list of regular expressions;
+     content format, and the two web-page checks (decision 19). The link-shape patterns
+     are an exact list of regular expressions: start from the broader list (adding
+     `/files/`, `/uploadedfiles/`, `/media/doc/` and more extensions, 44,047 file-shaped
+     bodies), sample the roughly 27k between it and the narrow list (16,775), then fix it;
    - which documents are listed (decision 24): at least one real file or one recovery;
    - recovery imports are evidence for their original link, never real files,
      `url_state`, fingerprint candidates, link keys or capture dates; the written
      recovery-kind mapping, where an unmapped category fails the build;
    - the import day, defined by the import run's ID, not by its date;
-   - the edge set, in which placeholders (*k* = 100) and HTML connect nothing, and a
-     shared endpoint connects two complete files only when their text fingerprints match
-     (decision 10);
-   - the saved file: the newest real file, ties broken by body hash.
-2. **The model SQL** (design §6.1): `url_state`, `filenames`, `documents`, `members`,
-   `recoveries`, `reviews`, and the release files, with `list` sorted by filename and then
+   - the edge set: identical real files connect, web pages included (decision 27);
+     placeholders (*k* = 100) connect nothing; a shared endpoint connects two complete
+     files only when their text fingerprints match (decision 10);
+   - the saved file: the newest real file by first fetch, undated files last, ties broken
+     by body hash;
+   - `url_state`, keyed by requested URL and counted over receipt lines, not capture rows;
+2. **The model SQL** (design §6.1), with the data model's 18 invariants as its test suite:
+   `url_state`, `filenames`, `documents`, `members`, `recoveries`, `reviews`, and the
+   release files, with `list` sorted by filename and then
    first-captured date (undated rows last within a filename), and every recovery labeled
    by kind (decision 18).
 3. **Golden vectors** for `source_id` and `document_id`, generated from Python
