@@ -60,6 +60,8 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 28 | The text check reads PDF text for its candidates only (about 297 bodies) | The `fingerprint` parser in D2; the every-PDF pass stays parked (G). |
 | 29 | Every link join normalizes the URL with `url_key`: unwrap redirect and archive wrappers, strip only trackers and page state on known hosts, keep and sort the rest | E1 (data model §3.0). |
 | 30 | No per-view byte budget; the heap budget stays | A3 and A4 check heap only. |
+| 31 | One entry for all formats of a document | A `same_rendition` edge in E1, from publisher groups in `page_links` or same-stem files; E4 reports the merges. |
+| 32 | PDF first: the page offers the PDF and lists other formats as alternates | The saved-file rule in E1; A5 shows alternates. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -162,7 +164,8 @@ run beside C. Estimated total: **8–16 weeks**.
 4. **A CI contract test:** the real site in a headless browser against F0, within the heap
    budget. It moves to a release built from a fixed sample of real receipts once track E
    exists.
-5. **Saved copies:** link the document's saved file. Older gzip PDFs open their `.pdf` copy
+5. **Saved copies:** link the document's saved file, PDF first, with its other formats
+   listed as alternates. Older gzip PDFs open their `.pdf` copy
    (B13). Other older gzip bodies are fetched, unpacked with `DecompressionStream`, and
    opened with the media type from `detail`. Those over 100 MB (579) are offered as a
    labeled compressed download instead.
@@ -294,7 +297,8 @@ threads, input orders and batch sizes and with a forced spill, on the smallest r
    - recovery imports keep `mode`, `publisher_requested`, the recovery category and the
      original link as columns;
    - **`page_links`** is filled from each line's links (decision 25), with its own work
-     list and commit; a lag shows as missing link context, not a failure;
+     list and commit, and keeps each link's `source_xpath` for publisher format groups
+     (decision 31); a lag shows as missing link context, not a failure;
    - the rebuild-equivalence test;
    - **compare with the pinned old capture index** (3,909,134 rows) as row multisets, on
      receipt-derived columns only. A row that exists only in the old index is a fact raw
@@ -337,9 +341,12 @@ comparisons pass.
      strip-list, each entry with a real sample URL as a test;
    - the edge set: identical real files connect, web pages included (decision 27);
      placeholders (*k* = 100) connect nothing; a shared endpoint connects two complete
-     files only when their text fingerprints match (decision 10);
-   - the saved file: the newest real file by first fetch, undated files last, ties broken
-     by body hash;
+     files only when their text fingerprints match (decision 10); renditions of one
+     document connect through publisher groups or, failing that, same-directory same-stem
+     files with document extensions and a list of generic stems to exclude (decision 31);
+   - the saved file: the PDF if there is one, otherwise the newest real file by first
+     fetch, undated files last, ties broken by body hash; the rest are alternates
+     (decision 32);
    - `url_state`, keyed by requested URL and counted over receipt lines, not capture rows;
 2. **The model SQL** (design §6.1), with the data model's 18 invariants as its test suite:
    `url_state`, `filenames`, `documents`, `members`, `recoveries`, `reviews`, and the
@@ -354,7 +361,8 @@ comparisons pass.
    regrouped by the new rule still pair up. Expect large, explained changes: about 560k
    catalog rows leave the list (captions, metadata records, playlists, API responses),
    about 30k documents lose error pages from their body sets, about 4,900 lose Senate
-   landing pages, and cut-off copies and recovery imports drop out of body sets.
+   landing pages, cut-off copies and recovery imports drop out of body sets, and about
+   16k format groups merge (32,547 documents today).
    - **The comparison reports by cause, not by document:** each known cause with its count
      and a few sampled examples, and every difference that fits no known cause listed
      separately. Only that last group needs reading one by one.

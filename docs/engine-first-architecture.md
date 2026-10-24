@@ -375,9 +375,17 @@ become orphans (5.5).
   An earlier measurement, with HTML excluded and before the real-file rule, gave 1.26M
   components with at most 456 source files each; the rule leaves about 0.5M listed
   documents.
-- **Saved file.** The page links the document's newest real file by first fetch, with
-  files that have no fetch date last and ties broken by body hash, never by physical file
-  order. Most documents have exactly one.
+- **One entry for all formats** (owner decision). A publisher often posts one document in
+  several formats, such as a bill's PDF and XML: 16,156 such groups are split across
+  32,547 documents today. Renditions share neither bytes nor text, so a third kind of
+  edge joins them: links the publisher groups together (the same list item or
+  `<document>` element on one page), or else files in one directory with the same filename
+  stem and document extensions, excluding generic stems such as `index` or `download`.
+  The parity check reports these merges by cause.
+- **Saved file, PDF first** (owner decision). The page links the document's PDF if it has
+  one, and otherwise its newest real file by first fetch; files with no fetch date go last
+  and ties are broken by body hash, never by physical file order. Other formats are listed
+  as alternates, and a link to any rendition opens the same entry.
 - **Recoveries are evidence for the original link,** never files the recovering URL
   served. They stay out of `url_state`, text comparison, `links` and capture dates (an
   import's timestamp is the recovered copy's own). Every recovery is shown on the original
@@ -398,7 +406,7 @@ the list row number links them.
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
 | `list.parquet` (about 1.5 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, first-captured date and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | `filename` delta-encoded without a dictionary (21% smaller, measured); 65,536-row groups; no page index |
-| `detail.parquet` (30–40 MB) | Same row order as `list` | A small typed core (`document_id`, occurrence start and length, recoveries as a list of kind, file key and date) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
+| `detail.parquet` (30–40 MB) | Same row order as `list` | A small typed core (`document_id`, occurrence start and length, recoveries as a list of kind, file key and date, alternate formats as a list of format, file key and size) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
 | `links.parquet` (5–7 MB) | `link_key` | 8-byte link key and list row | Point lookup: the column index's page statistics find the page | Offset index and column index (page-level statistics) on `link_key`, about 25 KB together; small pages |
 | `occurrences.parquet` (15–25 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, path inside an archive, filename, capture dates, and the page that linked it with the link's label | The range named in `detail` | Offset index on every column; 64 KB pages of at most 512–1,024 rows |
 | `url_state.parquet` (about 10 MB) | `url` | Latest outcome and retry schedule per URL; no body hash, because the 412 tells capture whether a body is new | Read whole by the capture job, not the site | Defaults |
@@ -407,8 +415,8 @@ Sizes are estimates at about 0.5M documents, scaled from measurements at 1.24M. 
 columns are in the data model, §4.
 
 - **Documents only.** There are no per-copy pages. A document page shows its saved file,
-  its capture dates, its readings, its recoveries, and where each copy was seen and which
-  page linked it.
+  its other formats, its capture dates, its readings, its recoveries, and where each copy
+  was seen and which page linked it.
 - **Editions sit together.** `list` sorts by filename and then first-captured date, so two
   editions with the same filename appear side by side with their dates. Undated rows sort
   after dated ones within a filename. There are no "other editions" links. The date column
@@ -686,7 +694,8 @@ kept; the explorer lists real documents only (about 0.5M); any content format co
 including Word, web archives and images; link context shown; identical real web pages are
 one document; PDF text read for fingerprint candidates only; every link join normalizes
 the URL, unwrapping redirect and archive wrappers and stripping only tracker and
-known page-state parameters; no per-view byte budget; hyparquet in the
+known page-state parameters; one entry for all formats of a document, offering the PDF
+first; no per-view byte budget; hyparquet in the
 browser; uncompressed copies of older PDFs only; no early launch on the converted Oct 19
 release.
 

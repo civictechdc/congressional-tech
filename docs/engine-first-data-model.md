@@ -192,6 +192,7 @@ documentation only.
 | `retrieved_at` | ts, nullable | When the page was fetched. |
 | `child_url` | string | The linked URL. |
 | `basis`, `tag` | dict | How the link was found. |
+| `source_xpath` | string | Where the link sits in the page. The model derives a publisher's format group from it (3.3). |
 | `text` | string | The link's label, such as "Witness testimony". |
 | `doc_type`, `add_date`, `publish_date` | dict, string, string | From the link's attributes where the page gives them. |
 
@@ -319,12 +320,21 @@ size checks.
 same_body    := source files with the same body, where the body is a real file (web pages
                 included: the same real page at several addresses is one document)
 same_text    := source files at the same endpoint whose real files have equal fingerprints
-components   := ConnectedComponents(nodes = source files, edges = same_body ∪ same_text)
+same_rendition := real files that are one document in different formats:
+                (a) the publisher groups them: links on the same parent page whose
+                    source_xpath shares the nearest <li> or <document> ancestor
+                    (group_key := parent_sha plus that ancestor's xpath, computed in SQL);
+                (b) otherwise, same directory and same filename stem with document
+                    extensions (pdf, xml, htm, html, doc, docx, txt), excluding generic
+                    stems (index, document, download, file, default and similar)
+components   := ConnectedComponents(nodes = source files,
+                                    edges = same_body ∪ same_text ∪ same_rendition)
 listed       := components with at least one real file or at least one recovery
 document_id  := sha256(sorted logical body keys of the component's real files),
                 or sha256(sorted source_ids) when it has none
-saved_file   := the component's real file ordered by first_fetched desc nulls last, then
-                body_sha; with no fetch dates at all, the body hash decides
+saved_file   := the component's real file ordered by format preference (PDF first, then
+                the other formats), then first_fetched desc nulls last, then body_sha
+alternates   := the component's other real files in other formats: (format, key, size)
 first_captured := min(first_fetched) over its real files
 last_captured  := max(last_fetched) over its real files
 date_kind    := 'captured'   if the saved file has a fetch date from a non-import run
@@ -332,6 +342,11 @@ date_kind    := 'captured'   if the saved file has a fetch date from a non-impor
                 'unknown'    otherwise
 ```
 
+- **One entry for all formats** (owner decision): 16,156 groups share a folder and a
+  filename stem but differ in format, such as a bill's `.pdf` and `.xml`, and today they
+  are split across 32,547 documents. Renditions never share bytes or text fingerprints,
+  so `same_rendition` is what joins them. The page offers the PDF first and lists the other
+  formats as alternates; a link to any rendition opens the same entry.
 - Only `listed` components become explorer documents: *est.* about 0.5M. Captions,
   metadata records, playlists, API bodies and links that never yielded a real file stay in
   the lake and feed `url_state`.
@@ -392,7 +407,7 @@ at 1.24M.
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
 | `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_code`, `congress`, `format`, `first_captured` (date32, dictionary), `date_kind`, `saved_kind`. No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding (2.54 MB against 3.22 MB with a dictionary, measured on 1.13M sorted filenames); facets keep dictionaries; 65,536-row groups so a phone can decode as it goes; no page index | about 1.5 MB |
-| `detail.parquet` | typed core: `document_id` fsb(32), `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>; plus one fold of the sparse facts: `link_key`, `source_url`, `saved_key`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 8 concurrent page reads per view |
+| `detail.parquet` | typed core: `document_id` fsb(32), `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>, `alternates` List<Struct<format dict, key string, size int64>>; plus one fold of the sparse facts: `link_key`, `source_url`, `saved_key`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 8 concurrent page reads per view |
 | `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | offset index and column index (page-level statistics) on `link_key`, about 25 KB together and read once per session, so hyparquet's `$eq` lookup skips to one page; 16 KB pages; one row group | 5–7 MB |
 | `occurrences.parquet` | `list_row`, `ordinal`, `url`, `member_path`, `filename`, `first_fetched`, `last_fetched`, `outcome`, `is_saved`, `linked_from` (parent URL), `link_text`, `doc_type`, `add_date` | `(list_row, ordinal)` | offset index on every column; 64 KB pages with a page row limit of 512–1,024 and the write batch no larger | *est.* 15–25 MB with link context |
 | `url_state.parquet` | 3.5 | `requested_url` | defaults | 10 MB |
@@ -466,7 +481,8 @@ Model:
 8. No document's body set contains a non-2xx body, an incomplete body, a recovery import, a
    placeholder, an empty body, or a body whose `record_role` isn't `document`.
 9. `document_id` and `source_id` recompute from today's formulas (golden vectors).
-10. `saved_body` is in the body set and is its newest real file. `first_captured` ≤
+10. `saved_body` is in the body set; it is a PDF whenever the document has a PDF real
+    file, and otherwise its newest real file. `first_captured` ≤
     `last_captured`. `date_kind = 'import_day'` only when every row of the saved body comes
     from the import run; recovery imports never set a date.
 11. `url_state` has one row per URL and no import rows.

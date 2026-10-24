@@ -181,3 +181,39 @@ pages can never be matched to files captured at the original address.
 
 These rules apply to matching only. Identity and stored addresses stay exact. The wrapper and
 strip lists live in the E1 SQL beside `page_shaped`, each with a test sample.
+
+## Formats: what the package does, and one document per set of formats (2026-10-24)
+
+**Fetch behavior, verified in `packages/congress_api`.** There is no xml → json → pdf chain.
+
+- Congress.gov API: always `format=json` (`transport/congress.py:8-9`).
+- Committee-meeting detail: JSON first. On HTTP 500 it retries with `format=xml`, converts the XML
+  to the same record and checks the identity (`acquisition/meetings.py:110-125`).
+- House meeting data: XML first over candidate addresses. Then the docs.house.gov calendar page
+  is read to discover more XML addresses, and the witness-list XML address is derived from the
+  meeting's (`acquisition/house.py:83-170`).
+- Documents: every linked rendition (PDF, XML, DOCX, HTML …) is fetched. "PDF first" only
+  chooses the display name and kind (`parsers/house_evidence.py:32`,
+  `parsers/house_documents.py:126`).
+- A one-off `.pdf` → `.xml` probe is tagged `generated_xml_probe` and is never admitted as a
+  publisher link (`retention/capture_url_admission.py:8-27`).
+
+**Measured.** 16,156 groups of files share a folder and a name but differ in format (for
+example `BILLS-118hr…ih.pdf` and `.xml`, sometimes `.docx`). All are split across separate
+documents today, 32,547 documents in total. The new rules (`same_body`, `same_text`) would keep
+them split, because renditions never share bytes or a text fingerprint.
+
+**Decisions (owner):**
+1. **One entry, all formats.** Add a `same_rendition` edge to the components, from:
+   - (a) publisher-declared groups: links whose `source_xpath` share the nearest `<li>` or
+     `<document>` ancestor on the same parent body. That covers House meeting XML
+     `<document><files>` and "[PDF] [XML]" list items, and needs `page_links.group_key` (parent
+     sha plus that ancestor xpath);
+   - (b) a fallback: real files in the same directory with the same filename stem and document
+     extensions (`pdf`, `xml`, `htm`/`html`, `doc`/`docx`, `txt`), excluding generic stems
+     (`index`, `document`, `download`, `file`, `default` …).
+
+   Parity (E4) reports the merges by cause.
+2. **PDF first.** `saved_file` is chosen by format preference (PDF, then the others) and then
+   newest; the other formats are listed as alternates in `detail` (format, key, size). Every
+   rendition's body stays a link key, so a link to the XML opens the same entry.
