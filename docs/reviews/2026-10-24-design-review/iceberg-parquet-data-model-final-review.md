@@ -154,3 +154,30 @@ on Oct 19.
 `mc_cid`, `mc_eid` and `_ga`, sorts the remaining parameters, and keeps every other parameter.
 This replaces the earlier "allowlist" wording. A keep-list would need 40+ keys, and any key it
 missed would merge different documents. With a strip-list, the worst failure is a missed match.
+
+## What the non-tracker parameters actually are, and two more decisions (2026-10-24)
+
+Sampled from captured URLs (scratchpad `qsamples.py` and `qcats.py`):
+
+| Group | Examples | Captured URLs | Rule |
+|---|---|---:|---|
+| Document identifiers | `index.cfm?a=Files.Serve&file_id=<GUID>` (House/Senate CMS file servers); GPO `getdoc.cgi?dbname=…&docid=f:….pdf`; `documentsingle.aspx?DocumentID=`; `PRArticle.aspx?NewsID=`; WordPress `?p=`; THOMAS `cpquery?…report=…&start_from=…`; floor `?date=`; `Download.aspx?file=…xml` | about 7,500 (5,517 Files.Serve, 828 getdoc) | keep |
+| Representation selectors | Senate `?download=1`, `format=json/xml`, API `limit` | about 1,200 | keep (different files) |
+| Wrappers | Proofpoint `urldefense…?u=`, Constant Contact `rs6.net/tn.jsp?…&p=`, `exit.asp?link=`; archive `web.archive.org/web/<ts>[id_]/<url>`, `webharvest.gov/…/<ts>id_/<url>` | 26 redirect wrappers, 620 archive | **unwrap for matching** |
+| Page state | congress.gov `q`, `s`, `r`, `overview`; SharePoint `formmode`, `resultindex`; Twitter/X `s` | about 290 | **strip on those hosts** |
+| Not documents | YouTube API, Wayback CDX API, HLS `sd`/`rebase`, Senate `/404?notfound=` | the rest | irrelevant (excluded by the real-file rule) |
+
+Links found on archived pages are rewritten into Wayback form, so without unwrapping, recovered
+pages can never be matched to files captured at the original address.
+
+**Decisions (owner):**
+1. **Unwrap both.** `url_key` sees through the redirect wrappers (Proofpoint `u=` with its `-XX`
+   and `_` decoding, Constant Contact `p=`, `exit.asp?link=`) and the archive wrappers (Wayback
+   `/web/<ts>[modifier]/<url>`, webharvest `/<collection>/<ts>[modifier]/<url>`) to the inner
+   address, then normalizes it.
+2. **Ignore page state on known sites.** The same short strip-list as the trackers, scoped by
+   host: congress.gov `q`, `s`, `r`, `overview`; SharePoint `formmode`, `resultindex`;
+   twitter.com and x.com `s`.
+
+These rules apply to matching only. Identity and stored addresses stay exact. The wrapper and
+strip lists live in the E1 SQL beside `page_shaped`, each with a test sample.

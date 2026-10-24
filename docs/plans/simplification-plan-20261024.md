@@ -58,7 +58,7 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 26 | Any content format counts, including Word, web archives and images | The real-file rule in E1. |
 | 27 | Identical real web pages are one document | Same-body edges include HTML (E1); every real body is in one document. |
 | 28 | The text check reads PDF text for its candidates only (about 297 bodies) | The `fingerprint` parser in D2; the every-PDF pass stays parked (G). |
-| 29 | Every link join normalizes the URL with `url_key`, stripping only known tracker parameters and keeping the rest, sorted | E1 (data model §3.0). |
+| 29 | Every link join normalizes the URL with `url_key`: unwrap redirect and archive wrappers, strip only trackers and page state on known hosts, keep and sort the rest | E1 (data model §3.0). |
 | 30 | No per-view byte budget; the heap budget stays | A3 and A4 check heap only. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
@@ -333,7 +333,8 @@ comparisons pass.
      `url_state`, fingerprint candidates, link keys or capture dates; the written
      recovery-kind mapping, where an unmapped category fails the build;
    - the import day, defined by the import run's ID, not by its date;
-   - `url_key` for every link join (decision 29), with the tracker list;
+   - `url_key` for every link join (decision 29): the wrapper patterns and the
+     strip-list, each entry with a real sample URL as a test;
    - the edge set: identical real files connect, web pages included (decision 27);
      placeholders (*k* = 100) connect nothing; a shared endpoint connects two complete
      files only when their text fingerprints match (decision 10);

@@ -360,10 +360,13 @@ become orphans (5.5).
   addresses connects like any other file: 265 pages at 2–44 addresses each on the Oct 19
   data. Every real body is then in exactly one document, so a file link always resolves to
   one place.
-- **Every link join normalizes the URL** (owner decision). A `url_key` lowercases the
-  scheme and host, drops `www.`, the default port, the fragment, a trailing slash and known
-  tracker parameters (`utm_*`, `gclid` and the like), sorts the remaining query parameters
-  and keeps them, and keeps the path's case. 64,860 captured URLs (5.6%) differ from
+- **Every link join normalizes the URL** (owner decision). A `url_key` first unwraps
+  redirect wrappers (Proofpoint, Constant Contact, `exit.asp`) and archive wrappers
+  (Wayback, webharvest) to the inner URL, since links on archived pages are rewritten.
+  Then it lowercases the scheme and host, drops `www.`, the default port, the fragment, a
+  trailing slash, known tracker parameters (`utm_*`, `gclid` and the like) and page-state
+  parameters on known hosts (congress.gov search context, SharePoint form state), sorts the
+  remaining query parameters and keeps them, and keeps the path's case. 64,860 captured URLs (5.6%) differ from
   another only by scheme, `www.`, case or a trailing slash. Other query parameters are
   kept because they almost always change the document: `download` alone separates 916
   Senate landing pages from their PDFs. Identity (`source_id`, `requested_url`) keeps the
@@ -682,7 +685,8 @@ shown, labeled by kind; PDF reading deferred until full-text extraction; two rel
 kept; the explorer lists real documents only (about 0.5M); any content format counts,
 including Word, web archives and images; link context shown; identical real web pages are
 one document; PDF text read for fingerprint candidates only; every link join normalizes
-the URL, stripping only tracker parameters; no per-view byte budget; hyparquet in the
+the URL, unwrapping redirect and archive wrappers and stripping only tracker and
+known page-state parameters; no per-view byte budget; hyparquet in the
 browser; uncompressed copies of older PDFs only; no early launch on the converted Oct 19
 release.
 

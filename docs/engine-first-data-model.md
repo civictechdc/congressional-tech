@@ -218,10 +218,21 @@ provenance `p`. The logical body key is the string `bodies/sha256/<aa>/<sha>.gz`
 ### 3.0 `url_key`: the normalized URL every link join uses
 
 ```
-url_key(url) := lowercase scheme and host; drop "www.", the default port, the fragment
-                and a trailing slash; keep the path's case; drop known tracker
-                parameters (utm_*, _gl, gclid, fbclid, mc_cid, mc_eid, _ga); sort the
-                remaining parameters and keep them all
+url_key(url) := unwrap(url), then:
+                lowercase scheme and host; drop "www.", the default port, the fragment
+                and a trailing slash; keep the path's case; drop the strip-list
+                parameters; sort the remaining parameters and keep them all
+
+unwrap(url)  := repeat until nothing changes:
+                redirect wrappers → their inner URL: Proofpoint urldefense ?u= (with
+                its -XX and _ decoding), Constant Contact rs6.net/tn.jsp ?p=,
+                exit.asp ?link=;
+                archive wrappers → the archived URL: web.archive.org/web/<ts>[modifier]/<url>,
+                webharvest.gov/<collection>/<ts>[modifier]/<url>
+
+strip-list   := trackers on any host: utm_*, _gl, gclid, fbclid, mc_cid, mc_eid, _ga;
+                page state on known hosts only: congress.gov q, s, r, overview;
+                SharePoint formmode, resultindex; twitter.com and x.com s
 ```
 
 - **Every link join uses it** (owner decision): `page_links.child_url` to member URLs,
@@ -238,6 +249,19 @@ url_key(url) := lowercase scheme and host; drop "www.", the default port, the fr
   ever matched. A keep-list would need 40+ keys and would merge different documents for
   any key it missed; a strip-list can at worst miss a match. The tracker list is SQL,
   computed in the model rather than stored, so changing it rewrites nothing in the lake.
+- **What the kept parameters are** (owner-reviewed samples): document identifiers on
+  about 7,500 URLs (CMS `file_id=<GUID>` servers, GPO `getdoc.cgi?dbname=&docid=`,
+  `DocumentID`, `NewsID`, WordPress `?p=`, THOMAS report ranges, `Download.aspx?file=`)
+  and representation selectors on about 1,200 (`?download=1`, `format=json`). Both pick
+  different files, so they stay.
+- **Wrappers are unwrapped** (owner decision): 26 redirect wrappers and 620 archive
+  wrappers. Links found on archived pages are Wayback-rewritten, so without unwrapping,
+  recovered pages would never match captured files.
+- **Page state is stripped on known hosts only** (owner decision): about 290 URLs, such as
+  a congress.gov bill page reached from a search (`?q=…&s=3&r=1`).
+- **Each list is SQL with a sample test:** the wrapper patterns and the strip-list sit in
+  the E1 SQL beside `page_shaped`, and each entry has a real URL that must normalize as
+  stated.
 - **The rest of the normalization holds up:** 25,287 of 25,355 groups that differ only by
   scheme or `www.` (99.7%) served identical bytes.
 - Provenance `url_variants` still adds accepted variants beyond what normalization
