@@ -7,11 +7,10 @@ pipeline code, engine source, prior reviews, tickets.
 
 Every number below is one of: a **measurement** on the real data snapshot (DuckDB 1.5.5 / PyArrow
 25.0.1 from the project venv, `/Users/mikewolfd/Work/wt/ct-viewer-publish/.venv/bin/python -I`),
-a **public-doc fact** (Cloudflare R2 docs fetched today), or an **estimate** (marked). Scripts and
-raw outputs are in the session scratchpad
-(`/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/`):
-`profile_captures.py`, `inspect_schemas.py`, `build_list.py`, `cc_and_occurrences.py`,
-`model_proxy.py`, `size_occ_captures.py`, `time_house_naming.py`, `public-samples/`.
+a **public-doc fact** (Cloudflare R2 docs fetched today), or an **estimate** (marked). The scripts
+are kept beside this review in `measurements/`: `profile_captures.py`, `inspect_schemas.py`,
+`build_list.py`, `cc_and_occurrences.py`, `model_proxy.py`, `size_occ_captures.py`,
+`time_house_naming.py`. Their raw outputs (Parquet candidates and public samples) were not kept.
 
 ## 0. The data the design must handle (measured)
 
