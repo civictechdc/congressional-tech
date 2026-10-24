@@ -21,12 +21,18 @@ rebuild makes unnecessary.
 | 1 | Engine keeps durable per-phase commits and resume after a crash | Revert the deferred-commit mode (`b4b827d`). A "durable deferral" is per-phase commits with extra steps. |
 | 2 | news_lake keeps the DocSpec backend | Port the crash, fence and merge tests, fix the two bugs, delete the PyIceberg oracle |
 | 3 | Publishing moves to a finished `export-pins` route | Delete the journal, resume, attempt and preflight machinery |
-| 4 | Raw protection is an R2 bucket lock on `receipts/` and `bodies/`; one bucket | No derived-bucket work. The barriers are a code key policy plus the lock. |
+| 4 | Raw protection is an R2 bucket lock on `receipts/`, `bodies/` and `provenance/`; one bucket | No derived-bucket work. The barriers are a code key policy plus the lock. |
 | 5 | The `r2.dev` address stays open | Every key in the bucket is publicly readable, so the custom-domain WAF is not an exposure boundary |
+| 6 | **Engine first:** congressional-tech always uses docspec-rs and keeps little or no custom code that overlaps it | Incremental updates move onto engine operations, and the Python incremental layer is deleted whatever Step 0 finds (WS7). Missing primitives are added to docspec-rs generically, never in congressional-tech. Duplicated engine behavior is a deletion target in every workstream. |
 
-**In progress elsewhere, listed only:** P1 delete `delete_gzip`; P2 engine-pin check in
-hosted setup; P3 `stored_sha256` capture-schema fix; P4 bucket lock; P5 `accepted.json`
-provenance check.
+**Done on Oct 24** (commit `54a68ac7` and the audit README):
+- P1: deleted `delete_gzip`.
+- P2: hosted setup refuses an engine revision other than `QUALIFIED_DOCSPEC_RUNTIME`.
+- P3: the capture schema carries `stored_sha256`.
+- P5: checked `accepted.json`. 12,431 of its 24,028 recoveries exist only there; a
+  write-once backup is in `provenance/recoveries/`.
+
+**Owner action pending:** P4, the bucket lock on `receipts/`, `bodies/` and `provenance/`.
 
 **Rules for every workstream:**
 - One conceptual move per PR. Tests that pin the behavior land before the code moves.
@@ -55,7 +61,7 @@ are `retention/{r2,raw_archive,raw_storage,body_files,partition_routing,raw_stat
 
 ## 2. Step 0: measure the full rebuild from raw
 
-**Question.** Can a full rebuild from raw replace the incremental catalog engine (hotspot 8)?
+**Question.** How long does a full rebuild from raw take, and does it reproduce today's catalog? Under decision 6 this no longer decides whether the Python incremental layer survives; it is deleted either way. The rebuild becomes the correctness oracle and recovery tool, and the cost baseline that engine-native incremental updates (WS7) must beat.
 The retention package is 27,800 lines. Of those, 9,248 are incremental-only (WS7).
 
 **Entry points that already exist. Use them; don't write a new harness.**
@@ -117,7 +123,7 @@ Oct 19.
 | B1 | Harness with `--repair`, `PYTEST_CURRENT_TEST` unset | The timing of record |
 | B2 | Same, with `PYTEST_CURRENT_TEST=1`; compare with B1 using `--compare-only` | 21 pytest-only branches sit in modules the rebuild runs (WS1). An output difference means a production-only branch changes data. A time difference shows what the speed branches are worth. |
 | B3 | Only if B1 misses the bar: `py-spy record` on B1 | The one obvious bottleneck. So far, slow paths were repeated work. |
-| C | Compare B1 with references A and B, and classify every differing field. (i) A rule change since the reference: fine. (ii) An incremental-engine error: the rebuild wins. (iii) A fact that exists only in earlier derived tables, such as restored previous metadata or `catalog-history/`: a blocker (Q7). | Whether derived tables hold anything raw lacks |
+| C | Compare B1 with references A and B, and classify every differing field. (i) A rule change since the reference: fine. (ii) An incremental-engine error: the rebuild wins. (iii) A fact that exists only in earlier derived tables, such as restored previous metadata or `catalog-history/`: a blocker (open question 8). | Whether derived tables hold anything raw lacks |
 
 **Where to run:**
 1. Locally, for profiling:
@@ -132,24 +138,17 @@ Oct 19.
 
 Owner action: create a bucket-scoped, read-only R2 token for these runs.
 
-**Kill or keep rule (decided on the hosted run):**
-- **Kill the incremental engine** if all of these hold:
-  - runs A and B1 together finish in 120 min or less (a third of the job's 360-min timeout);
-  - peak memory stays at or below 75% of the runner's RAM, and scratch at or below 75% of
-    free disk;
-  - comparison C finds no class (iii) difference.
-
-  WS7 then deletes the engine.
-- **Profile once** if the rebuild finishes but misses a limit. Run B3, fix the bottleneck
-  in the rebuild path, and re-run. Kill if it then passes.
-- **Keep it narrowly** only if, after one profiling round, the rebuild still exceeds the
-  360-min job or runner memory. Then keep incremental updates for the single stage the
-  profile names, built on the engine's `UpdateMergeSpec` (`raw_storage.py:378-395` already
-  uses it) rather than app-side B-trees. Adoption, proofs, historical readers and snapshot
-  shortcuts are deleted either way.
-- **A class (iii) difference blocks deletion** until the owner answers Q7.
-- **Re-run B1** when filename rows double or the daily job passes 50% of its timeout. A
-  rebuild costs O(corpus) per run; the incremental engine costs O(changes).
+**What the result decides (decision 6):** the Python incremental layer is deleted either way
+(WS7). The rebuild result sets three things:
+- **Oracle:** comparison C must find no class (iii) difference before WS7 deletes anything.
+  A class (iii) difference blocks deletion until the owner answers open question 8.
+- **Recovery:** the rebuild must fit the 360-min hosted job and runner memory, or it is
+  profiled once (run B3) and fixed in the rebuild path.
+- **Baseline:** runs A and B1 give the cost that WS7's engine-native incremental update
+  must beat by a clear margin. That justifies incremental updates at all; otherwise the
+  daily update is the rebuild.
+- **Re-run B1** when filename rows double. A rebuild costs O(corpus) per run; an
+  engine-native incremental update should cost O(changes).
 
 **Raw safety during Step 0.** Writes are impossible with a read-only token and a read-only
 mount, and outputs stay on local disk. Run R-check 1 before and after.
@@ -164,7 +163,7 @@ mount, and outputs stay on local disk. Run R-check 1 before and after.
 | 4 | Provenance pinning | — | now; before WS10 |
 | 5 | WAF allowlist single source | WS6's release key layout | now |
 | 6 | Finish export-pins; delete the journal and resume route | WS2 steps 1–2; P5 | after WS2 step 2 |
-| 7 | Incremental catalog decision | Step 0; WS6 | after both |
+| 7 | Move incremental updates onto the engine (decision 6) | Step 0; WS6; WS9 primitives | after both |
 | 8 | news_lake under decision 2 | engine pin | now |
 | 9 | docspec-rs cuts | WS1's engine half | after it |
 | 10 | Shims and legacy formats | WS4; WS6 | after both |
@@ -185,7 +184,7 @@ mount, and outputs stay on local disk. Run R-check 1 before and after.
 |---|---:|---|
 | Raw-adjacent; survives any Step 0 outcome | 3 | `raw_storage.py:655-672` reads the Oct 20 `output/…/state.parquet` when its row count matches and swallows errors; it fires on the live checkout. `partition_routing.py:80-84,146-163` adds a page cache and batched uploads of raw routing pages that only production runs. |
 | Rebuild path; survives | 21 | catalog_staging 10, index/records 4, index/sources 2, source_inputs 2, document_recovery 1, index/document_sources 1, index/lifecycle 1 |
-| Incremental-only | 51 | 15 modules, deleted by WS7 if Step 0 kills the engine |
+| Incremental-only | 51 | 15 modules, deleted by WS7 (decision 6) |
 
 **First move:**
 1. Add a characterization test for `iter_states_for` with more than 512 URLs, asserting the
@@ -204,8 +203,8 @@ mount, and outputs stay on local disk. Run R-check 1 before and after.
   - If the output differs, add a contract test and keep one behavior.
   - If only speed differs, make it an explicit parameter that both tests and production set
     (batch size, in-memory maps).
-- The 51 incremental-only sites go with WS7 if the engine is killed. If it is kept, treat
-  them the same way, starting with `catalog_adoption.py:134-137`. There, production sets
+- The 51 incremental-only sites go with WS7. Until then, treat them like the others,
+  starting with `catalog_adoption.py:134-137`. There, production sets
   `actual = expected`, so it hashes the source against itself.
 
 **Engine: 60 production-only `cfg` sites in 14 files.**
@@ -569,7 +568,7 @@ custom REST plumbing (at cut).
 **Raw check:** R-check 1–3, the refusal tests across every writer, and the P4 lock.
 **Depends on:** WS2 steps 1–2; P5 for step 5; the WS5 allowlist.
 
-### WS7. Incremental catalog decision (after Step 0)
+### WS7. Move incremental catalog updates onto the engine (decision 6)
 
 **Addresses:**
 - Hotspot 8.
@@ -577,7 +576,11 @@ custom REST plumbing (at cut).
 - ct-si9g, ct-v5kb, ct-upte, ct-7e7q, ct-rcs8, ct-5kb2, ct-9vtu, ct-y32m, ct-l5q1, ct-gd8v,
   ct-dat9, ct-13cn, ct-gziq, and ct-bwac's catalog side.
 
-**First move, independent of Step 0: delete the manufactured consumers.**
+**Rule.** congressional-tech keeps no incremental machinery of its own. The catalog is the
+engine's job. The application supplies specs (keys, SQL, merge rules, the `document_id`
+expression) and calls engine operations.
+
+**First move: delete the manufactured consumers.**
 - The scratch-scope dataset blocks (`catalog_dependency_storage.py:684-826`,
   `source_observations.py:700-760`).
 - `last_change_report` and `last_refresh_summary`.
@@ -586,22 +589,34 @@ custom REST plumbing (at cut).
 
 The tests on `prepare()`'s result must stay green.
 
-**If Step 0 kills the engine:**
-1. **Promote the rebuild.**
-   - Move the oracle and lineage files (403 lines) into a production module.
-   - Make it raw-source-sync's `update` operation.
+**Then:**
+1. **Map the derivation onto the engine.** For each step that turns captures and state into
+   the filename and document tables, name the engine operation that does it:
+   - keyed `UpdateMergeSpec` merges with key pruning;
+   - `CollectSet`, list and struct aggregates;
+   - `ConnectedComponents` for document grouping;
+   - partition specs.
+
+   Write the map as a table in the PR. Any step with no engine operation becomes a
+   **generic** docspec-rs ticket (WS9), not congressional-tech code.
+2. **Prototype one table on real data.** Pick the documents table. Run an engine-native
+   incremental update from the current selection with one day's change set. Compare the
+   output with the Step 0 rebuild using the harness's `--compare-only`. Record time,
+   memory, and objects read and written.
+3. **Promote the rebuild as the oracle and recovery tool.**
+   - Move the oracle and lineage files (403 lines) into a production module, behind an
+     explicit `rebuild` operation.
    - Delete the refusals (`raw_sync.py:373-374`, `document_index.py:41-42`) and the hidden
      `--rebuild-only`/`--repair` flags.
-   - It takes captures and state from receipts if Step 0's run A matched; otherwise from the
-     native raw selection.
-2. **Evidence first:**
-   - Keep the differential test (`test_catalog_raw_updates.py:63-86`) until the incremental
-     path is gone.
+   - It reads captures and state from the native raw selection.
+4. **Evidence before deleting:**
+   - Keep the differential test (`test_catalog_raw_updates.py:63-86`), retargeted to
+     compare engine-native incremental output with the rebuild.
    - Add a raw-to-catalog invariant test: every retained capture yields its source row, and
      `source_id`/`document_id` are identical across two rebuilds.
    - Add a frozen ID fixture for a PDF row (kl2a1aa H3).
-   - Add a shared `document_id` golden vector (WS9 step 8).
-3. **Delete 22 modules and the `catalog/` facade: 9,248 lines.**
+   - Add a shared `document_id` golden vector (WS9).
+5. **Delete the Python incremental layer: 22 modules and the `catalog/` facade (9,248 lines).**
    - The `catalog_*` modules: dependency_storage, rows, raw_updates, batches, dependencies,
      dependency_preparation, scope, memberships, selection, adoption, updates, partitions,
      qualification, inputs.
@@ -613,31 +628,26 @@ The tests on `prepare()`'s result must stay green.
      - the adopt, qualify-sources and upgrade-source-rules CLI modes;
      - the native branches in `catalog_publication`, `catalog_types`, `catalog_validation`
        and `raw_storage.py:1304` (at cut).
-   - `native_features.py` (1,270 lines today) shrinks to thin compare/changes/refresh
-     methods (at cut).
-4. **Keep:**
+   - `native_features.py` (1,270 lines today) shrinks to thin calls into the engine (at cut).
+6. **Keep:**
    - `partition_routing.py` and the raw-side routing pages, which are raw provenance.
    - The oracle's own modules: catalog_staging, catalog_publication, catalog_cache,
      catalog_availability, catalog_validation, catalog_types, source_inputs,
      document_recovery, document_evidence and `index/*`.
-5. **Tension to resolve with data.** The keep list holds the DuckDB external sort,
-   typed-preparation resume, the spill arena (ct-4g55) and the reuse cache (ct-3bfx). The
-   first two live in `catalog_dependency_preparation.py`, which only the incremental engine
-   imports. If the engine is killed, they go too, unless Step 0's profile shows the rebuild
-   needs them. In that case, port the DuckDB sort, a maintained library, into the rebuild,
-   not the engine around it.
 
-**If Step 0 keeps the engine narrowly:** delete adoption (925 lines across `raw_adoption`,
-`raw_adoption_inputs`, `raw_readings_adoption` and `catalog_adoption`), the proofs and the
-historical readers. Fix the fingerprints (WS4). Keep only the stage the profile names.
+   Re-check each against decision 6 as it is touched.
+7. **Performance helpers.** The DuckDB external sort, typed-preparation resume, the spill
+   arena (ct-4g55) and the reuse cache (ct-3bfx) stay only if the rebuild's profile needs
+   them. If the engine prototype needs them, they belong in the engine.
 
-**Raw check:** R-check 1–3. The rebuild only reads raw data; its derived writes go through
-WS2's policy and sit under the P4 lock.
+**Raw check:** R-check 1–3. The rebuild and incremental updates only read raw data; their
+derived writes go through WS2's policy and sit under the P4 lock.
 **Depends on:**
-- Step 0.
+- Step 0, for the oracle output and the baseline.
 - WS6, so that the v6 consumers of `catalog_*` (`filename_native`, `filename_viewer`,
   `native.py`) are already gone.
 - WS4, for the fingerprint.
+- Any WS9 tickets for missing engine primitives.
 
 ### WS8. news_lake under decision 2
 
@@ -872,30 +882,33 @@ These are sound, or not worth moving. The README's leave-alone list is honored i
 
 ## 5. Open questions for the owner
 
-Only questions the decisions don't settle.
+**Answered on Oct 24:**
+1. **Catalog freshness.** Decision 6 settles this. Incremental updates use the engine, so
+   the rebuild's duration only has to fit its role as oracle and recovery tool.
+2. **Ingest policy.** No exclusion list will exist, so WS2 deletes the gate (162 lines).
+   Whether to write PDF siblings (`.pdf` beside `.gz`) always or never is still open.
+3. **Repair or regenerate the raw index.** Repair rows with a wrong `stored_sha256` in
+   place; don't regenerate the index.
+4. **Code identity for recovery imports (WS4).** Imports refuse uncommitted code and record
+   the git commit plus `uv.lock`.
 
-1. **Catalog freshness.** Must the derived catalog refresh daily after capture? That is the
-   assumption behind Step 0's 120-minute bar. If weekly is enough, the bar becomes the
-   360-minute job limit.
-2. **Ingest policy (WS2 step 3).**
-   - Will an exclusion review list ever exist? If not, delete the gate (162 lines). If so,
-     make it a versioned input that fails closed.
-   - Should PDF siblings (`.pdf` beside `.gz`) be written always, or never?
-3. **Regenerate or repair the raw index.** Suppose Step 0's run A shows the capture/state
-   index can be derived from receipts. May we then regenerate the `raw-*` datasets and
-   `indexes/raw.json` from receipts after P3, rather than repairing rows with a wrong
-   `stored_sha256` in place? This is the audit's open item 5.
-4. **Code identity for recovery imports (WS4).** Must imports run from a live checkout with
-   uncommitted changes? If not, use the git tree hash plus `uv.lock` and refuse dirty trees.
-   If so, use the folder digest. Reviewers split.
-5. **news_lake's Python view oracle.** Keep `analysis/views.py` as the reference, or replace
-   it with direct contract assertions? Reviewers split, and decision 2 removes only
-   PyIceberg. The plan keeps it.
-6. **Only if needed.** If per-phase commits make raw Builds too slow after the revert, do you
+**Still open:**
+5. **PDF siblings:** always write them, or never?
+6. **news_lake's Python view oracle.** Decision 6 says congressional-tech should not
+   duplicate engine views. Keep `analysis/views.py` only as a test oracle, or replace it
+   with direct contract assertions against engine output?
+7. **Only if needed.** If per-phase commits make raw Builds too slow after the revert, do you
    approve moving the raw index from one dataset per leaf to one partitioned dataset per
    kind? That would be a staged raw-index migration.
-7. **Only if needed.** If Step 0 finds catalog facts that exist only in earlier derived
-   tables (class iii), should we capture them into receipts first, or accept losing them?
+8. **Only if needed.** If Step 0 finds catalog facts that exist only in earlier derived
+   tables, should we capture them into receipts first, or accept losing them?
+
+**Under decision 6, revisit these keep calls** that today duplicate engine behavior:
+- the export-rights policy, implemented in both Python and the engine (prefer the
+  engine's);
+- ct-csyg's hand-written key pruning (prefer engine pruning);
+- the Python retention planner (delete it; use engine retention);
+- the news_lake view oracle (question 6).
 
 ## 6. Measured size of the cut
 
@@ -908,12 +921,12 @@ Only questions the decisions don't settle.
 | WS | Certain source | Certain tests | Conditional | At cut (not in totals) |
 |---|---:|---:|---|---|
 | 1 Divergence | 18 | — | 43 (inside WS7's modules; counted there) | 75 Python and 60 Rust branch sites |
-| 2 Raw write rules | 345 | — | 162 (exclusion gate, Q2) | per-layer probes; planner tests |
+| 2 Raw write rules | 345 + 162 (exclusion gate, answered) | — | — | per-layer probes; planner tests |
 | 3 Custody client | 30 | — | — | fallbacks inside the 390-line copies; legacy sizing; `TypeError` retries |
 | 4 Provenance | — | — | — | hand list and its test |
 | 5 WAF | 42 | — | up to 104 test lines | REST client |
 | 6 Export-pins | 2,786 | 2,005 | 1,695 source + 1,112 tests (v6 preparer and reader) | workflow rewrite |
-| 7 Incremental catalog | — | — | 9,509 source + 6,744 tests (if Step 0 kills) | native branches; `native_features` |
+| 7 Incremental catalog (decision 6) | 9,509 | 6,744 | — | native branches; `native_features` |
 | 8 news_lake | 375 | 145 | 260 (app compaction) | dispatch; `mapping.py`; native C5 policy |
 | 9 docspec-rs | 14,383 (Rust source and tests; the Dagster adapter) | — | up to 2,101 (succession) | routes; legacy formats; typing |
 | 10 Shims and legacy | 2,064 | 1,058 | — | registries; fixture |
@@ -924,8 +937,7 @@ Only questions the decisions don't settle.
 
 | | Lines |
 |---|---:|
-| congressional-tech, certain | 7,522 source + 3,931 tests = 11,453 |
+| congressional-tech, certain | 17,193 source + 10,675 tests = 27,868 |
 | docspec-rs, certain | 14,383 |
-| **Certain total** | **25,836** |
-| If Step 0 kills the incremental engine (WS7) | +16,253 → **42,089** |
-| Other conditionals (WS2 162, WS5 104, WS6 2,807, WS8 260, WS9 2,101) | +5,434 → up to **47,523** |
+| **Certain total** | **42,251** |
+| Other conditionals (WS5 104, WS6 2,807, WS8 260, WS9 2,101) | +5,272 → up to **47,523** |
