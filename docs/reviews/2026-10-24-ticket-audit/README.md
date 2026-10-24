@@ -150,6 +150,16 @@ boundary, key pruning, merge and compaction.
 - Engine route cuts: keep exactly the ~15 routes the client calls.
 - `cli_args.rs`: delete, but keep a positional `hash` through clap.
 
+### Owner decisions (2026-10-24)
+
+| Question | Decision |
+|---|---|
+| Engine commit protocol | Durable per-phase commits; keep resume after a crash. |
+| news_lake | Keep the DocSpec backend; port its crash, fence and merge tests; delete the PyIceberg oracle. |
+| Viewer publication route | Finish `export-pins` and make it the only route; delete the journal and resume route. |
+| Raw protection | R2 bucket lock on `receipts/` and `bodies/`; keep one bucket (no separate derived bucket for now). |
+| Public `r2.dev` access | Leave it open. |
+
 ### Decisions the reviewers left to the owner
 
 1. **Engine commit protocol:** durable per-phase commits, or one commit at the end
