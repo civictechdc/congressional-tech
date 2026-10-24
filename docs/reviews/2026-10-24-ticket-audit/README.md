@@ -111,6 +111,67 @@ could not be verified. All averages are weighted by ticket count.
   incremental catalog machinery.
 - **Freeze:** browser and performance work until there are users.
 
+## Third pass: evolutionary-refactoring audit
+
+Each reviewer re-read its batch with the `evolutionary-refactoring` skill in audit
+mode: recover the contract, name the design pressure, choose the cheapest safe first
+move, and list the behavioral evidence needed before code moves. The hotspots below
+are merged across batches and ranked by risk to raw data, then by how many places a
+change must touch.
+
+| # | Hotspot | Pressure | First move | Raised by |
+|---|---|---|---|---|
+| 1 | **Production and tests run different code.** congressional-tech has 75 pytest-only branches in 24 modules (from the Oct 22–24 ct-2ukk commits). docspec-rs has 60 `cfg(not(test-util))` branches after `c949c67`. In production, raw state is read from a hardcoded Oct 20 local snapshot whenever its row count matches (`raw_storage.py:655-672`, `catalog_raw_updates.py:155-183`). A capture cache stands in for receipts (`source_capture_inputs.py:61-74`). Catalog adoption hashes the source against itself (`catalog_adoption.py:134-137`). | Parallel implementations; success-shaped fallbacks | Delete the raw substitutions and the pytest gates, behind a characterization test that reads more than 512 URLs. In the engine, delete the dataset-name predicates, then run one integration suite without `test-util`. | mi03a, czsd, docspec |
+| 2 | **Raw write rules are scattered.** There are five storage entry points, each with an `immutable` flag. Overwrite is the default outside `indexes/`. A 412 counts as success without comparing bytes. Collision checks are copied in three places and missing for PDFs. Exclusion and PDF policy is probed in 8 files. The exclusion gate fails open. `delete_gzip` exists. | Boolean accumulation; cloned workflows | Delete `delete_gzip`. Then one owner for per-prefix write rules, refusing overwrite of `bodies/`, `receipts/` and `quarantine/` before any I/O, and one owner for verifying existing bytes. Set ingest policy once, at store construction. | d8z3b, kl2a1aa, czsd, syem |
+| 3 | **The lossy capture schema** drops `stored_sha256` and backfills it with the content hash (`raw_schemas.py:11-31`, `raw_values.py:37-39`). | Representation exhausted | Delete `CAPTURE_SCHEMA`'s lossy round trip and write the stored format directly. Fix first the tests that assume stored hash = content hash (`test_raw_archive_schema_tuning.py:49-51,228-244`, `e2e/harness/contracts.py:276`). | syem |
+| 4 | **Engine binary and pin:** three resolvers and two pin sources. Hosted setup checks only its own descriptor. | Parallel implementations | Make setup compare the descriptor's revision and digest with `QUALIFIED_DOCSPEC_RUNTIME` before any R2 access. Delete the binary search paths and the news_lake resolver. | mi03b, czsd |
+| 5 | **Custody client:** three copies of submit/retry logic (`client.py:445-578,619-797,842-915`), with fallbacks that change what a request means. These strip `partition_by`, rewrite row-group sizing, retry raw-state writes without `merge`, or retry on substring matches. | Cloned workflows; defensive sediment | Delete the fallbacks first, then merge the copies. Then: keep inputs on any error unless the engine refused at validation. | mi03a, mi03b, syem, standalone |
+| 6 | **Provenance pins are hand lists.** The recovery import omits `docspec_client`, `congress_shared.custody` and `congress_shared.storage`. The release fingerprint omits publisher modules. | Cloned workflows | Reuse the publication dispatcher's folder pinner, or the git tree hash plus `uv.lock`, and delete the hand lists. | standalone, d8z3b |
+| 7 | **The storage boundary is code, not credentials.** The public WAF expression allows more than its Python simulator, and `apply` replaces the whole zone's rulesets. | Handwritten infrastructure | Generate the WAF expression from one exact-prefix allowlist and delete the simulator. Later, a staged derived bucket with scoped keys. | kl2a1aa, d8z3b, standalone |
+| 8 | **The incremental catalog engine** (~27.8k lines) diverges from tests and fingerprints facade files. | Structural erosion | Make the existing full-rebuild oracle (`tests/historical_raw_catalog.py`) a production operation. Time it on the real corpus, then delete the incremental engine rather than repair it. | czsd |
+| 9 | **Viewer publication has two routes,** plus ~1,560 lines of journal and resume. | Parallel implementations | Delete resume (its test already fails), pick one route, then use an immutable release plus one conditional pointer flip. | d8z3a, standalone, d8z3b |
+| 10 | **news_lake keeps two backends,** chosen with `hasattr`. | Parallel implementations | Reviewers disagree about which backend survives (see Decisions). | mi03b, kl2a1aa, standalone |
+| 11 | **docspec-rs lifecycle records** are string-keyed, with ~35 families and 8 cloned retirement planners. `write_batches_inner` has taken 18 commits since Oct 18. | Branch accretion; structural erosion | Delete the families no consumer writes, then type the rest. Split `write_batches_inner` into stream stages without changing behavior. | docspec |
+
+**Leave alone (confirmed sound or not worth moving):** the raw capture and custody
+write path, which has no pytest branches. Also the decoded-memory budget,
+`--verify-publication`'s Chromium checks, the review-asset staging, the browser v6
+reader, ct-h23e, ct-csyg's pruning, the DuckDB sort, the spill arena, the reuse cache,
+the ct-d3un fixes, ct-snh8 and ct-8w0g. In the engine: `Strict<T>`, the remote scope
+boundary, key pruning, merge and compaction.
+
+**Calls the third pass changed:**
+- ct-dmca: fill missing fields at read time instead of writing a new raw generation.
+- Export rights stay in Python.
+- The retention planner: delete its reclaim branch.
+- Typed-preparation resume: keep.
+- ct-xu1o: revert to id keys.
+- ct-piku: delete.
+- Engine route cuts: keep exactly the ~15 routes the client calls.
+- `cli_args.rs`: delete, but keep a positional `hash` through clap.
+
+### Decisions the reviewers left to the owner
+
+1. **Engine commit protocol:** durable per-phase commits, or one commit at the end
+   with a rebuild on crash. The second is simpler but conflicts with the docspec-rs
+   AGENTS.md rule to preserve expensive phases.
+2. **Which viewer publication route survives:** the wired journal route or
+   `export-pins`.
+3. **Separate derived bucket and scoped credentials:** a staged migration.
+4. **news_lake:** keep the DocSpec backend, keep the Python/Iceberg backend, or
+   delete news_lake.
+5. **Repairing capture-index rows** written with a wrong `stored_sha256`: a data fix.
+6. **Whether `accepted.json` is provenance:** a read-only rebuild-from-receipts
+   check, before moving anything.
+
+### R2 write activity since Oct 22 (checked directly)
+
+`receipts/` has had no writes since Oct 22. `indexes/raw.json` was rewritten
+2026-10-23 05:21 UTC. About 141k `indexes/native-manifests/` objects and many
+`source-observations-members-*` datasets were written by local runs between Oct 22
+and Oct 24. So the selected native capture index may contain rows with the wrong
+`stored_sha256`; confirming that means reading the selected capture table.
+
 ## Files
 
 - `batches/<batch>/tickets.txt`: the tickets in that batch.
