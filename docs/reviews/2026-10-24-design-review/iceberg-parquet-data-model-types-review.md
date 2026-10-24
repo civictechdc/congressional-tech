@@ -87,3 +87,22 @@ as `string` columns, which are constant per run and so cost nothing under RLE.
 shredding". Revisit when iceberg-rust supports v3 `variant` and DataFusion has variant
 functions. At that point `readings.fields` and `filename_readings.fields` are the candidates,
 because typed values (dates, numbers) would stop being strings.
+
+## house-naming metadata: VARIANT or not (owner decision, 2026-10-24)
+
+Measured on 5,000 random real filenames with house-naming 3.2.7 (0.38 ms per file):
+- `metadata` is flat (164 distinct fields, median 2 values per file, p90 17).
+- **0 non-string values**: house-naming keeps literal source text by design.
+- Storage: the field/value fold is 16.4 B per file; a per-row JSON column (a stand-in for
+  unshredded VARIANT, which also carries field names in every row) is 15.3 B per file. ZSTD
+  absorbs the repeated names.
+- The `observations` ("why" evidence) have a fixed 12-key schema. As typed nested Parquet they
+  are 39 B per file, about 55 MB per catalog version. Whether to keep them is still open with
+  the owner.
+
+**Decision:** keep the typed facets plus the field/value fold for `filename_readings.fields`.
+Not VARIANT today, because iceberg-rust 0.10.1 can't store it; and not after a stack upgrade
+either, because the data is flat strings, the hot fields are already native, the size is the
+same, and it would cost an Iceberg v3 upgrade. VARIANT's real candidates here are genuinely
+nested, mixed-type sources (Congress.gov API JSON, MODS and meeting XML trees), if they are ever
+made queryable in the lake.

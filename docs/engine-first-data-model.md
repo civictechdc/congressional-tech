@@ -24,6 +24,13 @@ Conventions:
   type isn't usable in this stack yet (iceberg-rust 0.10.1, DataFusion 53 and docspec's
   parquet build lack it), so folds plus native hot fields stand in for it. The plan parks a revisit with its
   triggers (plan, track G).
+- **House-naming metadata stays typed facets plus the fold, now and after any upgrade**
+  (owner decision). Measured on 5,000 real filenames: it is flat (164 distinct fields,
+  median 2 values per file), every value is a string by design, and the fold costs 16.4
+  bytes per file against 15.3 for an unshredded variant stand-in. Variant would add an
+  Iceberg v3 upgrade and engine upgrades for query convenience only. If variant ever comes,
+  it fits genuinely nested, mixed-type sources such as Congress.gov API JSON and MODS or
+  meeting XML trees.
 - "PK" is the uniqueness a test asserts.
 
 ## 1. Raw log
