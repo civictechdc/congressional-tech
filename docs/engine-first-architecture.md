@@ -1,6 +1,6 @@
 # Engine-first architecture
 
-Status: proposed, revision 4, 2026-10-24. Owner: Mike Deeb. This document describes the
+Status: proposed, revision 5, 2026-10-24. Owner: Mike Deeb. This document describes the
 target system as it should be, independent of how the current code works. The path from
 today is in `docs/plans/simplification-plan-20261024.md`, and the appendix summarizes it.
 
@@ -25,7 +25,8 @@ declarative SQL and the site.
 1. **Raw is the only truth.** Everything else is a pure function of raw data plus
    versioned code, SQL and engine, and can be rebuilt at any time.
 2. **Append or replace, never update.** Logs only grow. Derived outputs are recomputed and
-   swapped atomically. No row is edited in place.
+   swapped atomically. No row is edited in place. (Catalog compaction rewrites files, not
+   rows.)
 3. **Do each thing once.** Every body is fetched, stored, hashed and parsed once per
    parser version. Every per-item computation, such as parsing a body or reading a
    filename, has a lake table keyed by its inputs, so it never runs twice. Platform
@@ -40,8 +41,8 @@ declarative SQL and the site.
 6. **Nothing reaches users unverified.** A release goes live only after the site's own
    reader code has loaded it.
 7. **Small bytes.** Store keys and facts once, as typed columns, with hashes as binary.
-   Never copy provenance into derived rows, never store what can be derived, and shape
-   browser files around how the site reads.
+   Never copy provenance into derived rows, and never store what can be derived. Browser
+   files are the one place shape follows the reader instead (section 6.2).
 
 ## 2. Scale
 
@@ -50,7 +51,7 @@ Measured on the Oct 19 snapshot (CS300 review, section 0):
 | Quantity | Measured |
 |---|---|
 | Fetch attempts (capture rows) | 3.9M, in 2,289 receipt files |
-| Distinct bodies | 1.04M, 0.70 TB stored (PDF 365 GB, ZIP 286 GB, HTML 4.5 GB, XML 0.8 GB) |
+| Distinct bodies | 1.04M, 0.70 TB stored (PDF 365 GB, ZIP 286 GB, untyped 37 GB, HTML 4.5 GB, XML 0.8 GB) |
 | Distinct URLs | 1.16M |
 | Source files, documents, occurrences | 1.68M, 1.24M, 4.7M |
 | Normal day | 270–3,553 attempts, 258–1,595 new bodies |
@@ -58,10 +59,11 @@ Measured on the Oct 19 snapshot (CS300 review, section 0):
 | Largest body | 1.19 GB; none above 5 GB |
 
 At this scale, recomputing the model from the lake is cheaper and simpler than
-maintaining it incrementally. A DuckDB proxy of the whole relational plan ran in 3.7 s
+maintaining it incrementally. A DuckDB proxy of the narrow relational plan ran in 3.7 s
 with 1.75 GB of memory, and connected components over the real 4M-node graph took 1–2 s
-in plain Python. The only per-item work that must not be repeated is fetching, parsing
-bodies and reading filenames.
+in plain Python. The proxy left out the wide data (filename readings, occurrences), so the
+week-one measurement includes it (appendix, step 1). The only per-item work that must not
+be repeated is fetching, parsing bodies and reading filenames.
 
 ## 3. System overview
 
@@ -87,7 +89,7 @@ RELEASE (immutable)
   viewer-publications/manifest.json   ← If-Match pointer, flipped after the canary
         │
         ▼
-SITE (static) → pointer → release → list (whole) / detail, ids, occurrences (ranges)
+SITE (static) → pointer → release → list (whole) / detail, links, occurrences (ranges)
 ```
 
 ## 4. Raw log
@@ -105,19 +107,24 @@ SITE (static) → pointer → release → list (whole) / detail, ids, occurrence
   nothing.
 - **Write:** one create-only PUT (`If-None-Match: *`) with Content-MD5. Never multipart:
   R2 documents conditional writes for single PUTs, multipart ETags aren't MD5s, and no
-  body comes near the 5 GB single-PUT limit. A 412 means the body exists; the writer checks the
-  ETag against its MD5 and moves on.
+  body comes near the 5 GB single-PUT limit.
+- **A 412 means the body already exists.** The writer records the attempt as `unchanged`
+  and moves on, with no HEAD and no comparison. The object was verified when it was
+  created, and the weekly check compares it with the receipt line that created it. Over
+  half of body-bearing attempts hit an existing body, so this path must cost nothing.
 
 ### 4.2 Receipts
 - One immutable file per fetch run, keyed by its UTC write date. Each line records:
   - requested URL, final URL, time, HTTP status and outcome (stored, unchanged, failed,
     retry-later);
-  - body SHA-256, stored MD5 and stored size, media type;
+  - body SHA-256, media type, and, for `stored` lines, the stored MD5 and size;
   - an allowlisted set of response headers (never cookies or authorization);
   - writer identity: job, code commit and lockfile digest.
 - Receipts are the authoritative history of what was captured and when.
 - Written create-only after the run's bodies, so every receipt line points at a body that
   exists.
+- **Older receipts** also sit under non-date segments (`undated/`, `mixed-dates/`; 49
+  files, 2.2M rows). New writers never use them.
 
 ### 4.3 Provenance
 - **Contents:** every decision a person or a reviewed process makes about sources, such as
@@ -129,10 +136,11 @@ SITE (static) → pointer → release → list (whole) / detail, ids, occurrence
 ### 4.4 Protection and verification
 - **Lock.** An R2 bucket lock (indefinite) on `bodies/`, `receipts/` and `provenance/`.
   Writers hold only create permission in practice.
-- **Weekly check.** One LIST of `bodies/`, joined to `captures` on key, size and ETag:
-  every receipt-referenced body exists with the size and MD5 its receipt recorded. That is
-  about 1,000 list requests and no body bytes. HEADs would add a million requests a week
-  and find nothing the ETag doesn't already show.
+- **Weekly check.** One LIST of `bodies/`, joined to `captures` on key, size and ETag for
+  the line that stored each body: every receipt-referenced body exists, and every stored
+  body has the size and MD5 its creating line recorded. That is about 1,000 list requests
+  and no body bytes. HEADs would add a million requests a week and find nothing the ETag
+  doesn't already show.
 - **Sample.** The weekly job also downloads 25 random bodies and checks their SHA-256 end
   to end, which exercises the read and decode path. There is no daily re-hash: at 0.5% a
   day it re-read 1.8 times the corpus per year to catch what R2 already verified.
@@ -143,25 +151,32 @@ SITE (static) → pointer → release → list (whole) / detail, ids, occurrence
 ## 5. Lake
 
 All three tables are Iceberg tables in the bucket's Basin Catalog (formerly R2 Data
-Catalog), the managed Iceberg REST catalog the engine already uses. Every commit carries
-its requirements (table UUID and current snapshot), so concurrent writers fail rather than
-overwrite each other.
+Catalog), the managed Iceberg REST catalog. Every commit carries its requirements (table
+UUID and current snapshot), so concurrent writers fail rather than overwrite each other.
+
+**Conflicts are retried by recomputing, never by re-sending.** Basin's own maintenance
+commits to the same tables, so an append can lose a race. On a conflict the writer reloads
+the table, recomputes its work list (the anti-join) against the new snapshot, writes only
+what is still missing, and retries a bounded number of times. Re-sending the losing files
+could duplicate rows when two runs ingest the same receipts. Files from a losing attempt
+become orphans (5.4).
 
 ### 5.1 `captures`
 - **Rows:** one per fetch attempt. Unique on `(receipt_key, receipt_line)`, sorted by
   `(url, attempt_seq)`, with hashes as binary. No derivable columns. A compact form
   measured 157 MB for all 3.9M rows and 315 KB for a normal day.
-- **Ingest:** for each receipt family, LIST from the newest date already ingested
-  (`StartAfter`), anti-join against ingested receipt keys, and append the missing ones in
-  one commit. Listing cost grows with new receipts, not with all of them. The weekly check
-  lists everything and appends anything a late receipt left behind. A retried append
-  cannot duplicate.
+- **Ingest:** for each receipt family, list only date-shaped prefixes, starting from the
+  newest date already ingested; anti-join against ingested receipt keys; append the
+  missing ones in one commit. Listing cost grows with new receipts, not with all of them.
+- **Backfill and late receipts.** The non-date segments are read once by the backfill.
+  The weekly check lists everything and appends anything a late receipt left behind.
 - **Rebuild check:** rebuilding from all receipts reproduces the same set of rows.
 
 ### 5.2 `readings`
-- **Rows:** one per `(body_sha256, parser, parser_version)`, partitioned by parser, sorted
-  by body hash. Each media family has its own parser and version, so a new HTML parser
-  never re-reads a PDF.
+- **Rows:** one per `(body_sha256, parser, parser_version)`, partitioned by
+  `(parser, parser_version)` and sorted by body hash. Each media family has its own parser
+  and version, so a new HTML parser never re-reads a PDF, and the model prunes other
+  versions from the manifests.
 - **Columns:** a narrow typed core (title, page count, format) plus one folded
   `List<Struct<field, values>>` for everything else. Large text goes in its own table if
   it's needed.
@@ -169,11 +184,13 @@ overwrite each other.
   - HTML, XML and JSON: full readings. A backfill reads about 5 GB.
   - PDF: only the fields the browser shows (title, page count). A backfill reads about
     335 GB, so the PDF parser changes rarely and backfills run in the background.
-  - ZIP containers and captions: none. ZIP members are captured as their own attempts.
+  - ZIP containers, captions and untyped bodies (74k bodies, 37 GB): none. ZIP members are
+    captured as their own attempts.
 - **Work list:** an anti-join on `(sha, parser, parser_version)`. A daily run appends once.
   A backfill appends once per batch, so it always resumes.
-- **New parser versions** are backfilled in background batches. The live release uses the
-  newest complete version of each parser.
+- **New parser versions** are backfilled in background batches. A version is complete when
+  its work list is empty. The live release uses the newest complete version of each
+  parser.
 
 ### 5.3 `filename_readings`
 - **Rows:** one per `(filename, source_url, catalog_version)`, holding the folded fields
@@ -182,18 +199,23 @@ overwrite each other.
   body, so they can't live in `readings`. Recomputing them every run would cost about 9
   CPU-minutes a day (0.31 ms each over 1.68M source files) and put a Python pass inside the
   model.
-- **Key.** The full source URL, not the host, because reviewed mirror URLs qualify
-  readings individually.
+- **Key.** The full source URL, not the host, because the catalog qualifies 71 exact
+  mirror URLs. The filename is part of the key because 32,574 source files have a filename
+  that isn't their URL's last segment. `catalog_version` covers every vocabulary the
+  producer passes in, such as member surnames if they are ever used.
 - **Work list:** pairs in `captures` that have no row for the current catalog version.
   Daily cost is under a second. A new catalog version is one background job of about 7
-  minutes over at most 1.35M pairs.
+  minutes over 1.39M pairs.
+- **Scope in releases.** The model uses each document's representative reading. Per-copy
+  readings stay in the lake.
 
 ### 5.4 Maintenance
 - **Basin Catalog maintains the tables:** compaction (target 128 MB) and snapshot
   expiration (older than 30 days, keep the last 5), enabled per table. Expiration also
-  deletes the data files that only expired snapshots referenced.
+  deletes the data files that only expired snapshots referenced. Compaction is a paid Basin
+  feature; at about 315 KB of appends a day, its volume is a few GB a month at most.
 - **Orphans.** Basin doesn't remove files that no snapshot ever referenced, such as the
-  data file of a failed commit. Those are rare and small. The weekly check reports their
+  data file of a lost commit race. Those are rare and small. The weekly check reports their
   bytes; cleanup waits until that number matters.
 - **To confirm before building on it:** that compaction keeps the number of manifests in
   the current snapshot bounded (appendix, step 1). If it doesn't, the logs move to the
@@ -215,45 +237,75 @@ overwrite each other.
 | `members` | `(document_id, source_id)` |
 | `recoveries`, `reviews` | Resolved from provenance and captures |
 
+- **ID formulas** keep today's exact inputs, including the logical body key string
+  `bodies/sha256/<aa>/<sha>.gz`, whatever the physical key. IDs then match the pinned
+  catalog wherever the grouping agrees.
+
+- **A document is a group of source files** the model treats as one document. Source files
+  connect through identical document bodies and through shared canonical endpoints
+  (filename plus URL); connections chain.
 - **Grouping rule.** The edge set is SQL and is written down before anything is compared
-  with the old catalog. Source files connect through shared document bodies and shared
-  canonical endpoints (filename plus URL). HTML bodies, error responses and placeholder
-  bodies don't connect anything. A placeholder is any body seen at more than *k* URLs: one
-  error page sits at 87,161 URLs, and without this rule it glues together a component of
-  174,323 source files.
+  with the old catalog. Three kinds of body connect nothing:
+  - error responses;
+  - placeholders: any body seen at more than *k* = 100 URLs. One error page sits at 87,161
+    URLs and, unchecked, glues together 174,323 source files. Measured: any *k* from 50 to
+    200 excludes the same dozen placeholder bodies;
+  - HTML bodies. HTML is pages, not files. Shared listing and landing pages glue unrelated
+    sources, so identical HTML at two URLs stays two documents, by intent.
+
+  With this rule the real graph gives 1.26M documents, and the largest has 456 source files.
+- **Representative file.** Each document names one representative saved file, chosen by a
+  fixed rule written with the grouping rule, so every run picks the same one. The page
+  links that file. The document's other versions stay in R2, unlinked; `document_id` still
+  covers them all.
 - **Grouping runs in memory** over 32-bit IDs and refuses above a configured node count.
-  At 4M nodes it needs 16 MB, so spilling would be wasted machinery below about 100 times
-  today's scale.
+  The parent array is 16 MB at 4M nodes. Assigning dense IDs to the node keys is a hash
+  aggregation of a few hundred MB, which sizes the memory pool. Spilling would be wasted
+  machinery below about 100 times today's scale.
 
-### 6.2 Browser files
-They're derived from the model outputs in the same job and shaped around the reader. The
-list row number is the key that links them.
+### 6.2 Release files
+They're derived from the model outputs in the same job. The site reads four of them, and
+the list row number links them.
 
-| File | Order | Contents | Read pattern |
-|---|---|---|---|
-| `list.parquet` (about 4 MB) | `(filename, document_id)` | Display name and facet fields; no ID | Downloaded whole, cached, searched and counted in a Web Worker |
-| `detail.parquet` (about 100 MB) | Same row order as `list` | Full `document_id`, source IDs, URLs, body hash, readings fields, occurrence row range | One page per column, located by the page index and fetched concurrently |
-| `ids.parquet` (about 43 MB) | `document_id` | ID and list row | Point lookup via the column index |
-| `occurrences.parquet` (about 30 MB) | `(list_row, ordinal)` | Where each file was seen | The range named in `detail` |
+| File | Order | Contents | Read pattern | Writer settings |
+|---|---|---|---|---|
+| `list.parquet` (about 4 MB) | `(filename, document_id)` | Display name and facet fields; no ID | Downloaded whole, decoded column by column in a Web Worker | Defaults; no page index |
+| `detail.parquet` | Same row order as `list` | One folded `List<Struct<field, value>>` per row: representative original URL, representative saved file (key, media type), readings, occurrence row range | One page per leaf column, located by the offset index | Offset index on every column; pages of about 16 KB |
+| `links.parquet` (about 14 MB) | `link_key` | 8-byte link key and list row | Point lookup via the column index | Offset index and page statistics on `link_key`; small pages |
+| `occurrences.parquet` (about 30 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, filename, capture date | The range named in `detail` | Offset index on every column |
+| `url_state.parquet` (about 40 MB) | `url` | Latest outcome and retry schedule per URL | Read whole by the capture job, not the site | Defaults |
 
+- **Documents only.** There are no per-copy pages. A document page shows its
+  representative file, its readings and where each copy was seen.
+- **Links point at a file.** A document's ID changes whenever a version joins its group.
+  A file's fingerprint never changes. So a public link carries `link_key`: the first 8
+  bytes (16 hex characters) of a body's SHA-256. `links.parquet` maps every body of every
+  document to that document's row, so old links keep resolving when the group or its
+  representative changes. A document with no saved file uses a prefix of its
+  `document_id`. An HTML body shared by two documents resolves to the first in list order.
+  The export refuses if two keys collide.
 - **No ID in `list`.** Measured on the real documents: 4.05 MB without an ID, 15.8 MB with
-  an 8-byte ID and 45.9 MB with hex IDs. Deep links carry the `document_id`, and the
-  reader resolves it to a row through `ids`.
-- **Binary hashes everywhere.** Hex hashes were 160 of 187 MB in a measured `detail`.
-- **Detail reads.** One detail view reads one page from each column: about 8 concurrent
-  range requests, roughly 80 KB, in one round trip. Folding the columns into one struct
-  would not reduce that, because Parquet stores each struct field as its own column chunk.
+  an 8-byte ID and 45.9 MB with hex IDs.
+- **Detail reads.** hyparquet reads single pages when a file has an offset index
+  (`useOffsetIndex`, 1.31.2). The reader fetches `detail`'s offset index once per session.
+  After that, a detail view is one round trip of about 3 page reads, about 20–30 KB. A flat
+  layout would be about 9 page reads and about 82 KB, because Parquet stores each column,
+  and each field of a flat struct, as its own chunk; the folded list has only a few leaf
+  columns.
+- **Binary keys** everywhere else. Hex hashes were 160 of 187 MB in a measured flat detail
+  file.
 - **Shards.** `detail` and `occurrences` can be split into fixed row-range files, which
   the manifest lists with their row ranges. There is one shard today. The export adds
-  shards when a footer would exceed 512 KB, at roughly 10 times today's rows, so pages
-  never have to grow.
+  shards when an offset index outgrows a quick first fetch, at roughly 10 times today's
+  rows.
 - **Ceiling.** At about 10 times today's documents, `list` reaches 40 MB and downloading
   it whole stops being reasonable. Then `list` is sharded by facet, or search moves to
   DuckDB-WASM or a server.
 
-All browser files share these settings:
+All release files share these settings:
 - Parquet 2.0 data pages and ZSTD;
-- chunk statistics and the page index;
+- fixed row counts per row group, flushed on row count only;
+- chunk statistics;
 - footers under 512 KB, so one request reads metadata;
 - no Bloom filters.
 
@@ -265,48 +317,69 @@ Unfiltered facet counts go in the release manifest.
 - **The engine enforces it:**
   - every sort key must be unique, or the export refuses;
   - partition order is fixed;
+  - row groups hold fixed row counts, whatever the batch sizes or spills;
   - writer properties and the `created_by` string are pinned;
   - no timestamps or run-specific values go into content.
-- **Tests:** compare bytes across thread counts and input orders.
+- **Tests:** compare bytes across thread counts, input orders and batch sizes, and with a
+  forced spill.
 - **Not a dedupe mechanism.** One new document shifts every later row number, so on any
   day with a change, every file changes. That is about 150 MB of uploads a day, which is
   fine.
 
 ### 6.4 Release and publish
-- **Early skip.** If ingest appended nothing and the work lists were empty, publish stops
-  before the model runs.
+- **Input identity.** Every publish run computes it before doing any work:
+  - the digest of ingested receipt keys;
+  - row counts per `(parser, parser_version)` and per filename catalog version;
+  - the provenance digest;
+  - the SQL, engine, parser and catalog versions.
+
+  It uses content high-water marks, not snapshot IDs, because a Basin compaction changes
+  snapshot IDs without changing content.
+- **Early skip.** If the input identity equals the live release's, publish stops before
+  the model runs. A review decision or a SQL change therefore publishes without waiting
+  for a capture.
 - **Release ID.** The SHA-256 of the file list (name, SHA-256, size, rows) and the schema
   version. It is computed after export and before upload. If it equals the live release's,
-  there is nothing to publish.
+  publish records the new input identity and stops.
 - **Files.** Uploaded to `viewer-publications/releases/<release_id>/` with a create-only
   PUT and Content-MD5. A 412 on a rerun is checked against the expected MD5.
-- **Manifest.** `releases/<release_id>/manifest.json` lists each file (name, SHA-256, MD5,
-  size, rows, row range, schema version) and the facet counts. It also records the inputs
-  exactly: lake snapshot IDs, the provenance digest, and the SQL, engine, parser and
-  catalog versions. The inputs are recorded but are not part of the ID, so a catalog
-  compaction alone doesn't make a new release.
-- **Canary.** The site's own reader module runs in Node against the candidate. It decodes
-  `list`, runs a search and a facet count, reads the first, last and a random detail,
-  resolves an ID, reads an occurrence range and HEADs one saved copy. It takes under a
-  minute and needs no headless browser.
+- **Manifest.** `releases/<release_id>/manifest.json` holds only content: each file (name,
+  SHA-256, MD5, size, rows, row range, schema version) and the facet counts. It is
+  deterministic, so a release that re-emerges writes identical bytes.
+- **Inputs.** `releases/<release_id>/inputs/<input_digest>.json` records the input
+  identity, the last snapshot IDs and the run. A release produced from several input sets
+  has several input records.
+- **Canary.** The site's own reader module runs in Node against the uploaded candidate over
+  HTTPS, so Range reads and caching headers are real. It decodes `list` within a heap
+  budget for a mid-range phone, runs a search and a facet count, reads the first, last and
+  a random detail, resolves a link, reads an occurrence range, opens one saved copy, and
+  checks that `url_state` decodes. It takes under a minute and needs no headless browser.
 - **Flip.** `viewer-publications/manifest.json` is updated with `If-Match` on its current
   ETag. A failed canary or a lost race leaves the previous release live.
 - **Caching.** Release files and manifests are cached as immutable; the pointer is
   `no-store`.
-- **Retention.** Keep the last 10 releases plus any pinned ones. The weekly job deletes
-  older release prefixes. Releases share no files, so nothing needs reference counting.
+- **Retention.** Keep the last 10 releases plus any listed in
+  `viewer-publications/pinned.json`. The weekly job deletes older release prefixes.
+  Releases share no files, so nothing needs reference counting.
 
 ## 7. Site
 
-- **Reads:** pointer → release manifest → the files in section 6.2. Search and facet
-  filtering run in a Web Worker over `list.parquet`. Details and point lookups use HTTP
-  Range reads.
+- **Reads:** pointer → release manifest → `list`, `detail`, `links` and `occurrences`.
+  Search and facet filtering run in a Web Worker over `list`, decoded column by column into
+  arrays and dictionary codes, because objects would cost hundreds of MB of heap on a
+  phone. Details and lookups use HTTP Range reads.
+- **Devices:** desktop and mid-range phones. The contract test and the canary enforce the
+  heap budget.
 - **One reader.** The reader is a plain module with no DOM dependency, so the canary runs
   the same code the site ships.
 - **Contract:** the manifest carries a `schema_version`. The reader accepts the current and
   the previous version, so format changes ship reader-first, then publisher.
-- **Saved copies** link to `bodies/...`. Because of section 4.1, the browser receives the
-  original document with the right media type.
+- **Saved copies:**
+  - bodies written to the design in section 4.1 open directly;
+  - older gzip PDFs have a one-time uncompressed copy at `bodies/sha256/<aa>/<sha>.pdf`,
+    which opens directly;
+  - other older gzip bodies are fetched and unpacked by the site with the browser's
+    `DecompressionStream`, then opened with the media type from `detail`.
 - **Origin:** `congressional-data.spicygov.ai` serves the bucket directly, with a
   read-only, any-origin CORS policy (GET/HEAD, Range).
 
@@ -342,15 +415,19 @@ backfill:    readings or filename_readings for a new version          (on demand
 **Capabilities**
 1. **Multi-input SQL plans** over Iceberg tables in Basin Catalog and Parquet files, in one
    DataFusion context.
-2. **Append** through the REST catalog, always sending commit requirements.
-3. **Deterministic multi-file export,** with SHA-256 and MD5 computed while writing, row-range
-   shards, and the rules in section 6.3.
+2. **Append** through the REST catalog, always sending commit requirements, with the
+   conflict retry in section 5.
+3. **Deterministic multi-file export:** SHA-256 and MD5 computed while writing; per-file
+   writer settings, including offset and column indexes and page sizes; fixed row counts per
+   row group; row-range shards; and the rules in section 6.3.
 4. **ConnectedComponents** in memory over 32-bit IDs, refusing above a configured node
    count.
 5. **Streaming I/O.** No re-read of a just-written object and no HEAD of immutable files.
    File and row-group sizes come from table properties.
 6. **Bounded resources** set by configuration: compute threads, memory pool and scratch
-   space. Joins, sorts and aggregates either spill or fail clearly within the pool.
+   space. Sorts and aggregates spill or fail clearly within the pool. Hash-join builds
+   don't spill, so plans keep wide folded columns off the build side: join on keys first,
+   then attach the wide column.
 7. **A thin interface:** a library plus a CLI that runs a declarative job spec (inputs,
    SQL, outputs, export settings) and returns a machine-readable result.
 
@@ -378,14 +455,16 @@ needed, add it upstream to iceberg-rust rather than working around it.
 
 ## 11. Verification
 
-1. **Raw invariants:** the weekly LIST joined to `captures` (key, size, MD5), the weekly
-   25-body sample, and the one-time baseline for older bodies.
+1. **Raw invariants:** the weekly LIST joined to `captures` (key, size, MD5 of the creating
+   line), the weekly 25-body sample, and the one-time baseline for older bodies.
 2. **Lake rebuild equivalence:** `captures` rebuilt from all receipts equals the appended
    table.
-3. **Determinism:** byte-identical exports across thread counts and input orders.
+3. **Determinism:** byte-identical exports across thread counts, input orders, batch sizes
+   and a forced spill.
 4. **Contract:** CI builds a release from a fixed sample of real receipts and loads it
-   through the real site in a headless browser.
-5. **Canary:** the reader module in Node, before every flip.
+   through the real site in a headless browser, within the heap budget.
+5. **Canary:** the reader module in Node, against the uploaded candidate, before every
+   flip.
 6. **Production parity:** no test-only branches in production code, enforced by a ratchet
    test.
 
@@ -397,20 +476,22 @@ needed, add it upstream to iceberg-rust rather than working around it.
 | Captures ingest | O(new receipts) | Seconds |
 | Readings | O(new bodies in scope × parse cost) | Minutes daily; backfills in background |
 | Filename readings | O(new pairs) | Under a second daily; about 7 minutes per catalog version |
-| Model + export | O(N log N) over about 8M narrow rows | Seconds (3.7 s proxy; grouping 1–2 s) |
+| Model + export | O(N log N) over about 8M rows | Seconds for the narrow plan (3.7 s proxy; grouping 1–2 s); the wide joins are measured in week one |
 | Publish | O(release size) | About 150 MB on a day with changes |
+| Detail view | One page per leaf | About 20–30 KB in one round trip, after one offset-index fetch per session |
 | Weekly check | O(bodies / 1,000) list requests | About 1,000 requests, no body bytes |
 
 A normal day moves about 1,500 object operations and 2 GB, well inside R2's free tier at
 today's scale and at 10 times it.
 
 **Validate before building on it,** in docspec-rs on the smallest production runner class:
-1. full model-and-export time and peak memory (the 3.7 s proxy used DuckDB, not
-   DataFusion);
-2. ConnectedComponents on the real graph, with the placeholder rule;
+1. full model-and-export time and peak memory, including filename readings, the folded
+   `detail` and `occurrences`, with the size of every hash-join build;
+2. ConnectedComponents on the real graph, with the grouping rule;
 3. join behavior at the memory pool limit;
-4. export determinism;
-5. Basin Catalog: a stale commit is refused, and the manifest count stays bounded under
+4. export determinism, including batch sizes and a forced spill;
+5. Basin Catalog: an append that races a compaction retries correctly, two ingest runs on
+   the same receipts leave one copy of each row, and the manifest count stays bounded under
    compaction.
 
 ## 13. Alternatives considered
@@ -421,65 +502,74 @@ today's scale and at 10 times it.
 | Model as Iceberg tables replaced each run | It works only with a safe overwrite. Releases already give immutability, history and atomic switching without it. |
 | No Iceberg (dated Parquet plus an `If-Match` manifest per log) | **The fallback.** Same atomicity with fewer moving parts, but no time travel and new engine code. Iceberg stays because the engine already writes it and Basin Catalog maintains it. Switch if Basin's compaction leaves manifests growing. |
 | A general-purpose engine (DuckDB, Spark) in place of docspec-rs | Comparable query power, but it gives up the engine-first decision and docspec-rs's export and grouping operators. |
+| Per-copy pages with a `sources` file | Declined by the owner: documents only. |
+| Links by `document_id` | The ID changes whenever a version joins the group, so links would rot. File fingerprints don't change. |
+| Row-group-granular reads (small row groups, no page index) | The footer grows with the row-group count: under a 512 KB footer a single-file `detail` costs 0.6–1 MB per view. The offset index gives page reads. |
 | Content-addressed objects shared between releases | Saves nothing on a day with any change, since every file changes, and needs a reference-counting sweep. |
-| Spilling or partitioned ConnectedComponents | 16 MB of memory today and about 160 MB at 10 times. The real risk is giant components, which the grouping rule handles. |
+| Spilling or partitioned ConnectedComponents | The parent array is 16 MB today and about 160 MB at 10 times. The real risk is giant components, which the grouping rule handles. |
 | HEAD-per-body verification and a daily re-hash | Work that grows with history (a million HEADs a week, 1.3 TB of re-reads a year) to find what an ETag comparison finds. |
+| Uncompressed copies of every older body, or an edge Worker | Copying all 0.70 TB would cost about $126 a year forever under the lock. Text-like bodies are small and unpack in the browser; only PDFs get copies. A Worker is one more deployed part. |
 | One combined browser file | Point reads need small pages and the whole download needs a small file; one file can't have both. |
 | DuckDB-WASM in the browser | Several MB of runtime for no gain at today's size. Worth revisiting at 10 times, when `list` outgrows a whole download. |
 | Separate bucket for releases | Stronger isolation; declined by the owner. |
 
 ## 14. Open decisions
 
-1. **Public document IDs:** full SHA-256 or a 16-hex prefix. With no ID in `list`, this
-   only changes `ids` and `detail` (14 MB against 43 MB for `ids`). The export refuses on a
-   prefix collision.
-2. **Placeholder threshold** *k* for the grouping rule.
-3. **PDF readings:** title and page count, or nothing. Each new PDF parser version re-reads
+1. **PDF readings:** title and page count, or nothing. Each new PDF parser version re-reads
    about 335 GB.
-4. **Retention numbers:** releases kept and snapshot age.
-5. **R2 token scoping:** confirm with current Cloudflare docs.
-6. **news_lake** adopts the same three layers later; out of scope here.
+2. **Representative file rule:** written with the grouping rule (plan, step E1).
+3. **Retention numbers:** releases kept and snapshot age.
+4. **R2 token scoping:** confirm with current Cloudflare docs.
+5. **news_lake** adopts the same three layers later; out of scope here.
+
+Decided by the owner on Oct 24: one bucket; `r2.dev` open; documents only; links by file
+fingerprint; 16-hex public keys; desktop and mid-range phones; one representative saved
+file per page; hyparquet in the browser; uncompressed copies of older PDFs only.
 
 ## Reviews
 
-Three independent reviews shaped this design. All are in
-`docs/reviews/2026-10-24-design-review/`: a general architecture review
-(`fable-review.md`) and an Iceberg, Parquet and query-plan review
-(`iceberg-parquet-review.md`) of revision 2, and an efficiency review with measurements on
-the real data (`cs300-efficiency-review.md`) of revision 3. Revision 4 applies the third:
+Five reviews shaped this design. All are in `docs/reviews/2026-10-24-design-review/`:
+- of revision 2: a general architecture review (`fable-review.md`) and an Iceberg, Parquet
+  and query-plan review (`iceberg-parquet-review.md`);
+- of revision 3: an efficiency review with measurements on the real data
+  (`cs300-efficiency-review.md`);
+- of revision 4: re-reviews by both specialists (`cs300-rereview-rev4.md`,
+  `iceberg-parquet-rereview-rev4.md`). The efficiency reviewer graded revision 4 A− (89),
+  up from B+ (84).
 
-| Finding | Change in revision 4 |
+Revision 4 applied the efficiency review (F1–F12). Revision 5 applies the two re-reviews
+and the owner's decisions:
+
+| Finding | Change in revision 5 |
 |---|---|
-| F1 filename extraction had no home | `filename_readings` (5.3) |
-| F2 raw verification grew with history | MD5 in receipts; weekly LIST joined to captures; no daily re-hash (4.4) |
-| F3, F4 Iceberg growth; catalog unnamed | Basin Catalog named; its maintenance replaces engine expiry; fallback named (5, 5.4, 13) |
-| F5 `list` size | No ID in `list`; row number links the files (6.2) |
-| F6 point reads and footers | Binary hashes, concurrent page reads, row-range shards (6.2). Not a folded struct: Parquet stores struct fields as separate chunks. |
-| F7 grouping | In-memory with a cap; placeholder bodies excluded; rule written down first (6.1) |
-| F8 readings backfill | Per-media-family parser versions; scope declared (5.2) |
-| F9 dedupe claim | Determinism kept for idempotence, not dedupe; per-release prefixes, no sweep (6.3, 6.4) |
-| F10 receipt LIST | Per-family listing from the newest ingested date (5.1) |
-| F11 parity | Browser-visible fields and ID vectors against the pinned catalog (plan) |
-| F12 moving parts | Node canary instead of a production headless run; three scheduled jobs (6.4, 8) |
-
-The key in 5.3 departs from the review, which proposed the host: house-naming qualifies
-some readings by exact mirror URL.
+| Detail reads mis-stated; engine export disables the offset index | Offset indexes per file, folded detail, offset index cached per session (6.2, 9) |
+| Receipt listing would skip 15 of 21 families on `undated/` keys | Date-shaped prefixes only; non-date segments read by the backfill (4.2, 5.1) |
+| A 412 had no defined handling | Record `unchanged`, no HEAD; weekly check uses the creating line (4.1, 4.4) |
+| Appends collide with Basin maintenance | Retry by recomputing the work list (5) |
+| Early skip ignored provenance and code; manifest held run inputs | Input identity from content high-water marks; content-only manifest; separate input records (6.4) |
+| `url_state` missing from the release | Listed, and checked by the canary (6.2, 6.4) |
+| Week-one test left out the wide data; hash joins don't spill | Wide joins measured; folded columns kept off build sides (2, 9, 12) |
+| Determinism missing chunking | Fixed row counts per row group; batch sizes and spills tested (6.3) |
+| `list` decoded as objects | Column-by-column decode, heap budget in canary and contract test (7) |
+| Grouping rule and untyped bodies unspecified | *k* = 100 from measurement, HTML reason, untyped bodies out of scope (5.2, 6.1) |
+| Owner decisions | Documents only, file links, representative file, older-copy handling (6.1, 6.2, 7) |
 
 ## Appendix: path from the current system
 
 The raw log already exists (bodies, receipts, and provenance backed up on 2026-10-24) and
-is preserved unchanged. Existing bodies keep their stored form. The target applies to new
-writes; saved copies of existing gzip bodies need an edge rule to serve them with the right
-encoding.
+is preserved unchanged. Existing bodies keep their stored form; older gzip PDFs get
+uncompressed copies.
 
 The order is:
-1. **Week one:** the bucket lock, and two measurements that decide the engine work: Basin
-   Catalog commits and compaction, and deterministic export plus grouping on real data.
+1. **Week one:** the bucket lock, the older-PDF copy job, and two measurements that decide
+   the engine work: Basin Catalog commits under maintenance, and deterministic export plus
+   grouping on the wide real data.
 2. **Now, in parallel:** the release format, reader and canary, built against a release
-   converted from the pinned Oct 19 catalog. That release is also the parity oracle, and it
-   can go live first.
-3. The raw writer changes (MD5 in receipts, encoding, write-date keys) and the weekly
-   check.
+   converted from the pinned Oct 19 catalog with the final writer settings. That release
+   is also the parity oracle, and it can go live first. Its links already use file
+   fingerprints, so they survive the switch.
+3. The raw writer changes (MD5 in receipts, 412 handling, encoding, write-date keys) and
+   the weekly check.
 4. The engine capabilities in section 9.
 5. The lake tables and their backfills.
 6. The model SQL, checked against the pinned catalog on browser-visible fields.

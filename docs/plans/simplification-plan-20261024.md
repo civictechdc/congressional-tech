@@ -1,15 +1,15 @@
 # Simplification plan: congressional-tech and docspec-rs
 
-Revision 2, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 4)
-and replaces revision 1 of this file (in git history). Evidence:
+Revision 3, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 5)
+and replaces earlier revisions of this file (in git history). Evidence:
 `docs/reviews/2026-10-24-ticket-audit/` (the audit, with measured line counts) and
-`docs/reviews/2026-10-24-design-review/` (three design reviews; section numbers below
-cite the design as "design §n" and the efficiency review as "CS300 Fn").
+`docs/reviews/2026-10-24-design-review/` (five design reviews). Below, "design §n" cites
+the design document.
 
 ## 1. Strategy: build beside, switch, delete
 
 Revision 1 refactored the old pipeline piece by piece. The design replaces most of that
-pipeline, so refactoring it is wasted work. Revision 2 builds the target beside the old
+pipeline, so refactoring it is wasted work. This plan builds the target beside the old
 pipeline, switches publishing to it, and deletes the old layers whole.
 
 - **What survives:** fetchers and raw writers, recovery imports, review tools,
@@ -17,8 +17,9 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 - **What goes:** the Python catalog (incremental and rebuild), the raw index and its
   routing, the viewer-publication journal route, the v6 preparer, and the shims around
   them. They get no new work and are deleted at the switch.
-- **Until the switch,** the old capture job keeps writing raw data. It gets raw-safety
-  fixes only.
+- **Until the switch,** the old capture job keeps writing raw data and reading the raw
+  index. It gets raw-safety fixes only. Its whole-leaf index rewrites (revision 1's E1
+  cost) continue until then; that is accepted.
 
 ## 2. Constraints
 
@@ -27,14 +28,20 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 
 **Owner decisions (binding):**
 
-| # | Decision | Effect in revision 2 |
+| # | Decision | Effect on this plan |
 |---|---|---|
 | 1 | Durable per-step commits | Each pipeline step commits once (one Iceberg append). The engine's deferred-commit mode is reverted (C0). |
 | 2 | news_lake keeps the DocSpec backend | Parked: no work until news_lake adopts the three layers (design §14). |
-| 3 | Publishing moves to export-pins | The release pipeline (design §6.4) is its finished form: one release identified by content, one conditional pointer flip. The journal and resume route is deleted (F3). |
+| 3 | Publishing moves to export-pins | The release pipeline (design §6.4) is its finished form. The journal and resume route is deleted (F3). |
 | 4 | Raw protection is a bucket lock; one bucket | Step B1. |
-| 5 | `r2.dev` stays open | Every key is public, so a path allowlist on the custom domain protects nothing (open question 5). |
+| 5 | `r2.dev` stays open | Every key is public, so a path allowlist on the custom domain protects nothing (open question 3). |
 | 6 | Engine first | The target is built in docspec-rs; congressional-tech keeps no code that overlaps it. |
+| 7 | Documents only | No per-copy pages and no `sources` file. Per-copy filename readings stay in the lake. |
+| 8 | Links point at a file; 16-hex keys | `links.parquet` maps every body's key to its document. F0 uses it, so links survive the switch. |
+| 9 | Desktop and mid-range phones | The reader decodes `list` column by column; the canary and contract test enforce a heap budget. |
+| 10 | One representative saved file per page | The rule is written with the grouping rule (E1). |
+| 11 | hyparquet stays in the browser | Page reads through offset indexes (A1, C3). |
+| 12 | Older gzip PDFs get uncompressed copies; other older bodies unpack in the browser | B13 and A5. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -67,39 +74,48 @@ repaired in place; recovery imports refuse uncommitted code.
 
 ## 3. Week one: measure, then commit to the engine work
 
-Two measurements decide how much engine work there is. The first release starts the
-site work at the same time.
+Two measurements decide how much engine work there is. The first release and the
+older-PDF copies start the site work at the same time.
 
-**M1. Basin Catalog commits and compaction** (docspec-rs; ss-om9p, ss-n68e).
-1. Fix ss-om9p so every commit sends its requirements. Test: two writers append from the
-   same snapshot, and the second is refused.
-2. Append 400 day-sized batches (about 315 KB each) to a scratch table with Basin
-   compaction and snapshot expiration enabled. Count data files and manifests in the
-   current snapshot before and after maintenance runs.
+**M1. Basin Catalog commits under maintenance** (docspec-rs).
+1. **Conflict retry.** Plain appends already send their commit requirements; ss-om9p
+   concerns the engine's lifecycle store, which the target drops. So M1 tests what is new:
+   an append that races a Basin compaction recomputes its work list and lands, and two
+   ingest runs on the same receipts leave exactly one copy of each row (design §5).
+2. **Manifest growth.** Append 400 day-sized batches (about 315 KB each) to a scratch
+   table with Basin compaction and snapshot expiration enabled. Count data files and
+   manifests in the current snapshot before and after maintenance runs.
 3. Measure or remove the unmeasured 2 MiB file cap (ss-n68e).
 
 Decides: Iceberg stays (manifests bounded), or the three logs move to dated Parquet with an
 `If-Match` manifest (design §13).
 
-**M2. Export and grouping on real data** (docspec-rs).
+**M2. Export and grouping on the wide real data** (docspec-rs).
 - Inputs: the pinned Oct 19 snapshot (captures `db033173…`, catalog generation
-  `596f08fa…`).
-- Group the real graph with a first placeholder rule. Record time, peak memory and the
-  largest components.
-- Export `list`, `detail`, `ids` and `occurrences`. Bytes must be identical across 1, 2
-  and 4 threads and shuffled input. Record time and peak memory on `ubuntu-24.04`
+  `596f08fa…`), including today's filename readings.
+- Group the real graph with the design's rule (*k* = 100, HTML and errors excluded).
+  Record time, peak memory and the largest components.
+- Export every release file, including the folded `detail` with readings and the 4.7M
+  `occurrences`. Report the size of every hash-join build.
+- Bytes must be identical across 1, 2 and 4 threads, shuffled input and different batch
+  sizes, and with a forced spill. Record time and peak memory on `ubuntu-24.04`
   (4 vCPU, 16 GB), the smallest runner class.
 
-Decides: the size of track C, and whether DataFusion matches the 3.7 s DuckDB proxy.
+Decides: the size of track C, and whether DataFusion handles the wide joins within the
+pool.
 
 **F0. The first release, converted from the pinned catalog** (congressional-tech).
-- Convert the pinned catalog pair into the release format (design §6.2), using the
-  engine's RunSpec where it can. The CS300 review's
-  `measurements/build_list.py` shows the shape; it built all four files in 24 s.
+- Convert the pinned catalog pair into the release format (design §6.2), with the final
+  writer settings: offset indexes, the folded `detail`, `links` keyed by body prefixes.
+  Use the engine's RunSpec where it can. The CS300 measurements show the shape:
+  `measurements/build_list.py` built `list`, `ids` and `detail` in 24 s, and
+  `size_occ_captures.py` built `occurrences`.
 - This release is the reader's fixture (track A) and the parity oracle (E4). Its manifest
-  records that it came from the pinned catalog.
+  records that it came from the pinned catalog. It has no `url_state`, so capture keeps
+  reading the raw index until F2.
 - If the owner agrees (open question 1), it goes live as the first release, so the
-  explorer works on Oct 19 data while the rest is built.
+  explorer works on Oct 19 data while the rest is built. Its links use file fingerprints,
+  so they keep working after the switch.
 - The converter is a migration tool. It is deleted at the switch.
 
 ## 4. Tracks
@@ -108,26 +124,34 @@ Decides: the size of track C, and whether DataFusion matches the 3.7 s DuckDB pr
 |---|---|---|---|---|
 | A | Site reader and canary | F0 | 1–2 weeks | week 1 |
 | B | Raw writers and protection | P4 (owner) for B1 only | 1–2 weeks | week 1 |
-| C | Engine capabilities | M1, M2 | 3–6 weeks | week 2 |
+| C | Engine capabilities | M1, M2 | 3.5–5.5 weeks after week 1 | C0 in week 1 |
 | D | Lake tables and backfills | C2, B2 | 1–2 weeks | after C2 |
 | E | Model SQL and parity | C1, C3, C4, D, F0 | 2–4 weeks | after D |
 | F | Switch and delete | A, E | 1–2 weeks | last |
 
-The critical path is M → C → D → E → F: 8–15 weeks for one engineer. A and B run beside
-C. Estimated total: **8–16 weeks**.
+The critical path is M → C → D → E → F: about 8.5–14.5 weeks for one engineer. A and B
+run beside C. Estimated total: **8–16 weeks**.
 
 ### A. Site reader and canary
 
-1. A reader module for the release format: pointer → manifest → `list` in a Web Worker,
-   `detail` by row (page index, concurrent page reads), `ids`, `occurrences` and shards.
-   No DOM dependency. Accepts the current and previous `schema_version`.
-2. Deep links carry the `document_id` and resolve it through `ids`.
-3. The Node canary (design §6.4), as a script the publish job runs.
-4. A CI contract test: the real site in a headless browser against F0. It moves to a
-   release built from a fixed sample of real receipts once track E exists.
+1. **A reader module for the release format:** pointer → manifest → `list` in a Web
+   Worker, decoded column by column into arrays and dictionary codes; `detail` by row with
+   hyparquet's `useOffsetIndex`, its offset index fetched once per session and cached;
+   `links`; `occurrences`; shards. No DOM dependency. Accepts the current and previous
+   `schema_version`.
+2. **Links** carry a 16-hex file fingerprint and resolve through `links` to whichever
+   document holds that file now.
+3. **The Node canary** (design §6.4): a script the publish job runs against the uploaded
+   candidate, including a heap budget for a mid-range phone.
+4. **A CI contract test:** the real site in a headless browser against F0, within the heap
+   budget. It moves to a release built from a fixed sample of real receipts once track E
+   exists.
+5. **Saved copies:** link the representative file. Older gzip PDFs open their `.pdf` copy
+   (B13). Other older gzip bodies are fetched, unpacked with `DecompressionStream`, and
+   opened with the media type from `detail`.
 
-**Done when:** the site loads F0 locally, and the canary passes against F0 in under a
-minute.
+**Done when:** the site loads F0 locally on desktop and in a phone-sized profile, and the
+canary passes against F0 in under a minute.
 **Replaces at the switch:** `catalog-v6.ts` and its v6 and ExportPin branches, the v6
 paths in `worker.ts`, and `verify-live-publication.mjs`. Keep `cache.ts`,
 `withVerifiedJson` and `startup.ts` (ct-tdsx) where they fit.
@@ -138,11 +162,11 @@ This code survives, so it is fixed now.
 
 1. **Bucket lock** (owner, ct-1l1h) on `bodies/`, `receipts/` and `provenance/`.
 2. **Receipts and bodies to the design (§4.1–4.2):**
-   - receipts record the stored MD5 and stored size;
+   - `stored` receipt lines record the stored MD5 and size;
    - new compressible bodies are stored with `Content-Encoding: gzip` and the original
-     `Content-Type`;
-   - one create-only PUT per body, never multipart;
-   - on a 412, compare the ETag with the MD5 (one verifier, ct-klql);
+     `Content-Type`; new PDFs are stored as-is;
+   - one create-only PUT per body with Content-MD5, never multipart;
+   - a 412 is recorded as `unchanged`, with no HEAD and no comparison (ct-klql);
    - receipt keys use the UTC write date.
 3. **One namespace policy for raw keys.** Write the refusal matrix first: every writer
    (`R2Store.put`, `put_file`, `put_pdf_body`, `AsyncBodies.put`, `LocalStore.put`) refuses
@@ -158,9 +182,9 @@ This code survives, so it is fixed now.
    refusing uncommitted changes under `packages/` or `scripts/` (ct-70kc).
 8. **Reconcile `accepted.json` with the receipts** (ct-st8m), so recoveries become
    provenance records the model reads.
-9. **The weekly maintenance job** (design §4.4): LIST joined to the capture rows, the
-   25-body sample and the orphan report. It joins to the old capture index until D1
-   exists.
+9. **The weekly maintenance job** (design §4.4): LIST joined to each body's creating
+   receipt line, the 25-body sample and the orphan report. It joins to the old capture
+   index until D1 exists.
 10. **The one-time full re-hash** of bodies written before receipts carried an MD5, with
     their ETags recorded under `provenance/verification/`.
 11. **A ratchet test:** `PYTEST_CURRENT_TEST` may not appear in surviving packages. Delete
@@ -169,53 +193,64 @@ This code survives, so it is fixed now.
 12. **Owed while the old capture path runs:** ct-63hg (repair wrong `stored_sha256` index
     rows in place) and ct-j9c4 (confirm the daily capture writes correct values). The
     target reads receipts, so these matter only until the switch.
+13. **Uncompressed copies of older gzip PDFs** (weeks 1–2; track A's saved copies need
+    them). First fold `migrate_pdf_bodies_to_uncompressed` into
+    `backfill_uncompressed_pdfs` (`pdf_backfill.py`), so one path remains. Then run it over
+    every older gzip PDF: create-only to `bodies/sha256/<aa>/<sha>.pdf`, with Content-MD5,
+    and the decompressed SHA-256 checked before upload. About 261k uploads and 365 GB, a few
+    hours. Copies that already exist return 412 and are skipped.
 
-**Done when:** the refusal matrix passes, the lock is on, and one capture run's receipts
-carry MD5s that match the stored ETags.
+**Done when:** the refusal matrix passes, the lock is on, one capture run's `stored` lines
+carry MD5s that match the stored ETags, and every older gzip PDF has its copy.
 
 ### C. Engine capabilities (docspec-rs)
 
-**C0. First moves on engine main.** Revert the deferred-commit mode and delete the
-dataset-name predicates (ss-pdv0). Both came after congressional-tech's pin, so nothing
-depends on them. Hash while writing, and stop HEADing and re-downloading immutable files
-(ss-k1f0).
+**C0. First moves on engine main** (week 1, beside M1). Revert the deferred-commit mode and
+delete the dataset-name predicates (ss-pdv0). Both came after congressional-tech's pin, so
+nothing depends on them. Hash while writing, and stop HEADing and re-downloading immutable
+files (ss-k1f0; this is also C5).
 
 **Then the capabilities in design §9:**
 
-| # | Capability | Evidence |
-|---|---|---|
-| C1 | Multi-input SQL plans over Basin tables and Parquet files in one context | A plan joining two tables and a file |
-| C2 | Append through the REST catalog with requirements (lands in M1) | The two-writer test |
-| C3 | Deterministic multi-file export: SHA-256 and MD5 while writing, unique sort keys, row-range shards, pinned writer properties | Byte equality across thread counts and input orders |
-| C4 | ConnectedComponents in memory over 32-bit IDs, refusing above a node cap | M2's graph; a refusal test |
-| C5 | Streaming I/O: no re-read or HEAD of immutable files (C0) | Request counts in a test |
-| C6 | Bounded threads, memory pool and scratch | A join at the pool limit spills or fails clearly |
-| C7 | A CLI that runs a declarative job spec and returns a machine-readable result | The M2 export as a job spec |
+| # | Capability | Estimate | Evidence |
+|---|---|---|---|
+| C1 | Multi-input SQL plans over Basin tables and Parquet files in one context | 0.5–1.5 weeks | A plan joining two tables and a file |
+| C2 | Append through the REST catalog, with the conflict retry | 0.5 week | M1's two tests |
+| C3 | Deterministic multi-file export: SHA-256 and MD5 while writing; per-file writer settings, including offset and column indexes and page sizes; fixed row counts per row group; unique sort keys; row-range shards | 1–1.5 weeks | Byte equality across threads, input orders, batch sizes and a forced spill; hyparquet page reads on the output |
+| C4 | ConnectedComponents in memory over 32-bit IDs, refusing above a node cap | 0.5 week | M2's graph; a refusal test |
+| C5 | Streaming I/O: no re-read or HEAD of immutable files | in C0 | Request counts in a test |
+| C6 | Bounded threads, memory pool and scratch; wide folded columns kept off hash-join build sides | 0.5 week | A join at the pool limit fails clearly; M2's build sizes |
+| C7 | A CLI that runs a declarative job spec and returns a machine-readable result | 0.5–1 week | The M2 export as a job spec |
 
-**Not needed by congressional-tech any more:** lifecycle-store compaction on R2
-(ss-1uh5), copy-on-write measurement (ss-eyhn) and insert-if-absent (ss-jxvn). The target
-has no engine lifecycle store, no updates and no news_lake work. Close them unless another
-consumer needs them.
+The engine's current export disables the offset index unless page-index columns are named
+(`export/pipeline.rs:687-697`), so C3's per-file settings are required, not optional.
+
+**Not needed by congressional-tech any more:** the lifecycle store's commit requirements
+(ss-om9p), lifecycle-store compaction on R2 (ss-1uh5), copy-on-write measurement
+(ss-eyhn) and insert-if-absent (ss-jxvn). The target has no engine lifecycle store, no
+updates and no news_lake work. Close them unless another consumer needs them.
 
 **Done when:** one CLI job runs the M2 export from Basin tables, byte-identical across
-thread counts, on the smallest runner.
+threads and batch sizes, on the smallest runner.
 
 ### D. Lake tables and backfills
 
 1. **`captures`** (design §5.1):
-   - ingest with per-family listing from the newest ingested date;
-   - backfill from all 2,289 receipts (1.08 GB compressed); older receipt shapes are
+   - ingest from date-shaped prefixes only, per family, from the newest ingested date;
+   - backfill from all 2,289 receipts (1.08 GB compressed), including the non-date
+     segments (`undated/`, `mixed-dates/`: 49 files, 2.2M rows); older receipt shapes are
      mapped in the ingest SQL, with a test sample of each shape;
    - the rebuild-equivalence test;
-   - **compare with the pinned old capture index** (3,909,134 rows) as row multisets. A row
-     that exists only in the old index is a fact raw doesn't hold, and it blocks the
-     switch until the owner decides (open question 7).
-2. **`readings`** (design §5.2): one parser and version per media family; the scope in
-   the model SQL. Backfill HTML, XML and JSON first (about 5 GB), then PDF titles and page
-   counts as a background job (about 335 GB). The parser functions survive; the
-   adoption machinery around them goes in F3.
+   - **compare with the pinned old capture index** (3,909,134 rows) as row multisets, on
+     receipt-derived columns only. A row that exists only in the old index is a fact raw
+     doesn't hold, and it blocks the switch until the owner decides (open question 4).
+2. **`readings`** (design §5.2): one parser and version per media family; partitioned by
+   `(parser, parser_version)`; a version is complete when its work list is empty. The scope
+   in the model SQL excludes ZIPs, captions and untyped bodies. Backfill HTML, XML and JSON
+   first (about 5 GB), then PDF titles and page counts as a background job (about 335 GB).
+   The parser functions survive; the adoption machinery around them goes in F3.
 3. **`filename_readings`** (design §5.3): a producer that runs `house-naming` over the
-   work list and appends through the engine. Backfill is about 7 minutes.
+   work list and appends through the engine. Backfill is about 7 minutes over 1.39M pairs.
 4. Enable Basin compaction and snapshot expiration on all three tables.
 
 **Done when:** all three tables exist with complete backfills, and both `captures`
@@ -223,23 +258,28 @@ comparisons pass.
 
 ### E. Model SQL and parity
 
-1. **Write the grouping rule down first:** the edge set and the placeholder threshold *k*
-   (open question 2), as SQL with a short rationale.
+1. **Write the grouping rule down first,** as SQL with a short rationale: the edge set;
+   errors, placeholders (*k* = 100) and HTML connect nothing; and the fixed rule that picks
+   each document's representative file (decision 10).
 2. **The model SQL** (design §6.1): `url_state`, `filenames`, `documents`, `members`,
-   `recoveries`, `reviews`, and the browser files.
+   `recoveries`, `reviews`, and the release files.
 3. **Golden vectors** for `source_id` and `document_id`, generated from Python
    `source_identity` and `compute_document_id` (`retention/index/bipartite.py:165,197`) and
-   checked in the engine's tests.
-4. **Parity against F0,** on browser-visible fields only. Classify each difference:
+   checked in the engine's tests. The formulas keep the logical body key string
+   `bodies/sha256/<aa>/<sha>.gz`.
+4. **Parity against F0,** on browser-visible fields, joined by link key so that documents
+   regrouped by the new rule still pair up. Expect at least 1.5% of `document_id`s to
+   change: the HTML rule alone gives 1.26M documents against 1.24M. Classify each
+   difference:
    - a rule change: fine, recorded with the rule;
    - an old-pipeline error: the new model wins;
-   - a fact that exists only in derived tables: a blocker (open question 7).
+   - a fact that exists only in derived tables: a blocker (open question 4).
 
 **Done when:** every difference is classified with no blocker left, and the model runs as
 a CLI job on the smallest runner.
 
 The 38–95 minute Python rebuild from revision 1 (Step 0) is not needed: the pinned
-catalog pair, converted in F0, is the oracle (CS300 F11).
+catalog pair, converted in F0, is the oracle.
 
 ### F. Switch and delete
 
@@ -260,7 +300,7 @@ catalog pair, converted in F0, is the oracle (CS300 F11).
 | `docspec_client`'s HTTP custody path, with its fallbacks and the pure-Python `blake3`, if nothing else uses it | at cut |
 | Shims and legacy formats (revision 1 WS10 list) | 2,064 + 1,058 |
 | Measurement scripts for deleted subjects (revision 1 WS11 list) | 1,862 + 723 |
-| The F0 converter | at cut |
+| The F0 converter and the one-off PDF copy job (after B13) | at cut |
 | docspec-rs: unused routes, lifecycle families, the Dagster adapter, provider suites, `cli_args.rs`, hand-written SHA-256, date transforms, legacy formats (ss-oxg1's WS9 children) | 14,383 certain, up to 2,101 more |
 
 The engine cuts apply only to code no consumer uses after the switch. Check
@@ -290,15 +330,15 @@ and the deleted line counts are recorded.
 
 ## 5. What revision 1 became
 
-| Revision 1 | Ticket | Revision 2 |
+| Revision 1 | Ticket | Now |
 |---|---|---|
 | Step 0, full Python rebuild | ct-q2ht | Dropped: the pinned catalog is the oracle (F0, E4) |
 | WS1 Python half | ct-dzlf | B11 for surviving code; the other sites go with the old layers |
 | WS1 engine half | ss-pdv0 | C0 |
-| WS2 raw write rules | ct-syx8 | B2–B6; the PDF migration fold, planner and `raw.json` steps go with the old layers |
+| WS2 raw write rules | ct-syx8 | B2–B6 and B13; the planner and `raw.json` steps go with the old layers |
 | WS3 custody client | ct-tw3r | Deleted with the HTTP custody path (F3) |
 | WS4 provenance pinning | ct-70kc | B7; the fingerprints go with the old catalog |
-| WS5 WAF allowlist | ct-t906 | Open question 5 |
+| WS5 WAF allowlist | ct-t906 | Open question 3 |
 | WS6 export-pins | ct-qqk2 | A, design §6.4 built in E and F; the journal route deleted in F3 |
 | WS7 incremental catalog | ct-7uit | Replaced by D and E; the Python layer deleted in F3 |
 | WS8 news_lake | ct-d8cf | Parked (G) |
@@ -309,13 +349,14 @@ and the deleted line counts are recorded.
 | E1 raw index onto engine datasets | ct-w5fm | Dropped: `captures` replaces the raw index |
 | E2 body existence | ct-allr | B5 |
 | E3 byte-count round trips | ct-eb71 | Dropped with the old layers |
-| E4 verify each upload once | ct-klql | B2 |
+| E4 verify each upload once | ct-klql | B2: Content-MD5 on create, nothing on a 412 |
 | E5, E6, E9 | — | Dropped with the old layers; C3 and C5 hash while writing |
 | E7 engine I/O and lifecycle | ss-k1f0, ss-n68e, ss-1uh5, ss-eyhn | C0 and M1; the other two aren't needed |
 | E8 `blake3` | ct-5v1y | Deleted with the HTTP custody path |
 | E10 news_lake | ss-jxvn | Parked |
 | E11 `accepted.json` | ct-st8m | B8 |
 | E12 small items | ct-i5g2 | The receipt LIST is D1; the rest goes with the old layers |
+| — | ss-om9p | Not needed: it fixes the lifecycle store, which the target drops |
 
 ## 6. Keep list
 
@@ -323,7 +364,8 @@ These survive the switch unchanged:
 
 - **Raw path:** create-only body and receipt writes, MD5-verified uploads; recovery
   `checked_put`; RecoveryGuard (ct-jl1m), the body-key shard check (ct-qspb), recovery
-  admission (ct-4r1c), ct-fqgf and ct-vxzu; `derive_body_key` and its golden test.
+  admission (ct-4r1c), ct-fqgf and ct-vxzu; `derive_body_key`, `physical_body_object_key`
+  and their golden tests.
 - **Site:** `cache.ts`, `withVerifiedJson`, `startup.ts`, and `--verify-publication`'s
   Chromium checks, retargeted to the contract test.
 - **Engine:** `Strict<T>`, the remote scope boundary with create-only writes and the
@@ -334,25 +376,21 @@ These survive the switch unchanged:
 
 1. **First release:** publish F0 (converted from the pinned Oct 19 catalog) as the live
    release, so the explorer works in two to three weeks? Recommended.
-2. **Placeholder threshold** *k* for grouping (design §14.2).
-3. **PDF readings:** title and page count, or nothing (design §14.3).
-4. **Public document IDs:** full SHA-256 or a 16-hex prefix (design §14.1).
-5. **Custom-domain path allowlist:** delete it and its tooling? `r2.dev` already serves
+2. **PDF readings:** title and page count, or nothing (design §14).
+3. **Custom-domain path allowlist:** delete it and its tooling? `r2.dev` already serves
    every key (decision 5), and saved copies need `bodies/` on the custom domain. Keep the
    CORS policy either way.
-6. **Legacy gzip bodies:** serve saved copies through an edge rule, or write uncompressed
-   copies once under new keys?
-7. **Only if needed:** if D1 or E4 finds facts that exist only in derived tables, record
+4. **Only if needed:** if D1 or E4 finds facts that exist only in derived tables, record
    them as provenance first, or accept losing them?
-8. **Retention numbers:** releases kept and snapshot age.
+5. **Retention numbers:** releases kept and snapshot age.
 
 ## 8. Schedule
 
 | When | Work |
 |---|---|
-| Week 1 | P4 lock; M1; M2; F0; A and B start |
-| Weeks 2–3 | A and B done; the explorer goes live on F0 if approved; C under way |
-| Weeks 2–7 | C |
+| Week 1 | P4 lock; M1; M2; F0; C0; B13 starts; A and B start |
+| Weeks 2–3 | A, B and B13 done; the explorer goes live on F0 if approved; C under way |
+| Weeks 2–6 | C (3.5–5.5 weeks) |
 | Then | D (1–2 weeks), E (2–4 weeks), F (1–2 weeks) |
 
 Total: 8–16 weeks for one engineer. The critical path is C → D → E. The widest
