@@ -194,7 +194,8 @@ become orphans (5.4).
   `List<Struct<field, values>>` for everything else. Large text goes in its own table if
   it's needed.
 - **Scope**, declared in the model SQL:
-  - HTML, XML and JSON: full readings. A backfill reads about 5 GB.
+  - HTML, XML and JSON: full readings. A backfill reads about 5 GB. The HTML reading also
+    records the generic error-page signals the grouping rule uses (6.1), at no extra I/O.
   - PDF: only the fields the browser shows (title, page count). A backfill reads about
     335 GB, so the PDF parser changes rarely and backfills run in the background.
   - ZIP containers, captions and untyped bodies (74k bodies, 37 GB): none. ZIP members are
@@ -257,7 +258,7 @@ become orphans (5.4).
 | `members` | `(document_id, source_id)` |
 | `recoveries`, `reviews` | Resolved from provenance and captures; each recovery is attached to its original link, with its kind and evidence |
 
-- **ID formulas** keep today's exact inputs, including the logical body key string
+- **ID formulas** (confirmed by the owner) keep today's exact inputs, including the logical body key string
   `bodies/sha256/<aa>/<sha>.gz`, whatever the physical key. IDs then match the pinned
   catalog wherever the grouping agrees. Links don't depend on `document_id` (6.2), so an
   ID that changes when re-packaged bytes join costs nothing. A fingerprint-keyed ID would
@@ -273,9 +274,17 @@ become orphans (5.4).
     `request_failed`, whatever the HTTP status;
   - the HTTP status was 2xx;
   - its sniffed format is a document type: PDF, ZIP or XML, or HTML for documents that are
-    web pages. The server's `Content-Type` is never used, because it mislabels error pages.
-    E1 writes down how a web page is recognized, so that a landing page in front of a PDF
-    doesn't count;
+    web pages. The server's `Content-Type` is never used, because it mislabels error pages;
+  - for HTML, two checks decide whether it is a web page:
+    - **the link's shape comes first.** If the link points at a file (`.pdf`, `.zip`,
+      `.doc`, `.docx`, `.xml`, `/download/`, `download=1`, `file_id=` and similar), an
+      HTML response is never the document;
+    - **then generic signs of an error page,** for page-like links: a tiny body (under
+      about 2 KB), generic error words in the title or heading (access denied, forbidden,
+      not found, retry later, service unavailable, error), or a placeholder body. There
+      are no site-specific templates. On the Oct 19 data, 86,343 successful HTML bodies
+      are page-like and 44,047 file-like, and about 2,100 page-like bodies under 16 KB are
+      candidates for the second check;
   - it is not empty, not a placeholder, and not API metadata or a playlist.
 
   Everything else stays in raw and `captures` as evidence. It never enters a document's
@@ -335,9 +344,16 @@ the list row number links them.
 - **Documents only.** There are no per-copy pages. A document page shows its saved file,
   its capture dates, its readings and where each copy was seen.
 - **Editions sit together.** `list` sorts by filename and then first-captured date, so two
-  editions with the same filename appear side by side with their dates. There are no
-  "other editions" links. The date column is dictionary-encoded and adds well under 1 MB.
-  Files from the Sept 29 backfill (about 1M) carry the import day as their capture date.
+  editions with the same filename appear side by side with their dates. Undated rows sort
+  after dated ones within a filename. There are no "other editions" links. The date column
+  is dictionary-encoded and adds well under 1 MB.
+- **Dates say what we know.** Of 1.23M documents' saved files on the Oct 19 data, about
+  756k have a real fetch date, 82,474 only the Sept 29 import day, and 368,748 no date.
+  The page says:
+  - "Captured <date>" for a real fetch;
+  - "In our archive since Sept 29, 2026 (original capture date not recorded)" for
+    import-day files;
+  - "Capture date not recorded" when there is no date.
 - **Links point at a file.** A document's ID changes whenever a version joins its group.
   A file's fingerprint never changes. So a public link carries `link_key`: the first 8
   bytes (16 hex characters) of a body's SHA-256. `links.parquet` maps every real file of
@@ -578,18 +594,16 @@ today's scale and at 10 times it.
 
 1. **PDF readings:** title and page count, or nothing. Each new PDF parser version re-reads
    about 335 GB.
-2. **Web pages:** how the grouping rule recognizes a document that is a web page (plan,
-   step E1).
-3. **Backfill dates:** how the site labels the import-day capture date of the files from
-   the Sept 29 backfill.
-4. **Retention numbers:** releases kept and snapshot age.
-5. **R2 token scoping:** confirm with current Cloudflare docs.
-6. **news_lake** adopts the same three layers later; out of scope here.
+2. **Retention numbers:** releases kept and snapshot age.
+3. **R2 token scoping:** confirm with current Cloudflare docs.
+4. **news_lake** adopts the same three layers later; out of scope here.
 
 Decided by the owner on Oct 24: one bucket; `r2.dev` open; documents only; links by file
 fingerprint; 16-hex public keys; desktop and mid-range phones; only real files count as a
 document's files; a document is one distinct content, showing its newest bytes; capture
-dates shown; cut-off copies re-fetched; recoveries shown, labeled by kind; hyparquet in the browser; uncompressed copies of older PDFs only; no early
+dates shown, saying what we know; HTML web pages recognized by link shape and generic
+error signals; `document_id` keeps today's formula; cut-off copies re-fetched; recoveries
+shown, labeled by kind; hyparquet in the browser; uncompressed copies of older PDFs only; no early
 launch on the converted Oct 19 release.
 
 ## Reviews

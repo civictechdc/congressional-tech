@@ -46,8 +46,11 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 14 | No early launch: the explorer waits for the engine-built release | F0 is the reader's fixture and the parity oracle only. |
 | 15 | Re-fetch the 62 URLs that only have a 64 MiB cut-off copy; a size-limit outcome means retry | B2 and B14. |
 | 16 | Investigate the Oct 15 recovery run | Done: its 5,587 lines are recovery imports, not bad downloads, so no raw correction is needed. Captures keep the import fields (D1); imports are never real files (E1). |
-| 18 | Show every recovery, labeled by kind with its evidence | A7 and E2: recovered copy, excerpt from the official hearing record, or the named official substitute. Nothing poses as the original file. |
 | 17 | Show capture dates | A6 and E2. |
+| 18 | Show every recovery, labeled by kind with its evidence | A7 and E2: recovered copy, excerpt from the official hearing record, or the named official substitute. Nothing poses as the original file. |
+| 19 | HTML counts as a web page only if the link is page-shaped and the page shows no generic error signs | E1, with the signals from the HTML reading (D2). |
+| 20 | Capture dates say what we know: a real fetch date, "in our archive since Sept 29, 2026", or "not recorded" | A6 and E2; undated rows sort after dated ones. |
+| 21 | `document_id` keeps today's body-set formula | E3's golden vectors; links don't depend on it. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -152,7 +155,9 @@ run beside C. Estimated total: **8–16 weeks**.
    (B13). Other older gzip bodies are fetched, unpacked with `DecompressionStream`, and
    opened with the media type from `detail`.
 6. **Capture dates:** the first-captured date in list rows, so same-filename editions
-   read apart, and the first and last capture dates on the document page.
+   read apart, and the first and last capture dates on the document page. Labels say what
+   we know: "Captured <date>", "In our archive since Sept 29, 2026 (original capture date
+   not recorded)", or "Capture date not recorded" (design §6.2).
 7. **Recoveries:** each one on its original link's page, labeled by kind (recovered copy,
    excerpt from the official hearing record, or the named official substitute), with its
    evidence and a link to the recovered file.
@@ -270,8 +275,9 @@ threads and batch sizes, on the smallest runner.
    in the model SQL excludes ZIPs, captions and untyped bodies. First give every older body
    without a recorded format one ranged read of its first bytes, which the real-files rule
    needs (decision 13). Then backfill HTML, XML and JSON (about 5 GB), then PDF titles and
-   page counts as a background job (about 335 GB). The `fingerprint` parser reads only the
-   bodies at URLs with two or more complete files (dozens today).
+   page counts as a background job (about 335 GB). The HTML reading records the generic
+   error-page signals (decision 19). The `fingerprint` parser reads only the bodies at URLs
+   with two or more complete files (dozens today).
    The parser functions survive; the adoption machinery around them goes in F3.
 3. **`filename_readings`** (design §5.3): a producer that runs `house-naming` over the
    work list and appends through the engine. Backfill is about 7 minutes over 1.39M pairs.
@@ -283,8 +289,8 @@ comparisons pass.
 ### E. Model SQL and parity
 
 1. **Write the grouping rule down first,** as SQL with a short rationale:
-   - which responses are real files (decision 13), including how a web page is
-     recognized; recovery imports are evidence for their original link, never real files,
+   - which responses are real files (decision 13), including the two web-page checks
+     (decision 19: link shape first, then generic error signs); recovery imports are evidence for their original link, never real files,
      `url_state`, fingerprint candidates or link keys;
    - the edge set, in which placeholders (*k* = 100) and HTML connect nothing, and a
      shared endpoint connects two complete files only when their text fingerprints match
@@ -292,7 +298,8 @@ comparisons pass.
    - the saved file: the newest real file, ties broken by body hash.
 2. **The model SQL** (design §6.1): `url_state`, `filenames`, `documents`, `members`,
    `recoveries`, `reviews`, and the release files, with `list` sorted by filename and then
-   first-captured date, and every recovery labeled by kind (decision 18).
+   first-captured date (undated rows last within a filename), and every recovery labeled
+   by kind (decision 18).
 3. **Golden vectors** for `source_id` and `document_id`, generated from Python
    `source_identity` and `compute_document_id` (`retention/index/bipartite.py:165,197`) and
    checked in the engine's tests. The formulas keep the logical body key string
