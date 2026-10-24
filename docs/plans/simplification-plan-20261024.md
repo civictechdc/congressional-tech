@@ -34,7 +34,7 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 2 | news_lake keeps the DocSpec backend | Parked: no work until news_lake adopts the three layers (design §14). |
 | 3 | Publishing moves to export-pins | The release pipeline (design §6.4) is its finished form. The journal and resume route is deleted (F3). |
 | 4 | Raw protection is a bucket lock; one bucket | Step B1. |
-| 5 | `r2.dev` stays open | Every key is public, so a path allowlist on the custom domain protects nothing (open question 2). |
+| 5 | `r2.dev` stays open | Every key is public, so a path allowlist on the custom domain protects nothing (open question 1). |
 | 6 | Engine first | The target is built in docspec-rs; congressional-tech keeps no code that overlaps it. |
 | 7 | Documents only | No per-copy pages and no `sources` file. Per-copy filename readings stay in the lake. |
 | 8 | Links point at a file; 16-hex keys | `links.parquet` maps every body's key to its document. F0 uses it, so links survive the switch. |
@@ -51,6 +51,8 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 19 | HTML counts as a web page only if the link is page-shaped and the page shows no generic error signs | E1, with the signals from the HTML reading (D2). |
 | 20 | Capture dates say what we know: a real fetch date, "in our archive since Sept 29, 2026", or "not recorded" | A6 and E2; undated rows sort after dated ones. |
 | 21 | `document_id` keeps today's body-set formula | E3's golden vectors; links don't depend on it. |
+| 22 | No PDF reading for now; full-text extraction of every PDF comes later | D2 has no PDF parser; the full-text job is parked (G). |
+| 23 | Keep two releases: the live one and the last good one | F1's weekly job; the reader reloads on a 404 (A1, A3, A4). |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -143,11 +145,12 @@ run beside C. Estimated total: **8–16 weeks**.
    Worker, decoded column by column into arrays and dictionary codes; `detail` by row with
    hyparquet's `useOffsetIndex`, its offset index fetched once per session and cached;
    `links`; `occurrences`; shards. No DOM dependency. Accepts the current and previous
-   `schema_version`.
+   `schema_version`. On a 404 for a release file, it re-reads the pointer and reloads,
+   since only two releases are kept (decision 23).
 2. **Links** carry a 16-hex file fingerprint and resolve through `links` to whichever
    document holds that file now.
 3. **The Node canary** (design §6.4): a script the publish job runs against the uploaded
-   candidate, including a heap budget for a mid-range phone.
+   candidate, including a heap budget for a mid-range phone and the 404 reload.
 4. **A CI contract test:** the real site in a headless browser against F0, within the heap
    budget. It moves to a release built from a fixed sample of real receipts once track E
    exists.
@@ -269,13 +272,13 @@ threads and batch sizes, on the smallest runner.
    - the rebuild-equivalence test;
    - **compare with the pinned old capture index** (3,909,134 rows) as row multisets, on
      receipt-derived columns only. A row that exists only in the old index is a fact raw
-     doesn't hold, and it blocks the switch until the owner decides (open question 3).
+     doesn't hold, and it blocks the switch until the owner decides (open question 2).
 2. **`readings`** (design §5.2): one parser and version per media family; partitioned by
    `(parser, parser_version)`; a version is complete when its work list is empty. The scope
    in the model SQL excludes ZIPs, captions and untyped bodies. First give every older body
    without a recorded format one ranged read of its first bytes, which the real-files rule
-   needs (decision 13). Then backfill HTML, XML and JSON (about 5 GB), then PDF titles and
-   page counts as a background job (about 335 GB). The HTML reading records the generic
+   needs (decision 13). Then backfill HTML, XML and JSON (about 5 GB). There is no PDF
+   parser for now (decision 22). The HTML reading records the generic
    error-page signals (decision 19). The `fingerprint` parser reads only the bodies at URLs
    with two or more complete files (dozens today).
    The parser functions survive; the adoption machinery around them goes in F3.
@@ -311,7 +314,7 @@ comparisons pass.
    and the HTML rule gives about 1.26M documents against 1.24M. Classify each difference:
    - a rule change: fine, recorded with the rule;
    - an old-pipeline error: the new model wins;
-   - a fact that exists only in derived tables: a blocker (open question 3).
+   - a fact that exists only in derived tables: a blocker (open question 2).
 
 **Done when:** every difference is classified with no blocker left, and the model runs as
 a CLI job on the smallest runner.
@@ -356,6 +359,9 @@ and the deleted line counts are recorded.
   user or a measured failure on real data.
 - **ct-gi01** (committee explorer and weekly retention onto incremental tables): its
   approach conflicts with the design. Re-scope it before starting.
+- **Full-text extraction of every PDF** (decision 22): one later read of about 403 GB into
+  its own text table. It gives page counts, and text fingerprints for every PDF, which
+  makes dedupe across sites cheap to revisit.
 
 ### H. Ticket process
 
@@ -376,7 +382,7 @@ and the deleted line counts are recorded.
 | WS2 raw write rules | ct-syx8 | B2–B6 and B13; the planner and `raw.json` steps go with the old layers |
 | WS3 custody client | ct-tw3r | Deleted with the HTTP custody path (F3) |
 | WS4 provenance pinning | ct-70kc | B7; the fingerprints go with the old catalog |
-| WS5 WAF allowlist | ct-t906 | Open question 2 |
+| WS5 WAF allowlist | ct-t906 | Open question 1 |
 | WS6 export-pins | ct-qqk2 | A, design §6.4 built in E and F; the journal route deleted in F3 |
 | WS7 incremental catalog | ct-7uit | Replaced by D and E; the Python layer deleted in F3 |
 | WS8 news_lake | ct-d8cf | Parked (G) |
@@ -412,13 +418,11 @@ These survive the switch unchanged:
 
 ## 7. Open questions for the owner
 
-1. **PDF readings:** title and page count, or nothing (design §14).
-2. **Custom-domain path allowlist:** delete it and its tooling? `r2.dev` already serves
+1. **Custom-domain path allowlist:** delete it and its tooling? `r2.dev` already serves
    every key (decision 5), and saved copies need `bodies/` on the custom domain. Keep the
    CORS policy either way.
-3. **Only if needed:** if D1 or E4 finds facts that exist only in derived tables, record
+2. **Only if needed:** if D1 or E4 finds facts that exist only in derived tables, record
    them as provenance first, or accept losing them?
-4. **Retention numbers:** releases kept and snapshot age.
 
 ## 8. Schedule
 

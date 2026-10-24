@@ -196,8 +196,12 @@ become orphans (5.4).
 - **Scope**, declared in the model SQL:
   - HTML, XML and JSON: full readings. A backfill reads about 5 GB. The HTML reading also
     records the generic error-page signals the grouping rule uses (6.1), at no extra I/O.
-  - PDF: only the fields the browser shows (title, page count). A backfill reads about
-    335 GB, so the PDF parser changes rarely and backfills run in the background.
+  - PDF: none for now. The owner wants full-text extraction of every PDF later: one read
+    of about 403 GB (261,055 PDF bodies on Oct 19), which also yields page counts. Its text
+    goes in its own table, partitioned like `readings`. Once it exists, every PDF has a text
+    fingerprint, and dedupe across sites becomes cheap to revisit. Embedded PDF titles are
+    not worth reading: in a 40-PDF sample, 25 had none and most of the rest were junk such
+    as "Microsoft Word - ….docx", so names stay filename-based.
   - ZIP containers, captions and untyped bodies (74k bodies, 37 GB): none. ZIP members are
     captured as their own attempts.
   - Every body has a sniffed format: the one its receipt or older capture row recorded,
@@ -435,9 +439,11 @@ Unfiltered facet counts go in the release manifest.
   ETag. A failed canary or a lost race leaves the previous release live.
 - **Caching.** Release files and manifests are cached as immutable; the pointer is
   `no-store`.
-- **Retention.** Keep the last 10 releases plus any listed in
-  `viewer-publications/pinned.json`. The weekly job deletes older release prefixes.
-  Releases share no files, so nothing needs reference counting.
+- **Retention.** Keep two releases: the live one and the previously live one, the last
+  good release. A candidate that fails its canary is deleted and never becomes the last
+  good. After the flip, the weekly job deletes every other prefix under
+  `viewer-publications/releases/`, never the live or an in-flight release. Releases share
+  no files, so nothing needs reference counting.
 
 ## 7. Site
 
@@ -447,6 +453,9 @@ Unfiltered facet counts go in the release manifest.
   phone. Details and lookups use HTTP Range reads.
 - **Devices:** desktop and mid-range phones. The contract test and the canary enforce the
   heap budget.
+- **Stale tabs.** Only two releases exist at a time, so a tab left open across two
+  publishes can lose its files. On a 404 for a release file, the reader re-reads the
+  pointer and reloads.
 - **One reader.** The reader is a plain module with no DOM dependency, so the canary runs
   the same code the site ships.
 - **Contract:** the manifest carries a `schema_version`. The reader accepts the current and
@@ -524,8 +533,9 @@ needed, add it upstream to iceberg-rust rather than working around it.
 - **Raw:** create-only writers, plus the bucket lock on raw prefixes.
 - **Credentials:** capture holds raw create rights only. Publish holds raw read, lake write
   and release write. Maintenance holds raw read and release delete.
-- **One-bucket trade-off.** With one bucket, R2 tokens can't be scoped per prefix (to
-  confirm), so raw isolation rests on the lock plus writer allowlists. A separate bucket
+- **One-bucket trade-off.** R2 tokens scope object permissions to buckets, never to
+  prefixes (Cloudflare's token docs, checked Oct 24). With one bucket, raw isolation rests
+  on the lock plus create-only writers. A separate bucket
   for releases would add credential-level isolation; the owner chose one bucket.
 - **Public data.** Everything stored is public records and is readable publicly.
 - **Receipts:** allowlisted headers only.
@@ -541,7 +551,8 @@ needed, add it upstream to iceberg-rust rather than working around it.
 4. **Contract:** CI builds a release from a fixed sample of real receipts and loads it
    through the real site in a headless browser, within the heap budget.
 5. **Canary:** the reader module in Node, against the uploaded candidate, before every
-   flip.
+   flip. Both the canary and the contract test check that a 404 on a release file makes
+   the reader re-read the pointer and reload.
 6. **Production parity:** no test-only branches in production code, enforced by a ratchet
    test.
 
@@ -592,18 +603,15 @@ today's scale and at 10 times it.
 
 ## 14. Open decisions
 
-1. **PDF readings:** title and page count, or nothing. Each new PDF parser version re-reads
-   about 335 GB.
-2. **Retention numbers:** releases kept and snapshot age.
-3. **R2 token scoping:** confirm with current Cloudflare docs.
-4. **news_lake** adopts the same three layers later; out of scope here.
+1. **news_lake** adopts the same three layers later; out of scope here.
 
 Decided by the owner on Oct 24: one bucket; `r2.dev` open; documents only; links by file
 fingerprint; 16-hex public keys; desktop and mid-range phones; only real files count as a
 document's files; a document is one distinct content, showing its newest bytes; capture
 dates shown, saying what we know; HTML web pages recognized by link shape and generic
 error signals; `document_id` keeps today's formula; cut-off copies re-fetched; recoveries
-shown, labeled by kind; hyparquet in the browser; uncompressed copies of older PDFs only; no early
+shown, labeled by kind; PDF reading deferred until full-text extraction; two releases
+kept; hyparquet in the browser; uncompressed copies of older PDFs only; no early
 launch on the converted Oct 19 release.
 
 ## Reviews
