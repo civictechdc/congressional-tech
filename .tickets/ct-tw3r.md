@@ -31,3 +31,7 @@ Then: delete every fallback; collapse the three copies into one owner (stage, su
 **2026-10-24T18:21:03Z**
 
 Step 3's engine change (pre_admission set at the admission point) ships with the single docspec-rs pin bump tracked in spicy-stack ss-oxg1.
+
+**2026-10-24T18:47:53Z**
+
+Efficiency pass: child ct-5v1y (declare blake3, delete the fallback). Also hash producer files while writing them instead of re-reading (client.py:403-412, E9).

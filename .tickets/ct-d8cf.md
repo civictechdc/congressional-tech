@@ -29,3 +29,9 @@ Engine-first changes to the plan: export rights (C5) use the engine's policy as 
 - Self-referential tests are deleted or fixed: the static receipt (`:2070-2100`), the test-local `_ArrowHttpStream` (`:738-753`); the schema is pinned by digest against git.
 - R-check 1.
 
+
+## Notes
+
+**2026-10-24T18:47:54Z**
+
+Efficiency pass E10. (1) Don't revert append keys to ['id']: polls became O(history) in measurement (561 to 1,088 ms between 120k and 2.16M rows). Derive the time key from input, or use engine insert-if-absent (ss-jxvn). (2) Fix the quadratic duplicate check (2.36 s at 44k). (3) Consume the engine's change stream instead of re-reading datasets. (4) Validate only deltas on publish. (5) Keep the engine's C5 rights policy, with Python only as a test oracle. (6) Keep periodic lifecycle compaction (see ss-1uh5).

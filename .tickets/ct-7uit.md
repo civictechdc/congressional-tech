@@ -1,7 +1,7 @@
 ---
 id: ct-7uit
 status: open
-deps: [ct-q2ht, ct-qqk2, ct-70kc]
+deps: [ct-q2ht, ct-qqk2, ct-70kc, ct-w5fm]
 links: [ct-13cn, ct-gziq, ct-bwac, ct-nc7l, ct-sb0s, ct-czsd, ct-2ukk, ct-si9g, ct-v5kb, ct-upte, ct-7e7q, ct-rcs8, ct-5kb2, ct-9vtu, ct-y32m, ct-l5q1, ct-gd8v, ct-dat9, ct-qdkd, ct-13g5]
 created: 2026-10-24T18:15:54Z
 type: task
@@ -38,3 +38,7 @@ Keep `partition_routing.py`, the raw-side routing pages and the oracle's own mod
 **2026-10-24T18:21:03Z**
 
 File each missing engine primitive under the docspec-rs epic ss-oxg1 (spicy-stack) and link it here. The shared document_id golden vector comes from ss-jv5t.
+
+**2026-10-24T18:47:53Z**
+
+Efficiency pass: 'partition_routing.py and the raw-side routing pages are raw provenance' is withdrawn. They index rebuildable tables and move onto the engine in ct-w5fm. Depends on ct-w5fm and on engine tickets ss-k1f0, ss-1uh5, ss-n68e and ss-eyhn landing first.

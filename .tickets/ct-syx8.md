@@ -28,3 +28,9 @@ Owner decisions applied: delete the exclusion-list hook entirely (`raw_storage.p
 - A one-time read-only check for `.pdf` keys in the raw-bodies routing index written between Oct 22 20:16 and Oct 23 18:44 is recorded.
 - R-check 1-4 pass, plus the refusal matrix.
 
+
+## Notes
+
+**2026-10-24T18:47:53Z**
+
+Efficiency pass children: ct-klql (verify each raw upload once), ct-allr (body existence by key), ct-i5g2 (small cleanups). Owner answer: delete the exclusion-list hook entirely (no list will exist).

@@ -2,7 +2,7 @@
 id: ct-jnw5
 status: closed
 deps: []
-links: [ct-2wsw]
+links: [ct-2wsw, ct-gi01]
 created: 2026-10-22T18:42:15Z
 type: task
 priority: 1

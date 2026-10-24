@@ -76,3 +76,7 @@ Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): DocSpecLa
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:12
 - Status: Reopened. Unmet: the design's replay rule; a fresh process that regenerates an id with a new timestamp appends a duplicate. Owner: WS8 fix 2 (ct-d8cf): revert `APPEND_UPDATE_KEYS` to `['id']`, delete the `_known_ids`/`_known_upsert_records` caches and measure id lookups with compaction on.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-10-24T18:47:54Z**
+
+Re-scoped by the efficiency pass: keep time-keyed appends, but derive the time column from the input record, not the run clock. Refuse id reuse durably across processes (ss-jxvn, or a key probe on a miss). Add a fresh-process duplicate test that doesn't depend on step order.

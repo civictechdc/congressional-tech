@@ -37,3 +37,7 @@ CS 300 / evolutionary-refactoring audit reviewed `codex/docspec-keyed-updates` (
 - Grades: proposal 93 → 93, work 90 → 90.
 - Problem: No material finding.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-10-24T18:47:54Z**
+
+Evidence withdrawn by the Oct 24 efficiency pass: it measured one leaf, not how many leaves a run touches (nearly all 512 at 1,000+ changes). Superseded by ct-w5fm.

@@ -51,3 +51,7 @@ Subagent Self-Review Additions (Congress API & Shared Auditor):
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:91
 - Not covered by a plan workstream.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-10-24T18:47:54Z**
+
+P3 policy note: parse_utc_timestamp now converts to UTC and rejects naive timestamps, which can shift dates. Decide naive-time handling when the next parser change touches it.

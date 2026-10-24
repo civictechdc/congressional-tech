@@ -26,3 +26,9 @@ Owner action: a bucket-scoped, read-only R2 token for these runs. The run of rec
 - The hosted report records `nproc`, `free -g`, `df -h`, elapsed and per-stage time, peak RSS and scratch disk. The rebuild fits the 360-minute hosted job and runner memory; if not, one `py-spy` profile (B3) names the bottleneck and it is fixed in the rebuild path.
 - R-check 1 passes before and after; nothing is written to R2.
 
+
+## Notes
+
+**2026-10-24T18:47:53Z**
+
+Efficiency pass: also log today's raw-index cost per save (leaves touched, rows rewritten, datasets created) as the baseline for ct-w5fm. Owner action: a bucket-scoped, read-only R2 token for the hosted runs.

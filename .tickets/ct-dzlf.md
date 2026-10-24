@@ -31,3 +31,7 @@ The 51 incremental-only sites go with WS7, which deletes the Python incremental 
 **2026-10-24T18:21:03Z**
 
 Engine half (60 Rust sites, deferred-commit revert, integration run without test-util): spicy-stack ss-pdv0.
+
+**2026-10-24T18:47:53Z**
+
+Efficiency pass: child ct-eb71 (Table.nbytes instead of byte-count round trips). Keep the engine's generic verified local read (build.rs:356-372).

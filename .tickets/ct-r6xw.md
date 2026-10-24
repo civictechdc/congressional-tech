@@ -25,3 +25,9 @@ Then delete: `retention/document_index.py` (`_CompatibilityShim`, after WS4); `r
 - The legacy raw-table readers (`LEGACY_CAPTURE_SCHEMA`, `LEGACY_STATE_SCHEMA`) stay; `tests/historical_raw_archive.py` goes only if no surviving test needs a legacy raw fixture.
 - R-check 1-2 pass, plus check 3 when imports in `raw_schemas` or `raw_storage` change.
 
+
+## Notes
+
+**2026-10-24T18:47:54Z**
+
+Add: merge the two drifting copies of SourceModel and the YouTube models created when ct-ne06 broke the circular import (one shared module).

@@ -2,7 +2,7 @@
 id: ct-s9p2
 status: closed
 deps: []
-links: [ct-f7p8, ct-h23e, ct-6rnk]
+links: [ct-f7p8, ct-h23e, ct-6rnk, ct-gi01]
 created: 2026-10-22T13:16:00Z
 type: bug
 priority: 1

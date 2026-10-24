@@ -1,8 +1,8 @@
 ---
 id: ct-elhm
-status: closed
+status: open
 deps: []
-links: [ct-uov2]
+links: [ct-uov2, ct-v967]
 created: 2026-10-22T17:34:59Z
 type: bug
 priority: 2
@@ -37,3 +37,7 @@ Subagent Self-Review Additions:
 - Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:89
 - Status: Closed as superseded by the simplification plan (WS12, ct-uov2): the remaining item (the `_TINYDB` global) is polish with no observable behavior. Not covered: the broadened `except (DownloadError, Exception)`, which turns programming errors into retryable rows.
 - See docs/reviews/2026-10-24-ticket-audit/README.md
+
+**2026-10-24T18:47:54Z**
+
+Reopened after the Oct 24 audit. captions/main.py:92 catches 'except (DownloadError, Exception)', so programming errors become silent, retryable error rows and can hide raw caption-capture failures. Done when: only DownloadError (and named transient errors) are retried, and other exceptions fail the run, with a test.

@@ -29,3 +29,9 @@ Contract tests ported from `test_viewer_publication_attempt.py` before it is del
 - End to end: the custom-domain `manifest.json` returns 200 and the site loads.
 - R-check 1-3 pass.
 
+
+## Notes
+
+**2026-10-24T18:47:53Z**
+
+Efficiency pass E6. (1) Upload exactly the pin set the engine returns, addressed by each file's own digest: today it omits document_occurrences.parquet and manifest.json (publication_cli.py:162,169) and uploads nothing in engine mode. (2) Send Content-MD5 and sha256 metadata; reuse the export's digests instead of re-hashing (client.py:327-342). (3) Advance the pointer with IfMatch, since today it is create-only and a second publish fails. (4) Derive the operation id from the source release plus the spec digest, replacing the placeholder exp-sources-v-export-01 (filename_exports.py:745,766). (5) Delete the local Python export path after a parity test, with no timing run (decision 6).

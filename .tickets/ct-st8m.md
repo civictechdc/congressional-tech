@@ -21,3 +21,9 @@ This is plan P5 (audit open item 6) and blocks WS6 step 5, which moves the mappi
 - The owner records whether `accepted.json` is provenance.
 - If it is, the file-only decisions gain a raw provenance record (receipts or `provenance/`) before WS6 moves the mapping. Nothing is deleted.
 
+
+## Notes
+
+**2026-10-24T18:47:54Z**
+
+After reconciling, stop rewriting accepted.json whole on each publish (O(A), mappings.py:44-78): derive it from receipts, or publish append-only deltas (E11).
