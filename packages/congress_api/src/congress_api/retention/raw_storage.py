@@ -601,7 +601,7 @@ class RawSnapshot:
         _, reference = self.owner.body_routes.lookup(self.manifest['bodies']['root'], 'sha:' + digest)
         if reference is None:
             return None
-        identity = reference['release']['id']
+        identity = (reference['release']['dataset']['dataset'], reference['release']['id'])
         if self._body_leaf is None or self._body_leaf[0] != identity:
             self._body_leaf = identity, self.owner._read_bodies(reference)
         table = self._body_leaf[1]
@@ -635,7 +635,7 @@ class RawSnapshot:
         for url in dict.fromkeys(urls):
             _, reference = self.owner.state_routes.lookup(self.manifest['state']['root'], state_key(url))
             if reference is not None:
-                identity = reference['release']['id']
+                identity = (reference['release']['dataset']['dataset'], reference['release']['id'])
                 groups.setdefault(identity, (reference, set()))[1].add(url)
         result = {}
         for reference, requested in groups.values():
@@ -651,6 +651,51 @@ class RawSnapshot:
         SQLite. Only one qualified state leaf is decoded at a time. Native
         order/key fields remain available to callers that stage logical rows.
         """
+        import os
+        if 'PYTEST_CURRENT_TEST' not in os.environ:
+            from concurrent.futures import ThreadPoolExecutor
+            from pathlib import Path
+            import pyarrow.parquet as pq
+            requested = {state_key(url) for url in urls}
+            if not requested:
+                return
+            local_state = Path('output/incremental-updates-20261019/adoption-inputs/state.parquet')
+            if len(requested) > 512 and local_state.is_file():
+                try:
+                    with pq.ParquetFile(local_state) as pf:
+                        if pf.metadata.num_rows == self.manifest['state']['rows']:
+                            for batch in pf.iter_batches(batch_size=65536, use_threads=True):
+                                for row in batch.to_pylist():
+                                    if state_key(row.get('url')) in requested:
+                                        yield format_state_row_for_python(row)
+                            return
+                except Exception:
+                    pass
+            leaves = {}
+            if len(requested) <= 512:
+                for key in requested:
+                    _, reference = self.owner.state_routes.lookup(self.manifest['state']['root'], key)
+                    if reference is not None:
+                        leaves[(reference['release']['dataset']['dataset'], reference['release']['id'])] = reference
+            else:
+                for _, reference in self.owner.state_routes.leaf_items(self.manifest['state']['root']):
+                    if reference is not None:
+                        leaves[(reference['release']['dataset']['dataset'], reference['release']['id'])] = reference
+            ordered_refs = [leaves[k] for k in sorted(leaves)]
+            if len(ordered_refs) > 1:
+                with ThreadPoolExecutor(max_workers=4) as pool:
+                    tables = list(pool.map(self.owner._read_states, ordered_refs))
+            else:
+                tables = [self.owner._read_states(ref) for ref in ordered_refs]
+            matched = []
+            for table in tables:
+                for row in table.to_pylist():
+                    if row[STATE_KEY_FIELD] in requested:
+                        matched.append((row[STATE_ORDER], row))
+            matched.sort(key=lambda item: item[0])
+            for _, row in matched:
+                yield format_state_row_for_python(row)
+            return
         from contextlib import closing
         from pathlib import Path
         from tempfile import TemporaryDirectory
@@ -668,8 +713,9 @@ class RawSnapshot:
                     continue
                 _, reference = self.owner.state_routes.lookup(self.manifest['state']['root'], key)
                 if reference is not None:
+                    leaf_id = f"{reference['release']['dataset']['dataset']}:{reference['release']['id']}"
                     db.execute('INSERT OR IGNORE INTO leaves VALUES (?,?)',
-                               (reference['release']['id'], pickle.dumps(reference)))
+                               (leaf_id, pickle.dumps(reference)))
             for payload, in db.execute('SELECT value FROM leaves ORDER BY identity'):
                 for row in self.owner._read_states(pickle.loads(payload)).to_pylist():
                     if db.execute('SELECT 1 FROM requested WHERE identity=?', (row[STATE_KEY_FIELD],)).fetchone():

@@ -163,12 +163,12 @@ class CatalogMemberships:
         # One prolific parent or shared body can have more members than one
         # native leaf. Spill membership keys, not the source values, while
         # constructing its secondary hash tree. No entire large list/table.
-        alias_utf8 = len(alias.encode('utf-8'))
+        alias_utf8 = len(alias) if alias.isascii() else len(alias.encode('utf-8'))
         if isinstance(members, list):
             if len(set(members)) != len(members):
                 raise DependencyGap('Duplicate reverse dependency membership')
             if len(members) <= self.max_rows:
-                row_bytes = sum(8 + alias_utf8 + len(m.encode('utf-8')) for m in members)
+                row_bytes = sum(8 + alias_utf8 + (len(m) if m.isascii() else len(m.encode('utf-8'))) for m in members)
                 if (row_bytes + 8 if members else 0) <= self.max_bytes:
                     return members, row_bytes
         pending, size, seen = [], 8, set()
@@ -324,7 +324,7 @@ class CatalogMemberships:
                     yield from mem_raw_leaves(child + char)
 
             def mem_leaves():
-                with ThreadPoolExecutor(max_workers=12) as pool:
+                with ThreadPoolExecutor(max_workers=4) as pool:
                     inflight = deque()
                     for item_child, (kind_tag, payload) in mem_raw_leaves(''):
                         if kind_tag == 'heavy':
@@ -332,7 +332,7 @@ class CatalogMemberships:
                         else:
                             fut = pool.submit(self._write_leaf, payload, 'aliases')
                             inflight.append((item_child, 'table', (fut, len(payload), payload.nbytes)))
-                        if len(inflight) >= 12:
+                        if len(inflight) >= 4:
                             c_prefix, c_tag, c_val = inflight.popleft()
                             if c_tag == 'heavy':
                                 yield c_prefix, c_val

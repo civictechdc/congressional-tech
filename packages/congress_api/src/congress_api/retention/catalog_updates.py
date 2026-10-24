@@ -95,7 +95,7 @@ def _update_native_catalog(store, *, native, previous, dependencies, replacement
     clean_schema = dependencies.source_schema.remove_metadata()
     if not in_pytest and hasattr(replacements, 'path') and Path(replacements.path).is_file():
         with pq.ParquetFile(replacements.path) as pf:
-            for batch in pf.iter_batches(batch_size=4096):
+            for batch in pf.iter_batches(batch_size=65536):
                 sink = pa.BufferOutputStream()
                 with pa.ipc.new_stream(sink, clean_schema) as writer:
                     writer.write_batch(pa.RecordBatch.from_arrays(batch.columns, schema=clean_schema))

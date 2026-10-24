@@ -82,6 +82,9 @@ def _cleanup_dataset_client(host: Host, responses: set[Any]) -> None:
     host.release()
 
 
+_VERIFIED_BINARY_CACHE: dict[tuple[str, int, int, int], tuple[str, bytes]] = {}
+
+
 class NativeDatasets:
     """Invoke the configured native owner; do not duplicate lifecycle decisions."""
 
@@ -123,6 +126,7 @@ class NativeDatasets:
         self._responses: set[Any] = set()
         self._configuration_path: Path | None = None
         self.last_evidence_plan: dict[str, Any] | None = None
+        self._verified_pins: set[tuple[str, str, str]] = set()
 
     @staticmethod
     def _validate_revision(value: Any) -> str | None:
@@ -206,10 +210,18 @@ class NativeDatasets:
         binary = Path(self.binary)
         if not binary.is_file() or not os.access(binary, os.X_OK):
             raise ValueError('The configured native binary is missing or not executable')
-        with binary.open('rb') as source:
-            header = source.read(4)
-            source.seek(0)
-            actual_sha = file_digest(source, 'sha256').hexdigest()
+        st = binary.stat()
+        cache_key = (str(binary), st.st_ino, st.st_mtime_ns, st.st_size)
+        cached = _VERIFIED_BINARY_CACHE.get(cache_key)
+        if cached is not None:
+            actual_sha, header = cached
+        else:
+            with binary.open('rb') as source:
+                header = source.read(4)
+                source.seek(0)
+                actual_sha = file_digest(source, 'sha256').hexdigest()
+            if len(_VERIFIED_BINARY_CACHE) < 32:
+                _VERIFIED_BINARY_CACHE[cache_key] = (actual_sha, header)
         if expected_sha is not None and actual_sha != expected_sha:
             raise ValueError('The configured native binary is missing or differs from its approved SHA-256')
         if target_platform == 'linux-amd64' and not header.startswith(b'\x7fELF'):
@@ -391,9 +403,11 @@ class NativeDatasets:
     def hash_input(self, path: Path | str) -> dict[str, Any]:
         """Hash a local producer file without opening the configured remote host."""
         resolved = Path(path).resolve()
-        if _blake3_ext is not None and not self._has_runtime_pins() and resolved.is_file():
+        if _blake3_ext is not None and resolved.is_file():
             if self._closed:
                 raise RuntimeError('DocSpec client is closed')
+            if self._has_runtime_pins():
+                self.verify_runtime()
             data = resolved.read_bytes()
             return dict(digest=_blake3_ext.blake3(data).hexdigest(), bytes=len(data))
         return self._call('hash', resolved, remote=False)
@@ -993,6 +1007,16 @@ class NativeDatasets:
             total_rows=table.num_rows,
         )
 
+    def _verify_pin(self, host: Host, release_path: str, pin: Any, deadline: float) -> None:
+        pin_key = json.dumps(pin, sort_keys=True, separators=(',', ':'), default=str)
+        cache_entry = (release_path, str(pin.get('id')), pin_key)
+        if cache_entry in self._verified_pins:
+            return
+        if host.request('GET', release_path, deadline=deadline) != pin:
+            raise ValueError('Native release differs from the selected exact pin')
+        if len(self._verified_pins) < 8192:
+            self._verified_pins.add(cache_entry)
+
     def read_keys(
         self,
         pin: Any,
@@ -1008,8 +1032,7 @@ class NativeDatasets:
         dataset, version = pin['dataset']['dataset'], pin['id']
         host = self._execution_host()
         release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
-        if host.request('GET', release_path, deadline=deadline) != pin:
-            raise ValueError('Native release differs from the selected exact pin')
+        self._verify_pin(host, release_path, pin, deadline)
         spec: dict[str, Any] = dict(key=key, values=[str(v) for v in values])
         if columns is not None:
             spec['columns'] = list(columns)
@@ -1047,8 +1070,7 @@ class NativeDatasets:
         dataset, version = pin['dataset']['dataset'], pin['id']
         host = self._execution_host()
         release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
-        if host.request('GET', release_path, deadline=deadline) != pin:
-            raise ValueError('Native release differs from the selected exact pin')
+        self._verify_pin(host, release_path, pin, deadline)
         path = release_path + suffix
         with host.stream('GET', path, deadline=deadline) as (response, deadline):
             self._responses.add(response)
@@ -1226,8 +1248,7 @@ class NativeDatasets:
         dataset, version = pin['dataset']['dataset'], pin['id']
         host = self._execution_host()
         release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
-        if host.request('GET', release_path, deadline=deadline) != pin:
-            raise ValueError('Native release differs from the selected exact pin')
+        self._verify_pin(host, release_path, pin, deadline)
         projected_cols = list(columns) if columns is not None else None
         if projected_cols is not None and not projected_cols:
             raise ValueError('Projected column list must not be empty')
@@ -1322,8 +1343,7 @@ class NativeDatasets:
         dataset, version = pin['dataset']['dataset'], pin['id']
         host = self._execution_host()
         release_path = f'/datasets/{quote(dataset, safe="")}/versions/{quote(version, safe="")}'
-        if host.request('GET', release_path, deadline=deadline) != pin:
-            raise ValueError('Native release differs from the selected exact pin')
+        self._verify_pin(host, release_path, pin, deadline)
         projected_cols = list(columns) if columns is not None else None
         if projected_cols is not None and (schema is None or projected_cols != list(schema.names)):
             if not projected_cols:

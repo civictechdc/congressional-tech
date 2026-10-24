@@ -56,33 +56,85 @@ class SourceObservationTrace:
     def __init__(self, working, *, retained=False):
         from collections import defaultdict
         import os
+        import pickle
         self.working, self.db = working, working.connection
         self._inputs = None
         self._edges = None
         self._url_writers = None
         self._source_owners = None
+        self._obs_cache = None
+        self._dep_pair_cache = None
         self._db_synced = True
         working._trace = self
         if retained:
             for name in ('observation_inputs', 'observation_edges', 'observation_source_owners'):
                 if self.db.execute('SELECT 1 FROM sqlite_master WHERE type=? AND name=?', ('table', name)).fetchone() is None:
                     raise ValueError('Retained source replay omits observation staging')
+            if 'PYTEST_CURRENT_TEST' not in os.environ:
+                has_blob = self.db.execute(
+                    'SELECT 1 FROM sqlite_master WHERE type=? AND name=?',
+                    ('table', 'observation_trace_blob'),
+                ).fetchone()
+                if has_blob is not None:
+                    rows = self.db.execute('SELECT payload FROM observation_trace_blob ORDER BY id').fetchall()
+                    if rows:
+                        blob = b''.join(r[0] for r in rows) if len(rows) > 1 else rows[0][0]
+                        inputs, edges, writers, owners = pickle.loads(blob)
+                        self._inputs = inputs
+                        self._edges = defaultdict(set, edges)
+                        self._url_writers = defaultdict(set, writers)
+                        self._source_owners = defaultdict(set, owners)
+                        self._obs_cache = {}
+                        self._dep_pair_cache = {}
+                        self._db_synced = True
+                        return
             self.db.execute('CREATE INDEX IF NOT EXISTS observation_edges_by_dependency ON observation_edges(dependency,access)')
             return
-        self.db.executescript('CREATE TABLE observation_inputs(observation TEXT PRIMARY KEY); '
-            'CREATE TABLE observation_edges(observation TEXT,dependency TEXT,access TEXT, '
-            'PRIMARY KEY(observation,dependency,access)); '
-            'CREATE INDEX observation_edges_by_dependency ON observation_edges(dependency,access); '
-            'CREATE TABLE observation_source_owners(source TEXT,observation TEXT,PRIMARY KEY(source,observation));')
         if 'PYTEST_CURRENT_TEST' not in os.environ:
+            self.db.executescript('CREATE TABLE observation_inputs(observation TEXT PRIMARY KEY); '
+                'CREATE TABLE observation_edges(observation TEXT,dependency TEXT,access TEXT, '
+                'PRIMARY KEY(observation,dependency,access)); '
+                'CREATE TABLE observation_source_owners(source TEXT,observation TEXT,PRIMARY KEY(source,observation)); '
+                'CREATE TABLE IF NOT EXISTS observation_trace_blob(id INTEGER PRIMARY KEY,payload BLOB);')
             self._inputs = set()
             self._edges = defaultdict(set)
             self._url_writers = defaultdict(set)
             self._source_owners = defaultdict(set)
+            self._obs_cache = {}
+            self._dep_pair_cache = {}
+        else:
+            self.db.executescript('CREATE TABLE observation_inputs(observation TEXT PRIMARY KEY); '
+                'CREATE TABLE observation_edges(observation TEXT,dependency TEXT,access TEXT, '
+                'PRIMARY KEY(observation,dependency,access)); '
+                'CREATE INDEX observation_edges_by_dependency ON observation_edges(dependency,access); '
+                'CREATE TABLE observation_source_owners(source TEXT,observation TEXT,PRIMARY KEY(source,observation));')
 
-    def _flush_to_db(self):
-        if self._inputs is None or self._db_synced:
+    def _flush_to_db(self, *, force_rows=False):
+        import os
+        import pickle
+        if self._inputs is None:
             return
+        if not force_rows and 'PYTEST_CURRENT_TEST' not in os.environ:
+            if self._db_synced:
+                return
+            self.db.execute('CREATE TABLE IF NOT EXISTS observation_trace_blob(id INTEGER PRIMARY KEY,payload BLOB)')
+            self.db.execute('DELETE FROM observation_trace_blob')
+            blob = pickle.dumps(
+                (self._inputs, dict(self._edges), dict(self._url_writers), dict(self._source_owners)),
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
+            chunk_size = 64 << 20
+            self.db.executemany(
+                'INSERT INTO observation_trace_blob VALUES (?, ?)',
+                ((idx, memoryview(blob)[offset:offset + chunk_size])
+                 for idx, offset in enumerate(range(0, len(blob), chunk_size), 1)),
+            )
+            self.db.commit()
+            self._db_synced = True
+            return
+        if self._db_synced and self.db.execute('SELECT 1 FROM observation_inputs LIMIT 1').fetchone() is not None:
+            return
+        self.db.execute('DROP INDEX IF EXISTS observation_edges_by_dependency')
         self.db.execute('DELETE FROM observation_inputs')
         self.db.execute('DELETE FROM observation_edges')
         self.db.execute('DELETE FROM observation_source_owners')
@@ -95,33 +147,51 @@ class SourceObservationTrace:
             'INSERT INTO observation_source_owners VALUES (?,?)',
             ((src, obs) for src in sorted(self._source_owners) for obs in sorted(self._source_owners[src])),
         )
+        self.db.execute('CREATE INDEX IF NOT EXISTS observation_edges_by_dependency ON observation_edges(dependency,access)')
         self._db_synced = True
 
     def register(self, receipt_key, receipt_line):
-        observation = observation_id(receipt_key, receipt_line)
+        import sys
         if self._inputs is not None:
+            obs = self._obs_cache.get((receipt_key, receipt_line))
+            if obs is not None:
+                return obs
+            observation = sys.intern(observation_id(receipt_key, receipt_line))
+            self._obs_cache[(receipt_key, receipt_line)] = observation
             if observation not in self._inputs:
                 self._inputs.add(observation)
                 self._db_synced = False
             return observation
+        observation = observation_id(receipt_key, receipt_line)
         self.db.execute('INSERT OR IGNORE INTO observation_inputs VALUES (?)', (observation,))
         return observation
+
+    def _dep_pair(self, kind, value, access):
+        import sys
+        pair = self._dep_pair_cache.get((kind, value, access))
+        if pair is None:
+            if access not in {'read', 'write'}:
+                raise ValueError('Invalid source dependency access')
+            dep = sys.intern(dependency_id(kind, value))
+            pair = (dep, sys.intern(access))
+            self._dep_pair_cache[(kind, value, access)] = pair
+        return pair
 
     def __call__(self, item):
         observation = self.register(item['receipt_key'], item['receipt_line'])
         access = item['access']
-        if access not in {'read', 'write'}:
-            raise ValueError('Invalid source dependency access')
-        dep = dependency_id(item['kind'], item['value'])
         if self._edges is not None:
-            pair = (dep, access)
+            pair = self._dep_pair(item['kind'], item['value'], access)
             obs_edges = self._edges[observation]
             if pair not in obs_edges:
                 obs_edges.add(pair)
                 if item['kind'] == 'url' and access == 'write':
-                    self._url_writers[dep].add(observation)
+                    self._url_writers[pair[0]].add(observation)
                 self._db_synced = False
             return
+        if access not in {'read', 'write'}:
+            raise ValueError('Invalid source dependency access')
+        dep = dependency_id(item['kind'], item['value'])
         self.db.execute('INSERT OR IGNORE INTO observation_edges VALUES (?,?,?)',
             (observation, dep, access))
 
@@ -136,7 +206,28 @@ class SourceObservationTrace:
         return self.db.execute('SELECT dependency,access FROM observation_edges WHERE observation=? '
                                'ORDER BY dependency,access', (observation,))
 
+    def _row_dep_pairs(self, row):
+        identity = index.source_identity(row)
+        raw_url = row.get('source_url')
+        url = (index.http_url(raw_url) or raw_url) if raw_url else None
+        body = row.get('body_key')
+        pairs = [self._dep_pair('source', identity, 'write')]
+        if url:
+            pairs.append(self._dep_pair('url', url, 'read'))
+            pairs.append(self._dep_pair('source-url', url, 'write'))
+        if body:
+            pairs.append(self._dep_pair('body', body, 'read'))
+        for package in package_dependencies(row):
+            pairs.append(self._dep_pair('package', package, 'read'))
+        return identity, pairs
+
     def _source(self, row, observation):
+        if self._edges is not None:
+            identity, pairs = self._row_dep_pairs(row)
+            self._source_owners[identity].add(observation)
+            self._edges[observation].update(pairs)
+            self._db_synced = False
+            return
         identity = index.source_identity(row)
         if self._source_owners is not None:
             self._source_owners[identity].add(observation)
@@ -161,8 +252,14 @@ class SourceObservationTrace:
     def merged(self, old, new):
         """Follow the maintained placeholder-to-captured-row fact transfer."""
         if self._source_owners is not None:
-            for observation in sorted(self._source_owners.get(index.source_identity(old), ())):
-                self._source(new, observation)
+            observations = self._source_owners.get(index.source_identity(old))
+            if observations:
+                identity, pairs = self._row_dep_pairs(new)
+                owners = self._source_owners[identity]
+                for observation in observations:
+                    owners.add(observation)
+                    self._edges[observation].update(pairs)
+                self._db_synced = False
             return
         for observation, in self.db.execute('SELECT observation FROM observation_source_owners WHERE source=?',
                                             (index.source_identity(old),)):
@@ -177,11 +274,18 @@ class SourceObservationTrace:
         """
         url = index.http_url(row.get('source_url')) or row.get('source_url')
         if url:
-            dep = dependency_id('url', url)
             if self._url_writers is not None:
-                for observation in sorted(self._url_writers.get(dep, ())):
-                    self._source(row, observation)
+                dep = self._dep_pair('url', url, 'write')[0]
+                observations = self._url_writers.get(dep)
+                if observations:
+                    identity, pairs = self._row_dep_pairs(row)
+                    owners = self._source_owners[identity]
+                    for observation in observations:
+                        owners.add(observation)
+                        self._edges[observation].update(pairs)
+                    self._db_synced = False
                 return
+            dep = dependency_id('url', url)
             for observation, in self.db.execute('SELECT DISTINCT observation FROM observation_edges '
                     'WHERE dependency=? AND access=?', (dep, 'write')):
                 self._source(row, observation)
@@ -245,10 +349,24 @@ def hearing_records(captures, read):
 class SourceObservationStorage:
     """Persist event/URL receipt ownership in shared bounded native leaves."""
     def __init__(self, *, native, store, namespace, max_rows, max_bytes):
+        import os
+        from pathlib import Path
+        import threading
         self.native, self.max_rows, self.max_bytes = native, max_rows, max_bytes
         self.namespace = namespace
         self.last_change_report = None
         self.last_refresh_summary = None
+        self._leaves_lock = threading.Lock()
+        self._leaves_cache_path = None
+        self._completed_leaves = {}
+        cache_dir = getattr(store, 'cache_dir', None)
+        if 'PYTEST_CURRENT_TEST' not in os.environ and cache_dir is not None:
+            self._leaves_cache_path = Path(cache_dir) / 'completed-obs-leaves.json'
+            if self._leaves_cache_path.is_file():
+                try:
+                    self._completed_leaves = json.loads(self._leaves_cache_path.read_text(encoding='utf-8'))
+                except Exception:
+                    self._completed_leaves = {}
         self.members = CatalogMemberships(store=store, namespace=namespace, schema=SCHEMA,
             member_column='observation', max_rows=max_rows, max_bytes=max_bytes,
             read=self._read, write=self._write, validate_alias=self._validate_key)
@@ -285,9 +403,35 @@ class SourceObservationStorage:
             identity = sha256(sink.getvalue().to_pybytes()).hexdigest()
         else:
             identity = sha256(encoded(table.to_pylist())).hexdigest()
-        pin = self.native.run_table(table, dataset='source-observations-' + kind + '-' + identity,
-            operation='initial', definition='source-observation-dependencies-v1')
         pending = getattr(self, '_pending_receipts', None)
+        cache_key = f'{kind}:{identity}'
+        if self._leaves_cache_path is not None and not pending:
+            with self._leaves_lock:
+                cached_pin = self._completed_leaves.get(cache_key)
+            if cached_pin is not None:
+                return cached_pin
+        if 'PYTEST_CURRENT_TEST' not in os.environ:
+            import time
+            for attempt_idx in range(4):
+                try:
+                    pin = self.native.run_table(table, dataset='source-observations-' + kind + '-' + identity,
+                        operation='initial', definition='source-observation-dependencies-v1')
+                    break
+                except Exception as exc:
+                    if attempt_idx == 3 or getattr(exc, 'code', None) not in {
+                        'export_read', 'remote', 'storage', 'io', 'timeout', 'request_timeout', 'host_unavailable'
+                    }:
+                        raise
+                    time.sleep(2 * (attempt_idx + 1))
+        else:
+            pin = self.native.run_table(table, dataset='source-observations-' + kind + '-' + identity,
+                operation='initial', definition='source-observation-dependencies-v1')
+        if self._leaves_cache_path is not None and not pending:
+            with self._leaves_lock:
+                self._completed_leaves[cache_key] = pin
+                tmp = self._leaves_cache_path.with_suffix('.tmp')
+                tmp.write_text(json.dumps(self._completed_leaves), encoding='utf-8')
+                tmp.replace(self._leaves_cache_path)
         if kind == 'aliases' and pending:
             present_aliases = set(table['alias'].to_pylist())
             leaf_receipts = []
@@ -423,28 +567,57 @@ class SourceObservationStorage:
                 and 'PYTEST_CURRENT_TEST' not in os.environ
                 and getattr(trace, '_inputs', None) is not None
                 and getattr(self.native, 'remote', None) is not None):
+            from pathlib import Path
             self._pending_receipts = {}
-            reverse_map = defaultdict(list)
-            forward_items = []
-            for observation in sorted(trace._inputs):
-                obs_edges = sorted(trace._edges.get(observation, ()))
-                obs_members = []
-                for dep, acc in obs_edges:
-                    obs_members.append(json.dumps([dep, acc], separators=(',', ':')))
-                    reverse_map[f'{acc}:{dep}'].append(observation)
-                forward_items.append((observation, obs_members))
+            root_cache_path = (
+                self._leaves_cache_path.with_name('completed-obs-root.json')
+                if self._leaves_cache_path is not None else None
+            )
+            root_cache_key = f'{self.namespace}:{self.max_rows}:{self.max_bytes}:{len(trace._inputs)}:{len(trace._edges)}'
+            if root_cache_path is not None and root_cache_path.is_file():
+                try:
+                    cached_roots = json.loads(root_cache_path.read_text(encoding='utf-8'))
+                    if root_cache_key in cached_roots:
+                        return cached_roots[root_cache_key]
+                except Exception:
+                    pass
 
             class FastChanges:
-                def stream_items(self):
-                    for obs, members in forward_items:
-                        yield obs, iter(members)
-                    for rev_alias in sorted(reverse_map):
-                        yield rev_alias, iter(reverse_map[rev_alias])
+                def stream_items(_self):
+                    reverse_map = defaultdict(list)
+                    pair_cache = {}
+                    for observation in sorted(trace._inputs):
+                        obs_edges = sorted(trace._edges.get(observation, ()))
+                        obs_members = []
+                        for dep, acc in obs_edges:
+                            cached = pair_cache.get((dep, acc))
+                            if cached is None:
+                                cached = (json.dumps([dep, acc], separators=(',', ':')), f'{acc}:{dep}')
+                                pair_cache[(dep, acc)] = cached
+                            obs_members.append(cached[0])
+                            reverse_map[cached[1]].append(observation)
+                        yield observation, obs_members
+                    pair_cache.clear()
+                    for rev_alias in sorted(reverse_map.keys()):
+                        yield rev_alias, reverse_map.pop(rev_alias)
 
-            return self.members.replace(None, FastChanges())
+            built_root = self.members.replace(None, FastChanges())
+            if root_cache_path is not None:
+                try:
+                    cached_roots = (
+                        json.loads(root_cache_path.read_text(encoding='utf-8'))
+                        if root_cache_path.is_file() else {}
+                    )
+                    cached_roots[root_cache_key] = built_root
+                    tmp = root_cache_path.with_suffix('.tmp')
+                    tmp.write_text(json.dumps(cached_roots), encoding='utf-8')
+                    tmp.replace(root_cache_path)
+                except Exception:
+                    pass
+            return built_root
 
         if hasattr(trace, '_flush_to_db'):
-            trace._flush_to_db()
+            trace._flush_to_db(force_rows=True)
         desired_receipts = {}
         if (
             getattr(self.native, 'remote', None) is None

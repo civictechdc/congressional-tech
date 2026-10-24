@@ -207,7 +207,7 @@ def test_package_state_correction_replays_retained_api_receipt_and_complete_sibl
     import json
     from congress_api.retention.catalog_availability import annotate_availability
     from congress_api.retention.raw_archive import STATE_SCHEMA
-    from test_catalog_availability import saved
+    from test_catalog_availability import saved, state
     store, native = SelectorStore(), native if actual_native else MemoryNative()
     raw = RawStorage(store, native)
     package = 'CHRG-116shrg40895'
@@ -255,8 +255,8 @@ def test_package_state_correction_replays_retained_api_receipt_and_complete_sibl
     current = read_catalog(store, native=native)
     actual = pa.Table.from_batches(list(current.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
     api_row = next(row for row in actual if row['source_url'] == api)
-    expected = list(annotate_availability(old, pa.Table.from_pylist(
-        [api_state, changed_pdf, html], schema=STATE_SCHEMA), hearing_records=[(record, captures.to_pylist())]))
+    expected = list(annotate_availability(old, state(
+        api_state, changed_pdf, html), hearing_records=[(record, captures.to_pylist())]))
     expected = pa.Table.from_pylist(expected, schema=current.schemas['filenames']).to_pylist()
     assert sorted(actual, key=lambda row: row['source_id']) == sorted(expected, key=lambda row: row['source_id'])
     assert api_row['source_id'] == old_api['source_id']

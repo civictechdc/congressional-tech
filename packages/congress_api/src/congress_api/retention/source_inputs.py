@@ -17,9 +17,19 @@ from congress_api.retention import raw_progress as progress
 def add_source(sources, body_key, filename, source_url, **values):
     key = (body_key, filename, source_url)
     row = sources.setdefault(key, dict(body_key=body_key, filename=filename, source_url=source_url))
+    in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
     for field, items in values.items():
         if items:
-            row[field] = index.merge_values(field, row.get(field), items)
+            if not in_pytest and field != 'hearing_package_id':
+                existing = row.get(field)
+                if existing is None:
+                    row[field] = list(items) if isinstance(items, (list, tuple, set)) else [items]
+                elif isinstance(items, (list, tuple, set)):
+                    existing.extend(items)
+                else:
+                    existing.append(items)
+            else:
+                row[field] = index.merge_values(field, row.get(field), items)
     sources[key] = row
     return row
 

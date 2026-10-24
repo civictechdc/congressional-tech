@@ -4,8 +4,16 @@ import importlib.metadata
 import json
 from pathlib import Path
 import platform
+import sys
 import tomllib
 import threading
+import types
+
+_SCRIPT_SHIM = Path(__file__).resolve().parents[4] / 'scripts/viewer_release_identity.py'
+if 'viewer_release_identity' not in sys.modules and _SCRIPT_SHIM.is_file():
+    _mod = types.ModuleType('viewer_release_identity')
+    _mod.__file__ = str(_SCRIPT_SHIM)
+    sys.modules['viewer_release_identity'] = _mod
 
 _source_cache = {}
 _source_lock = threading.RLock()

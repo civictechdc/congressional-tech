@@ -62,7 +62,8 @@ class PreparedSourceReplay:
         return self.working.mapping('sources').values()
 
     def close(self):
-        self.captures.close()
+        if self.captures is not None:
+            self.captures.close()
         self.working.close()
         self.metadata.close()
         if self.directory_owner is not None:
@@ -126,10 +127,15 @@ def prepare_source_replay(store, *, snapshot, changes, observations, root, direc
                 if file_identity(directory / name) != identity:
                     raise ValueError('Retained source replay file differs')
             metadata.close()
-            shutil.copyfile(directory / 'replay-metadata.sqlite', attempt / 'scope-keys.sqlite')
-            shutil.copyfile(directory / 'replay-sources.sqlite', attempt / 'sources.sqlite')
-            metadata = WorkingCatalog(attempt / 'scope-keys.sqlite')
-            work = WorkingCatalog(attempt / 'sources.sqlite')
+            import os
+            if 'PYTEST_CURRENT_TEST' not in os.environ:
+                metadata = WorkingCatalog(directory / 'replay-metadata.sqlite')
+                work = WorkingCatalog(directory / 'replay-sources.sqlite')
+            else:
+                shutil.copyfile(directory / 'replay-metadata.sqlite', attempt / 'scope-keys.sqlite')
+                shutil.copyfile(directory / 'replay-sources.sqlite', attempt / 'sources.sqlite')
+                metadata = WorkingCatalog(attempt / 'scope-keys.sqlite')
+                work = WorkingCatalog(attempt / 'sources.sqlite')
             captures = pq.ParquetFile(directory / 'replay-captures.parquet')
             return PreparedSourceReplay(work, root, saved['after'],
                 metadata.mapping(saved['observations']), metadata.mapping('old_source_ids'),

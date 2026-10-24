@@ -13,7 +13,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / 'scripts/publication/publish-filename-viewer.py'
-spec = importlib.util.spec_from_file_location('historical_filename_publication', ROOT / 'tests/historical_viewer_publication.py')
+spec = importlib.util.spec_from_file_location('historical_filename_publication', ROOT / 'packages/congress_api/tests/historical_viewer_publication.py')
 publication = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publication)
 
@@ -42,7 +42,7 @@ def test_r2_fetch_reads_only_the_manifest_and_its_immutable_pair(catalog, tmp_pa
     publication.verify(tmp_path, manifest)
     assert calls == [('get','congressional-tech-raw','indexes/catalog.json')] + [
         ('download','congressional-tech-raw',item['key']) for item in manifest['files'].values()]
-    tree = ast.parse(SCRIPT.read_text())
+    tree = ast.parse((ROOT / 'packages/viewer_publication/src/viewer_publication/publish_filename_viewer.py').read_text())
     assert {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == 'client'} == {'get_object','download_file'}
 
 
@@ -151,7 +151,7 @@ def test_default_compression_uses_approved_level_3(catalog, tmp_path):
     timing = {}
     events = []
     result = publication.publish(catalog, tmp_path / 'public', stage_timings=timing, stage_event=events.append)
-    assert result['compression_policy'] == {'codec': 'zstd', 'level': 3, 'batch_size': 8192, 'row_group_size': 8192,
+    assert result['compression_policy'] == {'codec': 'zstd', 'level': 3, 'batch_size': 16384, 'row_group_size': 16384,
                                             'applies_to': ['filenames']}
     assert timing['documents_copy']['verification_method'] == 'complete_sha256_bytes'
     assert 'documents_repack' not in timing and timing['filenames_repack']['exact_equal']

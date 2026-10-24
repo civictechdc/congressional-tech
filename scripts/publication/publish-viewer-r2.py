@@ -10,7 +10,22 @@ if str(_PKG) not in sys.path:
     sys.path.insert(0, str(_PKG))
 
 from viewer_publication.publish_viewer_r2 import *
+import gc
+import types
 import viewer_publication.publish_viewer_r2 as _impl
+
+
+class _ShimModule(types.ModuleType):
+    def __setattr__(self, name, value):
+        super().__setattr__(name, value)
+        if hasattr(_impl, name):
+            setattr(_impl, name, value)
+
+
+for _obj in gc.get_referrers(globals()):
+    if isinstance(_obj, types.ModuleType) and _obj.__dict__ is globals():
+        _obj.__class__ = _ShimModule
+
 
 if __name__ == '__main__':
     from viewer_publication.publication_cli import main

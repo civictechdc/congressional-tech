@@ -29,7 +29,7 @@ sys.path.insert(0, str(ROOT / 'apps/site/scripts'))
 
 
 def load_builder():
-    spec = importlib.util.spec_from_file_location('viewer_benchmark_builder', ROOT / 'tests/historical_viewer_publication.py')
+    spec = importlib.util.spec_from_file_location('viewer_benchmark_builder', ROOT / 'packages/congress_api/tests/historical_viewer_publication.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -169,7 +169,7 @@ def main(args):
     binding = {'scope': args.scope, 'source_manifest': selected, 'source_manifest_sha256': builder.digest(args.source / 'indexes/catalog.json'),
                'review_identity_sha256': review_hash,
                'revision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
-               'builder_sha256': builder.digest(ROOT / 'tests/historical_viewer_publication.py'),
+               'builder_sha256': builder.digest(ROOT / 'packages/congress_api/tests/historical_viewer_publication.py'),
                'cache_condition': 'warm filesystem; no privileged cache flush; fresh process per trial',
                'limits': {'process_tree_rss_bytes': args.max_rss_bytes, 'seconds_per_trial': args.timeout,
                           'minimum_free_bytes': args.minimum_free_bytes},

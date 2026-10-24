@@ -292,7 +292,7 @@ def combine_document_component(rows_factory, *, working=None, mutate_sources=Fal
 
     if bodies:
         document_id = compute_document_id(bodies, ())
-    elif working is not None:
+    elif working is not None and getattr(working.mapping("component_source_ids"), "_mem", None) is None:
         db = working.connection
         ids = working.mapping("component_source_ids")
         ids.clear()

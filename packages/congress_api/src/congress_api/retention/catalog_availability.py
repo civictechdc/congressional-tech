@@ -9,9 +9,12 @@ import re
 from urllib.parse import urlsplit
 
 from congress_api.retention.raw_archive import STATE_KEY
-from congress_api.retention.raw_storage import format_state_row_for_python
 
-from congress_api.retention.catalog_types import STATE_FIELDS, FIELDS, RESOURCE_FIELDS
+STATE_FIELDS = frozenset({'state_outcome', 'state_body_key', 'state_checked_at',
+                          'state_retrieved_at', 'state_family'})
+FIELDS = STATE_FIELDS | {'hearing_package_id', 'hearing_resources'}
+RESOURCE_FIELDS = ('package_id', 'url', 'body_key', 'format', 'outcome',
+                   'association_basis', 'api_response_body_key', 'publisher_format_url')
 HEARING = re.compile(r'/v3/hearing/(\d+)/(house|senate|joint)/(\d+)/?')
 PACKAGE = re.compile(r'CHRG-\d+(?:hhrg|shrg|jhrg)\d+(?:-[A-Za-z0-9]+)*')
 
@@ -106,14 +109,14 @@ def annotate_availability(rows, state, *, hearing_records=(), working=None):
     Existing source rows retain their response facts. New state-only rows cite
     the state index and do not invent receipt locators or successful downloads.
     """
+    from congress_api.retention.document_index import url_filename
+
     by_url = {} if working is None else working.mapping('availability_state')
     resources = defaultdict(list) if working is None else working.mapping('availability_resources')
     # Normal dispatch supplies the raw owner's finite-leaf iterator; legacy
     # full rebuild callers still supply an Arrow table.
     states = (item for batch in state.to_batches(max_chunksize=4096) for item in batch.to_pylist()) if hasattr(state, 'to_batches') else state
     for item in states:
-        if 'body_key' not in item and item.get('sha256') is not None:
-            item = format_state_row_for_python(item)
         if not item.get('url'):
             continue
         if item['url'] in by_url:
@@ -183,7 +186,6 @@ def annotate_availability(rows, state, *, hearing_records=(), working=None):
     for url, item in by_url.items():
         if url in seen and (seen[url] or not retained(item)):
             continue
-        from congress_api.retention.index.sources import url_filename
         success = retained(item)
         row = dict(body_key=item.get('body_key'), filename=url_filename(url), source_url=url,
                    filename_origins=['download_state'], source_paths=[STATE_KEY],

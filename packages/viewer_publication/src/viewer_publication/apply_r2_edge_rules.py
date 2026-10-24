@@ -335,7 +335,9 @@ def _default_http_probe(
     url: str,
     headers: Mapping[str, str] | None = None,
 ) -> tuple[int, dict[str, str]]:
-    req = urllib.request.Request(url, headers=dict(headers or {}), method=method)
+    from viewer_publication.constants import USER_AGENT
+    req_headers = {"User-Agent": USER_AGENT, **dict(headers or {})}
+    req = urllib.request.Request(url, headers=req_headers, method=method)
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             return resp.status, {k.lower(): v for k, v in resp.headers.items()}

@@ -174,11 +174,6 @@ _NATIVE_OCC_POOL = ThreadPoolExecutor(max_workers=8)
 
 
 class CatalogRows:
-    """Manages catalog-owned typed core rows and occurrence tree structures.
-
-    Coordinates native dataset updates and occurrence metadata caching
-    without re-parsing full historical payloads.
-    """
     def __init__(self, *, native, store):
         self.native, self.store = native, store
         self.objects = MetadataObjects(
