@@ -202,6 +202,46 @@ boundary, key pruning, merge and compaction.
 and Oct 24. So the selected native capture index may contain rows with the wrong
 `stored_sha256`; confirming that means reading the selected capture table.
 
+## Fourth pass: efficiency (Big O, do-once, the easy way)
+
+Each reviewer checked the surviving code in its area for three things:
+- how cost scales;
+- whether any item is read, written, parsed, hashed or validated more than once;
+- whether hand-rolled work duplicates a platform primitive (content-addressed keys,
+  conditional writes, Content-MD5 and ETags, rsync/rclone, git tree hashes, maintained
+  libraries, engine operations).
+
+Where cheap, they measured on project fixtures through the project venv.
+`docspec-rs/target/` was deleted mid-pass by someone outside this audit, so engine costs
+are reasoned or come from earlier receipts.
+
+Largest costs at today's scale (S ≈ 1.30M state rows, B ≈ 1.04M bodies / 2.07M body-index
+rows, N ≈ 3.9M capture rows, 1.68M filename rows):
+
+1. **The raw index rewrites itself every run:** O(S+B) per run, about 1.3 GB, about 512
+   new datasets and about 770 route PUTs, with nothing reclaimed. Five of nine batches
+   found and measured this independently. The engine's keyed merge path already exists
+   in the same function.
+2. **Body-existence checks read one index leaf per body:** about 31M rows on a busy day.
+   Bodies are content-addressed, so a HEAD request or create-only PUT answers this.
+3. **Recovery import does two GETs, up to six SHA-256 and two MD5 passes per body:**
+   about 13.7k redundant downloads across the retained batches. One create-only PUT with
+   Content-MD5 already proves the bytes.
+4. **The local export path re-implements the engine export in Python:** O(rows ×
+   columns) objects, an estimated 3+ GB. The export-pins publisher also misses two files,
+   uploads nothing in engine mode, and uses a placeholder operation id.
+5. **Engine:** copy-on-write updates (iceberg 0.10.1 has no delete files), re-HEADs and
+   re-downloads of files it just wrote, O(F) metadata per update, O(H²) lifecycle growth
+   between compactions, and an unmeasured 2 MiB file cap on R2.
+6. **`blake3` is undeclared** (confirmed: not in any pyproject or `uv.lock`), so locked
+   CI uses a pure-Python fallback that is about 380–1000× slower.
+
+The plan's new section 7 lists every finding (E1–E12) with its amendment. Open question 7
+is now answered yes: the raw index moves onto one engine dataset per kind, staged and
+checked against the old leaves. The raw routing pages leave the keep list. R2 support
+for `x-amz-checksum-sha256` is not documented, so the single verifier uses Content-MD5,
+which R2 checks, plus a sha256 metadata label read by HEAD.
+
 ## Files
 
 - `batches/<batch>/tickets.txt`: the tickets in that batch.
@@ -209,4 +249,5 @@ and Oct 24. So the selected native capture index may contain rows with the wrong
   grades. Some batches also have fork or part files.
 - `batches/<batch>/<batch>-greenfield.md`: second pass.
 - `batches/<batch>/<batch>-evolutionary.md`: third pass.
+- `batches/<batch>/<batch>-efficiency.md`: fourth pass. syem also has `syem-eff-part-*.md`.
 - `compiled.json`: every ticket, verdict, grade and raw risk in one file.

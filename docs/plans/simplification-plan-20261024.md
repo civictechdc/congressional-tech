@@ -630,7 +630,8 @@ The tests on `prepare()`'s result must stay green.
        and `raw_storage.py:1304` (at cut).
    - `native_features.py` (1,270 lines today) shrinks to thin calls into the engine (at cut).
 6. **Keep:**
-   - `partition_routing.py` and the raw-side routing pages, which are raw provenance.
+   - The receipts and bodies, which are the raw provenance. `partition_routing.py` and the
+     routing pages index rebuildable tables; they move onto the engine (section 7, E1).
    - The oracle's own modules: catalog_staging, catalog_publication, catalog_cache,
      catalog_availability, catalog_validation, catalog_types, source_inputs,
      document_recovery, document_evidence and `index/*`.
@@ -847,11 +848,12 @@ These are sound, or not worth moving. The README's leave-alone list is honored i
 **Raw path:**
 - Create-only body and receipt writes, MD5-verified uploads and verified `.gz` collisions.
 - Immutable receipt batches and orphan-receipt replay (`raw_archive.py:670-677`).
-- Recovery `checked_put` with readback, and no second PUT after a lost acknowledgment.
+- Recovery `checked_put`: create-only PUT with Content-MD5, verifying only on a 412 or a lost acknowledgment (efficiency pass E4), and no second PUT after a lost acknowledgment.
 - RecoveryGuard (ct-jl1m), the body-key shard check (ct-qspb), recovery admission (ct-4r1c,
   with only the WS4 boundary fix), ct-fqgf and ct-vxzu.
-- Raw-side routing (`partition_routing.py`, `raw_state_routes.py`) and the legacy raw-table
-  readers.
+- The legacy raw-table readers. Raw-side routing (`partition_routing.py`,
+  `raw_state_routes.py`) is no longer kept: it indexes rebuildable tables and moves onto the
+  engine (efficiency pass E1, section 7).
 - `derive_body_key` and its golden test.
 - The `docspec_client` transport, with `cleanup_safe` as the single decision point.
 - ct-n7la capacity admission, ct-wjce's `chunk(0)`, ct-snh8, ct-8w0g, the ct-d3un fixes.
@@ -941,3 +943,26 @@ These are sound, or not worth moving. The README's leave-alone list is honored i
 | docspec-rs, certain | 14,383 |
 | **Certain total** | **42,251** |
 | Other conditionals (WS5 104, WS6 2,807, WS8 260, WS9 2,101) | +5,272 → up to **47,523** |
+
+## 7. Efficiency pass amendments (Oct 24)
+
+A fourth review pass checked the surviving code for Big O, repeated per-item work and
+hand-rolled work. The reports are in `docs/reviews/2026-10-24-ticket-audit/batches/*/*-efficiency.md`,
+and the README's "Efficiency pass" section has the evidence. These amendments override the
+workstream text above where they conflict.
+
+| # | Finding | Big O today | Amendment |
+|---|---|---|---|
+| E1 | Every save rewrites whole raw index leaves: about 1.3M state rows and 2.07M body-index rows, about 512 new datasets, and nothing reclaimed. Five batches measured it on fixtures. | O(S+B) per run; storage O(H·(S+B)) | **Open question 7 is answered: yes.** First move: send only changed rows through the engine's keyed `update_table(..., merge=STATE_MERGE_SPEC)`, the path schema-evolved leaves already use (`raw_storage.py:1197-1221`), for every leaf. Then move state and body indexes to one engine dataset per kind, as a staged migration checked against the old leaves. Choose the layout so that rows changing together share files (see E7). Delete the routing pages, `raw_state_routes`, the Python merge (`specs.py:476-692`, `_merge_states`) and `raw_changes.py`. Step 0 also logs leaves touched and rows rewritten per run, as today's baseline. |
+| E2 | Checking whether a body is stored reads a whole index leaf per body: about 31M rows on a 3,520-body day. | O(Q·L) | Bodies are content-addressed, so existence is a HEAD request or a create-only PUT (412 means present), plus an in-run set. Delete the body-index lookup from capture (WS2). |
+| E3 | Arrow → Python → Arrow round trips exist only to satisfy a self-made byte-count equality check. Measured at 2.37 µs per row. | O(rows) per touched leaf | Use `Table.nbytes` and drop the equality check; the engine's verified pin already binds the bytes (WS1/WS2). |
+| E4 | Recovery import does two GETs per body (presence check plus readback), up to six SHA-256 passes and two MD5 passes, and decompresses its own output. About 13.7k redundant downloads across 17 batches. | O(B·\|p\|) extra | **One verifier (WS2):** a create-only PUT with Content-MD5 (R2 verifies it) and `Metadata={'sha256': …}`, then a HEAD comparing that metadata and the length, only after a 412 or a lost acknowledgment. Hash each byte stream once and reuse the digests. Deliberately rewrite the tests that pin two reads (`test_import_corpus_recovery_batch.py:106,194-208`). Whether R2 supports `x-amz-checksum-sha256` is undocumented, so don't rely on it. |
+| E5 | Building the capture queue reads 248 of 256 state leaves, about 620 MB per run. | O(S) | Column projection plus an Arrow top-k; it goes away with E1. |
+| E6 | The local export path re-implements the engine's export in Python (rows × columns objects, an estimated 3+ GB at scale), re-reads min/max the footer already holds, and re-hashes files. The export-pins publisher omits `document_occurrences.parquet` and the manifest, uploads nothing in engine mode, creates its pointer create-only, and uses a placeholder operation id. | O(N·K) | **WS6:** delete the local path after a parity test, without the timing run. Export-pins uploads exactly the pin set, addressed by each file's own digest, sends Content-MD5 and the sha256 metadata, and advances the pointer with `IfMatch`. The operation id comes from the source release plus the spec digest, so an unchanged input costs one engine lookup. |
+| E7 | **Engine:** Updates rewrite whole files (copy-on-write), and iceberg 0.10.1 has only `fast_append`, so there are no delete files. The engine re-HEADs and re-downloads reused or just-written files. Metadata is O(F) per Update (about 5.8 KiB per file). The lifecycle store grows O(H²) between compactions, at about 11 commits per operation. There is an unmeasured 2 MiB file cap on R2. | various | **Must fix before WS7's engine migration:** hash while writing and skip HEADs for immutable reused files, bundled into WS1's revert so it doesn't bring back the double downloads; lifecycle compaction on R2 with fewer commits per operation; measure or remove the 2 MiB cap; and measure copy-on-write cost by layout in the WS7 prototype. Run the `profile_tests.rs:262` harness once a build exists. |
+| E8 | `blake3` is undeclared (no pyproject entry, not in `uv.lock`), so locked CI runs the hand-written fallback, about 380–1000× slower. Confirmed in this audit. | — | **WS3:** declare `blake3` in `docspec_client` and delete the pure-Python fallback. |
+| E9 | Producer files are read and hashed two or three times (`client.py:403-412`). | O(bytes) extra | Hash while writing (WS3). |
+| E10 | news_lake: reverting to `['id']` keys made polls O(history) in an earlier measurement (561 → 1,088 ms between 120k and 2.16M rows). The duplicate check is quadratic (2.36 s at 44k). Views re-read whole datasets. Publish re-validates the whole corpus. C5 rights are computed three times. | O(H) per poll | **WS8:** don't revert to `id` keys; derive the time key from input, or add an engine "insert if absent" mode. Fix the duplicate check, consume the engine's change stream, validate only deltas, keep the engine's C5 policy, and keep periodic lifecycle compaction. |
+| E11 | Publishing `accepted.json` rereads and rewrites the whole file. | O(A) per publish | Derive it from receipts once they are reconciled (ct-st8m), or publish append-only deltas. |
+| E12 | Smaller items: a receipt LIST per run (O(R); fine today, use a cursor later), RecoveryGuard does O(W·P) stat calls, MD5 is computed twice per put, the native-manifest cache skips uploads on same-size files and isn't scoped by bucket (rely on `IfNoneMatch`), and the explorer's temporary docspec re-export is thrown away (delete it). | — | WS2 and WS10. |
+
