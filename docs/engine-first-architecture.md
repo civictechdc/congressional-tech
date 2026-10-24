@@ -173,8 +173,10 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
 ## 5. Lake
 
 All four tables are Iceberg tables in the bucket's Basin Catalog (formerly R2 Data
-Catalog), the managed Iceberg REST catalog. Every commit carries its requirements (table
-UUID and current snapshot), so concurrent writers fail rather than overwrite each other.
+Catalog), the managed Iceberg REST catalog. Their columns use Iceberg's own types, which
+have no 16-bit integers or dictionary types (data model, conventions); the release files
+may use narrower Parquet types. Every commit carries its requirements (table UUID and
+current snapshot), so concurrent writers fail rather than overwrite each other.
 
 **Conflicts are retried by recomputing, never by re-sending.** Basin's own maintenance
 commits to the same tables, so an append can lose a race. On a conflict the writer reloads
@@ -406,7 +408,7 @@ the list row number links them.
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
 | `list.parquet` (about 1.5 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, first-captured date and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | `filename` delta-encoded without a dictionary (21% smaller, measured); 65,536-row groups; no page index |
-| `detail.parquet` (30–40 MB) | Same row order as `list` | A small typed core (`document_id`, occurrence start and length, recoveries as a list of kind, file key and date, alternate formats as a list of format, file key and size) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
+| `detail.parquet` (30–40 MB) | Same row order as `list` | A small typed core (`document_id`, the link key, the saved file's key, occurrence start and length, recoveries as a list of kind, file key and date, alternate formats as a list of format, file key and size) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
 | `links.parquet` (5–7 MB) | `link_key` | 8-byte link key and list row | Point lookup: the column index's page statistics find the page | Offset index and column index (page-level statistics) on `link_key`, about 25 KB together; small pages |
 | `occurrences.parquet` (15–25 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, path inside an archive, filename, capture dates, and the page that linked it with the link's label | The range named in `detail` | Offset index on every column; 64 KB pages of at most 512–1,024 rows |
 | `url_state.parquet` (about 10 MB) | `url` | Latest outcome and retry schedule per URL; no body hash, because the 412 tells capture whether a body is new | Read whole by the capture job, not the site | Defaults |
@@ -440,10 +442,11 @@ columns are in the data model, §4.
 - **Detail reads.** hyparquet reads single pages when a file has an offset index
   (`useOffsetIndex`, 1.31.2). The reader fetches `detail`'s offset index once per session:
   about 100 KB at 64 KB pages (16 KB pages would make it about 870 KB at today's rows).
-  After that, a detail view is one round trip of about 8 concurrent page reads, a few tens
-  of KB. Parquet stores each column, and each field of a flat struct, as its own chunk, so
+  After that, a detail view is one round trip of about 10 concurrent page reads, a few
+  tens of KB. Parquet stores each column, and each field of a flat struct, as its own chunk, so
   a flat layout of the hundred-odd sparse fields would read a page per field. The typed
-  core stays typed so the reader never parses packed strings; the fold holds the rest.
+  core holds everything the site acts on, such as the shareable link and the download
+  key, so the reader never parses packed strings; the fold holds display-only facts.
 - **Binary keys** everywhere else. Hex hashes were 160 of 187 MB in a measured flat detail
   file.
 - **Shards.** `detail` and `occurrences` can be split into fixed row-range files, which

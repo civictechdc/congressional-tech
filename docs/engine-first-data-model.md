@@ -1,17 +1,29 @@
 # Engine-first data model
 
-Status: proposed, revision 3, 2026-10-24. The column-level companion to
+Status: proposed, revision 4, 2026-10-24. The column-level companion to
 `docs/engine-first-architecture.md` (cited as "design §n"). It starts from the CS300
 reviewer's sketch (`docs/reviews/2026-10-24-design-review/cs300-data-model.md`), applies the
-Iceberg/Parquet reviewer's two reviews of it (`iceberg-parquet-data-model-review.md`,
-`iceberg-parquet-data-model-final-review.md`), and applies the owner's decisions through
+Iceberg/Parquet reviewer's three reviews of it (`iceberg-parquet-data-model-review.md`,
+`iceberg-parquet-data-model-final-review.md`, `iceberg-parquet-data-model-types-review.md`),
+and applies the owner's decisions through
 Oct 24. Sizes are measured on the Oct 19 snapshot unless
 marked *est.*
 
-Conventions: Arrow types; `fsb(n)` is `fixed_size_binary(n)`; `dict` is a
-dictionary-encoded string; `ts` is `timestamp[us, UTC]`. "PK" is the uniqueness a test
-asserts. A fold is `List<Struct<field: dict, value: string>>`, one value per element, with
-the field repeated for multi-valued facts.
+Conventions:
+- **Lake tables (§2) use Iceberg types,** because iceberg-rust 0.10.1 has no 16-bit
+  integer and no dictionary type: `string`, `int`, `long`, `boolean`, `date`,
+  `timestamptz` (microseconds), `fixed[n]`, `list` and `struct`. Dictionary encoding is a
+  writer setting, on by default; no column needs encoding tuning (measured:
+  `captures.sha256` is 48–50 MB with or without a dictionary).
+- **Model outputs and release files (§3–4) use Arrow types:** `fsb(n)` is
+  `fixed_size_binary(n)`, `dict` is a string written with a dictionary, `ts` is
+  `timestamp[us, UTC]`, and `int16` is INT32 annotated as 16-bit.
+- A fold is a list of `(field, value)` string structs, one value per element, with the
+  field repeated for multi-valued facts. It holds display-only facts; anything the model
+  filters, joins or sorts on, or the site acts on, is a native column. Parquet's variant
+  type isn't usable in this stack yet (iceberg-rust 0.10.1, DataFusion 53 and docspec's
+  parquet build lack it), so folds plus native hot fields stand in for it.
+- "PK" is the uniqueness a test asserts.
 
 ## 1. Raw log
 
@@ -108,25 +120,26 @@ documentation only.
 
 | Column | Type | Notes |
 |---|---|---|
-| `receipt_key` | dict | — |
-| `receipt_line` | int32 | — |
-| `capture_index` | int32 | Position in `captures[]` (up to 22,354 today). A line whose `captures[]` is empty yields one line-only row with index 0 and a null `sha256`: 1,041,863 of 2,596,054 lines. |
+| `receipt_key` | string | — |
+| `receipt_line` | int | — |
+| `capture_index` | int | Position in `captures[]` (up to 22,354 today). A line whose `captures[]` is empty yields one line-only row with index 0 and a null `sha256`: 1,041,863 of 2,596,054 lines. |
 | `pointer` | string | Informative. |
-| `run_id` | dict | — |
-| `family`, `mode`, `transport`, `outcome`, `fidelity` | dict | — |
-| `publisher_requested`, `complete` | bool | — |
+| `run_id` | string | — |
+| `family`, `mode`, `transport`, `outcome`, `fidelity` | string | — |
+| `publisher_requested`, `complete` | boolean | — |
 | `requested_url`, `url`, `context_url` | string | — |
 | `member_path` | string, nullable | The **endpoint** is `(context_url, member_path)`. |
-| `retrieved_at` | ts, nullable | Null for about 1.0M older rows. |
-| `http_status` | int16, nullable | — |
-| `sha256` | fsb(32), nullable | — |
-| `bytes` | int64 | — |
-| `media_type` | dict | — |
-| `sniffed_format` | dict, nullable | Null on older rows; their format comes from `readings` parser `sniff`. |
-| `stored_md5` | fsb(16), nullable | Creating line only. |
-| `stored_bytes` | int64, nullable | — |
-| `recovery_category`, `original_url`, `match_basis`, `imported_at`, `observed_capture_ts` | dict, string, dict, ts, ts | Import rows only. |
-| `h_content_type`, `h_last_modified`, `h_etag`, `h_content_length` | dict, string, string, int64 | The header allowlist as columns. |
+| `retrieved_at` | timestamptz, nullable | Null for about 1.0M older rows. |
+| `http_status` | int, nullable | — |
+| `sha256` | fixed[32], nullable | — |
+| `bytes` | long | — |
+| `media_type` | string | — |
+| `sniffed_format` | string, nullable | Null on older rows; their format comes from `readings` parser `sniff`. |
+| `stored_md5` | fixed[16], nullable | Creating line only. |
+| `stored_bytes` | long, nullable | — |
+| `recovery_category`, `original_url`, `match_basis`, `imported_at`, `observed_capture_ts` | string, string, string, timestamptz, timestamptz | Import rows only. |
+| `h_content_type`, `h_last_modified`, `h_etag`, `h_content_length` | string, timestamptz, string, long | The header allowlist as columns; `Last-Modified` is parsed to a time, and the raw header stays in the receipt. |
+| `writer_job`, `writer_commit` | string | Constant within a run, so nearly free once encoded. |
 
 - **PK:** `(receipt_key, receipt_line, capture_index)`.
 - **Line fields on every row:** `requested_url`, `retrieved_at`, `http_status`, `outcome`
@@ -141,17 +154,18 @@ documentation only.
 
 | Column | Type | Notes |
 |---|---|---|
-| `body_sha` | fsb(32) | — |
-| `parser` | dict | `sniff`, `html`, `xml`, `json`, `fingerprint`; later `pdf_text` (2.5). |
-| `parser_version` | dict | — |
-| `status`, `error_type` | dict | — |
-| `format` | dict | `pdf`, `zip`, `xml`, `html`, `json`, `vtt`, `m3u8`, `docx`, `doc`, `text`, `image`, `warc`, `other`, `empty`. |
-| `record_role` | dict, nullable | `document`, `source_record` (metadata XML such as MODS, PREMIS, meeting and witness records), `caption`, `playlist`, `api`, `error_response`. |
+| `body_sha` | fixed[32] | — |
+| `parser` | string | `sniff`, `html`, `xml`, `json`, `fingerprint`; later `pdf_text` (2.5). |
+| `parser_version` | string | — |
+| `status`, `error_type` | string | — |
+| `format` | string | `pdf`, `zip`, `xml`, `html`, `json`, `vtt`, `m3u8`, `docx`, `doc`, `text`, `image`, `warc`, `other`, `empty`. |
+| `record_role` | string, nullable | `document`, `source_record` (metadata XML such as MODS, PREMIS, meeting and witness records), `caption`, `playlist`, `api`, `error_response`. Written by the parser, so the model never looks inside `fields`. |
+| `xml_root` | string, nullable | The XML root element, the input the parser uses for `record_role`. |
 | `title`, `heading` | string, nullable | HTML `<title>` and first heading, for the error-sign check. |
-| `text_bytes` | int32, nullable | Visible-text size: the "tiny body" signal. |
-| `error_signals` | list<dict> | Generic error words found. |
-| `fingerprint` | fsb(32), nullable | Normalized-text digest; for a ZIP, the digest of its sorted member hashes. |
-| `fields` | fold | Everything else. |
+| `text_bytes` | int, nullable | Visible-text size: the "tiny body" signal. |
+| `error_signals` | list<string> | Generic error words found. |
+| `fingerprint` | fixed[32], nullable | Normalized-text digest; for a ZIP, the digest of its sorted member hashes. |
+| `fields` | list<struct<field: string, value: string>> | Everything else. |
 
 - **PK:** `(body_sha, parser, parser_version)`; partitioned by `(parser, parser_version)`;
   sorted by `body_sha`.
@@ -170,12 +184,12 @@ documentation only.
 |---|---|---|
 | `filename` | string | Basename or recovered name (32,574 differ from the URL's last segment). |
 | `source_url` | string | Exact URL (the catalog qualifies 71 mirror URLs). |
-| `catalog_version` | dict | Covers every vocabulary passed in. |
-| `valid` | bool | Strict convention parse succeeded. |
-| `document_kind`, `document_family`, `committee_code` | dict | Facets `list` shows. |
-| `congress` | int16 | — |
-| `date_token`, `measure_type`, `measure_number` | string, dict, string | — |
-| `fields` | fold | The rest (about 106 field names). |
+| `catalog_version` | string | Covers every vocabulary passed in. |
+| `valid` | boolean | Strict convention parse succeeded. |
+| `document_kind`, `document_family`, `committee_code` | string | Facets `list` shows. |
+| `congress` | int | — |
+| `date_token`, `measure_type`, `measure_number` | string, string, string | — |
+| `fields` | list<struct<field: string, value: string>> | The rest (about 106 field names). |
 
 - **PK:** `(filename, source_url, catalog_version)`; partitioned by `catalog_version`.
 - **Work list:** `(filename, source_url)` pairs in `captures` with no row for the current
@@ -186,15 +200,15 @@ documentation only.
 
 | Column | Type | Notes |
 |---|---|---|
-| `receipt_key`, `receipt_line`, `link_index` | dict, int32, int32 | PK. |
+| `receipt_key`, `receipt_line`, `link_index` | string, int, int | PK. |
 | `parent_url` | string | The page the link sits on. |
-| `parent_sha` | fsb(32) | The page body. |
-| `retrieved_at` | ts, nullable | When the page was fetched. |
+| `parent_sha` | fixed[32] | The page body. |
+| `retrieved_at` | timestamptz, nullable | When the page was fetched. |
 | `child_url` | string | The linked URL. |
-| `basis`, `tag` | dict | How the link was found. |
+| `basis`, `tag` | string | How the link was found. |
 | `source_xpath` | string | Where the link sits in the page. The model derives a publisher's format group from it (3.3). |
 | `text` | string | The link's label, such as "Witness testimony". |
-| `doc_type`, `add_date`, `publish_date` | dict, string, string | From the link's attributes where the page gives them. |
+| `doc_type`, `add_date`, `publish_date` | string, string, string | From the link's attributes where the page gives them, kept as the publisher wrote them. The model parses the dates for `occurrences`; an unparseable date becomes null. |
 
 - Filled from receipts' `links[]` (owner decision: show link context).
 - **Work list:** receipt keys not yet in `page_links`, its own list and its own commit;
@@ -205,8 +219,8 @@ documentation only.
 
 ### 2.5 `pdf_text` (deferred)
 
-`body_sha` fsb(32), `parser_version` dict, `page_count` int32, `text_fingerprint` fsb(32),
-`text` large_string. PK `(body_sha, parser_version)`. One read of about 403 GB when the owner
+`body_sha` fixed[32], `parser_version` string, `page_count` int, `text_fingerprint`
+fixed[32], `text` string. PK `(body_sha, parser_version)`. One read of about 403 GB when the owner
 schedules full-text extraction. *Est.* 1–5 GB compressed. Keep its text off hash-join build
 sides. Fingerprint candidates don't wait for it: the `fingerprint` parser reads their PDF
 text already (2.2).
@@ -272,9 +286,11 @@ strip-list   := trackers on any host: utm_*, _gl, gclid, fbclid, mc_cid, mc_eid,
 
 ```
 format      := coalesce(c.sniffed_format, r[sniff].format)
-record_role := from format and the reading: vtt → caption; m3u8 → playlist;
-               API-shaped JSON → api; MODS/PREMIS/meeting/witness XML roots → source_record;
-               error-like HTML → error_response; everything else → document
+record_role := r.record_role, written by the parser from the format and native reading
+               columns (xml_root, the JSON shape, the error signals): vtt → caption;
+               m3u8 → playlist; API-shaped JSON → api; MODS/PREMIS/meeting/witness XML
+               roots → source_record; error-like HTML → error_response; else document.
+               The model never unnests `fields`.
 
 real_files  := rows of c where
     mode = 'fetch' and complete and outcome in ('stored', 'unchanged')
@@ -407,9 +423,9 @@ at 1.24M.
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
 | `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_code`, `congress`, `format`, `first_captured` (date32, dictionary), `date_kind`, `saved_kind`. No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding (2.54 MB against 3.22 MB with a dictionary, measured on 1.13M sorted filenames); facets keep dictionaries; 65,536-row groups so a phone can decode as it goes; no page index | about 1.5 MB |
-| `detail.parquet` | typed core: `document_id` fsb(32), `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>, `alternates` List<Struct<format dict, key string, size int64>>; plus one fold of the sparse facts: `link_key`, `source_url`, `saved_key`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 8 concurrent page reads per view |
+| `detail.parquet` | typed core: `document_id` fsb(32), `link_key` fsb(8), `saved_key` string, `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>, `alternates` List<Struct<format dict, key string, size int64>>; plus one fold of the display-only facts, dates written as ISO `YYYY-MM-DD`: `source_url`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 10 concurrent page reads per view |
 | `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | offset index and column index (page-level statistics) on `link_key`, about 25 KB together and read once per session, so hyparquet's `$eq` lookup skips to one page; 16 KB pages; one row group | 5–7 MB |
-| `occurrences.parquet` | `list_row`, `ordinal`, `url`, `member_path`, `filename`, `first_fetched`, `last_fetched`, `outcome`, `is_saved`, `linked_from` (parent URL), `link_text`, `doc_type`, `add_date` | `(list_row, ordinal)` | offset index on every column; 64 KB pages with a page row limit of 512–1,024 and the write batch no larger | *est.* 15–25 MB with link context |
+| `occurrences.parquet` | `list_row` int32, `ordinal` int16, `url`, `member_path`, `filename`, `outcome`, `linked_from` (parent URL), `link_text`, `doc_type` (all string), `first_fetched`, `last_fetched`, `add_date` (all date32), `is_saved` boolean | `(list_row, ordinal)` | offset index on every column; 64 KB pages with a page row limit of 512–1,024 and the write batch no larger | *est.* 15–25 MB with link context |
 | `url_state.parquet` | 3.5 | `requested_url` | defaults | 10 MB |
 | `manifest.json` | `schema_version`; `files[]` {name, sha256, md5, size, rows, row_range, shard}; `facet_counts`; `release_id` | — | deterministic, content only | 5–20 KB |
 | `inputs/<input_digest>.json` | receipt-keys digest, row counts per parser version and catalog version, provenance digest, versions, snapshot IDs, run | — | one per input identity | about 2 KB |
@@ -467,8 +483,8 @@ Raw and lake:
    appended tables.
 2. Every `sha256` in `captures` has a body object, and every body's size and ETag equal its
    creating line's `stored_bytes` and `stored_md5`.
-3. New receipt keys are date-shaped; every `stored` line carries `stored_md5`; every line
-   carries `sniffed_format` and `writer`.
+3. New receipt keys are date-shaped; every `stored` line carries `stored_md5`; every new
+   row carries `sniffed_format`, `writer_job` and `writer_commit`.
 4. A parser version is complete when its work list is empty; the model reads only complete
    versions.
 5. Every real file has a `format` and a `record_role`; every HTML real file has `title`,
