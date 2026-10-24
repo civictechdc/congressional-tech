@@ -2,7 +2,7 @@
 id: ct-jnw5
 status: closed
 deps: []
-links: []
+links: [ct-2wsw]
 created: 2026-10-22T18:42:15Z
 type: task
 priority: 1
@@ -39,3 +39,12 @@ Physical metadata, raw-data, and code audit of Committee Explorer browser tables
 3. Browser publication writes Parquet once in ZSTD(3), and page-indexed exports in docspec-rs use >=16,384-row row groups with 16 KiB data pages.
 4. All committee_explorer, apps/site, and docspec_client tests pass.
 
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 79 → 79, work 70 → 70.
+- Problem: Meeting summaries now keep only the first witness, `saved_copy_sha256` is 0%, published tables lost their page indexes, and several tests check their own helpers.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:112
+- Status: Closed as superseded by the simplification plan (WS11, ct-2wsw): explorer table work is frozen; its one-writer question goes with ct-gi01. Not covered: the witness roster regression (summaries keep one witness).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

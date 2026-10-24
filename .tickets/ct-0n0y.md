@@ -2,7 +2,7 @@
 id: ct-0n0y
 status: closed
 deps: []
-links: []
+links: [ct-tw3r]
 created: 2026-10-22T17:36:18Z
 type: bug
 priority: 0
@@ -32,3 +32,12 @@ Subagent Self-Review Additions:
 2. Bug 2 addition (docspec_host.py:261-304): When a server deadline expires mid-stream after HTTP 200 OK headers are sent (docspec-rs/src/http/deadline.rs:69), the truncated Arrow IPC stream raises pa.ArrowInvalid or OSError('DocSpec Arrow response lacks a complete stream terminator') in ArrowResponse.finish() (docspec_host.py:300-303) instead of a structured DocSpecFailure (code='request_timeout' / 'stream_truncated').
 3. Bug 3 addition (docspec_host.py:70-71, 146-154, 191-195, 219): Store self.workspace directly on Host instead of indexing self.command[self.command.index('--workspace') + 1] in Host.close() (L219) and acquire_host() (L70-71); enforce a bounded response byte limit in Host.request() (L191-195, matching docspec_dagster/client.py:26 RESPONSE_LIMIT = 1 << 20) and reject % zone IDs / whitespace in _ready_address (L146-154).
 4. Bug 4 addition: Cite packages/congress_api/src/congress_api/retention/raw_storage.py:19, 375, 462, which imports private _merge_row_pair (docspec.py:419) and calls apply_update_merge_spec (docspec.py:479-603, which calls .to_pylist() at L499-500).
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch syem).
+- Grades: proposal 84 → 84, work 78 → 78.
+- Problem: Residual of the exact AC1 hazard: `pre_admission` comes from the error *kind*, not from where the error was raised.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:84
+- Covered by: WS3 step 3 (ct-tw3r), which sets `pre_admission` at the engine's admission point.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

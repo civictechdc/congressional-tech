@@ -2,7 +2,7 @@
 id: ct-atjy
 status: closed
 deps: []
-links: [ct-idhg, ct-ylaw, ct-1mbc, ct-4r1c]
+links: [ct-idhg, ct-ylaw, ct-1mbc, ct-4r1c, ct-qqk2]
 created: 2026-10-18T19:44:01Z
 type: task
 priority: 2
@@ -39,3 +39,10 @@ Journal validation and single-checkpoint restore merged. Fresh-phase count/path 
 **2026-10-18T20:32:53Z**
 
 Fresh-phase limits and path refusal merged from 9a1baed and independently reviewed. Integrated continuation, attempt, and guard suite: 57 passed. Both new-phase and restored-state checks now verified.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch d8z3a).
+- Grades: proposal 74 → 66, work 87 → 80.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

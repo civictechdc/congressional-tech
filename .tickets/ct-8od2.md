@@ -2,7 +2,7 @@
 id: ct-8od2
 status: closed
 deps: []
-links: []
+links: [ct-r6xw]
 created: 2026-10-22T18:42:15Z
 type: task
 priority: 1
@@ -36,3 +36,12 @@ Physical metadata and raw-data audit of filenames.parquet (1,683,430 rows, 353 r
 3. readings/ is compacted from 721 tiny files to 1-2 files.
 4. review/rows/part-*.parquet drops from 117.78 MB to ~55 MB with all 19 populated fields preserved as typed columns.
 
+
+## Audit 2026-10-24
+
+- Verdict: NOT-LANDED (batch syem).
+- Grades: proposal 80 → 80, work 38 → 38.
+- Problem: If ever wired, the helpers bring their own problems. FORBIDDEN_CATALOG_TOP_LEVEL_COLUMNS lists about 180 invented `source_<word>` names and would drop columns that duplicate nothing.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:111
+- Status: Closed as superseded by the simplification plan (WS10, ct-r6xw): WS10 deletes the unwired compaction helpers and `test_catalog_compaction.py`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -32,3 +32,10 @@ This comparison is a prerequisite of the corpus-recovery package.
 **2026-10-19T18:10:39Z**
 
 9e980ee5c0edbc544cfdc34ba2c14df4f0b3d39c Compare sealed batch bytes with each caller's own error.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch standalone).
+- Grades: proposal 87 → 91, work 90 → 90.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -50,3 +50,12 @@ Implemented and verified: DocSpecLake._existing_by_ids (docspec_backend.py:626-6
 **2026-10-21T15:17:46Z**
 
 Scale review 2026-10-21: the docspec-rs replace_keys manifest pruning from 96e3826 had no test and compared each file with the overall affected-key min/max, so it pruned almost nothing. docspec-rs 381108c (spicy-stack ss-6cz9) tests per-file affected key points, with oracle tests. news_lake ids are uuid4 (context.py:88), and random keys give every file a near-total key range, so pruning still decodes every retained file each poll until ct-ur2y (UUIDv7 ids) lands; engine-side alternative in spicy-stack ss-wie5.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (batch mi03b).
+- Grades: proposal 90 → 80, work 77 → 77.
+- Problem: AC3 measurements (1x/10x unrelated rows, 1/8/32 polls, files scanned/reused, bytes, memory) were never recorded.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:24
+- Covered by: WS8 (ct-d8cf).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

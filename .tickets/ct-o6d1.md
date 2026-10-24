@@ -2,7 +2,7 @@
 id: ct-o6d1
 status: closed
 deps: [ct-2d3k]
-links: [ct-d3un]
+links: [ct-d3un, ct-2wsw]
 created: 2026-10-19T16:40:41Z
 type: task
 priority: 2
@@ -34,3 +34,12 @@ Defined exact best-effort allocation/string-limit rule: lazy detail and20/defaul
 **2026-10-19T19:39:00Z**
 
 Independent review accepted 996ba97. Exact JSON export and visible failure/retry policy documented; 75 focused checks pass. Alternative full Blob staging misses the memory target, so the existing production path is retained.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 74 → 62, work 76 → 76.
+- Problem: The only candidate evaluated was a Blob built from the complete JSON string, which by construction cannot cut memory (+25.9% against a target of -25%).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:37
+- Covered by: WS11 (ct-2wsw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

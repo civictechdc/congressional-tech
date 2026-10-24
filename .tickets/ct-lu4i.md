@@ -41,3 +41,10 @@ Final integration found a benchmark-only regression: MirrorOverlay retained the 
 **2026-10-18T21:07:54Z**
 
 Fixed the final integration regression by storing independent hash/size facts in MirrorOverlay while returning the same issued custody proof. Independent review approved. A dedicated enrichment-versus-byte-change regression and the complete core benchmark module pass; 42 related offline checks pass. No source bytes or production run changed.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch d8z3b).
+- Grades: proposal 85 → 85, work 90 → 90.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -2,7 +2,7 @@
 id: ct-sbdp
 status: closed
 deps: []
-links: []
+links: [ct-uov2]
 created: 2026-10-22T17:36:18Z
 type: task
 priority: 1
@@ -43,3 +43,12 @@ Subagent Self-Review Additions:
    - scripts/measure/measure_publication_control.py:142-143: Mutates private module cache (sys.modules.get('viewer_release_identity')._source_cache.clear()).
    - tests/test_catalog_pair_validation.py:21-71: Mixes unittest.TestCase + if __name__ == '__main__': unittest.main() (line 71) with pytest functions (lines 74-231) and mutates function bytecode (original.__code__ = changed.__code__ at line 60).
    - Uncommented binary/control-plane protocols: Document scripts/measure/viewer_benchmark_server.py:83-97 (<32sI 36-byte binary shard layout), scripts/publication_preflight.py:57-198, and scripts/viewer_release_identity.py:1-92.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 72 → 72, work 60 → 60.
+- Problem: AC1 unmet in part: 189 cross-test `from test_x import` statements remain (e.g. test_capture_metadata.py:14, test_raw_rebuild.py:15).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:93
+- Status: Closed as superseded by the simplification plan (WS11 ct-2wsw, WS12 ct-uov2): the one-off measure scripts go with WS11; cross-test imports and digest helpers are not carried.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -42,3 +42,12 @@ Implemented all 4 final professor recommendations: (1) O(1) pre-indexed mentions
 **2026-10-20T20:16:54Z**
 
 docspec-rs optimization agent complete and committed (715a8c2): PARQUET_2_0 + ZSTD(3) + dictionary encoding + byte-based row groups (128 MiB) in export writer, batch_rows 8192, plan-captured projection pushdown, profiling harness (25 small files -> 1 after compact), 262-line iceberg_optimization_report.md incl. row-group skill-bug correction (set_max_row_group_size deprecated 58.0.0, bytes-vs-rows). Canonical suite --all-features green: lib 348, integration 313, worker 15, restore 2. news_lake: 307 passed incl. 5 docspec_backend parity tests.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 80 → 80, work 72 → 72.
+- Problem: Its "4 final recommendations" follow-up added the O(releases x rows) prior-snapshot scan (releases.py:143-152).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:61
+- Covered by: WS8 (ct-d8cf), which deletes the PyIceberg oracle path that holds the scan.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

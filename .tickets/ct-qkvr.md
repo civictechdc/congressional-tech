@@ -2,7 +2,7 @@
 id: ct-qkvr
 status: closed
 deps: [ct-egpe]
-links: [ct-nloa, ct-jo8n, ct-5fkx, ct-ur2y, ct-csyg, ct-xu1o, ct-pgxn, ct-8ax6, ct-r60e, ct-ur7v]
+links: [ct-nloa, ct-jo8n, ct-5fkx, ct-ur2y, ct-csyg, ct-xu1o, ct-pgxn, ct-8ax6, ct-r60e, ct-ur7v, ct-d8cf]
 created: 2026-10-20T22:15:53Z
 type: bug
 priority: 1
@@ -50,3 +50,12 @@ Implemented and verified: DocSpecLake._commit_append and _existing_by_ids (packa
 **2026-10-21T15:17:45Z**
 
 Scale review 2026-10-21: the docspec-rs replace_keys manifest pruning from 96e3826 had no test and compared each file with the overall affected-key min/max, so it pruned almost nothing. docspec-rs 381108c (spicy-stack ss-6cz9) tests per-file affected key points, with oracle tests. news_lake ids are uuid4 (context.py:88), and random keys give every file a near-total key range, so pruning still decodes every retained file each poll until ct-ur2y (UUIDv7 ids) lands; engine-side alternative in spicy-stack ss-wie5.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03b).
+- Grades: proposal 93 → 85, work 77 → 79.
+- Problem: R2 and 1/8/32-poll measurements were never recorded, and after ct-xu1o a fresh process accepts a conflicting reuse of an existing id because the check uses an in-process cache.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:29
+- Status: Closed as superseded by the simplification plan (WS8, ct-d8cf): news_lake never touches R2, so R2 qualification is moot; WS8 reverts the time-keyed lookup, so the poll measurement is redone under ct-pgxn and the uniqueness hole is fixed under ct-xu1o.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

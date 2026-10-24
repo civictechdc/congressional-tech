@@ -1,8 +1,8 @@
 ---
 id: ct-dzyf
-status: closed
+status: open
 deps: []
-links: [ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
+links: [ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-d8cf]
 created: 2026-10-21T15:21:26Z
 type: bug
 priority: 2
@@ -29,3 +29,12 @@ Fix direction validated (iceberg + refactoring lenses): implement as rollback-ex
 **2026-10-21T21:40:24Z**
 
 Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): Coordinator.publish clears pending_stage after stage verification and raises deterministic ReleaseError('stage_mismatch', ...) on mismatched stage replay across both Lake and DocSpecLake.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03a).
+- Grades: proposal 88 → 80, work 78 → 78.
+- Problem: The rollback diff reads both the baseline and current tables fully into Python (`lake.py:869-874`), which is O(table) per dirtied table.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:31
+- Status: Reopened: revisit under engine-first rule. The rollback diff reads both tables fully into Python; the engine's `/changes` between the two pins returns the same bounded delta. Owner: WS8 (ct-d8cf).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

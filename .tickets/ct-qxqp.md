@@ -35,3 +35,12 @@ Casefold-safe code-point span matching with Unicode word boundaries; span dedup 
 **2026-10-20T17:30:45Z**
 
 Casefold-safe code-point span matching (including length-changing casefolds) and Unicode word-boundary checks; spans deduplicated and aggregated by exact matched surface. Identity tests: 27 passed.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 86 → 86, work 83 → 83.
+- Problem: Scaling: for each version, every candidate surface is scanned across the whole text character by character (linking.py:95-107, 63-76).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:53
+- Area owner: WS8 (ct-d8cf); not a named step.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

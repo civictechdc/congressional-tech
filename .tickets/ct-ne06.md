@@ -39,3 +39,12 @@ Subagent Self-Review Additions:
 
 Lead Architect Review (Defend Intent + Compromise):
 1. DEFEND + REFACTOR: In Catalog.check_graph_with (packages/committee_meeting/src/committee_meeting/catalog.py:177-186), collecting _cited_json_pointers during graph validation is an intentional single-pass optimization so export.py can prune uncited JSON subtrees from spilled source records without scanning the entire corpus a second time. Keep the single-pass collection during check_graph_with, but return the cited pointer set explicitly (or pass an optional collector parameter) and expose a public self.records.kinds() method instead of reaching into self.records._spilled._by_kind and monkey-patching _cited_json_pointers.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch syem).
+- Grades: proposal 80 → 80, work 74 → 74.
+- Problem: The circular dependency was broken by copying `SourceModel` and the Youtube models into `youtube_api`, so two copies now drift.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:92
+- Not covered by a plan workstream; the copied `youtube_api` models drift from `congress_api`'s.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -2,7 +2,7 @@
 id: ct-rrfm
 status: closed
 deps: []
-links: [ct-zkzt, ct-1dsp, ct-sv16]
+links: [ct-zkzt, ct-1dsp, ct-sv16, ct-2wsw]
 created: 2026-10-18T19:44:01Z
 type: task
 priority: 3
@@ -41,3 +41,12 @@ Replaced global alias/source/group maps with disposable SQLite index:8MiBcache,F
 **2026-10-18T20:44:57Z**
 
 Independent review followup: exact final publisher JSON byte ceiling now includes header/brackets/separators and ASCII escaping, using already counted entry sizes plus a tiny empty-array header (no second output walk/copy). Empty/multiple/Unicode boundary fixtures match publisher bytes.42focusedtests pass. Corrected benchmark warm module initialization equally; final Pythonpeak15.48→9.53MB, time0.924→1.618s, headercheck0.000087s. Receipt refreshed.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (dormant in production) (batch d8z3b).
+- Grades: proposal 72 → 68, work 72 → 72.
+- Problem: The ticket's own receipt showed the SQLite spill made preparation 75% slower (0.92→1.62 s) with RSS "nearly unchanged"; only the tracemalloc peak fell.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:30
+- Covered by: WS11 (ct-2wsw) and WS6 (ct-qqk2), which removes the v1 alias path.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

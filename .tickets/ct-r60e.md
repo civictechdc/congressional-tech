@@ -2,7 +2,7 @@
 id: ct-r60e
 status: closed
 deps: []
-links: [ct-gfv8, ct-mi03, ct-ur2y, ct-nloa, ct-xu1o, ct-8ax6, ct-pgxn, ct-ur7v, ct-qkvr]
+links: [ct-gfv8, ct-mi03, ct-ur2y, ct-nloa, ct-xu1o, ct-8ax6, ct-pgxn, ct-ur7v, ct-qkvr, ct-d8cf]
 created: 2026-10-21T14:41:26Z
 type: task
 priority: 2
@@ -36,3 +36,12 @@ Realistic-scale qualification (`ct-pgxn`, 1,080 hourly polls, `output/news-poll-
 2. `spicy-stack` `ss-g9sn` (open): Physically unlink expired `warehouse/<dataset>/lifecycle/{data,metadata}` files (`~1,000 MiB` at 1,080 polls) and superseded checkpointed `objects/<dataset>/<attempt>/` release/manifest files (`~1,035 MiB`, $O(\text{polls}^2)$) during `compact_lifecycle`.
 3. `ct-8ax6` (open): Bound per-poll small-file fragmentation (`1,080` ~95 KiB files/table at 45d; `8,760`/year) via batch coalescing or threshold native table compaction (`Engine::compact`) so the single live head `ReleasePin` does not accumulate `~5.8 KiB/poll` of `ObjectRef` metadata (`6.28 MiB` at poll 1,079; `~51 MiB` > `32 MiB` `max_metadata_bytes` at `T2 = 8,760`).
 
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 80 → 80, work 77 → 77.
+- Problem: The test (`test_docspec_backend.py:1204`) runs 4 polls at interval 4 and only counts compactions.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:17
+- Covered by: WS8 fix 1 (ct-d8cf), which removes the automatic compaction on commit that this ticket added.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

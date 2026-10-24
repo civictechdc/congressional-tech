@@ -32,3 +32,12 @@ Raw data audit of sources-1..3.parquet (308,516 rows) revealed 94,974 redundant 
 2. Zero unreferenced orphan rows in sources.parquet (100% of rows in sources.parquet are referenced by at least one row in committees, meetings, materials, witnesses, or issues).
 3. Total row count in sources.parquet drops by ~94,974 rows (-30.8%), shrinking into a single sources.parquet file.
 
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch syem).
+- Grades: proposal 90 → 90, work 83 → 83.
+- Problem: Historical issue citations are re-pointed at the current SourceRecord, whose payload may not contain the quoted value, and some e2e tests import no production code.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:115
+- Not covered by a plan workstream.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -41,3 +41,12 @@ All 42 original remediation tickets are closed after implementation in dependenc
 **2026-10-19T02:22:40Z**
 
 All remaining hosted, live and scheduled-cost qualification passed at 744edd6. ct-hnxb and ct-x7vx now closed after dependency checks. Fresh complete hosted job 9,732 s, ordinary unchanged job 20 s; retained local fixture comparisons describe unchanged/resume/fresh operations separately. Preserve measured tradeoffs and prior failed evidence. Final evidence PR records 44 closed tickets and no in-progress work; original rebuild and unrelated pipeline-data worktree remain untouched.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3a, d8z3b).
+- Grades: d8z3a: proposal 70 → 60, work 74 → 68; d8z3b: proposal 74 → 70, work 78 → 74.
+- Problem: Regressions landed after closure: forgeable `VerifiedFile` proofs, a coarser search-cancellation bound (ct-9at7), and retry costs measured only on a 1 MiB fixture.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:80; docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:15
+- Covered by: WS2 (ct-syx8) for the forgeable `VerifiedFile` proofs, WS6 (ct-qqk2) for publication retries, WS11 (ct-2wsw) for search cancellation.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

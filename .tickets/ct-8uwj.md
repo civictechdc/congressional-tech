@@ -34,3 +34,12 @@ All implementation prerequisites are merged. Final verification uses three fresh
 **2026-10-18T21:20:33Z**
 
 Completed at measured candidate f525749 against f9f4499. Three alternating trials used identical inputs and runtime; all 269 payloads and published recovery bytes matched. Fresh publication: 3.388 → 3.642 seconds (+7.5%); unchanged poll: 0.207 → 0.098 seconds (−52.6%); resume: 2.701 → 1.664 seconds (−38.4%). Corrected checks: 9,072 Python tests plus 38 subtests, 152 JavaScript tests, 29 built pages, 2 bootstrap checks, and 54 comparison tests. Reviews and failures are retained. Report: docs/experiments/publication-remediation/combined-verification.md. Hosted-job observation remains ct-x7vx; no rollout.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3a).
+- Grades: proposal 80 → 74, work 74 → 74.
+- Problem: The numbers describe a pre-merge revision, and native C5 (55ba3479) has since replaced the preparation it timed.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:75
+- Covered by: WS6 (ct-qqk2); the journal-route cost scripts go with it (WS11).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

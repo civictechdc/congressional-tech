@@ -1,8 +1,8 @@
 ---
 id: ct-0bce
-status: closed
+status: open
 deps: []
-links: []
+links: [ct-d8cf, ct-r6xw]
 created: 2026-10-22T17:45:12Z
 type: task
 priority: 1
@@ -41,3 +41,12 @@ Subagent Self-Review Additions (Corpus, Viewer & News Lake Auditor):
    - packages/news_lake/src/news_lake/storage/docspec_backend.py:1318: commit_table loops 'for row in rows:' calling self.client.upsert(...) per row instead of batching via upsert_many.
 2. Acceptance Criteria Additions:
    - Replace 5-level nested pin dictionary train-wrecks (docspec_backend.py:1007-1121, 1449, 1472-1473, 1705-1716, 2268-2277) with a typed helper, replace the 8-12 parameter signatures in Coordinator.run_cycle / commit_poll_batch / publish_release with a typed context dataclass, and narrow except Exception in control.py and docspec_backend.py.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 77 → 77, work 69 → 69.
+- Problem: The commit title's "unify releases" is false. `docspec_backend.py` remains as an 86-line re-export shim that production code still imports (`cli.py:26`, `storage/__init__.py:10`).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:83
+- Status: Reopened. Unmet: AC2, one release state machine (`releases.py`/`coordinator.py` still dispatch by `hasattr`); WS8 (ct-d8cf) deletes the PyIceberg backend, the dispatch and the `docspec_backend.py` shim. AC1 (retire the `chained=False` and `two_stage_syndication=False` branches and the ignored `native_upsert_merge` flag) is not a named plan step; WS8 should remove them with the backend.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

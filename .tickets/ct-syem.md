@@ -1,8 +1,8 @@
 ---
 id: ct-syem
-status: closed
+status: open
 deps: []
-links: [ss-yjut]
+links: [ss-yjut, ct-uov2]
 created: 2026-10-22T17:33:29Z
 type: epic
 priority: 1
@@ -29,3 +29,12 @@ Parent epic tracking findings from the 13-subagent CS300 Capstone Code Quality A
 
 1. All P0/P1 runtime, cache-poisoning, and test-runner bugs (`ct-0n0y`, `ct-unv0`, `ct-3bfx`, `ct-imdo`) are fixed and verified by automated tests.
 2. All P1/P2 architectural decomposition, circular-import removal, dead-code purging, DRY consolidation, un-minification, and repo hygiene tickets (`ct-4fcl`, `ct-fsbf`, `ct-0bce`, `ct-wxhg`, `ct-ne06`, `ct-tcs4`, `ct-elhm`, `ct-4g55`, `ct-sbdp`, `ct-bzl9`) are resolved and verified by `.venv/bin/python scripts/dev.py check`.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 68 → 68, work 60 → 60.
+- Problem: AC1 ("P0/P1 fixed and verified by automated tests"): ct-imdo's fixes have no tests (no test references `congress_shared.dates` or auth argv handling).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:94
+- Status: Reopened, because its children ct-0bce and ct-4fcl are reopened; it closes when they do. Its gate (`scripts/dev.py check`) runs no tests; WS12 (ct-uov2) makes the gate `scripts/dev.py test` on the merged revision. The shims it left go with WS10 (ct-r6xw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

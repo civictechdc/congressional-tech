@@ -1,8 +1,8 @@
 ---
 id: ct-5yof
-status: closed
+status: open
 deps: []
-links: []
+links: [ct-d8cf]
 created: 2026-10-20T16:52:23Z
 type: feature
 priority: 2
@@ -30,3 +30,12 @@ tags: [news-lake, analysis, export]
 **2026-10-20T17:30:52Z**
 
 Added deterministic keyword topic/tone classification producer and C5 export_release enforcing restricted/expired body omission, redistributable preservation, authorized bypass, and input immutability. Labels/export tests: 13 passed.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 83 → 83, work 75 → 75.
+- Problem: C5 leak, reproduced with the project venv: expiry is computed only from `news.captures` rows present in the read (export.py:83-88; same in docspec/export.py:84-91).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:60
+- Status: Reopened: revisit under engine-first rule. Its Python `export_release` C5 gate duplicates the engine policy and leaks on subset reads; WS8 (ct-d8cf) replaces it with the engine's export-rights policy. The keyword classifier still has no consumer, and its AC1 round-trip is untested.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

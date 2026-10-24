@@ -2,7 +2,7 @@
 id: ct-u7gg
 status: closed
 deps: [ct-2d3k]
-links: []
+links: [ct-r6xw]
 created: 2026-10-19T16:35:49Z
 type: task
 priority: 1
@@ -35,3 +35,12 @@ Retain-test correction: the first added run had 165 passes and one assertion fai
 **2026-10-19T16:46:29Z**
 
 Independent review approved 941a45c. All 166 focused local checks passed; source and log hashes match the retained receipt. Merging this reviewed code; integrated offline verification follows in ct-us67.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch syem).
+- Grades: proposal 85 → 85, work 83 → 83.
+- Problem: The saving holds only on the two build routes (index/lifecycle.py:108, :542).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:104
+- Covered by: WS10 (ct-r6xw), which removes the in-process proof registries.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

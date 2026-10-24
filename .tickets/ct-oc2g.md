@@ -2,7 +2,7 @@
 id: ct-oc2g
 status: closed
 deps: [ct-2ukk]
-links: [ct-2ukk, ct-czsd, ct-a3le, ct-8ax6, ct-xu1o, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-mi03, ct-dmca, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
+links: [ct-2ukk, ct-czsd, ct-a3le, ct-8ax6, ct-xu1o, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-mi03, ct-dmca, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-uov2]
 created: 2026-10-21T14:41:26Z
 type: task
 priority: 3
@@ -35,3 +35,12 @@ Verified that `.github/workflows/deploy-pages.yml:79-96` already checks out `pip
 **2026-10-21T15:55:59Z**
 
 Cross-skill validation + code inspection (main 9e5cf42e): the cited path apps/site/src/lib/duckdb.ts does not exist (apps/site/src/lib/ contains only paths.ts); the v5/v6 parsers live at apps/site/src/components/explorer/reader/filenames/. Cleanup scope is deeper than removing a runtime fallback: catalog-v6.ts:14 imports rangeFile, sourceContext, savedCopyUrl, apiReference and videoReference from catalog-v5.ts, and catalog.ts:3-5 imports and re-exports both parsers. Extract those five helpers before deleting v5, or v6 breaks.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS; greenfield re-read: LANDED-SOUND (batch standalone).
+- Grades: proposal 75 → 80, work 62 → 82.
+- Problem: Closed, and v5 removed, while its own acceptance criterion says "Blocked on ct-2ukk", and `.tickets/ct-2ukk.md` is still `status: in_progress`.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:14
+- Covered by: WS12 (ct-uov2), no closing while blocked, and WS6's end-to-end viewer check (ct-qqk2).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

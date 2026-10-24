@@ -2,7 +2,7 @@
 id: ct-p6aq
 status: closed
 deps: []
-links: [ct-lvvr, ct-9at7, ct-bs70, ct-rckw]
+links: [ct-lvvr, ct-9at7, ct-bs70, ct-rckw, ct-2wsw]
 created: 2026-10-18T19:44:01Z
 type: task
 priority: 3
@@ -33,3 +33,12 @@ Apply the existing acceptance criteria to the specific functions and checks in t
 **2026-10-18T20:22:07Z**
 
 Count-plus-page accumulation bounds matched group storage at twice page limit. Budgeted scalar/observation normalized text removes repeated formatting; exact scan fallback remains, no extra field index. Expanded Python-reference queries verify same-source AND, Unicode/nested JSON plus existing review/null/recovery/order checks. 18 catalog/worker tests passed; counters in browser.md.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (v5 work deleted; partly carried into v6) (batch d8z3b).
+- Grades: proposal 78 → 74, work 76 → 76.
+- Problem: Match storage is O(matches) again: a broad query holds about 1.2M 64-char IDs.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:25
+- Status: Closed as superseded by the simplification plan (WS11, ct-2wsw): browser work is frozen; if search is revisited, encode the bounded-matches rule as a v6 test.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

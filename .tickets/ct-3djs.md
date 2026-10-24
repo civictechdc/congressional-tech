@@ -44,3 +44,12 @@ Implemented issued reference/content/pair proofs through staging, raw publicatio
 **2026-10-18T21:07:54Z**
 
 Final regression assertions now recognize earlier custody refusal after a verified catalog file is rewritten and shared generation-path validation. Existing no-publication-write assertions remain intact; related offline checks pass.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (batch d8z3a).
+- Grades: proposal 74 → 68, work 72 → 72.
+- Problem: The single-build validation proof was later dropped (ct-u7gg), and `validate_catalog_pair`/`CatalogPairValidation` have no production caller.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:73
+- Covered by: WS10 (ct-r6xw), which removes the `CatalogPairValidation` class and keeps `validate_catalog_pair`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

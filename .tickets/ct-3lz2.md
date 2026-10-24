@@ -35,3 +35,12 @@ Implemented literal directed decision graph + separate Union-Find equivalence fo
 **2026-10-20T17:30:45Z**
 
 Separated literal directed same_as arrows from the Union-Find equivalence forest; real DFS cycle checks; reflexive decisions rejected; multi-branch DAG roots resolve deterministically. Identity tests: 27 passed.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 94 → 94, work 87 → 87.
+- Problem: Scaling: every cross-class merge invalidates `_roots` (decisions.py:126, 130).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:52
+- Area owner: WS8 (ct-d8cf); not a named step.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

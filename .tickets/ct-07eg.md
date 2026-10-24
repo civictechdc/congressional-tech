@@ -37,3 +37,12 @@ storage/releases.py:58-67, 105, 135-170 and storage/coordinator.py:243-260 perfo
 **2026-10-20T17:30:52Z**
 
 find_release uses EqualTo('id'); read_release supports validated table subsets; publish_release skips per-record shape/hash work for snapshots already validated while cross-record C7 always runs; abandon_cycle skips snapshot-identical tables. Release tests cover the filter path, subsets, validation-cache call counts, and journaled snapshot reuse.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 77 → 77, work 75 → 75.
+- Problem: Production `DocSpecLake.publish_release` re-reads every pinned table and runs `check_corpus` with no `validated_ids` on every cycle (lake.py:705-721).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:50
+- Covered by: WS8 (ct-d8cf).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

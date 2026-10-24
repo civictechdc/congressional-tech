@@ -40,3 +40,12 @@ Implemented validate_shape(record, allowed_extra=()) with non-finite rejection a
 **2026-10-20T17:30:45Z**
 
 validate_shape now rejects non-finite floats and accepts only named evolved-schema extras. check_corpus enforces the C6 decision graph, C7 run-input acyclicity, capture/version access compatibility, unique checkpoint connector keys, and C2 credential redaction; validated_ids and allow_extra_by_kind support storage integration. Contract tests: 73 passed.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 91 → 91, work 86 → 86.
+- Problem: The C2/C6/C7 check was narrowed: a metadata-only version from a failed capture is still accepted.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:54
+- Area owner: WS8 (ct-d8cf); not a named step.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

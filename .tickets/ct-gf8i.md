@@ -50,3 +50,12 @@ Semantic cross-date syndication is already covered: test_update_bridges_pin_isol
 **2026-10-21T02:20:25Z**
 
 Implemented and verified: list<struct> occurrences, native CollectSet in coverage_daily, release-pinned incremental bridge updates (ct-n6lj), and projected read_keys lookup in _assemble_politician_articles all pass in test_docspec_backend.py (14 passed).
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03a).
+- Grades: proposal 86 → 86, work 80 → 80.
+- Problem: The AC to measure payload read/written and aggregate memory/spill is met only through `last_bridge_diff` counters and the hot-group receipt.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:35
+- Covered by: WS8 (ct-d8cf).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

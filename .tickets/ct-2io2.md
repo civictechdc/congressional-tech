@@ -2,7 +2,7 @@
 id: ct-2io2
 status: closed
 deps: []
-links: []
+links: [ct-uov2]
 created: 2026-10-19T18:51:10Z
 type: task
 priority: 1
@@ -31,3 +31,12 @@ External test-relocation commits 6016ca1 and d0386c7 integrated with PR132. Inve
 **2026-10-19T19:25:05Z**
 
 PR133 merged 3757f55ed33ea390895c20a2007cb08eb39ce519. Primary and all three implementation worktrees refreshed to that revision; owned drafts preserved. Independent relocation, archive and workflow reviews approved. Integration complete.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 74 → 74, work 78 → 78.
+- Problem: The merged tree (with test-relocation commits 6016ca1/d0386c7) never had a green full run.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:24
+- Covered by: WS12 (ct-uov2): the gate is `scripts/dev.py test` on the merged revision.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

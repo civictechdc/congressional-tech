@@ -2,7 +2,7 @@
 id: ct-upte
 status: closed
 deps: [ct-l5q1]
-links: []
+links: [ct-7uit]
 created: 2026-10-20T07:43:10Z
 type: task
 priority: 1
@@ -28,3 +28,10 @@ Red/green tests prove repeated alias queries sharing a leaf decode it once, chan
 **2026-10-20T07:58:31Z**
 
 Implemented and independently reviewed bounded two-entry immutable membership reuse; combined retained Arrow bytes stay within the existing leaf budget. Local integration11tests pass; agent62focused tests pass. Identical4/40 fixture checks reduce append native reads105→21 while preserving values,IDs,old pins,old publication hashes and all write counters. Evidence: output/incremental-updates-20261019/end-to-end/cache-pair/receipt.md and review-merge/root-membership-cache-review.md. Remaining shared-leaf amplification is documented; ct-2ukk stays open.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch czsd).
+- Grades: proposal 87 → 87, work 83 → 83.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

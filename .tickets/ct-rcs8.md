@@ -2,7 +2,7 @@
 id: ct-rcs8
 status: closed
 deps: [ct-l5q1]
-links: []
+links: [ct-7uit]
 created: 2026-10-20T07:37:34Z
 type: bug
 priority: 1
@@ -28,3 +28,10 @@ Record full-table scan coverage and exact oversized-row causes. Add failing pres
 **2026-10-20T08:26:58Z**
 
 Complete current scan: 725 files / 8,623,851 rows. Shared typed occurrence storage preserves the exact 43,807,597-byte selected document and all 33,479 occurrences through actual native write/read; largest physical test chunk 4,081,155 bytes. Independent backend and consumer review approved. Final browser checks preserve complete large records, field order, null/empty/duplicates, reviews and stable links. Integration c2f4bcad includes corrected test pins; 100 focused tests passed, broader 310 passed plus four fixture corrections separately retested. Receipt: adoption-survey/typed-rows-implementation.json. Production adoption remains separately gated.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch czsd).
+- Grades: proposal 92 → 88, work 87 → 87.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

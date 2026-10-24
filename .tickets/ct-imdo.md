@@ -42,3 +42,12 @@ Subagent Self-Review Additions (Congress API & Shared Auditor):
    - Switch packages/youtube_api/src/youtube_api/tables.py:28-39 (AtomicJSONStorage.write -> write_atomic_bytes), packages/corpus_recovery/src/corpus_recovery/govinfo.py:97-100 (_verify_zip) and transfer.py:109-120 (verify_pair -> verify_local_file), and packages/congress_api/src/congress_api/adapters/common.py:49-50 (digest) and retention/document_index.py:855-856 (compact -> canonical_json_bytes / sha256_bytes) to use congress_shared.custody.
 2. Stale parsers.speaker_names Doc Reference (AC #4):
    - Update packages/congress_api/README.md:707 (parsers.speaker_names -> matching.speaker_names).
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch syem).
+- Grades: proposal 74 → 74, work 74 → 74.
+- Problem: Behavior change: `parse_utc_timestamp` converts to UTC and rejects naive input.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:91
+- Not covered by a plan workstream.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

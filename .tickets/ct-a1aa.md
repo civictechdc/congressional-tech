@@ -1,8 +1,8 @@
 ---
 id: ct-a1aa
-status: closed
+status: open
 deps: [ct-owh2]
-links: []
+links: [ct-d8cf]
 created: 2026-10-20T16:50:54Z
 type: epic
 priority: 1
@@ -46,3 +46,12 @@ All 10 follow-up findings from the semi-formal code review addressed and verifie
 **2026-10-20T18:28:05Z**
 
 Implemented all 4 final architectural recommendations (293 passed).
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 80 → 80, work 77 → 77.
+- Problem: The AC "crash recovery converges across all fault points including mid-upsert" holds only on the Iceberg oracle (test_recovery.py:56-92).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:49
+- Status: Reopened, because its child ct-5yof is reopened under the engine-first rule; it closes when that does. Its crash-recovery criterion holds only on the PyIceberg oracle; WS8 (ct-d8cf) ports those tests to DocSpecLake.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

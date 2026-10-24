@@ -2,7 +2,7 @@
 id: ct-nc7l
 status: closed
 deps: [ct-q968, ct-adu0, ct-wjce, ct-qdkd, ct-n7la, ct-oxg6, ct-bt1q, ct-3faj, ct-egpe, ct-ccy4, ct-m9td]
-links: [ct-m9td, ct-egpe, ct-qdkd, ct-3faj, ct-a70m]
+links: [ct-m9td, ct-egpe, ct-qdkd, ct-3faj, ct-a70m, ct-q2ht, ct-7uit]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 1
@@ -46,3 +46,12 @@ Reopened by evolutionary-refactoring audit at `main` (`8221566d`):
 **2026-10-21T02:20:25Z**
 
 Qualified integrated application runtime (docspec-rs 96e38262 / SHA-256 9a9f9952), shared docspec_client transport, typed preparation + positive spill, operator status/retention protection, and archive/news callers across 176 passing local tests.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03b).
+- Grades: proposal 75 → 65, work 68 → 68.
+- Problem: AC3 ("record aggregate parent/child memory, staging/spill, requests and bytes") has no record for the integrated head.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:21
+- Status: Closed as superseded by the simplification plan (Step 0 ct-q2ht, WS7 ct-7uit): qualifying the Python incremental update path is replaced by Step 0's rebuild baseline and WS7's engine prototype on real data.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

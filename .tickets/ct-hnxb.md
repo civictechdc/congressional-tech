@@ -88,3 +88,12 @@ PR 115 merged as 744edd6. Final branch CI run 39176588962 and Pages run 39176607
 **2026-10-19T02:22:40Z**
 
 Hosted publisher 39176607378 passed at 744edd6; accepted preparation and complete 271-file inventory verified before selection. Maintained live loaders and fresh deployed browser passed once: catalog 469ef1ebf6864739a2c8a4c096defcc0, publisher 10, house-naming 3.2.7, 1,683,430 filename rows and 1,241,157 document rows; 86 bound/0 withdrawn reviews, 81 applied groups plus 5 annotations. Bounded diagnostic ZIP retained with GitHub digest; oversized preparation/continuation kept compressed. Full hosted payloads were verified by the workflow, not downloaded again. See docs/experiments/publication-remediation/hosted-qualification.md and evidence index.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3a).
+- Grades: proposal 83 → 78, work 75 → 75.
+- Problem: The hosted qualification covered the now test-only v5 generator.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:91
+- Covered by: WS6 (ct-qqk2), which may delete the v6 preparer; the decoded-memory budget stays on the keep list until then.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

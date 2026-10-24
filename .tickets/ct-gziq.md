@@ -2,7 +2,7 @@
 id: ct-gziq
 status: closed
 deps: [ct-egpe, ct-q05l]
-links: [ct-gf8i, ct-csjp, ct-vt7i, ct-sb0s, ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac]
+links: [ct-gf8i, ct-csjp, ct-vt7i, ct-sb0s, ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac, ct-7uit]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -51,3 +51,12 @@ Aligned with end-state epic ct-8kl2 (ct-bwac) and spicy-stack ss-65bz (filtered/
 **2026-10-21T21:40:24Z**
 
 Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): wired SourceObservationStorage (summarize_pin, summarize_alias, and automatic rollup in prepare) and CatalogDependencyStorage (summarize_alias_pin, summarize_alias_leaf, refresh_alias_source_join) through refresh_catalog_observation_summary and refresh_catalog_join (/refreshes/plan and /refreshes/run).
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03a).
+- Grades: proposal 74 → 70, work 50 → 50.
+- Problem: It adds a native refresh on every `prepare`, writes uniquely named datasets that grow without bound, and nobody consumes the output.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:36
+- Status: Closed as superseded by the simplification plan (WS7, ct-7uit): the plan deletes the per-alias refresh consumer and `last_refresh_summary`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

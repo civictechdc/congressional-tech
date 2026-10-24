@@ -2,7 +2,7 @@
 id: ct-9at7
 status: closed
 deps: []
-links: [ct-p6aq]
+links: [ct-p6aq, ct-2wsw]
 created: 2026-10-18T19:28:38Z
 type: task
 priority: 3
@@ -36,3 +36,12 @@ Cover both scalar/group scans and observation-search loops using the actual work
 **2026-10-18T20:20:46Z**
 
 Bound scalar/group scans at 512 visits per event-loop yield; observation/reference loops count work across blocks and long lists. Direct work-count checks plus actual worker cancellation and immediate info requests pass, late canceled replies suppressed. Fixture latency/work and throughput boundary documented in browser.md. 17 focused checks passed.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch d8z3a).
+- Grades: proposal 84 → 76, work 77 → 77.
+- Problem: The 512-row bound in the closing note no longer holds on main.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:76
+- Status: Closed as superseded by the simplification plan (WS11, ct-2wsw): browser work is frozen until there is a user.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

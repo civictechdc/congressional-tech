@@ -2,7 +2,7 @@
 id: ct-3faj
 status: closed
 deps: [ct-copj]
-links: [ct-q968, ct-egpe, ct-bt1q, ct-m9td, ct-qdkd, ct-nc7l, ct-a70m]
+links: [ct-q968, ct-egpe, ct-bt1q, ct-m9td, ct-qdkd, ct-nc7l, ct-a70m, ct-tw3r]
 created: 2026-10-20T18:50:27Z
 type: bug
 priority: 1
@@ -29,3 +29,12 @@ Transport author source-review finding for independent acceptance: c44bf044 run_
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit confirmed this P2 custody hole at `docspec.py:233-235` and `docspec-rs/src/engine/http.rs:442-454`. Map native `"worker"` / quarantine errors to a non-cleanup-safe status (e.g. 500/503 or explicit error-code check in `run_table`) and add a custody regression test before closing `ct-3faj` and `ct-q968`.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03a).
+- Grades: proposal 90 → 94, work 76 → 76.
+- Problem: A later ct-2ukk change makes `run_table` and `update_table` retry automatically when stderr contains 'commit state is unknown', which can resubmit a request whose outcome is unknown.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:15
+- Covered by: WS3 (ct-tw3r), which deletes the substring retries.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

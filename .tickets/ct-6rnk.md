@@ -1,8 +1,8 @@
 ---
 id: ct-6rnk
-status: closed
+status: open
 deps: []
-links: [ct-3ttc]
+links: [ct-3ttc, ct-98sm, ct-tw3r]
 created: 2026-10-22T11:11:43Z
 type: bug
 priority: 1
@@ -31,3 +31,12 @@ resolve_docspec_binary in docspec_views.py checked DOCSPEC_BIN instead of DOCSPE
 **2026-10-22T15:38:56Z**
 
 Verified resolve_docspec_binary env/path hierarchy in docspec_views.py and weekly_tables.py, ExportPolicy schema alignment, and bit-for-bit stage/*.parquet == ExportPin sha256/byte_size unification across all 8 browser partitions.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch kl2a1aa).
+- Grades: proposal 87 → 87, work 73 → 73.
+- Problem: Published `stage/*.parquet` are again Python-written, while export-pins.json records the ExportPin digests, so AC2 ("same SHA-256 and byte size") is false on main.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:33
+- Status: Reopened. Unmet: the resolver still falls back to unpinned `target/debug` builds and PATH; owner WS3 step 6 (ct-tw3r). Revisit under engine-first rule: AC2 (published `stage/*.parquet` equal the ExportPin outputs) was reverted by `f2fea711`, so the explorer publishes Python-written tables again. No plan workstream owns the explorer; linked to the epic ct-98sm.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

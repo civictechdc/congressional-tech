@@ -2,7 +2,7 @@
 id: ct-f7p8
 status: closed
 deps: []
-links: [ct-gi01]
+links: [ct-gi01, ct-uov2]
 created: 2026-10-22T11:11:42Z
 type: bug
 priority: 1
@@ -32,3 +32,12 @@ Forensic audit of d6bdc1f3 revealed that docspec_views.py:502-505 sliced payload
 **2026-10-22T15:38:56Z**
 
 Replaced payload/lines truncation with lossless oversized Arrow RecordBatch slicing in docspec_views.py, weekly_tables.py, and docspec-rs src/storage.rs so 24.45 MB single-row Senate payloads admit and export with zero truncation.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 90 → 90, work 82 → 82.
+- Problem: The ticket closed at 5f1402ff (11:39), but the engine fix c949c67 landed at 11:43 and was pinned at 12:02, so it closed before its own dependency existed.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:34
+- Covered by: WS12 (ct-uov2), no closing before a dependency lands.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

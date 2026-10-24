@@ -2,7 +2,7 @@
 id: ct-xq1y
 status: closed
 deps: [ct-oxg6]
-links: [ct-oxg6, ct-5fkx]
+links: [ct-oxg6, ct-5fkx, ct-tw3r]
 created: 2026-10-20T23:52:13Z
 type: bug
 priority: 2
@@ -34,3 +34,10 @@ Implemented in docspec-rs: added #[serde(deny_unknown_fields)] to RunSpec, Input
 **2026-10-21T00:58:53Z**
 
 CS 300 Post-Review Fix -> Grade: A. Added http_routes_refuse_unknown_fields_with_422 in docspec-rs/tests/http_optional_changes.rs:117-202 verifying HTTP 422 refusal on /run, /updates/run, /schemas/run, /backfills/run, /exports/run, and /compactions/run when unknown JSON fields are supplied.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch mi03b).
+- Grades: proposal 94 → 94, work 90 → 92.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

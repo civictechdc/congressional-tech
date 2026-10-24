@@ -2,7 +2,7 @@
 id: ct-lcbc
 status: closed
 deps: [ct-wmtx]
-links: [ct-mi03, ct-a1aa, ct-wmtx, ct-mpsp, ct-a70m, ct-qdkd, ct-gfv8]
+links: [ct-mi03, ct-a1aa, ct-wmtx, ct-mpsp, ct-a70m, ct-qdkd, ct-gfv8, ct-2wsw]
 created: 2026-10-20T20:37:00Z
 type: task
 priority: 1
@@ -32,3 +32,12 @@ At the existing `DatasetCatalog` (`src/catalog.rs`) and retention (`src/engine/r
 **2026-10-20T23:53:21Z**
 
 CS 300 Grade at 8221566d — Spec: A | Impl: B+ (Closed for embedded Rust). Engine::compact_lifecycle (src/engine/retention.rs:245-273, src/catalog.rs:527-661) compacts superseded SQLite revisions behind the oldest protected ReleasePin; CLI/HTTP exposure and Python operator wiring are tracked in ct-gfv8.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03b).
+- Grades: proposal 90 → 80, work 83 → 83.
+- Problem: AC4 ("record before/after revision counts, replayed bytes, cold-open latency") has no recorded result.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:17
+- Covered by: WS11 (ct-2wsw); engine performance work is frozen.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

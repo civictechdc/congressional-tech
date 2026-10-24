@@ -2,7 +2,7 @@
 id: ct-vt7i
 status: closed
 deps: []
-links: [ct-gf8i, ct-csjp, ct-gziq, ct-n6lj, ct-jo8n]
+links: [ct-gf8i, ct-csjp, ct-gziq, ct-n6lj, ct-jo8n, ct-2wsw]
 created: 2026-10-20T19:23:00Z
 type: task
 priority: 2
@@ -30,3 +30,12 @@ Fresh read-only review2026-10-20: distinct_overlay. Evidence: output/docspec-reu
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit verified that `CountDistinct` + `Date32` + EXPLAIN plan verification (`HashAggregateExec` + projected `ParquetSource`) are committed on `docspec-rs` `main` (`715a8c2`), but hot-group memory/spill qualification under tight `Limits` remains open. Upgraded priority to 2.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03b).
+- Grades: proposal 90 → 82, work 72 → 72.
+- Problem: AC1/AC2 were not met: the "hot group" has only 128 distinct authors under a 512 MiB limit, so nothing measures memory or spill.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:34
+- Status: Closed as superseded by the simplification plan (WS11, ct-2wsw): engine performance work is frozen until there is a user or a measured failure on real data.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

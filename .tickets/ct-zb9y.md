@@ -2,7 +2,7 @@
 id: ct-zb9y
 status: closed
 deps: [ct-o24q]
-links: [ct-hm4b]
+links: [ct-hm4b, ct-qqk2]
 created: 2026-10-18T19:26:50Z
 type: task
 priority: 2
@@ -39,3 +39,12 @@ Local implementation separates stdlib bounded read-only preflight from full setu
 **2026-10-18T20:55:33Z**
 
 Verified locally: expanded 147-test matrix passed; final preflight suite 44 passed including exact ijson version, all allowed key forms/signature headers matched against maintained botocore, redirect refusal, read-only allowlists and stale-input refusal. Root explicitly transferred future hosted qualification to open ct-x7vx (depends on ct-zb9y, linked ct-8uwj); full deployed no-op duration/downloads remain unmeasured and are not claimed by this implementation closure. Shared identity removes duplicate implementation and caches source hashes only under unchanged file custody; bounded comparator explicitly clears metadata warm-up cache.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3b).
+- Grades: proposal 86 → 77, work 80 → 74.
+- Problem: It hand-rolls AWS SigV4 in stdlib (publication_preflight.py:83-128) instead of `pip install botocore`, which takes seconds.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:37
+- Covered by: WS6 step 7 (ct-qqk2), which drops the stdlib preflight and its hand-signed SigV4.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

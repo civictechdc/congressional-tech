@@ -2,7 +2,7 @@
 id: ct-n6lj
 status: closed
 deps: [ct-jo8n]
-links: [ct-gf8i, ct-jo8n, ct-csjp, ct-vt7i, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
+links: [ct-gf8i, ct-jo8n, ct-csjp, ct-vt7i, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-d8cf]
 created: 2026-10-20T23:52:31Z
 type: task
 priority: 2
@@ -46,3 +46,12 @@ Aligned with end-state epic ct-8kl2 (ct-a3le) and spicy-stack ss-65bz (filtered/
 **2026-10-21T21:40:25Z**
 
 Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): DocSpecNewsViews._read_table_delta streams forward changes via client.changes_batches (/changes), update_bridges derives incremental bridge updates in O(delta) with O(1)-in-corpus state in .news_lake_views.json, DocSpecClient exposes projected streaming readers, and hot-group NULL undated bucket DataFusion operator metrics + capacity/spill refusal receipts are recorded in output/docspec-reuse-20261020/hot-group-null-bucket-receipt.{json,md}.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03b).
+- Grades: proposal 90 → 78, work 80 → 80.
+- Problem: Claim of "O(1)-in-corpus state" is false: `views.py:156-180` rewrites all `runs` and `decisions` on every save (O(runs)).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:22
+- Covered by: WS8 (ct-d8cf), which deletes the static-receipt test.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

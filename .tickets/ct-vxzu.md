@@ -30,3 +30,10 @@ ct-2uwd already says publish_mappings should consume the guarded readback. Link 
 **2026-10-19T18:10:39Z**
 
 1f2c45548358976f4cbfc0ecb51e03251cc9b886 Keep guarded writes off the plain lost-ack helper.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch standalone).
+- Grades: proposal 86 → 90, work 90 → 90.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -1,8 +1,8 @@
 ---
 id: ct-oxg6
-status: closed
+status: open
 deps: [ct-3faj, ct-q968, ct-3li2, ct-cpio, ct-bt1q]
-links: [ct-ugqq, ct-cpio, ct-xl0y, ct-3li2, ct-xq1y, ct-5fkx]
+links: [ct-ugqq, ct-cpio, ct-xl0y, ct-3li2, ct-xq1y, ct-5fkx, ct-tw3r]
 created: 2026-10-20T18:47:06Z
 type: task
 priority: 1
@@ -40,3 +40,12 @@ Independent application-plan review required preserving ct-3li2 and ct-cpio as m
 **2026-10-20T23:32:30Z**
 
 Evolutionary-refactoring audit at `main` (`8221566d` / `6cd80b0e`): restored `ct-bt1q` in `deps` to match acceptance criteria requiring owned-host EOF draining verification alongside `ct-3faj`, `ct-q968`, `ct-3li2`, and `ct-cpio`. Verified `QUALIFIED_DOCSPEC_RUNTIME` in `packages/congress_api/src/congress_api/retention/docspec.py:34-40` pins `docspec-rs` `22a804e19b8c8e376e28cf9612d4f8ae3b7b4726` (`darwin_arm64_binary_sha256` = `bd17918e9512e87d923e39ce7512c59550d420946fdc33fb5046b0d3bbc4ce3c`).
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03b).
+- Grades: proposal 90 → 92, work 76 → 78.
+- Problem: AC4's capability matrix is a source review that "ran no tests" (`docs/plans/docspec-application-adoption-20261020.md`).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:25
+- Status: Reopened. Unmet: AC2, no mutable binary default (`binary.py` still searches `target/debug` then PATH, `client.py` falls back silently, news_lake uses `shutil.which`). Owner: WS3 step 6 (ct-tw3r), one digest-checked resolver. AC4's capability matrix is not carried.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

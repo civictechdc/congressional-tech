@@ -29,3 +29,12 @@ tests/test_evolution.py:7-32 adds an optional column (pilot_note) to news.items 
 **2026-10-20T17:30:52Z**
 
 Chained $ref resolution plus evolved top-level Iceberg columns round-trip by Arrow type in both directions. Coordinator accepts only table-declared extras, and a release validates/exports the evolved column. test_evolution.py: 3 passed.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 85 → 85, work 83 → 83.
+- Problem: Evolved columns work only in the PyIceberg oracle; production `DocSpecLake.commit_records` rejects them.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:57
+- Covered by: WS8 (ct-d8cf), which deletes the PyIceberg oracle where this works.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

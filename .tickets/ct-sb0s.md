@@ -2,7 +2,7 @@
 id: ct-sb0s
 status: closed
 deps: [ct-egpe, ct-q05l]
-links: [ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-gziq, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac]
+links: [ct-13cn, ct-q05l, ct-3180, ct-dmca, ct-gziq, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac, ct-7uit]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -51,3 +51,12 @@ Aligned with end-state epic ct-8kl2 (ct-2yl5, ct-bwac) and spicy-stack ss-6gwu (
 **2026-10-21T21:40:24Z**
 
 Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): wired SourceObservationStorage (attach_receipts, read_receipts, and automatic remapping in prepare) and document_review_catalog.py (write_candidates, attach_review_provenance_receipts, read_review_provenance_receipts, remap_review_provenance_receipts) through map_locators_to_occurrences, attach_occurrence_receipts, read_occurrence_receipts, and remap_occurrence_receipts (/receipts/plan, /receipts/run, /occurrences, /receipts).
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03b).
+- Grades: proposal 78 → 68, work 75 → 77.
+- Problem: AC4 "on the intended R2 profile" not met: the only R2 receipt covers source compare and computed is refused.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:30
+- Status: Closed as superseded by the simplification plan (WS7, ct-7uit): R2-profile qualification of derived review evidence is not needed on its own; WS7 prototypes catalog work on the engine against real data.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

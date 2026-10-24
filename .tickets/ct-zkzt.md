@@ -2,7 +2,7 @@
 id: ct-zkzt
 status: closed
 deps: []
-links: [ct-ylaw, ct-o24q, ct-rrfm, ct-hm4b, ct-m59w]
+links: [ct-ylaw, ct-o24q, ct-rrfm, ct-hm4b, ct-m59w, ct-qqk2]
 created: 2026-10-18T19:21:16Z
 type: task
 priority: 2
@@ -35,3 +35,10 @@ prepare.build, recovery_for_publication and select_recoveries, including full re
 **2026-10-18T20:27:13Z**
 
 Full and recovery preparation now accept recovery-prepared.json into inventory, binding original source manifest/files/catalog and exact accepted mapping presence/raw digest. Recovery artifacts contain only manifest+accepted status instead of large indexing inputs. Publish/resume consume verified accepted status and never rerun index_recoveries; new mappings still prepare normally, later changes refuse before writes. Explicit no-second-index tests include recovery runner death and full publication.116 tests+2subtests plus final40 targeted tests pass.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch d8z3b).
+- Grades: proposal 90 → 80, work 88 → 84.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

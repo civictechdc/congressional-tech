@@ -2,7 +2,7 @@
 id: ct-l5q1
 status: closed
 deps: []
-links: []
+links: [ct-7uit]
 created: 2026-10-20T02:20:21Z
 type: task
 priority: 1
@@ -25,3 +25,12 @@ Use one existing GovInfo package plus a correction, deletion and alias-edge edit
 - Round-trip one retained package and its changes through the chosen maintained boundary; demonstrate restart and unchanged-input reuse. Document the exact supported API, not a speculative adapter.
 - Record baseline read/write/validation counters and the consumer changes required in raw_archive, corpus_recovery, raw_catalog and catalog_publication. Reuse these examples in downstream tests.
 - Stop at this boundary: no production migration, new scheduler, classifier change or broad Rust rewrite. Unsupported behavior gets a concrete capability finding, not a full-rebuild fallback.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch czsd).
+- Grades: proposal 87 → 87, work 83 → 83.
+- Problem: The 3 tests check only that the fixture/change example is built correctly, which mirrors the script.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/czsd/czsd-verdicts.md:36
+- Covered by: WS7 (ct-7uit).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

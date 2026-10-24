@@ -34,3 +34,10 @@ Implemented: added public BackendCapability { SourceGroup, LocalOnly } in src/en
 **2026-10-21T00:58:53Z**
 
 CS 300 Post-Review Fix -> Grade: A. Routed the remaining export_admitted group check (docspec-rs/src/engine/export.rs:501-505) through BackendCapability::for_group(&policy.group).local_only().
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch mi03b).
+- Grades: proposal 87 → 90, work 88 → 88.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -1,8 +1,8 @@
 ---
 id: ct-gi01
-status: closed
+status: open
 deps: []
-links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8]
+links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-bwac, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-h23e, ct-f7p8, ct-98sm, ct-r6xw]
 created: 2026-10-21T20:53:31Z
 type: feature
 priority: 2
@@ -25,3 +25,12 @@ While news_lake and raw/catalog use docspec-rs, congress_api/retention still wri
 
 - Weekly source updates and Committee Explorer publication run incrementally on docspec-rs in bounded memory (<2 GB RSS) without full-corpus .json.gz/CSV re-parsing or the 20 GB swap file in publish-explorer.yml.
 - Legacy .json.gz sharded Committee Explorer exports and the .json.data bucket reader in data-source.ts are removed.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch kl2a1aa).
+- Grades: proposal 83 → 83, work 66 → 66.
+- Problem: The explorer still assembles in Python and re-parses full `.json.gz`/CSV inputs, and removing the old `migrate` import broke Pages deploys for about 2.5 days.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:39
+- Status: Reopened: revisit under engine-first rule. Unmet: AC1; the explorer still assembles in Python, writes Parquet itself with docspec only as an optional re-export (`export.py:944-960`), and re-parses full `.json.gz`/CSV inputs. The weekly-mirror part goes with WS10 (ct-r6xw). No plan workstream owns the explorer; linked to the epic ct-98sm for the owner to place.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

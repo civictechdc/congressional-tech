@@ -2,7 +2,7 @@
 id: ct-r46l
 status: closed
 deps: [ct-vxzu, ct-fqgf, ct-vd5b, ct-ma8a, ct-esm4, ct-n3qy]
-links: [ct-esm4, ct-n3qy, ct-vxzu, ct-ma8a, ct-fqgf, ct-vd5b]
+links: [ct-esm4, ct-n3qy, ct-vxzu, ct-ma8a, ct-fqgf, ct-vd5b, ct-70kc]
 created: 2026-10-19T17:00:41Z
 type: task
 priority: 2
@@ -25,3 +25,12 @@ tk has no cancelled status and no superseded-by link type. closed means will not
 - viewer_release_identity.py is not replaced by a shim that imports an installed package.
 - This ticket stays closed. Resolved dependencies are not permission to reopen it.
 
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 78 → 66, work 68 → 68.
+- Problem: Ban 2 was breached in spirit by ac7e09a9 (viewer_release_identity is now a shim onto a package module; it escapes the wording only because it imports by source path). ct-unv0 never cites this ticket.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:22
+- Covered by: WS6 (ct-qqk2), which deletes `scripts/viewer_release_identity.py`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -30,3 +30,12 @@ Holistic diagnostic of `pipeline-data` revealed that `AdapterContext.source` key
 **2026-10-22T15:38:56Z**
 
 Verified _dedup_citations + IssueHistory.source_identity pruning: recurring DataIssues drop superseded prior-snapshot source_record citations, shrinking retained historical sources on full pipeline-data from 425,368 to 82,261 (651,623 -> 308,516 total source observations, 6 -> 3 sources-*.parquet shards).
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 87 → 87, work 83 → 83.
+- Problem: It fixes the symptom. The cause named in the ticket (the `source_record` UUID is keyed on the whole-file `input_id`) is left, so every weekly run still mints new UUIDs and the dedup must run forever.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:36
+- Not covered by a plan workstream; the root cause (the `source_record` UUID keyed on the whole-file `input_id`) remains.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

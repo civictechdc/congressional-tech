@@ -2,7 +2,7 @@
 id: ct-m9td
 status: closed
 deps: [ct-3faj, ct-qdkd, ct-a70m]
-links: [ct-egpe, ct-qdkd, ct-nc7l, ct-3faj, ct-a70m]
+links: [ct-egpe, ct-qdkd, ct-nc7l, ct-3faj, ct-a70m, ct-tw3r]
 created: 2026-10-20T23:52:13Z
 type: bug
 priority: 1
@@ -34,3 +34,12 @@ Implemented: shared NativeDatasets.update_table persists request.json before sub
 **2026-10-21T00:58:53Z**
 
 CS 300 Post-Review Fix -> Grade: A. (1) plan_protected_retention (native_capacity.py:405-413) now iterates item.get('files', ()) so both replacements.parquet and deletions.parquet are added to protected_object_paths; (2) NativeDatasets.update_table (packages/docspec_client/src/docspec_client/docspec.py:462-537) stages replacements.parquet and deletions.parquet inside a single mkdtemp request-* directory, removing DocSpecClient._request_directory and its unsafe shutil.rmtree on retry (docspec_backend.py:508-520); (3) removed unused positional table parameter requirement. Verified: test_native_capacity.py (17 passed), test_docspec_runtime.py (31 passed), test_docspec_input_custody.py (25 passed).
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03b).
+- Grades: proposal 91 → 95, work 86 → 88.
+- Problem: Later `28aeb860` (ct-aia9) added IPC streaming that skips custody entirely (`client.py:465,668`). news_lake defaults to `stream_ipc=True` (`lake.py:68,424`).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:20
+- Covered by: WS3 step 5 (ct-tw3r), which refuses IPC for raw writers.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

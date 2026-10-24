@@ -2,7 +2,7 @@
 id: ct-m9ry
 status: closed
 deps: [ct-2d3k, ct-u7gg, ct-3g69]
-links: [ct-d3un]
+links: [ct-d3un, ct-2wsw]
 created: 2026-10-19T16:40:42Z
 type: task
 priority: 1
@@ -39,3 +39,12 @@ Completed bounded measurement on merged3757f55 using pinned surviving historical
 **2026-10-19T19:39:00Z**
 
 Independent review accepted 6855f37. All 269 payload hashes and manifest values except publication time match on the bounded historical projection. Packed membership savings do not justify added complexity; production Catalog remains unchanged. Supplemental 52 focused checks pass.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (batch standalone).
+- Grades: proposal 88 → 80, work 78 → 78.
+- Problem: The fixture was 30,906 documents (~2.5%) with nested `source_occurrences` set to null, so the 5.085 GB loading highwater that motivated the ticket stays unattributed (the doc admits this).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:36
+- Covered by: WS11 (ct-2wsw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

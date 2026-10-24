@@ -2,7 +2,7 @@
 id: ct-o24q
 status: closed
 deps: []
-links: [ct-ylaw, ct-zkzt]
+links: [ct-ylaw, ct-zkzt, ct-qqk2]
 created: 2026-10-18T19:25:05Z
 type: bug
 priority: 2
@@ -39,3 +39,12 @@ Implemented explicit full_release_inputs across selection/preparation, dirty tra
 **2026-10-18T20:15:08Z**
 
 Integration review added review-publication descriptor itself to full release source closure and workflow triggers; descriptor-only dirty mutation changes identity. Combined matrix82 tests plus2 subtests passed.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (landed, then regressed) (batch d8z3b).
+- Grades: proposal 90 → 80, work 72 → 72.
+- Problem: Builder changes no longer force full preparation, which breaks the core AC.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:22
+- Status: Closed as superseded by the simplification plan (WS6, ct-qqk2): WS6 deletes `release_identity.py` and the preflight "unchanged" decision; content-addressed releases replace the hand-listed identity.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -1,8 +1,8 @@
 ---
 id: ct-mi03
-status: closed
+status: open
 deps: []
-links: [ct-2ukk, ct-czsd, ct-tuez, ct-ur2y, ct-r60e, ct-gfv8, ct-13g5, ct-ur7v, ct-nmjc, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-dmca, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
+links: [ct-2ukk, ct-czsd, ct-tuez, ct-ur2y, ct-r60e, ct-gfv8, ct-13g5, ct-ur7v, ct-nmjc, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-dmca, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-uov2]
 created: 2026-10-20T18:24:28Z
 type: epic
 priority: 1
@@ -64,3 +64,12 @@ All 43 of 43 child tickets of `ct-mi03` are now closed and verified following th
 **2026-10-21T15:21:41Z**
 
 Independent CS300 professor audit (fresh-context subagent, 2026-10-21) graded the 42 closed children: Spec A overall, Impl A- overall. All previously flagged P1/P2 defects verified fixed. Four re-validated findings ticketed: ct-9few (ChangeDescriptor field-name mismatch), ct-dzyf (abandon_cycle DocSpecLake compatibility), ct-x0nk (transport hygiene), and reopened ct-n6lj/ct-13cn/ct-gziq/ct-dmca/ct-sb0s for remaining production-consumer/delta-derivation scope.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03b).
+- Grades: proposal 80 → 72, work 73 → 73.
+- Problem: The epic's acceptance criterion asks for "measured before/after evidence ... for each implemented child", but lcbc, wmtx, wjce, nc7l, nloa/qkvr (1/8/32 polls) and vt7i have no recorded measurements.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:15
+- Status: Reopened, because this audit reopened its children ct-jo8n and ct-oxg6, and ct-a70m, ct-csyg, ct-4nyy and ct-dzyf under the engine-first rule; it closes when they do (WS12 rule 1). Its own unmet criterion, measured before/after evidence for every child, is replaced by WS12 (ct-uov2).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

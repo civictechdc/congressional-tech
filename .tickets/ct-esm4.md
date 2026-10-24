@@ -2,7 +2,7 @@
 id: ct-esm4
 status: closed
 deps: [ct-fqgf, ct-vxzu]
-links: [ct-n3qy, ct-vxzu, ct-ma8a, ct-fqgf, ct-vd5b, ct-piku, ct-bpyj, ct-r46l]
+links: [ct-n3qy, ct-vxzu, ct-ma8a, ct-fqgf, ct-vd5b, ct-piku, ct-bpyj, ct-r46l, ct-70kc]
 created: 2026-10-19T17:00:41Z
 type: task
 priority: 2
@@ -35,3 +35,12 @@ Depends on the caller-owned seal comparison and the plain lost-ack helper. Finis
 
 94d8946036f08223cea9cf2ee3d93ade9b38e4c6 Package the corpus recovery library and keep its commands in scripts.
 d72aca7aa167dda77e647fccf27533e31add5407 Pin the recovery modules that publication and import actually run.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 82 → 86, work 77 → 70.
+- Problem: The recovery import's hand-written pin list is stale: it misses `docspec_client` and `congress_shared` custody and storage, the code that writes raw datasets.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:23
+- Covered by: WS4 (ct-70kc), which replaces the hand list with the git commit plus `uv.lock`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

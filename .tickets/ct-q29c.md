@@ -2,7 +2,7 @@
 id: ct-q29c
 status: closed
 deps: []
-links: []
+links: [ct-r6xw]
 created: 2026-10-22T18:41:23Z
 type: bug
 priority: 0
@@ -34,3 +34,12 @@ Testing all 10 row builders in packages/congress_api/src/congress_api/retention/
 2. Raw upstream envelopes, XML/HTML source_bodies, and scraped page lines are offloaded to R2 via SHA-256 digests and all structured fields are normalized into typed Arrow columns.
 3. _operation_id no longer performs a throwaway pq.write_table pass.
 
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 80 → 80, work 66 → 66.
+- Problem: Readers still select `payload_json`: house.py:54-59, senate.py:85-90, gpo.py:39-47,117-139.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:113
+- Status: Closed as superseded by the simplification plan (WS10, ct-r6xw): WS10 deletes the weekly retention mirror after confirming nothing reads it.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

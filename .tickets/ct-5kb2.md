@@ -2,7 +2,7 @@
 id: ct-5kb2
 status: closed
 deps: []
-links: []
+links: [ct-7uit]
 created: 2026-10-20T16:20:58Z
 type: task
 priority: 1
@@ -27,3 +27,10 @@ Red/green or differential exact staging tests for ordinary and explicit source o
 **2026-10-20T16:36:35Z**
 
 Reviewed implementation e23de564 preserves exact staged values and native inputs. Synthetic 10k staging:36.26s to14.45s; no production throughput or peak-memory claim.112 focused passes,12 explicit native skips; independent14 passes. Grades:correctness A-,efficiency A-,DX B+,architecture A. Old local preparation intentionally stopped before any native request; original evidence and bindings retained. Production qualification remains ct-2ukk.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch czsd).
+- Grades: proposal 94 → 85, work 91 → 91.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

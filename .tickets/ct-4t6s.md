@@ -2,7 +2,7 @@
 id: ct-4t6s
 status: closed
 deps: [ct-8v02, ct-xx7q, ct-q29c, ct-v9ua, ct-8od2, ct-jnw5]
-links: []
+links: [ct-syx8]
 created: 2026-10-22T18:40:32Z
 type: epic
 priority: 0
@@ -21,3 +21,12 @@ Comprehensive remediation of all findings from the Parquet & Raw Data Audit (par
 4. Redundant body_key, stored_sha256, 47 duplicate top-level source_* columns, and 100%-duplicate/all-null browser & viewer columns removed or derived on read.
 5. Parquet row-group sizing decoupled from page-index data-page sizing, cutting filenames/documents/sources footer overhead by >90% and compacting readings/*.parquet.
 
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 80 → 80, work 60 → 60.
+- Problem: The five numeric ACs (>90% footer cut, ~184 MB, ~350 MB, -94,974 rows) have no committed measurement.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:109
+- Status: Closed as superseded by the simplification plan (WS2 ct-syx8, WS10 ct-r6xw, WS11 ct-2wsw): no child is reopened. WS2 step 9 makes the hand-written body writers call `put_body`, the plain fix this epic missed; WS10 deletes the weekly mirror and ct-8od2's helpers; explorer layout work is frozen. The `stored_sha256` overwrite was fixed in `54a68ac7`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

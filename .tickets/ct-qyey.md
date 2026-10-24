@@ -2,7 +2,7 @@
 id: ct-qyey
 status: closed
 deps: []
-links: [ct-15wc, ct-bs70]
+links: [ct-15wc, ct-bs70, ct-2wsw]
 created: 2026-10-18T19:44:02Z
 type: task
 priority: 3
@@ -33,3 +33,10 @@ Apply the existing acceptance criteria to the specific functions and checks in t
 **2026-10-18T20:26:38Z**
 
 Extracted pure provenance assembly, keyed redirect/page deduplication and one reverse BFS with stable shortest-path ordering. Preserves competing titles/link labels, exact URL protocols and source-page retry context. 2,000-edge fixture: 2,001 vertex visits, 4,000 edge visits, zero partial-path copies versus 1,999,000 copied entries previously. Full redraw retained when new evidence changes earlier relationships. Independent review approved; 56 focused UI/graph/cache tests and actual built bootstrap smoke passed. Evidence: docs/experiments/publication-remediation/detail-ui.md.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch d8z3b).
+- Grades: proposal 78 → 75, work 87 → 87.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

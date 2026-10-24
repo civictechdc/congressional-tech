@@ -2,7 +2,7 @@
 id: ct-dat9
 status: closed
 deps: [ct-si9g, ct-v5kb, ct-ihve, ct-365w]
-links: []
+links: [ct-7uit]
 created: 2026-10-20T02:20:21Z
 type: task
 priority: 1
@@ -35,3 +35,12 @@ Explicit adoption, resume, rule-upgrade and renderer-upgrade CLI paths are integ
 **2026-10-20T16:02:11Z**
 
 Implemented and independently reviewed: capture, recovery, adoption, source qualification, explicit upgrades and ordinary updates use the maintained native owners; operational rebuild/repair routes refuse. Resumable update and failure tests passed. Initial adoption fixes ct-9vtu/ct-y32m and actual production cutover/retirement remain required under ct-2ukk. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch czsd).
+- Grades: proposal 85 → 80, work 78 → 72.
+- Problem: The hosted path failed Oct 20-24. The ticket pinned the runtime to docspec-rs `91eb44f`.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/czsd/czsd-verdicts.md:44
+- Covered by: Step 0 (ct-q2ht), which keeps the full rebuild this ticket forbade as the oracle and recovery tool, and WS7 (ct-7uit).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

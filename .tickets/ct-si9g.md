@@ -2,7 +2,7 @@
 id: ct-si9g
 status: closed
 deps: [ct-l5q1, ct-rcs8, ct-upte]
-links: []
+links: [ct-7uit]
 created: 2026-10-20T02:20:21Z
 type: task
 priority: 1
@@ -59,3 +59,12 @@ Reviewed source replay/closure checkpoints, paged20,000-deletion proofs, additiv
 **2026-10-20T16:02:11Z**
 
 Implemented and independently reviewed: affected dependency closure, disk-backed receipt replay, bounded native chunks and completed group summaries preserve every source/document field and ID. Fixed-change reads are 18 for both measured 4/40 fixtures; affected leaf bytes still grow. Full current-corpus source qualification remains required under ct-2ukk. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch czsd).
+- Grades: proposal 84 → 78, work 78 → 78.
+- Problem: Quadratic worklist: `source_observations.py:793` runs `SELECT ... WHERE done<changed LIMIT 1` on an unindexed SQLite table on every iteration.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/czsd/czsd-verdicts.md:40
+- Covered by: WS7 (ct-7uit), which deletes `source_observations` with the Python incremental layer.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

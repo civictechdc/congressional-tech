@@ -35,3 +35,12 @@ Three control-plane safety gaps exist in storage/:
 **2026-10-20T17:30:45Z**
 
 Fencing is enforced inside BEGIN IMMEDIATE control-store transactions and re-checked before each table commit; read_release requires available status; publication sequence drives abandon baselines; abandon refuses appended releases and all-retired wipes, discards staged checkpoints, and restores atomically; release records are journaled. Recovery/release tests pass. Residual cross-system fence race documented in README.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 84 → 84, work 80 → 80.
+- Problem: AC2 was narrowed: "retire A, abandon B" raises `no_available_baseline` instead of restoring A, and the test asserts that refusal.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:51
+- Covered by: WS8 (ct-d8cf), which ports the fencing tests and re-checks the epoch on every commit.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -2,7 +2,7 @@
 id: ct-qdkd
 status: closed
 deps: [ct-n7la, ct-egpe]
-links: [ct-a70m, ct-m9td, ct-egpe, ct-nc7l, ct-3faj, ct-wmtx, ct-lcbc, ct-gfv8]
+links: [ct-a70m, ct-m9td, ct-egpe, ct-nc7l, ct-3faj, ct-wmtx, ct-lcbc, ct-gfv8, ct-7uit]
 created: 2026-10-20T18:24:28Z
 type: task
 priority: 1
@@ -35,3 +35,12 @@ CS 300 / evolutionary-refactoring audit updated dependencies to explicitly inclu
 **2026-10-20T23:32:30Z**
 
 Evolutionary-refactoring audit note at `main` (`8221566d` / `6cd80b0e`): `inspect_operator_status` (`packages/congress_api/src/congress_api/retention/native_capacity.py:218-260`) delegates to `native.retained_producer_inputs()`. When `ct-egpe` adds `NativeDatasets.update_table` custody, ensure `retained_producer_inputs()` and `_inspect_producer_inputs()` account for both `replacements` (`source.parquet`) and `deletions.parquet` byte sizes.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03b).
+- Grades: proposal 84 → 84, work 82 → 79.
+- Problem: AC4 "failed" state and "configuration mismatch" are untested.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:27
+- Covered by: WS7 (ct-7uit), which deletes the operator change count.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -2,7 +2,7 @@
 id: ct-v6ao
 status: closed
 deps: [ct-2d3k, ct-tenb]
-links: [ct-d3un]
+links: [ct-d3un, ct-qqk2]
 created: 2026-10-19T16:40:41Z
 type: task
 priority: 1
@@ -39,3 +39,12 @@ Measured exact baseline6855f37 vs implementation5ef9251 with3 fresh matched fixt
 **2026-10-19T19:45:04Z**
 
 Independent review approved 1879546 with matched instrumentation and all 269 actual payload hashes per arm. Three normal-path fixture medians improve 3.564 to 2.931 seconds; no production or consistent resume speed claim. 60 existing plus 74 focused checks pass; durability boundaries retained.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 90 → 74, work 72 → 72.
+- Problem: Every intent or verified event still rewrites and fsyncs the full growing state (`:224-230`), so total bytes grow with the square of the write count (up to 8,192 writes).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:34
+- Covered by: WS6 (ct-qqk2), which deletes the journal checkpoints.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

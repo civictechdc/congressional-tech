@@ -60,3 +60,12 @@ Reopened for a separate hosted dispatch race: Explorer run39169129652 finished f
 **2026-10-18T22:25:28Z**
 
 Revision guard independently reviewed in547a5ca and squash merged PR116 as2a065cd. All49 Pages dependency/raw-workflow checks pass; exact mismatched-revision receipt executes without checkout. Normal hosted run39171844028 on2a065cd then built and deployed successfully; mismatch-only job correctly skipped on the main push. No stale dispatch was manually retried. Earlier failure and successful deployment evidence retained in primary rollout/pages-{failure-39170982908,success-39171844028}.*.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3a).
+- Grades: proposal 87 → 87, work 83 → 83.
+- Problem: `.gitignore:373` still ignores `/package-lock.json`. The site lock is force-tracked, and a root `package-lock.json` sits untracked on disk.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:90
+- Covered by: plan section 4 (keep the Pages lock files; give the npm pin one owner when Pages is next touched).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

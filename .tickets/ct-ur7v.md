@@ -1,8 +1,8 @@
 ---
 id: ct-ur7v
-status: closed
+status: open
 deps: []
-links: [ct-mi03, ct-ur2y, ct-nloa, ct-xu1o, ct-8ax6, ct-pgxn, ct-r60e, ct-qkvr]
+links: [ct-mi03, ct-ur2y, ct-nloa, ct-xu1o, ct-8ax6, ct-pgxn, ct-r60e, ct-qkvr, ct-d8cf]
 created: 2026-10-21T14:41:26Z
 type: task
 priority: 2
@@ -29,3 +29,11 @@ Make DocSpecLake and DocSpecNewsViews the default production backend in packages
 
 Implemented in `b28cc9b7`: created `packages/news_lake/src/news_lake/cli.py` (`publish`, `views --verify-oracle`, `export`, `compact-lifecycle`), wired `news-lake = "news_lake.cli:main"` in `packages/news_lake/pyproject.toml`, exported `DocSpecClient`, `DocSpecLake`, and `DocSpecNewsViews` from `news_lake` and `news_lake.storage`, updated `packages/news_lake/README.md`, and verified in `packages/news_lake/tests/test_docspec_backend.py::test_news_lake_cli_publish_views_export_and_compact_lifecycle` (319/319 tests pass).
 
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch standalone).
+- Grades: proposal 84 → 74, work 86 → 80.
+- Problem: No material finding.
+- Status: Reopened: revisit under engine-first rule. It kept `analysis/views.py` as a Python oracle that re-implements the engine views. WS8 (ct-d8cf) replaces it with direct contract assertions unless the owner keeps it test-only (plan open question 6).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

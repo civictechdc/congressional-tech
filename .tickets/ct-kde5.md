@@ -41,3 +41,12 @@ Supported-runtime final proof complete: explicit Node22.22.2/npm11.19.1 engine-s
 **2026-10-18T21:07:54Z**
 
 Final suite integration classifies the real localhost HTTP/module-serving check as loopback; it passes separately. The production-offline lane keeps its socket prohibition. This changes test enrollment, not application behavior.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (batch d8z3b).
+- Grades: proposal 74 → 68, work 75 → 68.
+- Problem: The ticket said to preserve the local route. A later ticket deliberately removed its UI.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:19
+- Covered by: WS11 (ct-2wsw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

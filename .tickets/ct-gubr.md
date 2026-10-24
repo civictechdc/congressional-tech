@@ -37,3 +37,12 @@ Include optional reviewed-search masks, reusable document/position indexes, the 
 **2026-10-18T20:34:06Z**
 
 Publication and identity CLI skip search filter indexes; reviewed masks initialize lazily; binding reuses document/uint32 position indexes and preserves complete member sorting. Group/preferred/u32 and ID-shard output avoid buffer copies; navigation streams full exact verification.25000-source fixture saves1525312retainedArrowbytes (filterbytes1525000);200000-source navigation peak8973165→992970bytes with same hashes and tracedtime2.008→2.409s. Receipt+script tracked.102tests pass including independent search behavior.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (batch d8z3a).
+- Grades: proposal 75 → 75, work 78 → 78.
+- Problem: The criterion holds through its successor, but the measured savings apply only to the test-only v5 generator.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:88
+- Covered by: WS10 (ct-r6xw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

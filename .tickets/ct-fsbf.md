@@ -2,7 +2,7 @@
 id: ct-fsbf
 status: closed
 deps: []
-links: []
+links: [ct-r6xw]
 created: 2026-10-22T17:43:35Z
 type: task
 priority: 1
@@ -53,3 +53,12 @@ Lead Architect Review (Defend Intent + Compromise):
 **2026-10-23T01:31:18Z**
 
 User Decision (Staged Modules): Wire ALL staged Wave-2C / operator capability modules (acquisition/streamed_recovery.py, recovery_queue.py, retained_import.py, retention/native_capacity.py:138-576) into their production CLI entrypoints with CLI/integration test coverage as part of this ticket.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 67 → 67, work 57 → 57.
+- Problem: The `--streamed-recovery` CLI mode always raises TypeError, httpx was dropped while still imported, and the new subpackages are re-export facades with a transitive cycle left.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:90
+- Status: Closed as superseded by the simplification plan (WS10 ct-r6xw, WS7 ct-7uit): the plan deletes rather than layers; WS10 removes the `document_index` shim and the `--streamed-recovery` flag that always raises, and WS7 removes the `catalog/` facade. `run_async` decomposition and size goals are not carried.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

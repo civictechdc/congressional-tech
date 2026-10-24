@@ -30,3 +30,10 @@ Subagent Self-Review Additions:
 - Deduplicate URL normalization between packages/house-naming/src/house_naming/engine.py:183-197 and extraction.py:776-789.
 - Deduplicate the CLI main() error wrapper between cli.py:88-95 and filename_corpus.py:397-404.
 - Declare pyarrow as an optional dependency in packages/house-naming/pyproject.toml (imported in src/house_naming/filename_corpus.py:14).
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch syem).
+- Grades: proposal 82 → 82, work 87 → 87.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

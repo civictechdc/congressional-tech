@@ -24,3 +24,10 @@ Independent CS300 audit finding (re-validated): packages/congress_api/src/congre
 **2026-10-21T15:33:55Z**
 
 Fixed and verified: inspect_catalog_changes now reads descriptor['fallback'] (ComparisonFallback snake_case value) and effects['evidence_refs_changed'] (native_features.py:48-52,86). Added regression tests: forced_full stream asserts descriptor['fallback'] == 'forced' with no 'fallback_reason' key, same-pin stream has fallback None and path 'unchanged', and a receipt update between pins sets report['evidence_changed'] is True. tests/test_native_features.py: 9 passed.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch mi03a).
+- Grades: proposal 86 → 86, work 90 → 90.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -2,7 +2,7 @@
 id: ct-ccy4
 status: closed
 deps: [ct-adu0, ct-n7la]
-links: []
+links: [ct-uov2]
 created: 2026-10-20T22:15:53Z
 type: task
 priority: 1
@@ -27,3 +27,12 @@ The integrated typed preparation has semantic tests and lower temporary storage,
 **2026-10-20T22:15:54Z**
 
 2026-10-20 adoption review: output/docspec-reuse-20261020/preparation/final-report.md. Evidence: output/docspec-reuse-20261020/adoption-review/application-gaps.md. Plan assumes required upstream upgrades become available; verify actual capabilities before use. This ticket changes congressional-tech only; local tests and exact-value preservation are required, no CI dispatch.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03a).
+- Grades: proposal 88 → 88, work 72 → 75.
+- Problem: The ticket file was created already `status: closed` in `6cd80b0e`, with no closure note or receipt.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:26
+- Covered by: WS12 (ct-uov2): tickets exist before the work and closures carry evidence.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

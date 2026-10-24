@@ -2,7 +2,7 @@
 id: ct-15wc
 status: closed
 deps: []
-links: [ct-zika, ct-qyey, ct-hfrv]
+links: [ct-zika, ct-qyey, ct-hfrv, ct-2wsw]
 created: 2026-10-18T19:44:02Z
 type: task
 priority: 3
@@ -33,3 +33,12 @@ Apply the existing acceptance criteria to the specific functions and checks in t
 **2026-10-18T20:26:38Z**
 
 Detail setup/release now clears state, caches and heavy DOM; primary links precede optional provenance. Source lists render at most 20 selectable buttons and preserve navigation focus on late origin updates; 1,001-source fixture reaches its final source. Bounded formatting cache performs 10 formats plus 190 hits for repeated fixture searches, preserves oversized values uncached. Stale clipboard/network results cannot affect another or closed panel. Independent review approved; 56 focused checks, 138 integration checks before final focus refinement and built bootstrap smoke passed.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (batch d8z3a).
+- Grades: proposal 76 → 68, work 79 → 79.
+- Problem: The formatting-reuse criterion did not carry over. Technical search runs `JSON.stringify` on every field on each keystroke, with no cache or debounce (`FilenameEvidence.tsx:378-379`).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:71
+- Covered by: WS11 (ct-2wsw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

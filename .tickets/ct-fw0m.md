@@ -2,7 +2,7 @@
 id: ct-fw0m
 status: closed
 deps: []
-links: [ct-3djs, ct-1dsp, ct-ylaw, ct-gesp, ct-m59w]
+links: [ct-3djs, ct-1dsp, ct-ylaw, ct-gesp, ct-m59w, ct-syx8]
 created: 2026-10-18T19:44:01Z
 type: task
 priority: 2
@@ -33,3 +33,12 @@ Apply the existing acceptance criteria to the specific functions and checks in t
 **2026-10-18T20:18:42Z**
 
 VerifiedFile carries exact process-local custody. Recovery save_derived retains exclusive same-filesystem links with caller-owned lifetime, checked-copy fallback across filesystems and retained partial evidence. R2 issued proof skips duplicate SHA while preserving complete transport MD5/ETag; history collisions still read back exact bytes. Fixture records 29-byte retention: zero extra copied/hashed payload/scratch allocation; 700-byte upload: zero repeated SHA bytes, 700 MD5 bytes. LocalStore deliberately keeps independent copy because caller may rewrite build paths. 134 tests + 5 subtests pass; receipt tracked.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3a).
+- Grades: proposal 70 → 64, work 68 → 68.
+- Problem: Hidden regression: a proof can be forged through a public constructor, and a fresh process can skip validation.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:84
+- Covered by: WS2 step 8 (ct-syx8) and WS10's proof-registry removal (ct-r6xw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

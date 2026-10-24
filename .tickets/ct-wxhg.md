@@ -2,7 +2,7 @@
 id: ct-wxhg
 status: closed
 deps: []
-links: []
+links: [ct-qqk2, ct-r6xw]
 created: 2026-10-22T17:45:12Z
 type: task
 priority: 1
@@ -57,3 +57,12 @@ Lead Architect Review (Defend Intent + Compromise):
 **2026-10-23T01:31:18Z**
 
 User Decision (Staged Modules): Wire ALL staged C5 export/publish modules (filename_exports.py:export_viewer_pins, build_source_export_policy, and client.py:ConditionalManifestPublisher) into their production CLI entrypoints with CLI/integration test coverage as part of this ticket.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 72 → 72, work 63 → 63.
+- Problem: `export-pins --publish-to-r2` uploads parquet under `releases/<v>/viewer-v2/`.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:97
+- Status: Closed as superseded by the simplification plan (WS6 ct-qqk2, WS10 ct-r6xw): WS6 fixes the export-pins dangling pointer and may delete the v6 preparer and its AST hash; WS10 deletes the test-only v5 generator. `scan_receipt_history` and the digest dedup are not carried.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

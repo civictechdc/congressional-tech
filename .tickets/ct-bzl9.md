@@ -2,7 +2,7 @@
 id: ct-bzl9
 status: closed
 deps: []
-links: [ss-yjut]
+links: [ss-yjut, ct-uov2]
 created: 2026-10-22T17:45:12Z
 type: task
 priority: 2
@@ -58,3 +58,12 @@ CS300 Audit Finding (Quantitative AST & Static Metrics Auditor - Cross-Repo Summ
 **2026-10-23T01:31:18Z**
 
 User Constraint (Data Preservation): Implement scripts/dev.py clean (--dry-run by default), but do NOT execute destructive deletion of local .cache/ or output/ directories during the run.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 66 → 66, work 56 → 56.
+- Problem: The parameter-count and docstring targets were not attempted (169 functions with 7+ parameters remain), and `dev.py clean` walks `.cache` and `output` before filtering.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:88
+- Status: Closed as superseded by the simplification plan (WS12, ct-uov2): WS12 drops parameter-count and docstring-percentage goals.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

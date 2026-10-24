@@ -2,7 +2,7 @@
 id: ct-mpsp
 status: closed
 deps: []
-links: [ct-mi03, ct-a1aa, ct-wmtx, ct-lcbc, ct-a70m]
+links: [ct-mi03, ct-a1aa, ct-wmtx, ct-lcbc, ct-a70m, ct-2wsw]
 created: 2026-10-20T20:37:00Z
 type: task
 priority: 2
@@ -29,3 +29,12 @@ Extend `docspec-rs` table creation, replacement metadata validation, snapshot in
 **2026-10-20T22:19:32Z**
 
 Application I5 correction: packages/news-lake/docs/03-iceberg-profile.md:29 starts small tables unpartitioned and introduces date transforms only at measured volume; MonthTransform is not mandatory. Engine support remains upstream scope. App maintenance/qualification ct-a70m must demonstrate a real selective workload and typed date mapping before partition adoption.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03b).
+- Grades: proposal 77 → 70, work 76 → 76.
+- Problem: AC3 (news_lake I5 Month datasets round-trip through Build/Update/Refresh) not done.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:19
+- Status: Closed as superseded by the simplification plan (WS11, ct-2wsw): Month partitioning had no news_lake consumer, engine performance work is frozen, and WS8 deletes the PyIceberg partitions module.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

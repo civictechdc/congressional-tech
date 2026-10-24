@@ -35,3 +35,10 @@ check_recovery_inputs and publish.guard describe the freshness cut point for sep
 **2026-10-18T20:22:54Z**
 
 Documented maintained writers/shared keys/lock and condition authority; corrected pointer-last cross-object transaction claim. Separate-source-read interleaving test explicitly demonstrates observation cut point while original viewer CAS remains. Guard local unchanged-custody reuse reduces2 hashes to1 across1000immutable checks+next sharedcommit; fresh cloud/protected checks remain2.51focused tests+2subtests pass incl malformed/stale/slow inventories, failed-refresh invalidation, restored-mtime same-size mutation and conflicting writers.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch d8z3b).
+- Grades: proposal 84 → 88, work 87 → 89.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -27,3 +27,10 @@ Local review heads: native470fec3939c9d49f4afeb3c47bd3b79a60faa738 and app e95ff
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit independently reviewed and approved native commit `470fec3` (now on `docspec-rs` `main` as `2308d23`, `src/engine/http.rs:173-238`, `src/main.rs:289-302`) and application commit `e95ff769` (`docspec_host.py:76-120,203-205`, `tests/test_docspec_owner_lifetime.py`). Grade: A−. Using a dedicated std thread + Tokio oneshot avoids Tokio's non-cancelable blocking stdin read on normal SIGINT while guaranteeing kernel pipe EOF on parent `SIGKILL`. Closed after independent review; binary freeze and integration remain under `ct-oxg6` and `ct-nc7l`.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch mi03a).
+- Grades: proposal 90 → 90, work 88 → 88.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

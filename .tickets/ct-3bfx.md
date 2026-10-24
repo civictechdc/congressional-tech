@@ -36,3 +36,12 @@ CS300 Audit Finding (Apps, Frontend & Infra Auditor - Active Bugs, Layering Inve
 Subagent Self-Review Additions (Apps, Frontend & Infra Auditor):
 1. apps/site/package.json:8: 'build': 'python3 scripts/stage-document-reviews.py && astro build' invokes bare system python3 (which fails when viewer_publication is only installed in the repo .venv, unlike apps/site/scripts/generate-explorer-types.mjs:9-10 which resolves ../../.venv/bin/python), and npm run dev skips staging document reviews on fresh checkouts.
 2. Root turbo.json:1-5 & apps/site/package-lock.json: Root turbo.json has empty 'tasks': {}, apps/site/package.json:34 (npm@11.19.1) conflicts with root package.json:2 (npm@11.0.0) and commits a nested apps/site/package-lock.json, and apps/committee_youtube/README.md:265-266 still documents manual python -m venv .venv && pip install -e instead of uv sync.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch syem).
+- Grades: proposal 82 → 82, work 80 → 80.
+- Problem: Split-brain data: the inversion was "fixed" by *copying* document-review-identities.json and document-review-publication.json into `viewer_publication/data/` (93a63e1d).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:85
+- Covered by: WS3 step 6 (ct-tw3r) for the cwd-dependent resolver. Not covered: the copied review JSON files under `viewer_publication/data/`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

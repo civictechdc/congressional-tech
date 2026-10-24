@@ -2,7 +2,7 @@
 id: ct-dmca
 status: closed
 deps: [ct-egpe, ct-q05l]
-links: [ct-sb0s, ct-gziq, ct-3180, ct-13cn, ct-q05l, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac]
+links: [ct-sb0s, ct-gziq, ct-3180, ct-13cn, ct-q05l, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac, ct-syx8]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -51,3 +51,12 @@ Aligned with end-state epic ct-8kl2 (ct-2yl5, ct-bwac) and spicy-stack ss-6gwu (
 **2026-10-21T21:40:24Z**
 
 Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): wired upgrade_source_rules / _update_from_raw (catalog_raw_updates.py) and RawStorage.evolve_state_schema (raw_storage.py) through evolve_catalog_schema and backfill_scalar_group (/schemas/run, /backfills/run, /continuous-backfill) for compatible field evolution and scalar group backfills with zero source-file rewrites.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03a).
+- Grades: proposal 80 → 70, work 60 → 55.
+- Problem: This directly contradicts the AC "do not manufacture a field".
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:30
+- Status: Closed as superseded by the simplification plan (WS2 step 7, ct-syx8): missing raw-state fields are filled at read time and `indexes/raw.json` is never republished to change a schema; the default scalar backfills are deleted, so qualifying in-place evolution is moot.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

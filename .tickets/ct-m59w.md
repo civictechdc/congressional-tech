@@ -2,7 +2,7 @@
 id: ct-m59w
 status: closed
 deps: []
-links: [ct-fw0m, ct-1dsp, ct-idhg, ct-zkzt, ct-ylaw]
+links: [ct-fw0m, ct-1dsp, ct-idhg, ct-zkzt, ct-ylaw, ct-qqk2]
 created: 2026-10-18T19:44:01Z
 type: task
 priority: 3
@@ -31,3 +31,10 @@ Apply the existing acceptance criteria to the specific functions and checks in t
 **2026-10-18T20:22:54Z**
 
 Exact guarded recovery JSON proof now avoids duplicate full GET; plain SDK fallback keeps full independent readback. Weak issuance registry retains zero ignored receipts; waiter-counted key locks clean only after last owner/waiter.51focused tests+2subtests pass incl all wrong request fields, forgery/issuer/current-version/single-use refusal,24same-key concurrent writers and restart full reconciliation. Replay retains conservative version HEAD checks; cost receipts expose those counts rather than weakening original replay conditions.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch d8z3b).
+- Grades: proposal 76 → 70, work 86 → 80.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

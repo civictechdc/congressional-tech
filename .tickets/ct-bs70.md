@@ -2,7 +2,7 @@
 id: ct-bs70
 status: closed
 deps: [ct-lvvr]
-links: [ct-p6aq, ct-zika, ct-qyey]
+links: [ct-p6aq, ct-zika, ct-qyey, ct-2wsw]
 created: 2026-10-18T19:28:38Z
 type: task
 priority: 3
@@ -37,3 +37,12 @@ Include immutable-manifest fetch policy, admitted range prefetch, physical decod
 **2026-10-18T20:18:51Z**
 
 Dependency ct-lvvr completed first. Added budgeted prefix-shard reuse, immutable manifest caching, admitted-only prefetch and sparse row-group column assembly. Controlled sparse/prefetch/shard counters and unavoidable physical decode boundary recorded in browser.md. Catalog/publication suite 20 passed, new sparse fixture separately passed after its adversarial assertions were added.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (batch d8z3a).
+- Grades: proposal 80 → 72, work 80 → 80.
+- Problem: The sparse and oversized-prefetch byte/request fixtures were deleted with v5, so the "no redundant uncached prefetch transfer" guarantee has no test on main.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:78
+- Covered by: WS11 (ct-2wsw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

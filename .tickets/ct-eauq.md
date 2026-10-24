@@ -33,3 +33,12 @@ Apply the existing acceptance criteria to the specific functions and checks in t
 **2026-10-18T20:10:35Z**
 
 Direct publication rejects nonempty/symlink output before any input or write, with new-target recovery error. Fresh existing empty wrapper directory remains supported. Test preserves prior manifest bytes; 7 pair/builder tests passed.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (batch d8z3a).
+- Grades: proposal 85 → 85, work 86 → 86.
+- Problem: The criterion "explain recovery in CLI errors" survives only in the test-only `historical_viewer_publication.py:48`.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:81
+- Covered by: WS10 (ct-r6xw), which deletes the test-only v5 generator; the fresh-target check stays (plan section 4).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

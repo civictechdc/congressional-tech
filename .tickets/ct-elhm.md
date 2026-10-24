@@ -2,7 +2,7 @@
 id: ct-elhm
 status: closed
 deps: []
-links: []
+links: [ct-uov2]
 created: 2026-10-22T17:34:59Z
 type: bug
 priority: 2
@@ -28,3 +28,12 @@ CS300 Audit Finding (Committee, Naming & YouTube Auditor - packages/youtube_api)
 
 Subagent Self-Review Additions:
 - Delete stale packages/youtube_api/src/youtube_api.egg-info/ directory alongside package.json and turbo.json cleanup.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 60 → 60, work 66 → 66.
+- Problem: The handler was *broadened* to `except (DownloadError, Exception)` (`captions/main.py:92`), so programming errors now become silent, retryable `error` rows.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:89
+- Status: Closed as superseded by the simplification plan (WS12, ct-uov2): the remaining item (the `_TINYDB` global) is polish with no observable behavior. Not covered: the broadened `except (DownloadError, Exception)`, which turns programming errors into retryable rows.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

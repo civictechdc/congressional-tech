@@ -1,8 +1,8 @@
 ---
 id: ct-pgxn
-status: closed
+status: open
 deps: []
-links: [ct-nloa, ct-xu1o, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v]
+links: [ct-nloa, ct-xu1o, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v, ct-d8cf]
 created: 2026-10-21T15:27:19Z
 type: task
 priority: 1
@@ -94,3 +94,12 @@ While per-poll scan latency is solved by `ct-xu1o`, `disk_kib` grew super-linear
 2. **Superseded `release.json` & table manifests (`~1,035 MiB`, 44% of disk, $O(\text{polls}^2)$) -> `spicy-stack` `ss-g9sn`**: Each poll $k$ writes `release.json` and 3 table manifests listing all $k$ retained files (`~800 B * k`); across $N$ polls this sums to $O(N^2)$ (`~1.04 GiB` at 1,080 polls, `~68 GiB` at `T2 = 8,760`). `ss-g9sn` unlinks unreferenced checkpointed release/manifest directories during `compact_lifecycle`.
 3. **3x Parquet table triplication (`331.7 MiB` vs `102.9 MiB` source rows, 14% of disk) -> `spicy-stack` `ss-onwi`**: For `SELECT * FROM input` tables, `docspec-rs` writes an identical copy of `source` (`102.9 MiB`) into `inputs` (`114 MiB`) alongside `occurrences` (`115 MiB`).
 4. **1-file-per-poll fragmentation (`1,080` ~95 KiB files/table) & live `ReleasePin` growth -> `ct-8ax6`**: Unlike `congress_api` (coarse sync waves), `news_lake` runs hourly micro-polls across 16 datasets (~140k ops/year). Without batch coalescing or threshold native table compaction (`Engine::compact`), the single live head `ReleasePin` embeds $k$ `ObjectRef`s (`~5.8 KiB/file`), growing `lifecycle_bytes` to `6.28 MiB` at poll 1,079 and `~51 MiB` (exceeding the `32 MiB` `max_metadata_bytes` limit) at `T2 = 8,760`. Tracked in `ct-8ax6`.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch standalone).
+- Grades: proposal 90 → 90, work 80 → 80.
+- Problem: "Per table" was one synthetic "versions" table (`examples/news_poll_scale.rs:136`).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:13
+- Status: Reopened. Unmet: "per table"; the items upsert, mentions and bytes read were never measured, and the run had compaction off. Owner: WS8 fix 2 (ct-d8cf), which measures `['id']` lookups with compaction on.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

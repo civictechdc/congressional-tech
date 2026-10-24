@@ -1,8 +1,8 @@
 ---
 id: ct-2yl5
-status: closed
+status: open
 deps: [ct-2ukk, ct-oc2g]
-links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa]
+links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-qqk2]
 created: 2026-10-21T20:53:06Z
 type: feature
 priority: 1
@@ -27,3 +27,12 @@ Sequenced after ct-2ukk, ct-oc2g, and spicy-stack ss-6gwu / ss-yjvy:
 - Browser catalog-v6.ts reads browse pages, facet counts, single-row details (including filename_readings), and 20-row occurrence pages (<1 MiB worker memory on the 33,479-occurrence outlier document) directly from docspec-rs ExportPin Parquet files via hyparquet byte-range requests.
 - Zero duplicate Parquet (details.parquet), Brotli .bin (observations.bin), or 16-way JSON tree files are written outside docspec-rs ExportSpec.
 - packages/viewer_publication is collapsed to a thin declarative export/manifest coordinator.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch kl2a1aa).
+- Grades: proposal 84 → 84, work 62 → 62.
+- Problem: AC2 ("zero details.parquet/observations.bin/JSON tree files") and AC3 ("thin coordinator"; the package is 9,661 lines, with filename_native 1,067, filename_viewer 871 and continuation 492) are unmet.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:37
+- Status: Reopened. Unmet: AC2 (no `details.parquet`, `observations.bin` or JSON tree files) and AC3 (a thin coordinator); the unwired export-pins publish also writes a dangling pointer. Owner: WS6 (ct-qqk2), which makes export-pins the only route.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

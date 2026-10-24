@@ -2,7 +2,7 @@
 id: ct-2ut4
 status: closed
 deps: [ct-2d3k, ct-v6ao]
-links: [ct-d3un]
+links: [ct-d3un, ct-qqk2]
 created: 2026-10-19T16:40:42Z
 type: task
 priority: 2
@@ -46,3 +46,12 @@ Independent review follow-up: replace versions.clear/update with protected-key a
 **2026-10-19T19:58:38Z**
 
 Independent review approved 1e572d0. Integrated with selected runtime ownership at fd8eb4d; 92 local integration tests and 5 subtests passed. Same-fixture 128-write journal experiment preserves state/body hashes while fsync calls fall 783 to 276; scratch grows 117247 to 245262 bytes. Evidence: docs/experiments/efficiency-debt/local-events.md.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 85 → 76, work 85 → 85.
+- Problem: `transition()` (`local.py:28`) copies the whole writes and versions maps on every event and every replayed event, which is O(events × writes).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:32
+- Covered by: WS6 (ct-qqk2), which deletes `local.py`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

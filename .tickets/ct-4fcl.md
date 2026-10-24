@@ -1,8 +1,8 @@
 ---
 id: ct-4fcl
-status: closed
+status: open
 deps: []
-links: []
+links: [ct-tw3r, ct-r6xw]
 created: 2026-10-22T17:36:18Z
 type: task
 priority: 1
@@ -40,3 +40,12 @@ Lead Architect Review (Defend Intent + Compromise):
 **2026-10-22T18:41:53Z**
 
 CS300 Subagent Sign-Off (e53d5741): Verified read_evidence, update_evidence, and plan_update map 1:1 to active routes in docspec-rs/src/http.rs (L44, L47, L156-157) and export_table provides keyword-arg symmetry; defense accepted. Implementation refinement: have export(request, ...) delegate to self.export_table(request, ...) when isinstance(request, str) to deduplicate the 10-arg build_export_spec call.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 72 → 72, work 65 → 65.
+- Problem: The split created two new re-export shims, `docspec_client/docspec.py` and `docspec_host.py`, and `__init__.py:7,41` imports through them.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:86
+- Status: Reopened. Unmet: AC2, the triplicated producer staging (WS3 step 2, ct-tw3r), and AC3, production imports of the `congress_api.retention.docspec` shims plus the two new `docspec_client` shims (WS10, ct-r6xw). AC1 (domain policy in docspec_client) and AC4 (docstrings) are not carried.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

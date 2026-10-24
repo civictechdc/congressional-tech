@@ -2,7 +2,7 @@
 id: ct-nmjc
 status: closed
 deps: []
-links: [ct-tuez, ct-mi03]
+links: [ct-tuez, ct-mi03, ct-tw3r]
 created: 2026-10-21T14:41:26Z
 type: task
 priority: 1
@@ -29,3 +29,12 @@ In packages/docspec_client/src/docspec_client/docspec.py, configure producer Par
 
 Implemented in `b28cc9b7`: added `PRODUCER_PARQUET_ROW_GROUP_SIZE = 2048` and `_write_producer_parquet` in `packages/docspec_client/src/docspec_client/docspec.py:34,80-85` and wired into `run_table`, `update_table`, and `update_evidence_table`. Verified in `tests/test_docspec_runtime.py::test_producer_parquet_writes_bound_row_group_size_for_batch_budget` and on the 262,144-row production scale probe with `batch_rows=2048`.
 
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 77 → 77, work 73 → 73.
+- Problem: The test fakes the engine and uses 4,219 rows; the 262,144-row submit under a 4 MiB limit is untested.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:16
+- Covered by: WS3 step 4 (ct-tw3r), decided with a native-loopback test at 4 MiB.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

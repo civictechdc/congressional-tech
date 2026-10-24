@@ -1,8 +1,8 @@
 ---
 id: ct-jo8n
-status: closed
+status: open
 deps: [ct-qkvr, ct-nloa, ct-5fkx]
-links: [ct-nloa, ct-qkvr, ct-5fkx, ct-f11a, ct-4nyy, ct-gf8i, ct-n6lj, ct-csjp, ct-vt7i]
+links: [ct-nloa, ct-qkvr, ct-5fkx, ct-f11a, ct-4nyy, ct-gf8i, ct-n6lj, ct-csjp, ct-vt7i, ct-d8cf]
 created: 2026-10-20T22:15:53Z
 type: feature
 priority: 1
@@ -43,3 +43,12 @@ CS 300 Grade at 8221566d — Spec: A | Impl: D+ (Reopened). Zero non-test caller
 **2026-10-21T02:20:25Z**
 
 Implemented and verified: wired DocSpecLake.publish_release / read_release / find_release into news_lake.storage.releases (releases.py:183-196,290-310) and DocSpecNewsViews into news_lake.analysis.views (views.py:150-153,204-207) and news_lake.analysis.export (export.py:43-62). Added durable workspace state (.news_lake_committed.json, .news_lake_views.json, releases/<id>.json), explicit empty-table preservation across all 12 CONTENT_TABLES, and capture_inputs verification. Verified in test_published_release_lifecycle_fresh_process_resume_and_retire.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03b).
+- Grades: proposal 86 → 74, work 74 → 78.
+- Problem: AC4: no tests for stale seal, changed dependency or lost publication response.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:18
+- Status: Reopened. Unmet: AC3 (one release selector; native-latest fallbacks and `.news_lake_committed.json` remain), AC4 (stale seal, changed dependency and lost publication response are untested) and "the previous release stays usable" (automatic lifecycle compaction makes older releases unreadable). Owner: WS8 (ct-d8cf).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

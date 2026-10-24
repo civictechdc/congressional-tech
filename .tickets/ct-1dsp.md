@@ -2,7 +2,7 @@
 id: ct-1dsp
 status: closed
 deps: []
-links: [ct-fw0m, ct-jl1m, ct-rrfm, ct-m59w]
+links: [ct-fw0m, ct-jl1m, ct-rrfm, ct-m59w, ct-syx8, ct-qqk2]
 created: 2026-10-18T19:21:16Z
 type: task
 priority: 2
@@ -40,3 +40,12 @@ prepared_files, verify_prepared, Continuation.phase and upload.transfer local-by
 **2026-10-18T20:27:13Z**
 
 Implemented issued process/file/input/validator-bound inventory across builder→phase→verify→recovery→guarded upload/replay. Fresh artifact verification hashes each inventory file once including256 ID shards, then structural/phase/transfer handoffs reuse exact proof; dict/copied/inherited-process proofs refuse. Guard pins hash once per unchanged process custody while cloud/protected checks stay fresh. Fresh phase count/path refusal preserves previous checkpoint. 116 tests+2subtests; final40 proof/process/provenance tests pass. Hash budget and custody assumption recorded in preparation-inventory.md.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3a).
+- Grades: proposal 72 → 64, work 75 → 70.
+- Problem: Commit 3089e771 (Oct 21) made the positional `VerifiedFile(path, sha, size)` constructor issue a valid process proof without hashing (`custody.py:76-83`, `99-100`).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:70
+- Covered by: WS2 step 8 (ct-syx8), which makes the `VerifiedFile` constructor hash or refuse.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

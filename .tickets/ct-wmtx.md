@@ -2,7 +2,7 @@
 id: ct-wmtx
 status: closed
 deps: [ct-xl0y]
-links: [ct-lcbc, ct-mpsp, ct-a70m, ct-qdkd, ct-gfv8]
+links: [ct-lcbc, ct-mpsp, ct-a70m, ct-qdkd, ct-gfv8, ct-2wsw]
 created: 2026-10-20T18:59:59Z
 type: task
 priority: 2
@@ -30,3 +30,12 @@ Fresh read-only review2026-10-20: F4. Evidence: output/docspec-reuse-20261020/pa
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit incorporated the measured 0/8/32 history growth numbers (`0.834s -> 1.841s -> 4.326s`) from `native-update-scale.md:135-146` and pinpointed `src/catalog.rs:255-278,370-420`.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03b).
+- Grades: proposal 94 → 85, work 73 → 73.
+- Problem: AC1 profile (0/8/32/128: wall time, rows/bytes replayed, clone allocations, catalog calls) was never recorded; the harness is `#[ignore]`.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:37
+- Status: Closed as superseded by the simplification plan (WS11, ct-2wsw): engine performance work is frozen until there is a user or a measured failure on real data.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

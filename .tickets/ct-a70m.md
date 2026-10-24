@@ -1,8 +1,8 @@
 ---
 id: ct-a70m
-status: closed
+status: open
 deps: [ct-qdkd]
-links: [ct-wmtx, ct-lcbc, ct-mpsp, ct-m9td, ct-egpe, ct-qdkd, ct-nc7l, ct-3faj, ct-gfv8]
+links: [ct-wmtx, ct-lcbc, ct-mpsp, ct-m9td, ct-egpe, ct-qdkd, ct-nc7l, ct-3faj, ct-gfv8, ct-syx8]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -35,3 +35,12 @@ CS 300 / evolutionary-refactoring audit verified that `NativeDatasets.inspect_re
 **2026-10-20T23:53:21Z**
 
 CS 300 Grade at 8221566d — Spec: A | Impl: B+ (Closed for RunSpec pins). plan_protected_retention (native_capacity.py:361-465) protects application pins, exports, active readers, incomplete ops, and RunSpec producer inputs; UpdateSpec replacement/deletion custody and CLI/HTTP lifecycle compaction are tracked in ct-m9td and ct-gfv8.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03a).
+- Grades: proposal 78 → 65, work 55 → 55.
+- Problem: A latent correctness bug: objects the engine protects would be classified as reclaimable.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:21
+- Status: Reopened: revisit under engine-first rule. The unmet criteria (feed application pins, honor native blockers) are not wanted; the owner wants the Python retention planner deleted entirely (`plan_protected_retention` and the retention-plan CLI mode) in favor of engine retention. Owner: WS2 step 6 (ct-syx8), after the guard test that no Python path deletes under raw prefixes.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

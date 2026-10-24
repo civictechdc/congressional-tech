@@ -2,7 +2,7 @@
 id: ct-9vtu
 status: closed
 deps: [ct-rcs8]
-links: []
+links: [ct-7uit]
 created: 2026-10-20T15:54:57Z
 type: bug
 priority: 1
@@ -28,3 +28,10 @@ Inject interruption after accepted preparation, resume without resubmitting comp
 **2026-10-20T16:04:50Z**
 
 Reviewed and integrated as 7e0a2160 (agent 004b0174). Completed dependency roots and native chunks reuse existing checkpoints; exact input/runtime custody and all-value readback remain mandatory. Agent 81 passed/10 explicit native skips; root combined 62 passed in 2.49 s. Incomplete dependency/chunk work and prequalification readback can repeat through the maintained lifecycle. Review: review-merge/root-adoption-resume-review.md. Grade A-. Production acceptance remains ct-2ukk.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch czsd).
+- Grades: proposal 90 → 75, work 90 → 84.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

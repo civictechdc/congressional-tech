@@ -36,3 +36,12 @@ Ordinary scheduled run 39179688133 is naturally queued behind publisher run 3917
 **2026-10-19T02:22:40Z**
 
 Ordinary schedule 39179688133 passed at deployed 744edd6: unchanged preflight, zero table reads/writes, write_authority false, seven heavy steps skipped. Job 20.00s; measured cost interval 14.34s; preflight 4.54 s / 10 requests/44,422,480 response bytes; host received 350,881,760 bytes including background traffic. Small diagnostic ZIP (926 bytes) matches GitHub run/revision/digest; approved validator accepted. Prior 69/76 s recovery_updated jobs are not equivalent and their byte counters are unavailable; no percentage savings claimed. Evidence: docs/experiments/publication-remediation/hosted-qualification.md.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (hosted run not re-verifiable offline) (batch d8z3b).
+- Grades: proposal 86 → 78, work 80 → 80.
+- Problem: The AC "compare with a compatible prior job" is unmet (disclosed).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:33
+- Covered by: WS6 (ct-qqk2): content-addressed releases make the unchanged-publication skip free.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

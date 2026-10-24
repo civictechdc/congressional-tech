@@ -2,7 +2,7 @@
 id: ct-h73z
 status: closed
 deps: [ct-2d3k]
-links: [ct-d3un]
+links: [ct-d3un, ct-qqk2]
 created: 2026-10-19T16:40:42Z
 type: task
 priority: 3
@@ -34,3 +34,12 @@ Implemented one validated resume record shared by workflow bootstrap and CLI. Ex
 **2026-10-19T19:39:00Z**
 
 Independent review approved the byte-preserving descriptor repair at cec95671. Final five-pair admission median: 12.15 ms before, 19.73 ms after; five manual fields become one. 117 initial and 41 repair-focused checks passed. No hosted workflow was run.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 86 → 68, work 84 → 84.
+- Problem: Regressed on main. fb9ed402 (Oct 24) removed the historical-checkout test-path fallback.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:39
+- Covered by: WS6 (ct-qqk2), which deletes the resume route.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

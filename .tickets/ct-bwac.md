@@ -1,8 +1,8 @@
 ---
 id: ct-bwac
-status: closed
+status: open
 deps: []
-links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa]
+links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-aia9, ct-2yl5, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-7uit]
 created: 2026-10-21T20:53:31Z
 type: feature
 priority: 2
@@ -27,3 +27,12 @@ Paired with spicy-stack ss-023x (UpdateMergeSpec + FirstValueBy/CollectDistinctW
 
 - Each archive/catalog table is stored as 1 logical docspec-rs dataset with Bucket(N) + 64-byte SHA-256 key pruning matching or beating RoutingPages latency on 8.13M rows.
 - Document equivalence classes and attribute rollups are computed by docspec-rs ConnectedComponentsTransform with zero Python sqlite3/DuckDB scratch files, zero .jsonl.gz receipt re-scans, and 100% identical document_id and source_id hashes.
+
+## Audit 2026-10-24
+
+- Verdict: NOT-LANDED (batch kl2a1aa).
+- Grades: proposal 78 → 78, work 58 → 58.
+- Problem: AC1 (one logical dataset per table, beating RoutingPages latency on 8.13M rows) has no measurement anywhere.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:38
+- Status: Reopened under the engine-first rule. Unmet: AC1 (one logical dataset per table, measured against RoutingPages) and AC2 (components through ConnectedComponentsTransform with no sqlite/duckdb). Owner: WS7 (ct-7uit), which maps catalog derivation onto engine operations and deletes the Python layer; engine gaps become docspec-rs tickets. Raw-side routing stays on the plan's keep list unless the owner moves it onto engine partitioning.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

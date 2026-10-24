@@ -1,8 +1,8 @@
 ---
 id: ct-xu1o
-status: closed
+status: open
 deps: [ct-pgxn]
-links: [ct-nloa, ct-pgxn, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v, ct-a3le, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac]
+links: [ct-nloa, ct-pgxn, ct-ur2y, ct-qkvr, ct-8ax6, ct-r60e, ct-ur7v, ct-a3le, ct-oc2g, ct-dzyf, ct-aia9, ct-sb0s, ct-te1p, ct-13cn, ct-n6lj, ct-2ukk, ct-mi03, ct-dmca, ct-czsd, ct-8kl2, ct-gziq, ct-gi01, ct-2yl5, ct-bwac, ct-d8cf]
 created: 2026-10-21T15:27:19Z
 type: task
 priority: 1
@@ -67,3 +67,12 @@ Measured with `docspec-rs/examples/news_poll_scale.rs` (release build, 2,000 `uu
 **2026-10-21T21:40:24Z**
 
 Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): DocSpecLake._commit_append uses composite time-prefixed UpdateSpec.keys = [time_col, 'id'] across all 9 append-only tables, eliminating 100% of historical Parquet file scans (files_scanned = 0 across all 1,080 polls in output/news-poll-scale-20261021/after-time-id-1080.csv).
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch standalone).
+- Grades: proposal 90 → 90, work 67 → 67.
+- Problem: Correctness regression. The append lookup reads by time value only.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:12
+- Status: Reopened. Unmet: the design's replay rule; a fresh process that regenerates an id with a new timestamp appends a duplicate. Owner: WS8 fix 2 (ct-d8cf): revert `APPEND_UPDATE_KEYS` to `['id']`, delete the `_known_ids`/`_known_upsert_records` caches and measure id lookups with compaction on.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

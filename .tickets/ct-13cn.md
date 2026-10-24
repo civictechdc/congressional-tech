@@ -2,7 +2,7 @@
 id: ct-13cn
 status: closed
 deps: [ct-egpe, ct-q05l, ct-9few]
-links: [ct-3180, ct-sb0s, ct-q05l, ct-dmca, ct-gziq, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac]
+links: [ct-3180, ct-sb0s, ct-q05l, ct-dmca, ct-gziq, ct-a3le, ct-8ax6, ct-xu1o, ct-oc2g, ct-dzyf, ct-aia9, ct-te1p, ct-n6lj, ct-2ukk, ct-mi03, ct-czsd, ct-8kl2, ct-gi01, ct-2yl5, ct-bwac, ct-7uit]
 created: 2026-10-20T18:24:29Z
 type: task
 priority: 2
@@ -55,3 +55,12 @@ Aligned with end-state epic ct-8kl2 (ct-bwac, ct-gi01): /changes feeds selective
 **2026-10-21T21:40:24Z**
 
 Implemented and audited (CS 300 Professor Grade: A+, commit 81691a3f): wired SourceObservationStorage.prepare, CatalogDependencyStorage.prepare, and RawStorage.diff_snapshot through inspect_catalog_changes and extract_pin_changes (/compare and /changes).
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch mi03a).
+- Grades: proposal 72 → 68, work 50 → 50.
+- Problem: The manufactured consumer costs 2 native writes and a `/changes` call on every `prepare`, and leaves a uniquely named dataset behind each time.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:13
+- Status: Closed as superseded by the simplification plan (WS7, ct-7uit): the plan deletes the manufactured consumers (scratch-scope datasets, `last_change_report`, the operator change count) instead of finishing selective downstream work through them.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

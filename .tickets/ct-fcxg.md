@@ -43,3 +43,12 @@ Independent review fix: decoded gzip and CORS-hidden encoding no longer compare 
 **2026-10-18T20:36:40Z**
 
 Independent review fixed compressed HTTP response length handling and response cancellation. Final patch reviewed with 24 Python and six Node controlled checks passing; receipt keeps unavailable or oversized live checks pending.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3a).
+- Grades: proposal 78 → 74, work 79 → 79.
+- Problem: The default `--viewer-pointer` (`pipeline_status.py:297`) is the retired workers.dev Worker, not the origin the reader uses (`publication.ts:2`).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:83
+- Covered by: WS6 step 8 (ct-qqk2), which fixes the retired workers.dev defaults.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

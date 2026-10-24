@@ -51,3 +51,12 @@ Final typed-occurrence browser check passed in fresh Chrome 155: exact 29-field 
 **2026-10-20T16:02:11Z**
 
 Implemented and independently reviewed: stable v6 routing/assets, retained review decisions and complete typed exports. Accepted fresh Chrome evidence preserves all 29 fixture fields and 18,000 ordered occurrences. Production deployment, live reviews/recovery/links and exact release browser verification remain required under ct-2ukk. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch czsd).
+- Grades: proposal 88 → 78, work 81 → 84.
+- Problem: The design promised "Preserve exact historical saved links with a read-only v5 decoder".
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/czsd/czsd-verdicts.md:45
+- Covered by: WS6 (ct-qqk2), whose end-to-end check resolves the v5/v6 viewer mismatch.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

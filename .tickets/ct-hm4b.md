@@ -2,7 +2,7 @@
 id: ct-hm4b
 status: closed
 deps: []
-links: [ct-lu4i, ct-zkzt, ct-zb9y]
+links: [ct-lu4i, ct-zkzt, ct-zb9y, ct-qqk2]
 created: 2026-10-18T19:44:01Z
 type: task
 priority: 2
@@ -31,3 +31,10 @@ Apply the existing acceptance criteria to the specific functions and checks in t
 **2026-10-18T20:15:08Z**
 
 Bounded per-kind streamed control reads now check declared/actual/exact descriptor lengths and close bodies; raw digest/full hash/CORS semantics retained. Oversize/truncation/appended/malformed tests plus publication/recovery matrix: 82 tests and 2 subtests passed. Opening retries only; body-read errors propagate without mutation retry. Ceilings documented in durable-publication.md.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch d8z3a).
+- Grades: proposal 82 → 82, work 86 → 86.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

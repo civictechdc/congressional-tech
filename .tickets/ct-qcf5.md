@@ -39,3 +39,12 @@ Multiple adapter edge cases violate C1-C4 or break cross-provider deduplication:
 **2026-10-20T17:30:52Z**
 
 RSS redirect-URL index folds later duplicates and backfills missing title/body; bounded subdomain outlet normalization reconciles RSS/GDELT/Media Cloud; inline HTML no longer inserts spaces; RFC 2822/ISO-8601/Atom dates parse with publisher basis; Media Cloud invalid/midnight-naive dates handled; host_of uses urlsplit. Adapter suites pass.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 82 → 82, work 77 → 77.
+- Problem: Bug, reproduced with the project venv: `outlet_domain('www.bbc.co.uk')` returns 'www.bbc.co.uk' unchanged, as do 'news.bbc.co.uk' and 'www.abc.net.au'.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:58
+- Area owner: WS8 (ct-d8cf); not a named step.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

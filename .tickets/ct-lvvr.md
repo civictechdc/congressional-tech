@@ -2,7 +2,7 @@
 id: ct-lvvr
 status: closed
 deps: []
-links: [ct-p6aq, ct-zika, ct-p6ns]
+links: [ct-p6aq, ct-zika, ct-p6ns, ct-2wsw]
 created: 2026-10-18T19:25:28Z
 type: task
 priority: 2
@@ -45,3 +45,12 @@ Reopened after exact closed-publication browser probe attempt-1: technical first
 **2026-10-18T23:26:18Z**
 
 Completed operation-owned table handles in592480c, independently approved;101 focused filename/UI checks passed. One authorized same-backend/default-budget browser probe passed: identical352-field technical records cold596.2ms/warm459ms vs19.086s/17.435s, metadata1parse peroperation vs45; source_url search completed27.523s with1014639matches after prior120s timeout (no completed baseline search hash). Parsed metadata still obeys64MiB admission; no persistent bypass. Sampled process-tree peak2022293504B<7GiB. Originalfailure and acceptedbackend2feb8c7 preserved. Evidence primary output/publication-remediation-20261018/rollout/browser-layout-check/{attempt-2-frontend/receipt.json,comparison.json}; tracked docs/experiments/publication-remediation/browser-metadata-reuse.md. One local case set, not exhaustive/deployed qualification.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3b).
+- Grades: proposal 78 → 74, work 83 → 83.
+- Problem: In v6, table metadata goes through `cached()` (catalog-v6.ts:132-135, 172-182).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:18
+- Covered by: WS11 (ct-2wsw); browser work is frozen.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

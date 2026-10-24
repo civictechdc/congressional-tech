@@ -31,3 +31,12 @@ While _SpilledSources (assemble.py) and _SpilledIdDict (ids.py) reduced peak RSS
 **2026-10-22T15:38:56Z**
 
 Verified full pipeline-data export (2,047,546 records, 308,516 source observations) using _ArenaLog (os.write + os.pread), dependency-ordered iter_json_dicts(), compact tuple/list buffers in parquet.py, and paginate=False in query.py: completed in 594.86s with 1,903,984,640 bytes (1.773 GiB / 1,815.8 MiB) peak RSS and 1.745 GiB peak memory footprint (< 2.0 GiB MemoryMax=2G limit, 0 swaps).
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch kl2a1aa).
+- Grades: proposal 84 → 84, work 80 → 80.
+- Problem: That measurement was local (macOS footprint output), leaves only 11% headroom under 2 GiB, and depended on ct-s9p2 shrinking sources from 651k to 308k.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:35
+- Covered by: plan section 4, which keeps the pread arena; see ct-gi01 (reopened under the engine-first rule) for the explorer's custom assembly code.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

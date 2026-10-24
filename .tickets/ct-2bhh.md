@@ -2,7 +2,7 @@
 id: ct-2bhh
 status: closed
 deps: []
-links: []
+links: [ct-2wsw]
 created: 2026-10-19T22:31:31Z
 type: task
 priority: 1
@@ -26,3 +26,12 @@ Implemented narrow retained source columns and bounded saved-flag reads in the e
 **2026-10-19T22:38:08Z**
 
 Independent review approved a41e369. Retained Arrow source data falls 20,405,570 to 11,455,564 bytes; all 269 payloads match. 60 baseline/64 final checks; combined 139 pass. No demonstrated total peak or speed gain. Evidence: docs/experiments/efficiency-round-two/catalog.md.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 65 → 60, work 72 → 72.
+- Problem: The ticket was created at 22:31Z and its commit landed at 22:35Z, so it was written after the work.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:41
+- Covered by: WS11 (ct-2wsw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

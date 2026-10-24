@@ -2,7 +2,7 @@
 id: ct-aia9
 status: closed
 deps: []
-links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-2yl5, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa]
+links: [ct-8kl2, ct-mi03, ct-czsd, ct-2ukk, ct-oc2g, ct-xu1o, ct-8ax6, ct-dzyf, ct-13cn, ct-dmca, ct-gziq, ct-n6lj, ct-sb0s, ct-te1p, ct-2yl5, ct-bwac, ct-gi01, ct-a3le, ct-0odd, ct-ec91, ct-3ttc, ct-84xa, ct-syx8]
 created: 2026-10-21T20:53:06Z
 type: task
 priority: 2
@@ -27,3 +27,12 @@ Across congress_api/retention, viewer_publication, corpus_recovery, news_lake, a
 - All 15 atomic file writers, 9 SHA-256 helpers, 7 receipt binders, and 5 boto3 R2 client factories delegate to congress_shared.custody and connect_r2, while R2Store/LocalStore remain cleanly scoped to congress_api.
 - Both temp_mode='unique' and temp_mode='fixed' crash-cleanup invariants (ct-2d3k) pass existing test suites.
 - news_lake and congress_api share a single Arrow schema adapter in packages/docspec_client.
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch kl2a1aa).
+- Grades: proposal 88 → 88, work 77 → 77.
+- Problem: The custody extraction landed, but leftovers contradict "all delegate": a second `copy_checked`, duplicate digest helpers, hand-rolled `os.replace` writers and the news_lake pass-through client.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:41
+- Status: Closed as superseded by the simplification plan (WS2 ct-syx8, WS8 ct-d8cf): WS2 step 8 deletes the unused `congress_shared.custody.copy_checked` and keeps `derived_files.copy_checked` as a separate policy; the news_lake leftovers go with WS8 and the `os.replace` writers in incremental modules with WS7.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

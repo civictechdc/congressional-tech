@@ -33,3 +33,12 @@ Scope correction 2026-10-21: context.new_id() has one caller (adapters/common.py
 **2026-10-21T16:40:00Z**
 
 Implemented in `b28cc9b7`: added RFC 9562 `uuid7()` and monotonic `_next_uuid7()` in `packages/news_lake/src/news_lake/context.py:79-132`. Verified in `packages/news_lake/tests/test_docspec_backend.py::test_uuidv7_context_ids_prune_disjoint_historical_files_across_polls` (`files_reused == 3`, `files_scanned == 0` on 4th chronological poll).
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch standalone).
+- Grades: proposal 76 → 76, work 84 → 84.
+- Problem: The before/after files_scanned report at 1x and 10x archive sizes is missing; there is only a 4-poll fixture.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:18
+- Covered by: WS8 (ct-d8cf), which measures `['id']` lookups with compaction on.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -2,7 +2,7 @@
 id: ct-3ttc
 status: closed
 deps: [ct-0odd]
-links: [ct-0odd, ct-aia9, ct-ec91, ct-te1p, ct-gi01, ct-8kl2, ct-2yl5, ct-bwac, ct-84xa, ct-6rnk]
+links: [ct-0odd, ct-aia9, ct-ec91, ct-te1p, ct-gi01, ct-8kl2, ct-2yl5, ct-bwac, ct-84xa, ct-6rnk, ct-r6xw]
 created: 2026-10-22T04:03:02Z
 type: task
 priority: 2
@@ -25,3 +25,12 @@ Wire the newly built ExplorerDocSpecWorkspace (--docspec-workspace) and WeeklyRe
 1. publish-explorer.yml executes within the 2 GiB MemoryMax scope, refreshes explorer_meeting_observations, explorer_meeting_summaries, and explorer_committee_rollups, and writes verified export-pins.json.
 2. update-data.yml updates the 9 weekly retention datasets cleanly via WeeklyRetentionTables.
 
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch kl2a1aa).
+- Grades: proposal 80 → 80, work 65 → 65.
+- Problem: Both docspec workspaces live in `$RUNNER_TEMP` (publish-explorer.yml:104; update-data.yml:197).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:32
+- Status: Closed as superseded by the simplification plan (WS10, ct-r6xw): WS10 deletes the weekly retention mirror and its `update-data.yml` step; the explorer's discarded docspec re-export goes with ct-gi01's engine-first revisit.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

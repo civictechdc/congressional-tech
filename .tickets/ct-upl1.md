@@ -31,3 +31,10 @@ storage/coordinator.py:181-208 performs upserts on news.outlets, news.items, and
 **2026-10-20T17:30:45Z**
 
 Implemented atomic upsert delete+append in one Iceberg transaction, upsert_replace fault points, and monotonic scalar/list merging. Recovery tests cover all upsert crash points with overlapping IDs plus late older polls. Full suite: 281 passed.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch kl2a1aa).
+- Grades: proposal 90 → 90, work 90 → 90.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

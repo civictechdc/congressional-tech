@@ -33,3 +33,10 @@ Apply the existing acceptance criteria to the specific functions and checks in t
 **2026-10-18T20:10:35Z**
 
 accepted_rows now reuses filename_aliases.valid_body, including digest-prefix shard check. Focused wrong-prefix test passes with existing URL/kind/basis/alias behavior.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch d8z3b).
+- Grades: proposal 93 → 95, work 95 → 95.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

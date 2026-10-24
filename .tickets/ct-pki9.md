@@ -23,3 +23,10 @@ Match the upstream workflow name and add a regression comparing the maintained w
 **2026-10-20T16:05:05Z**
 
 Fixed downstream workflow_run to match the maintained capture workflow name. Regression failed on the old name, then all 43 workflow tests passed in 2.34 s. Independently confirmed by migration acceptance reviewer; existing success/repository/push guards remain unchanged. Evidence: review-merge/workflow-name-red.xml and workflow-name-green.xml. Grade A for this bounded correction; no workflows dispatched.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch czsd).
+- Grades: proposal 93 → 93, work 94 → 94.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

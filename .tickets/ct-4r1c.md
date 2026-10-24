@@ -2,7 +2,7 @@
 id: ct-4r1c
 status: closed
 deps: []
-links: [ct-ylaw, ct-atjy]
+links: [ct-ylaw, ct-atjy, ct-70kc]
 created: 2026-10-18T19:44:01Z
 type: task
 priority: 2
@@ -37,3 +37,12 @@ Implemented read-only bounded admission helper: 64 MiB JSON/total events, 1 MiB 
 **2026-10-18T20:15:58Z**
 
 Updated synthetic continuation repository to carry newly pinned helper; complete 17 tests and 5 continuation subtests pass with restart pin addition.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3a).
+- Grades: proposal 78 → 81, work 82 → 84.
+- Problem: A non-object `value` in `write_intent` or `write_verified` events raises a bare AttributeError from `event.get("value", {}).get(...)` (`admission.py:218,220,223`).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:74
+- Covered by: WS4 (ct-70kc), which validates the event shape once.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

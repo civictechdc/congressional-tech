@@ -29,3 +29,10 @@ Define a single shared constant STATISTICS_TRUNCATE_BYTES = 128 in docspec-rs (s
 
 Implemented in `docspec-rs` `eba36fa` (`STATISTICS_TRUNCATE_BYTES = 128` in `src/storage.rs:30`, `src/engine/export.rs`, `src/engine/write.rs:907`, `src/query.rs:500,523`). Verified in `src/query/pruning_tests.rs`, `tests/update_pruning.rs::sha256_string_keys_prune_disjoint_files_on_update`, and on 262,144 sorted production rows (`filenames.parquet`): 64-byte SHA-256 `source_id` keys now prune disjoint files identically to 32-byte keys (`files_reused: 0 -> 6`, `files_scanned: 2`, `single_key_update_sec: 5.11s -> 1.63s` [3.14x faster], `read_keys: 0.219s -> 0.077s` [2.85x faster]).
 
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch standalone).
+- Grades: proposal 94 → 94, work 90 → 90.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

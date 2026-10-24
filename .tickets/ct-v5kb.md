@@ -2,7 +2,7 @@
 id: ct-v5kb
 status: closed
 deps: [ct-l5q1]
-links: []
+links: [ct-7uit]
 created: 2026-10-20T02:20:21Z
 type: task
 priority: 1
@@ -55,3 +55,12 @@ Renderer interruption fixes and maintained caller upgrade/resume are reviewed an
 **2026-10-20T16:02:11Z**
 
 Implemented and independently reviewed: coalesced native storage, exact reusable proofs, one conditional catalog selector, and migrated maintained readers. Production snapshot import, release and retirement are required under ct-2ukk; ct-9vtu and ct-y32m finish initial adoption preparation. Acceptance review: output/incremental-updates-20261019/review-merge/acceptance-20261020.md at 0382cac3. Grades: correctness A-, efficiency B+, DX B+, architecture A-. Local implementation closure does not claim production migration.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch czsd).
+- Grades: proposal 84 → 78, work 80 → 77.
+- Problem: Savings were measured only on a 130-document stub (260 to 2 Run calls).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/czsd/czsd-verdicts.md:41
+- Covered by: WS7 (ct-7uit).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

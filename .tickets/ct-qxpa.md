@@ -36,3 +36,12 @@ Include explicit Catalog.document input bounds, complete-row batch access and th
 **2026-10-18T20:34:06Z**
 
 Complete record/document requests batch by row group under shared lock, with32MiBjoint Arrow row-group cache and explicit one-operation lifetime for oversized groups; source document bounds reject negative/out-of-range/noninteger rows. Export reuses one snapshot-issued exact complete-row selection across evidence pages, while each evidence hash/snapshot/signature remains checked.2member/3page fixture reads2groups instead of3 and selects once; all102focusedtests pass. Cache budget is distinguished from internal one-group decode allocation in receipt.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3b).
+- Grades: proposal 74 → 70, work 84 → 84.
+- Problem: Applies to the legacy file path only. The native path, the only one publication now accepts, builds one SelectedCatalogTable per row (filename_viewer.py:647-669), an O(rows) set of separate reads.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:26
+- Covered by: WS6 (ct-qqk2), which may delete the native v6 path.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

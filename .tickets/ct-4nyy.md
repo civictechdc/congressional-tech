@@ -1,8 +1,8 @@
 ---
 id: ct-4nyy
-status: closed
+status: open
 deps: [ct-jo8n, ct-f11a]
-links: [ct-3li2, ct-f11a, ct-jo8n]
+links: [ct-3li2, ct-f11a, ct-jo8n, ct-d8cf]
 created: 2026-10-20T22:15:53Z
 type: feature
 priority: 2
@@ -42,3 +42,12 @@ CS 300 Grade at 8221566d — Spec: A- | Impl: C+ (Reopened). Enforces C5 export_
 **2026-10-21T02:20:25Z**
 
 Implemented and verified: wired news_lake.analysis.export.export_release(..., docspec_views=...) to DocSpecNewsViews.export_authorized, automatically binding release_read['dataset_pins'] from DocSpecLake.read_release so unchanged C5 tables export directly from their pinned ReleasePin without re-staging.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03a).
+- Grades: proposal 82 → 78, work 75 → 75.
+- Problem: The whole release corpus must be in Python (`release_read['tables']`, export.py:85-92, 108), which is O(corpus) per export.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:17
+- Status: Reopened: revisit under engine-first rule. C5 export rights are implemented twice (Python `export_release` and native `build_c5_export_policy`) with no parity check. WS8 (ct-d8cf) makes the engine policy the single authority (expiry as a native predicate, not an id list) and deletes the Python copy after a differential test that includes `retain_until == now`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

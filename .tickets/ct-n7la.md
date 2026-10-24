@@ -31,3 +31,10 @@ Implemented early and bounded-progress capacity admission without changing nativ
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit validated `packages/congress_api/src/congress_api/retention/native_capacity.py` (`ab4898d9`, `a832b404`). Grade: A−. Note: when `ct-adu0`'s external sort (`ordered.parquet`) is integrated from `docspec-typed-preparation`, ensure `preparation_budget(metadata)` (`native_capacity.py:25-35`) and `_order_sources` scratch/output reservation (`catalog_dependency_preparation.py:348-354`) remain consistent and tested together under `ct-adu0`.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch mi03b).
+- Grades: proposal 86 → 86, work 90 → 90.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

@@ -2,7 +2,7 @@
 id: ct-y32m
 status: closed
 deps: [ct-rcs8]
-links: []
+links: [ct-7uit]
 created: 2026-10-20T15:54:57Z
 type: task
 priority: 1
@@ -28,3 +28,10 @@ Exact retained files avoid remote payload reads; changed selector, hash, size or
 **2026-10-20T16:04:50Z**
 
 Reviewed and integrated as 514243eb with ct-9vtu custody guards. Explicit retained inputs require exact live selector, hash, size and row checks; stale/corrupt files refuse with no remote fallback. Independent 42 tests and combined 62 tests passed; completed CLI retries preserve exact values and perform no new writes/imports. The current retained pair totals 1,087,995,353 bytes, which this path avoids redownloading; this is a byte-count saving, not a measured latency claim. Review: review-merge/retained-input-review.md. Grade A-. Production acceptance remains ct-2ukk.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-SOUND (batch czsd).
+- Grades: proposal 90 → 75, work 90 → 84.
+- Problem: No material finding.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

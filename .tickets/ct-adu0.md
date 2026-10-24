@@ -2,7 +2,7 @@
 id: ct-adu0
 status: closed
 deps: []
-links: [ct-wjce]
+links: [ct-wjce, ct-dzlf]
 created: 2026-10-20T18:24:28Z
 type: task
 priority: 1
@@ -39,3 +39,12 @@ Independent storage advisor supports sorted Parquet plus one sequential Arrow re
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit inspected the uncommitted fix in `/Users/mikewolfd/.codex/worktrees/docspec-typed-preparation/congressional-tech` (`catalog_dependency_preparation.py:262-270,308-507` and `tests/test_catalog_dependency_preparation.py`). Grade: B+. The external sort (`_order_sources`) + sequential window (`_peek`/`_consume`) and single-chunk struct indexing (`table['source_values'].chunk(0)`) directly fix the $60.7\times$ read amplification while preserving `giant=1` isolation, `source_order` data checks, and combined spill+output byte budgets. Remaining action: run the test suite and scale measurement in `docspec-typed-preparation`, verify `native_capacity.preparation_budget` covers `ordered.parquet`, commit, and cherry-pick into `docspec-reuse-integration`.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03a).
+- Grades: proposal 88 → 88, work 74 → 78.
+- Problem: Later regression from ct-2ukk (`48137619`): production-only branches on `PYTEST_CURRENT_TEST` (75 sites across 20 modules).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:22
+- Covered by: WS1 (ct-dzlf), which removes the production-only `PYTEST_CURRENT_TEST` branches.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

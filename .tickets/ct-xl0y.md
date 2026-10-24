@@ -2,7 +2,7 @@
 id: ct-xl0y
 status: closed
 deps: []
-links: [ct-eipa, ct-wmtx, ct-cpio, ct-csyg, ct-oxg6, ct-3li2]
+links: [ct-eipa, ct-wmtx, ct-cpio, ct-csyg, ct-oxg6, ct-3li2, ct-2wsw]
 created: 2026-10-20T18:35:20Z
 type: task
 priority: 1
@@ -38,3 +38,12 @@ Fresh read-only review2026-10-20: F2. Evidence: output/docspec-reuse-20261020/pa
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit validated commits `a0df449` and `82b32df` on `docspec-rs` `main` (`298053b`) and the 129-case scale qualification in `codex/docspec-keyed-updates` (`71128ece`, `docs/experiments/docspec-reuse/native-update-scale.md`). Grade: B+. Integrate the `codex/docspec-keyed-updates` evidence docs/tests into `docspec-reuse-integration`; any further $(F+C)K$ discovery join change must prove a measured reduction on multi-file fixtures without loosening `stale_base` or occurrence ordinal invariants.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03b).
+- Grades: proposal 93 → 93, work 84 → 84.
+- Problem: AC3 (compare a single discovery semi-join against per-file probing) was not done at closure.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:35
+- Covered by: WS11 (ct-2wsw); engine performance work is frozen.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

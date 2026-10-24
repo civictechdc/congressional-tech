@@ -2,7 +2,7 @@
 id: ct-unv0
 status: closed
 deps: []
-links: []
+links: [ct-qqk2, ct-r6xw]
 created: 2026-10-22T17:36:18Z
 type: bug
 priority: 0
@@ -32,3 +32,12 @@ Subagent Self-Review Additions:
 1. pytest.ini:6 (pythonpath): In addition to pytest.ini:2 (testpaths), add packages/docspec_client/src to pytest.ini:6 (pythonpath).
 2. All 6 hyphenated scripts in scripts/publication/: Explicitly migrate all 6 hyphenated scripts (publish-viewer-r2.py, publish-filename-viewer.py, apply-r2-edge-rules.py, backfill-uncompressed-pdfs.py, publish-docspec-runtime.py, filename-test-fixture.py) into packages/viewer_publication so all 37 importlib.util.spec_from_file_location call sites across packages/ and tests/ can be replaced with normal imports.
 3. Additional hardcoded path citation: Also scrub docs/plans/table-audit-and-consolidation-20261021.md:1-210 (50+ hardcoded file:///Users/mikewolfd/Work/congressional-tech/... links committed to git).
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 83 → 83, work 70 → 70.
+- Problem: The move into `viewer_publication` dropped the real publisher modules from the release fingerprint and added two import hacks (a `gc.get_referrers` swap and an empty `sys.modules` stub).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:96
+- Status: Closed as superseded by the simplification plan (WS6 ct-qqk2, WS10 ct-r6xw): WS6 deletes `release_identity.py` (whose fingerprint lost the publisher) and its `sys.modules` stub; WS10 deletes the `scripts/publication` wrappers with the `gc.get_referrers` swap; WS3 moves test-only binary resolution into conftest.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

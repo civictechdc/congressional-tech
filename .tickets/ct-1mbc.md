@@ -2,7 +2,7 @@
 id: ct-1mbc
 status: closed
 deps: []
-links: [ct-atjy, ct-ylaw, ct-fcxg, ct-pd8n]
+links: [ct-atjy, ct-ylaw, ct-fcxg, ct-pd8n, ct-qqk2]
 created: 2026-10-18T19:44:01Z
 type: task
 priority: 3
@@ -35,3 +35,12 @@ Added describe-attempt read-only lookup, exact original revision/run/artifact ID
 **2026-10-18T20:33:12Z**
 
 Independent review corrections: argparse now runs inside failure reporting with only explicitly supplied report/directory safely recovered for invalid command/flag/missing-value errors; SystemExit2 survives while stale prepared report becomes failed. Artifact verification/discovery require expired is exactly False, so missing/null/string/zero never count as known unexpired.21focused tests passed including parse failures and malformed expiry.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3a).
+- Grades: proposal 83 → 72, work 80 → 76.
+- Problem: Regression on main. Commit fb9ed402 (Oct 24) removed the historical test-path shim, so a workflow resume of an attempt from before the test move fails its fixture step.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3a/d8z3a-verdicts.md:72
+- Covered by: WS6 (ct-qqk2), which deletes the resume route.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

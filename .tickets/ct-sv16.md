@@ -2,7 +2,7 @@
 id: ct-sv16
 status: closed
 deps: []
-links: [ct-idhg, ct-jl1m, ct-rrfm]
+links: [ct-idhg, ct-jl1m, ct-rrfm, ct-2wsw]
 created: 2026-10-18T19:21:16Z
 type: task
 priority: 2
@@ -40,3 +40,12 @@ Completed bounded pinned fixture measurement with reproducible scripts/measure_p
 **2026-10-18T20:57:03Z**
 
 Measurement refinement: each timed command stage now starts with a cold source-identity cache, matching separate prepare/publish/no-op/resume CLI processes while preserving within-command reuse. Receipt explicitly excludes interpreter/import startup and actual GitHub Actions setup. Re-ran exact <=1MiB fixture pin b74045a6dbddaab6a3a53a75071d36c1098a1bacd3da26f3ea361709a89ba6d1 at 1ms modeled request latency; all five stages retained expected outcomes and positive source/full-integrity hash bytes. Smoke receipt /tmp/publication-control-cold-command-stages/costs.json. Root will retain final alternating-pair comparison; no production inference.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch d8z3b).
+- Grades: proposal 83 → 83, work 75 → 75.
+- Problem: "Complete publication costs" was narrowed to a 1 MiB toy with a modeled 1 ms latency.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/d8z3b/d8z3b-verdicts.md:31
+- Covered by: WS11 (ct-2wsw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

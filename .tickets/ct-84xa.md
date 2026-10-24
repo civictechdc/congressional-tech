@@ -2,7 +2,7 @@
 id: ct-84xa
 status: closed
 deps: []
-links: [ct-0odd, ct-aia9, ct-ec91, ct-te1p, ct-3ttc, ct-gi01, ct-8kl2, ct-2yl5, ct-bwac, ct-1qbq]
+links: [ct-0odd, ct-aia9, ct-ec91, ct-te1p, ct-3ttc, ct-gi01, ct-8kl2, ct-2yl5, ct-bwac, ct-1qbq, ct-t906]
 created: 2026-10-22T04:03:02Z
 type: task
 priority: 1
@@ -26,3 +26,12 @@ Apply the declarative Cloudflare R2 Custom Domain, CORS, WAF allowlist, and Resp
 2. Requests to non-allowlisted prefixes (e.g. /state/* or /manifests/*) are blocked with 403 by the Cloudflare WAF rule.
 3. node apps/site/scripts/verify-live-publication.mjs passes against the live domain.
 
+
+## Audit 2026-10-24
+
+- Verdict: CANNOT-VERIFY (batch kl2a1aa).
+- Grades: proposal 81 → 81, work 62 → 62.
+- Problem: `apply` PUTs the zone entrypoint rulesets for `http_request_firewall_custom` and `http_response_headers_transform` (:278, :284).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/kl2a1aa/kl2a1aa-verdicts.md:28
+- Covered by: WS5 (ct-t906), which makes `apply` merge by rule `ref`.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

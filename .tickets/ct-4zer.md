@@ -2,7 +2,7 @@
 id: ct-4zer
 status: closed
 deps: [ct-2d3k]
-links: [ct-d3un]
+links: [ct-d3un, ct-2wsw]
 created: 2026-10-19T16:40:41Z
 type: task
 priority: 1
@@ -38,3 +38,12 @@ Measured exact merged3757f55 against bounded row-group candidate on8192 syntheti
 **2026-10-19T19:39:00Z**
 
 Independent review accepted the measured retain-current decision at 9918394. All 30 paired results match; cache candidate misses the latency target and increases memory. Production search remains unchanged; 104 retained checks pass.
+
+## Audit 2026-10-24
+
+- Verdict: SUPERSEDED (batch standalone).
+- Grades: proposal 82 → 70, work 75 → 75.
+- Problem: The fixture was 8,192 synthetic sources (~0.5% of the 1.68M-row catalog whose search took 27.5 s), so it can't see the real bottleneck; the doc admits none was profiled.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/standalone/standalone-verdicts.md:35
+- Covered by: WS11 (ct-2wsw).
+- See docs/reviews/2026-10-24-ticket-audit/README.md

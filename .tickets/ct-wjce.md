@@ -2,7 +2,7 @@
 id: ct-wjce
 status: closed
 deps: [ct-adu0]
-links: []
+links: [ct-2wsw]
 created: 2026-10-20T20:12:37Z
 type: task
 priority: 2
@@ -25,3 +25,12 @@ tags: [docspec, efficiency, debt]
 **2026-10-20T20:18:00Z**
 
 CS 300 / evolutionary-refactoring audit promoted `ct-wjce` from the untracked file in `docspec-typed-preparation` into the central `ct-mi03` ticket set and linked it to `ct-adu0` and `ct-nc7l`.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03b).
+- Grades: proposal 91 → 85, work 77 → 77.
+- Problem: AC3 said adopt only if measured allocations, RSS or wall time improve; no measurement exists, yet the change was adopted.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03b/mi03b-verdicts.md:36
+- Covered by: WS11 (ct-2wsw); `chunk(0)` stays on the keep list.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

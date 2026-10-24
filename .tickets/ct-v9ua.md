@@ -2,7 +2,7 @@
 id: ct-v9ua
 status: closed
 deps: []
-links: []
+links: [ct-63hg, ct-snzi]
 created: 2026-10-22T18:42:15Z
 type: task
 priority: 1
@@ -32,3 +32,12 @@ Empirical raw-data and physical metadata audit of adoption-inputs/state.parquet 
 2. physical_body_object_key(sha256) / read helpers reconstruct body_key losslessly for all downstream consumers.
 3. All raw_archive and raw_storage tests pass.
 
+
+## Audit 2026-10-24
+
+- Verdict: PARTIAL (batch syem).
+- Grades: proposal 72 → 72, work 50 → 50.
+- Problem: Data-integrity bug: gz captures appended since Oct 22 record a wrong stored-object digest, which corpus_recovery trusts (transfer.py:125,136).
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/syem/syem-verdicts.md:114
+- Status: Closed as superseded by the simplification plan (P3, done in `54a68ac7`, ct-snzi): the capture schema carries `stored_sha256` and leaves it null when unknown; rows written Oct 22-24 are checked and repaired in place by ct-63hg. The size saving is not carried.
+- See docs/reviews/2026-10-24-ticket-audit/README.md

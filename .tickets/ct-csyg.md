@@ -1,8 +1,8 @@
 ---
 id: ct-csyg
-status: closed
+status: open
 deps: [ct-xl0y, ct-clvr, ct-cpio]
-links: [ct-nloa, ct-eipa, ct-ur2y, ct-qkvr]
+links: [ct-nloa, ct-eipa, ct-ur2y, ct-qkvr, ct-98sm]
 created: 2026-10-20T19:23:00Z
 type: task
 priority: 3
@@ -56,3 +56,12 @@ Implemented in docspec-rs (96e38262): (1) replace_keys (src/engine/write.rs:606-
 **2026-10-21T15:17:46Z**
 
 Scale review 2026-10-21: query pushdown pruning (file_matches_inexact_filters) was correct but untested; docspec-rs 381108c adds exhaustive oracle tests and replaces an O(files^2) per-probe file lookup. Key-bound pruning quality for news_lake depends on clustered ids: ct-ur2y.
+
+## Audit 2026-10-24
+
+- Verdict: LANDED-CONCERNS (batch mi03a).
+- Grades: proposal 88 → 88, work 75 → 75.
+- Problem: At 00:31Z the ticket's own note rejected a hand-written evaluator as duplicating iceberg's maintained, crate-private evaluators.
+- Evidence: docs/reviews/2026-10-24-ticket-audit/batches/mi03a/mi03a-verdicts.md:29
+- Status: Reopened: revisit under engine-first rule. About 1,500 lines of hand-written predicate evaluation (docspec-rs `src/query.rs`, `src/engine/key_pruning.rs`) duplicate iceberg's maintained evaluators, which this ticket's own note rejected; the plan's keep list had kept it. Decide whether to expose or upstream iceberg's evaluator instead. Context: docspec-rs epic ss-oxg1; linked to ct-98sm.
+- See docs/reviews/2026-10-24-ticket-audit/README.md
