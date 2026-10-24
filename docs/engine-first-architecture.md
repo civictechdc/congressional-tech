@@ -129,6 +129,11 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
 - Receipts are the authoritative history of what was captured and when.
 - Written create-only after the run's bodies, so every receipt line points at a body that
   exists.
+- **Recovery imports** write receipts too. Their lines say `mode: retained_import`, carry
+  a synthetic HTTP 200, and name the recovery kind and the original link the content
+  recovers. Example: the Oct 15 run's 5,587 lines are recovered copies, excerpts from the
+  official hearing record and official substitutes, all attached to links the publisher
+  no longer serves directly.
 - **Older receipts** also sit under non-date segments (`undated/`, `mixed-dates/`; 49
   files, 2.2M rows). New writers never use them.
 
@@ -136,10 +141,6 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
 - **Contents:** every decision a person or a reviewed process makes about sources, such as
   accepted URL variants, recovery bases and document review decisions, as append-only,
   timestamped records.
-- **Capture corrections** are provenance records too. One marks a receipt line's body as
-  not a faithful copy of its URL, and the model then never treats that body as the URL's
-  document file. Example: an Oct 15 recovery run recorded 2-page PDFs as exact copies of
-  six Ways and Means transcripts that the House still serves in full.
 - **Corrections are new records** that supersede old ones by ID. Old records are never
   edited.
 
@@ -175,6 +176,8 @@ become orphans (5.4).
 - **Rows:** one per fetch attempt. Unique on `(receipt_key, receipt_line)`, sorted by
   `(url, attempt_seq)`, with hashes as binary. No derivable columns. A compact form
   measured 157 MB for all 3.9M rows and 315 KB for a normal day.
+- **Recovery imports keep their identity:** `mode`, `publisher_requested`, the recovery
+  kind and the original link are columns, so the model can tell an import from a fetch.
 - **Ingest:** for each receipt family, list only date-shaped prefixes, starting from the
   newest date already ingested; anti-join against ingested receipt keys; append the
   missing ones in one commit. Listing cost grows with new receipts, not with all of them.
@@ -252,7 +255,7 @@ become orphans (5.4).
 | `filenames` | One row per source file: a `(body, filename, source URL)` triple, whose SHA-256 is `source_id` |
 | `documents` | Source files grouped by the engine's ConnectedComponents; `document_id` is the SHA-256 of the sorted body set, or of the sorted source IDs when there is no body |
 | `members` | `(document_id, source_id)` |
-| `recoveries`, `reviews` | Resolved from provenance and captures |
+| `recoveries`, `reviews` | Resolved from provenance and captures; each recovery is attached to its original link, with its kind and evidence |
 
 - **ID formulas** keep today's exact inputs, including the logical body key string
   `bodies/sha256/<aa>/<sha>.gz`, whatever the physical key. IDs then match the pinned
@@ -265,6 +268,7 @@ become orphans (5.4).
   canonical endpoint (filename plus URL) when the files there have the same content.
   Connections chain.
 - **Real files.** A body is a document file only if all of these hold:
+  - it was a real fetch, not a recovery import, whose HTTP 200 is synthetic;
   - the fetch was complete: outcome `stored` or `unchanged`, never `size_limit` or
     `request_failed`, whatever the HTTP status;
   - the HTTP status was 2xx;
@@ -272,8 +276,7 @@ become orphans (5.4).
     web pages. The server's `Content-Type` is never used, because it mislabels error pages.
     E1 writes down how a web page is recognized, so that a landing page in front of a PDF
     doesn't count;
-  - it is not empty, not a placeholder, and not API metadata or a playlist;
-  - no capture correction excludes it (4.3).
+  - it is not empty, not a placeholder, and not API metadata or a playlist.
 
   Everything else stays in raw and `captures` as evidence. It never enters a document's
   body set, so it never changes the document's ID, saved file or links.
@@ -284,7 +287,8 @@ become orphans (5.4).
   - 413 shared an empty body from playlist URLs, and 120 were API JSON;
   - about 236 were cut-off downloads, and 43 were placeholders;
   - 38 were other error or block pages (one glued 78 unrelated documents together);
-  - 6 were bad transcript captures from the Oct 15 run.
+  - 6 were hearing-record excerpts recovered for Ways and Means links, which the old
+    index had flattened into fetches of the transcript URLs.
 
   Two were genuinely different publisher versions.
 - **One URL, several complete files.** Their text fingerprints (5.2) decide:
@@ -305,6 +309,12 @@ become orphans (5.4).
   source files.
 - **Saved file.** The page links the document's newest real file, with ties broken by
   body hash, never by physical file order. Most documents have exactly one.
+- **Recoveries are evidence for the original link,** never files the recovering URL
+  served. They stay out of `url_state`, text comparison and `links`. Every recovery is
+  shown on the original link's page, labeled by kind with its evidence, and none poses as
+  the original file. The kinds on the Oct 15 run: recovered copy (5,154), excerpt from the
+  official hearing record (341), and a named official substitute such as an updated
+  revision or the introduced bill (92).
 - **Grouping runs in memory** over 32-bit IDs and refuses above a configured node count.
   The parent array is 16 MB at 4M nodes. Assigning dense IDs to the node keys is a hash
   aggregation of a few hundred MB, which sizes the memory pool. Spilling would be wasted
@@ -317,7 +327,7 @@ the list row number links them.
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
 | `list.parquet` (about 4 MB) | `(filename, first_captured, document_id)` | Display name, facet fields and first-captured date; no ID | Downloaded whole, decoded column by column in a Web Worker | Defaults; no page index |
-| `detail.parquet` | Same row order as `list` | One folded `List<Struct<field, value>>` per row of document-level facts: original URL, saved file (key, media type), first and last capture dates, the document's readings, occurrence row range | One page per leaf column, located by the offset index | Offset index on every column; pages of about 16 KB or 256 rows, with the write batch no larger |
+| `detail.parquet` | Same row order as `list` | One folded `List<Struct<field, value>>` per row of document-level facts: original URL, saved file (key, media type), first and last capture dates, the document's readings, recoveries (kind, evidence, file key), occurrence row range | One page per leaf column, located by the offset index | Offset index on every column; pages of about 16 KB or 256 rows, with the write batch no larger |
 | `links.parquet` (about 14 MB) | `link_key` | 8-byte link key and list row | Point lookup via the column index | Offset index and page statistics on `link_key`; small pages |
 | `occurrences.parquet` (about 30 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, filename, capture date | The range named in `detail` | Offset index on every column |
 | `url_state.parquet` (about 40 MB) | `url` | Latest outcome and retry schedule per URL | Read whole by the capture job, not the site | Defaults |
@@ -579,8 +589,7 @@ today's scale and at 10 times it.
 Decided by the owner on Oct 24: one bucket; `r2.dev` open; documents only; links by file
 fingerprint; 16-hex public keys; desktop and mid-range phones; only real files count as a
 document's files; a document is one distinct content, showing its newest bytes; capture
-dates shown; cut-off copies re-fetched; the Oct 15 recovery run investigated and
-corrected; hyparquet in the browser; uncompressed copies of older PDFs only; no early
+dates shown; cut-off copies re-fetched; recoveries shown, labeled by kind; hyparquet in the browser; uncompressed copies of older PDFs only; no early
 launch on the converted Oct 19 release.
 
 ## Reviews
@@ -609,7 +618,7 @@ and the owner's decisions:
 | Determinism missing chunking | Fixed row counts per row group; batch sizes and spills tested (6.3) |
 | `list` decoded as objects | Column-by-column decode, heap budget in canary and contract test (7) |
 | Grouping rule and untyped bodies unspecified | *k* = 100 from measurement, HTML reason, untyped bodies out of scope (5.2, 6.1) |
-| Owner decisions | Documents only, file links, real files only, one document per distinct content, capture dates, no cut-off copies, capture corrections, older-copy handling (4.1–4.3, 5.2, 6.1, 6.2, 7) |
+| Owner decisions | Documents only, file links, real files only, one document per distinct content, capture dates, no cut-off copies, recovery imports as labeled evidence, older-copy handling (4.1–4.2, 5.2, 6.1, 6.2, 7) |
 
 ## Appendix: path from the current system
 

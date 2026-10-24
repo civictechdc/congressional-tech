@@ -284,3 +284,47 @@ distinct content.
   distinguishable.
 - There are no separate "other editions" links: same-filename editions sort side by side.
 - Caveat: about 1M files from the Sept 29 backfill carry the import day as their capture time.
+
+## Decision 7 outcome and decision 10 (2026-10-24, later)
+
+**What the Oct 15 run was.** `receipts/documents/2026-10-15/download-filename-recovery-all-20261015-*`
+is 56 receipt files with 5,587 lines, read from the public `r2.dev` bucket address. Every line is
+a recovery import, not a fetch:
+- `mode: retained_import`, `publisher_requested: false`, `http_status: 200` (synthetic);
+- `recovery_evidence.current_publisher_status_not_tested: true`;
+- `acquisition.source: user_accepted_recovery`, `match: same_publisher_filename_variant`;
+- 5,579 attach recovered content to a URL other than the original link.
+
+Payloads came from `.cache/nara-filename-estimate-20261015/*`: Wayback continuation 2,278, Common
+Crawl 561, Wayback variants 519, and others. Recovery kinds (`acquisition.prior_access_category`):
+
+| Kind | Count |
+|---|---:|
+| `recovered_document` | 5,154 |
+| `requested_content_in_official_hearing` (excerpts) | 341 |
+| `official_updated_revision_available` | 49 |
+| `official_introduced_bill_counterpart` | 8 |
+| `official_recorded_votes_available` | 8 |
+| `requested_content_in_official_report` | 7 |
+| `official_complete_statement_text_available` | 5 |
+| `official_alternate_amendment_available` | 5 |
+
+The six Ways and Means "2-page transcripts" are hearing-advisory excerpts extracted from the
+official hearing record (evidence file `waysmeans-package-final/advisory-content-recovered.json`),
+recovered for links like `waysandmeans.house.gov/?type=document&p=397940`. The old capture index
+flattened them into "HTTP 200 from the transcript URL" rows.
+
+**Correction is a model rule, not a raw edit.** The receipts already say what happened.
+- `captures` keeps `mode`, `publisher_requested` and the recovery kind.
+- The model treats `retained_import` rows as recovery evidence for the original link. They are
+  never "a file the variant URL served", never url_state, never in version or text comparison,
+  never in the file-to-document link lookup.
+- Decision 5's "2xx" test must also require a real fetch (`mode` not `retained_import`), because
+  imports carry a synthetic 200.
+
+**Decision 10.** Show all recoveries on the explorer, labeled by kind, with their evidence:
+- 5,154 exact recovered documents;
+- 341 "excerpt from the official hearing record";
+- 92 official substitutes.
+
+Nothing pretends to be the original file.

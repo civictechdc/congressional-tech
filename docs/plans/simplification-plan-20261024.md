@@ -42,10 +42,11 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 10 | A document is one distinct content; its page links its newest real file | Text fingerprints only where one URL gave 2+ complete files (D2); the rule is part of E1. |
 | 11 | hyparquet stays in the browser | Page reads through offset indexes (A1, C3). |
 | 12 | Older gzip PDFs get uncompressed copies; other older bodies unpack in the browser | B13 and A5. |
-| 13 | Only real files count as a document's files: complete, 2xx, a document type by sniffed format, non-empty, not a placeholder, API metadata or playlist, and not corrected away | Receipts record the sniffed format (B2); older bodies without one get a ranged sniff (D2); the rule is part of E1. |
+| 13 | Only real files count as a document's files: a real fetch (not a recovery import), complete, 2xx, a document type by sniffed format, non-empty, and not a placeholder, API metadata or playlist | Receipts record the sniffed format (B2); older bodies without one get a ranged sniff (D2); the rule is part of E1. |
 | 14 | No early launch: the explorer waits for the engine-built release | F0 is the reader's fixture and the parity oracle only. |
 | 15 | Re-fetch the 62 URLs that only have a 64 MiB cut-off copy; a size-limit outcome means retry | B2 and B14. |
-| 16 | Investigate, then correct, the Oct 15 recovery run | B15; corrections are new provenance records. |
+| 16 | Investigate the Oct 15 recovery run | Done: its 5,587 lines are recovery imports, not bad downloads, so no raw correction is needed. Captures keep the import fields (D1); imports are never real files (E1). |
+| 18 | Show every recovery, labeled by kind with its evidence | A7 and E2: recovered copy, excerpt from the official hearing record, or the named official substitute. Nothing poses as the original file. |
 | 17 | Show capture dates | A6 and E2. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
@@ -152,6 +153,9 @@ run beside C. Estimated total: **8–16 weeks**.
    opened with the media type from `detail`.
 6. **Capture dates:** the first-captured date in list rows, so same-filename editions
    read apart, and the first and last capture dates on the document page.
+7. **Recoveries:** each one on its original link's page, labeled by kind (recovered copy,
+   excerpt from the official hearing record, or the named official substitute), with its
+   evidence and a link to the recovered file.
 
 **Done when:** the site loads F0 locally on desktop and in a phone-sized profile, and the
 canary passes against F0 in under a minute.
@@ -208,16 +212,15 @@ This code survives, so it is fixed now.
     hours. Copies that already exist return 412 and are skipped.
 14. **Re-fetch the cut-off files** (week 1, in today's capture path): the 62 URLs whose only
     copy was cut off at 64 MiB. The cut-off copies stay in raw.
-15. **Audit the Oct 15 recovery run** (`receipts/documents/2026-10-15/download-filename-recovery-all-*`):
-    trace what produced 2-page PDFs recorded as exact copies of six Ways and Means
-    transcripts; check the run's 5,587 captures, for example page counts against the
-    publisher's current size by HEAD; then write capture-correction records under
-    `provenance/` (design §4.3). Nothing is edited or deleted. The Iceberg/Parquet review
-    session offered the owner a separate session for this.
+15. **The Oct 15 recovery run: done, no correction needed.** The Iceberg/Parquet review
+    traced `receipts/documents/2026-10-15/download-filename-recovery-all-*`: all 5,587
+    lines are `retained_import` recoveries with a synthetic HTTP 200 (5,154 recovered
+    copies, 341 hearing-record excerpts, 92 official substitutes). The old capture index
+    had flattened them into fetches. What remains is in D1 and E1.
 
 **Done when:** the refusal matrix passes, the lock is on, one capture run's `stored` lines
 carry MD5s that match the stored ETags, every older gzip PDF has its copy, the 62 cut-off
-URLs have complete copies or a recorded reason, and the Oct 15 corrections are recorded.
+URLs have complete copies or a recorded reason.
 
 ### C. Engine capabilities (docspec-rs)
 
@@ -256,6 +259,8 @@ threads and batch sizes, on the smallest runner.
    - backfill from all 2,289 receipts (1.08 GB compressed), including the non-date
      segments (`undated/`, `mixed-dates/`: 49 files, 2.2M rows); older receipt shapes are
      mapped in the ingest SQL, with a test sample of each shape;
+   - recovery imports keep `mode`, `publisher_requested`, the recovery kind and the
+     original link as columns;
    - the rebuild-equivalence test;
    - **compare with the pinned old capture index** (3,909,134 rows) as row multisets, on
      receipt-derived columns only. A row that exists only in the old index is a fact raw
@@ -279,14 +284,15 @@ comparisons pass.
 
 1. **Write the grouping rule down first,** as SQL with a short rationale:
    - which responses are real files (decision 13), including how a web page is
-     recognized and how capture corrections exclude a body;
+     recognized; recovery imports are evidence for their original link, never real files,
+     `url_state`, fingerprint candidates or link keys;
    - the edge set, in which placeholders (*k* = 100) and HTML connect nothing, and a
      shared endpoint connects two complete files only when their text fingerprints match
      (decision 10);
    - the saved file: the newest real file, ties broken by body hash.
 2. **The model SQL** (design §6.1): `url_state`, `filenames`, `documents`, `members`,
    `recoveries`, `reviews`, and the release files, with `list` sorted by filename and then
-   first-captured date.
+   first-captured date, and every recovery labeled by kind (decision 18).
 3. **Golden vectors** for `source_id` and `document_id`, generated from Python
    `source_identity` and `compute_document_id` (`retention/index/bipartite.py:165,197`) and
    checked in the engine's tests. The formulas keep the logical body key string
@@ -294,8 +300,8 @@ comparisons pass.
 4. **Parity against F0,** on browser-visible fields, joined by link key so that documents
    regrouped by the new rule still pair up. Expect many `document_id`s to change, all from
    rule changes: about 30k documents lose error pages from their body sets, about 4,900
-   lose Senate landing pages, cut-off and corrected copies drop out, and the HTML rule
-   gives about 1.26M documents against 1.24M. Classify each difference:
+   lose Senate landing pages, cut-off copies and recovery imports drop out of body sets,
+   and the HTML rule gives about 1.26M documents against 1.24M. Classify each difference:
    - a rule change: fine, recorded with the rule;
    - an old-pipeline error: the new model wins;
    - a fact that exists only in derived tables: a blocker (open question 3).
@@ -411,8 +417,8 @@ These survive the switch unchanged:
 
 | When | Work |
 |---|---|
-| Week 1 | P4 lock; M1; M2; F0; C0; B13, B14 and B15 start; A and B start |
-| Weeks 2–3 | A and B done, including B13–B15; C under way |
+| Week 1 | P4 lock; M1; M2; F0; C0; B13 and B14 start; A and B start |
+| Weeks 2–3 | A and B done, including B13 and B14; C under way |
 | Weeks 2–6 | C (3.5–5.5 weeks) |
 | Then | D (1–2 weeks), E (2–4 weeks), F (1–2 weeks) |
 
