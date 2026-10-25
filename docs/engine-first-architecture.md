@@ -1,6 +1,6 @@
 # Engine-first architecture
 
-Status: proposed, revision 8, 2026-10-24. Owner: Mike Deeb. This document describes the
+Status: proposed, revision 9, 2026-10-24. Owner: Mike Deeb. This document describes the
 target system as it should be, independent of how the current code works. Column-level
 schemas, derivations and test invariants are in `docs/engine-first-data-model.md`. The
 path from today is in `docs/plans/simplification-plan-20261024.md`, and the appendix
@@ -14,9 +14,9 @@ the first is precious:
 
 1. **Raw log.** An append-only, content-addressed record of every fetch attempt, every
    body and every human decision. It is never rewritten.
-2. **Lake.** Five append-only engine tables derived from the log: what was captured,
+2. **Lake.** Six append-only engine tables derived from the log: what was captured,
    what each body says, what each filename says, which page linked each file, and the
-   committee records. Each row is computed once.
+   committee and meeting records. Each row is computed once.
 3. **Releases.** Immutable Parquet produced by one deterministic SQL job over the lake. A
    single pointer selects the live release.
 
@@ -30,14 +30,17 @@ declarative SQL and the site.
 2. **Append or replace, never update.** Logs only grow. Derived outputs are recomputed and
    swapped atomically. No row is edited in place. (Catalog compaction rewrites files, not
    rows.)
-3. **Do each thing once.** Every body is fetched, stored, hashed and parsed once per
-   parser version. Every per-item computation, such as parsing a body or reading a
-   filename, has a lake table keyed by its inputs, so it never runs twice. Platform
+3. **Do expensive work once.** Every body is stored, hashed and parsed once per parser
+   version. Every expensive per-item computation, such as parsing a body or reading a
+   filename, has a lake table keyed by its inputs, so it never runs twice. Capture still
+   re-fetches URLs on their recheck schedule; that is the point of capture. Platform
    primitives (content addressing, conditional writes, Content-MD5, ETags, catalog
    commits) replace hand-built bookkeeping.
-4. **Cost grows with change, not with history.** Recurring jobs do work in proportion to
-   what is new. Where a whole-collection pass is unavoidable, it reads listings or
-   metadata, never bodies.
+4. **Expensive cost grows with change, not with history.** Fetching, parsing and uploading
+   grow with what is new. Some cheap passes over history are accepted and named: work-list
+   anti-joins scan the keys already processed, the model recomputes over every row each
+   run (seconds), and the weekly check lists every body's metadata. None of them reads
+   bodies.
 5. **Engine first.** Data movement, joins, grouping, aggregation and export live in
    docspec-rs. Application policy is passed in as SQL and specs, never compiled into the
    engine.
@@ -53,7 +56,7 @@ Measured on the Oct 19 snapshot (CS300 review, section 0):
 
 | Quantity | Measured |
 |---|---|
-| Fetch attempts (capture rows) | 3.9M, in 2,289 receipt files |
+| Capture rows, receipt lines | 3.9M rows over 2.6M receipt lines (one line per fetch attempt), in 2,289 receipt files |
 | Distinct bodies | 1.04M, 0.70 TB stored (PDF 365 GB, ZIP 286 GB, untyped 37 GB, HTML 4.5 GB, XML 0.8 GB) |
 | Distinct URLs | 1.16M |
 | Source files, catalog rows, occurrences | 1.68M, 1.24M, 4.7M |
@@ -66,7 +69,7 @@ At this scale, recomputing the model from the lake is cheaper and simpler than
 maintaining it incrementally. A DuckDB proxy of the narrow relational plan ran in 3.7 s
 with 1.75 GB of memory, and connected components over the real 4M-node graph took 1–2 s
 in plain Python. The proxy left out the wide data (filename readings, occurrences), so the
-week-one measurement includes it (appendix, step 1). The only per-item work that must not
+first measurement includes it (appendix, step 1). The only per-item work that must not
 be repeated is fetching, parsing bodies and reading filenames.
 
 ## 3. System overview
@@ -87,6 +90,7 @@ LAKE (Iceberg, append-only)
   filename_readings  one row per (filename, URL, catalog)       O(new pairs)
   page_links         one row per link found in a fetched page   O(new receipts)
   committee_records  one row per committee in an API response   O(new API bodies)
+  meeting_records    one row per meeting in a meeting response  O(new meeting bodies)
         │
         ▼  docspec-rs: one SQL plan, deterministic export
 RELEASE (immutable)
@@ -123,6 +127,10 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
   64 MiB and recorded them as HTTP 200 with outcome `size_limit` or `request_failed`.
   Those copies stay in raw as evidence; they are never document files, and capture
   retries their URLs.
+- **A crash between a body and its receipt.** If a run stores a body and dies before
+  writing its receipt, the body exists without a creating line; a retry gets a 412 and
+  records `unchanged`. The weekly check finds such bodies and re-hashes each one once,
+  recording the result under `provenance/verification/`, so every body stays verifiable.
 
 ### 4.2 Receipts
 - One immutable file per fetch run, keyed by its UTC write date. A line is about 1 KB;
@@ -170,6 +178,10 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
 - **Full re-hash** is an explicit job. It runs once for bodies written before receipts
   carried an MD5, and records their ETags as a verification baseline under
   `provenance/verification/`. After that it runs only before a migration.
+- **What "forever" rests on** (owner decision): raw is kept in one Cloudflare R2 bucket
+  with no second copy elsewhere. The lock guards against deletion and overwrite by any
+  credential; R2's own durability guards against hardware loss. A provider-side loss is the
+  accepted risk.
 
 ## 5. Lake
 
@@ -184,7 +196,12 @@ commits to the same tables, so an append can lose a race. On a conflict the writ
 the table, recomputes its work list (the anti-join) against the new snapshot, writes only
 what is still missing, and retries a bounded number of times. Re-sending the losing files
 could duplicate rows when two runs ingest the same receipts. Files from a losing attempt
-become orphans (5.6).
+become orphans (5.7).
+
+**Completion rows.** `page_links`, `committee_records` and `meeting_records` find their
+work by looking for inputs with no rows yet. An input that produces nothing, such as a
+receipt with no links, gets one completion row in the same commit, so it isn't reprocessed
+on every run.
 
 ### 5.1 `captures`
 - **Rows:** one per body a receipt line references, plus one line-only row (no body) for
@@ -279,7 +296,17 @@ become orphans (5.6).
 - **Source.** `acquisition/committees.py` fetches through the raw writer like every other
   fetch, instead of writing its own output file, so names derive from raw.
 
-### 5.6 Maintenance
+### 5.6 `meeting_records`
+- **Rows:** one per meeting in a meeting response: chamber, event ID, congress, title, date,
+  type and committees. Tens of thousands of rows.
+- **Why a table** (owner decision). Hearing pages need a title, date, type and committee,
+  and those live only in meeting data. It also gives the committee explorer a raw source
+  when it is re-scoped.
+- **Source.** `acquisition/meetings.py` fetches the Congress.gov meeting JSON, its XML
+  fallback and the House and Senate meeting inventories through the raw writer, instead of
+  writing its own files.
+
+### 5.7 Maintenance
 - **Basin Catalog maintains the tables:** compaction (target 128 MB) and snapshot
   expiration (older than 30 days, keep the last 5), enabled per table. Expiration also
   deletes the data files that only expired snapshots referenced. Compaction is a paid Basin
@@ -295,7 +322,7 @@ become orphans (5.6).
 
 ### 6.1 Model
 - The domain model is versioned SQL in the application repo.
-- One docspec-rs job registers the five lake tables and the provenance records, evaluates the plan, and writes every output as a release file.
+- One docspec-rs job registers the six lake tables and the provenance records, evaluates the plan, and writes every output as a release file.
   There are no intermediate tables.
 
 | Output | Content |
@@ -400,16 +427,28 @@ become orphans (5.6).
   `<document>` element on one page), or else files in one directory with the same filename
   stem and document extensions, excluding generic stems such as `index` or `download`.
   The parity check reports these merges by cause.
+- **Editions stay apart** (owner decision). At an address where the publisher replaced a
+  file with different content (about 148 today), no format edge is drawn, so an old draft
+  is never grouped with, or shown as, the current edition. E1 adds adversarial test cases.
+- **Archive members are judged by their own path** (owner decision). A file inside a ZIP is
+  classified and named by its path inside the archive, not by the ZIP's URL; otherwise
+  34,331 real web pages inside ZIPs would be rejected because the container ends in `.zip`.
+- **Reviewers can correct grouping** (owner decision). A reviewer's "duplicate of" merges
+  two documents, and "hide" removes a document from search while its links open a "removed
+  by review" note with the reason and date (data model §3.7).
+- **Grouping cost stays linear.** Files connect through one node per body, fingerprint or
+  format group, so a group of n files costs n edges, not n².
 - **Saved file, PDF first** (owner decision). The page links the document's PDF if it has
   one, and otherwise its newest real file by first fetch; files with no fetch date go last
   and ties are broken by body hash, never by physical file order. Other formats are listed
-  as alternates, and a link to any rendition opens the same entry.
+  as alternates, and a link to any rendition opens the same entry. A recovery-only
+  document's saved file is its recovery, labeled as one.
 - **Meetings, dates and official records** (owner decisions):
   - each source file gets a meeting reference (chamber and event ID) from its URL, from the
     meeting page that linked it, or from a House meeting XML record's document list; a
     document carries its members' set. House and Congress.gov meeting IDs are one ID space,
     the same event ID the committee explorer uses, so a page can list every document for a
-    hearing;
+    hearing, under the hearing's title, date, type and committee from `meeting_records`;
   - a document date comes from the meeting date or a single unambiguous date in the
     filename, never a guess, and stays separate from the first-captured date;
   - official record keys (the GovInfo package, bills as `{congress}-{type}-{number}`, member
@@ -443,8 +482,8 @@ the list row number links them.
 
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
-| `list.parquet` (about 2.2 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, document date, first-captured date, the document's meeting, and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | `filename` delta-encoded without a dictionary (21% smaller, measured); 65,536-row groups; no page index |
-| `detail.parquet` (40–50 MB) | Same row order as `list` | A typed core of what the site acts on (the link key, the saved file's key, occurrence start and length, recoveries as a list of kind, file key and date, alternate formats as a list of format, file key and size, meetings, the GovInfo package, bill keys and Bioguide IDs) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
+| `list.parquet` (about 2.2 MB) | `(filename, first_captured, document_id)` | Display name, facet fields (every value a file has, owner decision), a hidden-by-review flag, document date, first-captured date, the document's meeting, and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | `filename` delta-encoded without a dictionary (21% smaller, measured); 65,536-row groups; no page index |
+| `detail.parquet` (50–70 MB) | Same row order as `list` | A typed core of what the site acts on (the link key, the saved file's key, occurrence start and length, recoveries as a list of kind, file key and date, alternate formats as a list of format, file key and size, meetings, the GovInfo package, bill keys and Bioguide IDs) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
 | `links.parquet` (7–9 MB) | `link_key` | 8-byte link key and list row | Point lookup: the column index's page statistics find the page | Offset index and column index (page-level statistics) on `link_key`, about 25 KB together; small pages |
 | `occurrences.parquet` (20–30 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, path inside an archive, filename, capture dates, and the page that linked it with the link's label | The range named in `detail` | Offset index on every column; 64 KB pages of at most 512–1,024 rows |
 | `url_state.parquet` (about 10 MB) | `requested_url` | Latest outcome and retry schedule per URL; no body hash, because the 412 tells capture whether a body is new | Read whole by the capture job, not the site | Defaults |
@@ -470,9 +509,10 @@ columns are in the data model, §4.
   A file's fingerprint never changes. So a public link carries `link_key`: the first 8
   bytes (16 hex characters) of a body's SHA-256. `links.parquet` maps every real file of
   every document to that document's row, so old links keep resolving when the group or its
-  saved file changes. Error pages and recovery bodies are never keys. A document whose
-  only content is a recovery uses a prefix of its `document_id`. The export refuses if two
-  keys collide.
+  saved file changes. Error pages and recovery bodies are never keys. Each recovery's
+  original link also gets a key, derived from its normalized URL, so a recovery-only page
+  keeps its link after the original finally downloads. The export refuses if two keys
+  collide.
 - **No ID in `list`.** Measured on the real documents: 4.05 MB without an ID, 15.8 MB with
   an 8-byte ID and 45.9 MB with hex IDs.
 - **Detail reads.** hyparquet reads single pages when a file has an offset index
@@ -524,8 +564,12 @@ Unfiltered facet counts go in the release manifest.
 - **Input identity.** Every publish run computes it before doing any work:
   - the digests of the receipt keys ingested into `captures` and into `page_links`;
   - row counts per `(parser, parser_version)` and per filename catalog version;
+  - the digests of `committee_records` and `meeting_records`;
   - the provenance digest;
   - the SQL, engine, parser and catalog versions.
+
+  The run pins the lake snapshots once at the start, and both the identity and the model
+  read those same snapshots.
 
   It uses content high-water marks, not snapshot IDs, because a Basin compaction changes
   snapshot IDs without changing content.
@@ -552,12 +596,15 @@ Unfiltered facet counts go in the release manifest.
   ETag. A failed canary or a lost race leaves the previous release live.
 - **Caching.** Release files and manifests are cached as immutable; the pointer is
   `no-store`.
+- **Publish runs one at a time,** through the CI's concurrency setting, and publish never
+  deletes anything. Two runs can produce the same release ID, so a failing run must not
+  delete a prefix another run just made live.
 - **Retention.** At least two releases exist: the live one and the previously live one,
-  the last good release. The publish job deletes a candidate that fails its canary, so it
-  never becomes the last good. The weekly job deletes every other prefix under
-  `viewer-publications/releases/`, never the live or an in-flight release, so up to a
-  week of daily releases can sit there in between (about 0.5 GB). Releases share no files,
-  so nothing needs reference counting.
+  the last good release. The weekly job re-reads the pointer just before it deletes, then
+  removes prefixes under `viewer-publications/releases/` that are neither live nor last
+  good and are more than a day old. Failed candidates go the same way. Up to a week of
+  daily releases can sit there in between (about 0.6 GB). Releases share no files, so
+  nothing needs reference counting.
 
 ## 7. Site
 
@@ -567,6 +614,9 @@ Unfiltered facet counts go in the release manifest.
   phone. Details and lookups use HTTP Range reads.
 - **Devices:** desktop and mid-range phones. The contract test and the canary enforce the
   heap budget. There is no per-view byte budget (owner decision).
+- **Speed targets are set after measuring** (owner decision): startup, search and detail
+  times, and the heap budget, are measured on real phones and desktops with the converted
+  Oct 19 release, then fixed as targets the canary and contract test check.
 - **Stale tabs.** Only the live and last-good releases are sure to exist, so a tab left
   open across two publishes can lose its files. On a 404 for a release file, the reader re-reads the
   pointer and reloads.
@@ -584,7 +634,10 @@ Unfiltered facet counts go in the release manifest.
     compressed download instead, since unpacking them would strain a phone;
   - a document whose content is a recovery labels it by kind and links the recovered file.
 - **Origin:** `congressional-data.spicygov.ai` serves the bucket directly, with a
-  read-only, any-origin CORS policy (GET/HEAD, Range).
+  read-only, any-origin CORS policy (GET/HEAD, Range), immutable cache headers on release
+  files, a content security policy and the `?filename=` download rule. The custom-domain
+  path allowlist is deleted with its tooling (owner decision): `r2.dev` serves every key
+  anyway.
 
 ## 8. Orchestration
 
@@ -651,7 +704,7 @@ needed, add it upstream to iceberg-rust rather than working around it.
 - **Credentials.** R2 tokens scope object permissions to buckets, never to prefixes
   (Cloudflare's token docs, checked Oct 24), so any writing token can also delete unlocked
   keys. Capture, publish and maintenance still use separate tokens, so each can be revoked
-  on its own; publish deletes its own failed candidates.
+  on its own; only maintenance deletes release prefixes.
 - **One-bucket trade-off.** With one bucket, raw isolation rests on the lock plus
   create-only writers. A separate bucket for releases would add credential-level
   isolation; the owner chose one bucket.
@@ -673,21 +726,23 @@ needed, add it upstream to iceberg-rust rather than working around it.
    the reader re-read the pointer and reload.
 6. **Production parity:** no test-only branches in production code, enforced by a ratchet
    test.
-7. **Data-model invariants:** the 18 invariants in the data model, §5, as tests over the
+7. **Data-model invariants:** the 20 invariants in the data model, §5, as tests over the
    lake, the model outputs and each release.
+8. **Rule accuracy:** a hand-labeled sample of a few hundred files measures how often the
+   page-shape, error-sign and placeholder rules wrongly include or exclude a file.
 
 ## 12. Performance
 
 | Step | Cost | Expected |
 |---|---|---|
 | Capture | O(new attempts), network | Bounded by politeness to sources |
-| Captures ingest | O(new receipts) | Seconds |
+| Captures ingest | O(new receipts) to read; the work list scans the keys already ingested | Seconds |
 | Readings | O(new bodies in scope × parse cost) | Minutes daily; backfills in background |
-| Filename readings | O(new pairs) | Under a second daily; about 7 minutes per catalog version |
-| Model + export | O(N log N) over about 8M rows | Seconds for the narrow plan (3.7 s proxy; grouping 1–2 s); the wide joins are measured in week one |
+| Filename readings | O(new pairs) | Under a second daily; 7–18 minutes per catalog version |
+| Model + export | O(N log N) sorting plus scans and joins over every row; linear grouping | Seconds for the narrow plan (3.7 s proxy; grouping 1–2 s); the wide joins are measured first (M2); `url_key` and meeting references are recomputed each run |
 | Publish | O(release size) | About 90 MB on a day with changes |
 | Detail view | One page per leaf | About 120 KB in one round trip, after a one-time offset-index fetch per session |
-| Weekly check | O(bodies / 1,000) list requests | About 1,000 requests, no body bytes |
+| Weekly check | O(history) object metadata, in about bodies / 1,000 list requests | About 1,000 requests, no body bytes |
 
 A normal day moves about 1,500 object operations and 2 GB, well inside R2's free tier at
 today's scale and at 10 times it.
@@ -709,7 +764,8 @@ today's scale and at 10 times it.
 | Incrementally maintained model (keyed merges) | Recompute measured in seconds. Copy-on-write rewrites every touched file, and hashed keys touch nearly all of them. |
 | Model as Iceberg tables replaced each run | It works only with a safe overwrite. Releases already give immutability, history and atomic switching without it. |
 | No Iceberg (dated Parquet plus an `If-Match` manifest per log) | **The fallback.** Same atomicity with fewer moving parts, but no time travel and new engine code. Iceberg stays because the engine already writes it and Basin Catalog maintains it. Switch if Basin's compaction leaves manifests growing. |
-| A general-purpose engine (DuckDB, Spark) in place of docspec-rs | Comparable query power, but it gives up the engine-first decision and docspec-rs's export and grouping operators. |
+| A general-purpose engine (DuckDB, Spark) in place of docspec-rs | Not evaluated: engine first is an owner constraint, not a measured conclusion. DuckDB was used as a measurement proxy and has comparable query power; docspec-rs carries the export and grouping operators this design needs. |
+| A second copy of raw at another provider | Declined by the owner: raw rests on R2's durability plus the lock (4.4). |
 | Per-copy pages with a `sources` file | Declined by the owner: documents only. |
 | Links by `document_id` | The ID changes whenever a version joins the group, so links would rot. File fingerprints don't change. |
 | Row-group-granular reads (small row groups, no page index) | The footer grows with the row-group count: under a 512 KB footer a single-file `detail` costs 0.6–1 MB per view. The offset index gives page reads. |
@@ -738,13 +794,17 @@ one document; PDF text read for fingerprint candidates only; every link join nor
 the URL, unwrapping redirect and archive wrappers and stripping only tracker and
 known page-state parameters; one entry for all formats of a document, offering the PDF
 first; documents linked to their meetings; a typed document date; official record keys for
-link-outs; committee names shown, not codes; no per-view byte budget; hyparquet in the
+link-outs; committee names shown, not codes; hearing titles from meeting records; editions
+stay apart; archive members judged by their own path; every facet value kept; rules
+measured on a hand-labeled sample; review "hide" leaves a note and "duplicate of" merges;
+the path allowlist deleted; raw kept on R2 only; speed targets set after measuring; no
+schedule in the plan; no per-view byte budget; hyparquet in the
 browser; uncompressed copies of older PDFs only; no early launch on the converted Oct 19
 release.
 
 ## Reviews
 
-Eight reviews shaped this design. All are in `docs/reviews/2026-10-24-design-review/`:
+Ten reviews shaped this design. All are in `docs/reviews/2026-10-24-design-review/`:
 - of revision 2: a general architecture review (`fable-review.md`) and an Iceberg, Parquet
   and query-plan review (`iceberg-parquet-review.md`);
 - of revision 3: an efficiency review with measurements on the real data
@@ -760,7 +820,10 @@ Eight reviews shaped this design. All are in `docs/reviews/2026-10-24-design-rev
   `iceberg-parquet-metadata-keys-review.md`);
 - of revision 7: a final sanity check by the efficiency reviewer
   (`cs300-sanity-check-final.md`), graded A− (91) for the architecture and B+ (87) for the
-  plan, before its fixes and the new estimate.
+  plan, before its fixes and the new estimate;
+- of revision 8: an independent thesis review by Codex as a CS300 professor
+  (`codex-thesis-review.md`, architecture C+ 78, plan C 73) and the Iceberg/Parquet
+  reviewer's final plan review (`iceberg-parquet-final-plan-review.md`).
 
 Revision 4 applied the efficiency review (F1–F12). Revision 5 applies the two re-reviews
 and the owner's decisions:
@@ -791,6 +854,7 @@ three more owner decisions:
 | Smaller gaps | Import day by run ID; `url_state` without a hash; receipts trimmed to about 1 KB; sniff every older body once; failed candidates deleted by publish; large legacy bodies as downloads (4.2, 5.2, 6.2, 6.4, 7) |
 | Owner decisions | Real documents only; link context shown; any content format counts (5.4, 6.1) |
 | Iceberg/Parquet review of the data model | Identical real web pages are one document; PDF text read for fingerprint candidates; one row per receipt line even without a body, and `url_state` counted over lines; typed detail core; page statistics on `link_key` (5.1, 5.2, 6.1, 6.2) |
+| Codex thesis review and Iceberg/Parquet final plan review (revision 9) | Meeting records; editions kept apart in format grouping; archive members by their own path; list-valued facets and extraction status; recovery-only links keyed by URL; review semantics; crash and completion-row handling; every input in the release identity with pinned snapshots; publish never deletes; linear grouping edges; honest cost bounds; rule accuracy measured on a labeled sample; preservation stated (4.1, 4.4, 5, 6.1, 6.2, 6.4, 7, 10–13) |
 | Final sanity check (revision 8) | Five lake tables; `real_body` defined; API responses defined by an endpoint list; recovery-only links get a source file; deterministic tie-breaks and list orders; detail per-view cost corrected to about 120 KB with 16 KB pages for key columns; sizes scaled to about 0.65M documents; estimate raised to 11–20 weeks (5, 6.1, 6.2, 12, appendix) |
 | Metadata keys (revision 7) | Meeting references, a typed document date and official record keys, composed once and never read from the field list (6.1, 6.2) |
 | Final data-model review (revision 7) | `url_key` for every link join; `page_links` as its own commit; delta-encoded filenames in `list`; a page row limit on `occurrences`; lake writer settings in the data model; no per-view byte budget (5.4, 6.1, 6.2, 6.4, 7) |
@@ -802,19 +866,21 @@ is preserved unchanged. Existing bodies keep their stored form; older gzip PDFs 
 uncompressed copies.
 
 The order is:
-1. **Week one:** the bucket lock, and two measurements that decide the engine work: Basin
-   Catalog commits under maintenance, and a throwaway DataFusion harness that measures the
-   wide joins and grouping on the real data. The older-PDF copy job follows the lock and
-   the write-refusal checks.
-2. **Now, in parallel:** the release format, reader and canary, built against a release
-   converted from the pinned Oct 19 catalog with the final writer settings. That release
-   is the reader's fixture and the parity oracle. It does not go live; the explorer waits
-   for the engine-built release.
+1. **First:** the bucket lock; two measurements that decide the engine work (Basin Catalog
+   commits under maintenance, and a throwaway DataFusion harness for the wide joins and
+   grouping); and the semantic checkpoint, which writes the grouping rules with their
+   adversarial fixtures and a hand-labeled sample. The older-PDF copy job follows the lock
+   and the write-refusal checks.
+2. **Then, in parallel:** the release format, reader and canary, built against a release
+   converted from the pinned Oct 19 catalog plus a small hand-built fixture release for
+   what the old catalog can't show. Neither goes live; the explorer waits for the
+   engine-built release.
 3. The raw writer changes (MD5 in receipts, 412 handling, encoding, write-date keys) and
    the weekly check.
 4. The engine capabilities in section 9.
 5. The lake tables and their backfills.
-6. The model SQL, checked against the pinned catalog on browser-visible fields.
+6. The model SQL, checked against the old catalog on browser-visible fields, many-to-many
+   and keyed by source evidence.
 7. Switching publishing, then deleting the old layers.
 
 One-time jobs, costed: the sniff (about 1.04M ranged GETs, about $0.37), the older-PDF
@@ -822,5 +888,5 @@ copies (261,055 uploads, about 403 GB, about $72 a year of storage kept under th
 the full re-hash baseline (0.70 TB read once) and the backfills (about 5 GB of readings).
 All egress is free.
 
-Estimated at 11–20 weeks for one engineer, with every owner decision in the first launch.
-Steps, estimates and tickets are in the plan.
+The plan orders this work by dependency and carries no schedule (owner decision). Steps
+and tickets are in the plan.

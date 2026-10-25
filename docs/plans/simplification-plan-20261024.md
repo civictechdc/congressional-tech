@@ -1,6 +1,6 @@
 # Simplification plan: congressional-tech and docspec-rs
 
-Revision 5, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 8)
+Revision 6, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 9)
 and `docs/engine-first-data-model.md`, and replaces earlier revisions of this file (in git
 history). Evidence: `docs/reviews/2026-10-24-ticket-audit/` (the audit, with measured line
 counts) and `docs/reviews/2026-10-24-design-review/` (six design reviews). Below, "design
@@ -34,7 +34,7 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 2 | news_lake keeps the DocSpec backend | Parked: no work until news_lake adopts the three layers (design §14). |
 | 3 | Publishing moves to export-pins | The release pipeline (design §6.4) is its finished form. The journal and resume route is deleted (F3). |
 | 4 | Raw protection is a bucket lock; one bucket | Step B1. |
-| 5 | `r2.dev` stays open | Every key is public, so a path allowlist on the custom domain protects nothing (open question 1). |
+| 5 | `r2.dev` stays open | Every key is public, so a path allowlist on the custom domain protects nothing; decision 39 deletes it. |
 | 6 | Engine first | The target is built in docspec-rs; congressional-tech keeps no code that overlaps it. |
 | 7 | Documents only | No per-copy pages and no `sources` file. Per-copy filename readings stay in the lake. |
 | 8 | Links point at a file; 16-hex keys | `links.parquet` maps every real file's key to its document (amended by 27: every real body is in exactly one document). F0 uses it, so links survive the switch. |
@@ -66,7 +66,17 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 34 | A typed document date for sorting and filtering | `document_date` in D3 and E2; A6 and A9. |
 | 35 | Official record keys as typed fields, for link-outs | GovInfo package, bill keys and Bioguide IDs in D3 and E2; A9. |
 | 36 | Show committee names, not codes | `committee_records` in D5; the mapping in E1; A9. |
-| 37 | Keep every decision in the first launch and accept 11–20 weeks | The estimates in §4 and §8. |
+| 37 | No schedule or effort planning (replaces the 11–20 week estimate) | §3, §4 and §8 order the work by dependency only. |
+| 38 | Meetings get titles: `meetings.py` fetches through the raw writer into `meeting_records` | B16, D6 and E1; hearing pages show title, date, type and committee (A9). |
+| 39 | Delete the custom-domain path allowlist and its tooling; keep CORS, cache headers, CSP and the `?filename=` rule | F3. |
+| 40 | Raw stays on Cloudflare R2 only, with no second copy elsewhere | Design §4.4 states the failure model. |
+| 41 | Set speed targets after measuring | A11 measures F0 on real devices, then fixes the targets the canary checks. |
+| 42 | Editions stay apart: no format grouping at addresses with several editions | E1 (S), with adversarial fixtures. |
+| 43 | Files inside ZIPs are judged and named by their own path | E1 (S); data model §3.1–3.2. |
+| 44 | Keep every value of multi-valued facets | D3 and A. |
+| 45 | Hand-check a labeled sample to measure the classification rules | S. |
+| 46 | A hidden document's links show a "removed by review" note | E1 (S) and A10. |
+| 47 | A reviewer's "duplicate of" merges two documents | E1 (S). |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -97,10 +107,12 @@ repaired in place; recovery imports refuse uncommitted code.
 2. Every receipt-referenced body exists.
 3. After P4: read the bucket-lock rules back after any infra change.
 
-## 3. Week one: measure, then commit to the engine work
+## 3. First: protect, measure and pin down the rules
 
-Two measurements decide how much engine work there is. The first release and the
-older-PDF copies start the site work at the same time.
+The work starts with the owner's bucket lock and the cut-off re-fetch (B14). Then come two
+measurements that decide how much engine work there is (M1, M2), and the semantic
+checkpoint (S), which writes the rules the measurements and the engine depend on. After
+those come F0, C0 and tracks A and B.
 
 **M1. Basin Catalog commits under maintenance** (docspec-rs).
 1. **Conflict retry.** Plain appends already send their commit requirements; ss-om9p
@@ -112,12 +124,12 @@ older-PDF copies start the site work at the same time.
    manifests in the current snapshot before and after maintenance runs.
 3. Measure or remove the unmeasured 2 MiB file cap (ss-n68e).
 
-Decides: Iceberg stays (manifests bounded), or the three logs move to dated Parquet with an
-`If-Match` manifest (design §13).
+Decides: Iceberg stays (manifests bounded), or the lake tables move to dated Parquet with
+an `If-Match` manifest (design §13). The fallback changes the scope of C1, C2 and D.
 
 **M2. Wide joins and grouping in a throwaway DataFusion harness.** The engine can't run
-the full export until C1, C3 and C4 exist, so week one measures with a short standalone
-DataFusion program instead.
+the full export until C1, C3 and C4 exist, so this measures with a short standalone
+DataFusion program instead, using S's draft grouping rule.
 - Inputs: the pinned Oct 19 snapshot (captures `db033173…`, catalog generation
   `596f08fa…`), including today's filename readings.
 - Run the model's joins, including filename readings, the folded `detail` and the 4.7M
@@ -130,31 +142,48 @@ Decides: the size of track C, and whether DataFusion handles the wide joins with
 pool. The harness is deleted afterwards. Byte-for-byte determinism becomes C3's acceptance
 test.
 
+**S. The semantic checkpoint** (before C). E1 is written first, here, because M2 and the
+engine work depend on it:
+- the grouping rule as SQL, with adversarial fixtures: a PDF replaced while its XML stays,
+  historical pages linking both, archive members, a recovery-only link that later downloads,
+  a reviewer's merge and hide;
+- a hand-labeled stratified sample of a few hundred files (decision 45), measuring how often
+  the page-shape, error-sign and placeholder rules wrongly include or exclude a file;
+- a check that every rule can be computed from raw, with nothing borrowed from the old
+  derived tables.
+
 **F0. The first release, converted from the pinned catalog** (congressional-tech).
 - Convert the pinned catalog pair into the release format (design §6.2), with the final
   writer settings: offset indexes, the folded `detail`, `links` keyed by body prefixes.
   Use the engine's RunSpec where it can. The CS300 measurements show the shape:
   `measurements/build_list.py` built `list`, `ids` and `detail` in 24 s, and
   `size_occ_captures.py` built `occurrences`.
-- This release is the reader's fixture (track A) and the parity oracle (E4). Its manifest
-  records that it came from the pinned catalog. It does not go live (decision 14).
+- This release is the reader's fixture (track A). Its manifest records that it came from
+  the pinned catalog. It does not go live (decision 14).
+- **It fills what it can:** meeting IDs from URLs, document dates from the old metadata,
+  link labels from the old occurrences, and committee names from today's committee file.
+- **It can't show** format groups, meeting titles or the new recovery kinds, so a small
+  hand-built fixture release covers them: one document with PDF and XML alternates, one
+  titled hearing, one of each recovery kind and one hidden document. The contract test runs
+  both.
+- **It assumes nothing unique about old bodies:** 141,762 body keys appear in several old
+  documents, so F0 resolves each link key to the first document in list order. It stays a
+  reader fixture; correctness is checked by E4's comparison, keyed by source evidence.
 - The converter is a migration tool. It is deleted at the switch.
 
 ## 4. Tracks
 
-| Track | What | Depends on | Estimate | Starts |
-|---|---|---|---|---|
-| A | Site reader and canary | F0 | 2–3.5 weeks | week 1 |
-| B | Raw writers and protection | P4 (owner) for B1 only | 1–2 weeks | week 1 |
-| C | Engine capabilities | M1, M2 | 3.75–6 weeks after week 1 | C0 in week 1 |
-| D | Lake tables and backfills | C2, B2 | 1.5–3 weeks | after C2 |
-| E | Model SQL and parity | C1, C3, C4, D, F0 | 3.5–6.5 weeks | after D |
-| F | Switch and delete | A, E | 1–2 weeks | last |
+| Track | What | Depends on |
+|---|---|---|
+| A | Site reader and canary | F0 and the hand-built fixture |
+| B | Raw writers and protection | P4 (owner) for B1 and B13 |
+| C | Engine capabilities | M1, M2, S |
+| D | Lake tables and backfills | C2, B2, B16 |
+| E | Model SQL and parity | S, C1, C3, C4, D, F0 |
+| F | Switch and delete | A, E |
 
-The critical path is M → C → D → E → F: about 10.5–18 weeks for one engineer. A and B
-run beside C. Estimated total: **11–20 weeks** (decision 37). The scope grew about 30%
-after the first 8–16 week estimate: link context, link matching, one entry per format,
-meetings, committees and record keys.
+There is no schedule (decision 37); the tracks run in dependency order, and A and B can run
+beside C.
 
 ### A. Site reader and canary
 
@@ -168,9 +197,9 @@ meetings, committees and record keys.
    document holds that file now.
 3. **The Node canary** (design §6.4): a script the publish job runs against the uploaded
    candidate, including a heap budget for a mid-range phone and the 404 reload.
-4. **A CI contract test:** the real site in a headless browser against F0, within the heap
-   budget. It moves to a release built from a fixed sample of real receipts once track E
-   exists.
+4. **A CI contract test:** the real site in a headless browser against F0 and the
+   hand-built fixture release, within the heap budget. It moves to a release built from a
+   fixed sample of real receipts once track E exists.
 5. **Saved copies:** link the document's saved file, PDF first, with its other formats
    listed as alternates. Older gzip PDFs open their `.pdf` copy
    (B13). Other older gzip bodies are fetched, unpacked with `DecompressionStream`, and
@@ -182,12 +211,18 @@ meetings, committees and record keys.
    not recorded)", or "Capture date not recorded" (design §6.2).
 7. **Recoveries:** each one on its original link's page, labeled by kind (recovered copy,
    excerpt from the official hearing record, or the named official substitute), with its
-   evidence and a link to the recovered file.
+   recovered URL, match basis, evidence digest and identity note, and a link to the
+   recovered file.
 8. **Link context:** "where each copy was seen" names the page that linked it and the
    link's label (decision 25).
 9. **Meetings, dates and record links:** filter and sort by document date; list every
-   document for a hearing by its meeting; link out to the GPO record, the bill and the
-   member (decisions 33–35).
+   document for a hearing under its title, date, type and committee; link out to the GPO
+   record, the bill and the member (decisions 33–35 and 38).
+10. **Removed by review:** a hidden document's link opens a note with the reason and date
+    (decision 46).
+11. **Speed, measured then fixed** (decision 41): measure startup, search, detail and heap
+    on real phones and desktops with F0, then write those targets into the canary and
+    contract test.
 
 **Done when:** the site loads F0 locally on desktop and in a phone-sized profile, and the
 canary passes against F0 in under a minute.
@@ -231,7 +266,8 @@ This code survives, so it is fixed now.
 8. **Reconcile `accepted.json` with the receipts** (ct-st8m), so recoveries become
    provenance records the model reads.
 9. **The weekly maintenance job** (design §4.4): LIST joined to each body's creating
-   receipt line, the 25-body sample and the orphan report. It joins to the old capture
+   receipt line, a one-time re-hash of any body with no creating line, the 25-body sample,
+   the orphan report and release retention. It joins to the old capture
    index until D1 exists.
 10. **The one-time full re-hash** of bodies written before receipts carried an MD5, with
     their ETags recorded under `provenance/verification/`.
@@ -249,13 +285,16 @@ This code survives, so it is fixed now.
     and the decompressed SHA-256 checked before upload. About 261k uploads ($1.20) and
     403 GB once decompressed, about $72 a year of storage kept under the lock; a few hours.
     Copies that already exist return 412 and are skipped.
-14. **Re-fetch the cut-off files** (week 1, in today's capture path): the 62 URLs whose only
+14. **Re-fetch the cut-off files** (first, in today's capture path): the 62 URLs whose only
     copy was cut off at 64 MiB. The cut-off copies stay in raw.
 15. **The Oct 15 recovery run: done, no correction needed.** The Iceberg/Parquet review
     traced `receipts/documents/2026-10-15/download-filename-recovery-all-*`: all 5,587
     lines are `retained_import` recoveries with a synthetic HTTP 200 (5,154 recovered
     copies, 341 hearing-record excerpts, 92 official substitutes). The old capture index
     had flattened them into fetches. What remains is in D1 and E1.
+16. **Committee and meeting fetches through the raw writer** (decisions 36 and 38):
+    `acquisition/committees.py` and `acquisition/meetings.py` stop writing their own output
+    files and fetch through the raw writer like every other fetch.
 
 **Done when:** the refusal matrix passes, the lock is on, one capture run's `stored` lines
 carry MD5s that match the stored ETags, every older gzip PDF has its copy, the 62 cut-off
@@ -263,22 +302,22 @@ URLs have complete copies or a recorded reason.
 
 ### C. Engine capabilities (docspec-rs)
 
-**C0. First moves on engine main** (week 1, beside M1). Revert the deferred-commit mode and
+**C0. First moves on engine main** (beside M1). Revert the deferred-commit mode and
 delete the dataset-name predicates (ss-pdv0). Both came after congressional-tech's pin, so
 nothing depends on them. Hash while writing, and stop HEADing and re-downloading immutable
 files (ss-k1f0; this is also C5).
 
 **Then the capabilities in design §9:**
 
-| # | Capability | Estimate | Evidence |
-|---|---|---|---|
-| C1 | Multi-input SQL plans over Basin tables and Parquet files in one context | 0.5–1.5 weeks | A plan joining two tables and a file |
-| C2 | Append through the REST catalog, with the conflict retry | 0.5 week | M1's two tests |
-| C3 | Deterministic multi-file export: SHA-256 and MD5 while writing; per-file writer settings, including offset and column indexes, page sizes and row limits, and per-column encodings such as delta-encoded filenames; fixed row counts per row group; unique sort keys; row-range shards | 1.25–2 weeks | Byte equality across threads, input orders, batch sizes and a forced spill; hyparquet page reads on the output |
-| C4 | ConnectedComponents in memory over 32-bit IDs, refusing above a node cap | 0.5 week | M2's graph; a refusal test |
-| C5 | Streaming I/O: no re-read or HEAD of immutable files | in C0 | Request counts in a test |
-| C6 | Bounded threads, memory pool and scratch; wide folded columns kept off hash-join build sides | 0.5 week | A join at the pool limit fails clearly; M2's build sizes |
-| C7 | A CLI that runs a declarative job spec and returns a machine-readable result | 0.5–1 week | The M2 export as a job spec |
+| # | Capability | Evidence |
+|---|---|---|
+| C1 | Multi-input SQL plans over Basin tables and Parquet files in one context | A plan joining two tables and a file |
+| C2 | Append through the REST catalog, with the conflict retry | M1's two tests |
+| C3 | Deterministic multi-file export: SHA-256 and MD5 while writing; per-file writer settings, including offset and column indexes, page sizes and row limits, and per-column encodings such as delta-encoded filenames; fixed row counts per row group; unique sort keys; row-range shards | Byte equality across threads, input orders, batch sizes and a forced spill; hyparquet page reads on the output |
+| C4 | ConnectedComponents in memory over 32-bit IDs, refusing above a node cap | M2's graph; a refusal test |
+| C5 | Streaming I/O: no re-read or HEAD of immutable files | Request counts in a test |
+| C6 | Bounded threads, memory pool and scratch; wide folded columns kept off hash-join build sides | A join at the pool limit fails clearly; M2's build sizes |
+| C7 | A CLI that runs a declarative job spec and returns a machine-readable result | The M2 export as a job spec |
 
 The engine's current export disables the offset index unless page-index columns are named
 (`export/pipeline.rs:687-697`), so C3's per-file settings are required, not optional.
@@ -308,11 +347,14 @@ threads, input orders and batch sizes and with a forced spill, on the smallest r
      original link as columns;
    - **`page_links`** is filled from each line's links (decision 25), with its own work
      list and commit, and keeps each link's `source_xpath` for publisher format groups
-     (decision 31); a lag shows as missing link context, not a failure;
+     (decision 31); a receipt with no links gets a completion row; a lag shows as missing
+     link context, not a failure;
    - the rebuild-equivalence test;
-   - **compare with the pinned old capture index** (3,909,134 rows) as row multisets, on
-     receipt-derived columns only. A row that exists only in the old index is a fact raw
-     doesn't hold, and it blocks the switch until the owner decides (open question 2).
+   - **compare with the pinned old capture index** (3,909,134 rows) on receipt-derived
+     columns, with written transformation rules for the expected differences: statuses
+     restored on bodiless lines, `stored_md5` new, `stored_sha256` gone. A row that exists
+     only in the old index is a fact raw doesn't hold, and it blocks the switch until the
+     owner decides (open question 1).
 2. **`readings`** (design §5.2): one parser and version per media family; partitioned by
    `(parser, parser_version)`; a version is complete when its work list is empty. The scope
    in the model SQL excludes ZIPs and captions.
@@ -330,18 +372,21 @@ threads, input orders and batch sizes and with a forced spill, on the smallest r
 3. **`filename_readings`** (design §5.3): a producer that runs `house-naming` over the
    work list and appends through the engine. It also writes the typed `document_date`,
    `measure_keys`, `bioguide_ids` and `gpo_package_id` (decisions 34–35), so the model
-   never unnests the field list. Backfill is about 7 minutes over 1.39M pairs.
-4. Enable Basin compaction and snapshot expiration on all five lake tables.
+   never unnests the field list. Multi-valued facets stay lists (decision 44), and an input
+   house-naming can't read gets a status row. Backfill is 7–18 minutes over 1.39M pairs.
+4. Enable Basin compaction and snapshot expiration on all six lake tables.
 5. **`committee_records`** (design §5.5): the JSON parser reads each committee API
-   response once. First, `acquisition/committees.py` fetches through the raw writer
-   instead of writing its own output file (decision 36).
+   response once, with a completion row for a response with no committees (needs B16).
+6. **`meeting_records`** (design §5.6): the JSON and XML parsers read each meeting response
+   once, with completion rows (decision 38; needs B16).
 
 **Done when:** all lake tables exist with complete backfills, and both `captures`
 comparisons pass.
 
 ### E. Model SQL and parity
 
-1. **Write the grouping rule down first,** as SQL with a short rationale:
+1. **The grouping rule, written in S** before the engine work, as SQL with a short
+   rationale:
    - which responses are real files (decisions 13 and 26): record role `document`, any
      content format, and the two web-page checks (decision 19). The link-shape patterns
      are an exact list of regular expressions: start from the broader list (adding
@@ -375,7 +420,13 @@ comparisons pass.
      fetch, undated files last, ties broken by body hash; the rest are alternates
      (decision 32);
    - `url_state`, keyed by requested URL and counted over receipt lines, not capture rows;
-2. **The model SQL** (design §6.1), with the data model's 18 invariants as its test suite:
+   - editions stay apart: no rendition edge at an address with several editions
+     (decision 42);
+   - archive members judged and named by their own path (decision 43);
+   - review semantics: supersession, `hide` with its note, `duplicate_of` as a merge edge,
+     overrides (decisions 46–47);
+   - each document's meetings joined to `meeting_records` (decision 38);
+2. **The model SQL** (design §6.1), with the data model's 20 invariants as its test suite:
    `url_state`, `filenames`, `documents`, `members`, `recoveries`, `reviews`, and the
    release files, with `list` sorted by filename and then
    first-captured date (undated rows last within a filename), every recovery labeled by
@@ -385,8 +436,9 @@ comparisons pass.
    `source_identity` and `compute_document_id` (`retention/index/bipartite.py:165,197`) and
    checked in the engine's tests. The formulas keep the logical body key string
    `bodies/sha256/<aa>/<sha>.gz`.
-4. **Parity against F0,** on browser-visible fields, joined by link key so that documents
-   regrouped by the new rule still pair up. Expect large, explained changes: about 560k
+4. **Parity against the old catalog,** on browser-visible fields, compared many-to-many and
+   keyed by source evidence (the files and URLs each document holds), since old body keys
+   can sit in several old documents. Expect large, explained changes: about 560k
    catalog rows leave the list (captions, metadata records, playlists, API responses),
    about 30k documents lose error pages from their body sets, about 4,900 lose Senate
    landing pages, cut-off copies and recovery imports drop out of body sets, and about
@@ -397,7 +449,7 @@ comparisons pass.
    - Classify each unexplained difference:
      - a rule change: fine, recorded with the rule;
      - an old-pipeline error: the new model wins;
-     - a fact that exists only in derived tables: a blocker (open question 2).
+     - a fact that exists only in derived tables: a blocker (open question 1).
 
 **Done when:** every known cause has its count and samples, every unexplained difference is
 classified with no blocker left, and the model runs as a CLI job on the smallest
@@ -426,6 +478,7 @@ catalog pair, converted in F0, is the oracle.
 | Shims and legacy formats (revision 1 WS10 list) | 2,064 + 1,058 |
 | Measurement scripts for deleted subjects (revision 1 WS11 list) | 1,862 + 723 |
 | The F0 converter and the one-off PDF copy job (after B13) | at cut |
+| The custom-domain path allowlist and its tooling: `r2_edge_rules.py`, `apply_r2_edge_rules.py` (decision 39); CORS, cache headers, CSP and the `?filename=` rule stay | at cut |
 | docspec-rs: unused routes, lifecycle families, the Dagster adapter, provider suites, `cli_args.rs`, hand-written SHA-256, date transforms, legacy formats (ss-oxg1's WS9 children) | 14,383 certain, up to 2,101 more |
 
 The engine cuts apply only to code no consumer uses after the switch. Check
@@ -477,7 +530,7 @@ and the deleted line counts are recorded.
 | WS2 raw write rules | ct-syx8 | B2–B6 and B13; the planner and `raw.json` steps go with the old layers |
 | WS3 custody client | ct-tw3r | Deleted with the HTTP custody path (F3) |
 | WS4 provenance pinning | ct-70kc | B7; the fingerprints go with the old catalog |
-| WS5 WAF allowlist | ct-t906 | Open question 1 |
+| WS5 WAF allowlist | ct-t906 | Deleted in F3 (decision 39) |
 | WS6 export-pins | ct-qqk2 | A, design §6.4 built in E and F; the journal route deleted in F3 |
 | WS7 incremental catalog | ct-7uit | Replaced by D and E; the Python layer deleted in F3 |
 | WS8 news_lake | ct-d8cf | Parked (G) |
@@ -513,21 +566,19 @@ These survive the switch unchanged:
 
 ## 7. Open questions for the owner
 
-1. **Custom-domain path allowlist:** delete it and its tooling? `r2.dev` already serves
-   every key (decision 5), and saved copies need `bodies/` on the custom domain. Keep the
-   CORS policy either way.
-2. **Only if needed:** if D1 or E4 finds facts that exist only in derived tables, record
+1. **Only if needed:** if D1 or E4 finds facts that exist only in derived tables, record
    them as provenance first, or accept losing them?
 
-## 8. Schedule
+## 8. Order
 
-| When | Work |
-|---|---|
-| Week 1 | P4 lock; M1; M2; F0; C0; B14; A and B start |
-| Weeks 2–3 | B13 once B1 and B3 are done; A and B done; C under way |
-| Weeks 2–7 | C (3.75–6 weeks) |
-| Then | D (1.5–3 weeks), E (3.5–6.5 weeks), F (1–2 weeks) |
+There is no schedule (decision 37). The work runs in this order:
+1. P4, the bucket lock (owner), and B14, the cut-off re-fetch.
+2. M1, M2 and S.
+3. F0 and the hand-built fixture release; C0; tracks A and B (B13 after B1 and B3).
+4. C.
+5. D.
+6. E, with E1 already written in S.
+7. F.
 
-Total: 11–20 weeks for one engineer. The critical path is C → D → E. The widest
-uncertainty is E: it stays bounded unless parity finds facts that only derived tables
-hold.
+The widest uncertainty is E: it stays bounded unless parity finds facts that only derived
+tables hold.
