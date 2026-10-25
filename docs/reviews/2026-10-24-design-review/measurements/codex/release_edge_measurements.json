@@ -1,0 +1,121 @@
+{
+  "member_html_format": [
+    {
+      "n": 34331,
+      "bodies": 34328,
+      "status_2xx": 34331,
+      "zip_context": 34331
+    }
+  ],
+  "raw_filename_gaps": [
+    {
+      "n": 1683430,
+      "filename_null": 158664,
+      "null_name_body": 157211,
+      "null_url_body": 331985
+    }
+  ],
+  "mixed_status_examples": [
+    {
+      "sha256": "ba6cc3838d1c240ad0196304d7f84a2d6af63dca6c6316280ba934cf88440305",
+      "statuses": [
+        404,
+        200
+      ],
+      "example_url": "http://r20.rs6.net/tn.jsp?t=4usottzab.0.0.zaob78xab.0&id=preview&r=3&p=https%3A%2F%2Foversight.house.gov%2Fwp-content%2Fuploads%2F2017%2F01%2FOGR-Cmte-Rules-115-FINAL.pdf",
+      "media": "text/html; charset=UTF-8",
+      "original_size": 58401
+    },
+    {
+      "sha256": "4d99af486df28750ee11da74e674e59de76b6518fb5e42e69de448b02a0cb679",
+      "statuses": [
+        404,
+        200
+      ],
+      "example_url": "http://r20.rs6.net/tn.jsp?t=y6kyhsyab.0.0.zaob78xab.0&id=preview&r=3&p=https%3A%2F%2Fwww.whitehouse.gov%2Fsites%2Fdefault%2Ffiles%2Ffederal_science_and_technology_workforce_report.pdf",
+      "media": "text/html; charset=UTF-8",
+      "original_size": 234633
+    },
+    {
+      "sha256": "b3e386e5e727c380b166533041aac12010047670f5330877b2ae2f460bb41f33",
+      "statuses": [
+        200,
+        404
+      ],
+      "example_url": "http://r20.rs6.net/tn.jsp?t=tywlfgzab.0.0.zaob78xab.0&id=preview&r=3&p=https%3A%2F%2Fosc.gov%2FPublicFiles%2FFY2015%2F15-24%2520DI-14-2556%2C%2520DI-14-4627%2C%2520and%2520DI-15-0001%2F15-24%2520DI-14-2556%2C%2520DI-14-4627%2C%2520and%2520DI-15-0001%2520Letter%2520to%2520the%2520President.pdf",
+      "media": "text/html; charset=utf-8",
+      "original_size": 112152
+    },
+    {
+      "sha256": "54d3ae37b4bfb24d722164c01be8ee58a9a58b3756198ed6bde9a3ec4f7ed2cc",
+      "statuses": [
+        520,
+        200
+      ],
+      "example_url": "https://www.state.gov/g/drl/rls/hrrpt/2008/eap/119037.htm",
+      "media": "text/html",
+      "original_size": 659501
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "statuses": [
+        null,
+        200,
+        454,
+        202,
+        503,
+        404,
+        476,
+        301,
+        472
+      ],
+      "example_url": "http://archives-financialservices.house.gov/media/pdf/111-B.pdf",
+      "media": "",
+      "original_size": 0
+    }
+  ],
+  "old_keys_shared_between_docs": [
+    {
+      "bodies_in_multiple_documents": 141762,
+      "most_docs": 87161
+    }
+  ],
+  "shared_nonempty_good_format_keys": [
+    {
+      "bodies": 26955,
+      "max_documents": 45
+    }
+  ],
+  "shared_key_example": [
+    {
+      "filename": null,
+      "source_url": null,
+      "body_key": "bodies/sha256/cb/cbf96a831631913e6817666abb8d7358722a3349414e91df0cc255e2a1680b7e.gz",
+      "docs": 2
+    },
+    {
+      "filename": null,
+      "source_url": null,
+      "body_key": "bodies/sha256/94/9485e0c0d16167b239872ac0fa332aec3f4cf0dd96a7e03de1ef8981a775e30c.gz",
+      "docs": 2
+    },
+    {
+      "filename": null,
+      "source_url": null,
+      "body_key": "bodies/sha256/9b/9bc72c8af0bd8e78f8d3553cd970fafd6b8493727cb47d07d8b27db818c910db.gz",
+      "docs": 2
+    },
+    {
+      "filename": null,
+      "source_url": null,
+      "body_key": "bodies/sha256/3d/3dff4c97465f2ffb58a957e5fc0fb1c0d0fe1d938cc833fe653cd84905f223e2.gz",
+      "docs": 2
+    },
+    {
+      "filename": null,
+      "source_url": null,
+      "body_key": "bodies/sha256/0b/0b7339273d07f7b1c563a9fb0255db3bdeb77e9e47ace868807276ce5243862f.gz",
+      "docs": 2
+    }
+  ]
+}

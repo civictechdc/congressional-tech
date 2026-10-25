@@ -1,0 +1,14 @@
+{
+  "kind": "proxy, not the target release: sorted existing catalog rows with a body key; first 650000",
+  "rows": 650000,
+  "bytes": 49007309,
+  "column_compressed_bytes": {
+    "link_key": 4777662,
+    "saved_key": 21525504,
+    "fields.list.element.field": 1890,
+    "fields.list.element.value": 22455450
+  },
+  "contains": "only link_key, saved_key and the folded document_id; no other detail facts",
+  "schema": "link_key: fixed_size_binary[8]\nsaved_key: string\nfields: list<item: struct<field: string, value: string>>\n  child 0, item: struct<field: string, value: string>\n      child 0, field: string\n      child 1, value: string",
+  "pyarrow_version": "25.0.1"
+}

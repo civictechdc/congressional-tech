@@ -1,0 +1,344 @@
+{
+  "null_and_scalar_metadata": {
+    "seconds": 1.346,
+    "rows": [
+      {
+        "n": 1683430,
+        "null_source_url": 331985,
+        "multi_kind": 24202,
+        "multi_family": 3637,
+        "multi_committee": 5229,
+        "multi_congress": 2,
+        "multi_measure_type": 0,
+        "multi_measure_number": 498
+      }
+    ]
+  },
+  "multivalue_cases": {
+    "seconds": 2.77,
+    "rows": [
+      {
+        "filename": "HRPT-114-HR3009.pdf",
+        "source_url": "https://rules.house.gov/sites/republicans.rules.house.gov/files/HRPT-114-HR3009.pdf",
+        "document_kind": [
+          "committee-report-unnumbered",
+          "committee-report"
+        ],
+        "document_family": [
+          "report"
+        ],
+        "committee_code": null,
+        "congress": [
+          "114"
+        ],
+        "measure_type": [
+          "hr"
+        ],
+        "measure_number": [
+          "3009"
+        ]
+      },
+      {
+        "filename": "HRPT-114-HR3009.pdf",
+        "source_url": "https://rules.house.gov/sites/evo-subsites/republicans-rules.house.gov/files/HRPT-114-HR3009.pdf",
+        "document_kind": [
+          "committee-report-unnumbered",
+          "committee-report"
+        ],
+        "document_family": [
+          "report"
+        ],
+        "committee_code": null,
+        "congress": [
+          "114"
+        ],
+        "measure_type": [
+          "hr"
+        ],
+        "measure_number": [
+          "3009"
+        ]
+      },
+      {
+        "filename": "bio_and_testimony_blanton",
+        "source_url": "https://www.rules.senate.gov/download/05/30/2024/bio_and_testimony_blanton",
+        "document_kind": [
+          "testimony",
+          "biography"
+        ],
+        "document_family": [
+          "biography",
+          "statement"
+        ],
+        "committee_code": null,
+        "congress": null,
+        "measure_type": null,
+        "measure_number": null
+      },
+      {
+        "filename": "Bio_and_Testimony_Blanton.pdf",
+        "source_url": "https://www.rules.senate.gov/imo/media/doc/3F53155F-5056-A066-601F-5C06C7D00470/Bio_and_Testimony_Blanton.pdf",
+        "document_kind": [
+          "testimony",
+          "biography"
+        ],
+        "document_family": [
+          "biography",
+          "statement"
+        ],
+        "committee_code": null,
+        "congress": null,
+        "measure_type": null,
+        "measure_number": null
+      },
+      {
+        "filename": "draeger_-_appendix_b-nasfaa_radd_report.pdf",
+        "source_url": "https://edworkforce.house.gov/uploadedfiles/draeger_-_appendix_b-nasfaa_radd_report.pdf",
+        "document_kind": [
+          "appendix",
+          "report"
+        ],
+        "document_family": [
+          "appendix",
+          "report"
+        ],
+        "committee_code": null,
+        "congress": null,
+        "measure_type": null,
+        "measure_number": null
+      },
+      {
+        "filename": "draeger_-_appendix_b-nasfaa_radd_report.pdf",
+        "source_url": "http://edworkforce.house.gov/uploadedfiles/draeger_-_appendix_b-nasfaa_radd_report.pdf",
+        "document_kind": [
+          "appendix",
+          "report"
+        ],
+        "document_family": [
+          "appendix",
+          "report"
+        ],
+        "committee_code": null,
+        "congress": null,
+        "measure_type": null,
+        "measure_number": null
+      },
+      {
+        "filename": "Draeger_-_Appendix_B-NASFAA_RADD_Report.pdf",
+        "source_url": "https://edworkforce.house.gov/UploadedFiles/Draeger_-_Appendix_B-NASFAA_RADD_Report.pdf",
+        "document_kind": [
+          "appendix",
+          "report"
+        ],
+        "document_family": [
+          "appendix",
+          "report"
+        ],
+        "committee_code": null,
+        "congress": null,
+        "measure_type": null,
+        "measure_number": null
+      },
+      {
+        "filename": "draeger_-_appendix_c-nasfaa_ppy_report.pdf",
+        "source_url": "https://edworkforce.house.gov/uploadedfiles/draeger_-_appendix_c-nasfaa_ppy_report.pdf",
+        "document_kind": [
+          "appendix",
+          "report"
+        ],
+        "document_family": [
+          "appendix",
+          "report"
+        ],
+        "committee_code": null,
+        "congress": null,
+        "measure_type": null,
+        "measure_number": null
+      }
+    ]
+  },
+  "archive_samples": {
+    "seconds": 0.036,
+    "rows": [
+      {
+        "context_url": "https://www.govinfo.gov/content/pkg/CHRG-106shrg67480.zip",
+        "original_path": "CHRG-106shrg67480/dip.xml",
+        "pointer_json": "[\"archive_members\", 0, \"content\", \"body\"]",
+        "sha256": "94ae0287d3b4573d1cb13d24bb47518f028d5b4522c7143075c54965a88740cd",
+        "reference_kind": "capture",
+        "media_type": "application/xml"
+      },
+      {
+        "context_url": "https://www.govinfo.gov/content/pkg/CHRG-106shrg67480.zip",
+        "original_path": "CHRG-106shrg67480/html/CHRG-106shrg67480.htm",
+        "pointer_json": "[\"archive_members\", 1, \"content\", \"body\"]",
+        "sha256": "31cf3e31859aad8c6b712a36ee59437e18e6a5b10242c5d30a5f3f320254c424",
+        "reference_kind": "capture",
+        "media_type": "text/html"
+      },
+      {
+        "context_url": "https://www.govinfo.gov/content/pkg/CHRG-106shrg67480.zip",
+        "original_path": "CHRG-106shrg67480/pdf/CHRG-106shrg67480.pdf",
+        "pointer_json": "[\"archive_members\", 2, \"content\", \"body\"]",
+        "sha256": "80a751f16995a671ca8dd971dd98ff06df44ca304eeed95905aa7da34a3a75c7",
+        "reference_kind": "capture",
+        "media_type": "application/pdf"
+      },
+      {
+        "context_url": "https://www.govinfo.gov/content/pkg/CHRG-106shrg67480.zip",
+        "original_path": "CHRG-106shrg67480/premis.xml",
+        "pointer_json": "[\"archive_members\", 3, \"content\", \"body\"]",
+        "sha256": "b94cf86432749565847e00dde06e043f47dfb843e38240103e938b446575044c",
+        "reference_kind": "capture",
+        "media_type": "application/xml"
+      },
+      {
+        "context_url": "https://www.govinfo.gov/content/pkg/CHRG-106shrg67480.zip",
+        "original_path": "CHRG-106shrg67480/mods.xml",
+        "pointer_json": "[\"archive_members\", 4, \"content\", \"body\"]",
+        "sha256": "b12c08d67195e4f2b340a4267e838486553798239d2b1971e60419f5294e2ea6",
+        "reference_kind": "capture",
+        "media_type": "application/xml"
+      },
+      {
+        "context_url": "https://www.govinfo.gov/content/pkg/CHRG-106shrg67707.zip",
+        "original_path": "CHRG-106shrg67707/dip.xml",
+        "pointer_json": "[\"archive_members\", 0, \"content\", \"body\"]",
+        "sha256": "7981f015b5e2d21770702ff2078857b4515ce7f2bf20fd754a5737fc94adbaea",
+        "reference_kind": "capture",
+        "media_type": "application/xml"
+      }
+    ]
+  },
+  "archive_counts": {
+    "seconds": 0.1,
+    "rows": [
+      {
+        "n": 171894,
+        "endpoints": 171894,
+        "missing_paths": 0
+      }
+    ]
+  },
+  "archive_identity_conflicts": {
+    "seconds": 0.146,
+    "rows": [
+      {
+        "ambiguous_keys": 0,
+        "member_paths": null
+      }
+    ]
+  },
+  "archive_identity_conflict_examples": {
+    "seconds": 0.172,
+    "rows": []
+  },
+  "threshold_counts": {
+    "seconds": 0.264,
+    "rows": [
+      {
+        "above_50": 22,
+        "above_100": 18,
+        "above_200": 12
+      }
+    ]
+  },
+  "pdf_body_size": {
+    "seconds": 0.153,
+    "rows": [
+      {
+        "n": 261056,
+        "stored_bytes": 364785902785,
+        "original_bytes": 403252687993
+      }
+    ]
+  },
+  "truncations": {
+    "seconds": 0.071,
+    "rows": [
+      {
+        "n": 207,
+        "bodies": 201,
+        "urls": 207,
+        "smallest": 67108864,
+        "largest": 67108864
+      }
+    ]
+  },
+  "bill_versions": {
+    "seconds": 0.846,
+    "rows": [
+      {
+        "filename": "BILLS-112hr1063ih.pdf",
+        "source_url": "https://d1dth6e84htgma.cloudfront.net/legacy/uploads/Markups/FullCmte/20120919/BILLS-112hr1063ih.pdf",
+        "body_key": "bodies/sha256/1e/1e04fa4b999fc0e51c8e291b40de5be199d2b91225c6d137bc53262681f8c723.gz",
+        "document_id": "0c03d303299adaba3993bf08a41456834f137f9e53e361414d06503e5dc8072c",
+        "response_format": null,
+        "response_body_complete": [
+          "true"
+        ],
+        "response_result": null
+      },
+      {
+        "filename": "BILLS-112hr1063ih.pdf",
+        "source_url": "https://www.govinfo.gov/content/pkg/BILLS-112hr1063ih/pdf/BILLS-112hr1063ih.pdf",
+        "body_key": "bodies/sha256/d8/d8035181e9cc17087cff5f5e93136e84cec8687200cba4941083b876726bec30.gz",
+        "document_id": "f5cacb268c44c546689993a5fdfad33657517a4fa8b879e42bd7ede7c17c3ce2",
+        "response_format": null,
+        "response_body_complete": [
+          "true"
+        ],
+        "response_result": null
+      },
+      {
+        "filename": "BILLS-112hr1063ih.pdf",
+        "source_url": "https://www.govinfo.gov/content/pkg/BILLS-112hr1063ih/pdf/BILLS-112hr1063ih.pdf",
+        "body_key": "bodies/sha256/26/26d7cbb314863d89e9a68f9740a3774576ca2ccfcd4300d78f808b0d8a869fbd.gz",
+        "document_id": "f5cacb268c44c546689993a5fdfad33657517a4fa8b879e42bd7ede7c17c3ce2",
+        "response_format": null,
+        "response_body_complete": [
+          "true"
+        ],
+        "response_result": null
+      }
+    ]
+  },
+  "xml_roots": {
+    "seconds": 0.767,
+    "rows": [
+      {
+        "content_xml_root": [
+          "amendment-doc"
+        ],
+        "n": 114
+      }
+    ]
+  },
+  "capture_success_body_sharing": {
+    "seconds": 0.097,
+    "rows": [
+      {
+        "good_and_bad_bodies": 5
+      }
+    ]
+  },
+  "cost_and_schedule_arithmetic": {
+    "rate_provenance": "Rates inferred from thesis: storage $0.015/GB-month; GET $0.36/million; PUT $4.50/million.",
+    "raw_storage_annual_estimate": 125.3444188284,
+    "pdf_copy_annual_estimate": 72.57788315118,
+    "sniff_GET_estimate": 0.37305216,
+    "pdf_PUT_estimate": 1.1747474999999998,
+    "full_duplicate_originals_storage_annual_estimate": 137.37067804404,
+    "all_tracks_person_weeks": {
+      "min": 12.75,
+      "max": 23.0
+    },
+    "listed_C_subtasks_person_weeks": {
+      "min": 3.75,
+      "max": 6.0
+    },
+    "sniff_requests_per_second_to_finish_one_hour": 287.8488888888889,
+    "sample_25_random_detection_if_one_bad_body": 2.4125312664052127e-05,
+    "sample_25_random_detection_if_1percent_bad": 0.22217864060085335
+  }
+}

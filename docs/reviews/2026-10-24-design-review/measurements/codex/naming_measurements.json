@@ -1,0 +1,182 @@
+{
+  "sample": 10000,
+  "selection": "lowest DuckDB hashes of distinct filename/source_url pairs",
+  "seconds": 7.725651457993081,
+  "ms_per_pair": 0.7725651457993081,
+  "estimated_minutes_full_backfill": 17.93227999694877,
+  "exact_qualified_urls": 25,
+  "counts": {
+    "exceptions": 146,
+    "congress_present": 4456,
+    "document_kind_present": 5316,
+    "meeting_date_present": 1991,
+    "committee_code_present": 2181,
+    "measure_type_present": 423,
+    "measure_number_present": 672,
+    "document_kind_multiple": 184,
+    "committee_code_multiple": 51,
+    "measure_number_multiple": 2
+  },
+  "multivalue_examples": [
+    {
+      "filename": "HMTG-112-HMKP-IF14-20120229-SD001.pdf",
+      "url": "https://d1dth6e84htgma.cloudfront.net/legacy/uploads/Markups/Health/20120229/HMTG-112-HMKP-IF14-20120229-SD001.pdf",
+      "field": "document_kind",
+      "values": [
+        "meeting-support",
+        "meeting-notice"
+      ]
+    },
+    {
+      "filename": "BILLS-117-7675-J000301-Amdt-1.pdf",
+      "url": "https://docs.house.gov/meetings/AG/AG00/20220517/114799/BILLS-117-7675-J000301-Amdt-1.pdf",
+      "field": "document_kind",
+      "values": [
+        "committee-amendment-described",
+        "committee-amendment"
+      ]
+    },
+    {
+      "filename": "hhrg-115-ba19-wstate-lolijar-20180905.pdf",
+      "url": "https://financialservices.house.gov/uploadedfiles/hhrg-115-ba19-wstate-lolijar-20180905.pdf",
+      "field": "committee_code",
+      "values": [
+        "ba19",
+        "BA19"
+      ]
+    },
+    {
+      "filename": "hhrg-119-ba04-wstate-woodwardpottse-20250716.pdf",
+      "url": "https://democrats-financialservices.house.gov/uploadedfiles/hhrg-119-ba04-wstate-woodwardpottse-20250716.pdf",
+      "field": "committee_code",
+      "values": [
+        "ba04",
+        "BA04"
+      ]
+    },
+    {
+      "filename": "hhrg-116-ba00-20200730-sd002.pdf",
+      "url": "https://democrats-financialservices.house.gov/uploadedfiles/hhrg-116-ba00-20200730-sd002.pdf",
+      "field": "committee_code",
+      "values": [
+        "ba00",
+        "BA00"
+      ]
+    },
+    {
+      "filename": "BILLS-119-260-K000375-Amdt-16-U1.pdf",
+      "url": "http://docs.house.gov/meetings/FA/FA00/20250409/118127/BILLS-119-260-K000375-Amdt-16-U1.pdf",
+      "field": "document_kind",
+      "values": [
+        "committee-amendment-described",
+        "committee-amendment"
+      ]
+    },
+    {
+      "filename": "BILLS-118-32-M000312-Amdt-32.pdf",
+      "url": "https://docs.house.gov/meetings/RU/RU00/20230711/115699/BILLS-118-32-M000312-Amdt-32.pdf",
+      "field": "document_kind",
+      "values": [
+        "committee-amendment-described",
+        "committee-amendment"
+      ]
+    },
+    {
+      "filename": "BILLS-119-5300-C001091-Amdt-58.pdf",
+      "url": "http://docs.house.gov/meetings/FA/FA00/20250917/118618/BILLS-119-5300-C001091-Amdt-58.pdf",
+      "field": "document_kind",
+      "values": [
+        "committee-amendment-described",
+        "committee-amendment"
+      ]
+    },
+    {
+      "filename": "BILLS-116-5308-M001205-Amdt-4.pdf",
+      "url": "https://docs.house.gov/meetings/GO/GO00/20200211/110509/BILLS-116-5308-M001205-Amdt-4.pdf",
+      "field": "document_kind",
+      "values": [
+        "committee-amendment-described",
+        "committee-amendment"
+      ]
+    },
+    {
+      "filename": "BILLS-115-OversightPlan-W000187-Amdt-001.xml",
+      "url": "https://docs.house.gov/meetings/BA/BA00/20170207/105544/BILLS-115-OversightPlan-W000187-Amdt-001.xml",
+      "field": "document_kind",
+      "values": [
+        "committee-amendment-described",
+        "committee-amendment"
+      ]
+    },
+    {
+      "filename": "BILLS-118-2794-G000599-Amdt-30.pdf",
+      "url": "http://docs.house.gov/meetings/HM/HM00/20230426/115837/BILLS-118-2794-G000599-Amdt-30.pdf",
+      "field": "document_kind",
+      "values": [
+        "committee-amendment-described",
+        "committee-amendment"
+      ]
+    },
+    {
+      "filename": "BILLS-116-HR0335-W000823-Amdt-1.pdf",
+      "url": "https://docs.house.gov/meetings/SY/SY00/20190724/109870/BILLS-116-HR0335-W000823-Amdt-1.pdf",
+      "field": "document_kind",
+      "values": [
+        "committee-amendment-described",
+        "committee-amendment"
+      ]
+    }
+  ],
+  "failure_examples": [
+    {
+      "filename": "Lauer Testimony.pdf",
+      "url": "https://www.hsgac.senate.gov/wp-content/uploads/imo/media/doc/Lauer Testimony.pdf",
+      "error": "Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes"
+    },
+    {
+      "filename": null,
+      "url": "https://www.epw.senate.gov/public/?a=Files.Serve&File_id=F62E10F8-01CB-4FE9-B741-43BBD969B9F0",
+      "error": "Filename must be a string basename"
+    },
+    {
+      "filename": "4.29.2015 SCIA Witness Testimony - E. Paul Torres.pdf",
+      "url": "/sites/default/files/upload/files/4.29.2015%20SCIA%20Witness%20Testimony%20-%20E.%20Paul%20Torres.pdf",
+      "error": "Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes"
+    },
+    {
+      "filename": "Testimony-Crawford-2020-02-11.pdf",
+      "url": "/wp-content/uploads/imo/media/doc/Testimony-Crawford-2020-02-11.pdf",
+      "error": "Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes"
+    },
+    {
+      "filename": "DeLena Testimony.pdf",
+      "url": "/wp-content/uploads/imo/media/doc/DeLena Testimony.pdf",
+      "error": "Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes"
+    },
+    {
+      "filename": null,
+      "url": "https://veterans.house.gov/witness-testimony/kay-l-daly-1/",
+      "error": "Filename must be a string basename"
+    },
+    {
+      "filename": null,
+      "url": "https://veterans.house.gov/opening-statement/hon-john-boozman-ranking-republican-member-subcommittee-on-economic-opportunity-9/",
+      "error": "Filename must be a string basename"
+    },
+    {
+      "filename": "3.31.2015 Witness Testimony-Christopher Crofts.pdf",
+      "url": "/sites/default/files/upload/files/3.31.2015%20Witness%20Testimony-Christopher%20Crofts.pdf",
+      "error": "Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes"
+    },
+    {
+      "filename": "O",
+      "url": "https://thomas.loc.gov/cgi-bin/cpquery/O?cp109:&            &report=hr157.109&            &dbname=cp109&            &start_from=XX.+PROCEEDINGS+OF+THE+MARKUP+BY+THE+SUBCOMMITTEE&            &up_to=Appendix:&",
+      "error": "Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes"
+    },
+    {
+      "filename": "Testimony-Abizaid-2021-09-211.pdf",
+      "url": "/wp-content/uploads/imo/media/doc/Testimony-Abizaid-2021-09-211.pdf",
+      "error": "Source context must be an HTTP(S) URL without credentials, at most 16384 UTF-8 bytes"
+    }
+  ]
+}

@@ -1,0 +1,5291 @@
+{
+  "capture_counts": {
+    "seconds": 0.269,
+    "rows": [
+      {
+        "row_count": 3909134,
+        "receipt_files": 2289,
+        "receipt_lines": 2596054,
+        "bodies": 1036256,
+        "urls": 1158426,
+        "bodiless_rows": 1041865,
+        "undated_rows": 2717129
+      }
+    ]
+  },
+  "receipt_shapes": {
+    "seconds": 0.107,
+    "rows": [
+      {
+        "receipts": 49,
+        "capture_rows": 2197261,
+        "receipt_lines": 1257667
+      }
+    ]
+  },
+  "resolution": {
+    "seconds": 0.006,
+    "rows": [
+      {
+        "resolution": "digest_verified",
+        "row_count": 1947418
+      },
+      {
+        "resolution": null,
+        "row_count": 1040863
+      },
+      {
+        "resolution": "saved",
+        "row_count": 684905
+      },
+      {
+        "resolution": "http_error",
+        "row_count": 112855
+      },
+      {
+        "resolution": "retry_later",
+        "row_count": 79112
+      },
+      {
+        "resolution": "html",
+        "row_count": 33271
+      },
+      {
+        "resolution": "path_verified",
+        "row_count": 4899
+      },
+      {
+        "resolution": "request_failed",
+        "row_count": 4257
+      },
+      {
+        "resolution": "unverified",
+        "row_count": 738
+      },
+      {
+        "resolution": "size_limit",
+        "row_count": 495
+      },
+      {
+        "resolution": "invalid_document",
+        "row_count": 141
+      },
+      {
+        "resolution": "retained",
+        "row_count": 91
+      },
+      {
+        "resolution": "empty",
+        "row_count": 47
+      },
+      {
+        "resolution": "timeout",
+        "row_count": 26
+      },
+      {
+        "resolution": "resource_limit",
+        "row_count": 9
+      },
+      {
+        "resolution": "excluded_media",
+        "row_count": 4
+      },
+      {
+        "resolution": "retained_as_receipts",
+        "row_count": 3
+      }
+    ]
+  },
+  "reference_kind": {
+    "seconds": 0.006,
+    "rows": [
+      {
+        "reference_kind": "embedded",
+        "row_count": 1418037
+      },
+      {
+        "reference_kind": "metadata",
+        "row_count": 1041862
+      },
+      {
+        "reference_kind": "capture",
+        "row_count": 914952
+      },
+      {
+        "reference_kind": "file",
+        "row_count": 292373
+      },
+      {
+        "reference_kind": "retained-file",
+        "row_count": 241910
+      }
+    ]
+  },
+  "body_sizes": {
+    "seconds": 0.162,
+    "rows": [
+      {
+        "bodies": 1036256,
+        "stored_bytes": 696357882380,
+        "original_bytes": 763170433578,
+        "largest_stored": 1188171429,
+        "largest_original": 1187816490,
+        "above_5gb_original": 0,
+        "conflicting_stored_sizes": 0
+      }
+    ]
+  },
+  "body_sizes_by_media": {
+    "seconds": 0.127,
+    "rows": [
+      {
+        "media": "application/pdf",
+        "bodies": 260965,
+        "stored_bytes": 364747305943,
+        "original_bytes": 403210461951
+      },
+      {
+        "media": "application/zip",
+        "bodies": 35292,
+        "stored_bytes": 285806437858,
+        "original_bytes": 285833064144
+      },
+      {
+        "media": null,
+        "bodies": 73644,
+        "stored_bytes": 36835033229,
+        "original_bytes": 46089712297
+      },
+      {
+        "media": "text/html",
+        "bodies": 79551,
+        "stored_bytes": 3239253144,
+        "original_bytes": 9622175578
+      },
+      {
+        "media": "application/warc+gzip",
+        "bodies": 10210,
+        "stored_bytes": 2436505501,
+        "original_bytes": 2437113329
+      },
+      {
+        "media": "video/x-ms-wmv",
+        "bodies": 5,
+        "stored_bytes": 1221119457,
+        "original_bytes": 1244912724
+      },
+      {
+        "media": "application/xml",
+        "bodies": 106129,
+        "stored_bytes": 756964307,
+        "original_bytes": 9347382947
+      },
+      {
+        "media": "text/html;charset=UTF-8",
+        "bodies": 77081,
+        "stored_bytes": 525938660,
+        "original_bytes": 2348127944
+      },
+      {
+        "media": "text/html; charset=utf-8",
+        "bodies": 14833,
+        "stored_bytes": 305217137,
+        "original_bytes": 1021488147
+      },
+      {
+        "media": "text/vtt",
+        "bodies": 366146,
+        "stored_bytes": 213861145,
+        "original_bytes": 1102669659
+      },
+      {
+        "media": "text/html; charset=UTF-8",
+        "bodies": 3474,
+        "stored_bytes": 87538910,
+        "original_bytes": 429226174
+      },
+      {
+        "media": "text/xml",
+        "bodies": 5998,
+        "stored_bytes": 62473491,
+        "original_bytes": 308751232
+      },
+      {
+        "media": "",
+        "bodies": 133,
+        "stored_bytes": 58096012,
+        "original_bytes": 68234299
+      },
+      {
+        "media": "application/pdf;charset=UTF-8",
+        "bodies": 36,
+        "stored_bytes": 24739030,
+        "original_bytes": 25832945
+      },
+      {
+        "media": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "bodies": 193,
+        "stored_bytes": 11098611,
+        "original_bytes": 12082430
+      },
+      {
+        "media": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "bodies": 5,
+        "stored_bytes": 6275050,
+        "original_bytes": 6433893
+      },
+      {
+        "media": "image/jpeg",
+        "bodies": 11,
+        "stored_bytes": 4276645,
+        "original_bytes": 4543944
+      },
+      {
+        "media": "application/vnd.ms-powerpoint",
+        "bodies": 4,
+        "stored_bytes": 3232367,
+        "original_bytes": 3768320
+      },
+      {
+        "media": "application/vnd.ms-excel",
+        "bodies": 8,
+        "stored_bytes": 2162690,
+        "original_bytes": 6603264
+      },
+      {
+        "media": "application/msword",
+        "bodies": 57,
+        "stored_bytes": 1612962,
+        "original_bytes": 3678823
+      }
+    ]
+  },
+  "catalog_counts": {
+    "seconds": 7.329,
+    "rows": [
+      {
+        "source_files": 1683430,
+        "documents": 1241157,
+        "filename_url_pairs": 1392681,
+        "occurrences": 4727694,
+        "max_occurrences": 33479,
+        "multiple_body_documents": 39853
+      }
+    ]
+  },
+  "catalog_id_uniqueness": {
+    "seconds": 1.191,
+    "rows": [
+      {
+        "row_count": 1683430,
+        "ids": 1683430,
+        "triples": 1683430
+      }
+    ]
+  },
+  "reading_status": {
+    "seconds": 0.523,
+    "rows": [
+      {
+        "status": "completed",
+        "row_count": 377712
+      },
+      {
+        "status": "unclassified",
+        "row_count": 107184
+      },
+      {
+        "status": "size_limit",
+        "row_count": 6768
+      },
+      {
+        "status": "failed",
+        "row_count": 46
+      }
+    ]
+  },
+  "reading_formats": {
+    "seconds": 0.301,
+    "rows": [
+      {
+        "body_format": [
+          "pdf"
+        ],
+        "record_role": null,
+        "row_count": 226890
+      },
+      {
+        "body_format": [
+          "html"
+        ],
+        "record_role": null,
+        "row_count": 118258
+      },
+      {
+        "body_format": null,
+        "record_role": null,
+        "row_count": 113952
+      },
+      {
+        "body_format": [
+          "zip"
+        ],
+        "record_role": null,
+        "row_count": 31523
+      },
+      {
+        "body_format": [
+          "html"
+        ],
+        "record_role": [
+          "error-response"
+        ],
+        "row_count": 1027
+      },
+      {
+        "body_format": [
+          "xml"
+        ],
+        "record_role": [
+          "document"
+        ],
+        "row_count": 38
+      },
+      {
+        "body_format": [
+          "jpeg"
+        ],
+        "record_role": null,
+        "row_count": 11
+      },
+      {
+        "body_format": [
+          "png"
+        ],
+        "record_role": null,
+        "row_count": 9
+      },
+      {
+        "body_format": [
+          "file_wrapper"
+        ],
+        "record_role": null,
+        "row_count": 2
+      }
+    ]
+  },
+  "member_samples": {
+    "seconds": 0.018,
+    "rows": [
+      {
+        "context_url": "https://budget.house.gov/uploadedfiles/donovan_budget_testimony_final_house.pdf",
+        "original_path": "/Users/mikewolfd/Work/congressional-tech/.cache/raw-source-backfill-20260928/documents/bodies/75/75ab0a87918c431cf6f472143bc7ffa8b5b1c6d46c72132c2c707221fc7ca9d0.body.gz",
+        "sha256": "75ab0a87918c431cf6f472143bc7ffa8b5b1c6d46c72132c2c707221fc7ca9d0",
+        "media_type": null,
+        "resolution": "digest_verified",
+        "reference_kind": "file"
+      },
+      {
+        "context_url": "https://www.appropriations.senate.gov/download/011520_-chairman-shelby-opening-statement",
+        "original_path": "/Users/mikewolfd/Work/congressional-tech/.cache/raw-source-backfill-20260928/documents/bodies/23/233aa772a4c9b04e719f9a03511e9b1203000fa40c4dd3dbe8890c05e22cdf4e.body.gz",
+        "sha256": "233aa772a4c9b04e719f9a03511e9b1203000fa40c4dd3dbe8890c05e22cdf4e",
+        "media_type": null,
+        "resolution": "digest_verified",
+        "reference_kind": "file"
+      },
+      {
+        "context_url": "https://www.boozman.senate.gov/public/_cache/files/3/e/3e7f609b-1e1e-4290-9c91-cbc0abbc40f2/56D5D815D42CFA0272C7913ACF5E7877.tornado-act.pdf",
+        "original_path": "/Users/mikewolfd/Work/congressional-tech/.cache/raw-source-backfill-20260928/documents/bodies/2e/2e04a9d8165388217b85ce9e6fcf21d498dd9835a7ca8bfaa8864a406c0d7c1b.body.gz",
+        "sha256": "2e04a9d8165388217b85ce9e6fcf21d498dd9835a7ca8bfaa8864a406c0d7c1b",
+        "media_type": null,
+        "resolution": "digest_verified",
+        "reference_kind": "file"
+      },
+      {
+        "context_url": "https://www.aging.senate.gov/../../../download/falls-prevention-national-state-and-local-solutions-to-better-support-seniors",
+        "original_path": "/Users/mikewolfd/Work/congressional-tech/.cache/raw-source-backfill-20260928/documents/bodies/32/323f33e1f718c69b28d5b6e81184fd82ba13b9e736108ab0d62c7bfcc7017f43.body.gz",
+        "sha256": "323f33e1f718c69b28d5b6e81184fd82ba13b9e736108ab0d62c7bfcc7017f43",
+        "media_type": null,
+        "resolution": "digest_verified",
+        "reference_kind": "file"
+      },
+      {
+        "context_url": "https://www.americanwildlifeconservation.org/_files/ugd/64e8b6_a5137a1179b04b3e9ba8d48ca57519fd.pdf",
+        "original_path": "/Users/mikewolfd/Work/congressional-tech/.cache/raw-source-backfill-20260928/documents/bodies/90/904dd9e6b3881930d04321015a14d88f30757fe340e8fef08a86506fa928dae7.body.gz",
+        "sha256": "904dd9e6b3881930d04321015a14d88f30757fe340e8fef08a86506fa928dae7",
+        "media_type": null,
+        "resolution": "digest_verified",
+        "reference_kind": "file"
+      },
+      {
+        "context_url": "https://www.cantwell.senate.gov/download/rail-safety-presser-may-17%20",
+        "original_path": "/Users/mikewolfd/Work/congressional-tech/.cache/raw-source-backfill-20260928/documents/bodies/34/3460294b37e39dfd03803e622a0f05c37b3c1ebf8e4eecb156c807c095268134.body.gz",
+        "sha256": "3460294b37e39dfd03803e622a0f05c37b3c1ebf8e4eecb156c807c095268134",
+        "media_type": null,
+        "resolution": "digest_verified",
+        "reference_kind": "file"
+      },
+      {
+        "context_url": "https://www.csce.gov/sites/evo-subsites/csce.house.gov/files/migrated/uploads/2016/04/16-04-19-Testimony-Andy-Baker.pdf",
+        "original_path": "/Users/mikewolfd/Work/congressional-tech/.cache/raw-source-backfill-20260928/documents/bodies/11/1167d4a6f4cc4d3c7e08c4876da9bd5575bd6c289a9b8f14efacf05d7b833b45.body.gz",
+        "sha256": "1167d4a6f4cc4d3c7e08c4876da9bd5575bd6c289a9b8f14efacf05d7b833b45",
+        "media_type": null,
+        "resolution": "digest_verified",
+        "reference_kind": "file"
+      },
+      {
+        "context_url": "https://www.banking.senate.gov/download/-fernandez-resp-to-qfrs",
+        "original_path": "/Users/mikewolfd/Work/congressional-tech/.cache/raw-source-backfill-20260928/documents/bodies/c4/c4173a6875dab0623ac7b51ae92f30767fae8b73ea4c78a8ae894d83a18e81e8.body.gz",
+        "sha256": "c4173a6875dab0623ac7b51ae92f30767fae8b73ea4c78a8ae894d83a18e81e8",
+        "media_type": null,
+        "resolution": "digest_verified",
+        "reference_kind": "file"
+      }
+    ]
+  },
+  "capture_day_counts": {
+    "seconds": 0.187,
+    "rows": [
+      {
+        "capture_date": "2000-08-23",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2001-02-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2001-09-13",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2001-11-09",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2001-11-18",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2001-11-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2002-09-24",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2002-10-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2004-10-18",
+        "row_count": 27,
+        "attempts": 27,
+        "bodies": 26
+      },
+      {
+        "capture_date": "2004-10-19",
+        "row_count": 27,
+        "attempts": 27,
+        "bodies": 27
+      },
+      {
+        "capture_date": "2004-10-20",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2004-10-31",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2004-11-10",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2004-11-19",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2005-11-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2006-06-01",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2006-11-14",
+        "row_count": 11,
+        "attempts": 11,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2007-01-05",
+        "row_count": 176,
+        "attempts": 176,
+        "bodies": 176
+      },
+      {
+        "capture_date": "2007-01-06",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2007-01-31",
+        "row_count": 138,
+        "attempts": 138,
+        "bodies": 138
+      },
+      {
+        "capture_date": "2007-02-08",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2007-03-01",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2007-03-28",
+        "row_count": 10,
+        "attempts": 10,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2007-04-25",
+        "row_count": 18,
+        "attempts": 18,
+        "bodies": 18
+      },
+      {
+        "capture_date": "2007-05-03",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2007-05-26",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2007-05-30",
+        "row_count": 13,
+        "attempts": 13,
+        "bodies": 13
+      },
+      {
+        "capture_date": "2007-06-27",
+        "row_count": 14,
+        "attempts": 14,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2007-07-25",
+        "row_count": 23,
+        "attempts": 23,
+        "bodies": 23
+      },
+      {
+        "capture_date": "2007-08-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2007-09-26",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2007-10-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2007-11-01",
+        "row_count": 23,
+        "attempts": 23,
+        "bodies": 23
+      },
+      {
+        "capture_date": "2007-11-29",
+        "row_count": 43,
+        "attempts": 43,
+        "bodies": 43
+      },
+      {
+        "capture_date": "2007-12-07",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2007-12-27",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2008-04-30",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2008-05-01",
+        "row_count": 15,
+        "attempts": 15,
+        "bodies": 15
+      },
+      {
+        "capture_date": "2008-05-28",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2008-05-29",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2008-06-25",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2008-06-26",
+        "row_count": 13,
+        "attempts": 13,
+        "bodies": 13
+      },
+      {
+        "capture_date": "2008-07-08",
+        "row_count": 10,
+        "attempts": 10,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2008-07-30",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2008-07-31",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2008-09-21",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2008-09-24",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2008-10-07",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2008-10-09",
+        "row_count": 24,
+        "attempts": 12,
+        "bodies": 24
+      },
+      {
+        "capture_date": "2008-10-19",
+        "row_count": 6,
+        "attempts": 3,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2008-10-21",
+        "row_count": 44,
+        "attempts": 22,
+        "bodies": 44
+      },
+      {
+        "capture_date": "2008-10-22",
+        "row_count": 20,
+        "attempts": 10,
+        "bodies": 20
+      },
+      {
+        "capture_date": "2008-10-23",
+        "row_count": 8,
+        "attempts": 4,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2008-10-25",
+        "row_count": 6,
+        "attempts": 3,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2008-10-26",
+        "row_count": 9,
+        "attempts": 5,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2008-10-31",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2008-11-07",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2008-12-12",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2008-12-16",
+        "row_count": 21,
+        "attempts": 21,
+        "bodies": 21
+      },
+      {
+        "capture_date": "2008-12-17",
+        "row_count": 95,
+        "attempts": 95,
+        "bodies": 94
+      },
+      {
+        "capture_date": "2008-12-27",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2009-01-03",
+        "row_count": 54,
+        "attempts": 27,
+        "bodies": 54
+      },
+      {
+        "capture_date": "2009-01-12",
+        "row_count": 10,
+        "attempts": 5,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2009-01-13",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2009-01-15",
+        "row_count": 7,
+        "attempts": 4,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2009-01-16",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2009-01-19",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2009-01-29",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2009-02-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2009-02-27",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2009-03-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2009-03-27",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2009-04-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2009-05-08",
+        "row_count": 6,
+        "attempts": 3,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2009-05-14",
+        "row_count": 6,
+        "attempts": 3,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2009-08-25",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2009-08-26",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2009-10-07",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2009-11-03",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2009-11-07",
+        "row_count": 11,
+        "attempts": 11,
+        "bodies": 11
+      },
+      {
+        "capture_date": "2009-11-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2009-11-22",
+        "row_count": 9,
+        "attempts": 9,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2009-11-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2009-11-24",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2009-11-25",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2009-11-26",
+        "row_count": 33,
+        "attempts": 33,
+        "bodies": 33
+      },
+      {
+        "capture_date": "2009-12-02",
+        "row_count": 11,
+        "attempts": 11,
+        "bodies": 11
+      },
+      {
+        "capture_date": "2009-12-04",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-01-06",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2010-02-05",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-02-09",
+        "row_count": 54,
+        "attempts": 54,
+        "bodies": 54
+      },
+      {
+        "capture_date": "2010-03-15",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-03-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-05-01",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-05-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-05-27",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2010-06-08",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2010-06-09",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-06-15",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-07-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-07-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-08-04",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2010-08-05",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2010-08-09",
+        "row_count": 18,
+        "attempts": 18,
+        "bodies": 18
+      },
+      {
+        "capture_date": "2010-10-07",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-10-08",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2010-12-02",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2010-12-03",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2010-12-05",
+        "row_count": 232,
+        "attempts": 232,
+        "bodies": 213
+      },
+      {
+        "capture_date": "2011-01-06",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2011-01-16",
+        "row_count": 159,
+        "attempts": 159,
+        "bodies": 159
+      },
+      {
+        "capture_date": "2011-01-17",
+        "row_count": 16,
+        "attempts": 16,
+        "bodies": 16
+      },
+      {
+        "capture_date": "2011-02-12",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2011-03-03",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2011-06-01",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2011-06-02",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2011-06-05",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2011-11-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-01-11",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-01-15",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-01-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-02-12",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2012-02-13",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2012-02-15",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2012-02-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-02-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-04-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-04-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-04-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-04-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-04-27",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-05-09",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2012-05-10",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-05-12",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-05-16",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2012-05-21",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2012-05-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-05-30",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-06-02",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-06-11",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-06-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-07-04",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-07-12",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-07-14",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-07-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-07-22",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2012-09-15",
+        "row_count": 18,
+        "attempts": 18,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2012-09-16",
+        "row_count": 28,
+        "attempts": 28,
+        "bodies": 25
+      },
+      {
+        "capture_date": "2012-09-21",
+        "row_count": 17,
+        "attempts": 17,
+        "bodies": 17
+      },
+      {
+        "capture_date": "2012-09-25",
+        "row_count": 11,
+        "attempts": 11,
+        "bodies": 11
+      },
+      {
+        "capture_date": "2012-09-28",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2012-10-01",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2012-10-02",
+        "row_count": 9,
+        "attempts": 9,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2012-10-10",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2012-10-17",
+        "row_count": 791,
+        "attempts": 791,
+        "bodies": 791
+      },
+      {
+        "capture_date": "2012-10-18",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2012-10-23",
+        "row_count": 20,
+        "attempts": 20,
+        "bodies": 20
+      },
+      {
+        "capture_date": "2012-10-27",
+        "row_count": 24,
+        "attempts": 12,
+        "bodies": 24
+      },
+      {
+        "capture_date": "2012-11-07",
+        "row_count": 14,
+        "attempts": 7,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2012-11-08",
+        "row_count": 8,
+        "attempts": 4,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2012-11-09",
+        "row_count": 4,
+        "attempts": 3,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2012-11-10",
+        "row_count": 8,
+        "attempts": 4,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2012-11-11",
+        "row_count": 42,
+        "attempts": 21,
+        "bodies": 42
+      },
+      {
+        "capture_date": "2012-11-12",
+        "row_count": 3074,
+        "attempts": 1537,
+        "bodies": 3074
+      },
+      {
+        "capture_date": "2012-12-09",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2012-12-10",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-12-11",
+        "row_count": 660,
+        "attempts": 331,
+        "bodies": 659
+      },
+      {
+        "capture_date": "2012-12-12",
+        "row_count": 14,
+        "attempts": 14,
+        "bodies": 13
+      },
+      {
+        "capture_date": "2012-12-13",
+        "row_count": 15,
+        "attempts": 15,
+        "bodies": 15
+      },
+      {
+        "capture_date": "2012-12-14",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2012-12-15",
+        "row_count": 302,
+        "attempts": 302,
+        "bodies": 172
+      },
+      {
+        "capture_date": "2012-12-16",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2012-12-18",
+        "row_count": 380,
+        "attempts": 190,
+        "bodies": 380
+      },
+      {
+        "capture_date": "2012-12-19",
+        "row_count": 834,
+        "attempts": 417,
+        "bodies": 834
+      },
+      {
+        "capture_date": "2012-12-20",
+        "row_count": 26,
+        "attempts": 13,
+        "bodies": 26
+      },
+      {
+        "capture_date": "2012-12-27",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-01-02",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2013-01-12",
+        "row_count": 366,
+        "attempts": 183,
+        "bodies": 366
+      },
+      {
+        "capture_date": "2013-01-17",
+        "row_count": 662,
+        "attempts": 331,
+        "bodies": 662
+      },
+      {
+        "capture_date": "2013-02-14",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2013-02-17",
+        "row_count": 10,
+        "attempts": 5,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2013-02-18",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-02-19",
+        "row_count": 64,
+        "attempts": 32,
+        "bodies": 64
+      },
+      {
+        "capture_date": "2013-02-20",
+        "row_count": 38,
+        "attempts": 20,
+        "bodies": 38
+      },
+      {
+        "capture_date": "2013-02-21",
+        "row_count": 4,
+        "attempts": 3,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2013-02-22",
+        "row_count": 16,
+        "attempts": 8,
+        "bodies": 16
+      },
+      {
+        "capture_date": "2013-02-24",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2013-02-25",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2013-02-26",
+        "row_count": 50,
+        "attempts": 25,
+        "bodies": 50
+      },
+      {
+        "capture_date": "2013-02-27",
+        "row_count": 30,
+        "attempts": 15,
+        "bodies": 30
+      },
+      {
+        "capture_date": "2013-03-01",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2013-03-02",
+        "row_count": 40,
+        "attempts": 20,
+        "bodies": 40
+      },
+      {
+        "capture_date": "2013-03-03",
+        "row_count": 130,
+        "attempts": 65,
+        "bodies": 130
+      },
+      {
+        "capture_date": "2013-03-04",
+        "row_count": 12,
+        "attempts": 6,
+        "bodies": 12
+      },
+      {
+        "capture_date": "2013-03-05",
+        "row_count": 140,
+        "attempts": 70,
+        "bodies": 140
+      },
+      {
+        "capture_date": "2013-03-12",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2013-03-16",
+        "row_count": 6,
+        "attempts": 3,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2013-03-17",
+        "row_count": 24,
+        "attempts": 12,
+        "bodies": 24
+      },
+      {
+        "capture_date": "2013-03-18",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2013-04-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-05-18",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2013-05-19",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2013-05-20",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2013-05-21",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2013-05-22",
+        "row_count": 9,
+        "attempts": 9,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2013-05-23",
+        "row_count": 8,
+        "attempts": 8,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2013-05-24",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2013-05-25",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2013-05-26",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2013-06-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-06-17",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2013-06-18",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2013-06-19",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2013-07-11",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-08-10",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-10-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-11-07",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2013-11-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-11-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-12-04",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-12-05",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2013-12-06",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2013-12-07",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2013-12-08",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2013-12-09",
+        "row_count": 9,
+        "attempts": 9,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2013-12-10",
+        "row_count": 9,
+        "attempts": 9,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2013-12-11",
+        "row_count": 12,
+        "attempts": 12,
+        "bodies": 12
+      },
+      {
+        "capture_date": "2013-12-12",
+        "row_count": 9,
+        "attempts": 9,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2013-12-13",
+        "row_count": 19,
+        "attempts": 19,
+        "bodies": 19
+      },
+      {
+        "capture_date": "2013-12-15",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2013-12-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-03-07",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2014-03-08",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2014-03-09",
+        "row_count": 8,
+        "attempts": 8,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2014-03-10",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2014-03-11",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2014-03-12",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2014-03-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-03-28",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2014-03-31",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-04-04",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-04-07",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2014-04-12",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2014-04-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-04-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-04-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-05-07",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-05-21",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2014-06-03",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-06-08",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-06-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-07-03",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2014-07-18",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-07-19",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2014-07-24",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2014-07-26",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2014-07-28",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2014-07-29",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2014-07-30",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2014-07-31",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2014-08-01",
+        "row_count": 15,
+        "attempts": 15,
+        "bodies": 15
+      },
+      {
+        "capture_date": "2014-08-02",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-08-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-08-22",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2014-08-27",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2014-09-15",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-09-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-09-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-09-18",
+        "row_count": 88,
+        "attempts": 88,
+        "bodies": 87
+      },
+      {
+        "capture_date": "2014-09-19",
+        "row_count": 216,
+        "attempts": 216,
+        "bodies": 212
+      },
+      {
+        "capture_date": "2014-09-20",
+        "row_count": 134,
+        "attempts": 134,
+        "bodies": 134
+      },
+      {
+        "capture_date": "2014-09-21",
+        "row_count": 80,
+        "attempts": 80,
+        "bodies": 80
+      },
+      {
+        "capture_date": "2014-09-22",
+        "row_count": 60,
+        "attempts": 60,
+        "bodies": 60
+      },
+      {
+        "capture_date": "2014-09-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-09-25",
+        "row_count": 36,
+        "attempts": 36,
+        "bodies": 36
+      },
+      {
+        "capture_date": "2014-09-26",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-09-29",
+        "row_count": 101,
+        "attempts": 101,
+        "bodies": 99
+      },
+      {
+        "capture_date": "2014-10-02",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-10-31",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2014-11-03",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-11-07",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-11-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-11-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-12-05",
+        "row_count": 13,
+        "attempts": 13,
+        "bodies": 13
+      },
+      {
+        "capture_date": "2014-12-06",
+        "row_count": 104,
+        "attempts": 104,
+        "bodies": 102
+      },
+      {
+        "capture_date": "2014-12-07",
+        "row_count": 123,
+        "attempts": 123,
+        "bodies": 119
+      },
+      {
+        "capture_date": "2014-12-08",
+        "row_count": 59,
+        "attempts": 59,
+        "bodies": 57
+      },
+      {
+        "capture_date": "2014-12-09",
+        "row_count": 189,
+        "attempts": 189,
+        "bodies": 186
+      },
+      {
+        "capture_date": "2014-12-10",
+        "row_count": 11,
+        "attempts": 11,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2014-12-17",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2014-12-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-01-10",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2015-02-13",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2015-02-15",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2015-02-18",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-02-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-03-19",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2015-03-23",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2015-03-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-04-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-04-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-04-26",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-04-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-05-01",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2015-05-06",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2015-05-09",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2015-05-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-06-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-06-26",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2015-07-01",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-07-02",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-07-05",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2015-07-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-07-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-08-03",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-09-05",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2015-09-06",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2015-09-07",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2015-09-08",
+        "row_count": 8,
+        "attempts": 8,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2015-09-09",
+        "row_count": 8,
+        "attempts": 8,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2015-09-10",
+        "row_count": 11,
+        "attempts": 11,
+        "bodies": 11
+      },
+      {
+        "capture_date": "2015-09-11",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2015-09-12",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2015-09-15",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2015-09-17",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2015-09-19",
+        "row_count": 18,
+        "attempts": 18,
+        "bodies": 18
+      },
+      {
+        "capture_date": "2015-09-20",
+        "row_count": 35,
+        "attempts": 35,
+        "bodies": 35
+      },
+      {
+        "capture_date": "2015-09-21",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2015-09-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-09-27",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-09-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-10-11",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-10-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-11-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2015-12-01",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-01-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-03-31",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-05-06",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-05-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-07-02",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-08-04",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-09-07",
+        "row_count": 334,
+        "attempts": 334,
+        "bodies": 330
+      },
+      {
+        "capture_date": "2016-09-08",
+        "row_count": 20,
+        "attempts": 20,
+        "bodies": 20
+      },
+      {
+        "capture_date": "2016-09-09",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2016-09-10",
+        "row_count": 16,
+        "attempts": 16,
+        "bodies": 16
+      },
+      {
+        "capture_date": "2016-09-11",
+        "row_count": 38,
+        "attempts": 38,
+        "bodies": 37
+      },
+      {
+        "capture_date": "2016-09-12",
+        "row_count": 10,
+        "attempts": 10,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2016-09-13",
+        "row_count": 53,
+        "attempts": 53,
+        "bodies": 52
+      },
+      {
+        "capture_date": "2016-09-14",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2016-09-15",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2016-09-16",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2016-09-17",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2016-09-19",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-10-09",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2016-10-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-11-09",
+        "row_count": 21,
+        "attempts": 21,
+        "bodies": 21
+      },
+      {
+        "capture_date": "2016-11-10",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2016-11-11",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-11-13",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2016-11-14",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2016-11-15",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-11-17",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2016-11-18",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2016-11-20",
+        "row_count": 47,
+        "attempts": 47,
+        "bodies": 47
+      },
+      {
+        "capture_date": "2016-11-21",
+        "row_count": 22,
+        "attempts": 22,
+        "bodies": 22
+      },
+      {
+        "capture_date": "2016-11-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2016-12-02",
+        "row_count": 40,
+        "attempts": 40,
+        "bodies": 40
+      },
+      {
+        "capture_date": "2016-12-03",
+        "row_count": 90,
+        "attempts": 90,
+        "bodies": 90
+      },
+      {
+        "capture_date": "2016-12-04",
+        "row_count": 91,
+        "attempts": 91,
+        "bodies": 91
+      },
+      {
+        "capture_date": "2016-12-05",
+        "row_count": 46,
+        "attempts": 46,
+        "bodies": 46
+      },
+      {
+        "capture_date": "2016-12-06",
+        "row_count": 75,
+        "attempts": 75,
+        "bodies": 75
+      },
+      {
+        "capture_date": "2016-12-07",
+        "row_count": 58,
+        "attempts": 58,
+        "bodies": 58
+      },
+      {
+        "capture_date": "2016-12-08",
+        "row_count": 58,
+        "attempts": 58,
+        "bodies": 58
+      },
+      {
+        "capture_date": "2016-12-09",
+        "row_count": 36,
+        "attempts": 35,
+        "bodies": 36
+      },
+      {
+        "capture_date": "2016-12-10",
+        "row_count": 41,
+        "attempts": 41,
+        "bodies": 41
+      },
+      {
+        "capture_date": "2016-12-11",
+        "row_count": 122,
+        "attempts": 119,
+        "bodies": 122
+      },
+      {
+        "capture_date": "2016-12-12",
+        "row_count": 14,
+        "attempts": 7,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2016-12-13",
+        "row_count": 8,
+        "attempts": 4,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2016-12-14",
+        "row_count": 120,
+        "attempts": 60,
+        "bodies": 120
+      },
+      {
+        "capture_date": "2016-12-16",
+        "row_count": 78,
+        "attempts": 39,
+        "bodies": 78
+      },
+      {
+        "capture_date": "2016-12-17",
+        "row_count": 38,
+        "attempts": 19,
+        "bodies": 38
+      },
+      {
+        "capture_date": "2016-12-18",
+        "row_count": 42,
+        "attempts": 21,
+        "bodies": 42
+      },
+      {
+        "capture_date": "2016-12-19",
+        "row_count": 10,
+        "attempts": 5,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2016-12-20",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2016-12-21",
+        "row_count": 16,
+        "attempts": 8,
+        "bodies": 16
+      },
+      {
+        "capture_date": "2016-12-22",
+        "row_count": 14,
+        "attempts": 7,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2016-12-23",
+        "row_count": 32,
+        "attempts": 18,
+        "bodies": 32
+      },
+      {
+        "capture_date": "2016-12-24",
+        "row_count": 538,
+        "attempts": 269,
+        "bodies": 537
+      },
+      {
+        "capture_date": "2016-12-25",
+        "row_count": 228,
+        "attempts": 114,
+        "bodies": 228
+      },
+      {
+        "capture_date": "2016-12-26",
+        "row_count": 142,
+        "attempts": 71,
+        "bodies": 142
+      },
+      {
+        "capture_date": "2016-12-27",
+        "row_count": 894,
+        "attempts": 447,
+        "bodies": 894
+      },
+      {
+        "capture_date": "2016-12-28",
+        "row_count": 510,
+        "attempts": 256,
+        "bodies": 508
+      },
+      {
+        "capture_date": "2016-12-29",
+        "row_count": 56,
+        "attempts": 28,
+        "bodies": 56
+      },
+      {
+        "capture_date": "2016-12-30",
+        "row_count": 756,
+        "attempts": 378,
+        "bodies": 756
+      },
+      {
+        "capture_date": "2016-12-31",
+        "row_count": 342,
+        "attempts": 171,
+        "bodies": 342
+      },
+      {
+        "capture_date": "2017-01-01",
+        "row_count": 78,
+        "attempts": 39,
+        "bodies": 78
+      },
+      {
+        "capture_date": "2017-01-02",
+        "row_count": 20,
+        "attempts": 10,
+        "bodies": 20
+      },
+      {
+        "capture_date": "2017-01-03",
+        "row_count": 158,
+        "attempts": 79,
+        "bodies": 158
+      },
+      {
+        "capture_date": "2017-01-04",
+        "row_count": 108,
+        "attempts": 54,
+        "bodies": 108
+      },
+      {
+        "capture_date": "2017-01-05",
+        "row_count": 58,
+        "attempts": 29,
+        "bodies": 58
+      },
+      {
+        "capture_date": "2017-01-06",
+        "row_count": 74,
+        "attempts": 37,
+        "bodies": 74
+      },
+      {
+        "capture_date": "2017-01-07",
+        "row_count": 140,
+        "attempts": 70,
+        "bodies": 140
+      },
+      {
+        "capture_date": "2017-01-08",
+        "row_count": 168,
+        "attempts": 84,
+        "bodies": 168
+      },
+      {
+        "capture_date": "2017-01-09",
+        "row_count": 250,
+        "attempts": 125,
+        "bodies": 250
+      },
+      {
+        "capture_date": "2017-01-11",
+        "row_count": 798,
+        "attempts": 399,
+        "bodies": 798
+      },
+      {
+        "capture_date": "2017-01-12",
+        "row_count": 844,
+        "attempts": 422,
+        "bodies": 844
+      },
+      {
+        "capture_date": "2017-01-13",
+        "row_count": 838,
+        "attempts": 419,
+        "bodies": 838
+      },
+      {
+        "capture_date": "2017-01-18",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2017-01-19",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2017-01-25",
+        "row_count": 256,
+        "attempts": 129,
+        "bodies": 256
+      },
+      {
+        "capture_date": "2017-01-26",
+        "row_count": 626,
+        "attempts": 313,
+        "bodies": 626
+      },
+      {
+        "capture_date": "2017-01-27",
+        "row_count": 1156,
+        "attempts": 578,
+        "bodies": 1156
+      },
+      {
+        "capture_date": "2017-01-28",
+        "row_count": 410,
+        "attempts": 208,
+        "bodies": 409
+      },
+      {
+        "capture_date": "2017-01-30",
+        "row_count": 98,
+        "attempts": 49,
+        "bodies": 98
+      },
+      {
+        "capture_date": "2017-01-31",
+        "row_count": 300,
+        "attempts": 150,
+        "bodies": 300
+      },
+      {
+        "capture_date": "2017-02-01",
+        "row_count": 580,
+        "attempts": 290,
+        "bodies": 580
+      },
+      {
+        "capture_date": "2017-02-02",
+        "row_count": 63,
+        "attempts": 32,
+        "bodies": 63
+      },
+      {
+        "capture_date": "2017-02-03",
+        "row_count": 4,
+        "attempts": 3,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2017-02-07",
+        "row_count": 862,
+        "attempts": 434,
+        "bodies": 862
+      },
+      {
+        "capture_date": "2017-02-08",
+        "row_count": 16,
+        "attempts": 11,
+        "bodies": 16
+      },
+      {
+        "capture_date": "2017-02-09",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2017-02-10",
+        "row_count": 428,
+        "attempts": 216,
+        "bodies": 428
+      },
+      {
+        "capture_date": "2017-02-11",
+        "row_count": 222,
+        "attempts": 114,
+        "bodies": 222
+      },
+      {
+        "capture_date": "2017-02-12",
+        "row_count": 663,
+        "attempts": 337,
+        "bodies": 663
+      },
+      {
+        "capture_date": "2017-02-13",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2017-02-14",
+        "row_count": 27,
+        "attempts": 15,
+        "bodies": 27
+      },
+      {
+        "capture_date": "2017-02-15",
+        "row_count": 50,
+        "attempts": 25,
+        "bodies": 50
+      },
+      {
+        "capture_date": "2017-02-18",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-02-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-02-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-02-23",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2017-02-24",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2017-02-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-02-28",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2017-03-05",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2017-03-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-03-27",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-04-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-05-04",
+        "row_count": 13,
+        "attempts": 13,
+        "bodies": 13
+      },
+      {
+        "capture_date": "2017-05-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-05-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-07-13",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-07-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-07-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-07-26",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-09-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-09-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-09-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-09-25",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2017-09-26",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-10-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-10-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-10-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-10-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-11-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-11-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2017-12-18",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2018-01-17",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2018-01-19",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2018-01-20",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2018-01-22",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2018-01-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2018-01-24",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2018-02-23",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2018-02-25",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2018-04-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2018-04-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2018-05-24",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2018-07-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2018-09-18",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2018-09-21",
+        "row_count": 9,
+        "attempts": 9,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2018-09-22",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2018-09-23",
+        "row_count": 11,
+        "attempts": 11,
+        "bodies": 11
+      },
+      {
+        "capture_date": "2018-09-24",
+        "row_count": 15,
+        "attempts": 15,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2018-09-25",
+        "row_count": 41,
+        "attempts": 41,
+        "bodies": 41
+      },
+      {
+        "capture_date": "2018-09-26",
+        "row_count": 52,
+        "attempts": 52,
+        "bodies": 39
+      },
+      {
+        "capture_date": "2018-09-27",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2018-09-28",
+        "row_count": 16,
+        "attempts": 16,
+        "bodies": 16
+      },
+      {
+        "capture_date": "2018-09-29",
+        "row_count": 13,
+        "attempts": 13,
+        "bodies": 13
+      },
+      {
+        "capture_date": "2018-09-30",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2018-10-09",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2018-10-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2018-10-23",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2018-12-03",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2018-12-10",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2018-12-12",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2018-12-14",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2018-12-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2018-12-18",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2018-12-22",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2018-12-23",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2018-12-31",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2019-02-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-04-05",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-04-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-04-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-05-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-06-13",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-08-05",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-08-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-09-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-09-21",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2019-09-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-10-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-10-21",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2019-11-15",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-12-02",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2019-12-06",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-01-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-03-08",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-05-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-05-25",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2020-05-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-05-30",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-06-06",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-08-05",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-08-08",
+        "row_count": 18,
+        "attempts": 18,
+        "bodies": 18
+      },
+      {
+        "capture_date": "2020-08-09",
+        "row_count": 14,
+        "attempts": 14,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2020-08-10",
+        "row_count": 44,
+        "attempts": 44,
+        "bodies": 44
+      },
+      {
+        "capture_date": "2020-08-11",
+        "row_count": 29,
+        "attempts": 29,
+        "bodies": 28
+      },
+      {
+        "capture_date": "2020-09-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-09-21",
+        "row_count": 115,
+        "attempts": 115,
+        "bodies": 115
+      },
+      {
+        "capture_date": "2020-09-22",
+        "row_count": 16,
+        "attempts": 16,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2020-09-23",
+        "row_count": 12,
+        "attempts": 12,
+        "bodies": 12
+      },
+      {
+        "capture_date": "2020-09-24",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2020-09-30",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-10-08",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-10-09",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-10-22",
+        "row_count": 3,
+        "attempts": 2,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2020-10-26",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2020-10-28",
+        "row_count": 5,
+        "attempts": 3,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2020-11-24",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2020-11-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2020-11-29",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2020-12-18",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-01-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-01-19",
+        "row_count": 11,
+        "attempts": 11,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2021-01-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-02-25",
+        "row_count": 10,
+        "attempts": 10,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2021-03-01",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-03-18",
+        "row_count": 56,
+        "attempts": 28,
+        "bodies": 56
+      },
+      {
+        "capture_date": "2021-03-19",
+        "row_count": 20,
+        "attempts": 10,
+        "bodies": 20
+      },
+      {
+        "capture_date": "2021-03-20",
+        "row_count": 64,
+        "attempts": 32,
+        "bodies": 64
+      },
+      {
+        "capture_date": "2021-03-21",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2021-03-22",
+        "row_count": 12,
+        "attempts": 6,
+        "bodies": 12
+      },
+      {
+        "capture_date": "2021-03-23",
+        "row_count": 18,
+        "attempts": 9,
+        "bodies": 18
+      },
+      {
+        "capture_date": "2021-03-24",
+        "row_count": 24,
+        "attempts": 12,
+        "bodies": 24
+      },
+      {
+        "capture_date": "2021-03-25",
+        "row_count": 10,
+        "attempts": 5,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2021-03-26",
+        "row_count": 10,
+        "attempts": 5,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2021-03-27",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2021-03-28",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2021-03-29",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-03-30",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2021-04-01",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-04-04",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-04-14",
+        "row_count": 3,
+        "attempts": 2,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2021-04-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-04-26",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-04-29",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-05-02",
+        "row_count": 6,
+        "attempts": 3,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2021-05-05",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-05-07",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-05-16",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2021-05-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-07-15",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-07-23",
+        "row_count": 8,
+        "attempts": 8,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2021-07-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-07-30",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2021-08-05",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-09-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-09-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-09-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-09-24",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2021-09-25",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2021-09-26",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-09-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-09-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-09-30",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-10-07",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-10-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-10-19",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2021-10-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-10-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-11-01",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-11-26",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-11-27",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-12-01",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2021-12-09",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2021-12-26",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2022-01-01",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2022-01-18",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-01-20",
+        "row_count": 8,
+        "attempts": 8,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2022-01-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-01-26",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2022-01-27",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-03-20",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2022-03-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-04-05",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2022-04-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-05-14",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-05-25",
+        "row_count": 24,
+        "attempts": 24,
+        "bodies": 24
+      },
+      {
+        "capture_date": "2022-05-28",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2022-06-25",
+        "row_count": 14,
+        "attempts": 14,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2022-06-26",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2022-06-27",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2022-07-03",
+        "row_count": 12,
+        "attempts": 12,
+        "bodies": 12
+      },
+      {
+        "capture_date": "2022-07-05",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-07-30",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-08-13",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2022-08-15",
+        "row_count": 9,
+        "attempts": 9,
+        "bodies": 9
+      },
+      {
+        "capture_date": "2022-08-17",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2022-09-19",
+        "row_count": 12,
+        "attempts": 12,
+        "bodies": 12
+      },
+      {
+        "capture_date": "2022-09-20",
+        "row_count": 39,
+        "attempts": 39,
+        "bodies": 39
+      },
+      {
+        "capture_date": "2022-09-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-09-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-09-26",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-10-01",
+        "row_count": 41,
+        "attempts": 41,
+        "bodies": 41
+      },
+      {
+        "capture_date": "2022-10-02",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2022-10-05",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-10-07",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2022-11-27",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2022-11-29",
+        "row_count": 28,
+        "attempts": 28,
+        "bodies": 24
+      },
+      {
+        "capture_date": "2022-12-03",
+        "row_count": 11,
+        "attempts": 11,
+        "bodies": 11
+      },
+      {
+        "capture_date": "2022-12-04",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2022-12-05",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2022-12-08",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2022-12-09",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-12-10",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2022-12-13",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-01-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-02-09",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-03-08",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-03-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-03-27",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-04-01",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-04-18",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-04-24",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2023-05-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-05-18",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-05-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-05-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-06-01",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-06-06",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-06-07",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-06-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-06-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-06-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-07-02",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-09-16",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-09-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-10-04",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-10-07",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-10-08",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2023-10-09",
+        "row_count": 5,
+        "attempts": 5,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2023-10-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2023-12-05",
+        "row_count": 9,
+        "attempts": 9,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2024-01-04",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-03-05",
+        "row_count": 17,
+        "attempts": 17,
+        "bodies": 17
+      },
+      {
+        "capture_date": "2024-04-04",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2024-04-13",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-04-14",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2024-04-15",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-04-17",
+        "row_count": 6,
+        "attempts": 6,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2024-04-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-05-10",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-05-16",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2024-05-28",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-05-29",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-06-13",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-06-19",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-06-20",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-06-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-07-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-08-12",
+        "row_count": 8,
+        "attempts": 8,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2024-08-13",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-08-14",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-09-18",
+        "row_count": 49,
+        "attempts": 49,
+        "bodies": 25
+      },
+      {
+        "capture_date": "2024-09-19",
+        "row_count": 317,
+        "attempts": 317,
+        "bodies": 163
+      },
+      {
+        "capture_date": "2024-09-20",
+        "row_count": 209,
+        "attempts": 209,
+        "bodies": 125
+      },
+      {
+        "capture_date": "2024-09-21",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 5
+      },
+      {
+        "capture_date": "2024-09-22",
+        "row_count": 10,
+        "attempts": 10,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2024-09-26",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2024-09-29",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2024-10-09",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2024-11-05",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-11-29",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2024-12-06",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2024-12-13",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2024-12-15",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2024-12-18",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2024-12-30",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-01-10",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-01-14",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2025-01-16",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-01-18",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-02-06",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-02-07",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-02-23",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-02-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-03-01",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-03-02",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-03-05",
+        "row_count": 16,
+        "attempts": 8,
+        "bodies": 16
+      },
+      {
+        "capture_date": "2025-03-06",
+        "row_count": 26,
+        "attempts": 13,
+        "bodies": 26
+      },
+      {
+        "capture_date": "2025-03-07",
+        "row_count": 8,
+        "attempts": 4,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2025-03-08",
+        "row_count": 13,
+        "attempts": 7,
+        "bodies": 13
+      },
+      {
+        "capture_date": "2025-03-09",
+        "row_count": 12,
+        "attempts": 6,
+        "bodies": 12
+      },
+      {
+        "capture_date": "2025-03-10",
+        "row_count": 8,
+        "attempts": 4,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2025-03-11",
+        "row_count": 14,
+        "attempts": 7,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2025-03-12",
+        "row_count": 10,
+        "attempts": 5,
+        "bodies": 10
+      },
+      {
+        "capture_date": "2025-03-13",
+        "row_count": 18,
+        "attempts": 9,
+        "bodies": 18
+      },
+      {
+        "capture_date": "2025-03-14",
+        "row_count": 24,
+        "attempts": 13,
+        "bodies": 24
+      },
+      {
+        "capture_date": "2025-03-15",
+        "row_count": 14,
+        "attempts": 7,
+        "bodies": 14
+      },
+      {
+        "capture_date": "2025-03-16",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2025-03-17",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-03-18",
+        "row_count": 8,
+        "attempts": 4,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2025-03-19",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-03-20",
+        "row_count": 22,
+        "attempts": 11,
+        "bodies": 22
+      },
+      {
+        "capture_date": "2025-03-21",
+        "row_count": 16,
+        "attempts": 8,
+        "bodies": 16
+      },
+      {
+        "capture_date": "2025-03-22",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2025-03-23",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-03-24",
+        "row_count": 16,
+        "attempts": 8,
+        "bodies": 16
+      },
+      {
+        "capture_date": "2025-03-25",
+        "row_count": 4,
+        "attempts": 2,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2025-04-02",
+        "row_count": 3,
+        "attempts": 2,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2025-04-04",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-04-05",
+        "row_count": 4,
+        "attempts": 4,
+        "bodies": 4
+      },
+      {
+        "capture_date": "2025-04-16",
+        "row_count": 2,
+        "attempts": 1,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2025-04-21",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-04-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-04-27",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-05-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-05-24",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-07-10",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-07-13",
+        "row_count": 8,
+        "attempts": 8,
+        "bodies": 8
+      },
+      {
+        "capture_date": "2025-09-17",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-10-09",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-10-11",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2025-11-26",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2026-01-22",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2026-02-03",
+        "row_count": 43,
+        "attempts": 43,
+        "bodies": 42
+      },
+      {
+        "capture_date": "2026-02-07",
+        "row_count": 2,
+        "attempts": 2,
+        "bodies": 2
+      },
+      {
+        "capture_date": "2026-02-25",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2026-03-14",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2026-04-16",
+        "row_count": 7,
+        "attempts": 7,
+        "bodies": 7
+      },
+      {
+        "capture_date": "2026-04-27",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2026-05-12",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2026-08-07",
+        "row_count": 3,
+        "attempts": 3,
+        "bodies": 3
+      },
+      {
+        "capture_date": "2026-08-09",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2026-08-10",
+        "row_count": 1,
+        "attempts": 1,
+        "bodies": 1
+      },
+      {
+        "capture_date": "2026-09-21",
+        "row_count": 471,
+        "attempts": 2,
+        "bodies": 367
+      },
+      {
+        "capture_date": "2026-09-22",
+        "row_count": 48,
+        "attempts": 1,
+        "bodies": 6
+      },
+      {
+        "capture_date": "2026-09-23",
+        "row_count": 288,
+        "attempts": 227,
+        "bodies": 28
+      },
+      {
+        "capture_date": "2026-09-24",
+        "row_count": 4592,
+        "attempts": 3715,
+        "bodies": 880
+      },
+      {
+        "capture_date": "2026-09-25",
+        "row_count": 11207,
+        "attempts": 9742,
+        "bodies": 1042
+      },
+      {
+        "capture_date": "2026-09-27",
+        "row_count": 91,
+        "attempts": 89,
+        "bodies": 43
+      },
+      {
+        "capture_date": "2026-09-28",
+        "row_count": 22612,
+        "attempts": 22575,
+        "bodies": 4288
+      },
+      {
+        "capture_date": "2026-09-29",
+        "row_count": 745456,
+        "attempts": 708626,
+        "bodies": 547700
+      },
+      {
+        "capture_date": "2026-09-30",
+        "row_count": 1119,
+        "attempts": 1105,
+        "bodies": 840
+      },
+      {
+        "capture_date": "2026-10-01",
+        "row_count": 68210,
+        "attempts": 47887,
+        "bodies": 46616
+      },
+      {
+        "capture_date": "2026-10-02",
+        "row_count": 18290,
+        "attempts": 15089,
+        "bodies": 15072
+      },
+      {
+        "capture_date": "2026-10-03",
+        "row_count": 55904,
+        "attempts": 20004,
+        "bodies": 26886
+      },
+      {
+        "capture_date": "2026-10-04",
+        "row_count": 44570,
+        "attempts": 20020,
+        "bodies": 23667
+      },
+      {
+        "capture_date": "2026-10-05",
+        "row_count": 340468,
+        "attempts": 268837,
+        "bodies": 275165
+      },
+      {
+        "capture_date": "2026-10-06",
+        "row_count": 173931,
+        "attempts": 65599,
+        "bodies": 146589
+      },
+      {
+        "capture_date": "2026-10-07",
+        "row_count": 832,
+        "attempts": 407,
+        "bodies": 557
+      },
+      {
+        "capture_date": "2026-10-11",
+        "row_count": 11419,
+        "attempts": 7047,
+        "bodies": 6996
+      },
+      {
+        "capture_date": "2026-10-12",
+        "row_count": 166243,
+        "attempts": 122983,
+        "bodies": 111586
+      },
+      {
+        "capture_date": "2026-10-13",
+        "row_count": 956,
+        "attempts": 773,
+        "bodies": 758
+      },
+      {
+        "capture_date": "2026-10-14",
+        "row_count": 270,
+        "attempts": 270,
+        "bodies": 259
+      },
+      {
+        "capture_date": "2026-10-15",
+        "row_count": 2624,
+        "attempts": 2624,
+        "bodies": 2256
+      },
+      {
+        "capture_date": "2026-10-16",
+        "row_count": 3553,
+        "attempts": 2946,
+        "bodies": 3520
+      },
+      {
+        "capture_date": "undated",
+        "row_count": 2208047,
+        "attempts": 1258179,
+        "bodies": 587048
+      }
+    ]
+  },
+  "hot_bodies": {
+    "seconds": 0.304,
+    "rows": [
+      {
+        "sha256": "3d20469c415db5b7a90924176cf759776cdc2ae7132d969f0847c0d3001d206c",
+        "urls": 87161,
+        "capture_rows": 262995,
+        "media": "text/vtt",
+        "original_bytes": 57
+      },
+      {
+        "sha256": "dc1d54dab6ec8c00f70137927504e4f222c8395f10760b6beecfcfa94e08249f",
+        "urls": 24387,
+        "capture_rows": 56644,
+        "media": "text/html",
+        "original_bytes": 1245
+      },
+      {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "urls": 2817,
+        "capture_rows": 10559,
+        "media": "",
+        "original_bytes": 0
+      },
+      {
+        "sha256": "d465172175d35d493fb1633e237700022bd849fa123164790b168b8318acb090",
+        "urls": 2250,
+        "capture_rows": 6158,
+        "media": "text/html",
+        "original_bytes": 548
+      },
+      {
+        "sha256": "80c3fe2ae1062abf56456f52518bd670f9ec3917b7f85e152b347ac6b6faf880",
+        "urls": 1998,
+        "capture_rows": 5065,
+        "media": "text/html; charset=iso-8859-1",
+        "original_bytes": 196
+      },
+      {
+        "sha256": "6ca8dc5dbad002a103d81da519f8add0be8b2aed8bd1c61154db1a3448697649",
+        "urls": 1487,
+        "capture_rows": 5559,
+        "media": "application/x-mpegURL",
+        "original_bytes": 142
+      },
+      {
+        "sha256": "9576c5229b72be6d263b33ce4285d14ea4d389cf77cb54c54d7e22f5711b20cd",
+        "urls": 969,
+        "capture_rows": 3630,
+        "media": "application/x-mpegURL",
+        "original_bytes": 142
+      },
+      {
+        "sha256": "82350efcfd4bbccc1d770209c8e6aee9768d576e290b90261ae3ab5b54b947b1",
+        "urls": 812,
+        "capture_rows": 3891,
+        "media": "application/x-mpegURL",
+        "original_bytes": 355
+      },
+      {
+        "sha256": "28920a47d3c419769724e1e5bf7cf1688364464793446dc77f1dd1e318f97587",
+        "urls": 586,
+        "capture_rows": 4270,
+        "media": "application/x-mpegURL",
+        "original_bytes": 355
+      },
+      {
+        "sha256": "6a986ff050745d6457754ad1b354c6a73ca232527fbcf016d1d189e2244cf22f",
+        "urls": 388,
+        "capture_rows": 1164,
+        "media": "text/vtt",
+        "original_bytes": 55
+      },
+      {
+        "sha256": "ab214ce9f7a706cc4ee93703502f950222090c2547e47fafd75a299545919743",
+        "urls": 295,
+        "capture_rows": 1100,
+        "media": "text/html",
+        "original_bytes": 44172
+      },
+      {
+        "sha256": "bd70145a6f8ea784570f45507a9c0f21b4c1d14a1ddd10afd91e9f255e029be0",
+        "urls": 236,
+        "capture_rows": 816,
+        "media": "text/html; charset=UTF-8",
+        "original_bytes": 341463
+      },
+      {
+        "sha256": "35d820e9c6736a9bca3aef2a8f6eab380f82486a97222096524994755c63f888",
+        "urls": 148,
+        "capture_rows": 491,
+        "media": "application/x-mpegURL",
+        "original_bytes": 202
+      },
+      {
+        "sha256": "725c7aea92aca21da9f2dd55022bdf1d096835c197d6f4a466c999be688b3bee",
+        "urls": 144,
+        "capture_rows": 403,
+        "media": "text/html; charset=utf-8",
+        "original_bytes": 6508
+      },
+      {
+        "sha256": "5765e6695119728cfbd14dad433cebd1ecab1176796067358af47ae53932670a",
+        "urls": 133,
+        "capture_rows": 510,
+        "media": "application/x-mpegURL",
+        "original_bytes": 142
+      },
+      {
+        "sha256": "9727f645d74722a8fbd62b4d3b065a8f15528f0c07b6b24059c924cad351f978",
+        "urls": 116,
+        "capture_rows": 160,
+        "media": "text/html",
+        "original_bytes": 174
+      },
+      {
+        "sha256": "51454d89c80e182b730542a17d57f07b0319ad9a7f3c2809258b2694efb28da5",
+        "urls": 107,
+        "capture_rows": 122,
+        "media": null,
+        "original_bytes": 214
+      },
+      {
+        "sha256": "08bec02de5df7c4f187aee2f6b23a45a897425dc8c232d88f6b1dec34b610580",
+        "urls": 105,
+        "capture_rows": 403,
+        "media": "application/x-mpegURL",
+        "original_bytes": 142
+      }
+    ]
+  },
+  "filename_example": {
+    "seconds": 0.754,
+    "rows": [
+      {
+        "filename": "house_105634_documents_HHRG_115_SM23_WList_20170202_pdf",
+        "source_url": null,
+        "source_paths": [
+          "/Users/mikewolfd/hearing-text/witness_lists/house_105634_documents_HHRG_115_SM23_WList_20170202_pdf",
+          "external-sources/hearing-text/witness_lists/house_105634_documents_HHRG_115_SM23_WList_20170202_pdf"
+        ],
+        "body_key": "bodies/sha256/18/185bed452f65d77f0f04e370adff208d05e6a8bb6927815b4380d7229dd9d826.gz",
+        "source_id": "5d7277a2625b636953f2513a0ad2c053bddc13e3f9cb0a1c727da45a5902aaf7",
+        "document_id": "6b89335d16b71ef84ba1ddbfe1f3f0d0c1006fbe1b119e0f969e5779f2cc1e17",
+        "response_format": [
+          "pdf"
+        ],
+        "response_body_complete": null,
+        "response_result": [
+          "local_body_reused"
+        ]
+      },
+      {
+        "filename": "house_103333_documents_HHRG_114_HM00_20150430_SD001_pdf",
+        "source_url": null,
+        "source_paths": [
+          "/Users/mikewolfd/hearing-text/witness_lists/house_103333_documents_HHRG_114_HM00_20150430_SD001_pdf",
+          "external-sources/hearing-text/witness_lists/house_103333_documents_HHRG_114_HM00_20150430_SD001_pdf"
+        ],
+        "body_key": "bodies/sha256/98/9850ba4af306d37d270adc68cdb2b396f28ae06b8eb6731b2de0a4b53f297ff2.gz",
+        "source_id": "4e85790a16e775fc4bf6032c4d77f6a6ce553227a34c315380d25405f5a33038",
+        "document_id": "44e9ec383231a3df5d311cf4cda63c101787964e027536f8b0ea7a73e610483d",
+        "response_format": null,
+        "response_body_complete": null,
+        "response_result": null
+      },
+      {
+        "filename": "house_102865_documents_HHRG_114_SM00_20150225_SD002_U1_pdf",
+        "source_url": null,
+        "source_paths": [
+          "/Users/mikewolfd/hearing-text/witness_lists/house_102865_documents_HHRG_114_SM00_20150225_SD002_U1_pdf",
+          "external-sources/hearing-text/witness_lists/house_102865_documents_HHRG_114_SM00_20150225_SD002_U1_pdf"
+        ],
+        "body_key": "bodies/sha256/66/665f835e1c345e962131b44956f31901723c54b314ce71e51b7252df340dfaa3.gz",
+        "source_id": "503a7cc52b0b3fbe6601dcfbed548564527f5fa58a5fde3694ab34d2f9173f1d",
+        "document_id": "ef645d3a7349cd0c275ac7c1ae5e069e991302672530a20dfeeb5e23250b3497",
+        "response_format": [
+          "pdf"
+        ],
+        "response_body_complete": null,
+        "response_result": [
+          "local_body_reused"
+        ]
+      },
+      {
+        "filename": "house_100218_documents_HHRG_113_JU00_20130205_SD002_pdf",
+        "source_url": null,
+        "source_paths": [
+          "/Users/mikewolfd/hearing-text/witness_lists/house_100218_documents_HHRG_113_JU00_20130205_SD002_pdf",
+          "external-sources/hearing-text/witness_lists/house_100218_documents_HHRG_113_JU00_20130205_SD002_pdf"
+        ],
+        "body_key": "bodies/sha256/8a/8a42957a8037431ba5284e79cb3e09531f2b01473d2e5698d4504dd3aabec1d9.gz",
+        "source_id": "9a2974b3d7dbd1c9a3991aef70688c3ace320858bfc176fad701fcf1d1e3e3d4",
+        "document_id": "aedcc799aa0a314067f2bad35cfc77e6fe33497920c5676b607f750c72f03030",
+        "response_format": null,
+        "response_body_complete": null,
+        "response_result": null
+      },
+      {
+        "filename": "house_100263_documents_HHRG_113_HM09_20130215_SD001_pdf",
+        "source_url": null,
+        "source_paths": [
+          "/Users/mikewolfd/hearing-text/witness_lists/house_100263_documents_HHRG_113_HM09_20130215_SD001_pdf",
+          "external-sources/hearing-text/witness_lists/house_100263_documents_HHRG_113_HM09_20130215_SD001_pdf"
+        ],
+        "body_key": "bodies/sha256/41/413625a62375859151a6299d7d428e537e2ab2f3374a94466f14441c77505073.gz",
+        "source_id": "6c2f42864e4651c760d45a9a04412ae5411bf18cad90b173c8d08bb5e80612d8",
+        "document_id": "dabfcf87e6b1513dc0f5628d2147de17790b3898700c1ed65e78dea5af603cdd",
+        "response_format": null,
+        "response_body_complete": null,
+        "response_result": null
+      }
+    ]
+  }
+}
