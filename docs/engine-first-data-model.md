@@ -252,8 +252,10 @@ documentation only.
 - **Source:** the Congress.gov committee API responses that `acquisition/committees.py`
   fetches. Today it writes them to its own output file; in the target it fetches through
   the raw writer like every other fetch, so committee names derive from raw.
-- **Producer:** the JSON parser, once per API body. The latest record per
-  `(congress, system_code)` wins.
+- **PK:** `(body_sha, congress, system_code)`.
+- **Producer:** the JSON parser, once per API body. The model takes one record per
+  `(congress, system_code)` in a total order, `retrieved_at` desc then `body_sha`, so two
+  fetches with the same timestamp can't make runs differ.
 - **Work list:** committee API bodies with no rows yet. A few thousand rows.
 
 ### 2.6 `pdf_text` (deferred)
