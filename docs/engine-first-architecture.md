@@ -15,8 +15,8 @@ the first is precious:
 1. **Raw log.** An append-only, content-addressed record of every fetch attempt, every
    body and every human decision. It is never rewritten.
 2. **Lake.** Four append-only engine tables derived from the log: what was captured,
-   what each body says, what each filename says, and which page linked each file. Each
-   row is computed once.
+   what each body says, what each filename says, and which page linked each file, plus a
+   small table of committee records. Each row is computed once.
 3. **Releases.** Immutable Parquet produced by one deterministic SQL job over the lake. A
    single pointer selects the live release.
 
@@ -86,6 +86,7 @@ LAKE (Iceberg, append-only)
   readings           one row per (body, parser, version)        O(new bodies in scope)
   filename_readings  one row per (filename, URL, catalog)       O(new pairs)
   page_links         one row per link found in a fetched page   O(new receipts)
+  committee_records  one row per committee in an API response   O(new API bodies)
         │
         ▼  docspec-rs: one SQL plan, deterministic export
 RELEASE (immutable)
@@ -172,7 +173,7 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
 
 ## 5. Lake
 
-All four tables are Iceberg tables in the bucket's Basin Catalog (formerly R2 Data
+All lake tables are Iceberg tables in the bucket's Basin Catalog (formerly R2 Data
 Catalog), the managed Iceberg REST catalog. Their columns use Iceberg's own types, which
 have no 16-bit integers or dictionary types (data model, conventions); the release files
 may use narrower Parquet types. Every commit carries its requirements (table UUID and
@@ -183,7 +184,7 @@ commits to the same tables, so an append can lose a race. On a conflict the writ
 the table, recomputes its work list (the anti-join) against the new snapshot, writes only
 what is still missing, and retries a bounded number of times. Re-sending the losing files
 could duplicate rows when two runs ingest the same receipts. Files from a losing attempt
-become orphans (5.5).
+become orphans (5.6).
 
 ### 5.1 `captures`
 - **Rows:** one per body a receipt line references, plus one line-only row (no body) for
@@ -269,7 +270,16 @@ become orphans (5.5).
   commit, since Iceberg has no multi-table transaction. If it lags `captures`, pages show
   less link context; nothing fails. *Est.* 3–5M rows, 60–120 MB.
 
-### 5.5 Maintenance
+### 5.5 `committee_records`
+- **Rows:** one per committee in a Congress.gov committee API response: congress, system
+  code, chamber, name and parent committee. A few thousand rows.
+- **Why a table.** Document pages show committee names, not codes (owner decision). The
+  JSON parser reads each committee API response once, and the model joins on
+  `(congress, system code)`.
+- **Source.** `acquisition/committees.py` fetches through the raw writer like every other
+  fetch, instead of writing its own output file, so names derive from raw.
+
+### 5.6 Maintenance
 - **Basin Catalog maintains the tables:** compaction (target 128 MB) and snapshot
   expiration (older than 30 days, keep the last 5), enabled per table. Expiration also
   deletes the data files that only expired snapshots referenced. Compaction is a paid Basin
@@ -402,6 +412,11 @@ become orphans (5.5).
   The date and keys are written once as typed columns by the filename-reading producer;
   house-naming's literal strings stay unchanged in its field list. The meeting reference is
   derived in SQL, like `url_key`, so nothing new is stored for it.
+- **Committee names, not codes** (owner decision). House-naming's committee code maps to
+  the Congress.gov system code (House codes as `hs` plus the lowercased code, so `AG03` is
+  `hsag03`), and the name comes from `committee_records` for the document's congress, or
+  the most recent congress that has the code. Facets and pages show the name, matching the
+  committee explorer's filters; unmapped codes are reported with counts.
 - **Recoveries are evidence for the original link,** never files the recovering URL
   served. They stay out of `url_state`, text comparison, `links` and capture dates (an
   import's timestamp is the recovered copy's own). Every recovery is shown on the original
@@ -565,8 +580,8 @@ Unfiltered facet counts go in the release manifest.
 
 ```
 capture:     live url_state → fetchers → bodies → receipts           (daily; network-bound)
-publish:     captures, page_links → readings, filename_readings → model + export
-             → canary → flip → status                                 (after capture, or on demand)
+publish:     captures, page_links → readings, filename_readings, committee_records
+             → model + export → canary → flip → status                (after capture, or on demand)
 maintenance: raw check and sample → release retention → orphan report (weekly)
 backfill:    readings or filename_readings for a new version          (on demand)
 ```
@@ -713,7 +728,7 @@ one document; PDF text read for fingerprint candidates only; every link join nor
 the URL, unwrapping redirect and archive wrappers and stripping only tracker and
 known page-state parameters; one entry for all formats of a document, offering the PDF
 first; documents linked to their meetings; a typed document date; official record keys for
-link-outs; no per-view byte budget; hyparquet in the
+link-outs; committee names shown, not codes; no per-view byte budget; hyparquet in the
 browser; uncompressed copies of older PDFs only; no early launch on the converted Oct 19
 release.
 

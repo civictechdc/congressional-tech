@@ -65,6 +65,7 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 33 | Link documents to their meetings, from URLs and linking pages | `meeting_ref` in E1; A9 lists every document for a hearing. |
 | 34 | A typed document date for sorting and filtering | `document_date` in D3 and E2; A6 and A9. |
 | 35 | Official record keys as typed fields, for link-outs | GovInfo package, bill keys and Bioguide IDs in D3 and E2; A9. |
+| 36 | Show committee names, not codes | `committee_records` in D5; the mapping in E1; A9. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -328,8 +329,11 @@ threads, input orders and batch sizes and with a forced spill, on the smallest r
    `measure_keys`, `bioguide_ids` and `gpo_package_id` (decisions 34–35), so the model
    never unnests the field list. Backfill is about 7 minutes over 1.39M pairs.
 4. Enable Basin compaction and snapshot expiration on all four tables.
+5. **`committee_records`** (design §5.5): the JSON parser reads each committee API
+   response once. First, `acquisition/committees.py` fetches through the raw writer
+   instead of writing its own output file (decision 36).
 
-**Done when:** all four tables exist with complete backfills, and both `captures`
+**Done when:** all lake tables exist with complete backfills, and both `captures`
 comparisons pass.
 
 ### E. Model SQL and parity
@@ -345,6 +349,8 @@ comparisons pass.
      `url_state`, fingerprint candidates, link keys or capture dates; the written
      recovery-kind mapping, where an unmapped category fails the build;
    - the import day, defined by the import run's ID, not by its date;
+   - the committee mapping (decision 36): House codes as `hs` plus the lowercased code,
+     joined to `committee_records` by congress, with unmapped codes reported by count;
    - `url_key` for every link join (decision 29): the wrapper patterns and the
      strip-list, each entry with a real sample URL as a test;
    - the edge set: identical real files connect, web pages included (decision 27);
@@ -424,6 +430,10 @@ and the deleted line counts are recorded.
   user or a measured failure on real data.
 - **ct-gi01** (committee explorer and weekly retention onto incremental tables): its
   approach conflicts with the design. Re-scope it before starting.
+- **Considered, not chosen** (owner, Oct 24), so they aren't re-proposed without new
+  information: showing the original link's last status (36,137 documents' URLs last
+  returned 404 or 410), showing saved-file size (3,042 over 50 MB), and witness links from
+  House meeting XML.
 - **Parquet variant for the folds:** revisit when all three hold: an iceberg-rust release
   writes variant through its Parquet writer (0.10.1, the pinned and latest release, has no
   variant type; 0.11 is expected to add it), Basin Catalog accepts format-version 3

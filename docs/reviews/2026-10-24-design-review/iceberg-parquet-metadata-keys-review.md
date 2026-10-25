@@ -62,3 +62,23 @@ committee explorer already uses.
 The literal house-naming strings stay in the `fields` fold unchanged; the typed values exist
 only in the composed keys and `document_date`, preserving house-naming's literal-source
 contract.
+
+## Extras considered (owner, 2026-10-24)
+
+**Adopted: committee names.**
+- `committee_key` is the Congress.gov committee `systemCode` derived from house-naming's
+  `committee_code`. For House codes it is `'hs' || lower(code)`, so `AG03` becomes `hsag03`.
+- Names are joined on `(congress, committee_key)` to the committee records
+  `acquisition/committees.py` already collects (keyed `{congress}|{systemCode}`), falling back
+  to the most recent congress's name when the document's congress has no record.
+- `list` facets and `detail` show the name; the code stays in the fold.
+- E1 reports unmapped codes with counts.
+
+This matches the committee explorer's committee filters.
+
+**Considered, not chosen for now:**
+- Original-link status: 36,137 documents' source URLs last returned 404 or 410, 865k returned
+  2xx, and 338k were never checked.
+- Saved-file size: 15,293 saved files are over 10 MB, 3,042 over 50 MB and 263 over 200 MB;
+  the largest is 1.19 GB.
+- Witness links from House meeting XML.
