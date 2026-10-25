@@ -1,0 +1,28 @@
+
+## source files; null source_url; filename != url last segment; distinct body_key; null body_key
+SELECT count(*), count(*) FILTER (WHERE source_url IS NULL),
+      count(*) FILTER (WHERE source_url IS NOT NULL AND filename <> regexp_extract(regexp_replace(source_url, '[?#].*$', ''), '([^/]*)$', 1)),
+      count(DISTINCT body_key), count(*) FILTER (WHERE body_key IS NULL) FROM read_parquet('/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/filenames.parquet')
+-> [(1683430, 331985, 32574, 962897, 24980)]
+
+## body_keys that appear in more than one source file row (old filenames grain)
+SELECT count(*) FROM (SELECT body_key FROM read_parquet('/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/filenames.parquet') WHERE body_key IS NOT NULL GROUP BY 1 HAVING count(*)>1)
+-> [(320147,)]
+
+## multi-valued facets: >1 document_kind, >1 document_family, >1 committee_code
+SELECT count(*) FILTER (WHERE len(document_kind)>1), count(*) FILTER (WHERE len(document_family)>1), count(*) FILTER (WHERE len(committee_code)>1) FROM read_parquet('/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/filenames.parquet')
+-> [(24202, 3637, 5229)]
+
+## rows with non-empty source_paths (archive members) and response_format html among them
+SELECT count(*) FILTER (WHERE len(source_paths)>0), count(*) FILTER (WHERE len(source_paths)>0 AND list_contains(response_format,'html')) FROM read_parquet('/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/filenames.parquet')
+-> [(679405, 0)]
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/cs300-specs/spec_measure_filenames.py", line 19, in <module>
+    q("response_format distribution (top 12)",
+  File "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/cs300-specs/spec_measure_filenames.py", line 7, in q
+    r = con.execute(sql).fetchall()
+        ^^^^^^^^^^^^^^^^
+_duckdb.BinderException: Binder Error: UNNEST not supported here
+
+LINE 1: SELECT unnest(response_format) f, count(*) FROM read_parquet('...
+               ^

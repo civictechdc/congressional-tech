@@ -1,0 +1,66 @@
+
+## largest body bytes; bodies over 5GB; distinct bodies with stored_bytes > 100 MiB; with bytes > 100 MiB
+-> [(1187816490, 0, 528, 588)]
+
+## distinct bodies > 100 MiB that are not PDFs (by server media type)
+-> [(505,)]
+
+## rows with null retrieved_at; rows with null http_status
+-> [(2717129, 1451261)]
+
+## placeholder candidates: bodies seen at > 50/100/200 distinct context_urls; max
+-> [(22, 18, 12, 87161)]
+
+## top 5 placeholder bodies by distinct context_url
+-> [('3d20469c415d', 87161, 262995, 'text/vtt', 57), ('dc1d54dab6ec', 24387, 56644, 'text/html', 1245), ('e3b0c44298fc', 2817, 10559, '', 0), ('d465172175d3', 2250, 6158, 'text/html', 548), ('80c3fe2ae106', 1998, 5065, 'text/html; charset=iso-8859-1', 196)]
+
+## attempts and new bodies per capture_date (top 3 days by attempts)
+-> [('undated', 1258179, 2208047, 25798), ('2026-09-29', 708626, 745456, 546539), ('2026-10-05', 268837, 340468, 197846)]
+
+## normal-day range: attempts per capture_date percentiles over the last 60 dated days
+-> [(1, 2.0, 65599)]
+
+## distinct context_url; distinct (context_url, original_path) endpoints
+-> [(1158426, 1603626)]
+
+## archive member rows; HTML-typed member rows; distinct HTML member bodies; member rows at .zip container URLs
+-> [(694683, 74450, 41931, 171759)]
+
+## media_type distribution among archive member rows (top 8)
+-> [(None, 482263), ('application/xml', 103113), ('text/html', 74037), ('application/pdf', 34623), ('text/html; charset=UTF-8', 237), ('application/json', 137), ('text/html; charset=utf-8', 82), ('text/html;charset=UTF-8', 80)]
+
+## member rows whose path ends .htm/.html
+-> [(58283, 45724)]
+
+## fraction of body-bearing rows whose body was already seen on an earlier line (412 proxy)
+-> [(0.639,)]
+
+## HTML-typed bodies file-shaped by the narrow list (server media type; approximation of sniffed html)
+-> [(79056,)]
+
+## HTML-typed bodies file-shaped by a broad list
+-> [(79079,)]
+
+## distinct HTML-typed bodies total
+-> [(175197,)]
+
+## receipt_key shapes
+-> [('dated', 2240, 1711873), ('mixed', 1, 4154), ('undated', 48, 2193107)]
+
+## sample receipt_key values
+-> [('receipts/house/meeting-xml/2026-10-04/download-20261004T035944Z-0b9a53dccc9e-000065.jsonl.gz',), ('receipts/house/meeting-xml/2026-10-04/download-20261004T035944Z-0b9a53dccc9e-000069.jsonl.gz',), ('receipts/documents/2026-10-04/download-20261004T035944Z-0b9a53dccc9e-000070.jsonl.gz',), ('receipts/house/witness-xml/2026-10-04/download-20261004T035944Z-0b9a53dccc9e-000075.jsonl.gz',)]
+
+## http_status distribution (top 8)
+-> [(200, 2243421), (None, 1451261), (404, 87546), (503, 80414), (403, 35929), (410, 8436), (454, 848), (522, 824)]
+
+## bodies whose every row is in the 2026-09-29 import day (import-only bodies), and import-day source_file names
+-> [(25798,)]
+
+## busiest capture_date and its distinct source_file (run) count
+-> [('undated', 254427, 57), ('2026-09-29', 458171, 26)]
+
+## cut-off candidates: rows with bytes exactly 64 MiB
+-> [(207, 201, 207)]
+
+## lines with resolution size_limit / request_failed: distinct URLs
+-> [('size_limit', 495), ('request_failed', 4078)]

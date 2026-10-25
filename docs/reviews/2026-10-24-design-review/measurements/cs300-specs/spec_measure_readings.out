@@ -1,0 +1,30 @@
+
+## readings: rows, distinct body_key, distinct parser_fingerprint, status distribution
+-> [(491710, 491699, 12)]
+
+## readings status
+-> [('completed', 377712), ('unclassified', 107184), ('size_limit', 6768), ('failed', 46)]
+
+## record_role distribution
+-> [('error-response', 1027), ('document', 38)]
+
+## body_format distribution
+-> [('pdf', 226890), ('html', 119285), ('zip', 31523), ('xml', 38), ('jpeg', 11), ('png', 9), ('file_wrapper', 2)]
+
+## content_xml_root top
+-> [('amendment-doc', 38)]
+
+## null retrieved_at by receipt shape
+-> [('dated', 1711873, 522448, 162612, 57916), ('mixed', 4154, 1574, 4154, 0), ('undated', 2193107, 2193107, 1284495, 983949)]
+
+## null retrieved_at among body rows (sha not null) by reference_kind
+-> [('embedded', 1418037, 1383395), ('capture', 914952, 152), ('file', 292370, 50809), ('retained-file', 241910, 241910)]
+
+## distinct bodies with no dated row at all
+-> [(388920,)]
+
+## distinct bodies whose only dated rows are on 2026-09-29 (import-day proxy)
+-> [(56155,)]
+
+## retrieved_at sample values
+-> [('2026-09-29T02:13:57.278797+00:00', '2026-09-29'), ('2026-09-29T02:13:57.421396+00:00', '2026-09-29'), ('2026-09-29T02:13:57.540939+00:00', '2026-09-29')]

@@ -1,0 +1,24 @@
+
+## response_format distribution (top 12)
+-> [('pdf', 143978), ('html_requires_document_discovery', 6794), ('xml', 2539), ('zip_or_office', 365), ('legacy_office', 99), ('unrecognized_body', 45), ('pdf_missing_eof', 14), ('empty_response', 10), ('challenge_html', 9), ('rtf', 2), ('invalid_xml', 2)]
+
+## archive-member rows (source_paths non-empty) whose response_format/body_format is html-ish
+-> [(34452, 34600)]
+
+## documents: rows, distinct document_id, docs with >1 body key, docs with 0 body keys
+-> [(1241157, 1241157, 39853, 13530)]
+
+## body keys that appear in more than one old document (plan F0 says 141,762)
+-> [(141762,)]
+
+## state: rows, distinct url, outcome distribution top 6
+-> [(1298420, 1298420)]
+
+## state outcomes
+-> [('retained', 782430), ('saved', 444989), ('pending', 23897), ('excluded_probe', 18120), ('http_error', 14297), ('html', 12723), ('request_failed', 1845), ('invalid_document', 45)]
+
+## state: urls with http_status 404/410 (plan parks 36,137 documents' URLs)
+-> [(404, 28253), (410, 2817)]
+
+## documents: distinct filename-stem groups across formats (rough rendition proxy): same dir+stem with different extensions, count groups and docs
+-> [(16164, 32329)]

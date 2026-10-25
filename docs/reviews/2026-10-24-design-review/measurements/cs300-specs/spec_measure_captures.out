@@ -1,0 +1,19 @@
+
+## rows, distinct sha, null sha rows, distinct lines, distinct receipt files
+SELECT count(*), count(DISTINCT sha256), count(*) FILTER (WHERE sha256 IS NULL), count(DISTINCT (receipt_key, receipt_line)), count(DISTINCT receipt_key) FROM read_parquet('/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/captures.parquet')
+-> [(3909134, 1036256, 1041865, 2596054, 2289)]
+
+## reference_kind / resolution distribution
+SELECT reference_kind, resolution, count(*) FROM read_parquet('/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/captures.parquet') GROUP BY 1,2 ORDER BY 3 DESC LIMIT 20
+-> [('embedded', 'digest_verified', 1418037), ('metadata', None, 1040863), ('capture', 'saved', 684905), ('file', 'digest_verified', 287471), ('retained-file', 'digest_verified', 241910), ('capture', 'http_error', 112855), ('capture', 'retry_later', 79112), ('capture', 'html', 33271), ('file', 'path_verified', 4899), ('capture', 'request_failed', 3284), ('metadata', 'request_failed', 973), ('capture', 'unverified', 738), ('capture', 'size_limit', 495), ('capture', 'invalid_document', 141), ('capture', 'retained', 91), ('capture', 'empty', 47), ('metadata', 'timeout', 26), ('capture', 'resource_limit', 9), ('capture', 'excluded_media', 4), ('file', 'retained_as_receipts', 3)]
+
+## max captures per receipt line
+SELECT max(n) FROM (SELECT receipt_key, receipt_line, count(*) n FROM read_parquet('/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/captures.parquet') GROUP BY 1,2)
+-> [(22354,)]
+Traceback (most recent call last):
+  File "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/cs300-specs/spec_measure_captures.py", line 15, in <module>
+    q("largest body bytes; bodies over 5GB; distinct bodies with stored_bytes > 100 MiB",
+  File "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/cs300-specs/spec_measure_captures.py", line 7, in q
+    r = con.execute(sql).fetchall()
+        ^^^^^^^^^^^^^^^^
+_duckdb.OutOfRangeException: Out of Range Error: Overflow in multiplication of INT32 (5242880 * 1024)!
