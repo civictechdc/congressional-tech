@@ -492,7 +492,7 @@ at 1.24M.
 
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
-| `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_name` (dictionary), `congress`, `format`, `document_date` and `first_captured` (date32, dictionary), `date_kind`, `saved_kind`, `meeting_event_id` (int64, nullable: the document's earliest meeting, for "all documents for this hearing"). No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding (2.54 MB against 3.22 MB with a dictionary, measured on 1.13M sorted filenames); facets keep dictionaries; 65,536-row groups so a phone can decode as it goes; no page index | about 1.5 MB |
+| `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_name` (dictionary), `congress`, `format`, `document_date` and `first_captured` (date32, dictionary), `date_kind`, `saved_kind`, `meeting_event_ids` (List<int64>, usually empty or one ID; dictionary-encoded, about 1 MB; the hearing filter matches on membership, since 1.7% of documents with a meeting have several, up to 9). No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding (2.54 MB against 3.22 MB with a dictionary, measured on 1.13M sorted filenames); facets keep dictionaries; 65,536-row groups so a phone can decode as it goes; no page index | about 1.5 MB |
 | `detail.parquet` | typed core: `document_id` fsb(32), `link_key` fsb(8), `saved_key` string, `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>, `alternates` List<Struct<format dict, key string, size int64>>, `meeting_refs` List<Struct<chamber dict, event_id int64>>, `govinfo_package_id` string, `measure_keys` and `bioguide_ids` List<string>; plus one fold of the display-only facts, dates written as ISO `YYYY-MM-DD`: `source_url`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 10 concurrent page reads per view |
 | `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | offset index and column index (page-level statistics) on `link_key`, about 25 KB together and read once per session, so hyparquet's `$eq` lookup skips to one page; 16 KB pages; one row group | 5–7 MB |
 | `occurrences.parquet` | `list_row` int32, `ordinal` int16, `url`, `member_path`, `filename`, `outcome`, `linked_from` (parent URL), `link_text`, `doc_type` (all string), `first_fetched`, `last_fetched`, `add_date` (all date32), `is_saved` boolean | `(list_row, ordinal)` | offset index on every column; 64 KB pages with a page row limit of 512–1,024 and the write batch no larger | *est.* 15–25 MB with link context |
@@ -578,7 +578,8 @@ Model:
 
 Release:
 13. `rows(list) = rows(detail)`; every `list_row` in `links` and `occurrences` is below
-    `rows(list)`.
+    `rows(list)`; every meeting in a `detail` row's `meeting_refs` appears in that `list`
+    row's `meeting_event_ids`.
 14. `list` is sorted by `(filename, first_captured nulls last, document_id)` and unique.
 15. The `occ_range`s partition `occurrences` exactly.
 16. Every `link_key` resolves to one row, and keys are unique (the export refuses
