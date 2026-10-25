@@ -388,6 +388,20 @@ become orphans (5.5).
   one, and otherwise its newest real file by first fetch; files with no fetch date go last
   and ties are broken by body hash, never by physical file order. Other formats are listed
   as alternates, and a link to any rendition opens the same entry.
+- **Meetings, dates and official records** (owner decisions):
+  - each source file gets a meeting reference (chamber and event ID) from its URL, from the
+    meeting page that linked it, or from a House meeting XML record's document list; a
+    document carries its members' set. House and Congress.gov meeting IDs are one ID space,
+    the same event ID the committee explorer uses, so a page can list every document for a
+    hearing;
+  - a document date comes from the meeting date or a single unambiguous date in the
+    filename, never a guess, and stays separate from the first-captured date;
+  - official record keys (the GovInfo package, bills as `{congress}-{type}-{number}`, member
+    Bioguide IDs) let a page link out to the GPO record, the bill and the member.
+
+  The date and keys are written once as typed columns by the filename-reading producer;
+  house-naming's literal strings stay unchanged in its field list. The meeting reference is
+  derived in SQL, like `url_key`, so nothing new is stored for it.
 - **Recoveries are evidence for the original link,** never files the recovering URL
   served. They stay out of `url_state`, text comparison, `links` and capture dates (an
   import's timestamp is the recovered copy's own). Every recovery is shown on the original
@@ -407,8 +421,8 @@ the list row number links them.
 
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
-| `list.parquet` (about 1.5 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, first-captured date and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | `filename` delta-encoded without a dictionary (21% smaller, measured); 65,536-row groups; no page index |
-| `detail.parquet` (30–40 MB) | Same row order as `list` | A small typed core (`document_id`, the link key, the saved file's key, occurrence start and length, recoveries as a list of kind, file key and date, alternate formats as a list of format, file key and size) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
+| `list.parquet` (about 1.5 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, document date, first-captured date, the document's meeting, and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | `filename` delta-encoded without a dictionary (21% smaller, measured); 65,536-row groups; no page index |
+| `detail.parquet` (30–40 MB) | Same row order as `list` | A small typed core (`document_id`, the link key, the saved file's key, occurrence start and length, recoveries as a list of kind, file key and date, alternate formats as a list of format, file key and size, meetings, the GovInfo package, bill keys and Bioguide IDs) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
 | `links.parquet` (5–7 MB) | `link_key` | 8-byte link key and list row | Point lookup: the column index's page statistics find the page | Offset index and column index (page-level statistics) on `link_key`, about 25 KB together; small pages |
 | `occurrences.parquet` (15–25 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, path inside an archive, filename, capture dates, and the page that linked it with the link's label | The range named in `detail` | Offset index on every column; 64 KB pages of at most 512–1,024 rows |
 | `url_state.parquet` (about 10 MB) | `url` | Latest outcome and retry schedule per URL; no body hash, because the 412 tells capture whether a body is new | Read whole by the capture job, not the site | Defaults |
@@ -698,7 +712,8 @@ including Word, web archives and images; link context shown; identical real web 
 one document; PDF text read for fingerprint candidates only; every link join normalizes
 the URL, unwrapping redirect and archive wrappers and stripping only tracker and
 known page-state parameters; one entry for all formats of a document, offering the PDF
-first; no per-view byte budget; hyparquet in the
+first; documents linked to their meetings; a typed document date; official record keys for
+link-outs; no per-view byte budget; hyparquet in the
 browser; uncompressed copies of older PDFs only; no early launch on the converted Oct 19
 release.
 
@@ -747,6 +762,7 @@ three more owner decisions:
 | Smaller gaps | Import day by run ID; `url_state` without a hash; receipts trimmed to about 1 KB; sniff every older body once; failed candidates deleted by publish; large legacy bodies as downloads (4.2, 5.2, 6.2, 6.4, 7) |
 | Owner decisions | Real documents only; link context shown; any content format counts (5.4, 6.1) |
 | Iceberg/Parquet review of the data model | Identical real web pages are one document; PDF text read for fingerprint candidates; one row per receipt line even without a body, and `url_state` counted over lines; typed detail core; page statistics on `link_key` (5.1, 5.2, 6.1, 6.2) |
+| Metadata keys (revision 7) | Meeting references, a typed document date and official record keys, composed once and never read from the field list (6.1, 6.2) |
 | Final data-model review (revision 7) | `url_key` for every link join; `page_links` as its own commit; delta-encoded filenames in `list`; a page row limit on `occurrences`; lake writer settings in the data model; no per-view byte budget (5.4, 6.1, 6.2, 6.4, 7) |
 
 ## Appendix: path from the current system

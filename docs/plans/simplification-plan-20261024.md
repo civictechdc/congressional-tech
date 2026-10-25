@@ -62,6 +62,9 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 30 | No per-view byte budget; the heap budget stays | A3 and A4 check heap only. |
 | 31 | One entry for all formats of a document | A `same_rendition` edge in E1, from publisher groups in `page_links` or same-stem files; E4 reports the merges. |
 | 32 | PDF first: the page offers the PDF and lists other formats as alternates | The saved-file rule in E1; A5 shows alternates. |
+| 33 | Link documents to their meetings, from URLs and linking pages | `meeting_ref` in E1; A9 lists every document for a hearing. |
+| 34 | A typed document date for sorting and filtering | `document_date` in D3 and E2; A6 and A9. |
+| 35 | Official record keys as typed fields, for link-outs | GovInfo package, bill keys and Bioguide IDs in D3 and E2; A9. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -178,6 +181,9 @@ run beside C. Estimated total: **8–16 weeks**.
    evidence and a link to the recovered file.
 8. **Link context:** "where each copy was seen" names the page that linked it and the
    link's label (decision 25).
+9. **Meetings, dates and record links:** filter and sort by document date; list every
+   document for a hearing by its meeting; link out to the GPO record, the bill and the
+   member (decisions 33–35).
 
 **Done when:** the site loads F0 locally on desktop and in a phone-sized profile, and the
 canary passes against F0 in under a minute.
@@ -318,7 +324,9 @@ threads, input orders and batch sizes and with a forced spill, on the smallest r
      (decision 28).
    The parser functions survive; the adoption machinery around them goes in F3.
 3. **`filename_readings`** (design §5.3): a producer that runs `house-naming` over the
-   work list and appends through the engine. Backfill is about 7 minutes over 1.39M pairs.
+   work list and appends through the engine. It also writes the typed `document_date`,
+   `measure_keys`, `bioguide_ids` and `gpo_package_id` (decisions 34–35), so the model
+   never unnests the field list. Backfill is about 7 minutes over 1.39M pairs.
 4. Enable Basin compaction and snapshot expiration on all four tables.
 
 **Done when:** all four tables exist with complete backfills, and both `captures`
@@ -351,8 +359,9 @@ comparisons pass.
 2. **The model SQL** (design §6.1), with the data model's 18 invariants as its test suite:
    `url_state`, `filenames`, `documents`, `members`, `recoveries`, `reviews`, and the
    release files, with `list` sorted by filename and then
-   first-captured date (undated rows last within a filename), and every recovery labeled
-   by kind (decision 18).
+   first-captured date (undated rows last within a filename), every recovery labeled by
+   kind (decision 18), and each document's meeting references, document date and official
+   record keys (decisions 33–35).
 3. **Golden vectors** for `source_id` and `document_id`, generated from Python
    `source_identity` and `compute_document_id` (`retention/index/bipartite.py:165,197`) and
    checked in the engine's tests. The formulas keep the logical body key string

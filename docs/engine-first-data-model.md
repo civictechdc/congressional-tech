@@ -1,10 +1,11 @@
 # Engine-first data model
 
-Status: proposed, revision 4, 2026-10-24. The column-level companion to
+Status: proposed, revision 5, 2026-10-24. The column-level companion to
 `docs/engine-first-architecture.md` (cited as "design §n"). It starts from the CS300
 reviewer's sketch (`docs/reviews/2026-10-24-design-review/cs300-data-model.md`), applies the
-Iceberg/Parquet reviewer's three reviews of it (`iceberg-parquet-data-model-review.md`,
-`iceberg-parquet-data-model-final-review.md`, `iceberg-parquet-data-model-types-review.md`),
+Iceberg/Parquet reviewer's four reviews of it (`iceberg-parquet-data-model-review.md`,
+`iceberg-parquet-data-model-final-review.md`, `iceberg-parquet-data-model-types-review.md`,
+`iceberg-parquet-metadata-keys-review.md`),
 and applies the owner's decisions through
 Oct 24. Sizes are measured on the Oct 19 snapshot unless
 marked *est.*
@@ -197,7 +198,19 @@ documentation only.
 | `document_kind`, `document_family`, `committee_code` | string | Facets `list` shows. |
 | `congress` | int | — |
 | `date_token`, `measure_type`, `measure_number` | string, string, string | — |
-| `fields` | list<struct<field: string, value: string>> | The rest (about 106 field names). |
+| `document_date` | date, nullable | `meeting_date`, else the single date candidate, else null; never a guess among ambiguous candidates (1.4% of files with candidates). |
+| `measure_keys` | list<string> | Bills and resolutions as `{congress}-{type}-{number}`, from the measure fields, measure references and `congress`. |
+| `bioguide_ids` | list<string> | Member IDs from `bioguide_token` and `sponsor_bioguide_id`. |
+| `gpo_package_id` | string, nullable | A GovInfo package ID when the filename stem follows a GPO pattern. |
+| `fields` | list<struct<field: string, value: string>> | The rest (about 215 field names), as house-naming's literal strings. |
+
+- **Typed keys are composed once, by the producer** (owner decisions). The model never
+  unnests `fields`, so house-naming's output is turned into the date and the official
+  record keys here, once per `(filename, source_url, catalog_version)`. The literal strings
+  stay unchanged in `fields`, which keeps house-naming's literal-source contract. Measured
+  on 50,000 real pairs: `congress` on 34.7% of files, `meeting_date` on 16.0% (all
+  `YYYYMMDD`), GPO publication fields on 14.2%, measure fields on 2–4%, member IDs on about
+  3%.
 
 - **PK:** `(filename, source_url, catalog_version)`; partitioned by `catalog_version`.
 - **Work list:** `(filename, source_url)` pairs in `captures` with no row for the current
@@ -377,11 +390,36 @@ date_kind    := 'captured'   if the saved file has a fetch date from a non-impor
 - Import day is defined by run, not by date: 102,427 saved files carry only the import
   run's timestamp.
 
+**Meetings, dates and official records** (owner decisions):
+
+```
+meeting_ref  := struct<chamber string, event_id int64> per source file, computed in SQL:
+                from the source URL (docs.house.gov/meetings/<C>/<SC>/<date>/<eventId>/
+                or congress.gov/<congress>/meeting/<chamber>/<eventId>/); else from the
+                page that linked it, when that page is a meeting page; else from a House
+                meeting XML record's document list, through page_links
+meeting_refs := the set of its members' meeting_refs
+document_date      := the saved file's filename_readings.document_date
+govinfo_package_id := the package ID in a member's govinfo URL, else the saved file's
+                      gpo_package_id
+measure_keys, bioguide_ids := the union over its members' filename readings
+```
+
+- House event IDs and Congress.gov House meeting IDs are one ID space (4,715 of 6,550
+  overlap), the same event ID the committee explorer uses. On the Oct 19 data, 45,761
+  documents carry a docs.house.gov meeting URL (6,551 events) and 142,997 a Congress.gov
+  one (11,634 meetings); 141,694 carry a govinfo package (36,943 packages). Nothing new is
+  stored in the lake: `meeting_ref` is derived, like `url_key`.
+- `document_date` stays separate from `first_captured`: one is when the document is
+  dated, the other when we first fetched it.
+
 **Columns:** `document_id` fsb(32), `list_row` int32, `filename`, `saved_body` fsb(32)
 nullable, `saved_media_type` dict, `saved_key` string (physical key: `<sha>`, `<sha>.gz` or
 `<sha>.pdf`), `saved_kind` dict (`original` or `recovery`), `first_captured` and
-`last_captured` date32, `date_kind` dict, `n_members` int32, and the facets from the saved
-file's filename reading.
+`last_captured` date32, `date_kind` dict, `document_date` date32, `meeting_refs`
+List<Struct<chamber dict, event_id int64>>, `govinfo_package_id` string, `measure_keys` and
+`bioguide_ids` List<string>, `n_members` int32, and the facets from the saved file's
+filename reading.
 
 ### 3.4 `members`
 
@@ -430,8 +468,8 @@ at 1.24M.
 
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
-| `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_code`, `congress`, `format`, `first_captured` (date32, dictionary), `date_kind`, `saved_kind`. No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding (2.54 MB against 3.22 MB with a dictionary, measured on 1.13M sorted filenames); facets keep dictionaries; 65,536-row groups so a phone can decode as it goes; no page index | about 1.5 MB |
-| `detail.parquet` | typed core: `document_id` fsb(32), `link_key` fsb(8), `saved_key` string, `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>, `alternates` List<Struct<format dict, key string, size int64>>; plus one fold of the display-only facts, dates written as ISO `YYYY-MM-DD`: `source_url`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 10 concurrent page reads per view |
+| `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_code`, `congress`, `format`, `document_date` and `first_captured` (date32, dictionary), `date_kind`, `saved_kind`, `meeting_event_id` (int64, nullable: the document's earliest meeting, for "all documents for this hearing"). No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding (2.54 MB against 3.22 MB with a dictionary, measured on 1.13M sorted filenames); facets keep dictionaries; 65,536-row groups so a phone can decode as it goes; no page index | about 1.5 MB |
+| `detail.parquet` | typed core: `document_id` fsb(32), `link_key` fsb(8), `saved_key` string, `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>, `alternates` List<Struct<format dict, key string, size int64>>, `meeting_refs` List<Struct<chamber dict, event_id int64>>, `govinfo_package_id` string, `measure_keys` and `bioguide_ids` List<string>; plus one fold of the display-only facts, dates written as ISO `YYYY-MM-DD`: `source_url`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 10 concurrent page reads per view |
 | `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | offset index and column index (page-level statistics) on `link_key`, about 25 KB together and read once per session, so hyparquet's `$eq` lookup skips to one page; 16 KB pages; one row group | 5–7 MB |
 | `occurrences.parquet` | `list_row` int32, `ordinal` int16, `url`, `member_path`, `filename`, `outcome`, `linked_from` (parent URL), `link_text`, `doc_type` (all string), `first_fetched`, `last_fetched`, `add_date` (all date32), `is_saved` boolean | `(list_row, ordinal)` | offset index on every column; 64 KB pages with a page row limit of 512–1,024 and the write batch no larger | *est.* 15–25 MB with link context |
 | `url_state.parquet` | 3.5 | `requested_url` | defaults | 10 MB |
