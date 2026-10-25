@@ -421,7 +421,7 @@ One row per source file.
 
 - **Derivation:** the distinct `(body, effective filename, source URL)` triples in `captures`; plus one bodiless row per URL that never yielded a body; plus, if not already present, one bodiless row per recovery that needs a document of its own (§7.8).
 - **Decoding.** URL segments and query values are percent-decoded once, as strict UTF-8, with `+` kept literal; a sequence that is not valid UTF-8 stays encoded.
-- **One name per file.** Today's catalog lists a file once per name it has (download header, URL path, final URL, query parameter); about 95,000 files carry a download-header name. Here each file has one effective name, so those duplicates collapse and their `source_id`s differ from today's.
+- **One name per file.** A file has exactly one effective name; the other names it was offered stay in its capture rows and receipt.
 - **Grain:** two archive members with the same body and name at different paths are one source file; `occurrences` keeps each member path.
 - 1,683,430 source files today.
 

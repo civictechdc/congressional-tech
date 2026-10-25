@@ -157,6 +157,7 @@ This specification defines five conformance classes. Each conforms by meeting th
 5. **Engine first.** Data movement, joins, grouping, aggregation and export live in the engine. Application policy (ID formulas, field names, grouping rules, registries, parsers) is passed in as SQL, data and specs and MUST NOT be compiled into the engine.
 6. **Nothing reaches users unverified.** A release goes live only after the site's own reader code has loaded it (§10.3.5).
 7. **Small bytes.** Keys and facts are stored once, as typed columns, with hashes as binary. Provenance is never copied into derived rows, and nothing derivable is stored. Browser files are the one place where shape follows the reader (§10.1).
+8. **Components behind contracts.** Each component (§6) depends only on the contracts of the components it uses, never on their implementations. Policy is injected as registries and the model profile, and external systems (the object store, local disk, fetch transports, the catalog) are injected as adapters. Any implementation that passes a component's contract tests can stand behind it, tests run the production code against local adapters, and no production path carries a test-only branch.
 
 ## 5. Scale
 
@@ -211,13 +212,35 @@ SITE (static) → pointer → release → list (whole) / detail, links, occurren
 
 All data lives in one Cloudflare R2 bucket. The lake tables are Iceberg tables in the bucket's Basin Catalog (the managed Iceberg REST catalog).
 
+**Components.** Each component has a contract in this specification and [[DATA-MODEL]], and a contract test suite written from it. Which implementation stands behind a component is a deployment choice, recorded outside the specifications.
+
+| Component | Class | Contract | Injected adapters |
+|---|---|---|---|
+| Fetcher | raw writer | §7.1; DM §5.2 | direct transport, fetching provider |
+| Body store | raw writer | §7.1; DM §5.1 | R2, local disk |
+| Receipt writer | raw writer | §7.2; DM §5.2 | body store |
+| Archive expander | raw writer | §7.2 | — |
+| Recovery importer | raw writer | §7.2–7.3; DM §5.2–5.3 | body store, receipt writer |
+| Review recorder | raw writer | §7.3; DM §5.3, §7.9 | object store |
+| Capture scheduler | raw writer | §12; DM §7.7 | fetcher, release reader |
+| Raw verifier | raw writer | §7.4 | object store |
+| Captures ingest | lake producer | §8.2; DM §6.1 | engine |
+| Parsers (sniff, html, xml, json, fingerprint) | lake producer | §8.3; DM §6.2 | engine, object store |
+| Filename reader | lake producer | §8.4; DM §6.3 | engine |
+| Committee and meeting parsers | lake producer | §8.5–8.6; DM §6.4–6.5 | engine |
+| Model | publisher | §9; DM §7 | engine, registries, model profile |
+| Publish job | publisher | §10; DM §8 | engine, object store, canary |
+| Reader | reader | §11 | HTTP range client |
+| Canary and contract test | reader | §10.3.5, §15 | reader |
+| Engine | engine | §13 | catalog, object store |
+
 ## 7. Raw Log
 
 ### 7.1 Bodies
 
 Key: `bodies/sha256/<aa>/<sha>`, where `sha` is the SHA-256 of the response entity after its transfer `Content-Encoding` is removed (the bytes a user would save), so a server that changes its compression does not create a new body, and `aa` is its first two hex characters. Object details are in [[DATA-MODEL]] §5.1.
 
-**Fetching.** Fetchers MUST refuse private, loopback and link-local hosts, credentials in a URL's authority, and URLs outside the capture-scope registry ([[DATA-MODEL]] §7.1), and MUST re-check every redirect hop, up to six. They pace requests per host and back off as the host-pacing registry says (docs.house.gov refuses bursts), and honor `Retry-After`. A fallback through a fetching provider records the direct try in `prior_attempts` and keeps the provider's status apart from the publisher's.
+**Fetching.** Fetchers MUST refuse private, loopback and link-local hosts, credentials in a URL's authority, and URLs outside the capture-scope registry ([[DATA-MODEL]] §7.1), and MUST re-check every redirect hop, up to six. They pace requests per host and back off as the host-pacing registry says, and honor `Retry-After`. A fallback through a fetching provider records the direct try in `prior_attempts` and keeps the provider's status apart from the publisher's.
 
 **Stored bytes.** Media types that compress (HTML, XML, JSON, text) are stored gzip-compressed with `Content-Encoding: gzip` and the original `Content-Type`. Already compressed types (PDF, images, archives) are stored as-is. Either way, an HTTP client that honors `Content-Encoding` receives the original bytes.
 
@@ -331,7 +354,7 @@ Basin Catalog maintains the tables: compaction (target 128 MB) and snapshot expi
 
 ### 9.1 One Plan
 
-The domain model is versioned SQL in the application repository. One engine job registers the lake tables, the provenance records and the registries at the versions the model profile pins, evaluates one plan, and writes the release files. There are no intermediate tables. The ID formulas keep today's inputs and serialization, so `source_id` and `document_id` match the current system wherever their inputs match. Two inputs change on purpose: each file has one effective name, and web pages count in a document's body set; parity reports both by cause. Public links do not depend on `document_id` (§10.1), so an ID that changes when a version joins a group costs nothing.
+The domain model is versioned SQL in the application repository. One engine job registers the lake tables, the provenance records and the registries at the versions the model profile pins, evaluates one plan, and writes the release files. There are no intermediate tables. The ID formulas and their serialization are fixed byte for byte ([[DATA-MODEL]] §7.4–7.5). Public links do not depend on `document_id` (§10.1), so an ID that changes when a version joins a group costs nothing.
 
 ### 9.2 What Counts as a File
 
