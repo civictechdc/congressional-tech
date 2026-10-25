@@ -106,3 +106,11 @@ either, because the data is flat strings, the hot fields are already native, the
 same, and it would cost an Iceberg v3 upgrade. VARIANT's real candidates here are genuinely
 nested, mixed-type sources (Congress.gov API JSON, MODS and meeting XML trees), if they are ever
 made queryable in the lake.
+
+## Owner decisions on house-naming extras (2026-10-24)
+
+- **"Why" evidence (`observations`): don't store.** Investigations re-run house-naming
+  (about 7 minutes for every pair, 0.38 ms per file). The site doesn't show it. The data model
+  is unchanged.
+- **Convention kind: skip.** `filename_readings.valid` (strict convention match, yes or no)
+  remains the only convention signal. The data model is unchanged.
