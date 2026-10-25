@@ -98,7 +98,7 @@ All three run on a scratch table with the table properties of [[DATA-MODEL]] §6
 The engine cannot run the full export until C1, C3 and C4 exist, so a short standalone DataFusion program measures first, using S's draft rules.
 
 - Inputs: the pinned 2026-10-19 snapshot (captures `db033173…`, catalog generation `596f08fa…`), including today's filename readings and links parsed from a sample of pages.
-- Run the model's joins, including `url_key` and the link join (about 4.2M links against 1.7M source URLs), filename readings, the folded `detail` and the 4.7M `occurrences`. Report every intermediate join's row count and bytes and every hash-join build's size, as well as time and peak memory.
+- Run the model's joins, including `url_key`, link resolution and the link join (about 4.2M links, scaled from the sample, against 1.31M source URLs), filename readings, the folded `detail` and the 1.7M `occurrences`. Report every intermediate join's row count and bytes and every hash-join build's size, as well as time and peak memory. The links are sampled, so this tests mechanisms and memory; D2's full link backfill repeats the join on real data.
 - Group the real graph with the specified rule. Record time, peak memory and the largest components.
 - Run on `ubuntu-24.04` (4 vCPU, 16 GB), the smallest runner class.
 
@@ -108,9 +108,15 @@ The engine cannot run the full export until C1, C3 and C4 exist, so a short stan
 
 E1 is written here, before track C, because M2 and the engine work depend on it:
 
-- every derivation of [[DATA-MODEL]] §7 as SQL, with the registries of §7.1 as versioned files with sample tests;
-- adversarial fixtures: a PDF replaced while its XML stays; historical pages linking both; two mirrors that pair each of two editions with the same XML; several same-format files listed together; a recovery at an edition-ambiguous link; a recovery-only link that later downloads; one body under two filenames; archive members; two merged documents with different title overrides; a reviewer's merge and hide;
-- a hand-labeled stratified sample of a few hundred files, covering short real pages, archive members, landing pages, listing pages, files listed together on one page and widely mirrored real documents. It measures how often the page-shape, error-sign, listing-page, placeholder and rendition rules wrongly include, exclude or join a file, and sets the listing thresholds and the final page-shape list. The labeling rubric: a file is a real document when its main content is the document itself (testimony, a report, a transcript, a bill, a hearing record), not a list of links to documents, a landing or error page, or metadata about a document. Two files are one document when they hold the same content: identical bytes, the same text at one address, or one text in different formats;
+- every derivation of [[DATA-MODEL]] §7 as SQL, and the reference model profile: every registry as a versioned file with its first contents and sample tests;
+- adversarial fixtures:
+  - a PDF replaced while its XML stays, and historical pages linking both;
+  - two mirrors that pair each of two editions with the same XML, and re-packaged copies of each edition paired with one XML;
+  - several same-format files listed together, and unrelated files on one page outside any list item;
+  - a recovery at an edition-ambiguous link; a recovery-only link that later downloads; a recovery import for a URL never fetched; two recoveries equal in kind, time and body;
+  - one body under two filenames; archive members, including a page whose relative links point at sibling members; a page with relative links saved in two directories;
+  - two merged documents with different title overrides; two active merges on one document; a reviewer's hide;
+- a hand-labeled stratified sample of a few hundred files, covering short real pages, archive members, landing pages, listing pages, files listed together on one page and widely mirrored real documents. It measures how often the file-shape, error-sign, listing-page, placeholder and rendition rules wrongly include, exclude or join a file, and sets the listing thresholds and the final file-shape list. It includes a listing page captured in two places and pages whose links sit outside any list item. The labeling rubric: a file is a real document when its main content is the document itself (testimony, a report, a transcript, a bill, a hearing record), not a list of links to documents, a landing or error page, or metadata about a document. Two files are one document when they hold the same content: identical bytes, the same text at one address, or one text in different formats;
 - a check that every rule can be computed from raw, with nothing borrowed from the old derived tables.
 
 ### 5.4 F0: The First Release, Converted From the Pinned Catalog
@@ -126,17 +132,17 @@ E1 is written here, before track C, because M2 and the engine work depend on it:
 
 ### 6.1 Track A: Site Reader and Canary
 
-1. **A reader module for the release format** ([[ARCHITECTURE]] §11): pointer → manifest → `list` in a Web Worker, decoded column by column; `detail` by row with hyparquet's `useOffsetIndex`, its offset index fetched once per session and cached; `links` with `usePageIndex`; the `occurrences` and `recoveries` ranges; `meetings`; shards. No DOM dependency. Accepts the current and previous `schema_version`. On a 404 for a release file, it re-reads the pointer and reloads.
+1. **A reader module for the release format** ([[ARCHITECTURE]] §11): pointer → manifest → `list` in a Web Worker, decoded column by column; `detail` by row with hyparquet's `useOffsetIndex`, each row group's offset index fetched once per session and cached; `links` with `usePageIndex`; the `occurrences` and `recoveries` ranges; `meetings`; shards. No DOM dependency. Accepts the current and previous `schema_version`. On a 404 for a release file, it re-reads the pointer and reloads.
 2. **Links** carry a 16-hex link key and resolve through `links` to whichever document holds that file now; a key that no longer resolves opens a not-found notice.
 3. **The Node canary** ([[ARCHITECTURE]] §10.3.5), run by the publish job against the uploaded candidate, with a heap budget for a mid-range phone and the 404 reload.
 4. **A CI contract test:** the real site in a headless browser against F0 and the hand-built fixture, within the heap budget. It moves to a release built from a fixed sample of real receipts once track E exists.
 5. **Saved copies** ([[ARCHITECTURE]] §11.5): open the saved file at its physical key, with alternates; unpack other `.gz` bodies with `DecompressionStream`; offer the 579 over 100 MB as a labeled compressed download.
-6. **Dates:** the document date and capture date in list rows, so same-filename editions read apart; on the document page, the document date with its source and the first and last capture dates, with the labels of [[ARCHITECTURE]] §9.4.
+6. **Dates:** the document date and capture date in list rows, so same-filename editions read apart; on the document page, the document date with its source and the first and last capture dates, with the labels of [[ARCHITECTURE]] §11.6.
 7. **Recoveries:** each on the page the attachment rule gives it, labeled by kind, with its recovered URL, match basis, evidence digest and identity note, and a link to the recovered file.
 8. **Link context:** "where each copy was seen" names the page that linked it and the link's label.
 9. **Meetings and record links:** filter and sort by document date; list every document for a hearing under its title, date, type and committee; link out to the GPO record, the bill and the member.
 10. **Removed by review:** a hidden document's link opens a note with the reason and date.
-11. **Speed, measured then fixed:** measure startup, search, detail and heap on real phones and desktops with F0, then write those targets into the canary and contract test. F0 is about twice the target `list`, so these targets are conservative; re-measure on the first engine-built release.
+11. **Speed, measured then fixed:** measure startup, search, detail and heap on real phones and desktops with F0, then write those targets into the canary and contract test. F0's size makes these targets conservative; re-measure on the first engine-built release.
 
 **Done when:** the site loads F0 locally on desktop and in a phone-sized profile, and the canary passes against F0 in under a minute.
 
@@ -159,11 +165,11 @@ This code survives, so it is fixed now.
 11. **A ratchet test:** `PYTEST_CURRENT_TEST` may not appear in surviving packages. Delete the raw-adjacent substitution in `raw_storage.py:655-672` now; the other sites (75 in all) go with the old layers.
 12. **Owed while the old capture path runs:** repair wrong `stored_sha256` index rows in place, and confirm the daily capture writes correct values. The target reads receipts, so these matter only until the switch.
 13. **Uncompressed copies of older gzip PDFs** (after B1 and B3). The largest raw write in the plan, so the lock and the refusal matrix come first. First fold `migrate_pdf_bodies_to_uncompressed` into `backfill_uncompressed_pdfs` (`pdf_backfill.py`), so one path remains. Then run it over every older gzip PDF: create-only to `bodies/sha256/<aa>/<sha>.pdf`, with Content-MD5 and the decompressed SHA-256 checked before upload, writing a verification record for both the `.gz` source and the `.pdf` copy. About 261,055 uploads and 403 GB once decompressed (about $72 a year of storage under the lock). Copies that already exist return 412 and get their record. Running it before B10 saves B10 about 365 GB of reads.
-14. **Re-fetch the cut-off files** (first, in today's capture path): the 59 URLs whose only copy was cut off at 64 MiB. The cut-off copies stay in raw.
+14. **Re-fetch the cut-off files** (first, in today's capture path): every URL with a copy cut off at 64 MiB and no complete 2xx copy. The snapshot index gives 64; the receipts decide the two whose status the index lost. Other bodies at those URLs, such as 214-byte HTTP 520 error pages, are not complete copies. The cut-off copies stay in raw.
 15. **The 2026-10-15 recovery run needs no correction.** All 5,587 lines of `receipts/documents/2026-10-15/download-filename-recovery-all-*` are `retained_import` recoveries with a synthetic HTTP 200 (5,154 recovered copies, 341 hearing-record excerpts, 92 official substitutes). The old capture index had flattened them into fetches. What remains is in D1 and E1.
 16. **Committee and meeting fetches through the raw writer:** `acquisition/committees.py` and `acquisition/meetings.py` stop writing their own output files and fetch through the raw writer like every other fetch.
 
-**Done when:** the refusal matrix passes, the lock is on, one capture run's `stored` lines carry MD5s that match the stored ETags and every line carries its stored suffix, every older gzip PDF has a recorded copy, and the 59 cut-off URLs have complete copies or a recorded reason.
+**Done when:** the refusal matrix passes, the lock is on, one capture run's `stored` lines carry MD5s that match the stored ETags and every line carries its stored suffix, every older gzip PDF has a recorded copy, and every cut-off URL has a complete copy or a recorded reason.
 
 ### 6.3 Track C: Engine Capabilities (docspec-rs)
 
@@ -180,6 +186,7 @@ This code survives, so it is fixed now.
 | C5 | Streaming I/O: no re-read or HEAD of immutable files beyond the two allowed | Request counts in a test |
 | C6 | Bounded threads, memory pool and scratch; wide columns kept off hash-join build sides | A join at the pool limit fails clearly; M2's build sizes |
 | C7 | A CLI that runs a declarative job spec and returns a machine-readable result | The M2 export as a job spec |
+| C8 | Generic URL functions: RFC 3986 reference resolution and percent-decoding | Conformance vectors from RFC 3986 §5.4; M2's `url_key` timing |
 
 The engine's current export disables the offset index unless page-index columns are named (`export/pipeline.rs:687-697`), so C3's per-file settings are required, not optional.
 
@@ -199,7 +206,7 @@ Each table is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
    - **compare with the pinned old capture index** (3,909,134 rows) on receipt-derived columns, with written transformation rules for the expected differences: statuses restored on bodiless lines, `stored_md5` and `stored_suffix` new, `stored_sha256` gone. A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§9).
 2. **`readings`:**
    - first `sniff` over every older body: about 1.04M ranged GETs, timed in the run. The real-file rule needs a format for every body;
-   - then HTML, XML and JSON (about 5 GB; 287,765 HTML and XML bodies), including each page's links with their `group_path`. There is no PDF parser for now;
+   - then HTML, XML and JSON (about 5 GB; 287,765 bodies the server labels HTML or XML), including each page's links as written, with their `group_path`, and the table's size with links measured. There is no PDF parser for now;
    - then `fingerprint` for the candidates (about 300 bodies, 1.4 GB);
    - the parser functions survive; the adoption machinery around them goes in F3.
 3. **`filename_readings`:** a producer that runs `house-naming` over its work list and appends through the engine. Backfill is 7–18 minutes over 1.39M pairs.
@@ -211,13 +218,13 @@ Each table is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
 ### 6.5 Track E: Model SQL and Parity
 
-1. **The rules, written in S** (§5.3). The page-shape list starts from the broader list (44,047 file-shaped bodies); the roughly 27k bodies between it and the narrow list (16,775) are sampled before it is fixed.
+1. **The rules, written in S** (§5.3). The file-shape list starts from the broader list (44,047 file-shaped bodies); the roughly 27k bodies between it and the narrow list (16,775) are sampled before it is fixed.
 2. **The model SQL:** every relation and release file of [[DATA-MODEL]] §7–8, with the invariants of §10 as its test suite.
 3. **Golden vectors** for `source_id` and `document_id`, generated from Python `source_identity` and `compute_document_id` (`retention/index/bipartite.py:165,197`) with their compact-JSON serialization, and checked in the engine's tests.
 4. **Parity against the pinned catalog pair** (not F0, which picks one document per shared body), on browser-visible fields, compared many-to-many and keyed by source evidence: the files and URLs each document holds. Expected, explained changes:
    - about 560k catalog rows leave the list (captions, metadata records, playlists, API responses), and listing pages leave it too;
    - about 30k documents lose error pages from their body sets, and about 4,900 lose Senate landing pages;
-   - cut-off copies and recovery imports drop out of body sets;
+   - cut-off copies and recovery imports drop out of body sets, and so do pages whose reading failed (reported by format and error type);
    - about 16k format groups merge (32,547 documents today);
    - link-label coverage changes, because labels now come from saved pages; labels that came only from scraper records inside receipts are their own cause;
    - capture dates change where receipts lack times.
