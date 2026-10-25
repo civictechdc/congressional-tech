@@ -1,6 +1,6 @@
 # Engine-first data model
 
-Status: proposed, revision 5, 2026-10-24. The column-level companion to
+Status: proposed, revision 6, 2026-10-24. The column-level companion to
 `docs/engine-first-architecture.md` (cited as "design §n"). It starts from the CS300
 reviewer's sketch (`docs/reviews/2026-10-24-design-review/cs300-data-model.md`), applies the
 Iceberg/Parquet reviewer's four reviews of it (`iceberg-parquet-data-model-review.md`,
@@ -319,7 +319,8 @@ strip-list   := trackers on any host: utm_*, _gl, gclid, fbclid, mc_cid, mc_eid,
   the E1 SQL beside `page_shaped`, and each entry has a real URL that must normalize as
   stated.
 - **The rest of the normalization holds up:** 25,287 of 25,355 groups that differ only by
-  scheme or `www.` (99.7%) served identical bytes.
+  scheme or `www.` (99.7%) served an identical body at some point. Comparing only each
+  URL's latest body, 85% match, because pages change over time.
 - Provenance `url_variants` still adds accepted variants beyond what normalization
   catches.
 
@@ -328,18 +329,23 @@ strip-list   := trackers on any host: utm_*, _gl, gclid, fbclid, mc_cid, mc_eid,
 ```
 format      := coalesce(c.sniffed_format, r[sniff].format)
 record_role := r.record_role, written by the parser from the format and native reading
-               columns (xml_root, the JSON shape, the error signals): vtt → caption;
-               m3u8 → playlist; API-shaped JSON → api; MODS/PREMIS/meeting/witness XML
-               roots → source_record; error-like HTML → error_response; else document.
-               The model never unnests `fields`.
+               columns (xml_root, the error signals): vtt → caption; m3u8 → playlist;
+               MODS/PREMIS/meeting/witness XML roots → source_record; error-like HTML →
+               error_response; else document. The model never unnests `fields`.
+api_row     := format = 'json' and the capture's URL matches the API endpoint list:
+               api.congress.gov, api.govinfo.gov, the YouTube Data API and the Wayback
+               CDX API. The list is SQL with a sample URL test per entry; other JSON is a
+               document.
 
 real_files  := rows of c where
     mode = 'fetch' and complete and outcome in ('stored', 'unchanged')
     and http_status between 200 and 299
     and sha256 is not null and bytes > 0
     and sha256 not in placeholders                    -- bodies seen at more than 100 URLs
-    and record_role = 'document'
+    and record_role = 'document' and not api_row
     and (format <> 'html' or (page_shaped(url) and not error_signs(r)))
+
+real_body   := a body with at least one real_files row
 ```
 
 Every condition is joined by `and`, so no HTML row skips the fetch, completeness, status or
@@ -352,7 +358,9 @@ size checks.
   `.zip`, `.doc`, `.docx`, `.xml`, `/download/`, `download=1` and `file_id=`, 16,775 HTML
   bodies are file-shaped; a broader list (adding `/files/`, `/uploadedfiles/`,
   `/media/doc/` and more extensions) gives 44,047. E1 starts from the broader list,
-  samples the roughly 27k bodies between the two, and records the final count.
+  samples the roughly 27k bodies between the two, and records the final count. Counts
+  quoted elsewhere say which list they used: page-like HTML is 86,343 with the narrow list
+  and about 59k with the broad one.
 - `error_signs` := `text_bytes < 2048`, a generic error word in `title` or `heading`, or a
   placeholder body.
 
@@ -367,15 +375,20 @@ size checks.
 | `record_role` | dict | As in 3.1 |
 | `is_real_file` | bool | `body_sha` in `real_files` |
 | `first_fetched`, `last_fetched` | ts, nullable | Over `mode = fetch` rows only |
-| `first_run` | dict | `run_id` of the earliest row |
+| `first_run` | dict | `run_id` of the earliest row, in the order `(retrieved_at nulls last, receipt_key, receipt_line, capture_index)` |
 
-1,683,430 source files today.
+- **Derivation:** the distinct `(body, filename, endpoint)` triples in `captures`, plus one
+  bodiless row per URL that never yielded a body, plus one bodiless row per recovery's
+  original link that was never fetched. So every recovery has a source file and a
+  component to be listed in.
+- 1,683,430 source files today.
 
 ### 3.3 Edges and `documents`
 
 ```
-same_body    := source files with the same body, where the body is a real file (web pages
-                included: the same real page at several addresses is one document)
+same_body    := source files whose own capture rows are real files, sharing a real_body
+                (web pages included: the same real page at several addresses is one
+                document)
 same_text    := source files at the same endpoint whose real files have equal fingerprints
 same_rendition := real files that are one document in different formats:
                 (a) the publisher groups them: links on the same parent page whose
@@ -391,7 +404,8 @@ document_id  := sha256(sorted logical body keys of the component's real files),
                 or sha256(sorted source_ids) when it has none
 saved_file   := the component's real file ordered by format preference (PDF first, then
                 the other formats), then first_fetched desc nulls last, then body_sha
-alternates   := the component's other real files in other formats: (format, key, size)
+alternates   := the component's other real files in other formats: (format, key, size),
+                ordered by format preference, then body_sha
 first_captured := min(first_fetched) over its real files
 last_captured  := max(last_fetched) over its real files
 date_kind    := 'captured'   if the saved file has a fetch date from a non-import run
@@ -404,7 +418,9 @@ date_kind    := 'captured'   if the saved file has a fetch date from a non-impor
   are split across 32,547 documents. Renditions never share bytes or text fingerprints,
   so `same_rendition` is what joins them. The page offers the PDF first and lists the other
   formats as alternates; a link to any rendition opens the same entry.
-- Only `listed` components become explorer documents: *est.* about 0.5M. Captions,
+- Only `listed` components become explorer documents: *est.* 0.6–0.7M (1.24M rows minus
+  captions, metadata records, playlists and API bodies is 678k, before untyped bodies are
+  classified and renditions merge). Captions,
   metadata records, playlists, API bodies and links that never yielded a real file stay in
   the lake and feed `url_state`.
 - Import day is defined by run, not by date: 102,427 saved files carry only the import
@@ -420,19 +436,27 @@ meeting_ref  := struct<chamber string, event_id int64> per source file, computed
                 meeting XML record's document list, through page_links
 meeting_refs := the set of its members' meeting_refs
 document_date      := the saved file's filename_readings.document_date
-committee_key      := 'hs' || lower(committee_code) for House codes (AG03 → hsag03)
+committee_key      := 'hs' || lower(committee_code) for House codes (AG03 → hsag03);
+                      Senate and joint codes map the same way ('ss…', 'js…') only where
+                      E1's sample tests confirm the form, and are otherwise unmapped
 committee_name     := committee_records.name on (congress, committee_key), else the name
                       in the most recent congress that has the code
 govinfo_package_id := the package ID in a member's govinfo URL, else the saved file's
                       gpo_package_id
-measure_keys, bioguide_ids := the union over its members' filename readings
+measure_keys, bioguide_ids := the union over its members' filename readings, sorted
 ```
 
-- House event IDs and Congress.gov House meeting IDs are one ID space (4,715 of 6,550
-  overlap), the same event ID the committee explorer uses. On the Oct 19 data, 45,761
-  documents carry a docs.house.gov meeting URL (6,551 events) and 142,997 a Congress.gov
-  one (11,634 meetings); 141,694 carry a govinfo package (36,943 packages). Nothing new is
-  stored in the lake: `meeting_ref` is derived, like `url_key`.
+Every list column is written in a fixed order, so exports stay byte-identical:
+`meeting_refs` and `meeting_event_ids` sorted by `(chamber, event_id)`, `measure_keys` and
+`bioguide_ids` sorted as strings, `alternates` as above.
+
+- House event IDs and Congress.gov House meeting IDs are one ID space, the same event ID
+  the committee explorer uses. On the Oct 19 data, with the rule as written (per source
+  file, unioned over members): 116,901 documents carry a docs.house.gov meeting URL (8,956
+  events), 163,476 a Congress.gov one (12,041 meetings), 7,243 of the 8,956 House IDs
+  overlap, and 108,753 documents carry a govinfo package (72,374 packages). Counting only
+  each document's saved-file URL gives smaller numbers (45,761 and 6,551 events). Nothing
+  new is stored in the lake: `meeting_ref` is derived, like `url_key`.
 - `document_date` stays separate from `first_captured`: one is when the document is
   dated, the other when we first fetched it.
 - **Committee names, not codes** (owner decision): `list` facets and `detail` show the
@@ -462,7 +486,8 @@ exactly once.
 - The latest `mode = fetch` attempt wins, in the total order `(retrieved_at nulls first,
   receipt_key, receipt_line)`. Retryable
 outcomes (`retry_later`, `size_limit`, `request_failed`) are due now; a 2xx waits the
-family's recheck interval. No body hash: the 412 tells capture whether a body is new.
+family's recheck interval, from a small `(family, interval)` policy table in the SQL that
+E1 writes. No body hash: the 412 tells capture whether a body is new.
 1,158,426 rows, *est.* 10 MB.
 
 ### 3.6 `recoveries`: one row per recovery
@@ -489,15 +514,15 @@ record per `id` wins.
 
 `list` order is `(filename, first_captured nulls last, document_id)`, unique. Shared writer
 settings: Parquet 2.0 pages, ZSTD, fixed rows per row group, chunk statistics, footer under
-512 KB, no Bloom filters. Sizes are *est.* at about 0.5M listed documents, from measurements
-at 1.24M.
+512 KB, no Bloom filters. Sizes are *est.* at about 0.65M listed documents, scaled from
+measurements at 1.24M.
 
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
-| `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_name` (dictionary), `congress`, `format`, `document_date` and `first_captured` (date32, dictionary), `date_kind`, `saved_kind`, `meeting_event_ids` (List<int64>, usually empty or one ID; dictionary-encoded, about 1 MB; the hearing filter matches on membership, since 1.7% of documents with a meeting have several, up to 9). No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding (2.54 MB against 3.22 MB with a dictionary, measured on 1.13M sorted filenames); facets keep dictionaries; 65,536-row groups so a phone can decode as it goes; no page index | about 1.5 MB |
-| `detail.parquet` | typed core: `document_id` fsb(32), `link_key` fsb(8), `saved_key` string, `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>, `alternates` List<Struct<format dict, key string, size int64>>, `meeting_refs` List<Struct<chamber dict, event_id int64>>, `govinfo_package_id` string, `measure_keys` and `bioguide_ids` List<string>; plus one fold of the display-only facts, dates written as ISO `YYYY-MM-DD`: `source_url`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 64 KB pages, write batches of 1,024 rows | 30–40 MB (74 MB measured at 1.24M for the fold alone); offset index about 100 KB; about 10 concurrent page reads per view |
-| `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | offset index and column index (page-level statistics) on `link_key`, about 25 KB together and read once per session, so hyparquet's `$eq` lookup skips to one page; 16 KB pages; one row group | 5–7 MB |
-| `occurrences.parquet` | `list_row` int32, `ordinal` int16, `url`, `member_path`, `filename`, `outcome`, `linked_from` (parent URL), `link_text`, `doc_type` (all string), `first_fetched`, `last_fetched`, `add_date` (all date32), `is_saved` boolean | `(list_row, ordinal)` | offset index on every column; 64 KB pages with a page row limit of 512–1,024 and the write batch no larger | *est.* 15–25 MB with link context |
+| `list.parquet` | `filename`, `document_kind`, `document_family`, `committee_name` (dictionary), `congress`, `format`, `document_date` and `first_captured` (date32, dictionary), `date_kind`, `saved_kind`, `meeting_event_ids` (List<int64>, usually empty or one ID; about 0.2 MB; the hearing filter matches on membership, since 1.7% of documents with a meeting have several, up to 9). No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding (2.45 MB against 3.61 MB with a dictionary on 1.13M sorted filenames, 32% smaller); facets keep dictionaries; 65,536-row groups so a phone can decode as it goes; no page index | about 2.2 MB |
+| `detail.parquet` | typed core: `link_key` fsb(8), `saved_key` string, `occ_start` int32, `occ_len` int32, `recoveries` List<Struct<kind dict, key string, imported_at date32>>, `alternates` List<Struct<format dict, key string, size int64>>, `meeting_refs` List<Struct<chamber dict, event_id int64>>, `govinfo_package_id` string, `measure_keys` and `bioguide_ids` List<string>; plus one fold of the display-only facts, dates written as ISO `YYYY-MM-DD`: `document_id` (hex; display only, since `link_key` is the public ID), `source_url`, `saved_media_type`, `saved_kind`, `first_captured`, `last_captured`, `date_kind`, `member_count`, the saved file's readings (`r.*`) and filename reading (`f.*`) | list order | offset index on every leaf; 16 KB pages for the incompressible key columns (`link_key`, `saved_key`, the hash-like list members) and 64 KB for the rest; write batches of 1,024 rows | 40–50 MB; about 15 concurrent page reads per view, roughly 120 KB (measured: the typed core with `document_id` is 123 KB at 16 KB pages and 414 KB at 64 KB; the earlier 11–43 KB counted the fold alone); the offset index is a one-time fetch per session, measured in C3 |
+| `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | offset index and column index (page-level statistics) on `link_key`, about 25 KB together and read once per session, so hyparquet's `$eq` lookup skips to one page; 16 KB pages; one row group | 7–9 MB |
+| `occurrences.parquet` | `list_row` int32, `ordinal` int32 (one document today has 33,479), `url`, `member_path`, `filename`, `outcome`, `linked_from` (parent URL), `link_text`, `doc_type` (all string), `first_fetched`, `last_fetched`, `add_date` (all date32), `is_saved` boolean | `(list_row, ordinal)` | offset index on every column; 64 KB pages with a page row limit of 512–1,024 and the write batch no larger | *est.* 20–30 MB with link context |
 | `url_state.parquet` | 3.5 | `requested_url` | defaults | 10 MB |
 | `manifest.json` | `schema_version`; `files[]` {name, sha256, md5, size, rows, row_range, shard}; `facet_counts`; `release_id` | — | deterministic, content only | 5–20 KB |
 | `inputs/<input_digest>.json` | receipt-keys digest, row counts per parser version and catalog version, provenance digest, versions, snapshot IDs, run | — | one per input identity | about 2 KB |
@@ -506,11 +531,13 @@ at 1.24M.
   every listed document. A document with no real file (recovery only) uses its
   `document_id`'s prefix. Recovery bodies are never keys.
 - **`linked_from`:** for each member source file, its earliest `page_links` row matched on
-  `url_key`, by `(retrieved_at, parent_url)`, so "where each copy was seen" names the page
-  and the label.
+  `url_key`, in the total order `(retrieved_at nulls last, parent_url, receipt_key,
+  receipt_line, link_index)`: about 1.0M rows have no fetch time and one page can link the
+  same URL twice under different labels. "Where each copy was seen" then names the page
+  and the label the same way every run.
 - **No per-view byte budget** (owner decision): the canary enforces the heap budget only;
   page sizes and row limits are layout settings, not gates.
-- A day with changes uploads about 70 MB.
+- A day with changes uploads about 90 MB.
 
 ## 5. Relationships and invariants
 
@@ -566,7 +593,7 @@ Raw and lake:
 Model:
 6. Every source file of a listed document is in exactly one document; every listed
    document has at least one member, and at least one real file or recovery.
-7. Every real body belongs to exactly one document, web pages included.
+7. Every `real_body` belongs to exactly one document, web pages included.
 8. No document's body set contains a non-2xx body, an incomplete body, a recovery import, a
    placeholder, an empty body, or a body whose `record_role` isn't `document`.
 9. `document_id` and `source_id` recompute from today's formulas (golden vectors).

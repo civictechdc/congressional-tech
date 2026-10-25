@@ -1,6 +1,6 @@
 # Engine-first architecture
 
-Status: proposed, revision 7, 2026-10-24. Owner: Mike Deeb. This document describes the
+Status: proposed, revision 8, 2026-10-24. Owner: Mike Deeb. This document describes the
 target system as it should be, independent of how the current code works. Column-level
 schemas, derivations and test invariants are in `docs/engine-first-data-model.md`. The
 path from today is in `docs/plans/simplification-plan-20261024.md`, and the appendix
@@ -14,9 +14,9 @@ the first is precious:
 
 1. **Raw log.** An append-only, content-addressed record of every fetch attempt, every
    body and every human decision. It is never rewritten.
-2. **Lake.** Four append-only engine tables derived from the log: what was captured,
-   what each body says, what each filename says, and which page linked each file, plus a
-   small table of committee records. Each row is computed once.
+2. **Lake.** Five append-only engine tables derived from the log: what was captured,
+   what each body says, what each filename says, which page linked each file, and the
+   committee records. Each row is computed once.
 3. **Releases.** Immutable Parquet produced by one deterministic SQL job over the lake. A
    single pointer selects the live release.
 
@@ -57,7 +57,7 @@ Measured on the Oct 19 snapshot (CS300 review, section 0):
 | Distinct bodies | 1.04M, 0.70 TB stored (PDF 365 GB, ZIP 286 GB, untyped 37 GB, HTML 4.5 GB, XML 0.8 GB) |
 | Distinct URLs | 1.16M |
 | Source files, catalog rows, occurrences | 1.68M, 1.24M, 4.7M |
-| Explorer documents under the real-file rule | about 0.5M (*est.*); the other rows are caption snippets (454k), metadata records (98k), playlists (10k) and API responses |
+| Explorer documents under the real-file rule | 0.6–0.7M (*est.*); the other rows are caption snippets (454k), metadata records (98k), playlists (10k) and API responses |
 | Normal day | 270–3,553 attempts, 258–1,595 new bodies |
 | Import day | up to 745k attempts, 547k new bodies |
 | Largest body | 1.19 GB; none above 5 GB |
@@ -295,7 +295,7 @@ become orphans (5.6).
 
 ### 6.1 Model
 - The domain model is versioned SQL in the application repo.
-- One docspec-rs job registers the four lake tables and the provenance records, evaluates the plan, and writes every output as a release file.
+- One docspec-rs job registers the five lake tables and the provenance records, evaluates the plan, and writes every output as a release file.
   There are no intermediate tables.
 
 | Output | Content |
@@ -317,8 +317,9 @@ become orphans (5.6).
   endpoint (URL plus path inside an archive) when the files there have the same content.
   Connections chain.
 - **The explorer lists real documents only** (owner decision): a document needs at least
-  one real file or one recovery. That is about 0.5M documents, not the 1.24M rows of
-  today's catalog. Caption snippets, metadata records, playlists, API responses and links
+  one real file or one recovery. That is about 0.6–0.7M documents, not the 1.24M rows of
+  today's catalog. A recovery whose original link was never fetched still gets a bodiless
+  source file, so it has a document to appear in. Caption snippets, metadata records, playlists, API responses and links
   that never yielded a real file stay in the lake, where they still drive `url_state`.
 - **Real files.** A body is a document file only if all of these hold:
   - it was a real fetch, not a recovery import, whose HTTP 200 is synthetic;
@@ -339,10 +340,15 @@ become orphans (5.6).
     - **then generic signs of an error page,** for page-like links: a tiny body (under
       about 2 KB), generic error words in the title or heading (access denied, forbidden,
       not found, retry later, service unavailable, error), or a placeholder body. There
-      are no site-specific templates. On the Oct 19 data, 86,343 successful HTML bodies
-      are page-like, and about 2,100 page-like bodies under 16 KB are candidates for the
-      second check;
+      are no site-specific templates. On the Oct 19 data, with the narrow pattern list,
+      86,343 successful HTML bodies are page-like (about 59k with the broad list), and
+      about 2,100 page-like bodies under 16 KB are candidates for the second check;
+  - it is not an API response: JSON fetched from an endpoint on a written list
+    (api.congress.gov, api.govinfo.gov, the YouTube Data API, the Wayback CDX API);
   - it is not empty and not a placeholder.
+
+  A body is a `real_body` if at least one of its capture rows is a real file, and edges
+  connect only source files whose own rows are real.
 
   Everything else stays in raw and `captures` as evidence. It never enters a document's
   body set, so it never changes the document's ID, saved file or links.
@@ -385,7 +391,7 @@ become orphans (5.6).
   exact URL (data model §3.0).
 
   An earlier measurement, with HTML excluded and before the real-file rule, gave 1.26M
-  components with at most 456 source files each; the rule leaves about 0.5M listed
+  components with at most 456 source files each; the rule leaves about 0.6–0.7M listed
   documents.
 - **One entry for all formats** (owner decision). A publisher often posts one document in
   several formats, such as a bill's PDF and XML: 16,156 such groups are split across
@@ -416,7 +422,8 @@ become orphans (5.6).
   the Congress.gov system code (House codes as `hs` plus the lowercased code, so `AG03` is
   `hsag03`), and the name comes from `committee_records` for the document's congress, or
   the most recent congress that has the code. Facets and pages show the name, matching the
-  committee explorer's filters; unmapped codes are reported with counts.
+  committee explorer's filters; unmapped codes are reported with counts. Senate and joint
+  codes map the same way only where sample tests confirm the form.
 - **Recoveries are evidence for the original link,** never files the recovering URL
   served. They stay out of `url_state`, text comparison, `links` and capture dates (an
   import's timestamp is the recovered copy's own). Every recovery is shown on the original
@@ -436,13 +443,13 @@ the list row number links them.
 
 | File | Order | Contents | Read pattern | Writer settings |
 |---|---|---|---|---|
-| `list.parquet` (about 1.5 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, document date, first-captured date, the document's meeting, and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | `filename` delta-encoded without a dictionary (21% smaller, measured); 65,536-row groups; no page index |
-| `detail.parquet` (30–40 MB) | Same row order as `list` | A small typed core (`document_id`, the link key, the saved file's key, occurrence start and length, recoveries as a list of kind, file key and date, alternate formats as a list of format, file key and size, meetings, the GovInfo package, bill keys and Bioguide IDs) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
-| `links.parquet` (5–7 MB) | `link_key` | 8-byte link key and list row | Point lookup: the column index's page statistics find the page | Offset index and column index (page-level statistics) on `link_key`, about 25 KB together; small pages |
-| `occurrences.parquet` (15–25 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, path inside an archive, filename, capture dates, and the page that linked it with the link's label | The range named in `detail` | Offset index on every column; 64 KB pages of at most 512–1,024 rows |
-| `url_state.parquet` (about 10 MB) | `url` | Latest outcome and retry schedule per URL; no body hash, because the 412 tells capture whether a body is new | Read whole by the capture job, not the site | Defaults |
+| `list.parquet` (about 2.2 MB) | `(filename, first_captured, document_id)` | Display name, facet fields, document date, first-captured date, the document's meeting, and whether the saved file is the original or a recovery; no ID | Downloaded whole, decoded column by column in a Web Worker | `filename` delta-encoded without a dictionary (21% smaller, measured); 65,536-row groups; no page index |
+| `detail.parquet` (40–50 MB) | Same row order as `list` | A typed core of what the site acts on (the link key, the saved file's key, occurrence start and length, recoveries as a list of kind, file key and date, alternate formats as a list of format, file key and size, meetings, the GovInfo package, bill keys and Bioguide IDs) plus one folded `List<Struct<field, value>>` for the sparse facts: original URL, saved file, capture dates, readings | One page per leaf column, located by the offset index | Offset index on every column; 64 KB pages, written in batches of 1,024 rows |
+| `links.parquet` (7–9 MB) | `link_key` | 8-byte link key and list row | Point lookup: the column index's page statistics find the page | Offset index and column index (page-level statistics) on `link_key`, about 25 KB together; small pages |
+| `occurrences.parquet` (20–30 MB) | `(list_row, ordinal)` | Where each copy was seen: URL, path inside an archive, filename, capture dates, and the page that linked it with the link's label | The range named in `detail` | Offset index on every column; 64 KB pages of at most 512–1,024 rows |
+| `url_state.parquet` (about 10 MB) | `requested_url` | Latest outcome and retry schedule per URL; no body hash, because the 412 tells capture whether a body is new | Read whole by the capture job, not the site | Defaults |
 
-Sizes are estimates at about 0.5M documents, scaled from measurements at 1.24M. Exact
+Sizes are estimates at about 0.65M documents, scaled from measurements at 1.24M. Exact
 columns are in the data model, §4.
 
 - **Documents only.** There are no per-copy pages. A document page shows its saved file,
@@ -469,13 +476,16 @@ columns are in the data model, §4.
 - **No ID in `list`.** Measured on the real documents: 4.05 MB without an ID, 15.8 MB with
   an 8-byte ID and 45.9 MB with hex IDs.
 - **Detail reads.** hyparquet reads single pages when a file has an offset index
-  (`useOffsetIndex`, 1.31.2). The reader fetches `detail`'s offset index once per session:
-  about 100 KB at 64 KB pages (16 KB pages would make it about 870 KB at today's rows).
-  After that, a detail view is one round trip of about 10 concurrent page reads, a few
-  tens of KB. Parquet stores each column, and each field of a flat struct, as its own chunk, so
-  a flat layout of the hundred-odd sparse fields would read a page per field. The typed
-  core holds everything the site acts on, such as the shareable link and the download
-  key, so the reader never parses packed strings; the fold holds display-only facts.
+  (`useOffsetIndex`, 1.31.2). The reader fetches `detail`'s offset index once per session.
+  After that, a detail view is one round trip of about 15 concurrent page reads, roughly
+  120 KB. The typed core holds everything the site acts on, such as the shareable link and
+  the download key, so the reader never parses packed strings; it has about 15 leaf
+  columns, and key columns that don't compress (`link_key`, `saved_key`) are written with
+  16 KB pages so one read doesn't pull 64 KB. `document_id` moves into the fold, since
+  `link_key` is the public ID. Measured: the core costs 123 KB per view at 16 KB pages and
+  414 KB at 64 KB; the earlier 11–43 KB counted the fold alone. Parquet stores each column
+  as its own chunk, so a flat layout of the hundred-odd sparse fields would read a page per
+  field; the fold holds those display-only facts.
 - **Binary keys** everywhere else. Hex hashes were 160 of 187 MB in a measured flat detail
   file.
 - **Shards.** `detail` and `occurrences` can be split into fixed row-range files, which
@@ -507,7 +517,7 @@ Unfiltered facet counts go in the release manifest.
 - **Tests:** compare bytes across thread counts, input orders and batch sizes, and with a
   forced spill.
 - **Not a dedupe mechanism.** One new document shifts every later row number, so on any
-  day with a change, every file changes. That is about 70 MB of uploads a day, which is
+  day with a change, every file changes. That is about 90 MB of uploads a day, which is
   fine.
 
 ### 6.4 Release and publish
@@ -557,8 +567,8 @@ Unfiltered facet counts go in the release manifest.
   phone. Details and lookups use HTTP Range reads.
 - **Devices:** desktop and mid-range phones. The contract test and the canary enforce the
   heap budget. There is no per-view byte budget (owner decision).
-- **Stale tabs.** Only two releases exist at a time, so a tab left open across two
-  publishes can lose its files. On a 404 for a release file, the reader re-reads the
+- **Stale tabs.** Only the live and last-good releases are sure to exist, so a tab left
+  open across two publishes can lose its files. On a 404 for a release file, the reader re-reads the
   pointer and reloads.
 - **One reader.** The reader is a plain module with no DOM dependency, so the canary runs
   the same code the site ships.
@@ -675,8 +685,8 @@ needed, add it upstream to iceberg-rust rather than working around it.
 | Readings | O(new bodies in scope × parse cost) | Minutes daily; backfills in background |
 | Filename readings | O(new pairs) | Under a second daily; about 7 minutes per catalog version |
 | Model + export | O(N log N) over about 8M rows | Seconds for the narrow plan (3.7 s proxy; grouping 1–2 s); the wide joins are measured in week one |
-| Publish | O(release size) | About 70 MB on a day with changes |
-| Detail view | One page per leaf | 11–43 KB in one round trip, after one offset-index fetch (about 100 KB) per session |
+| Publish | O(release size) | About 90 MB on a day with changes |
+| Detail view | One page per leaf | About 120 KB in one round trip, after a one-time offset-index fetch per session |
 | Weekly check | O(bodies / 1,000) list requests | About 1,000 requests, no body bytes |
 
 A normal day moves about 1,500 object operations and 2 GB, well inside R2's free tier at
@@ -722,7 +732,7 @@ document's files; a document is one distinct content, showing its newest bytes; 
 dates shown, saying what we know; HTML web pages recognized by link shape and generic
 error signals; `document_id` keeps today's formula; cut-off copies re-fetched; recoveries
 shown, labeled by kind; PDF reading deferred until full-text extraction; two releases
-kept; the explorer lists real documents only (about 0.5M); any content format counts,
+kept; the explorer lists real documents only (about 0.6–0.7M); any content format counts,
 including Word, web archives and images; link context shown; identical real web pages are
 one document; PDF text read for fingerprint candidates only; every link join normalizes
 the URL, unwrapping redirect and archive wrappers and stripping only tracker and
@@ -734,7 +744,7 @@ release.
 
 ## Reviews
 
-Seven reviews shaped this design. All are in `docs/reviews/2026-10-24-design-review/`:
+Eight reviews shaped this design. All are in `docs/reviews/2026-10-24-design-review/`:
 - of revision 2: a general architecture review (`fable-review.md`) and an Iceberg, Parquet
   and query-plan review (`iceberg-parquet-review.md`);
 - of revision 3: an efficiency review with measurements on the real data
@@ -745,8 +755,12 @@ Seven reviews shaped this design. All are in `docs/reviews/2026-10-24-design-rev
 - of revision 5: a third efficiency pass with a full data-model sketch
   (`cs300-rereview-rev5.md`, `cs300-data-model.md`), graded A− (90) for the architecture and
   A− (88) for the plan. The sketch became `docs/engine-first-data-model.md`, and the
-  Iceberg/Parquet reviewer reviewed it twice (`iceberg-parquet-data-model-review.md`,
-  `iceberg-parquet-data-model-final-review.md`).
+  Iceberg/Parquet reviewer reviewed it four times (`iceberg-parquet-data-model-review.md`,
+  `iceberg-parquet-data-model-final-review.md`, `iceberg-parquet-data-model-types-review.md`,
+  `iceberg-parquet-metadata-keys-review.md`);
+- of revision 7: a final sanity check by the efficiency reviewer
+  (`cs300-sanity-check-final.md`), graded A− (91) for the architecture and B+ (87) for the
+  plan, before its fixes and the new estimate.
 
 Revision 4 applied the efficiency review (F1–F12). Revision 5 applies the two re-reviews
 and the owner's decisions:
@@ -771,12 +785,13 @@ three more owner decisions:
 | Finding | Change in revision 6 |
 |---|---|
 | Lake keys were not unique; archive members share a URL | `capture_index` in the `captures` key; the endpoint is URL plus path inside an archive (5.1, 5.2) |
-| The real-file rule left the document population undefined | Record roles; the explorer lists real documents only, about 0.5M (5.2, 6.1) |
+| The real-file rule left the document population undefined | Record roles; the explorer lists real documents only, about 0.6–0.7M (5.2, 6.1) |
 | Link context and recovery kinds had no home | `page_links` table; written recovery-kind mapping (5.4, 6.1) |
-| Detail offset index too big at 16 KB pages | 64 KB pages: about 100 KB index, 11–43 KB per view (6.2) |
+| Detail offset index too big at 16 KB pages | 64 KB pages for the fold (per-view cost corrected in revision 8) (6.2) |
 | Smaller gaps | Import day by run ID; `url_state` without a hash; receipts trimmed to about 1 KB; sniff every older body once; failed candidates deleted by publish; large legacy bodies as downloads (4.2, 5.2, 6.2, 6.4, 7) |
 | Owner decisions | Real documents only; link context shown; any content format counts (5.4, 6.1) |
 | Iceberg/Parquet review of the data model | Identical real web pages are one document; PDF text read for fingerprint candidates; one row per receipt line even without a body, and `url_state` counted over lines; typed detail core; page statistics on `link_key` (5.1, 5.2, 6.1, 6.2) |
+| Final sanity check (revision 8) | Five lake tables; `real_body` defined; API responses defined by an endpoint list; recovery-only links get a source file; deterministic tie-breaks and list orders; detail per-view cost corrected to about 120 KB with 16 KB pages for key columns; sizes scaled to about 0.65M documents; estimate raised to 11–20 weeks (5, 6.1, 6.2, 12, appendix) |
 | Metadata keys (revision 7) | Meeting references, a typed document date and official record keys, composed once and never read from the field list (6.1, 6.2) |
 | Final data-model review (revision 7) | `url_key` for every link join; `page_links` as its own commit; delta-encoded filenames in `list`; a page row limit on `occurrences`; lake writer settings in the data model; no per-view byte budget (5.4, 6.1, 6.2, 6.4, 7) |
 
@@ -807,4 +822,5 @@ copies (261,055 uploads, about 403 GB, about $72 a year of storage kept under th
 the full re-hash baseline (0.70 TB read once) and the backfills (about 5 GB of readings).
 All egress is free.
 
-Estimated at 8–16 weeks for one engineer. Steps, estimates and tickets are in the plan.
+Estimated at 11–20 weeks for one engineer, with every owner decision in the first launch.
+Steps, estimates and tickets are in the plan.

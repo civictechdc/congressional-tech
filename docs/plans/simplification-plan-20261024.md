@@ -1,6 +1,6 @@
 # Simplification plan: congressional-tech and docspec-rs
 
-Revision 4, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 7)
+Revision 5, 2026-10-24. It implements `docs/engine-first-architecture.md` (revision 8)
 and `docs/engine-first-data-model.md`, and replaces earlier revisions of this file (in git
 history). Evidence: `docs/reviews/2026-10-24-ticket-audit/` (the audit, with measured line
 counts) and `docs/reviews/2026-10-24-design-review/` (six design reviews). Below, "design
@@ -37,12 +37,12 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 5 | `r2.dev` stays open | Every key is public, so a path allowlist on the custom domain protects nothing (open question 1). |
 | 6 | Engine first | The target is built in docspec-rs; congressional-tech keeps no code that overlaps it. |
 | 7 | Documents only | No per-copy pages and no `sources` file. Per-copy filename readings stay in the lake. |
-| 8 | Links point at a file; 16-hex keys | `links.parquet` maps every body's key to its document. F0 uses it, so links survive the switch. |
+| 8 | Links point at a file; 16-hex keys | `links.parquet` maps every real file's key to its document (amended by 27: every real body is in exactly one document). F0 uses it, so links survive the switch. |
 | 9 | Desktop and mid-range phones | The reader decodes `list` column by column; the canary and contract test enforce a heap budget. |
-| 10 | A document is one distinct content; its page links its newest real file | Text fingerprints only where one URL gave 2+ complete files (D2); the rule is part of E1. |
+| 10 | A document is one distinct content; its page links its newest real file (amended by 31 and 32: all formats are one entry, and the PDF comes first) | Text fingerprints only where one URL gave 2+ complete files (D2); the rule is part of E1. |
 | 11 | hyparquet stays in the browser | Page reads through offset indexes (A1, C3). |
 | 12 | Older gzip PDFs get uncompressed copies; other older bodies unpack in the browser | B13 and A5. |
-| 13 | Only real files count as a document's files: a real fetch (not a recovery import), complete, 2xx, a document type by sniffed format, non-empty, and not a placeholder, API metadata or playlist | Receipts record the sniffed format (B2); older bodies without one get a ranged sniff (D2); the rule is part of E1. |
+| 13 | Only real files count as a document's files: a real fetch (not a recovery import), complete, 2xx, non-empty, not a placeholder (amended by 24 and 26: record role `document` and any content format, with API responses defined by an endpoint list) | Receipts record the sniffed format (B2); older bodies without one get a ranged sniff (D2); the rule is part of E1. |
 | 14 | No early launch: the explorer waits for the engine-built release | F0 is the reader's fixture and the parity oracle only. |
 | 15 | Re-fetch the 62 URLs that only have a 64 MiB cut-off copy; a size-limit outcome means retry | B2 and B14. |
 | 16 | Investigate the Oct 15 recovery run | Done: its 5,587 lines are recovery imports, not bad downloads, so no raw correction is needed. Captures keep the import fields (D1); imports are never real files (E1). |
@@ -53,7 +53,7 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 21 | `document_id` keeps today's body-set formula | E3's golden vectors; links don't depend on it. |
 | 22 | No PDF reading for now; full-text extraction of every PDF comes later | D2 has no PDF parser; the full-text job is parked (G). |
 | 23 | Keep two releases: the live one and the last good one | F1's weekly job; the reader reloads on a 404 (A1, A3, A4). |
-| 24 | The explorer lists real documents only: at least one real file or recovery, about 0.5M | Record roles in D2; the listing rule in E1. |
+| 24 | The explorer lists real documents only: at least one real file or recovery, about 0.6–0.7M | Record roles in D2; the listing rule in E1. |
 | 25 | Show link context: the page that linked each copy, and the link's label | `page_links` in D1; occurrences in E2; A8. |
 | 26 | Any content format counts, including Word, web archives and images | The real-file rule in E1. |
 | 27 | Identical real web pages are one document | Same-body edges include HTML (E1); every real body is in one document. |
@@ -66,6 +66,7 @@ pipeline, switches publishing to it, and deletes the old layers whole.
 | 34 | A typed document date for sorting and filtering | `document_date` in D3 and E2; A6 and A9. |
 | 35 | Official record keys as typed fields, for link-outs | GovInfo package, bill keys and Bioguide IDs in D3 and E2; A9. |
 | 36 | Show committee names, not codes | `committee_records` in D5; the mapping in E1; A9. |
+| 37 | Keep every decision in the first launch and accept 11–20 weeks | The estimates in §4 and §8. |
 
 Also answered on Oct 24: no exclusion list will exist; wrong `stored_sha256` rows are
 repaired in place; recovery imports refuse uncommitted code.
@@ -143,15 +144,17 @@ test.
 
 | Track | What | Depends on | Estimate | Starts |
 |---|---|---|---|---|
-| A | Site reader and canary | F0 | 1–2 weeks | week 1 |
+| A | Site reader and canary | F0 | 2–3.5 weeks | week 1 |
 | B | Raw writers and protection | P4 (owner) for B1 only | 1–2 weeks | week 1 |
-| C | Engine capabilities | M1, M2 | 3.5–5.5 weeks after week 1 | C0 in week 1 |
-| D | Lake tables and backfills | C2, B2 | 1–2 weeks | after C2 |
-| E | Model SQL and parity | C1, C3, C4, D, F0 | 2–4 weeks | after D |
+| C | Engine capabilities | M1, M2 | 3.75–6 weeks after week 1 | C0 in week 1 |
+| D | Lake tables and backfills | C2, B2 | 1.5–3 weeks | after C2 |
+| E | Model SQL and parity | C1, C3, C4, D, F0 | 3.5–6.5 weeks | after D |
 | F | Switch and delete | A, E | 1–2 weeks | last |
 
-The critical path is M → C → D → E → F: about 8.5–14.5 weeks for one engineer. A and B
-run beside C. Estimated total: **8–16 weeks**.
+The critical path is M → C → D → E → F: about 10.5–18 weeks for one engineer. A and B
+run beside C. Estimated total: **11–20 weeks** (decision 37). The scope grew about 30%
+after the first 8–16 week estimate: link context, link matching, one entry per format,
+meetings, committees and record keys.
 
 ### A. Site reader and canary
 
@@ -271,7 +274,7 @@ files (ss-k1f0; this is also C5).
 |---|---|---|---|
 | C1 | Multi-input SQL plans over Basin tables and Parquet files in one context | 0.5–1.5 weeks | A plan joining two tables and a file |
 | C2 | Append through the REST catalog, with the conflict retry | 0.5 week | M1's two tests |
-| C3 | Deterministic multi-file export: SHA-256 and MD5 while writing; per-file writer settings, including offset and column indexes, page sizes and row limits, and per-column encodings such as delta-encoded filenames; fixed row counts per row group; unique sort keys; row-range shards | 1–1.5 weeks | Byte equality across threads, input orders, batch sizes and a forced spill; hyparquet page reads on the output |
+| C3 | Deterministic multi-file export: SHA-256 and MD5 while writing; per-file writer settings, including offset and column indexes, page sizes and row limits, and per-column encodings such as delta-encoded filenames; fixed row counts per row group; unique sort keys; row-range shards | 1.25–2 weeks | Byte equality across threads, input orders, batch sizes and a forced spill; hyparquet page reads on the output |
 | C4 | ConnectedComponents in memory over 32-bit IDs, refusing above a node cap | 0.5 week | M2's graph; a refusal test |
 | C5 | Streaming I/O: no re-read or HEAD of immutable files | in C0 | Request counts in a test |
 | C6 | Bounded threads, memory pool and scratch; wide folded columns kept off hash-join build sides | 0.5 week | A join at the pool limit fails clearly; M2's build sizes |
@@ -328,7 +331,7 @@ threads, input orders and batch sizes and with a forced spill, on the smallest r
    work list and appends through the engine. It also writes the typed `document_date`,
    `measure_keys`, `bioguide_ids` and `gpo_package_id` (decisions 34–35), so the model
    never unnests the field list. Backfill is about 7 minutes over 1.39M pairs.
-4. Enable Basin compaction and snapshot expiration on all four tables.
+4. Enable Basin compaction and snapshot expiration on all five lake tables.
 5. **`committee_records`** (design §5.5): the JSON parser reads each committee API
    response once. First, `acquisition/committees.py` fetches through the raw writer
    instead of writing its own output file (decision 36).
@@ -351,6 +354,16 @@ comparisons pass.
    - the import day, defined by the import run's ID, not by its date;
    - the committee mapping (decision 36): House codes as `hs` plus the lowercased code,
      joined to `committee_records` by congress, with unmapped codes reported by count;
+   - `real_body`: a body with at least one real capture row; edges connect only source
+     files whose own rows are real;
+   - API responses: JSON fetched from the endpoint list (api.congress.gov,
+     api.govinfo.gov, the YouTube Data API, the Wayback CDX API), with a sample URL test
+     per entry;
+   - a bodiless source file for each recovery whose original link was never fetched, so
+     every recovery has a document;
+   - total orders for every "earliest" pick (`linked_from`, `first_run`) and a fixed order
+     for every list column (data model §3.3);
+   - the `url_state` recheck intervals, as a `(family, interval)` policy table;
    - `url_key` for every link join (decision 29): the wrapper patterns and the
      strip-list, each entry with a real sample URL as a test;
    - the edge set: identical real files connect, web pages included (decision 27);
@@ -512,9 +525,9 @@ These survive the switch unchanged:
 |---|---|
 | Week 1 | P4 lock; M1; M2; F0; C0; B14; A and B start |
 | Weeks 2–3 | B13 once B1 and B3 are done; A and B done; C under way |
-| Weeks 2–6 | C (3.5–5.5 weeks) |
-| Then | D (1–2 weeks), E (2–4 weeks), F (1–2 weeks) |
+| Weeks 2–7 | C (3.75–6 weeks) |
+| Then | D (1.5–3 weeks), E (3.5–6.5 weeks), F (1–2 weeks) |
 
-Total: 8–16 weeks for one engineer. The critical path is C → D → E. The widest
+Total: 11–20 weeks for one engineer. The critical path is C → D → E. The widest
 uncertainty is E: it stays bounded unless parity finds facts that only derived tables
 hold.
