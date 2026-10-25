@@ -60,7 +60,7 @@ Terms are defined in [[ARCHITECTURE]] §3. This document adds:
 
 **Model relations and release files (§7–8) use Arrow types:** `fsb(n)` is `fixed_size_binary(n)`; `dict` is a string written with a dictionary; `ts` is `timestamp[us, UTC]`; `int16` is INT32 annotated as 16-bit; `date32` is a day-precision date.
 
-**Folds.** A fold is `list<struct<field: string, value: string>>`, one value per element, with the field repeated for multi-valued facts. A fold MUST hold display-only facts; anything the model filters, joins or sorts on, or the site acts on, MUST be a native column. House-naming metadata stays typed facets plus a fold: on 5,000 real filenames it is flat (164 distinct fields, median 2 values per file) and every value is a string by design. Parquet's variant type is not used.
+**Folds.** A fold is `list<struct<field: string, value: string>>`, one value per element, with the field repeated for multi-valued facts. A fold MUST hold display-only facts; anything the model filters, joins or sorts on, or the site acts on, MUST be a native column. Filename metadata stays typed facets plus a fold: on 5,000 real filenames it is flat (164 distinct fields, median 2 values per file) and every value is a string by design. Parquet's variant type is not used.
 
 **Hashes** are binary (`fixed[32]`, `fixed[16]`, `fsb(32)`, `fsb(8)`) everywhere except in `list.parquet`, which carries no ID, and in `detail`'s fold, where `document_id` is hex for display.
 
@@ -90,7 +90,8 @@ A run writes one or more numbered files, `receipts/<family>/<write-date>/<run>-<
 | `family` | string | Source family (21 today). |
 | `requested_url`, `url` | string | Requested and final URL. |
 | `retrieved_at` | RFC 3339 | Fetch time. Archive members take their line's time. For recovery imports, the recovered copy's own original time. |
-| `http_status` | int or null | The publisher's status; a fetching provider's own status is recorded apart. Synthetic 200 for imports. |
+| `http_status` | int or null | The publisher's status. Synthetic 200 for imports. |
+| `provider_status` | int or null | A fetching provider's own status, when the fetch went through one. |
 | `outcome` | `stored` \| `unchanged` \| `failed` \| `retry_later` \| `size_limit` \| `request_failed` | The last two mean incomplete. |
 | `complete` | bool | Body fully received; false for a 206 response or one with `Content-Range`. |
 | `transport` | string | `direct`, `zyte`, … |
@@ -108,7 +109,8 @@ A run writes one or more numbered files, `receipts/<family>/<write-date>/<run>-<
 | `pointer` | JSON path | Where in the record the body sits, such as `["content","body"]` or `["archive_members", i, …]`. |
 | `context_url` | string | The URL this body is evidence for: the container's URL for archive members. |
 | `member_path` | string or null | Path inside an archive. Older lines carry it as `original_path`. |
-| `entry_index` | int or null | Position inside the archive, so two members with one name stay apart. |
+| `entry_index` | int or null | Position inside the archive, recorded as evidence. Older lines carry it in `record.archive_members[i]`, reached through the entry's `pointer`. |
+| `expansion` | string or null | On an archive's own entry: `expanded`, or why expansion was refused (a limit of the archive-limit registry, an encrypted or unsupported member). |
 | `sha256` | hex | Identity: the entity after its transfer `Content-Encoding` is removed. |
 | `bytes` | int | Original size. |
 | `media_type` | string or null | The server's claim; MUST NOT be used to classify. |
@@ -129,7 +131,7 @@ A run writes one or more numbered files, `receipts/<family>/<write-date>/<run>-<
 
 New lines MUST NOT carry: credential parameters in any recorded URL (`requested_url`, `url`, `redirects[]`, `prior_attempts[]`), as the credential-parameter registry lists them; cookies or authorization; local file paths; `links` (derivable from the body, §6.2); `download_state` and `preserve_download_state`; full provider metadata and header copies; `response_header_items`; per-capture copies of `retrieved_at`, `http_status` and `family`. Older lines that carry `links` keep them; the model does not read them.
 
-Older receipts were cleaned once before the bucket lock: recorded cookies and local file paths were removed (a path kept only its last segment), and nothing else changed. Each cleaned receipt has a verification record (§5.3).
+Older receipts were cleaned once, before `receipts/` was locked. In recorded response headers, `Set-Cookie`, `Cookie` and `Authorization` values were removed; every string value that is an absolute local filesystem path was cut to its last segment; and credential parameters were removed from recorded URLs. Member paths, JSON pointers and URLs otherwise stayed as written, and nothing else changed. Each cleaned receipt has a verification record (§5.3), and the private backup taken before the cleanup keeps the originals.
 
 ### 5.3 Provenance Records
 
@@ -137,10 +139,10 @@ Older receipts were cleaned once before the bucket lock: recorded cookies and lo
 
 | Kind | Fields | Read by |
 |---|---|---|
-| `recoveries` | `id`, `original_url`, `recovered_url`, `body_sha256`, `kind`, `match_basis`, `evidence_sha256`, `identity_note`, `decided_by`, `decided_at`, `supersedes` | `recoveries` (§7.8); the filename-reading work list (§6.3) |
+| `recoveries` | `id`, `original_url`, `recovered_url`, `recovered_filename`, `body_sha256`, `kind`, `match_basis`, `evidence_sha256`, `identity_note`, `decided_by`, `decided_at`, `supersedes` | `recoveries` (§7.8); the filename-reading work list (§6.3) |
 | `url_variants` | `id`, `canonical_url`, `variant_url`, `basis`, `decided_at`, `supersedes` | `url_key`'s last step (§7.2) |
 | `reviews` | `id`, `target` (a link key), `verdict` (`hide`, `duplicate_of`, `title_override`, `kind_override`, `withdraw`), `value`, `note`, `reviewer`, `decided_at`, `supersedes` | `reviews` (§7.9) |
-| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; for a cleaned receipt also `original_size`, `original_etag` and the counts of cookies and paths removed | the weekly check; `saved_suffix` for `.pdf` copies (§7.5). Written by the one-time re-hash, by the re-hash of any body with no creating line, by the PDF-copy job for each `.gz` source and `.pdf` copy it verifies, and by the one-time receipt cleanup. |
+| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; for a cleaned receipt also `original_size`, `original_etag` and the counts of cookies, paths and credential parameters removed | the weekly check; `saved_suffix` for `.pdf` copies (§7.5). Written by the one-time re-hash, by the re-hash of any body with no creating line, by the PDF-copy job for each `.gz` source and `.pdf` copy it verifies, and by the one-time receipt cleanup. |
 
 ## 6. Lake Tables
 
@@ -148,7 +150,7 @@ Iceberg tables in Basin Catalog, append-only ([[ARCHITECTURE]] §8).
 
 **Table properties.** Iceberg format version 2; `write.target-file-size-bytes` 128 MB; `write.parquet.compression-codec` zstd at level 3; `commit.retry.num-retries` 0, because the producer's own retry recomputes its work list ([[ARCHITECTURE]] §8.1); `gc.enabled` true and `write.metadata.delete-after-commit.enabled` true, so Basin's expiration deletes unreferenced files and old metadata.
 
-**Writer settings** for the files producers write: row groups of 131,072 rows for `captures` and 65,536 for the other tables, chunk statistics, no Bloom filters. Files Basin compacts follow the table properties. Nothing depends on sort order. The PKs below MAY be declared as identifier fields.
+**Writer settings** for the files producers write: row groups of 131,072 rows for `captures` and 65,536 for the other tables, chunk statistics, no Bloom filters. These sizes assume the engine's remote write caps are removed; if [[IMPLEMENTATION-PLAN]] M1 keeps them, the sizes change. Files Basin compacts follow the table properties. Nothing depends on sort order. The PKs below MAY be declared as identifier fields.
 
 **Completion rows.** `committee_records` and `meeting_records` carry `is_completion boolean`. For a response that yields no records, the producer writes one row with `is_completion = true`, its `body_sha` and `parser_version` set, its other PK columns at their type's zero value (`''` or `0`) and every other column null, in the same commit as its outputs. Every non-PK column of these two tables is nullable for that reason. The model skips completion rows. `readings` and `filename_readings` write one row per input with a status, so they need none.
 
@@ -168,8 +170,13 @@ One row per `captures[]` entry, and one per line without a body.
 | `family`, `mode`, `transport`, `outcome`, `fidelity` | string | — |
 | `publisher_requested`, `complete` | boolean | — |
 | `requested_url`, `url`, `context_url` | string | — |
-| `member_path`, `entry_index` | string, int, nullable | The endpoint is `(context_url, member_path, entry_index)`. |
+| `member_path` | string, nullable | The endpoint is `(context_url, member_path)`. |
+| `entry_index` | int, nullable | Position inside the archive: evidence, not identity. |
+| `expansion` | string, nullable | On an archive's own row: `expanded`, or why expansion was refused. |
 | `h_content_disposition` | string, nullable | The download-name header, which names many files (§7.4). |
+| `retry_after` | timestamptz, nullable | The `Retry-After` deadline, resolved against `retrieved_at`. |
+| `provider_status` | int, nullable | — |
+| `retained_name` | string, nullable | For an older import line, the last segment of its retained local path. |
 | `retrieved_at` | timestamptz, nullable | The line's time, copied to every row of the line; null when the line has none. |
 | `http_status` | int, nullable | — |
 | `sha256` | fixed[32], nullable | — |
@@ -179,7 +186,7 @@ One row per `captures[]` entry, and one per line without a body.
 | `stored_suffix` | string, nullable | `''` or `.gz`; `.gz` for every row from an older receipt. |
 | `stored_md5` | fixed[16], nullable | Creating line only. |
 | `stored_bytes` | long, nullable | — |
-| `recovery_category`, `original_url`, `match_basis`, `imported_at`, `observed_capture_ts` | string, string, string, timestamptz, timestamptz | Import rows only. |
+| `recovery_category`, `original_url`, `recovered_url`, `match_basis`, `evidence_sha256`, `imported_at`, `observed_capture_ts` | string, string, string, string, fixed[32], timestamptz, timestamptz | Import rows only. |
 | `h_content_type`, `h_last_modified`, `h_etag`, `h_content_length` | string, timestamptz, string, long | The header allowlist as columns; `Last-Modified` is parsed to a time, and the raw header stays in the receipt. |
 | `writer_job`, `writer_commit` | string | Constant within a run. |
 
@@ -205,20 +212,22 @@ One row per `(body, parser, parser_version)`. Parsers record facts, not classifi
 | `title`, `heading` | string, nullable | HTML `<title>` and first heading. |
 | `text_bytes` | int, nullable | Visible-text size. |
 | `text_head` | string, nullable | The first 2 KB of visible text, for the body-marker check. |
+| `intact` | boolean, nullable | From `sniff`, for a PDF: true when `%%EOF` appears in its last 8 KB or a PDF reader opens it. |
+| `meeting_refs` | list<struct<chamber string, event_id long>> | Meetings a source record names, such as a GovInfo MODS record's event IDs; empty otherwise. |
 | `link_count`, `link_text_bytes` | int, nullable | Number of links in an HTML page and bytes of their text. |
 | `content_date` | date, nullable | A date read from the content (HTML and XML metadata or a dated heading; PDF text from `pdf_text` when it exists). Null unless exactly one date qualifies. |
 | `base_href` | string, nullable | The page's `<base href>`, as written. |
-| `links` | list<struct<href string, text string, tag string, basis string, group_path string, doc_type string, add_date string, publish_date string>> | Every link in an HTML or XML page, in document order, with its `href` as written; empty when there are none. The model resolves each `href` (§7.2). `group_path` is the indexed path of the nearest grouping ancestor (`li`, `tr`, `meeting-document`, `document`), or null. `doc_type`, `add_date` and `publish_date` are kept as the publisher wrote them. |
+| `links` | list<struct<href string, text string, tag string, basis string, group_path string, doc_type string, add_date string, publish_date string, remove_date string>> | Every link in an HTML or XML page, in document order, with its `href` as written; empty when there are none. The model resolves each `href` (§7.2). `group_path` is the indexed path of the nearest grouping ancestor (`li`, `tr`, `meeting-document`, `witness-document`, `document`), or null. For an XML document list, a link's `text` is its entry's description. `doc_type`, `add_date`, `publish_date` and `remove_date` (a committee's removal of the document from its hearing page) are kept as the publisher wrote them. |
 | `fingerprint` | fixed[32], nullable | Normalized-text digest (below). |
 | `fields` | fold | Everything else. |
 
 - **PK:** `(body_sha, parser, parser_version)`; partitioned by `(parser, parser_version)`; sorted by `body_sha`.
 - A reading depends only on its body and its parser version.
 - **`sniff`** reads every body whose capture rows carry no sniff at the pinned sniff version (in practice, every older body): one ranged read of its first bytes, decompressing the start of a gzip-stored body. A new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
-- **`html`, `xml`, `json`** read every body of their format once per version. Links come from this pass: *est.* 4.2M links (from an 80-body sample) over 287,765 bodies the server labels HTML or XML, stored once per page body, not per fetch.
+- **`html`, `xml`, `json`** read every body of their format once per version, and write each page's fingerprint in the same pass. Links come from this pass: *est.* 4.2M links (from an 80-body sample) over 287,765 bodies the server labels HTML or XML, stored once per page body, not per fetch.
 - No parser reads embedded PDF titles; names stay filename-based.
-- **`fingerprint`** reads the candidates: the bodies at endpoints with two or more distinct real bodies, by `real_files` (§7.3) over the current lake, and every real body that is a member of a rendition group before the edition check (§7.5). The first set is 148 endpoints, 297 bodies, about 1.4 GB today; the second is *est.* 20–45 GB once, then grows with new format groups. The model reads fingerprints only for the candidates under the pinned profile, so a fingerprint left over from an earlier profile never changes grouping, and an incrementally maintained lake groups exactly as a clean rebuild does. For a ZIP, the fingerprint is the SHA-256 of its members' hex SHA-256s, sorted and newline-joined, taken from `captures` when the ZIP was expanded and read from the archive when it was not. For any other format, it is the SHA-256 of its text (PDF text from the pinned extractor; visible text for HTML, XML and other text formats), NFKC-normalized, with whitespace runs collapsed to one space and trimmed. Empty text or a failed extraction gives `status = error` and no fingerprint.
-- **Size:** 491,710 rows fold to 16.5 MB, before links.
+- **`fingerprint`** reads the candidates: the bodies at endpoints with two or more distinct real bodies, by `real_files` (§7.3) over the current lake; 148 endpoints, 297 bodies, about 1.4 GB today. Pages already carry a fingerprint from their own parser, so this pass reads only the other candidates. A registry change that adds candidates makes publish refuse until they are fingerprinted (§7.1). The model reads fingerprints only for the candidates under the pinned profile, so a fingerprint left over from an earlier profile never changes grouping, and an incrementally maintained lake groups exactly as a clean rebuild does. For a ZIP, the fingerprint is the SHA-256 of its members' hex SHA-256s, sorted and newline-joined, taken from `captures` when the archive's `expansion` is `expanded`, and read from the archive otherwise. For any other format, it is the SHA-256 of its text (PDF text from the pinned extractor; visible text for HTML, XML and other text formats), NFKC-normalized, with whitespace runs collapsed to one space and trimmed. Empty text or a failed extraction gives `status = error` and no fingerprint.
+- **Size:** 491,710 rows fold to 16.5 MB, before links and `text_head` (*est.* 100 MB per HTML and XML parser version). The model reduces readings to the narrow columns its rules need before any join, so neither reaches a hash table.
 
 ### 6.3 `filename_readings`
 
@@ -227,9 +236,9 @@ One row per `(filename, source_url, catalog_version)`.
 | Column | Type | Notes |
 |---|---|---|
 | `filename` | string | The effective filename (§7.4). 32,574 source files have a filename that is not their URL's last segment. |
-| `source_url` | string | The exact URL, because house-naming matches some rules on it; `''` when the source file has no URL (331,985 source rows). |
-| `catalog_version` | string | Covers the house-naming version, every vocabulary passed in, the typed-field derivations and the effective-filename rule; a change to any of them is a new version. |
-| `status`, `error_type` | string | Extraction outcome. An input house-naming cannot read gets a row with `status = error`, so it is not retried every run. |
+| `source_url` | string | The exact URL, because the filename parser matches some rules on it; `''` when the source file has no URL (331,985 source rows). |
+| `catalog_version` | string | Covers the filename parser's version, every vocabulary passed in, the typed-field derivations and the effective-filename rule; a change to any of them is a new version. |
+| `status`, `error_type` | string | Extraction outcome. An input the filename parser cannot read gets a row with `status = error`, so it is not retried every run. |
 | `valid` | boolean | Strict naming-convention validity. |
 | `document_kind`, `document_family`, `committee_code` | list<string> | Facets, every value kept: 24,202 source files have more than one kind, 3,637 more than one family and 5,229 more than one committee code. |
 | `congress` | int, nullable | — |
@@ -238,9 +247,9 @@ One row per `(filename, source_url, catalog_version)`.
 | `measure_keys` | list<string> | Bills and resolutions as `{congress}-{type}-{number}`, from the measure fields, measure references and `congress`. |
 | `bioguide_ids` | list<string> | Member IDs from `bioguide_token` and `sponsor_bioguide_id`. |
 | `gpo_package_id` | string, nullable | A GovInfo package ID when the filename stem follows a GPO pattern. |
-| `fields` | fold | The rest (about 215 field names), as house-naming's literal strings. |
+| `fields` | fold | The rest (about 215 field names), as the filename parser's literal strings. |
 
-- **Scalars take one value or none.** `congress`, `date_token`, `measure_type`, `measure_number` and `filename_date` are set only when house-naming returns exactly one value; otherwise they are null and every value stays in `fields`. List columns keep every value.
+- **Scalars take one value or none.** `congress`, `date_token`, `measure_type`, `measure_number` and `filename_date` are set only when the filename parser returns exactly one value; otherwise they are null and every value stays in `fields`. List columns keep every value.
 - **Typed keys are composed once, by the producer.** The model MUST NOT unnest `fields`.
 - **PK:** `(filename, source_url, catalog_version)`; partitioned by `catalog_version`. The model joins a source file on `(filename, coalesce(source_url, ''))`.
 - **Work list:** the distinct `(effective filename, source URL)` pairs of every capture row and of every provenance recovery's original link, with no row for the pinned catalog version: 1,392,681 pairs today. The producer computes the effective filename itself, so the work list depends on no model decision. A full backfill takes 7–18 minutes.
@@ -296,14 +305,14 @@ One SQL plan over `captures c`, `readings r`, `filename_readings f`, `committee_
 
 ### 7.1 Model Profile and Registries
 
-The **model profile** is the set of versions one publish reads: the model SQL version (the SHA-256 of the model's SQL files), the engine revision, the `captures` ingest mapping, one version per parser, the catalog version, one version per registry, and the release writer settings (§8.1). A new ingest mapping version is a new `captures` table, named by that version and rebuilt from the receipts; the old table is dropped once neither the live nor the last-good release's profile names it.
+The **model profile** is the set of versions one publish reads: the model SQL version (the SHA-256 of the model's SQL files), the engine revision, the `captures` ingest mapping, one version per parser, the catalog version, one version per registry, and the release writer settings (§8.1). A new ingest mapping version is a new `captures` table, named by a short label that the profile maps to the version's digest, and rebuilt from the receipts; the old table is dropped once neither the live nor the last-good release's profile names it.
 
 - A parser or catalog version is the SHA-256 of its code and data: its source files, the vocabularies it reads and its locked dependencies. A change to any of them is a new version.
 - The model reads only the parser and catalog versions the profile pins.
 - A new version is backfilled while the profile still pins the old one. The profile moves to it only when its work list is empty. The daily run produces every pinned version for new inputs.
 - Publish MUST refuse when a pinned version's work list is not empty at the pinned snapshot.
 
-A **registry** is a list a rule depends on. Each is one versioned file beside the model SQL in the application repository; its version is the SHA-256 of its bytes. Each entry carries a real sample that a test checks. Registries are applied in the model and never stored in the lake, so a registry change rewrites nothing in the lake; it is a profile change. Two registries serve the raw writer instead and are versioned with its code: the credential-parameter registry (query parameters that carry credentials, such as `api_key`, `apikey`, `access_token` and `token`) and the host-pacing registry (per-host gaps and backoffs).
+A **registry** is a list a rule depends on. Each is one versioned file beside the model SQL in the application repository; its version is the SHA-256 of its bytes. Each entry carries a real sample that a test checks. Registries are applied in the model and never stored in the lake, so a registry change rewrites nothing in the lake; it is a profile change. The three raw-writer registries are versioned with the raw writer's code, not the model profile. Fetchers use the capture-scope version of the live release's profile.
 
 | Registry | Holds | Used by |
 |---|---|---|
@@ -311,7 +320,7 @@ A **registry** is a list a rule depends on. Each is one versioned file beside th
 | error words | Generic error words for a title or heading (access denied, forbidden, not found, retry later, service unavailable, error), and body markers of challenge and soft-error pages | record roles (§7.3) |
 | error URLs | URL patterns that only ever serve error or placeholder pages | record roles |
 | listing thresholds | The minimum link count and link-text share of a listing page | record roles |
-| source-record roots | XML roots of metadata records: MODS, PREMIS, meeting and witness records | record roles |
+| source-record roots | XML roots of metadata records: METS, MODS, PREMIS, meeting and witness records | record roles |
 | API endpoints | URL patterns of API JSON: api.congress.gov, api.govinfo.gov, the YouTube Data API, the Wayback CDX API | record roles |
 | URL wrappers | Redirect and archive wrapper patterns | `url_key` (§7.2) |
 | strip-list | Tracker parameters on any host; page-state parameters on named hosts | `url_key` |
@@ -319,14 +328,21 @@ A **registry** is a list a rule depends on. Each is one versioned file beside th
 | format preference | Format order for the saved file and alternates, PDF first | §7.5 |
 | recheck intervals | `(family, interval)`, with age bands where a family's pages change with a meeting's age | `url_state` (§7.7) |
 | capture scope | URL patterns capture follows from links, and the exclusions: media, refused hosts, crawler traps such as calendar archives, and forms | `url_state`; fetchers |
-| committee codes | House-naming committee code → Congress.gov system code: `hs`, `ss` and `js` prefixes, `hl` for Intelligence and the select committees, and the joint, commission and two-letter forms | `committee_key` (§7.5) |
+| URL repairs | Repairs of malformed links seen in real pages, such as `ttps://`, concatenated URLs and browser-extension prefixes | `url_key` (§7.2) |
+| filename parameters | Query parameters that name a file: `filename`, `file`, `name`, `document`, `attachment` | effective filename (§7.4) |
+| publisher kinds | Publisher link labels and XML document-type codes → document kind | `document_kind` (§7.5) |
+| feed roots | XML roots and URL patterns of feeds and sitemaps | `linked_from` (§7.10) |
+| archive limits | Archive, member and total size, and member count | archive expander (raw writer) |
+| credential parameters | Query parameters that carry credentials, such as `api_key`, `apikey`, `access_token`, `token` | receipt writer (raw writer) |
+| host pacing | Per-host gaps and backoffs | fetcher (raw writer) |
+| committee codes | Filename committee code → Congress.gov system code: `hs`, `ss` and `js` prefixes, `hl` for Intelligence and the select committees, and the joint, commission and two-letter forms | `committee_key` (§7.5) |
 | import runs | `run_id` and date of each bulk import run | dates (§7.4) |
 | recovery kinds | `prior_access_category` → display kind | `recoveries` (§7.8) |
 
 ### 7.2 `url_key`
 
 ```
-url_key(url) := unwrap(url), then:
+url_key(url) := unwrap(repair(url)), then:
                 drop the scheme, so http and https match; lowercase the host;
                 drop "www.", the default port, the fragment and a trailing slash;
                 normalize percent-encoding [RFC3986 §6.2.2]: uppercase escape hex,
@@ -337,6 +353,9 @@ url_key(url) := unwrap(url), then:
                 sort the remaining parameters and keep them all;
                 then, once: if provenance url_variants names the result as a variant,
                 replace it with the canonical URL normalized by the steps above
+
+repair(url)  := apply the URL-repair registry once; a repair may split one concatenated
+                href into several URLs, each a separate target
 
 unwrap(url)  := apply the URL-wrapper registry at most twice:
                 redirect wrappers → their inner URL: Proofpoint urldefense ?u=
@@ -351,8 +370,8 @@ strip-list   := trackers on any host: utm_*, _gl, gclid, fbclid, mc_cid, mc_eid,
                 SharePoint formmode, resultindex; twitter.com and x.com s
 ```
 
-- **Link targets.** Links resolve once per distinct `(page body, context)`, where a context is an endpoint the page body was good-fetched at (§7.3): its `context_url` for a top-level page, or its member path inside the container for an archive member. In each context, a relative `base_href` is first resolved against the context; then each `href` is resolved, by reference resolution [[RFC3986]] §5, against the resolved base when there is one, else against the context. An archive member's relative links give endpoints in the same container. Every resolved link keeps its page body, context and link index, so the same page saved at two addresses yields both sets of targets and each set stays attributed to its own address. Placeholder bodies' links are not resolved. Pages average 1.3 contexts (277,642 contexts over 214,041 good-fetched HTML and XML bodies), so about 4.2M links give *est.* 5.5M targets.
-- Every link join MUST use `url_key`: resolved link targets to source URLs and endpoints, recoveries' original links to source files, the `url_state` queue, and endpoint matching, which compares `(url_key(context_url), member_path, entry_index)`.
+- **Link targets.** Links resolve once per distinct `(page body, context)`, where a context is an endpoint the page body was good-fetched at (§7.3): its `context_url` for a top-level page, or its member path inside the container for an archive member. In each context, a relative `base_href` is first resolved against the context; then each `href` is resolved, by reference resolution [[RFC3986]] §5, against the resolved base when there is one, else against the context. An archive member's relative links give endpoints in the same container. Every resolved link keeps its page body, context and link index, so the same page saved at two addresses yields both sets of targets and each set stays attributed to its own address. A target path that several members of one archive share matches each of them. Placeholder bodies' links are not resolved. Pages average 1.3 contexts (277,642 contexts over 214,041 good-fetched HTML and XML bodies), so about 4.2M links give *est.* 5.5M targets.
+- Every link join MUST use `url_key`: resolved link targets to source URLs and endpoints, recoveries' original links to source files, the `url_state` queue, and endpoint matching, which compares `(url_key(context_url), member_path)`. Endpoint comparisons are null-safe (`IS NOT DISTINCT FROM`), since `member_path` is null for every top-level page.
 - Identity keeps the exact URL: `source_id`, `requested_url`, `url_state`'s key and link URL keys (§8.2) MUST NOT use `url_key`.
 - Only trackers and the listed page-state parameters are stripped. Other query parameters almost always select a different file (`download=1`, `file_id=`, `docid=`, `?p=` and the like), so they are kept.
 - The model reports URLs still wrapped after two passes. A test rejects any `url_variants` record whose canonical URL is itself a variant, so the variant step cannot chain.
@@ -391,6 +410,7 @@ real_files  := rows of good_fetch where
     and sha256 not in placeholders
     and record_role = 'document'
     and (format <> 'html' or not file_shaped(locator))
+    and (format <> 'pdf' or r[sniff].intact)
 
 locator     := the member path for an archive member, else the URL
 real_body   := a body with at least one real_files row
@@ -412,7 +432,7 @@ One row per source file.
 |---|---|---|
 | `source_id` | fsb(32) | SHA-256 of the compact JSON array `[logical body key, filename, source_url]`, with `null` for a missing body key or URL |
 | `body_sha` | fsb(32), nullable | — |
-| `filename` | string | The effective filename, the first of: the recovered name if provenance says so; the member basename for an archive member; the `Content-Disposition` filename (`filename*` [[RFC6266]] first); a `filename`, `file`, `name`, `document` or `attachment` query parameter; the final URL's last path segment; the requested URL's last path segment; for an older import line, its retained path's last segment |
+| `filename` | string | The effective filename, the first of: the `recovered_filename` of the recovery decision for the row; the member basename for an archive member; the `Content-Disposition` filename (`filename*` [[RFC6266]] first); a query parameter in the filename-parameter registry; the final URL's last path segment; the requested URL's last path segment; for an older import line, its `retained_name` |
 | `source_url` | string, nullable | — |
 | `record_role` | dict | §7.3 |
 | `is_real_file` | bool | The source file has at least one capture row in `real_files` |
@@ -421,7 +441,7 @@ One row per source file.
 
 - **Derivation:** the distinct `(body, effective filename, source URL)` triples in `captures`; plus one bodiless row per URL that never yielded a body; plus, if not already present, one bodiless row per recovery that needs a document of its own (§7.8).
 - **Decoding.** URL segments and query values are percent-decoded once, as strict UTF-8, with `+` kept literal; a sequence that is not valid UTF-8 stays encoded.
-- **One name per file.** A file has exactly one effective name; the other names it was offered stay in its capture rows and receipt.
+- **One name per capture row.** Each capture row gives one effective name. When fetches of one body at one URL offered different names, each name is its own source file, and they join through the same-body edge; the other names a row was offered stay in its receipt.
 - **Grain:** two archive members with the same body and name at different paths are one source file; `occurrences` keeps each member path.
 - 1,683,430 source files today.
 
@@ -477,7 +497,7 @@ document_id    := SHA-256 of the compact JSON array ["bodies", sorted distinct l
                   strings] when it has none
 ```
 
-- No body of a contested edition takes a rendition edge, and neither does any copy with the same text: every rendition-group member is fingerprinted (§6.2), so neither mirrors nor re-packaged copies can join two editions through a shared XML. A reviewer's merge still joins any two documents.
+- No body of a contested edition takes a rendition edge, and neither does a copy the model recognizes by its fingerprint, so mirrors cannot join two editions through a shared XML. A re-packaged copy that never shared an endpoint with another real body has no candidate fingerprint and is not recognized. A reviewer's merge still joins any two documents.
 - Renditions never share bytes or text, so `same_rendition` is what joins them: about 16,000 groups are split across about 32,500 documents today. Several files of one format listed together, such as a witness's testimony, disclosure form and biography, stay separate documents.
 - The model reports the largest components by edge kind.
 - *est.* 0.5–0.7M listed documents: today's 1.24M catalog rows less 454k caption snippets, 98k metadata records, 10k playlists, 1k API responses and the listing pages among about 200k HTML rows, before untyped bodies are sniffed and renditions merge.
@@ -490,8 +510,10 @@ meeting_ref        := struct<chamber string, event_id int64> per source file:
                       from the source URL (docs.house.gov/meetings/<C>/<SC>/<date>/<eventId>/
                       or congress.gov/<congress>/meeting/<chamber>/<eventId>/); else from a
                       linking page that is a meeting page; else from a House meeting XML
-                      record whose reading links to it; a House meeting ID drops its
-                      four-letter prefix (HHRG, HMKP, HMTG) to give the event ID
+                      record whose reading links to it; else from a source record whose
+                      `meeting_refs` name it, such as a GovInfo MODS record for its package;
+                      a House meeting ID drops its four-letter prefix (HHRG, HMKP, HMTG)
+                      to give the event ID
 meeting_refs       := the set of its members' meeting_refs
 meeting_keys       := 'chamber:event_id' for each meeting_ref
 committee_key      := the committee-code registry's system code for the code
@@ -501,11 +523,15 @@ committee_name     := the current committee record's name on (congress, committe
 govinfo_package_id := the package ID in a member's govinfo URL, else the saved file's
                       gpo_package_id
 measure_keys, bioguide_ids := the union over its members' filename readings
+document_kind      := the saved file's filename-reading kinds; when those are empty, the
+                      kinds the publisher-kind registry gives for the doc_type labels on
+                      the links to its files
+removed_on         := the earliest remove_date on a House meeting XML link to its saved file
 ```
 
 Every list column MUST be written in a fixed order, so exports stay byte-identical: `meeting_refs` and `meeting_keys` by `(chamber, event_id)`, `measure_keys` and `bioguide_ids` as strings, `alternates` as above. The model reports unmapped committee codes with counts.
 
-**Columns:** `document_id` fsb(32), `list_row` int32, `filename`, `saved_body` fsb(32), `saved_suffix` dict (the saved body's suffix), `saved_media_type` dict, `saved_kind` dict (`original` or `recovery`), `first_captured`, `last_captured` and `in_archive_since` date32 nullable, `hidden` bool, `review_note` string nullable, `review_decided_at` date32 nullable, `document_date` date32 nullable, `document_date_source` dict nullable, `meeting_refs` List<Struct<chamber dict, event_id int64>>, `govinfo_package_id` string nullable, `measure_keys` and `bioguide_ids` List<string>, `n_members` int32, and the facets from the saved file's filename reading.
+**Columns:** `document_id` fsb(32), `list_row` int32, `filename`, `saved_body` fsb(32), `saved_suffix` dict (the saved body's suffix), `saved_media_type` dict, `saved_kind` dict (`original` or `recovery`), `first_captured`, `last_captured` and `in_archive_since` date32 nullable, `hidden` bool, `review_note` string nullable, `review_decided_at` date32 nullable, `removed_on` date32 nullable, `document_date` date32 nullable, `document_date_source` dict nullable, `meeting_refs` List<Struct<chamber dict, event_id int64>>, `govinfo_package_id` string nullable, `measure_keys` and `bioguide_ids` List<string>, `n_members` int32, and the facets from the saved file's filename reading.
 
 ### 7.6 `members`
 
@@ -517,7 +543,7 @@ One row per requested URL: `requested_url` string, `attempts` int32, `last_attem
 
 - Aggregated over distinct `(receipt_key, receipt_line)`, so an attempt counts once however many bodies its line references.
 - The latest `mode = fetch` attempt wins, in the total order `(retrieved_at nulls first, receipt_key, receipt_line)`. Import rows MUST NOT appear.
-- `next_attempt_at` is `last_attempt` for a retryable outcome (`retry_later`, `size_limit`, `request_failed`), so it is due now, and otherwise `last_attempt` plus the family's interval from the recheck-interval registry.
+- `next_attempt_at` is the later of `last_attempt` and the attempt's `retry_after` for a retryable outcome (`retry_later`, `size_limit`, `request_failed`), so it is due now unless the server asked for a delay; otherwise it is `last_attempt` plus the family's interval from the recheck-interval registry.
 - **The queue.** Each resolved URL target (§7.2; archive-member targets are endpoints, not fetchable URLs) from a good-fetched page whose role is not `error_response`, that matches the capture-scope registry, and whose `url_key` matches neither the requested nor the final URL of any `mode = fetch` row, adds one row with `attempts = 0` and null `next_attempt_at` (due now): one row per `url_key`, under its byte-wise least target. A recovery import therefore never hides a URL that was never fetched. 16,753 such URLs wait today.
 - No body hash: the 412 tells capture whether a body is new.
 - 1,158,426 rows plus the queue, *est.* 10 MB.
@@ -535,7 +561,7 @@ One row per import row: `document_id`, `original_url`, `kind` dict, `body_sha` f
 | `requested_content_in_official_hearing` | Excerpt from the official hearing record |
 | Any official-substitute category (updated revision, introduced-bill counterpart, recorded votes, official report, complete statement, alternate amendment) | The named official substitute |
 
-The mapping is the recovery-kind registry. An unmapped category MUST fail the build, so a new kind is never shown unlabeled.
+The mapping is the recovery-kind registry. An import that carries no category takes its decision's `kind`. An unmapped category, or an import with neither, MUST fail the build, so a new kind is never shown unlabeled.
 
 **Attachment.** A recovery attaches to the listed document that holds its original link (by `url_key`) when exactly one listed document holds it. When none does, or several do because the link came back as different editions, the recovery gets a document of its own, built from a bodiless source file for its original link.
 
@@ -553,7 +579,7 @@ The mapping is the recovery-kind registry. An unmapped category MUST fail the bu
 One row per distinct `(source_id, member_path)` of a listed document's members: where each copy was seen.
 
 - `url` is the source URL; `outcome` is the latest attempt's outcome at that endpoint, in `url_state`'s attempt order (§7.7); `first_fetched` and `last_fetched` are over its fetch rows outside import runs.
-- **`linked_from`:** the earliest resolved link (§7.2) whose target matches the occurrence's endpoint by `url_key`, giving the link's context (the linking page's address), its `text`, `doc_type` and `add_date` (parsed; an unparseable date becomes null). Repeated fetches of one `(page body, context)` reduce to its first good fetch before the join, so the join grows with links times contexts, not with fetches. Links are ordered by `(that first good fetch's retrieved_at nulls last, context, page body, link index)`.
+- **`linked_from`:** the earliest resolved link (§7.2) whose target matches the occurrence's endpoint by `url_key`, giving the link's context (the linking page's address), its `text`, `doc_type` and `add_date` (parsed; an unparseable date becomes null). Repeated fetches of one `(page body, context)` reduce to its first good fetch before the join, so the join grows with links times contexts, not with fetches. Links are ordered by `(that first good fetch's retrieved_at nulls last, context, page body, link index)`. A link whose target is a fetch's requested URL also counts for the copy that fetch saved after its redirects. Links on feed and sitemap pages (the feed-root registry) never give link context.
 - `ordinal` follows `(is_saved desc, first_fetched nulls last, url, member_path, source_id)`.
 - *est.* 1.7M occurrences, sized from today's catalog (1,695,040 rows; its largest document has 455).
 
@@ -570,10 +596,10 @@ Sizes are *est.* at about 0.65M listed documents, scaled from measurements on to
 | File | Columns | Order | Writer settings | Size |
 |---|---|---|---|---|
 | `list.parquet` | `filename` string; `document_kind`, `document_family`, `committee_name` (List<dict>, every value); `congress` int16 nullable; `format` dict; `document_date` date32 nullable; `first_captured` date32 nullable; `date_kind` dict (`captured` when `first_captured` is set, `import_day` when only `in_archive_since` is, else `unknown`); `saved_kind` dict; `hidden` bool; `meeting_keys` (List<dict>; usually empty or one; 1.7% of documents with a meeting have several, up to 9). No ID. | list order | `filename` with dictionary off and `DELTA_BYTE_ARRAY` encoding; facets and dates keep dictionaries; 65,536-row groups; no page index | 2–3 MB |
-| `detail.parquet` | Typed core: `link_key` fsb(8) (the saved body's key, or for a recovery-only document the link URL key of its first recovery in the recovery order), `saved_body` fsb(32), `saved_suffix` dict, `saved_media_type` dict, `occ_start`, `occ_len`, `rec_start`, `rec_len` int32, `alternates` List<Struct<format dict, body fsb(32), suffix dict, size int64>>, `meeting_refs` List<Struct<chamber dict, event_id int64>>, `govinfo_package_id` string, `measure_keys` and `bioguide_ids` List<string>. One fold of display-only facts, dates as ISO `YYYY-MM-DD`: `document_id` (hex), `source_url`, `saved_kind`, `first_captured`, `last_captured`, `in_archive_since`, `document_date_source`, `review_note`, `review_decided_at`, `member_count`, the saved file's reading (`r.title`, `r.heading`, `r.content_date` and `r.fields`, not its links) and filename reading (`f.*`). | list order | 65,536-row groups; on every leaf an offset index, 64 KB data pages and a 1,024-row page limit; write batches of 1,024 rows | 55–70 MB; a view reads about 19 pages, 50–90 KB |
+| `detail.parquet` | Typed core: `link_key` fsb(8) (the saved body's key, or for a recovery-only document the link URL key of its first recovery in the recovery order), `saved_body` fsb(32), `saved_suffix` dict, `saved_media_type` dict, `occ_start`, `occ_len`, `rec_start`, `rec_len` int32, `alternates` List<Struct<format dict, body fsb(32), suffix dict, size int64>>, `meeting_refs` List<Struct<chamber dict, event_id int64>>, `govinfo_package_id` string, `measure_keys` and `bioguide_ids` List<string>. One fold of display-only facts, dates as ISO `YYYY-MM-DD`: `document_id` (hex), `source_url`, `saved_kind`, `first_captured`, `last_captured`, `in_archive_since`, `document_date_source`, `review_note`, `review_decided_at`, `removed_on`, `member_count`, the saved file's reading (`r.title`, `r.heading`, `r.content_date` and `r.fields`, not its links) and filename reading (`f.*`). | list order | 65,536-row groups; on every leaf an offset index, 64 KB data pages and a 1,024-row page limit; write batches of 1,024 rows | 55–70 MB (recomputed from measured column sizes at 1.24M rows); a view reads about 19 pages, 50–90 KB |
 | `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | Offset index and column index (page statistics) on `link_key`, about 25 KB together; 16 KB pages; one row group | 7–9 MB |
 | `occurrences.parquet` | `list_row` int32, `ordinal` int32, `url`, `member_path`, `filename`, `outcome`, `linked_from`, `link_text`, `doc_type` (all string), `first_fetched`, `last_fetched`, `add_date` (all date32), `is_saved` boolean | `(list_row, ordinal)` | Offset index on every column; 64 KB data pages and a 1,024-row page limit; write batches no larger | 8–12 MB |
-| `recoveries.parquet` | `list_row` int32, `ordinal` int32, `kind` dict, `body` fsb(32), `suffix` dict, `imported_at` date32, `recovered_url` string, `match_basis` dict, `evidence_sha256` fsb(32), `identity_note` string | `(list_row, ordinal)`, ordinal in the recovery order of §7.5 | Offset index on every column; 1,024-row page limit | 1–3 MB |
+| `recoveries.parquet` | `list_row` int32, `ordinal` int32, `kind` dict, `body` fsb(32), `suffix` dict, `imported_at` date32, `recovered_url` string, `match_basis` dict, `evidence_sha256` fsb(32), `identity_note` string | `(list_row, ordinal)`, ordinal in the recovery order of §7.5 | Offset index on every column; 64 KB data pages and a 1,024-row page limit | 1–3 MB |
 | `meetings.parquet` | `chamber` dict, `event_id` int64, `title` string, `meeting_date` date32, `meeting_type` dict, `committee_names` List<dict>; every meeting a listed document references, from its current record | `(chamber, event_id)` | One row group | 1–2 MB |
 | `url_state.parquet` | §7.7 | `requested_url` | Defaults | 10 MB |
 | `manifest.json` | `schema_version`; `files[]` {name, sha256, md5, size, rows, row_range, shard}; `facet_counts` over the non-hidden rows of `list`; `release_id` | — | Deterministic, content only | 5–20 KB |
@@ -603,7 +629,7 @@ Equal identities mean equal model inputs. Every other lake row the model reads i
 erDiagram
   BODY ||--o{ CAPTURE : "sha256"
   RECEIPT_LINE ||--|{ CAPTURE : "captures[]"
-  CAPTURE }o--|| ENDPOINT : "(context_url, member_path, entry_index)"
+  CAPTURE }o--|| ENDPOINT : "(context_url, member_path)"
   BODY ||--o{ READING : "body_sha, parser, version"
   READING ||--o{ PAGE_LINK : "links[]"
   PAGE_LINK }o--o| ENDPOINT : "url_key(resolved href)"
@@ -629,7 +655,7 @@ erDiagram
 |---|---|
 | raw → lake | `(receipt_key, receipt_line, capture_index)` |
 | body ↔ everything | `sha256`, binary |
-| lake → model | `sha256` for readings, committee and meeting records; `(filename, source_url)` for filename readings; `(context_url, member_path, entry_index)` for endpoints; `url_key` for every link join |
+| lake → model | `sha256` for readings, committee and meeting records; `(filename, source_url)` for filename readings; `(context_url, member_path)` for endpoints; `url_key` for every link join |
 | model → release | `list_row` |
 | public → release | `link_key` |
 | release → raw | `saved_body` with `saved_suffix` (the physical key), and occurrence URLs |
@@ -643,7 +669,7 @@ A conforming implementation MUST satisfy, and SHOULD test, each of the following
 1. Every lake PK is unique. `captures` rebuilt from all receipts equals the appended table. A parser version re-run on a sample of its inputs reproduces its rows, links included. Every completed HTML reading has `text_bytes`, `link_count` and `link_text_bytes`.
 2. Every `sha256` in `captures` has a body object under its recorded suffix; every body's size and ETag equal its creating line's `stored_bytes` and `stored_md5`; no body ETag contains `-`, so none was a multipart upload; a body with no creating line has a verification record.
 3. New receipt keys are date-shaped; every `stored` line carries `stored_md5`; every new capture row with a body carries `sniffed_format`, `sniff_version` and `stored_suffix`; every new row carries `writer_job` and `writer_commit`. No receipt line carries a credential parameter in a recorded URL, a cookie or a local file path, and every cleaned older receipt has a verification record.
-4. Every version the model profile pins has an empty work list at the pinned snapshot.
+4. Every version the model profile pins has an empty work list at the pinned snapshot, and a maintained lake and a clean rebuild from the same raw at the same profile give byte-identical releases.
 5. Every committee and meeting response a producer has read has at least one row: an output or a completion row.
 
 **Model**
