@@ -337,3 +337,50 @@ def test_combined_occurrence_writer_keeps_group_buffer_bounded_across_typed_part
     with pq.ParquetFile(tmp_path / 'occurrences.parquet') as written:
         assert written.read()['occurrence_order'].to_pylist() == list(range(30))
         assert [written.metadata.row_group(i).num_rows for i in range(written.metadata.num_row_groups)] == sizes
+
+
+@pytest.mark.parametrize('combined', [False, True])
+def test_flat_occurrence_buffer_flushes_by_retained_bytes_before_row_limit(tmp_path, combined):
+    from dataclasses import replace
+    from viewer_publication.filename_exports import publish_occurrence_parquet
+    from viewer_publication.filename_native import ViewerAssets, publish_occurrence_assets
+    kind = pa.struct([('label', pa.list_(pa.string()))])
+    values = pa.array([{'label': ['x' * 512]}] * 8, type=kind)
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        def observation_rows(self): yield values
+    policy = replace(observations.DEFAULT_DECODED_POLICY, writer_buffer_bytes=4096)
+    metrics = {}
+    if combined:
+        assets = ViewerAssets(tmp_path / 'assets')
+        result = publish_occurrence_assets(Source(), tmp_path, assets, policy=policy, metrics=metrics)['occurrences']
+    else:
+        result = publish_occurrence_parquet(Source(), tmp_path / 'occurrences.parquet', policy=policy, metrics=metrics)
+    with pq.ParquetFile(tmp_path / 'occurrences.parquet') as written:
+        assert written.metadata.num_rows == 8
+        assert written.metadata.num_row_groups > 1
+        assert written.read()['occurrence_order'].to_pylist() == list(range(8))
+    assert result['row_slices'] == [[0, 8]]
+    assert metrics['max_occurrence_pending_python_bytes'] <= policy.writer_buffer_bytes
+
+
+@pytest.mark.parametrize('combined', [False, True])
+def test_flat_occurrence_refuses_single_row_larger_than_writer_byte_budget(tmp_path, combined):
+    from dataclasses import replace
+    from viewer_publication.filename_budget import DecodedBudgetExceeded
+    from viewer_publication.filename_exports import publish_occurrence_parquet
+    from viewer_publication.filename_native import ViewerAssets, publish_occurrence_assets
+    kind = pa.struct([('label', pa.list_(pa.string()))])
+    values = pa.array([{'label': ['x' * 2048]}], type=kind)
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        def observation_rows(self): yield values
+    policy = replace(observations.DEFAULT_DECODED_POLICY, writer_buffer_bytes=1024)
+    assets = ViewerAssets(tmp_path / 'assets')
+    with pytest.raises(DecodedBudgetExceeded, match='single occurrence retained Python bytes'):
+        if combined:
+            publish_occurrence_assets(Source(), tmp_path, assets, policy=policy, metrics={})
+        else:
+            publish_occurrence_parquet(Source(), tmp_path / 'occurrences.parquet', policy=policy)
+    assert not assets.identities
+    assert (tmp_path / 'preparation-memory-failure.json').is_file()

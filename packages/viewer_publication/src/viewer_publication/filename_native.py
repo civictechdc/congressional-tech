@@ -293,7 +293,7 @@ def typed_observations(schema, identities, occurrences):
 def publish_occurrence_assets(source, folder, assets, *, policy, metrics, counts=None):
     from viewer_publication.filename_observations import publish_observations
     from viewer_publication.filename_exports import OccurrenceParquetWriter
-    with OccurrenceParquetWriter(source, folder / 'occurrences.parquet') as writer:
+    with OccurrenceParquetWriter(source, folder / 'occurrences.parquet', policy=policy, metrics=metrics) as writer:
         publish_observations(source, folder, counts=counts, policy=policy, metrics=metrics,
                              occurrence_writer=writer)
     flat = writer.result()

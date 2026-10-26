@@ -1,6 +1,7 @@
 """Declarative ExportSpec policies, folded filename_readings, and flat occurrences.parquet assets."""
 from hashlib import sha256
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,8 @@ from viewer_publication.filename_budget import (
     DEFAULT_DECODED_POLICY,
     DecodedBudgetExceeded,
     failure_receipt,
+    maximum,
+    refuse,
 )
 from viewer_publication.filename_compression import (
     DEFAULT_COMPRESSION_POLICY,
@@ -340,10 +343,21 @@ def _adapt_occurrence_source(source):
     return source
 
 
+def _retained_python_bytes(value):
+    # Arrow's as_py values form JSON trees. Count shared children repeatedly,
+    # conservatively, rather than retaining a second graph of visited objects.
+    size = sys.getsizeof(value)
+    if isinstance(value, dict):
+        size += sum(_retained_python_bytes(key) + _retained_python_bytes(item) for key, item in value.items())
+    elif isinstance(value, (list, tuple)):
+        size += sum(_retained_python_bytes(item) for item in value)
+    return size
+
+
 class OccurrenceParquetWriter:
     """Accept already-decoded observations while their browser assets are written."""
     def __init__(self, source, path, *, owner_ids=None, compression_policy=DEFAULT_COMPRESSION_POLICY,
-                 row_group_rows=OCCURRENCE_ROW_GROUP_ROWS):
+                 row_group_rows=OCCURRENCE_ROW_GROUP_ROWS, policy=DEFAULT_DECODED_POLICY, metrics=None):
         schema = getattr(source, 'schema_arrow', None) or source.schema
         kind = schema.field('source_occurrences').type.value_type
         self.fields = [field.name for field in kind]
@@ -352,7 +366,9 @@ class OccurrenceParquetWriter:
         self.compression = validate_compression(compression_policy)
         if type(row_group_rows) is not int or row_group_rows < 1:
             raise ValueError('Occurrence row groups require a positive row count')
-        self.row_group_rows = row_group_rows
+        self.row_group_rows, self.policy = row_group_rows, policy
+        self.metrics = metrics if metrics is not None else {}
+        self.pending_bytes = 0
         self.row_slices, self.browse_ranges, self.pending = [], [], []
         self.rows = self.group_start = self.row_count = 0
         self.row_length = None
@@ -374,9 +390,20 @@ class OccurrenceParquetWriter:
     def append(self, observation):
         if not self.active or self.row_length is None or self.row_count >= self.row_length:
             raise ValueError('Occurrence row length differs')
-        self.pending.append(dict(owner_id=self.owner, occurrence_order=self.row_count,
+        row = dict(owner_id=self.owner, occurrence_order=self.row_count,
             occurrence_is_null=observation is None,
-            **{name: None if observation is None else observation.get(name) for name in self.fields}))
+            **{name: None if observation is None else observation.get(name) for name in self.fields})
+        size = _retained_python_bytes(row)
+        # Reserve the list header and over-allocation as well as row objects.
+        if size + 144 > self.policy.writer_buffer_bytes:
+            refuse('occurrences_parquet', 'single occurrence retained Python bytes', size + 144,
+                   self.policy.writer_buffer_bytes)
+        if self.pending and self.pending_bytes + size + 128 + 16 * (len(self.pending) + 1) > self.policy.writer_buffer_bytes:
+            self._flush()
+        self.pending.append(row)
+        self.pending_bytes += size
+        maximum(self.metrics, 'max_occurrence_pending_python_bytes',
+                self.pending_bytes + 128 + 16 * len(self.pending))
         self.row_count += 1
         self.rows += 1
         if len(self.pending) >= self.row_group_rows:
@@ -397,6 +424,7 @@ class OccurrenceParquetWriter:
             num_rows=len(self.pending), min_values=dict(owner_id=min(owners)), max_values=dict(owner_id=max(owners))))
         self.group_start += len(self.pending)
         self.pending.clear()
+        self.pending_bytes = 0
 
     def __exit__(self, kind, error, traceback):
         try:
@@ -421,7 +449,7 @@ def _publish_occurrence_parquet(source, path, *, owner_ids, policy, metrics, com
     source = _adapt_occurrence_source(source)
     kind = source.schema_arrow.field('source_occurrences').type.value_type
     with OccurrenceParquetWriter(source, path, owner_ids=owner_ids, compression_policy=compression,
-                                 row_group_rows=row_group_rows) as writer:
+                                 row_group_rows=row_group_rows, policy=policy, metrics=metrics) as writer:
         for values in observation_rows(source, policy=policy, metrics=metrics, stage='occurrences_parquet'):
             writer.start_row(None if values is None else len(values))
             for observation in observation_values(values, policy=policy, metrics=metrics,
