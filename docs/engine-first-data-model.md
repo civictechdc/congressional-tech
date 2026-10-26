@@ -194,7 +194,7 @@ Older lines keep their `links`; the model does not read them.
 | `recoveries` | `id`, `original_url`, `recovered_url`, `recovered_filename`, `body_sha256`, `kind` (a display kind, or `rejected`), `match_basis`, `evidence_sha256`, `identity_note`, `decided_by`, `decided_at`, `supersedes` | `recoveries` (§7.8); the effective filename and its work list (§6.3, §7.4) |
 | `url_variants` | `id`, `canonical_url`, `variant_url`, `basis`, `decided_at`, `supersedes` | `url_key` (§7.2) |
 | `reviews` | `id`, `target` (a link key), `verdict` (`hide`, `duplicate_of`, `title_override`, `kind_override`, `withdraw`), `value`, `note`, `reviewer`, `decided_at`, `supersedes` | `reviews` (§7.9) |
-| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; more for a cleaned receipt. A listing baseline records size and ETag with `sha256_verified` false, until a whole read or the full re-hash verifies the body | The maintenance job; `suffix` for `.pdf` copies (§7.5) |
+| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; more for a cleaned receipt. A listing baseline records size and ETag with `sha256_verified` false, until a whole read or the full re-hash verifies the body; a `.pdf` copy's record adds the end-marker check, `intact` | The maintenance job; `suffix` for `.pdf` copies (§7.5) |
 | `legacy_pdf_checks` | `body_sha256`, `opened` (true only), `reader_version`, `checked_at`, `source` (the old body readings' digest); written once from the old reader's successful PDF opens | `sniff`'s `intact` (§6.2) |
 | `unreadable` | `id`, `body_sha256` (or `record_sha`), `parser`, `parser_version`, `reason`, `decided_by`, `decided_at`, `supersedes` | The parsers' work lists, which drop the input (§7.1) |
 
@@ -282,7 +282,7 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
 | `parser_version` | string | — |
 | `status`, `error_type` | string | `completed`, `error` or `size_limit`, with the error's type. `size_limit` is decided before reading, from the input's `stored_bytes` against the parser version's declared byte bound; `error` is a deterministic rejection of the input; an operational failure writes no row, so the input stays on the work list until it succeeds or an `unreadable` decision drops it (§7.1). |
 | `format` | string | The sniffed format, on every row: `pdf`, `zip`, `xml`, `html`, `json`, `vtt`, `m3u8`, `docx`, `doc`, `text`, `image`, `warc`, `other`, `empty`. |
-| `intact` | boolean, nullable | From `sniff`: the check of §5.2. |
+| `intact`, `intact_basis` | boolean, string; nullable | From `sniff`: the check of §5.2, and where it came from: `copy`, `capture`, `legacy`, `read`, or `unchecked` for an older gzip PDF no check has reached yet. |
 | `xml_root` | string, nullable | — |
 | `title`, `heading` | string, nullable | HTML `<title>` and first heading. |
 | `text_bytes` | int, nullable | Visible-text size of the whole page. |
@@ -302,9 +302,9 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
   - `doc_type` and the three dates are kept as the publisher wrote them; `remove_date` marks a committee's removal of the document from its hearing page.
 - `sniff` reads every body whose capture rows carry no sniff at the pinned version:
   - one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`).
-  - for a PDF, `intact` from its capture row, else from a `legacy_pdf_checks` record (§5.3), recorded as the reading's basis (258,021 of 261,125 older PDFs);
-  - else one ranged read of the last 8 KB of its uncompressed object (the bare body, or an older body's verified `.pdf` copy), and the bounded reader only when that finds no `%%EOF`;
-  - an older gzip PDF with neither and no verified copy is read whole from its `.gz` and reported (3,104, 117 GB), and its read records a verified SHA-256.
+  - for a PDF, `intact` from its `.pdf` copy's verification record (a whole read), else its capture row, else a `legacy_pdf_checks` record (§5.3): 258,021 of 261,125 older PDFs today;
+  - else, for a bare body, one ranged read of its last 8 KB, and the bounded reader only when that finds no `%%EOF`;
+  - an older gzip PDF with none of these is left `unchecked` (3,104 today, 117 GB) and counts as a document until its copy's whole read checks it at the next sniff version ([[IMPLEMENTATION-PLAN]] B13).
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
 - `html`, `xml`, `json` read every body of their format once per version and record each body's fingerprint and links (*est.* 4.2M, from an 80-body sample, over 287,765 bodies the server labels HTML or XML, once per page body). No parser reads embedded PDF titles.
 - `fingerprint` reads the fingerprint candidates of the formats the page parsers do not read: none on the 2026-10-19 snapshot, where an endpoint's other PDF or ZIP bodies are all cut-off attempts, size-limit bodies or recoveries.
@@ -530,6 +530,7 @@ record_role := per capture row, the first that applies:
                'playlist'        when format = 'm3u8'
                'envelope'        when format = 'warc'
                'damaged'         when format = 'pdf' and intact is not true
+                                 and intact_basis <> 'unchecked'
                'api'             when api_row
                null              when format in ('html', 'xml', 'json')
                                  and the reading is missing or not completed

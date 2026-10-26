@@ -42,7 +42,7 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 **One implementation per component** ([[BINDINGS]] §2, rule 1): where today has several, the binding picks one and the rest are deleted. External systems are the only variation, injected as adapters ([[ARCHITECTURE]] §4, principle 8).
 
 **Reuse before re-reading.** A per-item result that raw or legacy data already settles is borrowed, with its basis recorded, and only the gaps are read; an old decision across items (grouping, matching, roles) is never borrowed, only used as a parity oracle. Measured on the 2026-10-16 snapshot (`measurements/phase1-inventory-20261026/`):
-- PDF integrity: 258,021 of 261,125 older PDFs already carry it, from their capture check or the old reader's successful open, so only 3,104 (117 GB) are read whole and the PDF copies wait; the 15,475 whose check rests on 2026-10-01 lines alone, which cannot be tied to the check's code, are re-checked by B13's whole read;
+- PDF integrity: 258,021 of 261,125 older PDFs already carry it, from their capture check or the old reader's successful open, and the other 3,104 (117 GB) are listed unchecked until B13 reads them, so no PDF is read whole in phase 1 and the copies wait; the 15,475 whose check rests on 2026-10-01 lines alone, which cannot be tied to the check's code, are re-checked by B13's whole read;
 - ZIP fingerprints: the member hashes are in `captures`;
 - run fresh because they are small or the old data cannot serve: `sniff` (about 1.04M short range reads; old formats cover 36% in other categories), the page readings (289,179 bodies, 5 GB; old readings hold no titles, text sizes or links), the filename readings (7–18 minutes; parser changed since the old catalog, which becomes their diff oracle) and the receipt ingest (all local, about a minute);
 - deferred: the full re-hash (one listing records every older body's size and ETag until then) and the PDF copies.
@@ -156,7 +156,7 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 | S1 | URLs written with raw spaces and with `%20` | One `url_key` |
 | S1 | A placeholder page at thousands of addresses | Not a real file; it connects nothing, and its links are not resolved |
 | S1 | A short real hearing page; a short soft-error page; a near-empty page; a "your download will begin" page | `document`; `error_response`; `error_response`; `wrapper`, with its file link queued |
-| S1 | A broken PDF; a valid PDF with trailing bytes after its end marker; a new valid PDF; a PDF over the reader's limit with no end marker in its tail; an older gzip PDF with no verified copy | `damaged`; real; real, from the `intact` its capture recorded; `damaged` and reported; read whole from its `.gz`, real when intact, and reported |
+| S1 | A broken PDF; a valid PDF with trailing bytes after its end marker; a new valid PDF; a PDF over the reader's limit with no end marker in its tail; an older gzip PDF that no check has reached | `damaged`; real; real, from the `intact` its capture recorded; `damaged` and reported; listed as `unchecked` until B13, and reported |
 | S1 | An Office file; an End of Term `.warc.gz` or `.arc.gz` envelope stored beside its payload | One body, no members; `envelope`, and the payload's endpoint holds one real body |
 | S1 | An older line with outcome `html` and a 2xx response; a site home page or "Under Maintenance" page served at a `.pdf` URL | A good fetch; not a real file (file-shaped), reported by error type |
 | S1 | A feed page | `listing`, and no link context |
@@ -267,7 +267,7 @@ These components survive, so they are bound now.
 11. **A ratchet test:** no test-only branch or test-only input substitution may appear in a surviving component; tests inject adapters instead ([[ARCHITECTURE]] §15, item 7).
 12. **Owed while the old capture path runs:** repair wrong `stored_sha256` index rows in place, and confirm the daily capture writes correct values. These matter only until the switch.
 13. **Uncompressed copies of older gzip PDFs** (phase 2; after B1 and B3), by the PDF copier of [[BINDINGS]] §3.1. Running it before B10 saves B10 about 365 GB of reads.
-    - **Candidates:** older bodies whose media type or the old catalog's sniff says PDF (about 261,125). Each whole read also re-checks the end marker, replacing any borrowed integrity verdict. A copy is written only when the decompressed bytes begin `%PDF-` (about 950 candidates are HTML by the readings sniff; the test decides the 33,369 never sniffed).
+    - **Candidates:** older bodies whose media type or the old catalog's sniff says PDF (about 261,125). Each whole read also re-checks the end marker, and the copy's verification record carries the result, which the next sniff version reads in place of any borrowed verdict. A copy is written only when the decompressed bytes begin `%PDF-` (about 950 candidates are HTML by the readings sniff; the test decides the 33,369 never sniffed).
     - **Size:** the largest raw write in the plan, so the lock and the refusal matrix come first: about 260,175 uploads and 403 GB once decompressed (about $72 a year of storage under the lock).
 14. **Re-fetch the cut-off files** (phase 2; after B2, through the spooled fetcher): every URL with a copy cut off at 64 MiB and no complete 2xx copy, 62 to 64 by the snapshot index depending on how a complete copy is counted; the receipts decide. The cut-off copies stay in raw.
 15. **Meeting fetches through the fetcher** (phase 2) like every other fetch: the Congress.gov meeting API, the House meeting and witness-list XML, Senate committee hearing pages and the meeting inventories; committees come from spicy-regs ([[DATA-MODEL]] §6.4) ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5). An incremental relist takes its window from the `last_good_at` of the API list URL it pages through, and pages to the end of the list.
@@ -319,7 +319,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
      A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
 2. **Parsers:**
-   - first `sniff` over every older body: about 1.04M short ranged GETs, timed in the run; a PDF's integrity is borrowed where §2 says, and only 3,104 PDFs are read whole;
+   - first `sniff` over every older body: about 1.04M short ranged GETs, timed in the run; a PDF's integrity is borrowed where §2 says, and no PDF is read whole;
    - then the main-content extractor, chosen by measurement on the ~2,250 pages saved twice in one fetch and on the labeled sample;
    - then HTML, XML and JSON (about 5 GB), with the table's size (links and `text_head` included) measured. There is no PDF parser for now;
    - then `fingerprint` for the other candidates, measured here;
@@ -403,7 +403,7 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | Which maintained extractor gives stable main content | D2, on the pages saved twice in one fetch | The `fingerprint` parser |
 | How many links pages hold (*est.* 4.2M, from 80 pages) and how large the link join is | D2's link backfill | The link-join budget and M2's memory verdict |
 | The 33,369 never-sniffed PDF candidates are PDFs | Phase 1's `sniff` | The copy count |
-| Borrowed PDF checks agree with a fresh read (198,676 agree today, 3 disagree) | A sample read whole in phase 1 | Whether the borrowed basis stands |
+| Borrowed PDF checks agree with a fresh read (198,676 agree today, 3 disagree) | A sample of 1,000 read whole in phase 1 | Whether the borrowed basis stands, and how many unchecked PDFs to expect broken |
 | No older body beyond the 61 known has a multipart ETag | Phase 1's listing baseline | Nothing, unless the count changes |
 | The numbers in the specifications reproduce: each review round found 10–20 of about 370 wrong | Each load-bearing number re-derived from its committed script before a rule relies on it | Corrections in place |
 | Speed and heap targets on real phones and desktops | A11 | The canary's and contract test's thresholds |
