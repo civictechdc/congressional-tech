@@ -93,24 +93,27 @@ def run(checkout, source, output, source_manifest_sha256, *, maximum_source_byte
     metrics = PublicationCosts(output)
     original_get, original_put, original_download, original_head = remote.get_object, remote.put_object, remote.download_file, remote.head_object
     def get(**kwargs):
-        time.sleep(request_latency_ms / 1000)
-        metrics.counts['get_requests'] += 1
-        response = original_get(**kwargs)
+        with metrics.request('get', kwargs['Key']):
+            time.sleep(request_latency_ms / 1000)
+            metrics.counts['get_requests'] += 1
+            response = original_get(**kwargs)
         metrics.counts['remote_body_bytes_read'] += response['ContentLength']
         return response
     def put(**kwargs):
-        time.sleep(request_latency_ms / 1000)
-        metrics.counts['put_requests'] += 1
-        body = kwargs['Body']
-        metrics.counts['put_body_bytes'] += len(body) if isinstance(body, bytes) else kwargs['ContentLength']
-        return original_put(**kwargs)
+        with metrics.request('put', kwargs['Key']):
+            time.sleep(request_latency_ms / 1000)
+            metrics.counts['put_requests'] += 1
+            body = kwargs['Body']
+            metrics.counts['put_body_bytes'] += len(body) if isinstance(body, bytes) else kwargs['ContentLength']
+            return original_put(**kwargs)
     def head(**kwargs):
         # The test adapter models HEAD using GET internally. Keep that detail
         # out of the request/full-body counters to model the actual SDK boundary.
-        time.sleep(request_latency_ms / 1000)
-        metrics.counts['head_requests'] += 1
-        response = original_get(**kwargs); response['Body'].close()
-        return {name: response[name] for name in ('ETag', 'ContentLength')}
+        with metrics.request('head', kwargs['Key']):
+            time.sleep(request_latency_ms / 1000)
+            metrics.counts['head_requests'] += 1
+            response = original_get(**kwargs); response['Body'].close()
+            return {name: response[name] for name in ('ETag', 'ContentLength')}
     def download(bucket, key, destination):
         time.sleep(request_latency_ms / 1000)
         metrics.counts['download_requests'] += 1
@@ -139,7 +142,8 @@ def run(checkout, source, output, source_manifest_sha256, *, maximum_source_byte
     def command_stage(name):
         # The real CLI commands run in separate processes. Clear only the shared
         # source identity cache before timing; keep reuse within each command.
-        identity_module=sys.modules.get('viewer_release_identity')
+        identity_module=(sys.modules.get('viewer_publication.release_identity')
+                         or sys.modules.get('viewer_release_identity'))
         if identity_module is not None:identity_module._source_cache.clear()
         return metrics.stage(name)
     try:
