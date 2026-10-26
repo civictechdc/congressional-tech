@@ -31,7 +31,7 @@ A Note, not a specification: it carries no normative requirements, cites contrac
 
 The raw log already exists: bodies, receipts and provenance in the R2 bucket `congressional-tech-raw`, backed up on 2026-10-24. Its bodies keep their stored form; the only changes are uncompressed copies of older gzip PDFs (B13) and the one-time cleanup of older receipts (B0), as [[ARCHITECTURE]] §7.1–7.2 specify. Everything above raw is rebuilt.
 
-Already in place: the hosted setup refuses an engine revision other than the qualified one; today's capture index carries `stored_sha256` from the receipt and never derives it; the gzip-deleting path is gone; the 12,431 recoveries that existed only in `accepted.json` have a write-once copy under `provenance/recoveries/`, a whole file the model never reads ([[DATA-MODEL]] §5.3); and every version of the weekly meeting job's source records since 2026-10-05, which that job overwrites on each run, is kept in a local content-addressed batch until B14 imports it. The bucket lock is pending with the owner.
+Already in place: the hosted setup refuses an engine revision other than the qualified one; today's capture index carries `stored_sha256` from the receipt and never derives it; the gzip-deleting path is gone; the 12,431 recoveries that existed only in `accepted.json` have a write-once copy under `provenance/recoveries/`, a whole file the model never reads ([[DATA-MODEL]] §5.3); and the versions of the weekly meeting job's source records from 2026-10-05 to 2026-10-26, which that job overwrites on each run, are kept in a local content-addressed batch until B14 imports it; later versions are kept only by re-running the rescue. The bucket lock is pending with the owner.
 
 ## 2. Strategy
 
