@@ -128,3 +128,34 @@ The parent's supplied integration logs also record 723 publication/workflow pass
 **Verdict on exact main `ad222085`: REQUEST CHANGES for F1.** The local repair closes the reproduced gap, and no other actionable regression was found in the assigned scope. Focused coverage of the repaired paths is adequate; confidence is high for those paths and bounded collection.
 
 Root must integrate `8a838bf5` and qualify the final combined revision. Expanding source identity intentionally changes implementation fingerprints. Existing accepted preparations or checkpoints must retain their original-revision rules; these local results do not authorize treating old fingerprints as equivalent or claim a deployed repair.
+
+## Final merged-source follow-up: 6183938f
+
+**Final reviewed source: `6183938fcb2b0842d5e1f59072383aa7dd251d32`. Final verdict: APPROVE within the assigned shared-import, release-identity, CI-selection and offline-collection scope.** This supersedes the earlier request-changes verdict on `ad222085`; it does not rewrite that historical finding.
+
+The report branch was backed up as `codex/backup-tests-before-final-6183938f` at `fec3dec180fe226cf4b3b3ec79b008115ebc31b0`, then rebased onto the exact final source while preserving only the report. The rebased report commit is `f4cc8f553e17811613f873a2cfcb0a8455a36972`. The local source fix `8a838bf5` was dropped from the branch because main includes it as `c4326f58`. A direct diff of those two commits' `release_identity.py` and `test_release_identity.py` files is empty. No obsolete or duplicate source patch was replayed.
+
+### Narrow delta review
+
+Only `ad222085..6183938f` was considered in this follow-up; the earlier broad audit and collection were not repeated.
+
+- **F1 is resolved in merged main.** `release_identity.py:31` includes the maintained DocSpec package, and lines 41-43 include both maintained publishers and constants. The mutation regressions remain at `test_release_identity.py:41-59`. All seven production Python files changed across this final delta are present in the resulting source inventory. Thus the final capture, timestamp, occurrence and supervisor changes also affect implementation identity through the maintained source map.
+- **The supervisor now deducts checkpoint verification from one absolute deadline.** `scripts/publication/prepare_workflow_resume.py:94-109` calculates the deadline once, rechecks it after verification and refuses a launch when exhausted. Line 114 computes the remaining wait after launch. The existing process-group stop, quiescence check and completed-output verification remain downstream at lines 115-150. The added regression at `scripts/publication/tests/test_preparation_checkpoint.py:354-384` simulates 70 and 110 seconds of verification against a 100-second allowance: the first permits only a 30-second wait; the second launches no child. Both pass.
+- **Test enrollment is preserved.** All six changed test files in the final delta are still covered by the existing `production-offline` roots. No workflow selection or shared import mechanism changed in the final delta. The current explicit publication selection still includes `test_preparation_checkpoint.py` (`.github/workflows/publish-filename-viewer.yml:130`), so its new deadline cases are included; the complete offline lane retains the release-identity cases. The capture/GPO/occurrence domain fixes were checked here for source-hash and test-enrollment coverage; their domain behavior belongs to the corresponding reviews, rather than a repeated audit in this report.
+
+### Executed follow-up evidence
+
+At the final source plus the preserved documentation-only report commit:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python .github/scripts/offline-python.py -m pytest \
+  -p no:cacheprovider --basetemp=/tmp/ct-tests-final-review-6183938f -q \
+  packages/viewer_publication/tests/test_release_identity.py \
+  scripts/publication/tests/test_preparation_checkpoint.py::test_checkpoint_verification_consumes_the_elapsed_job_budget
+```
+
+**10 passed in 0.25 seconds; no skips.** Log: `/tmp/ct-tests-final-review-6183938f.log`. Separate local assertions verified all seven changed production Python files appear in `source_files` and all six changed test files belong to the declared offline lane. These are focused follow-ups, not additional unique test counts to add to earlier runs.
+
+The supplied root follow-up logs were read: `/tmp/ct-post-review-integration-20261026.log` records 264 Python passes, `/tmp/ct-post-review-occurrence-20261026.log` records 126 renderer/native passes, and `/tmp/ct-post-review-js-20261026.log` records 154 JavaScript passes. Those checks were not rerun here and are not counted again as this review's execution.
+
+**No unresolved source issue remains in this assigned scope.** Confidence is high for the traced source and focused checks. Hosted CI, production preparation, remote publication and deployed behavior remain distinct evidence. The manually disabled filename publisher and the Pages refusal of selected v5 were left unchanged. No push, merge, remote mutation, primary-checkout edit or expensive suite/build was performed by this follow-up.
