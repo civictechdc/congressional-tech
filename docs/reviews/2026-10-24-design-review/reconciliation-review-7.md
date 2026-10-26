@@ -98,3 +98,14 @@ An independent check diffed the pass against `40ee51b2` and followed every chang
 | **Total** | **27,835** | **28,683** |
 
 The data model grew with the older-shape mapping, the plan with M2's receipt input, the real-slice rule and the file-shape lists it now owns, and the bindings with per-component labels and the receipt reader. Cross-references: 316, none broken. Code references: 207, all resolve (three name DataFusion crate files).
+
+## Readability pass
+
+The open items are logged as P §8, "Uncertainties and Tests": each unknown, the step that settles it and what it decides. A final pass under the evolutionary-refactoring skill then made the four documents bottom-line-first: each opens with an Abstract of its decisions, goals and must-know facts; sections lead with their rule; restatements of another document's rule became cites. An independent check found no lost rule and scored the result 74 for a skimming reader (bottom line up front 72, duplication 82, accuracy of summaries 70); its fixes were applied: two wrong Abstract lines (the recovery `link_key` formula, the lock and B0 order), "never rewritten" against the receipt cleanup, a widened null-safe match, two bindings openers, five remaining restatements, and openers for the sections a skimmer missed. Rule keywords are unchanged in every document; cross-references 359 and code references 207 resolve as before.
+
+| Document | Before | After |
+|---|---|---|
+| Architecture | 6,872 | 6,885 |
+| Data model | 10,143 | 10,175 |
+| Plan (with §8) | 6,473 | 6,476 |
+| Bindings | 5,537 | 5,541 |

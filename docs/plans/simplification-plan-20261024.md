@@ -4,11 +4,15 @@
 
 ## Abstract
 
-This Note orders the work that builds the system specified in [[ARCHITECTURE]] and [[DATA-MODEL]] from today's congressional-tech and docspec-rs code. Work is organized by the target's components and their contracts. Which existing code stands behind each component, and what it must change to get there, is in [[BINDINGS]]. The plan has no schedule and no effort estimates: the work runs in dependency order.
+- **Goal:** build the system of [[ARCHITECTURE]] and [[DATA-MODEL]] from today's congressional-tech and docspec-rs code, beside the old pipeline, then switch and delete what is bound to nothing (§2). Work runs in dependency order, with no schedule or effort estimates.
+- **First:** the lock on `bodies/` and `provenance/`, then B0, then the lock on `receipts/`; then M1, M2 and S1 (§4–5).
+- **Open (§8):** Basin file growth (M1); memory and the older receipts (M2); the rules on real data (S1); the widest is the model (track E).
+- **Owner actions:** the bucket lock (B1); confirm B0's field list; review six recovery excerpts (B7); decide on facts only the old index or derived tables hold (D1, E4); decide whether to widen fingerprint candidates (S2).
+- **Detail:** behavior in [[ARCHITECTURE]]; schemas, derivations, registries and invariants in [[DATA-MODEL]]; code in [[BINDINGS]].
 
 ## Status of This Document
 
-This is a Note, not a specification. It carries no normative requirements of its own. It cites the specifications' contracts rather than restating them, and it names no existing files: those belong to [[BINDINGS]].
+A Note, not a specification: it carries no normative requirements, cites contracts rather than restating them, and names no existing files.
 
 ## Table of Contents
 
@@ -19,22 +23,22 @@ This is a Note, not a specification. It carries no normative requirements of its
 5. [First Steps](#5-first-steps)
 6. [Tracks](#6-tracks)
 7. [Parked](#7-parked)
-8. [Open Issue](#8-open-issue)
+8. [Uncertainties and Tests](#8-uncertainties-and-tests)
 9. [References](#9-references)
 
 ## 1. Introduction
 
-The raw log already exists: bodies, receipts and provenance in the R2 bucket `congressional-tech-raw`, backed up on 2026-10-24. Its bodies are preserved unchanged and keep their stored form; older gzip PDFs gain uncompressed copies; older receipts are cleaned once of cookies, credential parameters and local paths. Everything above raw is rebuilt.
+The raw log already exists: bodies, receipts and provenance in the R2 bucket `congressional-tech-raw`, backed up on 2026-10-24. Its bodies keep their stored form; the only changes are uncompressed copies of older gzip PDFs (B13) and the one-time cleanup of older receipts (B0), as [[ARCHITECTURE]] §7.1–7.2 specify. Everything above raw is rebuilt.
 
 Already in place: the hosted setup refuses an engine revision other than the qualified one; today's capture index carries `stored_sha256` from the receipt and never derives it; the gzip-deleting path is gone; and the 12,431 recoveries that existed only in `accepted.json` have a write-once backup under `provenance/recoveries/`. The bucket lock is pending with the owner.
 
 ## 2. Strategy
 
-**Contracts first.** Each component's contract suite ([[ARCHITECTURE]] §6, principle 8) is written before any code is bound to it.
+**Contracts first.** Each component's contract suite ([[ARCHITECTURE]] §4, principle 8) is written before any code is bound to it.
 
-**Bind, adapt or build.** For each component, [[BINDINGS]] records the existing code that implements it, the adapter work that closes the gap to the contract, or that it is built new. Code that already meets the contract is lifted, not rewritten; code that carries a broken pattern is not adapted, and the component is built with only its sound parts lifted. Hard-won behavior becomes registry seeds and fixtures rather than code paths.
+**Bind, adapt or build,** as [[BINDINGS]] §1 defines and records for each component. Code that carries a broken pattern is not adapted: the component is built with only its sound parts lifted. Hard-won behavior becomes registry seeds and fixtures rather than code paths.
 
-**One implementation per component.** Where today has several implementations of one component, the binding picks one and the rest are deleted. External systems are the only variation, and they are injected adapters: the object store and local disk, the direct and provider transports, the catalog.
+**One implementation per component** ([[BINDINGS]] §2, rule 1): where today has several, the binding picks one and the rest are deleted. External systems are the only variation, injected as adapters ([[ARCHITECTURE]] §4, principle 8).
 
 **Switch, then delete.** The target components are built beside the old pipeline. At the switch the publish path binds to them; the old layers are then bound to nothing and are deleted whole, as [[BINDINGS]] §6 lists them. Until the switch, the old capture job keeps writing raw data and reading the raw index, and gets raw-safety fixes only; its whole-leaf index rewrites continue until then, which is accepted.
 
@@ -67,44 +71,58 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 | Track | Components | Depends on |
 |---|---|---|
 | A | Reader, canary and contract test, site | F0 and the hand-built fixture |
-| B | Raw-writer components | The lock on `bodies/` and `provenance/` first; the old writers patched, then B0, then the lock on `receipts/` |
+| B | Raw-writer components | §4, item 1 |
 | C | Engine | M1, M2, S1 |
 | D | Lake producers | C2, B2; B13 for D2; B15 for D4 and D5 |
 | E | Model | S1, S2, C1, C3, C4, D |
 | F | Publish job, capture scheduler, switch | A, E, B13 |
 
-A and B can run beside C. The widest uncertainty is E: it stays bounded unless parity finds facts that only derived tables hold (§8).
+A and B can run beside C.
 
 ## 5. First Steps
 
+M1, M2 and S settle the lake format, the receipt reader, the model's memory and step form, and the rules; F0 gives the reader its fixture.
+
 ### 5.1 M1: Basin Catalog Under Maintenance
 
-All three run on scratch tables, with Basin's catalog-level compaction and snapshot expiration on.
+**Decides:** Iceberg stays if the rows read back unchanged and the file and manifest counts, projected to ten years at the measured growth, keep a full scan of `captures` under a minute on the smallest runner. Otherwise the lake tables move to dated Parquet files with an `If-Match` manifest per table: the same atomicity, without time travel. The fallback changes the scope of C1, C2 and D.
+
+All three tests run on scratch tables, with Basin's catalog-level compaction and snapshot expiration on.
 
 1. **Guarded commits.** An append whose base snapshot a second client's commit has moved fails rather than being rebased, recomputes its work list and lands within three retries; two ingest runs on the same receipts leave exactly one copy of each row. A second client's commit stands in for Basin's maintenance, which cannot be timed.
-2. **Growth, expiration and drops.** With snapshot expiration at its shortest age, append day-sized batches (about 315 KB) across at least ten Basin maintenance runs. After each run, count the current snapshot's data files and manifests and the bytes expiration removed, check that the rows read back equal those appended, and read a compacted file's footer for its codec. Read the table through iceberg-datafusion 0.10.1's static provider with a partition filter, and confirm the filter reaches scan planning. Then drop the table with purge and list what remains.
+2. **Growth, expiration and drops.** With snapshot expiration at its shortest age, append day-sized batches (about 315 KB) across at least ten Basin maintenance runs.
+   - After each run, count the current snapshot's data files and manifests and the bytes expiration removed, check that the rows read back equal those appended, and read a compacted file's footer for its codec.
+   - Read the table through iceberg-datafusion 0.10.1's static provider with a partition filter, and confirm the filter reaches scan planning.
+   - Then drop the table with purge and list what remains.
 3. **The engine's remote write caps.** Measure scan and commit cost with and without the engine's 2 MiB file and 2,048-row group caps. [[DATA-MODEL]] §6 assumes they go; if they measurably help, that section changes instead.
-
-**Decides:** Iceberg stays if the rows read back unchanged and the file and manifest counts, projected to ten years at the measured growth (Basin compacts only files not yet compacted), keep a full scan of `captures` under a minute on the smallest runner; otherwise the lake tables move to dated Parquet files with an `If-Match` manifest per table: the same atomicity, without time travel. The fallback changes the scope of C1, C2 and D.
 
 ### 5.2 M2: Wide Joins and Grouping in a Throwaway DataFusion Harness
 
+**Decides:** the receipt reader, the size of track C, the model's step form, and whether DataFusion handles the wide joins within the pool. The harness is deleted afterwards.
+
 The engine cannot run the full export until C1, C3 and C4 exist, so a short standalone DataFusion program measures first, using S's draft rules.
 
-- Inputs: all 2,289 receipts, read with the receipt reader of [[ARCHITECTURE]] §13 and the draft ingest mapping, with a sample of each older shape ([[DATA-MODEL]] §6.1), and its rows compared with the pinned capture index (`db033173…`, 3,909,134 rows); the pinned catalog generation `596f08fa…`, with today's filename readings; and links parsed from a sample of pages. Record the reader's time, its peak memory on the 188 MB line, and the conflicts it nulls per receipt.
-- Run the model's joins, including `url_key`, link resolution and the link join (about 4.2M links, scaled from the sample, against 1.31M source URLs), filename readings, the folded `detail` and the 1.7M `occurrences`. Report every intermediate join's row count and bytes and every hash-join build's size, as well as time and peak memory. The links are sampled, so this tests mechanisms and memory; D2's full link backfill repeats the join on real data.
-- Run the model twice: as inlined steps, and as named steps with the components and documents materialized once. Compare `EXPLAIN ANALYZE`, time and peak memory, including memory the pool does not account for.
-- Group the graph with the specified rule, using the sampled links; D2 repeats the grouping on real links. Record time, peak memory and the largest components.
-- Run on `ubuntu-24.04` (4 vCPU, 16 GB), the smallest runner class.
-
-**Decides:** the receipt reader, the size of track C, the model's step form, and whether DataFusion handles the wide joins within the pool. The harness is deleted afterwards.
+- **Inputs:**
+  - all 2,289 receipts, read with the receipt reader of [[ARCHITECTURE]] §13 and the draft ingest mapping, with a sample of each older shape ([[DATA-MODEL]] §6.1), and its rows compared with the pinned capture index (`db033173…`, 3,909,134 rows). Record the reader's time, its peak memory on the 188 MB line, and the conflicts it nulls per receipt;
+  - the pinned catalog generation `596f08fa…`, with today's filename readings;
+  - links parsed from a sample of pages.
+- **Joins:** run the model's joins, including `url_key`, link resolution and the link join (about 4.2M links, scaled from the sample, against 1.31M source URLs), filename readings, the folded `detail` and the 1.7M `occurrences`.
+  - Report every intermediate join's row count and bytes and every hash-join build's size, as well as time and peak memory.
+  - The links are sampled, so this tests mechanisms and memory; D2's full link backfill repeats the join on real data.
+- **Step form:** run the model twice, as inlined steps and as named steps with the components and documents materialized once. Compare `EXPLAIN ANALYZE`, time and peak memory, including memory the pool does not account for.
+- **Grouping:** group the graph with the specified rule, using the sampled links; D2 repeats the grouping on real links. Record time, peak memory and the largest components.
+- **Runner:** `ubuntu-24.04` (4 vCPU, 16 GB), the smallest runner class.
 
 ### 5.3 S: The Semantic Checkpoint
 
-E1 is written here: every derivation of [[DATA-MODEL]] §7 as SQL, and the reference model profile, every registry as a versioned file with its first contents and sample tests, seeded as [[BINDINGS]] §4 lists. Each fixture below is written with its expected outcome before any SQL, so the table is the acceptance sheet; S adds a row for each format of [[DATA-MODEL]] §6.2 the table does not yet name. S1's fixtures run as an executable model, the draft SQL over fixture tables and over real slices (the GovInfo ZIPs, the End of Term lines, docs.house.gov's `.xml` URLs, the pages saved twice in one fetch and the short-page sample), before any further change to the rules they cover. S comes in two parts:
+S writes every rule as SQL with its fixtures (E1), in two parts:
 
 - **S1, before track C** (M2 and the engine depend on it): the real-file and grouping SQL with their fixtures, marked S1 below;
 - **S2, beside track C:** the rest of the SQL and fixtures, the labeled sample, the edition count and the raw-only check.
+
+- **What S writes (E1):** the reference model profile; every registry as a versioned file with its first contents and sample tests, seeded as [[BINDINGS]] §4 lists.
+- **Fixtures first:** each fixture below is written with its expected outcome before any SQL, so the table is the acceptance sheet. S adds a row for each format of [[DATA-MODEL]] §6.2 the table does not yet name.
+- **An executable model:** S1's fixtures run as the draft SQL over fixture tables and over real slices (the GovInfo ZIPs, the End of Term lines, docs.house.gov's `.xml` URLs, the pages saved twice in one fetch and the short-page sample), before any further change to the rules they cover.
 
 | Part | Fixture | Expected outcome |
 |---|---|---|
@@ -145,8 +163,13 @@ E1 is written here: every derivation of [[DATA-MODEL]] §7 as SQL, and the refer
 | S2 | Two recoveries equal in kind, time and body; decisions that match one recovery row twice; a recovery whose decision rejects it | Both shown, in receipt order; one recovery, from the latest decision; no recovery |
 | S2 | Two merged documents with different title overrides; two active merges on one document; a hide and its withdrawal | The latest override by `(decided_at, id)`; both merges applied; visible again |
 
-- **The labeled sample:** a hand-labeled stratified sample of a few hundred files, starting from the responses already labeled by hand and the 2026-10-25 short-page sample ([[BINDINGS]] §4), covering short real pages, challenge, soft-error and download pages, archive members, landing pages, listing pages, files listed together on one page and widely mirrored real documents. It is the sample of [[ARCHITECTURE]] §15, item 2, and sets the page thresholds and the final file-shape list. It includes a listing page captured in two places and pages whose links sit outside any list item. The rubric is [[ARCHITECTURE]] §9.2–9.3.
-- **The edition count**, for the owner's decision: every real body that shares a rendition group with a body in `edition_bodies` and is not itself a fingerprint candidate (*est.* about 15 bodies and 1.4 MB by the same-stem groups; publisher groups are counted again after D2's link backfill) is fingerprinted, and the count is of those whose text equals such a body's. S reports the count with examples; the owner then decides whether to widen the candidates to every rendition-group member (*est.* 8–45 GB of reads once).
+- **The labeled sample** sets the page thresholds and the final file-shape list. It is the sample of [[ARCHITECTURE]] §15, item 2, and its rubric is [[ARCHITECTURE]] §9.2–9.3.
+  - It is a hand-labeled stratified sample of a few hundred files, starting from the responses already labeled by hand and the 2026-10-25 short-page sample ([[BINDINGS]] §4).
+  - It covers short real pages, challenge, soft-error and download pages, archive members, landing pages, listing pages, files listed together on one page and widely mirrored real documents.
+  - It includes a listing page captured in two places and pages whose links sit outside any list item.
+- **The edition count**, for the owner's decision:
+  - every real body that shares a rendition group with a body in `edition_bodies` and is not itself a fingerprint candidate is fingerprinted (*est.* about 15 bodies and 1.4 MB by the same-stem groups; publisher groups are counted again after D2's link backfill), and the count is of those whose text equals such a body's;
+  - S reports the count with examples; the owner then decides whether to widen the candidates to every rendition-group member (*est.* 8–45 GB of reads once).
 - **The raw-only check:** every rule can be computed from raw, with nothing borrowed from the old derived tables.
 
 ### 5.4 F0: The First Release, Converted From the Pinned Catalog
@@ -160,11 +183,11 @@ E1 is written here: every derivation of [[DATA-MODEL]] §7 as SQL, and the refer
 
 ## 6. Tracks
 
-Each task names the component it builds or binds and the contract it must pass. [[BINDINGS]] §3 says which existing code is bound to each component and what changes.
+[[BINDINGS]] §3 says which existing code is bound to each component and what changes.
 
 ### 6.1 Track A: Reader, Canary and Site
 
-1. **Reader** to [[ARCHITECTURE]] §11, with hyparquet's `useOffsetIndex` for `detail` (each row group's offset indexes and dictionary pages kept in the reader's byte cache for the session) and `usePageIndex` for `links`.
+1. **Reader** to [[ARCHITECTURE]] §11, with hyparquet's `useOffsetIndex` for `detail` ([[ARCHITECTURE]] §11.1) and `usePageIndex` for `links`.
 2. **Links** resolve through `links` ([[ARCHITECTURE]] §10.1).
 3. **Canary** ([[ARCHITECTURE]] §10.3.5), run by the publish job against the uploaded candidate.
 4. **Contract test** ([[ARCHITECTURE]] §15, item 5), against F0 and the hand-built fixture until track E exists.
@@ -182,9 +205,12 @@ Each task names the component it builds or binds and the contract it must pass. 
 
 These components survive, so they are bound now.
 
-0. **Clean the older receipts, once, before `receipts/` is locked** ([[DATA-MODEL]] §5.2). A full scan on 2026-10-25 found 534,733 recorded cookies on 242,438 lines and local paths in many fields, including 279,549 absolute `file_references[].original_path` values, and receipts are public.
-   - **First, stop the old writers adding more:** today's capture and import writers drop cookies, credential parameters and local paths (241,328 of the 530,081 lines in the mirror's last two weeks, 2026-10-03 to 2026-10-16, carry a `Set-Cookie`, and the newest import runs a path on every line). No import runs between the cleanup and the lock on `receipts/`.
-   - **The fields:** the read-only scan lists, by field, the values that look like local paths, including paths inside JSON key names; its list is committed with B0, the owner confirms it before the run, and no other field is touched. The input is the receipt keys in the 2026-10-24 backup plus any written since; each receipt not in the backup is copied into it before it is rewritten.
+0. **Clean the older receipts, once, before `receipts/` is locked** ([[DATA-MODEL]] §5.2). A full scan on 2026-10-25 found 534,733 recorded cookies on 242,438 lines and local paths in many fields, including 279,549 absolute `file_references[].original_path` values.
+   - **First, stop the old writers adding more:** today's capture and import writers drop cookies, credential parameters and local paths. No import runs between the cleanup and the lock on `receipts/`.
+     - 241,328 of the 530,081 lines in the mirror's last two weeks, 2026-10-03 to 2026-10-16, carry a `Set-Cookie`, and the newest import runs a path on every line.
+   - **The fields:** the read-only scan lists, by field, the values that look like local paths, including paths inside JSON key names.
+     - Its list is committed with B0, the owner confirms it before the run, and no other field is touched.
+     - The input is the receipt keys in the 2026-10-24 backup plus any written since; each receipt not in the backup is copied into it before it is rewritten.
    - **The tool** is a one-off rewriter outside the body store, with its own credential, deleted once B0 is verified. The body store stays create-only throughout.
    - **The run,** for each receipt without a verification record:
      1. write the cleaned bytes to the same key with `If-Match` on the original ETag and `Content-MD5`;
@@ -194,27 +220,39 @@ These components survive, so they are bound now.
      A rerun skips receipts already recorded, and after a crash it verifies against the backup's original.
    - **Done when:** every receipt under `receipts/` has a verification record and a re-scan finds no cookie, credential parameter or local path in the listed fields.
 1. **Bucket lock** (owner), per prefix: `bodies/` and `provenance/` at once, `receipts/` after B0.
-2. **Fetcher, receipt writer and archive expander** to [[ARCHITECTURE]] §7.1–7.2 and [[DATA-MODEL]] §5.2, proven by their contract suites, with scope, redirects, pacing and fallback from the registries.
-3. **One body store.** Write the refusal matrix first, as the body store's contract test: a write that is not create-only under `bodies/`, `receipts/` or `provenance/`, or a receipt line with a credential parameter in a recorded URL, is refused before any I/O. Then bind one body store with an R2 adapter and a local-disk adapter, and route every raw write through it, including the writers that lay out bodies themselves.
+2. **Fetcher, receipt writer and archive expander** to [[ARCHITECTURE]] §7.1–7.2 and [[DATA-MODEL]] §5.2, proven by their contract suites.
+3. **One body store.**
+   - Write the refusal matrix first, as the body store's contract test: a write that is not create-only under `bodies/`, `receipts/` or `provenance/`, or a receipt line with a credential parameter in a recorded URL, is refused before any I/O.
+   - Then bind one body store with an R2 adapter and a local-disk adapter, and route every raw write through it, including the writers that lay out bodies themselves.
 4. **Ingest policy set once,** where capture builds its store. The raw-intake exclusion gate is deleted.
 5. **Body existence by key** ([[ARCHITECTURE]] §7.1), never by an index lookup.
 6. **Code identity for receipt writers and recovery imports:** the commit (HEAD of a clean tree) plus the SHA-256 of `uv.lock`, refusing uncommitted application code.
-7. **Recovery importer:** reconcile `accepted.json` with the receipts, so recoveries become provenance records the model reads, each with its kind; new imports write date-shaped receipts with their recovery category, and provenance, through the receipt writer and the body store, with no guards or upload loop of their own. Six accepted recoveries attach a 2-page excerpt to full 95–196-page transcripts; the owner reviews them, and each one confirmed wrong gets a `rejected` decision.
+7. **Recovery importer:** reconcile `accepted.json` with the receipts, so recoveries become provenance records the model reads, each with its kind.
+   - New imports write date-shaped receipts with their recovery category, and provenance, through the receipt writer and the body store, with no guards or upload loop of their own.
+   - Six accepted recoveries attach a 2-page excerpt to full 95–196-page transcripts; the owner reviews them, and each one confirmed wrong gets a `rejected` decision.
 8. **Review recorder:** the review forms record provenance verdicts that target link keys ([[DATA-MODEL]] §5.3, §7.9). The 86 published assistant reviews of document kinds carry over as `kind_override` records on their files' link keys, with the assistant as reviewer.
 9. **Raw verifier** ([[ARCHITECTURE]] §7.4, §10.3.7), in the maintenance job, first run after B10. It joins to the old capture index until D1 exists.
 10. **The one-time full re-hash** ([[ARCHITECTURE]] §7.4), after B13, skipping the keys B13 verified.
 11. **A ratchet test:** no test-only branch or test-only input substitution may appear in a surviving component; tests inject adapters instead ([[ARCHITECTURE]] §15, item 7).
-12. **Owed while the old capture path runs:** repair wrong `stored_sha256` index rows in place, and confirm the daily capture writes correct values. The target reads receipts, so these matter only until the switch.
-13. **Uncompressed copies of older gzip PDFs** (after B1 and B3), by the PDF copier of [[BINDINGS]] §3.1. Candidates are older bodies whose media type or the old catalog's sniff says PDF (about 261,125); a copy is written only when the decompressed bytes begin `%PDF-` (about 950 candidates are HTML by the readings sniff; the test decides the 33,369 never sniffed). The largest raw write in the plan, so the lock and the refusal matrix come first: about 260,175 uploads and 403 GB once decompressed (about $72 a year of storage under the lock). Running it before B10 saves B10 about 365 GB of reads.
+12. **Owed while the old capture path runs:** repair wrong `stored_sha256` index rows in place, and confirm the daily capture writes correct values. These matter only until the switch.
+13. **Uncompressed copies of older gzip PDFs** (after B1 and B3), by the PDF copier of [[BINDINGS]] §3.1. Running it before B10 saves B10 about 365 GB of reads.
+    - **Candidates:** older bodies whose media type or the old catalog's sniff says PDF (about 261,125). A copy is written only when the decompressed bytes begin `%PDF-` (about 950 candidates are HTML by the readings sniff; the test decides the 33,369 never sniffed).
+    - **Size:** the largest raw write in the plan, so the lock and the refusal matrix come first: about 260,175 uploads and 403 GB once decompressed (about $72 a year of storage under the lock).
 14. **Re-fetch the cut-off files** (after B2, through the spooled fetcher): every URL with a copy cut off at 64 MiB and no complete 2xx copy, 62 to 64 by the snapshot index depending on how a complete copy is counted; the receipts decide. The cut-off copies stay in raw.
 15. **Committee and meeting fetches through the fetcher** like every other fetch: the Congress.gov committee and meeting APIs and the House and Senate meeting inventories ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5). An incremental relist takes its window from the `last_good_at` of the API list URL it pages through, and pages to the end of the list.
 16. **Fetch the wrapped files** (after D2, from the wrapper pages' `html` readings): the file links of download-wrapper pages, *est.* 8,800 testimony and statement PDFs that were never fetched, ahead of the model's queue.
 
-**Done when:** every older receipt is cleaned and verified, the refusal matrix passes, the lock is on all three prefixes, one capture run's `stored` lines carry MD5s that match the stored ETags and every line carries its stored suffix, every older gzip PDF has a recorded copy, and every cut-off URL has a complete copy or a recorded reason.
+**Done when:**
+- every older receipt is cleaned and verified;
+- the refusal matrix passes;
+- the lock is on all three prefixes;
+- one capture run's `stored` lines carry MD5s that match the stored ETags, and every line carries its stored suffix;
+- every older gzip PDF has a recorded copy;
+- every cut-off URL has a complete copy or a recorded reason.
 
 ### 6.3 Track C: Engine
 
-**C0, first moves on engine main** (beside M1): the C0 cleanup of [[BINDINGS]] §3.3, before any capability work. The engine's digest for every runner OS, Linux included, is recorded and checked as [[ARCHITECTURE]] §12 says.
+**C0, first moves on engine main** (beside M1): the C0 cleanup of [[BINDINGS]] §3.3. The engine's digest for every runner OS, Linux included, is recorded and checked as [[ARCHITECTURE]] §12 says.
 
 **Then the capabilities of [[ARCHITECTURE]] §13, C*n* being its item *n*, each with its contract test:**
 
@@ -229,7 +267,7 @@ These components survive, so they are bound now.
 | C7 | Thin interface | The M2 export as a job spec |
 | C8 | URL functions | Conformance vectors from RFC 3986 §5.4, and golden vectors from today's fetcher's URL handling; M2's `url_key` timing |
 
-**Not needed any more:** the lifecycle store's commit requirements, lifecycle-store compaction on R2, copy-on-write measurement and insert-if-absent. The target has no engine lifecycle store, no updates and no news_lake work. Close them unless another consumer needs them.
+**Not needed any more:** the lifecycle store's commit requirements, lifecycle-store compaction on R2, copy-on-write measurement and insert-if-absent. Close them unless another consumer needs them.
 
 **Done when:** one CLI job runs the full export from Basin tables on the smallest runner and passes C3's test.
 
@@ -239,9 +277,16 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
 1. **Captures ingest:**
    - backfill from all 2,289 receipts (1.08 GB compressed), including the non-date segments ([[ARCHITECTURE]] §7.2), with a test sample of each older receipt shape ([[DATA-MODEL]] §6.1);
-   - the backfill restores the HTTP status on the about 37,000 bodiless lines that record one (`http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses), and maps a fetch time from every receipt shape: 522,448 rows in dated receipts have no time in the snapshot, and 500,689 of them carry one on their own entry or line;
+   - the backfill restores the HTTP status on the about 37,000 bodiless lines that record one (`http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses);
+   - it maps a fetch time from every receipt shape: 522,448 rows in dated receipts have no time in the snapshot, and 500,689 of them carry one on their own entry or line;
    - the rebuild-equivalence test;
-   - **compare with the pinned old capture index** (3,909,134 rows) on receipt-derived columns, with written transformation rules for the expected differences: statuses restored on bodiless lines, the 5,587 lines of the 2026-10-15 recovery run read as recoveries rather than fetches, completeness per attempt, `stored_md5` and `stored_suffix` new, `stored_sha256` gone. A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
+   - **compare with the pinned old capture index** (3,909,134 rows) on receipt-derived columns, with written transformation rules for the expected differences:
+     - statuses restored on bodiless lines;
+     - the 5,587 lines of the 2026-10-15 recovery run read as recoveries rather than fetches;
+     - completeness per attempt;
+     - `stored_md5` and `stored_suffix` new, `stored_sha256` gone.
+
+     A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
 2. **Parsers:**
    - first `sniff` over every older body, after B13 so a PDF's tail is read from its `.pdf` copy: about 1.04M ranged GETs plus about 261k tail reads, timed in the run;
    - then the main-content extractor, chosen by measurement on the ~2,250 pages saved twice in one fetch and on the labeled sample;
@@ -257,25 +302,27 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
 ### 6.5 Track E: Model
 
-1. **The rules, written in S** (§5.3). The file-shape list starts from the broader list (44,047 file-shaped bodies: the narrow list's `.pdf`, `.zip`, `.doc`, `.docx`, `.xml`, `/download/`, `download=1` and `file_id=`, plus `/files/`, `/uploadedfiles/`, `/media/doc/` and more extensions); the roughly 27k bodies between it and the narrow list (16,775) are sampled before it is fixed.
+1. **The rules, written in S** (§5.3). The file-shape list starts from the broader list; the roughly 27k bodies between it and the narrow list (16,775) are sampled before it is fixed.
+   - The broader list has 44,047 file-shaped bodies: the narrow list's `.pdf`, `.zip`, `.doc`, `.docx`, `.xml`, `/download/`, `download=1` and `file_id=`, plus `/files/`, `/uploadedfiles/`, `/media/doc/` and more extensions.
 2. **The model SQL:** every relation and release file of [[DATA-MODEL]] §7–8, with the invariants of §10 as its test suite.
 3. **Golden vectors** for `source_id` and `document_id`, generated from today's ID code with its compact-JSON serialization and checked in the engine's tests.
-4. **Parity against the pinned catalog pair**, the oracle (not F0, which picks one document per shared body), on browser-visible fields, compared many-to-many and keyed by source evidence: the files and URLs each document holds. IDs match today's wherever their inputs match. Expected, explained changes:
-   - about 615k catalog rows (captions, metadata records, playlists and API responses; [[DATA-MODEL]] §7.5) and the listing pages leave the list;
-   - documents lose soft-error and wrapper pages, and about 4,900 lose Senate landing pages, from their body sets, while short real pages and real web pages now count;
-   - cut-off copies, damaged PDFs and pages whose reading failed (reported by format and error type) drop out of body sets, and feed pages become listings;
-   - the 3,690 recovered files that a real fetch also saved become real bodies;
-   - about 2,250 pages saved twice in one fetch (a direct attempt and a provider retry) merge by main content, and 999 veterans.house.gov pages from the End of Term archive gain their webharvest.gov copies as attached recoveries;
-   - document kinds now also come from the publisher's link labels where the filename gives none;
-   - a file's name comes from each capture row, download header first: about 95,000 files carry a download-header name and change `source_id`, and a body offered several names keeps one source file per name in one document;
-   - about 460,000 rows today named only from `download_state` are saved-text duplicates of exact copies at the same URL, and collapse into their twins; where a URL's copies differ (532 URLs), the exact copy becomes the saved file;
-   - about 34,100 GovInfo ZIP groups and about 560 same-stem groups merge; the old catalog's about 19,500 multi-format same-stem groups were mostly (about 17,400) PDFs paired with one docs.house.gov 404 body saved at `.xml` URLs, a placeholder that is no good fetch;
-   - `document_id` keeps today's formula, but its inputs now include real web pages and untyped bodies;
-   - source IDs change where B0 removed a credential parameter from a source URL;
-   - link-label coverage changes, because labels now come from saved pages; labels that came only from scraper records inside receipts are their own cause;
-   - capture dates change where receipts lack times.
+4. **Parity against the pinned catalog pair**, the oracle (not F0, which picks one document per shared body), on browser-visible fields, compared many-to-many and keyed by source evidence: the files and URLs each document holds. IDs match today's wherever their inputs match.
+   - **Expected, explained changes:**
+     - about 615k catalog rows (captions, metadata records, playlists and API responses; [[DATA-MODEL]] §7.5) and the listing pages leave the list;
+     - documents lose soft-error and wrapper pages, and about 4,900 lose Senate landing pages, from their body sets, while short real pages and real web pages now count;
+     - cut-off copies, damaged PDFs and pages whose reading failed (reported by format and error type) drop out of body sets, and feed pages become listings;
+     - the 3,690 recovered files that a real fetch also saved become real bodies;
+     - about 2,250 pages saved twice in one fetch (a direct attempt and a provider retry) merge by main content, and 999 veterans.house.gov pages from the End of Term archive gain their webharvest.gov copies as attached recoveries;
+     - document kinds now also come from the publisher's link labels where the filename gives none;
+     - a file's name comes from each capture row, download header first: about 95,000 files carry a download-header name and change `source_id`, and a body offered several names keeps one source file per name in one document;
+     - about 460,000 rows today named only from `download_state` are saved-text duplicates of exact copies at the same URL, and collapse into their twins; where a URL's copies differ (532 URLs), the exact copy becomes the saved file;
+     - about 34,100 GovInfo ZIP groups and about 560 same-stem groups merge; the old catalog's about 19,500 multi-format same-stem groups were mostly (about 17,400) PDFs paired with one docs.house.gov 404 body saved at `.xml` URLs, a placeholder that is no good fetch;
+     - `document_id` keeps today's formula, but its inputs now include real web pages and untyped bodies;
+     - source IDs change where B0 removed a credential parameter from a source URL;
+     - link-label coverage changes, because labels now come from saved pages; labels that came only from scraper records inside receipts are their own cause;
+     - capture dates change where receipts lack times.
    - **The comparison reports by cause, not by document:** each known cause has a checkable predicate, its count and a few reviewed examples, and every difference that fits no known cause is listed separately. Only that last group needs reading one by one.
-   - Classify each unexplained difference: a rule change (fine, recorded with the rule); an old-pipeline error (the new model wins); or a fact that exists only in derived tables (a blocker, §8).
+   - **Classify each unexplained difference:** a rule change (fine, recorded with the rule); an old-pipeline error (the new model wins); or a fact that exists only in derived tables (a blocker, §8).
 
 **Done when:** every known cause has its predicate, count and examples, every unexplained difference is classified with no blocker left, and the model runs as a CLI job on the smallest runner.
 
@@ -300,12 +347,31 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 - **The freeze:** no browser or engine performance work beyond this plan until there is a user or a measured failure on real data.
 - **Committee explorer and weekly retention onto incremental tables:** the approach conflicts with the design. Re-scope it before starting.
 - **Considered, not chosen,** so not re-proposed without new information: showing the original link's last status (36,768 documents' URLs last returned 404 or 410), showing saved-file size (2,467 files over 50 MB), and witness links from House meeting XML.
-- **Parquet variant for the folds:** revisit when all three hold: an iceberg-rust release writes variant through its Parquet writer (0.10.1, the pinned release, has none; 0.11 is expected to add it), Basin Catalog accepts format-version 3 tables, and DataFusion core or a maintained crate can query variant. The candidates are nested, mixed-type readings such as Congress.gov API JSON and MODS or meeting XML trees.
+- **Parquet variant for the folds:** revisit when all three hold:
+  - an iceberg-rust release writes variant through its Parquet writer (0.10.1, the pinned release, has none; 0.11 is expected to add it);
+  - Basin Catalog accepts format-version 3 tables;
+  - DataFusion core or a maintained crate can query variant.
+
+  The candidates are nested, mixed-type readings such as Congress.gov API JSON and MODS or meeting XML trees.
 - **Full-text extraction of every PDF:** one later read of about 403 GB into `pdf_text` ([[DATA-MODEL]] §6.6). It gives page counts and text fingerprints for every PDF, which makes dedupe across sites cheap to revisit.
 
-## 8. Open Issue
+## 8. Uncertainties and Tests
 
-**Only if needed:** if D1 or E4 finds facts that exist only in derived tables, including link labels found only in scraper records inside receipts, the owner decides whether to record them as provenance first or accept losing them.
+Each row names an unknown, the step that settles it and what it decides, and closes only with its measurement. The widest is the model (track E), bounded unless parity finds facts only derived tables hold.
+
+| Uncertainty | Settled by | Decides |
+|---|---|---|
+| Basin compacts only files not yet compacted, so a table's file and manifest counts may grow with every run | M1 | Iceberg, or dated Parquet files with an `If-Match` manifest |
+| DataFusion's wide joins, grouping and named steps fit the smallest runner's memory pool | M2, then D2 on real links | The model's step form and the size of track C |
+| The receipt reader and ingest mapping read every older shape: 2.96M of 3.9M rows carry no outcome, 1,420 receipts mix types on a path, one line is 188 MB | M2's receipt step, then D1's comparison with the old index | The reader, the outcome and mode table, and any fact that exists only in derived tables (the owner records it as provenance or accepts losing it) |
+| The rules give the right documents on real data, not only on fixtures and proxies | S1 on real slices; the labeled sample (S2) | Rule changes, the page thresholds and the final file-shape list |
+| Re-packaged editions join the wrong XML | S2's edition count | The owner widens fingerprint candidates, or not |
+| Which maintained extractor gives stable main content | D2, on the pages saved twice in one fetch | The `fingerprint` parser |
+| How many links pages hold (*est.* 4.2M, from 80 pages) and how large the link join is | D2's link backfill | The link-join budget and M2's memory verdict |
+| The 33,369 never-sniffed PDF candidates are PDFs | B13's `%PDF-` test | The copy count |
+| No older body beyond the 61 known has a multipart ETag | B10's full re-hash | Nothing, unless the count changes |
+| The numbers in the specifications reproduce: each review round found 10–20 of about 370 wrong | Each load-bearing number re-derived from its committed script before a rule relies on it | Corrections in place |
+| Speed and heap targets on real phones and desktops | A11 | The canary's and contract test's thresholds |
 
 ## 9. References
 
