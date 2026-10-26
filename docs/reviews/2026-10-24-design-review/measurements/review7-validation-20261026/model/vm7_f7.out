@@ -1,0 +1,90 @@
+
+## (b) old catalog documents: candidate occurrence counts (sum, max)
+   (1314099, 26, 691014, 3, 1230879, 20, 1269358, 455, 4727694, 33479)
+
+## (b) filenames rows per document_id: total, max
+   (1241157, 455)
+
+## (b) filenames rows x source_paths (one row per (source file, path)): total, max per document
+   (1695040, 455)
+
+## (b) distinct (source_id, path) per document: total, max
+   (1695040, 455)
+
+## (b) the documents with most occurrence structs and most distinct capture URLs
+   (33479, 2, 4, 3, 2, 'rules_of_the_procedure_119-21.pdf', '[html, pdf]')
+   (6188, 1144, 1, 1, 455, 'Error.aspx', '[html]')
+   (1202, 1, 2, 2, 1, '684CDD8A379BC5B497135D6F9801DEAABE2717F846C3CE6FFA', '[pdf]')
+   (1202, 1, 2, 2, 1, 'E7AA05F1A7AE923D542BA182C87F52F3033E52125531F69E0B', '[pdf]')
+   (1097, 215, 1, 1, 1, 'error', '[html]')
+
+## (b) max distinct capture URLs over documents
+   (1144,)
+
+## (a) top-level URLs: max distinct real bodies at one source URL (proxy)
+   (3,)
+
+## (a) top-level URLs: max distinct real source files (body, URL-derived name) at one source URL; also old catalog source files per source_url
+   (3, 455)
+
+## (a) container addresses: max distinct real member files (sha, member path) in one archive URL, plus the container itself
+   (None, 111, 107)
+   ('https://www.govinfo.gov/content/pkg/CHRG-117hhrg44535.zip', 46, 46)
+   ('https://www.govinfo.gov/content/pkg/CHRG-117shrg54945.zip', 12, 12)
+   ('https://api.congress.gov/v3/committee-meeting/115/house', 10, 10)
+   ('https://api.congress.gov/v3/committee-meeting/118/house', 9, 9)
+
+## (a) container addresses: distinct real member files by member basename (DM 7.4 grain: body + name)
+   (None, 109)
+   ('https://www.govinfo.gov/content/pkg/CHRG-117hhrg44535.zip', 46)
+   ('https://www.govinfo.gov/content/pkg/CHRG-117shrg54945.zip', 12)
+   ('https://api.congress.gov/v3/committee-meeting/115/house', 10)
+   ('https://api.congress.gov/v3/committee-meeting/117/house', 9)
+
+## (a) the member endpoint with many bodies (one member path, many bodies)
+
+## (a) CHRG-117hhrg44535.zip: source files at the address by kind (all rows with a body, any role), and real ones
+   (False, 'html', 'document', 23, 23)
+   (False, 'pdf', 'document', 23, 23)
+   (False, 'xml', 'source_record', 3, 0)
+   (True, 'html', 'document', 1, 0)
+   (True, 'zip', 'document', 2, 1)
+
+## (a) max over addresses of: distinct (body, member path) source files with a body at that context URL (any role, good or not)
+   ('https://www.govinfo.gov/content/pkg/CHRG-117hhrg44535.zip', 52)
+   ('https://www.finance.senate.gov/download/appendix-b_-abo-incompatibility-case-2&download=1', 25)
+   ('https://www.finance.senate.gov/download/appendix-k_-donation-after-circulatory-death-case-1&download=1', 20)
+   ('https://www.finance.senate.gov/download/appendix-j_-allocation-error-case&download=1', 19)
+
+## (a) same, good fetches only, any role
+   ('https://www.govinfo.gov/content/pkg/CHRG-117hhrg44535.zip', 50)
+   ('https://www.govinfo.gov/content/pkg/CHRG-117shrg54945.zip', 16)
+   ('https://www.govinfo.gov/content/pkg/CHRG-118shrg58371.zip', 12)
+   ('https://www.govinfo.gov/content/pkg/CHRG-107shrg87708.zip', 12)
+
+## (a) same, real files plus the container's source records (all members + container, good)
+   ('https://www.govinfo.gov/content/pkg/CHRG-117hhrg44535.zip', 50)
+   ('https://www.govinfo.gov/content/pkg/CHRG-117shrg54945.zip', 16)
+   ('https://www.govinfo.gov/content/pkg/CHRG-118shrg58371.zip', 12)
+
+## (b) old catalog: top documents by distinct (source_id, path), with filename and format
+   (455, 'Error.aspx', '[html]', 455)
+   (27, 'wilsbach_opening_statement1.pdf', '[pdf]', 1)
+   (21, 'bills-1174277ih.pdf', '[pdf]', 1)
+   (20, 'joint fy24 posture statement - final.pdf', '[html, pdf]', 2)
+   (20, '116th Congress Nominations Hearings - First S', '[pdf]', 1)
+   (20, 'HHRG-117-AS00-Wstate-RaymondJ-20220427.pdf', '[html, pdf]', 2)
+   (20, 'bills-117pih-thediverseinvestmentadvisersact.', '[pdf]', 1)
+   (19, 'download_testimony19.pdf', '[html, pdf]', 4)
+   (17, 'HHRG-114-FA05-Bio-StiversJ-20160511.pdf', '[pdf]', 1)
+   (17, 'BILLS-1174495ih.pdf', '[pdf]', 1)
+   (16, 'HHRG-118-AP01-Bio-VilsackT-20240911.pdf', '[pdf]', 1)
+   (15, 'HHRG-119-AP24-Bio-SwagelP-20260318.pdf', '[pdf]', 1)
+
+## (b) old catalog: top documents by distinct (source_id, path) excluding documents whose bodies include a >100-URL placeholder or a non-2xx-only body
+   (455, 'Error.aspx', '[html]')
+   (27, 'wilsbach_opening_statement1.pdf', '[pdf]')
+   (21, 'bills-1174277ih.pdf', '[pdf]')
+   (20, 'bills-117pih-thediverseinvestmentadvisersact.', '[pdf]')
+   (20, '116th Congress Nominations Hearings - First S', '[pdf]')
+   (20, 'joint fy24 posture statement - final.pdf', '[html, pdf]')

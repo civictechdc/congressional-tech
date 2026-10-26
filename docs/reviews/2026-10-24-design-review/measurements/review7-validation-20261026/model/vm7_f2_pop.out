@@ -1,0 +1,20 @@
+
+## [exact] endpoints with >=2 distinct real bodies, WARC excluded: by format set, member?
+   ('[html]', False, 2268, 4549)
+   ('[html, other, pdf, xml]', True, 1, 107)
+
+## [ukey] endpoints with >=2 distinct real bodies, WARC excluded: by format set, member?
+   ('[html]', False, 2467, 4947)
+   ('[html, other, pdf, xml]', True, 1, 107)
+
+## [exact] html+pdf endpoints: count, by format set, host
+   (None, 1)
+
+## html bodies to classify
+   (0, 0)
+
+## pdf bodies at those endpoints
+   (0, None)
+
+## example endpoints
+   (None,)

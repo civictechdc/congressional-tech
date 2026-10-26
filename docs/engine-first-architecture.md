@@ -4,11 +4,11 @@
 
 ## Abstract
 
-This specification defines a system that captures congressional source documents, keeps them permanently, and publishes a static public explorer over them. It has three layers: an append-only, content-addressed raw log; a lake of append-only tables derived from it; and immutable releases produced by one deterministic SQL job over the lake. One data engine (docspec-rs) does all data movement, joins, grouping and export; the application supplies fetchers, parsers, SQL, registries and the site. Every schema, derivation, order and registry is defined once, in [[DATA-MODEL]].
+This specification defines a system that captures congressional source documents, keeps them permanently, and publishes a static public explorer over them. It has three layers: an append-only, content-addressed raw log; a lake of append-only tables derived from it; and immutable releases produced by one deterministic SQL job over the lake. One data engine (docspec-rs) does all data movement, joins, grouping and export; the application supplies fetchers, parsers, SQL, registries and the site.
 
 ## Status of This Document
 
-This is an Editor's Draft. It describes the target system independently of any current implementation. [[DATA-MODEL]] defines schemas, derivations and invariants; [[IMPLEMENTATION-PLAN]], a Note, orders the work from the current system to this one and holds every measurement still to run. Comments should be directed to the editor.
+This is an Editor's Draft. It describes the target system independently of any current implementation. [[DATA-MODEL]] defines schemas, derivations and invariants; [[IMPLEMENTATION-PLAN]], a Note, orders the work from the current system to this one and holds every measurement still to run.
 
 ## Table of Contents
 
@@ -139,7 +139,7 @@ Five conformance classes each conform by meeting the requirements that apply to 
 2. **Append or replace, never update.** Logs only grow. Derived outputs are recomputed and swapped atomically; catalog compaction rewrites files, not rows.
 3. **Do expensive work once.** Every body is stored once and parsed once per parser version; every filename is read once per catalog version. Platform primitives (content addressing, conditional writes, Content-MD5, ETags, catalog commits) replace hand-built bookkeeping.
 4. **Expensive work grows with change, not with history.** Fetching new URLs, parsing and storing grow with what is new. The repeated work that remains is named in §16 and never re-reads stored bodies.
-5. **Engine first.** Data movement, joins, grouping, aggregation and export live in the engine. Application policy (ID formulas, field names, grouping rules, registries, parsers) is passed in as SQL, data and specs and MUST NOT be compiled into the engine.
+5. **Engine first.** Data movement, joins, grouping, aggregation and export live in the engine. Application policy is passed in as SQL, data and specs and MUST NOT be compiled into the engine (§13).
 6. **Nothing reaches users unverified.** A release goes live only after the site's own reader has loaded it (§10.3.5).
 7. **Small bytes.** Keys and facts are stored once, as typed columns, hashes as binary. Provenance is never copied into derived rows, and nothing derivable is stored. Browser files are the one place where shape follows the reader (§10.1).
 8. **Components behind contracts.** Each component (§6) depends only on the contracts of the components it uses. Policy is injected as registries and the model profile; external systems (the object store, local disk, fetch transports, the catalog) are injected as adapters. Any implementation that passes a component's contract tests may stand behind it, and tests run the production code against local adapters (§15).
@@ -180,7 +180,7 @@ RAW LOG (one bucket; locked prefixes)
         │
         ▼  docspec-rs, Basin Catalog
 LAKE (Iceberg, append-only)
-  captures           one row per body a receipt line references   O(new receipts)
+  captures           one row per referenced body or bodiless line O(new receipts)
   readings           one row per (body, parser, version)          O(new bodies in scope)
   filename_readings  one row per (filename, URL, catalog)         O(new pairs)
   committee_records  one row per committee in an API response     O(new API bodies)
@@ -237,7 +237,7 @@ Key: `bodies/sha256/<aa>/<sha>`, where `sha` is the SHA-256 of the response enti
 2. else checks with one HEAD whether the older copy `…/<sha>.gz` exists, and if so records the attempt as `unchanged` with suffix `.gz`;
 3. else MUST store the body with one create-only PUT (`If-None-Match: *`) carrying `Content-MD5`. A 412 means the body exists: the writer MUST record the attempt as `unchanged` with suffix `''`, with no HEAD, download or comparison.
 
-Every capture entry records the suffix its body is stored under. Writers MUST NOT use multipart upload: multipart ETags are not MD5s, and no body approaches the 5 GB single-PUT limit. Every body-store adapter keeps these semantics; local disk writes a temporary file and links it into place, never replacing an existing one. Over half of body-bearing attempts find an existing body.
+Every capture entry records the suffix its body is stored under. Writers MUST NOT use multipart upload: multipart ETags are not MD5s, and no body approaches the 5 GB single-PUT limit. Every body-store adapter keeps these semantics; local disk writes a temporary file and links it into place, never replacing an existing one.
 
 **Nothing is cut off.** The fetcher MUST spool each body to a temporary file, so any size up to the single-PUT limit is stored whole. An attempt is complete only as [[DATA-MODEL]] §5.2 defines it; an incomplete body is kept as evidence, never a real file, and its URL is retried.
 
@@ -267,7 +267,7 @@ Receipts are public and permanent, so they carry no credentials, cookies or loca
 
 **Full re-hash** is an explicit job that downloads bodies and records each one's size, ETag and verified SHA-256 under `provenance/verification/`, skipping keys that already have a record. It runs once before the first raw check, because no older line records an MD5 (all 1,036,256 bodies), and afterwards only before a migration.
 
-**Raw check.** Each week the maintenance job makes one LIST of `bodies/` and joins it to the recorded keys of `captures` and the verification records. It confirms that every recorded key exists and that every stored body has the size and MD5 its creating line or verification record gives. A body with neither is re-hashed once, and 25 random bodies are downloaded and checked end to end; nothing else reads body bytes, and there is no per-body HEAD.
+**Raw check.** Each week the maintenance job makes one LIST of `bodies/` and joins it to the recorded keys of `captures` and the verification records. It confirms that every recorded key exists and that every stored body has the size and ETag its creating line or verification record gives. A body with neither is re-hashed once, and 25 random bodies are downloaded and checked end to end; nothing else reads body bytes, and there is no per-body HEAD.
 
 **Durability.** Raw is kept in one R2 bucket with no second copy. The lock guards against deletion and overwrite by any credential; R2's own durability guards against hardware loss. A provider-side loss is the accepted risk.
 
@@ -275,9 +275,9 @@ Receipts are public and permanent, so they carry no credentials, cookies or loca
 
 ### 8.1 Common Rules
 
-All lake tables are Iceberg tables in the bucket's Basin Catalog, with the types, properties and writer settings of [[DATA-MODEL]] §4 and §6. Every commit MUST assert the table UUID and the snapshot its work list was read at, so a concurrent commit makes it fail rather than be rebased onto the new head.
+All lake tables are Iceberg [[ICEBERG]] tables in the bucket's Basin Catalog, with the types, properties and writer settings of [[DATA-MODEL]] §4 and §6. Every commit MUST assert the table UUID and the snapshot its work list was read at, so a concurrent commit makes it fail rather than be rebased onto the new head.
 
-**Conflict retry.** Basin's own maintenance commits to the same tables, so an append can lose a race. The producer MUST then reload the table, recompute its work list against the new snapshot, and commit only the rows still missing, reusing rows already computed. It retries at most three times. It MUST NOT commit rows the new work list no longer needs, which would duplicate rows when two runs ingest the same receipts. A losing attempt's files become orphans (§8.6).
+**Conflict retry.** Basin's own maintenance commits to the same tables, so an append can lose a race. The producer MUST then reload the table, recompute its work list against the new snapshot, and commit only the rows still missing, reusing the files already written when the work list is unchanged. It retries at most three times. It MUST NOT commit rows the new work list no longer needs, which would duplicate rows when two runs ingest the same receipts. Otherwise a losing attempt's files become orphans (§8.6).
 
 **Work lists.** Every producer finds its work by an anti-join of its inputs against its rows, so an input that produced nothing still needs a row ([[DATA-MODEL]] §6). A daily run appends once; a backfill appends once per batch, so it always resumes.
 
@@ -297,7 +297,7 @@ One row per `(body, parser, parser_version)`; each media family has its own pars
 - **HTML, XML and JSON** are read in full once per version, with each body's links recorded as written. The model resolves the links against every address the page was fetched at, so link context covers all history while a page fetched many times stores its links once.
 - **PDF, ZIP and captions** get no full reading. Full-text extraction of every PDF (about 403 GB) is deferred to `pdf_text`; ZIP members are captured as their own entries.
 - **Text fingerprints are for candidates only** ([[DATA-MODEL]] §6.2); the `fingerprint` parser runs after the other parsers (§12). There is no full-corpus text pass.
-- **An operational failure writes no row**, so the input stays on the work list; only a deterministic rejection of the input is recorded as an error.
+- **An operational failure writes no row** ([[DATA-MODEL]] §6.2), so the input stays on the work list.
 
 **Versions** are pinned, and a new one is backfilled in background batches before the profile moves to it ([[DATA-MODEL]] §7.1).
 
@@ -307,15 +307,15 @@ One row per `(filename, source_url, catalog_version)`: what the filename parser 
 
 ### 8.5 Committee and Meeting Records
 
-`committee_records` holds one row per committee in a Congress.gov committee API response, so pages show committee names instead of codes; `meeting_records` holds one row per meeting from the Congress.gov meeting JSON and its XML fallback for both chambers and from the House meeting inventories, so hearing pages show their title, date, type and committee ([[DATA-MODEL]] §6.4–6.5). Every response MUST come through the raw writer like any other fetch.
+`committee_records` and `meeting_records` ([[DATA-MODEL]] §6.4–6.5) let pages show committee names instead of codes, and a hearing's title, date, type and committee. Every response MUST come through the raw writer like any other fetch.
 
 ### 8.6 Maintenance
 
-Basin Catalog's catalog-level maintenance compacts every table (target 128 MB) and expires snapshots older than 30 days, keeping the last 5. Expiration deletes the data files only expired snapshots referenced. At about 315 KB of appends a day, compaction moves a few GB a month.
+Basin Catalog's catalog-level maintenance, run under a bucket-wide service credential, compacts files not yet compacted (target 128 MB) and expires snapshots older than 30 days, keeping the last 5. Expiration deletes the data files only expired snapshots referenced.
 
 **Orphans.** Basin does not remove files no snapshot ever referenced, such as a lost commit's data file. The raw check reports their bytes; cleanup waits until that number matters.
 
-**Schema changes rebuild.** A lake table never changes schema in place: a new schema is a new table version, built from raw and provenance in background batches, and the maintenance job drops the old one with purge when [[DATA-MODEL]] §6 allows.
+**Schema changes rebuild.** A new schema is a new table version ([[DATA-MODEL]] §6), built in background batches; the maintenance job drops the old one with purge once [[DATA-MODEL]] §6 allows.
 
 ## 9. Model
 
@@ -323,27 +323,27 @@ Basin Catalog's catalog-level maintenance compacts every table (target 128 MB) a
 
 ### 9.1 One Job
 
-The domain model is versioned SQL in the application repository. One engine job registers the lake tables, provenance records and registries at the versions the model profile pins, runs the model as named steps, and writes only the release files. A step that later steps read more than once, such as the components and the documents, is materialized once inside the job's memory pool, because DataFusion inlines common table expressions and would recompute them. Public links do not depend on `document_id` (§10.1), so an ID that changes when a version joins a group costs nothing.
+The domain model is versioned SQL in the application repository. One engine job registers the lake tables, provenance records and registries at the versions the model profile pins, runs the model as named steps, and writes only the release files. A step that later steps read more than once, such as the components and the documents, is materialized once (§13), because DataFusion inlines common table expressions and would recompute them.
 
 ### 9.2 What Counts as a File
 
-A document is one distinct content; its files are the real files with that content, in any format, judged from the sniffed format and the readings by what a page says rather than by site templates or length. Captions, playlists, API responses, metadata records, error pages, listing pages, download wrappers and damaged PDFs stay as evidence: they never enter a document, but they still drive `url_state`; listing pages supply link context, and a wrapper's file is queued for capture.
+A document is one distinct content. A file is a real document when its main content is the document itself (testimony, a report, a transcript, a bill, a hearing record), not a list of links, a landing, download or error page, or metadata about a document; the rule reads this from the sniffed format and the readings, by what a page says rather than by site templates or length. Every other body stays as evidence ([[DATA-MODEL]] §7.3): it never enters a document, but it still drives `url_state`; listing pages supply link context, and a wrapper's file is queued for capture.
 
 ### 9.3 Grouping
 
 Source files connect when they share a real body, when one endpoint served re-packaged bytes with equal main text, when the publisher lists them together as formats of one document, and when a reviewer merges them. A new edition is a new document: an edition that ever shared an address with a different edition never joins a rendition group, so mirrors cannot merge editions transitively.
 
-Files connect through one node per body, fingerprint or rendition group, so a group of n files costs n edges, not n². Grouping runs in memory over dense integer IDs (a 32 MB parent array at 4M nodes; §13).
+Files connect through one node per body, fingerprint or rendition group, so a group of n files costs n edges, not n² (§13).
 
 ### 9.4 Saved File, Dates and Records
 
-A document's page links its preferred format, an exact copy before a provider's rendering; other formats are alternates, and a link to any rendition opens the same entry. The document date comes from the filename, else the contents, else the document's meeting, and is never a guess among several dates; the capture date is a real fetch's, never an import run's (§11.6).
+A document's page links its preferred format, an exact copy before a provider's rendering; other formats are alternates, and a link to any rendition opens the same entry. The document date is never a guess among several dates, and the capture date is a real fetch's, never an import run's ([[DATA-MODEL]] §7.5; §11.6).
 
 Meeting IDs from docs.house.gov, Congress.gov and the committee explorer share one space, so a page can list every document for a hearing. Official record keys (GovInfo package, bills, member Bioguide IDs) let a page link out, and committee codes map to Congress.gov system codes.
 
 ### 9.5 Recoveries and Reviews
 
-A recovery is evidence for its original link. On its own it never makes a real file, a link key or a capture date, and it stays out of `url_state` and text comparison; a real fetch of the same bytes still counts as that fetch. It attaches to the one listed document that holds its original link, or else keeps a page of its own, labeled by kind with its evidence.
+A recovery is evidence for its original link. On its own it never makes a real file, a body key or a capture date, and it stays out of `url_state` and text comparison; a real fetch of the same bytes still counts as that fetch. It attaches to the one listed document that holds its original link, or else keeps a page of its own, labeled by kind with its evidence.
 
 A review targets a link key, so it follows a file through merges and splits.
 
@@ -355,7 +355,7 @@ Joins between links, recoveries and source files use `url_key`, which unwraps re
 
 ### 10.1 Release Files
 
-The model's job writes the release files ([[DATA-MODEL]] §8.1); the six the site reads are linked by the list row number:
+The model's job writes the release files as Parquet [[PARQUET]] ([[DATA-MODEL]] §8.1); the six the site reads are linked by the list row number:
 
 | File | Purpose |
 |---|---|
@@ -367,7 +367,7 @@ The model's job writes the release files ([[DATA-MODEL]] §8.1); the six the sit
 | `meetings.parquet` | Hearing titles, dates, types and committees |
 | `url_state.parquet`, `capture_scope.json` | Capture's schedule, queue and scope, read by the capture job |
 
-- **Documents only.** There are no per-copy pages; a document page shows where each copy was seen and which page linked it.
+- **Documents only.** There are no per-copy pages.
 - **Links point at a file.** A document's ID changes whenever a version joins its group, but a file's digest never does, so a public link carries a link key, and `links` maps every real body of every listed document to its document's row. Old links keep resolving when a group or its saved file changes, and a recovery-only page keeps its link after the original finally downloads.
 - **No ID in `list`,** which would make it several times larger; the list row number links the files.
 - **Growth.** The export shards `detail` and `occurrences` by row range when an offset index outgrows a quick first fetch, at roughly 10 times today's rows. At that size `list` reaches 40–50 MB; then it is sharded by facet, or search moves to DuckDB-WASM or a server.
@@ -420,7 +420,7 @@ From the second flip on, at least the live and last-good releases exist. The mai
 
 ### 11.1 Reads
 
-The site reads pointer → release manifest → `list`, then `detail`, `links`, `occurrences`, `recoveries` and `meetings` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index, fetched once per `detail` row group per session, so a detail view is one round trip of concurrent page reads with no dictionary page beneath it; link lookups also use the column index.
+The site reads pointer → release manifest → `list`, then `detail`, `links`, `occurrences`, `recoveries` and `meetings` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent data-page reads; link lookups also use the column index.
 
 ### 11.2 Devices and Speed
 
@@ -438,7 +438,7 @@ The reader is a plain module with no DOM dependency, so the canary runs the code
 
 - A saved file opens at its physical key: `saved_body` plus `saved_suffix`.
 - Bodies written to §7.1 open directly; older gzip PDFs open their `.pdf` copy once it is recorded.
-- Other `.gz` bodies are fetched and unpacked with the browser's `DecompressionStream`, then opened with the media type from `detail`; those over 100 MB (579, up to 1.19 GB) are offered as a labeled compressed download.
+- Other `.gz` bodies are fetched and unpacked with the browser's `DecompressionStream`, then opened with the media type from `detail`; those whose original size exceeds 100 MB (313, up to 1.19 GB) are offered as a labeled compressed download.
 - A recovery is labeled by kind and links the recovered file.
 - A link key that no longer resolves opens a not-found notice.
 
@@ -463,8 +463,8 @@ backfill:    one producer's work list for a new version or table, in batches   (
 ```
 
 - **Order.** The lake steps run first, each on its own work list: `sniff` before the format parsers, which need formats, and `fingerprint` last, because the real-file rule gives its work list. Publish, backfills and maintenance never overlap (§10.3.7), so nothing lands between the lake steps and the pin.
-- **Budgets.** Each daily lake step has a work-list budget, set per runner class with its resources. A step whose work list exceeds it, such as a registry change that adds thousands of fingerprint candidates, is left to a backfill, and publish refuses at once rather than after the model runs.
-- **Idempotent steps.** Each step is keyed by its input, is a no-op when that has not changed, and commits durably, so a failed run resumes by running again. There are no journals.
+- **Budgets.** Each daily lake step has a work-list budget, set per runner class with its resources. A step whose work list exceeds it, such as a registry change that adds thousands of fingerprint candidates, is left to a backfill: publish refuses at once, rather than after the model runs, and starts that step's backfill, which runs next in the concurrency group.
+- **Idempotent steps.** Each step is keyed by its input, is a no-op when that has not changed, and commits durably, so a failed run resumes by running again, with no journal.
 - **Capture reads the public release.** It builds its queue from the live release's `url_state` and applies its `capture_scope.json`, so it needs no lake or release credentials, and it follows what its fetchers discover in the same run, such as the documents an API response lists. After a failed canary, capture works from a slightly older schedule, which is safe because body writes are create-only.
 - **Pinned engine.** The engine binary is pinned by revision and by a digest per runner OS recorded in the application repository, and MUST be checked against that digest before any storage access.
 - **Resources.** Threads, memory pool and scratch are set explicitly per runner class; the memory pool MUST NOT exceed the machine.
@@ -475,10 +475,10 @@ backfill:    one producer's work list for a new version or table, in batches   (
 
 The engine (docspec-rs) MUST provide:
 
-1. **Multi-input SQL jobs** in one DataFusion context, over Iceberg tables in Basin Catalog, Parquet files, and the gzip-compressed JSON lines of receipts read with an explicit schema; partition and column filters reach Iceberg scan planning; a named step can be materialized once within the memory pool.
+1. **Multi-input SQL jobs** in one DataFusion context, over Iceberg tables in Basin Catalog, Parquet files, and the gzip-compressed JSON lines of receipts, read with an explicit schema that nulls a conflicting value and keeps the raw line, so no line fails the read and none is lost silently; partition and column filters reach Iceberg scan planning; a named step can be materialized once, its batches reserved in the memory pool or written to scratch Parquet when the pool refuses.
 2. **Table operations** through the REST catalog: append, each commit asserting its table UUID and base snapshot, with the conflict retry of §8.1; create; and drop with purge.
 3. **Deterministic multi-file export** to §10.2, with the per-file writer settings of [[DATA-MODEL]] §8.1, SHA-256 and MD5 computed while writing, and row-range shards.
-4. **Connected components** in memory over dense integer IDs, refusing above a configured node count.
+4. **Connected components** in memory over dense integer IDs (a 32 MB parent array at 4M nodes), refusing above a configured node count.
 5. **Streaming I/O:** no re-read of a just-written object and no HEAD of an immutable file, except as §7.1 and §10.3.4 allow. File and row-group sizes come from writer settings ([[DATA-MODEL]] §6, §8.1).
 6. **Bounded resources** set by configuration: compute threads, memory pool and scratch space. Sorts and aggregates spill or fail clearly within the pool. Hash-join builds do not spill, so the engine builds the side the plan names, and plans keep wide columns off it: join on keys first, reduce, then attach the wide column.
 7. **A thin interface:** a library plus a CLI that runs a declarative job spec (inputs, SQL steps, outputs, export settings) and returns a machine-readable result.
@@ -516,14 +516,14 @@ Iceberg is used only to read, append, create and drop. If replace or branching i
 | Filename readings | O(new pairs) | Under a second daily; 7–18 minutes per catalog version |
 | Model + export | O(N log N) sorting plus scans and joins over every row; linear grouping | Seconds for the narrow plan |
 | Publish | O(release size) | About 95 MB of uploads on a day with changes |
-| Detail view | One page per leaf | One round trip after a one-time offset-index fetch per row group |
+| Detail view | One page per leaf | One round trip after a one-time fetch of each row group's offset indexes and dictionary pages |
 | Raw check | O(history) object metadata | About 1,300 list requests, no body bytes |
 
 A normal day moves about 4,000–8,000 object operations and 2 GB, inside R2's free tier at today's scale.
 
 The repeated work principle 4 accepts: capture re-fetches and re-hashes URLs on their recheck schedule; work-list anti-joins scan the keys already processed; the model recomputes every relation each run, link resolution, `url_key` and meeting references included; the `fingerprint` producer evaluates the real-file rule once more before the pin; a release upload is the whole release on any day with a change; and the raw check lists every body's metadata.
 
-Link matching grows with links times the source files at each matched address: about 696k pairs today, the most real files at one address being 50. The model reports the largest.
+Link matching grows with links times the source files at each matched address: about 696k pairs today, the most real files at one address being 47, the members of one GovInfo ZIP (a top-level URL holds at most 3). The model reports the largest.
 
 ## 17. References
 

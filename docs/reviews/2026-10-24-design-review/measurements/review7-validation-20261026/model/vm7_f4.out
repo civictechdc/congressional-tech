@@ -1,0 +1,47 @@
+
+## all govinfo ZIP rows (top-level): good?, format, recovery
+   ('html', False, False, 80303, 26405, 26404)
+   ('zip', True, False, 34507, 34440, 34440)
+   ('zip', False, False, 714, 714, 714)
+   ('m3u8', False, False, 227, 1, 224)
+   ('zip', False, True, 123, 123, 123)
+   ('json', False, False, 40, 2, 23)
+
+## real GovInfo ZIP bodies / lines / URLs
+   (34440, 34440, 34440)
+
+## ZIPs by member-kind multiset (distinct member paths per ZIP body)
+   ('[dip.xml, html/*.htm, mods.xml, pdf/*.pdf, premis.xml]', 33980)
+   ('[dip.xml, html/*.htm, mods.xml, premis.xml]', 112)
+   ('[dip.xml, html/*.htm, html/*.htm, mods.xml, pdf/*.pdf, pdf/*.pdf, premis.xml]', 92)
+   ('[dip.xml, html/*.htm, html/*.htm, html/*.htm, mods.xml, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, premis.xml]', 3)
+   ('[dip.xml, html/*.htm, html/*.htm, mods.xml, pdf/*.pdf, premis.xml]', 3)
+   ('[dip.xml, html/*.htm, html/*.htm, html/*.htm, html/*.htm, mods.xml, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, premis.xml]', 2)
+   ('[dip.xml, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, mods.xml, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, premis.xml]', 1)
+   ('[dip.xml, html/*.htm, mods.xml, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, premis.xml]', 1)
+   ('[dip.xml, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, html/*.htm, mods.xml, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, pdf/*.pdf, premis.xml]', 1)
+   ('[dip.xml, html/*.htm, html/*.htm, pdf/*.pdf]', 1)
+
+## summary: ZIPs with members; exactly the five; lacking pdf; >1 html or >1 pdf
+   (34196, 33980, 112, 104, 0)
+
+## real ZIPs with no captured members
+   (244,)
+
+## member roles in this proxy (xml members are source_record only by basename here)
+   ('html/*.htm', 'html', 'document', 34331)
+   ('pdf/*.pdf', 'pdf', 'document', 34217)
+   ('mods.xml', 'xml', 'source_record', 34195)
+   ('dip.xml', 'xml', 'source_record', 34195)
+   ('premis.xml', 'xml', 'source_record', 34195)
+   ('dip.xml', 'm3u8', 'playlist', 1)
+
+## one-body-per-format among real members + the ZIP (xml manifests excluded as source records): ZIPs drawing edges; refused
+   (34092, 104, 0, 33980)
+
+## same, if METS (dip.xml) were NOT a source record: dip.xml becomes a real xml document in every ZIP
+   (34092,)
+
+## sample ZIP URLs for a public check
+   ('https://www.govinfo.gov/content/pkg/CHRG-109shrg25116.zip', '0002317e5f650f1fdee85e3842b751fc85ed1ddf0894cbf42ef95cf59435f20a')
+   ('https://www.govinfo.gov/content/pkg/CHRG-114hhrg98898.zip', '0002dfe774d213f4ee7216fa49bc85ed45335bb727597fe8ebf2a69e0492d1fd')

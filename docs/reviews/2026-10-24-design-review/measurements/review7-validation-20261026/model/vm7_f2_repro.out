@@ -1,0 +1,34 @@
+
+## reviewer predicate: endpoints by format set (top)
+   ('[html, zip]', 5439)
+   ('[pdf, zip]', 4756)
+   ('[html, other]', 2251)
+   ('[zip]', 685)
+   ('[pdf]', 505)
+   ('[html]', 268)
+   ('[xml, zip]', 15)
+   ('[xml]', 14)
+   ('[html, pdf]', 3)
+   ('[other, zip]', 2)
+
+## [html,pdf] and [html,pdf,zip] endpoints: rows by format and recovery flag and fidelity and family
+   ('html', False, 'exact-bytes', 'external/provider-responses', 'http_error', 4, 3, 2)
+   ('pdf', False, 'exact-bytes', 'external/provider-responses', 'http_error', 2, 2, 2)
+   ('pdf', False, 'exact-bytes', 'external/provider-responses', 'saved', 2, 1, 1)
+   ('html', False, 'exact-bytes', 'external/provider-responses', 'saved', 1, 1, 1)
+   ('pdf', True, 'exact-bytes', 'documents', 'saved', 1, 1, 1)
+
+## endpoints where every PDF row is a recovery import
+   (False, False, 3)
+
+## example
+   ('http://r20.rs6.net/tn.jsp?t=7zekusyab.0.0.zaob78xab.0&id=preview&r=3&p=http%3A%2F%2Fwww.gao.gov%2Fas', 'html', False, 'exact-bytes', 'receipts/external/provider-responses/2026-10-11/download-20261011T0127', '022ba6bd42')
+   ('http://r20.rs6.net/tn.jsp?t=7zekusyab.0.0.zaob78xab.0&id=preview&r=3&p=http%3A%2F%2Fwww.gao.gov%2Fas', 'pdf', False, 'exact-bytes', 'receipts/external/provider-responses/2026-10-11/download-20261011T0127', 'be03b6c8a4')
+   ('http://r20.rs6.net/tn.jsp?t=7zekusyab.0.0.zaob78xab.0&id=preview&r=3&p=http%3A%2F%2Fwww.gao.gov%2Fas', 'pdf', False, 'exact-bytes', 'receipts/external/provider-responses/2026-10-11/download-20261011T0127', 'be03b6c8a4')
+   ('http://r20.rs6.net/tn.jsp?t=tywlfgzab.0.0.zaob78xab.0&id=preview&r=3&p=https%3A%2F%2Fosc.gov%2FPubli', 'html', False, 'exact-bytes', 'receipts/external/provider-responses/2026-10-11/download-20261011T0127', 'b3e386e5e7')
+   ('http://r20.rs6.net/tn.jsp?t=tywlfgzab.0.0.zaob78xab.0&id=preview&r=3&p=https%3A%2F%2Fosc.gov%2FPubli', 'html', False, 'exact-bytes', 'receipts/external/provider-responses/2026-10-11/download-20261011T0127', 'b3e386e5e7')
+   ('http://r20.rs6.net/tn.jsp?t=tywlfgzab.0.0.zaob78xab.0&id=preview&r=3&p=https%3A%2F%2Fosc.gov%2FPubli', 'pdf', False, 'exact-bytes', 'receipts/external/provider-responses/2026-10-11/download-20261011T0127', 'b3e386e5e7')
+   ('http://r20.rs6.net/tn.jsp?t=y6kyhsyab.0.0.zaob78xab.0&id=preview&r=3&p=http%3A%2F%2Fnapawash.org%2Fi', 'html', False, 'exact-bytes', 'receipts/external/provider-responses/2026-10-11/download-20261011T0127', 'f2b995fafb')
+   ('http://r20.rs6.net/tn.jsp?t=y6kyhsyab.0.0.zaob78xab.0&id=preview&r=3&p=http%3A%2F%2Fnapawash.org%2Fi', 'html', False, 'exact-bytes', 'receipts/external/provider-responses/2026-10-11/download-20261011T0127', '4e7e32e947')
+   ('http://r20.rs6.net/tn.jsp?t=y6kyhsyab.0.0.zaob78xab.0&id=preview&r=3&p=http%3A%2F%2Fnapawash.org%2Fi', 'pdf', False, 'exact-bytes', 'receipts/external/provider-responses/2026-10-11/download-20261011T0127', '4e7e32e947')
+   ('https://web.archive.org/web/20170119104256id_/http://r20.rs6.net/tn.jsp?t=tywlfgzab.0.0.zaob78xab.0&', 'pdf', True, 'exact-bytes', 'receipts/documents/2026-10-15/download-filename-recovery-all-20261015-', 'f3f953b645')

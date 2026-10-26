@@ -1,0 +1,2495 @@
+{
+ "population_over_100MiB_original": 588,
+ "results": [
+  {
+   "group": "exact",
+   "key": "bodies/sha256/29/29594f8d69942ae1b15155030cf0febf3b9a69397fb16c27aad029e186e4879d.gz",
+   "snapshot": {
+    "sha256": "29594f8d69942ae1b15155030cf0febf3b9a69397fb16c27aad029e186e4879d",
+    "bytes": 414078126,
+    "stored_bytes": 389401983,
+    "first_retrieved_at": "2026-09-29T02:18:55.893469+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"838dc2a5c5e086a882092cdee714bb64-24\"",
+    "length": "389401983",
+    "last_modified": "Thu, 01 Oct 2026 05:19:14 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"838dc2a5c5e086a882092cdee714bb64-24\"",
+    "length": "389401983",
+    "last_modified": "Thu, 01 Oct 2026 05:19:14 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/33/3346c6a9bd905e440f500dac78946d61e002b1a014c3d056c7b0f1ce3c2b7158.gz",
+   "snapshot": {
+    "sha256": "3346c6a9bd905e440f500dac78946d61e002b1a014c3d056c7b0f1ce3c2b7158",
+    "bytes": 273135782,
+    "stored_bytes": 247507988,
+    "first_retrieved_at": "2026-10-06T23:07:12.762771+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T225750Z-9fa7979e8c0f-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"35c0980aa4408a22034343305a3eb496\"",
+    "length": "247507988",
+    "last_modified": "Tue, 06 Oct 2026 23:08:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"35c0980aa4408a22034343305a3eb496\"",
+    "length": "247507988",
+    "last_modified": "Tue, 06 Oct 2026 23:08:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/68/685b0e38647e66a16325969c6562229daf88eafb048540cc87b7e7c869f39816.gz",
+   "snapshot": {
+    "sha256": "685b0e38647e66a16325969c6562229daf88eafb048540cc87b7e7c869f39816",
+    "bytes": 165456860,
+    "stored_bytes": 158943577,
+    "first_retrieved_at": "2026-10-06T21:26:54.820825+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T211657Z-19b75de6b5ee-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"5e78f2a2a9eb56008a1747db2eeef5e7\"",
+    "length": "158943577",
+    "last_modified": "Tue, 06 Oct 2026 21:28:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"5e78f2a2a9eb56008a1747db2eeef5e7\"",
+    "length": "158943577",
+    "last_modified": "Tue, 06 Oct 2026 21:28:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/3b/3b95cff30b9d8ad6b092e33b6b6c5fb2989d34852268efe040d3f9cdd19597e5.gz",
+   "snapshot": {
+    "sha256": "3b95cff30b9d8ad6b092e33b6b6c5fb2989d34852268efe040d3f9cdd19597e5",
+    "bytes": 429206717,
+    "stored_bytes": 429286737,
+    "first_retrieved_at": "2026-10-06T23:40:55.493602+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T232642Z-60c2df098405-000004.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"05365093c5d7fbaa50f4a6abdde6fcc3\"",
+    "length": "429286737",
+    "last_modified": "Tue, 06 Oct 2026 23:43:50 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"05365093c5d7fbaa50f4a6abdde6fcc3\"",
+    "length": "429286737",
+    "last_modified": "Tue, 06 Oct 2026 23:43:50 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/f0/f0a44ca983e8ff2655b1bb38cba552b0804f9e9da674523a31cd2d3b28b73d3d.gz",
+   "snapshot": {
+    "sha256": "f0a44ca983e8ff2655b1bb38cba552b0804f9e9da674523a31cd2d3b28b73d3d",
+    "bytes": 413397922,
+    "stored_bytes": 413457361,
+    "first_retrieved_at": "2026-10-06T17:51:03.337705+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T173547Z-6da8dfe58575-000003.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"02e3a633b818912af172531eeb2e0a86\"",
+    "length": "413457361",
+    "last_modified": "Tue, 06 Oct 2026 17:53:05 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"02e3a633b818912af172531eeb2e0a86\"",
+    "length": "413457361",
+    "last_modified": "Tue, 06 Oct 2026 17:53:05 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/c9/c9a08ef6e9876d697264909d8e88ce5ffd32b7e4e2ea0c26469c05ff0bea5631.gz",
+   "snapshot": {
+    "sha256": "c9a08ef6e9876d697264909d8e88ce5ffd32b7e4e2ea0c26469c05ff0bea5631",
+    "bytes": 163835280,
+    "stored_bytes": 159113150,
+    "first_retrieved_at": "2026-09-29T10:52:57.266984+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"7b99ede22f650a25de912d5b4909e683\"",
+    "length": "159113150",
+    "last_modified": "Thu, 01 Oct 2026 07:05:58 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"7b99ede22f650a25de912d5b4909e683\"",
+    "length": "159113150",
+    "last_modified": "Thu, 01 Oct 2026 07:05:58 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/03/03415f3001c5862ea93f3fcd76aa0243b9195d332d6f136831c85913e05883b4.gz",
+   "snapshot": {
+    "sha256": "03415f3001c5862ea93f3fcd76aa0243b9195d332d6f136831c85913e05883b4",
+    "bytes": 162600606,
+    "stored_bytes": 162617681,
+    "first_retrieved_at": "2026-10-06T22:59:36.441226+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T225750Z-9fa7979e8c0f-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"c002b6160bee18b7ae6c7c00383c5e64\"",
+    "length": "162617681",
+    "last_modified": "Tue, 06 Oct 2026 23:00:27 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"c002b6160bee18b7ae6c7c00383c5e64\"",
+    "length": "162617681",
+    "last_modified": "Tue, 06 Oct 2026 23:00:27 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/c7/c7ad79d039d78fe41d71df48ab7a6b0009a5077881ef09ca0b0149146cb94655.gz",
+   "snapshot": {
+    "sha256": "c7ad79d039d78fe41d71df48ab7a6b0009a5077881ef09ca0b0149146cb94655",
+    "bytes": 172494450,
+    "stored_bytes": 164433712,
+    "first_retrieved_at": "2026-09-29T08:05:22.139053+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"7b188af03df51b803af96aff22311827\"",
+    "length": "164433712",
+    "last_modified": "Thu, 01 Oct 2026 07:06:35 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"7b188af03df51b803af96aff22311827\"",
+    "length": "164433712",
+    "last_modified": "Thu, 01 Oct 2026 07:06:35 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/b1/b115b0a02be684533840f6a623020ae20198cb8659640c131b975d60caf497a0.gz",
+   "snapshot": {
+    "sha256": "b115b0a02be684533840f6a623020ae20198cb8659640c131b975d60caf497a0",
+    "bytes": 155704019,
+    "stored_bytes": 151274024,
+    "first_retrieved_at": "2026-09-29T02:36:08.278582+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"82b3f0586dba4d6e71528bd2023baa34\"",
+    "length": "151274024",
+    "last_modified": "Thu, 01 Oct 2026 06:37:49 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"82b3f0586dba4d6e71528bd2023baa34\"",
+    "length": "151274024",
+    "last_modified": "Thu, 01 Oct 2026 06:37:49 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/a1/a1ef42246ee714db3d8daf4e792491f3befa02d16194ba9c3851d21540320431.gz",
+   "snapshot": {
+    "sha256": "a1ef42246ee714db3d8daf4e792491f3befa02d16194ba9c3851d21540320431",
+    "bytes": 143201856,
+    "stored_bytes": 143210060,
+    "first_retrieved_at": "2026-10-06T17:44:47.054737+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T173547Z-6da8dfe58575-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"8431a2aeba6430351810800ae12a42f0\"",
+    "length": "143210060",
+    "last_modified": "Tue, 06 Oct 2026 17:45:25 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"8431a2aeba6430351810800ae12a42f0\"",
+    "length": "143210060",
+    "last_modified": "Tue, 06 Oct 2026 17:45:25 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/a9/a9a96a532207558c055c79210a65890c95eb6150040a692527db6396dbb1c9e1.gz",
+   "snapshot": {
+    "sha256": "a9a96a532207558c055c79210a65890c95eb6150040a692527db6396dbb1c9e1",
+    "bytes": 381455114,
+    "stored_bytes": 351566437,
+    "first_retrieved_at": "2026-09-29T02:27:51.169746+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"9eae65daa662430a2c99d1d3a6fe6920-21\"",
+    "length": "351566437",
+    "last_modified": "Thu, 01 Oct 2026 06:50:12 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"9eae65daa662430a2c99d1d3a6fe6920-21\"",
+    "length": "351566437",
+    "last_modified": "Thu, 01 Oct 2026 06:50:12 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/54/548ca571c4dfee7a6a58d3bed606089f36cd18eb92a0cc47455ceab5b57ad981.gz",
+   "snapshot": {
+    "sha256": "548ca571c4dfee7a6a58d3bed606089f36cd18eb92a0cc47455ceab5b57ad981",
+    "bytes": 137637871,
+    "stored_bytes": 129560618,
+    "first_retrieved_at": "2026-09-29T07:48:05.327978+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"8abd07ecdaede697419097044e64b04f\"",
+    "length": "129560618",
+    "last_modified": "Thu, 01 Oct 2026 05:39:16 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"8abd07ecdaede697419097044e64b04f\"",
+    "length": "129560618",
+    "last_modified": "Thu, 01 Oct 2026 05:39:16 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/7d/7d72f14b08444580c4eccd8790e021c20a2cf1f25607ebba254e71c547478348.gz",
+   "snapshot": {
+    "sha256": "7d72f14b08444580c4eccd8790e021c20a2cf1f25607ebba254e71c547478348",
+    "bytes": 468726179,
+    "stored_bytes": 430863535,
+    "first_retrieved_at": "2026-09-29T08:00:26.228141+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"c8c6a1038547dfc0091060f66fff7d2b-26\"",
+    "length": "430863535",
+    "last_modified": "Thu, 01 Oct 2026 05:54:23 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"c8c6a1038547dfc0091060f66fff7d2b-26\"",
+    "length": "430863535",
+    "last_modified": "Thu, 01 Oct 2026 05:54:23 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/f5/f5f3daa059bb5d24d19e642728e4131bbdd5f99225f870b11abfca26a559f215.gz",
+   "snapshot": {
+    "sha256": "f5f3daa059bb5d24d19e642728e4131bbdd5f99225f870b11abfca26a559f215",
+    "bytes": 185571968,
+    "stored_bytes": 185587769,
+    "first_retrieved_at": "2026-10-06T22:32:30.678111+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T222419Z-ce92b52d03f7-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"c3adb063e2105e887820ad253d3ded18\"",
+    "length": "185587769",
+    "last_modified": "Tue, 06 Oct 2026 22:34:48 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"c3adb063e2105e887820ad253d3ded18\"",
+    "length": "185587769",
+    "last_modified": "Tue, 06 Oct 2026 22:34:48 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/ba/ba45ffcf5ddb7e40b0ddb1804ac9f95dba2c03b8af987ae7ad46b9a3096fe09a.gz",
+   "snapshot": {
+    "sha256": "ba45ffcf5ddb7e40b0ddb1804ac9f95dba2c03b8af987ae7ad46b9a3096fe09a",
+    "bytes": 142070038,
+    "stored_bytes": 142082055,
+    "first_retrieved_at": "2026-10-06T19:04:00.409545+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T185645Z-129aeb7786a5-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"f49637c06e81ae320eb503a8e93bde12\"",
+    "length": "142082055",
+    "last_modified": "Tue, 06 Oct 2026 19:04:54 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"f49637c06e81ae320eb503a8e93bde12\"",
+    "length": "142082055",
+    "last_modified": "Tue, 06 Oct 2026 19:04:54 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/1a/1a5709bfd8c9a7c6b64b3d51061daf9cae3ac9755902551d3e42b84fe94c0850.gz",
+   "snapshot": {
+    "sha256": "1a5709bfd8c9a7c6b64b3d51061daf9cae3ac9755902551d3e42b84fe94c0850",
+    "bytes": 194299532,
+    "stored_bytes": 189425728,
+    "first_retrieved_at": "2026-09-29T07:35:47.124479+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"1f503894a81935b63f277fa41e288b72\"",
+    "length": "189425728",
+    "last_modified": "Thu, 01 Oct 2026 05:05:06 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"1f503894a81935b63f277fa41e288b72\"",
+    "length": "189425728",
+    "last_modified": "Thu, 01 Oct 2026 05:05:06 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/63/632ce115a01cdeba65fa95757b7647c3851cc93a6221bb46246c0d8b0c35446e.gz",
+   "snapshot": {
+    "sha256": "632ce115a01cdeba65fa95757b7647c3851cc93a6221bb46246c0d8b0c35446e",
+    "bytes": 370766901,
+    "stored_bytes": 370794901,
+    "first_retrieved_at": "2026-10-07T00:03:10.229622+00:00",
+    "receipt_key": "receipts/documents/2026-10-07/download-20261007T000112Z-453e65f4e782-000001.jsonl.gz",
+    "capture_date": "2026-10-07"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"3e4dcb1dc3f90f03d94b3603df1cde06\"",
+    "length": "370794901",
+    "last_modified": "Wed, 07 Oct 2026 00:04:51 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"3e4dcb1dc3f90f03d94b3603df1cde06\"",
+    "length": "370794901",
+    "last_modified": "Wed, 07 Oct 2026 00:04:51 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/ba/ba6ae772aa04624dbcc8d55e17a3caa0192fc13891ccf97626f73a89b3ace030.gz",
+   "snapshot": {
+    "sha256": "ba6ae772aa04624dbcc8d55e17a3caa0192fc13891ccf97626f73a89b3ace030",
+    "bytes": 235564908,
+    "stored_bytes": 223289418,
+    "first_retrieved_at": "2026-09-29T07:37:37.169891+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"1c7ac6de5ed1ac7ba3ae9205f558d246-14\"",
+    "length": "223289418",
+    "last_modified": "Thu, 01 Oct 2026 06:46:16 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"1c7ac6de5ed1ac7ba3ae9205f558d246-14\"",
+    "length": "223289418",
+    "last_modified": "Thu, 01 Oct 2026 06:46:16 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/f5/f5b2518c274483aff655649f0ade4e5cd40cbc79a9570c1fa1afe5b64316fdc8.gz",
+   "snapshot": {
+    "sha256": "f5b2518c274483aff655649f0ade4e5cd40cbc79a9570c1fa1afe5b64316fdc8",
+    "bytes": 237079999,
+    "stored_bytes": 226557860,
+    "first_retrieved_at": "2026-09-29T02:22:19.956226+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"c1aa9421765843c7707149f57a5b085f-14\"",
+    "length": "226557860",
+    "last_modified": "Thu, 01 Oct 2026 09:23:31 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"c1aa9421765843c7707149f57a5b085f-14\"",
+    "length": "226557860",
+    "last_modified": "Thu, 01 Oct 2026 09:23:31 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/5d/5d4478853935b598bcd1441849a2bb6e48b9a679b6542c298c638a9c41d891b2.gz",
+   "snapshot": {
+    "sha256": "5d4478853935b598bcd1441849a2bb6e48b9a679b6542c298c638a9c41d891b2",
+    "bytes": 393503371,
+    "stored_bytes": 374723394,
+    "first_retrieved_at": "2026-09-29T08:16:13.904909+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"2dfd8dabfe62370181ad1799856da630-23\"",
+    "length": "374723394",
+    "last_modified": "Thu, 01 Oct 2026 05:33:54 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"2dfd8dabfe62370181ad1799856da630-23\"",
+    "length": "374723394",
+    "last_modified": "Thu, 01 Oct 2026 05:33:54 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/98/983275ab0c49de23da3c5f866541ded720868c126b4d5bb56e350ac48d05d651.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"98e471682656fdf7d8fc6ab73c11c8e1\"",
+    "length": "59293313",
+    "last_modified": "Mon, 05 Oct 2026 22:53:20 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"98e471682656fdf7d8fc6ab73c11c8e1\"",
+    "length": "59293313",
+    "last_modified": "Mon, 05 Oct 2026 22:53:20 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/26/26eb5455a314041c6ec140bb007e3f0202b10a23a6086bfd19be5a066899ca33.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"0141ffd2a9a47bc69f3cc724e3563989\"",
+    "length": "11171769",
+    "last_modified": "Thu, 01 Oct 2026 05:26:48 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"0141ffd2a9a47bc69f3cc724e3563989\"",
+    "length": "11171769",
+    "last_modified": "Thu, 01 Oct 2026 05:26:48 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/e9/e9f4b24395fc57ac231e54141be54c1a7f440384eda94a3a3e52cf82253af9e9.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"5a39fef3560be1e8ed40ebb237ce5976\"",
+    "length": "9306846",
+    "last_modified": "Thu, 01 Oct 2026 10:59:53 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"5a39fef3560be1e8ed40ebb237ce5976\"",
+    "length": "9306846",
+    "last_modified": "Thu, 01 Oct 2026 10:59:53 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/75/75bc05b0097648042101ac85b29f1352d1461286831d2cfc801debc16ea2a7cc.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"024a31d848cc14b02bc4a2e52420e407\"",
+    "length": "17431526",
+    "last_modified": "Tue, 06 Oct 2026 15:58:11 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"024a31d848cc14b02bc4a2e52420e407\"",
+    "length": "17431526",
+    "last_modified": "Tue, 06 Oct 2026 15:58:11 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/7c/7cc5fcb82dfd0df4f51fa58d92799790f4f78384a080edf71e1b2554c75158b4.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"30bf47b2cf25d7dab1069557bd17fa0c\"",
+    "length": "33531311",
+    "last_modified": "Tue, 06 Oct 2026 16:02:40 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"30bf47b2cf25d7dab1069557bd17fa0c\"",
+    "length": "33531311",
+    "last_modified": "Tue, 06 Oct 2026 16:02:40 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/e9/e962532cdd550f68e8fc593390eaf394d23ec9dadaf660ec9e5351955c1c1e3d.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"9131597071d0321d6166bb2988caeddc\"",
+    "length": "13807143",
+    "last_modified": "Thu, 01 Oct 2026 07:18:46 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"9131597071d0321d6166bb2988caeddc\"",
+    "length": "13807143",
+    "last_modified": "Thu, 01 Oct 2026 07:18:46 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/5d/5dc87cdc9ef4c8e7ca2ccfaae54ad81cdfd0a1f89f220250d9aa6a49750fa40c.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"d4c66d0efb44f308d09535f98743cad0\"",
+    "length": "8726171",
+    "last_modified": "Thu, 01 Oct 2026 05:43:25 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"d4c66d0efb44f308d09535f98743cad0\"",
+    "length": "8726171",
+    "last_modified": "Thu, 01 Oct 2026 05:43:25 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/41/41e5982df3fe0b51729f6bc87446b964e20cc29b8fadd73885834025461159b7.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"2c112a1520e1add4f63d40036fc4624e\"",
+    "length": "48046580",
+    "last_modified": "Thu, 01 Oct 2026 05:27:38 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"2c112a1520e1add4f63d40036fc4624e\"",
+    "length": "48046580",
+    "last_modified": "Thu, 01 Oct 2026 05:27:38 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/e4/e476fcd895fc08ddc1ab60106a3f86121afd1c2b0f6c8bc3cd4f8a3863c53970.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"f7360e5c535c0f305c98c38a787b8ae2\"",
+    "length": "54217092",
+    "last_modified": "Thu, 01 Oct 2026 07:15:34 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"f7360e5c535c0f305c98c38a787b8ae2\"",
+    "length": "54217092",
+    "last_modified": "Thu, 01 Oct 2026 07:15:34 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/a0/a020ef96dc648ea2a0bfd693f5a6777e06d8716fb656b4e0fd9f67fa45f07588.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"a83ec27090c50f481775a239ed852118\"",
+    "length": "59658238",
+    "last_modified": "Mon, 05 Oct 2026 17:54:35 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"a83ec27090c50f481775a239ed852118\"",
+    "length": "59658238",
+    "last_modified": "Mon, 05 Oct 2026 17:54:35 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/77/771bfa9c23bfe1e5eee8cf9696fa103e97d88c10a35b33db9ab7b881ad8a8207.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"e055655990e013854f11f9b7150dca85\"",
+    "length": "76446076",
+    "last_modified": "Thu, 01 Oct 2026 05:48:08 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"e055655990e013854f11f9b7150dca85\"",
+    "length": "76446076",
+    "last_modified": "Thu, 01 Oct 2026 05:48:08 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/84/84143935be8365b4f32f523aabdf597f0ac4d878b21732599b547e5b6bc6b001.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"2a4b1e51a9ef6c14371f362bc3552c6d\"",
+    "length": "17668761",
+    "last_modified": "Tue, 06 Oct 2026 00:55:01 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"2a4b1e51a9ef6c14371f362bc3552c6d\"",
+    "length": "17668761",
+    "last_modified": "Tue, 06 Oct 2026 00:55:01 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/62/626d6ae7deac7740cc587e373ab643f4bb2c813966f3d0172b3a9bd986fe1662.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"4847d2c3aa32d452b55e369ac339413f\"",
+    "length": "8898749",
+    "last_modified": "Tue, 06 Oct 2026 16:17:49 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"4847d2c3aa32d452b55e369ac339413f\"",
+    "length": "8898749",
+    "last_modified": "Tue, 06 Oct 2026 16:17:49 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/56/56f5775d6cd80d82fb645a32e11d75e376f7b22040620395fca3c146f315e85f.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"fac35eb1e30af00251744fd4b40a5f05\"",
+    "length": "15451625",
+    "last_modified": "Tue, 06 Oct 2026 17:31:07 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"fac35eb1e30af00251744fd4b40a5f05\"",
+    "length": "15451625",
+    "last_modified": "Tue, 06 Oct 2026 17:31:07 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/15/153a8f73f31d072fff1aca6f89442bd796df5e75ea9d2bfdf722dd0ffbbdc976.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"6ed996751f1f2b7b728254fadfdba1c8\"",
+    "length": "10073413",
+    "last_modified": "Tue, 06 Oct 2026 15:48:53 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"6ed996751f1f2b7b728254fadfdba1c8\"",
+    "length": "10073413",
+    "last_modified": "Tue, 06 Oct 2026 15:48:53 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/67/677179a6d0feb8cb224232086f5257656a9729767c00d2a466f48dc7996dc358.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"7c2199b2379de30cc4749b87899d63ab\"",
+    "length": "12288933",
+    "last_modified": "Tue, 06 Oct 2026 17:42:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"7c2199b2379de30cc4749b87899d63ab\"",
+    "length": "12288933",
+    "last_modified": "Tue, 06 Oct 2026 17:42:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/f2/f20d15779d9ccf2d785d6076acf7d20903f4802ea5063cad613efd06282c7b10.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"cced58985a4a59e1bedf032ff298d24e\"",
+    "length": "11510507",
+    "last_modified": "Mon, 05 Oct 2026 21:44:41 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"cced58985a4a59e1bedf032ff298d24e\"",
+    "length": "11510507",
+    "last_modified": "Mon, 05 Oct 2026 21:44:41 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/e3/e3ac0bee3bad8bcab4c24978f0c4d97cca00c6ad0ac05575d8cdae25012d19b6.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"c1ac11e285dc114cb578a29ad672c88e\"",
+    "length": "37124250",
+    "last_modified": "Thu, 01 Oct 2026 07:08:51 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"c1ac11e285dc114cb578a29ad672c88e\"",
+    "length": "37124250",
+    "last_modified": "Thu, 01 Oct 2026 07:08:51 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/71/715d457f53f7155ce70ed90f94927c789ab4b6f6c8f076ae40a2942a5d519cd7.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"0cd9d0b0a30ee4c1ccc96de94918c5ef\"",
+    "length": "9588405",
+    "last_modified": "Tue, 06 Oct 2026 16:03:53 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"0cd9d0b0a30ee4c1ccc96de94918c5ef\"",
+    "length": "9588405",
+    "last_modified": "Tue, 06 Oct 2026 16:03:53 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/2c/2c5ac17a33d52668989b55f2310eb69ef9957d4d6e01b3809227f9b3b12a1590.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"3d842fea30b807882534526492f85d3e\"",
+    "length": "15553659",
+    "last_modified": "Thu, 01 Oct 2026 05:19:04 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"3d842fea30b807882534526492f85d3e\"",
+    "length": "15553659",
+    "last_modified": "Thu, 01 Oct 2026 05:19:04 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/81/81578a3c37b33c8a10f64b67148d5b519e1be77457fbcd0628bb1042fe32eb42.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"8e7c85ca92219d329bb03fe4f4c02399\"",
+    "length": "9383091",
+    "last_modified": "Thu, 01 Oct 2026 05:52:09 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"8e7c85ca92219d329bb03fe4f4c02399\"",
+    "length": "9383091",
+    "last_modified": "Thu, 01 Oct 2026 05:52:09 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/62/62302d21dbc1831d248679e6629a4c7a09c486550acdfff01d1a73e42fcab648.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"f5de0da1f9a87c5074103f0114ebb6a1\"",
+    "length": "12784572",
+    "last_modified": "Mon, 05 Oct 2026 23:37:04 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"f5de0da1f9a87c5074103f0114ebb6a1\"",
+    "length": "12784572",
+    "last_modified": "Mon, 05 Oct 2026 23:37:04 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/5d/5d9554ef0222c78db2b0ffc0ed92ccf08a5b2361c8452c0605627f052256bd05.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"f992ddd3747e36cea1712d69969abfae\"",
+    "length": "12793306",
+    "last_modified": "Sun, 11 Oct 2026 14:02:34 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"f992ddd3747e36cea1712d69969abfae\"",
+    "length": "12793306",
+    "last_modified": "Sun, 11 Oct 2026 14:02:34 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/b2/b2c534f7e9f3a42f71659ef17cbec1c2c027ef8aa910d4b612fb6cab212724a0.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"137b405765d1ab8345910f0937a4cf3a\"",
+    "length": "39070607",
+    "last_modified": "Mon, 05 Oct 2026 23:12:39 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"137b405765d1ab8345910f0937a4cf3a\"",
+    "length": "39070607",
+    "last_modified": "Mon, 05 Oct 2026 23:12:39 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/d9/d9d7777ec2f36717802c9c749c89197559df5d2156ff908583329e17074157b2.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"31cf6f345f6fca7b65f55f173c7bf146\"",
+    "length": "60721240",
+    "last_modified": "Thu, 01 Oct 2026 07:09:40 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"31cf6f345f6fca7b65f55f173c7bf146\"",
+    "length": "60721240",
+    "last_modified": "Thu, 01 Oct 2026 07:09:40 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/92/92dd2b2655e2cec71a953731b9b8829e047a6cacff862e6691721a1a4cae86cd.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"013ee734d3f67b13faa061e5359d8134\"",
+    "length": "28897864",
+    "last_modified": "Tue, 06 Oct 2026 00:56:39 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"013ee734d3f67b13faa061e5359d8134\"",
+    "length": "28897864",
+    "last_modified": "Tue, 06 Oct 2026 00:56:39 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/70/702276e7bd23e006578c9d3de0d978bee465795d996fe3426770b6f3547d70f8.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"1b6dc56ff632bb66cbd3d072cbe70c00\"",
+    "length": "8719813",
+    "last_modified": "Tue, 06 Oct 2026 16:19:07 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"1b6dc56ff632bb66cbd3d072cbe70c00\"",
+    "length": "8719813",
+    "last_modified": "Tue, 06 Oct 2026 16:19:07 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/8f/8faec7bb0f5366a4b10f4318dd8ac3733af8b58288f7e203bd76ae28e66702d2.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"aaccdd9ad0a7ccd3dfc9f44f4bb0a2a7\"",
+    "length": "10789298",
+    "last_modified": "Mon, 05 Oct 2026 21:22:54 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"aaccdd9ad0a7ccd3dfc9f44f4bb0a2a7\"",
+    "length": "10789298",
+    "last_modified": "Mon, 05 Oct 2026 21:22:54 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/67/6759fefdb6597e2e193580b4ac94f36295e80e7882edd9a95c67a48d59f46be7.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"adee9b1e9e4eea1ed7f4d2ca172e0dae\"",
+    "length": "56407741",
+    "last_modified": "Tue, 06 Oct 2026 17:40:23 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"adee9b1e9e4eea1ed7f4d2ca172e0dae\"",
+    "length": "56407741",
+    "last_modified": "Tue, 06 Oct 2026 17:40:23 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "reviewer",
+   "key": "bodies/sha256/3c/3c0540d77dd3f5f67a0b8978a709f961e14a94dbd7474794845ee8d59b920e42.gz",
+   "snapshot": null,
+   "r2dev": {
+    "status": 200,
+    "etag": "\"476e31f757a9bca7ff4d094451f44cb2\"",
+    "length": "27926115",
+    "last_modified": "Tue, 06 Oct 2026 00:29:36 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"476e31f757a9bca7ff4d094451f44cb2\"",
+    "length": "27926115",
+    "last_modified": "Tue, 06 Oct 2026 00:29:36 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/2d/2d7289035108af6b2612cbdcf15185cf8c7558872a529f53ff6cb238aa04db1b.gz",
+   "snapshot": {
+    "sha256": "2d7289035108af6b2612cbdcf15185cf8c7558872a529f53ff6cb238aa04db1b",
+    "bytes": 172757374,
+    "stored_bytes": 161300774,
+    "first_retrieved_at": "2026-09-29T07:25:08.090905+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"a6448f05df5d32f7b5923fe659541532\"",
+    "length": "161300774",
+    "last_modified": "Thu, 01 Oct 2026 05:20:36 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"a6448f05df5d32f7b5923fe659541532\"",
+    "length": "161300774",
+    "last_modified": "Thu, 01 Oct 2026 05:20:36 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/5e/5e8578a7763df759cc68eb7824b786d7a01c0cfaae48910e0cf4379516b085ae.gz",
+   "snapshot": {
+    "sha256": "5e8578a7763df759cc68eb7824b786d7a01c0cfaae48910e0cf4379516b085ae",
+    "bytes": 999839498,
+    "stored_bytes": 973056076,
+    "first_retrieved_at": "2026-10-07T01:27:01.989429+00:00",
+    "receipt_key": "receipts/documents/2026-10-07/download-20261007T012401Z-59678b2692f9-000001.jsonl.gz",
+    "capture_date": "2026-10-07"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"2f49794bfc0a55dabe1a4650a647a7be\"",
+    "length": "973056076",
+    "last_modified": "Wed, 07 Oct 2026 01:30:05 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"2f49794bfc0a55dabe1a4650a647a7be\"",
+    "length": "973056076",
+    "last_modified": "Wed, 07 Oct 2026 01:30:05 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/35/357e55b6abf8f5ecaef36e5e66ba6499a040e9acb4fdd9a94cfa96b354f2c9de.gz",
+   "snapshot": {
+    "sha256": "357e55b6abf8f5ecaef36e5e66ba6499a040e9acb4fdd9a94cfa96b354f2c9de",
+    "bytes": 255857194,
+    "stored_bytes": 244224770,
+    "first_retrieved_at": "2026-09-29T07:45:11.777381+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"66bf91e01b9349e6959840cc89319d33-15\"",
+    "length": "244224770",
+    "last_modified": "Thu, 01 Oct 2026 05:21:10 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"66bf91e01b9349e6959840cc89319d33-15\"",
+    "length": "244224770",
+    "last_modified": "Thu, 01 Oct 2026 05:21:10 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/da/daab729cb255d0524151ff914c9fe66c19343c384d455555a574c68c65f62633.gz",
+   "snapshot": {
+    "sha256": "daab729cb255d0524151ff914c9fe66c19343c384d455555a574c68c65f62633",
+    "bytes": 236228180,
+    "stored_bytes": 223429468,
+    "first_retrieved_at": "2026-09-29T10:48:25.680032+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"30c00e0287dbd5333bc265f8afb7283f-14\"",
+    "length": "223429468",
+    "last_modified": "Thu, 01 Oct 2026 07:07:34 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"30c00e0287dbd5333bc265f8afb7283f-14\"",
+    "length": "223429468",
+    "last_modified": "Thu, 01 Oct 2026 07:07:34 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/b9/b9716824230a7ebf0f4e0c95869e8f8eff5b561f20cdcc6d96665477786baaa8.gz",
+   "snapshot": {
+    "sha256": "b9716824230a7ebf0f4e0c95869e8f8eff5b561f20cdcc6d96665477786baaa8",
+    "bytes": 135463309,
+    "stored_bytes": 128799939,
+    "first_retrieved_at": "2026-09-29T08:09:38.339544+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"28e607a25a7f03216b16a9525d04a1f0\"",
+    "length": "128799939",
+    "last_modified": "Thu, 01 Oct 2026 06:46:45 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"28e607a25a7f03216b16a9525d04a1f0\"",
+    "length": "128799939",
+    "last_modified": "Thu, 01 Oct 2026 06:46:45 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/f0/f0a44ca983e8ff2655b1bb38cba552b0804f9e9da674523a31cd2d3b28b73d3d.gz",
+   "snapshot": {
+    "sha256": "f0a44ca983e8ff2655b1bb38cba552b0804f9e9da674523a31cd2d3b28b73d3d",
+    "bytes": 413397922,
+    "stored_bytes": 413457361,
+    "first_retrieved_at": "2026-10-06T17:51:03.337705+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T173547Z-6da8dfe58575-000003.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"02e3a633b818912af172531eeb2e0a86\"",
+    "length": "413457361",
+    "last_modified": "Tue, 06 Oct 2026 17:53:05 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"02e3a633b818912af172531eeb2e0a86\"",
+    "length": "413457361",
+    "last_modified": "Tue, 06 Oct 2026 17:53:05 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/25/2538d76da8425015cc0a615ddb3a128d0d865686d58712ff84e44ec9f8117667.gz",
+   "snapshot": {
+    "sha256": "2538d76da8425015cc0a615ddb3a128d0d865686d58712ff84e44ec9f8117667",
+    "bytes": 107563933,
+    "stored_bytes": 107578448,
+    "first_retrieved_at": "2026-10-06T23:29:29.712468+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T232642Z-60c2df098405-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"0d175732942ad48268e4cdcbd60ae0e8\"",
+    "length": "107578448",
+    "last_modified": "Tue, 06 Oct 2026 23:30:09 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"0d175732942ad48268e4cdcbd60ae0e8\"",
+    "length": "107578448",
+    "last_modified": "Tue, 06 Oct 2026 23:30:09 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/02/028130a8f330c3a78fca1d05685d9b33f00c7360aaeb145acfee99f5bbfad9a7.gz",
+   "snapshot": {
+    "sha256": "028130a8f330c3a78fca1d05685d9b33f00c7360aaeb145acfee99f5bbfad9a7",
+    "bytes": 187304450,
+    "stored_bytes": 187335945,
+    "first_retrieved_at": "2026-10-06T19:11:26.932766+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T185645Z-129aeb7786a5-000003.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"b3b413868620172bf0f12d74d1931a3a\"",
+    "length": "187335945",
+    "last_modified": "Tue, 06 Oct 2026 19:12:32 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"b3b413868620172bf0f12d74d1931a3a\"",
+    "length": "187335945",
+    "last_modified": "Tue, 06 Oct 2026 19:12:32 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/b7/b73f561c27fd19f1ec53501f00890b1d7f790cfdf09e2a4d73b7afb0729e27cc.gz",
+   "snapshot": {
+    "sha256": "b73f561c27fd19f1ec53501f00890b1d7f790cfdf09e2a4d73b7afb0729e27cc",
+    "bytes": 206434605,
+    "stored_bytes": 206457738,
+    "first_retrieved_at": "2026-10-06T18:29:16.758887+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T182316Z-0ad9d4d900c6-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"0e3d7b4c58dbc0557cb18033019ed82c\"",
+    "length": "206457738",
+    "last_modified": "Tue, 06 Oct 2026 18:30:54 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"0e3d7b4c58dbc0557cb18033019ed82c\"",
+    "length": "206457738",
+    "last_modified": "Tue, 06 Oct 2026 18:30:54 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/9f/9fac7f6ac8acd949ba8c7e6a2f0f4a59548d4e6f6795ca85076babb22aa95780.gz",
+   "snapshot": {
+    "sha256": "9fac7f6ac8acd949ba8c7e6a2f0f4a59548d4e6f6795ca85076babb22aa95780",
+    "bytes": 118840279,
+    "stored_bytes": 118864554,
+    "first_retrieved_at": "2026-10-06T23:28:18.649837+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T232642Z-60c2df098405-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"dc046fcb48bc7ef0d4a7182bb7a67659\"",
+    "length": "118864554",
+    "last_modified": "Tue, 06 Oct 2026 23:29:02 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"dc046fcb48bc7ef0d4a7182bb7a67659\"",
+    "length": "118864554",
+    "last_modified": "Tue, 06 Oct 2026 23:29:02 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/96/96789e991747cf0fb771621f60569d04713ddda277af07c33615f7b1aab14014.gz",
+   "snapshot": {
+    "sha256": "96789e991747cf0fb771621f60569d04713ddda277af07c33615f7b1aab14014",
+    "bytes": 201324333,
+    "stored_bytes": 168753336,
+    "first_retrieved_at": "2026-10-06T21:53:24.676824+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T215052Z-5cb74a67ff41-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"d91976c8e041c6be9e3e9cfe1552baa6\"",
+    "length": "168753336",
+    "last_modified": "Tue, 06 Oct 2026 21:55:42 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"d91976c8e041c6be9e3e9cfe1552baa6\"",
+    "length": "168753336",
+    "last_modified": "Tue, 06 Oct 2026 21:55:42 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/9a/9aa6da47c939f8b50217ba08ca057db03d1ca6eb601b28201ba2686521abdc9b.gz",
+   "snapshot": {
+    "sha256": "9aa6da47c939f8b50217ba08ca057db03d1ca6eb601b28201ba2686521abdc9b",
+    "bytes": 116006235,
+    "stored_bytes": 99653022,
+    "first_retrieved_at": "2026-09-29T06:25:37.961672+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"c8a06da653bfe37688d8ea5566762f33\"",
+    "length": "99653022",
+    "last_modified": "Thu, 01 Oct 2026 06:27:36 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"c8a06da653bfe37688d8ea5566762f33\"",
+    "length": "99653022",
+    "last_modified": "Thu, 01 Oct 2026 06:27:36 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/4e/4e8115a7c06e2369bdf2eb4d2f3106593456d99259317d103254bc1060a70fee.gz",
+   "snapshot": {
+    "sha256": "4e8115a7c06e2369bdf2eb4d2f3106593456d99259317d103254bc1060a70fee",
+    "bytes": 118982865,
+    "stored_bytes": 96546508,
+    "first_retrieved_at": "2026-10-06T21:26:54.671702+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T211657Z-19b75de6b5ee-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"eadb0e1ea072d506e02f516550138771\"",
+    "length": "96546508",
+    "last_modified": "Tue, 06 Oct 2026 21:27:52 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"eadb0e1ea072d506e02f516550138771\"",
+    "length": "96546508",
+    "last_modified": "Tue, 06 Oct 2026 21:27:52 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/73/73bab8004a29b0f84b00e70ae23878be98d7996137d1df7f16b85fff501702e5.gz",
+   "snapshot": {
+    "sha256": "73bab8004a29b0f84b00e70ae23878be98d7996137d1df7f16b85fff501702e5",
+    "bytes": 341301429,
+    "stored_bytes": 341287201,
+    "first_retrieved_at": "2026-10-06T19:04:38.708482+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T185645Z-129aeb7786a5-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"f7f27c2e7474ddd2c0b0501114914f8d\"",
+    "length": "341287201",
+    "last_modified": "Tue, 06 Oct 2026 19:06:41 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"f7f27c2e7474ddd2c0b0501114914f8d\"",
+    "length": "341287201",
+    "last_modified": "Tue, 06 Oct 2026 19:06:41 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/df/df8d60271260dd93859f2f7823363aa2e973792e2f2f60982c43d38bcc5af759.gz",
+   "snapshot": {
+    "sha256": "df8d60271260dd93859f2f7823363aa2e973792e2f2f60982c43d38bcc5af759",
+    "bytes": 235631413,
+    "stored_bytes": 216249988,
+    "first_retrieved_at": "2026-10-06T22:31:15.931910+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T222419Z-ce92b52d03f7-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"5725957b9918c1ed095caf06405320ae\"",
+    "length": "216249988",
+    "last_modified": "Tue, 06 Oct 2026 22:33:10 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"5725957b9918c1ed095caf06405320ae\"",
+    "length": "216249988",
+    "last_modified": "Tue, 06 Oct 2026 22:33:10 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/a8/a886619a60e6cbde7a34f81d478e344c1fc2c9f0485d5b4c1c94b8dca1290616.gz",
+   "snapshot": {
+    "sha256": "a886619a60e6cbde7a34f81d478e344c1fc2c9f0485d5b4c1c94b8dca1290616",
+    "bytes": 142948179,
+    "stored_bytes": 132822253,
+    "first_retrieved_at": "2026-09-29T08:12:37.017553+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"f343563178b84c230edc89a3f3f7028c\"",
+    "length": "132822253",
+    "last_modified": "Thu, 01 Oct 2026 06:47:05 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"f343563178b84c230edc89a3f3f7028c\"",
+    "length": "132822253",
+    "last_modified": "Thu, 01 Oct 2026 06:47:05 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/15/157167a859593042d3cd5940bd7f173b1120ede9826d17b178ce673a4531ecae.gz",
+   "snapshot": {
+    "sha256": "157167a859593042d3cd5940bd7f173b1120ede9826d17b178ce673a4531ecae",
+    "bytes": 111100631,
+    "stored_bytes": 93536479,
+    "first_retrieved_at": "2026-10-06T17:10:57.125278+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T170856Z-a7515a6d72f2-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"b2daa21948e7b339d607648f71f646ac\"",
+    "length": "93536479",
+    "last_modified": "Tue, 06 Oct 2026 17:11:40 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"b2daa21948e7b339d607648f71f646ac\"",
+    "length": "93536479",
+    "last_modified": "Tue, 06 Oct 2026 17:11:40 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/5c/5c86b359d51df23e550f87832ba8dd1d53f0d23b232d0e7bf08107b44e07ff8b.gz",
+   "snapshot": {
+    "sha256": "5c86b359d51df23e550f87832ba8dd1d53f0d23b232d0e7bf08107b44e07ff8b",
+    "bytes": 118416820,
+    "stored_bytes": 118430869,
+    "first_retrieved_at": "2026-10-06T23:30:02.050536+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T232642Z-60c2df098405-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"1b55f6fe43d0d9f7a28aaa1d6557d327\"",
+    "length": "118430869",
+    "last_modified": "Tue, 06 Oct 2026 23:30:45 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"1b55f6fe43d0d9f7a28aaa1d6557d327\"",
+    "length": "118430869",
+    "last_modified": "Tue, 06 Oct 2026 23:30:45 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/a8/a8e611a03609c3ed00bba2eede583d430377036f8e913e0cb8936a8469e68615.gz",
+   "snapshot": {
+    "sha256": "a8e611a03609c3ed00bba2eede583d430377036f8e913e0cb8936a8469e68615",
+    "bytes": 114443943,
+    "stored_bytes": 114435815,
+    "first_retrieved_at": "2026-10-16T06:48:25.078027+00:00",
+    "receipt_key": "receipts/documents/2026-10-16/corpus-recovery-6d304449841845d0be796a18ea21edff-000018.jsonl.gz",
+    "capture_date": "2026-10-16"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"2e77b788af3079aff26cd422044310bb\"",
+    "length": "114435815",
+    "last_modified": "Fri, 16 Oct 2026 16:45:30 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"2e77b788af3079aff26cd422044310bb\"",
+    "length": "114435815",
+    "last_modified": "Fri, 16 Oct 2026 16:45:30 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/df/df664de668ec63baf9d95e4f69130b01281d7da1955599f19c2e5cc171facbdf.gz",
+   "snapshot": {
+    "sha256": "df664de668ec63baf9d95e4f69130b01281d7da1955599f19c2e5cc171facbdf",
+    "bytes": 107334451,
+    "stored_bytes": 107360270,
+    "first_retrieved_at": "2026-10-06T23:12:09.856907+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T225750Z-9fa7979e8c0f-000003.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"cc83b744ec38877d162a13c9814885b7\"",
+    "length": "107360270",
+    "last_modified": "Tue, 06 Oct 2026 23:12:34 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"cc83b744ec38877d162a13c9814885b7\"",
+    "length": "107360270",
+    "last_modified": "Tue, 06 Oct 2026 23:12:34 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/54/548ca571c4dfee7a6a58d3bed606089f36cd18eb92a0cc47455ceab5b57ad981.gz",
+   "snapshot": {
+    "sha256": "548ca571c4dfee7a6a58d3bed606089f36cd18eb92a0cc47455ceab5b57ad981",
+    "bytes": 137637871,
+    "stored_bytes": 129560618,
+    "first_retrieved_at": "2026-09-29T07:48:05.327978+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"8abd07ecdaede697419097044e64b04f\"",
+    "length": "129560618",
+    "last_modified": "Thu, 01 Oct 2026 05:39:16 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"8abd07ecdaede697419097044e64b04f\"",
+    "length": "129560618",
+    "last_modified": "Thu, 01 Oct 2026 05:39:16 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/35/351a4e37e55b2f11e629a911e42b5eda66f2762675464a9020554ed148abafe0.gz",
+   "snapshot": {
+    "sha256": "351a4e37e55b2f11e629a911e42b5eda66f2762675464a9020554ed148abafe0",
+    "bytes": 107694819,
+    "stored_bytes": 107628053,
+    "first_retrieved_at": "2026-10-06T23:32:34.701564+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T232642Z-60c2df098405-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"cfdcf31e2e958253857b9e985a3a6f01\"",
+    "length": "107628053",
+    "last_modified": "Tue, 06 Oct 2026 23:33:32 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"cfdcf31e2e958253857b9e985a3a6f01\"",
+    "length": "107628053",
+    "last_modified": "Tue, 06 Oct 2026 23:33:32 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/ae/ae74747f34a47268e69d8fc69970520a4196ee19dda5bceb72e751b36763fd0a.gz",
+   "snapshot": {
+    "sha256": "ae74747f34a47268e69d8fc69970520a4196ee19dda5bceb72e751b36763fd0a",
+    "bytes": 106063380,
+    "stored_bytes": 106068638,
+    "first_retrieved_at": "2026-10-06T21:20:19.235525+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T211657Z-19b75de6b5ee-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"a308c7f9e18d00a955bac8b73cad19fb\"",
+    "length": "106068638",
+    "last_modified": "Tue, 06 Oct 2026 21:21:33 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"a308c7f9e18d00a955bac8b73cad19fb\"",
+    "length": "106068638",
+    "last_modified": "Tue, 06 Oct 2026 21:21:33 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/ba/ba6ae772aa04624dbcc8d55e17a3caa0192fc13891ccf97626f73a89b3ace030.gz",
+   "snapshot": {
+    "sha256": "ba6ae772aa04624dbcc8d55e17a3caa0192fc13891ccf97626f73a89b3ace030",
+    "bytes": 235564908,
+    "stored_bytes": 223289418,
+    "first_retrieved_at": "2026-09-29T07:37:37.169891+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"1c7ac6de5ed1ac7ba3ae9205f558d246-14\"",
+    "length": "223289418",
+    "last_modified": "Thu, 01 Oct 2026 06:46:16 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"1c7ac6de5ed1ac7ba3ae9205f558d246-14\"",
+    "length": "223289418",
+    "last_modified": "Thu, 01 Oct 2026 06:46:16 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/87/87ed1607786ffc8242362eafbf3f7d0ac84e63a4f8a1eb79c9440110f48c5cce.gz",
+   "snapshot": {
+    "sha256": "87ed1607786ffc8242362eafbf3f7d0ac84e63a4f8a1eb79c9440110f48c5cce",
+    "bytes": 106197970,
+    "stored_bytes": 106193547,
+    "first_retrieved_at": "2026-10-06T23:36:54.029198+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T232642Z-60c2df098405-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"cf5de3663a4f3cdf419e39a5e4b811d8\"",
+    "length": "106193547",
+    "last_modified": "Tue, 06 Oct 2026 23:37:36 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"cf5de3663a4f3cdf419e39a5e4b811d8\"",
+    "length": "106193547",
+    "last_modified": "Tue, 06 Oct 2026 23:37:36 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/5c/5c8371fb35a144e46d112c5535cbc4678e355d49a45e6a91419296bb818e7964.gz",
+   "snapshot": {
+    "sha256": "5c8371fb35a144e46d112c5535cbc4678e355d49a45e6a91419296bb818e7964",
+    "bytes": 162865119,
+    "stored_bytes": 155383568,
+    "first_retrieved_at": "2026-09-29T07:42:03.331420+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"58612d48a3459b950f5a1f00ec50fc4c\"",
+    "length": "155383568",
+    "last_modified": "Thu, 01 Oct 2026 05:39:53 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"58612d48a3459b950f5a1f00ec50fc4c\"",
+    "length": "155383568",
+    "last_modified": "Thu, 01 Oct 2026 05:39:53 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/e8/e8e934ff8fa22e483925b4e995447e2ffcd964fa63025f69849ae622f90c673d.gz",
+   "snapshot": {
+    "sha256": "e8e934ff8fa22e483925b4e995447e2ffcd964fa63025f69849ae622f90c673d",
+    "bytes": 172168232,
+    "stored_bytes": 159768346,
+    "first_retrieved_at": "2026-09-29T02:36:15.881301+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"8588f90f10b765c89225de13d70664fd\"",
+    "length": "159768346",
+    "last_modified": "Thu, 01 Oct 2026 10:54:42 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"8588f90f10b765c89225de13d70664fd\"",
+    "length": "159768346",
+    "last_modified": "Thu, 01 Oct 2026 10:54:42 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/b2/b2b417bc56df9a2496c8ce0335eb55320ec9fd6a2ec2bbcbcf3498058ad87c81.gz",
+   "snapshot": {
+    "sha256": "b2b417bc56df9a2496c8ce0335eb55320ec9fd6a2ec2bbcbcf3498058ad87c81",
+    "bytes": 163899989,
+    "stored_bytes": 163922641,
+    "first_retrieved_at": "2026-10-06T23:11:44.637485+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T225750Z-9fa7979e8c0f-000003.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"786ac9fffca9f3b1a84d8486e9989175\"",
+    "length": "163922641",
+    "last_modified": "Tue, 06 Oct 2026 23:12:23 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"786ac9fffca9f3b1a84d8486e9989175\"",
+    "length": "163922641",
+    "last_modified": "Tue, 06 Oct 2026 23:12:23 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/c5/c50fc509b0bbac1579e32f89341bcd62858c8fef48fb0ed2ac1a1f06e8f4ad54.gz",
+   "snapshot": {
+    "sha256": "c50fc509b0bbac1579e32f89341bcd62858c8fef48fb0ed2ac1a1f06e8f4ad54",
+    "bytes": 273535765,
+    "stored_bytes": 244271942,
+    "first_retrieved_at": "2026-10-06T23:05:30.737097+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T225750Z-9fa7979e8c0f-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"f0ce9f0e1ab14f088e173391750371f7\"",
+    "length": "244271942",
+    "last_modified": "Tue, 06 Oct 2026 23:06:50 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"f0ce9f0e1ab14f088e173391750371f7\"",
+    "length": "244271942",
+    "last_modified": "Tue, 06 Oct 2026 23:06:50 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/92/92532deb978cc1a65ff9d44b5a537416a7c91eb9a0119a9d861f7943e060abbb.gz",
+   "snapshot": {
+    "sha256": "92532deb978cc1a65ff9d44b5a537416a7c91eb9a0119a9d861f7943e060abbb",
+    "bytes": 541294069,
+    "stored_bytes": 512374769,
+    "first_retrieved_at": "2026-09-29T07:47:15.959596+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"48dcf2f3f5a9557e0d46bed9e7222d1a-31\"",
+    "length": "512374769",
+    "last_modified": "Thu, 01 Oct 2026 06:14:47 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"48dcf2f3f5a9557e0d46bed9e7222d1a-31\"",
+    "length": "512374769",
+    "last_modified": "Thu, 01 Oct 2026 06:14:47 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/7a/7a67725f9da0b16a47846b955ce90a55a07b15dbde68806733c8c67c4ae464f2.gz",
+   "snapshot": {
+    "sha256": "7a67725f9da0b16a47846b955ce90a55a07b15dbde68806733c8c67c4ae464f2",
+    "bytes": 144376031,
+    "stored_bytes": 144403463,
+    "first_retrieved_at": "2026-10-06T22:26:50.019532+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T222419Z-ce92b52d03f7-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"537df36f526a17656e48697ecf3ec3c4\"",
+    "length": "144403463",
+    "last_modified": "Tue, 06 Oct 2026 22:27:47 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"537df36f526a17656e48697ecf3ec3c4\"",
+    "length": "144403463",
+    "last_modified": "Tue, 06 Oct 2026 22:27:47 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/1e/1e2c5c10c9685879ce93a5c14134949a2f8773086e2a577f2bc7bdbdc779f9d4.gz",
+   "snapshot": {
+    "sha256": "1e2c5c10c9685879ce93a5c14134949a2f8773086e2a577f2bc7bdbdc779f9d4",
+    "bytes": 315336119,
+    "stored_bytes": 301484161,
+    "first_retrieved_at": "2026-09-29T07:53:46.974641+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"6f95eb410d15c72b247962c53144954f-18\"",
+    "length": "301484161",
+    "last_modified": "Thu, 01 Oct 2026 04:58:37 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"6f95eb410d15c72b247962c53144954f-18\"",
+    "length": "301484161",
+    "last_modified": "Thu, 01 Oct 2026 04:58:37 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/99/99ceca687595397aad1f8eabbb1fc8715d333a62fdc13d0b921e2705644537e8.gz",
+   "snapshot": {
+    "sha256": "99ceca687595397aad1f8eabbb1fc8715d333a62fdc13d0b921e2705644537e8",
+    "bytes": 113517031,
+    "stored_bytes": 113528606,
+    "first_retrieved_at": "2026-10-06T17:28:03.686986+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T171546Z-305b676bed7b-000001.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"49fc1e943ee9a1f59dbd0bb8bfe5add9\"",
+    "length": "113528606",
+    "last_modified": "Tue, 06 Oct 2026 17:28:30 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"49fc1e943ee9a1f59dbd0bb8bfe5add9\"",
+    "length": "113528606",
+    "last_modified": "Tue, 06 Oct 2026 17:28:30 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/3c/3c3e8568966b7757f2fe541ac7c5e57a9ea37356fa3901b21bf494414f6b1e9a.gz",
+   "snapshot": {
+    "sha256": "3c3e8568966b7757f2fe541ac7c5e57a9ea37356fa3901b21bf494414f6b1e9a",
+    "bytes": 127999972,
+    "stored_bytes": 121336219,
+    "first_retrieved_at": "2026-10-06T23:05:09.123073+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T225750Z-9fa7979e8c0f-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"ed05d05d7e54a9a808ab6b05d64e8e21\"",
+    "length": "121336219",
+    "last_modified": "Tue, 06 Oct 2026 23:06:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"ed05d05d7e54a9a808ab6b05d64e8e21\"",
+    "length": "121336219",
+    "last_modified": "Tue, 06 Oct 2026 23:06:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/c1/c192d92b5b603132213a362b321ab2f8227b391312881db577d5c5f5c371dad8.gz",
+   "snapshot": {
+    "sha256": "c192d92b5b603132213a362b321ab2f8227b391312881db577d5c5f5c371dad8",
+    "bytes": 142057661,
+    "stored_bytes": 134337690,
+    "first_retrieved_at": "2026-09-29T06:32:06.127508+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"50e36964ef0522049705f4cfd37d71a4\"",
+    "length": "134337690",
+    "last_modified": "Thu, 01 Oct 2026 06:50:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"50e36964ef0522049705f4cfd37d71a4\"",
+    "length": "134337690",
+    "last_modified": "Thu, 01 Oct 2026 06:50:29 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/91/913cd5851d1f0a16e502ff79a8b857b200795355dbc9d8b214c828a9bb4d2ad0.gz",
+   "snapshot": {
+    "sha256": "913cd5851d1f0a16e502ff79a8b857b200795355dbc9d8b214c828a9bb4d2ad0",
+    "bytes": 128064466,
+    "stored_bytes": 128078648,
+    "first_retrieved_at": "2026-10-06T19:07:14.501912+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T185645Z-129aeb7786a5-000002.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"5b677865def6a7f8ed8b59f2c6a7d24e\"",
+    "length": "128078648",
+    "last_modified": "Tue, 06 Oct 2026 19:08:09 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"5b677865def6a7f8ed8b59f2c6a7d24e\"",
+    "length": "128078648",
+    "last_modified": "Tue, 06 Oct 2026 19:08:09 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/87/87e8666d779e8b50df088cc158baa76ba40549fb94f169c2cc3297f12d484bbd.gz",
+   "snapshot": {
+    "sha256": "87e8666d779e8b50df088cc158baa76ba40549fb94f169c2cc3297f12d484bbd",
+    "bytes": 139786623,
+    "stored_bytes": 139797593,
+    "first_retrieved_at": "2026-10-06T22:04:45.208313+00:00",
+    "receipt_key": "receipts/documents/2026-10-06/download-20261006T215052Z-5cb74a67ff41-000003.jsonl.gz",
+    "capture_date": "2026-10-06"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"094e9a51e79e601efe5be4fcabb23285\"",
+    "length": "139797593",
+    "last_modified": "Tue, 06 Oct 2026 22:05:52 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"094e9a51e79e601efe5be4fcabb23285\"",
+    "length": "139797593",
+    "last_modified": "Tue, 06 Oct 2026 22:05:52 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/d8/d84cef2226f26c5577b6770ba1e730e9d6f53b6b71c20f322a2f607b1c7741e3.gz",
+   "snapshot": {
+    "sha256": "d84cef2226f26c5577b6770ba1e730e9d6f53b6b71c20f322a2f607b1c7741e3",
+    "bytes": 114478178,
+    "stored_bytes": 93131133,
+    "first_retrieved_at": "2026-09-29T03:21:40.291799+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"b4729309c1298d9c631d1cf8b091b729\"",
+    "length": "93131133",
+    "last_modified": "Thu, 01 Oct 2026 07:01:10 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"b4729309c1298d9c631d1cf8b091b729\"",
+    "length": "93131133",
+    "last_modified": "Thu, 01 Oct 2026 07:01:10 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/a7/a70d5d200cb8712a403dd90f1b19034be92d8b5ccfb4a2ff2eb6d63dbbd2f17a.gz",
+   "snapshot": {
+    "sha256": "a70d5d200cb8712a403dd90f1b19034be92d8b5ccfb4a2ff2eb6d63dbbd2f17a",
+    "bytes": 153145203,
+    "stored_bytes": 137304428,
+    "first_retrieved_at": "2026-09-29T08:19:34.778069+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"42912d32dc8fb4ef367a361a873ae5ff\"",
+    "length": "137304428",
+    "last_modified": "Thu, 01 Oct 2026 06:36:07 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"42912d32dc8fb4ef367a361a873ae5ff\"",
+    "length": "137304428",
+    "last_modified": "Thu, 01 Oct 2026 06:36:07 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  },
+  {
+   "group": "seeded40",
+   "key": "bodies/sha256/d4/d416cbb0a1a178788b4c423bd33a7b59a08368f99a5e58d0a9fc2601b9152a35.gz",
+   "snapshot": {
+    "sha256": "d416cbb0a1a178788b4c423bd33a7b59a08368f99a5e58d0a9fc2601b9152a35",
+    "bytes": 435033786,
+    "stored_bytes": 422043226,
+    "first_retrieved_at": "2026-09-29T08:21:39.842469+00:00",
+    "receipt_key": "receipts/documents/2026-09-29/assemble-20260930.jsonl.gz",
+    "capture_date": "2026-09-29"
+   },
+   "r2dev": {
+    "status": 200,
+    "etag": "\"7f7e332d5dbf986333564001954faa19-26\"",
+    "length": "422043226",
+    "last_modified": "Thu, 01 Oct 2026 06:58:08 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": null
+   },
+   "custom": {
+    "status": 200,
+    "etag": "\"7f7e332d5dbf986333564001954faa19-26\"",
+    "length": "422043226",
+    "last_modified": "Thu, 01 Oct 2026 06:58:08 GMT",
+    "content_type": "application/gzip",
+    "content_encoding": null,
+    "cf_cache": "DYNAMIC"
+   }
+  }
+ ]
+}

@@ -1,0 +1,35 @@
+
+## reviewer-style ZIP endpoints (media type ILIKE zip, which also matches gzip)
+   (685,)
+
+## their rows: media type, recovery, this folder's format, good, family, receipt shape
+   ('application/zip', False, 'zip', False, 'documents', 'download', 685, 685, 685)
+   ('application/zip', False, 'zip', True, 'documents', 'download', 570, 570, 570)
+   ('application/zip', True, 'zip', False, 'documents', 'corpus', 115, 115, 115)
+
+## per endpoint: number of recovery ZIP bodies vs fetched ZIP bodies
+   (0, 2, 570)
+   (1, 1, 115)
+
+## DM proxy: endpoints with >=2 distinct real ZIP bodies; bodies
+   (0, None)
+
+## DM proxy: endpoints with an unexpanded ZIP (walk needed); unexpanded bodies; GB
+   (0, 0, None)
+
+## DM proxy: member-set fingerprints at fully expanded endpoints (equal -> same_text; differ -> ambiguous)
+
+## DM proxy ZIP endpoints by host
+
+## fingerprint-candidate ZIPs overall (DM proxy): bodies, of which unexpanded
+   (0, 0)
+
+## 685 endpoints: per ZIP row, why it is not a real file here
+   ('cut-off prior attempt (raw complete=false)', 636, 636, 636, 20.14)
+   ('real', 570, 570, 570, 46.46)
+   ('recovery import (mode retained_import)', 115, 115, 115, 6.71)
+   ('line outcome size_limit', 49, 49, 49, 3.29)
+
+## 685 endpoints: count of real ZIP bodies left per endpoint
+   (0, 115)
+   (1, 570)

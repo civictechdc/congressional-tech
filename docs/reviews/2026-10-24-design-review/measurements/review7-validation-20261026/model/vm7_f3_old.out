@@ -1,0 +1,38 @@
+
+## old catalog: (dir, stem) groups with >=2 formats split over >=2 documents: groups, documents
+   (19512, 39823)
+
+## by host
+   ('docs.house.gov', 18207, 36416)
+   ('www.congress.gov', 728, 1456)
+   ('frwebgate.access.gpo.gov', 174, 1134)
+   ('www.govinfo.gov', 112, 224)
+   ('edworkforce.house.gov', 87, 174)
+   ('rules.house.gov', 70, 140)
+   ('judiciary.house.gov', 24, 48)
+   ('democrats-rules.house.gov', 22, 44)
+
+## by format set
+   ('[html, pdf]', 17985, 36769)
+   ('[pdf, xml]', 1512, 3024)
+   ('[docx, pdf]', 10, 20)
+   ('[doc, docx]', 3, 6)
+   ('[doc, pdf]', 1, 2)
+   ('[html, xml]', 1, 2)
+
+## docs.house.gov groups: the xml side's body (distinct bodies; how many groups share the single most common xml body)
+   (785, 376, 4, 'bodies/sha256/20/208457c2b7a106a9cbfd010b05c9866ef8fb5893889a648539dc958ef957d4e6.gz')
+
+## docs.house.gov groups: xml side's old http_status values
+   ('[200]', 778)
+   (None, 7)
+
+## docs.house.gov [html, pdf] groups: the html side's filename extension, old status, and how many share one body
+   ('xml', '[404]', 17416, 1, 17425)
+   ('', '[404]', 4, 1, 17425)
+   ('pdff', '[404]', 2, 1, 17425)
+   ('txt', '[404]', 2, 1, 17425)
+   ('docx', '[404]', 1, 1, 17425)
+
+## same, the top shared html body: rows and its capture status in the snapshot
+   (17425, [404, None], 56644)

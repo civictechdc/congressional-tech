@@ -1,0 +1,26 @@
+a29bbeefe1f5fb0ed.gz media=application/warc+gzip orig=9232 stored=9255 res=html http=206 ct=application/gzip ce=None
+   stored first bytes: 1f8b0800  after storage gunzip: 1f8b0800 b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00\xed}'
+   after second gunzip: b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Target-URI: http://veter'
+44e84e3e07390d18d.gz media=application/warc+gzip orig=8459 stored=8482 res=html http=206 ct=application/gzip ce=None
+   stored first bytes: 1f8b0800  after storage gunzip: 1f8b0800 b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00\xed}'
+   after second gunzip: b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Target-URI: http://veter'
+3faa3eaccf9881608.gz media=application/warc+gzip orig=7759 stored=7782 res=html http=206 ct=application/gzip ce=None
+   stored first bytes: 1f8b0800  after storage gunzip: 1f8b0800 b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00\xed='
+   after second gunzip: b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Target-URI: https://vete'
+823642959f3102687.gz media=application/warc+gzip orig=8236 stored=8259 res=html http=206 ct=application/gzip ce=None
+   stored first bytes: 1f8b0800  after storage gunzip: 1f8b0800 b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00\xed='
+   after second gunzip: b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Target-URI: http://veter'
+7f66a573f1150dd16.gz media=application/warc+gzip orig=8971 stored=8994 res=html http=206 ct=application/gzip ce=None
+   stored first bytes: 1f8b0800  after storage gunzip: 1f8b0800 b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00\xed}'
+   after second gunzip: b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Target-URI: https://vete'
+6f6909761ffb05498.gz media=application/warc+gzip orig=12064 stored=12087 res=html http=206 ct=application/gzip ce=None
+   stored first bytes: 1f8b0800  after storage gunzip: 1f8b0800 b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00\xed}'
+   after second gunzip: b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Target-URI: http://veter'
+71f17a19a37c8e2e8.gz media=application/warc+gzip orig=11613 stored=11636 res=html http=206 ct=application/gzip ce=None
+   stored first bytes: 1f8b0800  after storage gunzip: 1f8b0800 b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00\xed}'
+   after second gunzip: b'WARC/1.0\r\nWARC-Type: response\r\nWARC-Target-URI: http://veter'
+3abf1e085d46475c0.gz media=application/arc+gzip orig=3616 stored=3639 res=html http=206 ct=application/gzip ce=None
+   stored first bytes: 1f8b0800  after storage gunzip: 1f8b0800 b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x00\xed\\'
+   after second gunzip: b'http://thomas.loc.gov/cgi-bin/cpquery/11?cp110:./temp/~TSOPW'
+[]
+WARC bodies with any reading: [(10278, 0)]

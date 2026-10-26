@@ -1,0 +1,2 @@
+[(False, True)]
+[('[html, pdf]', True, 526), ('[html, pdf, zip]', True, 15), ('[html, other, pdf]', False, 3)]

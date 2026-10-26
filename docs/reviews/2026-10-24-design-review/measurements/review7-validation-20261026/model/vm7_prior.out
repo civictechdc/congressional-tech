@@ -1,0 +1,2 @@
+receipts 1184 missing 0 attempts 63392
+[(True, 'None', 62434), (False, 'body_error', 828), (False, 'response_limit', 97), (False, 'timeout', 33)]

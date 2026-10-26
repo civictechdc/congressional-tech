@@ -1,0 +1,195 @@
+=== example line external/provider-responses/2026-10-13/download-20261013T173015Z-dc7a07912f45-000004.jsonl.gz
+{
+ "source_file": "ci/20261013T173015Z-dc7a07912f45",
+ "source_line": null,
+ "captures": [
+  {
+   "pointer": [
+    "content",
+    "body"
+   ],
+   "body_key": "bodies/sha256/ef/ef97ae967dba2cfca9b2bde1ef3142f56b5c15d3869525da202e16dc84daa83d.gz",
+   "sha256": "ef97ae967dba2cfca9b2bde1ef3142f56b5c15d3869525da202e16dc84daa83d",
+   "bytes": 162229,
+   "string_encoding": "utf-8",
+   "fidelity": "exact-bytes",
+   "media_type": "text/html; charset=utf-8",
+   "context_url": "https://www.sciencedirect.com/science/article/pii/S169726001730039X?via%3Dihub",
+   "retrieved_at": "2024-12-15T10:50:48Z",
+   "captured_at": "2024-12-15T10:50:48Z",
+   "http_status": 200,
+   "stored_sha256": "6d45b40510191d5b3f8a3842ae7882bf1f9f7545c72e67624abd8bd3f502950e",
+   "stored_bytes": 50284,
+   "family": "external/provider-responses"
+  },
+  {
+   "pointer": [
+    "eot",
+    "raw_warc",
+    "body"
+   ],
+   "body_key": "bodies/sha256/4c/4ca86b6042cbc9ee6a384ab8ca3a378fa6e6d6423ce68fe20b332ea7dbea8c6d.gz",
+   "sha256": "4ca86b6042cbc9ee6a384ab8ca3a378fa6e6d6423ce68fe20b332ea7dbea8c6d",
+   "bytes": 43096,
+   "string_encoding": "base64",
+   "fidelity": "exact-bytes",
+   "media_type": "application/warc+gzip",
+   "context_url": "https://www.sciencedirect.com/science/article/pii/S169726001730039X?via%3Dihub",
+   "retrieved_at": "2024-12-15T10:50:48Z",
+   "captured_at": "2024-12-15T10:50:48Z",
+   "http_status": 200,
+   "stored_sha256": "742f68fa7af5878c3d8e913b739d1ea0197dfc9ed2fc01005ea5d6c9d1376458",
+   "stored_bytes": 43129,
+   "family": "external/provider-responses"
+  }
+ ],
+ "download_state": {
+  "url": "https://www.sciencedirect.com/science/article/pii/S169726001730039X?via%3Dihub",
+  "family": "external/provider-responses",
+  "body_key": "bodies/sha256/ef/ef97ae967dba2cfca9b2bde1ef3142f56b5c15d3869525da202e16dc84daa83d.gz",
+  "sha256": "ef97ae967dba2cfca9b2bde1ef3142f56b5c15d3869525da202e16dc84daa83d",
+  "media_type": "text/html; charset=utf-8",
+  "fidelity": "exact-bytes",
+  "retrieved_at": "2024-12-15T10:50:48Z",
+  "outcome": "html",
+  "checked_at": "2026-10-13T17:33:48.899167+00:00",
+  "next_attempt_at": "2026-10-20T17:33:48.899167+00:00",
+  "http_status": 200,
+  "attempts": 1,
+  "links_scanned": true
+ }
+}
+record keys ['captured_at', 'complete', 'content', 'discovered_links_not_admitted', 'eot', 'http_status', 'links', 'mode', 'outcome', 'publisher_requested', 'requested_url', 'retrieved_at', 'source_context', 'transport', 'url']
+{
+ "http_status": 200,
+ "outcome": "html",
+ "mode": "fetch",
+ "complete": true,
+ "url": "https://www.sciencedirect.com/science/article/pii/S169726001730039X?via%3Dihub",
+ "requested_url": "https://www.sciencedirect.com/science/article/pii/S169726001730039X?via%3Dihub",
+ "transport": "eot-warc-range-staged",
+ "provider_http_status": null,
+ "redirects": null,
+ "prior_attempts": null
+}
+response_headers keys [] content-type None
+provider_response type NoneType None
+=== example line external/provider-responses/2026-10-13/download-20261013T174642Z-615e219517e8-000001.jsonl.gz
+{
+ "source_file": "ci/20261013T174642Z-615e219517e8",
+ "source_line": null,
+ "captures": [
+  {
+   "pointer": [
+    "content",
+    "body"
+   ],
+   "body_key": "bodies/sha256/2a/2a5646a9262f7910bfdfd553754422335b0a4452588a6bf4e83fddba98dc3575.gz",
+   "sha256": "2a5646a9262f7910bfdfd553754422335b0a4452588a6bf4e83fddba98dc3575",
+   "bytes": 179,
+   "string_encoding": "utf-8",
+   "fidelity": "exact-bytes",
+   "media_type": "video/x-ms-wvx",
+   "context_url": "http://agriculture.edgeboss.net/wmedia/agriculture/20110215pm.wvx",
+   "retrieved_at": "2020-10-22T19:24:15Z",
+   "captured_at": "2020-10-22T19:24:15Z",
+   "http_status": 200,
+   "stored_sha256": "192160ed4699bdfe9522fca350d57623b9a5922e279177b52dabfcdf740a6ca9",
+   "stored_bytes": 162,
+   "family": "external/provider-responses"
+  },
+  {
+   "pointer": [
+    "eot",
+    "raw_warc",
+    "body"
+   ],
+   "body_key": "bodies/sha256/8d/8d598afa0ccfe72236a44e3c7a04628f6e2465e5c6766fe17e42204faa90f716.gz",
+   "sha256": "8d598afa0ccfe72236a44e3c7a04628f6e2465e5c6766fe17e42204faa90f716",
+   "bytes": 480,
+   "string_encoding": "base64",
+   "fidelity": "exact-bytes",
+   "media_type": "application/warc+gzip",
+   "context_url": "http://agriculture.edgeboss.net/wmedia/agriculture/20110215pm.wvx",
+   "retrieved_at": "2020-10-22T19:24:15Z",
+   "captured_at": "2020-10-22T19:24:15Z",
+   "http_status": 200,
+   "stored_sha256": "68aa3f5ce01940ab268320f3bd9704f5850099ae9857d2f185422129ae2dd54c",
+   "stored_bytes": 503,
+   "family": "external/provider-responses"
+  }
+ ],
+ "download_state": {
+  "url": "http://agriculture.edgeboss.net/wmedia/agriculture/20110215pm.wvx",
+  "family": "external/provider-responses",
+  "body_key": "bodies/sha256/2a/2a5646a9262f7910bfdfd553754422335b0a4452588a6bf4e83fddba98dc3575.gz",
+  "sha256": "2a5646a9262f7910bfdfd553754422335b0a4452588a6bf4e83fddba98dc3575",
+  "media_type": "video/x-ms-wvx",
+  "fidelity": "exact-bytes",
+  "retrieved_at": "2020-10-22T19:24:15Z",
+  "outcome": "unverified",
+  "checked_at": "2026-10-13T17:50:11.746874+00:00",
+  "next_attempt_at": "2026-10-14T17:50:11.746874+00:00",
+  "http_status": 200,
+  "attempts": 2,
+  "links_scanned": true
+ }
+}
+record keys ['captured_at', 'complete', 'content', 'discovered_links_not_admitted', 'eot', 'http_status', 'links', 'mode', 'outcome', 'publisher_requested', 'requested_url', 'retrieved_at', 'source_context', 'transport', 'url']
+{
+ "http_status": 200,
+ "outcome": "unverified",
+ "mode": "fetch",
+ "complete": true,
+ "url": "http://agriculture.edgeboss.net/wmedia/agriculture/20110215pm.wvx",
+ "requested_url": "http://agriculture.edgeboss.net/wmedia/agriculture/20110215pm.wvx",
+ "transport": "eot-warc-range-staged",
+ "provider_http_status": null,
+ "redirects": null,
+ "prior_attempts": null
+}
+response_headers keys [] content-type None
+provider_response type NoneType None
+62 ('cap_keys', ('body_key', 'bytes', 'captured_at', 'context_url', 'family', 'fidelity', 'http_status', 'media_type', 'pointer', 'retrieved_at', 'sha256', 'stored_bytes', 'stored_sha256', 'string_encoding'))
+29 ('cap_ptr_media', "['eot', 'raw_warc', 'body']", 'application/warc+gzip', 'exact-bytes', 200)
+15 ('cap_ptr_media', "['content', 'body']", 'video/x-ms-wvx', 'exact-bytes', 200)
+11 ('cap_ptr_media', "['content', 'body']", 'text/html', 'exact-bytes', 200)
+3 ('cap_ptr_media', "['content', 'body']", 'text/html; charset=utf-8', 'exact-bytes', 200)
+2 ('cap_ptr_media', "['eot', 'raw_arc', 'body']", 'application/arc+gzip', 'exact-bytes', 200)
+1 ('cap_ptr_media', "['content', 'body']", 'text/html; charset=UTF-8', 'exact-bytes', 200)
+1 ('cap_ptr_media', "['content', 'body']", 'application/pdf', 'exact-bytes', 200)
+1805 ('lines',)
+1025 ('nowarc_line', ())
+248 ('nowarc_line', ('text/html; charset=UTF-8',))
+134 ('nowarc_line', ('None', 'text/html; charset=UTF-8'))
+118 ('nowarc_line', ('text/html; charset=utf-8',))
+111 ('nowarc_line', ('', 'None'))
+48 ('nowarc_line', ('None', 'text/html'))
+39 ('nowarc_line', ('text/html',))
+15 ('nowarc_line', ('None', 'text/html; charset=utf-8'))
+11 ('nowarc_line', ('None', 'text/html', 'text/html; charset=UTF-8'))
+10 ('nowarc_line', ('application/pdf',))
+4 ('nowarc_line', ('text/html;charset=UTF-8',))
+2 ('nowarc_line', ('video/x-ms-asf',))
+2 ('nowarc_line', ('None', 'text/html; charset=UTF-8', 'text/html; charset=utf-8'))
+2 ('nowarc_line', ('text/html;charset=utf-8',))
+1 ('nowarc_line', ('None', 'text/html;charset=ISO-8859-1'))
+1 ('nowarc_line', ('None', 'text/html; charset=iso-8859-1'))
+1 ('nowarc_line', ('None', 'application/pdf', 'text/html'))
+1 ('nowarc_line', ('None', 'text/html;charset=UTF-8'))
+1 ('nowarc_line', ('text/html; Charset=iso-8859-1',))
+31 ('rec_complete', True)
+31 ('rec_http_status_cls', '2')
+31 ('rec_mode', 'fetch')
+15 ('rec_outcome', 'unverified')
+14 ('rec_outcome', 'html')
+2 ('rec_outcome', 'saved')
+29 ('rec_transport', 'eot-warc-range-staged')
+2 ('rec_transport', 'eot-arc-range-staged')
+15 ('warc_line_media', ('application/warc+gzip', 'video/x-ms-wvx'))
+9 ('warc_line_media', ('application/warc+gzip', 'text/html'))
+3 ('warc_line_media', ('application/warc+gzip', 'text/html; charset=utf-8'))
+2 ('warc_line_media', ('application/arc+gzip', 'text/html'))
+1 ('warc_line_media', ('application/warc+gzip', 'text/html; charset=UTF-8'))
+1 ('warc_line_media', ('application/pdf', 'application/warc+gzip'))
+31 ('warc_line_ncaps', 2)

@@ -1,0 +1,80 @@
+
+## veterans.house.gov HTML-format rows: family, receipt shape, pointer, wrapped?, good, real
+   ('house/pages', 'download', '["content", "body"]', False, False, False, 5976, 1, 5976)
+   ('house/pages', 'download', '["provider_response", "httpResponseBody"]', False, False, False, 5972, 1, 5972)
+   ('house/pages', 'download', '["prior_attempts", N, "content", "body"]', False, False, False, 5972, 283, 5972)
+   ('documents', 'download', '["content", "body"]', False, True, True, 3223, 3223, 3223)
+   ('house/pages', 'download', '["content", "body"]', False, True, True, 1890, 1890, 1890)
+   ('documents', 'corpus', '["content", "body"]', False, False, False, 981, 976, 976)
+   ('documents', 'download', '["content", "body"]', False, False, False, 874, 807, 874)
+   ('documents', 'download', '["prior_attempts", N, "content", "body"]', False, False, False, 77, 29, 77)
+   ('documents', 'download', '["provider_response", "httpResponseBody"]', False, False, False, 57, 3, 57)
+   ('documents', 'download', '["content", "body"]', True, True, True, 2, 2, 2)
+   ('documents', 'download', '["content", "body"]', True, False, False, 1, 1, 1)
+   ('house/pages', 'download', '["content", "body"]', False, True, False, 1, 1, 1)
+
+## transport per family for veterans html lines (raw transport not in snapshot; receipt key prefix shown)
+   ('house/pages', 'house/pages', 19811)
+   ('documents', 'documents/2026-10-13', 3225)
+   ('documents', 'documents/2026-10-16', 981)
+   ('documents', 'documents/2026-10-14', 547)
+   ('documents', 'documents/2026-10-15', 271)
+   ('documents', 'documents/2026-10-12', 181)
+   ('documents', 'documents/2026-10-11', 10)
+
+## veterans exact URLs with >=2 distinct HTML bodies [real (proxy)]: count, by family combination
+
+## same, on ukey [real (proxy)]
+
+## veterans exact URLs with >=2 distinct HTML bodies [good, any role, html]: count, by family combination
+
+## same, on ukey [good, any role, html]
+
+## veterans exact URLs with >=2 distinct HTML bodies [any status, html, with body]: count, by family combination
+   ('[documents, house/pages]', 1593, 4244)
+   ('[house/pages]', 1101, 2216)
+   ('[documents]', 5, 10)
+
+## same, on ukey [any status, html, with body]
+   ('[documents, house/pages]', 4977, 11194)
+   ('[house/pages]', 921, 1855)
+   ('[documents]', 5, 10)
+
+## all hosts: exact URLs with >=2 distinct good HTML bodies (no role filter), top hosts
+   ('docs.house.gov', 447)
+   ('www.foreign.senate.gov', 368)
+   ('www.armed-services.senate.gov', 326)
+   ('science.house.gov', 276)
+   ('www.appropriations.senate.gov', 195)
+   ('www.banking.senate.gov', 186)
+   ('www.finance.senate.gov', 173)
+   ('www.hsgac.senate.gov', 154)
+
+## veterans 2-body endpoints: example rows
+
+## reconciliation predicate: all hosts / veterans endpoints
+   (3750, 959)
+
+## 959 veterans endpoints: body origins (recovery = raw mode retained_import; eot = line also holds an eot.raw_warc entry)
+   (True, False, False, 1, 1)
+   (False, True, False, 958, 958)
+   (True, False, True, 959, 959)
+
+## 959: endpoints with exactly one EOT copy and one recovery copy
+   (True, False, 2, 1)
+   (True, True, 2, 958)
+
+## 959: under DM 7.3 (recoveries are not real files), endpoints with >=2 real bodies counting the WARC as a document; without the WARC; endpoints left with one real body
+   (958, 0, 958)
+
+## page-version endpoints: count; bodies from one fetch line vs several lines; by host
+   (True, True, 2250, 4500)
+   (False, False, 18, 49)
+
+## page-version endpoints by host
+   ('www.foreign.senate.gov', 368)
+   ('www.armed-services.senate.gov', 326)
+   ('science.house.gov', 276)
+   ('www.appropriations.senate.gov', 195)
+   ('www.banking.senate.gov', 186)
+   ('www.finance.senate.gov', 173)

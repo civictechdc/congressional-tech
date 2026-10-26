@@ -1,0 +1,12 @@
+SELECT count(*), count(DISTINCT sha) FROM c
+   [(3909134, 1036256)]
+SELECT count(*) FILTER (WHERE good), count(*) FILTER (WHERE recovery) FROM c
+   [(2239042, 12862)]
+SELECT count(*) FROM placeholders
+   [(18,)]
+SELECT fmt, count(*), count(DISTINCT sha) FROM real GROUP BY 1 ORDER BY 2 DESC
+   [('pdf', 455423, 255214), ('html', 129207, 91244), ('other', 57639, 44692), ('zip', 34657, 34589), ('xml', 12811, 6845), ('warc', 10247, 10247), ('image', 86, 20), ('doc', 43, 39), ('json', 3, 3)]
+SELECT ctx, ukey FROM c WHERE ctx LIKE '%web.archive.org%' LIMIT 3
+   [('https://web.archive.org/web/20240922192934/https://www.facebook.com/helsinkicommission/videos/2058955231079007/?ref=embed_video', 'facebook.com/helsinkicommission/videos/2058955231079007?ref=embed_video'), ('https://web.archive.org/web/20240922192957/https://www.facebook.com/helsinkicommission/videos/629895947416013/?ref=embed_video', 'facebook.com/helsinkicommission/videos/629895947416013?ref=embed_video'), ('https://web.archive.org/web/20241109132608/https://www.facebook.com/helsinkicommission/videos/620309995127666/?ref=embed_video', 'facebook.com/helsinkicommission/videos/620309995127666?ref=embed_video')]
+SELECT ctx, ukey FROM c USING SAMPLE 3
+   [('https://www-senate-gov-media-srs.akamaized.net/hls/live/2036798/budget/budget061626/master/text_1_00280.vtt', 'www-senate-gov-media-srs.akamaized.net/hls/live/2036798/budget/budget061626/master/text_1_00280.vtt'), (None, None), ('https://www-senate-gov-media-srs.akamaized.net/hls/live/2036795/finance/finance043025/master/text_1_00052.vtt', 'www-senate-gov-media-srs.akamaized.net/hls/live/2036795/finance/finance043025/master/text_1_00052.vtt')]

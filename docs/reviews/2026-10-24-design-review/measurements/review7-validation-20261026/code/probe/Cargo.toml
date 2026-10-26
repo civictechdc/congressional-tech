@@ -1,0 +1,14 @@
+[package]
+name = "vc7_probe"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+arrow-json = "=58.4.0"
+arrow-schema = "=58.4.0"
+arrow-array = "=58.4.0"
+flate2 = "=1.1.10"
+
+[profile.release]
+debug = false

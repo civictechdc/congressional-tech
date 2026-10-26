@@ -1,0 +1,7 @@
+[('documents', '.gz', 40360, 37.88), ('senate/pages', '.gz', 3021, 3.98), ('congress/committees', '.gz', 638, 0.0), ('external/provider-responses', '.gz', 333, 0.31), ('documents', '.aspx', 197, 0.02), ('congress/meetings', '.gz', 105, 0.0)]
+documents 2a52c20793591d938e9a45a3fb3ee617.body.gz after storage gunzip: b'%PDF-1' second layer: b''
+documents 042c8eeaa496014312cfeac89289b49b.body.gz after storage gunzip: b'%PDF-1' second layer: b''
+documents 042c8eeaa496014312cfeac89289b49b.body.gz after storage gunzip: b'%PDF-1' second layer: b''
+documents 9c17f877c5561252b733efcb9bb45348.body.gz after storage gunzip: b'%PDF-1' second layer: b''
+documents 9c17f877c5561252b733efcb9bb45348.body.gz after storage gunzip: b'%PDF-1' second layer: b''
+documents d457e2f40f7a30dd99ef254dde904aa7.body.gz after storage gunzip: b'%PDF-1' second layer: b''

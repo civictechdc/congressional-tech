@@ -1,0 +1,23 @@
+
+## [edition_bodies=0 (fingerprints all equal); URL/member name] (dir, stem) groups with >=2 formats; drawing edges (one body per format, >=2 left); bodies joined; refused (2 bodies of one format); lost to edition_bodies
+   (560, 559, 1118, 1, 0)
+
+## [edition_bodies=0 (fingerprints all equal); old catalog filename] (dir, stem) groups with >=2 formats; drawing edges (one body per format, >=2 left); bodies joined; refused (2 bodies of one format); lost to edition_bodies
+   (732, 732, 1464, 0, 0)
+
+## [edition_bodies upper bound, WARC excluded; URL/member name] (dir, stem) groups with >=2 formats; drawing edges (one body per format, >=2 left); bodies joined; refused (2 bodies of one format); lost to edition_bodies
+   (560, 559, 1118, 1, 0)
+
+## [edition_bodies upper bound, WARC excluded; old catalog filename] (dir, stem) groups with >=2 formats; drawing edges (one body per format, >=2 left); bodies joined; refused (2 bodies of one format); lost to edition_bodies
+   (732, 664, 1328, 0, 68)
+
+## [edition_bodies upper bound, WARC included (DM as written); URL/member name] (dir, stem) groups with >=2 formats; drawing edges (one body per format, >=2 left); bodies joined; refused (2 bodies of one format); lost to edition_bodies
+   (560, 559, 1118, 1, 0)
+
+## [edition_bodies upper bound, WARC included (DM as written); old catalog filename] (dir, stem) groups with >=2 formats; drawing edges (one body per format, >=2 left); bodies joined; refused (2 bodies of one format); lost to edition_bodies
+   (732, 664, 1328, 0, 68)
+
+## [last variant] edge groups by host and format set
+   ('www.congress.gov', '[pdf, xml]', 439)
+   ('docs.house.gov', '[pdf, xml]', 120)
+   ('frwebgate.access.gpo.gov', '[html, pdf]', 105)

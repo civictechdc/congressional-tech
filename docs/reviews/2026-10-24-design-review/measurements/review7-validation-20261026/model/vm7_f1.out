@@ -1,0 +1,81 @@
+
+## WARC bodies: n, GB, distinct context_url, fidelity
+   (10278, 10278, 2.438, 10278, ['exact-bytes'], ['external/provider-responses'])
+
+## WARC URL suffix
+   ('none', 5265)
+   ('.pdf', 4757)
+   ('.htm', 120)
+   ('.html', 95)
+   ('.xml', 15)
+   ('.wvx', 15)
+   ('other ext', 11)
+
+## payload rows in WARC lines: fmt, role, file_shaped, real?
+   ('html', 'document', False, True, 5455, 5455)
+   ('pdf', 'document', True, True, 4756, 4748)
+   ('html', 'document', True, False, 33, 33)
+   ('xml', 'document', True, True, 15, 15)
+   ('other', 'document', False, True, 15, 15)
+   ('doc', 'document', True, True, 2, 2)
+   ('pdf', 'document', False, True, 1, 1)
+   ('m3u8', 'playlist', True, False, 1, 1)
+
+## WARC lines whose payload is not stored as its own body
+   (0,)
+
+## exact endpoint (ctx, mem): endpoints holding a real WARC, by other real formats there (WARC counted as a document)
+   ('[html]', 1, 5454)
+   ('[pdf]', 1, 4757)
+   (None, 0, 34)
+   ('[xml]', 1, 15)
+   ('[other]', 1, 15)
+   ('[doc]', 1, 2)
+   ('[html]', 2, 1)
+
+## exact endpoint (ctx, mem): summary: WARC endpoints; ambiguous only because of the WARC (exactly one other real body); WARC alone (would list a WARC document); ambiguous anyway (>=2 non-WARC bodies)
+   (10278, 10243, 34, 1)
+
+## exact endpoint (ctx, mem): the WARC-caused ambiguous endpoints by the other body's format
+   ('[html]', 5454)
+   ('[pdf]', 4757)
+   ('[other]', 15)
+   ('[xml]', 15)
+   ('[doc]', 2)
+
+## ukey endpoint: endpoints holding a real WARC, by other real formats there (WARC counted as a document)
+   ('[html]', 1, 5453)
+   ('[pdf]', 1, 4757)
+   (None, 0, 34)
+   ('[xml]', 1, 15)
+   ('[other]', 1, 15)
+   ('[doc]', 1, 2)
+   ('[html]', 2, 2)
+
+## ukey endpoint: summary: WARC endpoints; ambiguous only because of the WARC (exactly one other real body); WARC alone (would list a WARC document); ambiguous anyway (>=2 non-WARC bodies)
+   (10278, 10242, 34, 2)
+
+## ukey endpoint: the WARC-caused ambiguous endpoints by the other body's format
+   ('[html]', 5453)
+   ('[pdf]', 4757)
+   ('[xml]', 15)
+   ('[other]', 15)
+   ('[doc]', 2)
+
+## WARC-caused ambiguous HTML endpoints by host (exact)
+   ('veterans.house.gov', 5113)
+   ('judiciary.house.gov', 132)
+   ('waysandmeans.house.gov', 123)
+   ('thomas.loc.gov', 74)
+   ('www.state.gov', 2)
+   ('wolf.house.gov', 1)
+   ('www.sciencedirect.com', 1)
+   ('www.un.org', 1)
+   ('doyle.house.gov', 1)
+   ('waysandmeans.granicus.com', 1)
+
+## WARC-line PDF payloads: damaged proxy (resolution invalid_document)
+   ('saved', 'document', 4757)
+
+## fingerprint work the WARCs would add (DM as written: WARC sniffs 'other', both bodies are candidates): payload PDFs n, GB; WARC n, GB
+   (4749, 2.86, 10278, 2.44)

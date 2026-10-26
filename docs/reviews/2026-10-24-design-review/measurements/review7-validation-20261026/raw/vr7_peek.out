@@ -1,0 +1,437 @@
+
+## ('congress/committees', 'DATE', 'assemble-N.jsonl.gz') files 2 eg congress/committees/2026-09-28/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['_url', 'committee', 'congress', 'detail', 'detail_retrieved_at', 'detail_url', 'retrieved_at'] 7
+
+## ('congress/committees', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg congress/committees/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['committees', 'pagination', 'request'] 3
+
+## ('congress/committees', 'undated', 'assemble-N.jsonl.gz') files 1 eg congress/committees/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['detail', 'detail_retrieved_at', 'outcome', 'started_at', 'url'] 5
+
+## ('congress/hearings', 'DATE', 'download-TS-H-N.jsonl.gz') files 1 eg congress/hearings/2026-10-13/download-20261013T115252Z-9b6163c55c15-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'hearing', 'http_status', 'links', 'mode', 'outcome', 'requested_url', 'retrieved_at', 'source_context', 'staged_request', 'transport', 'url'] 13
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('congress/meetings', 'DATE', 'assemble-N.jsonl.gz') files 2 eg congress/meetings/2026-09-28/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['_retrieved_at', '_url', 'chamber', 'committees', 'congress', 'date', 'eventId', 'location', 'meetingDocuments', 'meetingStatus', 'relatedItems', 'title', 'type', 'updateDate', 'videos'] 15
+
+## ('congress/meetings', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg congress/meetings/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['chamber', 'committees', 'congress', 'date', 'eventId', 'location', 'meetingDocuments', 'meetingStatus', 'title', 'type', 'updateDate', 'videos'] 12
+
+## ('congress/meetings', 'undated', 'assemble-N.jsonl.gz') files 1 eg congress/meetings/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['_url', 'chamber', 'committees', 'congress', 'date', 'eventId', 'hearingTranscript', 'location', 'meetingDocuments', 'meetingStatus', 'title', 'type', 'updateDate'] 13
+
+## ('documents', 'DATE', 'assemble-N-journal-metadata.jsonl.gz') files 3 eg documents/2026-09-23/assemble-20260930-journal-metadata.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['coverage', 'event', 'family', 'packages', 'recorded_at'] 5
+
+## ('documents', 'DATE', 'assemble-N-routing.jsonl.gz') files 1 eg documents/2026-09-29/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['attempt', 'body_complete', 'body_encoding', 'bytes', 'checked_at', 'expected', 'final_url', 'format', 'http_status', 'http_version', 'media_type', 'raw_path', 'redirects', 'response_header_fidelity', 'response_header_items', 'response_headers', 'response_metadata_version', 'response_reason', 'result', 'retrieved_at', 'sha256', 'source_associations', 'started_at', 'storage', 'url', 'usable'] 26
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'media_type': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('documents', 'DATE', 'assemble-N.jsonl.gz') files 7 eg documents/2026-09-21/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['body_budget', 'captures', 'finished_at', 'hearing_detail_budget', 'hearing_details', 'packages', 'plan_sha256', 'scope', 'spicy_docs_version', 'spicy_regs_git_revision', 'started_at', 'summary'] 12
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'media_type': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int'}
+
+## ('documents', 'DATE', 'corpus-recovery-NdNdNbeNaNeaNedff-N.jsonl.gz') files 18 eg documents/2026-10-16/corpus-recovery-6d304449841845d0be796a18ea21edff-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'preserve_download_state': 'bool', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'publisher_requested', 'recovery_evidence', 'requested_url', 'retrieved_at', 'source_associations', 'source_context', 'url'] 13
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('documents', 'DATE', 'corpus-recovery-bbaNaNbNfNfNeNfNc-N.jsonl.gz') files 8 eg documents/2026-10-16/corpus-recovery-bba20a01b944431f9003f82447e1f20c-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'preserve_download_state': 'bool', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'publisher_requested', 'recovery_evidence', 'requested_url', 'retrieved_at', 'source_associations', 'source_context', 'url'] 13
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('documents', 'DATE', 'corpus-recovery-dNcNeNbeNaNacNaNbaN.jsonl.gz') files 18 eg documents/2026-10-16/corpus-recovery-d45c60e7444847be8546a6ac64a9ba28-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'preserve_download_state': 'bool', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'publisher_requested', 'recovery_evidence', 'requested_url', 'retrieved_at', 'source_associations', 'source_context', 'url'] 13
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('documents', 'DATE', 'download-TS-H-N.jsonl.gz') files 1585 eg documents/2026-10-01/download-20261001T135420Z-7cbee94b5f41-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'error', 'links', 'mode', 'outcome', 'provider_http_status', 'provider_metadata', 'provider_response', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'transport', 'url'] 16
+
+## ('documents', 'DATE', 'download-TS-xml-replay-dNaNf-N.jsonl.gz') files 2 eg documents/2026-10-05/download-20261005T162825Z-xml-replay-d6a7584f-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'requested_url', 'retrieved_at', 'source_context', 'url'] 10
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('documents', 'DATE', 'download-bulk-recovery-N.jsonl.gz') files 14 eg documents/2026-10-14/download-bulk-recovery-1386-20261014-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'preserve_download_state': 'bool', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'publisher_requested', 'recovery_evidence', 'requested_url', 'retrieved_at', 'source_associations', 'url'] 12
+ captures[0]: {'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'pointer': 'list', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'family': 'str'}
+
+## ('documents', 'DATE', 'download-filename-recovery-all-N.jsonl.gz') files 56 eg documents/2026-10-15/download-filename-recovery-all-20261015-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'preserve_download_state': 'bool', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'publisher_requested', 'recovery_evidence', 'requested_url', 'retrieved_at', 'source_associations', 'url'] 12
+ captures[0]: {'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'pointer': 'list', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'family': 'str'}
+
+## ('documents', 'DATE', 'download-webharvest-import-N.jsonl.gz') files 9 eg documents/2026-10-15/download-webharvest-import-839-20261015-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'preserve_download_state': 'bool', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'publisher_requested', 'recovery_evidence', 'requested_url', 'retrieved_at', 'source_associations', 'url'] 12
+ captures[0]: {'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'pointer': 'list', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'family': 'str'}
+
+## ('documents', 'undated', 'assemble-N-aliases.jsonl.gz') files 1 eg documents/undated/assemble-20260930-aliases.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['classification_basis', 'original_path'] 2
+ file_references[0]: {'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('documents', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg documents/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['branch', 'category', 'chamber', 'collectionCode', 'collectionName', 'congress', 'dateIssued', 'detailsLink', 'docClass', 'documentType', 'download', 'governmentAuthor1', 'granulesLink', 'heldDates', 'lastModified', 'otherIdentifier', 'packageId', 'pages', 'publisher', 'relatedLink', 'session', 'suDocClassNumber', 'title'] 23
+
+## ('documents', 'undated', 'assemble-N-routing.jsonl.gz') files 1 eg documents/undated/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['attempt', 'checked_at', 'error', 'expected', 'final_url', 'http_status', 'http_version', 'redirects', 'response_header_fidelity', 'response_header_items', 'response_headers', 'response_metadata_version', 'response_reason', 'result', 'source_associations', 'started_at', 'url', 'usable'] 18
+
+## ('documents', 'undated', 'assemble-N.jsonl.gz') files 1 eg documents/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['events', 'family', 'sources', 'url'] 4
+
+## ('external/legislators', 'undated', 'assemble-N.jsonl.gz') files 1 eg external/legislators/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'list', 'captures': 'list', 'file_references': 'list'}
+
+## ('external/provider-responses', 'DATE', 'assemble-N-routing.jsonl.gz') files 1 eg external/provider-responses/2026-09-29/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['body_path', 'bytes', 'content_type', 'elapsed_seconds', 'observed_at', 'sha256', 'status', 'url'] 8
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'media_type': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('external/provider-responses', 'DATE', 'assemble-N.jsonl.gz') files 1 eg external/provider-responses/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['body_path', 'bytes', 'content_type', 'elapsed_seconds', 'observed_at', 'sha256', 'status', 'url'] 8
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('external/provider-responses', 'DATE', 'download-TS-H-N.jsonl.gz') files 25 eg external/provider-responses/2026-10-05/download-20261005T172116Z-32db14c0c3ed-000006.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'source_metadata', 'transport', 'url'] 15
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('external/provider-responses', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg external/provider-responses/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('external/provider-responses', 'undated', 'assemble-N-routing.jsonl.gz') files 1 eg external/provider-responses/undated/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'list', 'captures': 'list', 'file_references': 'list'}
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'http_status': 'int', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+('external/provider-responses', 'undated', 'assemble-N.jsonl.gz') 1 HUGE first line 31839464
+
+## ('external/provider-responses', 'undated', 'assemble-N.jsonl.gz') files 1 eg external/provider-responses/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['isvp', 'pages', 'searches', 'youtube'] 4
+
+## ('external/wayback', 'DATE', 'assemble-N.jsonl.gz') files 1 eg external/wayback/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['body_path', 'bytes', 'content_type', 'elapsed_seconds', 'observed_at', 'sha256', 'status', 'url'] 8
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('external/wayback', 'DATE', 'download-TS-H-N.jsonl.gz') files 6 eg external/wayback/2026-10-02/download-20261002T222605Z-e64d8e807607-000034.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'source_metadata', 'transport', 'url'] 15
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('external/wayback', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg external/wayback/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'NoneType', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('external/wayback', 'undated', 'assemble-N.jsonl.gz') files 1 eg external/wayback/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['basis', 'bytes', 'checked_at', 'final_url', 'http_status', 'http_version', 'original_url', 'publisher_url', 'raw_path', 'response_header_fidelity', 'response_header_items', 'response_headers', 'response_metadata_version', 'response_reason', 'result', 'review_text', 'sha256', 'snapshot_at', 'storage', 'url', 'via'] 21
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'http_status': 'int', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('govinfo/mets', 'DATE', 'assemble-N.jsonl.gz') files 1 eg govinfo/mets/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'list', 'captures': 'list', 'file_references': 'list'}
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('govinfo/mets', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg govinfo/mets/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('govinfo/mets', 'undated', 'assemble-N.jsonl.gz') files 1 eg govinfo/mets/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['bytes', 'final_url', 'http_status', 'http_version', 'raw_path', 'response_header_fidelity', 'response_header_items', 'response_headers', 'response_metadata_version', 'response_reason', 'sha256', 'url'] 12
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'http_status': 'int', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('govinfo/mods', 'DATE', 'assemble-N.jsonl.gz') files 5 eg govinfo/mods/2026-09-23/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['bytes', 'content_type', 'observed_at', 'requested_url', 'resolved_url', 'sha256', 'status'] 7
+
+## ('govinfo/mods', 'DATE', 'download-TS-H-N.jsonl.gz') files 10 eg govinfo/mods/2026-10-06/download-20261006T052349Z-d196e9c2d950-000005.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'source_metadata', 'transport', 'url'] 15
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('govinfo/mods', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg govinfo/mods/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'NoneType', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('govinfo/mods', 'undated', 'assemble-N-routing.jsonl.gz') files 1 eg govinfo/mods/undated/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['missing_committee_codes', 'missing_from_published_materials', 'missing_rendition_url_count', 'missing_renditions'] 4
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('govinfo/mods', 'undated', 'assemble-N.jsonl.gz') files 1 eg govinfo/mods/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['mods', 'package_id', 'parser_version', 'transcripts'] 4
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'NoneType'}
+
+## ('govinfo/premis', 'DATE', 'assemble-N.jsonl.gz') files 1 eg govinfo/premis/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['checked', 'results', 'status', 'targets'] 4
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('govinfo/premis', 'DATE', 'download-TS-H-N.jsonl.gz') files 38 eg govinfo/premis/2026-10-06/download-20261006T052349Z-d196e9c2d950-000006.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'source_metadata', 'transport', 'url'] 15
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('govinfo/premis', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg govinfo/premis/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('govinfo/premis', 'undated', 'assemble-N.jsonl.gz') files 1 eg govinfo/premis/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['attempt', 'checked_at', 'error', 'expected', 'final_url', 'http_status', 'http_version', 'redirects', 'response_header_fidelity', 'response_header_items', 'response_headers', 'response_metadata_version', 'response_reason', 'result', 'source_associations', 'started_at', 'url', 'usable'] 18
+
+## ('govinfo/transcript-html', 'DATE', 'assemble-N.jsonl.gz') files 5 eg govinfo/transcript-html/2026-09-23/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['bytes', 'content_type', 'observed_at', 'requested_url', 'resolved_url', 'sha256', 'status'] 7
+
+## ('govinfo/transcript-html', 'DATE', 'download-TS-H-N.jsonl.gz') files 13 eg govinfo/transcript-html/2026-10-05/download-20261005T210507Z-94e20175a244-000018.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'prior_attempts', 'provider_http_status', 'provider_metadata', 'provider_response', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'transport', 'url'] 18
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'NoneType', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+('govinfo/transcript-html', 'mixed-dates', 'assemble-N.jsonl.gz') 1 HUGE first line 5372110
+
+## ('govinfo/transcript-html', 'mixed-dates', 'assemble-N.jsonl.gz') files 1 eg govinfo/transcript-html/mixed-dates/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['additional_html_captures', 'additional_reusable_html', 'additional_substantial_text_captures', 'additional_substantial_text_package_ids', 'archives', 'caption_text', 'created_at', 'duplicate_handling', 'entries', 'errors', 'excluded_named_files', 'metadata_tables', 'notes', 'scope', 'summary', 'unidentified_or_other_publication_html_candidates'] 16
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'media_type': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int'}
+
+## ('govinfo/transcript-html', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg govinfo/transcript-html/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'NoneType', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('govinfo/transcript-html', 'undated', 'assemble-N.jsonl.gz') files 1 eg govinfo/transcript-html/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['acquisition', 'bytes', 'checked_at', 'classification_scope', 'content_class', 'has_unavailable_notice', 'http_status', 'media_type', 'package_ids', 'raw_path', 'result', 'retrieved_at', 'sha256', 'storage', 'terminal', 'url'] 16
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'media_type': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int'}
+
+## ('house/meeting-xml', 'DATE', 'assemble-N.jsonl.gz') files 2 eg house/meeting-xml/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['attempt', 'body_complete', 'bytes', 'checked_at', 'expected', 'final_url', 'format', 'http_status', 'media_type', 'raw_path', 'redirects', 'response_headers', 'result', 'retrieved_at', 'sha256', 'started_at', 'storage', 'url', 'usable', 'xml_root'] 20
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('house/meeting-xml', 'DATE', 'download-TS-H-N.jsonl.gz') files 151 eg house/meeting-xml/2026-10-01/download-20261001T210326Z-2742b160eed3-000099.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'prior_attempts', 'provider_http_status', 'provider_metadata', 'provider_response', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'transport', 'url'] 18
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('house/meeting-xml', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg house/meeting-xml/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('house/meeting-xml', 'undated', 'assemble-N-routing.jsonl.gz') files 1 eg house/meeting-xml/undated/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'list', 'captures': 'list', 'file_references': 'list'}
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+('house/meeting-xml', 'undated', 'assemble-N.jsonl.gz') 1 HUGE first line 187593143
+
+## ('house/meeting-xml', 'undated', 'assemble-N.jsonl.gz') files 1 eg house/meeting-xml/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['100052', '100097', '100201', '100217', '100218', '100219', '100220', '100221', '100222', '100224', '100225', '100226', '100238', '100239', '100242', '100245', '100246', '100247', '100260', '100261', '100262', '100263', '100264', '100265', '100266', '100267', '100268', '100269', '100280', '100281'] 5741
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str'}
+
+## ('house/pages', 'DATE', 'assemble-N-routing.jsonl.gz') files 1 eg house/pages/2026-09-29/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['event_id', 'media', 'receipt', 'text', 'url'] 5
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'media_type': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('house/pages', 'DATE', 'assemble-N.jsonl.gz') files 1 eg house/pages/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['body_path', 'bytes', 'content_type', 'elapsed_seconds', 'observed_at', 'sha256', 'status', 'url'] 8
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('house/pages', 'DATE', 'download-TS-H-N.jsonl.gz') files 100 eg house/pages/2026-10-02/download-20261002T222605Z-e64d8e807607-000036.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'prior_attempts', 'provider_http_status', 'provider_metadata', 'provider_response', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'transport', 'url'] 18
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('house/pages', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg house/pages/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('house/pages', 'undated', 'assemble-N-routing.jsonl.gz') files 1 eg house/pages/undated/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['id', 'kind', 'original_candidates', 'prior_observation_digest_match', 'prior_observed_at', 'raw_acquired_at', 'selected_reference', 'source_selector', 'source_state', 'status', 'urls'] 11
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('house/pages', 'undated', 'assemble-N.jsonl.gz') files 1 eg house/pages/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'list', 'captures': 'list', 'file_references': 'list'}
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'NoneType', 'retrieved_at': 'NoneType'}
+
+## ('house/repository', 'DATE', 'download-TS-H-N.jsonl.gz') files 1 eg house/repository/2026-10-11/download-20261011T004303Z-1781589d2a85-000001.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'redirects', 'request_url', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'source_metadata', 'transport', 'url'] 16
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('house/witness-xml', 'DATE', 'assemble-N.jsonl.gz') files 2 eg house/witness-xml/2026-09-27/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['association', 'bytes', 'checked_at', 'expected', 'format', 'raw_path', 'result', 'retrieved_at', 'sha256', 'started_at', 'storage', 'url', 'usable'] 13
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('house/witness-xml', 'DATE', 'download-TS-H-N.jsonl.gz') files 49 eg house/witness-xml/2026-10-01/download-20261001T135420Z-7cbee94b5f41-000003.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'provider_http_status', 'provider_metadata', 'provider_response', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'transport', 'url'] 17
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('house/witness-xml', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg house/witness-xml/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('house/witness-xml', 'undated', 'assemble-N-routing.jsonl.gz') files 1 eg house/witness-xml/undated/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['id', 'kind', 'original_candidates', 'prior_observation_digest_match', 'prior_observed_at', 'raw_acquired_at', 'selected_reference', 'source_selector', 'source_state', 'status', 'urls'] 11
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('house/witness-xml', 'undated', 'assemble-N.jsonl.gz') files 1 eg house/witness-xml/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'list', 'captures': 'list', 'file_references': 'list'}
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'NoneType', 'retrieved_at': 'NoneType'}
+
+## ('senate/captions', 'DATE', 'assemble-N.jsonl.gz') files 3 eg senate/captions/2026-09-28/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['cue_text', 'master', 'master_url', 'observed_at', 'playlist', 'playlist_segments', 'playlist_url', 'scope', 'segment', 'segment_sha256', 'segment_url', 'speaking_segment'] 12
+
+## ('senate/captions', 'DATE', 'download-TS-H-N.jsonl.gz') files 48 eg senate/captions/2026-10-04/download-20261004T123658Z-dd0f16c77128-000007.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'prior_attempts', 'provider_http_status', 'provider_metadata', 'provider_response', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'transport', 'url'] 18
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('senate/captions', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg senate/captions/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('senate/captions', 'undated', 'assemble-N.jsonl.gz') files 1 eg senate/captions/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'list', 'captures': 'list', 'file_references': 'list'}
+
+## ('senate/pages', 'DATE', 'assemble-N.jsonl.gz') files 2 eg senate/pages/2026-09-28/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['id', 'identifier', 'imported_at', 'input_snapshot_id', 'kind', 'payload', 'provider', 'retained', 'retrieved_at', 'source_modified_at', 'url'] 11
+
+## ('senate/pages', 'DATE', 'download-TS-H-N.jsonl.gz') files 35 eg senate/pages/2026-10-04/download-20261004T123658Z-dd0f16c77128-000016.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'prior_attempts', 'provider_http_status', 'provider_metadata', 'provider_response', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'transport', 'url'] 18
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('senate/pages', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg senate/pages/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('senate/pages', 'undated', 'assemble-N-routing.jsonl.gz') files 1 eg senate/pages/undated/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['id', 'kind', 'original_candidates', 'prior_observation_digest_match', 'prior_observed_at', 'raw_acquired_at', 'selected_reference', 'source_selector', 'source_state', 'status', 'urls'] 11
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+('senate/pages', 'undated', 'assemble-N.jsonl.gz') 1 HUGE first line 22898632
+
+## ('senate/pages', 'undated', 'assemble-N.jsonl.gz') files 1 eg senate/pages/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['body_repetitions', 'counts', 'records'] 3
+
+## ('senate/players', 'DATE', 'assemble-N.jsonl.gz') files 2 eg senate/players/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['availability', 'checked_at', 'declared_duration_seconds', 'first_segment_check', 'full_session_coverage', 'key', 'master_attempts', 'master_url', 'media_archive_status', 'media_playlist_receipt', 'playlist_endlist', 'segment_count', 'selected_bandwidth_bits_per_second', 'url'] 14
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('senate/players', 'DATE', 'download-TS-H-N.jsonl.gz') files 3 eg senate/players/2026-10-04/download-20261004T123658Z-dd0f16c77128-000011.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'prior_attempts', 'provider_http_status', 'provider_metadata', 'provider_response', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'transport', 'url'] 18
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('senate/players', 'undated', 'assemble-N-aliases.jsonl.gz') files 1 eg senate/players/undated/assemble-20260930-aliases.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['classification_basis', 'original_path'] 2
+ file_references[0]: {'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('senate/players', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg senate/players/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'NoneType', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('senate/players', 'undated', 'assemble-N-routing.jsonl.gz') files 1 eg senate/players/undated/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['classification_basis', 'original_path', 'referenced_source_families'] 3
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'NoneType', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('senate/players', 'undated', 'assemble-N.jsonl.gz') files 1 eg senate/players/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['availability', 'checked_at', 'full_session_coverage', 'key', 'media_archive_status', 'url'] 6
+('youtube/api', 'DATE', 'assemble-N.jsonl.gz') 1 HUGE first line 83417365
+
+## ('youtube/api', 'DATE', 'assemble-N.jsonl.gz') files 1 eg youtube/api/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'list', 'captures': 'list', 'file_references': 'list'}
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('youtube/api', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg youtube/api/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('youtube/api', 'undated', 'assemble-N-routing.jsonl.gz') files 1 eg youtube/api/undated/assemble-20260930-routing.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['id', 'kind', 'original_candidates', 'prior_observation_digest_match', 'prior_observed_at', 'raw_acquired_at', 'selected_reference', 'source_selector', 'source_state', 'status', 'urls'] 11
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('youtube/api', 'undated', 'assemble-N.jsonl.gz') files 1 eg youtube/api/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['youtube_channels', 'youtube_videos_@GOPFinancialServices', 'youtube_videos_@USHouseFSC', 'youtube_videos_@fscdems484', 'youtube_videos_@fscdems9522', 'youtube_videos_@u.s.housecommitteeonfinanc8492'] 6
+
+## ('youtube/captions', 'DATE', 'assemble-N.jsonl.gz') files 1 eg youtube/captions/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['capture_version', 'characters', 'error', 'kind', 'observed_at', 'scope', 'selected_track', 'track_files', 'video_id'] 9
+
+## ('youtube/captions', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg youtube/captions/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('youtube/captions', 'undated', 'assemble-N.jsonl.gz') files 1 eg youtube/captions/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'list', 'captures': 'list', 'file_references': 'list'}
+
+## ('youtube/watch-pages', 'DATE', 'assemble-N.jsonl.gz') files 1 eg youtube/watch-pages/2026-09-29/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['body_path', 'bytes', 'content_type', 'elapsed_seconds', 'observed_at', 'sha256', 'status', 'url'] 8
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'retrieved_at': 'str', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
+
+## ('youtube/watch-pages', 'DATE', 'download-TS-H-N.jsonl.gz') files 4 eg youtube/watch-pages/2026-10-06/download-20261006T073228Z-5e5cb9b46b10-000002.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'download_state': 'dict'}
+ record: ['complete', 'content', 'http_status', 'links', 'mode', 'outcome', 'prior_attempts', 'provider_http_status', 'provider_metadata', 'provider_response', 'redirects', 'requested_url', 'response_header_items', 'response_headers', 'retrieved_at', 'source_context', 'transport', 'url'] 18
+ captures[0]: {'pointer': 'list', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'string_encoding': 'str', 'fidelity': 'str', 'media_type': 'NoneType', 'context_url': 'str', 'retrieved_at': 'str', 'http_status': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'family': 'str'}
+
+## ('youtube/watch-pages', 'undated', 'assemble-N-completion.jsonl.gz') files 1 eg youtube/watch-pages/undated/assemble-20260930-completion.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'NoneType', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['original_path'] 1
+ file_references[0]: {'status': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'source_file': 'str', 'family_hint': 'str', 'source_sha256': 'str', 'family': 'str', 'reference_kind': 'str', 'fidelity': 'str', 'resolution': 'str', 'original_path': 'str'}
+
+## ('youtube/watch-pages', 'undated', 'assemble-N.jsonl.gz') files 1 eg youtube/watch-pages/undated/assemble-20260930.jsonl.gz
+ top: {'source_file': 'str', 'source_line': 'int', 'record': 'dict', 'captures': 'list', 'file_references': 'list'}
+ record: ['bytes', 'checked_at', 'final_url', 'http_status', 'http_version', 'raw_path', 'request_body', 'response_header_fidelity', 'response_header_items', 'response_headers', 'response_metadata_version', 'response_reason', 'result', 'segment_count', 'sha256', 'source_watch_body_sha256', 'storage', 'url', 'video_id'] 19
+ file_references[0]: {'reference_kind': 'str', 'original_path': 'str', 'pointer_json': 'str', 'fidelity': 'str', 'resolution': 'str', 'context_url': 'str', 'http_status': 'int', 'family': 'str', 'body_key': 'str', 'sha256': 'str', 'bytes': 'int', 'stored_sha256': 'str', 'stored_bytes': 'int', 'capture_date': 'str'}
