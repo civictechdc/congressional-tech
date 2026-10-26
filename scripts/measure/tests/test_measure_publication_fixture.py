@@ -89,3 +89,12 @@ def test_request_metrics_separate_journal_payload_and_control_work(tmp_path):
     assert costs.counts['control_get_requests'] == 1
     assert costs.counts['journal_get_seconds'] >= 0
     assert costs.counts['journal_get_failures'] == 1
+
+
+@pytest.mark.parametrize('trials,latency', [(0, 1), (6, 1), (True, 1), (1, -1), (1, 11)])
+def test_generated_native_measurement_refuses_unbounded_work_before_output(tmp_path, trials, latency):
+    from measure_native_publication import run
+    output = tmp_path / 'not-created'
+    with pytest.raises(ValueError):
+        run(tmp_path / 'not-a-checkout', output, trials=trials, request_latency_ms=latency)
+    assert not output.exists()
