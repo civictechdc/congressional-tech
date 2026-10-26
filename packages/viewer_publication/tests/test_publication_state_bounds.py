@@ -86,6 +86,7 @@ def test_journal_interruption_preserves_request_and_resumes(journal, monkeypatch
     log, continuation, remote = journal
     sequence, previous, total = log.sequence, log.previous, log.total_bytes
     original_put = remote.put_object
+    original_accept = continuation.accept_saved
     if boundary == 'accept_link':
         monkeypatch.setattr(continuation, 'accept_saved',
             lambda *args, **kwargs: (_ for _ in ()).throw(KeyboardInterrupt('accept link')))
@@ -102,6 +103,7 @@ def test_journal_interruption_preserves_request_and_resumes(journal, monkeypatch
     assert len(requests) == 1
     assert not (continuation.root / f'journal/{sequence:08d}.json').exists()
     puts = remote.puts
+    monkeypatch.setattr(continuation, 'accept_saved', original_accept)
     restored = state.DurableJournal(remote, 'bucket', continuation, 'test-attempt', {'prepared': True}, resume=True)
     assert restored.sequence == sequence + (boundary != 'before_put')
     assert remote.puts == puts  # Recovery never resends an uncertain request.

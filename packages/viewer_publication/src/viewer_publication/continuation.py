@@ -7,7 +7,10 @@ never resent until its original outcome has been reconciled.
 import hashlib
 import json
 import os
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path, PurePosixPath
+from tempfile import TemporaryDirectory
 import threading
 import uuid
 
@@ -31,6 +34,7 @@ MAX_STATE_BYTES = 128 * 1024**2  # Includes the retained ~9.6MB accepted-recover
 MAX_EVENT_BYTES = 1024**2
 MAX_JOURNAL_BYTES = 256 * 1024**2
 JOURNAL_CHECKPOINT_EVENTS = 1024
+JOURNAL_RESTORE_WORKERS = 6
 
 
 def bounded_json(path):
@@ -192,13 +196,19 @@ class Continuation:
             fsync_dir=False,
         )
 
-    def accept_saved(self, source, name, *, proof):
-        """Retain accepted evidence without rewriting an already synced request."""
+    def accept_saved(self, source, name, *, proof, fsync=False):
+        """Retain accepted evidence by linking its unchanged saved file."""
         source, path = self.saved_path(source), self.saved_path(name)
         if not isinstance(proof, VerifiedFile):
             raise ValueError('Invalid publication saved request')
         proof.require(source)
         path.parent.mkdir(parents=True, exist_ok=True)
+        if fsync and not path.exists():
+            # Restore staging is disposable until the whole prefix is valid.
+            # Sync it once before retaining a new accepted name; existing equal
+            # evidence already passed its original durable save.
+            with source.open('rb') as stream:
+                os.fsync(stream.fileno())
         try:
             # Both names stay available; uncertain requests never reach this step.
             # Atomic link creation also refuses to replace competing evidence.
@@ -462,50 +472,76 @@ class DurableJournal:
         keys.sort()
         if not keys:
             raise MissingPublicationJournal('Publication attempt journal is missing')
-        # Reconstruct write state from the full accepted prefix, not stale local
-        # writes. No checkpoint or accepted journal file is changed until every
-        # event has passed version/chain/binding/transition and byte limits.
-        restored = dict(self.continuation.value, writes={})
-        previous, total, accepted = None, 0, []
         for index, key in enumerate(keys):
             if key != self.prefix + f'{index:08d}.json':
                 raise ValueError('Publication attempt journal has a gap or foreign object')
-            response = self.client.get_object(Bucket=self.bucket, Key=key)
-            with response['Body'] as stream:
-                declared = response.get('ContentLength')
-                if type(declared) is not int or not 0 <= declared <= MAX_EVENT_BYTES:
-                    raise ValueError('Publication journal exceeds event byte limit')
-                if total + declared > MAX_JOURNAL_BYTES:
-                    raise ValueError('Publication journal exceeds total byte limit')
-                raw = stream.read(min(MAX_EVENT_BYTES, MAX_JOURNAL_BYTES - total) + 1)
-            total += len(raw)
-            if len(raw) > MAX_EVENT_BYTES or total > MAX_JOURNAL_BYTES:
-                raise ValueError('Publication journal exceeds byte limit')
-            if len(raw) != declared:
-                raise ValueError('Incomplete publication journal read')
-            event = json.loads(raw)
-            if not isinstance(event, dict) or type(event.get('version')) is not int or event['version'] != 1:
-                raise ValueError('Unsupported publication journal version')
-            if (type(event.get('sequence')) is not int or event['sequence'] != index or event.get('previous') != previous
-                    or not isinstance(event.get('nonce'), str) or len(event['nonce']) != 32
-                    or any(c not in '0123456789abcdef' for c in event['nonce'])):
-                raise ValueError('Publication attempt journal chain or nonce differs')
-            if not isinstance(event.get('value'), dict):
-                raise ValueError('Malformed publication event value')
-            if index == 0 and (event.get('event') != 'attempt_started' or event.get('value', {}).get('binding') != self.binding):
-                raise ValueError('Publication attempt preparation binding differs')
-            if 'verified_write' in event:
-                apply_event(restored, 'publication_write_verified', event['verified_write'])
-            apply_event(restored, event.get('event'), event.get('value'))
-            accepted.append(raw)
-            previous = hashlib.sha256(raw).hexdigest()
-        validate_state(restored)
-        if len(canonical_json_bytes(restored, ensure_ascii=True)) + 1 > MAX_STATE_BYTES:
-            raise ValueError('Publication continuation exceeds state byte limit')
-        # Local event files are retained evidence. Only derived continuation state
-        # uses one serialized/fsynced checkpoint after complete prefix validation.
-        for index, raw in enumerate(accepted):
-            self.continuation.save(f'journal/{index:08d}.json', raw)
+        # Fetch a fixed window, not one future per event. Workers reserve declared
+        # bytes before reading so concurrent staging cannot exceed the journal
+        # budget. Only small file receipts, not the raw prefix, remain in memory.
+        reserved, budget_lock = 0, threading.Lock()
+        with TemporaryDirectory(prefix='.journal-restore-', dir=self.continuation.root) as directory:
+            def fetch(index):
+                nonlocal reserved
+                response = self.client.get_object(Bucket=self.bucket, Key=keys[index])
+                with response['Body'] as stream:
+                    declared = response.get('ContentLength')
+                    if type(declared) is not int or not 0 <= declared <= MAX_EVENT_BYTES:
+                        raise ValueError('Publication journal exceeds event byte limit')
+                    with budget_lock:
+                        if reserved + declared > MAX_JOURNAL_BYTES:
+                            raise ValueError('Publication journal exceeds total byte limit')
+                        reserved += declared
+                    raw = stream.read(declared + 1)
+                if len(raw) > MAX_EVENT_BYTES:
+                    raise ValueError('Publication journal exceeds byte limit')
+                if len(raw) != declared:
+                    raise ValueError('Incomplete publication journal read')
+                return write_atomic_bytes(Path(directory) / f'{index:08d}.json', raw, fsync=False)
+
+            # Reconstruct privately in sequence order. No accepted journal file or
+            # checkpoint changes until the entire remote prefix has been checked.
+            restored = dict(self.continuation.value, writes={})
+            previous, total, accepted = None, 0, []
+            with ThreadPoolExecutor(max_workers=JOURNAL_RESTORE_WORKERS) as pool:
+                submitted = min(JOURNAL_RESTORE_WORKERS, len(keys))
+                pending = deque(pool.submit(fetch, index) for index in range(submitted))
+                try:
+                    for index in range(len(keys)):
+                        proof = pending.popleft().result()
+                        proof.require(proof.path)
+                        raw = proof.path.read_bytes()
+                        total += len(raw)
+                        event = json.loads(raw)
+                        if not isinstance(event, dict) or type(event.get('version')) is not int or event['version'] != 1:
+                            raise ValueError('Unsupported publication journal version')
+                        if (type(event.get('sequence')) is not int or event['sequence'] != index or event.get('previous') != previous
+                                or not isinstance(event.get('nonce'), str) or len(event['nonce']) != 32
+                                or any(c not in '0123456789abcdef' for c in event['nonce'])):
+                            raise ValueError('Publication attempt journal chain or nonce differs')
+                        if not isinstance(event.get('value'), dict):
+                            raise ValueError('Malformed publication event value')
+                        if index == 0 and (event.get('event') != 'attempt_started' or event.get('value', {}).get('binding') != self.binding):
+                            raise ValueError('Publication attempt preparation binding differs')
+                        if 'verified_write' in event:
+                            apply_event(restored, 'publication_write_verified', event['verified_write'])
+                        apply_event(restored, event.get('event'), event.get('value'))
+                        accepted.append(proof)
+                        previous = proof.sha256
+                        if submitted < len(keys):
+                            pending.append(pool.submit(fetch, submitted))
+                            submitted += 1
+                    validate_state(restored)
+                    if len(canonical_json_bytes(restored, ensure_ascii=True)) + 1 > MAX_STATE_BYTES:
+                        raise ValueError('Publication continuation exceeds state byte limit')
+                finally:
+                    for future in pending:
+                        future.cancel()
+            # All workers have quiesced. Publish accepted evidence one event at a
+            # time; the spool's custody receipts refuse changed staging files.
+            for index, proof in enumerate(accepted):
+                proof.require(proof.path)
+                source = str(proof.path.relative_to(self.continuation.root.resolve()))
+                self.continuation.accept_saved(source, f'journal/{index:08d}.json', proof=proof, fsync=True)
         self.continuation.value['writes'] = restored['writes']
         self.continuation.flush()
         self.previous, self.sequence, self.total_bytes = previous, len(keys), total
