@@ -167,6 +167,8 @@ class GpoEvidenceObservation(RawContent):
     retrieved_at: str | None
     acquisition: str
     error: str | None = None
+    source_zip: dict | None = None
+    package_last_modified: str | None = None
 
 
 class GpoListingObservation(SourceModel):

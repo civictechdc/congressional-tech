@@ -4,6 +4,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 from types import SimpleNamespace
+import pytest
 
 from congress_api.acquisition import gpo as fetch
 from congress_api.adapters import gpo
@@ -18,7 +19,20 @@ from congress_api.retention.gpo import write_csv as fetch_write_csv
 from test_explorer_material_adapters import context
 
 FIXTURES = Path(__file__).parent / 'fixtures' / 'gpo_metadata'
-METS = b'<mets xmlns="http://www.loc.gov/METS/"/>'
+
+
+@pytest.fixture(autouse=True)
+def package_manifests(monkeypatch):
+    calls = []
+
+    def read(session, url, member):
+        calls.append(url)
+        package = member.split('/')[0]
+        return SimpleNamespace(data=f'<mets xmlns="http://www.loc.gov/METS/" OBJID="{package}"/>'.encode(),
+                               source={'url': url, 'member': member})
+
+    monkeypatch.setattr(fetch, 'read_zip_member', read)
+    return calls
 
 
 def parsed(package='CHRG-113hhrg21122'):
@@ -91,7 +105,7 @@ def test_replay_preserves_later_corrections_dates_and_digest_is_exact(tmp_path):
     assert before == (out.read_bytes(), retained.read_bytes())
 
 
-def test_unchanged_rows_refresh_by_parser_version_with_a_bound_and_no_transcript_refetch(tmp_path, monkeypatch):
+def test_unchanged_rows_refresh_by_parser_version_with_a_bound_and_no_transcript_refetch(tmp_path, monkeypatch, package_manifests):
     package = 'CHRG-113hhrg21122'
     row = parsed(package)
     row.update(parser_version='', title='Reviewed title', hearing_dates='2013-06-14', text_read='yes', witness_count=999)
@@ -101,7 +115,7 @@ def test_unchanged_rows_refresh_by_parser_version_with_a_bound_and_no_transcript
     calls = []
     def get(session, url):
         calls.append(url)
-        return SimpleNamespace(content=METS if url.endswith('/mets.xml') else (FIXTURES / f'{package}.xml').read_bytes())
+        return SimpleNamespace(content=(FIXTURES / f'{package}.xml').read_bytes())
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', lambda since, key: [])
     monkeypatch.setattr(fetch, 'get_with_retry', get)
@@ -114,13 +128,15 @@ def test_unchanged_rows_refresh_by_parser_version_with_a_bound_and_no_transcript
     assert int(rows[package]['witness_count']) == parsed(package)['witness_count']
     assert calls == [
         f'https://www.govinfo.gov/metadata/pkg/{package}/mods.xml',
-        f'https://www.govinfo.gov/metadata/pkg/{package}/mets.xml',
     ]
+    assert package_manifests == [f'https://www.govinfo.gov/content/pkg/{package}.zip']
     observation = evidence.read(retained)[package]['mods']
     assert observation['acquisition'] == 'http' and observation['retrieved_at']
     calls.clear()
+    package_manifests.clear()
     fetch.main(path, min_congress=113, nthreads=1, refresh_limit=0, evidence_path=retained)
     assert calls == []
+    assert package_manifests == []
 
 
 def test_live_refresh_fills_native_scalar_blanks_but_cache_replay_preserves_them():
@@ -135,6 +151,58 @@ def test_live_refresh_fills_native_scalar_blanks_but_cache_replay_preserves_them
         assert live[field] == current[field]
     for field in ('title', 'hearing_dates', 'text_read'):
         assert live[field] == old[field]
+
+
+@pytest.mark.parametrize(('changed', 'failed_attempt'), [(False, False), (True, False), (False, True)])
+def test_parser_refresh_reuses_version_matched_manifest_but_changes_and_failures_refetch(tmp_path, monkeypatch, package_manifests, changed, failed_attempt):
+    row = parsed()
+    row.update(parser_version='', text_read='yes')
+    package = row['package_id']
+    output, retained = tmp_path / 'rows.csv', tmp_path / 'evidence.jsonl.gz'
+    fetch_write_csv({package: row}, output)
+    monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
+    monkeypatch.setattr(fetch, 'list_collection', lambda *args: [])
+    monkeypatch.setattr(fetch, 'get_with_retry', lambda *args: SimpleNamespace(
+        content=(FIXTURES / f'{package}.xml').read_bytes()))
+    monkeypatch.setattr(fetch, 'read_transcript', lambda *args: {
+        'hearing_dates': '', 'committee_name': '', 'text_read': 'yes',
+    })
+    fetch.main(output, min_congress=113, nthreads=1, evidence_path=retained)
+    accepted = evidence.read(retained)[package]['manifest']
+    if failed_attempt:
+        saved = evidence.read(retained)
+        saved[package]['failed_manifest'] = {**accepted, 'error': 'previous range failed'}
+        evidence.write(saved, retained)
+    rows = fetch_read_csv(output)
+    rows[package]['parser_version'] = ''
+    fetch_write_csv(rows, output)
+    package_manifests.clear()
+    if changed:
+        monkeypatch.setattr(fetch, 'list_collection', lambda *args: [
+            {'packageId': package, 'lastModified': '2026-10-25T00:00:00Z'},
+        ])
+    fetch.main(output, min_congress=113, nthreads=1, evidence_path=retained)
+    assert len(package_manifests) == int(changed or failed_attempt)
+    if not changed and not failed_attempt:
+        assert evidence.read(retained)[package]['manifest'] == accepted
+
+
+def test_legacy_error_manifest_remains_eligible_for_bounded_refresh(tmp_path, monkeypatch, package_manifests):
+    row = parsed()
+    row.update(text_read='yes')
+    package = row['package_id']
+    raw = (FIXTURES / f'{package}.xml').read_bytes()
+    output, retained = tmp_path / 'rows.csv', tmp_path / 'evidence.jsonl.gz'
+    fetch_write_csv({package: row}, output)
+    observation = evidence.observation(raw, 'https://example.gov/mods.xml', 'application/xml')
+    evidence.write({package: {'package_id': package, 'mods': observation,
+                             'manifest': {**observation, 'error': 'old manifest fetch failed'}}}, retained)
+    monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
+    monkeypatch.setattr(fetch, 'list_collection', lambda *args: [])
+    monkeypatch.setattr(fetch, 'get_with_retry', lambda *args: SimpleNamespace(content=raw))
+    fetch.main(output, min_congress=113, nthreads=1, refresh_limit=1, evidence_path=retained)
+    assert len(package_manifests) == 1
+    assert not evidence.read(retained)[package]['manifest'].get('error')
 
 
 def test_evidence_round_trip_preserves_non_utf8_and_rejects_corruption(tmp_path):
@@ -236,8 +304,6 @@ def test_transcript_failure_keeps_old_row_and_successful_mods_bytes(tmp_path, mo
     def get(session, url):
         if url.endswith('/mods.xml'):
             return SimpleNamespace(content=(FIXTURES / f'{package}.xml').read_bytes())
-        if url.endswith('/mets.xml'):
-            return SimpleNamespace(content=METS)
         raise RuntimeError('temporary transcript failure')
     monkeypatch.setattr(fetch, 'get_with_retry', get)
     with pytest.raises(SystemExit):
@@ -269,7 +335,7 @@ def test_rejected_mods_bytes_survive_without_replacing_last_valid_source(tmp_pat
     assert value['failed_mods']['retrieved_at'] and value['failed_mods']['error']
     assert fetch_read_csv(path)[package]['parser_version'] == ''
     monkeypatch.setattr(fetch, 'get_with_retry', lambda session, url: SimpleNamespace(
-        content=METS if url.endswith('/mets.xml') else raw))
+        content=raw))
     fetch.main(path, min_congress=113, nthreads=1, refresh_limit=0, evidence_path=retained)
     assert 'failed_mods' not in evidence.read(retained)[package]
     assert fetch_read_csv(path)[package]['parser_version'] == fetch_PARSER_VERSION
@@ -290,7 +356,7 @@ def test_failed_new_package_retries_after_other_success_advances_watermark(tmp_p
     def get(session, url):
         if first and failed in url:
             raise RuntimeError('temporary MODS failure')
-        return SimpleNamespace(content=METS if url.endswith('/mets.xml') else (FIXTURES / 'CHRG-113hhrg21122.xml').read_bytes())
+        return SimpleNamespace(content=(FIXTURES / 'CHRG-113hhrg21122.xml').read_bytes())
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', listing)
     monkeypatch.setattr(fetch, 'get_with_retry', get)

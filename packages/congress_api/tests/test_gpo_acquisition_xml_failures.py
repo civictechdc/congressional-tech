@@ -30,6 +30,7 @@ MODIFIED = '2026-10-01T00:00:00Z'
     ('mods', b'<html>Temporary upstream error</html>'),  # well-formed, wrong document
     ('manifest', b'<html>Temporary upstream error</html>'),
     ('manifest', requests.HTTPError('temporary METS failure')),
+    ('manifest', METS),  # valid METS for a different package
 ])
 @pytest.mark.parametrize('has_history', [False, True])
 def test_rejected_xml_keeps_history_flushes_neighbor_and_retries(
@@ -68,13 +69,19 @@ def test_rejected_xml_keeps_history_flushes_neighbor_and_retries(
 
     def get(session, url):
         calls.append(url)
-        is_mods = url.endswith('/mods.xml')
-        assert is_mods or url.endswith('/mets.xml')
-        bad_document = is_mods if document == 'mods' else not is_mods
-        if first and FAILED in url and bad_document and isinstance(rejected, requests.RequestException):
-            raise rejected
-        raw = rejected if first and FAILED in url and bad_document else MODS if is_mods else METS
+        assert url.endswith('/mods.xml')
+        raw = rejected if first and FAILED in url and document == 'mods' else MODS
         return SimpleNamespace(content=raw)
+
+    def manifest(session, url, member):
+        calls.append(url)
+        assert url.endswith('.zip') and member.endswith('/dip.xml')
+        if first and FAILED in url and document == 'manifest' and isinstance(rejected, requests.RequestException):
+            raise rejected
+        package = member.split('/')[0]
+        raw = rejected if first and FAILED in url and document == 'manifest' else METS.replace(
+            b'OBJID="CHRG-116hhrg43625"', f'OBJID="{package}"'.encode())
+        return SimpleNamespace(data=raw, source={'url': url, 'member': member})
 
     def transcript(session, row, captured):
         transcript_calls.append(row['package_id'])
@@ -83,6 +90,7 @@ def test_rejected_xml_keeps_history_flushes_neighbor_and_retries(
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', listing)
     monkeypatch.setattr(fetch, 'get_with_retry', get)
+    monkeypatch.setattr(fetch, 'read_zip_member', manifest)
     monkeypatch.setattr(fetch, 'read_transcript', transcript)
 
     with pytest.raises(SystemExit) as error:
@@ -106,8 +114,9 @@ def test_rejected_xml_keeps_history_flushes_neighbor_and_retries(
             assert 'mods' not in saved[FAILED] and 'mods_document' not in saved[FAILED]
     failed = saved[FAILED][f'failed_{document}']
     assert evidence.body_bytes(failed) == (b'' if isinstance(rejected, requests.RequestException) else rejected)
-    assert failed['error'] and failed['retrieved_at'] and failed['acquisition'] == 'http'
-    assert failed['url'].endswith('/mods.xml' if document == 'mods' else '/mets.xml')
+    assert failed['error'] and failed['retrieved_at']
+    assert failed['acquisition'] == ('http' if document == 'mods' or isinstance(rejected, requests.RequestException) else 'http-zip-member')
+    assert failed['url'].endswith('/mods.xml' if document == 'mods' else '.zip')
     pending = Path(str(retained) + '.pending.json')
     assert json.loads(pending.read_text()) == {FAILED: MODIFIED}
 
@@ -120,7 +129,9 @@ def test_rejected_xml_keeps_history_flushes_neighbor_and_retries(
     saved = evidence.read(retained)[FAILED]
     assert 'failed_mods' not in saved and 'failed_manifest' not in saved
     assert evidence.body_bytes(saved['mods']) == MODS
-    assert evidence.body_bytes(saved['manifest']) == METS
+    assert evidence.body_bytes(saved['manifest']) == METS.replace(
+        b'OBJID="CHRG-116hhrg43625"', f'OBJID="{FAILED}"'.encode())
+    assert saved['manifest']['source_zip']['member'] == f'{FAILED}/dip.xml'
     assert evidence.read_csv(output)[FAILED]['last_modified'] == MODIFIED
     assert json.loads(pending.read_text()) == {}
 
@@ -150,7 +161,9 @@ def test_unexpected_parser_errors_remain_visible(tmp_path, monkeypatch, parser):
         {'packageId': FAILED, 'lastModified': MODIFIED},
     ])
     monkeypatch.setattr(fetch, 'get_with_retry', lambda session, url: SimpleNamespace(
-        content=MODS if url.endswith('/mods.xml') else METS))
+        content=MODS))
+    monkeypatch.setattr(fetch, 'read_zip_member', lambda *args: SimpleNamespace(
+        data=METS.replace(b'OBJID="CHRG-116hhrg43625"', f'OBJID="{FAILED}"'.encode()), source={}))
 
     def broken_parser(data):
         raise AssertionError('unexpected parser defect')
@@ -159,3 +172,51 @@ def test_unexpected_parser_errors_remain_visible(tmp_path, monkeypatch, parser):
     with pytest.raises(AssertionError, match='unexpected parser defect'):
         fetch.main(tmp_path / 'rows.csv', min_congress=113, nthreads=1,
                    evidence_path=tmp_path / 'evidence.jsonl.gz')
+
+
+@pytest.mark.parametrize('html_error', [False, True])
+def test_collector_uses_real_zip_transport_and_retains_soft_error_evidence(tmp_path, monkeypatch, html_error):
+    import test_zip_member_transport as zip_fixture
+    from congress_api.transport import http
+
+    package = 'CHRG-119shrg64090'
+    mets = METS.replace(b'OBJID="CHRG-116hhrg43625"', f'OBJID="{package}"'.encode())
+    monkeypatch.setattr(zip_fixture, 'XML', mets)
+    html = b'<html><head><link rel="icon" href="/icon"></head><body>Page Not Found</body></html>'
+
+    def mutate(response, call, body):
+        if html_error:
+            response.status_code, response.url = 200, 'https://www.govinfo.gov/error'
+            response.headers['Content-Type'] = 'text/html'
+            return html
+        return body
+
+    session = zip_fixture.RangeSession(mutate=mutate)
+    output, retained = tmp_path / 'rows.csv', tmp_path / 'evidence.jsonl.gz'
+    row = asdict(parse_mods(package, MODS, MODIFIED))
+    row.update(parser_version='old-parser', text_read='yes')
+    clean_rows({package: row})
+    evidence.write_csv({package: row}, output)
+    previous = evidence.read_csv(output)[package]
+    monkeypatch.setattr(fetch.requests, 'Session', lambda: session)
+    monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
+    monkeypatch.setattr(fetch, 'list_collection', lambda *args: [])
+    monkeypatch.setattr(fetch, 'get_with_retry', lambda session, url: SimpleNamespace(content=MODS))
+    monkeypatch.setattr(http, 'pace_request', lambda *args, **kwargs: None)
+    if html_error:
+        with pytest.raises(SystemExit):
+            fetch.main(output, min_congress=113, nthreads=1, evidence_path=retained)
+        assert evidence.read_csv(output)[package] == previous
+        failed = evidence.read(retained)[package]['failed_manifest']
+        assert evidence.body_bytes(failed) == html
+        assert failed['media_type'] == 'text/html'
+        assert failed['source_zip']['requests'][0]['final_url'] == 'https://www.govinfo.gov/error'
+        assert json.loads(Path(str(retained) + '.pending.json').read_text()) == {package: MODIFIED}
+    else:
+        fetch.main(output, min_congress=113, nthreads=1, evidence_path=retained)
+        saved = evidence.read(retained)[package]
+        assert len(saved['manifest_files']) == 2
+        assert evidence.body_bytes(saved['manifest']) == mets
+        assert saved['manifest']['source_zip']['member'] == f'{package}/dip.xml'
+        assert saved['manifest']['url'] == zip_fixture.URL
+        assert saved['manifest']['package_last_modified'] == MODIFIED

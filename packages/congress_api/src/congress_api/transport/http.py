@@ -134,7 +134,7 @@ def pace_request(url, *, through_zyte=False, request_pacer=None):
         _next[pace_key] = time.monotonic() + gap
 
 
-def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False, json_body=None, json_content_type="application/json", request_pacer=None, strict_zyte=False):
+def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allowed=(200,), through_zyte=False, json_body=None, json_content_type="application/json", request_pacer=None, strict_zyte=False, headers=None, stream=False):
     """Return a response or raise, without putting API keys from query strings in errors."""
     if session is None:
         if not hasattr(_local, "session"):
@@ -146,6 +146,8 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
     attempted, failure_types = 0, []
     if json_body is not None and method != "POST":
         raise ValueError("JSON request bodies require POST")
+    if through_zyte and (headers or stream):
+        raise ValueError("Custom headers and streaming require direct HTTP")
     for attempt in range(attempts):
         attempted = attempt + 1
         pace_request(url, through_zyte=through_zyte, request_pacer=request_pacer)
@@ -166,17 +168,21 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
                     response.headers[item.name] = item.value
             else:
                 options = {"json": json_body} if json_body is not None else {}
-                headers = dict(UA)
+                request_headers = {**UA, **(headers or {})}
                 if json_body is not None and json_content_type != "application/json":
                     import json
                     options = {"data": json.dumps(json_body)}
-                    headers["Content-Type"] = json_content_type
-                response = session.request(method, url, params=params, timeout=60, headers=headers, **options)
+                    request_headers["Content-Type"] = json_content_type
+                if stream:
+                    options['stream'] = True
+                response = session.request(method, url, params=params, timeout=60, headers=request_headers, **options)
                 status = response.status_code
             COUNTS[f"{'Zyte' if through_zyte else method} {host} {status}"] += 1
             failure_types = []
             if status in allowed:
                 return response
+            if stream:
+                response.close()
         except requests.RequestException as error:
             status = "request error"
             failure_types = exception_types(error)
