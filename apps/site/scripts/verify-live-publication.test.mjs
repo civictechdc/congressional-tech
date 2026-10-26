@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {verifyLivePublication} from './verify-live-publication.mjs';
+import {verifyLivePublication,requireNativeWorker} from './verify-live-publication.mjs';
 import {canonicalJson} from '../src/components/explorer/reader/filenames/startup.ts';
 const hash=value=>createHash('sha256').update(value).digest('hex');
 function fixture(withdrawn=false,version=5){
@@ -24,6 +24,14 @@ test('live verification runs maintained review loader and pins pages assets with
 test('historical version 2 remains readable through its original verification route',async()=>{
  const result=await verifyLivePublication(fixture(false,2));
  assert.equal(result.manifest.version,2);assert.equal(result.loader.info.reviewed_search,true);
+});
+test('deployment gate requires native data, executed worker proof and the built-site selection',()=>{
+ const result={manifest:{version:6},pointer:{catalog_id:'selected',recovery:{sha256:'saved'}},pages:{runtime_execution:{state:'passed'}}};
+ requireNativeWorker(result,structuredClone(result));
+ for(const version of [2,5]) assert.throws(()=>requireNativeWorker({...result,manifest:{version}}),/native v6/);
+ for(const state of ['pending','failed']) assert.throws(()=>requireNativeWorker({...result,pages:{runtime_execution:{state}}}),/did not pass/);
+ const earlier=structuredClone(result);earlier.pointer.recovery.sha256='old';
+ assert.throws(()=>requireNativeWorker(result,earlier),/changed after built-site/);
 });
 test('withdrawn reviews remain visible as reasons and source categories are not reinstated',async()=>{
  const result=await verifyLivePublication(fixture(true));

@@ -351,6 +351,15 @@ export async function browserRuntimeProbe(
   }
 }
 
+export function requireNativeWorker(result, expected) {
+  if (result.manifest?.version !== 6)
+    throw new Error('Pages deployment requires the selected native v6 filename publication');
+  if (result.pages?.runtime_execution?.state !== 'passed')
+    throw new Error('Filename worker execution did not pass');
+  if (expected && canonicalJson(result.pointer) !== canonicalJson(expected.pointer))
+    throw new Error('Selected filename publication changed after built-site verification');
+}
+
 function browserProbe(executablePath) {
   const require = createRequire(import.meta.url);
   const loaders = [
@@ -390,11 +399,28 @@ if (
   const descriptorRaw = await readFile(args["review-descriptor"]);
   if (descriptorRaw.length > 16 * 1024)
     throw new Error("Review descriptor exceeds16KiB");
-  const result = await verifyLivePublication({
-    viewerUrl: args["viewer-url"],
-    pagesUrl: args["pages-url"],
-    descriptor: JSON.parse(descriptorRaw),
-    runtimeProbe: browserProbe(args["browser-executable"]),
-  });
+  let result;
+  try {
+    result = await verifyLivePublication({
+      viewerUrl: args["viewer-url"],
+      pagesUrl: args["pages-url"],
+      descriptor: JSON.parse(descriptorRaw),
+      runtimeProbe: browserProbe(args["browser-executable"]),
+    });
+    if (args['require-native-worker'] === 'true') {
+      const expected = args['expected-observation']
+        ? JSON.parse(await readFile(args['expected-observation'], 'utf8'))
+        : undefined;
+      requireNativeWorker(result, expected);
+      result.deployment_gate = {status: 'passed', required: 'native_v6_worker'};
+    }
+  } catch (error) {
+    const failure = result
+      ? {...result, deployment_gate: {status: 'failed', error: String(error)}}
+      : {version: 1, status: 'failed', error: String(error),
+          viewer_url: args['viewer-url'], pages_url: args['pages-url']};
+    await writeFile(args.output, JSON.stringify(failure, null, 2) + '\n');
+    throw error;
+  }
   await writeFile(args.output, JSON.stringify(result, null, 2) + "\n");
 }

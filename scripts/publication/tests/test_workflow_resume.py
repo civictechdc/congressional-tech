@@ -21,10 +21,10 @@ def descriptor():
         attempt='123-2-' + 'c' * 64, repository='fixture/repo')
 
 
-def execute(tmp_path, raw, event='workflow_dispatch'):
+def execute(tmp_path, raw, event='workflow_dispatch', workflow_revision='a' * 40):
     output = tmp_path / 'output'
     env = dict(os.environ, RESUME_DESCRIPTOR=raw, GITHUB_EVENT_NAME=event,
-        GITHUB_REPOSITORY='fixture/repo', RUNNER_TEMP=str(tmp_path), GITHUB_OUTPUT=str(output))
+        GITHUB_REPOSITORY='fixture/repo', GITHUB_SHA=workflow_revision, RUNNER_TEMP=str(tmp_path), GITHUB_OUTPUT=str(output))
     result = subprocess.run([sys.executable, '-I', '-S', str(SCRIPT)], cwd=tmp_path,
         env=env, capture_output=True, text=True, timeout=10)
     return result, output
@@ -35,7 +35,7 @@ def test_original_identity_is_validated_without_site_packages(tmp_path):
     result, output = execute(tmp_path, json.dumps(value))
     assert result.returncode == 0, result.stderr
     assert output.read_text().splitlines() == [
-        'resume=true', 'revision=' + value['revision'], 'run_id=123', 'artifact_id=456']
+        'resume=true', 'preparation_resume=false', 'revision=' + value['revision'], 'run_id=123', 'artifact_id=456']
     assert json.loads((tmp_path / 'viewer-resume.json').read_bytes()) == value
 
 
@@ -82,7 +82,7 @@ def test_resume_requires_explicit_dispatch_and_does_not_replace_retained_descrip
 def test_scheduled_fresh_path_needs_no_descriptor_or_package_import(tmp_path):
     result, output = execute(tmp_path, '', 'schedule')
     assert result.returncode == 0, result.stderr
-    assert output.read_text() == 'resume=false\n'
+    assert output.read_text() == 'resume=false\npreparation_resume=false\n'
     assert not (tmp_path / 'viewer-resume.json').exists()
 
 
@@ -116,9 +116,9 @@ def test_workflow_uses_one_validated_selection_and_keeps_unchanged_skip():
     assert steps[restore]['with']['run-id'] == '${{ steps.resume.outputs.run_id }}'
     assert '--resume --resume-descriptor "$RUNNER_TEMP/viewer-resume.json"' in steps[publish]['run']
     assert 'inputs.artifact_id' not in json.dumps(steps)
-    assert steps[setup]['if'] == "github.event_name == 'push' || steps.resume.outputs.resume == 'true' || steps.preflight.outputs.status == 'preparation_required'"
-    assert next(s for s in steps if s.get('id') == 'preflight')['if'] == "steps.resume.outputs.resume == 'false'"
-    assert next(s for s in steps if s.get('id') == 'prepare')['if'] == "steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required'"
+    assert steps[setup]['if'] == "github.event_name == 'push' || steps.resume.outputs.resume == 'true' || steps.resume.outputs.preparation_resume == 'true' || steps.preflight.outputs.status == 'preparation_required'"
+    assert next(s for s in steps if s.get('id') == 'preflight')['if'] == "steps.resume.outputs.resume == 'false' && steps.resume.outputs.preparation_resume == 'false'"
+    assert next(s for s in steps if s.get('id') == 'prepare')['if'] == "steps.resume.outputs.preparation_resume == 'true' || (steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required')"
 
 
 @pytest.mark.parametrize('historical', [False, True])
@@ -157,7 +157,7 @@ def test_new_preparation_requires_native_runtime_while_resume_and_noop_skip_it(t
     guard=next(step for step in steps if step.get('name')=='Require approved native runtime for preparation')
     prepare=next(step for step in steps if step.get('id')=='prepare')
     assert guard['if']==prepare['if']
-    assert '--native-config "$DOCSPEC_RUNTIME_CONFIG"' in prepare['run']
+    assert 'prepare_workflow_resume.py run' in prepare['run']
     # Execute the current workflow shell in a minimal checkout, without any
     # inherited runtime/provider credentials or installed-checkout package paths.
     relative=Path('.github/scripts/setup-native-runtime.py')
@@ -166,7 +166,7 @@ def test_new_preparation_requires_native_runtime_while_resume_and_noop_skip_it(t
     original=(ROOT/relative).read_bytes()
     setup.write_bytes(original)
     env=dict(PATH=str(Path(sys.executable).parent)+os.pathsep+os.defpath,
-        PYTHONPATH=os.pathsep.join(str(ROOT/p) for p in ('packages/congress_shared/src','packages/congress_api/src')),PYTHONDONTWRITEBYTECODE='1',
+        PYTHONPATH=os.pathsep.join(str(ROOT/p) for p in ('packages/congress_shared/src','packages/congress_api/src','packages/docspec_client/src')),PYTHONDONTWRITEBYTECODE='1',
         HOME=str(tmp_path),RUNNER_TEMP=str(tmp_path),GITHUB_ENV=str(tmp_path/'github-env'),
         AWS_EC2_METADATA_DISABLED='true')
     result=subprocess.run(['bash','-e','-c',guard['run']],cwd=tmp_path,
