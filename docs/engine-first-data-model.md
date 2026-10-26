@@ -120,7 +120,7 @@ A run writes numbered files, `receipts/<family>/<write-date>/<run>-<seq>.jsonl.g
 | `prior_attempts` | list of {url, retrieved_at, transport, http_status, sha256} | Earlier attempts in the same line. |
 | `source_context.observations` | list of {url, source, pointer} | Why the URL was requested. |
 | `writer` | {job, commit, lockfile_digest} | Writer identity. |
-| `captures[]` | list | One entry per body the line references (median 1, max 22,354). |
+| `captures[]` | list | One entry per body the line references (median 1, max 5,806). |
 
 **`captures[]` entry**
 
@@ -217,8 +217,10 @@ One row per body a line references, each `captures[]` entry or, on an older line
 - The line fields (`requested_url`, `retrieved_at`, `outcome`, `mode`, `http_status`) are on every row; `attempt_status` and `complete` are the row's own attempt's, so a cut-off attempt never borrows its line's success.
 - **Older lines** (all 2,596,054 today) keep their fields under `record`, in shapes the ingest mapping reads one by one. It:
   - sets `stored_suffix = '.gz'`;
-  - takes each attempt's own status and completeness where the line records them, and a status from `status_code` where it has no `http_status`; otherwise sets `complete` true unless the body is exactly 64 MiB or the outcome is `size_limit` or `request_failed` (declared lengths are not used: three in four older successful HTML responses declare none, and every one that does names a `Content-Encoding`);
-  - takes the fetch time from `retrieved_at`, or `captured_at` on Senate caption runs (on End of Term archive fetches both are the archive's capture time), else null;
+  - maps each shape's outcome and mode into §5.2's values by a table versioned with the mapping (today 2.96M of 3.9M rows carry no outcome, and the rest use values such as `saved`, `html`, `captured` and `http_error`; most carry no mode); a shape with no outcome derives one from its status and whether it references a body, and a value the table does not list fails the ingest;
+  - takes each attempt's own status and completeness where the line records them, and a status from `status_code` where it has no `http_status`; otherwise sets `complete` true unless the body is exactly 64 MiB or the outcome is `size_limit` or `request_failed` (declared lengths are not used: about 61% of older 2xx HTML responses with full recorded headers declare none, and nearly all that declare one name a `Content-Encoding`, so the length is the compressed transfer's);
+  - takes the fetch time from the row's own entry or line: `retrieved_at`, or `captured_at` on Senate caption runs (on End of Term archive fetches both are the archive's capture time), else null;
+  - reads headers from `response_headers`, `response_header_items` or `record.headers`, whichever the shape keeps;
   - sets `expansion = 'expanded'` on an archive line whose members were captured;
   - reads `pointer` elements as strings or integers, and a list-valued `record` (99 lines) element by element.
 - Not partitioned; sorted within a commit by `(url, retrieved_at)`.
@@ -400,7 +402,7 @@ copy_urls(f) := for a top-level source file, the url_keys of its source URL and 
   - placeholder bodies' links are not resolved.
 
   *Est.* 5.5M targets: 4.2M links at 1.3 contexts per page (277,642 contexts over 214,041 good-fetched HTML and XML bodies).
-- **Matching.** A link target matches a top-level source file through its `copy_urls` and an archive member through its endpoint `(url_key(context_url), member_path)`, null-safe (`IS NOT DISTINCT FROM`); a target path that several members of one archive share matches each of them. A target that matches an archive also stands for each of its members, so the link's context and publisher group reach them: 34,095 of the 34,319 linked GovInfo ZIPs hold one hearing's HTML and PDF, which join this way, and the one-body-per-format rule (§7.5) keeps the rest apart. Every link join (link targets, recoveries' original links, the `url_state` queue) MUST use `url_key`.
+- **Matching.** A link target matches a top-level source file through its `copy_urls` and an archive member through its endpoint `(url_key(context_url), member_path)`, null-safe (`IS NOT DISTINCT FROM`); a target path that several members of one archive share matches each of them. A target that matches an archive also stands for each of its members, so the link's context and publisher group reach them: 33,980 of the 34,196 good-fetched GovInfo ZIPs hold one hearing's HTML and PDF (112 more hold HTML only), which join this way, and the one-body-per-format rule (§7.5) keeps the rest apart. Every link join (link targets, recoveries' original links, the `url_state` queue) MUST use `url_key`.
 - Identity keeps the exact URL: `source_id`, `requested_url`, `url_state`'s key and link URL keys (§8.2) MUST NOT use `url_key`.
 - The model reports URLs still wrapped after two passes. A test rejects a `url_variants` record whose canonical URL is itself a variant, so variants cannot chain.
 
@@ -449,8 +451,8 @@ real_files  := rows of good_fetch where
     and record_role = 'document'
     and (format <> 'html' or not file_shaped(locator))
 
-locator     := the member path for an archive member (34,446 HTML members sit at
-               successful ZIP URLs), else the URL
+locator     := the member path for an archive member (34,331 HTML members sit at
+               good-fetched ZIP URLs), else the URL
 real_body   := a body with at least one real_files row
 ```
 
@@ -547,10 +549,10 @@ document_id    := SHA-256 of the compact JSON array ["bodies", sorted distinct l
 
 - **Order of evaluation:** real files and source files (§7.3–7.4); the edges above and body-key review edges; components; recovery attachment (§7.8); review edges with a link URL key end, which merge the documents they resolve to; then saved files, dates and keys.
 - A re-packaged copy of an edition-ambiguous body that never shared an endpoint with another real body is no fingerprint candidate, so it stays out of `edition_bodies`.
-- Renditions share neither bytes nor text, so only `same_rendition` joins them: today about 34,000 GovInfo ZIPs join their HTML and PDF members (rule a), and about 700 same-stem groups join (rule b). Several files of one format listed together, such as a witness's testimony, disclosure form and biography, stay separate documents.
+- Renditions share neither bytes nor text, so only `same_rendition` joins them: today about 34,100 GovInfo ZIPs join their members (rule a; 112 hold no PDF), and about 560 same-stem groups (rule b; 732 on the old catalog's names). Several files of one format listed together, such as a witness's testimony, disclosure form and biography, stay separate documents.
 - The model reports the largest components by edge kind.
 - *Est.* 0.5–0.7M listed documents: today's 1.24M catalog rows less 454k caption snippets, about 150k metadata records (47,643 source records and 103,200 GovInfo metadata files), 10k playlists, 1k API responses and the listing pages among about 200k HTML rows.
-- About 0.6% of listed documents are expected to have no capture date (4,859 of 762,950 non-caption catalog rows; the snapshot's 2.7M time-less rows are mostly caption segments whose lines carry `captured_at`); 102,427 saved files carry only an import run's date.
+- About 0.8% of listed documents with a real file are expected to have no capture date (4,681 of 561,791 distinct non-caption bodies; the snapshot's 2.7M time-less rows are mostly caption segments whose lines carry `captured_at`), and a recovery-only document has none; 102,427 saved files carry only an import run's date.
 
 **Meetings, committees and official records**
 

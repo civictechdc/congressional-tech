@@ -247,7 +247,7 @@ Every capture entry records the suffix its body is stored under. Writers MUST NO
 
 ### 7.2 Receipts
 
-A run writes immutable numbered files at `receipts/<family>/<write-date>/<run>-<seq>.jsonl.gz`, keyed by the UTC write date. New writers MUST use date-shaped prefixes only; older receipts also sit under `undated/` and `mixed-dates/` (49 files, 2.2M rows), which only the backfill reads.
+A run writes immutable numbered files at `receipts/<family>/<write-date>/<run>-<seq>.jsonl.gz`, keyed by the UTC write date. New writers MUST use date-shaped prefixes only; older receipts also sit under `undated/` and `mixed-dates/` (49 files, 1,257,667 lines), which only the backfill reads.
 
 Each line records one fetch: its URLs, time, attempts, status and outcome; one entry per body it references; allowlisted response headers; and the writer's identity ([[DATA-MODEL]] §5.2). Links are not recorded, because a page's reading holds them (§8.3). Receipts are the authoritative history of what was captured and when. A run MUST write each receipt file create-only and after the bodies its lines reference, so every line points at a body that exists. Run IDs are never reused, so a 412 on a receipt or provenance write fails the run.
 
@@ -420,7 +420,7 @@ From the second flip on, at least the live and last-good releases exist. The mai
 
 ### 11.1 Reads
 
-The site reads pointer → release manifest → `list`, then `detail`, `links`, `occurrences`, `recoveries` and `meetings` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent data-page reads; link lookups also use the column index.
+The site reads pointer → release manifest → `list`, then `detail`, `links`, `occurrences`, `recoveries` and `meetings` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent page reads; link lookups also use the column index.
 
 ### 11.2 Devices and Speed
 
@@ -475,12 +475,12 @@ backfill:    one producer's work list for a new version or table, in batches   (
 
 The engine (docspec-rs) MUST provide:
 
-1. **Multi-input SQL jobs** in one DataFusion context, over Iceberg tables in Basin Catalog, Parquet files, and the gzip-compressed JSON lines of receipts, read with an explicit schema that nulls a conflicting value and keeps the raw line, so no line fails the read and none is lost silently; partition and column filters reach Iceberg scan planning; a named step can be materialized once, its batches reserved in the memory pool or written to scratch Parquet when the pool refuses.
+1. **Multi-input SQL jobs** in one DataFusion context, over Iceberg tables in Basin Catalog, Parquet files, and the gzip-compressed JSON lines of receipts, read with an explicit schema, every field nullable, that nulls a conflicting value and keeps the raw line, so no line fails the read and none is lost silently; partition and column filters reach Iceberg scan planning; a named step can be materialized once, its batches reserved in the memory pool or written to scratch Parquet when the pool refuses.
 2. **Table operations** through the REST catalog: append, each commit asserting its table UUID and base snapshot, with the conflict retry of §8.1; create; and drop with purge.
 3. **Deterministic multi-file export** to §10.2, with the per-file writer settings of [[DATA-MODEL]] §8.1, SHA-256 and MD5 computed while writing, and row-range shards.
 4. **Connected components** in memory over dense integer IDs (a 32 MB parent array at 4M nodes), refusing above a configured node count.
 5. **Streaming I/O:** no re-read of a just-written object and no HEAD of an immutable file, except as §7.1 and §10.3.4 allow. File and row-group sizes come from writer settings ([[DATA-MODEL]] §6, §8.1).
-6. **Bounded resources** set by configuration: compute threads, memory pool and scratch space. Sorts and aggregates spill or fail clearly within the pool. Hash-join builds do not spill, so the engine builds the side the plan names, and plans keep wide columns off it: join on keys first, reduce, then attach the wide column.
+6. **Bounded resources** set by configuration: compute threads, memory pool and scratch space. Sorts and aggregates spill or fail clearly within the pool. Hash-join builds do not spill, and join selection builds the smaller input by the row counts scans report, so plans keep wide columns off both join inputs: join on keys first, reduce, then attach the wide column.
 7. **A thin interface:** a library plus a CLI that runs a declarative job spec (inputs, SQL steps, outputs, export settings) and returns a machine-readable result.
 8. **Generic URL functions** DataFusion lacks, as SQL functions: reference resolution [[RFC3986]] §5 and percent-encoding normalization [[RFC3986]] §6.2.2.
 

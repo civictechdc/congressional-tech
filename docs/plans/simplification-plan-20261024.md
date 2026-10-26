@@ -124,7 +124,8 @@ E1 is written here: every derivation of [[DATA-MODEL]] §7 as SQL, and the refer
 | S1 | A placeholder page at thousands of addresses | Not a real file; it connects nothing, and its links are not resolved |
 | S1 | A short real hearing page; a short soft-error page; a near-empty page; a "your download will begin" page | `document`; `error_response`; `error_response`; `wrapper`, with its file link queued |
 | S1 | A broken PDF; a valid PDF with trailing bytes after its end marker; a new valid PDF; a PDF over the reader's limit with no end marker in its tail; an older gzip PDF with no verified copy | `damaged`; real; real, from the `intact` its capture recorded; `damaged` and reported; read whole from its `.gz`, real when intact, and reported |
-| S1 | An Office file; a provider's `.warc.gz` envelope stored beside its payload | One body, no members; `envelope`, and the payload's endpoint holds one real body |
+| S1 | An Office file; an End of Term `.warc.gz` or `.arc.gz` envelope stored beside its payload | One body, no members; `envelope`, and the payload's endpoint holds one real body |
+| S1 | An older line with outcome `html` and a 2xx response; a site home page or "Under Maintenance" page served at a `.pdf` URL | A good fetch; not a real file (file-shaped), reported by error type |
 | S1 | A feed page | `listing`, and no link context |
 | S1 | A response with no declared length read to a clean end; a body assembled from ranges of one entity; ranges whose entity changed in between | Complete; complete; not complete |
 | S1 | A cut-off direct attempt and a complete provider retry in one fetch | The retry's body is real; the cut-off body is not |
@@ -182,7 +183,7 @@ Each task names the component it builds or binds and the contract it must pass. 
 These components survive, so they are bound now.
 
 0. **Clean the older receipts, once, before `receipts/` is locked** ([[DATA-MODEL]] §5.2). A full scan on 2026-10-25 found 534,733 recorded cookies on 242,438 lines and local paths in many fields, including 279,549 absolute `file_references[].original_path` values, and receipts are public.
-   - **First, stop the old writers adding more:** today's capture and import writers drop cookies, credential parameters and local paths (241,328 of the 530,081 lines written in the two weeks before the scan carry a `Set-Cookie`, and the newest import runs a path on every line). No import runs between the cleanup and the lock on `receipts/`.
+   - **First, stop the old writers adding more:** today's capture and import writers drop cookies, credential parameters and local paths (241,328 of the 530,081 lines in the mirror's last two weeks, 2026-10-03 to 2026-10-16, carry a `Set-Cookie`, and the newest import runs a path on every line). No import runs between the cleanup and the lock on `receipts/`.
    - **The fields:** the read-only scan lists, by field, the values that look like local paths, including paths inside JSON key names; its list is committed with B0, the owner confirms it before the run, and no other field is touched. The input is the receipt keys in the 2026-10-24 backup plus any written since; each receipt not in the backup is copied into it before it is rewritten.
    - **The tool** is a one-off rewriter outside the body store, with its own credential, deleted once B0 is verified. The body store stays create-only throughout.
    - **The run,** for each receipt without a verification record:
@@ -204,7 +205,7 @@ These components survive, so they are bound now.
 10. **The one-time full re-hash** ([[ARCHITECTURE]] §7.4), after B13, skipping the keys B13 verified.
 11. **A ratchet test:** no test-only branch or test-only input substitution may appear in a surviving component; tests inject adapters instead ([[ARCHITECTURE]] §15, item 7).
 12. **Owed while the old capture path runs:** repair wrong `stored_sha256` index rows in place, and confirm the daily capture writes correct values. The target reads receipts, so these matter only until the switch.
-13. **Uncompressed copies of older gzip PDFs** (after B1 and B3), by the PDF copier of [[BINDINGS]] §3.1. Candidates are older bodies whose media type or the old catalog's sniff says PDF (about 261,125); a copy is written only when the decompressed bytes begin `%PDF-` (about 950 candidates are HTML). The largest raw write in the plan, so the lock and the refusal matrix come first: about 260,175 uploads and 403 GB once decompressed (about $72 a year of storage under the lock). Running it before B10 saves B10 about 365 GB of reads.
+13. **Uncompressed copies of older gzip PDFs** (after B1 and B3), by the PDF copier of [[BINDINGS]] §3.1. Candidates are older bodies whose media type or the old catalog's sniff says PDF (about 261,125); a copy is written only when the decompressed bytes begin `%PDF-` (about 950 candidates are HTML by the readings sniff; the test decides the 33,369 never sniffed). The largest raw write in the plan, so the lock and the refusal matrix come first: about 260,175 uploads and 403 GB once decompressed (about $72 a year of storage under the lock). Running it before B10 saves B10 about 365 GB of reads.
 14. **Re-fetch the cut-off files** (after B2, through the spooled fetcher): every URL with a copy cut off at 64 MiB and no complete 2xx copy, 62 to 64 by the snapshot index depending on how a complete copy is counted; the receipts decide. The cut-off copies stay in raw.
 15. **Committee and meeting fetches through the fetcher** like every other fetch: the Congress.gov committee and meeting APIs and the House and Senate meeting inventories ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5). An incremental relist takes its window from the `last_good_at` of the API list URL it pages through, and pages to the end of the list.
 16. **Fetch the wrapped files** (after D2, from the wrapper pages' `html` readings): the file links of download-wrapper pages, *est.* 8,800 testimony and statement PDFs that were never fetched, ahead of the model's queue.
@@ -221,10 +222,10 @@ These components survive, so they are bound now.
 |---|---|---|
 | C1 | Multi-input SQL jobs | A job joining two tables, a file and a receipt holding a type conflict, read whole with the value nulled and its raw line kept; a partition filter visible in the Iceberg scan |
 | C2 | Table operations | M1's commit and drop tests |
-| C3 | Deterministic export | Byte equality across threads, input orders, batch sizes and a forced spill; after a row group's first view through the reader's byte cache, a `detail` view sends only data-page ranges, in one round trip |
+| C3 | Deterministic export | Byte equality across threads, input orders, batch sizes and a forced spill; after a row group's first view through the reader's byte cache, a `detail` view is one round trip |
 | C4 | Connected components | M2's graph; a refusal test |
 | C5 | Streaming I/O | Request counts in a test |
-| C6 | Bounded resources | A join at the pool limit fails clearly; M2's build sizes; the build sides `EXPLAIN` shows are the ones the plan names |
+| C6 | Bounded resources | A join at the pool limit fails clearly; M2's build sizes; every hash-join build `EXPLAIN` shows is the smaller input and carries no wide column |
 | C7 | Thin interface | The M2 export as a job spec |
 | C8 | URL functions | Conformance vectors from RFC 3986 §5.4, and golden vectors from today's fetcher's URL handling; M2's `url_key` timing |
 
@@ -238,7 +239,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
 1. **Captures ingest:**
    - backfill from all 2,289 receipts (1.08 GB compressed), including the non-date segments ([[ARCHITECTURE]] §7.2), with a test sample of each older receipt shape ([[DATA-MODEL]] §6.1);
-   - the backfill restores the statuses today's index dropped for 1.04M bodiless lines, and maps a fetch time from every receipt shape: 522,448 rows in dated receipts have no time in the snapshot, and 501,487 of them carry a fetch time on their line or entry;
+   - the backfill restores the HTTP status on the about 37,000 bodiless lines that record one (`http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses), and maps a fetch time from every receipt shape: 522,448 rows in dated receipts have no time in the snapshot, and 500,689 of them carry one on their own entry or line;
    - the rebuild-equivalence test;
    - **compare with the pinned old capture index** (3,909,134 rows) on receipt-derived columns, with written transformation rules for the expected differences: statuses restored on bodiless lines, the 5,587 lines of the 2026-10-15 recovery run read as recoveries rather than fetches, completeness per attempt, `stored_md5` and `stored_suffix` new, `stored_sha256` gone. A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
 2. **Parsers:**
@@ -264,11 +265,11 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
    - documents lose soft-error and wrapper pages, and about 4,900 lose Senate landing pages, from their body sets, while short real pages and real web pages now count;
    - cut-off copies, damaged PDFs and pages whose reading failed (reported by format and error type) drop out of body sets, and feed pages become listings;
    - the 3,690 recovered files that a real fetch also saved become real bodies;
-   - about 2,250 pages saved twice in one fetch (a direct attempt and a provider retry) merge by main content, and about 960 veterans.house.gov pages from the End of Term archive gain their webharvest.gov copies as attached recoveries;
+   - about 2,250 pages saved twice in one fetch (a direct attempt and a provider retry) merge by main content, and 999 veterans.house.gov pages from the End of Term archive gain their webharvest.gov copies as attached recoveries;
    - document kinds now also come from the publisher's link labels where the filename gives none;
    - a file's name comes from each capture row, download header first: about 95,000 files carry a download-header name and change `source_id`, and a body offered several names keeps one source file per name in one document;
    - about 460,000 rows today named only from `download_state` are saved-text duplicates of exact copies at the same URL, and collapse into their twins; where a URL's copies differ (532 URLs), the exact copy becomes the saved file;
-   - about 34,000 GovInfo ZIP groups and about 700 same-stem groups merge; the old catalog's 16k format groups were mostly PDFs paired with a docs.house.gov 404 page, which is not a good fetch;
+   - about 34,100 GovInfo ZIP groups and about 560 same-stem groups merge; the old catalog's about 19,500 multi-format same-stem groups were mostly (about 17,400) PDFs paired with one docs.house.gov 404 body saved at `.xml` URLs, a placeholder that is no good fetch;
    - `document_id` keeps today's formula, but its inputs now include real web pages and untyped bodies;
    - source IDs change where B0 removed a credential parameter from a source URL;
    - link-label coverage changes, because labels now come from saved pages; labels that came only from scraper records inside receipts are their own cause;

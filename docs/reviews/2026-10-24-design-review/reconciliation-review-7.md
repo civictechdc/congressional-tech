@@ -38,11 +38,11 @@ All scripts and summary outputs are in `measurements/review7-validation-20261026
 |---|---|---|---|---|---|
 | 1 | DataFusion's JSON reader fails a whole receipt on one type conflict | Ic | ⚙✓ | No switch in `JsonOptions` 53.1; 1,420 receipts hold a mixed-type path; `ignore_type_conflicts` reads all 778,684 lines of the largest failing receipt in 60 MB | A §13.1: conflicts become nulls and the raw line is kept; B C1: one `PartitionStream` per receipt with arrow-json, functions-json for nulled keys; P M2 measures it |
 | 2 | `file_references` bodies missing from the `captures` grain | Ic | ✓ | 534,283 entries on 464,110 lines; the old index's 3,909,134 rows include them; DM's bodiless count already assumed them | DM §6.1 grain |
-| 3 | D1's time count reads one field | Sp, Pr | ✓ | `captured_at` matches the HTTP Date on 99.99% of Senate caption lines; 501,487 of 522,448 untimed rows carry a fetch time, not 47,359 | P D1; DM §6.1 time mapping |
+| 3 | D1's time count reads one field | Sp, Pr | ✓ | `captured_at` matches the HTTP Date on 99.99% of Senate caption lines; 500,689 of 522,448 untimed rows carry a fetch time on their own entry or line, not 47,359 | P D1; DM §6.1 time mapping |
 | 4 | Undated `assemble-*` status source | Pr | ✓ | 907,726 statuses come from `captures[].status_code` | DM §6.1 |
 | 5 | WARC envelopes have no role | Pr | ✓ ◐ | 10,278 End of Term `.warc.gz`/`.arc.gz` bodies, each beside its stored payload; they poison 10,243 endpoints; the proposed `warc` arm never fires because the sniff sees a second gzip layer | DM §6.2 sniff reads the second layer; role `envelope`; invariant 8; S1 row |
 | 6 | Multipart ETags on older bodies | Ic | ✓ | 61 of 588 bodies over 100 MiB, all from the 2026-10-01 bulk upload, identical on both hosts | DM §5.1 exception; invariant 2 and A §7.4 compare size and ETag with the record |
-| 7 | "16,000 groups / 32,500 documents" | Pr | ◐ | 17,425 old groups pair a PDF with one docs.house.gov 404 body; the target joins about 34,000 GovInfo ZIPs (rule a) and about 700 same-stem groups (rule b) | DM §7.5; P E4 |
+| 7 | "16,000 groups / 32,500 documents" | Pr | ◐ | About 17,400 of the old catalog's 19,500 multi-format groups pair a PDF with one docs.house.gov 404 body; the target joins about 34,100 GovInfo ZIPs (rule a) and about 560 same-stem groups (rule b) | DM §7.5; P E4 |
 | 8 | GovInfo ZIP fixture and METS | Pr | ◐ | 33,980 of 34,196 hold five members; `dip.xml` root is `mets`; without METS in the registry the manifest joins the document | DM §7.1 row; S1 row |
 | 9 | Writer identity bound to `locked_runtime` | Bi | ⚙ | It hashes seven package versions plus OS and machine; no commit | B receipt writer and importer; P B6 now says commit |
 | 10 | Dictionary pages under ranged reads | Sp, Ic | ⚙ | hyparquet fetches the dictionary page on every ranged read; a byte cache keeps it | A §11.1; P C3 test |
@@ -56,7 +56,7 @@ All scripts and summary outputs are in `measurements/review7-validation-20261026
 | 18 | Budget overrun waits for a person | Pr, Sp | 📄 | — | A §12: publish starts the backfill |
 | 19 | M1 has no decision rule | Ic | ⚙ | Basin compacts only files not yet compacted | P M1 rows check and ten-year scan rule; A §8.6 drops "a few GB a month" |
 | 20 | Rules stated twice; B tables unreadable | Ed | 📄 | Ten B cells over 60 words | A §8.3, §8.5, §8.6, §9 cut to cites; B §3 as per-component lists (word bag unchanged) |
-| 21 | Numbers without predicates | Sp, Pr | ✓ | 62% → three in four; 579 → 313 non-PDF; 3,558/11,044 → 3,690/11,792; 30% → 0.6%; 19,316 → about 25,500; 50 → 47; 27 now has its predicate | Each number rewritten in place |
+| 21 | Numbers without predicates | Sp, Pr | ✓ | 62% → about 61% of responses with full recorded headers; 579 → 313 non-PDF; 3,558/11,044 → 3,690/11,792; 30% → 0.8% of documents with a real file; 19,316 → about 25,500; 50 → 47; 27 now has its predicate | Each number rewritten in place |
 | 22 | Cross-format edition ambiguity | Pr | ✗ | All 541 endpoints came from a file-shape test that never ran; 422 of 428 HTML bodies are error pages | No change |
 | 23 | 23 GB ZIP walk | Pr | ✗ | No endpoint holds two real ZIP or PDF bodies once cut-off attempts drop out | DM §6.2 says none today |
 | 24 | veterans.house.gov needs a second wrapper | Pr | ✗ | The second copy is a webharvest.gov recovery at the publisher's URL; it attaches, it does not merge by text; the page-version population is 2,250 pages saved twice in one fetch | P D2, E4 and the S1 row rewritten |
@@ -64,7 +64,24 @@ All scripts and summary outputs are in `measurements/review7-validation-20261026
 
 Minor findings folded in the same pass: the receipt reader's errors never print a line's text; `c.url` used throughout DM §7.3; the bodiless recovery row's source URL; conflict retry reuses written files; JSON link strings; table property spelling; stale `streamed-recovery` fix; reference and seed-citation repairs; `house_sites.py`'s lost calendar pages named. Rejected: dropping the PDF copier's HEAD on a 412 (older `.pdf` objects exist unverified).
 
-**Owner decision, 2026-10-26:** files fetched from the End of Term archive are dated like any other fetch, so their archive capture time (2012–2017) is shown as "Captured <date>" (DM §6.1's time mapping already says so).
+**Owner decision, 2026-10-26:** files fetched from the End of Term archive are dated like any other fetch, so their archive capture time (2004–2025, 96% in 2012–2017) is shown as "Captured <date>" (DM §6.1's time mapping already says so).
+
+## Re-check of the validators
+
+At the owner's request, three further agents re-derived the validators' load-bearing claims with their own scripts and predicates, read the validators' work only afterwards, and scored them.
+
+| Re-checked | Reliability | Documents in that lens |
+|---|---|---|
+| Raw validator | 82 | 76 (raw safety 82, grounded numbers 72, ingest readiness 70) |
+| Model validator | 88 | 79 (rules on real data 82, fixtures 78, grounded numbers 77) |
+| Code validator | 78 | 82 (engine fit 80, binding accuracy 85, plainest options 82) |
+| Professor's overturned findings | 58 | — |
+
+Corrected from the validators: the declared-length figure (about 61% of responses with full recorded headers, not three in four); the capture-date share counted by document (0.8%); the End of Term date range; 500,689 by the own-entry predicate; the status restoration in D1 (about 37,000 bodiless lines record an HTTP status, not 1.04M); good-fetched ZIP counts without recovery imports (33,980 of 34,196; 34,331 members); about 560 same-stem groups; 999 veterans.house.gov pages; two mislabelled counts (`captures[]` peaks at 5,806; the non-date files hold 1,257,667 lines). From the code re-check: the lead's binding to drop the provider's row counts was wrong (it would undo `881eb8c`, break two tests, and DataFusion swaps on one side's statistics in `Auto` mode), so the rule is now to keep wide columns off both join inputs; writer identity extends `capture-source-manifest.py`, which capture already runs; the receipt schema is all-nullable.
+
+New from the model re-check: the good-fetch rule named outcome values no older receipt uses (2.96M of 3.9M rows carry no outcome; the rest use `saved`, `html`, `captured` and more). DM §6.1 now maps every older outcome and mode through a versioned table that fails on an unlisted value, and S1 gained the fixtures for an older `html` outcome, an ARC envelope and a home page served at a `.pdf` URL.
+
+During the raw re-check one cookie value from a recorded public 404 response was printed to that agent's terminal; it was not stored or sent anywhere else.
 
 ## Consumer check
 
@@ -74,10 +91,10 @@ An independent check diffed the pass against `40ee51b2` and followed every chang
 
 | Document | Before | After |
 |---|---|---|
-| Architecture | 6,906 | 6,863 |
-| Data model | 9,929 | 10,024 |
-| Plan | 5,802 | 6,056 |
-| Bindings | 5,198 | 5,488 |
-| **Total** | **27,835** | **28,431** |
+| Architecture | 6,906 | 6,872 |
+| Data model | 9,929 | 10,143 |
+| Plan | 5,802 | 6,131 |
+| Bindings | 5,198 | 5,537 |
+| **Total** | **27,835** | **28,683** |
 
-The data model grew with the older-shape mapping, the plan with M2's receipt input, the real-slice rule and the file-shape lists it now owns, and the bindings with per-component labels and the receipt reader. Cross-references: 315, none broken. Code references: 203, all resolve (three name DataFusion crate files).
+The data model grew with the older-shape mapping, the plan with M2's receipt input, the real-slice rule and the file-shape lists it now owns, and the bindings with per-component labels and the receipt reader. Cross-references: 316, none broken. Code references: 207, all resolve (three name DataFusion crate files).
