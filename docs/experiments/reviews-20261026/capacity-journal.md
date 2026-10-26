@@ -144,3 +144,12 @@ modules in `docspec_client`. The following references use the final source SHA.
 No new blocking finding. The change closes a producer-source identity gap while
 preserving the reviewed journal/recovery behavior. Remaining transfer/resource and
 hard-link boundaries are unchanged from the preceding review.
+
+## Final closure
+
+Final source SHA: `0cde0d348dce0c5eae714a7199b54839dab8bc23`.
+**VERDICT: APPROVE, unchanged for this review's scope.** The delta from `6183938f`
+only changes the bounded Parquet smoke read in `publish_viewer_r2.py` and its
+viewer R2/native-upload tests, outside the journal/local/status/producer
+identity review. Per the closure instruction, no audit or test expansion was
+performed. The report-only commits were rebased onto this exact source.
