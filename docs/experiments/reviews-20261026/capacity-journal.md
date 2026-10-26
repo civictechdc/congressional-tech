@@ -118,3 +118,29 @@ static review.
 **VERDICT: APPROVE.** Coverage of changed recovery/status paths: **ADEQUATE**.
 Confidence: **HIGH** for traced transitions/fencing; production performance is
 unqualified. No fix commit or remote write was made.
+
+## Final source delta review
+
+**Final reviewed source: `6183938fcb2b0842d5e1f59072383aa7dd251d32`. Final
+verdict: APPROVE for journal, local recovery, status and producer identity.** This
+addendum reviews only the relevant `ad222085..6183938f` changes; it does not repeat
+the preceding audit or claim production qualification. No source fix or test
+execution was needed.
+
+The delta changes none of `continuation.py`, `local.py` or
+`scripts/publication/pipeline_status.py`. Their earlier review therefore still
+applies. Its producer identity change is commit `c4326f58`: `source_files` now
+includes the maintained publisher modules, publication constants and all Python
+modules in `docspec_client`. The following references use the final source SHA.
+
+| Trace | Final source evidence | Review result |
+| --- | --- | --- |
+| Existing source closure → additional files → relative-path/digest map | `packages/viewer_publication/src/viewer_publication/release_identity.py:20`, `:31`, `:41` | The recursive native-client enumeration and explicit publisher paths enter the same sorted set and custody/hash pipeline; no second identity implementation is introduced. |
+| File facts → cache check → hash → after-read custody check | Same file`:57` | The added files participate in cache invalidation and the existing changed-during-hashing refusal. The returned dictionary is a copy. |
+| Shared source map → runtime implementation digest | `packages/viewer_publication/src/viewer_publication/publish_viewer_r2.py:121`, `:126` | The publisher calls the maintained `source_files` implementation and hashes its encoded map. |
+| Shared source map → early preflight implementation digest | `scripts/publication_preflight.py:340`; `scripts/viewer_release_identity.py:12` | Preflight uses the same source owner through the existing shim, so it receives the expanded closure too. |
+| Added path → digest → cached equality → changed source digest | `packages/viewer_publication/tests/test_release_identity.py:41`, `:49` | The six-case parameterized test asserts each maintained path is included and changing its bytes changes identity; expected to pass by static trace. Existing import-order test at `:15` checks package/shim ownership. Tests were read, not rerun. |
+
+No new blocking finding. The change closes a producer-source identity gap while
+preserving the reviewed journal/recovery behavior. Remaining transfer/resource and
+hard-link boundaries are unchanged from the preceding review.
