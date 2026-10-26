@@ -1,8 +1,10 @@
 # GPO and raw-source compatibility review — October 26, 2026
 
-**Finding:** the combined main revision omits failed MODS and manifest timestamps from weekly observation summaries. A parser-stale package can retain its malformed response successfully, then stop weekly sync because the mapper reports a missing timestamp. Fixed separately in `db1ac0454409df3edfbd457431e3428f4fd41a81` with four regression cases.
+**Final verdict: APPROVE the traced GPO/raw-source changes at `6183938fcb2b0842d5e1f59072383aa7dd251d32`.** The mapper and raw custody findings below are resolved in that source. The final delta review and seven executed follow-up checks are recorded at the end of this report.
 
-**Verdict for the requested main revision: REQUEST CHANGES.** Integrate that mapper fix and the raw custody corrections in `114e3d9ee8e7886f32d1bf07ed5bd8b60c1e7d07`. The coordinating chat reports integrating both locally. This review does not establish the state of a later pushed or deployed revision.
+**Initial finding:** the earlier combined main revision omitted failed MODS and manifest timestamps from weekly observation summaries. A parser-stale package could retain its malformed response successfully, then stop weekly sync because the mapper reported a missing timestamp. Fixed separately in `db1ac0454409df3edfbd457431e3428f4fd41a81` with four regression cases, then integrated as `a3beabaca786a0e64c8e1ddae85caef3e3abd743`.
+
+**Historical verdict for `ad222085`: REQUEST CHANGES.** It required that mapper fix and the raw custody corrections originally committed as `114e3d9ee8e7886f32d1bf07ed5bd8b60c1e7d07`. The following initial-review record preserves that evidence; final source approval does not imply hosted/deployed qualification.
 
 ## Reviewed revisions and scope
 
@@ -118,10 +120,28 @@ Concrete limitations are explicit refusals: no HTTP-range support, missing versi
 - **H2:** ordinary seed changes should replay affected owners while preserving migration refusal and unrelated facts. The CLI candidate hash, changed dependency closure, schema checks and seed fixtures confirm that scoped behavior. This does not establish complete production delivery.
 - **H3:** explicit qualification and retry must verify selected and retained bytes. Reading production-only cache admission and qualification resume refined this hypothesis: reviewed main had the F2/F3 gaps; static inspection of `114e3d9e` confirms the intended corrections and their focused test assertions.
 
-## Conclusion
+## Initial conclusion at `ad222085`
 
 **VERDICT: REQUEST CHANGES for `ad222085f8dc4e4b7a34c0e7db9bf5a52bb66d4f`.**
 
 The GPO ZIP acquisition and routine seed-refresh paths achieve their central intent, but the reviewed main needs F1's weekly-summary correction and F2/F3's raw custody corrections. The GPO correction is committed separately as `db1ac0454409df3edfbd457431e3428f4fd41a81`; the raw corrections are in `114e3d9ee8e7886f32d1bf07ed5bd8b60c1e7d07` and were independently inspected without competing edits.
 
 Coverage of runnable local paths: **ADEQUATE** for this scoped review. Confidence: **HIGH** for the reproduced mapper defect and **MEDIUM** for complete integration, because the native-dependent cases and new raw follow-up tests were not executed here. No additional GPO or seed-format regression was found in the traced paths. Final combined-head checks and hosted/deployed qualification remain separate responsibilities.
+
+## Final source and delta review
+
+**Final source SHA: `6183938fcb2b0842d5e1f59072383aa7dd251d32`. Final scoped verdict: APPROVE.**
+
+The branch was rebased onto this exact main revision after preserving `9e3e8b14db7249bd62e92e92d2140e7eeb44c383` as `codex/gpo-review-before-final-source-20261026`. Git dropped `db1ac045` as already applied and preserved the report as rewritten commit `8625309b3ad243e3e29c839ab26bf94b089b860c`. The earlier source backup `codex/gpo-xml-boundary-before-review-20261026` still points to `fb073f02b85cbab65701f3bc1aeb7a593df60ee2`. The branch contains only review documentation beyond final main; it does not reapply any source fix.
+
+Only the relevant `ad222085..6183938f` delta was checked in this final pass:
+
+- `a3beabac` integrates the exact F1 mapper and regression-test changes from `db1ac045`. A direct file diff between the original fix and final source is empty for `weekly_tables.py` and `test_gpo_acquisition_xml_failures.py`.
+- `c7b678bf` integrates the F2/F3 corrections from `114e3d9e`. A direct file diff between that reviewed follow-up and final source is empty for `catalog_raw_updates.py`, `source_capture_inputs.py` and their two changed test files.
+- The remaining final commits change publisher identity coverage, the preparation deadline and the occurrence writer. They do not modify the GPO collector, ZIP transport, weekly mapper, seed-format gate or source replay functions traced here. Their broader review remains with their assigned owners; this pass did not repeat that audit.
+
+Seven focused tests ran on the final source with no skips: the failed-only collector-to-weekly-sync case, three direct observation-section cases, two damaged/missing interpreted-file pin cases and the same-shape wrong-capture-cache case. **7 passed in 2.02 seconds.** Log: `/tmp/gpo-final-delta-review-20261026-tests.log`. This directly executes the raw follow-up cases that were static-only in the initial pass, using memory-backed fixtures rather than a native full-catalog operation.
+
+The coordinating chat's final integration logs were also inspected: 264 cross-cutting Python checks passed in `/tmp/ct-post-review-integration-20261026.log`; 126 renderer/native checks passed in `/tmp/ct-post-review-occurrence-20261026.log`; 154 JavaScript checks passed in `/tmp/ct-post-review-js-20261026.log`. These are reported root runs, not runs performed by this reviewer, and are not added to earlier counts as unique coverage.
+
+The three scoped findings are resolved in final main. Coverage is **ADEQUATE** for the traced changes; confidence is **HIGH** for those paths. The earlier twelve native-dependent skips remain a limitation of this reviewer's initial execution, not evidence of a production failure. There is no unresolved GPO/seed-migration issue or local blocker from this review. Hosted workflow execution, publication, full-catalog qualification and deployment remain separate claims. No publisher enablement, Pages setting or remote data was changed.
