@@ -74,7 +74,7 @@ class YoutubeEventFetcher:
 
     def get_channel(self, channel_handle: str) -> dict | None:
         """
-        Retrieve channel information by handle.
+        Refresh by configured or retained channel ID; discover unknown handles once.
 
         Args:
             handle (str): The YouTube channel handle (e.g., @HouseAppropriationsCommittee).
@@ -119,9 +119,25 @@ class YoutubeEventFetcher:
                 f"{len(search_results)} entries with same channel handle in {self.channels_tb}."
             )
 
-        # Some official handles stop resolving while the channel ID still works.
-        # Keep the configured handle as the cache key so prior videos stay attached.
-        channel_id = self.channel_ids.get(channel_handle)
+        # Refresh by stable identity; handles remain the retained table keys.
+        # New channels resolve by handle once, then store their ID for later runs.
+        known_ids = {
+            value
+            for row in search_results
+            for value in (
+                row.get("channelId"),
+                row.get("upstream", {}).get("item", {}).get("id"),
+            )
+            if value
+        }
+        configured_id = self.channel_ids.get(channel_handle)
+        if configured_id:
+            known_ids.add(configured_id)
+        if len(known_ids) > 1:
+            raise ValueError(f"Conflicting retained/configured YouTube channel IDs for {channel_handle}")
+        channel_id = next(iter(known_ids), None)
+        if channel_id and not re.fullmatch(r"UC[A-Za-z0-9_-]{22}", channel_id):
+            raise ValueError(f"Invalid retained YouTube channel ID for {channel_handle}")
         lookup = {"id": channel_id} if channel_id else {"forHandle": channel_handle}
 
         ## Keep the complete current item, including channel ID and thumbnails.
@@ -137,7 +153,7 @@ class YoutubeEventFetcher:
 
         channel_details = items[0]
         if channel_id and channel_details["id"] != channel_id:
-            raise ValueError("Returned YouTube channel does not match configured channel ID")
+            raise ValueError("Returned YouTube channel does not match expected channel ID")
 
         ## store the channel details
         self.store_channel(channel_handle, channel_details)
