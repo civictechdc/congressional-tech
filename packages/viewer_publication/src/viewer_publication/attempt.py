@@ -217,12 +217,12 @@ def verify_prepared(publisher, root, *, validation=None):
     if receipt.get('version') != 1 or receipt['binding']['code_runtime'] != content_identity(publisher):
         raise ValueError('Prepared runtime, code or review identities changed')
     manifest = json.loads((root / 'publication/manifest.json').read_text())
-    publisher.validate_prepared_output(root / 'publication', manifest)
+    observed = publisher.validate_prepared_output(root / 'publication', manifest)
     if (receipt['manifest_sha256'] != receipt['files'].get('publication/manifest.json', {}).get('sha256')
             or receipt['compression_policy'] != manifest.get('compression_policy')
             or manifest['source_manifest'] != receipt['binding']['source']['value']):
         raise ValueError('Prepared policy or source selection changed')
-    actual = {str(path.relative_to(root)) for path in (root / 'publication').rglob('*') if path.is_file()}
+    actual = {'publication/' + name for name in observed}
     if actual != set(receipt['files']):
         raise ValueError('Prepared publication inventory changed')
     if validation is None:

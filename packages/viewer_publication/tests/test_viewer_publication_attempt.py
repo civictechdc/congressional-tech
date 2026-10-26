@@ -805,3 +805,30 @@ def test_accepted_v1_receipt_without_separate_producer_keeps_its_original_identi
     assert attempts.prepare(publisher, remote, root, run_id='999', run_attempt='2',
         public_url=publisher.PUBLIC_URL, resume_preparation=True) == expected
     assert (root / 'preparation.json').read_bytes() == raw and not native.reads
+
+
+@pytest.mark.parametrize('change', ['missing', 'additional'])
+def test_reused_inventory_still_checks_complete_publication_membership(ready, change):
+    remote, root, _ = ready
+    verified = attempts.verify_prepared(publisher, root)
+    if change == 'missing':
+        relative = next(name for name in verified.validation.files if name.endswith('.parquet'))
+        (root / relative).unlink()
+    else:
+        (root / 'publication/unaccepted.bin').write_bytes(b'not accepted')
+    with pytest.raises(ValueError, match='inventory changed'):
+        attempts.verify_prepared(publisher, root, validation=verified.validation)
+    assert remote.puts == []
+
+
+def test_prepared_verification_reuses_size_validation_membership_scan(ready, monkeypatch):
+    _, root, _ = ready
+    original = Path.rglob
+    scans = []
+    def counted(path, pattern, *args, **kwargs):
+        if path == root / 'publication':
+            scans.append(pattern)
+        return original(path, pattern, *args, **kwargs)
+    monkeypatch.setattr(Path, 'rglob', counted)
+    attempts.verify_prepared(publisher, root)
+    assert scans == ['*']
