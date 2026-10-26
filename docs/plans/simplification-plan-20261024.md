@@ -346,7 +346,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 - **news_lake** keeps the DocSpec backend and the engine's lifecycle store. No work until it adopts the three layers.
 - **The freeze:** no browser or engine performance work beyond this plan until there is a user or a measured failure on real data.
 - **Committee explorer and weekly retention onto incremental tables:** the approach conflicts with the design. Re-scope it before starting.
-- **Considered, not chosen,** so not re-proposed without new information: showing the original link's last status (36,768 documents' URLs last returned 404 or 410), showing saved-file size (2,467 files over 50 MB), and witness links from House meeting XML.
+- **Considered, not chosen,** so not re-proposed without new information: showing the original link's last status (36,768 documents' URLs last returned 404 or 410), showing saved-file size (2,467 files over 50 MB), witness links from House meeting XML, and saving resolved links between publishes (revisit only if a measured reprint shows link resolution is the slow step).
 - **Parquet variant for the folds:** revisit when all three hold:
   - an iceberg-rust release writes variant through its Parquet writer (0.10.1, the pinned release, has none; 0.11 is expected to add it);
   - Basin Catalog accepts format-version 3 tables;
