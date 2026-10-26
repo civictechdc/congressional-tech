@@ -322,7 +322,8 @@ def test_full_contribution_qualification_preserves_adopted_values_and_enables_re
     assert row['source_document_label'] == ['Later label', 'Literal paper']
 
 
-def test_contribution_qualification_refuses_unreplayed_source_fact_before_publication(tmp_path, monkeypatch):
+@pytest.mark.parametrize("production_path", [False, True])
+def test_contribution_qualification_refuses_unreplayed_source_fact_before_publication(tmp_path, monkeypatch, production_path):
     from congress_api.retention.raw_catalog import qualify_source_contributions
     from congress_api.retention.catalog_updates import update_native_catalog
     from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
@@ -337,6 +338,8 @@ def test_contribution_qualification_refuses_unreplayed_source_fact_before_public
         dependencies=CatalogDependencyStorage.for_snapshot(selected), replacements=[row], candidate='historical',
         directory=tmp_path / 'historical', max_chunk_rows=8192, max_chunk_bytes=16 << 20, rules=dict(explicit='replacement'))
     before = store.read(MANIFEST_KEY)
+    if production_path:
+        monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
     with pytest.raises(ValueError, match='qualification changes selected filenames values'):
         qualify_source_contributions(store, raw_storage=raw, directory=tmp_path / 'refused', candidate='refused')
     assert store.read(MANIFEST_KEY) == before
@@ -357,8 +360,14 @@ def test_explicit_rule_upgrade_replays_all_sources_and_preserves_untouched_ids(t
     old = pa.Table.from_batches(list(previous.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
     paper = next(row for row in old if row['source_url'].endswith('paper.pdf'))
     before = store.read(MANIFEST_KEY)
-    with pytest.raises(ValueError, match='rules or seeds changed'):
+    with pytest.raises(ValueError, match='rules or seeds changed') as refused:
         update_from_raw(store, raw_storage=raw, directory=tmp_path / 'refuse', candidate='refuse', seeds=new_seeds)
+    import json
+    from hashlib import sha256
+    from congress_api.retention.immutable_metadata import encoded
+    changes = json.loads(str(refused.value).split('adoption: ', 1)[1])
+    assert changes == {'seed_sha256': {'selected': sha256(encoded(old_seeds)).hexdigest(),
+                                      'current': sha256(encoded(new_seeds)).hexdigest()}}
     assert store.read(MANIFEST_KEY) == before
     options = dict(raw_storage=raw, directory=tmp_path / 'upgrade', candidate='upgrade',
                    rule_version='source-rules-20261020', seeds=new_seeds)
@@ -390,8 +399,11 @@ def test_changed_maintained_filename_rules_require_explicit_global_upgrade(tmp_p
     before = store.read(MANIFEST_KEY)
     original = selected.selection['interpretation']['requirements']['filename_rules_sha256']
     monkeypatch.setattr(index, 'parser_fingerprint', lambda: original + '-changed')
-    with pytest.raises(ValueError, match='rules or seeds changed'):
+    with pytest.raises(ValueError, match='rules or seeds changed') as refused:
         update_from_raw(store, raw_storage=raw, directory=tmp_path / 'refuse', candidate='refuse')
+    import json
+    changes = json.loads(str(refused.value).split('adoption: ', 1)[1])
+    assert changes == {'requirements.filename_rules_sha256': {'selected': original, 'current': original + '-changed'}}
     assert store.read(MANIFEST_KEY) == before
     upgrade_source_rules(store, raw_storage=raw, directory=tmp_path / 'upgrade', candidate='upgrade',
                          rule_version='changed-filename-rules')
@@ -600,3 +612,43 @@ def test_upgrade_source_rules_evolves_native_schema_and_backfills_scalars_withou
     retry = upgrade_source_rules(store, **{**options, 'raw_storage': RawStorage.open(store, native)})
     assert retry['unchanged'] is True
     assert dataset in retry['native_schema_backfill']
+
+
+@pytest.mark.parametrize('cache', ['continuation', 'historical'])
+def test_source_qualification_reads_exact_selected_baseline_not_same_shape_cache(tmp_path, monkeypatch, cache):
+    from types import SimpleNamespace
+    from congress_api.retention.catalog_raw_updates import _retain_previous_tables
+    schema = pa.schema([('value', pa.string())])
+    actual = pa.Table.from_pylist([dict(value='selected value')], schema=schema)
+    stale = pa.Table.from_pylist([dict(value='unrelated value')], schema=schema)
+    directory = tmp_path / 'previous'
+    cached = directory if cache == 'continuation' else tmp_path / 'output/incremental-updates-20261019/adoption-inputs'
+    cached.mkdir(parents=True)
+    for label in ('filenames', 'documents'):
+        pq.write_table(stale, cached / (label + '.parquet'))
+    previous = SimpleNamespace(
+        schemas=dict(filenames=schema, documents=schema),
+        selection=dict(counts=dict(source_rows=1, document_rows=1)),
+        table=lambda *a, **k: SimpleNamespace(iter_batches=lambda **kw: iter(actual.to_batches())),
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
+    paths = _retain_previous_tables(previous, directory)
+    assert all(pq.read_table(path).equals(actual) for path in paths.values())
+
+
+def test_production_contribution_qualification_replays_exact_values(tmp_path, monkeypatch):
+    from congress_api.retention.raw_catalog import qualify_source_contributions
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'normal', candidate='normal')
+    previous = file_adopted_catalog(tmp_path, store, native)
+    expected = {label: pa.Table.from_batches(list(previous.table(label, max_ordered_bytes=16 << 20).iter_batches()))
+                for label in ('filenames', 'documents')}
+    monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
+    qualify_source_contributions(store, raw_storage=raw, directory=tmp_path / 'qualification', candidate='qualification')
+    with read_catalog(store, native=native) as selected:
+        for label, rows in expected.items():
+            actual = pa.Table.from_batches(list(selected.table(label, max_ordered_bytes=16 << 20).iter_batches()))
+            assert actual.to_pylist() == rows.to_pylist()
