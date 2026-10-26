@@ -3,6 +3,7 @@ import argparse
 import ast
 import hashlib
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -70,6 +71,40 @@ def test_weekly_workflow_keeps_explore_tools_out_of_production():
     publication = (ROOT / '.github/workflows/publish-explorer.yml').read_text()
     assert 'types: [completed]' in publication
     assert 'offline-python.py -m committee_explorer.export' in publication
+
+
+def test_weekly_gpo_preserves_completed_rows_after_saving_retry_evidence():
+    import yaml
+
+    job = yaml.safe_load((ROOT / '.github/workflows/update-data.yml').read_text())['jobs']['congress']
+    steps = job['steps']
+    gpo = next(step for step in steps if step.get('id') == 'gpo')
+    snapshot = next(step for step in steps if step.get('id') == 'congress_snapshot')
+    hearings = next(step for step in steps if step.get('name') == 'Commit completed GPO hearings after partial failure')
+    derived = next(step for step in steps if step.get('name', '').startswith('Commit outputs to'))
+
+    # The GPO command still fails the job. Persistence explicitly runs after
+    # either outcome and admits CSV progress only after retry evidence is saved.
+    assert 'continue-on-error' not in job
+    assert all('continue-on-error' not in step for step in steps)
+    attempted = "(steps.gpo.outcome == 'success' || steps.gpo.outcome == 'failure')"
+    assert snapshot['if'] == '${{ !cancelled() && ' + attempted + ' }}'
+    assert hearings['if'] == "${{ !cancelled() && steps.gpo.outcome == 'failure' && steps.congress_snapshot.outcome == 'success' }}"
+    assert steps.index(gpo) < steps.index(snapshot) < steps.index(hearings) < steps.index(derived)
+    assert '--evidence-path pipeline-data/gpo-evidence.jsonl.gz' in gpo['run']
+    assert '.github/scripts/save-pipeline-data.sh' in snapshot['run']
+    command = shlex.split(hearings['run'])
+    assert command[0] == '.github/scripts/commit-and-push.sh'
+    assert command[2:] == ['$DATA_DIR/gpo_hearings.csv']
+    assert 'gpo_hearings.csv' in derived['run']
+    assert 'gpo_hearing_videos.csv' in derived['run']
+    assert 'gpo_hearing_video_coverage.csv' in derived['run']
+    assert 'if' not in derived  # derived video outputs still require job success
+
+    for step in steps:
+        if 'run' in step:
+            result = subprocess.run(['bash', '-n'], input=step['run'], text=True, capture_output=True)
+            assert result.returncode == 0, (step.get('name'), result.stderr)
 
 
 def test_digest_and_source_key_preserve_publisher_values():
