@@ -369,18 +369,12 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             raise ValueError('Existing file catalog requires exact catalog and source contribution adoption')
         if native_previous and before is None and not full:
             raise ValueError('Selected catalog requires qualified retained source contribution adoption')
-        if not full and before is not None:
-            selected_requirements = before.get('requirements') or {}
-            changes = {
-                'requirements.' + name: dict(selected=selected_requirements.get(name), current=request['requirements'].get(name))
-                for name in selected_requirements.keys() | request['requirements'].keys()
-                if selected_requirements.get(name) != request['requirements'].get(name)
-            }
-            if before.get('seed_sha256') != seed_sha:
-                changes['seed_sha256'] = dict(selected=before.get('seed_sha256'), current=seed_sha)
-            if changes or before.get('requirements') != request['requirements']:
-                raise ValueError('Source interpretation rules or seeds changed; qualify explicit contribution adoption: '
-                                 + json.dumps(changes, sort_keys=True))
+        # Fingerprints describe how each update was produced. Ordinary code and
+        # discovery-input changes do not invalidate previously retained facts.
+        if (not full and before is not None
+                and (before.get('requirements') or {}).get('format') != request['requirements']['format']):
+            raise ValueError('Source contribution format changed; explicit migration is required')
+        seeds_changed = before is not None and before.get('seed_sha256') != seed_sha
         dependencies = CatalogDependencyStorage.for_snapshot(previous) if native_previous else None
         if pending.exists():
             retained = json.loads(pending.read_bytes())
@@ -400,7 +394,7 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             extra = (dict(native_schema_backfill=proof['after']['native_schema_backfill'])
                      if 'native_schema_backfill' in proof['after'] else {})
             return dict(result, raw_identity=raw.identity, **extra)
-        if not full and before is not None and before['raw_identity'] == raw.identity:
+        if not full and before is not None and before['raw_identity'] == raw.identity and not seeds_changed:
             result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
                 candidate=candidate, directory=directory / 'catalog', max_chunk_rows=MAX_ROWS,
                 max_chunk_bytes=MAX_BYTES, rules=request['requirements'], expected_bodies=expected_bodies)
@@ -429,10 +423,19 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             def _read_body(key):
                 return read_retained_body(None, key, read_compressed=store.read)
             _read_body._store = store
+            def changed_seed_dependencies():
+                if seeds_changed:
+                    for link in seeds:
+                        if link.get('url'):
+                            yield dependency_id('url', index.http_url(link['url']) or link['url'])
+                        event = (link.get('context') or {}).get('eventId')
+                        if event is not None and str(event):
+                            yield dependency_id('event', str(event))
             prepared = prepare_source_replay(store, snapshot=raw, changes=changes, observations=observations,
                 root=before['root'] if before and not full else None, directory=directory / 'source-replay',
                 read_body=_read_body, seeds=seeds,
-                changed_dependencies=(dependency_id('package', value) for value in changed_packages))
+                changed_dependencies=chain(
+                    (dependency_id('package', value) for value in changed_packages), changed_seed_dependencies()))
             if prepared is not None:
                 owners.callback(prepared.close)
             stage = owners.enter_context(_working(Path(attempt) / 'dispatch.sqlite'))

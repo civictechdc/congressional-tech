@@ -359,16 +359,12 @@ def test_explicit_rule_upgrade_replays_all_sources_and_preserves_untouched_ids(t
     previous = read_catalog(store, native=native)
     old = pa.Table.from_batches(list(previous.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
     paper = next(row for row in old if row['source_url'].endswith('paper.pdf'))
-    before = store.read(MANIFEST_KEY)
-    with pytest.raises(ValueError, match='rules or seeds changed') as refused:
-        update_from_raw(store, raw_storage=raw, directory=tmp_path / 'refuse', candidate='refuse', seeds=new_seeds)
-    import json
-    from hashlib import sha256
-    from congress_api.retention.immutable_metadata import encoded
-    changes = json.loads(str(refused.value).split('adoption: ', 1)[1])
-    assert changes == {'seed_sha256': {'selected': sha256(encoded(old_seeds)).hexdigest(),
-                                      'current': sha256(encoded(new_seeds)).hexdigest()}}
-    assert store.read(MANIFEST_KEY) == before
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'daily', candidate='daily', seeds=new_seeds)
+    with read_catalog(store, native=native) as daily:
+        daily_rows = pa.Table.from_batches(list(daily.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+        assert {row['source_url'] for row in daily_rows} == {
+            'https://example.gov/paper.pdf', 'https://example.gov/original.pdf', 'https://example.gov/revised.pdf'}
+    # Only an explicitly requested historical reinterpretation removes old hints.
     options = dict(raw_storage=raw, directory=tmp_path / 'upgrade', candidate='upgrade',
                    rule_version='source-rules-20261020', seeds=new_seeds)
     result = upgrade_source_rules(store, **options)
@@ -389,26 +385,42 @@ def test_explicit_rule_upgrade_replays_all_sources_and_preserves_untouched_ids(t
         assert upgrade_source_rules(store, **options)['unchanged']
 
 
-def test_changed_maintained_filename_rules_require_explicit_global_upgrade(tmp_path, monkeypatch):
-    from congress_api.retention.raw_catalog import upgrade_source_rules
+@pytest.mark.parametrize('field', ['implementation_sha256', 'source_policy_sha256', 'filename_rules_sha256', 'pyarrow'])
+def test_daily_code_fingerprint_changes_do_not_require_global_replay(tmp_path, monkeypatch, field):
+    from congress_api.retention import catalog_raw_updates as dispatch, source_update_proof as proof
     store, native = SelectorStore(), MemoryNative()
     raw = seed(store, native)
     monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
     update_from_raw(store, raw_storage=raw, directory=tmp_path / 'initial', candidate='initial')
-    selected = read_catalog(store, native=native)
+    with read_catalog(store, native=native) as previous:
+        paper, = pa.Table.from_batches(list(previous.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+        old_ref = previous.component_ref(paper['document_id'])
+        changed = dict(previous.selection['interpretation']['requirements'])
+    changed[field] += '-new-code'
+    monkeypatch.setattr(dispatch, 'source_update_requirements', lambda: changed)
+    monkeypatch.setattr(proof, 'source_update_requirements', lambda: changed)
+    monkeypatch.setattr(dispatch, '_retain_previous_tables', lambda *a, **k: pytest.fail('Global replay required'))
+    assert update_from_raw(store, raw_storage=raw, directory=tmp_path / 'noop', candidate='noop')['unchanged']
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'daily', candidate='daily',
+                    seeds=[dict(url='https://example.gov/new.pdf')])
+    with read_catalog(store, native=native) as selected:
+        assert selected.selection['interpretation']['requirements'] == changed
+        assert selected.component_ref(paper['document_id']) == old_ref
+
+
+def test_incompatible_source_contribution_format_still_refuses_before_publication(tmp_path, monkeypatch):
+    from congress_api.retention import catalog_raw_updates as dispatch
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'initial', candidate='initial')
     before = store.read(MANIFEST_KEY)
-    original = selected.selection['interpretation']['requirements']['filename_rules_sha256']
-    monkeypatch.setattr(index, 'parser_fingerprint', lambda: original + '-changed')
-    with pytest.raises(ValueError, match='rules or seeds changed') as refused:
-        update_from_raw(store, raw_storage=raw, directory=tmp_path / 'refuse', candidate='refuse')
-    import json
-    changes = json.loads(str(refused.value).split('adoption: ', 1)[1])
-    assert changes == {'requirements.filename_rules_sha256': {'selected': original, 'current': original + '-changed'}}
+    changed = dict(dispatch.source_update_requirements(), format='unsupported-new-format')
+    monkeypatch.setattr(dispatch, 'source_update_requirements', lambda: changed)
+    monkeypatch.setattr(native, 'run_table', lambda *a, **k: pytest.fail('Native work before format check'))
+    with pytest.raises(ValueError, match='format changed'):
+        update_from_raw(store, raw_storage=raw, directory=tmp_path / 'refused', candidate='refused')
     assert store.read(MANIFEST_KEY) == before
-    upgrade_source_rules(store, raw_storage=raw, directory=tmp_path / 'upgrade', candidate='upgrade',
-                         rule_version='changed-filename-rules')
-    current = read_catalog(store, native=native)
-    assert current.selection['interpretation']['requirements']['filename_rules_sha256'] == original + '-changed'
 
 
 def test_dispatch_spills_receipt_rows_and_replays_retained_output_as_a_stream(tmp_path, monkeypatch):
@@ -652,3 +664,45 @@ def test_production_contribution_qualification_replays_exact_values(tmp_path, mo
         for label, rows in expected.items():
             actual = pa.Table.from_batches(list(selected.table(label, max_ordered_bytes=16 << 20).iter_batches()))
             assert actual.to_pylist() == rows.to_pylist()
+
+
+@pytest.mark.parametrize('production_path', [False, True])
+def test_daily_seed_changes_refresh_metadata_and_keep_retained_documents(tmp_path, monkeypatch, production_path):
+    from congress_api.retention import catalog_raw_updates as dispatch
+    from congress_api.retention.catalog_selection import NativeCatalogSnapshot
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    paper = 'https://example.gov/paper.pdf'
+    unrelated = 'https://example.gov/unrelated.pdf'
+    old_seeds = [dict(url=paper, native=dict(name='Earlier seed label')),
+                 dict(url=unrelated)]
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'initial', candidate='initial', seeds=old_seeds)
+    with read_catalog(store, native=native) as previous:
+        old_rows = pa.Table.from_batches(list(previous.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+        old_unrelated = next(row for row in old_rows if row['source_url'] == unrelated)
+        old_ref = previous.component_ref(old_unrelated['document_id'])
+    raw_identity = raw.snapshot().identity
+    new_seeds = [dict(url=paper, native=dict(name='Revised seed label')),
+                 dict(url='https://example.gov/new.pdf')]
+    if production_path:
+        monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
+    with monkeypatch.context() as scoped:
+        scoped.setattr(dispatch, '_retain_previous_tables', lambda *a, **k: pytest.fail('Full catalog replay'))
+        scoped.setattr(NativeCatalogSnapshot, 'table', lambda *a, **k: pytest.fail('Full catalog scan'))
+        scoped.setattr(RawSnapshot, 'captures', lambda *a, **k: pytest.fail('Full capture scan'))
+        update_from_raw(store, raw_storage=raw, directory=tmp_path / 'daily', candidate='daily', seeds=new_seeds)
+    assert raw.snapshot().identity == raw_identity
+    with read_catalog(store, native=native) as selected:
+        rows = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+        assert {row['source_url'] for row in rows} == {paper, unrelated, 'https://example.gov/new.pdf'}
+        current_paper, = [row for row in rows if row['source_url'] == paper]
+        assert set(current_paper['source_document_label']) == {'Literal paper', 'Revised seed label'}
+        current_unrelated = next(row for row in rows if row['source_url'] == unrelated)
+        assert all(current_unrelated[name] == value for name, value in old_unrelated.items())
+        assert selected.component_ref(old_unrelated['document_id']) == old_ref
+    # Withdrawing every discovery hint does not delete previously retained documents.
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'withdrawn', candidate='withdrawn', seeds=[])
+    with read_catalog(store, native=native) as selected:
+        rows = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+        assert {row['source_url'] for row in rows} == {paper, unrelated, 'https://example.gov/new.pdf'}

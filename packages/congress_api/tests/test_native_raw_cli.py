@@ -234,3 +234,35 @@ def test_raw_adoption_source_receipt_refuses_before_file_runtime_or_storage_acce
     receipt.write_text(json.dumps(value))
     with pytest.raises(ValueError, match='source pins|source key|source version|source bucket'):
         execute(tmp_path, '--adopt-raw', str(receipt), '--native-config', 'native.json')
+
+
+def test_daily_seed_changes_get_distinct_retry_directories_with_the_same_raw_selection(tmp_path, monkeypatch):
+    from test_catalog_raw_updates import MemoryNative, seed
+    from congress_api.retention.raw_storage import RawSnapshot
+    from congress_api.retention.catalog_publication import read_catalog
+    import pyarrow as pa
+    from testing_fakes import SelectorStore
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    no_acquisition(monkeypatch)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    path = tmp_path / 'seeds.json'
+    path.write_text(json.dumps(dict(documents=[dict(url='https://example.gov/first.pdf')])))
+    first = execute(tmp_path, '--update-only', '--seed', str(path), store=store, raw_storage=raw)
+    path.write_text(json.dumps(dict(documents=[dict(url='https://example.gov/later.pdf')])))
+    second = execute(tmp_path, '--update-only', '--seed', str(path), store=store, raw_storage=raw)
+    assert first['catalog']['selected_identity'] != second['catalog']['selected_identity']
+    with read_catalog(store, native=native) as selected:
+        rows = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
+        assert {row['source_url'] for row in rows} == {'https://example.gov/first.pdf',
+            'https://example.gov/later.pdf', 'https://example.gov/paper.pdf'}
+    retry = execute(tmp_path, '--update-only', '--seed', str(path), store=store, raw_storage=raw)
+    assert retry['catalog']['unchanged']
+    assert len(list((tmp_path / 'summary.catalog-update').glob('*/source-update.json'))) == 2
+    # A later implementation also gets a fresh directory, with no data replay.
+    from congress_api.retention import catalog_raw_updates as dispatch, source_update_proof as proof
+    requirements = dict(proof.source_update_requirements(), implementation_sha256='new-implementation')
+    monkeypatch.setattr(proof, 'source_update_requirements', lambda: requirements)
+    monkeypatch.setattr(dispatch, 'source_update_requirements', lambda: requirements)
+    assert execute(tmp_path, '--update-only', '--seed', str(path), store=store, raw_storage=raw)['catalog']['unchanged']
+    assert len(list((tmp_path / 'summary.catalog-update').iterdir())) == 3

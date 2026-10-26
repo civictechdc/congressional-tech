@@ -140,10 +140,17 @@ Existing file catalogs require these separate, explicit steps:
 3. Run `--qualify-sources` against the adopted selections. It replays the complete
    retained source inventory and requires every selected source/document value
    and ID mapping to remain exact. A mismatch refuses publication for investigation.
-4. Resume `--update-only` for ordinary changes. A later global source-rule change
-   requires `--upgrade-source-rules VERSION` after contribution qualification.
-   The nonempty version names that deliberate change; it cannot authorize source
-   acquisition, dropping old ownership, or implicit legacy reconstruction.
+4. Use `--update-only` for ordinary source, seed, and code updates. Seed changes
+   refresh the related retained sources even when no capture has changed. Code
+   fingerprints record which implementation produced each update; they do not
+   require a full historical replay. An absent seed is not a deletion command:
+   previously retained documents and unrelated components remain selected.
+   Use `--upgrade-source-rules VERSION` when deliberately reinterpreting the
+   complete retained inventory, such as a global grouping or identity migration.
+   It remains an explicit operation after initial contribution qualification.
+   Incompatible contribution formats and broken source/document references still
+   refuse publication. Retry directories distinguish seed/code input snapshots
+   while exact retries reuse their completed work.
 
 Operational raw adoption receipts use version 2 with explicit local paths, SHA-256
 pins and exact original source bucket/key/version pins. Copy each source version
@@ -229,8 +236,8 @@ capture command described below and appends new readings without source HTTP.
 GitHub Actions exposes only `update` and `capture`. Metadata-only runs require
 no Zyte token or native source fetcher. Capture mode uses `--capture-only`; a later
 incremental update applies retained progress from successful or interrupted capture
-runs. The workflow does not automatically adopt an existing archive or change
-its global source rules.
+runs. The workflow does not automatically adopt an existing archive or reinterpret
+the complete historical catalog. New evidence uses the current maintained rules.
 
 Generic ZIP downloads retain both the original archive and its file members.
 Each member keeps its exact name, entry position, parent archive body key and
