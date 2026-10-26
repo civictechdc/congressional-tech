@@ -178,3 +178,43 @@ public smoke test, or remote mutation was performed here.
 - Fix SHA: none; no code fix required.
 - Report SHA: the single commit introducing this path (`git log -1 --format=%H -- docs/experiments/reviews-20261026/capacity-inventory.md`); the exact result is included in the final handoff because a commit cannot contain its own hash.
 - Clean status: required after the report commit; recorded in the final handoff.
+
+
+## Final source delta review
+
+**Final reviewed source SHA: `6183938fcb2b0842d5e1f59072383aa7dd251d32`.**
+**Final verdict: APPROVE; no new blocking finding or code fix in this delta.**
+
+This addendum reviews only `ad222085..6183938f` changes relevant to inventory,
+preparation custody, and their immediate callers. It does not repeat the prior
+audit or test suites. `viewer_inventory.py`, `plan.py`, `attempt.py`,
+`continuation.py`, `local.py`, `resume.py`, `reconciliation.py`, and
+`pipeline_status.py` have no changes in that interval. The prior verdict and
+nonblocking observations therefore remain applicable to those implementations.
+
+| Delta / checked hypothesis | Function trace and invariant | Test assertions inspected; static expectation |
+| --- | --- | --- |
+| `c4326f58`: producer hashing must cover maintained implementations | `P/release_identity.py:20-71` adds publisher/builder/constants and the full `docspec_client` Python source set. The before/after file-custody check and cache key remain unchanged. `P/attempt.py:34-35,57-59,216-218` uses that identity in preparation and verification, so changes to these sources now invalidate reuse instead of preserving an incomplete identity. | `T/test_release_identity.py:41-59` mutates each representative source and requires both its hash and complete identity to change. Expected pass. No new runtime authority or remote write path is added. |
+| `a82cfb55`: restored inventory verification must consume the original job budget | `S/prepare_workflow_resume.py:92-114` computes one absolute deadline from the recorded job start, verifies the checkpoint, refuses launch if verification exhausted the budget, and waits only for the remaining interval. Existing graceful-stop, descendant-quiescence, and complete-versus-incomplete checks at lines 115-150 remain. | `S/tests/test_preparation_checkpoint.py:354-384` advances a fake clock by 70 or 110 seconds against a 100-second budget. Expected pass: 30-second child wait in the first case, no launch in the second. |
+| `c7b678bf`: matching shape cannot admit unrelated cached capture values | `C/source_capture_inputs.py:55-74` removes the environment-dependent same-shape cache path. Both metadata batching branches call `RawSnapshot.capture_batch`; `C/raw_storage.py:569-577,732-733` reads each selected entry's exact release with schema/row/decoded-byte and ordinal checks. `attach` still binds receipt locators and ordinals at `C/source_capture_inputs.py:39-52`. | `packages/congress_api/tests/test_source_replay_capture_stream.py:118-138` installs same-schema/count cached data with a different receipt locator, removes the test-environment marker, and requires exact selected data. Expected pass. A local cache has no admission authority. |
+| `c7b678bf`: an interrupted qualification must recheck its retained interpreted file before publication | `C/catalog_raw_updates.py:661-670` stores the interpreted file's byte/hash identity alongside the pending source update. Its resume branch at lines 380-398 requires that pin and freshly hashes/compares the file before constructing `_RetainedSources` or calling `update_native_catalog`. `C/derived_files.py:72-76` compares exact byte/hash facts. | `packages/congress_api/tests/test_catalog_raw_updates.py:711-744` changes the retained Parquet values or removes its pin, then forbids reaching publication and requires unchanged selection. Expected pass. Older pending work without this proof now refuses explicitly; no compatibility fallback silently admits it. |
+| `6183938f`: decoded writer admission must complete before inventory acceptance | `P/filename_native.py:293-312` passes the caller's policy/metrics to the flat writer and accepts generated assets only after its context exits successfully. `P/filename_exports.py:390-410,417-439` refuses an over-budget row, flushes pending rows before crossing the retained-Python-byte bound, and validates output after close. This does not alter phase or inventory acceptance authority. | `T/test_filename_observations.py:342-387` exercises the combined and standalone paths with a small byte budget: multiple row groups preserve order/slices; a single oversized row refuses and leaves no accepted assets. Expected pass. Detailed occurrence-format review remains outside this inventory addendum. |
+
+The weekly acquisition timestamp change `a3beabac` does not modify these custody
+or preparation paths and is outside this delta review. The parent separately
+reported an additional bounded `PAR1` read fix under preparation; it is not part
+of source SHA `6183938f` and is not claimed reviewed by this addendum.
+
+No tests or catalog builds were rerun. Assertions above were read from the exact
+final source tree. `git diff --check` passed for the report-only update. There is
+no new fix commit, no remote operation, and no production qualification claim.
+
+### Final handoff
+
+- Latest backup ref: `codex/backup-inventory-review-ad222085-20261026` → `8aba0674e0e2a861f8b81198a5f8e0f338eecf1b`.
+- Original implementation backup remains `codex/backup-inventory-pre-review-20261026` → `f2c07b87913b50a6782244b16fd8038129844c23`.
+- Owned branch: `codex/review-capacity-inventory-20261026`.
+- Rebase base and final reviewed source: `6183938fcb2b0842d5e1f59072383aa7dd251d32`.
+- Preserved original report after rebase: `882be77b11c2939aa22c7cc78e5a8391e6802252`.
+- Fix SHA: none.
+- Final addendum SHA: the report-only commit following `882be77b`; exact self-hash and clean status are supplied in the final handoff message.
