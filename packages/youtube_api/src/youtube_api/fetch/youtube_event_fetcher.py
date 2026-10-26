@@ -13,7 +13,7 @@ from youtube_api.models import (
     YoutubePlaylistItem,
     YoutubeVideoItem,
 )
-from youtube_api.tables import open_tinydb_for_committee
+from youtube_api.tables import get_channel_id_overrides, open_tinydb_for_committee
 
 ## re-check videos without captions for this long after publishing
 CAPTION_RECHECK_DAYS = 30
@@ -70,6 +70,7 @@ class YoutubeEventFetcher:
         )
 
         self.channels_tb = self.tinydb.table("youtube_channels")
+        self.channel_ids = get_channel_id_overrides(csv_path)
 
     def get_channel(self, channel_handle: str) -> dict | None:
         """
@@ -118,10 +119,15 @@ class YoutubeEventFetcher:
                 f"{len(search_results)} entries with same channel handle in {self.channels_tb}."
             )
 
+        # Some official handles stop resolving while the channel ID still works.
+        # Keep the configured handle as the cache key so prior videos stay attached.
+        channel_id = self.channel_ids.get(channel_handle)
+        lookup = {"id": channel_id} if channel_id else {"forHandle": channel_handle}
+
         ## Keep the complete current item, including channel ID and thumbnails.
         channel_response = (
             self.youtube.channels()
-            .list(part=["snippet", "contentDetails"], forHandle=channel_handle)
+            .list(part=["snippet", "contentDetails"], **lookup)
             .execute()
         )
 
@@ -130,6 +136,8 @@ class YoutubeEventFetcher:
             return None
 
         channel_details = items[0]
+        if channel_id and channel_details["id"] != channel_id:
+            raise ValueError("Returned YouTube channel does not match configured channel ID")
 
         ## store the channel details
         self.store_channel(channel_handle, channel_details)

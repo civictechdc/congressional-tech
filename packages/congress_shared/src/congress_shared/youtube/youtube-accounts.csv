@@ -1,4 +1,4 @@
-committee,systemCode,handle,secondary,member_channels
+committee,systemCode,handle,secondary,member_channels,channel_ids
 Agriculture,hsag00,@AgRepublicans,@HouseAgDems;@houseagriculturecommittee2800,
 Appropriations,hsap00,@HouseAppropriationsCommittee,,
 Armed Services,hsas00,@HouseArmedServices,@HASCDems;@armedservices8789;@armedservicesGOP;@HASCRepublicans,
@@ -10,7 +10,7 @@ Foreign Affairs,hsfa00,@houseforeign,@HouseForeignGOP,
 Homeland Security,hshm00,@HouseHomeland,@HomelandDems;@HomelandSecurityCommitteeGOP,
 House Administration,hsha00,@CommitteeonHouseAdministration,@CHADemsVideos;@committeeonhouseadministra952;@CHADemocrats,
 Judiciary,hsju00,@USHouseJudiciaryGOP,@JudiciaryDems;@housejudiciarydemocrats8939;@housejudiciarycommittee5448;@HouseJudDems,
-Natural Resources,hsii00,@NaturalResourcesGOP,@NRDems,
+Natural Resources,hsii00,@NaturalResourcesGOP,@NRDems,,"{""@NRDems"":""UCB6LGE5-_i-xxtZxk1_SeTg""}"
 Oversight and Government Reform,hsgo00,@OversightandGovernmentReform,@OversightDems;@COVIDOversight;@covidselectdems-ru2bf;@CommitteeonOversight;@OversightMaj;@OversightRepublicans,
 Rules,hsru00,@HouseRulesCommittee,@RulesCommitteeDemocrats,
 "Science,Space,and Technology",hssy00,@housescience,@HouseScienceGOP;@HouseScienceCommitteeDemocrats,

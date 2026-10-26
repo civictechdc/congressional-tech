@@ -68,7 +68,7 @@ Malformed JSON and table shapes still raise errors; unrelated tables are ignored
 
 The fetch walks three YouTube Data API v3 calls:
 
-1. `channels.list` with `forHandle`, parts `snippet` and `contentDetails`
+1. `channels.list` with a configured `id`, or `forHandle` when no ID is configured, parts `snippet` and `contentDetails`
 2. `playlistItems.list` on the uploads playlist, 50 items per page, snippet only. A 404 on the first page means the channel has no public uploads.
 3. `videos.list` with `part=contentDetails`, up to 50 ids per call, for `caption` and `duration`. The module docstring counts that call as one quota unit per 50 videos.
 
@@ -114,6 +114,16 @@ The default file is `congress_shared`'s `youtube/youtube-accounts.csv`, overrida
 | `handle` | Primary YouTube handle. |
 | `secondary` | Extra handles, separated by semicolons. |
 | `member_channels` | Chair channels, separated by semicolons. Fetched, and omitted from `youtube-analyze`. |
+| `channel_ids` | Optional JSON object mapping literal handles to verified stable channel IDs. Changes lookup only; retained handles and table names stay the same. |
+
+The Natural Resources row pins `@NRDems` to `UCB6LGE5-_i-xxtZxk1_SeTg`.
+The committee's official video page embeds `QCyGM5fmBt4`; YouTube identifies
+that video's owner with this ID. The ID page and feed work even when the handle
+and legacy username URLs return 404. See
+[the dated verification](../../docs/experiments/natural-resources-youtube-20261026.md).
+An empty ID lookup still reports a channel failure and retains prior data; it does
+not fall back to a potentially reassigned handle. CSV files without `channel_ids`
+keep their existing handle lookup behavior.
 
 Row order is the TinyDB index. `youtube_00.json` is the first data row.
 

@@ -62,6 +62,15 @@ def map_system_code_committee_handles(
     return system_code_mapper
 
 
+def get_channel_id_overrides(csv_path: Path = DEFAULT_CHANNELS_CSV) -> dict[str, str]:
+    """Read optional stable IDs without changing literal handles or table names."""
+    channel_ids = {}
+    with open(csv_path, newline="", encoding="utf-8") as csvfile:
+        for row in csv.DictReader(csvfile):
+            channel_ids.update(json.loads(row.get("channel_ids") or "{}"))
+    return channel_ids
+
+
 def get_all_committee_handles(
     csv_path: Path = DEFAULT_CHANNELS_CSV,
     include_member_channels: bool = False,

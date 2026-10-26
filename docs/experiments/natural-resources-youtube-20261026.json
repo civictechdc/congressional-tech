@@ -1,0 +1,155 @@
+{
+  "checked_at": "2026-10-26T18:31:53.904895+00:00",
+  "scope": "Read-only public identity checks for House Natural Resources Committee Democrats; no Data API credential available.",
+  "responses": [
+    {
+      "url": "https://democrats-naturalresources.house.gov/media/videos",
+      "status": 200,
+      "final_url": "https://democrats-naturalresources.house.gov/media/videos",
+      "bytes": 53941,
+      "sha256": "d15c4691fb7a7e3b614add9ab6dd51a2c3b0909b615aefe81a3ede352301a069",
+      "youtube_channel_links": [
+        "https://www.youtube.com/user/NaturalResourcesDems"
+      ],
+      "embedded_video_ids": [
+        "QCyGM5fmBt4",
+        "R_p_OB__QWs"
+      ]
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=QCyGM5fmBt4",
+      "status": 200,
+      "final_url": "https://www.youtube.com/watch?v=QCyGM5fmBt4",
+      "bytes": 1304537,
+      "sha256": "08c85cf3014453c2fa26f62ab30e35aa344630d3a945ad8fc88bdf7976691894",
+      "video_details": {
+        "videoId": "QCyGM5fmBt4",
+        "channelId": "UCB6LGE5-_i-xxtZxk1_SeTg",
+        "title": "Ranking Member Calls Out Trump Admin \"A Disgrace,\" Calls for Accountability",
+        "author": "House Natural Resources Committee Democrats"
+      },
+      "owner_profile_url": "http://www.youtube.com/@NRDems",
+      "external_channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg"
+    },
+    {
+      "url": "https://www.youtube.com/channel/UCB6LGE5-_i-xxtZxk1_SeTg",
+      "status": 200,
+      "final_url": "https://www.youtube.com/channel/UCB6LGE5-_i-xxtZxk1_SeTg",
+      "bytes": 1076251,
+      "sha256": "b48ed4965a9af06d82c54c6cd84124a5aad4179bf5effd48431b528d2c827f3c",
+      "page_title": "House Natural Resources Committee Democrats - YouTube",
+      "channel_metadata": {
+        "title": "House Natural Resources Committee Democrats",
+        "externalId": "UCB6LGE5-_i-xxtZxk1_SeTg",
+        "channelUrl": "https://www.youtube.com/channel/UCB6LGE5-_i-xxtZxk1_SeTg",
+        "vanityChannelUrl": "http://www.youtube.com/@NRDems"
+      }
+    },
+    {
+      "url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCB6LGE5-_i-xxtZxk1_SeTg",
+      "status": 200,
+      "final_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCB6LGE5-_i-xxtZxk1_SeTg",
+      "bytes": 47343,
+      "sha256": "47692af62d931c6092e50659146bcedafeccf7b1572a047923ddcfae458f6a56",
+      "feed_title": "House Natural Resources Committee Democrats",
+      "entries": [
+        {
+          "video_id": "8cOGOjohLgc",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Indian and Insular Affairs Legislative Hearing | September 17, 2026"
+        },
+        {
+          "video_id": "o-ugKUId4LM",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Federal Lands Legislative Hearing | September 16, 2026"
+        },
+        {
+          "video_id": "9wKSh0cUX3c",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Water, Wildlife, & Fisheries Legislative Hearing | September 16, 2026"
+        },
+        {
+          "video_id": "g_94H3yF4ic",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Full Committee Markup | September 15, 2026"
+        },
+        {
+          "video_id": "QCyGM5fmBt4",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Ranking Member Calls Out Trump Admin \"A Disgrace,\" Calls for Accountability"
+        },
+        {
+          "video_id": "heTyoe6OrhI",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "How Trump is Using Your Data To Try and Influence the Midterms"
+        },
+        {
+          "video_id": "XhY9yc3bOlo",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Federal Lands Legislative Hearing | September 2, 2026"
+        },
+        {
+          "video_id": "RI11spfEVPw",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Republicans Start The Week Off with a Bill to Let Trump Fast-Track Permits for Any Mine He Likes"
+        },
+        {
+          "video_id": "bQQeHt1cqWw",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Democrats Blast House Republican Bill to Push North Atlantic Right Whales Toward Extinction"
+        },
+        {
+          "video_id": "fJSWPvw9aAg",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Democrats just introduced a bill to fix the wildfire crisis."
+        },
+        {
+          "video_id": "VeTC0BxuHcY",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Full Committee Markup | July 22, 2026"
+        },
+        {
+          "video_id": "LzyQToQQRwA",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Water, Wildlife, & Fisheries Legislative Hearing | July 21, 2026"
+        },
+        {
+          "video_id": "Yoq6KRj5ZXo",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Energy & Mineral Resources Legislative Hearing | July 21, 2026"
+        },
+        {
+          "video_id": "51eC2VAMglA",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Ranking Member Huffman Blasts Republicans for Prioritizing Wealthy Trophy Hunters #shorts"
+        },
+        {
+          "video_id": "uuz2I3IT1HU",
+          "channel_id": "UCB6LGE5-_i-xxtZxk1_SeTg",
+          "title": "Joint Oversight and Indian and Insular Affairs Hearing | July 14, 2026"
+        }
+      ]
+    },
+    {
+      "url": "https://www.youtube.com/@NRDems",
+      "status": 404,
+      "final_url": "https://www.youtube.com/@NRDems",
+      "bytes": 755,
+      "sha256": "fdb5996dd0ef48c73f1717e737841f33b31c6578791053725a0228b2ce1948b3"
+    },
+    {
+      "url": "https://www.youtube.com/@NaturalResourcesDems",
+      "status": 404,
+      "final_url": "https://www.youtube.com/@NaturalResourcesDems",
+      "bytes": 755,
+      "sha256": "5ee43690e923761a3105c9b3c47613c6a7e580f5f4c141de2e893bd04f0d3b52"
+    },
+    {
+      "url": "https://www.youtube.com/user/NaturalResourcesDems",
+      "status": 404,
+      "final_url": "https://www.youtube.com/user/NaturalResourcesDems",
+      "bytes": 755,
+      "sha256": "8ad0bc9299649dcb1dcadfc3bd5219f89397230e464e04aa1f180f7434c0b034"
+    }
+  ]
+}
