@@ -245,7 +245,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `sha256` | fixed[32], nullable | — |
 | `bytes` | long, nullable | — |
 | `media_type`, `fidelity` | string, nullable | §5.2; the saved-file order reads `fidelity` (§7.5). |
-| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Null on older rows, which take format from the `sniff` reading. An older PDF's `intact` is true when its line's final-content entry records `saved` and false when it records `invalid_document`, on lines written from 2026-10-02, when the capture check applied §5.2's rule; else null. |
+| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Null on older rows, which take format from the `sniff` reading. An older PDF's `intact` is true when its line's final-content entry records `saved` and false when it records `invalid_document`, on lines written from 2026-10-01, when the capture check applied §5.2's rule (2026-10-01 lines cannot be tied to that code, so [[IMPLEMENTATION-PLAN]] B13's whole read re-checks them); else null. |
 | `stored_suffix` | string, nullable | §5.2. |
 | `stored_md5` | fixed[16], nullable | Creating line only. |
 | `stored_bytes` | long, nullable | — |
@@ -304,7 +304,7 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
   - one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`).
   - for a PDF, `intact` from its capture row, else from a `legacy_pdf_checks` record (§5.3), recorded as the reading's basis (258,021 of 261,125 older PDFs);
   - else one ranged read of the last 8 KB of its uncompressed object (the bare body, or an older body's verified `.pdf` copy), and the bounded reader only when that finds no `%%EOF`;
-  - an older gzip PDF with neither and no verified copy is read whole from its `.gz` and reported (about 18,600, *est.* 124 GB), and its read records a verified SHA-256.
+  - an older gzip PDF with neither and no verified copy is read whole from its `.gz` and reported (3,104, 117 GB), and its read records a verified SHA-256.
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
 - `html`, `xml`, `json` read every body of their format once per version and record each body's fingerprint and links (*est.* 4.2M, from an 80-body sample, over 287,765 bodies the server labels HTML or XML, once per page body). No parser reads embedded PDF titles.
 - `fingerprint` reads the fingerprint candidates of the formats the page parsers do not read: none on the 2026-10-19 snapshot, where an endpoint's other PDF or ZIP bodies are all cut-off attempts, size-limit bodies or recoveries.
