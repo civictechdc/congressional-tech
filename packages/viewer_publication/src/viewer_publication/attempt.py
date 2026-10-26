@@ -381,7 +381,9 @@ def publish(publisher, client, root, *, artifact, public_url, resume=False, atte
     try:
         if binding['mode'] == 'recovery' and continuation.value['writes'].get(publisher.PREFIX + 'manifest.json', {}).get('verified'):
             pointer = publisher.read_json(client, publisher.PREFIX + 'manifest.json')[0]
-            index = publisher.verify_recovery_status(client, pointer['recovery'], pointer, public_url=public_url)
+            # The durable pointer acknowledgment accepts this completed write.
+            # Reuse its prepared status and keep only the bounded pointer smoke test.
+            index = verified.plan.require(root / 'publication', manifest).recovery
             with publisher.open_public(publisher.public_request(public_url + 'manifest.json')) as response:
                 if json.loads(publisher.public_control(response)) != pointer:
                     raise ValueError('Public recovery pointer differs after reconciliation')

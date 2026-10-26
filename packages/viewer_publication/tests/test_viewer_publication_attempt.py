@@ -270,7 +270,11 @@ def test_recovery_only_preparation_and_runner_loss_never_rebuild_catalog(ready, 
         publish((remote, root, prepared))
     remote.after_put = None
     shutil.rmtree(root); shutil.copytree(saved, root)
+    recovery_key = publisher.PREFIX + json.loads(remote.objects[publisher.PREFIX + 'manifest.json'])['recovery']['path']
+    before = remote.gets[recovery_key]
+    monkeypatch.setattr(publisher, 'verify_recovery_status', lambda *a, **kw: pytest.fail('Completed recovery was read back'))
     assert publish((remote, root, prepared), resume=True, attempt=prepared['attempt'])['status'] == 'recovery_updated'
+    assert remote.gets[recovery_key] == before
 
 
 def test_two_runners_cannot_append_the_same_journal_sequence(ready):
