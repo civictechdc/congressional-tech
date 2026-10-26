@@ -1,10 +1,14 @@
 # V6 publication continuation capacity repair
 
-Local result: the current publication path can retain a realistic full-release
-inventory and upload/resume evidence within explicit count and byte limits.
-Durable intents, conditional writes, exact body/version readback, chain checks,
-and complete accepted-phase digest checks remain required. No remote mutation,
-production preparation, deployment, or publication ran.
+Current merged behavior: publication accepts successful PUT responses without
+routine GET/HEAD readback. It retains durable intents, conditional writes, chain
+checks, accepted-file custody, uncertain-outcome resolution and bounded public
+smoke checks. Inventory and upload/resume evidence have independent count and
+byte limits. Local recovery now shares the larger capacity allowances.
+
+The measurements below describe the original capacity repair and are historical
+where later sections identify follow-up changes. No production preparation,
+deployment or publication ran for this capacity experiment.
 
 Base: `c466a45e09e27bde48ade12454f8b458c3643d21`.
 Worktree: `/Users/mikewolfd/.codex/worktrees/v6-continuation-capacity/congressional-tech`.
@@ -183,10 +187,11 @@ unmeasured. At 100,000 assets the maintained format still entails about 100,000
 journal object PUTs plus payload PUTs and hundreds of thousands of small local
 journal evidence saves; fewer full-state checkpoints do not remove that cost.
 
-The separate local-only `LocalContinuation` route retains its own 65,536-event
-and 256 MiB journal ceilings. It is not the current artifact-backed cloud
-publication route tested here, and this repair does not promise full-release
-capacity for that separate command path.
+Historical boundary: the initial repair left local-only `LocalContinuation`
+at 65,536 events and 256 MiB. The merged local recovery repair supersedes those
+limits: `local.py:16–18` now permits 262,850 events and 512 MiB of history, with
+checkpoint headroom, and shares the incremental state validator. See
+[the final review](reviews-20261026/capacity.md) for current source and evidence.
 
 ## Follow-up: accept successful uploads without routine readback
 
