@@ -225,3 +225,13 @@ Before the final rebase, backup ref
 `6af164866e962c43ff124497b28a38bd38811c76`. The owned review branch was then rebased
 onto exact final source while dropping its duplicate local source correction and
 retaining this report. This review performed no remote writes.
+
+### Final closure source
+
+Final closure source SHA: **`0cde0d348dce0c5eae714a7199b54839dab8bc23`**.
+The coordinating task's additional bounded smoke-read correction is outside this
+occurrence review scope. The scoped **APPROVE** verdict above is unchanged.
+No audit or test expansion was performed for this report-only rebase from
+`6183938f` onto `0cde0d34`. Backup ref
+`codex/occurrence-report-final-backup-20261026` preserves the preceding report tip
+`b2b1b6c0fda59d0f1bbbe5c059d7b41bea844373`.
