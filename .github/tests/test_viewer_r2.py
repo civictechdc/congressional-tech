@@ -43,7 +43,8 @@ def check_identity(publisher):
     assert identity == {'version': 1, 'publisher_version': publisher.PUBLISHER_VERSION,
         'implementation': helper.hashlib.sha256(helper.encoded(helper.source_files(script.parents[2]))).hexdigest(),
         'dependencies': helper.installed_runtime()}
-    assert Path(sys.modules['viewer_release_identity'].__file__).resolve() == Path(helper.__file__).resolve()
+    from viewer_publication.release_identity import source_files
+    assert helper.source_files is source_files
     print(json.dumps(identity))
     return identity
 attempts.content_identity = check_identity
