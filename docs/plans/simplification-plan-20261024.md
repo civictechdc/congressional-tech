@@ -103,7 +103,7 @@ All three tests run on scratch tables, with Basin's catalog-level compaction and
 The engine cannot run the full export until C1, C3 and C4 exist, so a short standalone DataFusion program measures first, using S's draft rules.
 
 - **Inputs:**
-  - all 2,289 receipts, read with the receipt reader of [[ARCHITECTURE]] §13 and the draft ingest mapping, with a sample of each older shape ([[DATA-MODEL]] §6.1), and its rows compared with the pinned capture index (`db033173…`, 3,909,134 rows). Record the reader's time, its peak memory on the 188 MB line, and the conflicts it nulls per receipt;
+  - all 2,289 receipts, read with the receipt reader of [[ARCHITECTURE]] §13 and the draft ingest mapping, with a sample of each older shape ([[DATA-MODEL]] §6.1), and its rows compared with the pinned capture index (`db033173…`, 3,909,134 rows). Record the reader's time, its peak memory on the 188 MB line, and the conflicts it nulls per receipt, and commit a field-presence census (each field's line count per receipt family and shape) that the ingest mapping must cover: review 8 found rules written against shapes the receipts do not have;
   - the pinned catalog generation `596f08fa…`, with today's filename readings;
   - links parsed from a sample of pages.
 - **Joins:** run the model's joins, including `url_key`, link resolution and the link join (about 4.2M links, scaled from the sample, against 1.31M source URLs), filename readings, `detail` and `sources` (up to 1.7M rows).
@@ -151,13 +151,18 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 | S1 | An incrementally maintained lake and a clean rebuild, after a registry change and after a table rebuilt at a new schema | Byte-identical releases |
 | S2 | One body under two filenames | Two source files in one document, which shows the saved file's name |
 | S2 | Two editions served at one address | Two documents sharing a `version_keys` entry |
-| S2 | A House meeting XML record with two panels, a member witness and witness documents; one witness name at two meetings | Two panels; the member keeps the source's `bioguide_id`; each document carries its witness's `witness_key`; two keys for the name, not matched |
+| S2 | A House witness list with two panels, a member witness and witness documents; one witness name at two meetings | Two panels; the member keeps the source's `bioguide_id`; each document carries its witness's `witness_key`; two keys for the name, not matched |
+| S2 | One Congress.gov meeting record copied on 11 receipt lines, and a second version with a later `updateDate` | One `record_sha` per version; the later version is current |
+| S2 | A Senate hearing page whose witness cards hold their testimony links | Appearances with the page as occasion; each testimony carries its witness's `witness_key` |
 | S2 | A postponed meeting on a bill, recorded by House XML and Congress.gov | The House XML record is current; `status` postponed; the bill in `subject_keys` |
-| S2 | A Senate hearing transcript whose MODS record lists witnesses and names no meeting | Appearances keyed by the package; the transcript carries their `witness_key`s |
-| S2 | A Senate meeting whose Congress.gov record names a transcript jacket whose MODS record lists witnesses | The witnesses attach to the meeting, one `witness_key` each; the transcript carries the meeting's key |
-| S2 | A joint meeting's jacket held only as a `jhrg` package | Resolves to that package |
-| S2 | A Senate meeting video and a House YouTube video, captions held for one | `video_key`s `senate:{filename}` and `youtube:{id}`; `has_captions` true for one |
-| S2 | A bill with one floor vote naming it and one named only in its actions; a nomination with a hearing and a confirmation vote | Two `floor_votes` entries, once each; the nomination's outcome and `vote_id` |
+| S2 | A Senate hearing transcript whose MODS record lists witnesses and names no meeting | Appearances keyed by the package; the transcript's page lists them, and no document is credited to them |
+| S2 | A Senate meeting whose Congress.gov record names a transcript jacket whose MODS record lists witnesses | The witnesses attach to the meeting, one `witness_key` each; the meeting's `transcripts` gives the transcript's list row |
+| S2 | A joint (`NoChamber`) meeting's jacket held only as a `jhrg` package, and jacket 49104057 held as `CHRG-118shrg049104057` | Both resolve; the meeting's `chamber` is null |
+| S2 | A Senate meeting video and a House YouTube video | `video_key`s `senate:{filename}` and `youtube:{id}` |
+| S2 | A bill with one floor vote naming it and one named only in its actions; a nomination with a hearing, a cloture vote and a confirmation vote; one confirmed by voice vote | Two `floor_votes`, basis `vote_record` then `bill_action`; the nomination's two votes in order; the voice vote only in `latest_action_text` |
+| S2 | An older recovery line with no category and no `recovery_evidence`, recovering a link a document was fetched from | Kind from its match basis; original link and import date from its fallbacks; one source file for its original link |
+| S2 | A dead link pasted as `http://www.…/a.pdf/` for a document fetched from `https://…/a.pdf` | One lookup key finds it |
+| S2 | A committee renamed on a boundary day; two subcommittees sharing a name | The half-open interval gives one name per day; `committee_keys` keep them apart |
 | S2 | A bill named by a filename and by a meeting's related items | One `bill_id`; both find its title, sponsor and stage in the pinned `congress_bills` |
 | S2 | A publish after spicy-regs moves a family's pointer | The new generation is pinned, recorded in `inputs/`, and changes the input identity |
 | S2 | A kept release whose bills generation is four generations old | Spicy-regs' retention plan keeps it, citing the archive's pin list |
@@ -250,7 +255,7 @@ These components survive, so they are bound now.
     - **Candidates:** older bodies whose media type or the old catalog's sniff says PDF (about 261,125). A copy is written only when the decompressed bytes begin `%PDF-` (about 950 candidates are HTML by the readings sniff; the test decides the 33,369 never sniffed).
     - **Size:** the largest raw write in the plan, so the lock and the refusal matrix come first: about 260,175 uploads and 403 GB once decompressed (about $72 a year of storage under the lock).
 14. **Re-fetch the cut-off files** (after B2, through the spooled fetcher): every URL with a copy cut off at 64 MiB and no complete 2xx copy, 62 to 64 by the snapshot index depending on how a complete copy is counted; the receipts decide. The cut-off copies stay in raw.
-15. **Meeting fetches through the fetcher** like every other fetch: the Congress.gov meeting API and the House and Senate meeting inventories; committees come from spicy-regs ([[DATA-MODEL]] §6.4) ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5). An incremental relist takes its window from the `last_good_at` of the API list URL it pages through, and pages to the end of the list.
+15. **Meeting fetches through the fetcher** like every other fetch: the Congress.gov meeting API, the House meeting and witness-list XML, Senate committee hearing pages and the meeting inventories; committees come from spicy-regs ([[DATA-MODEL]] §6.4) ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5). An incremental relist takes its window from the `last_good_at` of the API list URL it pages through, and pages to the end of the list.
 16. **Fetch the wrapped files** (after D2, from the wrapper pages' `html` readings): the file links of download-wrapper pages, *est.* 8,800 testimony and statement PDFs that were never fetched, ahead of the model's queue.
 
 **Done when:**
@@ -271,12 +276,12 @@ These components survive, so they are bound now.
 |---|---|---|
 | C1 | Multi-input SQL jobs | A job joining two tables, a file and a receipt holding a type conflict, read whole with the value nulled and its raw line kept; a partition filter visible in the Iceberg scan |
 | C2 | Table operations | M1's commit and drop tests |
-| C3 | Deterministic export | Byte equality across threads, input orders, batch sizes and a forced spill; after a row group's first view through the reader's byte cache, a `detail` view is one round trip |
-| C4 | Connected components | M2's graph; a refusal test |
+| C3 | Deterministic export (spicy-stack ss-iwqu) | Byte equality across threads, input orders, batch sizes and a forced spill; after a row group's first view through the reader's byte cache, a `detail` view is one round trip |
+| C4 | Connected components (ss-6jg6) | M2's graph within its heap budget, labels equal across threads and input orders; a refusal test |
 | C5 | Streaming I/O | Request counts in a test |
 | C6 | Bounded resources | A join at the pool limit fails clearly; M2's build sizes; every hash-join build `EXPLAIN` shows is the smaller input and carries no wide column |
 | C7 | Thin interface | The M2 export as a job spec |
-| C8 | URL functions | Conformance vectors from RFC 3986 §5.4, and golden vectors from today's fetcher's URL handling; M2's `url_key` timing |
+| C8 | URL and JSON functions (ss-7qz3, ss-e53d) | The WHATWG URL test suite and golden vectors from today's fetcher's URL handling; `json_array` against Python `json.dumps`; M2's `url_key` timing |
 
 **Not needed any more:** the lifecycle store's commit requirements, lifecycle-store compaction on R2, copy-on-write measurement and insert-if-absent. Close them unless another consumer needs them.
 
@@ -305,7 +310,9 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
    - then `fingerprint` for the other candidates, measured here;
    - then M2's link join and grouping, repeated on the real links and fingerprints.
 3. **Filename reader:** a producer that runs the filename parser over its work list and appends through the engine.
-4. **Meeting parsers** (needs B15): the JSON and XML parsers, once per response and version, writing `meeting_records` with sittings, status, committees and roles, subjects, transcript jackets and keyed video links, and `appearance_records` with each witness's name key and document groups; the MODS parser adds printed hearings' witnesses from the `mods.xml` records already in raw.
+4. **Meeting parsers** (needs B15): once per input and version, over the meeting-source registry's work list, with completion rows:
+   - Congress.gov records, the 199,156 inline receipt records (18,140 meetings, keyed by `record_sha`) and response bodies alike, and House `committee-meeting` XML, into `meeting_records`;
+   - House witness lists, Congress.gov records, Senate hearing page cards and the `mods.xml` records already in raw into `appearance_records`, each witness with its name key and document links.
 5. Enable Basin's catalog-level compaction and snapshot expiration.
 
 **Done when:** every lake table exists with complete backfills at the pinned versions, and both `captures` comparisons pass.
@@ -341,7 +348,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 1. **Workflows** ([[ARCHITECTURE]] §12): the capture job; the publish job, backfills and the maintenance job in one CI concurrency group. The disabled viewer workflow and its 30-minute cron are deleted.
 2. **Capture scheduler:** capture reads `url_state` from the live release, including its queue of linked-but-unfetched URLs, stops reading the raw index, and drops its replay mode.
 3. **The committee explorer** reads meeting and witness records from the lake and committees, members and rosters from the pinned spicy-regs generations ([[ARCHITECTURE]] §8.5), not from the fetchers' state files.
-4. **Generation pins:** publish and the maintenance job keep `pins/spicy-generations.json` ([[ARCHITECTURE]] §10.3.4, §10.3.7). The spicy-regs side (its retention reading that list, `nomination_id`, the nominations backfill, and reading the archive's releases instead of capturing meetings) is spicy-stack ss-vhi2.
+4. **Generation pins:** publish and the maintenance job keep `pins/spicy-generations.json` and the receipt-key lists ([[ARCHITECTURE]] §10.3.4, §10.3.7). The spicy-regs side (its retention reading that list, `nomination_id`, the nominations backfill, and reading the archive's releases instead of capturing meetings) is spicy-stack ss-vhi2.
 5. **Delete what is bound to nothing,** one PR per group as [[BINDINGS]] §6 lists them, measured again at cut.
 
 **Done when** the switch checklist holds:
@@ -385,10 +392,12 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | No older body beyond the 61 known has a multipart ETag | B10's full re-hash | Nothing, unless the count changes |
 | The numbers in the specifications reproduce: each review round found 10–20 of about 370 wrong | Each load-bearing number re-derived from its committed script before a rule relies on it | Corrections in place |
 | Speed and heap targets on real phones and desktops | A11 | The canary's and contract test's thresholds |
-| Whether `list` can carry titles within the phone heap budget | A11, on F0 | Search by title |
+| Whether `list` with titles fits the phone heap budget (*est.* 17–30 MB more; 46% of documents have a publisher label) | A11, on F0 | Titles stay in `list`, or move back to `detail` |
 | Roster history: spicy-regs keeps the current Congress only | A spicy-regs change publishing its captured rosters as dated history | Rosters show current seats until then |
 | How often one printed hearing covers several meetings, leaving its MODS witnesses on the package | D4, counting packages that more than one meeting's jackets resolve to | Whether multi-day hearings need a per-day rule |
-| YouTube caption coverage of House meeting videos (the old index keys them only by stored file name) | D4, joining `youtube:` video keys to caption receipts | How often House hearings show captions |
+| Whether the 123 `direct_official_package` import lines are recoveries or fetches | The owner, on S2's sample of them | Their kind, or a move into `mode = fetch` by the ingest mapping |
+| Senate card coverage by committee site (judiciary 98.6%, hsgac 64.8%, indian 54.8%, jec 0%) | D4, on every Senate hearing page | Which sites need a second page layout |
+| Event IDs never name two chambers (observed on 18,140, not promised by the publishers) | Invariant 16 at every publish | The meeting key, if one ever does |
 | Nominations before the 119th Congress | spicy-stack ss-vhi2's backfill | How far back nomination pages reach |
 | How often one witness gets two keys at one meeting (spelling, titles, initials) | A sample of House and Congress.gov witness lists in S2 | What the later witness table must match |
 

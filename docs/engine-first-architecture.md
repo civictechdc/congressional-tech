@@ -108,7 +108,7 @@ Five conformance classes each conform by meeting the requirements that apply to 
 : A bulk run that loaded older captures, listed in the import-run registry.
 
 **witness appearance**, **witness key**
-: One witness listed at one meeting or printed hearing; and its 8-byte key, from that occasion and the recorded name, which a later witness table keys on ([[DATA-MODEL]] §6.7, §7.11). A printed hearing that exactly one meeting names is that meeting's occasion.
+: One witness a source lists for one occasion (a meeting, a Senate hearing page or a printed hearing); and its 8-byte key, from that occasion and the recorded name, which a later witness table keys on ([[DATA-MODEL]] §6.7, §7.11). A printed hearing that exactly one meeting names is that meeting's occasion.
 
 **document date**, **capture date**
 : When a document is dated, and when the system first fetched one of its files.
@@ -314,7 +314,7 @@ One row per `(filename, source_url, catalog_version)`: what the filename parser 
 
 ### 8.5 Meeting, Witness and Reference Records
 
-Every meeting response MUST come through the raw writer like any other fetch. `meeting_records` and `appearance_records` ([[DATA-MODEL]] §6.5, §6.7) give pages a hearing's title, date, status, sittings and place, its committees and their roles, the bills, nominations and treaties it covers, its printed transcript (by GPO jacket number), its recordings with their captions, and its witnesses: from House meeting XML, Congress.gov, and the GovInfo MODS records already in raw, which list printed hearings' witnesses for both chambers and so give Senate meetings theirs. Witnesses are keyed per occasion and not yet matched across occasions.
+Every meeting record MUST come through the raw writer like any other fetch; older Congress.gov records sit inline in receipt lines and are read there. `meeting_records` and `appearance_records` ([[DATA-MODEL]] §6.5, §6.7) give pages a hearing's title, date, status, sittings and place, its committees and their roles, the bills, nominations and treaties it covers, its printed transcript (by GPO jacket number), its recording links, and its witnesses with what each submitted: from House witness lists, Congress.gov, Senate committee hearing pages (whose layout puts each witness's testimony in that witness's card) and the GovInfo MODS records already in raw. Every link is one a publisher states; witnesses are keyed per occasion and not yet matched across occasions.
 
 Committees, members, terms, current rosters, bills, CBO estimates, floor votes and nominations are reference inputs from spicy-regs, which keeps their raw records ([[DATA-MODEL]] §6.4). They are not lake tables: publish pins each family's current immutable generation (§10.3.1) and the model reads it directly. The split runs both ways: the archive owns meetings, witnesses and saved copies, and spicy-regs reads its release files, pinned by release ID, instead of capturing meetings itself (spicy-stack ss-vhi2). Roster history and nominations before the 119th Congress wait on spicy-regs.
 
@@ -368,22 +368,23 @@ The model's job writes the release files as Parquet [[PARQUET]] ([[DATA-MODEL]] 
 
 | File | Purpose |
 |---|---|
-| `list.parquet` | Search, facets and sorting, and the keys that connect documents: hearing, bill, member and other versions |
+| `list.parquet` | Search, facets and sorting by title, filename, committee and chamber, and the keys that connect documents: hearing, committee, bill, member, witness and other versions |
 | `detail.parquet` | Everything a document page acts on |
 | `links.parquet` | Public link key to list row |
+| `urls.parquet` | Every address a document was fetched from or recovers, so a dead publisher link finds its documents |
 | `sources.parquet` | Where the document was published, and which page listed it |
 | `recoveries.parquet` | A document's recoveries |
-| `meetings.parquet` | Hearings: title, date, type, status, sittings and place, committees and their roles, what they cover, recording links |
+| `meetings.parquet` | Hearings: title, date, type, status, sittings and place, committees and their roles, what they cover, printed transcripts, recording links |
 | `witnesses.parquet` | Who testified at each hearing, for whom, on which panel |
-| `committees.parquet` | Committees by Congress: name, type, parent |
+| `committees.parquet` | Committees and subcommittees: names over time, type, parent |
 | `members.parquet` | Members: name, party, state, terms |
 | `rosters.parquet` | Who sits on each committee in the current Congress |
-| `bills.parquet` | Each referenced bill's title, sponsor, status, policy area, CBO estimates and floor votes |
-| `nominations.parquet` | Each nomination a hearing covers: nominee and position, outcome and confirmation vote |
+| `bills.parquet` | Each referenced bill's title, sponsor, status, policy area, committees, CBO estimates and floor votes |
+| `nominations.parquet` | Each nomination a hearing covers: nominee and position, committees, printed hearings, outcome and votes |
 | `url_state.parquet`, `capture_scope.json` | Capture's schedule, queue and scope, read by the capture job |
 
 - **Documents only.** There are no per-copy pages.
-- **Links point at a file.** A document's ID changes whenever a version joins its group, but a file's digest never does, so a public link carries a link key, and `links` maps every real body of every listed document to its document's row. Old links keep resolving when a group or its saved file changes, and a recovery-only page keeps its link after the original finally downloads.
+- **Links point at a file.** A document's ID changes whenever a version joins its group, but a file's digest never does, so a public link carries a link key, and `links` maps every real body of every listed document to its document's row. Old links keep resolving when a group or its saved file changes, and a recovery-only page keeps its link after the original finally downloads. A pasted publisher link finds its documents through `urls`, keyed by a fixed normalization of the address ([[DATA-MODEL]] §8.2).
 - **No ID in `list`,** which would make it several times larger; the list row number links the files.
 - **Growth.** The export shards `detail` and `sources` by row range when an offset index outgrows a quick first fetch, at roughly 10 times today's rows. At that size `list` reaches 40–50 MB; then it is sharded by facet, or search moves to DuckDB-WASM or a server.
 
@@ -415,7 +416,7 @@ The release ID ([[DATA-MODEL]] §8.3) is computed after export and before upload
 
 #### 10.3.4 Upload
 
-Files are uploaded to `viewer-publications/releases/<release_id>/` with a create-only PUT and `Content-MD5`. A 412 on a rerun MUST be checked against the expected MD5 with one HEAD of that object's ETag. The release's `manifest.json` holds only content, so a release that re-emerges writes identical bytes; `inputs/<input_digest>.json` records each input identity that produced it ([[DATA-MODEL]] §8.1). Before the canary, publish adds the candidate's spicy-regs generations to `viewer-publications/pins/spicy-generations.json`, the list spicy-regs' retention reads beside DocSpec's so it keeps them.
+Files are uploaded to `viewer-publications/releases/<release_id>/` with a create-only PUT and `Content-MD5`. A 412 on a rerun MUST be checked against the expected MD5 with one HEAD of that object's ETag. The release's `manifest.json` holds only content, so a release that re-emerges writes identical bytes; `inputs/<input_digest>.json` records each input identity that produced it, and `inputs/receipts/<sha256>.json.gz` its receipt keys ([[DATA-MODEL]] §8.1). Before the canary, publish adds the candidate's spicy-regs generations to `viewer-publications/pins/spicy-generations.json`, the list spicy-regs' retention reads beside DocSpec's so it keeps them.
 
 #### 10.3.5 Canary
 
@@ -429,13 +430,13 @@ The flip writes the candidate as the pointer's `release_id` and the outgoing liv
 
 Publish, backfills and the maintenance job run in one CI concurrency group, so they never overlap, and publish MUST NOT delete anything. Without the group, a publish that re-creates an older release reuses that release's prefix, and retention could delete the prefix between the canary and the flip.
 
-From the second flip on, at least the live and last-good releases exist. The maintenance job re-reads the pointer just before it deletes, takes both release IDs from it, and removes release prefixes that are neither live nor last good nor pinned by spicy-regs' published pin list, and are more than a day old, failed candidates included. Up to a week of daily releases (about 0.7 GB) can wait in between. Releases share no files, so nothing needs reference counting. It then rewrites the pin list to the generations the kept releases' input records name, so a kept release can always be rebuilt; spicy-regs otherwise keeps only each family's last three generations.
+From the second flip on, at least the live and last-good releases exist. The maintenance job re-reads the pointer just before it deletes, takes both release IDs from it, and removes release prefixes that are neither live nor last good nor pinned by spicy-regs' published pin list, and are more than a day old, failed candidates included. Up to a week of daily releases (about 0.7 GB) can wait in between. Releases share no files, so nothing needs reference counting. It then rewrites the pin list to the generations the kept releases' input records name. With those generations, its recorded receipt keys and the table versions its profile names, which the lake keeps ([[DATA-MODEL]] §6), a kept release can always be rebuilt; spicy-regs otherwise keeps only each family's last three generations.
 
 ## 11. Site
 
 ### 11.1 Reads
 
-The site reads pointer → release manifest → `list`, then `detail`, `links`, `sources`, `recoveries`, `meetings`, `witnesses`, `committees`, `members`, `rosters` and `bills` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent page reads; link lookups also use the column index.
+The site reads pointer → release manifest → `list`, then `detail`, `links`, `urls`, `sources`, `recoveries`, `meetings`, `witnesses`, `committees`, `members`, `rosters`, `bills` and `nominations` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent page reads; link lookups also use the column index.
 
 ### 11.2 Devices and Speed
 
@@ -456,7 +457,7 @@ A saved file opens at its physical key: `saved_body` plus `saved_suffix`.
 - Bodies written to §7.1 open directly; older gzip PDFs open their `.pdf` copy once it is recorded.
 - Other `.gz` bodies are fetched and unpacked with the browser's `DecompressionStream`, then opened with the media type from `detail`; those whose original size exceeds 100 MB (313, up to 1.19 GB) are offered as a labeled compressed download.
 - A recovery is labeled by kind and links the recovered file.
-- A link key that no longer resolves opens a not-found notice.
+- A link key that no longer resolves opens a not-found notice; a pasted address is looked up in `urls`, and several matches are shown as versions.
 
 ### 11.6 Dates and Hearings
 
@@ -464,7 +465,7 @@ The reader shows dates and hearings as follows:
 
 - **Capture date:** the reader MUST label it by `date_kind` ([[DATA-MODEL]] §8.1): `captured` as "Captured <date>", `import_day` as "In our archive since <date> (original capture date not recorded)", `unknown` as "Capture date not recorded".
 - **Document date:** the reader MUST show it with its source and, for a document a committee removed from its hearing page, "Removed from the hearing page by the committee on <date>".
-- **Hearings, bills, members, witnesses and versions.** The hearing, bill, member and witness filters MUST match a document when the key is any element of its `meeting_keys`, `measure_keys`, `bioguide_ids` or `witness_keys`; documents sharing a `version_keys` entry are shown as each other's versions, by capture date. A hearing lists its witnesses with the documents each submitted; a member's page joins their terms, roster seats, witness appearances and documents by `bioguide_id`; a committee's page joins its roster, hearings and documents by system code; a bill's page joins its title, sponsor, status, cost estimates, floor votes, hearings and documents by `bill_id`; a hearing shows its transcript, recordings and nominations; a vote, member or bill links out to spicy-regs by `vote_id`, `bioguide_id` or `bill_id` for member positions, money and lobbying. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
+- **Hearings, bills, members, witnesses and versions.** The hearing, committee, chamber, bill, member and witness filters MUST match a document when the key is any element of its `meeting_keys`, `committee_keys`, `chambers`, `measure_keys`, `bioguide_ids` or `witness_keys`, with committee names taken from `committees.parquet`; documents sharing a `version_keys` entry are shown as each other's versions, by capture date. A hearing lists its witnesses with the documents each submitted; a member's page joins their terms, roster seats, witness appearances and documents by `bioguide_id`; a committee's page joins its roster, hearings, bills and documents by system code; a bill's page joins its title, sponsor, status, committees, cost estimates, floor votes, hearings and documents by `bill_id`; a hearing opens its transcript by list row and shows its recordings and its nominations with their votes; a transcript's page lists the printed hearing's witnesses by package ID; a vote, member or bill links out to spicy-regs by `vote_id`, `bioguide_id` or `bill_id` for member positions, money and lobbying. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
 
 ### 11.7 Origin
 
@@ -502,12 +503,12 @@ The engine (docspec-rs) MUST provide these capabilities; what its paths may not 
    - Partition and column filters reach Iceberg scan planning.
    - A named step can be materialized once, its batches reserved in the memory pool or written to scratch Parquet when the pool refuses.
 2. **Table operations** through the REST catalog: append, each commit asserting its table UUID and base snapshot, with the conflict retry of §8.1; create; and drop with purge.
-3. **Deterministic multi-file export** to §10.2, with the per-file writer settings of [[DATA-MODEL]] §8.1, SHA-256 and MD5 computed while writing, and row-range shards.
-4. **Connected components** in memory over dense integer IDs (a 32 MB parent array at 4M nodes), refusing above a configured node count.
+3. **Deterministic multi-file export** to §10.2, with the per-file writer settings of [[DATA-MODEL]] §8.1, SHA-256 and MD5 computed while writing, and row-range shards; the bytes depend on no runner limit (spicy-stack ss-iwqu).
+4. **Connected components** over a relation of the same job, returning a deterministic component label and no ID, in memory over interned dense integer IDs, refusing above a configured node count and reserving its true heap (spicy-stack ss-6jg6; today's string-keyed tables need *est.* 1.65 GiB at 1.7M rows).
 5. **Streaming I/O:** no re-read of a just-written object and no HEAD of an immutable file, except as §7.1 and §10.3.4 allow. File and row-group sizes come from writer settings ([[DATA-MODEL]] §6, §8.1).
 6. **Bounded resources** set by configuration: compute threads, memory pool and scratch space. Sorts and aggregates spill or fail clearly within the pool. Hash-join builds do not spill, and join selection builds the smaller input by the row counts scans report, so plans keep wide columns off both join inputs: join on keys first, reduce, then attach the wide column.
 7. **A thin interface:** a library plus a CLI that runs a declarative job spec (inputs, SQL steps, outputs, export settings) and returns a machine-readable result.
-8. **Generic URL functions** DataFusion lacks, as SQL functions: reference resolution [[RFC3986]] §5 and percent-encoding normalization [[RFC3986]] §6.2.2.
+8. **Generic URL and JSON functions** DataFusion lacks, as SQL functions: reference resolution by the WHATWG URL parser [[URL]] and percent-encoding normalization [[RFC3986]] §6.2.2 (spicy-stack ss-7qz3), and `json_array`, the compact JSON of [[DATA-MODEL]] §3 that every ID formula hashes (ss-e53d).
 
 The engine paths this system uses MUST NOT contain application policy (ID formulas, field names, grouping rules, registry values), body or filename parsers, table maintenance (Basin Catalog does it), bookkeeping that duplicates Iceberg, resume machinery beyond per-step commits, or test-only production paths. Engine code that serves other consumers is outside this specification.
 
@@ -560,6 +561,9 @@ Link matching grows with links times the source files at each matched address: a
 
 **[RFC8174]**
 : B. Leiba. *Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words.* BCP 14, RFC 8174, May 2017. https://www.rfc-editor.org/rfc/rfc8174
+
+**[URL]**
+: WHATWG. *URL Living Standard.* https://url.spec.whatwg.org/
 
 **[RFC3986]**
 : T. Berners-Lee, R. Fielding, L. Masinter. *Uniform Resource Identifier (URI): Generic Syntax.* STD 66, RFC 3986, January 2005. https://www.rfc-editor.org/rfc/rfc3986
