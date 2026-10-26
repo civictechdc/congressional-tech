@@ -93,3 +93,9 @@ VERDICT: APPROVE for `6183938fcb2b0842d5e1f59072383aa7dd251d32` plus bounded-smo
 Justification: the two concrete resource defects are fixed, successful PUTs remain accepted without routine payload GET/HEAD, and required custody/conditional/recovery checks remain. Coverage of changed paths: ADEQUATE for scoped local fixes. Confidence: HIGH for the traced paths; production full-release qualification remains unmeasured.
 
 Owned branch: `codex/v6-capacity-merged-review`. Original backup `codex/v6-capacity-before-merged-review` preserves `2ffb2f184c42a506c8749eb4c31031f2c356405e`; final-delta backup `codex/v6-capacity-before-final-delta-20261026` preserves `ff98a4e448665bb6150cc9c1a00f7f5b566f4937`. No push or merge was performed by this reviewer.
+
+## Final integrated source confirmation
+
+Final exact source: `0cde0d348dce0c5eae714a7199b54839dab8bc23`. The integration owner applied the bounded-smoke fix as `0cde0d34` and reported 44 passing focused upload/native/identity checks. This reviewer inspected the integrated two-call bounded-read patch and both regression tests; no broad suite was repeated. Report-only commits were rebased onto that exact source, dropping duplicate local source patch `deb9cfe6`.
+
+VERDICT: APPROVE. No unresolved blocker in this review's scope. The duplicate local saved-phase directory walk remains a nonblocking optimization note. No operational setting changed. Backup `codex/v6-capacity-before-smoke-integration-20261026` preserves the complete pre-rebase report tip `0e0a3f7c`.
