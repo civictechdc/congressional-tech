@@ -180,22 +180,22 @@ New lines MUST NOT carry:
 Older lines keep their `links`; the model does not read them.
 
 **The one-time cleanup** of older receipts, before `receipts/` is locked ([[IMPLEMENTATION-PLAN]] B0):
-- removes the `Set-Cookie`, `Cookie` and `Authorization` values in recorded response headers and the credential parameters in recorded URLs;
-- cuts absolute local paths to their last segment in the values and key names a read-only scan of every receipt lists, never in a key a `pointer` passes through;
-- leaves every other value and key byte-identical: a recorded URL changes only by losing a credential parameter;
-- gives each cleaned receipt a verification record naming the fields it cut (§5.3); the private backup keeps every original.
+- removes every value of a recorded header named `authorization` or ending in `cookie`, as a header-object key or a `{name, value}` item, wherever it sits in a line;
+- cuts absolute local paths to their last segment wherever they occur in a value or key name, never in a key a `pointer` passes through or in a URL;
+- leaves every other value and key unchanged (a rewritten line may re-escape characters) and every recorded URL as it was: no older URL carries a credential parameter the registry does not exempt;
+- gives each cleaned receipt a verification record naming what it cut (§5.3); the private backup keeps every original.
 
 ### 5.3 Provenance Records
 
-`provenance/<kind>/<ts>.jsonl`, append-only. A correction MUST be a new record that supersedes an old one by `id`.
+`provenance/<kind>/<ts>.jsonl`, append-only, each job writing its records in batched files. A correction MUST be a new record that supersedes an old one by `id`. No other object is a record: the model never reads the whole `accepted.json` copy under `recoveries/`.
 
 | Kind | Fields | Read by |
 |---|---|---|
 | `recoveries` | `id`, `original_url`, `recovered_url`, `recovered_filename`, `body_sha256`, `kind` (a display kind, or `rejected`), `match_basis`, `evidence_sha256`, `identity_note`, `decided_by`, `decided_at`, `supersedes` | `recoveries` (§7.8); the effective filename and its work list (§6.3, §7.4) |
 | `url_variants` | `id`, `canonical_url`, `variant_url`, `basis`, `decided_at`, `supersedes` | `url_key` (§7.2) |
 | `reviews` | `id`, `target` (a link key), `verdict` (`hide`, `duplicate_of`, `title_override`, `kind_override`, `withdraw`), `value`, `note`, `reviewer`, `decided_at`, `supersedes` | `reviews` (§7.9) |
-| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; more for a cleaned receipt. A listing baseline records size and ETag with `sha256_verified` false, until a whole read or the full re-hash verifies the body; a `.pdf` copy's record adds the end-marker check, `intact` | The maintenance job; `suffix` for `.pdf` copies (§7.5) |
-| `legacy_pdf_checks` | `body_sha256`, `opened` (true only), `reader_version`, `checked_at`, `source` (the old body readings' digest); written once from the old reader's successful PDF opens | `sniff`'s `intact` (§6.2) |
+| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; more for a cleaned receipt. A listing baseline records size and ETag, the size checked against the recorded stored size, with `sha256_verified` false until a whole read or the full re-hash verifies the body; a `.pdf` copy's record adds the end-marker check, `intact` | The maintenance job; `suffix` for `.pdf` copies (§7.5) and `intact` (§7.3) |
+| `legacy_pdf_checks` | `body_sha256`, `opened` (true only), `reader_version`, `checked_at` (null where the old readings lack it), `source` (the old body readings' digest); written once from the old readings' completed PDF readings that read a page, a non-empty `content_document_kind` (`completed` alone does not prove an open) | `intact` (§7.3) |
 | `unreadable` | `id`, `body_sha256` (or `record_sha`), `parser`, `parser_version`, `reason`, `decided_by`, `decided_at`, `supersedes` | The parsers' work lists, which drop the input (§7.1) |
 
 - A cleaned receipt's record adds `original_size`, `original_etag`, the backup object compared, the fields cut, and the counts of cookies, credential parameters and paths removed.
@@ -245,7 +245,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `sha256` | fixed[32], nullable | — |
 | `bytes` | long, nullable | — |
 | `media_type`, `fidelity` | string, nullable | §5.2; the saved-file order reads `fidelity` (§7.5). |
-| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Null on older rows, which take format from the `sniff` reading. An older PDF's `intact` is true when its line's final-content entry records `saved` and false when it records `invalid_document`, on lines written from 2026-10-01, when the capture check applied §5.2's rule (2026-10-01 lines cannot be tied to that code, so [[IMPLEMENTATION-PLAN]] B13's whole read re-checks them); else null. |
+| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Null on older rows, which take format from the `sniff` reading. An older PDF's `intact` is true when the entry for its line's final response records `saved` and false when it records `invalid_document`, on lines written from 2026-10-01, when the capture check applied §5.2's rule (2026-10-01 lines cannot be tied to that code, so [[IMPLEMENTATION-PLAN]] B13's whole read re-checks them); else null. |
 | `stored_suffix` | string, nullable | §5.2. |
 | `stored_md5` | fixed[16], nullable | Creating line only. |
 | `stored_bytes` | long, nullable | — |
@@ -282,7 +282,7 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
 | `parser_version` | string | — |
 | `status`, `error_type` | string | `completed`, `error` or `size_limit`, with the error's type. `size_limit` is decided before reading, from the input's `stored_bytes` against the parser version's declared byte bound; `error` is a deterministic rejection of the input; an operational failure writes no row, so the input stays on the work list until it succeeds or an `unreadable` decision drops it (§7.1). |
 | `format` | string | The sniffed format, on every row: `pdf`, `zip`, `xml`, `html`, `json`, `vtt`, `m3u8`, `docx`, `doc`, `text`, `image`, `warc`, `other`, `empty`. |
-| `intact`, `intact_basis` | boolean, string; nullable | From `sniff`: the check of §5.2, and where it came from: `copy`, `capture`, `legacy`, `read`, or `unchecked` for an older gzip PDF no check has reached yet. |
+| `intact` | boolean, nullable | From `sniff`'s own read of a bare PDF: the check of §5.2. |
 | `xml_root` | string, nullable | — |
 | `title`, `heading` | string, nullable | HTML `<title>` and first heading. |
 | `text_bytes` | int, nullable | Visible-text size of the whole page. |
@@ -300,11 +300,7 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
   - `group_path` is the path of the nearest grouping ancestor (`li`, `tr`, `meeting-document`, `witness-document`, `document`) as element names with 1-based sibling indexes from the root, or null; only rendition groups read it (§7.5).
   - An XML document list's link `text` is its entry's description.
   - `doc_type` and the three dates are kept as the publisher wrote them; `remove_date` marks a committee's removal of the document from its hearing page.
-- `sniff` reads every body whose capture rows carry no sniff at the pinned version:
-  - one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`).
-  - for a PDF, `intact` from its `.pdf` copy's verification record (a whole read), else its capture row, else a `legacy_pdf_checks` record (§5.3): 258,021 of 261,125 older PDFs today;
-  - else, for a bare body, one ranged read of its last 8 KB, and the bounded reader only when that finds no `%%EOF`;
-  - an older gzip PDF with none of these is left `unchecked` (3,104 today, 117 GB) and counts as a document until its copy's whole read checks it at the next sniff version ([[IMPLEMENTATION-PLAN]] B13).
+- `sniff` reads every body whose capture rows carry no sniff at the pinned version, with one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`). For a bare PDF it also reads the last 8 KB, and runs the bounded reader only when that finds no `%%EOF`; borrowed PDF checks join in the model (§7.3).
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
 - `html`, `xml`, `json` read every body of their format once per version and record each body's fingerprint and links (*est.* 4.2M, from an 80-body sample, over 287,765 bodies the server labels HTML or XML, once per page body). No parser reads embedded PDF titles.
 - **Fingerprints** come from what is already read; no parser runs for them:
@@ -519,8 +515,12 @@ good_fetch  := rows of c where mode = 'fetch' and complete
                (import-run rows included; capture dates exclude them, §7.4)
 format      := r[sniff].format at the pinned sniff version,
                else c.sniffed_format when c.sniff_version is that version
-intact      := r[sniff].intact at the pinned sniff version,
-               else c.intact when c.sniff_version is that version
+intact      := for a PDF, the first set of: its .pdf copy's verification record (§5.3);
+               r[sniff].intact at the pinned sniff version; c.intact when
+               c.sniff_version is that version, or on an older row (§6.1); true when
+               a legacy_pdf_checks record (§5.3) names it
+intact_basis := 'copy', 'read', 'capture' or 'legacy', by which gave intact;
+               'unchecked' when none did
 reading     := the body's html, xml or json reading at the pinned version
 record_role := per capture row, the first that applies:
                null              when format is null (no completed sniff)
@@ -562,6 +562,7 @@ locator     := the member path for an archive member (34,331 HTML members sit at
 real_body   := a body with at least one real_files row
 ```
 
+- On the 2026-10-16 snapshot, 235,016 of 261,125 older PDF candidates carry a check: 229,038 from their capture (15,476 on 2026-10-01 lines alone, which cannot be tied to the check's code, so [[IMPLEMENTATION-PLAN]] B13's whole read re-checks them) and 5,978 from `legacy_pdf_checks`. The other 26,109 (186 GB stored; about 950 are HTML by the old readings) are unchecked and count as documents until B13's copy records a check (`measurements/review9-20261026/`).
 - Bodies that are not real files stay in the lake as evidence; listing, wrapper and error pages and metadata records still supply links. A damaged PDF is fetched again on its recheck schedule.
 - `file_shaped(locator)` is true when a file-shape registry entry matches; the labeled sample fixes the list ([[IMPLEMENTATION-PLAN]] E1).
 - The model reports, per release, the bodies with no role by format and error type, the damaged PDFs (those over the reader's limit apart), and the bodies that newly crossed the placeholder threshold.
@@ -694,8 +695,8 @@ meeting_keys       := the decimal event_id of each entry of meeting_refs
 committee_keys     := for each committee code of its document members' filename readings,
                       the committee-code registry's system code (AG03 → hsag03,
                       IG00 → hlig00); a code it does not list is unmapped and reported
-chambers           := the chambers (§3) of its committee_keys' committees and of its
-                      meetings, distinct
+chambers           := the chamber of each committee_keys entry by its system code's first
+                      letter (h, s, j), and of its meetings, distinct
 package_id         := the package ID of the first document member in the saved-file order
                       whose source URL holds one (an archive member's container URL), else
                       the saved file's filename-reading package_id
@@ -725,7 +726,7 @@ One row per requested URL, plus the queue: `requested_url` string, `attempts` in
 - The latest `mode = fetch` line wins, in the order `(retrieved_at nulls first, receipt_key, receipt_line)`, and gives `last_status` from its `http_status`; `last_good_at` is the `retrieved_at` of its latest good fetch (§7.3). Recovery rows MUST NOT appear.
 - **`next_attempt_at`:**
   - for a retryable outcome (`retry_later`, `size_limit`, `request_failed`), the later of `last_attempt` and the line's `retry_after`, but no later than `last_attempt` plus the family's recheck interval;
-  - for any other outcome, `last_attempt` plus that interval; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting (§7.5), so the job's clock never enters.
+  - for any other outcome, `last_attempt` plus that interval; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
   - null, and so due now, when `last_attempt` is null (about 25,500 requested URLs today, nearly all from two undated backfill shapes).
 - **The queue:** every resolved URL target from a good-fetched page that is not an `error_response` (wrapper pages included), that matches the capture-scope registry, and whose `url_key` matches no `mode = fetch` row's requested or final URL (archive-member targets are not fetchable).
   - Each `url_key` adds one row under its byte-wise least target, with its credential parameters removed (`url_state` is public), `attempts = 0` and a null `next_attempt_at`.
@@ -733,7 +734,7 @@ One row per requested URL, plus the queue: `requested_url` string, `attempts` in
 
 ### 7.8 `recoveries`
 
-One row per recovery row: `document_id`, `original_url`, `kind` dict, `body_sha` fsb(32), `suffix` dict, `recovered_url`, `identity_note`, `imported_at`, `decision_id`.
+One row per recovery row: `document_id`, `original_url`, `kind` dict, `body_sha` fsb(32), `suffix` dict, `bytes` int64, `recovered_url`, `identity_note`, `imported_at`, `decision_id`.
 
 - **PK:** the recovery row's `(receipt_key, receipt_line, capture_index)`.
 - **Decision:** the latest remaining provenance `recoveries` record, by `(decided_at, id)`, whose `body_sha256` is the row's body and whose `original_url` equals the row's as an exact string; null when none matches.
@@ -837,7 +838,7 @@ Sizes are *est.* at about 0.65M listed documents, scaled from today's 1.24M cata
 | `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | Lookup | 7–9 MB |
 | `urls.parquet` | `lookup_key` fsb(8), `list_row` int32 | `(lookup_key, list_row)` | Lookup | *est.* 12–20 MB |
 | `sources.parquet` | `list_row` int32, `ordinal` int32, `url` string, `member_path` string nullable, `is_saved` boolean, `first_seen` date32 nullable, `listed_on` string nullable, `link_text` string nullable, `doc_type` string nullable, `posted` date32 nullable (the link's `add_date`) | `(list_row, ordinal)` | Ranged | *est.* under 10 MB |
-| `recoveries.parquet` | `list_row` int32, `ordinal` int32, `kind` dict, `body` fsb(32), `suffix` dict, `imported_at` date32, `recovered_url` string, `identity_note` string nullable | `(list_row, ordinal)`, ordinal in the recovery order | Ranged | 1–3 MB |
+| `recoveries.parquet` | `list_row` int32, `ordinal` int32, `kind` dict, `body` fsb(32), `suffix` dict, `bytes` int64 (original size), `imported_at` date32, `recovered_url` string, `identity_note` string nullable | `(list_row, ordinal)`, ordinal in the recovery order | Ranged | 1–3 MB |
 | `meetings.parquet` | `event_id` int64, `chamber` dict nullable, `title` string nullable, `meeting_date` date32 nullable, `meeting_type` dict nullable, `session` int16 nullable, `status` dict nullable, `sittings` List<Struct<start ts, end ts, place string>> (`place`: room, building and address, comma-joined), `committees` List<Struct<system_code dict, role dict>>, `subject_keys` List<dict>, `transcripts` List<Struct<package_id string, list_row int32>>, `videos` List<Struct<name string, url string, video_key string>>; every meeting with a current record, and every meeting a listed document references (null fields when it has no record) | `event_id` | Whole; one row group | *est.* 2–4 MB |
 | `witnesses.parquet` | `witness_key` string, `occasion` dict, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable | `(occasion, panel_order, display_order, witness_key)` | Whole | *est.* a few MB |
 | `committees.parquet` | `system_code` string, `name` string, `chamber` dict, `committee_type` dict nullable, `parent_system_code` dict nullable, `names` List<Struct<name string, start date32, end date32>>, `website` string nullable, `is_current` bool nullable | `system_code` | Whole | Under 1 MB |
@@ -854,16 +855,16 @@ Sizes are *est.* at about 0.65M listed documents, scaled from today's 1.24M cata
 
 - `list.parquet`: `filename` string; `title` string nullable; `document_kind`, `document_family`, `committee_keys`, `chambers` (List<dict>, every value; the site labels committees from `committees.parquet`, since names collide across chambers and subcommittees); `congress` int16 nullable; `format` dict; `document_date` date32 nullable; `first_captured` date32 nullable; `date_kind` dict (`captured` when `first_captured` is set, `import_day` when only `in_archive_since` is, else `unknown`); `saved_kind` dict; `hidden` bool; `meeting_keys`, `measure_keys`, `bioguide_ids`, `witness_keys` and `version_keys` List<dict> (each usually empty or one), the keys the site's hearing, bill, member, witness and version lookups scan.
 - `list` decodes whole on a phone, so its title column is the first thing the heap test of [[IMPLEMENTATION-PLAN]] A11 can move back to `detail`.
-- `detail.parquet`: `link_key` fsb(8) (the saved body's key, or for a recovery-only document the link URL key of its first recovery in the recovery order); `saved_body` fsb(32), `saved_suffix` dict, `saved_media_type` dict; `document_date_source` dict nullable; `in_archive_since` date32 nullable; `removed_on` date32 nullable; `review_note` string nullable, `review_decided_at` date32 nullable; `src_start`, `src_len`, `rec_start`, `rec_len` int32; `alternates` List<Struct<format dict, body fsb(32), suffix dict, size int64>>; `package_id` string nullable; and `facts`, a fold of the display-facts registry's fields, dates as `YYYY-MM-DD`.
+- `detail.parquet`: `link_key` fsb(8) (the saved body's key, or for a recovery-only document the link URL key of its first recovery in the recovery order); `saved_body` fsb(32), `saved_suffix` dict, `saved_media_type` dict, `saved_bytes` int64 (original size, which the reader reads before opening an older gzip copy); `document_date_source` dict nullable; `in_archive_since` date32 nullable; `removed_on` date32 nullable; `review_note` string nullable, `review_decided_at` date32 nullable; `src_start`, `src_len`, `rec_start`, `rec_len` int32; `alternates` List<Struct<format dict, body fsb(32), suffix dict, size int64>>; `package_id` string nullable; and `facts`, a fold of the display-facts registry's fields, dates as `YYYY-MM-DD`.
 - Nothing else is published: raw readings, every parsed field and per-copy fetch history stay in the lake, and a document's ID is recomputed, not stored. A model run at a release's inputs record reproduces it: it reads `captures` filtered to the recorded receipt keys and every other table at the pinned versions, which no kept release's table versions drop (§6), so snapshot expiry does not matter.
-- `detail` and `sources` MAY be split into fixed row-range shards, which the manifest lists with their ranges.
+- `detail` and `sources` MAY be split into fixed row-range shards, which the manifest lists with their ranges; the export writes none until [[ARCHITECTURE]] §10.1's growth rule calls for them.
 - A release MAY omit the entity files (`witnesses` through `nominations`) or carry `meetings` with keys only; the manifest lists what it has, and the reader offers a connection only when its file is present.
 
 ### 8.2 `link_key`
 
 - **Body keys:** the first 8 bytes of the SHA-256 of every real body of every listed document.
 - **Link URL keys:** for each distinct original link of a recovery, the first 8 bytes of `sha256('url:' || original_url)` over the exact URL, so no registry or provenance change moves a published key. It resolves by the attachment rule (§7.8), so two spellings of one link give two keys to the same row, and the key stays the same when the link finally downloads.
-- **Lookup keys** (`urls.parquet`): the first 8 bytes of `sha256('lookup:' || lookup_url(u))` for every source URL of a listed document's real files and every recovery's original link. `lookup_url` is fixed by this document, never by a registry, so a key never moves: the URL with its scheme, a leading `www.`, the default port, the fragment and a trailing slash dropped and its host lowercased. The site applies it to a pasted link. A key names every listed document fetched from or recovering that address, shown as versions by `first_captured`.
+- **Lookup keys** (`urls.parquet`): the first 8 bytes of `sha256('lookup:' || lookup_url(u))` for the source URL of each of a listed document's real files, the requested URL of each good fetch that saved it (as `copy_urls` takes them, §7.2), and every recovery's original link. `lookup_url` is fixed by this document, never by a registry, so a key never moves: the URL with its scheme, a leading `www.`, the default port, the fragment and a trailing slash dropped and its host lowercased. The site applies it to a pasted link. A key names every listed document fetched from or recovering that address, shown as versions by `first_captured`.
 - The export MUST refuse if two keys from different inputs (two bodies, two original URLs, one of each, or two distinct `lookup_url` strings) are byte-equal.
 
 ### 8.3 Identities

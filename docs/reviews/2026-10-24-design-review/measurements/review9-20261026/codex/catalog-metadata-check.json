@@ -1,0 +1,18 @@
+{
+  "basis": "measured metadata only",
+  "files": {
+    "captures.parquet": {
+      "rows": 3909134,
+      "bytes": 282900803
+    },
+    "documents.parquet": {
+      "rows": 1241157,
+      "bytes": 541147000
+    },
+    "filenames.parquet": {
+      "rows": 1683430,
+      "bytes": 546848353
+    }
+  },
+  "limits": "Only capture contents were digest-verified separately; catalog and filename figures here are footer counts and file sizes, not semantic parity."
+}

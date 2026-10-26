@@ -1,0 +1,18 @@
+{
+  "basis": "measured synthetic execution of source functions",
+  "results": [
+    {
+      "fixture": "binary preamble",
+      "format": "pdf",
+      "cover_result": {},
+      "pdf_reader_called": false
+    },
+    {
+      "fixture": "UTF-8 BOM",
+      "format": "pdf",
+      "cover_result": {},
+      "pdf_reader_called": false
+    }
+  ],
+  "limits": "Proves completed format evidence need not invoke a PDF reader via the inspected caller; does not establish how many pinned legacy rows have these prefixes, and does not read real PDF bodies."
+}

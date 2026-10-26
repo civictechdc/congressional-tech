@@ -272,7 +272,7 @@ Receipts are public and permanent, so they carry no credentials, cookies or loca
 
 **Lock.** An indefinite R2 bucket lock, set per prefix, covers `bodies/`, `receipts/` and `provenance/`. Creates stay allowed.
 
-**Full re-hash** is an explicit job that downloads bodies and records each one's size, ETag and verified SHA-256 under `provenance/verification/`, skipping keys that already have a record. It runs once before the first raw check, because no older line records an MD5 (all 1,036,256 bodies), and afterwards only before a migration.
+**Full re-hash** is an explicit job that downloads bodies and records each one's size, ETag and verified SHA-256 under `provenance/verification/`, skipping keys whose record has `sha256_verified` true. Older lines record the stored bytes' SHA-256 and size, never their MD5 (all 1,036,256 bodies), so until it runs once, after the PDF copies, the first raw check records a listing baseline: each older body's size and ETag, the size checked against its recorded stored size. Afterwards it runs only before a migration.
 
 **Raw check.** Each week the maintenance job makes one LIST of `bodies/` and joins it to the recorded keys of `captures` and the verification records. It confirms that every recorded key exists and that every stored body has the size and ETag its creating line or verification record gives. A body with neither is re-hashed once, and 25 random bodies are downloaded and checked end to end; nothing else reads body bytes, and there is no per-body HEAD.
 
@@ -455,7 +455,7 @@ The reader MUST accept the current and the previous `schema_version` of the rele
 A saved file opens at its physical key: `saved_body` plus `saved_suffix`.
 
 - Bodies written to §7.1 open directly; older gzip PDFs open their `.pdf` copy once it is recorded, and until then unpack like other `.gz` bodies.
-- Other `.gz` bodies are fetched and unpacked with the browser's `DecompressionStream`, then opened with the media type from `detail`; those whose original size exceeds 100 MB (313, up to 1.19 GB) are offered as a labeled compressed download.
+- Other `.gz` bodies are fetched and unpacked with the browser's `DecompressionStream`, then opened with the media type from `detail`; those whose original size in `detail` exceeds 100 MB (313, up to 1.19 GB) are offered as a labeled compressed download.
 - A recovery is labeled by kind and links the recovered file.
 - A link key that no longer resolves opens a not-found notice; a pasted address is looked up in `urls`, and several matches are shown as versions.
 
@@ -503,7 +503,7 @@ The engine (docspec-rs) MUST provide these capabilities; what its paths may not 
    - Partition and column filters reach Iceberg scan planning.
    - A named step can be materialized once, its batches reserved in the memory pool or written to scratch Parquet when the pool refuses.
 2. **Table operations** through the REST catalog: append, each commit asserting its table UUID and base snapshot, with the conflict retry of §8.1; create; and drop with purge.
-3. **Deterministic multi-file export** to §10.2, with the per-file writer settings of [[DATA-MODEL]] §8.1, SHA-256 and MD5 computed while writing, and row-range shards; the bytes depend on no runner limit (spicy-stack ss-iwqu).
+3. **Deterministic multi-file export** to §10.2, with the per-file writer settings of [[DATA-MODEL]] §8.1, SHA-256 and MD5 computed while writing, and row-range shards once §10.1's growth rule calls for them; the bytes depend on no runner limit (spicy-stack ss-iwqu).
 4. **Connected components** over a relation of the same job, returning a deterministic component label and no ID, in memory over interned dense integer IDs, refusing above a configured node count and reserving its true heap (spicy-stack ss-6jg6; today's string-keyed tables need *est.* 1.65 GiB at 1.7M rows).
 5. **Streaming I/O:** no re-read of a just-written object and no HEAD of an immutable file, except as §7.1 and §10.3.4 allow. File and row-group sizes come from writer settings ([[DATA-MODEL]] §6, §8.1).
 6. **Bounded resources** set by configuration: compute threads, memory pool and scratch space. Sorts and aggregates spill or fail clearly within the pool. Hash-join builds do not spill, and join selection builds the smaller input by the row counts scans report, so plans keep wide columns off both join inputs: join on keys first, reduce, then attach the wide column.

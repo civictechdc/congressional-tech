@@ -1,0 +1,92 @@
+{
+  "basis": "measured locally, not on the target runner",
+  "body_sizes": [
+    1036256,
+    763170433578,
+    1187816490,
+    642,
+    588
+  ],
+  "capture_distinct_body_keys": 1036256,
+  "capture_distinct_receipt_keys": 2289,
+  "capture_rows": 3909134,
+  "capture_sha256": "db03317389db7453270a15056209c7498b0750caaec4d7053aa5b0b945dde70d",
+  "limits": "Parquet metadata and recorded facts only; no raw body, fresh PDF open, live bucket state, or target-runner performance.",
+  "pdf_readings": [
+    [
+      "completed",
+      null,
+      226844,
+      226842
+    ],
+    [
+      "failed",
+      "PdfReadError",
+      37,
+      37
+    ],
+    [
+      "failed",
+      "PdfStreamError",
+      6,
+      6
+    ],
+    [
+      "failed",
+      "TypeError",
+      2,
+      2
+    ],
+    [
+      "failed",
+      "LimitReachedError",
+      1,
+      1
+    ]
+  ],
+  "reading_files": 721,
+  "reading_identity_fields": [
+    "error_type",
+    "parser_fingerprint",
+    "status"
+  ],
+  "reading_schema_shapes": 1,
+  "reading_statuses": [
+    [
+      "completed",
+      null,
+      377712
+    ],
+    [
+      "unclassified",
+      null,
+      107184
+    ],
+    [
+      "size_limit",
+      null,
+      6768
+    ],
+    [
+      "failed",
+      "PdfReadError",
+      37
+    ],
+    [
+      "failed",
+      "PdfStreamError",
+      6
+    ],
+    [
+      "failed",
+      "TypeError",
+      2
+    ],
+    [
+      "failed",
+      "LimitReachedError",
+      1
+    ]
+  ],
+  "seconds": 1.445
+}

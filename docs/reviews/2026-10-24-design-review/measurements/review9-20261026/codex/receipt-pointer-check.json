@@ -1,0 +1,11 @@
+{
+  "basis": "measured",
+  "counts": {
+    "lines_with_absolute_keys": 3038,
+    "absolute_key_names": 6966,
+    "pointer_segments_matching_absolute_keys": 0,
+    "files": 2289
+  },
+  "seconds": 39.525,
+  "limits": "Unix-style absolute keys in the local mirror only. Matching pointer segments are counted without proving full path resolution. No live writers, backup, Windows keys, or bucket state tested."
+}

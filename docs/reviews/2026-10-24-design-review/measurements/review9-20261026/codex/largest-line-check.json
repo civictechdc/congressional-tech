@@ -1,0 +1,19 @@
+{
+  "basis": "measured",
+  "results": {
+    "line_bytes": 187661340,
+    "captures": 196,
+    "file_references": 0,
+    "top_level_fields": [
+      "captures",
+      "file_references",
+      "record",
+      "source_file",
+      "source_line"
+    ],
+    "absolute_key_names": 0,
+    "pointers": 196,
+    "pointers_with_absolute_segments": 0
+  },
+  "limits": "Single largest receipt line only; no live or remote checks."
+}

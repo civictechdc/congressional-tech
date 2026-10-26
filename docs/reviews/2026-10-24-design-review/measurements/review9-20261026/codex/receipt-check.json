@@ -1,0 +1,23 @@
+{
+  "basis": "measured locally, not on the target runner",
+  "collision_shapes": {},
+  "compressed_bytes": 1082812244,
+  "counts": {
+    "absolute_key_names": 6966,
+    "absolute_original_path_values": 279655,
+    "lines": 2596054,
+    "sensitive_header_key_instances": 534733,
+    "uncompressed_bytes": 13784139192
+  },
+  "files": 2289,
+  "limits": "Receipt mirror only; absolute-looking keys are a conservative candidate set, not the owner-approved cleanup field list. No live receipt race, backup contents, body bytes, or bucket-lock behavior checked.",
+  "maximum_line": {
+    "bytes": 187661340,
+    "line": 1,
+    "receipt_key": "receipts/house/meeting-xml/undated/assemble-20260930.jsonl.gz"
+  },
+  "seconds": 132.531,
+  "top_level_shapes": {
+    "dict": 2596054
+  }
+}
