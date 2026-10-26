@@ -141,6 +141,8 @@ def test_success_journals_before_and_after_every_public_write(ready):
     for record in records:
         if 'verified_write' in record:
             events.append(dict(event='publication_write_verified', value=record['verified_write']))
+        for acknowledgment in record.get('verified_writes', []):
+            events.append(dict(event='publication_write_verified', value=acknowledgment))
         events.append(record)
     for key, _, _ in remote.puts:
         if key.startswith('viewer-publications/attempts/'):

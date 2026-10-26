@@ -270,7 +270,7 @@ def test_noncoalesced_journal_accepts_write_capacity(tmp_path, monkeypatch):
         fact = write_fact('viewer-publications/' + asset_name(n))
         log.record('publication_write_verified', dict(key=fact['key'], bytes=1, sha256=fact['sha256'], etag='"' + 'a' * 32 + '"'))
     log.record('publication_completed', {})
-    assert log.sequence == 2 * state.MAX_WRITES + 1 < state.MAX_EVENTS
+    assert log.sequence == state.MAX_WRITES + (state.MAX_WRITES - 1) // state.MAX_PENDING_ACKS + 2 < state.MAX_EVENTS
     assert log.total_bytes < state.MAX_JOURNAL_BYTES
     state.validate_state(run.value)
     assert run._state_bytes == len(canonical_json_bytes(run.value, ensure_ascii=True)) + 1
