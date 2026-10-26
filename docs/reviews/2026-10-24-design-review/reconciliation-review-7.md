@@ -64,6 +64,8 @@ All scripts and summary outputs are in `measurements/review7-validation-20261026
 
 Minor findings folded in the same pass: the receipt reader's errors never print a line's text; `c.url` used throughout DM §7.3; the bodiless recovery row's source URL; conflict retry reuses written files; JSON link strings; table property spelling; stale `streamed-recovery` fix; reference and seed-citation repairs; `house_sites.py`'s lost calendar pages named. Rejected: dropping the PDF copier's HEAD on a 412 (older `.pdf` objects exist unverified).
 
+**Owner decision, 2026-10-26:** files fetched from the End of Term archive are dated like any other fetch, so their archive capture time (2012–2017) is shown as "Captured <date>" (DM §6.1's time mapping already says so).
+
 ## Consumer check
 
 An independent check diffed the pass against `40ee51b2` and followed every changed term through all four documents. It found three lost rules (the file-shape lists, "no journal", the 32 MB parent array), eight readers out of step (the gzip-PDF fixture, the source URL of a bodiless recovery row, materialization in A §13, dictionary pages in A §16 and P A1, P C1's test, the B0 patch scope, the copier's candidates, the engine ratchet), two list items the B §3 conversion split mid-thought, and an older contradiction (A §9.5 "link key" for body key). All were fixed. The official-substitute category names left DM §7.8 knowingly: they are registry contents (B K21).
