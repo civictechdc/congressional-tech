@@ -1,0 +1,3998 @@
+[
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/BILLS-116RCP68-JES-DIVISION-E.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 3451293,
+    "sha": "1094dd6e4828"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 88,
+    "fp": "7bec39076852",
+    "tlen": 128895,
+    "bytes": 5735685,
+    "sha": "6456219ff70b"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/BILLS-116RCP68-JES-DIVISION-F.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 120,
+    "fp": "c1e6026fbf09",
+    "tlen": 232528,
+    "bytes": 5216714,
+    "sha": "251a40d8e2b5"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 975738,
+    "sha": "4ab55a29380a"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/BILLS-116RCP68-JES-DIVISION-G.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 189,
+    "fp": "0bd6f4acd7dd",
+    "tlen": 390058,
+    "bytes": 2554191,
+    "sha": "4416d2d427b7"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 389935,
+    "sha": "522875c3d2c7"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/BILLS-116RCP68-JES-DIVISION-H.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 203,
+    "fp": "ac7ac6dec141",
+    "tlen": 308872,
+    "bytes": 6823127,
+    "sha": "095b41d9d84c"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 324215,
+    "sha": "5a4967a3c167"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/BILLS-116RCP68-JES-DIVISION-I.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 311019,
+    "sha": "638a70f633fd"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 42,
+    "fp": "ee15fe8bc814",
+    "tlen": 79594,
+    "bytes": 1731800,
+    "sha": "8b91a468d5e3"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/BILLS-116RCP68-JES-DIVISION-J.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 324544,
+    "sha": "2c14099e0420"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 102,
+    "fp": "568c58aa0a67",
+    "tlen": 173839,
+    "bytes": 3740952,
+    "sha": "54a17385bd98"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/BILLS-116RCP68-JES-DIVISION-K.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 112,
+    "fp": "49dccc48a2be",
+    "tlen": 194378,
+    "bytes": 4573366,
+    "sha": "63554639d9ce"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 212715,
+    "sha": "f69be4c0bbf2"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/BILLS-116RCP68-JES-DIVISION-L.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 124,
+    "fp": "1bf8211c5d97",
+    "tlen": 233556,
+    "bytes": 5317886,
+    "sha": "2eb63b43d928"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 65259,
+    "sha": "6c9757746baa"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/BILLS-116RCP68-JES-FRONT.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 4,
+    "fp": "21d7181a5c53",
+    "tlen": 4135,
+    "bytes": 128069,
+    "sha": "0111b6535f54"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 98028,
+    "sha": "41aa78e350ed"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201221/CRPT-116hrpt679.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 67309,
+    "sha": "5c72cf862797"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": "8d6bd171ecf5",
+    "tlen": 4779,
+    "bytes": 80045,
+    "sha": "bab4558fa113"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201228/BILLS-116hr_-SUSv2.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 5,
+    "fp": "b614d63b34b9",
+    "tlen": 6089,
+    "bytes": 43398,
+    "sha": "a2ef5e7e450f"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1773,
+    "sha": "d47820a5e4a4"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20201228/BILLS-117hresPIH-hres7.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 50582,
+    "sha": "4a0e0cc3655e"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 45,
+    "fp": "0f2b6537ac5d",
+    "tlen": 62580,
+    "bytes": 134770,
+    "sha": "71648483d62d"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210104/BILLS-117hr-SUS.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1552,
+    "sha": "632040369ee8"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 5,
+    "fp": "1d68ff03b5f7",
+    "tlen": 6000,
+    "bytes": 43002,
+    "sha": "a47e91b6fed4"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210104/BILLS-117hr-SUSv1.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1553,
+    "sha": "04a74549a18e"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 4,
+    "fp": "fcec729f2b14",
+    "tlen": 4623,
+    "bytes": 43652,
+    "sha": "e5de955cf096"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210104/BILLS-117hr-SUSv3.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1552,
+    "sha": "6c10f5e8af02"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 8,
+    "fp": "82d700d5f846",
+    "tlen": 9654,
+    "bytes": 49748,
+    "sha": "b336bcb59667"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210104/BILLS-117hr21-SUS.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 25,
+    "fp": "4af5a777d1f9",
+    "tlen": 35597,
+    "bytes": 91041,
+    "sha": "5ed0b529614f"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1490,
+    "sha": "97ee7d7f347e"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210104/BILLS-117hrSUSv2.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 10,
+    "fp": "fd5f77d0ad8c",
+    "tlen": 12572,
+    "bytes": 56519,
+    "sha": "83c096016794"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1552,
+    "sha": "a372c8222701"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210111/BILLS-117hres40.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": "ab3482aa7bbd",
+    "tlen": 1531,
+    "bytes": 10636,
+    "sha": "7c8f9da3c159"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1496,
+    "sha": "8bcc5617e9c5"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210111/CRPT-117hrpt-2.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1488,
+    "sha": "ef1315bbff0b"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 78,
+    "fp": "e9071fb6ff0b",
+    "tlen": 222066,
+    "bytes": 912322,
+    "sha": "f037c0a010ac"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210111/CRPT-117hrpt1.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1550,
+    "sha": "3358b7c2a560"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 5,
+    "fp": "128f1c90ad51",
+    "tlen": 5329,
+    "bytes": 114383,
+    "sha": "8cd865dcb083"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210111/CRPT-117hrpt2.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1550,
+    "sha": "8711bf40dd80"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 78,
+    "fp": "e9071fb6ff0b",
+    "tlen": 222066,
+    "bytes": 912322,
+    "sha": "f037c0a010ac"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210201/BILLS-117sconres5eas.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 76,
+    "fp": "8c3842e00f9d",
+    "tlen": 72992,
+    "bytes": 114766,
+    "sha": "2526794f77c8"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1551,
+    "sha": "52ebf616ea9d"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210201/CRPT-117hrpt-rule020221.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1551,
+    "sha": "0a97a9fd2c80"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 67,
+    "fp": "8c9c7ae4d787",
+    "tlen": 128616,
+    "bytes": 559288,
+    "sha": "dd0db612bfcc"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210201/CRPT-117hrpt-rule_020221.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1494,
+    "sha": "23e4955454aa"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 67,
+    "fp": "8c9c7ae4d787",
+    "tlen": 128616,
+    "bytes": 559288,
+    "sha": "dd0db612bfcc"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20210201/CRPT-117hrpt5.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": "0556f2b1546a",
+    "tlen": 1687,
+    "bytes": 57044,
+    "sha": "570e95e635fa"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1552,
+    "sha": "734c4790c921"
+   }
+  ],
+  "same_fp": false
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20211115/BILLS-117HR5376RH-RCP117-18.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 3735275,
+    "sha": "4c35dd8cbb2b"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2135,
+    "fp": "4ea01a495848",
+    "tlen": 2900664,
+    "bytes": 4647973,
+    "sha": "fe3933315c55"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/billsthisweek/20220711/CRPT117hrpt405.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 8142435,
+    "sha": "4fc1e007a1c2"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 1382,
+    "fp": "4e448798e55d",
+    "tlen": 3027603,
+    "bytes": 10035915,
+    "sha": "74416ff77c52"
+   }
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/meetings/WM/WM00/20150113/102805/HHRG-114-WM00-Transcript-20150113.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": true,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 95,
+    "fp": "1c516b885a2b",
+    "tlen": 270831,
+    "bytes": 3924204,
+    "sha": "7b5ec3c88468"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": "0fd64abf9e79",
+    "tlen": 4105,
+    "bytes": 384252,
+    "sha": "c578bcecd3d1"
+   }
+  ],
+  "same_fp": false,
+  "ratio": 0.0296,
+  "ops": [
+   [
+    "delete",
+    "U.S. GOVERNMENT PUBLISHING OFFICE WASHINGTON : For sale by the Superintendent of Documents, U.S. Government Publishing Office Internet: bookstore.gpo.gov Phone: toll free (866) 512\u20131800; DC area (202)",
+    ""
+   ],
+   [
+    "delete",
+    "4 I would also like to welcome all of our new Members and all of our returning Members. To our returning Members, I am very glad to have this oppor- tunity to serve with you in this new Congress. And ",
+    ""
+   ]
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/meetings/WM/WM00/20150127/102843/HHRG-114-WM00-Transcript-20150127.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": true,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": "b3239a3b3307",
+    "tlen": 6574,
+    "bytes": 41389,
+    "sha": "a983c2aebe9a"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 196,
+    "fp": "488f2efbfe4f",
+    "tlen": 212001,
+    "bytes": 341551303,
+    "sha": "e3e64eb5b140"
+   }
+  ],
+  "same_fp": false,
+  "ratio": 0.059,
+  "ops": [
+   [
+    "insert",
+    "",
+    "U.S. GOVERNMENT PUBLISHING OFFICE WASHINGTON : For sale by the Superintendent of Documents, U.S. Government Publishing Office Internet: bookstore.gpo.gov Phone: toll free (866) 512\u20131800; DC area (202)"
+   ],
+   [
+    "insert",
+    "",
+    "4 undo later, then they won\u2019t make any concessions. Why run the risk for no reason? On the other hand, once our trading partners know that we are trustworthy, once they can see that we are negotiating"
+   ]
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/meetings/WM/WM00/20150203/102922/HHRG-114-WM00-Transcript-20150203.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": true,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": "ec66517bd073",
+    "tlen": 6696,
+    "bytes": 113201,
+    "sha": "97c27cad2729"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 112,
+    "fp": "f19237482c9c",
+    "tlen": 293284,
+    "bytes": 5439384,
+    "sha": "f1c39845d9ed"
+   }
+  ],
+  "same_fp": false,
+  "ratio": 0.0436,
+  "ops": [
+   [
+    "insert",
+    "",
+    "U.S. GOVERNMENT PUBLISHING OFFICE WASHINGTON : For sale by the Superintendent of Documents, U.S. Government Publishing Office Internet: bookstore.gpo.gov Phone: toll free (866) 512\u20131800; DC area (202)"
+   ],
+   [
+    "insert",
+    "",
+    "4 So I am disappointed in this proposal, but as far as I am con- cerned, I would rather spend time not focusing on our differences. Let\u2019s instead try to find some time and a way to see if there is som"
+   ]
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/meetings/WM/WM00/20150422/103372/HHRG-114-WM00-Transcript-20150422.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": true,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": "69f839473535",
+    "tlen": 3799,
+    "bytes": 258239,
+    "sha": "19611c198e72"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 107,
+    "fp": "02a75cc2ff31",
+    "tlen": 284848,
+    "bytes": 6658714,
+    "sha": "85bd65e80e8d"
+   }
+  ],
+  "same_fp": false,
+  "ratio": 0.0248,
+  "ops": [
+   [
+    "insert",
+    "",
+    "U.S. GOVERNMENT PUBLISHING OFFICE WASHINGTON : For sale by the Superintendent of Documents, U.S. Government Publishing Office Internet: bookstore.gpo.gov Phone: toll free (866) 512\u20131800; DC area (202)"
+   ],
+   [
+    "insert",
+    "",
+    "4 Chairman RYAN. The hearing will come to order. Welcome to the Ways and Means Committee hearing on expand- ing trade with accountability and transparency with our Secre- taries Lew, Pritzker, and Vil"
+   ]
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/meetings/WM/WM03/20150317/103155/HHRG-114-WM03-Transcript-20150317.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": true,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 156,
+    "fp": "c4a7248b2dd2",
+    "tlen": 128689,
+    "bytes": 14515393,
+    "sha": "2bba5efd661b"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": "d894af4e60ac",
+    "tlen": 891,
+    "bytes": 294245,
+    "sha": "8843d2be2d2b"
+   }
+  ],
+  "same_fp": false,
+  "ratio": 0.014,
+  "ops": [
+   [
+    "delete",
+    "U.S. GOVERNMENT PUBLISHING OFFICE WASHINGTON : For sale by the Superintendent of Documents, U.S. Government Publishing Office Internet: bookstore.gpo.gov Phone: toll free (866) 512\u20131800; DC area (202)",
+    ""
+   ],
+   [
+    "delete",
+    "4 But, unfortunately, as we will hear in today\u2019s testimony, while we all want to know about whether programs are working or not, and to what extent they are working, what we actually know is quite lim",
+    ""
+   ]
+  ]
+ },
+ {
+  "url": "http://docs.house.gov/meetings/WM/WM06/20150211/102947/HHRG-114-WM06-Transcript-20150211.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": true,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": "416f956008d6",
+    "tlen": 325,
+    "bytes": 706095,
+    "sha": "2306c6201e42"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 140,
+    "fp": "5cb502c18726",
+    "tlen": 170698,
+    "bytes": 23233201,
+    "sha": "2ac0b76ffcb8"
+   }
+  ],
+  "same_fp": false,
+  "ratio": 0.0036,
+  "ops": [
+   [
+    "insert",
+    "",
+    "U.S. GOVERNMENT PUBLISHING OFFICE WASHINGTON : For sale by the Superintendent of Documents, U.S. Government Publishing Office Internet: bookstore.gpo.gov Phone: toll free (866) 512\u20131800; DC area (202)"
+   ],
+   [
+    "insert",
+    "",
+    "4 Chairman ROSKAM. Good morning, the hearing will come to order. Welcome to the Oversight Subcommittee hearing on pro- tecting small businesses from IRS abuse with IRS Commissioner John Koskinen on th"
+   ]
+  ]
+ },
+ {
+  "url": "http://edlabor.house.gov/markups/pdfs/20070124committeerules110th.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": true,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 20,
+    "fp": "bb1e59ed0cef",
+    "tlen": 52552,
+    "bytes": 92770,
+    "sha": "1cf960ecfda4"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 15,
+    "fp": "60d1ccf9fb4e",
+    "tlen": 40047,
+    "bytes": 62095,
+    "sha": "378cded5790d"
+   }
+  ],
+  "same_fp": false,
+  "ratio": 0.8074,
+  "ops": [
+   [
+    "replace",
+    "U.S. GOVERNMENT PRINTING OFFICE WASHINGTON : For sale by the Superintendent of Documents, U.S. Government Printing Office Internet: bookstore.gpo.gov Phone: toll free (866) 512\u20131800; DC area (202) 512",
+    "Committee Print Section 1. Rules"
+   ],
+   [
+    "replace",
+    "Labor VerDate 0ct 09 2002 15:06 Dec 06, 2007 Jkt 000000 PO 00000 Frm 00001 Fmt 5012 Sfmt 5012 G:\\DOCS\\CP\\RULES\\00-000.TXT HBUD1 PsN: DICK congress.#13 (II)",
+    "Labor. Table of Contents RULE 1. REGULAR, ADDITIONAL, & SPECIAL MEETINGS: VICE CHAIRMAN..............2 RULE 2. QUESTIONING OF WITNESSES................................................................."
+   ],
+   [
+    "replace",
+    "ON EDUCATION AND LABOR GEORGE MILLER, California, Chairman Dale E. Kildee, Michigan, Vice Chairman Donald M. Payne, New Jersey Robert E. Andrews, New Jersey Robert C. \u2018\u2018Bobby\u2019\u2019 Scott, Virginia Lynn C.",
+    "STAFF................................................................................7 RULE"
+   ],
+   [
+    "replace",
+    "Supervision and Duties of Committee Staff .................................... 6 Rule",
+    "SUPERVISION & DUTIES OF COMMITTEE STAFF.......................................7 RULE"
+   ],
+   [
+    "replace",
+    "Hearings Procedure ........................................................................... 6 Rule",
+    "HEARINGS PROCEDURE........................................................................7 RULE"
+   ],
+   [
+    "replace",
+    "Meetings\u2014Hearings\u2014Quorums ....................................................... 7 Rule",
+    "MEETINGS-HEARINGS-QUORUMS...........................................................8 RULE"
+   ],
+   [
+    "replace",
+    "Subpoena Authority .......................................................................... 7 Rule",
+    "SUBPOENA AUTHORITY........................................................................9 RULE"
+   ],
+   [
+    "replace",
+    "Reports of Subcommittees ................................................................ 8 Rule",
+    "REPORTS OF SUBCOMMITTEES...............................................................9 RULE"
+   ]
+  ]
+ },
+ {
+  "url": "https://congress.gov/116/chrg/CHRG-116hhrg39916/CHRG-116hhrg39916.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 54281,
+    "sha": "11f289c7f910"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 49,
+    "fp": "9aa40a26af83",
+    "tlen": 161439,
+    "bytes": 337452,
+    "sha": "425bd4c086d5"
+   }
+  ]
+ },
+ {
+  "url": "https://congress.gov/117/chrg/CHRG-117hhrg44535-add12/CHRG-117hhrg44535-add12.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 44,
+    "fp": "0cf395fa8c22",
+    "tlen": 68162,
+    "bytes": 472581,
+    "sha": "93f7e4fe018a"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 48441,
+    "sha": "b657993e86fd"
+   }
+  ]
+ },
+ {
+  "url": "https://congress.gov/117/chrg/CHRG-117hhrg44535-add16/CHRG-117hhrg44535-add16.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 48441,
+    "sha": "182a9b7153ed"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 35,
+    "fp": "072591ed572b",
+    "tlen": 30086,
+    "bytes": 974002,
+    "sha": "3ae9d5b7a06a"
+   }
+  ]
+ },
+ {
+  "url": "https://congress.gov/117/chrg/CHRG-117shrg49905/CHRG-117shrg49905.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 54280,
+    "sha": "3ce677540e55"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 319,
+    "fp": "4219e13bad6d",
+    "tlen": 467455,
+    "bytes": 8726031,
+    "sha": "f0f3ba915eef"
+   }
+  ]
+ },
+ {
+  "url": "https://democrats-rules.house.gov/sites/democrats.rules.house.gov/files/7.12.22%20-Report.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 1382,
+    "fp": "4e448798e55d",
+    "tlen": 3027603,
+    "bytes": 10035915,
+    "sha": "74416ff77c52"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 5172328,
+    "sha": "d3cc3a430eff"
+   }
+  ]
+ },
+ {
+  "url": "https://democrats-rules.house.gov/sites/evo-subsites/democrats-rules.house.gov/files/7.12.22%20-Report.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 1382,
+    "fp": "4e448798e55d",
+    "tlen": 3027603,
+    "bytes": 10035915,
+    "sha": "74416ff77c52"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 3800552,
+    "sha": "da69dbbce070"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/115/meeting/house/106556/witnesses/HHRG-115-SY21-TTF-NortonJ-20171025-U2.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 790527,
+    "sha": "47d59b72fb28"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 46657,
+    "sha": "c87c02049ef7"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/115/meeting/house/106603/documents/HHRG-115-IF18-20171109-SD003.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 5,
+    "fp": "31d5060c322e",
+    "tlen": 10558,
+    "bytes": 293222,
+    "sha": "2f718e8a9c5a"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 64825,
+    "sha": "b7d3e7c39847"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/115/meeting/house/108181/documents/HMKP-115-FA00-Transcript-20180417-U1.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 2296568,
+    "sha": "a9257c988cb1"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 243,
+    "fp": "0b7ee3559cab",
+    "tlen": 81242,
+    "bytes": 9584383,
+    "sha": "fc69bf14efa1"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/116/meeting/house/109271/witnesses/HHRG-116-HM07-Wstate-SchultzK-20190409.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 9,
+    "fp": "9bb49d997d8a",
+    "tlen": 26413,
+    "bytes": 688206,
+    "sha": "797de1b0d083"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 63041,
+    "sha": "d128b929c3b1"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/116/meeting/house/109633/witnesses/HHRG-116-II13-TTF-SennerS-20190613.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 1,
+    "fp": "43e056a8f540",
+    "tlen": 2099,
+    "bytes": 223530,
+    "sha": "4c0b40063d49"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 48441,
+    "sha": "e11f99a9b7df"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/116/meeting/house/110313/documents/BILLS-116584ih.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": "876cf1c0137f",
+    "tlen": 3063,
+    "bytes": 245249,
+    "sha": "7bd6081eae4a"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 48441,
+    "sha": "afe9c392b3df"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/117/meeting/house/111137/witnesses/HHRG-117-IF02-Wstate-PhillipsC-20210202.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 5,
+    "fp": "aef29b94eaf7",
+    "tlen": 15855,
+    "bytes": 156530,
+    "sha": "2f6cea80b0bd"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 6589,
+    "sha": "a63c1d70aebf"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/117/meeting/house/114121/witnesses/HHRG-117-II10-Bio-HernandezHR4380A-20211014.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": "25a28eaa57b5",
+    "tlen": 4129,
+    "bytes": 45895,
+    "sha": "6827a4a83579"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 32058,
+    "sha": "cad2fa8ceadc"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/117/meeting/house/114258/documents/HMKP-117-IF00-20211117-SD008.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": "b65b224e72ba",
+    "tlen": 3239,
+    "bytes": 215531,
+    "sha": "583ca4f60e32"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 46657,
+    "sha": "6a07eeb3afc1"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/117/meeting/house/114280/witnesses/HHRG-117-II10-Wstate-JeungR-20211207.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": "d9aad54fd0c5",
+    "tlen": 7503,
+    "bytes": 375437,
+    "sha": "626875f19e29"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 30273,
+    "sha": "e06c8e23c683"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/117/meeting/house/115156/documents/BILLS-1174601ih.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 46657,
+    "sha": "3a8e25fd55bb"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 8,
+    "fp": "2c092faf6349",
+    "tlen": 9968,
+    "bytes": 258089,
+    "sha": "958378e88bd6"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/117/meeting/house/115250/documents/BILLS-1176054ih.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 16,
+    "fp": "5e5b5b82280e",
+    "tlen": 18478,
+    "bytes": 254297,
+    "sha": "9d7ab019c8b5"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 48441,
+    "sha": "efe3268d5093"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/118/meeting/house/116387/documents/HHRG-118-IF17-MState-A000370-20230920.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 1,
+    "fp": "40b2c6cb153a",
+    "tlen": 1681,
+    "bytes": 140716,
+    "sha": "bb8b895e3e27"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 32057,
+    "sha": "e524148e32fc"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/118/meeting/house/117667/documents/HHRG-118-GO00-20240919-SD007.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 55741,
+    "sha": "0eb92ebfd283"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 402261,
+    "sha": "9a4e129ada38"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118332/documents/HHRG-119-GO16-20250604-SD003.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 122,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 9367833,
+    "sha": "b967a5cd6dd6"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 8518520,
+    "sha": "f94022484085"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118335/witnesses/HHRG-119-JU08-TTF-LandauS-20250605.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 9567359,
+    "sha": "506c1ef04a45"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 8650752,
+    "sha": "af520a68e2c5"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118339/documents/HHRG-119-GO00-20250605-SD007.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 10,
+    "fp": "9ef492b0ff20",
+    "tlen": 8087,
+    "bytes": 9073111,
+    "sha": "09b288f48f2d"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 8518520,
+    "sha": "f9d74e8b30b5"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118343/witnesses/HHRG-119-HM05-TTF-CarafanoJ-20250611.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 9372104,
+    "sha": "ca8390c54eb1"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 7340032,
+    "sha": "f60af91910e8"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118379/documents/HHRG-119-GO00-20250612-SD021.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 5,
+    "fp": "6c88f3172c6a",
+    "tlen": 7002,
+    "bytes": 1646985,
+    "sha": "6e75533a7994"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 1366016,
+    "sha": "f404f589934f"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118380/documents/BILLS-119-SC-AP-FY2026-Defense.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 146,
+    "fp": "fad0bf445959",
+    "tlen": 226157,
+    "bytes": 403026,
+    "sha": "52eb213a25a2"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 358205,
+    "sha": "5c78a30e74d0"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118449/witnesses/HHRG-119-HM09-TTF-LarkinP-20250918.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 2,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 8142134,
+    "sha": "d2cef62966c5"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 7208960,
+    "sha": "e9bc685c0fe4"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118462/witnesses/HHRG-119-FA05-TTF-FannonF-20250715.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 6462210,
+    "sha": "031d420b75fe"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 5898240,
+    "sha": "b5b4203e73f2"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118469/witnesses/HHRG-119-ED00-TTF-GrovesR-20250715.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 5120000,
+    "sha": "4c8f2e42558e"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 8760999,
+    "sha": "cdff3aff32e2"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118493/witnesses/HHRG-119-SY18-Wstate-AbdalatiW-20250716.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 3537784,
+    "sha": "e40f4a66f03f"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 18,
+    "fp": "d45398399450",
+    "tlen": 34033,
+    "bytes": 7507694,
+    "sha": "f5218cc1737e"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118558/documents/HHRG-119-II13-20250903-SD090-U1.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 48441,
+    "sha": "076aeff24c20"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 1,
+    "fp": "bc07ed6ab3e9",
+    "tlen": 3226,
+    "bytes": 172576,
+    "sha": "327eb00e22ad"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118598/documents/HMKP-119-II00-20250917-SD012.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 9,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 6909133,
+    "sha": "4af4d6f2fbef"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 6683512,
+    "sha": "4b55dc8ac93e"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118610/documents/HHRG-119-GO33-20250916-SD010.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 5897081,
+    "sha": "e067bbf3fa09"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 24,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 6657241,
+    "sha": "e4a38dc36bf9"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118612/documents/HHRG-119-JU00-20250917-SD010-U10.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 5897080,
+    "sha": "13ef58ccbedd"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 96,
+    "fp": "114db745fe39",
+    "tlen": 315790,
+    "bytes": 8863480,
+    "sha": "1548347fc58b"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118612/documents/HHRG-119-JU00-20250917-SD020-U20.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 62,
+    "fp": "ba7e11f76421",
+    "tlen": 156131,
+    "bytes": 8817857,
+    "sha": "b012e186f2a4"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 6553600,
+    "sha": "be31813613a9"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118612/documents/HHRG-119-JU00-20250917-SD032-U32.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 6684672,
+    "sha": "8d01f6dc9ad4"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 38,
+    "fp": "4541ba610adf",
+    "tlen": 70923,
+    "bytes": 8877307,
+    "sha": "c3ebc10be9f3"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118706/documents/HHRG-119-VR00-20251204-SD002.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 4849664,
+    "sha": "218683d09577"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 37,
+    "fp": "deb1c393641d",
+    "tlen": 59445,
+    "bytes": 6870396,
+    "sha": "6a3dd28fbcfe"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118711/documents/HHRG-119-IF03-20251202-SD73885.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 74,
+    "fp": "3a041ced6b77",
+    "tlen": 167354,
+    "bytes": 4201618,
+    "sha": "0c6e031eded3"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 4128768,
+    "sha": "ddb8a5bed6a7"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/118761/documents/BILLS-119HR5360ih.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 48441,
+    "sha": "5e4db754e14a"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": "ec102374c6bf",
+    "tlen": 3133,
+    "bytes": 244969,
+    "sha": "a38e072d793a"
+   }
+  ]
+ },
+ {
+  "url": "https://www.congress.gov/119/meeting/house/119429/witnesses/HHRG-119-II10-TTF-SayreT-20260701.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 3,
+    "fp": "1cffb5c8b230",
+    "tlen": 4360,
+    "bytes": 142965,
+    "sha": "53761c9fd77c"
+   },
+   {
+    "fmt": "pdf",
+    "intact": false,
+    "pages": null,
+    "fp": null,
+    "tlen": 0,
+    "bytes": 39357,
+    "sha": "98a6b39529da"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/BILLS-112hr1063ih/pdf/BILLS-112hr1063ih.pdf",
+  "in_snapshot": true,
+  "in_receipt_pop": true,
+  "n": 2,
+  "n_intact": 2,
+  "versions": [
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 13,
+    "fp": "fc5e5d049bdb",
+    "tlen": 15515,
+    "bytes": 131993,
+    "sha": "26d7cbb31486"
+   },
+   {
+    "fmt": "pdf",
+    "intact": true,
+    "pages": 13,
+    "fp": "fc5e5d049bdb",
+    "tlen": 15515,
+    "bytes": 163291,
+    "sha": "d8035181e9cc"
+   }
+  ],
+  "same_fp": true
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg31529.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4378055,
+    "sha": "7ac7b1b4ab4a"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "142273432fe9",
+    "names": [
+     "CHRG-109hhrg31529/dip.xml",
+     "CHRG-109hhrg31529/html/CHRG-109hhrg31529.htm",
+     "CHRG-109hhrg31529/mods.xml",
+     "CHRG-109hhrg31529/pdf/CHRG-109hhrg31529.pdf",
+     "CHRG-109hhrg31529/premis.xml"
+    ],
+    "bytes": 5349878,
+    "sha": "d1d449bf7b91"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg32979.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 2025356,
+    "sha": "aade4e83f780"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "40204e0f91a8",
+    "names": [
+     "CHRG-109hhrg32979/dip.xml",
+     "CHRG-109hhrg32979/html/CHRG-109hhrg32979.htm",
+     "CHRG-109hhrg32979/mods.xml",
+     "CHRG-109hhrg32979/pdf/CHRG-109hhrg32979.pdf",
+     "CHRG-109hhrg32979/premis.xml"
+    ],
+    "bytes": 2136443,
+    "sha": "dc6623beef15"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg34659.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "01fe9d0fc755",
+    "names": [
+     "CHRG-109hhrg34659/dip.xml",
+     "CHRG-109hhrg34659/html/CHRG-109hhrg34659.htm",
+     "CHRG-109hhrg34659/mods.xml",
+     "CHRG-109hhrg34659/pdf/CHRG-109hhrg34659.pdf",
+     "CHRG-109hhrg34659/premis.xml"
+    ],
+    "bytes": 7750131,
+    "sha": "17165aee4df9"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 7205584,
+    "sha": "874658cd5dd4"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg35501.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "417d18803ff0",
+    "names": [
+     "CHRG-109hhrg35501/dip.xml",
+     "CHRG-109hhrg35501/html/CHRG-109hhrg35501.htm",
+     "CHRG-109hhrg35501/mods.xml",
+     "CHRG-109hhrg35501/pdf/CHRG-109hhrg35501.pdf",
+     "CHRG-109hhrg35501/premis.xml"
+    ],
+    "bytes": 3393467,
+    "sha": "7cba5f58ea42"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 1222243,
+    "sha": "c32b242e8f2e"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg35920.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "8a801970e5d6",
+    "names": [
+     "CHRG-110hhrg35920/dip.xml",
+     "CHRG-110hhrg35920/html/CHRG-110hhrg35920.htm",
+     "CHRG-110hhrg35920/mods.xml",
+     "CHRG-110hhrg35920/pdf/CHRG-110hhrg35920.pdf",
+     "CHRG-110hhrg35920/premis.xml"
+    ],
+    "bytes": 4410793,
+    "sha": "55a45417f927"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 131072,
+    "sha": "db73a58e470f"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg37206.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4014529,
+    "sha": "be092b4a8a94"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "9d251fe33d12",
+    "names": [
+     "CHRG-110hhrg37206/dip.xml",
+     "CHRG-110hhrg37206/html/CHRG-110hhrg37206.htm",
+     "CHRG-110hhrg37206/mods.xml",
+     "CHRG-110hhrg37206/pdf/CHRG-110hhrg37206.pdf",
+     "CHRG-110hhrg37206/premis.xml"
+    ],
+    "bytes": 4742590,
+    "sha": "e2c70d0402ad"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg40153.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 1529854,
+    "sha": "239c3d9a5d08"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "8cf81e31224b",
+    "names": [
+     "CHRG-110hhrg40153/dip.xml",
+     "CHRG-110hhrg40153/html/CHRG-110hhrg40153.htm",
+     "CHRG-110hhrg40153/mods.xml",
+     "CHRG-110hhrg40153/pdf/CHRG-110hhrg40153.pdf",
+     "CHRG-110hhrg40153/premis.xml"
+    ],
+    "bytes": 3936222,
+    "sha": "b7967d81dd47"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg41182.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "719421466fff",
+    "names": [
+     "CHRG-110hhrg41182/dip.xml",
+     "CHRG-110hhrg41182/html/CHRG-110hhrg41182.htm",
+     "CHRG-110hhrg41182/mods.xml",
+     "CHRG-110hhrg41182/pdf/CHRG-110hhrg41182.pdf",
+     "CHRG-110hhrg41182/premis.xml"
+    ],
+    "bytes": 9272409,
+    "sha": "8a5bcce7d5cc"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4492092,
+    "sha": "c3ffa893301c"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg41946.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 6592769,
+    "sha": "0df2b7449d4a"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "bcf58bcc42be",
+    "names": [
+     "CHRG-110hhrg41946/dip.xml",
+     "CHRG-110hhrg41946/html/CHRG-110hhrg41946.htm",
+     "CHRG-110hhrg41946/mods.xml",
+     "CHRG-110hhrg41946/pdf/CHRG-110hhrg41946.pdf",
+     "CHRG-110hhrg41946/premis.xml"
+    ],
+    "bytes": 7390497,
+    "sha": "c5c5c800e16e"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg45068.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "61b5d9bee72f",
+    "names": [
+     "CHRG-110hhrg45068/dip.xml",
+     "CHRG-110hhrg45068/html/CHRG-110hhrg45068.htm",
+     "CHRG-110hhrg45068/mods.xml",
+     "CHRG-110hhrg45068/pdf/CHRG-110hhrg45068.pdf",
+     "CHRG-110hhrg45068/premis.xml"
+    ],
+    "bytes": 7156377,
+    "sha": "7edbedc27e8f"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 3447926,
+    "sha": "8c4c746a65e7"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg51701.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "9ad58b7eaaa2",
+    "names": [
+     "CHRG-110hhrg51701/dip.xml",
+     "CHRG-110hhrg51701/html/CHRG-110hhrg51701.htm",
+     "CHRG-110hhrg51701/mods.xml",
+     "CHRG-110hhrg51701/pdf/CHRG-110hhrg51701.pdf",
+     "CHRG-110hhrg51701/premis.xml"
+    ],
+    "bytes": 9068123,
+    "sha": "6204e50f5bb4"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4388162,
+    "sha": "fab309b6d995"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-111shrg53636.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 2358860,
+    "sha": "7d121aff45a6"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "c3179ac3738e",
+    "names": [
+     "CHRG-111shrg53636/dip.xml",
+     "CHRG-111shrg53636/html/CHRG-111shrg53636.htm",
+     "CHRG-111shrg53636/mods.xml",
+     "CHRG-111shrg53636/pdf/CHRG-111shrg53636.pdf",
+     "CHRG-111shrg53636/premis.xml"
+    ],
+    "bytes": 2691179,
+    "sha": "febd974b5af4"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-112hhrg71981.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 2752512,
+    "sha": "4a4f99349808"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "ee3ef8461a3c",
+    "names": [
+     "CHRG-112hhrg71981/dip.xml",
+     "CHRG-112hhrg71981/html/CHRG-112hhrg71981.htm",
+     "CHRG-112hhrg71981/mods.xml",
+     "CHRG-112hhrg71981/pdf/CHRG-112hhrg71981.pdf",
+     "CHRG-112hhrg71981/premis.xml"
+    ],
+    "bytes": 5211863,
+    "sha": "d78e81795faa"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-112hhrg72493.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 1597951,
+    "sha": "82aaa43b50dc"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "4f523fa68ad3",
+    "names": [
+     "CHRG-112hhrg72493/dip.xml",
+     "CHRG-112hhrg72493/html/CHRG-112hhrg72493.htm",
+     "CHRG-112hhrg72493/mods.xml",
+     "CHRG-112hhrg72493/pdf/CHRG-112hhrg72493.pdf",
+     "CHRG-112hhrg72493/premis.xml"
+    ],
+    "bytes": 1847611,
+    "sha": "944883ac7ed9"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-112hhrg74040.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "574edeff5662",
+    "names": [
+     "CHRG-112hhrg74040/dip.xml",
+     "CHRG-112hhrg74040/html/CHRG-112hhrg74040.htm",
+     "CHRG-112hhrg74040/mods.xml",
+     "CHRG-112hhrg74040/pdf/CHRG-112hhrg74040.pdf",
+     "CHRG-112hhrg74040/premis.xml"
+    ],
+    "bytes": 4801663,
+    "sha": "84b53ee8cc64"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 1520611,
+    "sha": "990cfa64bfa5"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-112hhrg74730.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "d3215e247f07",
+    "names": [
+     "CHRG-112hhrg74730/dip.xml",
+     "CHRG-112hhrg74730/html/CHRG-112hhrg74730.htm",
+     "CHRG-112hhrg74730/mods.xml",
+     "CHRG-112hhrg74730/pdf/CHRG-112hhrg74730.pdf",
+     "CHRG-112hhrg74730/premis.xml"
+    ],
+    "bytes": 6957145,
+    "sha": "39aef9068a51"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 5427452,
+    "sha": "fab0de431fe7"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-112hhrg75800.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "18dba069031c",
+    "names": [
+     "CHRG-112hhrg75800/dip.xml",
+     "CHRG-112hhrg75800/html/CHRG-112hhrg75800.htm",
+     "CHRG-112hhrg75800/mods.xml",
+     "CHRG-112hhrg75800/pdf/CHRG-112hhrg75800.pdf",
+     "CHRG-112hhrg75800/premis.xml"
+    ],
+    "bytes": 7194947,
+    "sha": "15055b24bed1"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4279260,
+    "sha": "c9717756f6c2"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-112hhrg81517.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 6896980,
+    "sha": "a9319a82a3eb"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "c962520ac773",
+    "names": [
+     "CHRG-112hhrg81517/dip.xml",
+     "CHRG-112hhrg81517/html/CHRG-112hhrg81517.htm",
+     "CHRG-112hhrg81517/mods.xml",
+     "CHRG-112hhrg81517/pdf/CHRG-112hhrg81517.pdf",
+     "CHRG-112hhrg81517/premis.xml"
+    ],
+    "bytes": 7102572,
+    "sha": "c2a6678c85ab"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-113hhrg21117.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 7424458,
+    "sha": "30869f734d68"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "b003c4b43f40",
+    "names": [
+     "CHRG-113hhrg21117/dip.xml",
+     "CHRG-113hhrg21117/html/CHRG-113hhrg21117.htm",
+     "CHRG-113hhrg21117/mods.xml",
+     "CHRG-113hhrg21117/pdf/CHRG-113hhrg21117.pdf",
+     "CHRG-113hhrg21117/premis.xml"
+    ],
+    "bytes": 8762715,
+    "sha": "ae7d64f9363d"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-113hhrg80808.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 2830688,
+    "sha": "2f13f1f5b279"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "9fa015b65d71",
+    "names": [
+     "CHRG-113hhrg80808/dip.xml",
+     "CHRG-113hhrg80808/html/CHRG-113hhrg80808.htm",
+     "CHRG-113hhrg80808/mods.xml",
+     "CHRG-113hhrg80808/pdf/CHRG-113hhrg80808.pdf",
+     "CHRG-113hhrg80808/premis.xml"
+    ],
+    "bytes": 5182164,
+    "sha": "300b23e3279d"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-113hhrg81570.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 2518103,
+    "sha": "0860763c813c"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "d58d661cebf2",
+    "names": [
+     "CHRG-113hhrg81570/dip.xml",
+     "CHRG-113hhrg81570/html/CHRG-113hhrg81570.htm",
+     "CHRG-113hhrg81570/mods.xml",
+     "CHRG-113hhrg81570/pdf/CHRG-113hhrg81570.pdf",
+     "CHRG-113hhrg81570/premis.xml"
+    ],
+    "bytes": 3226893,
+    "sha": "e1286de47898"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-113shrg87885.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 3014656,
+    "sha": "6d3a0e23c6b1"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "3ae0cc53926c",
+    "names": [
+     "CHRG-113shrg87885/dip.xml",
+     "CHRG-113shrg87885/html/CHRG-113shrg87885.htm",
+     "CHRG-113shrg87885/mods.xml",
+     "CHRG-113shrg87885/pdf/CHRG-113shrg87885.pdf",
+     "CHRG-113shrg87885/premis.xml"
+    ],
+    "bytes": 5535094,
+    "sha": "ec2091d86e99"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-113shrg88463.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "7d1501b4c1c7",
+    "names": [
+     "CHRG-113shrg88463/dip.xml",
+     "CHRG-113shrg88463/html/CHRG-113shrg88463.htm",
+     "CHRG-113shrg88463/mods.xml",
+     "CHRG-113shrg88463/pdf/CHRG-113shrg88463.pdf",
+     "CHRG-113shrg88463/premis.xml"
+    ],
+    "bytes": 7814154,
+    "sha": "5a00e0c27acd"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 1835008,
+    "sha": "aac7bd8a4e17"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114hhrg97454.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 6946816,
+    "sha": "dcfd1ab23a3b"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "4b7eaec9471b",
+    "names": [
+     "CHRG-114hhrg97454/dip.xml",
+     "CHRG-114hhrg97454/html/CHRG-114hhrg97454.htm",
+     "CHRG-114hhrg97454/mods.xml",
+     "CHRG-114hhrg97454/pdf/CHRG-114hhrg97454.pdf",
+     "CHRG-114hhrg97454/premis.xml"
+    ],
+    "bytes": 8680074,
+    "sha": "f1a3bf61ff52"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114hhrg98635.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 3799069,
+    "sha": "1c88d963e58f"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "ec2bf3ae9a5c",
+    "names": [
+     "CHRG-114hhrg98635/dip.xml",
+     "CHRG-114hhrg98635/html/CHRG-114hhrg98635.htm",
+     "CHRG-114hhrg98635/mods.xml",
+     "CHRG-114hhrg98635/pdf/CHRG-114hhrg98635.pdf",
+     "CHRG-114hhrg98635/premis.xml"
+    ],
+    "bytes": 4350649,
+    "sha": "dde0a73a5619"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114hhrg98636.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "1469f2c9560d",
+    "names": [
+     "CHRG-114hhrg98636/dip.xml",
+     "CHRG-114hhrg98636/html/CHRG-114hhrg98636.htm",
+     "CHRG-114hhrg98636/mods.xml",
+     "CHRG-114hhrg98636/pdf/CHRG-114hhrg98636.pdf",
+     "CHRG-114hhrg98636/premis.xml"
+    ],
+    "bytes": 3812302,
+    "sha": "72d9f79e4da9"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 3749973,
+    "sha": "ff4101974da0"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114shrg23251.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4932221,
+    "sha": "605cecee8598"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "d115735f9112",
+    "names": [
+     "CHRG-114shrg23251/dip.xml",
+     "CHRG-114shrg23251/html/CHRG-114shrg23251.htm",
+     "CHRG-114shrg23251/mods.xml",
+     "CHRG-114shrg23251/pdf/CHRG-114shrg23251.pdf",
+     "CHRG-114shrg23251/premis.xml"
+    ],
+    "bytes": 5617525,
+    "sha": "6cc5d0ac593b"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114shrg24274.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 8821041,
+    "sha": "9c8f213e4ede"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "ad984c91359b",
+    "names": [
+     "CHRG-114shrg24274/dip.xml",
+     "CHRG-114shrg24274/html/CHRG-114shrg24274.htm",
+     "CHRG-114shrg24274/mods.xml",
+     "CHRG-114shrg24274/pdf/CHRG-114shrg24274.pdf",
+     "CHRG-114shrg24274/premis.xml"
+    ],
+    "bytes": 9260068,
+    "sha": "e1e350d74013"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114shrg26824.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 5797885,
+    "sha": "7ecf4703da01"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "605380759cc4",
+    "names": [
+     "CHRG-114shrg26824/dip.xml",
+     "CHRG-114shrg26824/html/CHRG-114shrg26824.htm",
+     "CHRG-114shrg26824/mods.xml",
+     "CHRG-114shrg26824/pdf/CHRG-114shrg26824.pdf",
+     "CHRG-114shrg26824/premis.xml"
+    ],
+    "bytes": 6125836,
+    "sha": "bc941e1930e7"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114shrg38216.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 8823910,
+    "sha": "3b86b2554fe9"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "671639ac47e9",
+    "names": [
+     "CHRG-114shrg38216/dip.xml",
+     "CHRG-114shrg38216/html/CHRG-114shrg38216.htm",
+     "CHRG-114shrg38216/mods.xml",
+     "CHRG-114shrg38216/pdf/CHRG-114shrg38216.pdf",
+     "CHRG-114shrg38216/premis.xml"
+    ],
+    "bytes": 9951759,
+    "sha": "5bfebe097a25"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114shrg96834.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "3b2b1358d126",
+    "names": [
+     "CHRG-114shrg96834/dip.xml",
+     "CHRG-114shrg96834/html/CHRG-114shrg96834.htm",
+     "CHRG-114shrg96834/mods.xml",
+     "CHRG-114shrg96834/pdf/CHRG-114shrg96834.pdf",
+     "CHRG-114shrg96834/premis.xml"
+    ],
+    "bytes": 2962914,
+    "sha": "3724a3844e01"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 2045244,
+    "sha": "8be4e6528a52"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114shrg97517.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "7955854dd0fc",
+    "names": [
+     "CHRG-114shrg97517/dip.xml",
+     "CHRG-114shrg97517/html/CHRG-114shrg97517.htm",
+     "CHRG-114shrg97517/mods.xml",
+     "CHRG-114shrg97517/pdf/CHRG-114shrg97517.pdf",
+     "CHRG-114shrg97517/premis.xml"
+    ],
+    "bytes": 6338381,
+    "sha": "88b6144b35f2"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 6174517,
+    "sha": "ae0fa057d37b"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114shrg98988.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4919762,
+    "sha": "141b905fdd0c"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "d5ed2f196c1c",
+    "names": [
+     "CHRG-114shrg98988/dip.xml",
+     "CHRG-114shrg98988/html/CHRG-114shrg98988.htm",
+     "CHRG-114shrg98988/mods.xml",
+     "CHRG-114shrg98988/pdf/CHRG-114shrg98988.pdf",
+     "CHRG-114shrg98988/premis.xml"
+    ],
+    "bytes": 6661853,
+    "sha": "c4367f4bb3ad"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-114shrg99934.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4000099,
+    "sha": "32c1a05b0b1c"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "0665023015f0",
+    "names": [
+     "CHRG-114shrg99934/dip.xml",
+     "CHRG-114shrg99934/html/CHRG-114shrg99934.htm",
+     "CHRG-114shrg99934/mods.xml",
+     "CHRG-114shrg99934/pdf/CHRG-114shrg99934.pdf",
+     "CHRG-114shrg99934/premis.xml"
+    ],
+    "bytes": 7728998,
+    "sha": "dd95594202a9"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-115hhrg24695.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "f1dd54dd6524",
+    "names": [
+     "CHRG-115hhrg24695/dip.xml",
+     "CHRG-115hhrg24695/html/CHRG-115hhrg24695.htm",
+     "CHRG-115hhrg24695/mods.xml",
+     "CHRG-115hhrg24695/pdf/CHRG-115hhrg24695.pdf",
+     "CHRG-115hhrg24695/premis.xml"
+    ],
+    "bytes": 10162357,
+    "sha": "22aa94783cb0"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 6227238,
+    "sha": "93c894d7153e"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-115hhrg25242.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "fa2706173350",
+    "names": [
+     "CHRG-115hhrg25242/dip.xml",
+     "CHRG-115hhrg25242/html/CHRG-115hhrg25242.htm",
+     "CHRG-115hhrg25242/mods.xml",
+     "CHRG-115hhrg25242/pdf/CHRG-115hhrg25242.pdf",
+     "CHRG-115hhrg25242/premis.xml"
+    ],
+    "bytes": 6087697,
+    "sha": "2d1f2e6f8e80"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 3757971,
+    "sha": "6104991ff4bb"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-115hhrg25312.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "54c422a4b162",
+    "names": [
+     "CHRG-115hhrg25312/dip.xml",
+     "CHRG-115hhrg25312/html/CHRG-115hhrg25312.htm",
+     "CHRG-115hhrg25312/mods.xml",
+     "CHRG-115hhrg25312/pdf/CHRG-115hhrg25312.pdf",
+     "CHRG-115hhrg25312/premis.xml"
+    ],
+    "bytes": 6922080,
+    "sha": "3716e66a7656"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4655937,
+    "sha": "e9f33aaba328"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-115hhrg25371.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "eaafa4def1f1",
+    "names": [
+     "CHRG-115hhrg25371/dip.xml",
+     "CHRG-115hhrg25371/html/CHRG-115hhrg25371.htm",
+     "CHRG-115hhrg25371/mods.xml",
+     "CHRG-115hhrg25371/pdf/CHRG-115hhrg25371.pdf",
+     "CHRG-115hhrg25371/premis.xml"
+    ],
+    "bytes": 5719859,
+    "sha": "d310b09d59e5"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 5320877,
+    "sha": "e0e8ec447308"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-115hhrg27204.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 5977569,
+    "sha": "a3e7761c92a6"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "b95d0d33a59c",
+    "names": [
+     "CHRG-115hhrg27204/dip.xml",
+     "CHRG-115hhrg27204/html/CHRG-115hhrg27204.htm",
+     "CHRG-115hhrg27204/mods.xml",
+     "CHRG-115hhrg27204/pdf/CHRG-115hhrg27204.pdf",
+     "CHRG-115hhrg27204/premis.xml"
+    ],
+    "bytes": 6351117,
+    "sha": "b74ac1cce0f7"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-115hhrg27255.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "aecd51369df0",
+    "names": [
+     "CHRG-115hhrg27255/dip.xml",
+     "CHRG-115hhrg27255/html/CHRG-115hhrg27255.htm",
+     "CHRG-115hhrg27255/mods.xml",
+     "CHRG-115hhrg27255/pdf/CHRG-115hhrg27255.pdf",
+     "CHRG-115hhrg27255/premis.xml"
+    ],
+    "bytes": 5297394,
+    "sha": "64ba350d0af5"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4915840,
+    "sha": "f934b321dd10"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-115hhrg27372.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4694750,
+    "sha": "093f16d51558"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "677bac3816cf",
+    "names": [
+     "CHRG-115hhrg27372/dip.xml",
+     "CHRG-115hhrg27372/html/CHRG-115hhrg27372.htm",
+     "CHRG-115hhrg27372/mods.xml",
+     "CHRG-115hhrg27372/pdf/CHRG-115hhrg27372.pdf",
+     "CHRG-115hhrg27372/premis.xml"
+    ],
+    "bytes": 5391451,
+    "sha": "1c27cbc73ecb"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg42746.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 3801088,
+    "sha": "232b79415b93"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "2c2cf6e9be63",
+    "names": [
+     "CHRG-116hhrg42746/dip.xml",
+     "CHRG-116hhrg42746/html/CHRG-116hhrg42746.htm",
+     "CHRG-116hhrg42746/mods.xml",
+     "CHRG-116hhrg42746/pdf/CHRG-116hhrg42746.pdf",
+     "CHRG-116hhrg42746/premis.xml"
+    ],
+    "bytes": 3878052,
+    "sha": "9b462aa5428b"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg42807.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 3930141,
+    "sha": "7a62cfe25813"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "4a78bf35cd2a",
+    "names": [
+     "CHRG-116hhrg42807/dip.xml",
+     "CHRG-116hhrg42807/html/CHRG-116hhrg42807.htm",
+     "CHRG-116hhrg42807/mods.xml",
+     "CHRG-116hhrg42807/pdf/CHRG-116hhrg42807.pdf",
+     "CHRG-116hhrg42807/premis.xml"
+    ],
+    "bytes": 5903648,
+    "sha": "ebcfe75fa8ca"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg42863.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 3825664,
+    "sha": "212ea807ccb5"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "63726e85c66d",
+    "names": [
+     "CHRG-116hhrg42863/dip.xml",
+     "CHRG-116hhrg42863/html/CHRG-116hhrg42863.htm",
+     "CHRG-116hhrg42863/mods.xml",
+     "CHRG-116hhrg42863/pdf/CHRG-116hhrg42863.pdf",
+     "CHRG-116hhrg42863/premis.xml"
+    ],
+    "bytes": 6387991,
+    "sha": "e570b16ecb38"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg44408.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4718592,
+    "sha": "1894c8b0a577"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "3e6bd8c8c9c5",
+    "names": [
+     "CHRG-116hhrg44408/dip.xml",
+     "CHRG-116hhrg44408/html/CHRG-116hhrg44408.htm",
+     "CHRG-116hhrg44408/mods.xml",
+     "CHRG-116hhrg44408/pdf/CHRG-116hhrg44408.pdf",
+     "CHRG-116hhrg44408/premis.xml"
+    ],
+    "bytes": 6956554,
+    "sha": "f1ae8efb9a64"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg44808.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 3538944,
+    "sha": "0963ac7a520b"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "23c90b2830a4",
+    "names": [
+     "CHRG-116hhrg44808/dip.xml",
+     "CHRG-116hhrg44808/html/CHRG-116hhrg44808.htm",
+     "CHRG-116hhrg44808/mods.xml",
+     "CHRG-116hhrg44808/pdf/CHRG-116hhrg44808.pdf",
+     "CHRG-116hhrg44808/premis.xml"
+    ],
+    "bytes": 5219279,
+    "sha": "dd532a4659a8"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg44884.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 7471104,
+    "sha": "a4f936d2a141"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "1afb2f766fc1",
+    "names": [
+     "CHRG-116hhrg44884/dip.xml",
+     "CHRG-116hhrg44884/html/CHRG-116hhrg44884.htm",
+     "CHRG-116hhrg44884/mods.xml",
+     "CHRG-116hhrg44884/pdf/CHRG-116hhrg44884.pdf",
+     "CHRG-116hhrg44884/premis.xml"
+    ],
+    "bytes": 8517264,
+    "sha": "e6d5cf1bac99"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116hhrg45311.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 7995392,
+    "sha": "0efc00407dcb"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "572e00d23996",
+    "names": [
+     "CHRG-116hhrg45311/dip.xml",
+     "CHRG-116hhrg45311/html/CHRG-116hhrg45311.htm",
+     "CHRG-116hhrg45311/mods.xml",
+     "CHRG-116hhrg45311/pdf/CHRG-116hhrg45311.pdf",
+     "CHRG-116hhrg45311/premis.xml"
+    ],
+    "bytes": 8900908,
+    "sha": "3ead2019609a"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg37919.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4456448,
+    "sha": "2c5bb5f7e0bc"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "714fc33e4d54",
+    "names": [
+     "CHRG-116shrg37919/dip.xml",
+     "CHRG-116shrg37919/html/CHRG-116shrg37919.htm",
+     "CHRG-116shrg37919/mods.xml",
+     "CHRG-116shrg37919/pdf/CHRG-116shrg37919.pdf",
+     "CHRG-116shrg37919/premis.xml"
+    ],
+    "bytes": 7120107,
+    "sha": "320e3f09e1b9"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg38285.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "dc74774b4288",
+    "names": [
+     "CHRG-116shrg38285/dip.xml",
+     "CHRG-116shrg38285/html/CHRG-116shrg38285.htm",
+     "CHRG-116shrg38285/mods.xml",
+     "CHRG-116shrg38285/pdf/CHRG-116shrg38285.pdf",
+     "CHRG-116shrg38285/premis.xml"
+    ],
+    "bytes": 6629262,
+    "sha": "07766892808e"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4325376,
+    "sha": "4bbce915337a"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg38311.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4325376,
+    "sha": "327f2137a80c"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "afc9d4714494",
+    "names": [
+     "CHRG-116shrg38311/dip.xml",
+     "CHRG-116shrg38311/html/CHRG-116shrg38311.htm",
+     "CHRG-116shrg38311/mods.xml",
+     "CHRG-116shrg38311/pdf/CHRG-116shrg38311.pdf",
+     "CHRG-116shrg38311/premis.xml"
+    ],
+    "bytes": 7322020,
+    "sha": "d4bc06a8bbad"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg38313.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4325376,
+    "sha": "50f2e165c9b7"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "1afbbe4af792",
+    "names": [
+     "CHRG-116shrg38313/dip.xml",
+     "CHRG-116shrg38313/html/CHRG-116shrg38313.htm",
+     "CHRG-116shrg38313/mods.xml",
+     "CHRG-116shrg38313/pdf/CHRG-116shrg38313.pdf",
+     "CHRG-116shrg38313/premis.xml"
+    ],
+    "bytes": 5213640,
+    "sha": "97f3c7187cd4"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg38342.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4194304,
+    "sha": "92c9b9f80cba"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "383371efe61d",
+    "names": [
+     "CHRG-116shrg38342/dip.xml",
+     "CHRG-116shrg38342/html/CHRG-116shrg38342.htm",
+     "CHRG-116shrg38342/mods.xml",
+     "CHRG-116shrg38342/pdf/CHRG-116shrg38342.pdf",
+     "CHRG-116shrg38342/premis.xml"
+    ],
+    "bytes": 6717790,
+    "sha": "b48a519df2e4"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg38406.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "864a11305af4",
+    "names": [
+     "CHRG-116shrg38406/dip.xml",
+     "CHRG-116shrg38406/html/CHRG-116shrg38406.htm",
+     "CHRG-116shrg38406/mods.xml",
+     "CHRG-116shrg38406/pdf/CHRG-116shrg38406.pdf",
+     "CHRG-116shrg38406/premis.xml"
+    ],
+    "bytes": 9737007,
+    "sha": "9155e6e83712"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4194304,
+    "sha": "fbc751e8c4cb"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg38463.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4194304,
+    "sha": "453f8a1ca1d0"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "b19f082bd508",
+    "names": [
+     "CHRG-116shrg38463/dip.xml",
+     "CHRG-116shrg38463/html/CHRG-116shrg38463.htm",
+     "CHRG-116shrg38463/mods.xml",
+     "CHRG-116shrg38463/pdf/CHRG-116shrg38463.pdf",
+     "CHRG-116shrg38463/premis.xml"
+    ],
+    "bytes": 7647976,
+    "sha": "eae8268ffc7c"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg38515.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4063232,
+    "sha": "202be48e44f5"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "8155c5ba21d7",
+    "names": [
+     "CHRG-116shrg38515/dip.xml",
+     "CHRG-116shrg38515/html/CHRG-116shrg38515.htm",
+     "CHRG-116shrg38515/mods.xml",
+     "CHRG-116shrg38515/pdf/CHRG-116shrg38515.pdf",
+     "CHRG-116shrg38515/premis.xml"
+    ],
+    "bytes": 6301541,
+    "sha": "61698dd1ea13"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-116shrg40915.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "a416cd302a94",
+    "names": [
+     "CHRG-116shrg40915/dip.xml",
+     "CHRG-116shrg40915/html/CHRG-116shrg40915.htm",
+     "CHRG-116shrg40915/mods.xml",
+     "CHRG-116shrg40915/pdf/CHRG-116shrg40915.pdf",
+     "CHRG-116shrg40915/premis.xml"
+    ],
+    "bytes": 6923532,
+    "sha": "9bed5b63ac91"
+   },
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 5068444,
+    "sha": "ae17a0720a4f"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-117hhrg44658.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 5434901,
+    "sha": "4ca6f3708d4c"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "17ae45ac57c9",
+    "names": [
+     "CHRG-117hhrg44658/dip.xml",
+     "CHRG-117hhrg44658/html/CHRG-117hhrg44658.htm",
+     "CHRG-117hhrg44658/mods.xml",
+     "CHRG-117hhrg44658/pdf/CHRG-117hhrg44658.pdf",
+     "CHRG-117hhrg44658/premis.xml"
+    ],
+    "bytes": 9567599,
+    "sha": "bb79b1b5775c"
+   }
+  ]
+ },
+ {
+  "url": "https://www.govinfo.gov/content/pkg/CHRG-117hhrg46186.zip",
+  "in_snapshot": true,
+  "in_receipt_pop": false,
+  "n": 2,
+  "n_intact": 1,
+  "versions": [
+   {
+    "fmt": "zip",
+    "intact": false,
+    "err": "BadZipFile('File is not a zip file')",
+    "bytes": 4656254,
+    "sha": "4a0f292f1937"
+   },
+   {
+    "fmt": "zip",
+    "intact": true,
+    "members": 5,
+    "fp": "ac0661bf8f34",
+    "names": [
+     "CHRG-117hhrg46186/dip.xml",
+     "CHRG-117hhrg46186/html/CHRG-117hhrg46186.htm",
+     "CHRG-117hhrg46186/mods.xml",
+     "CHRG-117hhrg46186/pdf/CHRG-117hhrg46186.pdf",
+     "CHRG-117hhrg46186/premis.xml"
+    ],
+    "bytes": 7648000,
+    "sha": "be9f269ac61e"
+   }
+  ]
+ }
+]

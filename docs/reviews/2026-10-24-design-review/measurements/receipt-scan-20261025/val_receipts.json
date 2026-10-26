@@ -1,0 +1,47 @@
+{
+ "files": 2289,
+ "lines": 2596054,
+ "credential_param_occurrences": {
+  "key": 3944944
+ },
+ "credential_param_by_host": {
+  "key @ www.youtube.com": 3944944
+ },
+ "credential_param_fields": {
+  "record.automatic_captions.en.url": 21868,
+  "record.automatic_captions.ab.url": 21868,
+  "record.automatic_captions.aa.url": 21868,
+  "record.automatic_captions.af.url": 21868,
+  "record.automatic_captions.ak.url": 21868,
+  "record.automatic_captions.sq.url": 21868,
+  "record.automatic_captions.am.url": 21868,
+  "record.automatic_captions.ar.url": 21868,
+  "record.automatic_captions.hy.url": 21868,
+  "record.automatic_captions.as.url": 21868,
+  "record.automatic_captions.ay.url": 21868,
+  "record.automatic_captions.az.url": 21868,
+  "record.automatic_captions.bn.url": 21868,
+  "record.automatic_captions.ba.url": 21868,
+  "record.automatic_captions.eu.url": 21868
+ },
+ "cookie_values": 534733,
+ "lines_with_cookies": 242438,
+ "local_path_fields": {
+  "record.observations.source": 725330,
+  "file_references.original_path": 279549,
+  "record.raw_path": 165738,
+  "record.source_inventory.path": 50123,
+  "record.targets.mods_path": 34680,
+  "record.receipt.body_path": 27636,
+  "record.references.source": 18170,
+  "record.source_state": 15134,
+  "record.original_candidates.path": 13999,
+  "record.selected_reference.path": 13936,
+  "record.recovery_evidence.acquisition.body_path": 11920,
+  "record.master_attempts.body_path": 10779,
+  "record.body_path": 10604,
+  "record.parent_raw_path": 10598,
+  "record.recovery_evidence.representation.body_path": 7819
+ },
+ "html_2xx_length": {}
+}

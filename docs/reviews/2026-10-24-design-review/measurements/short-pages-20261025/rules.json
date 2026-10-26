@@ -1,0 +1,39 @@
+{
+ "a  short alone": {
+  "broad_dropped": 1442,
+  "strict_dropped": 205,
+  "notdoc_caught": 8872,
+  "listing_flagged": 1339,
+  "notdoc_kept": 1312,
+  "n_broad_dropped": 398,
+  "n_strict_dropped": 69,
+  "n_listing_flagged": 153,
+  "n_notdoc_kept": 67
+ },
+ "b  short AND (error word | error URL | challenge)": {
+  "notdoc_kept": 9119,
+  "notdoc_caught": 1065,
+  "n_notdoc_kept": 423
+ },
+ "c1 b OR interstitial OR challenge OR text<128B": {
+  "notdoc_caught": 10143,
+  "notdoc_kept": 40,
+  "n_notdoc_kept": 12
+ },
+ "c2 (error word | error URL | challenge | interstitial | text<128B), no length test": {
+  "notdoc_caught": 10143,
+  "notdoc_kept": 40,
+  "n_notdoc_kept": 12
+ },
+ "c3 short AND meta refresh": {
+  "notdoc_kept": 10184,
+  "n_notdoc_kept": 549
+ },
+ "c4 short AND one PDF link": {
+  "notdoc_kept": 10183,
+  "listing_flagged": 130,
+  "notdoc_caught": 1,
+  "n_notdoc_kept": 548,
+  "n_listing_flagged": 24
+ }
+}
