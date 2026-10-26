@@ -455,6 +455,7 @@ class NativeComponents:
             CREATE TABLE IF NOT EXISTS retired(id TEXT PRIMARY KEY,record TEXT);
             CREATE TABLE IF NOT EXISTS chunks(name TEXT PRIMARY KEY,label TEXT,pin TEXT,schema TEXT);
             CREATE TABLE IF NOT EXISTS views(name TEXT,component TEXT,rows INTEGER,PRIMARY KEY(name,component));
+            CREATE INDEX IF NOT EXISTS views_by_component ON views(component,name);
             CREATE TABLE IF NOT EXISTS stats(id TEXT PRIMARY KEY,n INTEGER,saved INTEGER,api INTEGER,video INTEGER);
             CREATE TABLE IF NOT EXISTS plans(id INTEGER PRIMARY KEY,body TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS chunk_assets(name TEXT PRIMARY KEY,reference TEXT NOT NULL);
