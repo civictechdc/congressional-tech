@@ -391,9 +391,14 @@ class NativeSourceAssets:
             pq.write_table(table, path, compression=self.compression.codec, compression_level=self.compression.level,
                            row_group_size=self.compression.row_group_size)
             files = {'filenames': dict(self.assets.put_file(path, name='filenames.parquet'), rows=len(table))}
-            # These are real bounded physical files. No logical-table export or
-            # pretend Parquet metadata is introduced at the consumer boundary.
-            with pq.ParquetFile(path) as source, ObservationCounts(source) as counts:
+            # Keep the real export footer/schema check, then reuse the retained
+            # Arrow values. Parquet normalizes nested list field names; adopting
+            # its schema preserves exact detail output without decoding it again.
+            with pq.ParquetFile(path) as written:
+                if written.metadata.num_rows != len(table):
+                    raise ValueError('Viewer source leaf row count differs')
+                source = table.cast(written.schema_arrow)
+            with ObservationCounts(source) as counts:
                 if 'source_occurrences' in schema.names:
                     observations = typed_observations(schema, table['source_id'], lambda identity:
                         self.dependencies.source_occurrences(self.snapshot.selection['dependency'], release, identity))
@@ -417,10 +422,6 @@ class NativeSourceAssets:
                                 value = value.lower() if field == 'format' else value
                                 if value:
                                     facets[field][value] = facets[field].get(value, 0) + 1
-                # Details already read and admit every source row. Checking the
-                # physical row count needs its footer, not another data scan.
-                if source.metadata.num_rows != len(table):
-                    raise ValueError('Viewer source leaf row count differs')
             return dict(rows=len(table), files=files, facets=facets, occurrences_split='source_occurrences' in schema.names)
 
 
