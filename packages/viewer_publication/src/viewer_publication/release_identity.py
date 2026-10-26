@@ -28,6 +28,7 @@ def source_files(root):
     paths = set((root / 'packages/viewer_publication/src/viewer_publication').glob('filename*.py'))
     paths.update((root / 'packages/congress_shared/src/congress_shared').rglob('*.py'))
     paths.update((root / 'packages/congress_api/src/congress_api').rglob('*.py'))
+    paths.update((root / 'packages/docspec_client/src/docspec_client').rglob('*.py'))
     pub_scripts = root / 'scripts' / 'publication'
     paths.update(pub_scripts / name for name in (
         'publish-filename-viewer.py', 'publish-viewer-r2.py',
@@ -37,6 +38,9 @@ def source_files(root):
     paths.update(root / name for name in (
         'packages/viewer_publication/src/viewer_publication/__init__.py',
         'packages/viewer_publication/src/viewer_publication/release_identity.py',
+        'packages/viewer_publication/src/viewer_publication/publish_viewer_r2.py',
+        'packages/viewer_publication/src/viewer_publication/publish_filename_viewer.py',
+        'packages/viewer_publication/src/viewer_publication/constants.py',
         'packages/viewer_publication/src/viewer_publication/publication_cli.py',
         'packages/viewer_publication/src/viewer_publication/cli.py',
         'packages/viewer_publication/src/viewer_publication/client.py',

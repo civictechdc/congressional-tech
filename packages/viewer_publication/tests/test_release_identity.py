@@ -38,14 +38,22 @@ assert shim.source_files(root) == current.source_files(root)
     assert result.returncode == 0, result.stderr
 
 
-def test_source_identity_includes_its_maintained_implementation(tmp_path):
-    path = tmp_path / IMPLEMENTATION
+@pytest.mark.parametrize('relative', [
+    IMPLEMENTATION,
+    'packages/viewer_publication/src/viewer_publication/publish_viewer_r2.py',
+    'packages/viewer_publication/src/viewer_publication/publish_filename_viewer.py',
+    'packages/viewer_publication/src/viewer_publication/constants.py',
+    'packages/docspec_client/src/docspec_client/client.py',
+    'packages/docspec_client/src/docspec_client/host.py',
+])
+def test_source_identity_includes_its_maintained_implementation(tmp_path, relative):
+    path = tmp_path / relative
     path.parent.mkdir(parents=True)
     path.write_text('VALUE = 1\n')
     before = source_files(tmp_path)
-    assert before[IMPLEMENTATION] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert before[relative] == hashlib.sha256(path.read_bytes()).hexdigest()
     assert source_files(tmp_path) == before
     path.write_text('VALUE = 2\n')
     after = source_files(tmp_path)
-    assert after[IMPLEMENTATION] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert after[relative] == hashlib.sha256(path.read_bytes()).hexdigest()
     assert after != before
