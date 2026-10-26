@@ -238,3 +238,48 @@ origin. The Pages gate correctly refuses the currently incompatible selection.
 Coverage is **ADEQUATE** for these paths; confidence is **HIGH** in the bounded
 source/fixture conclusion. Hosted v6 publication and successful deployment remain
 unverified prerequisites, not conditions this local review has completed.
+
+## Final merged-source delta review
+
+**Final reviewed source:** `6183938fcb2b0842d5e1f59072383aa7dd251d32`.
+**Delta reviewed:** `ad222085f8dc4e4b7a34c0e7db9bf5a52bb66d4f..6183938fcb2b0842d5e1f59072383aa7dd251d32`.
+**Final verdict: APPROVE** for this report's workflow custody, initial renderer
+resume and Pages-gate scope. No unresolved source finding remains in that scope.
+
+The original report above is preserved as historical review evidence. The final
+source includes its required deadline correction as
+`a82cfb55e45310dc359c4b501cdcc77d23d6e388`. I compared stable Git patch IDs against
+the original `a7b4caca1146747664177e372175f49bd7b12aeb`; they match. The owned branch
+was rebased onto final main with the original source fix dropped and the report
+preserved as `afa3166b558a85c0ab4e8be16c1391e136f4335f`. No duplicate source patch
+was replayed. Before rebasing, the prior review tip was retained in
+`codex/backup-workflow-final-review-20261026` at
+`fafdbeb99683a015b472dee074b3747df6238c43`; the earlier backup also remains.
+
+Only the relevant new delta was examined:
+
+| Change and trace | Review result |
+| --- | --- |
+| `release_identity.source_files`, `packages/viewer_publication/src/viewer_publication/release_identity.py:31` and `:41–43` | Now includes all maintained DocSpec client Python sources, publisher implementations and constants. The existing stat-based cache recomputes hashes when those files change (`:58–70`). This strengthens the code/runtime binding used by `attempt.prepare` and `verify_prepared`; it does not create a path around stale-input rejection. The parameterized regression changes each included file and requires a different identity (`packages/viewer_publication/tests/test_release_identity.py:49`). |
+| Absolute deadline in `scripts/publication/prepare_workflow_resume.py:95`, `:108`, `:114` | Identical to the separately reviewed correction. Restoration and process-launch time consume the original budget, and exhausted verification refuses a new producer. Both deadline regressions remain present (`scripts/publication/tests/test_preparation_checkpoint.py:355`). |
+| Occurrence writer admission, `packages/viewer_publication/src/viewer_publication/filename_exports.py:346`, `:390`, `:417` | Counts retained row/list bytes, refuses an oversized single row, flushes before adding a row that would exceed the pending-byte budget, and resets the byte count after flushing. Row-order counters and per-parent slices remain independent of new row-group boundaries. This bounds retained pending rows; it does not claim a complete process-heap bound while Arrow builds a table. |
+| Writer callers, `filename_exports.py:451` and `packages/viewer_publication/src/viewer_publication/filename_native.py:296` | Both the standalone and combined renderer paths pass the same policy and metrics. Failed admission exits before addressed occurrence assets are accepted (`filename_native.py:299–305`). Regressions check ordering, slices, byte-bound metrics, single-row refusal and absence of accepted assets in both paths (`packages/viewer_publication/tests/test_filename_observations.py:343`, `:368`). |
+
+The Pages workflows/gate and renderer transaction/attempt state machines have no
+additional changes in this delta. The raw-capture cache/hash and GPO timestamp
+repairs belong to other reviewers; they were not re-audited here. Their changed
+Python source remains covered by the existing application-source fingerprint.
+
+Independent final-delta execution selected only the six source-fingerprint
+variants, four standalone/combined occurrence-bound cases and two deadline cases:
+**12 passed, 71 deselected, 1.58 seconds**. The same unrelated installed
+Pydantic/Logfire warning remained. No broad suite or full catalog build was
+repeated. The coordinator's supplied follow-up logs were read and record
+264 cross-cutting Python checks, 126 renderer/native checks and 154 JavaScript
+checks; those are focused follow-ups and are not summed with earlier results.
+
+The coordinator reports that publication is still manually disabled and Pages
+continues to refuse selected v5 data. I made no operational change or fresh
+remote-state claim. The requested source merge/review work is complete; a
+successful v6 publication and deployed-worker result remain separate rollout
+evidence. No further source fix is requested by this final delta review.
