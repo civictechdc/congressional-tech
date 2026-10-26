@@ -409,3 +409,21 @@ def test_sdk_retry_policy_refuses_before_any_publication_write(prepared,monkeypa
     with pytest.raises(ValueError,match='retries must be disabled'):
         publish(store,prepared,monkeypatch)
     assert store.writes==[]
+
+
+def test_parquet_smoke_read_is_bounded_when_range_response_is_oversized(prepared, monkeypatch):
+    store, sizes = Store(prepared[1]), []
+    class Oversized(Public):
+        def read(self, size=-1):
+            sizes.append(size)
+            return super().read(size)
+    def read(request, **kwargs):
+        response = public_response(store, request)
+        if request.get_header('Range'):
+            return Oversized(b'PAR1extra', status=206, headers=response.headers)
+        return response
+    monkeypatch.setattr(publication, 'open_public', read)
+    with pytest.raises(ValueError, match='Parquet range'):
+        publication.upload(store, prepared[0], prepared[1], previous_etag=None, selected_etag='raw-v1')
+    assert sizes == [5]  # Four expected bytes plus one overflow byte, never read to EOF.
+    assert publication.PREFIX + 'manifest.json' not in store.data

@@ -69,3 +69,31 @@ def test_native_upload_uses_shared_hash_paths_and_exact_pointer_identity(tmp_pat
         assert remote.gets[publisher.PREFIX + path] == (1 if path == existing else 0)
         assert remote.puts[publisher.PREFIX + path] == (0 if path == existing else 1)
     assert not any(key.startswith(publisher.PREFIX + 'releases/' + 'a' * 32 + '/releases/') for key in remote.objects)
+
+
+def test_native_public_range_smoke_bounds_oversized_response(tmp_path, monkeypatch):
+    _, manifest = prepared(tmp_path)
+    root, sizes = tmp_path / 'first', []
+    class Public(io.BytesIO):
+        def __init__(self, raw, *, status=200, headers=None, range_body=False):
+            super().__init__(raw)
+            self.status, self.range_body = status, range_body
+            self.headers = {'Content-Length': str(len(raw)), 'Access-Control-Allow-Origin': '*', **(headers or {})}
+        def read(self, size=-1):
+            if self.range_body:
+                sizes.append(size)
+            return super().read(size)
+    def read(request, **kwargs):
+        path = root / request.full_url.removeprefix(publisher.PUBLIC_URL)
+        if request.get_header('Range'):
+            assert request.get_header('Range') == 'bytes=0-3'
+            return Public(b'PAR1extra', status=206, headers={
+                'Content-Range': f'bytes 0-3/{path.stat().st_size}',
+                'Access-Control-Expose-Headers': 'Content-Range'}, range_body=True)
+        if request.get_method() == 'HEAD':
+            return Public(b'', headers={'Content-Length': str(path.stat().st_size)})
+        return Public(path.read_bytes())
+    monkeypatch.setattr(publisher, 'open_public', read)
+    with pytest.raises(ValueError, match='Parquet range'):
+        publisher.public_probe_selected(publisher.PUBLIC_URL, manifest)
+    assert sizes == [5]

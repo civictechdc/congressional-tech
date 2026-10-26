@@ -411,7 +411,7 @@ def public_probe(base, pointer, manifest):
             'Origin': 'https://civictechdc.github.io', 'Range': 'bytes=0-3'})
         with open_public(request) as response:
             if (response.status != 206 or response.headers.get('Content-Range') != f"bytes 0-3/{item['bytes']}"
-                    or response.read() != b'PAR1' or response.headers.get('Access-Control-Allow-Origin') != '*'
+                    or response.read(5) != b'PAR1' or response.headers.get('Access-Control-Allow-Origin') != '*'
                     or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
                 raise ValueError('Public Parquet range validation failed: ' + name)
 
@@ -446,7 +446,7 @@ def public_probe_selected(base, manifest):
                             raise ValueError('Public partition browser access differs')
                         if is_parquet:
                             if (response.status != 206 or response.headers.get('Content-Range') != f"bytes 0-3/{item['bytes']}"
-                                    or response.read() != b'PAR1' or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
+                                    or response.read(5) != b'PAR1' or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
                                 raise ValueError('Public selected Parquet range differs')
                         elif response.status != 200 or int(response.headers.get('Content-Length', -1)) != item['bytes']:
                             raise ValueError('Public selected supporting file length differs')
