@@ -154,6 +154,10 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 | S2 | A House meeting XML record with two panels, a member witness and witness documents; one witness name at two meetings | Two panels; the member keeps the source's `bioguide_id`; each document carries its witness's `witness_key`; two keys for the name, not matched |
 | S2 | A postponed meeting on a bill, recorded by House XML and Congress.gov | The House XML record is current; `status` postponed; the bill in `subject_keys` |
 | S2 | A Senate hearing transcript whose MODS record lists witnesses and names no meeting | Appearances keyed by the package; the transcript carries their `witness_key`s |
+| S2 | A Senate meeting whose Congress.gov record names a transcript jacket whose MODS record lists witnesses | The witnesses attach to the meeting, one `witness_key` each; the transcript carries the meeting's key |
+| S2 | A joint meeting's jacket held only as a `jhrg` package | Resolves to that package |
+| S2 | A Senate meeting video and a House YouTube video, captions held for one | `video_key`s `senate:{filename}` and `youtube:{id}`; `has_captions` true for one |
+| S2 | A bill with one floor vote naming it and one named only in its actions; a nomination with a hearing and a confirmation vote | Two `floor_votes` entries, once each; the nomination's outcome and `vote_id` |
 | S2 | A bill named by a filename and by a meeting's related items | One `bill_id`; both find its title, sponsor and stage in the pinned `congress_bills` |
 | S2 | A publish after spicy-regs moves a family's pointer | The new generation is pinned, recorded in `inputs/`, and changes the input identity |
 | S2 | A kept release whose bills generation is four generations old | Spicy-regs' retention plan keeps it, citing the archive's pin list |
@@ -301,7 +305,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
    - then `fingerprint` for the other candidates, measured here;
    - then M2's link join and grouping, repeated on the real links and fingerprints.
 3. **Filename reader:** a producer that runs the filename parser over its work list and appends through the engine.
-4. **Meeting parsers** (needs B15): the JSON and XML parsers, once per response and version, writing `meeting_records` with sittings, status, committees and roles, subjects and video links, and `appearance_records` with each witness's key and document groups; the MODS parser adds printed hearings' witnesses from the `mods.xml` records already in raw.
+4. **Meeting parsers** (needs B15): the JSON and XML parsers, once per response and version, writing `meeting_records` with sittings, status, committees and roles, subjects, transcript jackets and keyed video links, and `appearance_records` with each witness's name key and document groups; the MODS parser adds printed hearings' witnesses from the `mods.xml` records already in raw.
 5. Enable Basin's catalog-level compaction and snapshot expiration.
 
 **Done when:** every lake table exists with complete backfills at the pinned versions, and both `captures` comparisons pass.
@@ -337,7 +341,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 1. **Workflows** ([[ARCHITECTURE]] §12): the capture job; the publish job, backfills and the maintenance job in one CI concurrency group. The disabled viewer workflow and its 30-minute cron are deleted.
 2. **Capture scheduler:** capture reads `url_state` from the live release, including its queue of linked-but-unfetched URLs, stops reading the raw index, and drops its replay mode.
 3. **The committee explorer** reads meeting and witness records from the lake and committees, members and rosters from the pinned spicy-regs generations ([[ARCHITECTURE]] §8.5), not from the fetchers' state files.
-4. **Generation pins:** publish and the maintenance job keep `pins/spicy-generations.json` ([[ARCHITECTURE]] §10.3.4, §10.3.7), and spicy-regs' retention planner reads it beside DocSpec's pin file, a change in spicy-regs.
+4. **Generation pins:** publish and the maintenance job keep `pins/spicy-generations.json` ([[ARCHITECTURE]] §10.3.4, §10.3.7). The spicy-regs side (its retention reading that list, `nomination_id`, the nominations backfill, and reading the archive's releases instead of capturing meetings) is spicy-stack ss-vhi2.
 5. **Delete what is bound to nothing,** one PR per group as [[BINDINGS]] §6 lists them, measured again at cut.
 
 **Done when** the switch checklist holds:
@@ -361,6 +365,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
   - DataFusion core or a maintained crate can query variant.
 
   The candidates are nested, mixed-type readings such as Congress.gov API JSON and MODS or meeting XML trees.
+- **Caption text as a spoken transcript:** the captions are linked by `video_key` and held in raw (99% of Senate meeting videos in the 118th–119th Congresses); assembling them into timestamped, searchable text is full-text work beside `pdf_text`.
 - **Full-text extraction of every PDF:** one later read of about 403 GB into `pdf_text` ([[DATA-MODEL]] §6.6). It gives page counts and text fingerprints for every PDF, which makes dedupe across sites cheap to revisit.
 
 ## 8. Uncertainties and Tests
@@ -382,6 +387,9 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | Speed and heap targets on real phones and desktops | A11 | The canary's and contract test's thresholds |
 | Whether `list` can carry titles within the phone heap budget | A11, on F0 | Search by title |
 | Roster history: spicy-regs keeps the current Congress only | A spicy-regs change publishing its captured rosters as dated history | Rosters show current seats until then |
+| How often one printed hearing covers several meetings, leaving its MODS witnesses on the package | D4, counting packages that more than one meeting's jackets resolve to | Whether multi-day hearings need a per-day rule |
+| YouTube caption coverage of House meeting videos (the old index keys them only by stored file name) | D4, joining `youtube:` video keys to caption receipts | How often House hearings show captions |
+| Nominations before the 119th Congress | spicy-stack ss-vhi2's backfill | How far back nomination pages reach |
 | How often one witness gets two keys at one meeting (spelling, titles, initials) | A sample of House and Congress.gov witness lists in S2 | What the later witness table must match |
 
 ## 9. References

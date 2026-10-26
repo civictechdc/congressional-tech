@@ -335,7 +335,7 @@ One row per `(filename, source_url, catalog_version)`.
 
 ### 6.4 Reference Inputs
 
-Committees, members, their terms, current committee rosters and bills come from spicy-regs, which owns their raw records and provenance. They are not lake tables: each publish pins each family's current immutable generation as spicy-regs' index `data.spicygov.ai/publication.v2.json` names it (the older `publication.json` names pruned generations), and the model reads the files that index lists for each table, `generations/<family>/<digest>/<table>.parquet`.
+Committees, members, terms, current rosters, bills, CBO estimates, floor votes and nominations come from spicy-regs, which owns their raw records and provenance. They are not lake tables: each publish pins each family's current immutable generation as spicy-regs' index `data.spicygov.ai/publication.v2.json` names it (the older `publication.json` names pruned generations), and the model reads the files that index lists for each table, `generations/<family>/<digest>/<table>.parquet`.
 
 | spicy-regs table | Columns the model reads | Gives |
 |---|---|---|
@@ -344,6 +344,10 @@ Committees, members, their terms, current committee rosters and bills come from 
 | `member_terms` | `bioguide_id`, `term_type`, `term_state`, `term_district`, `term_party`, `term_start`, `term_end` | Every term |
 | `committee_assignments` | `congress`, `system_code`, `bioguide_id`, `position`, `rank`, `party` | Current-Congress seats from the House Clerk's and the Senate's files |
 | `congress_bills` | `bill_id`, `title`, `short_title`, `sponsor_bioguide_id`, `introduced_date`, `latest_action_date`, `latest_action_text`, `stage`, `policy_area`, `subjects` | 422,011 measures from the 6th Congress, keyed `{congress}-{type}-{number}` with the type lowercase |
+| `cbo_cost_estimates` | `bill_id`, `publication_id`, `pub_date`, `description` | CBO cost estimates, about 1,100–1,700 a Congress |
+| `roll_call_votes` | `vote_id`, `chamber`, `vote_day`, `question`, `result`, `yea`, `nay`, `bill_id`, `documents` (a nomination's `PN{number}[-{part}]`) | Floor roll-call votes: House from the 101st Congress, Senate from the 108th |
+| `bill_vote_references` | `bill_id`, `congress`, `chamber`, `session`, `roll_number` | Floor votes a bill's actions name that the vote's own record may not |
+| `nominations` | `congress`, `number`, `part_number`, `description`, `organization`, `received_date`, `latest_action_date`, `latest_action_text` | Nominations; the 119th Congress only until spicy-regs backfills |
 
 A change in these columns fails the model at its next publish rather than reading wrong values; the model SQL moves with the generation. Spicy-regs keeps each family's last three generations and every generation a consumer pins; the archive pins those of every release it keeps ([[ARCHITECTURE]] §10.3.7).
 
@@ -366,7 +370,8 @@ One row per meeting record.
 | `sittings` | list<struct<start timestamptz, end timestamptz, room string, building string, address string>> | Each sitting with its place; most meetings have one. |
 | `committees` | list<struct<system_code string, role string>> | Congress.gov system codes; `role` is host, joint or the source's own word. |
 | `subject_keys` | list<string> | What the meeting covers: bills as `measure_keys` writes them, nominations `{congress}-pn-{number}[-{part}]`, treaties `{congress}-treaty-{number}`. |
-| `videos` | list<struct<name string, url string>> | Recording links the source gives; the recordings are not captured. |
+| `transcript_jackets` | list<int> | GPO jacket numbers of the printed hearing, from the Congress.gov response's `hearingTranscript[].jacketNumber` (§7.11). |
+| `videos` | list<struct<name string, url string, video_key string>> | Recording links the source gives. `video_key` is `youtube:{id}` for a YouTube watch link and `senate:{filename}` for a senate.gov player link, else null. The recordings are not captured; their captions are (§7.11). |
 | `is_completion` | boolean | §6. |
 
 - **Sources:** the Congress.gov meeting JSON and its XML fallback, for both chambers, and the House meeting XML. Senate committee pages carry no meeting ID, so they supply documents, not meeting records.
@@ -379,16 +384,16 @@ One row per meeting record.
 
 ### 6.7 `appearance_records`
 
-One row per witness appearance on one occasion: a meeting, or a printed hearing whose GovInfo MODS record names no meeting. Written by the meeting parsers in the same commit as `meeting_records`, and by the MODS parser for printed hearings. An appearance is keyed, not matched, so a later witness table keys on `witness_key`.
+One row per witness a source lists: a meeting response (House meeting XML, Congress.gov), or a printed hearing's GovInfo MODS record. Written by the meeting parsers in the same commit as `meeting_records`, and by the MODS parser. An appearance is keyed, not matched: the model gives it a `witness_key` (§7.11), which a later witness table keys on.
 
 | Column | Type | Notes |
 |---|---|---|
 | `body_sha` | fixed[32] | The response. |
 | `parser_version` | string | — |
 | `chamber` | string | — |
-| `event_id` | long, nullable | The meeting, when the source names one. |
+| `event_id` | long, nullable | The meeting, for a meeting response. |
 | `package_id` | string, nullable | The GovInfo package, for a MODS row. |
-| `witness_key` | fixed[8] | First 8 bytes of the SHA-256 of the compact JSON `["witness", occasion, name_key]`, where `occasion` is `chamber:event_id`, else the package ID; `name_key` is the recorded name, NFKC, casefolded, punctuation dropped, whitespace collapsed. It survives re-parsing and reordering; two spellings give two keys. |
+| `name_key` | string | The recorded name, NFKC, casefolded, punctuation dropped, whitespace collapsed. It survives re-parsing and reordering; two spellings give two keys. |
 | `name` | string | As recorded. |
 | `honorific`, `given`, `middle`, `family`, `suffix` | string, nullable | When the source splits the name (House XML). |
 | `position`, `organization`, `on_behalf_of`, `location` | string, nullable | As recorded. |
@@ -399,7 +404,7 @@ One row per witness appearance on one occasion: a meeting, or a printed hearing 
 | `bioguide_id` | string, nullable | Given by the source for a member witness; never inferred. |
 | `document_group_paths` | list<string> | The `group_path`s of the document groups the source assigns to this witness (House XML); the model joins them to the page's links (§7.11). |
 
-- **PK:** `(body_sha, parser_version, witness_key)`; rows of one response sharing a `name_key` collapse to the first in source order.
+- **PK:** `(body_sha, parser_version, name_key)`, since one response lists one meeting or package; rows of one response sharing a `name_key` collapse to the first in source order.
 - **Sources:** House meeting XML (split names, panels, witness documents, member bioguide IDs), the Congress.gov meeting JSON (name, position, organization; it lists no Senate witnesses), and GovInfo MODS records already in raw, which list a printed hearing's witnesses for both chambers, at granule level too.
 
 ## 7. Model Derivations
@@ -663,7 +668,8 @@ file_meetings      := per source file, every meeting (struct<chamber string, eve
                       source file's source URL (an archive member's container URL).
                       A House meeting ID drops its four-letter prefix (HHRG, HMKP, HMTG)
                       to give the event ID
-meeting_refs       := the union of its members' file_meetings
+meeting_refs       := the union of its members' file_meetings, and the meetings whose
+                      transcripts (§7.11) hold its govinfo_package_id
 meeting_keys       := 'chamber:event_id' for each entry of meeting_refs
 committee_key      := for each committee code, the committee-code registry's system code
                       (AG03 → hsag03, IG00 → hlig00); a code it does not list is unmapped
@@ -738,28 +744,46 @@ One row per distinct address of a listed document's real files, `(url, member_pa
 - `ordinal` follows `(is_saved desc, first_seen nulls last, url, member_path)`.
 - *Est.* under 1.7M rows: today's catalog has 1,695,040 (source file, path) pairs, counting each filename separately; its largest document is a 455-copy error page the target does not list, and the next has 27.
 
-### 7.11 Witnesses, Members and Rosters
+### 7.11 Hearings, Witnesses and Reference Entities
 
-Witnesses, members, committees and rosters are the entities a reader explores beside documents: a hearing's witnesses and what they submitted, a member's committees and hearings, a committee's roster over time.
+Hearings, witnesses, members, committees, bills and nominations are the entities a reader explores beside documents: a hearing's transcript, recording and witnesses and what they submitted, a member's committees and hearings, a bill's cost and votes, a nomination's outcome.
 
 ```
-witnesses      := per occasion, the appearance_records of its highest-precedence source
-                  that lists any: House meeting XML, then Congress.gov JSON, then MODS;
-                  for a meeting, from its current record (§6.5)
+transcripts    := per meeting's current record, the GovInfo package of each transcript
+                  jacket that some listed document's govinfo_package_id names:
+                  CHRG-{congress}{h|s}hrg{jacket} by the meeting's chamber, or for a joint
+                  meeting the one such package with that Congress and jacket
+occasion       := for a meeting source, 'chamber:event_id'; for a MODS appearance, the
+                  meeting whose transcripts hold its package when exactly one does,
+                  else the package ID
+witness_key    := first 8 bytes of the SHA-256 of the compact JSON
+                  ["witness", occasion, name_key]
+witnesses      := per occasion, the appearances of its highest-precedence source that
+                  lists any: House meeting XML, then Congress.gov JSON, then MODS; for a
+                  meeting, from its current record (§6.5)
 witness_keys   := per document, the witness_key of every appearance whose
                   document_group_paths hold the group_path of a publisher link (§7.5)
                   from that meeting record's response body to one of the document's
                   source files, and of every MODS appearance whose package_id is the
                   document's govinfo_package_id
+videos         := per video_key a meeting names, whether raw holds its captions: Senate
+                  caption segments under the player's filename, or YouTube caption
+                  files named by the video ID
 members        := per bioguide_id, the pinned members row and its member_terms, latest first
 rosters        := the pinned committee_assignments: current-Congress seats only, because
                   spicy-regs keeps no roster history yet
 committees     := the pinned committees, with their official names over time
 bills          := the pinned congress_bills row of every bill_id a listed document's
-                  measure_keys or a meeting's subject_keys names
+                  measure_keys or a meeting's subject_keys names, with its CBO estimates
+                  and its floor votes: those whose bill_id is it and those its actions
+                  name (bill_vote_references), once each
+nominations    := per {congress}-pn-{number}[-{part}] a meeting's subject_keys names, the
+                  pinned nominations row and the Senate vote whose documents name it
 ```
 
-- No witness is matched across meetings or sources beyond the current record; the witness table that matches them comes later and keys on `witness_key`.
+```
+
+- No witness is matched across meetings or sources beyond the current record and the transcript link; the witness table that matches them comes later and keys on `witness_key`.
 - The model reports appearances whose `name_key` differs only by a title or initial within one meeting, as input for that table.
 
 ## 8. Release Files
@@ -786,12 +810,13 @@ Sizes are *est.* at about 0.65M listed documents, scaled from today's 1.24M cata
 | `links.parquet` | `link_key` fsb(8), `list_row` int32 | `link_key` | Lookup | 7–9 MB |
 | `sources.parquet` | `list_row` int32, `ordinal` int32, `url` string, `member_path` string nullable, `is_saved` boolean, `first_seen` date32 nullable, `listed_on` string nullable, `link_text` string nullable, `doc_type` string nullable, `posted` date32 nullable (the link's `add_date`) | `(list_row, ordinal)` | Ranged | *est.* under 10 MB |
 | `recoveries.parquet` | `list_row` int32, `ordinal` int32, `kind` dict, `body` fsb(32), `suffix` dict, `imported_at` date32, `recovered_url` string, `identity_note` string | `(list_row, ordinal)`, ordinal in the recovery order | Ranged | 1–3 MB |
-| `meetings.parquet` | `chamber` dict, `event_id` int64, `title` string nullable, `meeting_date` date32 nullable, `meeting_type` dict nullable, `session` int16 nullable, `status` dict nullable, `sittings` List<Struct<start ts, end ts, place string>>, `committees` List<Struct<system_code dict, role dict>>, `subject_keys` List<dict>, `videos` List<Struct<name string, url string>>; every meeting with a current record, and every meeting a listed document references (null fields when it has no record) | `(chamber, event_id)` | Whole; one row group | *est.* 2–4 MB |
+| `meetings.parquet` | `chamber` dict, `event_id` int64, `title` string nullable, `meeting_date` date32 nullable, `meeting_type` dict nullable, `session` int16 nullable, `status` dict nullable, `sittings` List<Struct<start ts, end ts, place string>>, `committees` List<Struct<system_code dict, role dict>>, `subject_keys` List<dict>, `transcript_packages` List<string>, `videos` List<Struct<name string, url string, video_key string, has_captions bool>>; every meeting with a current record, and every meeting a listed document references (null fields when it has no record) | `(chamber, event_id)` | Whole; one row group | *est.* 2–4 MB |
 | `witnesses.parquet` | `witness_key` fsb(8), `chamber` dict, `event_id` int64 nullable, `package_id` string nullable, `name` string, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable | `(chamber, event_id, package_id, panel_order, display_order, witness_key)` | Whole | *est.* a few MB |
 | `committees.parquet` | `system_code` dict, `name` string, `chamber` dict, `committee_type` dict nullable, `parent_system_code` dict nullable, `names` List<Struct<name string, start date32, end date32>>, `website` string nullable, `is_current` bool nullable | `system_code` | Whole | Under 1 MB |
 | `members.parquet` | `bioguide_id` dict, `name` string, `terms` List<Struct<chamber dict, state dict, district int16, party dict, start date32, end date32>>, latest first, `cross_ids` Struct<lis, opensecrets, govtrack, icpsr, wikidata string; fec List<string>> | `bioguide_id` | Whole | *est.* about 2 MB |
 | `rosters.parquet` | `congress` int16, `system_code` dict, `bioguide_id` dict, `title` dict nullable, `rank` int16 nullable, `party` dict nullable | `(system_code, rank, bioguide_id)` | Whole | Under 1 MB |
-| `bills.parquet` | `bill_id` dict, `title` string nullable, `short_title` string nullable, `sponsor_bioguide_id` dict nullable, `introduced`, `latest_action_date` date32 nullable, `latest_action_text` string nullable, `stage` dict nullable, `policy_area` dict nullable | `bill_id` | Whole | *est.* a few MB |
+| `bills.parquet` | `bill_id` dict, `title` string nullable, `short_title` string nullable, `sponsor_bioguide_id` dict nullable, `introduced`, `latest_action_date` date32 nullable, `latest_action_text` string nullable, `stage` dict nullable, `policy_area` dict nullable, `cbo_estimates` List<Struct<publication_id string, date date32, description string>>, `floor_votes` List<Struct<vote_id string, chamber dict, date date32, question string, result string, yea int16, nay int16>> | `bill_id` | Whole | *est.* a few MB |
+| `nominations.parquet` | `nomination_id` dict, `description` string, `organization` string nullable, `received` date32 nullable, `latest_action_date` date32 nullable, `latest_action_text` string nullable, `vote_id` string nullable | `nomination_id` | Whole | Under 1 MB |
 | `url_state.parquet` | §7.7 | `requested_url` | Whole | 10 MB |
 | `capture_scope.json` | The capture-scope registry at the profile's version | — | Content only | Under 50 KB |
 | `manifest.json` | `schema_version`; `files[]` {name, sha256, md5, size, rows, row_range, shard}; `facet_counts` over the non-hidden rows of `list`; `release_id` | — | Deterministic, content only | 5–20 KB |
@@ -860,7 +885,7 @@ erDiagram
 | lake → model | `sha256` for readings, committee and meeting records; `(filename, source_url)` for filename readings; `(context_url, member_path)` for endpoints; `url_key` for every link join |
 | model → release | `list_row` |
 | public → release | `link_key` |
-| release → release | `list_row`; documents sharing a `version_keys`, `meeting_keys`, `measure_keys`, `bioguide_ids` or `witness_keys` entry; `(chamber, event_id)` from witnesses to meetings; `system_code` and `bioguide_id` across meetings, committees, members and rosters; `bill_id` from `measure_keys` and `subject_keys` to bills |
+| release → release | `list_row`; documents sharing a `version_keys`, `meeting_keys`, `measure_keys`, `bioguide_ids` or `witness_keys` entry; `(chamber, event_id)` from witnesses to meetings; `system_code` and `bioguide_id` across meetings, committees, members and rosters; `bill_id` from `measure_keys` and `subject_keys` to bills, nomination IDs from `subject_keys` to nominations; `vote_id` and `video_key` lead out to spicy-regs and the recording |
 | release → raw | `saved_body` with `saved_suffix` (the physical key), and source URLs |
 
 ## 10. Invariants

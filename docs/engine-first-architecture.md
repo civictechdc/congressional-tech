@@ -108,7 +108,7 @@ Five conformance classes each conform by meeting the requirements that apply to 
 : A bulk run that loaded older captures, listed in the import-run registry.
 
 **witness appearance**, **witness key**
-: One witness listed at one meeting or printed hearing; and its 8-byte key, from that occasion and the recorded name, which a later witness table keys on ([[DATA-MODEL]] §6.7).
+: One witness listed at one meeting or printed hearing; and its 8-byte key, from that occasion and the recorded name, which a later witness table keys on ([[DATA-MODEL]] §6.7, §7.11). A printed hearing that exactly one meeting names is that meeting's occasion.
 
 **document date**, **capture date**
 : When a document is dated, and when the system first fetched one of its files.
@@ -314,9 +314,9 @@ One row per `(filename, source_url, catalog_version)`: what the filename parser 
 
 ### 8.5 Meeting, Witness and Reference Records
 
-Every meeting response MUST come through the raw writer like any other fetch. `meeting_records` and `appearance_records` ([[DATA-MODEL]] §6.5, §6.7) give pages a hearing's title, date, status, sittings and place, its committees and their roles, the bills, nominations and treaties it covers, its recording links, and its witnesses: from House meeting XML, Congress.gov, and the GovInfo MODS records already in raw, which list printed hearings' witnesses for both chambers. Witnesses are keyed per occasion and not yet matched across occasions.
+Every meeting response MUST come through the raw writer like any other fetch. `meeting_records` and `appearance_records` ([[DATA-MODEL]] §6.5, §6.7) give pages a hearing's title, date, status, sittings and place, its committees and their roles, the bills, nominations and treaties it covers, its printed transcript (by GPO jacket number), its recordings with their captions, and its witnesses: from House meeting XML, Congress.gov, and the GovInfo MODS records already in raw, which list printed hearings' witnesses for both chambers and so give Senate meetings theirs. Witnesses are keyed per occasion and not yet matched across occasions.
 
-Committees, members, terms, current rosters and bills are reference inputs from spicy-regs, which keeps their raw records ([[DATA-MODEL]] §6.4). They are not lake tables: publish pins each family's current immutable generation (§10.3.1) and the model reads it directly. Roster history waits on spicy-regs publishing its captures as history.
+Committees, members, terms, current rosters, bills, CBO estimates, floor votes and nominations are reference inputs from spicy-regs, which keeps their raw records ([[DATA-MODEL]] §6.4). They are not lake tables: publish pins each family's current immutable generation (§10.3.1) and the model reads it directly. The split runs both ways: the archive owns meetings, witnesses and saved copies, and spicy-regs reads its release files, pinned by release ID, instead of capturing meetings itself (spicy-stack ss-vhi2). Roster history and nominations before the 119th Congress wait on spicy-regs.
 
 ### 8.6 Maintenance
 
@@ -378,7 +378,8 @@ The model's job writes the release files as Parquet [[PARQUET]] ([[DATA-MODEL]] 
 | `committees.parquet` | Committees by Congress: name, type, parent |
 | `members.parquet` | Members: name, party, state, terms |
 | `rosters.parquet` | Who sits on each committee in the current Congress |
-| `bills.parquet` | Each referenced bill's title, sponsor, status and policy area |
+| `bills.parquet` | Each referenced bill's title, sponsor, status, policy area, CBO estimates and floor votes |
+| `nominations.parquet` | Each nomination a hearing covers: nominee and position, outcome and confirmation vote |
 | `url_state.parquet`, `capture_scope.json` | Capture's schedule, queue and scope, read by the capture job |
 
 - **Documents only.** There are no per-copy pages.
@@ -428,7 +429,7 @@ The flip writes the candidate as the pointer's `release_id` and the outgoing liv
 
 Publish, backfills and the maintenance job run in one CI concurrency group, so they never overlap, and publish MUST NOT delete anything. Without the group, a publish that re-creates an older release reuses that release's prefix, and retention could delete the prefix between the canary and the flip.
 
-From the second flip on, at least the live and last-good releases exist. The maintenance job re-reads the pointer just before it deletes, takes both release IDs from it, and removes release prefixes that are neither live nor last good and are more than a day old, failed candidates included. Up to a week of daily releases (about 0.7 GB) can wait in between. Releases share no files, so nothing needs reference counting. It then rewrites the pin list to the generations the kept releases' input records name, so a kept release can always be rebuilt; spicy-regs otherwise keeps only each family's last three generations.
+From the second flip on, at least the live and last-good releases exist. The maintenance job re-reads the pointer just before it deletes, takes both release IDs from it, and removes release prefixes that are neither live nor last good nor pinned by spicy-regs' published pin list, and are more than a day old, failed candidates included. Up to a week of daily releases (about 0.7 GB) can wait in between. Releases share no files, so nothing needs reference counting. It then rewrites the pin list to the generations the kept releases' input records name, so a kept release can always be rebuilt; spicy-regs otherwise keeps only each family's last three generations.
 
 ## 11. Site
 
@@ -463,7 +464,7 @@ The reader shows dates and hearings as follows:
 
 - **Capture date:** the reader MUST label it by `date_kind` ([[DATA-MODEL]] §8.1): `captured` as "Captured <date>", `import_day` as "In our archive since <date> (original capture date not recorded)", `unknown` as "Capture date not recorded".
 - **Document date:** the reader MUST show it with its source and, for a document a committee removed from its hearing page, "Removed from the hearing page by the committee on <date>".
-- **Hearings, bills, members, witnesses and versions.** The hearing, bill, member and witness filters MUST match a document when the key is any element of its `meeting_keys`, `measure_keys`, `bioguide_ids` or `witness_keys`; documents sharing a `version_keys` entry are shown as each other's versions, by capture date. A hearing lists its witnesses with the documents each submitted; a member's page joins their terms, roster seats, witness appearances and documents by `bioguide_id`; a committee's page joins its roster, hearings and documents by system code; a bill's page joins its title, sponsor, status, hearings and documents by `bill_id`. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
+- **Hearings, bills, members, witnesses and versions.** The hearing, bill, member and witness filters MUST match a document when the key is any element of its `meeting_keys`, `measure_keys`, `bioguide_ids` or `witness_keys`; documents sharing a `version_keys` entry are shown as each other's versions, by capture date. A hearing lists its witnesses with the documents each submitted; a member's page joins their terms, roster seats, witness appearances and documents by `bioguide_id`; a committee's page joins its roster, hearings and documents by system code; a bill's page joins its title, sponsor, status, cost estimates, floor votes, hearings and documents by `bill_id`; a hearing shows its transcript, recordings and nominations; a vote, member or bill links out to spicy-regs by `vote_id`, `bioguide_id` or `bill_id` for member positions, money and lobbying. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
 
 ### 11.7 Origin
 
