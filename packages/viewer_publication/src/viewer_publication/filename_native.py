@@ -875,7 +875,8 @@ def iterator_inventory(assets, inventory):
 
 def publish_selected(snapshot, target, *, viewer=None, previous=None, read_asset=None, review_identities=None,
                      prior_review_binding=None, compression_policy=DEFAULT_COMPRESSION_POLICY,
-                     renderer_upgrade=False, resume_upgrade=False, decoded_policy, stage_timings=None, stage_event=None, memory_metrics=None):
+                     renderer_upgrade=False, resume_upgrade=False, preparation_binding=None, resume_preparation=False,
+                     decoded_policy, stage_timings=None, stage_event=None, memory_metrics=None):
     """Prepare stable assets from one selected snapshot; never select publication."""
     if viewer is None:
         import viewer_publication.filename_viewer as viewer
@@ -896,8 +897,12 @@ def publish_selected(snapshot, target, *, viewer=None, previous=None, read_asset
         raise ValueError('Renderer upgrade requires a prior publication with changed rendering rules')
     if previous is not None and previous.get('requirements') != requirements and not renderer_upgrade:
         raise ValueError('Viewer rendering rules changed; an explicit qualified upgrade is required')
+    if resume_preparation and preparation_binding is None:
+        raise ValueError('Preparation resume requires its original binding')
+    retained = renderer_upgrade or preparation_binding is not None
+    resuming = resume_upgrade or resume_preparation
     target = Path(target)
-    if target.is_symlink() or target.exists() and (not target.is_dir() or any(target.iterdir()) and not resume_upgrade):
+    if target.is_symlink() or target.exists() and (not target.is_dir() or any(target.iterdir()) and not resuming):
         raise ValueError('Viewer output must be a fresh empty directory')
     target.mkdir(parents=True, exist_ok=True)
     assets = ViewerAssets(target, read_asset=read_asset)
@@ -912,20 +917,29 @@ def publish_selected(snapshot, target, *, viewer=None, previous=None, read_asset
         if stage_event:
             stage_event(dict(event='stage_started', stage=name))
         before = time.perf_counter()
-        result = state.run('stage:'+name,operation) if state else operation()
+        try:
+            result = state.run('stage:'+name,operation) if state else operation()
+        except BaseException:
+            timings[name] = time.perf_counter() - before
+            if stage_event:
+                stage_event(dict(event='stage_interrupted', stage=name, seconds=timings[name]))
+            raise
         timings[name] = time.perf_counter() - before
         if stage_event:
             stage_event(dict(event='stage_completed', stage=name, seconds=timings[name]))
         return result
     old = previous.get('roots', {}) if previous and not renderer_upgrade else {}
     with ExitStack() as owned:
-        if renderer_upgrade:
+        if retained:
             from viewer_publication.filename_renderer_state import RendererState
             import viewer_publication.filename_review_binding as review_binding
             review_inputs = review_binding.load_identities(review_identities) if review_identities is not None else None
             binding = dict(version=1,source=snapshot.identity,previous=sha256(encoded(previous)).hexdigest(),
                 requirements=requirements,reviews=review_inputs)
-            state=owned.enter_context(RendererState(target,binding,resume=resume_upgrade,event=stage_event,
+            if preparation_binding is not None:
+                binding.update(preparation=preparation_binding,
+                    prior_review_binding=sha256(encoded(prior_review_binding)).hexdigest())
+            state=owned.enter_context(RendererState(target,binding,resume=resuming,event=stage_event,
                 cache_kib=decoded_policy.sqlite_cache_kib))
             assets.state=state;state.restore(assets);db=state.db
             finished=state.result('finished')

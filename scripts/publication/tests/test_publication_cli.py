@@ -23,7 +23,7 @@ def descriptor():
     (['publish','--directory','new'], 'requires original artifact'),
     (['describe-attempt'], 'requires --repository'),
     (['verify-prepared','--directory','new','--renderer-upgrade'], 'require prepare'),
-    (['prepare','--directory','new','--resume-preparation'], 'requires --renderer-upgrade'),
+    (['prepare','--directory','new','--resume-preparation'], 'run-id'),
 ])
 def test_invalid_command_combinations_fail_before_client_and_replace_report(tmp_path, monkeypatch, arguments, diagnostic):
     for name in ('GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_REPOSITORY'):
@@ -133,7 +133,9 @@ def test_explicit_upgrade_flags_reach_existing_preparation(tmp_path,monkeypatch)
     monkeypatch.setattr(attempts,'prepare',prepare)
     assert cli.main(SimpleNamespace(PUBLIC_URL='fixture-public'),['prepare','--directory',str(tmp_path),
         '--run-id','upgrade','--run-attempt','1','--renderer-upgrade','--resume-preparation'])==0
-    assert calls[0][1]==dict(run_id='upgrade',run_attempt='1',public_url='fixture-public',
+    options = calls[0][1]
+    assert callable(options.pop('stage_event'))
+    assert options==dict(run_id='upgrade',run_attempt='1',public_url='fixture-public',
         renderer_upgrade=True,resume_preparation=True)
 
 
@@ -209,3 +211,28 @@ def test_export_pins_cli_publish_to_r2(tmp_path, monkeypatch):
     assert any('viewer-publications/releases/v-test-export/viewer-v2/sources.parquet' in k for k in keys)
     assert any('viewer-publications/manifest.json' in k for k in keys)
 
+
+
+def test_initial_preparation_resume_needs_no_renderer_upgrade_and_flushes_progress(tmp_path, monkeypatch, capsys):
+    monkeypatch.delenv('DOCSPEC_CONFIG', raising=False)
+    monkeypatch.setattr(cli, 'make_client', lambda: 'fixture-client')
+    def prepare(*args, **options):
+        assert options['resume_preparation'] is True
+        assert 'renderer_upgrade' not in options
+        assert options['run_id'] == '999' and options['run_attempt'] == '2'
+        options['stage_event'](dict(event='stage_started', stage='component_preparation'))
+        return dict(status='prepared')
+    monkeypatch.setattr(attempts, 'prepare', prepare)
+    assert cli.main(SimpleNamespace(PUBLIC_URL='fixture-public'), ['prepare', '--directory', str(tmp_path),
+        '--run-id', '999', '--run-attempt', '2', '--resume-preparation']) == 0
+    assert json.loads(capsys.readouterr().out.splitlines()[0])['event'] == 'stage_started'
+
+
+def test_publish_refuses_preparation_checkpoint_descriptor_before_client(tmp_path, monkeypatch):
+    descriptor_path = tmp_path / 'checkpoint.json'
+    descriptor_path.write_text('{}')
+    monkeypatch.setattr(cli, 'parse_resume_descriptor', lambda raw: dict(version=2, kind='preparation_checkpoint'))
+    monkeypatch.setattr(cli, 'make_client', lambda: pytest.fail('constructed mutation client'))
+    with pytest.raises(ValueError, match='accepted-publication resume descriptor'):
+        cli.main(SimpleNamespace(PUBLIC_URL='unused'), ['publish', '--directory', str(tmp_path), '--resume',
+            '--resume-descriptor', str(descriptor_path)])
