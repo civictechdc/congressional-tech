@@ -142,7 +142,7 @@ Five conformance classes each conform by meeting the requirements that apply to 
 4. **Expensive work grows with change, not with history.** Fetching new URLs, parsing and storing grow with what is new. The repeated work that remains is named in §16 and never re-reads stored bodies.
 5. **Engine first.** Data movement, joins, grouping, aggregation and export live in the engine. Application policy is passed in as SQL, data and specs and MUST NOT be compiled into the engine (§13).
 6. **Nothing reaches users unverified.** A release goes live only after the site's own reader has loaded it (§10.3.5).
-7. **Small bytes.** Keys and facts are stored once, as typed columns, hashes as binary. Provenance is never copied into derived rows, and nothing derivable is stored. Browser files are the one place where shape follows the reader (§10.1).
+7. **Small bytes.** Keys and facts are stored once, as typed columns, hashes as binary. Provenance is never copied into derived rows, and nothing derivable is stored. Browser files are the one place where shape follows the reader, and they carry only what a reader acts on; forensic detail stays in the lake, and a model run at a release's pinned inputs reproduces any grouping (§10.1).
 8. **Components behind contracts.** Each component (§6) depends only on the contracts of the components it uses. Policy is injected as registries and the model profile; external systems (the object store, local disk, fetch transports, the catalog) are injected as adapters. Any implementation that passes a component's contract tests may stand behind it, and tests run the production code against local adapters (§15).
 9. **Rules follow the data.** Every content rule cites the measurement that set it, and a rule is changed by measuring again, not by argument.
 
@@ -196,7 +196,7 @@ RELEASE (immutable)
   viewer-publications/manifest.json   ← conditional pointer, flipped after the canary
         │
         ▼
-SITE (static) → pointer → release → list (whole) / detail, links, occurrences, recoveries (ranges)
+SITE (static) → pointer → release → list (whole) / detail, links, sources, recoveries (ranges)
 ```
 
 **Components.** Each component has a contract in this specification and [[DATA-MODEL]], and a contract suite written from it; a lake producer's suite is the [[DATA-MODEL]] §10 invariants for its table. Which implementation stands behind a component is recorded outside the specifications.
@@ -362,10 +362,10 @@ The model's job writes the release files as Parquet [[PARQUET]] ([[DATA-MODEL]] 
 
 | File | Purpose |
 |---|---|
-| `list.parquet` | Search, facets and sorting |
+| `list.parquet` | Search, facets and sorting, and the keys that connect documents: hearing, bill, member and other versions |
 | `detail.parquet` | Everything a document page acts on |
 | `links.parquet` | Public link key to list row |
-| `occurrences.parquet` | Where each copy was seen, and which page linked it |
+| `sources.parquet` | Where the document was published, and which page listed it |
 | `recoveries.parquet` | A document's recoveries |
 | `meetings.parquet` | Hearing titles, dates, types and committees |
 | `url_state.parquet`, `capture_scope.json` | Capture's schedule, queue and scope, read by the capture job |
@@ -373,7 +373,7 @@ The model's job writes the release files as Parquet [[PARQUET]] ([[DATA-MODEL]] 
 - **Documents only.** There are no per-copy pages.
 - **Links point at a file.** A document's ID changes whenever a version joins its group, but a file's digest never does, so a public link carries a link key, and `links` maps every real body of every listed document to its document's row. Old links keep resolving when a group or its saved file changes, and a recovery-only page keeps its link after the original finally downloads.
 - **No ID in `list`,** which would make it several times larger; the list row number links the files.
-- **Growth.** The export shards `detail` and `occurrences` by row range when an offset index outgrows a quick first fetch, at roughly 10 times today's rows. At that size `list` reaches 40–50 MB; then it is sharded by facet, or search moves to DuckDB-WASM or a server.
+- **Growth.** The export shards `detail` and `sources` by row range when an offset index outgrows a quick first fetch, at roughly 10 times today's rows. At that size `list` reaches 40–50 MB; then it is sharded by facet, or search moves to DuckDB-WASM or a server.
 
 ### 10.2 Determinism
 
@@ -407,7 +407,7 @@ Files are uploaded to `viewer-publications/releases/<release_id>/` with a create
 
 #### 10.3.5 Canary
 
-Before the flip, the site's own reader module runs in Node against the uploaded candidate over HTTPS, so Range reads and caching headers are real. It decodes `list` within a heap budget for a mid-range phone, runs a search and a facet count, reads the first, last and a random detail, resolves a link, reads an occurrence range and a recovery range, opens one saved copy, and checks that `url_state` decodes. It takes under a minute and needs no headless browser.
+Before the flip, the site's own reader module runs in Node against the uploaded candidate over HTTPS, so Range reads and caching headers are real. It decodes `list` within a heap budget for a mid-range phone, runs a search and a facet count, reads the first, last and a random detail, resolves a link, reads a source range and a recovery range, opens one saved copy, and checks that `url_state` decodes. It takes under a minute and needs no headless browser.
 
 #### 10.3.6 Flip
 
@@ -423,7 +423,7 @@ From the second flip on, at least the live and last-good releases exist. The mai
 
 ### 11.1 Reads
 
-The site reads pointer → release manifest → `list`, then `detail`, `links`, `occurrences`, `recoveries` and `meetings` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent page reads; link lookups also use the column index.
+The site reads pointer → release manifest → `list`, then `detail`, `links`, `sources`, `recoveries` and `meetings` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent page reads; link lookups also use the column index.
 
 ### 11.2 Devices and Speed
 
@@ -452,7 +452,7 @@ The reader shows dates and hearings as follows:
 
 - **Capture date:** the reader MUST label it by `date_kind` ([[DATA-MODEL]] §8.1): `captured` as "Captured <date>", `import_day` as "In our archive since <date> (original capture date not recorded)", `unknown` as "Capture date not recorded".
 - **Document date:** the reader MUST show it with its source and, for a document a committee removed from its hearing page, "Removed from the hearing page by the committee on <date>".
-- **Hearings.** The hearing filter MUST match a document when the hearing's key is any element of its `meeting_keys`. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
+- **Hearings, bills, members and versions.** The hearing, bill and member filters MUST match a document when the key is any element of its `meeting_keys`, `measure_keys` or `bioguide_ids`; documents sharing a `version_keys` entry are shown as each other's versions, by capture date. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
 
 ### 11.7 Origin
 

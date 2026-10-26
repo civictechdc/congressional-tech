@@ -106,7 +106,7 @@ The engine cannot run the full export until C1, C3 and C4 exist, so a short stan
   - all 2,289 receipts, read with the receipt reader of [[ARCHITECTURE]] §13 and the draft ingest mapping, with a sample of each older shape ([[DATA-MODEL]] §6.1), and its rows compared with the pinned capture index (`db033173…`, 3,909,134 rows). Record the reader's time, its peak memory on the 188 MB line, and the conflicts it nulls per receipt;
   - the pinned catalog generation `596f08fa…`, with today's filename readings;
   - links parsed from a sample of pages.
-- **Joins:** run the model's joins, including `url_key`, link resolution and the link join (about 4.2M links, scaled from the sample, against 1.31M source URLs), filename readings, the folded `detail` and the 1.7M `occurrences`.
+- **Joins:** run the model's joins, including `url_key`, link resolution and the link join (about 4.2M links, scaled from the sample, against 1.31M source URLs), filename readings, `detail` and `sources` (up to 1.7M rows).
   - Report every intermediate join's row count and bytes and every hash-join build's size, as well as time and peak memory.
   - The links are sampled, so this tests mechanisms and memory; D2's full link backfill repeats the join on real data.
 - **Step form:** run the model twice, as inlined steps and as named steps with the components and documents materialized once. Compare `EXPLAIN ANALYZE`, time and peak memory, including memory the pool does not account for.
@@ -150,6 +150,7 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 | S1 | A recovered file that a real fetch also saved | A real body and link key; the recovery attaches as labeled evidence |
 | S1 | An incrementally maintained lake and a clean rebuild, after a registry change and after a table rebuilt at a new schema | Byte-identical releases |
 | S2 | One body under two filenames | Two source files in one document, which shows the saved file's name |
+| S2 | Two editions served at one address | Two documents sharing a `version_keys` entry |
 | S2 | A file named only by its download header; a URL with `?file=a.pdf&name=b.pdf` | The header's name (`filename*` first); `a.pdf` |
 | S2 | An exact copy and a provider's saved-text copy at one URL | The exact copy is the saved file |
 | S2 | A file whose kind only the publisher gives, by `doc_type`, and another by link text only | Each gets the publisher-kind registry's kind |
@@ -177,7 +178,7 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 - A converter writes the pinned catalog pair in the release format ([[DATA-MODEL]] §8.1) with the final writer settings. It uses the engine's RunSpec where it can.
 - This release is the reader's fixture (track A). Its manifest records that it came from the pinned catalog. It does not go live: the explorer waits for the engine-built release.
 - **It fills what it can:** meeting keys from URLs, document dates from the old metadata, link labels from the old occurrences, and committee names from today's committee file. It keeps all 1.24M of today's catalog rows, so it is about twice the target `list`.
-- **It cannot show** format groups, meeting titles or the new recovery kinds, so a small hand-built fixture release covers them: one document with PDF and XML alternates, one titled hearing in `meetings`, one of each recovery kind and one hidden document. The contract test runs both.
+- **It cannot show** format groups, meeting titles, other versions or the new recovery kinds, so a small hand-built fixture release covers them: one document with PDF and XML alternates, one titled hearing in `meetings`, two versions of one address, one of each recovery kind and one hidden document. The contract test runs both.
 - **It assumes nothing unique about old bodies:** 141,762 body keys appear in several old documents, so F0 resolves each link key to the first document in list order.
 - The converter is a migration tool, deleted at the switch.
 
@@ -194,8 +195,8 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 5. **Saved copies** ([[ARCHITECTURE]] §11.5).
 6. **Dates:** the document date and capture date in list rows, so same-filename editions read apart; on the document page, the labels of [[ARCHITECTURE]] §11.6.
 7. **Recoveries** ([[ARCHITECTURE]] §11.5; [[DATA-MODEL]] §8.1), each on the page the attachment rule gives it.
-8. **Link context** from `occurrences`.
-9. **Meetings and record links:** filter and sort by document date; list a hearing's documents; link out to the GPO record, the bill and the member.
+8. **Sources:** where the document was published and which page listed it, from `sources`.
+9. **Connections:** filter by hearing, bill and member, and sort by document date; list a hearing's documents and a document's other versions; link out to the GPO record, the bill and the member.
 10. **Removed by review** ([[DATA-MODEL]] §7.9).
 11. **Speed, measured then fixed:** measure startup, search, detail and heap on real phones and desktops with F0, then write those targets into the canary and contract test. F0's size makes these targets conservative; re-measure on the first engine-built release.
 
@@ -372,6 +373,7 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | No older body beyond the 61 known has a multipart ETag | B10's full re-hash | Nothing, unless the count changes |
 | The numbers in the specifications reproduce: each review round found 10–20 of about 370 wrong | Each load-bearing number re-derived from its committed script before a rule relies on it | Corrections in place |
 | Speed and heap targets on real phones and desktops | A11 | The canary's and contract test's thresholds |
+| Whether `list` can carry titles within the phone heap budget | A11, on F0 | Search by title |
 
 ## 9. References
 
