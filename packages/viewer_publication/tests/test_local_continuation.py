@@ -1,4 +1,4 @@
-"""Local events survive checkpoint loss without granting current readback proof."""
+"""Local events retain acknowledged writes and resolve uncertain upload outcomes."""
 import hashlib
 import io
 import json
@@ -66,7 +66,6 @@ def test_uncertain_write_restore_requires_current_body_without_duplicate_put(tmp
     # request; both must be reconciled from current bytes on explicit resume.
     run.path.unlink()
     restored = local.LocalContinuation(run.root, {}, resume=True)
-    assert restored._reconciled == {}
     if boundary == 'intent':
         from botocore.exceptions import ClientError
         original = remote.get_object
@@ -81,13 +80,13 @@ def test_uncertain_write_restore_requires_current_body_without_duplicate_put(tmp
     else:
         restored.reconcile(remote, 'bucket')
         assert restored.replay(remote, 'bucket', detail['key'], payload) == {'ETag': 'committed'}
-        assert remote.reads == 1 and remote.puts == 0
+        assert remote.reads == (0 if boundary == 'verified' else 1) and remote.puts == 0
         assert restored.value['versions'][detail['key']] == 'committed'
     fresh = local.LocalContinuation(run.root, {}, resume=True)
-    assert fresh._reconciled == {}
     remote.body = b'changed'
-    with pytest.raises(ValueError, match='bytes changed'):
-        fresh.reconcile(remote, 'bucket')
+    before = remote.reads
+    fresh.reconcile(remote, 'bucket')
+    assert remote.reads == before  # Accepted uploads are not routinely read again.
 
 
 def test_event_size_accounting_and_failure_history_are_exact(tmp_path):

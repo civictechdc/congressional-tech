@@ -13,6 +13,7 @@ import threading
 
 @dataclass(frozen=True)
 class VerifiedTransfer:
+    """Receipt for an acknowledged PUT or a reconciled uncertain request."""
     bucket: str
     key: str
     bytes: int
@@ -93,15 +94,14 @@ class GuardedPublicationClient:
         return dict(result, _verified_transfer=receipt)
 
     def confirm_transfer(self, receipt, *, bucket, key, size, sha256):
-        # A result applies only to this client, exact request and current version.
+        # Consume the acknowledgment issued by this client for this exact request.
         with self.lock:
             issued = self._receipts.pop(id(receipt), None)
         if issued is not receipt or receipt is None:
             return False
         if (receipt.bucket, receipt.key, receipt.bytes, receipt.sha256) != (bucket, key, size, sha256):
             return False
-        response = self.client.head_object(Bucket=bucket, Key=key)
-        return response['ETag'] == receipt.etag and response.get('ContentLength') == size
+        return True
 
     def get_object(self, **kwargs):
         return self.client.get_object(**kwargs)
@@ -177,7 +177,6 @@ class GuardedPublicationClient:
             self.journal('publication_write_intent', dict(key=key, bytes=size,
                 sha256=digest, expected_etag=kwargs.get('IfMatch'),
                 if_none_match=kwargs.get('IfNoneMatch')))
-            uncertain = False
             request_error = None
             try:
                 result = self.client.put_object(**kwargs)
@@ -188,9 +187,13 @@ class GuardedPublicationClient:
                     if isinstance(error, ClientError) and error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
                         raise
                 # Verify the possible commit once; never resend this request.
-                uncertain, result = True, {}
+                result = {}
             try:
-                version = verify()
+                # A successful service response accepts the upload. Read bytes
+                # only when the request failed and its outcome needs resolution.
+                version = verify() if request_error is not None else result['ETag']
+                if not isinstance(version, str) or not version:
+                    raise ValueError('Publication PUT omitted its ETag')
             except Exception as reconciliation_error:
                 # Preserve a definite condition refusal for maintained callers
                 # that deliberately keep an existing immutable catalog locator.
@@ -210,7 +213,7 @@ class GuardedPublicationClient:
                     failure.reconciliation_error = reconciliation_error
                     raise failure from request_error
                 raise
-            if uncertain:
+            if request_error is not None:
                 result = {'ETag': version}
                 self.journal('publication_acknowledgment_reconciled', dict(key=key))
             self.after_write(key, version)
@@ -227,7 +230,7 @@ class GuardedPublicationClient:
 
     def _upload_file(self, filename, bucket, key, ExtraArgs=None, *, validation=None):
         # Replace managed multipart writes with one conditional, streamed PUT.
-        # Return the exact verified result so callers can avoid a second full GET.
+        # Return the acknowledgment; successful transfers need no GET or HEAD.
         path = Path(filename)
         if path.stat().st_size >= 5 * 1024**3:
             raise ValueError('Publication file exceeds single-PUT limit')

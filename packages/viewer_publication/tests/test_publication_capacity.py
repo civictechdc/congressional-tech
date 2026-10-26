@@ -102,7 +102,7 @@ def test_full_release_inventory_upload_interrupt_restore_and_replay(tmp_path, mo
     split = count // 2
     for name in names[:split]:
         client.put_object(Bucket='bucket', Key='viewer-publications/' + name, Body=b'x', IfNoneMatch='*')
-    # Abrupt loss: the last verification has not joined a remote event. Restore
+    # Abrupt loss: the last acknowledgment has not joined a remote event. Restore
     # from accepted preparation (no writes), never the current in-memory cache.
     fresh = state.Continuation(run.root, binding, resume=True)
     assert fresh.value['writes'] == {}
@@ -112,13 +112,16 @@ def test_full_release_inventory_upload_interrupt_restore_and_replay(tmp_path, mo
     run = fresh
     assert len(run.value['writes']) == split
     assert sum(not item['verified'] for item in run.value['writes'].values()) == 1
+    before_gets = remote.gets
     run.reconcile(remote, 'bucket', progress=lambda _: None)
+    assert remote.gets == before_gets + 1  # Only the final uncertain intent needs a GET.
     monkeypatch.setattr(fresh, 'flush', lambda: checkpoints.append(len(fresh.value['writes'])))
     before = remote.puts
     client = proxy(log)
     for name in names[:split]:
         client.put_object(Bucket='bucket', Key='viewer-publications/' + name, Body=b'x', IfNoneMatch='*')
     assert remote.puts == before  # All 50K exact immutable bodies reused.
+    assert remote.heads == 0 and remote.gets == before_gets + 1
     for name in names[split:]:
         client.put_object(Bucket='bucket', Key='viewer-publications/' + name, Body=b'x', IfNoneMatch='*')
     log.record('publication_completed', {'status': 'fixture'})

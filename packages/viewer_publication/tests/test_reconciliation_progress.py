@@ -38,9 +38,8 @@ def test_complete_follows_full_read_proof_and_checkpoint(tmp_path, monkeypatch):
         original(); checkpointed.append(True)
     monkeypatch.setattr(run, 'flush', flush)
     def observe(value):
-        if value['state'] == 'reading': assert not run._reconciled
         if value['state'] == 'reconciled':
-            assert (id(remote), 'fixture', key) in run._reconciled and not checkpointed
+            assert run.value['writes'][key]['verified'] and not checkpointed
         if value['state'] == 'complete': assert checkpointed == [True]
         events.append(value)
     run.reconcile(remote, 'fixture', progress=observe)
@@ -74,14 +73,14 @@ def test_partial_read_and_failures_never_report_success_or_error_transport_text(
     assert value['state'] == 'failed' and value['key'] == key
     assert value['bytes_read'] == (8 if kind == 'checkpoint' else 4)
     assert 'secret-access-key' not in json.dumps(value) and 'private-endpoint' not in json.dumps(value)
-    if kind != 'checkpoint': assert not run._reconciled
+    if kind != 'checkpoint': assert not run.value['writes'][key]['verified']
     if kind == 'partial': assert body.closed
 
 
-@pytest.mark.parametrize('outcome', ['committed', 'missing', 'original', 'conflict', 'verified_conflict'])
+@pytest.mark.parametrize('outcome', ['committed', 'missing', 'original', 'conflict'])
 def test_exact_outcomes_and_next_checks_remain_read_only(tmp_path, outcome):
-    run, key = prepared(tmp_path, verified=outcome == 'verified_conflict')
-    remote = Remote(b'conflicting' if outcome in ('conflict', 'original', 'verified_conflict') else b'accepted')
+    run, key = prepared(tmp_path)
+    remote = Remote(b'conflicting' if outcome in ('conflict', 'original') else b'accepted')
     if outcome == 'missing':
         def missing(**options): raise ClientError({'Error': {'Code': 'NoSuchKey'}}, 'GetObject')
         remote.get_object = missing
@@ -90,7 +89,7 @@ def test_exact_outcomes_and_next_checks_remain_read_only(tmp_path, outcome):
     events = []
     if 'conflict' in outcome:
         with pytest.raises(ValueError): run.reconcile(remote, 'fixture', progress=events.append)
-        assert events[-1]['state'] == 'conflict' and not run._reconciled
+        assert events[-1]['state'] == 'conflict'
     else:
         run.reconcile(remote, 'fixture', progress=events.append)
         assert events[-2]['state'] == ('reconciled' if outcome == 'committed' else 'uncommitted')
@@ -108,12 +107,11 @@ def test_latest_file_is_bound_bounded_and_never_reused_as_proof(tmp_path):
     assert progress['state'] == 'complete' and path.stat().st_size < observation.MAX_PROGRESS_BYTES
     before = path.read_bytes()
     fresh = state.Continuation(run.root, run.value['binding'], resume=True)
-    assert not fresh._reconciled
     assert fresh.replay(remote, 'fixture', key, b'accepted') == {'ETag': 'current'}
-    assert remote.gets == 2  # Full-read fallback despite recorded completed scan.
+    assert remote.gets == 0  # The upload acknowledgment already owns acceptance.
     other = Remote()
     assert run.replay(other, 'fixture', key, b'accepted') == {'ETag': 'current'}
-    assert other.gets == 1  # Current proof is also client-bound.
+    assert other.gets == 0
     with pytest.raises(ValueError, match='different inputs'):
         observation.read_progress(path, binding={'fixture': 'changed'})
     assert path.read_bytes() == before
@@ -127,6 +125,7 @@ def test_progress_failure_does_not_replace_read_result_or_original_exception(tmp
     def failing_observer(value): raise PermissionError('private observer details')
     run.reconcile(Remote(), 'fixture', progress=failing_observer)
     assert run.value['writes'][key]['verified']
+    run, key = prepared(tmp_path / 'second')
     original = OSError('primary read failure')
     class Failed:
         def get_object(self, **options): raise original
@@ -134,7 +133,7 @@ def test_progress_failure_does_not_replace_read_result_or_original_exception(tmp
     with pytest.raises(OSError) as caught:
         run.reconcile(failed, 'fixture', progress=failing_observer)
     assert caught.value is original
-    assert (id(failed), 'fixture', key) not in run._reconciled
+    assert not run.value['writes'][key]['verified']
 
 
 def test_read_progress_is_bounded_even_if_declared_size_is_wrong():
@@ -170,7 +169,7 @@ def test_invalid_content_length_closes_body_and_reports_failure(tmp_path, declar
         def get_object(self, **options): return dict(Body=body, ContentLength=declared, ETag='current')
     with pytest.raises(ValueError, match='Invalid reconciliation ContentLength'):
         run.reconcile(Invalid(), 'fixture')
-    assert body.closed and not run._reconciled
+    assert body.closed
     value = observation.read_progress(run.root / 'reconciliation-progress.json', binding=run.value['binding'])
     assert value['state'] == 'failed' and value['declared_bytes'] is None and value['bytes_read'] == 0
 

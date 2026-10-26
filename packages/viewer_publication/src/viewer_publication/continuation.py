@@ -1,8 +1,8 @@
 """Durable receipts for an explicitly requested publication continuation.
 
-Receipts bind local inputs and accepted phase outputs. Remote writes are only
-reused after current bytes and version agree; an uncertain request is never
-resent until a later explicit invocation reconciles its outcome.
+Receipts bind local inputs and accepted phase outputs. Successful upload
+acknowledgments are reusable without remote readback. An uncertain request is
+never resent until its original outcome has been reconciled.
 """
 import hashlib
 import json
@@ -141,9 +141,6 @@ class Continuation:
         self.root = Path(root)
         self.path = self.root / 'continuation.json'
         self.lock = threading.RLock()
-        # Ephemeral readback proofs never come from continuation JSON. Keeping the
-        # client object alive also prevents object-id reuse from transferring proof.
-        self._reconciled = {}
         self._state_bytes = None
         if resume:
             self.value = self._restore()
@@ -323,10 +320,14 @@ class Continuation:
         return dict(bytes=size, sha256=digest.hexdigest(), etag=response['ETag'])
 
     def reconcile(self, client, bucket, *, progress=None):
-        """Read only: resolve uncertain requests before the first guard or write."""
+        """Resolve uncertain requests; acknowledged uploads need no remote read."""
         from .reconciliation import NEXT_CHECK, ReconciliationProgress
         observer = progress if progress is not None else ReconciliationProgress(self.root, self.value['binding'])
-        observed = dict(key=None, object_index=0, total_objects=len(self.value['writes']),
+        for key, write in self.value['writes'].items():
+            if write['verified'] and key in self.value['versions']:
+                self.value['versions'][key] = write['etag']
+        uncertain = [(key, write) for key, write in self.value['writes'].items() if not write['verified']]
+        observed = dict(key=None, object_index=0, total_objects=len(uncertain),
                         checked_objects=0, bytes_read=0, declared_bytes=None, observation_only=True,
                         resume_authorized=False, current_readback_proof=False, public_readback='not_checked')
         def report(state):
@@ -339,9 +340,8 @@ class Continuation:
         report('starting')
         conflict = False
         try:
-            for index, (key, intent) in enumerate(self.value['writes'].items(), 1):
+            for index, (key, intent) in enumerate(uncertain, 1):
                 observed.update(key=key, object_index=index, bytes_read=0, declared_bytes=None)
-                self._reconciled.pop((id(client), bucket, key), None)
                 report('reading')
                 def reading(size, total):
                     observed.update(bytes_read=size, declared_bytes=total if type(total) is int and total >= 0 else None)
@@ -349,17 +349,10 @@ class Continuation:
                 current = self.read(client, bucket, key, progress=reading)
                 matches = current and all(current[name] == intent[name] for name in ('bytes', 'sha256'))
                 if matches:
-                    if intent['verified'] and current['etag'] != intent['etag']:
-                        conflict = True
-                        raise ValueError('Verified publication version changed: ' + key)
                     intent.update(current, verified=True)
-                    self._reconciled[(id(client), bucket, key)] = (client, dict(current))
                     if key in self.value['versions']:
                         self.value['versions'][key] = current['etag']
                     outcome = 'reconciled'
-                elif intent['verified']:
-                    conflict = True
-                    raise ValueError('Verified publication bytes changed: ' + key)
                 elif ((current is None and intent.get('if_none_match') == '*')
                       or (current and current['etag'] == intent.get('expected_etag'))):
                     outcome = 'uncommitted'  # A later write must retain its original condition.
@@ -375,7 +368,7 @@ class Continuation:
         report('complete')
 
     def replay(self, client, bucket, key, body, *, validation=None):
-        """Return a current receipt for the same write, or require a normal write."""
+        """Reuse an acknowledged upload for the same bytes and original condition."""
         saved = self.value['writes'].get(key)
         if not saved or not saved['verified']:
             return None
@@ -394,15 +387,7 @@ class Continuation:
             body.seek(start); digest = digestor.hexdigest()
         if (size, digest) != (saved['bytes'], saved['sha256']):
             raise ValueError('Continued publication write differs: ' + key)
-        expected = {name: saved[name] for name in ('bytes', 'sha256', 'etag')}
-        proof = self._reconciled.get((id(client), bucket, key))
-        if proof is not None and proof[0] is client and proof[1] == expected and hasattr(client, 'head_object'):
-            current = client.head_object(Bucket=bucket, Key=key)
-            if current.get('ETag') != expected['etag'] or current.get('ContentLength') != expected['bytes']:
-                raise ValueError('Continued publication object changed: ' + key)
-        elif self.read(client, bucket, key) != expected:
-            raise ValueError('Continued publication object changed: ' + key)
-        return {'ETag': expected['etag']}
+        return {'ETag': saved['etag']}
 
 
 class MissingPublicationJournal(ValueError):

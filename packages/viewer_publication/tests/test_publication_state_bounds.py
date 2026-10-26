@@ -302,7 +302,7 @@ def test_joined_record_byte_limit_prevents_next_payload_put(journal, monkeypatch
     assert log.pending_verified['key'] == first
 
 
-def test_joined_verification_retains_exact_version_during_reconciliation(journal):
+def test_joined_acknowledgment_reuses_recorded_version_without_readback(journal):
     log, continuation, remote = journal
     intent, verified = write_facts('viewer-publications/releases/x/file')
     log.record('publication_write_intent', intent)
@@ -310,5 +310,6 @@ def test_joined_verification_retains_exact_version_during_reconciliation(journal
     log.record('publication_completed', {})
     remote.objects[intent['key']] = b'x'  # Same bytes with a different current ETag.
     state.DurableJournal(remote, 'bucket', continuation, 'test-attempt', {'prepared': True}, resume=True)
-    with pytest.raises(ValueError, match='version changed'):
-        continuation.reconcile(remote, 'bucket')
+    remote.get_object = lambda **kwargs: pytest.fail('Acknowledged upload read back')
+    continuation.reconcile(remote, 'bucket')
+    assert continuation.value['writes'][intent['key']]['etag'] == verified['etag']

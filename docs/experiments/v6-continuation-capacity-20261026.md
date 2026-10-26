@@ -187,3 +187,25 @@ The separate local-only `LocalContinuation` route retains its own 65,536-event
 and 256 MiB journal ceilings. It is not the current artifact-backed cloud
 publication route tested here, and this repair does not promise full-release
 capacity for that separate command path.
+
+## Follow-up: accept successful uploads without routine readback
+
+The user explicitly changed upload acceptance: a successful service response is
+sufficient, with at most bounded smoke tests. The earlier readback claims above
+describe the capacity commit's original behavior. The follow-up removes GET/HEAD
+verification after successful payload, metadata and journal PUTs, removes the
+uploader's fallback download on success, and trusts recorded successes during
+resume. It retains local prepared-file checks, original conditional requests,
+protected-input guards, durable attempt evidence and bounded public gateway
+smoke checks. The persisted `verified` flag/event now records an acknowledged
+upload (or an uncertain request resolved from its exact bytes); it does not
+claim a fresh remote-byte check. Network reads remain for uncertain outcomes,
+condition collisions, required input/journal loading and explicit read-only
+verification commands. No publication occurred while applying this policy.
+
+The focused acknowledgment suite passed 153 tests and two subtests before the
+last comment/native-upload expectation updates; the final integrated validation
+is reported in the task result. A new success-path regression makes both GET
+and HEAD fail if called, and proves a successful upload and its receipt can
+complete without either. Existing lost-acknowledgment and competing-runner tests
+continue to exercise exceptional reconciliation.

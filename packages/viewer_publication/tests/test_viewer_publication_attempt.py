@@ -350,13 +350,16 @@ def test_successful_attempt_request_cost_is_recorded_without_per_file_mutable_po
     journal_prefix = 'viewer-publications/attempts/'
     journal_puts = [key for key, _, _ in remote.puts if key.startswith(journal_prefix)]
     public_puts = [key for key, _, _ in remote.puts if not key.startswith(journal_prefix)]
+    assert all(remote.gets[key] == int(key.endswith('/00000000.json')) for key in journal_puts)
+    assert not remote.heads
+    assert all(remote.gets[key] == 0 for key in public_puts if key != publisher.PREFIX + 'manifest.json')
     assert len(public_puts) + 2 <= len(journal_puts) < 2 * len(public_puts) + 2
     if destination := os.environ.get('VIEWER_SUCCESS_RECEIPT'):
         path = Path(destination); path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({'scope': 'fixture with in-memory remote; counts exclude GitHub artifact metadata API and public probes',
             'publication_puts': len(public_puts), 'journal_puts': len(journal_puts),
             'journal_get_calls': sum(count for key, count in remote.gets.items() if key.startswith(journal_prefix)),
-            'journal_full_readbacks': len(journal_puts),
+            'journal_full_readbacks': sum(count for key, count in remote.gets.items() if key.startswith(journal_prefix) and not key.endswith('/00000000.json')),
             'mutable_identity_gets': {key: remote.gets[key] for key in protected},
             'file_version_heads': sum(remote.heads.values()),
             'journal_bytes': sum(len(raw) for key, raw in remote.objects.items() if key.startswith(journal_prefix))}, indent=2) + '\n')

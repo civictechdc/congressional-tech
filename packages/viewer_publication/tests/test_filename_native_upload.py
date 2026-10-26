@@ -66,6 +66,6 @@ def test_native_upload_uses_shared_hash_paths_and_exact_pointer_identity(tmp_pat
     assert pointer['source_identity'] == manifest['source_identity']
     for path in files:
         assert publisher.PREFIX + path in remote.objects
-        assert remote.gets[publisher.PREFIX + path] == 1
+        assert remote.gets[publisher.PREFIX + path] == (1 if path == existing else 0)
         assert remote.puts[publisher.PREFIX + path] == (0 if path == existing else 1)
     assert not any(key.startswith(publisher.PREFIX + 'releases/' + 'a' * 32 + '/releases/') for key in remote.objects)
