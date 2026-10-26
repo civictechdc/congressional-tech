@@ -706,3 +706,39 @@ def test_daily_seed_changes_refresh_metadata_and_keep_retained_documents(tmp_pat
     with read_catalog(store, native=native) as selected:
         rows = pa.Table.from_batches(list(selected.table('filenames', max_ordered_bytes=16 << 20).iter_batches())).to_pylist()
         assert {row['source_url'] for row in rows} == {paper, unrelated, 'https://example.gov/new.pdf'}
+
+
+@pytest.mark.parametrize('damage', ['changed', 'missing_pin'])
+def test_qualification_resume_checks_retained_interpreted_values_before_publication(tmp_path, monkeypatch, damage):
+    import json
+    from congress_api.retention import catalog_raw_updates as dispatch
+    from congress_api.retention.raw_catalog import qualify_source_contributions
+    store, native = SelectorStore(), MemoryNative()
+    raw = seed(store, native)
+    monkeypatch.setattr(RawSnapshot, 'body_readings', lambda self, keys: iter(()))
+    update_from_raw(store, raw_storage=raw, directory=tmp_path / 'initial', candidate='initial')
+    file_adopted_catalog(tmp_path, store, native)
+    before = store.read(MANIFEST_KEY)
+    options = dict(raw_storage=raw, directory=tmp_path / 'qualification', candidate='qualification')
+    monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
+    with monkeypatch.context() as stopped:
+        stopped.setattr(dispatch, 'update_native_catalog', lambda *a, **k: (_ for _ in ()).throw(OSError('worker stopped')))
+        with pytest.raises(OSError, match='worker stopped'):
+            qualify_source_contributions(store, **options)
+    path = options['directory'] / 'interpreted-sources.parquet'
+    if damage == 'changed':
+        with pq.ParquetFile(path) as file:
+            table = file.read()
+        rows = table.to_pylist()
+        rows[0]['source_document_label'] = ['not the qualified source value']
+        pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), path)
+    else:
+        receipt = options['directory'] / 'source-update.json'
+        saved = json.loads(receipt.read_text())
+        saved.pop('interpreted_sources', None)
+        receipt.write_text(json.dumps(saved))
+    with monkeypatch.context() as refused:
+        refused.setattr(dispatch, 'update_native_catalog', lambda *a, **k: pytest.fail('Unverified continuation reached publication'))
+        with pytest.raises(ValueError, match='checksum mismatch|interpreted source identity'):
+            qualify_source_contributions(store, **options)
+    assert store.read(MANIFEST_KEY) == before

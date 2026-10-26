@@ -54,43 +54,24 @@ class SourceCaptureInputs:
 
     def changed(self, snapshot, change, trace):
         """Yield only appended exact batches from one durable raw change."""
-        import os
-        import pyarrow.parquet as pq
         entries = list(snapshot.changed_capture_batches(change))
-        cached_pf = None
-        if 'PYTEST_CURRENT_TEST' not in os.environ and entries:
-            cache_candidate = Path('.cache/docspec-catalog/captures-0.parquet')
-            if cache_candidate.is_file():
-                try:
-                    pf = pq.ParquetFile(cache_candidate)
-                    if (pf.schema_arrow.equals(NATIVE_CAPTURE_SCHEMA, check_metadata=True)
-                            and pf.num_row_groups == len(entries)
-                            and [pf.metadata.row_group(i).num_rows for i in range(pf.num_row_groups)]
-                                == [e['rows'] for e in entries]):
-                        cached_pf = pf
-                except Exception:
-                    cached_pf = None
-        try:
-            if self.objects.supports_batch_put and len(entries) > 1:
-                refs = []
-                uploads = []
-                for entry in entries:
-                    ref, digest, key, raw = self.objects.prepare_put(dict(version=1, entry=entry))
-                    refs.append(ref)
-                    uploads.append((digest, key, raw))
-                self.objects.put_batch(uploads)
-                for idx, (entry, ref) in enumerate(zip(entries, refs)):
-                    table = cached_pf.read_row_group(idx) if cached_pf is not None else snapshot.capture_batch(entry)
-                    self.attach(trace, entry, table, _reference=ref)
-                    yield table
-                return
-            for idx, entry in enumerate(entries):
-                table = cached_pf.read_row_group(idx) if cached_pf is not None else snapshot.capture_batch(entry)
-                self.attach(trace, entry, table)
+        if self.objects.supports_batch_put and len(entries) > 1:
+            refs = []
+            uploads = []
+            for entry in entries:
+                ref, digest, key, raw = self.objects.prepare_put(dict(version=1, entry=entry))
+                refs.append(ref)
+                uploads.append((digest, key, raw))
+            self.objects.put_batch(uploads)
+            for entry, ref in zip(entries, refs):
+                table = snapshot.capture_batch(entry)
+                self.attach(trace, entry, table, _reference=ref)
                 yield table
-        finally:
-            if cached_pf is not None:
-                cached_pf.close()
+            return
+        for entry in entries:
+            table = snapshot.capture_batch(entry)
+            self.attach(trace, entry, table)
+            yield table
 
     def copy(self, storage, root, observations, trace):
         """Carry immutable raw input edges into a complete observation replay."""

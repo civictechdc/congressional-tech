@@ -21,6 +21,7 @@ from .catalog_staging import WorkingCatalog, DiskRows
 from .catalog_inputs import CatalogKeys
 from .catalog_updates import update_native_catalog
 from .document_evidence import read_retained_body
+from .derived_files import file_identity, check_identity
 from .document_recovery import recover_sources
 from .immutable_metadata import encoded
 from .native_features import backfill_scalar_group, evolve_catalog_schema, source_schema_fields
@@ -381,7 +382,11 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             if retained['request'] != request:
                 raise ValueError('Raw catalog continuation inputs differ from the retained candidate')
             proof = read_source_update(store, retained['source_update'])
-            rows = _RetainedSources(directory / 'interpreted-sources.parquet')
+            interpreted_path = directory / 'interpreted-sources.parquet'
+            if not isinstance(retained.get('interpreted_sources'), dict):
+                raise ValueError('Raw catalog continuation omits its interpreted source identity')
+            check_identity(file_identity(interpreted_path), retained['interpreted_sources'], interpreted_path.name)
+            rows = _RetainedSources(interpreted_path)
             # The retained interpretation may add logical fields that the old
             # selected schema does not contain yet. Resume that exact schema.
             dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
@@ -657,7 +662,8 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                 schema=schema, replacements=values, deletions=deletions, observations=prepared.observations if prepared else (),
                 purpose=purpose, rule_version=after['rule_version'])
             draft = directory / 'source-update.tmp'
-            draft.write_bytes(encoded(dict(request=request, source_update=reference)))
+            draft.write_bytes(encoded(dict(request=request, source_update=reference,
+                                          interpreted_sources=file_identity(values.path))))
             draft.replace(pending)
         result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
             replacements=values, deletions=deletions, candidate=candidate, directory=directory / 'catalog',

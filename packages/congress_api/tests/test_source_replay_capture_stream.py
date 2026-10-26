@@ -113,3 +113,26 @@ def test_interrupted_closure_reuses_completed_incoming_replay(tmp_path, monkeypa
     with prepare_source_replay(store, changes=selected.changes_since(empty.identity), **options) as prepared:
         row, = prepared.sources()
         assert row['source_document_label'] == ['Literal']
+
+
+def test_replay_uses_selected_capture_bytes_not_a_same_shape_local_cache(tmp_path, monkeypatch):
+    from congress_api.retention.source_capture_inputs import SourceCaptureInputs
+    store, native = SelectorStore(), MemoryNative()
+    raw = RawStorage(store, native)
+    retain(store, dict(eventId=7, congress=119, chamber='House'),
+           family='congress/meetings', source_file='selected.json')
+    empty = raw.snapshot()
+    selected = raw.publish(raw.prepare(empty, operation='selected', captures=decode_table(store.read(CAPTURES_KEY))))
+    change, = selected.changes_since(empty.identity)
+    entry, = selected.changed_capture_batches(change)
+    expected = selected.capture_batch(entry)
+    cached = expected.set_column(expected.schema.get_field_index('receipt_key'),
+                                 expected.schema.field('receipt_key'), pa.array(['unselected-receipt.jsonl.gz']))
+    cache = tmp_path / '.cache/docspec-catalog/captures-0.parquet'
+    cache.parent.mkdir(parents=True)
+    pq.write_table(cached, cache)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
+    with closing(WorkingCatalog(tmp_path / 'trace.sqlite')) as work:
+        actual, = SourceCaptureInputs(store).changed(selected, change, SourceObservationTrace(work))
+        assert actual.equals(expected, check_metadata=True)
