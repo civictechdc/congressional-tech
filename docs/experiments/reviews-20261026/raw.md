@@ -1,5 +1,7 @@
 # Combined raw-update and GPO boundary review — October 26, 2026
 
+**Final scoped verdict: APPROVE at source `6183938fcb2b0842d5e1f59072383aa7dd251d32`.** The original findings below are retained as historical evidence; all three are integrated and resolved. See the final delta review at the end.
+
 **Verdict for reviewed main `ad222085f8dc4e4b7a34c0e7db9bf5a52bb66d4f`: REQUEST CHANGES.** Two raw replay/recovery defects reproduced locally and are fixed in `114e3d9ee8e7886f32d1bf07ed5bd8b60c1e7d07`. A separate GPO-to-weekly-summary defect is addressed by GPO-owned `db1ac0454409df3edfbd457431e3428f4fd41a81`; its exact changed function and four new boundary cases passed an independent check. Do not treat that separate check as a test of a subsequently combined integration revision.
 
 The raw/GPO scope is acceptable after both fixes are integrated. No remaining actionable defect was found in the bounded GPO ZIP acquisition and per-package retry paths examined here. This is source review plus local fixture execution, not production data qualification, a hosted workflow result, or deployed proof.
@@ -103,3 +105,18 @@ Paths below are repository-relative. Line numbers describe the reviewed target e
 The ordinary-update simplification preserves retained documents and concrete admission checks. Fresh qualification performs real comparison, and the two additional fixes preserve exact raw/retained inputs across recovery. The GPO manifest reader and collector failure paths meet their stated bounded-acquisition and recoverability behavior in the reviewed source and fixtures. The separate weekly mapper gap has a reviewed and independently checked fix.
 
 Coverage of this scope: **ADEQUATE**. Confidence: **HIGH** for reproduced/fixed defects and local collector behavior; production throughput, hosted/deployed state, and a later combined integration revision remain outside this evidence. No remaining blocker in this scope once both repair commits are integrated.
+
+
+## Final delta review — main `6183938fcb2b0842d5e1f59072383aa7dd251d32`
+
+Rebased the report-only commit onto the exact final main source, preserving it as `71e71e65e4eb8d725afe1b75713d0d30dd646a61`. Dropped the already integrated task source commit rather than replaying it. The pre-rebase review/fix tip remains under `codex/backup-raw-review-20261026` at `54281243bc031ad62b1d92cd5d3d976d1b39214b`; the original repair tip remains under `codex/backup-raw-source-guard-20261026` at `f52108e6009f5051f1487906e17b7ad7c3f800ce`.
+
+Reviewed the new `ad222085..6183938f` delta only where it affects the traced raw/GPO paths:
+
+- `c7b678bf487b6d655028036a7988e2e55f149f80` integrates findings 1 and 2. Compared both changed raw source files and both regression-test files against exact tested fix `114e3d9e`; no differences. The retained-file checksum check precedes the publication owner, missing pins refuse, and capture reads use selected batch bytes.
+- `a3beabaca786a0e64c8e1ddae85caef3e3abd743` integrates finding 3. Compared the mapper and GPO regression-test file against independently checked `db1ac045`; no differences. Failed-only evidence now supplies its genuine retrieval time to the weekly summary iterator.
+- The GPO collector, ZIP-member transport, shared ZIP-directory validator, and HTTP transport did not change in this final delta. Their earlier boundary traces and executed fixture evidence therefore remain applicable. Viewer identity/deadline/occurrence changes belong to their separate reviews; this addendum does not claim a repeat audit of those components.
+
+**Executed on final source:** 9 targeted tests passed, 56 deselected, in 3.28 seconds. Selection covers same-shape capture-cache refusal, changed/missing interpreted-file pins on resume, ordinary seed changes under both production/test branches, failed-only stale MODS persistence through weekly mapping, and all three newly recognized manifest/failure timestamp sections. Log: `/tmp/ct-raw-final-delta-review-20261026.log`. External network remained disabled by the maintained offline wrapper. This is a focused final-delta check, not nine additional unique tests to add to the earlier suite.
+
+**FINAL VERDICT: APPROVE for the raw-update, source-qualification/recovery, and GPO acquisition/weekly-summary scope at `6183938fcb2b0842d5e1f59072383aa7dd251d32`.** Coverage: ADEQUATE. Confidence: HIGH. All actionable scoped findings are resolved in the final source. No unresolved blocker. The report branch contains only documentation commits beyond that main revision. No shared-main push/merge, primary-checkout edit, remote data mutation, publisher enablement, or Pages setting change occurred in this task. Hosted or deployed proof remains outside this review.
