@@ -620,7 +620,9 @@ def gpo_observation_to_row(
     timestamps: list[str] = []
     acquisitions: list[str] = []
 
-    for sec_name in ("mods", "listing"):
+    # Parser-stale refreshes can have only a rejected MODS response, with no
+    # fresh listing or accepted metadata. Those checks are retained evidence too.
+    for sec_name in ("mods", "listing", "manifest", "failed_mods", "failed_manifest"):
         sec = record.get(sec_name)
         if isinstance(sec, Mapping):
             if sec.get("retrieved_at"):

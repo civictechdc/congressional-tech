@@ -154,6 +154,41 @@ def test_malformed_mods_without_retained_evidence_still_flushes_valid_work(tmp_p
     assert json.loads(Path(str(output) + '.pending.json').read_text()) == {FAILED: MODIFIED}
 
 
+def test_stale_mods_failure_remains_syncable_without_listing_or_prior_evidence(tmp_path, monkeypatch):
+    from congress_api.cli.sync_weekly_tables import _iter_gpo_observation_rows
+
+    output, retained = tmp_path / 'rows.csv', tmp_path / 'evidence.jsonl.gz'
+    row = asdict(parse_mods(FAILED, MODS, MODIFIED))
+    row.update(parser_version='old-parser', text_read='yes')
+    evidence.write_csv({FAILED: row}, output)
+    monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
+    monkeypatch.setattr(fetch, 'list_collection', lambda *args: [])
+    monkeypatch.setattr(fetch, 'get_with_retry', lambda *args: SimpleNamespace(content=b'<mods>'))
+    with pytest.raises(SystemExit):
+        fetch.main(output, min_congress=113, nthreads=1, refresh_limit=1, evidence_path=retained)
+    saved = evidence.read(retained)[FAILED]
+    assert 'listing' not in saved and 'mods' not in saved
+    assert evidence.body_bytes(saved['failed_mods']) == b'<mods>'
+    summary, = _iter_gpo_observation_rows(retained)
+    assert summary['retrieved_at'] == saved['failed_mods']['retrieved_at']
+    assert summary['acquisition'] == 'http'
+    assert json.loads(Path(str(retained) + '.pending.json').read_text()) == {FAILED: MODIFIED}
+
+
+@pytest.mark.parametrize('section', ['manifest', 'failed_mods', 'failed_manifest'])
+def test_weekly_summary_includes_each_manifest_or_failure_timestamp(section):
+    from congress_api.retention.weekly_tables import gpo_observation_to_row
+
+    observed = evidence.observation(b'retained source', 'https://example.gov/source', 'application/xml',
+                                    retrieved_at='2026-10-26T20:00:00Z')
+    observed['acquisition'] = 'http-zip-member' if 'manifest' in section else 'http'
+    if section.startswith('failed_'):
+        observed['error'] = 'rejected source'
+    row = gpo_observation_to_row(FAILED, {'package_id': FAILED, section: observed})
+    assert row['retrieved_at'] == observed['retrieved_at']
+    assert row['acquisition'] == observed['acquisition']
+
+
 @pytest.mark.parametrize('parser', ['parse_mods_document', 'parse_package_manifest'])
 def test_unexpected_parser_errors_remain_visible(tmp_path, monkeypatch, parser):
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
