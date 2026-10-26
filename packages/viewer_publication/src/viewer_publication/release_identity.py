@@ -42,6 +42,7 @@ def source_files(root):
         'packages/viewer_publication/src/viewer_publication/client.py',
         'packages/viewer_publication/src/viewer_publication/native.py',
         'packages/viewer_publication/src/viewer_publication/continuation.py',
+        'packages/viewer_publication/src/viewer_publication/local.py',
         'packages/viewer_publication/src/viewer_publication/attempt.py',
         'packages/viewer_publication/src/viewer_publication/plan.py',
         'packages/viewer_publication/src/viewer_publication/reconciliation.py',

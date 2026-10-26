@@ -16,23 +16,23 @@ DEFAULT_PROGRESS = 'https://pub-1b36ca710ab14e7f8e65813c41761724.r2.dev/status/r
 MAX_JSON_BYTES = 2 * 1024 * 1024
 
 
-def json_bytes(raw):
-    if len(raw) > MAX_JSON_BYTES:
-        raise ValueError('Status input exceeds 2 MiB')
+def json_bytes(raw, *, max_bytes=MAX_JSON_BYTES):
+    if len(raw) > max_bytes:
+        raise ValueError(f'Status input exceeds {max_bytes // (1024 * 1024)} MiB')
     value = json.loads(raw)
     if not isinstance(value, dict):
         raise ValueError('Status input must be a JSON object')
     return value
 
 
-def read_json(location):
+def read_json(location, *, max_bytes=MAX_JSON_BYTES):
     if str(location).startswith(('https://', 'http://')):
         request = urllib.request.Request(str(location), headers={
             'User-Agent': 'congressional-tech-pipeline-status/1.0', 'Cache-Control': 'no-cache'})
         with urllib.request.urlopen(request, timeout=10) as response:
-            return json_bytes(response.read(MAX_JSON_BYTES + 1))
+            return json_bytes(response.read(max_bytes + 1), max_bytes=max_bytes)
     with Path(location).open('rb') as stream:
-        return json_bytes(stream.read(MAX_JSON_BYTES + 1))
+        return json_bytes(stream.read(max_bytes + 1), max_bytes=max_bytes)
 
 
 def github_run(run_id, repository):
@@ -112,6 +112,7 @@ def heartbeat(value, expected, now, previous=None):
 
 def continuation(path, expected):
     """Report recorded acceptance; do not hash large prepared outputs or reuse them."""
+    from viewer_publication import continuation as state
     path = Path(path)
     event_source = None
     journal_path = path.parent / 'events.jsonl'
@@ -122,9 +123,9 @@ def continuation(path, expected):
             event_source = dict(source='validated_local_events', path=str(journal_path),
                                 recorded_events=inspection['events'], inspected_bytes=inspection['bytes'])
         except LegacyLocalJournal:
-            value = read_json(path)
+            value = read_json(path, max_bytes=state.MAX_STATE_BYTES)
     else:
-        value = read_json(path)
+        value = read_json(path, max_bytes=state.MAX_STATE_BYTES)
     binding = value.get('binding', {})
     observed = (str(binding.get('run_id', binding.get('github_run_id', ''))),
                 str(binding.get('run_attempt', binding.get('github_run_attempt', ''))),
@@ -153,7 +154,7 @@ def continuation(path, expected):
         if observation := catalog_build_observation(path.parent, phases):
             local_state['catalog_build'] = observation
     writes = value.get('writes', {})
-    if (not isinstance(writes, dict) or len(writes) > 8192
+    if (not isinstance(writes, dict) or len(writes) > state.MAX_WRITES
             or any(not isinstance(key, str) or not key or len(key) > 2048
                    or not isinstance(item, dict) or type(item.get('verified')) is not bool
                    for key, item in writes.items())):
@@ -171,12 +172,12 @@ def continuation(path, expected):
     # Read only these small records; Continuation's mutating resume is not used.
     journal = sorted((path.parent / 'journal').glob('*.json'))
     if journal:
-        if len(journal) > 4096:
+        if len(journal) > state.MAX_EVENTS:
             raise ValueError('Publication journal exceeds the bounded status inspection')
         preparation_path = path.parent / 'preparation.json'
         with preparation_path.open('rb') as stream:
-            raw = stream.read(MAX_JSON_BYTES + 1)
-        preparation = json_bytes(raw)
+            raw = stream.read(state.MAX_STATE_BYTES + 1)
+        preparation = json_bytes(raw, max_bytes=state.MAX_STATE_BYTES)
         if preparation.get('binding') != binding:
             raise ValueError('Preparation and continuation bindings differ')
         digest, total = None, 0
@@ -184,11 +185,11 @@ def continuation(path, expected):
             if event_path.name != f'{index:08d}.json':
                 raise ValueError('Publication journal has missing or foreign entries')
             with event_path.open('rb') as stream:
-                event_raw = stream.read(MAX_JSON_BYTES + 1)
+                event_raw = stream.read(state.MAX_EVENT_BYTES + 1)
             total += len(event_raw)
-            if total > 32 * 1024 * 1024:
-                raise ValueError('Publication journal exceeds 32 MiB status inspection')
-            event = json_bytes(event_raw)
+            if total > state.MAX_JOURNAL_BYTES:
+                raise ValueError('Publication journal exceeds bounded status inspection')
+            event = json_bytes(event_raw, max_bytes=state.MAX_EVENT_BYTES)
             if event.get('sequence') != index or event.get('previous') != digest:
                 raise ValueError('Publication journal chain differs')
             if index == 0 and (event.get('event') != 'attempt_started'

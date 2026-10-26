@@ -202,8 +202,7 @@ def test_incomplete_catalog_status_names_retained_evidence_without_mutation(tmp_
 
 @pytest.mark.parametrize('bound', [False, True])
 @pytest.mark.parametrize('writes', [[], {'key': None}, {'key': {}}, {'key': {'verified': 'false'}},
-    {'key': {'verified': 0}}, {'': {'verified': False}}, {'x' * 2049: {'verified': False}},
-    {str(index): {'verified': False} for index in range(8193)}])
+    {'key': {'verified': 0}}, {'': {'verified': False}}, {'x' * 2049: {'verified': False}}])
 def test_continuation_rejects_malformed_or_excessive_local_writes_before_attribution(tmp_path, bound, writes):
     path = receipt(tmp_path); value = json.loads(path.read_text())
     if not bound:
@@ -214,6 +213,28 @@ def test_continuation_rejects_malformed_or_excessive_local_writes_before_attribu
     with pytest.raises(ValueError, match='writes malformed or exceeds inspection limit'):
         status.continuation(path, ('123', '2', REVISION))
     assert path.read_bytes() == before
+
+
+def test_continuation_inspects_large_receipt_without_granting_readback(tmp_path):
+    path = receipt(tmp_path); value = json.loads(path.read_text())
+    value['writes'] = {str(i): {'verified': True, 'detail': 'x' * 200} for i in range(12000)}
+    write(path, value)
+    before = path.read_bytes()
+    assert len(before) > status.MAX_JSON_BYTES
+    result = status.continuation(path, ('123', '2', REVISION))
+    assert result['local_phase_observation']['recorded_verified_writes'] == 12000
+    assert result['public_readback'] == 'not_checked'
+    assert path.read_bytes() == before
+
+
+def test_continuation_enforces_shared_write_count_budget(tmp_path, monkeypatch):
+    from viewer_publication import continuation as state
+    monkeypatch.setattr(state, 'MAX_WRITES', 2)
+    path = receipt(tmp_path); value = json.loads(path.read_text())
+    value['writes'] = {str(i): {'verified': False} for i in range(3)}
+    write(path, value)
+    with pytest.raises(ValueError, match='writes malformed or exceeds inspection limit'):
+        status.continuation(path, ('123', '2', REVISION))
 
 
 def test_read_only_publication_command_emits_durable_pending_receipt(tmp_path,monkeypatch,capsys):

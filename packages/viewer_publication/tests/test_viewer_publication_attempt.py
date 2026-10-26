@@ -402,7 +402,7 @@ def test_full_release_identity_tracks_dirty_transitive_sources_and_ignores_docs(
     assert publisher.release_source_files(tmp_path) != after
 
 
-@pytest.mark.parametrize('name', ['plan.py', 'reconciliation.py'])
+@pytest.mark.parametrize('name', ['plan.py', 'reconciliation.py', 'local.py'])
 def test_release_identity_includes_accepted_plan_and_reconciliation_source(tmp_path, name):
     helper = tmp_path / 'packages/viewer_publication/src/viewer_publication' / name
     helper.parent.mkdir(parents=True); helper.write_text('VALUE = 1\n')

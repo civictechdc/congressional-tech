@@ -14,6 +14,35 @@ def intent(key='indexes/catalog.json', body=b'accepted bytes'):
     return dict(key=key, bytes=len(body), sha256=hashlib.sha256(body).hexdigest(), if_none_match='*')
 
 
+def test_local_record_uses_point_lookups_instead_of_copying_ledger(tmp_path):
+    class PointLookupsOnly(dict):
+        def __iter__(self): pytest.fail('walked full write ledger')
+        def keys(self): pytest.fail('copied full write ledger')
+        def items(self): pytest.fail('walked full write ledger')
+    run = local.LocalContinuation(tmp_path / 'attempt', {})
+    run.value['writes'] = PointLookupsOnly()
+    detail = intent()
+    run.record('publication_write_intent', detail)
+    run.record('publication_write_verified', dict(detail, etag='accepted'))
+    assert run.value['writes'][detail['key']]['verified']
+
+
+def test_local_full_release_history_exceeds_old_event_cap_and_restores(tmp_path, monkeypatch):
+    run = local.LocalContinuation(tmp_path / 'attempt', {})
+    # Stress event count/replay with real files, without 66K durability syscalls.
+    # Separate sync-failure tests exercise the durability boundary.
+    monkeypatch.setattr(local.os, 'fsync', lambda fd: None)
+    for number in range(33000):
+        detail = intent('viewer-publications/releases/' + str(number))
+        run.record('publication_write_intent', detail)
+        run.record('publication_write_verified', dict(detail, etag='accepted'))
+    assert run.sequence > 65536
+    assert local.MAX_LOCAL_EVENTS >= 2 * state.MAX_WRITES + state.MAX_PHASES + 2
+    restored = local.LocalContinuation(run.root, {}, resume=True)
+    assert restored.value == run.value
+    assert restored._state_bytes == len(local.encoded(restored.value)) + 1
+
+
 def test_each_accepted_phase_restores_from_events_without_checkpoint(tmp_path):
     root = tmp_path / 'attempt'
     run = local.LocalContinuation(root, {'input': 'pinned'})

@@ -100,6 +100,14 @@ def workflow():
     return yaml.load((ROOT / '.github/workflows/publish-filename-viewer.yml').read_text(), Loader=yaml.BaseLoader)
 
 
+def test_current_workflow_selects_capacity_and_local_journal_checks():
+    script = next(step['run'] for step in workflow()['jobs']['publish']['steps']
+        if step.get('name') == 'Verify publication fidelity and recovery mapping')
+    selected = [line.strip() for line in script.splitlines() if line.strip().endswith('.py')]
+    assert 'packages/viewer_publication/tests/test_publication_capacity.py' in selected
+    assert 'packages/viewer_publication/tests/test_local_continuation.py' in selected
+
+
 def test_workflow_uses_one_validated_selection_and_keeps_unchanged_skip():
     value = workflow()
     assert set(value['on']['workflow_dispatch']['inputs']) == {'resume_descriptor'}

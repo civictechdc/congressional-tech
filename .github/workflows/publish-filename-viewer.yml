@@ -129,6 +129,8 @@ jobs:
             scripts/publication/tests/test_workflow_resume.py
             scripts/publication/tests/test_preparation_checkpoint.py
             packages/viewer_publication/tests/test_publication_state_bounds.py
+            packages/viewer_publication/tests/test_publication_capacity.py
+            packages/viewer_publication/tests/test_local_continuation.py
             packages/viewer_publication/tests/test_publication_control_reads.py
           )
           for i in "${!tests[@]}"; do
@@ -137,7 +139,7 @@ jobs:
             elif [[ "${ACCEPTED_RESUME:-false}" == true && ! -f "${tests[$i]}" ]]; then
               # Accepted historical code may predate these supervisor checks.
               case "${tests[$i]}" in
-                scripts/publication/tests/test_workflow_resume.py|scripts/publication/tests/test_preparation_checkpoint.py) unset 'tests[i]' ;;
+                scripts/publication/tests/test_workflow_resume.py|scripts/publication/tests/test_preparation_checkpoint.py|packages/viewer_publication/tests/test_publication_capacity.py|packages/viewer_publication/tests/test_local_continuation.py) unset 'tests[i]' ;;
               esac
             fi
           done
