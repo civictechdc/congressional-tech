@@ -414,7 +414,7 @@ The release ID ([[DATA-MODEL]] §8.3) is computed after export and before upload
 
 #### 10.3.4 Upload
 
-Files are uploaded to `viewer-publications/releases/<release_id>/` with a create-only PUT and `Content-MD5`. A 412 on a rerun MUST be checked against the expected MD5 with one HEAD of that object's ETag. The release's `manifest.json` holds only content, so a release that re-emerges writes identical bytes; `inputs/<input_digest>.json` records each input identity that produced it ([[DATA-MODEL]] §8.1).
+Files are uploaded to `viewer-publications/releases/<release_id>/` with a create-only PUT and `Content-MD5`. A 412 on a rerun MUST be checked against the expected MD5 with one HEAD of that object's ETag. The release's `manifest.json` holds only content, so a release that re-emerges writes identical bytes; `inputs/<input_digest>.json` records each input identity that produced it ([[DATA-MODEL]] §8.1). Before the canary, publish adds the candidate's spicy-regs generations to `viewer-publications/pins/spicy-generations.json`, the list spicy-regs' retention reads beside DocSpec's so it keeps them.
 
 #### 10.3.5 Canary
 
@@ -428,7 +428,7 @@ The flip writes the candidate as the pointer's `release_id` and the outgoing liv
 
 Publish, backfills and the maintenance job run in one CI concurrency group, so they never overlap, and publish MUST NOT delete anything. Without the group, a publish that re-creates an older release reuses that release's prefix, and retention could delete the prefix between the canary and the flip.
 
-From the second flip on, at least the live and last-good releases exist. The maintenance job re-reads the pointer just before it deletes, takes both release IDs from it, and removes release prefixes that are neither live nor last good and are more than a day old, failed candidates included. Up to a week of daily releases (about 0.7 GB) can wait in between. Releases share no files, so nothing needs reference counting.
+From the second flip on, at least the live and last-good releases exist. The maintenance job re-reads the pointer just before it deletes, takes both release IDs from it, and removes release prefixes that are neither live nor last good and are more than a day old, failed candidates included. Up to a week of daily releases (about 0.7 GB) can wait in between. Releases share no files, so nothing needs reference counting. It then rewrites the pin list to the generations the kept releases' input records name, so a kept release can always be rebuilt; spicy-regs otherwise keeps only each family's last three generations.
 
 ## 11. Site
 

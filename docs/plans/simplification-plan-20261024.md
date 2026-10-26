@@ -156,6 +156,7 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 | S2 | A Senate hearing transcript whose MODS record lists witnesses and names no meeting | Appearances keyed by the package; the transcript carries their `witness_key`s |
 | S2 | A bill named by a filename and by a meeting's related items | One `bill_id`; both find its title, sponsor and stage in the pinned `congress_bills` |
 | S2 | A publish after spicy-regs moves a family's pointer | The new generation is pinned, recorded in `inputs/`, and changes the input identity |
+| S2 | A kept release whose bills generation is four generations old | Spicy-regs' retention plan keeps it, citing the archive's pin list |
 | S2 | A file named only by its download header; a URL with `?file=a.pdf&name=b.pdf` | The header's name (`filename*` first); `a.pdf` |
 | S2 | An exact copy and a provider's saved-text copy at one URL | The exact copy is the saved file |
 | S2 | A file whose kind only the publisher gives, by `doc_type`, and another by link text only | Each gets the publisher-kind registry's kind |
@@ -336,7 +337,8 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 1. **Workflows** ([[ARCHITECTURE]] §12): the capture job; the publish job, backfills and the maintenance job in one CI concurrency group. The disabled viewer workflow and its 30-minute cron are deleted.
 2. **Capture scheduler:** capture reads `url_state` from the live release, including its queue of linked-but-unfetched URLs, stops reading the raw index, and drops its replay mode.
 3. **The committee explorer** reads meeting and witness records from the lake and committees, members and rosters from the pinned spicy-regs generations ([[ARCHITECTURE]] §8.5), not from the fetchers' state files.
-4. **Delete what is bound to nothing,** one PR per group as [[BINDINGS]] §6 lists them, measured again at cut.
+4. **Generation pins:** publish and the maintenance job keep `pins/spicy-generations.json` ([[ARCHITECTURE]] §10.3.4, §10.3.7), and spicy-regs' retention planner reads it beside DocSpec's pin file, a change in spicy-regs.
+5. **Delete what is bound to nothing,** one PR per group as [[BINDINGS]] §6 lists them, measured again at cut.
 
 **Done when** the switch checklist holds:
 - the explorer serves an engine-built release, and the reader opens saved files, alternates and recoveries from it;
@@ -344,6 +346,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 - the canary and contract test pass the speed targets set on real devices, against that release;
 - a failed canary is shown to leave the previous release live;
 - capture runs from `url_state` with no raw-index read, and the committee explorer reads the lake;
+- spicy-regs' retention plan keeps every generation a kept release pins;
 - the old workflows are gone, and the deleted line counts are recorded.
 
 ## 7. Parked
