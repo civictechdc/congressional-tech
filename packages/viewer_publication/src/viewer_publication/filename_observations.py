@@ -162,18 +162,18 @@ class Blocks:
                 error.add_note(f'Block abort close also failed: {cleanup}')
 
 
-def publish_observations(source, output, *, counts=None, policy=DEFAULT_DECODED_POLICY, metrics=None):
+def publish_observations(source, output, *, counts=None, policy=DEFAULT_DECODED_POLICY, metrics=None, occurrence_writer=None):
     metrics = metrics if metrics is not None else {}
     try:
         with owned_resources() as owned:
             counts = counts or owned.enter_context(ObservationCounts(source))
-            return _publish_observations(source, output, owned, counts, policy, metrics)
+            return _publish_observations(source, output, owned, counts, policy, metrics, occurrence_writer)
     except DecodedBudgetExceeded as error:
         failure_receipt(output, error, policy, metrics)
         raise
 
 
-def _publish_observations(source, output, owned, counts, policy, metrics):
+def _publish_observations(source, output, owned, counts, policy, metrics, occurrence_writer):
     kind = source.schema_arrow.field('source_occurrences').type.value_type
     fields = [field.name for field in kind]
     observations = owned.enter_context(Blocks(output / 'observations.bin', policy=policy, metrics=metrics))
@@ -184,11 +184,18 @@ def _publish_observations(source, output, owned, counts, policy, metrics):
     identities.executescript(f'PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA cache_size=-{policy.sqlite_cache_kib}; '
                             'CREATE TABLE identities(digest BLOB PRIMARY KEY,id INTEGER NOT NULL) WITHOUT ROWID;')
     count = 0
+    expected = hashlib.sha256()
     for values in observation_rows(source, policy=policy, metrics=metrics, stage='observations'):
+        _fingerprint_row(expected, None if values is None else len(values))
+        if occurrence_writer is not None:
+            occurrence_writer.start_row(None if values is None else len(values))
         refs = None if values is None else []
         for observation in observation_values(values, policy=policy, metrics=metrics, stage='observations', kind=kind):
             compact = None if observation is None else {key: value for key, value in observation.items() if value is not None}
             encoded = b''.join(json_chunks(compact, policy=policy, metrics=metrics))
+            _fingerprint_value(expected, encoded)
+            if occurrence_writer is not None:
+                occurrence_writer.append(observation)
             metrics['observation_serializations'] = metrics.get('observation_serializations', 0) + 1
             identity = hashlib.sha256(encoded).digest()
             row = identities.execute('SELECT id FROM identities WHERE digest=?', (identity,)).fetchone()
@@ -197,21 +204,36 @@ def _publish_observations(source, output, owned, counts, policy, metrics):
                 observations.append_encoded(encoded)
             refs.append(row[0])
             del observation, compact, encoded
+        if occurrence_writer is not None:
+            occurrence_writer.finish_row()
         references.append(refs); counts.append(len(values) if values is not None else 0)
     counts.seal(getattr(getattr(source, 'metadata', None), 'num_rows', counts.rows))
     metrics['dedup_entries'] = count
     metrics['dedup_sqlite_cache_bytes'] = policy.sqlite_cache_kib * 1024
     metrics['dedup_disk_bytes'] = identities.execute('PRAGMA page_count').fetchone()[0] * identities.execute('PRAGMA page_size').fetchone()[0]
-    identities.close()  # No identity lookups remain during full readback.
+    identities.close()  # No identity lookups remain during generated-asset verification.
     index = dict(version=1, fields=fields, max_part_bytes=BLOCK_BYTES,
                  observations=observations.close(), references=references.close())
-    verify_observations(source, output, index, policy=policy, metrics=metrics)
+    verify_observations(source, output, index, policy=policy, metrics=metrics, expected_digest=expected.digest())
     (output / 'observation-index.json').write_bytes(json_bytes(index))
     return index
 
 
-def verify_observations(source, output, index, *, policy=DEFAULT_DECODED_POLICY, metrics=None):
-    """Check every value using a disk dictionary, decoding each block once."""
+def _fingerprint_row(digest, length):
+    digest.update((-1 if length is None else length).to_bytes(8, 'little', signed=True))
+
+
+def _fingerprint_value(digest, value):
+    digest.update(len(value).to_bytes(8, 'little'))
+    digest.update(value)
+
+
+def verify_observations(source, output, index, *, policy=DEFAULT_DECODED_POLICY, metrics=None, expected_digest=None):
+    """Check every emitted value; publication supplies its streaming source fingerprint.
+
+    The explicit verifier can still compare an existing asset with its source.
+    Publication never needs a second native occurrence traversal.
+    """
     metrics = metrics if metrics is not None else {}
     kind = source.schema_arrow.field('source_occurrences').type.value_type
     fields = [field.name for field in kind]
@@ -226,6 +248,18 @@ def verify_observations(source, output, index, *, policy=DEFAULT_DECODED_POLICY,
         # list order, duplicates, and null versus empty field values.
         restored = None if value is None else {field: value[field] for field in fields if value.get(field) is not None}
         return b''.join(json_chunks(restored, policy=policy, default=decoded_json_default))
+
+    expected_rows = index['references']['rows']
+    if expected_digest is None:
+        expected = hashlib.sha256()
+        expected_rows = 0
+        for values in observation_rows(source, policy=policy, metrics=metrics, stage='observation verification'):
+            _fingerprint_row(expected, None if values is None else len(values))
+            for value in observation_values(values, policy=policy, metrics=metrics,
+                                             stage='observation verification', kind=kind):
+                _fingerprint_value(expected, canonical(value))
+            expected_rows += 1
+        expected_digest = expected.digest()
 
     with owned_resources() as resources:
         folder = resources.enter_context(tempfile.TemporaryDirectory(prefix='observation-check-'))
@@ -252,29 +286,25 @@ def verify_observations(source, output, index, *, policy=DEFAULT_DECODED_POLICY,
                     yield from read_block('observation-rows', block)
                     start += block['count']
 
-            references = resources.enter_context(closing(reference_rows()))
-            sentinel = object()
+            actual = hashlib.sha256()
             checked = 0
-            for expected in observation_rows(source, policy=policy, metrics=metrics, stage='observation verification'):
-                refs = next(references, sentinel)
-                if refs is sentinel or (expected is None) != (refs is None):
-                    raise ValueError('Observation publication changed source values.')
-                if expected is not None:
-                    if not isinstance(refs, list) or len(refs) != len(expected):
-                        raise ValueError('Observation publication changed source values.')
-                    for ref, value in zip(refs, observation_values(expected, policy=policy, metrics=metrics,
-                                                 stage='observation verification', kind=kind), strict=True):
+            with closing(reference_rows()) as references:
+                for refs in references:
+                    if refs is not None and not isinstance(refs, list):
+                        raise ValueError('Invalid observation reference row.')
+                    _fingerprint_row(actual, None if refs is None else len(refs))
+                    for ref in refs or ():
                         if type(ref) is not int or ref < 0:
                             raise ValueError('Invalid observation reference.')
                         metrics['verification_lookups'] = metrics.get('verification_lookups', 0) + 1
                         stored = db.execute('SELECT value FROM observations WHERE id=?', (ref,)).fetchone()
-                        if stored is None or stored[0] != canonical(value):
+                        if stored is None:
                             raise ValueError('Observation publication changed source values.')
-                        del value, stored
-                checked += 1
-                if checked % 65536 == 0:
-                    print(f'Verified source observations: {checked:,}', flush=True)
-            if next(references, sentinel) is not sentinel or checked != index['references']['rows']:
+                        _fingerprint_value(actual, stored[0])
+                    checked += 1
+            if checked != expected_rows or checked != index['references']['rows']:
                 raise ValueError('Unexpected observation row count.')
+            if actual.digest() != expected_digest:
+                raise ValueError('Observation publication changed source values.')
         finally:
             db.close()

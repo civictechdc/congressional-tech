@@ -292,9 +292,11 @@ def typed_observations(schema, identities, occurrences):
 
 def publish_occurrence_assets(source, folder, assets, *, policy, metrics, counts=None):
     from viewer_publication.filename_observations import publish_observations
-    from viewer_publication.filename_exports import publish_occurrence_parquet
-    publish_observations(source, folder, counts=counts, policy=policy, metrics=metrics)
-    flat = publish_occurrence_parquet(source, folder / 'occurrences.parquet', policy=policy, metrics=metrics)
+    from viewer_publication.filename_exports import OccurrenceParquetWriter
+    with OccurrenceParquetWriter(source, folder / 'occurrences.parquet') as writer:
+        publish_observations(source, folder, counts=counts, policy=policy, metrics=metrics,
+                             occurrence_writer=writer)
+    flat = writer.result()
     result = {name: assets.put_file(folder / filename, name=name + suffix)
               for name, filename, suffix in [('observations', 'observations.bin', '.bin'),
                   ('observation_rows', 'observation-rows.bin', '.bin'),
@@ -415,11 +417,9 @@ class NativeSourceAssets:
                                 value = value.lower() if field == 'format' else value
                                 if value:
                                     facets[field][value] = facets[field].get(value, 0) + 1
-                # Existing row/batch admission also governs verification below.
-                fields = [name for name in ('filename', 'source_id', 'document_id') if name in schema.names]
-                counted = sum(len(batch) for batch in bounded_batches(source, columns=fields,
-                    policy=self.policy, metrics=self.metrics, stage='native source leaf verification'))
-                if counted != len(table):
+                # Details already read and admit every source row. Checking the
+                # physical row count needs its footer, not another data scan.
+                if source.metadata.num_rows != len(table):
                     raise ValueError('Viewer source leaf row count differs')
             return dict(rows=len(table), files=files, facets=facets, occurrences_split='source_occurrences' in schema.names)
 

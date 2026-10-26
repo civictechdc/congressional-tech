@@ -222,3 +222,46 @@ def test_native_builder_refuses_dangling_output_link_before_native_reads(tmp_pat
     with pytest.raises(ValueError, match='fresh empty directory'):
         builder.publish_selected(read_catalog(store, native=native), target, review_identities=None)
     assert target.is_symlink() and not native.reads and not (tmp_path / 'missing').exists()
+
+
+
+def test_native_occurrence_browser_and_parquet_assets_share_one_source_traversal(tmp_path):
+    import pyarrow as pa
+    from viewer_publication.filename_native import typed_observations, publish_occurrence_assets
+    from viewer_publication.filename_exports import publish_occurrence_parquet
+    from viewer_publication.filename_observations import publish_observations
+    kind = pa.struct([('label', pa.list_(pa.string())), ('links', pa.list_(pa.string()))])
+    schema = pa.schema([('source_occurrences', pa.list_(kind))])
+    rows = [None, [], [None], [{'label': None, 'links': []}],
+            [{'label': ['José 🏛️', '', None], 'links': ['https://committee.test']}],
+            [{'label': ['one']}, {'label': ['two']}, {'label': ['one']}]]
+    identities = pa.array([f'source-{i}' for i in range(len(rows))])
+    reads = []
+    def selected(identity):
+        reads.append(identity)
+        row = rows[int(identity.rsplit('-', 1)[1])]
+        if row is None:
+            return None
+        values = pa.array(row, type=kind)
+        class Parts:
+            def __len__(self): return len(values)
+            def __iter__(self): return iter((values,))
+        return Parts()
+    source = typed_observations(schema, identities, selected)
+    combined, separate = tmp_path / 'combined', tmp_path / 'separate'
+    combined.mkdir(); separate.mkdir()
+    metrics = {}
+    assets = ViewerAssets(tmp_path / 'assets')
+    result = publish_occurrence_assets(source, combined, assets, policy=DEFAULT_DECODED_POLICY, metrics=metrics)
+    assert reads == identities.to_pylist()
+    # Independent maintained publishers characterize byte-for-byte output.
+    publish_observations(source, separate)
+    flat = publish_occurrence_parquet(source, separate / 'occurrences.parquet')
+    for name in ('observations.bin', 'observation-rows.bin', 'observation-index.json', 'occurrences.parquet'):
+        assert (combined / name).read_bytes() == (separate / name).read_bytes()
+    assert result['occurrences']['row_slices'] == flat['row_slices']
+    assert result['occurrences']['browse_ranges'] == flat['browse_ranges']
+    assert result['occurrences']['row_slices'][:3] == [[0, -1], [0, 0], [0, 1]]
+    with pq.ParquetFile(combined / 'occurrences.parquet') as file:
+        assert file.read()['owner_id'].to_pylist() == ['source-2', 'source-3', 'source-4'] + ['source-5'] * 3
+    assert metrics['observation_serializations'] == 6
