@@ -109,3 +109,31 @@ Parent integration logs were inspected separately: `/tmp/ct-merge-publication-fi
 No actionable findings in the inspected combined source. All behavior-critical paths in this scope have relevant assertions; no missing changed-path coverage was identified. The supported inventory is a finite measured class, not proof of the next real catalog's exact object count. Hosted runtime, actual complete inventory, transfer time, and deployed behavior remain qualification work outside this source review.
 
 **VERDICT: APPROVE.** The combined implementation removes the indexed-lookup and fixed-capacity blockers while preserving exact state accounting, original write conditions, bounded recovery evidence, and the acknowledged-upload policy. Coverage: **ADEQUATE** for this local scoped review. Confidence: **HIGH** for the traced behavior; production readiness is not claimed. No fix commit is required.
+
+## Final-source delta review
+
+**Final source SHA:** `6183938fcb2b0842d5e1f59072383aa7dd251d32`.
+
+The owned review branch was rebased onto this exact revision, preserving the report as `fd0bfc46155b0fe1b053b071d5f02cc6ebb37013`. Its previous report tip is preserved at `codex/v6-review-before-final-source` → `5232a908c91f3249dca77ec614370baf5bddc21d`. No source fix was replayed. This addendum inspects only the relevant `ad222085..6183938f` delta; the original trace and 221-test result above remain evidence for their stated earlier SHA.
+
+| Relevant new change | Trace and boundary review | Result |
+| --- | --- | --- |
+| Maintained-source fingerprint coverage (`c4326f58`) | `release_identity.source_files` now includes the maintained R2 publisher, filename publisher, constants, and all DocSpec client Python sources (`release_identity.py:28–43`). Existing `local.py` inclusion remains at `:49`. The source cache still checks file custody before reuse and after hashing. `test_release_identity.py:41–59` changes each added maintained source and observes a changed identity. | APPROVE: closes missing hash inputs without changing continuation limits or transition behavior. |
+| Absolute preparation deadline (`a82cfb55`) | `prepare_workflow_resume.run_preparation` derives one deadline from the saved job start, rechecks it after `verify_checkpoint`, and uses only the remaining interval for the child wait (`prepare_workflow_resume.py:92–114`). The new test advances a fake clock by 70 or 110 seconds in a 100-second budget and asserts a 30-second wait or refusal before launch (`test_preparation_checkpoint.py:355`). | APPROVE for this caller boundary: checkpoint verification consumes the existing job budget. |
+| Occurrence writer byte admission (`6183938f`) | `filename_native.publish_occurrence_assets` forwards its policy and metrics to the shared writer (`filename_native.py:293–298`). Standalone export does the same (`filename_exports.py:448–457`). `OccurrenceParquetWriter.append` counts retained Python tree bytes, refuses an oversized single row, flushes existing pending rows before the projected buffer exceeds policy, and resets pending-byte accounting after flush (`filename_exports.py:346–354`, `:390–427`). Order/count/slice bookkeeping is unchanged; already-decoded values still feed the combined writer. New tests cover both standalone and combined paths (`test_filename_observations.py:342–386`). | APPROVE: both paths enforce the retained-row byte budget before adding an oversized row; combined failure issues no asset identities. This is not an assertion that all Arrow/native process memory equals the Python buffer metric. |
+
+No changes in this delta affect the component index/query, shared continuation limits/accounting/replay, local journal implementation, or status reader. The raw capture-cache/interpreted-file and GPO timestamp fixes were not re-audited here; those remain their owners' review scope. No actionable regression or additional fix was found in this delta.
+
+Executed **14 focused delta checks**, all passed in **1.23 seconds**, at the final source bytes. Log: `/tmp/ct-index-final-delta-review-20261026.log`. The command reused the explicit worktree-first Python path above and selected:
+
+```sh
+python -m pytest -q -p no:cacheprovider \
+  packages/viewer_publication/tests/test_release_identity.py \
+  packages/viewer_publication/tests/test_filename_observations.py::test_flat_occurrence_buffer_flushes_by_retained_bytes_before_row_limit \
+  packages/viewer_publication/tests/test_filename_observations.py::test_flat_occurrence_refuses_single_row_larger_than_writer_byte_budget \
+  scripts/publication/tests/test_preparation_checkpoint.py::test_checkpoint_verification_consumes_the_elapsed_job_budget
+```
+
+Parent follow-up logs were also inspected: 264 cross-cutting Python checks in `/tmp/ct-post-review-integration-20261026.log`, 126 renderer/native checks in `/tmp/ct-post-review-occurrence-20261026.log`, and 154 JavaScript checks in `/tmp/ct-post-review-js-20261026.log`. These overlapping focused runs are not additional unique tests to add to the earlier suite. They are parent-run local evidence, not hosted or deployed proof. No broad audit, full-catalog rebuild, remote mutation, operational-setting change, or source modification was performed by this final review.
+
+**FINAL VERDICT: APPROVE for source `6183938fcb2b0842d5e1f59072383aa7dd251d32` in this review scope.** No unresolved source-review issue or fix commit. Hosted/deployed qualification remains separate; the filename-publisher and Pages operational settings were left untouched.
