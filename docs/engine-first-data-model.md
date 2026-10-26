@@ -335,7 +335,7 @@ One row per `(filename, source_url, catalog_version)`.
 
 ### 6.4 Reference Inputs
 
-Committees, members, their terms, current committee rosters and bills come from spicy-regs, which owns their raw records and provenance. They are not lake tables: each publish pins the current immutable generation of each family (`data.spicygov.ai/generations/<family>/<digest>/<table>.parquet`, named by the family's pointer), and the model reads those files directly.
+Committees, members, their terms, current committee rosters and bills come from spicy-regs, which owns their raw records and provenance. They are not lake tables: each publish pins each family's current immutable generation as spicy-regs' index `data.spicygov.ai/publication.v2.json` names it (the older `publication.json` names pruned generations), and the model reads the files that index lists for each table, `generations/<family>/<digest>/<table>.parquet`.
 
 | spicy-regs table | Columns the model reads | Gives |
 |---|---|---|
