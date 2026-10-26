@@ -101,6 +101,7 @@ class Store:
         self.writes.append(Key)
         self.conditions.append((Key,kw.get('IfMatch'),kw.get('IfNoneMatch')))
         self.data[Key] = Body if isinstance(Body,bytes) else Body.read()
+        return {'ETag': 'viewer-v1'}
 
     def upload_file(self, path, bucket, key, ExtraArgs):
         self.put_object(Bucket=bucket, Key=key, Body=Path(path).read_bytes())
@@ -124,7 +125,7 @@ def publish(store, prepared, monkeypatch, **kwargs):
     return publication.upload(store, root, manifest, previous_etag=None, selected_etag='raw-v1', probe=lambda *a: None, **kwargs)
 
 
-def test_complete_upload_selects_only_after_readback_and_keeps_catalog_identity(prepared, monkeypatch):
+def test_complete_upload_selects_after_acknowledgments_and_keeps_catalog_identity(prepared, monkeypatch):
     store = Store(prepared[1])
     result = publish(store, prepared, monkeypatch)
     assert result['status'] == 'published'
@@ -135,22 +136,69 @@ def test_complete_upload_selects_only_after_readback_and_keeps_catalog_identity(
     assert 'indexes/catalog.json' not in store.writes
 
 
-def test_corrupt_readback_does_not_select_partial_publication(prepared, monkeypatch):
-    store = Store(prepared[1]); store.corrupt = True
-    with pytest.raises(ValueError, match='readback'):
-        publish(store, prepared, monkeypatch)
-    assert 'viewer-publications/manifest.json' not in store.data
-
-
-def test_interrupted_download_does_not_select_partial_publication(prepared, monkeypatch):
+def test_successful_upload_never_reads_back_payloads(prepared, monkeypatch):
     store = Store(prepared[1])
-    def interrupted(bucket, key, path):
-        Path(path).write_bytes(b'partial response')
-        raise OSError('connection lost')
-    monkeypatch.setattr(store, 'download_file', interrupted)
+    original = store.get_object
+    def read(**kwargs):
+        assert not kwargs['Key'].endswith(('.parquet', '.bin')), 'Routine payload readback'
+        return original(**kwargs)
+    monkeypatch.setattr(store, 'get_object', read)
+    assert publish(store, prepared, monkeypatch)['status'] == 'published'
+    assert not store.downloads
+
+
+def test_successful_upload_does_not_depend_on_download_helper(prepared, monkeypatch):
+    store = Store(prepared[1])
+    monkeypatch.setattr(store, 'download_file', lambda *a: pytest.fail('Routine payload download'))
+    assert publish(store, prepared, monkeypatch)['status'] == 'published'
+    assert not store.downloads
+
+
+def test_failed_payload_put_prevents_selection_without_retry(prepared, monkeypatch):
+    store = Store(prepared[1])
+    original, attempts = store.put_object, []
+    def put(**kwargs):
+        if kwargs['Key'].endswith('browse.parquet'):
+            attempts.append(kwargs['Key'])
+            raise OSError('connection lost')
+        return original(**kwargs)
+    monkeypatch.setattr(store, 'put_object', put)
     with pytest.raises(OSError, match='connection lost'):
         publish(store, prepared, monkeypatch)
-    assert 'viewer-publications/manifest.json' not in store.data
+    assert len(attempts) == 1
+    assert publication.PREFIX + 'manifest.json' not in store.data
+    assert not store.downloads
+
+
+@pytest.mark.parametrize('outcome', ['committed', 'missing', 'corrupt'])
+def test_uncertain_payload_put_is_reconciled_once_and_never_resent(prepared, monkeypatch, outcome):
+    from viewer_publication.client import GuardedPublicationClient
+    store = Store(prepared[1])
+    original, attempts = store.put_object, []
+    def put(**kwargs):
+        if kwargs['Key'].endswith('browse.parquet'):
+            attempts.append(kwargs['Key'])
+            if outcome != 'missing':
+                original(**kwargs)
+                store.corrupt = outcome == 'corrupt'
+            raise TimeoutError('upload acknowledgment lost')
+        return original(**kwargs)
+    monkeypatch.setattr(store, 'put_object', put)
+    proxy = GuardedPublicationClient(store, guard=lambda: None,
+        journal=lambda *a: None, after_write=lambda *a: None)
+    monkeypatch.setattr(publication, 'open_public', lambda request, **kw:
+        Body(store.data[publication.PREFIX + 'manifest.json']))
+    root, manifest = prepared
+    options = dict(previous_etag=None, selected_etag='raw-v1', probe=lambda *a: None)
+    if outcome == 'committed':
+        assert publication.upload(proxy, root, manifest, **options)['status'] == 'published'
+    else:
+        with pytest.raises(RuntimeError, match='outcome is uncertain'):
+            publication.upload(proxy, root, manifest, **options)
+        assert publication.PREFIX + 'manifest.json' not in store.data
+    assert len(attempts) == 1 and store.reads.count(attempts[0]) == 1
+    assert store.writes.count(attempts[0]) == (0 if outcome == 'missing' else 1)
+    assert not store.downloads
 
 
 def test_raw_catalog_advancing_during_upload_prevents_stale_selection(prepared, monkeypatch):
@@ -165,11 +213,37 @@ def test_other_viewer_publisher_wins_without_being_overwritten(prepared, monkeyp
     assert json.loads(store.data['viewer-publications/manifest.json']) == {'newer': True}
 
 
+class Public(Body):
+    """Model GET, HEAD and four-byte Range replies with real HTTP metadata."""
+    def __init__(self, payload, *, status=200, headers=None, head=False):
+        super().__init__(payload)
+        self.status, self.head = status, head
+        self.headers = {'Access-Control-Allow-Origin': '*', 'Content-Length': str(len(payload)), **(headers or {})}
+
+    def read(self, *args):
+        assert not self.head, 'HEAD smoke checks must not download a body'
+        return super().read(*args)
+
+
+def public_response(store, request):
+    key = publication.PREFIX + request.full_url.removeprefix(publication.PUBLIC_URL)
+    payload = store.data[key]
+    if request.get_method() == 'HEAD':
+        return Public(b'', headers={'Content-Length': str(len(payload))}, head=True)
+    if request.get_header('Range'):
+        assert request.get_header('Range') == 'bytes=0-3'
+        return Public(payload[:4], status=206, headers={
+            'Content-Range': f'bytes 0-3/{len(payload)}', 'Access-Control-Expose-Headers': 'Content-Range'})
+    return Public(payload)
+
+
 def public_store(monkeypatch, store):
-    class Public(Body):
-        headers = {'Access-Control-Allow-Origin': '*'}
-    monkeypatch.setattr(publication, 'open_public', lambda request, **kw: Public(
-        store.data[publication.PREFIX + request.full_url.removeprefix(publication.PUBLIC_URL)]))
+    requests = []
+    def read(request, **kwargs):
+        requests.append(request)
+        return public_response(store, request)
+    monkeypatch.setattr(publication, 'open_public', read)
+    return requests
 
 
 def seed_recoveries(prepared, monkeypatch, accepted=None):
@@ -269,34 +343,64 @@ def test_public_reads_retry_transient_service_failures(monkeypatch):
     assert len(attempts) == 3
 
 
-@pytest.mark.parametrize('status', ['corrupt', 'missing', 'no_cors'])
-def test_public_recovery_failure_prevents_first_selection(prepared, monkeypatch, status):
+@pytest.mark.parametrize('failure', ['wrong_length', 'missing', 'no_cors', 'bad_status'])
+def test_public_recovery_smoke_failure_prevents_first_selection(prepared, monkeypatch, failure):
     store = Store(prepared[1])
-    class Public(Body):
-        headers = {'Access-Control-Allow-Origin': '*'}
     def read(request, **kwargs):
         key = publication.PREFIX + request.full_url.removeprefix(publication.PUBLIC_URL)
         if key.endswith('recovery-status.json'):
-            if status == 'missing':
+            assert request.get_method() == 'HEAD'
+            if failure == 'missing':
                 raise OSError('recovery unavailable')
-            result = Public(b'corrupt' if status == 'corrupt' else store.data[key])
-            if status == 'no_cors':
-                result.headers = {}
+            result = public_response(store, request)
+            if failure == 'wrong_length':
+                result.headers['Content-Length'] = str(int(result.headers['Content-Length']) + 1)
+            elif failure == 'no_cors':
+                result.headers.pop('Access-Control-Allow-Origin')
+            else:
+                result.status = 503
             return result
-        return Public(store.data[key])
+        return public_response(store, request)
     monkeypatch.setattr(publication, 'open_public', read)
     with pytest.raises((ValueError, OSError), match='recovery'):
         publication.upload(store, prepared[0], prepared[1], previous_etag=None, selected_etag='raw-v1')
     assert publication.PREFIX + 'manifest.json' not in store.data
+    assert not store.downloads
 
 
-def test_plain_sdk_payloads_use_original_conditional_single_put_and_full_readback(prepared,monkeypatch):
+def test_public_parquet_magic_smoke_failure_prevents_first_selection(prepared, monkeypatch):
+    store = Store(prepared[1])
+    def read(request, **kwargs):
+        if request.get_header('Range'):
+            result = public_response(store, request)
+            return Public(b'FAIL', status=206, headers=result.headers)
+        return public_response(store, request)
+    monkeypatch.setattr(publication, 'open_public', read)
+    with pytest.raises(ValueError, match='Parquet range'):
+        publication.upload(store, prepared[0], prepared[1], previous_etag=None, selected_etag='raw-v1')
+    assert publication.PREFIX + 'manifest.json' not in store.data
+
+
+def test_public_smoke_checks_use_metadata_and_four_byte_payload_ranges(prepared, monkeypatch):
+    store = Store(prepared[1])
+    requests = public_store(monkeypatch, store)
+    assert publication.upload(store, prepared[0], prepared[1], previous_etag=None, selected_etag='raw-v1')['status'] == 'published'
+    recovery = [request for request in requests if request.full_url.endswith('recovery-status.json')]
+    assert len(recovery) == 1 and recovery[0].get_method() == 'HEAD'
+    payloads = [request for request in requests if request.full_url.endswith(('.parquet', '.bin'))]
+    assert payloads and all(request.get_method() == 'HEAD' or request.get_header('Range') == 'bytes=0-3'
+                            for request in payloads)
+    assert not store.downloads
+
+
+def test_plain_sdk_payloads_use_original_conditional_single_put_without_readback(prepared,monkeypatch):
     store=Store(prepared[1])
     monkeypatch.setattr(store,'upload_file',lambda *a,**kw:pytest.fail('managed multipart upload bypass'))
     assert publish(store,prepared,monkeypatch)['status']=='published'
     payloads=[condition for condition in store.conditions if condition[0].endswith(('.parquet','.bin'))]
     assert payloads and all(item[2]=='*' and item[1] is None for item in payloads)
-    assert all(key in store.downloads for key,_,_ in payloads)
+    assert not store.downloads
+    assert all(key not in store.reads for key, _, _ in payloads)
 
 
 def test_sdk_retry_policy_refuses_before_any_publication_write(prepared,monkeypatch):
