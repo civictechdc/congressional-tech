@@ -107,6 +107,9 @@ Five conformance classes each conform by meeting the requirements that apply to 
 **import run**
 : A bulk run that loaded older captures, listed in the import-run registry.
 
+**witness appearance**, **witness key**
+: One witness listed at one meeting; and its 8-byte key, from the meeting and the recorded name, which a later witness table keys on ([[DATA-MODEL]] §6.7).
+
 **document date**, **capture date**
 : When a document is dated, and when the system first fetched one of its files.
 
@@ -188,6 +191,9 @@ LAKE (Iceberg, append-only)
   filename_readings  one row per (filename, URL, catalog)         O(new pairs)
   committee_records  one row per committee in an API response     O(new API bodies)
   meeting_records    one row per meeting in a meeting response    O(new meeting bodies)
+  appearance_records one row per witness at a meeting              O(new meeting bodies)
+  member_records     one row per member term                      O(new member bodies)
+  committee_member_records  one row per committee seat on a roster O(new roster bodies)
         │
         ▼  docspec-rs: one job of named SQL steps, deterministic export
 RELEASE (immutable)
@@ -214,7 +220,8 @@ SITE (static) → pointer → release → list (whole) / detail, links, sources,
 | Captures ingest | lake producer | §8.2; DM §6.1 | engine |
 | Parsers (sniff, html, xml, json, fingerprint) | lake producer | §8.3; DM §6.2 | engine, object store |
 | Filename reader | lake producer | §8.4; DM §6.3 | engine |
-| Committee and meeting parsers | lake producer | §8.5; DM §6.4–6.5 | engine |
+| Committee and meeting parsers | lake producer | §8.5; DM §6.4–6.5, §6.7 | engine |
+| Member and roster parsers | lake producer | §8.5; DM §6.8–6.9 | engine |
 | Model | publisher | §9; DM §7 | engine, registries, model profile |
 | Publish job | publisher | §10; DM §8 | engine, object store, canary |
 | Reader | reader | §11 | HTTP range client |
@@ -308,9 +315,13 @@ One row per `(body, parser, parser_version)`; each media family has its own pars
 
 One row per `(filename, source_url, catalog_version)`: what the filename parser extracts, as typed facets and keys plus a fold ([[DATA-MODEL]] §6.3). These depend on the filename and URL, not the body, so they cannot live in `readings`, and their work list depends on raw and provenance only. A new catalog version is one background job.
 
-### 8.5 Committee and Meeting Records
+### 8.5 Committee, Meeting, Witness and Member Records
 
-Every committee and meeting response MUST come through the raw writer like any other fetch. `committee_records` and `meeting_records` ([[DATA-MODEL]] §6.4–6.5) let pages show committee names instead of codes, and a hearing's title, date, type and committee.
+Every committee, meeting, member and roster response MUST come through the raw writer like any other fetch. Their records ([[DATA-MODEL]] §6.4–6.5, §6.7–6.9) give pages:
+- committees by Congress, with type and hierarchy;
+- a hearing's title, date, status, sittings and place, its committees and their roles, the bills, nominations and treaties it covers, and its recording links;
+- its witnesses, keyed per meeting and not yet matched across meetings, with the documents each submitted;
+- members' names, party, state and terms, and committee rosters, whose history accumulates from the first capture because each roster fetch is a dated observation.
 
 ### 8.6 Maintenance
 
@@ -358,7 +369,7 @@ Joins between links, recoveries and source files use `url_key`, which unwraps re
 
 ### 10.1 Release Files
 
-The model's job writes the release files as Parquet [[PARQUET]] ([[DATA-MODEL]] §8.1); the six the site reads are linked by the list row number:
+The model's job writes the release files as Parquet [[PARQUET]] ([[DATA-MODEL]] §8.1); the site's files link by list row number and by the keys of hearings, bills, members, witnesses and committees:
 
 | File | Purpose |
 |---|---|
@@ -367,7 +378,11 @@ The model's job writes the release files as Parquet [[PARQUET]] ([[DATA-MODEL]] 
 | `links.parquet` | Public link key to list row |
 | `sources.parquet` | Where the document was published, and which page listed it |
 | `recoveries.parquet` | A document's recoveries |
-| `meetings.parquet` | Hearing titles, dates, types and committees |
+| `meetings.parquet` | Hearings: title, date, type, status, sittings and place, committees and their roles, what they cover, recording links |
+| `witnesses.parquet` | Who testified at each hearing, for whom, on which panel |
+| `committees.parquet` | Committees by Congress: name, type, parent |
+| `members.parquet` | Members: name, party, state, terms |
+| `rosters.parquet` | Who sat on each committee, by observed dates |
 | `url_state.parquet`, `capture_scope.json` | Capture's schedule, queue and scope, read by the capture job |
 
 - **Documents only.** There are no per-copy pages.
@@ -423,7 +438,7 @@ From the second flip on, at least the live and last-good releases exist. The mai
 
 ### 11.1 Reads
 
-The site reads pointer → release manifest → `list`, then `detail`, `links`, `sources`, `recoveries` and `meetings` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent page reads; link lookups also use the column index.
+The site reads pointer → release manifest → `list`, then `detail`, `links`, `sources`, `recoveries`, `meetings`, `witnesses`, `committees`, `members` and `rosters` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent page reads; link lookups also use the column index.
 
 ### 11.2 Devices and Speed
 
@@ -452,7 +467,7 @@ The reader shows dates and hearings as follows:
 
 - **Capture date:** the reader MUST label it by `date_kind` ([[DATA-MODEL]] §8.1): `captured` as "Captured <date>", `import_day` as "In our archive since <date> (original capture date not recorded)", `unknown` as "Capture date not recorded".
 - **Document date:** the reader MUST show it with its source and, for a document a committee removed from its hearing page, "Removed from the hearing page by the committee on <date>".
-- **Hearings, bills, members and versions.** The hearing, bill and member filters MUST match a document when the key is any element of its `meeting_keys`, `measure_keys` or `bioguide_ids`; documents sharing a `version_keys` entry are shown as each other's versions, by capture date. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
+- **Hearings, bills, members, witnesses and versions.** The hearing, bill, member and witness filters MUST match a document when the key is any element of its `meeting_keys`, `measure_keys`, `bioguide_ids` or `witness_keys`; documents sharing a `version_keys` entry are shown as each other's versions, by capture date. A hearing lists its witnesses with the documents each submitted; a member's page joins their terms, roster seats, witness appearances and documents by `bioguide_id`; a committee's page joins its roster, hearings and documents by system code. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
 
 ### 11.7 Origin
 

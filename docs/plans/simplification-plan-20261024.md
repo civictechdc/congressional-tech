@@ -73,7 +73,7 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 | A | Reader, canary and contract test, site | F0 and the hand-built fixture |
 | B | Raw-writer components | §4, item 1 |
 | C | Engine | M1, M2, S1 |
-| D | Lake producers | C2, B2; B13 for D2; B15 for D4 and D5 |
+| D | Lake producers | C2, B2; B13 for D2; B15 for D4 and D5; B17 for D7 |
 | E | Model | S1, S2, C1, C3, C4, D |
 | F | Publish job, capture scheduler, switch | A, E, B13 |
 
@@ -151,6 +151,9 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 | S1 | An incrementally maintained lake and a clean rebuild, after a registry change and after a table rebuilt at a new schema | Byte-identical releases |
 | S2 | One body under two filenames | Two source files in one document, which shows the saved file's name |
 | S2 | Two editions served at one address | Two documents sharing a `version_keys` entry |
+| S2 | A House meeting XML record with two panels, a member witness and witness documents; one witness name at two meetings | Two panels; the member keeps the source's `bioguide_id`; each document carries its witness's `witness_key`; two keys for the name, not matched |
+| S2 | A postponed meeting on a bill, recorded by House XML and Congress.gov | The House XML record is current; `status` postponed; the bill in `subject_keys` |
+| S2 | A member on a roster in two fetches, then absent from the third | One span from the first fetch to the second |
 | S2 | A file named only by its download header; a URL with `?file=a.pdf&name=b.pdf` | The header's name (`filename*` first); `a.pdf` |
 | S2 | An exact copy and a provider's saved-text copy at one URL | The exact copy is the saved file |
 | S2 | A file whose kind only the publisher gives, by `doc_type`, and another by link text only | Each gets the publisher-kind registry's kind |
@@ -196,7 +199,7 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 6. **Dates:** the document date and capture date in list rows, so same-filename editions read apart; on the document page, the labels of [[ARCHITECTURE]] §11.6.
 7. **Recoveries** ([[ARCHITECTURE]] §11.5; [[DATA-MODEL]] §8.1), each on the page the attachment rule gives it.
 8. **Sources:** where the document was published and which page listed it, from `sources`.
-9. **Connections:** filter by hearing, bill and member, and sort by document date; list a hearing's documents and a document's other versions; link out to the GPO record, the bill and the member.
+9. **Connections:** filter by hearing, bill, member and witness, and sort by document date; a hearing's witnesses with what each submitted, its status, sittings and recordings; a document's other versions; a member's terms, committees, appearances and documents; a committee's roster, hearings and documents; link out to the GPO record, the bill and the member.
 10. **Removed by review** ([[DATA-MODEL]] §7.9).
 11. **Speed, measured then fixed:** measure startup, search, detail and heap on real phones and desktops with F0, then write those targets into the canary and contract test. F0's size makes these targets conservative; re-measure on the first engine-built release.
 
@@ -242,6 +245,7 @@ These components survive, so they are bound now.
 14. **Re-fetch the cut-off files** (after B2, through the spooled fetcher): every URL with a copy cut off at 64 MiB and no complete 2xx copy, 62 to 64 by the snapshot index depending on how a complete copy is counted; the receipts decide. The cut-off copies stay in raw.
 15. **Committee and meeting fetches through the fetcher** like every other fetch: the Congress.gov committee and meeting APIs and the House and Senate meeting inventories ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5). An incremental relist takes its window from the `last_good_at` of the API list URL it pages through, and pages to the end of the list.
 16. **Fetch the wrapped files** (after D2, from the wrapper pages' `html` readings): the file links of download-wrapper pages, *est.* 8,800 testimony and statement PDFs that were never fetched, ahead of the model's queue.
+17. **Member and roster fetches** (after the coverage check of §8): the chosen member and roster sources through the fetcher, rosters on a recheck interval short enough to date membership changes.
 
 **Done when:**
 - every older receipt is cleaned and verified;
@@ -296,10 +300,11 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
    - then M2's link join and grouping, repeated on the real links and fingerprints.
 3. **Filename reader:** a producer that runs the filename parser over its work list and appends through the engine.
 4. **Committee and meeting parsers, committees** (needs B15): the JSON parser, once per response and version.
-5. **Committee and meeting parsers, meetings** (needs B15): the JSON and XML parsers, once per response and version.
+5. **Committee and meeting parsers, meetings** (needs B15): the JSON and XML parsers, once per response and version, writing `meeting_records` with sittings, status, committees and roles, subjects and video links, and `appearance_records` with each witness's key and document groups.
 6. Enable Basin's catalog-level compaction and snapshot expiration.
+7. **Member and roster parsers** (needs B17): `member_records` and `committee_member_records`, once per response and version.
 
-**Done when:** all five tables exist with complete backfills at the pinned versions, and both `captures` comparisons pass.
+**Done when:** every lake table exists with complete backfills at the pinned versions, and both `captures` comparisons pass.
 
 ### 6.5 Track E: Model
 
@@ -347,7 +352,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 - **news_lake** keeps the DocSpec backend and the engine's lifecycle store. No work until it adopts the three layers.
 - **The freeze:** no browser or engine performance work beyond this plan until there is a user or a measured failure on real data.
 - **Committee explorer and weekly retention onto incremental tables:** the approach conflicts with the design. Re-scope it before starting.
-- **Considered, not chosen,** so not re-proposed without new information: showing the original link's last status (36,768 documents' URLs last returned 404 or 410), showing saved-file size (2,467 files over 50 MB), witness links from House meeting XML, and saving resolved links between publishes (revisit only if a measured reprint shows link resolution is the slow step).
+- **Considered, not chosen,** so not re-proposed without new information: showing the original link's last status (36,768 documents' URLs last returned 404 or 410), showing saved-file size (2,467 files over 50 MB), and saving resolved links between publishes (revisit only if a measured reprint shows link resolution is the slow step).
 - **Parquet variant for the folds:** revisit when all three hold:
   - an iceberg-rust release writes variant through its Parquet writer (0.10.1, the pinned release, has none; 0.11 is expected to add it);
   - Basin Catalog accepts format-version 3 tables;
@@ -374,6 +379,8 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | The numbers in the specifications reproduce: each review round found 10–20 of about 370 wrong | Each load-bearing number re-derived from its committed script before a rule relies on it | Corrections in place |
 | Speed and heap targets on real phones and desktops | A11 | The canary's and contract test's thresholds |
 | Whether `list` can carry titles within the phone heap budget | A11, on F0 | Search by title |
+| Which maintained member and roster sources cover enough, and how far back (candidates: `unitedstates/congress-legislators`, the Congress.gov member API, the House Clerk and Senate membership XML) | A coverage check before B17 | The sources; rosters before the first capture stay unknown |
+| How often one witness gets two keys at one meeting (spelling, titles, initials) | A sample of House and Congress.gov witness lists in S2 | What the later witness table must match |
 
 ## 9. References
 
