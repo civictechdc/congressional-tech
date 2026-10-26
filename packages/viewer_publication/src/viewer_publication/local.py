@@ -1,4 +1,4 @@
-"""Local recovery authority: synced events, with disposable phase checkpoints.
+"""Local recovery authority: synced events, including phase checkpoints.
 
 No remote journal or artifact service participates in this deliberately local
 route. A partial event is a refusal; it is never silently truncated or retried.
@@ -68,7 +68,7 @@ def read_local_journal(path):
     return value, dict(events=sequence, bytes=total_bytes, previous=previous, state_bytes=state_bytes)
 
 class LocalContinuation(state.Continuation):
-    """events.jsonl owns recovery; continuation.json is a derived checkpoint."""
+    """events.jsonl owns recovery; no duplicate continuation.json is written."""
     def __init__(self, root, binding, *, resume=False):
         self.sequence = 0
         self.previous = None
@@ -86,6 +86,13 @@ class LocalContinuation(state.Continuation):
         record = dict(version=1, sequence=self.sequence, previous=self.previous,
                       at=datetime.now(timezone.utc).isoformat(), event=event, value=value)
         raw = encoded(record) + b'\n'
+        checkpoint_bytes = None
+        if event == 'local_checkpoint':
+            # Subtract the small metadata wrapper from the serialized record;
+            # the full state needs encoding only once, including for admission.
+            checkpoint_bytes = len(raw) - len(encoded(dict(record, value=None))) + len(b'null')
+            if checkpoint_bytes > state.MAX_STATE_BYTES:
+                raise ValueError('Publication continuation exceeds state byte limit')
         limit = MAX_LOCAL_RECORD_BYTES if event == 'local_checkpoint' else state.MAX_EVENT_BYTES
         if len(raw) > limit or self.sequence >= MAX_LOCAL_EVENTS or self.total_bytes + len(raw) > MAX_LOCAL_JOURNAL_BYTES:
             raise ValueError('Local publication journal exceeds limit')
@@ -102,6 +109,7 @@ class LocalContinuation(state.Continuation):
         self.sequence += 1
         self.total_bytes += len(raw)
         self.previous = hashlib.sha256(raw).hexdigest()
+        return checkpoint_bytes
 
     def _restore(self):
         value, receipt = read_local_journal(self.journal_path)
@@ -112,12 +120,7 @@ class LocalContinuation(state.Continuation):
     def flush(self):
         with self.lock:
             state.validate_state(self.value)
-            size = len(encoded(self.value)) + 1
-            if size > state.MAX_STATE_BYTES:
-                raise ValueError('Publication continuation exceeds state byte limit')
-            self._append('local_checkpoint', self.value)
-            self._state_bytes = size
-            super().flush()
+            self._state_bytes = self._append('local_checkpoint', self.value)
 
     def record(self, event, value):
         with self.lock:

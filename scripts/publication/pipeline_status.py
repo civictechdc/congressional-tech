@@ -290,7 +290,7 @@ def main(argv=None):
     parser.add_argument('--progress', default=DEFAULT_PROGRESS, help='Existing heartbeat URL or saved JSON path')
     parser.add_argument('--github-json', type=Path, help='Saved GitHub REST run response for offline inspection')
     parser.add_argument('--previous-progress', type=Path, help='Earlier saved heartbeat; enables monotonicity checks')
-    parser.add_argument('--continuation', type=Path, help='Existing continuation.json; attribution requires run/attempt/revision')
+    parser.add_argument('--continuation', type=Path, help='Saved continuation.json or local events.jsonl; attribution requires run/attempt/revision')
     parser.add_argument('--json', action='store_true')
     parser.add_argument('--verify-publication', action='store_true')
     parser.add_argument('--raw-manifest', help='Current raw selector URL or explicitly saved raw selector')

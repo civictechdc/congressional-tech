@@ -261,7 +261,7 @@ def test_local_event_status_reads_new_intent_without_mutation_or_checkpoint(tmp_
     run = LocalContinuation(tmp_path / 'attempt', {'batch': 'local'})
     key = 'viewer-publications/manifest.json'
     run.record('publication_write_intent', dict(key=key, bytes=3, sha256='a' * 64, if_none_match='*'))
-    assert json.loads(run.path.read_bytes())['writes'] == {}
+    assert not run.path.exists()
     before = {str(p): p.read_bytes() for p in run.root.iterdir()}
     monkeypatch.setattr(LocalContinuation, '__init__', lambda *args, **kwargs: pytest.fail('Status constructed mutable continuation'))
     observed = status.continuation(run.path, ('123', '2', REVISION))
@@ -272,8 +272,9 @@ def test_local_event_status_reads_new_intent_without_mutation_or_checkpoint(tmp_
     assert local['remote_reconciliation'] == 'not_performed'
     assert observed['public_readback'] == 'not_checked' and observed['accepted_outputs'] == []
     assert before == {str(p): p.read_bytes() for p in run.root.iterdir()}
-    run.path.unlink()
+    run.path.write_text('stale derived checkpoint')
     assert status.continuation(run.path, ('123', '2', REVISION)) == observed
+    assert status.continuation(run.journal_path, ('123', '2', REVISION)) == observed
     with run.journal_path.open('ab') as stream: stream.write(b'partial')
     with pytest.raises(ValueError, match='Incomplete'):
         status.continuation(run.path, ('123', '2', REVISION))

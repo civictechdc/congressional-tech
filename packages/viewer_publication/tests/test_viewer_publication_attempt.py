@@ -123,7 +123,8 @@ def test_preparation_hashes_every_partition_and_rejects_same_size_corruption(rea
     path = next(root / relative for relative in shards if (root / relative).stat().st_size)
     raw = bytearray(path.read_bytes()); raw[5] ^= 1; path.write_bytes(raw)
     with pytest.raises(ValueError, match='file changed'):
-        attempts.verify_prepared(publisher, root)
+        publish(ready)
+    assert not ready[0].puts
 
 
 def test_no_artifact_means_no_public_or_journal_write(ready):
@@ -836,3 +837,23 @@ def test_prepared_verification_reuses_size_validation_membership_scan(ready, mon
     monkeypatch.setattr(Path, 'rglob', counted)
     attempts.verify_prepared(publisher, root)
     assert scans == ['*']
+
+
+@pytest.mark.parametrize('resume', [False, True])
+def test_publication_verifies_inventory_and_restores_continuation_once(ready, monkeypatch, resume):
+    if resume:
+        assert publish(ready)['status'] == 'published'
+    restored, inventories = [], []
+    restore = Continuation._restore
+    verify = attempts.verify_inventory
+    def counted_restore(run):
+        restored.append(run.root)
+        return restore(run)
+    def counted_inventory(*args, **kwargs):
+        inventories.append(True)
+        return verify(*args, **kwargs)
+    monkeypatch.setattr(Continuation, '_restore', counted_restore)
+    monkeypatch.setattr(attempts, 'verify_inventory', counted_inventory)
+    options = dict(resume=True, attempt=ready[2]['attempt']) if resume else {}
+    assert publish(ready, **options)['status'] == 'published'
+    assert restored == [ready[1]] and inventories == [True]
