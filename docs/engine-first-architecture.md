@@ -5,7 +5,7 @@
 ## Abstract
 
 - **Decides** the behavior of a system that captures congressional source documents and publishes a static public explorer over them: raw writing (§7), the lake (§8), the model's intent (§9), publish (§10), the site (§11), orchestration (§12), the engine (§13), security (§14) and verification (§15).
-- **Goals:** keep every fetched body permanently, rebuild everything else from it, grow expensive work with change, not history, and show users only verified releases (§4).
+- **Goals:** keep every fetched body permanently, so everything else can be rebuilt from it; grow expensive work with change, not history: the lake only appends, and only the model is recomputed each publish; show users only verified releases (§4).
 - **Raw:** each body stored once under its SHA-256 by a create-only PUT, with append-only receipts and provenance, under a bucket lock (§7); lake tables are append-only, each row computed once per input and version (§8).
 - **One job publishes:** one deterministic SQL job over the lake writes an immutable release, and the pointer flips to it only after the site's own reader has loaded it (§10).
 - **Engine first:** docspec-rs does all data movement, joins, grouping and export, and holds no application policy; the application supplies fetchers, parsers, SQL, registries and the site (§13).
