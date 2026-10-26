@@ -5,6 +5,7 @@
 ## Abstract
 
 - **Goal:** build the system of [[ARCHITECTURE]] and [[DATA-MODEL]] from today's congressional-tech and docspec-rs code, beside the old pipeline, then switch and delete what is bound to nothing (§2). Work runs in dependency order, with no schedule or effort estimates.
+- **Two phases (§4):** phase 1 switches the site to an engine-built release of documents, rebuilt from raw, reusing every per-item result raw or legacy data already settles; phase 2 adds hearings, witnesses, the spicy-regs entities and the large one-time raw jobs.
 - **First:** the lock on `bodies/` and `provenance/`, then B0, then the lock on `receipts/`; then M1, M2 and S1 (§4–5).
 - **Open (§8):** Basin file growth (M1); memory and the older receipts (M2); the rules on real data (S1); the widest is the model (track E).
 - **Owner actions:** the bucket lock (B1); confirm B0's field list; review six recovery excerpts (B7); decide on facts only the old index or derived tables hold (D1, E4); decide whether to widen fingerprint candidates (S2).
@@ -40,6 +41,12 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 
 **One implementation per component** ([[BINDINGS]] §2, rule 1): where today has several, the binding picks one and the rest are deleted. External systems are the only variation, injected as adapters ([[ARCHITECTURE]] §4, principle 8).
 
+**Reuse before re-reading.** A per-item result that raw or legacy data already settles is borrowed, with its basis recorded, and only the gaps are read; an old decision across items (grouping, matching, roles) is never borrowed, only used as a parity oracle. Measured on the 2026-10-16 snapshot (`measurements/phase1-inventory-20261026/`):
+- PDF integrity: 258,021 of 261,125 older PDFs already carry it, from their capture check (lines from 2026-10-02 on) or the old reader's successful open, so only about 18,600 (*est.* 124 GB) are read whole and the PDF copies wait;
+- ZIP fingerprints: the member hashes are in `captures`;
+- run fresh because they are small or the old data cannot serve: `sniff` (about 1.04M short range reads; old formats cover 36% in other categories), the page readings (289,179 bodies, 5 GB; old readings hold no titles, text sizes or links), the filename readings (7–18 minutes; parser changed since the old catalog, which becomes their diff oracle) and the receipt ingest (all local, about a minute);
+- deferred: the full re-hash (one listing records every older body's size and ETag until then) and the PDF copies.
+
 **Switch, then delete.** The target components are built beside the old pipeline. At the switch the publish path binds to them; the old layers are then bound to nothing and are deleted whole, as [[BINDINGS]] §6 lists them. Until the switch, the old capture job keeps writing raw data and reading the raw index, and gets raw-safety fixes only; its whole-leaf index rewrites continue until then, which is accepted.
 
 ## 3. Constraints and Rules
@@ -63,10 +70,18 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 
 ## 4. Order of Work
 
+**Phase 1, the documents-only switch:** the site serves an engine-built release of documents, saved copies, sources, recoveries and dead-link lookups, rebuilt from raw; capture runs from it; the old pipeline is deleted.
 1. The bucket lock on `bodies/` and `provenance/` (owner, B1), at once; then the old writers patched and B0; then the lock on `receipts/`.
-2. M1, M2 and S1; S2 beside track C.
-3. F0 and the hand-built fixture; C0; tracks A and B.
-4. Track C, then D, then E, then F.
+2. M1, M2 and S1; S2's document fixtures and the labeled sample beside track C.
+3. F0 and the hand-built fixture; C0; track A and track B's items 2–9 and 12.
+4. Track C, then D (items 1–3 and 5), then E (the document core, [[DATA-MODEL]] §7.1–7.10, and `urls`), then F (items 1, 2 and 5).
+
+Phase 1 releases carry `meetings.parquet` with keys only and omit the other entity files ([[DATA-MODEL]] §8.1): hearings are filtered by key, committees show system codes, and a document dated only by its meeting shows no date.
+
+**Phase 2, connections and one-time raw jobs,** each adding files or facts without changing the document core:
+- hearings and witnesses: B15, D4, and the meeting and appearance relations ([[DATA-MODEL]] §7.11), cheap: about 60k bodies (9 GB) plus the 199,156 inline records already in the receipts;
+- the spicy-regs entities (committees, members, rosters, bills, CBO estimates, floor votes, nominations), with their pin lists and the committee explorer's move (F3–F4), after spicy-stack ss-vhi2's retention change;
+- the large raw jobs: B13 (PDF copies), B10 (full re-hash), B14 (cut-off re-fetches), B16 (wrapped files), S2's edition-count widening, and the memory work of ss-6jg6.
 
 | Track | Components | Depends on |
 |---|---|---|
@@ -211,7 +226,7 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 6. **Dates:** the document date and capture date in list rows, so same-filename editions read apart; on the document page, the labels of [[ARCHITECTURE]] §11.6.
 7. **Recoveries** ([[ARCHITECTURE]] §11.5; [[DATA-MODEL]] §8.1), each on the page the attachment rule gives it.
 8. **Sources:** where the document was published and which page listed it, from `sources`.
-9. **Connections:** filter by hearing, bill, member and witness, and sort by document date; a hearing's witnesses with what each submitted, its status, sittings and recordings; a document's other versions; a member's terms, committees, appearances and documents; a committee's current roster, hearings and documents; a bill's title, sponsor, status, hearings and documents; link out to the GPO record, the bill and the member.
+9. **Connections** (phase 2, except hearing keys and versions): filter by hearing, bill, member and witness, and sort by document date; a hearing's witnesses with what each submitted, its status, sittings and recordings; a document's other versions; a member's terms, committees, appearances and documents; a committee's current roster, hearings and documents; a bill's title, sponsor, status, hearings and documents; link out to the GPO record, the bill and the member.
 10. **Removed by review** ([[DATA-MODEL]] §7.9).
 11. **Speed, measured then fixed:** measure startup, search, detail and heap on real phones and desktops with F0, then write those targets into the canary and contract test. F0's size makes these targets conservative; re-measure on the first engine-built release.
 
@@ -248,23 +263,23 @@ These components survive, so they are bound now.
    - Six accepted recoveries attach a 2-page excerpt to full 95–196-page transcripts; the owner reviews them, and each one confirmed wrong gets a `rejected` decision.
 8. **Review recorder:** the review forms record provenance verdicts that target link keys ([[DATA-MODEL]] §5.3, §7.9). The 86 published assistant reviews of document kinds carry over as `kind_override` records on their files' link keys, with the assistant as reviewer.
 9. **Raw verifier** ([[ARCHITECTURE]] §7.4, §10.3.7), in the maintenance job, first run after B10. It joins to the old capture index until D1 exists.
-10. **The one-time full re-hash** ([[ARCHITECTURE]] §7.4), after B13, skipping the keys B13 verified.
+10. **The one-time full re-hash** (phase 2; [[ARCHITECTURE]] §7.4), after B13, skipping the keys B13 and phase 1's whole reads verified. Until then one listing gives each older body's verification baseline ([[DATA-MODEL]] §5.3).
 11. **A ratchet test:** no test-only branch or test-only input substitution may appear in a surviving component; tests inject adapters instead ([[ARCHITECTURE]] §15, item 7).
 12. **Owed while the old capture path runs:** repair wrong `stored_sha256` index rows in place, and confirm the daily capture writes correct values. These matter only until the switch.
-13. **Uncompressed copies of older gzip PDFs** (after B1 and B3), by the PDF copier of [[BINDINGS]] §3.1. Running it before B10 saves B10 about 365 GB of reads.
+13. **Uncompressed copies of older gzip PDFs** (phase 2; after B1 and B3), by the PDF copier of [[BINDINGS]] §3.1. Running it before B10 saves B10 about 365 GB of reads.
     - **Candidates:** older bodies whose media type or the old catalog's sniff says PDF (about 261,125). A copy is written only when the decompressed bytes begin `%PDF-` (about 950 candidates are HTML by the readings sniff; the test decides the 33,369 never sniffed).
     - **Size:** the largest raw write in the plan, so the lock and the refusal matrix come first: about 260,175 uploads and 403 GB once decompressed (about $72 a year of storage under the lock).
-14. **Re-fetch the cut-off files** (after B2, through the spooled fetcher): every URL with a copy cut off at 64 MiB and no complete 2xx copy, 62 to 64 by the snapshot index depending on how a complete copy is counted; the receipts decide. The cut-off copies stay in raw.
-15. **Meeting fetches through the fetcher** like every other fetch: the Congress.gov meeting API, the House meeting and witness-list XML, Senate committee hearing pages and the meeting inventories; committees come from spicy-regs ([[DATA-MODEL]] §6.4) ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5). An incremental relist takes its window from the `last_good_at` of the API list URL it pages through, and pages to the end of the list.
-16. **Fetch the wrapped files** (after D2, from the wrapper pages' `html` readings): the file links of download-wrapper pages, *est.* 8,800 testimony and statement PDFs that were never fetched, ahead of the model's queue.
+14. **Re-fetch the cut-off files** (phase 2; after B2, through the spooled fetcher): every URL with a copy cut off at 64 MiB and no complete 2xx copy, 62 to 64 by the snapshot index depending on how a complete copy is counted; the receipts decide. The cut-off copies stay in raw.
+15. **Meeting fetches through the fetcher** (phase 2) like every other fetch: the Congress.gov meeting API, the House meeting and witness-list XML, Senate committee hearing pages and the meeting inventories; committees come from spicy-regs ([[DATA-MODEL]] §6.4) ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5). An incremental relist takes its window from the `last_good_at` of the API list URL it pages through, and pages to the end of the list.
+16. **Fetch the wrapped files** (phase 2; after D2, from the wrapper pages' `html` readings): the file links of download-wrapper pages, *est.* 8,800 testimony and statement PDFs that were never fetched, ahead of the model's queue.
 
 **Done when:**
 - every older receipt is cleaned and verified;
 - the refusal matrix passes;
 - the lock is on all three prefixes;
 - one capture run's `stored` lines carry MD5s that match the stored ETags, and every line carries its stored suffix;
-- every older gzip PDF has a recorded copy;
-- every cut-off URL has a complete copy or a recorded reason.
+- every older body has a verification record, a listing baseline at least;
+- in phase 2, every older gzip PDF has a recorded copy and every cut-off URL a complete copy or a recorded reason.
 
 ### 6.3 Track C: Engine
 
@@ -304,13 +319,13 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
      A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
 2. **Parsers:**
-   - first `sniff` over every older body, after B13 so a PDF's tail is read from its `.pdf` copy: about 1.04M ranged GETs plus about 261k tail reads, timed in the run;
+   - first `sniff` over every older body: about 1.04M short ranged GETs, timed in the run; a PDF's integrity is borrowed where §2 says, and only about 18,600 PDFs are read whole;
    - then the main-content extractor, chosen by measurement on the ~2,250 pages saved twice in one fetch and on the labeled sample;
    - then HTML, XML and JSON (about 5 GB), with the table's size (links and `text_head` included) measured. There is no PDF parser for now;
    - then `fingerprint` for the other candidates, measured here;
    - then M2's link join and grouping, repeated on the real links and fingerprints.
 3. **Filename reader:** a producer that runs the filename parser over its work list and appends through the engine.
-4. **Meeting parsers** (needs B15): once per input and version, over the meeting-source registry's work list, with completion rows:
+4. **Meeting parsers** (phase 2; needs B15): once per input and version, over the meeting-source registry's work list, with completion rows:
    - Congress.gov records, the 199,156 inline receipt records (18,140 meetings, keyed by `record_sha`) and response bodies alike, and House `committee-meeting` XML, into `meeting_records`;
    - House witness lists, Congress.gov records, Senate hearing page cards and the `mods.xml` records already in raw into `appearance_records`, each witness with its name key and document links.
 5. Enable Basin's catalog-level compaction and snapshot expiration.
@@ -347,17 +362,16 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
 1. **Workflows** ([[ARCHITECTURE]] §12): the capture job; the publish job, backfills and the maintenance job in one CI concurrency group. The disabled viewer workflow and its 30-minute cron are deleted.
 2. **Capture scheduler:** capture reads `url_state` from the live release, including its queue of linked-but-unfetched URLs, stops reading the raw index, and drops its replay mode.
-3. **The committee explorer** reads meeting and witness records from the lake and committees, members and rosters from the pinned spicy-regs generations ([[ARCHITECTURE]] §8.5), not from the fetchers' state files.
-4. **Generation pins:** publish and the maintenance job keep `pins/spicy-generations.json` and the receipt-key lists ([[ARCHITECTURE]] §10.3.4, §10.3.7). The spicy-regs side (its retention reading that list, `nomination_id`, the nominations backfill, and reading the archive's releases instead of capturing meetings) is spicy-stack ss-vhi2.
+3. **The committee explorer** (phase 2) reads meeting and witness records from the lake and committees, members and rosters from the pinned spicy-regs generations ([[ARCHITECTURE]] §8.5), not from the fetchers' state files.
+4. **Generation pins** (phase 2): publish and the maintenance job keep `pins/spicy-generations.json` and the receipt-key lists ([[ARCHITECTURE]] §10.3.4, §10.3.7). The spicy-regs side (its retention reading that list, `nomination_id`, the nominations backfill, and reading the archive's releases instead of capturing meetings) is spicy-stack ss-vhi2.
 5. **Delete what is bound to nothing,** one PR per group as [[BINDINGS]] §6 lists them, measured again at cut.
 
 **Done when** the switch checklist holds:
 - the explorer serves an engine-built release, and the reader opens saved files, alternates and recoveries from it;
-- every older gzip PDF's copy is recorded (B13);
 - the canary and contract test pass the speed targets set on real devices, against that release;
 - a failed canary is shown to leave the previous release live;
-- capture runs from `url_state` with no raw-index read, and the committee explorer reads the lake;
-- spicy-regs' retention plan keeps every generation a kept release pins;
+- capture runs from `url_state` with no raw-index read;
+- in phase 2, the committee explorer reads the lake, every older gzip PDF's copy is recorded (B13), and spicy-regs' retention plan keeps every generation a kept release pins;
 - the old workflows are gone, and the deleted line counts are recorded.
 
 ## 7. Parked
@@ -388,8 +402,9 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | Re-packaged editions join the wrong XML | S2's edition count | The owner widens fingerprint candidates, or not |
 | Which maintained extractor gives stable main content | D2, on the pages saved twice in one fetch | The `fingerprint` parser |
 | How many links pages hold (*est.* 4.2M, from 80 pages) and how large the link join is | D2's link backfill | The link-join budget and M2's memory verdict |
-| The 33,369 never-sniffed PDF candidates are PDFs | B13's `%PDF-` test | The copy count |
-| No older body beyond the 61 known has a multipart ETag | B10's full re-hash | Nothing, unless the count changes |
+| The 33,369 never-sniffed PDF candidates are PDFs | Phase 1's `sniff` | The copy count |
+| Borrowed PDF checks agree with a fresh read (198,676 agree today, 3 disagree) | A sample read whole in phase 1 | Whether the borrowed basis stands |
+| No older body beyond the 61 known has a multipart ETag | Phase 1's listing baseline | Nothing, unless the count changes |
 | The numbers in the specifications reproduce: each review round found 10–20 of about 370 wrong | Each load-bearing number re-derived from its committed script before a rule relies on it | Corrections in place |
 | Speed and heap targets on real phones and desktops | A11 | The canary's and contract test's thresholds |
 | Whether `list` with titles fits the phone heap budget (*est.* 17–30 MB more; 46% of documents have a publisher label) | A11, on F0 | Titles stay in `list`, or move back to `detail` |

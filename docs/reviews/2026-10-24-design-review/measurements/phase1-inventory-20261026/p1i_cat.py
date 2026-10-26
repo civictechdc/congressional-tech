@@ -1,0 +1,15 @@
+import duckdb, sys
+p=sys.argv[1]
+con=duckdb.connect(); con.execute("SET threads=4; SET memory_limit='8GB'")
+q=lambda s: con.execute(s).fetchall()
+con.execute(f"create view f as select body_key, filename, source_url, filename_origins, body_format, response_format, format, content_xml_root, source_record_type, record_role, content_document_kind, media_type, document_kind, document_kind_source from read_parquet('{p}')")
+print("rows/bodies/pairs", q("select count(*), count(distinct body_key), count(distinct (filename, coalesce(source_url,''))) from f"))
+print("body_format (row)", q("select body_format, count(*) from f group by 1 order by 2 desc limit 15"))
+print("bodies by body_format", q("with b as (select body_key, list_sort(list_distinct(flatten(list(coalesce(body_format,[]))))) bf from f where body_key is not null group by 1) select bf, count(*) from b group by 1 order by 2 desc limit 15"))
+print("format col", q("select format, count(*) from f group by 1 order by 2 desc limit 10"))
+print("response_format", q("select response_format, count(*) from f group by 1 order by 2 desc limit 10"))
+print("xml_root", q("select content_xml_root, count(*) from f group by 1 order by 2 desc limit 10"))
+print("srt", q("select source_record_type, count(*) from f group by 1 order by 2 desc limit 10"))
+print("origins", q("select filename_origins, count(*) from f group by 1 order by 2 desc limit 12"))
+print("record_role", q("select record_role, count(*) from f group by 1 order by 2 desc limit 12"))
+print("kind_source", q("select document_kind_source, count(*) from f group by 1 order by 2 desc limit 12"))

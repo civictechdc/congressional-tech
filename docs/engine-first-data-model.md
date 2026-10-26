@@ -194,7 +194,8 @@ Older lines keep their `links`; the model does not read them.
 | `recoveries` | `id`, `original_url`, `recovered_url`, `recovered_filename`, `body_sha256`, `kind` (a display kind, or `rejected`), `match_basis`, `evidence_sha256`, `identity_note`, `decided_by`, `decided_at`, `supersedes` | `recoveries` (§7.8); the effective filename and its work list (§6.3, §7.4) |
 | `url_variants` | `id`, `canonical_url`, `variant_url`, `basis`, `decided_at`, `supersedes` | `url_key` (§7.2) |
 | `reviews` | `id`, `target` (a link key), `verdict` (`hide`, `duplicate_of`, `title_override`, `kind_override`, `withdraw`), `value`, `note`, `reviewer`, `decided_at`, `supersedes` | `reviews` (§7.9) |
-| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; more for a cleaned receipt | The maintenance job; `suffix` for `.pdf` copies (§7.5) |
+| `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; more for a cleaned receipt. A listing baseline records size and ETag with `sha256_verified` false, until a whole read or the full re-hash verifies the body | The maintenance job; `suffix` for `.pdf` copies (§7.5) |
+| `legacy_pdf_checks` | `body_sha256`, `opened` (true only), `reader_version`, `checked_at`, `source` (the old body readings' digest); written once from the old reader's successful PDF opens | `sniff`'s `intact` (§6.2) |
 | `unreadable` | `id`, `body_sha256` (or `record_sha`), `parser`, `parser_version`, `reason`, `decided_by`, `decided_at`, `supersedes` | The parsers' work lists, which drop the input (§7.1) |
 
 - A cleaned receipt's record adds `original_size`, `original_etag`, the backup object compared, the fields cut, and the counts of cookies, credential parameters and paths removed.
@@ -244,7 +245,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `sha256` | fixed[32], nullable | — |
 | `bytes` | long, nullable | — |
 | `media_type`, `fidelity` | string, nullable | §5.2; the saved-file order reads `fidelity` (§7.5). |
-| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Null on older rows, which take them from the `sniff` reading. |
+| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Null on older rows, which take format from the `sniff` reading. An older PDF's `intact` is true when its line's final-content entry records `saved` and false when it records `invalid_document`, on lines written from 2026-10-02, when the capture check applied §5.2's rule; else null. |
 | `stored_suffix` | string, nullable | §5.2. |
 | `stored_md5` | fixed[16], nullable | Creating line only. |
 | `stored_bytes` | long, nullable | — |
@@ -301,8 +302,9 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
   - `doc_type` and the three dates are kept as the publisher wrote them; `remove_date` marks a committee's removal of the document from its hearing page.
 - `sniff` reads every body whose capture rows carry no sniff at the pinned version:
   - one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`).
-  - for a PDF, one ranged read of the last 8 KB of its uncompressed object (the bare body, or an older body's verified `.pdf` copy), and the bounded reader only when that finds no `%%EOF`.
-  - an older gzip PDF with no verified copy is read whole from its `.gz` and reported, so a copier miss costs one full read.
+  - for a PDF, `intact` from its capture row, else from a `legacy_pdf_checks` record (§5.3), recorded as the reading's basis (258,021 of 261,125 older PDFs);
+  - else one ranged read of the last 8 KB of its uncompressed object (the bare body, or an older body's verified `.pdf` copy), and the bounded reader only when that finds no `%%EOF`;
+  - an older gzip PDF with neither and no verified copy is read whole from its `.gz` and reported (about 18,600, *est.* 124 GB), and its read records a verified SHA-256.
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
 - `html`, `xml`, `json` read every body of their format once per version and record each body's fingerprint and links (*est.* 4.2M, from an 80-body sample, over 287,765 bodies the server labels HTML or XML, once per page body). No parser reads embedded PDF titles.
 - `fingerprint` reads the fingerprint candidates of the formats the page parsers do not read: none on the 2026-10-19 snapshot, where an endpoint's other PDF or ZIP bodies are all cut-off attempts, size-limit bodies or recoveries.
@@ -856,6 +858,7 @@ Sizes are *est.* at about 0.65M listed documents, scaled from today's 1.24M cata
 - `detail.parquet`: `link_key` fsb(8) (the saved body's key, or for a recovery-only document the link URL key of its first recovery in the recovery order); `saved_body` fsb(32), `saved_suffix` dict, `saved_media_type` dict; `document_date_source` dict nullable; `in_archive_since` date32 nullable; `removed_on` date32 nullable; `review_note` string nullable, `review_decided_at` date32 nullable; `src_start`, `src_len`, `rec_start`, `rec_len` int32; `alternates` List<Struct<format dict, body fsb(32), suffix dict, size int64>>; `package_id` string nullable; and `facts`, a fold of the display-facts registry's fields, dates as `YYYY-MM-DD`.
 - Nothing else is published: raw readings, every parsed field and per-copy fetch history stay in the lake, and a document's ID is recomputed, not stored. A model run at a release's inputs record reproduces it: it reads `captures` filtered to the recorded receipt keys and every other table at the pinned versions, which no kept release's table versions drop (§6), so snapshot expiry does not matter.
 - `detail` and `sources` MAY be split into fixed row-range shards, which the manifest lists with their ranges.
+- A release MAY omit the entity files (`witnesses` through `nominations`) or carry `meetings` with keys only; the manifest lists what it has, and the reader offers a connection only when its file is present.
 
 ### 8.2 `link_key`
 
@@ -947,7 +950,7 @@ A conforming implementation MUST satisfy, and SHOULD test, each of the following
 
 **Release**
 
-16. `rows(list) = rows(detail)`; every `list_row` in `links`, `sources` and `recoveries` is below `rows(list)`; every `meeting_keys` entry is in `meetings` and no `event_id` has records naming two chambers; every `committee_keys` entry is in `committees`; every `witness_keys` entry is in `witnesses`; every `version_keys` entry appears on at least two `list` rows, or on one that a review edge merged; every `list_row` in `meetings.transcripts` and `urls` is below `rows(list)`.
+16. `rows(list) = rows(detail)`; every `list_row` in `links`, `sources` and `recoveries` is below `rows(list)`; every `meeting_keys` entry is in `meetings` and no `event_id` has records naming two chambers; every `committee_keys` entry is in `committees` when the release has it; every `witness_keys` entry is in `witnesses`; every `version_keys` entry appears on at least two `list` rows, or on one that a review edge merged; every `list_row` in `meetings.transcripts` and `urls` is below `rows(list)`.
 17. `list` is sorted by its order, unique and not empty.
 18. The source and recovery ranges partition their files exactly; a recovery-only document's recovery range is not empty.
 19. Every `link_key` resolves to exactly one row, and keys are unique; a link URL key resolves by the attachment rule; every lookup key names at least one row.
