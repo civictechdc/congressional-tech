@@ -92,8 +92,8 @@ def verify_completed_preparation(root, environment):
 def run_preparation(root, report, *, environment, deadline_seconds=7800, grace_seconds=120):
     """Stop before the job timeout, then freeze partial work for an explicit run."""
     start = json.loads((Path(environment['RUNNER_TEMP']) / 'publication-job-start.json').read_text())['time']
-    remaining = deadline_seconds - (time.time() - start)
-    if remaining <= 0:
+    deadline = start + deadline_seconds
+    if deadline <= time.time():
         raise ValueError('Preparation job budget exhausted before launch')
     command = [sys.executable, str(ROOT / 'scripts/publication/publish-viewer-r2.py'),
         'prepare', '--native-config', environment['DOCSPEC_RUNTIME_CONFIG'],
@@ -105,11 +105,13 @@ def run_preparation(root, report, *, environment, deadline_seconds=7800, grace_s
         command.append('--resume-preparation')
     child_env = dict(environment)
     child_env.pop('GITHUB_OUTPUT', None)  # Only the supervisor may authorize later steps.
+    if deadline <= time.time():
+        raise ValueError('Preparation job budget exhausted before launch')
     stopped = False
     forced = False
     process = subprocess.Popen(command, cwd=ROOT, env=child_env, start_new_session=True)
     try:
-        process.wait(timeout=remaining)
+        process.wait(timeout=max(0, deadline - time.time()))
     except subprocess.TimeoutExpired:
         stopped = True
         try:

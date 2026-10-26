@@ -351,6 +351,39 @@ def test_checkpoint_bounds_admit_large_binding_and_auxiliary_files(tmp_path):
     assert len(resume.read_checkpoint_json(path)['binding']) == 33 * 1024**2
 
 
+@pytest.mark.parametrize('restore_seconds', [70, 110])
+def test_checkpoint_verification_consumes_the_elapsed_job_budget(tmp_path, monkeypatch, restore_seconds):
+    from types import SimpleNamespace
+    environment = fake_child(tmp_path, monkeypatch)
+    environment['PREPARATION_RESUME'] = 'true'
+    clock = SimpleNamespace(now=100)
+    monkeypatch.setattr(runner, 'time', SimpleNamespace(time=lambda: clock.now))
+    (tmp_path / 'publication-job-start.json').write_text(json.dumps({'time': clock.now}))
+    def restore(*_):
+        clock.now += restore_seconds
+    monkeypatch.setattr(runner, 'verify_checkpoint', restore)
+    waits, launches = [], []
+    class Process:
+        pid = 987654321
+        returncode = 0
+        def wait(self, timeout): waits.append(timeout)
+    def launch(*args, **kwargs):
+        launches.append(args)
+        return Process()
+    monkeypatch.setattr(runner.subprocess, 'Popen', launch)
+    def vanished(*_): raise ProcessLookupError()
+    monkeypatch.setattr(runner.os, 'killpg', vanished)
+    report = tmp_path / 'report'
+    report.write_text(json.dumps({'status': 'prepared'}))
+    if restore_seconds > 100:
+        with pytest.raises(ValueError, match='budget exhausted'):
+            runner.run_preparation(tmp_path / 'work', report, environment=environment, deadline_seconds=100)
+        assert not launches
+    else:
+        runner.run_preparation(tmp_path / 'work', report, environment=environment, deadline_seconds=100)
+        assert waits == [100 - restore_seconds]
+
+
 def test_workflow_checkpoints_before_failure_and_cannot_publish_partial_work():
     job = workflow()['jobs']['publish']
     steps = job['steps']
