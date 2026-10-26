@@ -45,6 +45,134 @@ def test_saved_names_refuse_escape_absolute_and_external_symlink(tmp_path):
         c.save('outside/escaped', b'no')
     assert not (tmp_path / 'escaped').exists()
 
+
+def test_journal_acceptance_reuses_synced_request_bytes(journal, monkeypatch):
+    log, continuation, remote = journal
+    writes, syncs = [], []
+    original_write, original_sync = state.write_atomic_bytes, state.os.fsync
+    def observed_write(path, raw, **options):
+        writes.append((Path(path), len(raw)))
+        return original_write(path, raw, **options)
+    monkeypatch.setattr(state, 'write_atomic_bytes', observed_write)
+    monkeypatch.setattr(state.os, 'fsync', lambda fd: syncs.append(fd) or original_sync(fd))
+    original_put = remote.put_object
+    def put(**options):
+        event = json.loads(options['Body'])
+        request = continuation.root / f"journal-intents/{event['sequence']:08d}-{event['nonce']}.json"
+        assert request.read_bytes() == options['Body']
+        assert len(syncs) == len(writes)  # Request data is synced before the mutation.
+        return original_put(**options)
+    monkeypatch.setattr(remote, 'put_object', put)
+    count = 20
+    for number in range(count):
+        log.record('publication_write_intent', {
+            'key': f'viewer-publications/releases/fixture/{number}', 'bytes': 1,
+            'sha256': 'a' * 64, 'if_none_match': '*'})
+    assert len(writes) == len(syncs) == count
+    assert all(path.parent.name == 'journal-intents' for path, _ in writes)
+    total = 0
+    for number in range(1, count + 1):
+        accepted = continuation.root / f'journal/{number:08d}.json'
+        event = json.loads(accepted.read_bytes())
+        request = continuation.root / f"journal-intents/{number:08d}-{event['nonce']}.json"
+        assert accepted.samefile(request)
+        assert accepted.stat().st_nlink == 2
+        total += accepted.stat().st_size
+    assert sum(size for _, size in writes) == total
+
+
+@pytest.mark.parametrize('boundary', ['before_put', 'after_put', 'accept_link'])
+def test_journal_interruption_preserves_request_and_resumes(journal, monkeypatch, boundary):
+    log, continuation, remote = journal
+    sequence, previous, total = log.sequence, log.previous, log.total_bytes
+    original_put = remote.put_object
+    if boundary == 'accept_link':
+        monkeypatch.setattr(continuation, 'accept_saved',
+            lambda *args, **kwargs: (_ for _ in ()).throw(KeyboardInterrupt('accept link')))
+    else:
+        def put(**options):
+            if boundary == 'after_put':
+                original_put(**options)
+            raise KeyboardInterrupt(boundary)
+        monkeypatch.setattr(remote, 'put_object', put)
+    with pytest.raises(KeyboardInterrupt):
+        log.record('progress', {'completed': 1})
+    assert (log.sequence, log.previous, log.total_bytes) == (sequence, previous, total)
+    requests = list((continuation.root / 'journal-intents').glob(f'{sequence:08d}-*.json'))
+    assert len(requests) == 1
+    assert not (continuation.root / f'journal/{sequence:08d}.json').exists()
+    puts = remote.puts
+    restored = state.DurableJournal(remote, 'bucket', continuation, 'test-attempt', {'prepared': True}, resume=True)
+    assert restored.sequence == sequence + (boundary != 'before_put')
+    assert remote.puts == puts  # Recovery never resends an uncertain request.
+    assert requests[0].exists()
+    if boundary != 'before_put':
+        assert (continuation.root / f'journal/{sequence:08d}.json').read_bytes() == requests[0].read_bytes()
+
+
+def test_accept_saved_preserves_conflicting_evidence_and_refuses_escape(tmp_path):
+    run = state.Continuation(tmp_path / 'attempt', {})
+    proof = run.save('journal-intents/request.json', b'request')
+    run.save('journal/accepted.json', b'other')
+    with pytest.raises(ValueError, match='artifact changed'):
+        run.accept_saved('journal-intents/request.json', 'journal/accepted.json', proof=proof)
+    assert (run.root / 'journal/accepted.json').read_bytes() == b'other'
+    (run.root / 'outside').symlink_to(tmp_path)
+    for source, target in [('outside/source', 'journal/new.json'),
+                           ('journal-intents/request.json', 'outside/target')]:
+        with pytest.raises(ValueError, match='escapes'):
+            run.accept_saved(source, target, proof=proof)
+
+
+def test_linked_local_corruption_is_still_refused_on_restore(journal):
+    log, continuation, remote = journal
+    accepted = continuation.root / 'journal/00000000.json'
+    accepted.write_bytes(b'corrupt local evidence')
+    checkpoint = continuation.path.read_bytes()
+    with pytest.raises(ValueError, match='artifact changed'):
+        state.DurableJournal(remote, 'bucket', continuation, 'test-attempt', {'prepared': True}, resume=True)
+    assert continuation.path.read_bytes() == checkpoint
+
+
+def test_accept_saved_reuses_equal_evidence_after_artifact_copy(journal):
+    log, continuation, remote = journal
+    accepted = continuation.root / 'journal/00000000.json'
+    raw = accepted.read_bytes()
+    accepted.unlink()
+    accepted.write_bytes(raw)  # Artifact extraction need not preserve hard links.
+    request = next((continuation.root / 'journal-intents').glob('00000000-*.json'))
+    assert not accepted.samefile(request)
+    proof = continuation.save(str(request.relative_to(continuation.root)), raw)
+    continuation.accept_saved(str(request.relative_to(continuation.root)), 'journal/00000000.json', proof=proof)
+    assert accepted.read_bytes() == raw
+
+
+def test_journal_refuses_changed_request_before_linking_acceptance(journal, monkeypatch):
+    log, continuation, remote = journal
+    original_put = remote.put_object
+    def put(**options):
+        result = original_put(**options)
+        event = json.loads(options['Body'])
+        request = continuation.root / f"journal-intents/{event['sequence']:08d}-{event['nonce']}.json"
+        request.write_bytes(b'changed request evidence')
+        return result
+    monkeypatch.setattr(remote, 'put_object', put)
+    with pytest.raises(ValueError, match='custody changed'):
+        log.record('progress', {})
+    assert log.sequence == 1
+    assert not (continuation.root / 'journal/00000001.json').exists()
+
+
+def test_journal_request_sync_failure_blocks_remote_mutation(journal, monkeypatch):
+    log, continuation, remote = journal
+    puts = remote.puts
+    monkeypatch.setattr(state.os, 'fsync',
+        lambda fd: (_ for _ in ()).throw(OSError('request sync failed')))
+    with pytest.raises(OSError, match='request sync failed'):
+        log.record('progress', {})
+    assert remote.puts == puts and log.sequence == 1
+    assert not (continuation.root / 'journal/00000001.json').exists()
+
 @pytest.mark.parametrize('change,diagnostic', [
     (lambda v: v.update(version=2), 'version'),
     (lambda v: v.update(writes=[]), 'fields'),

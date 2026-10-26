@@ -95,6 +95,7 @@ def test_full_release_inventory_upload_interrupt_restore_and_replay(tmp_path, mo
         saves[1] += len(raw)
     monkeypatch.setattr(run, 'flush', counted_flush)
     monkeypatch.setattr(run, 'save', counted_save)
+    monkeypatch.setattr(run, 'accept_saved', lambda *args, **kwargs: None)
     def proxy(log):
         return ContinuedPublicationClient(remote, continuation=run, guard=lambda: None,
             journal=log.record, after_write=lambda *args: None)
@@ -107,6 +108,7 @@ def test_full_release_inventory_upload_interrupt_restore_and_replay(tmp_path, mo
     fresh = state.Continuation(run.root, binding, resume=True)
     assert fresh.value['writes'] == {}
     monkeypatch.setattr(fresh, 'save', counted_save)
+    monkeypatch.setattr(fresh, 'accept_saved', lambda *args, **kwargs: None)
     fresh_flush = fresh.flush
     log = state.DurableJournal(remote, 'bucket', fresh, 'capacity-fixture', log_binding, resume=True)
     run = fresh
@@ -260,6 +262,7 @@ def test_noncoalesced_journal_accepts_write_capacity(tmp_path, monkeypatch):
     # Exercise worst-case completion ordering without a network, per-event
     # local files or serializing the full cache every 1024 events.
     monkeypatch.setattr(run, 'save', lambda *args, **kwargs: None)
+    monkeypatch.setattr(run, 'accept_saved', lambda *args, **kwargs: None)
     monkeypatch.setattr(run, 'flush', lambda: None)
     for n in range(state.MAX_WRITES):
         log.record('publication_write_intent', write_fact('viewer-publications/' + asset_name(n)))

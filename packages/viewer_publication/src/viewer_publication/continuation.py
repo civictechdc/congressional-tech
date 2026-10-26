@@ -171,22 +171,41 @@ class Continuation:
             )
             self._state_bytes = len(raw)
 
-    def save(self, name, raw, *, replace=False):
+    def saved_path(self, name):
         path = self.root / relative_name(name)
         if not path.resolve().is_relative_to(self.root.resolve()):
             raise ValueError('Publication saved path escapes attempt directory')
+        return path
+
+    def save(self, name, raw, *, replace=False):
+        path = self.saved_path(name)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists() and not replace:
             if path.read_bytes() != raw:
                 raise ValueError('Publication artifact changed: ' + name)
-            return
-        write_atomic_bytes(
+            return VerifiedFile(path, hashlib.sha256(raw).hexdigest(), len(raw))
+        return write_atomic_bytes(
             path,
             raw,
             temp_path=path.with_name(path.name + '.partial'),
             fsync=True,
             fsync_dir=False,
         )
+
+    def accept_saved(self, source, name, *, proof):
+        """Retain accepted evidence without rewriting an already synced request."""
+        source, path = self.saved_path(source), self.saved_path(name)
+        if not isinstance(proof, VerifiedFile):
+            raise ValueError('Invalid publication saved request')
+        proof.require(source)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            # Both names stay available; uncertain requests never reach this step.
+            # Atomic link creation also refuses to replace competing evidence.
+            os.link(source, path)
+        except FileExistsError:
+            if path.is_symlink() or path.read_bytes() != source.read_bytes():
+                raise ValueError('Publication artifact changed: ' + name)
 
     def phase(self, name, action, *, files, inventory=None):
         relative_name(name)
@@ -518,7 +537,7 @@ class DurableJournal:
 
     def _append(self, event, value, *, verified_write=None):
         # Called only while record owns the journal lock. Advance nothing until
-        # conditional creation and complete journal readback both succeed.
+        # conditional creation and accepted local evidence both succeed.
         if self.sequence >= MAX_EVENTS:
             raise ValueError('Publication journal exceeds event count limit')
         nonce = uuid.uuid4().hex
@@ -532,10 +551,11 @@ class DurableJournal:
         key = self.prefix + f'{self.sequence:08d}.json'
         # Retain the exact nonce-bound request before mutation. Conditional
         # creation fences competing runners at every pre-mutation intent.
-        self.continuation.save(f'journal-intents/{self.sequence:08d}-{nonce}.json', raw)
+        intent_name = f'journal-intents/{self.sequence:08d}-{nonce}.json'
+        request_proof = self.continuation.save(intent_name, raw)
         self.writer.put_object(Bucket=self.bucket, Key=key, Body=raw, ContentLength=len(raw),
                                ContentType='application/json', IfNoneMatch='*')
-        self.continuation.save(f'journal/{self.sequence:08d}.json', raw)
+        self.continuation.accept_saved(intent_name, f'journal/{self.sequence:08d}.json', proof=request_proof)
         self.sequence += 1
         self.total_bytes += len(raw)
         self.previous = hashlib.sha256(raw).hexdigest()
