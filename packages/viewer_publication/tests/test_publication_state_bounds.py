@@ -173,7 +173,7 @@ def write_facts(key):
     return intent, dict(key=key, bytes=1, sha256=intent['sha256'], etag='verified-version')
 
 
-def test_verification_checkpoints_locally_and_joins_next_durable_intent(journal):
+def test_verification_joins_next_durable_intent_with_periodic_local_cache(journal):
     log, continuation, remote = journal
     first, verified = write_facts('viewer-publications/releases/x/first')
     second, _ = write_facts('viewer-publications/releases/x/second')
@@ -181,7 +181,9 @@ def test_verification_checkpoints_locally_and_joins_next_durable_intent(journal)
     before = remote.puts
     log.record('publication_write_verified', verified)
     assert remote.puts == before
-    assert state.Continuation(continuation.root, {'fixture': True}, resume=True).value['writes'][first['key']]['verified']
+    assert continuation.value['writes'][first['key']]['verified']
+    # Cloud intents own recovery; the local JSON may lag until its next checkpoint.
+    assert state.Continuation(continuation.root, {'fixture': True}, resume=True).value['writes'] == {}
     log.record('publication_write_intent', second)
     record = json.loads(remote.objects[log.prefix + '00000002.json'])
     assert record['verified_write'] == verified
