@@ -278,7 +278,7 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
 | Column | Type | Notes |
 |---|---|---|
 | `body_sha` | fixed[32] | — |
-| `parser` | string | `sniff`, `html`, `xml`, `json`, `fingerprint`; later `pdf_text` (§6.6). |
+| `parser` | string | `sniff`, `html`, `xml`, `json`; later `pdf_text` (§6.6). |
 | `parser_version` | string | — |
 | `status`, `error_type` | string | `completed`, `error` or `size_limit`, with the error's type. `size_limit` is decided before reading, from the input's `stored_bytes` against the parser version's declared byte bound; `error` is a deterministic rejection of the input; an operational failure writes no row, so the input stays on the work list until it succeeds or an `unreadable` decision drops it (§7.1). |
 | `format` | string | The sniffed format, on every row: `pdf`, `zip`, `xml`, `html`, `json`, `vtt`, `m3u8`, `docx`, `doc`, `text`, `image`, `warc`, `other`, `empty`. |
@@ -307,12 +307,10 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
   - an older gzip PDF with none of these is left `unchecked` (3,104 today, 117 GB) and counts as a document until its copy's whole read checks it at the next sniff version ([[IMPLEMENTATION-PLAN]] B13).
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
 - `html`, `xml`, `json` read every body of their format once per version and record each body's fingerprint and links (*est.* 4.2M, from an 80-body sample, over 287,765 bodies the server labels HTML or XML, once per page body). No parser reads embedded PDF titles.
-- `fingerprint` reads the fingerprint candidates of the formats the page parsers do not read: none on the 2026-10-19 snapshot, where an endpoint's other PDF or ZIP bodies are all cut-off attempts, size-limit bodies or recoveries.
-  - Each body's fingerprint comes from exactly one reading.
-  - The model reads fingerprints only for the candidates under the pinned profile.
-  - A ZIP's fingerprint is the SHA-256 of its members' hex SHA-256s, sorted and newline-joined: from `captures` when `expansion` is `expanded`, else from a streaming walk of the archive.
-  - Any other body's fingerprint is the SHA-256 of its text, NFKC-normalized, whitespace runs collapsed to one space, trimmed: an HTML page's main content, PDF text from the pinned extractor, and the visible text of XML and other text.
-  - Empty text or a failed extraction gives `status = error` and no fingerprint.
+- **Fingerprints** come from what is already read; no parser runs for them:
+  - the `html`, `xml` and `json` readings record each page's: the SHA-256 of its text, NFKC-normalized, whitespace runs collapsed to one space, trimmed (an HTML page's main content; the visible text of XML and other text); empty text or a failed extraction gives none;
+  - a ZIP's is the SHA-256 of its members' hex SHA-256s, sorted and newline-joined, which the model computes from `captures` when `expansion` is `expanded`;
+  - no other body is a fingerprint candidate on the 2026-10-19 snapshot (an endpoint's other PDF or ZIP bodies are all cut-off attempts, size-limit bodies or recoveries). A candidate without a fingerprint stays apart as an edition (§7.5); a `fingerprint` parser (the pinned PDF text extractor, a streaming walk of an unexpanded ZIP) is added only when one appears.
 - **Size:** 491,710 rows fold to 16.5 MB, before links and `text_head` (*est.* 100 MB per HTML and XML parser version).
 
 ### 6.3 `filename_readings`
@@ -434,7 +432,7 @@ The model is one engine job of named steps ([[ARCHITECTURE]] §9.1) over `captur
 
 The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input a parser can never read is settled by a person's provenance `unreadable` decision (§5.3), which removes it from that parser's work list.
 
-- It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6), each parser, the catalog, each registry the model or a producer reads, and the release writer settings (§8.1).
+- It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6), each parser, the catalog, each registry the model or a producer reads, and the release writer settings (§8.1); until the engine's export meets [[ARCHITECTURE]] §10.2 by itself (spicy-stack ss-iwqu), also the runner class and the engine's limits (threads, batch rows, batch bytes).
 - A parser or catalog version is the SHA-256 of its source files, the vocabularies it reads and its locked dependencies.
 - A new version is backfilled while the profile still pins the old one; the profile moves only when the new version's work list is empty. The daily run produces every pinned version for new inputs.
 

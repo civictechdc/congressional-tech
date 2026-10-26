@@ -303,7 +303,7 @@ One row per `(body, parser, parser_version)`; each media family has its own pars
 - **Every body has a sniffed format**, and every PDF a record of whether it is intact. The fetcher records both for new bodies; a `sniff` parser covers the rest.
 - **HTML, XML and JSON** are read in full once per version, with each body's links recorded as written. The model resolves the links against every address the page was fetched at, so link context covers all history while a page fetched many times stores its links once.
 - **PDF, ZIP and captions** get no full reading. Full-text extraction of every PDF (about 403 GB) is deferred to `pdf_text`; ZIP members are captured as their own entries.
-- **Text fingerprints are for candidates only** ([[DATA-MODEL]] §6.2); the `fingerprint` parser runs after the other parsers (§12). There is no full-corpus text pass.
+- **Text fingerprints come from the page readings** ([[DATA-MODEL]] §6.2), and a ZIP's from its member hashes in `captures`; no other format needs one today, so there is no fingerprint parser and no full-corpus text pass.
 - **An operational failure writes no row** ([[DATA-MODEL]] §6.2).
 
 **Versions** are pinned, and a new one is backfilled in background batches before the profile moves to it ([[DATA-MODEL]] §7.1).
@@ -485,7 +485,7 @@ maintenance: raw check and sample → release retention → table drops → orph
 backfill:    one producer's work list for a new version or table, in batches   (on demand)
 ```
 
-- **Order.** The lake steps run first, each on its own work list: `sniff` before the format parsers, which need formats, and `fingerprint` last, because the real-file rule gives its work list. The concurrency group (§10.3.7) keeps anything from landing between the lake steps and the pin.
+- **Order.** The lake steps run first, each on its own work list: `sniff` before the format parsers, which need formats. The concurrency group (§10.3.7) keeps anything from landing between the lake steps and the pin.
 - **Budgets.** Each daily lake step has a work-list budget, set per runner class with its resources. A step whose work list exceeds it, such as a registry change that adds thousands of fingerprint candidates, is left to a backfill: publish refuses at once, rather than after the model runs, and starts that step's backfill, which runs next in the concurrency group.
 - **Idempotent steps.** Each step is keyed by its input, is a no-op when that has not changed, and commits durably, so a failed run resumes by running again, with no journal.
 - **Capture reads the public release.** It builds its queue from the live release's `url_state` and applies its `capture_scope.json`, so it needs no lake or release credentials, and it follows what its fetchers discover in the same run, such as the documents an API response lists. After a failed canary, capture works from a slightly older schedule, which is safe because body writes are create-only.

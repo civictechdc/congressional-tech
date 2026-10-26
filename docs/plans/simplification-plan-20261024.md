@@ -73,7 +73,7 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 **Phase 1, the documents-only switch:** the site serves an engine-built release of documents, saved copies, sources, recoveries and dead-link lookups, rebuilt from raw; capture runs from it; the old pipeline is deleted.
 1. The bucket lock on `bodies/` and `provenance/` (owner, B1), at once; then the old writers patched and B0; then the lock on `receipts/`.
 2. M1, M2 and S1; S2's document fixtures and the labeled sample beside track C.
-3. F0 and the hand-built fixture; C0; track A and track B's items 2–9 and 12.
+3. F0 and the hand-built fixture; C0; track A and track B's items 2–9 (item 8 as its one-time script) and 12.
 4. Track C, then D (items 1–3 and 5), then E (the document core, [[DATA-MODEL]] §7.1–7.10, and `urls`), then F (items 1, 2 and 5).
 
 Phase 1 releases carry `meetings.parquet` with keys only and omit the other entity files ([[DATA-MODEL]] §8.1): hearings are filtered by key, committees show system codes, and a document dated only by its meeting shows no date.
@@ -81,7 +81,8 @@ Phase 1 releases carry `meetings.parquet` with keys only and omit the other enti
 **Phase 2, connections and one-time raw jobs,** each adding files or facts without changing the document core:
 - hearings and witnesses: B15, D4, and the meeting and appearance relations ([[DATA-MODEL]] §7.11), cheap: about 60k bodies (9 GB) plus the 199,156 inline records already in the receipts;
 - the spicy-regs entities (committees, members, rosters, bills, CBO estimates, floor votes, nominations), with their pin lists and the committee explorer's move (F3–F4), after spicy-stack ss-vhi2's retention change;
-- the large raw jobs: B13 (PDF copies), B10 (full re-hash), B14 (cut-off re-fetches), B16 (wrapped files), S2's edition-count widening, and the memory work of ss-6jg6.
+- the large raw jobs: B13 (PDF copies), B10 (full re-hash), B14 (cut-off re-fetches), B16 (wrapped files), S2's edition-count widening, and the memory work of ss-6jg6;
+- engine and tooling: export bytes independent of the runner class (ss-iwqu; phase 1 pins the runner class and limits instead), a `fingerprint` parser only if a PDF or unexpanded-ZIP candidate appears, and the review forms (B8).
 
 | Track | Components | Depends on |
 |---|---|---|
@@ -261,7 +262,7 @@ These components survive, so they are bound now.
 7. **Recovery importer:** reconcile `accepted.json` with the receipts, so recoveries become provenance records the model reads, each with its kind.
    - New imports write date-shaped receipts with their recovery category, and provenance, through the receipt writer and the body store, with no guards or upload loop of their own.
    - Six accepted recoveries attach a 2-page excerpt to full 95–196-page transcripts; the owner reviews them, and each one confirmed wrong gets a `rejected` decision.
-8. **Review recorder:** the review forms record provenance verdicts that target link keys ([[DATA-MODEL]] §5.3, §7.9). The 86 published assistant reviews of document kinds carry over as `kind_override` records on their files' link keys, with the assistant as reviewer.
+8. **Review recorder:** in phase 1, one script writes the 86 published assistant reviews of document kinds as `kind_override` records on their files' link keys, with the assistant as reviewer, and writes any new review as a provenance record ([[DATA-MODEL]] §5.3, §7.9); the review forms that record verdicts come in phase 2.
 9. **Raw verifier** ([[ARCHITECTURE]] §7.4, §10.3.7), in the maintenance job, first run after B10. It joins to the old capture index until D1 exists.
 10. **The one-time full re-hash** (phase 2; [[ARCHITECTURE]] §7.4), after B13, skipping the keys B13 and phase 1's whole reads verified. Until then one listing gives each older body's verification baseline ([[DATA-MODEL]] §5.3).
 11. **A ratchet test:** no test-only branch or test-only input substitution may appear in a surviving component; tests inject adapters instead ([[ARCHITECTURE]] §15, item 7).
@@ -291,7 +292,7 @@ These components survive, so they are bound now.
 |---|---|---|
 | C1 | Multi-input SQL jobs | A job joining two tables, a file and a receipt holding a type conflict, read whole with the value nulled and its raw line kept; a partition filter visible in the Iceberg scan |
 | C2 | Table operations | M1's commit and drop tests |
-| C3 | Deterministic export (spicy-stack ss-iwqu) | Byte equality across threads, input orders, batch sizes and a forced spill; after a row group's first view through the reader's byte cache, a `detail` view is one round trip |
+| C3 | Deterministic export (spicy-stack ss-iwqu) | Phase 1: byte equality across reruns and input orders on the pinned runner class and limits; phase 2: across threads, batch sizes and a forced spill; after a row group's first view through the reader's byte cache, a `detail` view is one round trip |
 | C4 | Connected components (ss-6jg6) | M2's graph within its heap budget, labels equal across threads and input orders; a refusal test |
 | C5 | Streaming I/O | Request counts in a test |
 | C6 | Bounded resources | A join at the pool limit fails clearly; M2's build sizes; every hash-join build `EXPLAIN` shows is the smaller input and carries no wide column |
@@ -321,8 +322,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 2. **Parsers:**
    - first `sniff` over every older body: about 1.04M short ranged GETs, timed in the run; a PDF's integrity is borrowed where §2 says, and no PDF is read whole;
    - then the main-content extractor, chosen by measurement on the ~2,250 pages saved twice in one fetch and on the labeled sample;
-   - then HTML, XML and JSON (about 5 GB), with the table's size (links and `text_head` included) measured. There is no PDF parser for now;
-   - then `fingerprint` for the other candidates, measured here;
+   - then HTML, XML and JSON (about 5 GB), recording page fingerprints, with the table's size (links and `text_head` included) measured. There is no PDF parser and no fingerprint parser for now;
    - then M2's link join and grouping, repeated on the real links and fingerprints.
 3. **Filename reader:** a producer that runs the filename parser over its work list and appends through the engine.
 4. **Meeting parsers** (phase 2; needs B15): once per input and version, over the meeting-source registry's work list, with completion rows:
@@ -400,7 +400,7 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | The receipt reader and ingest mapping read every older shape: 2.96M of 3.9M rows carry no outcome, 1,420 receipts mix types on a path, one line is 188 MB | M2's receipt step, then D1's comparison with the old index | The reader, the outcome and mode table, and any fact that exists only in derived tables (the owner records it as provenance or accepts losing it) |
 | The rules give the right documents on real data, not only on fixtures and proxies | S1 on real slices; the labeled sample (S2) | Rule changes, the page thresholds and the final file-shape list |
 | Re-packaged editions join the wrong XML | S2's edition count | The owner widens fingerprint candidates, or not |
-| Which maintained extractor gives stable main content | D2, on the pages saved twice in one fetch | The `fingerprint` parser |
+| Which maintained extractor gives stable main content | D2, on the pages saved twice in one fetch | The page fingerprint |
 | How many links pages hold (*est.* 4.2M, from 80 pages) and how large the link join is | D2's link backfill | The link-join budget and M2's memory verdict |
 | The 33,369 never-sniffed PDF candidates are PDFs | Phase 1's `sniff` | The copy count |
 | Borrowed PDF checks agree with a fresh read (198,676 agree today, 3 disagree) | A sample of 1,000 read whole in phase 1 | Whether the borrowed basis stands, and how many unchecked PDFs to expect broken |
