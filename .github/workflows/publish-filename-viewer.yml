@@ -110,6 +110,8 @@ jobs:
         if: github.event_name == 'push' || steps.resume.outputs.resume == 'true' || steps.resume.outputs.preparation_resume == 'true' || steps.preflight.outputs.status == 'preparation_required'
       - name: Verify publication fidelity and recovery mapping
         if: github.event_name == 'push' || steps.resume.outputs.resume == 'true' || steps.resume.outputs.preparation_resume == 'true' || steps.preflight.outputs.status == 'preparation_required'
+        env:
+          ACCEPTED_RESUME: ${{ steps.resume.outputs.resume }}
         run: |
           tests=(
             .github/tests/test_native_runtime_setup.py
@@ -124,12 +126,19 @@ jobs:
             packages/viewer_publication/tests/test_recovery_publication_continuation.py
             scripts/tests/test_publication_preflight.py
             scripts/publication/tests/test_publication_cli.py
+            scripts/publication/tests/test_workflow_resume.py
+            scripts/publication/tests/test_preparation_checkpoint.py
             packages/viewer_publication/tests/test_publication_state_bounds.py
             packages/viewer_publication/tests/test_publication_control_reads.py
           )
           for i in "${!tests[@]}"; do
             if [[ ! -f "${tests[$i]}" && -f "tests/${tests[$i]##*/}" ]]; then
               tests[$i]="tests/${tests[$i]##*/}"
+            elif [[ "${ACCEPTED_RESUME:-false}" == true && ! -f "${tests[$i]}" ]]; then
+              # Accepted historical code may predate these supervisor checks.
+              case "${tests[$i]}" in
+                scripts/publication/tests/test_workflow_resume.py|scripts/publication/tests/test_preparation_checkpoint.py) unset 'tests[i]' ;;
+              esac
             fi
           done
           PYTHONPATH=scripts/publication:scripts python -m pytest -q "${tests[@]}"

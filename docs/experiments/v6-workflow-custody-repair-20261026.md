@@ -153,3 +153,45 @@ Changed files:
 - `scripts/publication/tests/test_preparation_checkpoint.py`
 - `scripts/publication/tests/test_workflow_resume.py`
 - `docs/experiments/v6-workflow-custody-repair-20261026.md`
+
+## Follow-up: completion boundary and diagnostic stops
+
+Integration review identified a race between completing the accepted receipt and
+the supervisor's stop signal. After the process group is quiescent, the supervisor
+now sends any complete receipt/result pair through the maintained `verify-prepared`
+command, with a 20-minute verification bound inside the remaining job margin. A
+valid pair for the current producer returns `prepared` for ordinary accepted-artifact
+upload, even when the child exits zero at the deadline or an interrupt overwrites
+its outer report. A process disappearing between timeout and signal is handled.
+Failed verification or a different producer identity refuses acceptance; complete
+pairs cannot be saved or restored through a version 2 checkpoint.
+
+Before renderer initialization, a bounded stop is diagnostic-only and emits no
+resume descriptor. Incomplete checkpoints require retained `stages.sqlite`, unless
+the existing accepted `prepared` phase already permits receipt/result completion
+without rendering. The runtime still verifies state contents and original inputs
+when resuming.
+
+The standard-library saved-state/receipt reader now permits 128 MiB, matching the
+capacity repair's continuation limit. The checkpoint file bound permits 131,072
+publication files plus 1,024 auxiliary files. A regression reads a 33 MiB binding
+that the previous 32 MiB reader would reject.
+
+The publication workflow now runs the workflow-resume and checkpoint tests before
+preparation/publication. An explicitly accepted historical revision may predate
+those two tests; only those absent tests are omitted on that version 1 route.
+Current preparation treats missing checks as failures.
+
+Follow-up checks cover real subprocess completion at interruption with exit codes
+zero and 130, the timeout/signal disappearance race, failed complete verification,
+old producer custody, pre-renderer stops, refusal of complete version 2 state,
+accepted-phase continuation without renderer state, capacity bounds and actual
+workflow shell selection. The subprocess CLI is a focused fixture; these cases
+prove supervisor decisions, while the maintained publication attempt suite checks
+the complete preparation verifier. They do not establish hosted runtime success.
+
+Final follow-up result: **127 checks passed in 23.31 seconds** across
+`test_workflow_resume.py`, `test_preparation_checkpoint.py`,
+`test_publication_cli.py` and `test_viewer_publication_attempt.py`.
+The same unrelated installed Pydantic/Logfire warning remained. The focused
+workflow/checkpoint subset also passed all 58 checks; `git diff --check` passed.

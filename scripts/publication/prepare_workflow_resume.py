@@ -7,6 +7,7 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -67,6 +68,27 @@ def verify_checkpoint(root, environment):
         run=github_json(f"repos/{repository}/actions/runs/{descriptor['run_id']}"), revision=revision())
 
 
+def verify_completed_preparation(root, environment):
+    """Use the complete verifier before accepting a stop-boundary result."""
+    with tempfile.TemporaryDirectory(prefix='preparation-boundary-', dir=environment['RUNNER_TEMP']) as directory:
+        proof = Path(directory) / 'verified.json'
+        subprocess.run([sys.executable, str(ROOT / 'scripts/publication/publish-viewer-r2.py'),
+            'verify-prepared', '--directory', str(root), '--report', str(proof)],
+            cwd=ROOT, env=environment, check=True, timeout=1200)
+        verified = json.loads(proof.read_bytes())
+    if verified.get('status') != 'verified_prepared':
+        raise ValueError('Stop-boundary preparation did not pass complete verification')
+    receipt = validation.read_checkpoint_json(root / 'preparation.json')
+    producer = receipt.get('artifact_producer', receipt['binding'])
+    if (str(producer['run_id']) != environment['GITHUB_RUN_ID']
+            or str(producer['run_attempt']) != environment['GITHUB_RUN_ATTEMPT']):
+        raise ValueError('Completed preparation belongs to another producer; use its original accepted artifact')
+    result = validation.read_checkpoint_json(root / 'prepared-result.json')
+    if result.get('status') != 'prepared' or result.get('artifact_name') != verified.get('artifact_name'):
+        raise ValueError('Stop-boundary preparation result differs from verification')
+    return result
+
+
 def run_preparation(root, report, *, environment, deadline_seconds=7800, grace_seconds=120):
     """Stop before the job timeout, then freeze partial work for an explicit run."""
     start = json.loads((Path(environment['RUNNER_TEMP']) / 'publication-job-start.json').read_text())['time']
@@ -90,7 +112,10 @@ def run_preparation(root, report, *, environment, deadline_seconds=7800, grace_s
         process.wait(timeout=remaining)
     except subprocess.TimeoutExpired:
         stopped = True
-        os.killpg(process.pid, signal.SIGINT)
+        try:
+            os.killpg(process.pid, signal.SIGINT)
+        except ProcessLookupError:
+            pass  # The producer may complete between the deadline and signal.
         try:
             process.wait(timeout=grace_seconds)
         except subprocess.TimeoutExpired:
@@ -107,6 +132,10 @@ def run_preparation(root, report, *, environment, deadline_seconds=7800, grace_s
     else:
         os.killpg(process.pid, signal.SIGKILL)
         raise ValueError('Preparation left running descendants; checkpoint acceptance refused')
+    if stopped and all((root / name).is_file() for name in ('preparation.json', 'prepared-result.json')):
+        result = verify_completed_preparation(root, child_env)
+        report.write_text(json.dumps(result, indent=2) + '\n')
+        return result
     if process.returncode == 0 and not stopped:
         result = json.loads(report.read_bytes())
         if result.get('status') not in ('prepared', 'unchanged'):

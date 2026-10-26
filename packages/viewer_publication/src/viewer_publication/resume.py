@@ -66,8 +66,10 @@ def validate_resume_descriptor(value):
 
 
 CHECKPOINT_FILE = 'workflow-checkpoint.json'
-MAX_CHECKPOINT_BYTES = 32 * 1024**2
-MAX_CHECKPOINT_FILES = 131072
+# Match the maintained continuation's capacity, including its input binding.
+MAX_CHECKPOINT_BYTES = 128 * 1024**2
+# Publication inventory permits 131,072 files; retain working state alongside it.
+MAX_CHECKPOINT_FILES = 131072 + 1024
 
 
 def file_digest(path):
@@ -105,9 +107,19 @@ def checkpoint_inventory(root):
     return files
 
 
+def require_incomplete_preparation(root, state):
+    root = Path(root)
+    if all((root / name).is_file() for name in ('preparation.json', 'prepared-result.json')):
+        raise ValueError('Complete preparation cannot be advertised as an incomplete checkpoint')
+    stages = root / 'publication.renderer-upgrade/stages.sqlite'
+    if 'prepared' not in state.get('phases', {}) and (stages.is_symlink() or not stages.is_file()):
+        raise ValueError('Diagnostic-only stop: preparation has no retained renderer stages')
+
+
 def save_preparation_checkpoint(root, *, revision, run_id, run_attempt, repository, workflow_revision=None):
     root = Path(root)
     state = read_checkpoint_json(root / 'continuation.json')
+    require_incomplete_preparation(root, state)
     binding = state['binding']
     if binding.get('provenance_revision') != revision:
         raise ValueError('Preparation checkpoint revision differs from its original code')
@@ -165,6 +177,7 @@ def verify_preparation_checkpoint(root, descriptor, *, metadata, run, revision):
         raise ValueError('Preparation checkpoint receipt differs from selected descriptor')
     receipt = read_checkpoint_json(root / CHECKPOINT_FILE)
     state = read_checkpoint_json(root / 'continuation.json')
+    require_incomplete_preparation(root, state)
     if (receipt.get('version') != 1 or receipt.get('status') != 'incomplete_preparation'
             or state['binding'] != receipt['binding'] or state.get('writes') or state.get('versions')
             or receipt['binding'].get('provenance_revision') != revision):
