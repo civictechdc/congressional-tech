@@ -218,3 +218,19 @@ no new fix commit, no remote operation, and no production qualification claim.
 - Preserved original report after rebase: `882be77b11c2939aa22c7cc78e5a8391e6802252`.
 - Fix SHA: none.
 - Final addendum SHA: the report-only commit following `882be77b`; exact self-hash and clean status are supplied in the final handoff message.
+
+
+## Final source closure
+
+Final exact source SHA: `0cde0d348dce0c5eae714a7199b54839dab8bc23`.
+**Final verdict remains APPROVE.** The parent identifies the sole new source delta
+as its bounded smoke-read fix, outside this inventory/preparation-custody review.
+No audit or test scope was expanded, and this addendum makes no independent
+review claim about that delta. The report-only commits were preserved and rebased
+onto this final source revision.
+
+- Final source/rebase base: `0cde0d348dce0c5eae714a7199b54839dab8bc23`.
+- Branch: `codex/review-capacity-inventory-20261026`.
+- Latest backup: `codex/backup-inventory-review-6183938f-20261026` → `c1f1ff9cc18ec4f4aa226ce5f94b7c614fa4ac86`.
+- Fix SHA: none; this closure changes only the report.
+- Rebased report and closure commit SHAs, plus final clean status, are supplied in the final handoff.
