@@ -427,3 +427,80 @@ def test_parquet_smoke_read_is_bounded_when_range_response_is_oversized(prepared
         publication.upload(store, prepared[0], prepared[1], previous_etag=None, selected_etag='raw-v1')
     assert sizes == [5]  # Four expected bytes plus one overflow byte, never read to EOF.
     assert publication.PREFIX + 'manifest.json' not in store.data
+
+
+def test_payload_submission_keeps_at_most_six_unconsumed_jobs(prepared, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    executors = []
+    class ObservedExecutor(ThreadPoolExecutor):
+        def __init__(self, max_workers):
+            assert max_workers == 6
+            super().__init__(max_workers=max_workers)
+            self.outstanding = self.maximum = self.submitted = 0
+            executors.append(self)
+        def submit(self, fn, *args, **kwargs):
+            self.outstanding += 1
+            self.maximum = max(self.maximum, self.outstanding)
+            assert self.outstanding <= 6, 'Unbounded payload submission'
+            self.submitted += 1
+            future = super().submit(fn, *args, **kwargs)
+            original = future.result
+            consumed = False
+            def result(*args, **kwargs):
+                nonlocal consumed
+                try:
+                    return original(*args, **kwargs)
+                finally:
+                    if not consumed:
+                        self.outstanding -= 1
+                        consumed = True
+            future.result = result
+            return future
+    monkeypatch.setattr(publication, 'ThreadPoolExecutor', ObservedExecutor)
+    store = Store(prepared[1])
+    result = publish(store, prepared, monkeypatch)
+    executor, = executors
+    assert result['status'] == 'published'
+    assert executor.submitted == result['files'] > 6
+    assert executor.maximum == 6 and executor.outstanding == 0
+    assert result['bytes'] == sum(path.stat().st_size for path in publication.prepared_files(*prepared).values())
+    assert not any(key.endswith(('.parquet', '.bin')) for key in store.reads)
+
+
+def test_observed_payload_failure_stops_submission_and_cancels_waiting_jobs(prepared, monkeypatch):
+    from concurrent.futures import Executor, Future
+    failure = OSError('owned payload failure')
+    executors = []
+    class ControlledExecutor(Executor):
+        def __init__(self, max_workers):
+            assert max_workers == 6
+            self.futures = []
+            self.observed_failure = False
+            executors.append(self)
+        def submit(self, fn, *args, **kwargs):
+            assert not self.observed_failure, 'Submitted after observing failure'
+            future = Future()
+            self.futures.append(future)
+            if len(self.futures) == 1:
+                future.set_result(1)
+            elif len(self.futures) == 2:
+                future.set_exception(failure)
+                original = future.result
+                def failed(*args, **kwargs):
+                    self.observed_failure = True
+                    return original(*args, **kwargs)
+                future.result = failed
+            return future
+        def shutdown(self, wait=True):
+            pass  # Pending futures never execute; production must cancel them.
+    monkeypatch.setattr(publication, 'ThreadPoolExecutor', ControlledExecutor)
+    store = Store(prepared[1])
+    with pytest.raises(OSError) as caught:
+        publish(store, prepared, monkeypatch)
+    executor, = executors
+    assert caught.value is failure and executor.observed_failure
+    # A successful result in the same completed batch cannot trigger refilling
+    # before its failed sibling has been checked.
+    assert len(executor.futures) == 6
+    assert all(future.cancelled() for future in executor.futures[2:])
+    assert publication.PREFIX + 'manifest.json' not in store.data
