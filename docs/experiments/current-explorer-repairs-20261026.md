@@ -86,9 +86,9 @@ single-pass occurrence rendering, and local/cloud journal improvements.
   at `d36564b1`.
 - **154 maintained JavaScript explorer checks passed** in 9.60 seconds.
 
-These counts overlap earlier runs and must not be added together. The original
-publication integration run also identified five outdated readback-test
-expectations; their repair and the exact merged-main review are recorded in the
+These counts overlap earlier runs and must not be added together. The final broad publication run passed **723 tests and 2 subtests** after
+repairing five outdated readback-test expectations. Seven further review findings
+were fixed and checked with focused tests. Exact revisions and results are in the
 [merge and review record](explorer-main-review-20261026.md).
 
 ## Production completion boundary
