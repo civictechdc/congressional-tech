@@ -38,6 +38,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from xml.etree.ElementTree import ParseError
 
 import requests
 from congress_shared.auth import load_congress_api_key
@@ -174,7 +175,7 @@ def main(
             try:
                 mods_doc = parse_mods_document(mods)
                 hearing = parse_mods(package_id, mods_doc, last_modified)
-            except (ValueError, KeyError, TypeError, OSError, RuntimeError) as ex:
+            except (ParseError, ValueError, KeyError, TypeError, OSError, RuntimeError) as ex:
                 # Keep rejected response bytes without replacing the last valid
                 # MODS record or marking its CSV row freshly parsed.
                 captured['failed_mods'] = {**observation, 'error': str(ex)}
@@ -187,26 +188,26 @@ def main(
             captured.pop('failed_mods', None)
             if evidence_path is not None:
                 mets_url = f"{GOVINFO_CONTENT}/metadata/pkg/{package_id}/mets.xml"
+                manifest_obs = upstream_evidence.observation(
+                    b"", mets_url, "application/xml",
+                    retrieved_at=datetime.now(timezone.utc).isoformat(),
+                )
                 try:
                     mets_bytes = get_with_retry(session, mets_url).content
                     manifest_obs = upstream_evidence.observation(
                         mets_bytes, mets_url, "application/xml",
                         retrieved_at=datetime.now(timezone.utc).isoformat(),
                     )
-                    try:
-                        parsed_manifest = parse_package_manifest(mets_bytes)
-                        captured['manifest'] = manifest_obs
-                        captured['manifest_files'] = [f.source_dict() for f in parsed_manifest.files]
-                    except (ValueError, KeyError, TypeError, OSError, RuntimeError) as mets_ex:
-                        captured['manifest'] = {**manifest_obs, 'error': str(mets_ex)}
-                except (requests.RequestException, OSError, ValueError, RuntimeError) as mets_ex:
-                    captured['manifest'] = {
-                        **upstream_evidence.observation(
-                            b"", mets_url, "application/xml",
-                            retrieved_at=datetime.now(timezone.utc).isoformat(),
-                        ),
-                        'error': str(mets_ex),
-                    }
+                    parsed_manifest = parse_package_manifest(mets_bytes)
+                except (requests.RequestException, ParseError, OSError, ValueError,
+                        KeyError, TypeError, RuntimeError) as mets_ex:
+                    # Retain rejected bytes separately from the last valid file
+                    # manifest. Fail this package so its row stays pending.
+                    captured['failed_manifest'] = {**manifest_obs, 'error': str(mets_ex)}
+                    raise
+                captured['manifest'] = manifest_obs
+                captured['manifest_files'] = [f.source_dict() for f in parsed_manifest.files]
+                captured.pop('failed_manifest', None)
             captured['transcripts'] = dict(captured.get('transcripts', {}))
             old = existing.get(package_id)
             # Parser repairs must not discard transcript-derived corrections or
@@ -228,7 +229,7 @@ def main(
                 result.update(parser_version=PARSER_VERSION, hearing_dates=hearing.hearing_dates,
                               text_read=hearing.text_read, witness_count=hearing.witness_count)
             return result, None, captured if evidence_path is not None else None
-        except (requests.RequestException, OSError, ValueError, KeyError, TypeError, RuntimeError) as ex:
+        except (requests.RequestException, ParseError, OSError, ValueError, KeyError, TypeError, RuntimeError) as ex:
             return None, f"{package_id}: {ex!r}", captured if evidence_path is not None and captured is not None else None
 
     completed = set()
@@ -244,11 +245,15 @@ def main(
             if i % 500 == 0:
                 logging.info(f"Fetched {i}/{len(to_fetch)}")
 
+    # A failed metadata refresh must not change its last valid row through the
+    # independent transcript backfill below.
+    failed_packages = set(to_fetch) - completed
     ## one-time backfill: hearing days for transcripts fetched before they were read
     backfill = sorted((r for r in existing.values()
                 if (match := PACKAGE_ID_REGEX.match(r["package_id"]))
                 and match[2] in chambers
                 and int(r["congress"]) >= max(TEXT_DAYS_FROM_CONGRESS, min_congress)
+                and r["package_id"] not in failed_packages
                 and not r.get("text_read")),
                 key=lambda row: (-int(row["congress"]), row["package_id"]))[:refresh_limit]
     if backfill:

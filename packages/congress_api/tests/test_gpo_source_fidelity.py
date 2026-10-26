@@ -18,6 +18,7 @@ from congress_api.retention.gpo import write_csv as fetch_write_csv
 from test_explorer_material_adapters import context
 
 FIXTURES = Path(__file__).parent / 'fixtures' / 'gpo_metadata'
+METS = b'<mets xmlns="http://www.loc.gov/METS/"/>'
 
 
 def parsed(package='CHRG-113hhrg21122'):
@@ -100,7 +101,7 @@ def test_unchanged_rows_refresh_by_parser_version_with_a_bound_and_no_transcript
     calls = []
     def get(session, url):
         calls.append(url)
-        return SimpleNamespace(content=(FIXTURES / f'{package}.xml').read_bytes())
+        return SimpleNamespace(content=METS if url.endswith('/mets.xml') else (FIXTURES / f'{package}.xml').read_bytes())
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', lambda since, key: [])
     monkeypatch.setattr(fetch, 'get_with_retry', get)
@@ -235,6 +236,8 @@ def test_transcript_failure_keeps_old_row_and_successful_mods_bytes(tmp_path, mo
     def get(session, url):
         if url.endswith('/mods.xml'):
             return SimpleNamespace(content=(FIXTURES / f'{package}.xml').read_bytes())
+        if url.endswith('/mets.xml'):
+            return SimpleNamespace(content=METS)
         raise RuntimeError('temporary transcript failure')
     monkeypatch.setattr(fetch, 'get_with_retry', get)
     with pytest.raises(SystemExit):
@@ -265,7 +268,8 @@ def test_rejected_mods_bytes_survive_without_replacing_last_valid_source(tmp_pat
     assert evidence.body_bytes(value['failed_mods']) == rejected
     assert value['failed_mods']['retrieved_at'] and value['failed_mods']['error']
     assert fetch_read_csv(path)[package]['parser_version'] == ''
-    monkeypatch.setattr(fetch, 'get_with_retry', lambda *args: SimpleNamespace(content=raw))
+    monkeypatch.setattr(fetch, 'get_with_retry', lambda session, url: SimpleNamespace(
+        content=METS if url.endswith('/mets.xml') else raw))
     fetch.main(path, min_congress=113, nthreads=1, refresh_limit=0, evidence_path=retained)
     assert 'failed_mods' not in evidence.read(retained)[package]
     assert fetch_read_csv(path)[package]['parser_version'] == fetch_PARSER_VERSION
@@ -286,7 +290,7 @@ def test_failed_new_package_retries_after_other_success_advances_watermark(tmp_p
     def get(session, url):
         if first and failed in url:
             raise RuntimeError('temporary MODS failure')
-        return SimpleNamespace(content=(FIXTURES / 'CHRG-113hhrg21122.xml').read_bytes())
+        return SimpleNamespace(content=METS if url.endswith('/mets.xml') else (FIXTURES / 'CHRG-113hhrg21122.xml').read_bytes())
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', listing)
     monkeypatch.setattr(fetch, 'get_with_retry', get)
