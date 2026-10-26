@@ -4,6 +4,7 @@ import io
 import json
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import pytest
 from botocore.exceptions import ClientError
@@ -224,6 +225,22 @@ def test_restore_links_new_evidence_with_one_sync_and_does_not_rewrite(history, 
     restore(history)
     assert len(accepted) == log.sequence and not evidence_writes
     assert len(syncs) == (0 if existing else log.sequence) + 2  # Derived JSON file and directory.
+    assert not list(run.root.glob('.journal-restore-*'))
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_successful_restore_never_rereads_spooled_bytes(history, monkeypatch, existing):
+    log, run, remote = history
+    if not existing:
+        for path in (run.root / 'journal').glob('*.json'):
+            path.unlink()
+    original = Path.read_bytes
+    def read(path):
+        assert not any(part.startswith('.journal-restore-') for part in path.parts), 'restore reread spool bytes'
+        return original(path)
+    monkeypatch.setattr(Path, 'read_bytes', read)
+    restored = restore(history)
+    assert restored.sequence == log.sequence
     assert not list(run.root.glob('.journal-restore-*'))
 
 

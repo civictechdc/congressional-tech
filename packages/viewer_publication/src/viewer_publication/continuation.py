@@ -214,7 +214,8 @@ class Continuation:
             # Atomic link creation also refuses to replace competing evidence.
             os.link(source, path)
         except FileExistsError:
-            if path.is_symlink() or path.read_bytes() != source.read_bytes():
+            if (path.is_symlink() or path.stat().st_size != proof.size_bytes
+                    or sha256(path) != proof.sha256):
                 raise ValueError('Publication artifact changed: ' + name)
 
     def phase(self, name, action, *, files, inventory=None):
@@ -496,7 +497,8 @@ class DurableJournal:
                     raise ValueError('Publication journal exceeds byte limit')
                 if len(raw) != declared:
                     raise ValueError('Incomplete publication journal read')
-                return write_atomic_bytes(Path(directory) / f'{index:08d}.json', raw, fsync=False)
+                proof = write_atomic_bytes(Path(directory) / f'{index:08d}.json', raw, fsync=False)
+                return proof, json.loads(raw)
 
             # Reconstruct privately in sequence order. No accepted journal file or
             # checkpoint changes until the entire remote prefix has been checked.
@@ -507,11 +509,9 @@ class DurableJournal:
                 pending = deque(pool.submit(fetch, index) for index in range(submitted))
                 try:
                     for index in range(len(keys)):
-                        proof = pending.popleft().result()
+                        proof, event = pending.popleft().result()
                         proof.require(proof.path)
-                        raw = proof.path.read_bytes()
-                        total += len(raw)
-                        event = json.loads(raw)
+                        total += proof.size_bytes
                         if not isinstance(event, dict) or type(event.get('version')) is not int or event['version'] != 1:
                             raise ValueError('Unsupported publication journal version')
                         if (type(event.get('sequence')) is not int or event['sequence'] != index or event.get('previous') != previous
