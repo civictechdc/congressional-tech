@@ -68,3 +68,28 @@ def test_unsafe_receipt_is_refused_before_any_body_write(tmp_path):
                            write_date='2026-10-27', archive_limits=None)
     with pytest.raises(ValueError, match='[Cc]redential'): writer.write(FetchResult(a), family='documents')
     assert not root.exists()
+
+
+def test_stable_transfer_and_sniff_failure_codes_are_preserved(tmp_path):
+    from congress_api.models.raw_fetch import FetchResult
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    a=attempt(tmp_path,complete=False)
+    a=replace(a,error='body_error',body=replace(a.body,sniff_error='pdf_reader_size_limit'))
+    writer=ReceiptWriter(BodyStore(LocalAdapter(tmp_path/'raw')),identity=WRITER,run_id='run',
+                         write_date='2026-10-27',archive_limits=None)
+    line=writer.write(FetchResult(a),family='documents')[1]
+    assert line['error_type']=='body_error'
+    assert line['captures'][0]['sniff_error']=='pdf_reader_size_limit'
+
+
+def test_error_codes_cannot_contain_paths_or_exception_messages(tmp_path):
+    from congress_api.models.raw_fetch import FetchResult
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    root=tmp_path/'raw'
+    a=replace(attempt(tmp_path),error='failure at /Users/person/private')
+    writer=ReceiptWriter(BodyStore(LocalAdapter(root)),identity=WRITER,run_id='run',
+                         write_date='2026-10-27',archive_limits=None)
+    with pytest.raises(ValueError,match='error code'):writer.write(FetchResult(a),family='documents')
+    assert not root.exists()
