@@ -158,3 +158,13 @@ def test_real_bounded_pdf_reader_opens_structure_without_an_end_marker():
         assert row['status'] == 'completed' and row['intact'] is True
     row = read_sniff(Ranges(data[:100]), stored_size=100)
     assert row['status'] == 'completed' and row['intact'] is False
+
+
+def test_gzip_storage_must_have_a_readable_gzip_header():
+    from congress_api.retention.sniff import read_sniff
+
+    for body in (b'not gzip', b'\x1f\x8b\x08\x00'):
+        row = read_sniff(Ranges(body), stored_size=len(body), stored_gzip=True)
+        assert row['status'] == 'failed' and row['error_type'] == 'invalid_gzip'
+    body = gzip.compress(b'')
+    assert read_sniff(Ranges(body), stored_size=len(body), stored_gzip=True)['format'] == 'empty'
