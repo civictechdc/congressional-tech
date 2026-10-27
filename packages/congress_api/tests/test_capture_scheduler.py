@@ -310,3 +310,24 @@ def test_every_reviewed_cutoff_has_a_native_disposition(tmp_path):
     assert rows[cutoffs[2]]['reason']=='not_due' and rows[cutoffs[2]]['next_attempt_at'].startswith('2027-01-01')
     assert rows[cutoffs[3]]['reason']=='outside_capture_scope'
     assert rows[cutoffs[4]]['reason']=='not_in_release'
+
+
+def test_future_seed_alias_does_not_bypass_shared_url_identity(tmp_path):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    root=release(tmp_path,[dict(requested_url='https://fixture.test/a%20b.pdf',attempts=1,
+        next_attempt_at=datetime(2027,1,1,tzinfo=timezone.utc))])
+    seed=tmp_path/'seeds.json'
+    seed.write_text(json.dumps(dict(url='https://fixture.test/a b.pdf')))
+    result=plan_queue(load(root,tmp_path/'read'),engine=engine(),work=tmp_path/'plan',as_of=ASOF,
+        request_budget=20,seed_inventories=[seed])
+    assert pq.read_table(result['queue']).num_rows==0
+
+
+def test_attempted_alias_is_not_scheduled_again(tmp_path):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    root=release(tmp_path,[dict(requested_url='https://fixture.test/a%20b.pdf',attempts=0)])
+    attempted=tmp_path/'attempted.jsonl.gz'
+    with gzip.open(attempted,'wt') as out:out.write(json.dumps(dict(url='https://fixture.test/a b.pdf'))+'\n')
+    result=plan_queue(load(root,tmp_path/'read'),engine=engine(),work=tmp_path/'plan',as_of=ASOF,
+        request_budget=20,attempted=attempted)
+    assert pq.read_table(result['queue']).num_rows==0
