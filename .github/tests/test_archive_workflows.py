@@ -1,6 +1,7 @@
 """F1 workflow admission, one writer group, and a refusing model binding."""
 from pathlib import Path
 import json
+import os
 import subprocess
 import sys
 
@@ -68,6 +69,35 @@ def test_every_new_r2_writer_has_an_explicit_endpoint_source():
                 env = step.get('env', {})
                 if 'R2_ACCESS_KEY_ID' in env:
                     assert env['CLOUDFLARE_ACCOUNT_ID'] == '${{ vars.CLOUDFLARE_ACCOUNT_ID }}'
+
+
+def test_capture_shell_passes_budgets_and_only_existing_weekly_seeds(tmp_path):
+    tools = tmp_path / '.venv/bin'
+    tools.mkdir(parents=True)
+    interpreter = tools / 'python'
+    interpreter.write_text(f'#!{sys.executable}\nimport json, pathlib, sys\npathlib.Path("invocation.json").write_text(json.dumps(sys.argv[1:]))\n')
+    interpreter.chmod(0o755)
+    inventory = tmp_path / 'pipeline-data/meeting-inventory/house.json.gz'
+    inventory.parent.mkdir(parents=True)
+    inventory.write_bytes(b'fixture')
+    step = next(step for step in workflow('capture-archive.yml')['jobs']['capture']['steps']
+                if 'capture_schedule' in step.get('run', ''))
+    env = dict(PATH=os.defpath, RUNNER_TEMP=str(tmp_path), ARCHIVE_POINTER='https://public.test/manifest.json',
+               REQUEST_BUDGET='19', BYTE_BUDGET='2048', SPOOL_BUDGET='1024')
+    result = subprocess.run(['bash', '-eo', 'pipefail', '-c', step['run']], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert json.loads((tmp_path / 'invocation.json').read_text()) == [
+        '-I', '-m', 'congress_api.cli.capture_schedule', '--pointer', env['ARCHIVE_POINTER'],
+        '--request-budget', '19', '--byte-budget', '2048', '--spool-budget', '1024',
+        '--work', str(tmp_path / 'archive-capture'), '--apply',
+        '--seed-inventory', 'pipeline-data/meeting-inventory/house.json.gz']
+    (tmp_path / 'invocation.json').unlink()
+    env['REQUEST_BUDGET'] = '0'
+    result = subprocess.run(['bash', '-eo', 'pipefail', '-c', step['run']], cwd=tmp_path,
+                            env=env, capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0
+    assert not (tmp_path / 'invocation.json').exists()
 
 
 def test_deploy_and_validation_add_local_archive_contract_before_upload():
