@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "minimum_files": 250,
+  "minimum_distinct_bodies": 220,
+  "required_strata": ["short_real_pages", "challenge_pages", "soft_error_pages", "download_pages", "archive_members", "landing_pages", "listing_pages", "files_listed_together", "widely_mirrored_documents", "listing_captured_twice", "links_outside_list_items"],
+  "decisions": ["real_document", "challenge", "soft_error", "download_wrapper", "landing", "listing", "source_record", "owner_decision_required"],
+  "expected": "Every chosen file has an inspected retained-body identity and a rubric decision with a concrete basis, or a named owner question. Prior rule labels are selection metadata, never hand-label truth. Grouping decisions cite the listing and link paths. The panel is a coverage sample, not an unbiased population accuracy estimate."
+}
