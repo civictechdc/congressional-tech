@@ -70,6 +70,7 @@ def test_converted_catalog_keeps_rows_and_shared_body_keys_choose_first(engine, 
         filename='A.pdf', source_url='https://fixture.test/a.pdf'),
         dict(document_id='b' * 64, source_id='two', body_key=body, body_keys=[body],
         filename='Z.pdf', source_url='https://fixture.test/z.pdf')]
+    rows.append(dict(rows[0], document_id='c' * 64, source_id='three', body_key=None, body_keys=[], filename='Metadata.json', source_url='https://fixture.test/meta.json'))
     list_fields = ['format', 'document_kind', 'document_family', 'committee_code', 'congress',
         'date_token', 'state_retrieved_at', 'source_link_label', 'source_page_url', 'source_meeting_id']
     for row in rows:
@@ -93,13 +94,14 @@ def test_converted_catalog_keeps_rows_and_shared_body_keys_choose_first(engine, 
     manifest = convert_catalog(documents, filenames, captures, committees, catalog_id='fixture-catalog',
         output=output, scratch=tmp_path / 'jobs', engine=engine)
     checked_manifest(output, manifest)
-    assert pq.ParquetFile(output / 'list.parquet').metadata.num_rows == 2
+    assert pq.ParquetFile(output / 'list.parquet').metadata.num_rows == 3
     assert pq.read_table(output / 'links.parquet').to_pylist() == [{'link_key': bytes([17]) * 8, 'list_row': 0}]
-    assert [row['saved_bytes'] for row in pq.read_table(output / 'detail.parquet').to_pylist()] == [100, 100]
+    assert [row['saved_bytes'] for row in pq.read_table(output / 'detail.parquet').to_pylist()] == [100, None, 100]
     listed = pq.read_table(output / 'list.parquet').to_pylist()
     assert all(row['first_captured'] is None and row['date_kind'] == 'unknown' for row in listed)
-    assert listed[0]['document_date'] is not None and listed[1]['document_date'] is None
+    assert listed[0]['document_date'] is not None and listed[2]['document_date'] is None
     assert all(row['in_archive_since'] is None for row in pq.read_table(output / 'detail.parquet').to_pylist())
+    assert pq.read_table(output / 'detail.parquet').to_pylist()[1]['saved_body'] is None
     assert manifest['origin']['catalog_id'] == 'fixture-catalog'
 
 
