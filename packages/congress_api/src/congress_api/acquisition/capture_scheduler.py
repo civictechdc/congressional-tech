@@ -21,9 +21,6 @@ from congress_api.retention.provenance import field, json_input, parquet_output,
 from congress_api.retention.receipt_writer import ReceiptWriter
 from congress_api.retention.receipt_privacy import credential_parameters
 
-ROOT = Path(__file__).resolve().parents[5]
-REGISTRY = ROOT / 'model/registries/capture-scope.json'
-URL_KEYS = ROOT / 'model/sql/url-keys.sql'
 HEX = re.compile('[0-9a-f]{64}')
 PAGE_BYTES = 8 << 20
 RELEASE_FILE_BYTES = 128 << 20
@@ -130,7 +127,7 @@ def _download(session,url,path,limit):
 
 
 def load_release(*,work,release_root=None,pointer=None,session=None):
-    """Select one public release once; verify its two scheduler input files."""
+    """Select one public release once; verify all release-pinned scheduler inputs."""
     if (release_root is None)==(pointer is None):
         raise ValueError('Select a public pointer or a local release root')
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
@@ -157,7 +154,7 @@ def load_release(*,work,release_root=None,pointer=None,session=None):
     actual=hashlib.sha256(json.dumps([1,[[row[k] for k in ('name','sha256','size','rows')] for row in files]],ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
     if actual!=release_id:raise ValueError('Release manifest content identity differs')
     selected={}
-    for name in ('url_state.parquet','capture_scope.json'):
+    for name in ('url_state.parquet','capture_scope.json','capture_profile.json','url_variants.parquet'):
         entry=next((row for row in files if row['name']==name),None)
         if (entry is None or not isinstance(entry['sha256'],str) or not HEX.fullmatch(entry['sha256'])
                 or type(entry['size']) is not int or not 0<=entry['size']<=RELEASE_FILE_BYTES):
@@ -169,7 +166,10 @@ def load_release(*,work,release_root=None,pointer=None,session=None):
             if not path.is_relative_to(release_root):raise ValueError('Release input escapes its root')
         _identity(path,entry);selected[name]=path
     CapturePolicy(selected['capture_scope.json'])
-    return dict(release_id=release_id,state=selected['url_state.parquet'],scope=selected['capture_scope.json'])
+    return dict(release_id=release_id,state=selected['url_state.parquet'],scope=selected['capture_scope.json'],
+        profile=selected['capture_profile.json'],variants=selected['url_variants.parquet'],
+        origin='public' if pointer else 'local',
+        identities={name:next(row for row in files if row['name']==name) for name in selected})
 
 
 def _records(path):
@@ -178,25 +178,66 @@ def _records(path):
             yield from batch.to_pylist()
 
 
-def _url_binding(release):
-    path=Path(release.get('url_keys_sql',URL_KEYS))
-    if not path.is_file():
-        raise ValueError('Shared url_key SQL is unavailable; bind model/sql/url-keys.sql')
-    definition=path.read_text()
-    inputs=release.get('url_key_inputs',[])
-    if not isinstance(inputs,list) or any(not isinstance(item,dict) for item in inputs):
-        raise ValueError('Shared url_key profile inputs must be native input declarations')
-    digest=hashlib.sha256(definition.encode()).hexdigest()
+def _url_binding(release,engine):
+    """Bind SQL, rules, variants and engine to the selected immutable release."""
+    overrides=('url_keys_sql','url_normalized_sql','url_key_inputs')
+    if release.get('origin')!='local' and any(name in release for name in overrides):
+        raise ValueError('Public release URL identity overrides are forbidden')
+    for key,name in [('state','url_state.parquet'),('scope','capture_scope.json'),
+                     ('profile','capture_profile.json'),('variants','url_variants.parquet')]:
+        _identity(release[key],release['identities'][name])
+    profile=json.loads(Path(release['profile']).read_text())
+    if (not isinstance(profile,dict) or set(profile)!={'version','engine_revision','sql','url_rules','url_variants_file'}
+            or type(profile['version']) is not int or profile['version']!=1
+            or profile['url_variants_file']!='url_variants.parquet'
+            or not isinstance(profile['sql'],dict) or set(profile['sql'])!={'url_normalized','url_keys'}
+            or not isinstance(profile['url_rules'],list)):
+        raise ValueError('Invalid capture profile')
+    if profile['engine_revision']!=engine.source_revision:
+        raise ValueError('Capture profile engine revision differs from configured engine')
+    definitions={}
+    for name in ('url_normalized','url_keys'):
+        entry=profile['sql'][name]
+        if (not isinstance(entry,dict) or set(entry)!={'text','sha256'} or not isinstance(entry['text'],str)
+                or hashlib.sha256(entry['text'].encode('utf-8')).hexdigest()!=entry['sha256']):
+            raise ValueError('Capture profile SQL hash differs')
+        definitions[name]=entry['text']
+        override=release.get(name+'_sql')
+        if override is not None:
+            if not Path(override).is_file():raise ValueError('Authored url_key SQL is unavailable')
+            definitions[name]=Path(override).read_text()
+    fields=('id','kind','host_pattern','pattern','replacement','decoder')
+    rules=[]
+    for row in profile['url_rules']:
+        if (not isinstance(row,dict) or not set(fields).issubset(row)
+                or any(row[name] is not None and not isinstance(row[name],str) for name in fields)
+                or not row['id'] or row['kind'] not in {'wrapper','strip'} or not row['pattern']):
+            raise ValueError('Invalid capture profile URL rule')
+        rules.append({name:row[name] for name in fields})
+    inputs=release.get('url_key_inputs')
+    if inputs is not None and (not isinstance(inputs,list) or any(not isinstance(item,dict) for item in inputs)):
+        raise ValueError('Authored url_key profile inputs must be native input declarations')
+    binding=dict(sql=definitions,rules=rules,variants_sha256=release['identities']['url_variants.parquet']['sha256'],
+        engine_revision=profile['engine_revision'],authored_inputs=inputs)
+    digest=hashlib.sha256(json.dumps(binding,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
     if release.get('url_key_definition_sha256',digest)!=digest:
-        raise ValueError('Shared url_key definition changed within the capture run')
-    return definition,inputs,digest
+        raise ValueError('Capture profile changed within the capture run')
+    return binding,digest
 
 
-def _key_steps(definition,sources):
+def _profile_inputs(release,binding,work):
+    if binding['authored_inputs'] is not None:return binding['authored_inputs']
+    return [json_input(work,'url_rules',binding['rules'],**{name:'Utf8' for name in
+                ('id','kind','host_pattern','pattern','replacement','decoder')}),
+            dict(name='url_variants',kind='parquet',path=str(Path(release['variants']).resolve()))]
+
+
+def _key_steps(binding,sources):
     union=' UNION ALL '.join(f"SELECT {_literal(prefix+':')} || {column} AS input_id,{column} AS url FROM {name}"
         for name,prefix,column in sources)
     return [dict(name='url_inputs',sql=f'SELECT DISTINCT input_id,url FROM ({union}) WHERE url IS NOT NULL'),
-        dict(name='url_keys',sql=definition,materialize=True)]
+        dict(name='url_normalized',sql=binding['sql']['url_normalized'],materialize=True),
+        dict(name='url_keys',sql=binding['sql']['url_keys'],materialize=True)]
 
 
 def _key_queries():
@@ -232,7 +273,7 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
     """Account for every reviewed URL, including deadline/budget/scope deferrals."""
     urls=_reviewed_cutoffs(urls)
     if not urls:return []
-    definition,profile_inputs,_=_url_binding(release)
+    binding,_=_url_binding(release,engine)
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
     policy=CapturePolicy(release['scope'])
     inputs=[dict(name='states',kind='parquet',path=str(Path(release['state']).resolve())),
@@ -241,8 +282,8 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
             files=[dict(key='attempted',path=str(attempted))] if attempted.exists() else [],
             schema=dict(fields=[field('url','Utf8'),field('attempted','Boolean'),field('complete','Boolean'),
                 field('outcome','Utf8'),field('http_status','Int32'),field('error_type','Utf8')],metadata={}))]
-    inputs.extend(profile_inputs)
-    steps=_key_steps(definition,[('states','state','requested_url'),('attempted','attempted','url'),('cutoffs','cutoff','url')])
+    inputs.extend(_profile_inputs(release,binding,work))
+    steps=_key_steps(binding,[('states','state','requested_url'),('attempted','attempted','url'),('cutoffs','cutoff','url')])
     steps.extend([dict(name='selected_states',sql=f"""SELECT s.requested_url,s.next_attempt_at,
         {policy.sql('s.requested_url')} AS family,k.url_key FROM states s JOIN url_keys k
         ON k.input_id='state:' || s.requested_url"""),
@@ -275,7 +316,7 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     """Use shared URL keys for matching, retaining literal requested URL outputs."""
     _positive(request_budget,'request budget');as_of=_utc(as_of)
     cutoff_urls=_reviewed_cutoffs(cutoff_urls)
-    definition,profile_inputs,definition_sha256=_url_binding(release)
+    binding,definition_sha256=_url_binding(release,engine)
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
     required={'requested_url','attempts','next_attempt_at','last_outcome'}
     schema=pq.read_schema(release['state'])
@@ -299,10 +340,10 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     inputs.append(dict(name='attempted',kind='json_lines',files=[] if attempted is None else [dict(key='attempted',path=str(attempted))],
         schema=dict(fields=[field('url','Utf8')],metadata={})))
     inputs.append(json_input(work,'cutoffs',(dict(url=url) for url in cutoff_urls),url='Utf8'))
-    inputs.extend(profile_inputs)
+    inputs.extend(_profile_inputs(release,binding,work))
     steps=[dict(name='seed_rows',sql="""SELECT url,source,pointer FROM seeds UNION ALL
         SELECT url_resolve(href,coalesce(url_resolve(base_href,context),context)) AS url,source,pointer FROM discovery""")]
-    steps.extend(_key_steps(definition,[('states','state','requested_url'),('seed_rows','seed','url'),
+    steps.extend(_key_steps(binding,[('states','state','requested_url'),('seed_rows','seed','url'),
         ('attempted','attempted','url'),('cutoffs','cutoff','url')]))
     steps.extend([dict(name='keyed_states',sql="""SELECT s.*,k.url_key FROM states s JOIN url_keys k
         ON k.input_id='state:' || s.requested_url"""),
@@ -364,6 +405,7 @@ def _allowance(byte_budget,spool_budget,archive_limits,hops):
 def read_discovery_payload(payload):
     """Shared worker entry; bound and verify the owned file before parsing."""
     from congress_api.parsers.archive_readings import read_page
+    payload=json.loads(payload.decode('utf-8'))
     path=Path(payload['path'])
     if path.stat().st_size!=payload['bytes'] or payload['bytes']>PAGE_BYTES:
         raise ValueError('Discovery input exceeds or differs from its declared bytes')
@@ -380,7 +422,7 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
     """One sequential raw writer. No state/index or table writes occur here."""
     for name,value in [('request budget',request_budget),('byte budget',byte_budget),('spool budget',spool_budget),('discovery jobs',max_discovery_jobs)]:
         _positive(value,name)
-    _,_,url_key_digest=_url_binding(release)
+    _,url_key_digest=_url_binding(release,engine)
     release=dict(release,url_key_definition_sha256=url_key_digest)
     if discover is None and worker_factory is None:
         try:
@@ -455,10 +497,10 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
                                 workers[parser]=worker_stack.enter_context(worker_factory(parser,worker_version,
                                     'congress_api.acquisition.capture_scheduler:read_discovery_payload',
                                     timeout_seconds=30,memory_bytes=512<<20,max_input_bytes=PAGE_BYTES+16384))
-                            outcome=workers[parser].parse(body.sha256,dict(path=str(body.path),bytes=body.size,
-                                sha256=body.sha256,parser=parser))
-                            if outcome['status']=='unreadable':
-                                facts=dict(status='error',error_type=outcome['reason'])
+                            outcome=workers[parser].parse(body.sha256,json.dumps(dict(path=str(body.path),bytes=body.size,
+                                sha256=body.sha256,parser=parser),ensure_ascii=False,separators=(',',':')).encode('utf-8'))
+                            if outcome['status'] in {'unreadable','size_limit'}:
+                                facts=dict(status='error',error_type=outcome.get('reason',outcome['status']))
                             elif outcome['status']=='completed':facts=outcome['value']
                             else:raise ValueError('Invalid bounded discovery worker result')
                         if facts['status']!='completed':
