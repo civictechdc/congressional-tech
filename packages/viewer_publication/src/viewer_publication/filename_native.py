@@ -57,18 +57,21 @@ class ViewerAssets:
         relative = f'releases/{digest[:32]}/{digest[32:]}/viewer-v2/page.json'
         path = self.root / relative
         if path.is_symlink():raise ValueError('Immutable viewer assets cannot be symlinks')
+        proof = None
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             if self.state:
                 from io import BytesIO
-                self.state.publish_asset(BytesIO(raw),path,identity=dict(bytes=len(raw),sha256=digest),key=relative)
+                proof = self.state.publish_asset(BytesIO(raw),path,identity=dict(bytes=len(raw),sha256=digest),key=relative)
             else:
                 with path.open('xb') as stream:
                     stream.write(raw)
             self.writes += 1
             self.metadata_writes += 1
             self.written_bytes += len(raw)
-        proof = file_identity(path)
+        # A fresh retained copy already has an exact-file proof. Existing
+        # destinations and direct writes still require independent admission.
+        proof = file_identity(path) if proof is None else proof.require(path)
         if proof['sha256'] != digest or proof['bytes'] != len(raw):
             raise ValueError('Conflicting immutable viewer metadata page')
         self.identities[relative] = proof
@@ -82,18 +85,23 @@ class ViewerAssets:
                 or reference.get('path') != f'releases/{digest[:32]}/{digest[32:]}/viewer-v2/page.json'
                 or type(reference.get('bytes')) is not int or not 0 < reference['bytes'] <= self.max_node_bytes):
             raise ValueError('Invalid immutable viewer page reference')
-        raw = self._nodes.get(reference['path'])
-        if raw is None:
+        cached = self._nodes.get(reference['path'])
+        if cached is None:
             path = self.root / reference['path']
             raw = path.read_bytes() if path.is_file() else self.read_asset(reference['path']) if self.read_asset else None
             self.reads += 1
-        if raw is None or len(raw) != reference['bytes'] or sha256(raw).hexdigest() != digest:
+            if raw is None or len(raw) != reference['bytes']:
+                raise ValueError('Viewer metadata page identity differs')
+            raw = bytes(raw)  # Detach mutable acquisition buffers before proving them.
+            cached = (raw, sha256(raw).hexdigest(), len(raw))
+        if cached[1:] != (digest, reference['bytes']):
             raise ValueError('Viewer metadata page identity differs')
-        self._nodes[reference['path']] = raw
+        self._nodes[reference['path']] = cached
         self._nodes.move_to_end(reference['path'])
         if len(self._nodes) > 16:
             self._nodes.popitem(last=False)
-        return json.loads(raw)
+        # Each caller owns its mutable result; only verified bytes are shared.
+        return json.loads(cached[0])
 
 
 def browse_key(row):
