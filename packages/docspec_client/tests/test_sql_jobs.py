@@ -66,9 +66,15 @@ def test_job_refuses_changed_binary_before_executing(tmp_path):
     assert not log.exists()
 
 
-def test_job_refuses_lifecycle_remote_configuration(tmp_path):
-    client, log, _ = executable(tmp_path)
-    client.remote = Path('not-opened.json')
-    with pytest.raises(ValueError, match='remote'):
-        client.run_job(tmp_path / 'job.json')
-    assert not log.exists()
+def test_job_forwards_explicit_remote_connection_and_named_secrets(tmp_path):
+    client, log, binary = executable(tmp_path)
+    client.remote = tmp_path / 'remote.json'
+    client._remote_secrets = {'DOCSPEC_FIXTURE_SECRET': 'dummy-fixture'}
+    body = binary.read_text().replace('#!/bin/sh\n', '#!/bin/sh\n'
+        'test "$DOCSPEC_FIXTURE_SECRET" = dummy-fixture || exit 93\n')
+    binary.write_text(body)
+    client.binary_sha256 = sha256(body.encode()).hexdigest()
+    assert client.run_job(tmp_path / 'job.json') == {'steps': [], 'outputs': []}
+    arguments = log.read_text().splitlines()
+    assert arguments[arguments.index('--remote') + 1] == str(client.remote)
+    assert arguments[-3:] == ['job', '--spec', str(tmp_path / 'job.json')]
