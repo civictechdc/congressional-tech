@@ -141,6 +141,8 @@ def read_sniff(read_range, *, stored_size, stored_gzip=False, pdf_reader=check_p
         if nested_gzip:
             prefix = _prefix(prefix)
         row['format'] = _format(prefix)
+        if nested_gzip and row['format'] != 'warc':
+            row['format'] = 'other'
         if row['format'] == 'pdf' and not stored_gzip and not nested_gzip:
             start = max(0, stored_size - PREFIX_BYTES)
             tail = head if start == 0 else read(start, stored_size - start)
