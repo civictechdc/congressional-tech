@@ -16,7 +16,6 @@ def test_local_ingest_cli_stage_and_explicit_append(tmp_path):
         retrieved_at=STAMP,http_status=200,outcome='stored',captures=[body()])])) )
     work=tmp_path/'stage'
     assert main(['--receipt-inventory',str(inventory),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
-        '--receipt-batch-size','1',
         '--work',str(work),'--apply','--catalog-root',str(tmp_path/'catalog'),
         '--table','archive.captures_v1','--create-table','--create-namespace',
         '--table-location',str(tmp_path/'data')])==0
@@ -68,8 +67,8 @@ def test_cli_skips_ingested_unreadable_receipts_before_compaction(tmp_path,capsy
     assert not work.exists()
 
 
-@pytest.mark.parametrize('size',['0','1025','-1'])
-def test_receipt_batch_size_must_be_explicitly_bounded(tmp_path,size):
+@pytest.mark.parametrize('size',['0','1025','-1','1'])
+def test_obsolete_receipt_batch_flag_is_refused_before_input_reads(tmp_path,size):
     from congress_api.cli.captures_ingest import main
     with pytest.raises(SystemExit) as error:
         main(['--receipt-inventory',str(tmp_path/'unopened.json'),
