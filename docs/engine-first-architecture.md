@@ -312,7 +312,7 @@ The domain model is versioned SQL in the application repository. One engine job 
 
 ### 9.2 What Counts as a File
 
-A file is a real document when its main content is the document itself (testimony, a report, a transcript, a bill, a hearing record), not a list of links, a landing, download or error page, or metadata about a document; the rule reads this from the sniffed format and the readings, by what a page says rather than by site templates or length. Every other body stays as evidence ([[DATA-MODEL]] §7.3): it never enters a document, but it still drives `url_state`; listing pages supply link context, and a wrapper's file is queued for capture.
+A file is a real document when its main content is the document itself (testimony, a report, a transcript, a bill, a hearing record), not a list of links, a landing, download or error page, or metadata about a document; the rule reads this from the sniffed format and the readings, by what a page says rather than by site templates or length. Use publisher structure and receipt facts first, then the small set of content rules, then recovery decisions and review verdicts (`hide`, `duplicate_of`, `kind_override`, `title_override`) for cases those rules settle wrongly. Add a rule only when its measured reach is large and raw supplies a signal; otherwise propose a decision record. Every other body stays as evidence ([[DATA-MODEL]] §7.3): it never enters a document, but it still drives `url_state`; listing pages supply link context, and a wrapper's file is queued for capture.
 
 ### 9.3 Grouping
 
