@@ -75,7 +75,7 @@ def test_converted_catalog_keeps_rows_and_shared_body_keys_choose_first(engine, 
         'date_token', 'state_retrieved_at', 'source_link_label', 'source_page_url', 'source_meeting_id']
     for row in rows:
         row.update({field: [] for field in list_fields})
-        row.update(format=['pdf'], document_kind=['statement'], congress=['118'],
+        row.update(format=['pdf'], document_kind=['statement'], congress=['118'], committee_code=['AG'],
                    date_token=['2024-05-01'], source_link_label=['Published statement'],
                    state_retrieved_at=['2020-01-02T00:00:00Z'])
     rows[1]['date_token'] = ['2024-05-01', '2024-05-02']
@@ -84,7 +84,10 @@ def test_converted_catalog_keeps_rows_and_shared_body_keys_choose_first(engine, 
     documents = tmp_path / 'documents.parquet'
     pq.write_table(pa.Table.from_pylist(rows, schema=schema), documents)
     filenames = tmp_path / 'filenames.parquet'
-    pq.write_table(pa.Table.from_pylist([{k: v for k, v in row.items() if k != 'body_keys'} for row in rows],
+    file_rows = [{k: v for k, v in row.items() if k != 'body_keys'} for row in rows]
+    file_rows += [dict(file_rows[0], source_id='duplicate-name', filename='Other.pdf'),
+                  dict(file_rows[0], source_id='0-earlier-key', body_key=None, source_url='https://fixture.test/earlier.pdf')]
+    pq.write_table(pa.Table.from_pylist(file_rows,
         schema=pa.schema([field for field in schema if field.name != 'body_keys'])), filenames)
     captures = tmp_path / 'captures.parquet'
     pq.write_table(pa.table({'body_key': [body], 'bytes': pa.array([100], pa.int64()), 'media_type': ['application/pdf']}), captures)
@@ -98,10 +101,17 @@ def test_converted_catalog_keeps_rows_and_shared_body_keys_choose_first(engine, 
     assert pq.read_table(output / 'links.parquet').to_pylist() == [{'link_key': bytes([17]) * 8, 'list_row': 0}]
     assert [row['saved_bytes'] for row in pq.read_table(output / 'detail.parquet').to_pylist()] == [100, None, 100]
     listed = pq.read_table(output / 'list.parquet').to_pylist()
+    assert listed[0]['committee_keys'] == ['hsag00'] and listed[0]['chambers'] == ['house']
     assert all(row['first_captured'] is None and row['date_kind'] == 'unknown' for row in listed)
     assert listed[0]['document_date'] is not None and listed[2]['document_date'] is None
     assert all(row['in_archive_since'] is None for row in pq.read_table(output / 'detail.parquet').to_pylist())
-    assert pq.read_table(output / 'detail.parquet').to_pylist()[1]['saved_body'] is None
+    details = pq.read_table(output / 'detail.parquet').to_pylist()
+    assert all(details[1][field] is None for field in ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 'saved_bytes'])
+    sources = pq.read_table(output / 'sources.parquet').to_pylist()
+    assert [(row['url'], row['is_saved'], row['ordinal']) for row in sources if row['list_row'] == 0] == [
+        ('https://fixture.test/a.pdf', True, 0), ('https://fixture.test/earlier.pdf', False, 1)]
+    assert details[0]['src_len'] == 2
+    assert pq.read_table(output / 'committees.parquet').to_pylist()[0]['is_current'] is None
     assert manifest['origin']['catalog_id'] == 'fixture-catalog'
 
 
