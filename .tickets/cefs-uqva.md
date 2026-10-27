@@ -22,3 +22,7 @@ A few hundred stratified files have evidence-backed rubric labels or explicit ow
 **2026-10-27T19:53:07Z**
 
 Panel and native-count helper committed through b7b6d5e7:291 file contexts/287 verified bodies,244 labels/47 explicit owner questions; historical29 preserved. CODE sole label finding fixed; ARCH APPROVE;574 hashes independently verified;38 combined ID/S2 checks pass. Canonical E2 relations unavailable: actual count/examples and widening remain blocked on producer/owner, with exact descriptor and command in docs/measurements/engine-first-20261027/s2-site/README.md. No proxy count or accuracy claim.
+
+**2026-10-27T20:11:05Z**
+
+Engine195746 accepted fixture/harness handoff and merged5eb98218. Canonical E2 descriptor remains root producer dependency, not an owner decision; actual count ticket stays incomplete until measurement. Unresolved rubric observations/queryalias/mirror limits stay explicit without inventing release gates. Final c1713681 full11672passed and exact36baseline unchanged;91merged focused pass. Immutable287body evidence received shared/s2-site-c1713681.
