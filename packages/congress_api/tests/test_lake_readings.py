@@ -94,7 +94,10 @@ def test_completed_error_reading_and_local_native_append_noop(tmp_path):
         table=table,location=tmp_path/'table',create_namespace=True)
     first=readings.append(result,engine=args['engine'],work=tmp_path/'append',catalog_root=tmp_path/'catalog',table=table)
     repeated=readings.append(result,engine=args['engine'],work=tmp_path/'repeat',catalog_root=tmp_path/'catalog',table=table)
-    assert first['status']=='appended' and repeated['status']=='empty'
+    assert first['kind']==repeated['kind']=='append'
+    assert sum(item['rows'] for item in first['files'])==1 and repeated['files']==[]
+    assert first['snapshot']==repeated['snapshot']
+    assert first['metadata_location']==repeated['metadata_location']
 
 
 def test_absent_inventory_entry_remains_on_the_work_list(tmp_path):
