@@ -38,3 +38,7 @@ Approved correction plan chooses57 explicit superseding owner records plus MIN o
 **2026-10-27T21:48:44Z**
 
 Correction contract de2cb49f precedes restoration. Restored reconcile.py exactly to its pre7a8c74a6 bytes and removed only our revoked category/time rule text; D1 owner predicate unchanged. Latest engine3746f22 focused recovery/provenance/filename group95passed81.07s. Actual measured wc-l reconcile301→291; correct prior fixture commit count: test_engine_recovery_import.py320→285 (the de2 body printed323). One-time data stage and root correction review remain pending; no new production component or live action.
+
+**2026-10-27T21:57:17Z**
+
+Corrected immutable stage shared/raw-recoveries-owner-32c13ffa,manifestSHA4378dd96e3ab017be3a9ac56179a22dd253c66450154538ed325d6c8816faaaf. Existing provenance path writes57explicit owner/supersedes records;24028base records byte-identical,24085physical/24028active,57activeowner/0orphans/0rejections. MIN over41retainedcandidates resolves24times with0time/locator mismatches. All12351previously-ready rows equal field-for-field;0changesoutside81;12432ready/0unresolved;6excerpt records unchanged. Final metadata job30.45s,maxRSS394575872B. Existing consumer inspections bothapplyfalse validate24085records/2objects and12432requests. Earlier13.98s/15.55s audit-query refusals produced no accepted stage. Correction CODE/ARCH review remains open; no live imports. Maintained source returns to baseline; scratch native job is retained reproducibility evidence only.
