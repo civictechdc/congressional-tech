@@ -123,7 +123,9 @@ def test_changed_copy_proof_custody_is_rejected_before_remembering(tmp_path, mon
             os.utime(destination, ns=(stat.st_atime_ns, stat.st_mtime_ns))
             return proof
         monkeypatch.setattr(state, 'publish_asset', changed)
-        with pytest.raises(ValueError, match='custody changed'):
+        # Either metadata custody or the current-byte recheck can reject this
+        # rewrite; Linux may retain both timestamps within one filesystem tick.
+        with pytest.raises(ValueError, match=r'custody(?: or bytes)? changed'):
             assets.put_node(VALUE)
         assert not assets.identities
         assert state.db.execute('SELECT count(*) FROM assets').fetchone() == (0,)
