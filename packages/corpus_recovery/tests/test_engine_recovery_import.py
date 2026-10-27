@@ -132,6 +132,7 @@ def test_legacy_projection_uses_native_capture_rows_and_recovery_fallbacks(tmp_p
     second=dict(first,sha256='2'*64,bytes=20)
     rows=[dict(__receipt_key='receipts/legacy/2019-01-01/run.jsonl.gz',__receipt_line=1,
         mode=None,record=dict(url='https://archive.example/a',mode='retained_import',
+            recovery_evidence=dict(acquisition=dict(body_path='original-statement.pdf')),
             source_associations=[dict(original_url='https://docs.house.gov/a',basis='verified_archive_capture')]),
         captures=[first,second],file_references=[])]
     pq.write_table(pa.Table.from_pylist(rows),raw)
@@ -142,6 +143,7 @@ def test_legacy_projection_uses_native_capture_rows_and_recovery_fallbacks(tmp_p
     assert [row['capture_index'] for row in captures]==[0,1]
     assert all(row['original_url']=='https://docs.house.gov/a' for row in captures)
     assert all(row['mode']=='retained_import' and row['match_basis']=='verified_archive_capture' for row in captures)
+    assert all(row['recovered_filename']=='original-statement.pdf' for row in captures)
 
 
 def test_existing_reference_import_uses_key_presence_without_body_reads(tmp_path):
@@ -179,7 +181,7 @@ def test_missing_existing_reference_fails_without_receipt_or_upload(tmp_path):
         body_sha256='a'*64,bytes=10,stored_suffix='.gz',retrieved_at=STAMP,
         category='recovered_document',match_basis='verified_archive_capture',imported_at=STAMP,
         retained_reference=True)
-    with pytest.raises(ValueError,match='missing|absent'):
+    with pytest.raises(ValueError,match='Missing retained body reference'):
         import_retained(writer,source)
 
 
