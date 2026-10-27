@@ -180,3 +180,26 @@ def stage(*, captures, recovery_files, engine, work, existing=None, catalog_vers
     return dict(readings=work/'filename-readings.parquet', work_list=work/'work-list.parquet',
                 catalog_version=version)
 
+def main(argv=None):
+    import argparse
+    from docspec_client.client import NativeDatasets
+    parser = argparse.ArgumentParser(description='Stage missing filename readings through native jobs')
+    parser.add_argument('--captures', type=Path, required=True)
+    parser.add_argument('--recovery-inventory', type=Path, required=True,
+                        help='Pinned JSON list of {key,path} provenance recovery files')
+    parser.add_argument('--existing', type=Path)
+    parser.add_argument('--engine-config', type=Path, required=True)
+    parser.add_argument('--work', type=Path, required=True)
+    parser.add_argument('--vocabularies', type=Path)
+    args = parser.parse_args(argv)
+    recovery_files = json.loads(args.recovery_inventory.read_text())
+    vocabularies = json.loads(args.vocabularies.read_text()) if args.vocabularies else None
+    result = stage(captures=args.captures, recovery_files=recovery_files,
+        engine=NativeDatasets.from_config(args.engine_config), work=args.work,
+        existing=args.existing, vocabularies=vocabularies)
+    print(json.dumps(result, default=str, sort_keys=True))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
