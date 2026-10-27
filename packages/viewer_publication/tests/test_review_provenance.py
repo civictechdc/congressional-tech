@@ -74,3 +74,17 @@ def test_new_review_and_withdrawal_remain_append_only(tmp_path):
     assert json.loads((tmp_path/'raw'/other).read_text())==withdrawn
     with pytest.raises(RuntimeError,match='reused'):
         record_review(store,row,timestamp='20261027T120000Z')
+
+
+def test_new_review_cli_stages_before_explicit_owner_apply(tmp_path,capsys):
+    from congress_api.cli.provenance import main
+    row=dict(id='authored-review',target='a'*16,verdict='title_override',value='Corrected title',
+             note='Owner-authored correction',reviewer='owner',decided_at=STAMP,supersedes=None)
+    source=tmp_path/'review.jsonl';source.write_text(json.dumps(row)+'\n')
+    main(['--records',str(source),'--kind','reviews','--decided-at',STAMP,'--stage',str(tmp_path/'stage')])
+    report=json.loads(capsys.readouterr().out)
+    assert report['records']==1 and report['kind']=='reviews'
+    assert (tmp_path/'stage'/report['provenance']).read_text()==json.dumps(row,separators=(',',':'))+'\n'
+    with pytest.raises(ValueError,match='separate|stage'):
+        main(['--records',str(source),'--kind','reviews','--decided-at',STAMP,
+              '--stage',str(tmp_path/'other'),'--apply'])
