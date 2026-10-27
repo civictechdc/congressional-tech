@@ -266,3 +266,47 @@ def test_seed_loader_keeps_jsonl_pointer_and_refuses_credential_urls(tmp_path):
     assert row==dict(url='https://fixture.test/a',source=path.name,pointer='["documents",0,2]')
     with gzip.open(path,'wt') as stream:stream.write(json.dumps(dict(url='https://fixture.test/a?token=secret'))+'\n')
     with pytest.raises(ValueError,match='Credential'):list(inventories([path]))
+
+
+def test_single_put_entity_boundary_is_admitted_when_resources_fit(tmp_path):
+    single_put=5*1024**3
+    result,adapter,_=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],
+        {'https://fixture.test/a':(200,b'virtual large binary boundary',{'content-type':'application/octet-stream'})},
+        byte_budget=single_put*14,spool_budget=single_put*4)
+    assert adapter.limits==[single_put]
+    assert result['spool_reserved_bound']<=result['budgets']['spool']
+
+
+@pytest.mark.parametrize('unsafe',['/unsafe?token=secret','/unsafe?%74oken=secret','//user:secret@fixture.test/unsafe'])
+def test_unsafe_discovered_target_is_refused_without_aborting_other_work(tmp_path,unsafe):
+    data=('<html><a href="'+unsafe+'">unsafe link</a></html>').encode()
+    result,adapter,raw=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0),
+        dict(requested_url='https://fixture.test/z',attempts=1)],{
+        'https://fixture.test/a':(200,data,{'content-type':'text/html'}),
+        'https://fixture.test/z':(200,b'valid other capture',{})})
+    assert adapter.calls==['https://fixture.test/a','https://fixture.test/z']
+    assert result['captures']==2 and result['discovery_refused']==1
+    assert 'secret' not in json.dumps(result)
+    for path in raw.rglob('*.jsonl.gz'):
+        with gzip.open(path,'rt') as source:
+            assert 'secret' not in source.read()
+
+
+def test_every_reviewed_cutoff_has_a_native_disposition(tmp_path):
+    future=datetime(2027,1,1,tzinfo=timezone.utc)
+    cutoffs=['https://fixture.test/good','https://fixture.test/pending','https://fixture.test/future',
+        'https://outside.example/a','https://fixture.test/missing']
+    result,adapter,_=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0),
+        dict(requested_url=cutoffs[0],attempts=1),dict(requested_url=cutoffs[1],attempts=1),
+        dict(requested_url=cutoffs[2],attempts=1,next_attempt_at=future),
+        dict(requested_url=cutoffs[3],attempts=1)],{
+        'https://fixture.test/a':(200,b'queue',{}),'https://fixture.test/good':(200,b'complete cutoff',{})},
+        request_budget=8,cutoff_urls=cutoffs)
+    assert adapter.calls==['https://fixture.test/a','https://fixture.test/good']
+    rows={row['requested_url']:row for row in result['cutoffs']}
+    assert set(rows)==set(cutoffs)
+    assert rows[cutoffs[0]]['disposition']=='attempted' and rows[cutoffs[0]]['complete'] is True
+    assert rows[cutoffs[1]]['reason']=='request_budget'
+    assert rows[cutoffs[2]]['reason']=='not_due' and rows[cutoffs[2]]['next_attempt_at'].startswith('2027-01-01')
+    assert rows[cutoffs[3]]['reason']=='outside_capture_scope'
+    assert rows[cutoffs[4]]['reason']=='not_in_release'
