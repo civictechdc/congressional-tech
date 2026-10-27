@@ -79,20 +79,15 @@ def test_future_publications_reindex_durable_acceptance(tmp_path, monkeypatch, k
     assert stored[1]['groups'] == [[0, [0]], [2, [0]]]
 
 
-def test_sidecar_readback_checks_actual_bytes_and_only_writes_viewer_keys(monkeypatch):
+def test_sidecar_accepts_successful_upload_without_readback_and_only_writes_viewer_keys(monkeypatch):
     writes = []
     monkeypatch.setattr(publisher, 'put_json', lambda client, key, value, **condition: writes.append((key, value, condition)))
     class Client:
-        def get_object(self, **kw):
-            return {'Body': io.BytesIO(publisher.encoded(writes[-1][1]))}
+        def get_object(self, **kwargs):
+            pytest.fail('Successful recovery upload was read back')
     descriptor = publisher.store_recovery_index(Client(), {'version': 1, 'recoveries': []})
     assert writes[0][0] == publisher.PREFIX + descriptor['path']
     assert writes[0][2] == {'IfNoneMatch': '*'}
-    class Corrupt:
-        def get_object(self, **kw):
-            return {'Body': io.BytesIO(b'{}')}
-    with pytest.raises(ValueError, match='readback|Incomplete recovery'):
-        publisher.store_recovery_index(Corrupt(), {'version': 1})
 
 
 def test_status_only_publication_uses_conditional_pointer_and_preserves_catalog(tmp_path, monkeypatch):

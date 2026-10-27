@@ -11,13 +11,11 @@ from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 
+from news_lake_test_support import DOCS_FIXTURES
+
 _DEFAULT_DOCSPEC = Path(__file__).resolve().parents[4] / "spicy-stack/docspec-rs/target/release/docspec"
 if not os.environ.get("DOCSPEC_BINARY") and _DEFAULT_DOCSPEC.is_file():
     os.environ["DOCSPEC_BINARY"] = str(_DEFAULT_DOCSPEC)
-
-DOCS = Path(__file__).resolve().parents[1] / 'docs'
-DOCS_SCHEMA = DOCS / 'schema' / 'news-lake.schema.json'
-DOCS_FIXTURES = DOCS / 'examples' / 'records.jsonl'
 
 
 @pytest.fixture(scope='session')
@@ -162,25 +160,3 @@ def coordinator(lake, control):
     from news_lake.storage.coordinator import Coordinator
 
     return Coordinator(lake, control)
-
-
-def logical_state(lake, control, release_ids):
-    """Content-level final state: records per table, releases (ignoring volatile
-    snapshot ids but keeping table uuids), cursor, availability."""
-    from news_lake.contract.records import CONTENT_TABLES
-
-    state = {}
-    for table in CONTENT_TABLES:
-        state[table] = sorted((json.dumps(r, sort_keys=True) for r in lake.read_all(table)))
-    releases = []
-    for record in lake.read_all('news.releases'):
-        if record['id'] in release_ids:
-            # Snapshot ids and table UUIDs are warehouse-scoped; convergence is
-            # about content, which read_release verifies within the warehouse.
-            releases.append(json.dumps(
-                {k: v for k, v in record.items() if k != 'snapshots'}, sort_keys=True
-            ))
-    state['news.releases'] = sorted(releases)
-    state['cursor'] = control.active_cursor()
-    state['availability'] = {rid: control.availability(rid) for rid in release_ids}
-    return state

@@ -13,7 +13,7 @@ from youtube_api.models import (
     YoutubePlaylistItem,
     YoutubeVideoItem,
 )
-from youtube_api.tables import open_tinydb_for_committee
+from youtube_api.tables import get_channel_id_overrides, open_tinydb_for_committee
 
 ## re-check videos without captions for this long after publishing
 CAPTION_RECHECK_DAYS = 30
@@ -70,10 +70,11 @@ class YoutubeEventFetcher:
         )
 
         self.channels_tb = self.tinydb.table("youtube_channels")
+        self.channel_ids = get_channel_id_overrides(csv_path)
 
     def get_channel(self, channel_handle: str) -> dict | None:
         """
-        Retrieve channel information by handle.
+        Refresh by configured or retained channel ID; discover unknown handles once.
 
         Args:
             handle (str): The YouTube channel handle (e.g., @HouseAppropriationsCommittee).
@@ -118,10 +119,31 @@ class YoutubeEventFetcher:
                 f"{len(search_results)} entries with same channel handle in {self.channels_tb}."
             )
 
+        # Refresh by stable identity; handles remain the retained table keys.
+        # New channels resolve by handle once, then store their ID for later runs.
+        known_ids = {
+            value
+            for row in search_results
+            for value in (
+                row.get("channelId"),
+                row.get("upstream", {}).get("item", {}).get("id"),
+            )
+            if value
+        }
+        configured_id = self.channel_ids.get(channel_handle)
+        if configured_id:
+            known_ids.add(configured_id)
+        if len(known_ids) > 1:
+            raise ValueError(f"Conflicting retained/configured YouTube channel IDs for {channel_handle}")
+        channel_id = next(iter(known_ids), None)
+        if channel_id and not re.fullmatch(r"UC[A-Za-z0-9_-]{22}", channel_id):
+            raise ValueError(f"Invalid retained YouTube channel ID for {channel_handle}")
+        lookup = {"id": channel_id} if channel_id else {"forHandle": channel_handle}
+
         ## Keep the complete current item, including channel ID and thumbnails.
         channel_response = (
             self.youtube.channels()
-            .list(part=["snippet", "contentDetails"], forHandle=channel_handle)
+            .list(part=["snippet", "contentDetails"], **lookup)
             .execute()
         )
 
@@ -130,6 +152,8 @@ class YoutubeEventFetcher:
             return None
 
         channel_details = items[0]
+        if channel_id and channel_details["id"] != channel_id:
+            raise ValueError("Returned YouTube channel does not match expected channel ID")
 
         ## store the channel details
         self.store_channel(channel_handle, channel_details)

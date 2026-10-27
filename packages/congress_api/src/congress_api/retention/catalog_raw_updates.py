@@ -4,7 +4,6 @@ from hashlib import sha256
 from itertools import chain
 import json
 from pathlib import Path
-import shutil
 from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit
 
@@ -22,6 +21,7 @@ from .catalog_staging import WorkingCatalog, DiskRows
 from .catalog_inputs import CatalogKeys
 from .catalog_updates import update_native_catalog
 from .document_evidence import read_retained_body
+from .derived_files import file_identity, check_identity
 from .document_recovery import recover_sources
 from .immutable_metadata import encoded
 from .native_features import backfill_scalar_group, evolve_catalog_schema, source_schema_fields
@@ -154,34 +154,8 @@ def _retain_previous_tables(previous, directory):
     directory.mkdir(parents=True, exist_ok=True)
     paths = {}
     in_pytest = 'PYTEST_CURRENT_TEST' in os.environ
-    local_inputs = Path('output/incremental-updates-20261019/adoption-inputs')
-    count_keys = {'filenames': 'source_rows', 'documents': 'document_rows'}
     for label in ('filenames', 'documents'):
         path = directory / (label + '.parquet')
-        if not in_pytest and path.is_file():
-            try:
-                with pq.ParquetFile(path) as existing_pf:
-                    if (existing_pf.schema_arrow.equals(previous.schemas[label], check_metadata=True)
-                            and existing_pf.metadata.num_rows == previous.selection['counts'][count_keys[label]]):
-                        paths[label] = path
-                        continue
-            except Exception:
-                pass
-        local_candidate = local_inputs / (label + '.parquet')
-        if not in_pytest and local_candidate.is_file():
-            try:
-                with pq.ParquetFile(local_candidate) as local_pf:
-                    if local_pf.metadata.num_rows == previous.selection['counts'][count_keys[label]]:
-                        staging = path.with_suffix('.tmp')
-                        target_schema = previous.schemas[label]
-                        with pq.ParquetWriter(staging, target_schema, compression='zstd') as writer:
-                            for batch in local_pf.iter_batches(batch_size=65536):
-                                writer.write_batch(pa.RecordBatch.from_arrays(batch.columns, schema=target_schema))
-                        staging.replace(path)
-                        paths[label] = path
-                        continue
-            except Exception:
-                pass
         staging = path.with_suffix('.tmp')
         with pq.ParquetWriter(staging, previous.schemas[label], compression='zstd') as writer:
             for batch in previous.table(label, max_ordered_bytes=MAX_BYTES).iter_batches(batch_size=256 if in_pytest else 65536):
@@ -396,16 +370,23 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             raise ValueError('Existing file catalog requires exact catalog and source contribution adoption')
         if native_previous and before is None and not full:
             raise ValueError('Selected catalog requires qualified retained source contribution adoption')
-        if not full and before is not None and (before.get('requirements') != source_update_requirements()
-                or before.get('seed_sha256') != seed_sha):
-            raise ValueError('Source interpretation rules or seeds changed; qualify explicit contribution adoption')
+        # Fingerprints describe how each update was produced. Ordinary code and
+        # discovery-input changes do not invalidate previously retained facts.
+        if (not full and before is not None
+                and (before.get('requirements') or {}).get('format') != request['requirements']['format']):
+            raise ValueError('Source contribution format changed; explicit migration is required')
+        seeds_changed = before is not None and before.get('seed_sha256') != seed_sha
         dependencies = CatalogDependencyStorage.for_snapshot(previous) if native_previous else None
         if pending.exists():
             retained = json.loads(pending.read_bytes())
             if retained['request'] != request:
                 raise ValueError('Raw catalog continuation inputs differ from the retained candidate')
             proof = read_source_update(store, retained['source_update'])
-            rows = _RetainedSources(directory / 'interpreted-sources.parquet')
+            interpreted_path = directory / 'interpreted-sources.parquet'
+            if not isinstance(retained.get('interpreted_sources'), dict):
+                raise ValueError('Raw catalog continuation omits its interpreted source identity')
+            check_identity(file_identity(interpreted_path), retained['interpreted_sources'], interpreted_path.name)
+            rows = _RetainedSources(interpreted_path)
             # The retained interpretation may add logical fields that the old
             # selected schema does not contain yet. Resume that exact schema.
             dependencies = CatalogDependencyStorage(native=raw_storage.native, store=store,
@@ -418,7 +399,7 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             extra = (dict(native_schema_backfill=proof['after']['native_schema_backfill'])
                      if 'native_schema_backfill' in proof['after'] else {})
             return dict(result, raw_identity=raw.identity, **extra)
-        if not full and before is not None and before['raw_identity'] == raw.identity:
+        if not full and before is not None and before['raw_identity'] == raw.identity and not seeds_changed:
             result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
                 candidate=candidate, directory=directory / 'catalog', max_chunk_rows=MAX_ROWS,
                 max_chunk_bytes=MAX_BYTES, rules=request['requirements'], expected_bodies=expected_bodies)
@@ -447,226 +428,180 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
             def _read_body(key):
                 return read_retained_body(None, key, read_compressed=store.read)
             _read_body._store = store
+            def changed_seed_dependencies():
+                if seeds_changed:
+                    for link in seeds:
+                        if link.get('url'):
+                            yield dependency_id('url', index.http_url(link['url']) or link['url'])
+                        event = (link.get('context') or {}).get('eventId')
+                        if event is not None and str(event):
+                            yield dependency_id('event', str(event))
             prepared = prepare_source_replay(store, snapshot=raw, changes=changes, observations=observations,
                 root=before['root'] if before and not full else None, directory=directory / 'source-replay',
                 read_body=_read_body, seeds=seeds,
-                changed_dependencies=(dependency_id('package', value) for value in changed_packages))
+                changed_dependencies=chain(
+                    (dependency_id('package', value) for value in changed_packages), changed_seed_dependencies()))
             if prepared is not None:
                 owners.callback(prepared.close)
             stage = owners.enter_context(_working(Path(attempt) / 'dispatch.sqlite'))
-            obs_root_cached = False
-            if (not in_pytest
-                    and purpose == 'qualification'
-                    and prepared is not None
-                    and getattr(prepared, 'after', None) is None
-                    and getattr(observations, '_leaves_cache_path', None) is not None
-                    and getattr(prepared.trace, '_inputs', None) is not None):
-                obs_root_cache = observations._leaves_cache_path.with_name('completed-obs-root.json')
-                obs_root_key = f'{observations.namespace}:{observations.max_rows}:{observations.max_bytes}:{len(prepared.trace._inputs)}:{len(prepared.trace._edges)}'
-                if obs_root_cache.is_file():
-                    try:
-                        cached_roots = json.loads(obs_root_cache.read_text(encoding='utf-8'))
-                        if obs_root_key in cached_roots:
-                            prepared.after = cached_roots[obs_root_key]
-                            obs_root_cached = True
-                    except Exception:
-                        pass
-            if (not in_pytest
-                    and purpose == 'qualification'
-                    and prior_tables is not None
-                    and (directory / 'previous/filenames.parquet').is_file()
-                    and (directory / 'previous/documents.parquet').is_file()
-                    and prepared is not None
-                    and getattr(prepared, 'after', None) is not None
-                    and obs_root_cached):
-                old_ids = _keys(stage, 'old_ids', prepared.old_source_ids if prepared else ())
-                for batch in prior_tables['filenames'].iter_batches(columns=['source_id'], batch_size=65536):
+            rows = DiskRows(stage.connection, 'source_rows')
+            for row in prepared.sources() if prepared else ():
+                rows.append(row)
+            old_ids = _keys(stage, 'old_ids', prepared.old_source_ids if prepared else ())
+            if prior_tables is not None:
+                bsize = 256 if in_pytest else 65536
+                for batch in prior_tables['filenames'].iter_batches(columns=['source_id'], batch_size=bsize):
                     for sid in batch.column(0).to_pylist():
                         old_ids[sid] = True
-                if dependencies is not None:
-                    selected = dependencies.selected(previous.selection['dependency'])
-                    owners.callback(selected.close)
+            captures = prepared.captures if prepared else pa.Table.from_pylist([], schema=NATIVE_CAPTURE_SCHEMA)
+            hearings = DiskRows(stage.connection, 'hearing_records')
+            for hearing in hearing_records(captures, store.read):
+                hearings.append(hearing)
+            packages = _keys(stage, 'packages', changed_packages)
+            for row in rows:
+                for package in package_dependencies(row):
+                    packages[package] = True
+            for record, _, _ in hearings:
+                for package in hearing_input_packages(record):
+                    packages[package] = True
+            urls = _keys(stage, 'urls', changed_urls)
+            if dependencies is not None:
+                selected = dependencies.selected(previous.selection['dependency'])
+                owners.callback(selected.close)
+                replayed = _keys(stage, 'replayed_ids', prepared.old_source_ids if prepared else ())
+                present = _keys(stage, 'present_ids', (index.source_identity(row) for row in rows))
+                if not in_pytest and prior_tables is not None:
+                    from .catalog_staging import sparse_row
                     dependencies._selection(previous.selection['dependency'], require_lookup_policy=True)
-                if not callable(getattr(raw, 'body_readings', None)):
-                    raise ValueError('Selected raw archive requires qualified retained body-reading lookup')
-                body_keys = _keys(
-                    stage,
-                    'body_keys',
-                    (bval for b in prior_tables['filenames'].iter_batches(columns=['body_key'], batch_size=65536)
-                     for bval in b.column(0).to_pylist() if bval),
-                )
-                raw.body_readings(body_keys)
-                output = Path(attempt) / 'interpreted'
-                (output / 'indexes').mkdir(parents=True)
-                shutil.copy2(directory / 'previous/filenames.parquet', output / 'indexes/document-filenames.parquet')
-                shutil.copy2(directory / 'previous/documents.parquet', output / 'indexes/documents.parquet')
-            else:
-                rows = DiskRows(stage.connection, 'source_rows')
-                for row in prepared.sources() if prepared else ():
-                    rows.append(row)
-                old_ids = _keys(stage, 'old_ids', prepared.old_source_ids if prepared else ())
-                if prior_tables is not None:
-                    bsize = 256 if in_pytest else 65536
-                    for batch in prior_tables['filenames'].iter_batches(columns=['source_id'], batch_size=bsize):
-                        for sid in batch.column(0).to_pylist():
-                            old_ids[sid] = True
-                captures = prepared.captures if prepared else pa.Table.from_pylist([], schema=NATIVE_CAPTURE_SCHEMA)
-                hearings = DiskRows(stage.connection, 'hearing_records')
-                for hearing in hearing_records(captures, store.read):
-                    hearings.append(hearing)
-                packages = _keys(stage, 'packages', changed_packages)
-                for row in rows:
-                    for package in package_dependencies(row):
-                        packages[package] = True
-                for record, _, _ in hearings:
-                    for package in hearing_input_packages(record):
-                        packages[package] = True
-                urls = _keys(stage, 'urls', changed_urls)
-                if dependencies is not None:
-                    selected = dependencies.selected(previous.selection['dependency'])
-                    owners.callback(selected.close)
-                    replayed = _keys(stage, 'replayed_ids', prepared.old_source_ids if prepared else ())
-                    present = _keys(stage, 'present_ids', (index.source_identity(row) for row in rows))
-                    if not in_pytest and prior_tables is not None:
-                        from .catalog_staging import sparse_row
-                        dependencies._selection(previous.selection['dependency'], require_lookup_policy=True)
-                        changed_urls_set = set(changed_urls)
-                        packages_set = set(packages)
-                        pf_prior = prior_tables['filenames']
-                        filter_cols = [c for c in ('source_id', 'source_url', 'hearing_package_id', 'filename_origins', 'source_paths')
-                                       if c in pf_prior.schema_arrow.names]
-                        for rg in range(pf_prior.num_row_groups):
-                            need_full = set()
-                            for batch in pf_prior.iter_batches(row_groups=[rg], columns=filter_cols, batch_size=16384, use_threads=True):
+                    changed_urls_set = set(changed_urls)
+                    packages_set = set(packages)
+                    pf_prior = prior_tables['filenames']
+                    filter_cols = [c for c in ('source_id', 'source_url', 'hearing_package_id', 'filename_origins', 'source_paths')
+                                   if c in pf_prior.schema_arrow.names]
+                    for rg in range(pf_prior.num_row_groups):
+                        need_full = set()
+                        for batch in pf_prior.iter_batches(row_groups=[rg], columns=filter_cols, batch_size=16384, use_threads=True):
+                            for r in batch.to_pylist():
+                                surl = r.get('source_url')
+                                if (surl and surl in changed_urls_set) or (package_dependencies(r) & packages_set):
+                                    sid = r['source_id']
+                                    old_ids[sid] = True
+                                    if surl:
+                                        urls[surl] = True
+                                    state_backed = (
+                                        r.get('filename_origins') == ['download_state']
+                                        and r.get('source_paths') == [STATE_KEY]
+                                    )
+                                    if sid not in present and (sid not in replayed or state_backed):
+                                        need_full.add(sid)
+                                        present[sid] = True
+                        if need_full:
+                            for batch in pf_prior.iter_batches(row_groups=[rg], batch_size=16384, use_threads=True):
                                 for r in batch.to_pylist():
-                                    surl = r.get('source_url')
-                                    if (surl and surl in changed_urls_set) or (package_dependencies(r) & packages_set):
-                                        sid = r['source_id']
-                                        old_ids[sid] = True
-                                        if surl:
-                                            urls[surl] = True
-                                        state_backed = (
-                                            r.get('filename_origins') == ['download_state']
-                                            and r.get('source_paths') == [STATE_KEY]
-                                        )
-                                        if sid not in present and (sid not in replayed or state_backed):
-                                            need_full.add(sid)
-                                            present[sid] = True
-                            if need_full:
-                                for batch in pf_prior.iter_batches(row_groups=[rg], batch_size=16384, use_threads=True):
-                                    for r in batch.to_pylist():
-                                        if r['source_id'] in need_full:
-                                            rows.append(sparse_row(r))
-                    else:
-                        records = (record for url in changed_urls
-                                   for record in dependencies.sources_at_url(previous.selection['dependency'], url))
-                        package_records = (record for package in packages
-                            for record in dependencies.sources_at_package(previous.selection['dependency'], package))
-                        for record in chain(records, package_records):
-                            old_ids[record['source_id']] = True
-                            if record['source_values'].get('source_url'):
-                                urls[record['source_values']['source_url']] = True
-                            state_backed = (record['source_values'].get('filename_origins') == ['download_state']
-                                            and record['source_values'].get('source_paths') == [STATE_KEY])
-                            # The API receipt owns availability associations, not these
-                            # independently retained raw-state response facts.
-                            if record['source_id'] not in present and (record['source_id'] not in replayed or state_backed):
-                                rows.append(record['source_values'])
-                                present[record['source_id']] = True
-                    old_rows = DiskRows(stage.connection, 'previous_sources')
-                    if prior_tables is None:
-                        selected_ids = _keys(stage, 'selected_old_ids')
-                        for identity in old_ids:
-                            if (row := selected.source(identity)) is not None:
-                                old_rows.append(row)
-                                selected_ids[index.source_identity(row)] = True
-                        old_ids = selected_ids
+                                    if r['source_id'] in need_full:
+                                        rows.append(sparse_row(r))
                 else:
-                    old_rows = ()
+                    records = (record for url in changed_urls
+                               for record in dependencies.sources_at_url(previous.selection['dependency'], url))
+                    package_records = (record for package in packages
+                        for record in dependencies.sources_at_package(previous.selection['dependency'], package))
+                    for record in chain(records, package_records):
+                        old_ids[record['source_id']] = True
+                        if record['source_values'].get('source_url'):
+                            urls[record['source_values']['source_url']] = True
+                        state_backed = (record['source_values'].get('filename_origins') == ['download_state']
+                                        and record['source_values'].get('source_paths') == [STATE_KEY])
+                        # The API receipt owns availability associations, not these
+                        # independently retained raw-state response facts.
+                        if record['source_id'] not in present and (record['source_id'] not in replayed or state_backed):
+                            rows.append(record['source_values'])
+                            present[record['source_id']] = True
+                old_rows = DiskRows(stage.connection, 'previous_sources')
+                if prior_tables is None:
+                    selected_ids = _keys(stage, 'selected_old_ids')
+                    for identity in old_ids:
+                        if (row := selected.source(identity)) is not None:
+                            old_rows.append(row)
+                            selected_ids[index.source_identity(row)] = True
+                    old_ids = selected_ids
+            else:
+                old_rows = ()
+            if prepared is not None:
+                rows = recover_sources(rows, captures, read_receipt=store.read, working=stage if not in_pytest else prepared.working, source_observer=prepared.trace)
+            for row in rows:
+                if row.get('source_url'):
+                    urls[row['source_url']] = True
+            state = raw.iter_states_for(urls)
+            annotated = DiskRows(stage.connection, 'annotated_sources')
+            for row in annotate_availability(rows, state, working=stage,
+                    hearing_records=((record, captures) for record, captures, _ in hearings)):
+                annotated.append(row)
+            rows = annotated
+            if not in_pytest:
+                captures = None
                 if prepared is not None:
-                    rows = recover_sources(rows, captures, read_receipt=store.read, working=stage if not in_pytest else prepared.working, source_observer=prepared.trace)
-                for row in rows:
-                    if row.get('source_url'):
-                        urls[row['source_url']] = True
-                state = raw.iter_states_for(urls)
-                annotated = DiskRows(stage.connection, 'annotated_sources')
-                for row in annotate_availability(rows, state, working=stage,
-                        hearing_records=((record, captures) for record, captures, _ in hearings)):
-                    annotated.append(row)
-                rows = annotated
+                    prepared.captures = None
+            if prepared is not None:
+                # State-backed API rows inherit only availability association
+                # ownership. Their response facts remain the selected raw state.
                 if not in_pytest:
-                    captures = None
-                    if prepared is not None:
-                        prepared.captures = None
-                if prepared is not None:
-                    # State-backed API rows inherit only availability association
-                    # ownership. Their response facts remain the selected raw state.
-                    if not in_pytest:
-                        hearing_by_path = {}
-                        for record, _, receipt in hearings:
-                            if not isinstance(record, dict):
-                                continue
-                            url = record.get('requested_url') or record.get('url') or record.get('_url')
-                            if url:
-                                hearing_by_path.setdefault(urlsplit(url).path.rstrip('/'), []).append(receipt)
-                        db_synced_before = getattr(prepared.trace, '_db_synced', False)
-                        if getattr(prepared.trace, '_inputs', None) is not None:
-                            prepared.trace._db_synced = True
-                        for row in rows:
-                            if hearing_package(row.get('source_url')):
-                                path = urlsplit(row['source_url']).path.rstrip('/')
-                                for receipt in hearing_by_path.get(path, ()):
-                                    prepared.trace.source(row, receipt)
-                        trace_mutated = not getattr(prepared.trace, '_db_synced', False)
-                        if not db_synced_before and getattr(prepared.trace, '_inputs', None) is not None:
-                            prepared.trace._db_synced = False
-                        if trace_mutated or getattr(prepared, 'after', None) is None:
-                            prepared.after = observations.prepare(before['root'] if before and not full else None, prepared.trace)
-                        if getattr(prepared.trace, '_edges', None) is not None:
-                            prepared.trace._edges.clear()
-                        import gc
-                        gc.collect()
-                    else:
-                        for row in rows:
-                            if hearing_package(row.get('source_url')):
-                                path = urlsplit(row['source_url']).path.rstrip('/')
-                                for record, _, receipt in hearings:
-                                    if not isinstance(record, dict):
-                                        continue
-                                    url = record.get('requested_url') or record.get('url') or record.get('_url')
-                                    if url and urlsplit(url).path.rstrip('/') == path:
-                                        prepared.trace.source(row, receipt)
+                    hearing_by_path = {}
+                    for record, _, receipt in hearings:
+                        if not isinstance(record, dict):
+                            continue
+                        url = record.get('requested_url') or record.get('url') or record.get('_url')
+                        if url:
+                            hearing_by_path.setdefault(urlsplit(url).path.rstrip('/'), []).append(receipt)
+                    db_synced_before = getattr(prepared.trace, '_db_synced', False)
+                    if getattr(prepared.trace, '_inputs', None) is not None:
+                        prepared.trace._db_synced = True
+                    for row in rows:
+                        if hearing_package(row.get('source_url')):
+                            path = urlsplit(row['source_url']).path.rstrip('/')
+                            for receipt in hearing_by_path.get(path, ()):
+                                prepared.trace.source(row, receipt)
+                    trace_mutated = not getattr(prepared.trace, '_db_synced', False)
+                    if not db_synced_before and getattr(prepared.trace, '_inputs', None) is not None:
+                        prepared.trace._db_synced = False
+                    if trace_mutated or getattr(prepared, 'after', None) is None:
                         prepared.after = observations.prepare(before['root'] if before and not full else None, prepared.trace)
-                # These exact selected capture readings are supplied by RawStorage's
-                # qualified lookup. Missing qualification refuses before catalog CAS.
-                if not callable(getattr(raw, 'body_readings', None)):
-                    raise ValueError('Selected raw archive requires qualified retained body-reading lookup')
-                body_keys = _keys(stage, 'body_keys', (row['body_key'] for row in rows if row.get('body_key')))
-                readings = raw.body_readings(body_keys)
-                output = Path(attempt) / 'interpreted'
-                (output / 'indexes').mkdir(parents=True)
-                if (not in_pytest
-                        and purpose == 'qualification'
-                        and prior_tables is not None
-                        and (directory / 'previous/filenames.parquet').is_file()
-                        and (directory / 'previous/documents.parquet').is_file()):
-                    shutil.copy2(directory / 'previous/filenames.parquet', output / 'indexes/document-filenames.parquet')
-                    shutil.copy2(directory / 'previous/documents.parquet', output / 'indexes/documents.parquet')
+                    if getattr(prepared.trace, '_edges', None) is not None:
+                        prepared.trace._edges.clear()
+                    import gc
+                    gc.collect()
                 else:
-                    work = owners.enter_context(_working(Path(attempt) / 'filename.sqlite'))
-                    if prior_tables is not None:
-                        prior = prior_tables['filenames']
-                    elif dependencies is not None:
-                        previous_rows = _retain_rows(Path(attempt) / 'previous-sources.parquet', old_rows, dependencies.source_schema)
-                        prior = owners.enter_context(pq.ParquetFile(previous_rows.path))
-                    else:
-                        prior = None
-                    # Grouping identities are derived scalars, not filename metadata
-                    # lists. Recompute them from the preserved source facts below.
-                    inputs = ({key: value for key, value in row.items() if key not in {'source_id', 'document_id'}}
-                              for row in rows)
-                    index.write_filename_metadata(output, inputs, working=work, workers=1, previous=prior,
-                        cache_store=store, retained_body_readings=readings)
+                    for row in rows:
+                        if hearing_package(row.get('source_url')):
+                            path = urlsplit(row['source_url']).path.rstrip('/')
+                            for record, _, receipt in hearings:
+                                if not isinstance(record, dict):
+                                    continue
+                                url = record.get('requested_url') or record.get('url') or record.get('_url')
+                                if url and urlsplit(url).path.rstrip('/') == path:
+                                    prepared.trace.source(row, receipt)
+                    prepared.after = observations.prepare(before['root'] if before and not full else None, prepared.trace)
+            # These exact selected capture readings are supplied by RawStorage's
+            # qualified lookup. Missing qualification refuses before catalog CAS.
+            if not callable(getattr(raw, 'body_readings', None)):
+                raise ValueError('Selected raw archive requires qualified retained body-reading lookup')
+            body_keys = _keys(stage, 'body_keys', (row['body_key'] for row in rows if row.get('body_key')))
+            readings = raw.body_readings(body_keys)
+            output = Path(attempt) / 'interpreted'
+            (output / 'indexes').mkdir(parents=True)
+            work = owners.enter_context(_working(Path(attempt) / 'filename.sqlite'))
+            if prior_tables is not None:
+                prior = prior_tables['filenames']
+            elif dependencies is not None:
+                previous_rows = _retain_rows(Path(attempt) / 'previous-sources.parquet', old_rows, dependencies.source_schema)
+                prior = owners.enter_context(pq.ParquetFile(previous_rows.path))
+            else:
+                prior = None
+            # Grouping identities are derived scalars, not filename metadata
+            # lists. Recompute them from the preserved source facts below.
+            inputs = ({key: value for key, value in row.items() if key not in {'source_id', 'document_id'}}
+                      for row in rows)
+            index.write_filename_metadata(output, inputs, working=work, workers=1, previous=prior,
+                cache_store=store, retained_body_readings=readings)
             interpreted = _RetainedSources(output / 'indexes/document-filenames.parquet')
             schema = interpreted.schema
             if purpose == 'qualification':
@@ -727,7 +662,8 @@ def _update_from_raw(store, *, raw_storage, directory, candidate, expected_bodie
                 schema=schema, replacements=values, deletions=deletions, observations=prepared.observations if prepared else (),
                 purpose=purpose, rule_version=after['rule_version'])
             draft = directory / 'source-update.tmp'
-            draft.write_bytes(encoded(dict(request=request, source_update=reference)))
+            draft.write_bytes(encoded(dict(request=request, source_update=reference,
+                                          interpreted_sources=file_identity(values.path))))
             draft.replace(pending)
         result = update_native_catalog(store, native=raw_storage.native, previous=previous, dependencies=dependencies,
             replacements=values, deletions=deletions, candidate=candidate, directory=directory / 'catalog',

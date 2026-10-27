@@ -270,7 +270,11 @@ def test_recovery_only_preparation_and_runner_loss_never_rebuild_catalog(ready, 
         publish((remote, root, prepared))
     remote.after_put = None
     shutil.rmtree(root); shutil.copytree(saved, root)
+    recovery_key = publisher.PREFIX + json.loads(remote.objects[publisher.PREFIX + 'manifest.json'])['recovery']['path']
+    before = remote.gets[recovery_key]
+    monkeypatch.setattr(publisher, 'verify_recovery_status', lambda *a, **kw: pytest.fail('Completed recovery was read back'))
     assert publish((remote, root, prepared), resume=True, attempt=prepared['attempt'])['status'] == 'recovery_updated'
+    assert remote.gets[recovery_key] == before
 
 
 def test_two_runners_cannot_append_the_same_journal_sequence(ready):
@@ -350,13 +354,16 @@ def test_successful_attempt_request_cost_is_recorded_without_per_file_mutable_po
     journal_prefix = 'viewer-publications/attempts/'
     journal_puts = [key for key, _, _ in remote.puts if key.startswith(journal_prefix)]
     public_puts = [key for key, _, _ in remote.puts if not key.startswith(journal_prefix)]
+    assert all(remote.gets[key] == int(key.endswith('/00000000.json')) for key in journal_puts)
+    assert not remote.heads
+    assert all(remote.gets[key] == 0 for key in public_puts if key != publisher.PREFIX + 'manifest.json')
     assert len(public_puts) + 2 <= len(journal_puts) < 2 * len(public_puts) + 2
     if destination := os.environ.get('VIEWER_SUCCESS_RECEIPT'):
         path = Path(destination); path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({'scope': 'fixture with in-memory remote; counts exclude GitHub artifact metadata API and public probes',
             'publication_puts': len(public_puts), 'journal_puts': len(journal_puts),
             'journal_get_calls': sum(count for key, count in remote.gets.items() if key.startswith(journal_prefix)),
-            'journal_full_readbacks': len(journal_puts),
+            'journal_full_readbacks': sum(count for key, count in remote.gets.items() if key.startswith(journal_prefix) and not key.endswith('/00000000.json')),
             'mutable_identity_gets': {key: remote.gets[key] for key in protected},
             'file_version_heads': sum(remote.heads.values()),
             'journal_bytes': sum(len(raw) for key, raw in remote.objects.items() if key.startswith(journal_prefix))}, indent=2) + '\n')
@@ -395,7 +402,7 @@ def test_full_release_identity_tracks_dirty_transitive_sources_and_ignores_docs(
     assert publisher.release_source_files(tmp_path) != after
 
 
-@pytest.mark.parametrize('name', ['plan.py', 'reconciliation.py'])
+@pytest.mark.parametrize('name', ['plan.py', 'reconciliation.py', 'local.py'])
 def test_release_identity_includes_accepted_plan_and_reconciliation_source(tmp_path, name):
     helper = tmp_path / 'packages/viewer_publication/src/viewer_publication' / name
     helper.parent.mkdir(parents=True); helper.write_text('VALUE = 1\n')
@@ -633,3 +640,199 @@ def test_explicit_renderer_upgrade_resumes_existing_preparation_with_exact_origi
     assert attempts.prepare(publisher,remote,root,run_id='upgrade',run_attempt='1',public_url=publisher.PUBLIC_URL,
         renderer_upgrade=True,resume_preparation=True)==result
     assert not native.reads and not remote.puts
+
+
+@pytest.mark.parametrize('event', ['renderer_task_started', 'renderer_task_completed'])
+def test_initial_v5_adoption_resumes_into_current_producer_without_rebinding_accepted_preparation(source, tmp_path, event, monkeypatch):
+    import viewer_publication.filename_review_binding as reviews
+    from viewer_publication.filename_native import ViewerAssets
+    native = _NATIVE_FIXTURES[str(source)]
+    remote = Remote(source)
+    identities = reviews.load_identities()
+    row = identities['rows'][0]
+    prior = dict(version=1, catalog_id='historical', review_sha256=identities['review_sha256'], rows=[],
+        withdrawn=[dict(index=row['index'], document_id=row['document_id'], reason='body_changed')])
+    release = 'releases/' + 'b' * 32 + '/'
+    raw = publisher.encoded(prior)
+    descriptor = dict(path='generations/previous/viewer-v2/review-binding.json',
+        bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest())
+    old = dict(version=5, info=dict(catalog_id='historical'), source_manifest=dict(version=1, old=True),
+        files=dict(review_binding=descriptor))
+    old_raw = publisher.encoded(old)
+    pointer = dict(manifest=release + 'manifest.json', catalog_id='historical', source_manifest=old['source_manifest'],
+        recovery_inputs=dict(viewer_manifest_sha256=hashlib.sha256(old_raw).hexdigest()))
+    for path, payload in ((release + descriptor['path'], raw), (release + 'manifest.json', old_raw),
+                          ('manifest.json', publisher.encoded(pointer))):
+        remote.objects[publisher.PREFIX + path] = payload
+        remote.versions[publisher.PREFIX + path] = 'historical-version'
+    stopped = []
+    def interrupt(value):
+        if value['event'] == event and value.get('task', '').startswith('component-chunk:'):
+            stopped.extend(native.reads)
+            raise KeyboardInterrupt()
+    root = tmp_path / 'checkpoint'
+    native.reads.clear()
+    with pytest.raises(KeyboardInterrupt):
+        attempts.prepare(publisher, remote, root, run_id='123', run_attempt='1',
+            public_url=publisher.PUBLIC_URL, stage_event=interrupt)
+    assert not (root / 'preparation.json').exists() and not (root / 'prepared-result.json').exists()
+    assert not json.loads((root / 'continuation.json').read_text())['phases']
+    diagnostic = json.loads((root / 'preparation-diagnostics.json').read_text())
+    assert diagnostic['latest']['error_type'] == 'KeyboardInterrupt'
+    assert diagnostic['stage_timings']['component_preparation'] >= 0
+    events = [json.loads(line) for line in (root / 'preparation-events.jsonl').read_text().splitlines()]
+    assert any(item['event'] == event and item.get('task', '').startswith('component-chunk:') for item in events)
+    native.reads.clear()
+    result = attempts.prepare(publisher, remote, root, run_id='999', run_attempt='2',
+        public_url=publisher.PUBLIC_URL, resume_preparation=True)
+    if event == 'renderer_task_completed':
+        assert not set(stopped) & set(native.reads)
+    receipt, manifest, verified = attempts.verify_prepared(publisher, root)
+    assert result == verified and result['artifact_name'].startswith('viewer-prepared-999-2-')
+    assert receipt['binding']['run_id'] == '123' and receipt['binding']['run_attempt'] == '1'
+    assert receipt['artifact_producer'] == dict(run_id='999', run_attempt='2')
+    descriptor = attempts.resume_descriptor(dict(id=456, name=result['artifact_name'], digest='sha256:' + 'a' * 64),
+        dict(id=999, head_sha=receipt['binding']['provenance_revision']), 'fixture/repo')
+    assert descriptor['run_id'] == '999' and descriptor['run_attempt'] == '2'
+    assert receipt['binding']['viewer']['value'] == pointer
+    placed = ViewerAssets(root / 'publication').read_node(manifest['files']['review_binding'])
+    assert next(item for item in placed['withdrawn'] if item['index'] == row['index']) == dict(
+        prior['withdrawn'][0], source_ids=row['source_ids'])
+    assert not remote.puts
+    diagnostic = json.loads((root / 'preparation-diagnostics.json').read_text())
+    assert diagnostic['status'] == 'prepared' and diagnostic['memory_metrics']['new_asset_files'] > 0
+    accepted_bytes = (root / 'preparation.json').read_bytes()
+    native.reads.clear()
+    assert attempts.prepare(publisher, remote, root, run_id='1000', run_attempt='1',
+        public_url=publisher.PUBLIC_URL, resume_preparation=True) == result
+    assert not native.reads and (root / 'preparation.json').read_bytes() == accepted_bytes
+    # Keep public readback entirely within the owned in-memory fixture.
+    class Public(io.BytesIO):
+        headers = {'Access-Control-Allow-Origin': '*'}
+    monkeypatch.setattr(publisher, 'open_public', lambda request, **kwargs: Public(
+        remote.objects[publisher.PREFIX + request.full_url.removeprefix(publisher.PUBLIC_URL)]))
+    # The new producer, rather than checkpoint origin, supplies accepted-artifact custody.
+    outcome = attempts.publish(publisher, remote, root, artifact={'id': '456'}, public_url=publisher.PUBLIC_URL,
+        verify_artifact=lambda artifact, prepared: dict(id='456', digest='test-artifact-digest',
+            name=prepared['artifact_name'], run_id='999', repository='fixture/repo'), probe=lambda *a: None)
+    assert outcome['status'] == 'published'
+
+
+def test_initial_preparation_resume_refuses_changed_native_config_and_controls_before_chunk_reads(source, tmp_path):
+    native = _NATIVE_FIXTURES[str(source)]
+    remote = Remote(source)
+    root = tmp_path / 'checkpoint'
+    def stop(value):
+        if value['event'] == 'renderer_task_completed' and value.get('task', '').startswith('component-chunk:'):
+            raise KeyboardInterrupt()
+    with pytest.raises(KeyboardInterrupt):
+        attempts.prepare(publisher, remote, root, run_id='123', run_attempt='1',
+            public_url=publisher.PUBLIC_URL, stage_event=stop)
+    runtime = Path(native.execution_files()[0])
+    original = runtime.read_bytes()
+    try:
+        runtime.write_bytes(original + b'changed')
+        native.reads.clear()
+        with pytest.raises(ValueError, match='inputs changed'):
+            attempts.prepare(publisher, remote, root, run_id='999', run_attempt='1',
+                public_url=publisher.PUBLIC_URL, resume_preparation=True)
+        assert not native.reads
+    finally:
+        runtime.write_bytes(original)
+    remote.objects[publisher.ACCEPTED_KEY] = publisher.encoded(dict(version=1, recoveries=[]))
+    remote.versions[publisher.ACCEPTED_KEY] = 'changed-control'
+    native.reads.clear()
+    with pytest.raises(ValueError, match='inputs changed'):
+        attempts.prepare(publisher, remote, root, run_id='999', run_attempt='1',
+            public_url=publisher.PUBLIC_URL, resume_preparation=True)
+    assert not native.reads and not remote.puts and not (root / 'preparation.json').exists()
+
+
+@pytest.mark.parametrize('boundary', ['recovery', 'prepared_phase', 'receipt', 'result'])
+def test_initial_resume_after_renderer_and_at_acceptance_boundaries(source, tmp_path, monkeypatch, boundary):
+    from viewer_publication import filename_native_recoveries as recoveries
+    native = _NATIVE_FIXTURES[str(source)]
+    remote = Remote(source)
+    root = tmp_path / 'checkpoint'
+    original = recoveries.index_catalog_recoveries
+    if boundary == 'recovery':
+        def interrupted(*args, **options):
+            # Simulate work inside the recovery scan after its start event.
+            next(recoveries.CatalogRecoverySources(args[0], max_ordered_bytes=64 << 20).urls())
+            raise KeyboardInterrupt()
+        monkeypatch.setattr(recoveries, 'index_catalog_recoveries', interrupted)
+    def stop(value):
+        if (boundary == 'prepared_phase' and value['event'] == 'prepared_phase_accepted'
+                or boundary == 'receipt' and value['event'] == 'stage_completed' and value.get('stage') == 'preparation_receipt'
+                or boundary == 'result' and value['event'] == 'stage_completed' and value.get('stage') == 'prepared_result'):
+            raise KeyboardInterrupt()
+    with pytest.raises(KeyboardInterrupt):
+        attempts.prepare(publisher, remote, root, run_id='123', run_attempt='1',
+            public_url=publisher.PUBLIC_URL, stage_event=stop)
+    assert (root / 'publication/manifest.json').is_file()
+    assert (root / 'preparation.json').exists() == (boundary in ('receipt', 'result'))
+    assert (root / 'prepared-result.json').exists() == (boundary == 'result')
+    original_receipt = (root / 'preparation.json').read_bytes() if (root / 'preparation.json').exists() else None
+    if boundary == 'recovery':
+        diagnostic = json.loads((root / 'preparation-diagnostics.json').read_text())
+        assert diagnostic['stage_timings']['recovery_preparation'] >= 0
+    monkeypatch.setattr(recoveries, 'index_catalog_recoveries', original)
+    native.reads.clear()
+    events = []
+    result = attempts.prepare(publisher, remote, root, run_id='999', run_attempt='2',
+        public_url=publisher.PUBLIC_URL, resume_preparation=True, stage_event=events.append)
+    receipt, _, verified = attempts.verify_prepared(publisher, root)
+    assert verified == result and receipt['binding']['run_id'] == '123'
+    expected_producer = dict(run_id='123', run_attempt='1') if boundary == 'result' else dict(run_id='999', run_attempt='2')
+    assert receipt['artifact_producer'] == expected_producer
+    if boundary == 'result':
+        assert (root / 'preparation.json').read_bytes() == original_receipt
+    assert not any(item['event'] == 'renderer_task_started' for item in events)
+    if boundary != 'recovery':
+        assert not native.reads  # The accepted phase skips rendering and recovery alike.
+    assert not remote.puts
+
+
+def test_accepted_v1_receipt_without_separate_producer_keeps_its_original_identity(ready, source):
+    remote, root, _ = ready
+    receipt = json.loads((root / 'preparation.json').read_text())
+    del receipt['artifact_producer']
+    raw = publisher.encoded(receipt)
+    (root / 'preparation.json').write_bytes(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    expected = dict(status='prepared', mode=receipt['binding']['mode'], preparation_sha256=digest,
+        artifact_name=f'viewer-prepared-123-1-{digest}', attempt=f'123-1-{digest}', catalog_id='seed')
+    (root / 'prepared-result.json').write_bytes(publisher.encoded(expected))
+    assert attempts.verify_prepared(publisher, root)[2] == expected
+    native = _NATIVE_FIXTURES[str(source)]
+    native.reads.clear()
+    assert attempts.prepare(publisher, remote, root, run_id='999', run_attempt='2',
+        public_url=publisher.PUBLIC_URL, resume_preparation=True) == expected
+    assert (root / 'preparation.json').read_bytes() == raw and not native.reads
+
+
+@pytest.mark.parametrize('change', ['missing', 'additional'])
+def test_reused_inventory_still_checks_complete_publication_membership(ready, change):
+    remote, root, _ = ready
+    verified = attempts.verify_prepared(publisher, root)
+    if change == 'missing':
+        relative = next(name for name in verified.validation.files if name.endswith('.parquet'))
+        (root / relative).unlink()
+    else:
+        (root / 'publication/unaccepted.bin').write_bytes(b'not accepted')
+    with pytest.raises(ValueError, match='inventory changed'):
+        attempts.verify_prepared(publisher, root, validation=verified.validation)
+    assert remote.puts == []
+
+
+def test_prepared_verification_reuses_size_validation_membership_scan(ready, monkeypatch):
+    _, root, _ = ready
+    original = Path.rglob
+    scans = []
+    def counted(path, pattern, *args, **kwargs):
+        if path == root / 'publication':
+            scans.append(pattern)
+        return original(path, pattern, *args, **kwargs)
+    monkeypatch.setattr(Path, 'rglob', counted)
+    attempts.verify_prepared(publisher, root)
+    assert scans == ['*']

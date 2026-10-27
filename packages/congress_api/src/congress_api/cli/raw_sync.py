@@ -484,9 +484,15 @@ def run(args, log, *, store=None, raw_storage=None):
                 summary['catalog_status'] = 'running'
                 save_summary(args.summary, summary)
                 raw_identity = raw_storage.snapshot().identity
-                candidate = (raw_identity[:32] if mode == 'update' or mode == 'capture' else
-                    sha256(json.dumps([mode, args.adopt_catalog if mode == 'adopt-catalog' else raw_identity,
-                                       args.upgrade_source_rules], separators=(',', ':')).encode()).hexdigest()[:32])
+                from congress_api.retention.derived_files import file_identity
+                from congress_api.retention.source_update_proof import source_update_requirements
+                # A new seed snapshot or code revision is a new operation even
+                # when no capture has changed. Exact retries reuse its directory.
+                candidate = sha256(json.dumps([
+                    mode, args.adopt_catalog if mode == 'adopt-catalog' else raw_identity,
+                    args.upgrade_source_rules, source_update_requirements(),
+                    [(path.name, file_identity(path)['sha256']) for path in args.seed or ()],
+                ], sort_keys=True, separators=(',', ':')).encode()).hexdigest()[:32]
                 directory = (args.catalog_directory or args.summary.with_suffix('.catalog-update')) / candidate
                 options = dict(raw_storage=raw_storage, directory=directory, candidate=candidate)
                 if mode == 'adopt-catalog':

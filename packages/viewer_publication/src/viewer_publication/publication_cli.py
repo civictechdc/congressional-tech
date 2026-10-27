@@ -51,9 +51,7 @@ def arguments(argv):
 
 def validate(args, attempts):
     if args.command!='prepare' and (args.renderer_upgrade or args.resume_preparation):
-        raise ValueError('Renderer upgrade options require prepare')
-    if args.resume_preparation and not args.renderer_upgrade:
-        raise ValueError('--resume-preparation requires --renderer-upgrade')
+        raise ValueError('Renderer upgrade and preparation resume options require prepare')
     if args.command not in ('prepare', 'export-pins') and '--native-config' in args.explicit_options:
         raise ValueError('--native-config is used only for preparation and export-pins')
     if args.command != 'describe-attempt' and args.directory is None:
@@ -69,6 +67,8 @@ def validate(args, attempts):
             with args.resume_descriptor.open('rb') as stream:
                 raw = stream.read(MAX_DESCRIPTOR_BYTES + 1)
             descriptor = parse_resume_descriptor(raw)
+            if descriptor.get('version') != 1:
+                raise ValueError('publish requires an accepted-publication resume descriptor, not a preparation checkpoint')
             for field, name in (('artifact_id','artifact_id'), ('artifact_digest','artifact_digest'),
                                 ('attempt','attempt'), ('run_id','run_id'), ('repository','repository')):
                 existing = getattr(args, name)
@@ -185,7 +185,10 @@ def main(publisher, argv=None):
             if args.command == 'prepare':
                 options = {}
                 if args.renderer_upgrade:
-                    options.update(renderer_upgrade=True,resume_preparation=args.resume_preparation)
+                    options['renderer_upgrade'] = True
+                if args.resume_preparation:
+                    options['resume_preparation'] = True
+                options['stage_event'] = lambda event: print(json.dumps(event, sort_keys=True), flush=True)
                 if args.native_config:
                     from congress_api.retention.docspec import NativeDatasets
                     options['native'] = NativeDatasets.from_config(args.native_config)

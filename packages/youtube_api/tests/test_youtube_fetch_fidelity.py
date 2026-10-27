@@ -19,6 +19,7 @@ def fetcher(items):
     obj = object.__new__(YoutubeEventFetcher)
     obj.tinydb = TinyDB(storage=MemoryStorage)
     obj.youtube = MagicMock()
+    obj.channel_ids = {}
     obj.youtube.videos.return_value.list.return_value.execute.return_value = {'items': items}
     return obj
 

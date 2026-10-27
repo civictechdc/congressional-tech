@@ -157,7 +157,7 @@ def test_update_workflow_arguments_execute_without_acquisition(
     def update(actual_store, *, seeds=(), raw_storage, directory, candidate):
         assert raw_storage is owner
         assert actual_store is store
-        assert candidate == 'a' * 32
+        assert len(candidate) == 32 and all(c in '0123456789abcdef' for c in candidate)
         assert directory == Path('raw-capture-summary.catalog-update') / candidate
         calls.append(list(seeds))
         return dict(counts=dict(source_rows=1, document_rows=1))

@@ -9,7 +9,7 @@ import copy
 import pytest
 
 from news_lake.storage import Coordinator, CrashInjection, Faults, publish_release, read_release
-from conftest import logical_state
+from news_lake_test_support import logical_state
 from news_lake.contract.records import CONTENT_TABLES
 
 # second_batch touches every non-release table, so every table point fires.

@@ -1,0 +1,113 @@
+{
+  "observed_at": "2026-10-26",
+  "base_revision": "c466a45e09e27bde48ade12454f8b458c3643d21",
+  "failed_runs": [
+    40297640461,
+    40177235940
+  ],
+  "metadata_reads": [
+    {
+      "key": "indexes/catalog.json",
+      "etag": "\"5ae260d7e482a329813684ccba174d01\"",
+      "sha256": "1bd6a77471c5a07ddfe1607fbfd801b7255ae18b6ab271bc69e1c26b20acebc4",
+      "bytes": 243
+    },
+    {
+      "key": "indexes/native-manifests/catalog-selections-v2/97e2ff1b675d11ba2dc6f4c9a9e25182474fa47060bc48b7913b358ffde841b8.json",
+      "etag": "\"bc191e609c0c9fd2b5311def6fa39c62\"",
+      "sha256": "97e2ff1b675d11ba2dc6f4c9a9e25182474fa47060bc48b7913b358ffde841b8",
+      "bytes": 169083
+    },
+    {
+      "key": "indexes/raw.json",
+      "etag": "\"8e3f1897f8397f89ffc0aadbe99a18d4\"",
+      "sha256": "4773ba6bcf55404cfbbb01242df8e25c931e5e5454ae2e5072ce23addc4afcd6",
+      "bytes": 8818
+    }
+  ],
+  "counts": {
+    "document_rows": 1241157,
+    "source_rows": 1683430
+  },
+  "selected_interpretation": {
+    "catalog_namespace": "catalog-dependencies-v2",
+    "max_bytes": 100663296,
+    "max_rows": 327680,
+    "namespace": "catalog-source-observations-v1",
+    "raw_identity": "4773ba6bcf55404cfbbb01242df8e25c931e5e5454ae2e5072ce23addc4afcd6",
+    "requirements": {
+      "filename_rules_sha256": "db8498f7f9623dd81737da20980abd76d69f26e1b69f35dcd1e340f70b51acd5",
+      "format": "retained-source-update-v1",
+      "implementation_sha256": "99d332dee404baaaa714aa9cc0e16a7ca83215351ce4d30d907d42410683d5aa",
+      "pyarrow": "25.0.1",
+      "source_policy_sha256": "5aa30187c8bd7b0a0be3cd9e7abdcbcd092f6d6905333fc0bdacc12873e33551"
+    },
+    "root": {
+      "bytes": 3830,
+      "key": "indexes/native-manifests/catalog-source-observations-v1-aliases/c0d200a59e0d1ddafa28622b1faeb8eec402ebf78d40c4412140e9998563a029.json",
+      "sha256": "c0d200a59e0d1ddafa28622b1faeb8eec402ebf78d40c4412140e9998563a029"
+    },
+    "rule_version": "initial",
+    "seed_sha256": "1e2b82c48062fb265c1d11993e700f89d0092f85942cb0a807973454a273e39b"
+  },
+  "base_requirements": {
+    "implementation_sha256": "99d332dee404baaaa714aa9cc0e16a7ca83215351ce4d30d907d42410683d5aa",
+    "format": "retained-source-update-v1",
+    "pyarrow": "25.0.1",
+    "source_policy_sha256": "5aa30187c8bd7b0a0be3cd9e7abdcbcd092f6d6905333fc0bdacc12873e33551",
+    "filename_rules_sha256": "db8498f7f9623dd81737da20980abd76d69f26e1b69f35dcd1e340f70b51acd5"
+  },
+  "seed_comparison": {
+    "seed_revision": "b1d1a008b97e0e7e4dfe354fe7f7a8c45ae70ae3",
+    "qualified": {
+      "sha256": "1e2b82c48062fb265c1d11993e700f89d0092f85942cb0a807973454a273e39b",
+      "count": 300282
+    },
+    "run": {
+      "sha256": "83aaca9ba72dbb261b6d63ebf30d1ba740be43c67d89f62c02960acf8443c4f4",
+      "count": 300307
+    },
+    "files": [
+      {
+        "path": "congress_meetings.jsonl.gz",
+        "qualified_sha256": "07586a9e415b3f0e6a3478f6a3167d21e16d42129897425e7fad0997a5ff85cf",
+        "run_sha256": "4babe767ea05e072734aaf51d1c6fb591fc14bc1e441c324dd6a673a6bf6f1e5"
+      },
+      {
+        "path": "gpo-evidence.jsonl.gz",
+        "qualified_sha256": "39dd9c8147f5e76899cee8f7130c11cb74ee741303567d4c0507cc3f1a3afff6",
+        "run_sha256": "39dd9c8147f5e76899cee8f7130c11cb74ee741303567d4c0507cc3f1a3afff6"
+      },
+      {
+        "path": "meeting-inventory/house.json.gz",
+        "qualified_sha256": "0413275cb19fab56eb6f9c62bf640f1fc7385ee21221079dffed3c1bfdb2f9a2",
+        "run_sha256": "0413275cb19fab56eb6f9c62bf640f1fc7385ee21221079dffed3c1bfdb2f9a2"
+      },
+      {
+        "path": "meeting-inventory/house-sites.json.gz",
+        "qualified_sha256": null,
+        "run_sha256": null
+      },
+      {
+        "path": "meeting-inventory/senate.json.gz",
+        "qualified_sha256": "0ce684ad9b95a82ceb26b69363d86d124f8cbef6a17e3b99b7114723b631fe25",
+        "run_sha256": "0ce684ad9b95a82ceb26b69363d86d124f8cbef6a17e3b99b7114723b631fe25"
+      }
+    ]
+  },
+  "remote_mutations": false,
+  "repaired_requirements": {
+    "implementation_sha256": "6785cc934ee8648a6e5b67bfc1b6c97a91723ab1a55835e9020eff7f4cdcb684",
+    "format": "retained-source-update-v1",
+    "pyarrow": "25.0.1",
+    "source_policy_sha256": "5aa30187c8bd7b0a0be3cd9e7abdcbcd092f6d6905333fc0bdacc12873e33551",
+    "filename_rules_sha256": "db8498f7f9623dd81737da20980abd76d69f26e1b69f35dcd1e340f70b51acd5"
+  },
+  "validation": {
+    "focused_suite": "57 passed in 94.55 seconds",
+    "external_network": "disabled during tests",
+    "real_native_fixtures": true,
+    "production_qualification": false,
+    "prepared_cli_invocations": "both parsed successfully"
+  }
+}

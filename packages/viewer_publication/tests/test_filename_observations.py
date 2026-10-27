@@ -245,7 +245,7 @@ def test_typed_sequence_publishes_giant_logical_list_without_joining_parts(tmp_p
             yield observations.ObservationSequence(len(part) * repeats, batches)
     source = Source()
     index = observations.publish_observations(source, tmp_path)
-    assert opened == list(range(repeats)) * 2  # Write and independent readback.
+    assert opened == list(range(repeats))  # Generated-asset verification uses the streaming fingerprint.
     assert index['observations']['rows'] == 2
     refs = [row for block in index['references']['blocks']
             for row in observations.block_items(tmp_path / 'observation-rows.bin', block)]
@@ -275,3 +275,112 @@ def test_typed_sequence_rejects_missing_extra_or_corrupt_parts(tmp_path, mode):
     with pytest.raises(ValueError, match='length differs|corrupt typed occurrence|schema differs'):
         observations.publish_observations(Source(), tmp_path)
     assert not (tmp_path / 'observation-index.json').exists()
+
+
+@pytest.mark.parametrize('fault', ['value', 'reorder', 'null', 'trailing'])
+def test_publication_fingerprint_rejects_corruption_without_reopening_source(tmp_path, monkeypatch, fault):
+    kind = pa.struct([('label', pa.list_(pa.string()))])
+    values = pa.array([{'label': ['one']}, {'label': ['two']}], type=kind)
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        def observation_rows(self):
+            assert not getattr(self, 'opened', False), 'source must only be opened once'
+            self.opened = True
+            yield values
+    original = observations.verify_observations
+    def corrupt(source, folder, index, **kwargs):
+        if fault == 'value':
+            with observations.Blocks(folder / 'observations.bin') as writer:
+                writer.append({'label': ['corrupt']})
+                writer.append({'label': ['two']})
+            index['observations'] = writer.close()
+        else:
+            with observations.Blocks(folder / 'observation-rows.bin') as writer:
+                writer.append([1, 0] if fault == 'reorder' else None if fault == 'null' else [0, 1])
+                if fault == 'trailing': writer.append([])
+            index['references'] = writer.close()
+        return original(source, folder, index, **kwargs)
+    monkeypatch.setattr(observations, 'verify_observations', corrupt)
+    with pytest.raises(ValueError, match='changed source values|Unexpected observation row count'):
+        observations.publish_observations(Source(), tmp_path)
+    assert not (tmp_path / 'observation-index.json').exists()
+
+
+
+def test_combined_occurrence_writer_keeps_group_buffer_bounded_across_typed_parts(tmp_path):
+    from types import SimpleNamespace
+    from viewer_publication.filename_exports import OccurrenceParquetWriter
+    kind = pa.struct([('label', pa.list_(pa.string()))])
+    part = pa.array([{'label': ['one']}, None, {'label': ['three']}], type=kind)
+    opened = []
+    def parts():
+        for index in range(10):
+            opened.append(index)
+            yield part
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        metadata = SimpleNamespace(num_rows=1)
+        owner_ids = ['source']
+        def observation_rows(self):
+            yield observations.ObservationSequence(30, parts)
+    sizes = []
+    class Tracked(OccurrenceParquetWriter):
+        def _flush(self):
+            sizes.append(len(self.pending))
+            return super()._flush()
+    source = Source()
+    with Tracked(source, tmp_path / 'occurrences.parquet', row_group_rows=7) as writer:
+        observations.publish_observations(source, tmp_path, occurrence_writer=writer)
+    assert opened == list(range(10))
+    assert sizes == [7, 7, 7, 7, 2]
+    assert writer.result()['row_slices'] == [[0, 30]]
+    with pq.ParquetFile(tmp_path / 'occurrences.parquet') as written:
+        assert written.read()['occurrence_order'].to_pylist() == list(range(30))
+        assert [written.metadata.row_group(i).num_rows for i in range(written.metadata.num_row_groups)] == sizes
+
+
+@pytest.mark.parametrize('combined', [False, True])
+def test_flat_occurrence_buffer_flushes_by_retained_bytes_before_row_limit(tmp_path, combined):
+    from dataclasses import replace
+    from viewer_publication.filename_exports import publish_occurrence_parquet
+    from viewer_publication.filename_native import ViewerAssets, publish_occurrence_assets
+    kind = pa.struct([('label', pa.list_(pa.string()))])
+    values = pa.array([{'label': ['x' * 512]}] * 8, type=kind)
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        def observation_rows(self): yield values
+    policy = replace(observations.DEFAULT_DECODED_POLICY, writer_buffer_bytes=4096)
+    metrics = {}
+    if combined:
+        assets = ViewerAssets(tmp_path / 'assets')
+        result = publish_occurrence_assets(Source(), tmp_path, assets, policy=policy, metrics=metrics)['occurrences']
+    else:
+        result = publish_occurrence_parquet(Source(), tmp_path / 'occurrences.parquet', policy=policy, metrics=metrics)
+    with pq.ParquetFile(tmp_path / 'occurrences.parquet') as written:
+        assert written.metadata.num_rows == 8
+        assert written.metadata.num_row_groups > 1
+        assert written.read()['occurrence_order'].to_pylist() == list(range(8))
+    assert result['row_slices'] == [[0, 8]]
+    assert metrics['max_occurrence_pending_python_bytes'] <= policy.writer_buffer_bytes
+
+
+@pytest.mark.parametrize('combined', [False, True])
+def test_flat_occurrence_refuses_single_row_larger_than_writer_byte_budget(tmp_path, combined):
+    from dataclasses import replace
+    from viewer_publication.filename_budget import DecodedBudgetExceeded
+    from viewer_publication.filename_exports import publish_occurrence_parquet
+    from viewer_publication.filename_native import ViewerAssets, publish_occurrence_assets
+    kind = pa.struct([('label', pa.list_(pa.string()))])
+    values = pa.array([{'label': ['x' * 2048]}], type=kind)
+    class Source:
+        schema_arrow = pa.schema([('source_occurrences', pa.list_(kind))])
+        def observation_rows(self): yield values
+    policy = replace(observations.DEFAULT_DECODED_POLICY, writer_buffer_bytes=1024)
+    assets = ViewerAssets(tmp_path / 'assets')
+    with pytest.raises(DecodedBudgetExceeded, match='single occurrence retained Python bytes'):
+        if combined:
+            publish_occurrence_assets(Source(), tmp_path, assets, policy=policy, metrics={})
+        else:
+            publish_occurrence_parquet(Source(), tmp_path / 'occurrences.parquet', policy=policy)
+    assert not assets.identities
+    assert (tmp_path / 'preparation-memory-failure.json').is_file()

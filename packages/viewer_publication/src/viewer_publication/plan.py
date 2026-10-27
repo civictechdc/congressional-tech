@@ -3,7 +3,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 import json
 
-from congress_api.retention.viewer_inventory import InventoryValidation, issue_inventory
+from congress_api.retention.viewer_inventory import InventoryValidation
 
 
 @dataclass(frozen=True)
@@ -38,8 +38,8 @@ def accept_viewer_plan(publisher=None, root=None, manifest=None, *, validation, 
 
     Cloud callers still verify their preparation receipt and GitHub artifact.
     Local callers still own pins, lock, phase acceptance and original conditions.
-    Reissuing the existing file proofs binds these plan values without hashing
-    unchanged files again. Callers admit supported output sizes before issuing
+    The checked inventory binds these plan values without reissuing every file
+    proof. Callers admit supported output sizes before issuing
     inventory proof; serialized dictionaries cannot issue an inventory.
     """
     if publisher is None:
@@ -63,5 +63,5 @@ def accept_viewer_plan(publisher=None, root=None, manifest=None, *, validation, 
     recovery = publisher.load_prepared_recovery(root, manifest, protected['accepted'], validation=validation)
     plan = AcceptedViewerPlan(root, manifest, protected, source_pins, release_plan, conditions,
                               mode, recovery, files, validation)
-    proof = issue_inventory(validation.root, validation.identities, context=plan.context())
+    proof = validation.bind_context(plan.context())
     return replace(plan, validation=proof)

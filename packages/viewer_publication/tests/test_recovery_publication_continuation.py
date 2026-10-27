@@ -72,15 +72,15 @@ class ContinuationTests(unittest.TestCase):
         continued = self.resume(); continued.reconcile(remote, 'b')
         self.assertIsNone(continued.replay(remote, 'b', key, b'file'))
         self.assertEqual(remote.puts, 0)
-    def test_stale_generation_and_changed_verified_version_refused(self):
+    def test_uncertain_generation_conflict_refused_and_acknowledged_write_reused(self):
         remote = Remote(); key = 'indexes/catalog.json'
         self.intent(key, b'ours', IfMatch='old'); remote.objects[key] = (b'newer catalog', 'newer')
         with self.assertRaisesRegex(ValueError, 'conflicts'):
             self.resume().reconcile(remote, 'b')
         remote.objects[key] = (b'ours', 'ours'); self.c.reconcile(remote, 'b')
         remote.objects[key] = (b'ours', 'rewritten')
-        with self.assertRaisesRegex(ValueError, 'version changed'):
-            self.resume().reconcile(remote, 'b')
+        remote.get_object = lambda **kwargs: self.fail('Acknowledged write was read back')
+        self.resume().reconcile(remote, 'b')
     def test_lost_ack_then_process_restart_never_duplicates_write(self):
         remote = Remote(); remote.lost_ack = True
         proxy = GuardedPublicationClient(remote, guard=lambda: None,
@@ -102,7 +102,7 @@ class ContinuationTests(unittest.TestCase):
             proxy.put_object(Bucket='b', Key=key, Body=b'new locator', IfNoneMatch='*')
         self.assertNotIn(key, self.c.value['writes'])
         self.resume().reconcile(remote, 'b')
-    def test_reconciled_proof_reuses_one_full_read_only_for_exact_client_and_version(self):
+    def test_resolved_acknowledgment_replays_without_remote_reads_or_heads(self):
         class Counted(Remote):
             gets = 0; heads = 0
             def get_object(self, **kwargs):
@@ -118,16 +118,16 @@ class ContinuationTests(unittest.TestCase):
         body = io.BytesIO(b'prefixexact'); body.seek(6)
         self.assertEqual(self.c.replay(remote, 'b', key, body), {'ETag': 'v1'})
         self.assertEqual(body.tell(), 6)
-        self.assertEqual((remote.gets, remote.heads), (1, 1))
+        self.assertEqual((remote.gets, remote.heads), (1, 0))
         other = Counted(); other.objects = dict(remote.objects)
         self.c.replay(other, 'b', key, b'exact')
-        self.assertEqual((other.gets, other.heads), (1, 0))
+        self.assertEqual((other.gets, other.heads), (0, 0))
         self.resume().replay(remote, 'b', key, b'exact')
-        self.assertEqual(remote.gets, 2)  # Serialized receipts never issue a proof.
+        self.assertEqual(remote.gets, 1)  # Serialized acknowledgment avoids another read.
         for raw, version in [(b'exact', 'v2'), (b'longer', 'v1')]:
             remote.objects[key] = (raw, version)
-            with self.assertRaisesRegex(ValueError, 'object changed'):
-                self.c.replay(remote, 'b', key, b'exact')
+            self.assertEqual(self.c.replay(remote, 'b', key, b'exact'), {'ETag': 'v1'})
+        self.assertEqual((remote.gets, remote.heads), (1, 0))
 
     def test_different_replay_payload_is_refused(self):
         remote = Remote(); key = 'viewer-publications/releases/x/file'

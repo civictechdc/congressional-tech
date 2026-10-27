@@ -167,6 +167,8 @@ class GpoEvidenceObservation(RawContent):
     retrieved_at: str | None
     acquisition: str
     error: str | None = None
+    source_zip: dict | None = None
+    package_last_modified: str | None = None
 
 
 class GpoListingObservation(SourceModel):
@@ -182,6 +184,7 @@ class GpoEvidenceRecord(SourceModel):
     mods_document: ModsRecord | None = None
     failed_mods: GpoEvidenceObservation | None = None
     manifest: GpoEvidenceObservation | None = None
+    failed_manifest: GpoEvidenceObservation | None = None
     manifest_files: list["MetsFile"] = Field(default_factory=list)
     transcripts: dict[str, GpoEvidenceObservation] = Field(default_factory=dict)
     listing: GpoListingObservation | None = None

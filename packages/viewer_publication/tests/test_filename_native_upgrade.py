@@ -92,8 +92,9 @@ def test_upgrade_refuses_changed_inputs_and_corrupted_completed_assets(tmp_path)
 from test_docspec_boundary import native
 
 
+@pytest.mark.parametrize('preparation',['initial','upgrade'])
 @pytest.mark.parametrize('event',['renderer_task_started','renderer_task_completed'])
-def test_actual_native_upgrade_survives_abrupt_worker_exit_without_new_native_candidates(native,tmp_path,event):
+def test_actual_native_preparation_survives_abrupt_worker_exit_without_new_native_candidates(native,tmp_path,event,preparation):
     import subprocess
     store=LocalStore(tmp_path/'store')
     seed(tmp_path,store,native)
@@ -107,7 +108,7 @@ from contextlib import contextmanager
 from hashlib import sha256
 import importlib.util,json,os,sys
 from pathlib import Path
-repo,folder,binary,workspace,limits,event,mode=map(str,sys.argv[1:])
+repo,folder,binary,workspace,limits,preparation,event,mode=map(str,sys.argv[1:])
 folder=Path(folder);sys.path[:0]=[str(Path(repo)/'tests')]
 from congress_api.retention.docspec import NativeDatasets
 from congress_api.retention.catalog_cache import LocalStore
@@ -126,12 +127,13 @@ snapshot=read_catalog(LocalStore(folder/'store'),native=native)
 previous=json.loads((folder/'old/manifest.json').read_bytes())
 def interrupted(value):
  if mode=='stop' and value['event']==event and value.get('task','').startswith('component-chunk:'):os._exit(73)
-manifest=builder.publish_selected(snapshot,folder/'new',previous=previous,
- read_asset=lambda path:(folder/'old'/path).read_bytes(),review_identities=None,
- renderer_upgrade=True,resume_upgrade=mode=='resume',stage_event=interrupted)
+options=(dict(preparation_binding={'origin':'actual-initial'},resume_preparation=mode=='resume')
+ if preparation=='initial' else dict(previous=previous,read_asset=lambda path:(folder/'old'/path).read_bytes(),
+ renderer_upgrade=True,resume_upgrade=mode=='resume'))
+manifest=builder.publish_selected(snapshot,folder/'new',review_identities=None,stage_event=interrupted,**options)
 assert manifest['source_identity']==previous['source_identity']
 '''
-    args=[sys.executable,'-c',script,str(ROOT),str(tmp_path),str(native.binary),str(native.workspace),str(native.limits),event]
+    args=[sys.executable,'-c',script,str(ROOT),str(tmp_path),str(native.binary),str(native.workspace),str(native.limits),preparation,event]
     stopped=subprocess.run([*args,'stop'],capture_output=True,text=True,timeout=60)
     assert stopped.returncode==73,stopped.stderr
     resumed=subprocess.run([*args,'resume'],capture_output=True,text=True,timeout=60)

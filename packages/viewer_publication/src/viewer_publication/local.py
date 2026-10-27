@@ -13,26 +13,13 @@ from congress_shared.custody import canonical_json_bytes
 
 from . import continuation as state
 
-MAX_LOCAL_EVENTS = 65536
-MAX_LOCAL_JOURNAL_BYTES = 256 * 1024**2
+MAX_LOCAL_EVENTS = state.MAX_EVENTS + state.MAX_PHASES + 2
+MAX_LOCAL_JOURNAL_BYTES = state.MAX_JOURNAL_BYTES + 2 * state.MAX_STATE_BYTES
 MAX_LOCAL_RECORD_BYTES = state.MAX_STATE_BYTES + 1024
 
 
 def encoded(value):
     return canonical_json_bytes(value, ensure_ascii=True)
-
-
-def transition(value, event, detail):
-    # Copy only the dictionaries apply_event can mutate. Validate before appending
-    # so a rejected transition cannot poison an otherwise resumable history.
-    candidate = dict(value, writes=dict(value['writes']), versions=dict(value['versions']))
-    key = detail.get('key') if isinstance(detail, dict) else None
-    if key in candidate['writes']:
-        candidate['writes'][key] = dict(candidate['writes'][key])
-    changed = state.apply_event(candidate, event, detail)
-    if changed and event == 'publication_write_verified' and key in candidate['versions']:
-        candidate['versions'][key] = detail['etag']
-    return candidate, changed
 
 
 class LegacyLocalJournal(ValueError):
@@ -66,7 +53,10 @@ def read_local_journal(path):
             else:
                 if value is None or len(raw) > state.MAX_EVENT_BYTES:
                     raise ValueError('Invalid local publication journal event')
-                value, _ = transition(value, event, detail)
+                # Replay into unpublished state without copying the full ledger.
+                changed = state.apply_event(value, event, detail)
+                if changed and event == 'publication_write_verified' and detail['key'] in value['versions']:
+                    value['versions'][detail['key']] = detail['etag']
             sequence += 1
             total_bytes += len(raw)
             previous = hashlib.sha256(raw).hexdigest()
@@ -133,29 +123,15 @@ class LocalContinuation(state.Continuation):
         with self.lock:
             if event == 'local_checkpoint':
                 raise ValueError('Reserved local publication event')
-            candidate, changed = transition(self.value, event, value)
-            size = self._state_bytes
-            if changed:
-                key = value['key']
-                old, new = self.value['writes'].get(key), candidate['writes'].get(key)
-                if old is None:
-                    size += len(encoded(key)) + 1 + len(encoded(new)) + bool(self.value['writes'])
-                elif new is None:
-                    size -= len(encoded(key)) + 1 + len(encoded(old)) + (len(self.value['writes']) > 1)
-                else:
-                    size += len(encoded(new)) - len(encoded(old))
-                if key in candidate['versions']:
-                    size += len(encoded(candidate['versions'][key])) - len(encoded(self.value['versions'][key]))
-                if size > state.MAX_STATE_BYTES:
-                    raise ValueError('Publication continuation exceeds state byte limit')
+            change, size = self.checked_event(event, value)
             self._append(event, value)
-            if changed:
-                key = value['key']
-                if key in candidate['writes']:
-                    self.value['writes'][key] = candidate['writes'][key]
+            if change is not None:
+                key, write = change
+                if write is not None:
+                    self.value['writes'][key] = write
                 else:
                     del self.value['writes'][key]
                 # Guards share this map; never expose an empty intermediate map.
                 if event == 'publication_write_verified' and key in self.value['versions']:
-                    self.value['versions'][key] = candidate['versions'][key]
+                    self.value['versions'][key] = value['etag']
             self._state_bytes = size

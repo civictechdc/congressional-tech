@@ -214,13 +214,13 @@ def test_mets_manifest_files_and_representations_without_new_csv_columns_or_file
     original_columns = list(fetch_read_csv(csv_path)[package].keys())
 
     def get(session, url):
-        if url.endswith('/mets.xml'):
-            return SimpleNamespace(content=mets_bytes)
         return SimpleNamespace(content=mods_bytes)
 
     monkeypatch.setattr(fetch, 'load_congress_api_key', lambda: 'unused')
     monkeypatch.setattr(fetch, 'list_collection', lambda since, key: [])
     monkeypatch.setattr(fetch, 'get_with_retry', get)
+    monkeypatch.setattr(fetch, 'read_zip_member', lambda session, url, member: SimpleNamespace(
+        data=mets_bytes, source={'url': url, 'member': member}))
     fetch.main(csv_path, min_congress=113, nthreads=1, refresh_limit=1, evidence_path=evidence_path)
 
     updated_rows = fetch_read_csv(csv_path)

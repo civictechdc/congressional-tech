@@ -176,7 +176,10 @@ def test_workflow_installation_preserves_execution_gates_and_secret_boundaries()
     assert len(steps) == 3
     assert steps[0][1]['if'] == "steps.operation.outputs.mode != 'validate'"
     assert 'if' not in steps[1][1]
-    assert steps[2][1]['if'] == "steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required'"
+    assert steps[2][1]['if'] == (
+        "steps.resume.outputs.preparation_resume == 'true' || "
+        "(steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required')"
+    )
     for job, step in steps:
         assert step['env']['DOCSPEC_RUNTIME_ARTIFACT'] == '${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}'
         assert step['env']['DOCSPEC_ENGINE_CREDENTIALS'] == '${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}'

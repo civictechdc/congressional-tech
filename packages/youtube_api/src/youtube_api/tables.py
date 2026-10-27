@@ -1,6 +1,7 @@
 import csv
 import json
 import logging
+import re
 from pathlib import Path
 from tinydb import TinyDB
 from tinydb.storages import Storage
@@ -60,6 +61,33 @@ def map_system_code_committee_handles(
                 "member_handles": members,
             }
     return system_code_mapper
+
+
+def get_channel_id_overrides(csv_path: Path = DEFAULT_CHANNELS_CSV) -> dict[str, str]:
+    """Read optional stable IDs without changing literal handles or table names."""
+    channel_ids = {}
+    with open(csv_path, newline="", encoding="utf-8") as csvfile:
+        for row in csv.DictReader(csvfile):
+            configured = json.loads(row.get("channel_ids") or "{}")
+            handles = {
+                handle.strip()
+                for column in ("handle", "secondary", "member_channels")
+                for handle in (row.get(column) or "").split(";")
+                if handle.strip()
+            }
+            if not isinstance(configured, dict):
+                raise ValueError("channel_ids must be a JSON object")
+            for handle, channel_id in configured.items():
+                if (
+                    handle not in handles
+                    or not isinstance(channel_id, str)
+                    or not re.fullmatch(r"UC[A-Za-z0-9_-]{22}", channel_id)
+                ):
+                    raise ValueError(f"Invalid configured YouTube channel ID for {handle}")
+                if handle in channel_ids and channel_ids[handle] != channel_id:
+                    raise ValueError(f"Conflicting configured YouTube channel IDs for {handle}")
+                channel_ids[handle] = channel_id
+    return channel_ids
 
 
 def get_all_committee_handles(

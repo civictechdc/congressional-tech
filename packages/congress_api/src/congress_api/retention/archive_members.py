@@ -125,18 +125,25 @@ def _directory_preflight(body, limits):
     cursor = offset - size
     if cursor < 0:
         raise ArchiveReadError('corrupt_archive', 'ZIP central directory exceeds the archive')
-    actual_count = 0
-    while cursor < offset:
-        if cursor + 46 > offset or body[cursor:cursor + 4] != b'PK\x01\x02':
+    validate_zip_directory(memoryview(body)[cursor:offset], expected_count=count, limits=limits)
+    return offset + 22
+
+
+def validate_zip_directory(data, *, expected_count, limits):
+    """Validate bounded directory bytes before allocating ZipFile entry objects."""
+    if len(data) > limits.max_directory_bytes or expected_count > limits.max_members:
+        raise ArchiveReadError('directory_size_limit', 'ZIP directory exceeds its limits')
+    cursor, actual_count = 0, 0
+    while cursor < len(data):
+        if cursor + 46 > len(data) or data[cursor:cursor + 4] != b'PK\x01\x02':
             raise ArchiveReadError('corrupt_archive', 'Invalid ZIP central directory entry')
-        name, extra, comment = struct.unpack_from('<3H', body, cursor + 28)
+        name, extra, comment = struct.unpack_from('<3H', data, cursor + 28)
         cursor += 46 + name + extra + comment
         actual_count += 1
         if actual_count > limits.max_members:
             raise ArchiveReadError('member_count_limit', 'ZIP entry count exceeds its limit')
-    if cursor != offset or actual_count != count:
+    if cursor != len(data) or actual_count != expected_count:
         raise ArchiveReadError('corrupt_archive', 'ZIP directory sizes or counts disagree')
-    return offset + 22
 
 
 def _unsafe_name(name):

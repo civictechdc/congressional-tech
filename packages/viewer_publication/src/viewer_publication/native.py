@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 from pathlib import Path, PurePosixPath
+import time
 
 from congress_api.retention.control_documents import bounded_control_read
 
@@ -23,7 +24,9 @@ def _read(client, publisher, path, *, kind, expected=None, digest=None):
 
 
 def prepare_native_output(publisher=None, builder=None, client=None, snapshot=None, target=None, *, accepted_record, viewer_record,
-                          recovery_only=False, renderer_upgrade=False, resume_upgrade=False):
+                          recovery_only=False, renderer_upgrade=False, resume_upgrade=False,
+                          preparation_binding=None, resume_preparation=False,
+                          stage_timings=None, stage_event=None, memory_metrics=None):
     """Reuse only a hash-verified prior release; leave selection to the caller.
 
     Local and hosted callers retain their existing input pins, accepted phase,
@@ -95,14 +98,32 @@ def prepare_native_output(publisher=None, builder=None, client=None, snapshot=No
         assets.identities['manifest.json'] = file_identity(target / 'manifest.json')
         manifest = PreparedManifest(previous, assets.identities)
     else:
-        options = dict(previous=previous, read_asset=read_asset)
+        options = dict(previous=previous, read_asset=read_asset, stage_timings=stage_timings,
+                       stage_event=stage_event, memory_metrics=memory_metrics)
+        if preparation_binding is not None:
+            options.update(preparation_binding=preparation_binding, resume_preparation=resume_preparation)
         if renderer_upgrade:
-            staging=Path(target).with_name(Path(target).name+'.renderer-upgrade')
-            options.update(renderer_upgrade=True,resume_upgrade=resume_upgrade and staging.exists())
+            options.update(renderer_upgrade=True, resume_upgrade=resume_upgrade)
         if prior_binding is not None:
             options['prior_review_binding'] = prior_binding
         manifest = builder.publish_selected(snapshot, target, **options)
-    recovery = index_catalog_recoveries(snapshot, publisher.validated_accepted(accepted_record[0]),
-        previous=previous_recovery, max_ordered_bytes=64 << 20)
-    publisher.require_native_recovery(recovery, manifest)
+    if stage_event:
+        stage_event(dict(event='stage_started', stage='recovery_preparation'))
+    started = time.perf_counter()
+    try:
+        recovery = index_catalog_recoveries(snapshot, publisher.validated_accepted(accepted_record[0]),
+            previous=previous_recovery, max_ordered_bytes=64 << 20, metrics=memory_metrics)
+        publisher.require_native_recovery(recovery, manifest)
+    except BaseException:
+        seconds = time.perf_counter() - started
+        if stage_timings is not None:
+            stage_timings['recovery_preparation'] = seconds
+        if stage_event:
+            stage_event(dict(event='stage_interrupted', stage='recovery_preparation', seconds=seconds))
+        raise
+    seconds = time.perf_counter() - started
+    if stage_timings is not None:
+        stage_timings['recovery_preparation'] = seconds
+    if stage_event:
+        stage_event(dict(event='stage_completed', stage='recovery_preparation', seconds=seconds))
     return manifest, recovery

@@ -44,12 +44,12 @@ def test_failed_verified_checkpoint_reconciles_committed_bytes_without_second_pu
     original = continuation.flush
     def interrupted():
         if continuation.value['writes'][key]['verified']:
-            raise KeyboardInterrupt('after readback before checkpoint replacement')
+            raise KeyboardInterrupt('after acknowledgment before checkpoint replacement')
         original()
     monkeypatch.setattr(continuation, 'flush', interrupted)
     proxy = GuardedPublicationClient(remote, guard=lambda: None, journal=continuation.record,
                                      after_write=lambda *args: None)
-    with pytest.raises(KeyboardInterrupt, match='after readback'):
+    with pytest.raises(KeyboardInterrupt, match='after acknowledgment'):
         proxy.put_object(Bucket='bucket', Key=key, Body=payload, IfNoneMatch='*')
     saved = json.loads(continuation.path.read_bytes())
     assert saved['versions'][key] is None and not saved['writes'][key]['verified']

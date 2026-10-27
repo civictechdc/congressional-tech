@@ -68,13 +68,13 @@ Malformed JSON and table shapes still raise errors; unrelated tables are ignored
 
 The fetch walks three YouTube Data API v3 calls:
 
-1. `channels.list` with `forHandle`, parts `snippet` and `contentDetails`
+1. `channels.list` with the configured or retained channel `id`, using `forHandle` only to discover an unknown channel, parts `snippet` and `contentDetails`
 2. `playlistItems.list` on the uploads playlist, 50 items per page, snippet only. A 404 on the first page means the channel has no public uploads.
 3. `videos.list` with `part=contentDetails`, up to 50 ids per call, for `caption` and `duration`. The module docstring counts that call as one quota unit per 50 videos.
 
 Later runs stop paging a playlist when they hit a `videoId` already stored. Videos missing `caption` or `duration`, and videos with `caption` false published within the last 30 days (`CAPTION_RECHECK_DAYS`), are sent through `videos.list` again. A failed channel is logged and the command continues. The process exits 1 if any channel failed.
 
-Handles include the primary channel, semicolon-separated `secondary` channels, and semicolon-separated `member_channels`. Member channels are personal channels of chairs who post a committee's hearings. `YoutubeEventFetcher.force` truncates stored channels and videos before a refetch. The CLI does not set it.
+Handles include the primary channel, semicolon-separated `secondary` channels, and semicolon-separated `member_channels`. Member channels are personal channels of chairs who post a committee's hearings. `YoutubeEventFetcher.force` refreshes retained channels and videos without deleting prior records. The CLI does not set it.
 
 ### Event-id report
 
@@ -114,6 +114,23 @@ The default file is `congress_shared`'s `youtube/youtube-accounts.csv`, overrida
 | `handle` | Primary YouTube handle. |
 | `secondary` | Extra handles, separated by semicolons. |
 | `member_channels` | Chair channels, separated by semicolons. Fetched, and omitted from `youtube-analyze`. |
+| `channel_ids` | Optional JSON object mapping literal handles to verified stable channel IDs. Changes lookup only; retained handles and table names stay the same. |
+
+All 119 configured channels have verified ID mappings, including secondary and
+member channels. The mappings come from retained successful YouTube API responses,
+with their exact source snapshot, observation times, and identifiers recorded in
+[the backfill evidence](../../docs/experiments/youtube-channel-ids-20261026.json).
+These are historical identity observations, not a live availability check.
+
+New or custom channels without a configured ID use the retained `channelId` or
+complete API item's `id`. If neither exists, the fetcher resolves the handle once
+and stores the resulting ID for later refreshes. Conflicting configured/retained
+IDs fail before fetching or changing channel data. An empty or mismatched ID
+response retains prior data and reports a failure, without retrying the handle.
+CSV mappings reject invalid IDs, handles absent from that row, and conflicting IDs.
+
+The original Natural Resources repair is documented in
+[the dated official-source verification](../../docs/experiments/natural-resources-youtube-20261026.md).
 
 Row order is the TinyDB index. `youtube_00.json` is the first data row.
 

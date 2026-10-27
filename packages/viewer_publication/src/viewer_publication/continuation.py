@@ -1,10 +1,9 @@
 """Durable receipts for an explicitly requested publication continuation.
 
-Receipts bind local inputs and accepted phase outputs. Remote writes are only
-reused after current bytes and version agree; an uncertain request is never
-resent until a later explicit invocation reconciles its outcome.
+Receipts bind local inputs and accepted phase outputs. Successful upload
+acknowledgments are reusable without remote readback. An uncertain request is
+never resent until its original outcome has been reconciled.
 """
-import copy
 import hashlib
 import json
 import os
@@ -20,13 +19,18 @@ def sha256(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-MAX_STATE_BYTES = 32 * 1024**2
-MAX_EVENTS = 16384
-MAX_EVENT_BYTES = 1024**2
-MAX_JOURNAL_BYTES = 64 * 1024**2
-MAX_WRITES = 8192
+# The modeled full 1.24M-document v6 release has roughly 100K assets: hash-routed
+# component pages, sorted browse pages, shared physical chunks and inventories.
+# Count and byte limits remain independent: unusually long names/values can hit
+# a byte limit first. See the capacity fixture and evidence note for sizing.
+MAX_PHASE_FILES = 131072
 MAX_PHASES = 64
-MAX_PHASE_FILES = 32768
+MAX_WRITES = MAX_PHASE_FILES + 256  # Immutable assets plus release/control writes.
+MAX_EVENTS = 2 * MAX_WRITES + 2 * MAX_PHASES  # Parallel completion need not coalesce.
+MAX_STATE_BYTES = 128 * 1024**2  # Includes the retained ~9.6MB accepted-recovery input.
+MAX_EVENT_BYTES = 1024**2
+MAX_JOURNAL_BYTES = 256 * 1024**2
+JOURNAL_CHECKPOINT_EVENTS = 1024
 
 
 def bounded_json(path):
@@ -92,7 +96,7 @@ def validate_state(value):
     return value
 
 
-def apply_event(state, event, value):
+def write_transition(state, event, value):
     if not isinstance(event, str) or not event or len(event) > 128 or not isinstance(value, dict):
         raise ValueError('Malformed publication event')
     writes = state['writes']
@@ -104,20 +108,31 @@ def apply_event(state, event, value):
             raise ValueError('Illegal publication intent transition')
         if previous is None and len(writes) >= MAX_WRITES:
             raise ValueError('Publication continuation exceeds write limit')
-        writes[value['key']] = dict(value, verified=False)
+        return value['key'], dict(value, verified=False)
     elif event in ('publication_write_refused', 'publication_write_verified'):
         previous = writes.get(value.get('key'))
         if previous is None or previous.get('verified'):
             raise ValueError('Illegal publication write transition')
         if event == 'publication_write_refused':
-            del writes[value['key']]
+            return value['key'], None
         else:
             write_value(value, verified=True)
             if any(previous[k] != value[k] for k in ('bytes', 'sha256')):
                 raise ValueError('Publication verification differs from intent')
-            previous.update(value, verified=True)
+            return value['key'], dict(previous | value, verified=True)
     else:
-        return False  # Informational events are legitimate and retain their history.
+        return None  # Informational events are legitimate and retain their history.
+
+
+def apply_event(state, event, value):
+    change = write_transition(state, event, value)
+    if change is None:
+        return False
+    key, write = change
+    if write is None:
+        del state['writes'][key]
+    else:
+        state['writes'][key] = write
     return True
 
 
@@ -126,13 +141,14 @@ class Continuation:
         self.root = Path(root)
         self.path = self.root / 'continuation.json'
         self.lock = threading.RLock()
-        # Ephemeral readback proofs never come from continuation JSON. Keeping the
-        # client object alive also prevents object-id reuse from transferring proof.
-        self._reconciled = {}
+        self._state_bytes = None
         if resume:
             self.value = self._restore()
             if self.value['binding'] != binding:
                 raise ValueError('Publication continuation inputs changed')
+            self._state_bytes = len(canonical_json_bytes(self.value, ensure_ascii=True)) + 1
+            if self._state_bytes > MAX_STATE_BYTES:
+                raise ValueError('Publication continuation exceeds state byte limit')
         else:
             self.root.mkdir(parents=True, exist_ok=False)
             self.value = dict(version=1, binding=binding, phases={}, writes={}, versions={})
@@ -153,23 +169,43 @@ class Continuation:
                 fsync=True,
                 fsync_dir=True,
             )
+            self._state_bytes = len(raw)
 
-    def save(self, name, raw, *, replace=False):
+    def saved_path(self, name):
         path = self.root / relative_name(name)
         if not path.resolve().is_relative_to(self.root.resolve()):
             raise ValueError('Publication saved path escapes attempt directory')
+        return path
+
+    def save(self, name, raw, *, replace=False):
+        path = self.saved_path(name)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists() and not replace:
             if path.read_bytes() != raw:
                 raise ValueError('Publication artifact changed: ' + name)
-            return
-        write_atomic_bytes(
+            return VerifiedFile(path, hashlib.sha256(raw).hexdigest(), len(raw))
+        return write_atomic_bytes(
             path,
             raw,
             temp_path=path.with_name(path.name + '.partial'),
             fsync=True,
             fsync_dir=False,
         )
+
+    def accept_saved(self, source, name, *, proof):
+        """Retain accepted evidence without rewriting an already synced request."""
+        source, path = self.saved_path(source), self.saved_path(name)
+        if not isinstance(proof, VerifiedFile):
+            raise ValueError('Invalid publication saved request')
+        proof.require(source)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            # Both names stay available; uncertain requests never reach this step.
+            # Atomic link creation also refuses to replace competing evidence.
+            os.link(source, path)
+        except FileExistsError:
+            if path.is_symlink() or path.read_bytes() != source.read_bytes():
+                raise ValueError('Publication artifact changed: ' + name)
 
     def phase(self, name, action, *, files, inventory=None):
         relative_name(name)
@@ -217,17 +253,55 @@ class Continuation:
             relative_name(relative)
             if not isinstance(digest, str) or len(digest) != 64 or any(c not in '0123456789abcdef' for c in digest):
                 raise ValueError('Invalid accepted phase digest')
-        self.value['phases'][name] = dict(result=result, files=hashes)
+        accepted = dict(result=result, files=hashes)
+        size = (self._state_bytes + len(canonical_json_bytes(name, ensure_ascii=True)) + 1
+                + len(canonical_json_bytes(accepted, ensure_ascii=True)) + bool(self.value['phases']))
+        if size > MAX_STATE_BYTES:
+            raise ValueError('Publication continuation exceeds state byte limit')
+        self.value['phases'][name] = accepted
         self.flush()
         return result
 
-    def record(self, event, value):
+    def checked_event(self, event, value):
+        """Validate one change and its exact serialized size before any PUT.
+
+        Only one write and (at most) one protected version change per event.
+        Counting their JSON deltas avoids copying/serializing the entire growing
+        release for every asset; flush remeasures at each durable checkpoint.
+        """
+        change = write_transition(self.value, event, value)
+        size = self._state_bytes
+        if change is not None:
+            key, new = change
+            old = self.value['writes'].get(key)
+            def length(item):
+                return len(canonical_json_bytes(item, ensure_ascii=True))
+            if old is None:
+                size += length(key) + 1 + length(new) + bool(self.value['writes'])
+            elif new is None:
+                size -= length(key) + 1 + length(old) + (len(self.value['writes']) > 1)
+            else:
+                size += length(new) - length(old)
+            if event == 'publication_write_verified' and key in self.value['versions']:
+                size += length(value['etag']) - length(self.value['versions'][key])
+            if size > MAX_STATE_BYTES:
+                raise ValueError('Publication continuation exceeds state byte limit')
+        return change, size
+
+    def record(self, event, value, *, checkpoint=True):
         with self.lock:
-            if apply_event(self.value, event, value):
-                if event == 'publication_write_verified' and value['key'] in self.value['versions']:
-                    # Current readback and protected version share one checkpoint.
-                    self.value['versions'][value['key']] = value['etag']
-                self.flush()
+            change, size = self.checked_event(event, value)
+            if change is not None:
+                key, write = change
+                if write is None:
+                    del self.value['writes'][key]
+                else:
+                    self.value['writes'][key] = write
+                if event == 'publication_write_verified' and key in self.value['versions']:
+                    self.value['versions'][key] = value['etag']
+                self._state_bytes = size
+                if checkpoint:
+                    self.flush()
 
     @staticmethod
     def read(client, bucket, key, *, progress=None):
@@ -265,10 +339,14 @@ class Continuation:
         return dict(bytes=size, sha256=digest.hexdigest(), etag=response['ETag'])
 
     def reconcile(self, client, bucket, *, progress=None):
-        """Read only: resolve uncertain requests before the first guard or write."""
+        """Resolve uncertain requests; acknowledged uploads need no remote read."""
         from .reconciliation import NEXT_CHECK, ReconciliationProgress
         observer = progress if progress is not None else ReconciliationProgress(self.root, self.value['binding'])
-        observed = dict(key=None, object_index=0, total_objects=len(self.value['writes']),
+        for key, write in self.value['writes'].items():
+            if write['verified'] and key in self.value['versions']:
+                self.value['versions'][key] = write['etag']
+        uncertain = [(key, write) for key, write in self.value['writes'].items() if not write['verified']]
+        observed = dict(key=None, object_index=0, total_objects=len(uncertain),
                         checked_objects=0, bytes_read=0, declared_bytes=None, observation_only=True,
                         resume_authorized=False, current_readback_proof=False, public_readback='not_checked')
         def report(state):
@@ -281,9 +359,8 @@ class Continuation:
         report('starting')
         conflict = False
         try:
-            for index, (key, intent) in enumerate(self.value['writes'].items(), 1):
+            for index, (key, intent) in enumerate(uncertain, 1):
                 observed.update(key=key, object_index=index, bytes_read=0, declared_bytes=None)
-                self._reconciled.pop((id(client), bucket, key), None)
                 report('reading')
                 def reading(size, total):
                     observed.update(bytes_read=size, declared_bytes=total if type(total) is int and total >= 0 else None)
@@ -291,17 +368,10 @@ class Continuation:
                 current = self.read(client, bucket, key, progress=reading)
                 matches = current and all(current[name] == intent[name] for name in ('bytes', 'sha256'))
                 if matches:
-                    if intent['verified'] and current['etag'] != intent['etag']:
-                        conflict = True
-                        raise ValueError('Verified publication version changed: ' + key)
                     intent.update(current, verified=True)
-                    self._reconciled[(id(client), bucket, key)] = (client, dict(current))
                     if key in self.value['versions']:
                         self.value['versions'][key] = current['etag']
                     outcome = 'reconciled'
-                elif intent['verified']:
-                    conflict = True
-                    raise ValueError('Verified publication bytes changed: ' + key)
                 elif ((current is None and intent.get('if_none_match') == '*')
                       or (current and current['etag'] == intent.get('expected_etag'))):
                     outcome = 'uncommitted'  # A later write must retain its original condition.
@@ -317,7 +387,7 @@ class Continuation:
         report('complete')
 
     def replay(self, client, bucket, key, body, *, validation=None):
-        """Return a current receipt for the same write, or require a normal write."""
+        """Reuse an acknowledged upload for the same bytes and original condition."""
         saved = self.value['writes'].get(key)
         if not saved or not saved['verified']:
             return None
@@ -336,15 +406,7 @@ class Continuation:
             body.seek(start); digest = digestor.hexdigest()
         if (size, digest) != (saved['bytes'], saved['sha256']):
             raise ValueError('Continued publication write differs: ' + key)
-        expected = {name: saved[name] for name in ('bytes', 'sha256', 'etag')}
-        proof = self._reconciled.get((id(client), bucket, key))
-        if proof is not None and proof[0] is client and proof[1] == expected and hasattr(client, 'head_object'):
-            current = client.head_object(Bucket=bucket, Key=key)
-            if current.get('ETag') != expected['etag'] or current.get('ContentLength') != expected['bytes']:
-                raise ValueError('Continued publication object changed: ' + key)
-        elif self.read(client, bucket, key) != expected:
-            raise ValueError('Continued publication object changed: ' + key)
-        return {'ETag': expected['etag']}
+        return {'ETag': saved['etag']}
 
 
 class MissingPublicationJournal(ValueError):
@@ -370,6 +432,7 @@ class DurableJournal:
         self.previous = None
         self.total_bytes = 0
         self.pending_verified = None
+        self.checkpoint_sequence = 0
         self.lock = threading.RLock()
         self.writer = GuardedPublicationClient(client, guard=lambda: None,
                                                journal=lambda *args: None, after_write=lambda *args: None, strict_conditions=True)
@@ -402,8 +465,7 @@ class DurableJournal:
         # Reconstruct write state from the full accepted prefix, not stale local
         # writes. No checkpoint or accepted journal file is changed until every
         # event has passed version/chain/binding/transition and byte limits.
-        restored = copy.deepcopy(self.continuation.value)
-        restored['writes'] = {}
+        restored = dict(self.continuation.value, writes={})
         previous, total, accepted = None, 0, []
         for index, key in enumerate(keys):
             if key != self.prefix + f'{index:08d}.json':
@@ -438,6 +500,8 @@ class DurableJournal:
             accepted.append(raw)
             previous = hashlib.sha256(raw).hexdigest()
         validate_state(restored)
+        if len(canonical_json_bytes(restored, ensure_ascii=True)) + 1 > MAX_STATE_BYTES:
+            raise ValueError('Publication continuation exceeds state byte limit')
         # Local event files are retained evidence. Only derived continuation state
         # uses one serialized/fsynced checkpoint after complete prefix validation.
         for index, raw in enumerate(accepted):
@@ -445,31 +509,35 @@ class DurableJournal:
         self.continuation.value['writes'] = restored['writes']
         self.continuation.flush()
         self.previous, self.sequence, self.total_bytes = previous, len(keys), total
+        self.checkpoint_sequence = self.sequence
 
     def record(self, event, value):
         with self.lock:
-            candidate = {'writes': dict(self.continuation.value['writes'])}
-            if isinstance(value, dict) and value.get('key') in candidate['writes']:
-                candidate['writes'][value['key']] = dict(candidate['writes'][value['key']])
-            apply_event(candidate, event, value)
+            self.continuation.checked_event(event, value)
             if event == 'publication_write_verified':
                 # Keep one fact until the next append. Its original durable intent
-                # already supports full-body reconciliation after runner loss.
-                # Consecutive verifications flush the older fact, bounding memory
-                # even when payload transfers finish in parallel.
+                # supports full-body reconciliation after runner loss. Consecutive
+                # verifications flush the older fact even during parallel uploads.
                 if self.pending_verified is not None:
                     self._append('publication_write_verified', self.pending_verified)
                     self.pending_verified = None
-                self.continuation.record(event, value)
+                self.continuation.record(event, value, checkpoint=False)
                 self.pending_verified = dict(value)
             else:
                 self._append(event, value, verified_write=self.pending_verified)
                 self.pending_verified = None
-                self.continuation.record(event, value)
+                self.continuation.record(event, value, checkpoint=False)
+            # The cloud chain owns write recovery, including uncertain intents.
+            # continuation.json is a derived cache. Phase acceptance and direct
+            # Continuation.record calls still checkpoint immediately.
+            if (self.sequence - self.checkpoint_sequence >= JOURNAL_CHECKPOINT_EVENTS
+                    or not event.startswith('publication_write_')):
+                self.continuation.flush()
+                self.checkpoint_sequence = self.sequence
 
     def _append(self, event, value, *, verified_write=None):
         # Called only while record owns the journal lock. Advance nothing until
-        # conditional creation and complete journal readback both succeed.
+        # conditional creation and accepted local evidence both succeed.
         if self.sequence >= MAX_EVENTS:
             raise ValueError('Publication journal exceeds event count limit')
         nonce = uuid.uuid4().hex
@@ -483,10 +551,11 @@ class DurableJournal:
         key = self.prefix + f'{self.sequence:08d}.json'
         # Retain the exact nonce-bound request before mutation. Conditional
         # creation fences competing runners at every pre-mutation intent.
-        self.continuation.save(f'journal-intents/{self.sequence:08d}-{nonce}.json', raw)
+        intent_name = f'journal-intents/{self.sequence:08d}-{nonce}.json'
+        request_proof = self.continuation.save(intent_name, raw)
         self.writer.put_object(Bucket=self.bucket, Key=key, Body=raw, ContentLength=len(raw),
                                ContentType='application/json', IfNoneMatch='*')
-        self.continuation.save(f'journal/{self.sequence:08d}.json', raw)
+        self.continuation.accept_saved(intent_name, f'journal/{self.sequence:08d}.json', proof=request_proof)
         self.sequence += 1
         self.total_bytes += len(raw)
         self.previous = hashlib.sha256(raw).hexdigest()

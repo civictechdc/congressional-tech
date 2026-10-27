@@ -46,6 +46,28 @@ def test_pages_uses_declared_locked_environments_and_checks_built_reader():
     assert lock['packages']['']['devDependencies'] == package['devDependencies']
 
 
+def test_real_filename_worker_must_pass_before_deploy_and_match_afterward():
+    workflow = yaml.load((ROOT / '.github/workflows/deploy-pages.yml').read_text(), Loader=yaml.BaseLoader)
+    build = workflow['jobs']['build']['steps']
+    gate = next(i for i, step in enumerate(build) if step.get('name', '').startswith('Require the built filename worker'))
+    upload = next(i for i, step in enumerate(build) if step.get('uses') == 'actions/upload-pages-artifact@v3')
+    assert gate < upload
+    assert build[gate]['run'] == 'bash .github/scripts/verify-built-filename-worker.sh'
+    script = (ROOT / '.github/scripts/verify-built-filename-worker.sh').read_text()
+    assert '--require-native-worker true' in script
+    assert '--viewer-url https://congressional-data.spicygov.ai/viewer-publications/manifest.json' in script
+    assert 'http.server' in script and '/congressional-tech/dashboard/' in script
+    deploy = workflow['jobs']['deploy']['steps']
+    operation = next(i for i, step in enumerate(deploy) if step.get('id') == 'deployment')
+    after = next(i for i, step in enumerate(deploy) if step.get('name', '').startswith('Require the deployed filename worker'))
+    assert operation < after
+    assert '--expected-observation "$RUNNER_TEMP/filename-worker-built/filename-worker-built.json"' in deploy[after]['run']
+    assert '--require-native-worker true' in deploy[after]['run']
+    assert deploy[after]['env']['PAGES_BASE'] == '${{ steps.deployment.outputs.page_url }}'
+    for steps in (build, deploy):
+        assert any(step.get('uses') == './.github/actions/setup-publication-browser' for step in steps)
+
+
 def bootstrap(tmp_path, *, node_version='22.22.2', package_manager='npm@11.19.1', installed_version='11.19.1', fail=False):
     project = tmp_path / 'checkout'; (project / 'apps/site').mkdir(parents=True)
     (project / '.node-version').write_text('22.22.2\n')

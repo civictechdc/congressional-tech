@@ -1,6 +1,7 @@
 """Declarative ExportSpec policies, folded filename_readings, and flat occurrences.parquet assets."""
 from hashlib import sha256
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,8 @@ from viewer_publication.filename_budget import (
     DEFAULT_DECODED_POLICY,
     DecodedBudgetExceeded,
     failure_receipt,
+    maximum,
+    refuse,
 )
 from viewer_publication.filename_compression import (
     DEFAULT_COMPRESSION_POLICY,
@@ -36,7 +39,6 @@ from viewer_publication.filename_observations import (
     observation_rows,
     observation_values,
 )
-from viewer_publication.filename_resources import owned_resources
 
 OCCURRENCE_ROW_GROUP_ROWS = 16384
 
@@ -304,22 +306,14 @@ def publish_occurrence_parquet(
     compression_policy=DEFAULT_COMPRESSION_POLICY,
     row_group_rows=OCCURRENCE_ROW_GROUP_ROWS,
 ):
-    """Write flat ``occurrences.parquet`` with 2,048-row groups, PageIndex, and ``ExportKeyRange`` metadata."""
+    """Write flat ``occurrences.parquet`` with bounded row groups, PageIndex, and ``ExportKeyRange`` metadata."""
     metrics = metrics if metrics is not None else {}
     compression = validate_compression(compression_policy)
     path = Path(path)
     try:
-        with owned_resources() as owned:
-            return _publish_occurrence_parquet(
-                source,
-                path,
-                owned,
-                owner_ids=owner_ids,
-                policy=policy,
-                metrics=metrics,
-                compression=compression,
-                row_group_rows=int(row_group_rows),
-            )
+        return _publish_occurrence_parquet(
+            source, path, owner_ids=owner_ids, policy=policy, metrics=metrics,
+            compression=compression, row_group_rows=int(row_group_rows))
     except DecodedBudgetExceeded as error:
         failure_receipt(path.parent, error, policy, metrics)
         raise
@@ -349,122 +343,120 @@ def _adapt_occurrence_source(source):
     return source
 
 
-def _publish_occurrence_parquet(
-    source,
-    path,
-    owned,
-    *,
-    owner_ids,
-    policy,
-    metrics,
-    compression,
-    row_group_rows,
-):
-    source = _adapt_occurrence_source(source)
-    schema_arrow = getattr(source, 'schema_arrow', None) or getattr(source, 'schema')
-    kind = schema_arrow.field('source_occurrences').type.value_type
-    fields = [field.name for field in kind]
-    flat_schema = occurrence_flat_schema(kind)
-    resolved_owners = (
-        list(owner_ids)
-        if owner_ids is not None
-        else list(getattr(source, 'owner_ids', None) or ())
-    )
+def _retained_python_bytes(value):
+    # Arrow's as_py values form JSON trees. Count shared children repeatedly,
+    # conservatively, rather than retaining a second graph of visited objects.
+    size = sys.getsizeof(value)
+    if isinstance(value, dict):
+        size += sum(_retained_python_bytes(key) + _retained_python_bytes(item) for key, item in value.items())
+    elif isinstance(value, (list, tuple)):
+        size += sum(_retained_python_bytes(item) for item in value)
+    return size
 
-    row_slices = []
-    browse_ranges = []
-    pending_rows = []
-    total_occurrences = 0
-    row_group_index = 0
-    row_group_start = 0
 
-    def flush_pending(writer):
-        nonlocal row_group_index, row_group_start
-        if not pending_rows:
+class OccurrenceParquetWriter:
+    """Accept already-decoded observations while their browser assets are written."""
+    def __init__(self, source, path, *, owner_ids=None, compression_policy=DEFAULT_COMPRESSION_POLICY,
+                 row_group_rows=OCCURRENCE_ROW_GROUP_ROWS, policy=DEFAULT_DECODED_POLICY, metrics=None):
+        schema = getattr(source, 'schema_arrow', None) or source.schema
+        kind = schema.field('source_occurrences').type.value_type
+        self.fields = [field.name for field in kind]
+        self.schema, self.path = occurrence_flat_schema(kind), Path(path)
+        self.owners = list(owner_ids if owner_ids is not None else getattr(source, 'owner_ids', None) or ())
+        self.compression = validate_compression(compression_policy)
+        if type(row_group_rows) is not int or row_group_rows < 1:
+            raise ValueError('Occurrence row groups require a positive row count')
+        self.row_group_rows, self.policy = row_group_rows, policy
+        self.metrics = metrics if metrics is not None else {}
+        self.pending_bytes = 0
+        self.row_slices, self.browse_ranges, self.pending = [], [], []
+        self.rows = self.group_start = self.row_count = 0
+        self.row_length = None
+        self.active = False
+
+    def __enter__(self):
+        self.writer = pq.ParquetWriter(self.path, self.schema, compression=self.compression.codec,
+            compression_level=self.compression.level, write_page_index=True, write_statistics=True)
+        return self
+
+    def start_row(self, length):
+        if self.active:
+            raise ValueError('Previous occurrence row is incomplete')
+        self.active, self.row_count, self.row_length = True, 0, length
+        parent = len(self.row_slices)
+        self.owner = str(self.owners[parent]) if parent < len(self.owners) else f'row-{parent:08d}'
+        self.row_slices.append([self.rows, -1 if length is None else length])
+
+    def append(self, observation):
+        if not self.active or self.row_length is None or self.row_count >= self.row_length:
+            raise ValueError('Occurrence row length differs')
+        row = dict(owner_id=self.owner, occurrence_order=self.row_count,
+            occurrence_is_null=observation is None,
+            **{name: None if observation is None else observation.get(name) for name in self.fields})
+        size = _retained_python_bytes(row)
+        # Reserve the list header and over-allocation as well as row objects.
+        if size + 144 > self.policy.writer_buffer_bytes:
+            refuse('occurrences_parquet', 'single occurrence retained Python bytes', size + 144,
+                   self.policy.writer_buffer_bytes)
+        if self.pending and self.pending_bytes + size + 128 + 16 * (len(self.pending) + 1) > self.policy.writer_buffer_bytes:
+            self._flush()
+        self.pending.append(row)
+        self.pending_bytes += size
+        maximum(self.metrics, 'max_occurrence_pending_python_bytes',
+                self.pending_bytes + 128 + 16 * len(self.pending))
+        self.row_count += 1
+        self.rows += 1
+        if len(self.pending) >= self.row_group_rows:
+            self._flush()
+
+    def finish_row(self):
+        if not self.active or self.row_count != (self.row_length or 0):
+            raise ValueError('Occurrence row length differs')
+        self.active = False
+
+    def _flush(self):
+        if not self.pending:
             return
-        table = pa.Table.from_pylist(pending_rows, schema=flat_schema)
-        writer.write_table(table, row_group_size=len(pending_rows))
-        owners_col = [row['owner_id'] for row in pending_rows]
-        browse_ranges.append(
-            {
-                'row_group': row_group_index,
-                'start_row': row_group_start,
-                'num_rows': len(pending_rows),
-                'min_values': {'owner_id': min(owners_col)},
-                'max_values': {'owner_id': max(owners_col)},
-            }
-        )
-        row_group_index += 1
-        row_group_start += len(pending_rows)
-        pending_rows.clear()
+        table = pa.Table.from_pylist(self.pending, schema=self.schema)
+        self.writer.write_table(table, row_group_size=len(self.pending))
+        owners = [row['owner_id'] for row in self.pending]
+        self.browse_ranges.append(dict(row_group=len(self.browse_ranges), start_row=self.group_start,
+            num_rows=len(self.pending), min_values=dict(owner_id=min(owners)), max_values=dict(owner_id=max(owners))))
+        self.group_start += len(self.pending)
+        self.pending.clear()
+        self.pending_bytes = 0
 
-    with pq.ParquetWriter(
-        path,
-        flat_schema,
-        compression=compression.codec,
-        compression_level=compression.level,
-        write_page_index=True,
-        write_statistics=True,
-    ) as writer:
-        for parent_idx, values in enumerate(
-            observation_rows(source, policy=policy, metrics=metrics, stage='occurrences_parquet')
-        ):
-            owner_id = (
-                str(resolved_owners[parent_idx])
-                if parent_idx < len(resolved_owners)
-                else f'row-{parent_idx:08d}'
-            )
-            if values is None:
-                row_slices.append([total_occurrences, -1])
-                continue
-            if len(values) == 0:
-                row_slices.append([total_occurrences, 0])
-                continue
-            start_offset = total_occurrences
-            count_for_owner = 0
-            for occ_order, observation in enumerate(
-                observation_values(
-                    values,
-                    policy=policy,
-                    metrics=metrics,
-                    stage='occurrences_parquet',
-                    kind=kind,
-                )
-            ):
-                if observation is None:
-                    flat_row = {
-                        'owner_id': owner_id,
-                        'occurrence_order': occ_order,
-                        'occurrence_is_null': True,
-                        **{name: None for name in fields},
-                    }
-                else:
-                    flat_row = {
-                        'owner_id': owner_id,
-                        'occurrence_order': occ_order,
-                        'occurrence_is_null': False,
-                        **{name: observation.get(name) for name in fields},
-                    }
-                pending_rows.append(flat_row)
-                total_occurrences += 1
-                count_for_owner += 1
-                if len(pending_rows) >= row_group_rows:
-                    flush_pending(writer)
-            row_slices.append([start_offset, count_for_owner])
-        flush_pending(writer)
+    def __exit__(self, kind, error, traceback):
+        try:
+            if error is None:
+                if self.active:
+                    raise ValueError('Occurrence row is incomplete')
+                self._flush()
+        finally:
+            self.writer.close()
+        if error is None:
+            with pq.ParquetFile(self.path) as written:
+                if written.metadata.num_rows != self.rows:
+                    raise ValueError('Flat occurrences.parquet row count differs from emitted count')
 
-    with pq.ParquetFile(path) as written:
-        if written.metadata.num_rows != total_occurrences:
-            raise ValueError('Flat occurrences.parquet row count differs from emitted count')
+    def result(self):
+        return dict(rows=self.rows, parent_rows=len(self.row_slices), fields=self.fields,
+            export_fields=_arrow_schema_to_export_fields(self.schema), row_slices=self.row_slices,
+            browse_ranges=self.browse_ranges)
 
-    return {
-        'rows': total_occurrences,
-        'parent_rows': len(row_slices),
-        'fields': fields,
-        'export_fields': _arrow_schema_to_export_fields(flat_schema),
-        'row_slices': row_slices,
-        'browse_ranges': browse_ranges,
-    }
+
+def _publish_occurrence_parquet(source, path, *, owner_ids, policy, metrics, compression, row_group_rows):
+    source = _adapt_occurrence_source(source)
+    kind = source.schema_arrow.field('source_occurrences').type.value_type
+    with OccurrenceParquetWriter(source, path, owner_ids=owner_ids, compression_policy=compression,
+                                 row_group_rows=row_group_rows, policy=policy, metrics=metrics) as writer:
+        for values in observation_rows(source, policy=policy, metrics=metrics, stage='occurrences_parquet'):
+            writer.start_row(None if values is None else len(values))
+            for observation in observation_values(values, policy=policy, metrics=metrics,
+                                                   stage='occurrences_parquet', kind=kind):
+                writer.append(observation)
+            writer.finish_row()
+    return writer.result()
 
 
 def compute_browse_ranges(parquet_path, columns, *, group='source'):

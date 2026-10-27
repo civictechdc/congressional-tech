@@ -10,9 +10,9 @@ from congress_shared.custody import canonical_json_bytes, write_atomic_bytes
 MAX_PROGRESS_BYTES = 16384
 MAX_READ_UPDATES = 32
 NEXT_CHECK = {
-    'starting': 'Read each recorded object completely and compare its size, SHA256 and original condition.',
+    'starting': 'Read only uncertain requests and compare their size, SHA256 and original condition.',
     'reading': 'Finish the current body, check ContentLength, then compare SHA256 and the recorded version.',
-    'reconciled': 'Check the next object; any reuse still requires the exact client and current version.',
+    'reconciled': 'Check the next uncertain request; matching bytes resolve its outcome without another PUT.',
     'uncommitted': 'Check the next object; any later write must explicitly retain its original condition.',
     'conflict': 'Preserve this attempt and compare the current object with its recorded intent before any explicit continuation.',
     'failed': 'Preserve this attempt and inspect the failed read or checkpoint before explicit reconciliation.',

@@ -13,7 +13,7 @@ from news_lake.contract import (
     parse_jsonl,
     validate_shape,
 )
-from conftest import DOCS_FIXTURES, DOCS_SCHEMA
+from news_lake_test_support import DOCS, DOCS_FIXTURES, DOCS_SCHEMA
 
 
 def test_fixture_file_loads_and_covers_every_kind():
@@ -70,7 +70,6 @@ def test_instant_keys_match_the_schema_authority():
 
 def test_docs_checker_passes_and_matches_validation_report(capsys):
     import importlib.util
-    from conftest import DOCS
 
     spec = importlib.util.spec_from_file_location('docs_validate', DOCS / 'checks' / 'validate.py')
     module = importlib.util.module_from_spec(spec)

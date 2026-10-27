@@ -1,4 +1,4 @@
-"""A guarded viewer transfer performs one full read and preserves public probes."""
+"""Acknowledged viewer transfers need no readback and retain bounded public probes."""
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -55,7 +55,7 @@ class Remote:
 class TransferTests(unittest.TestCase):
     def proxy(self, remote, guard=lambda: None):
         return GuardedPublicationClient(remote, guard=guard, journal=lambda *a: None, after_write=lambda *a: None)
-    def test_publisher_reads_each_payload_once_even_when_put_ack_is_lost(self):
+    def test_publisher_reads_payload_only_when_put_ack_is_lost(self):
         for lost_ack in (False, True):
             with self.subTest(lost_ack=lost_ack), tempfile.TemporaryDirectory() as folder:
                 root = Path(folder); files = {}
@@ -82,9 +82,9 @@ class TransferTests(unittest.TestCase):
                 self.assertEqual(probes, ['payloads', 'pointer'])
                 for name in files:
                     key = 'viewer-publications/releases/'+'a'*32+'/'+name
-                    self.assertEqual(remote.gets[key], 1)
+                    self.assertEqual(remote.gets[key], int(lost_ack))
                     self.assertEqual(remote.puts[key], 1)
-    def test_receipt_binds_issuing_client_exact_request_and_current_version(self):
+    def test_receipt_binds_issuing_client_and_exact_acknowledged_request(self):
         remote = Remote(); proxy = self.proxy(remote)
         key = 'viewer-publications/releases/x/file'
         with tempfile.TemporaryDirectory() as folder:
@@ -95,7 +95,7 @@ class TransferTests(unittest.TestCase):
             self.assertFalse(proxy.confirm_transfer(forged, **expected))
             self.assertFalse(self.proxy(remote).confirm_transfer(receipt, **expected))
             remote.objects[key] = (b'bytes', 'changed-version')
-            self.assertFalse(proxy.confirm_transfer(receipt, **expected))
+            self.assertTrue(proxy.confirm_transfer(receipt, **expected))
             self.assertFalse(proxy.confirm_transfer(receipt, **expected))
     def test_six_immutable_uploads_overlap(self):
         remote = Remote(); remote.barrier = threading.Barrier(6); proxy = self.proxy(remote)
@@ -117,13 +117,13 @@ class TransferTests(unittest.TestCase):
 if __name__ == '__main__': unittest.main()
 
 
-def test_guarded_json_consumes_one_exact_proof_and_plain_client_keeps_full_readback():
+def test_guarded_and_plain_successful_json_uploads_have_no_readback():
     for guarded in (True, False):
         remote = Remote()
         proxy = GuardedPublicationClient(remote, guard=lambda: None, journal=lambda *a: None, after_write=lambda *a: None) if guarded else remote
         descriptor = publisher.store_recovery_index(proxy, {'version': 1, 'sources': [], 'groups': []})
         key = publisher.PREFIX + descriptor['path']
-        assert remote.gets[key] == 1
+        assert remote.gets[key] == 0
         if guarded:
             assert not proxy._receipts
             assert not proxy._key_locks
@@ -137,7 +137,7 @@ def test_native_metadata_is_create_only_and_hash_addressed_before_any_write():
     raw = b'{"version":1}'
     key = 'indexes/native-manifests/catalog-selection/' + hashlib.sha256(raw).hexdigest() + '.json'
     proxy.put_object(Bucket='b', Key=key, Body=raw, IfNoneMatch='*')
-    assert remote.puts[key] == 1 and remote.gets[key] == 1 and calls == ['guard']
+    assert remote.puts[key] == 1 and remote.gets[key] == 0 and calls == ['guard']
     before = dict(remote.puts)
     for options in [dict(Key=key, Body=raw, IfMatch='existing'),
                     dict(Key=key, Body=b'changed', IfNoneMatch='*'),
@@ -158,3 +158,16 @@ def test_exact_proof_rejects_every_wrong_request_field(tmp_path, field, wrong):
     expected[field] = wrong
     assert proxy.confirm_transfer(proof, **expected) is False
     assert not proxy._receipts
+
+
+def test_successful_upload_and_receipt_confirmation_never_call_get_or_head(tmp_path):
+    remote = Remote()
+    def no_read(**kwargs):
+        raise AssertionError('Acknowledged upload must not read remote data or metadata')
+    remote.get_object = remote.head_object = no_read
+    proxy = GuardedPublicationClient(remote, guard=lambda: None, journal=lambda *a: None, after_write=lambda *a: None)
+    path = tmp_path / 'payload'; path.write_bytes(b'accepted')
+    receipt = proxy.upload_file(path, 'bucket', 'viewer-publications/releases/x/file')
+    assert proxy.confirm_transfer(receipt, bucket='bucket', key='viewer-publications/releases/x/file',
+                                  size=8, sha256=hashlib.sha256(b'accepted').hexdigest())
+    assert sum(remote.puts.values()) == 1

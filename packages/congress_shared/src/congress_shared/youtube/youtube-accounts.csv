@@ -1,53 +1,53 @@
-committee,systemCode,handle,secondary,member_channels
-Agriculture,hsag00,@AgRepublicans,@HouseAgDems;@houseagriculturecommittee2800,
-Appropriations,hsap00,@HouseAppropriationsCommittee,,
-Armed Services,hsas00,@HouseArmedServices,@HASCDems;@armedservices8789;@armedservicesGOP;@HASCRepublicans,
-Budget,hsbu00,@HouseBudgetGOP,@HouseBudgetDems,
-Education & Workforce,hsed00,@EdWorkforceCmte,@EdWorkforceDemocrats,
-Energy & Commerce,hsif00,@energyandcommerce,@EnergyCommerce,
-Financial Services,hsba00,@USHouseFSC,@GOPFinancialServices;@fscdems9522;@fscdems484;@u.s.housecommitteeonfinanc8492,
-Foreign Affairs,hsfa00,@houseforeign,@HouseForeignGOP,
-Homeland Security,hshm00,@HouseHomeland,@HomelandDems;@HomelandSecurityCommitteeGOP,
-House Administration,hsha00,@CommitteeonHouseAdministration,@CHADemsVideos;@committeeonhouseadministra952;@CHADemocrats,
-Judiciary,hsju00,@USHouseJudiciaryGOP,@JudiciaryDems;@housejudiciarydemocrats8939;@housejudiciarycommittee5448;@HouseJudDems,
-Natural Resources,hsii00,@NaturalResourcesGOP,@NRDems,
-Oversight and Government Reform,hsgo00,@OversightandGovernmentReform,@OversightDems;@COVIDOversight;@covidselectdems-ru2bf;@CommitteeonOversight;@OversightMaj;@OversightRepublicans,
-Rules,hsru00,@HouseRulesCommittee,@RulesCommitteeDemocrats,
-"Science,Space,and Technology",hssy00,@housescience,@HouseScienceGOP;@HouseScienceCommitteeDemocrats,
-Small Business,hssm00,@HouseSmallBiz,@HouseSmallBizCommitteeDems;@HouseSmallBizDems,
-Veterans' Affairs,hsvr00,@HouseVeteransAffairs,@HouseVetsAffairs;@VetAffairsDems,
-Ways and Means,hswm00,@WaysandMeansCommittee,@waysmeanscmte;@waysandmeansdems,
-Transportation and Infrastructure,hspw00,@transport,@transportdems,
-Intelligence,hlig00,@HouseIntel,@gophouseintelligencecommit715;@selectcommitteeonintellige289,
-Ethics,hsso00,@HouseEthics,@ushrselectedcommitteeheari1213,
-Select Committee on the CCP,hlzs00,@ChinaSelect,@SelectCommitteeontheCCPDems,
-Select Committee on the Climate Crisis,hlcn00,@HouseClimateCrisis,,
-Select Committee on the Modernization of Congress,hlmh00,@selectcommitteeonthemodern9383,,
-Select Committee on Benghazi,hlzi00,@theu.s.houseselectcommitte1053,@selectcommitteeonbenghazid1588,@Tgowdysc
-Select Committee on the January 6th Attack,hlij00,@January6thCmte,,
-Select Committee on Economic Disparity and Fairness in Growth,hlef00,@FairGrowthCmte,@houseselectcommitteeonthee5480,
-Select Committee on Energy Independence and Global Warming,hlgw00,@GlobalwarmingGOP,,@senatormarkey
-Tom Lantos Human Rights Commission,hotl00,@TomLantosHumanRights,,
-Task Force on the Attempted Assassination of Donald J. Trump,htzt00,@TFAADJT,,
-Joint Economic Committee,jsec00,@JointEconomicCommittee,@TheJECRepublicans;@jointeconomiccommitteedemo115;@JointEconCommittee,
-Helsinki Commission,jcse00,@HelsinkiCommission,,
-Congressional-Executive Commission on China,jcpk00,@ChinaCommission,,
-Joint Committee on Taxation,jstx00,@jctgov,,
-Congressional Oversight Commission,jcov00,@congressionaloversightcomm6808,,
-Joint Select Committee on Budget and Appropriations Process Reform,jsbp00,@JSCBAPR,,
-Senate Appropriations,ssap00,@SenateApprops,,
-"Senate Banking, Housing, and Urban Affairs",ssbk00,@SenBankingGOP,@senatebankinghousingandurbdems;@SenateBankingGOP;@SenateBanking,
-Senate Budget,ssbu00,@BudgetGOP,@SenateBudget,
-"Senate Commerce, Science, and Transportation",sscm00,@CommerceRepublicans,@commercedems;@senatecommercecommitteedem873;@SenateCommercePress,
-Senate Energy and Natural Resources,sseg00,@ENRGOP,@SenateEnergy,
-Senate Environment and Public Works,ssev00,@EPWGOP,@EPWCmte,
-Senate Finance,ssfi00,@GOPSenateFinance,@SenFinanceMajority;@SenateFinance,
-Senate Foreign Relations,ssfr00,@SFRCDems,,
-Senate Homeland Security and Governmental Affairs,ssga00,@HSGACDems,,
-"Senate Health, Education, Labor, and Pensions",sshr00,@gophelp,@HELPCommitteeGOP,
-Senate Judiciary,ssju00,@SenateJudiciaryDemocrats,,
-Senate Small Business and Entrepreneurship,sssb00,@SenateSmallBusiness,@SenateSmallBiz,
-Senate Veterans' Affairs,ssva00,@senateveterans6644,@ussenateveteransaffairsdem9792,
-Senate Caucus on International Narcotics Control,scnc00,@senatecaucusoninternationa2031,,
-Senate Indian Affairs,slia00,@SenateIndianAffairs,,
-Senate Aging,spag00,@SenateAging,@u.s.senatespecialcommittee3047;@demsonaging7345,
+committee,systemCode,handle,secondary,member_channels,channel_ids
+Agriculture,hsag00,@AgRepublicans,@HouseAgDems;@houseagriculturecommittee2800,,"{""@AgRepublicans"":""UCWtWf-QUTnJ-UMP5ZNWVB5Q"",""@HouseAgDems"":""UCOWh2WJxPywHIaccDWb8Mvg"",""@houseagriculturecommittee2800"":""UCf2PUyencSXvlVIwsKK6v3w""}"
+Appropriations,hsap00,@HouseAppropriationsCommittee,,,"{""@HouseAppropriationsCommittee"":""UCMaSlF09S0fpoRshS2t_7XA""}"
+Armed Services,hsas00,@HouseArmedServices,@HASCDems;@armedservices8789;@armedservicesGOP;@HASCRepublicans,,"{""@HouseArmedServices"":""UCD506yORW2voSanqEgLOUIQ"",""@HASCDems"":""UCEvhm8f6cuMi5SgrJlmAdig"",""@armedservices8789"":""UCmR-5kCpUbTO6n2-Fbc9LrQ"",""@armedservicesGOP"":""UCfmaqiiwvogOYverCjxeTCw"",""@HASCRepublicans"":""UC2TRkfB3ejxdTSyR08cI08Q""}"
+Budget,hsbu00,@HouseBudgetGOP,@HouseBudgetDems,,"{""@HouseBudgetGOP"":""UCHPaSWprI94UTePSMv0tqnw"",""@HouseBudgetDems"":""UCwzia2rpHJkowAXK-IF9E0w""}"
+Education & Workforce,hsed00,@EdWorkforceCmte,@EdWorkforceDemocrats,,"{""@EdWorkforceCmte"":""UC8Ewe7WqGg01KRNjJCO5cjg"",""@EdWorkforceDemocrats"":""UCqAHNOSUqn0OByR-4vF81FQ""}"
+Energy & Commerce,hsif00,@energyandcommerce,@EnergyCommerce,,"{""@energyandcommerce"":""UC5s1kIfkfWbap31d5ef-VtQ"",""@EnergyCommerce"":""UCCbD3bkHRcwiBsaL1lWE_QQ""}"
+Financial Services,hsba00,@USHouseFSC,@GOPFinancialServices;@fscdems9522;@fscdems484;@u.s.housecommitteeonfinanc8492,,"{""@USHouseFSC"":""UCiGw0gRK-daU7Xv4oDMr9Hg"",""@GOPFinancialServices"":""UCDQFSLK68yQLJPb8E9ZWmQQ"",""@fscdems9522"":""UCf8W8A_NL1igNxLrJucXEmQ"",""@fscdems484"":""UCEhvLp5t6pOwhLStgmT7z4w"",""@u.s.housecommitteeonfinanc8492"":""UCrmpgcd8gfDba26PvdstMYA""}"
+Foreign Affairs,hsfa00,@houseforeign,@HouseForeignGOP,,"{""@houseforeign"":""UCXCjgHrMgPEqDvCmPc9BbJA"",""@HouseForeignGOP"":""UCtxAmeCl0xtSuo7tHZpgcQA""}"
+Homeland Security,hshm00,@HouseHomeland,@HomelandDems;@HomelandSecurityCommitteeGOP,,"{""@HouseHomeland"":""UChdT2snPVxfp2m8n4VDdMag"",""@HomelandDems"":""UC6Vg3_8RRaIVLJFyo7WZfzA"",""@HomelandSecurityCommitteeGOP"":""UCgmYwMNLJaRPj7TPgCdOllg""}"
+House Administration,hsha00,@CommitteeonHouseAdministration,@CHADemsVideos;@committeeonhouseadministra952;@CHADemocrats,,"{""@CommitteeonHouseAdministration"":""UC8dXTgFnWF8NraBKhF040Qg"",""@CHADemsVideos"":""UCTO94zQwJNB_gmud-4IyZXA"",""@committeeonhouseadministra952"":""UC2q3B9yLawQ3Y_77ekh9Kfg"",""@CHADemocrats"":""UCF_PRO0e7F63_F-GI_aO30Q""}"
+Judiciary,hsju00,@USHouseJudiciaryGOP,@JudiciaryDems;@housejudiciarydemocrats8939;@housejudiciarycommittee5448;@HouseJudDems,,"{""@USHouseJudiciaryGOP"":""UCdvbanLNRlC0Af1QWeJ9foA"",""@JudiciaryDems"":""UCVvv3JRCVQAl6ovogDum4hA"",""@housejudiciarydemocrats8939"":""UCQLnvFqs5-rrsUFYO8KZsdg"",""@housejudiciarycommittee5448"":""UC_oXZ1FAAwguM6Zutg72Zow"",""@HouseJudDems"":""UCEDHUm_OQo_DXTMue_VONVw""}"
+Natural Resources,hsii00,@NaturalResourcesGOP,@NRDems,,"{""@NaturalResourcesGOP"":""UCY08wEbJ8fztRofQ9eZs0-g"",""@NRDems"":""UCB6LGE5-_i-xxtZxk1_SeTg""}"
+Oversight and Government Reform,hsgo00,@OversightandGovernmentReform,@OversightDems;@COVIDOversight;@covidselectdems-ru2bf;@CommitteeonOversight;@OversightMaj;@OversightRepublicans,,"{""@OversightandGovernmentReform"":""UCn8TJ6Tyq2aGvhybME_itDQ"",""@OversightDems"":""UCXSlyao4qkUFiPqghptHtZA"",""@COVIDOversight"":""UCr2eGXGVYHx0f5ZTXmamFpw"",""@covidselectdems-ru2bf"":""UCDSEDQMer9XB32845BkIfJg"",""@CommitteeonOversight"":""UCZyzqPsQPqql-7D-faBxh-Q"",""@OversightMaj"":""UCP22oIGBiyeysYWbPy6ofHg"",""@OversightRepublicans"":""UC4rq_85nqFSgmK9vCWfoaXA""}"
+Rules,hsru00,@HouseRulesCommittee,@RulesCommitteeDemocrats,,"{""@HouseRulesCommittee"":""UCDNcorctkmOpBfr4sgu6t3w"",""@RulesCommitteeDemocrats"":""UC3LTS2HRaURCmt_kkWorvFw""}"
+"Science,Space,and Technology",hssy00,@housescience,@HouseScienceGOP;@HouseScienceCommitteeDemocrats,,"{""@housescience"":""UCtoUE3dJ-mLUo5dwGs7hXOw"",""@HouseScienceGOP"":""UCaYdb96bylkWGJgkij-Sk3Q"",""@HouseScienceCommitteeDemocrats"":""UCRFTSnk5PA9k2KI3cPpJ4qQ""}"
+Small Business,hssm00,@HouseSmallBiz,@HouseSmallBizCommitteeDems;@HouseSmallBizDems,,"{""@HouseSmallBiz"":""UCoXvuW2IhFawuNyk4yL3EkQ"",""@HouseSmallBizCommitteeDems"":""UCnYcuO2JQhVbnCR8ltmSacQ"",""@HouseSmallBizDems"":""UCyqqVWNE_WYWL3o-34f5WMg""}"
+Veterans' Affairs,hsvr00,@HouseVeteransAffairs,@HouseVetsAffairs;@VetAffairsDems,,"{""@HouseVeteransAffairs"":""UCvI8xjyh45-XAJbfPcjUdbQ"",""@HouseVetsAffairs"":""UCOQgnjFDCT6kbC-b-Hy6cqg"",""@VetAffairsDems"":""UC0ADPBDC8KdU52IxuW-_X5g""}"
+Ways and Means,hswm00,@WaysandMeansCommittee,@waysmeanscmte;@waysandmeansdems,,"{""@WaysandMeansCommittee"":""UC8FSgDMEzdK7j3lsQ4G4L0A"",""@waysmeanscmte"":""UCfGqG11uB0JKgDxnF-GWQZg"",""@waysandmeansdems"":""UCrz_XV52yquSiXvyjdh03Fw""}"
+Transportation and Infrastructure,hspw00,@transport,@transportdems,,"{""@transport"":""UCP4BbluxW-H6i0VreCszbFA"",""@transportdems"":""UChc8bTPtZgTZDDLJ6UWJgxA""}"
+Intelligence,hlig00,@HouseIntel,@gophouseintelligencecommit715;@selectcommitteeonintellige289,,"{""@HouseIntel"":""UCMF5z6BIrwwQTtcj2cacBPw"",""@gophouseintelligencecommit715"":""UCFjD5ojAdBaMT7gDJXaN7rg"",""@selectcommitteeonintellige289"":""UCPMZUzj4YFHuSmXNrkKAHeg""}"
+Ethics,hsso00,@HouseEthics,@ushrselectedcommitteeheari1213,,"{""@HouseEthics"":""UCxZOzbhWkBPEimMti0NBvQQ"",""@ushrselectedcommitteeheari1213"":""UC3xO_fAZZR7paXD2ZhUvApQ""}"
+Select Committee on the CCP,hlzs00,@ChinaSelect,@SelectCommitteeontheCCPDems,,"{""@ChinaSelect"":""UCpXe-EZd7pE7QM1daNAk0mA"",""@SelectCommitteeontheCCPDems"":""UCELPbdSl0iq5Vc9sM1lNgnw""}"
+Select Committee on the Climate Crisis,hlcn00,@HouseClimateCrisis,,,"{""@HouseClimateCrisis"":""UCqTxfzU6vYZ2-DW-y5jYvdQ""}"
+Select Committee on the Modernization of Congress,hlmh00,@selectcommitteeonthemodern9383,,,"{""@selectcommitteeonthemodern9383"":""UCECZaLBqABxBqN7VdtZ5sCA""}"
+Select Committee on Benghazi,hlzi00,@theu.s.houseselectcommitte1053,@selectcommitteeonbenghazid1588,@Tgowdysc,"{""@theu.s.houseselectcommitte1053"":""UCiKI7qlQqr3GfFlIzOdT_Yg"",""@selectcommitteeonbenghazid1588"":""UCtwfhDsDjY6wsddXrt6Mfgw"",""@Tgowdysc"":""UCVvxvugtuNZSygB4z4aVfsg""}"
+Select Committee on the January 6th Attack,hlij00,@January6thCmte,,,"{""@January6thCmte"":""UCqSRsknSiyLARtzmop9dvhw""}"
+Select Committee on Economic Disparity and Fairness in Growth,hlef00,@FairGrowthCmte,@houseselectcommitteeonthee5480,,"{""@FairGrowthCmte"":""UCZzW07fYS_ODEE_9gHGnCCQ"",""@houseselectcommitteeonthee5480"":""UCBaB4nRwfFfLxXxJin-5_uQ""}"
+Select Committee on Energy Independence and Global Warming,hlgw00,@GlobalwarmingGOP,,@senatormarkey,"{""@GlobalwarmingGOP"":""UCbDrlavogs4ywQH6c9vy5kw"",""@senatormarkey"":""UCT1ujew5yQy2uMhGrjiKHoA""}"
+Tom Lantos Human Rights Commission,hotl00,@TomLantosHumanRights,,,"{""@TomLantosHumanRights"":""UCWaeAlm47P3JQkZAauAyeDA""}"
+Task Force on the Attempted Assassination of Donald J. Trump,htzt00,@TFAADJT,,,"{""@TFAADJT"":""UCAQttcYwd2vJ-4bd4-O67mA""}"
+Joint Economic Committee,jsec00,@JointEconomicCommittee,@TheJECRepublicans;@jointeconomiccommitteedemo115;@JointEconCommittee,,"{""@JointEconomicCommittee"":""UCbNWSrKyYBP5iIZKT35LSGA"",""@TheJECRepublicans"":""UCjVn_ARmgBsnJgu57yw0pdQ"",""@jointeconomiccommitteedemo115"":""UCWMrpzu29fD_CilWlOgAjbQ"",""@JointEconCommittee"":""UCatgUdvAoZuVaTu5W6rKWxw""}"
+Helsinki Commission,jcse00,@HelsinkiCommission,,,"{""@HelsinkiCommission"":""UCtFO3w68Kumz7tRyspaqF2g""}"
+Congressional-Executive Commission on China,jcpk00,@ChinaCommission,,,"{""@ChinaCommission"":""UCRAT_7MIzUolORlJhYBTzHA""}"
+Joint Committee on Taxation,jstx00,@jctgov,,,"{""@jctgov"":""UCA2tsCGTPe2Hi6Lt2SfcDKA""}"
+Congressional Oversight Commission,jcov00,@congressionaloversightcomm6808,,,"{""@congressionaloversightcomm6808"":""UCqDzAsVV8tX_W2_Q01gZ5gA""}"
+Joint Select Committee on Budget and Appropriations Process Reform,jsbp00,@JSCBAPR,,,"{""@JSCBAPR"":""UCXVKn6ZaCiH8MCfCKFdQrvQ""}"
+Senate Appropriations,ssap00,@SenateApprops,,,"{""@SenateApprops"":""UCYTNuGooAN-7NvvEQ2OfJnw""}"
+"Senate Banking, Housing, and Urban Affairs",ssbk00,@SenBankingGOP,@senatebankinghousingandurbdems;@SenateBankingGOP;@SenateBanking,,"{""@SenBankingGOP"":""UC1nE6N0zEcHGPVwPSKxvm8w"",""@senatebankinghousingandurbdems"":""UCdGVNfn42jsovvTUgj6N-dA"",""@SenateBankingGOP"":""UCD2m7astD-ztL6xostl2GIQ"",""@SenateBanking"":""UCi6sKh3oge9egY2YjOQjpMg""}"
+Senate Budget,ssbu00,@BudgetGOP,@SenateBudget,,"{""@BudgetGOP"":""UCvnFl66TttbZXCcXoeOhg-g"",""@SenateBudget"":""UCtjuBLwvaAKBxmQQwI81l9Q""}"
+"Senate Commerce, Science, and Transportation",sscm00,@CommerceRepublicans,@commercedems;@senatecommercecommitteedem873;@SenateCommercePress,,"{""@CommerceRepublicans"":""UC0lKQz7pObyGEYLz-CIUvUw"",""@commercedems"":""UCEOD5hOOEu0w3wT0BUt7q7g"",""@senatecommercecommitteedem873"":""UCU9CjJ9WiWzokYkog_OVvkw"",""@SenateCommercePress"":""UCcaoTlBKymjecynorZCDobQ""}"
+Senate Energy and Natural Resources,sseg00,@ENRGOP,@SenateEnergy,,"{""@ENRGOP"":""UCvVdPv7rAXonDIsGtjY4WVQ"",""@SenateEnergy"":""UChLTzGO2KEkdBlJ22pOccjA""}"
+Senate Environment and Public Works,ssev00,@EPWGOP,@EPWCmte,,"{""@EPWGOP"":""UCPc9rllhHRf0miehxYGBsAQ"",""@EPWCmte"":""UCqMG6uXhoBo_nHcJN9XrLKw""}"
+Senate Finance,ssfi00,@GOPSenateFinance,@SenFinanceMajority;@SenateFinance,,"{""@GOPSenateFinance"":""UCUqcI5ngFjFuXfpimdDzs-g"",""@SenFinanceMajority"":""UCqy51oGHjollKBBWV4_iRgQ"",""@SenateFinance"":""UCwdt34DXqAsa1ImIHSiJwbw""}"
+Senate Foreign Relations,ssfr00,@SFRCDems,,,"{""@SFRCDems"":""UCdhGUydqxKYn-IJWTRf2OAw""}"
+Senate Homeland Security and Governmental Affairs,ssga00,@HSGACDems,,,"{""@HSGACDems"":""UCKJISmkvK8tn0kFiCaIzUwQ""}"
+"Senate Health, Education, Labor, and Pensions",sshr00,@gophelp,@HELPCommitteeGOP,,"{""@gophelp"":""UC4aUVj3ym3-52EoGBCzbO5g"",""@HELPCommitteeGOP"":""UCqe90fVUcBwMVDfytYYvqEA""}"
+Senate Judiciary,ssju00,@SenateJudiciaryDemocrats,,,"{""@SenateJudiciaryDemocrats"":""UC1xHA4ts7rV8HHvf7xZ2S_A""}"
+Senate Small Business and Entrepreneurship,sssb00,@SenateSmallBusiness,@SenateSmallBiz,,"{""@SenateSmallBusiness"":""UCC8rBLXan6QDw9_V5bTwmrw"",""@SenateSmallBiz"":""UCTBekZNJnHsVcI3neFFBW_w""}"
+Senate Veterans' Affairs,ssva00,@senateveterans6644,@ussenateveteransaffairsdem9792,,"{""@senateveterans6644"":""UCA42EdcJaEZZ2moMZQAH78A"",""@ussenateveteransaffairsdem9792"":""UCWC94fi81b0jWdKQaXpQerQ""}"
+Senate Caucus on International Narcotics Control,scnc00,@senatecaucusoninternationa2031,,,"{""@senatecaucusoninternationa2031"":""UCD6CIIrqCTE08ZXPCzhoNyA""}"
+Senate Indian Affairs,slia00,@SenateIndianAffairs,,,"{""@SenateIndianAffairs"":""UCyrk47CduR0_u8fF-YV66Ig""}"
+Senate Aging,spag00,@SenateAging,@u.s.senatespecialcommittee3047;@demsonaging7345,,"{""@SenateAging"":""UCtyR3bm20htGITJuvBMrbaQ"",""@u.s.senatespecialcommittee3047"":""UCF7yVeU_DiAzkBQGVAKFl1Q"",""@demsonaging7345"":""UCq2ZQ7D040FpTRMQCv6DjHw""}"

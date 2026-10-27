@@ -109,8 +109,15 @@ jobs:
             --output-path "$DATA_DIR/gpo_hearing_videos.csv"
 
       - name: Save pipeline data snapshot
+        id: congress_snapshot
         if: ${{ !cancelled() && (steps.gpo.outcome == 'success' || steps.gpo.outcome == 'failure') }}
         run: .github/scripts/save-pipeline-data.sh "Congress.gov meetings and retained evidence"
+
+      - name: Commit completed GPO hearings after partial failure
+        # gpo-fetch flushes accepted rows before reporting package failures.
+        # Save their pending/error evidence first; the failed job stays failed.
+        if: ${{ !cancelled() && steps.gpo.outcome == 'failure' && steps.congress_snapshot.outcome == 'success' }}
+        run: .github/scripts/commit-and-push.sh "Updated completed GPO hearings" "$DATA_DIR/gpo_hearings.csv"
 
       - name: Commit outputs to ${{ github.ref_name }}
         run: |

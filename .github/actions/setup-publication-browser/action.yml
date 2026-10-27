@@ -1,0 +1,12 @@
+name: Set up the publication verification browser
+description: Install one pinned Playwright library and its matching headless Chromium.
+runs:
+  using: composite
+  steps:
+    - name: Install the pinned browser library and Chromium
+      shell: bash
+      run: |
+        browser_prefix="$RUNNER_TEMP/publication-browser"
+        npm install --prefix "$browser_prefix" --no-save --ignore-scripts --no-audit --no-fund playwright@1.64.1
+        node "$browser_prefix/node_modules/playwright/cli.js" install --with-deps --only-shell chromium
+        echo "PUBLICATION_BROWSER_MODULES=$browser_prefix/node_modules" >> "$GITHUB_ENV"

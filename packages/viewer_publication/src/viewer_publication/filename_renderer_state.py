@@ -1,9 +1,10 @@
-"""Retained SQLite stages for an explicitly requested viewer rendering upgrade."""
+"""Retained SQLite stages for exact-input viewer preparation and upgrades."""
 
 from datetime import datetime, timezone
 import json
 from pathlib import Path, PurePosixPath
 import sqlite3
+import time
 
 from congress_api.retention.derived_files import copy_checked
 from congress_shared.custody import (
@@ -13,7 +14,7 @@ from congress_shared.custody import (
 
 
 class RendererState:
-    """Retained SQLite state for an explicitly requested viewer rendering upgrade.
+    """Retained SQLite state for exact-input viewer preparation and upgrades.
 
     Maintains intermediate rendering stages across worker restarts without
     ever publishing or selecting unverified release candidates.
@@ -39,11 +40,11 @@ class RendererState:
         self.root = self.target.with_name(self.target.name + ".renderer-upgrade")
         self.event = event
         if self.root.is_symlink() or (self.root.exists() and not self.root.is_dir()):
-            raise ValueError("Invalid renderer upgrade staging directory")
+            raise ValueError("Invalid renderer preparation staging directory")
         if resume:
             stages_db = self.root / "stages.sqlite"
             if stages_db.is_symlink() or not stages_db.is_file():
-                raise ValueError("Renderer upgrade has no retained stages")
+                raise ValueError("Renderer preparation has no retained stages")
         else:
             self.root.mkdir(parents=True, exist_ok=False)
         self.db = sqlite3.connect(self.root / "stages.sqlite")
@@ -58,7 +59,7 @@ class RendererState:
             raw = encoded(binding).decode()
             if resume:
                 if len(saved) != 1 or saved[0][0] != raw:
-                    raise ValueError("Renderer upgrade inputs changed")
+                    raise ValueError("Renderer preparation inputs changed")
                 self.created = saved[0][1]
             else:
                 self.created = datetime.now(timezone.utc).isoformat()
@@ -172,6 +173,7 @@ class RendererState:
         saved = self.result(task)
         if saved is not None:
             return json.loads(saved[0])
+        started = time.perf_counter()
         if self.event:
             self.event(dict(event="renderer_task_started", task=task))
         try:
@@ -184,5 +186,5 @@ class RendererState:
             self.db.rollback()
             raise
         if self.event:
-            self.event(dict(event="renderer_task_completed", task=task))
+            self.event(dict(event="renderer_task_completed", task=task, seconds=time.perf_counter() - started))
         return result

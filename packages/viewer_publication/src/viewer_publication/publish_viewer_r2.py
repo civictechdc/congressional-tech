@@ -82,9 +82,13 @@ def as_protected(record):
 
 def validate_prepared_output(root, manifest):
     """Refuse unsupported outputs before artifact acceptance or any remote write."""
+    files = set()
     for path in root.rglob('*'):
-        if path.is_file() and path.stat().st_size >= 5 * 1024**3:
-            raise ValueError('Prepared publication exceeds single-PUT limit: ' + str(path.relative_to(root)))
+        if path.is_file():
+            name = str(path.relative_to(root))
+            files.add(name)
+            if path.stat().st_size >= 5 * 1024**3:
+                raise ValueError('Prepared publication exceeds single-PUT limit: ' + name)
     if len(encoded(manifest)) > CONTROL_LIMITS['manifest']:
         raise ValueError('Prepared manifest exceeds control byte limit')
     if manifest.get('version') == 6:
@@ -93,6 +97,7 @@ def validate_prepared_output(root, manifest):
     recovery = root / 'recovery-prepared.json'
     if recovery.exists() and recovery.stat().st_size > CONTROL_LIMITS['recovery']:
         raise ValueError('Prepared recovery status exceeds control byte limit')
+    return files
 
 
 def read_identity(client, key, *, optional=False):
@@ -255,19 +260,20 @@ def store_recovery_index(client, value):
     sha256 = hashlib.sha256(payload).hexdigest()
     # Use the gateway's existing immutable publication path allowlist.
     path = f'releases/{sha256[:32]}/{sha256[32:]}/viewer-v2/recovery-status.json'
-    result = None
+    existing = False
     try:
-        result = put_json(client, PREFIX + path, value, IfNoneMatch='*')
+        put_json(client, PREFIX + path, value, IfNoneMatch='*')
     except ClientError as error:
         if error.response['Error']['Code'] not in ('PreconditionFailed', '412'):
             raise
-    confirm = getattr(client, 'confirm_transfer', None)
-    proof = result.get('_verified_transfer') if isinstance(result, dict) else None
-    if confirm is None or not confirm(proof, bucket=BUCKET, key=PREFIX + path, size=len(payload), sha256=sha256):
+        existing = True
+    # A successful PUT is acceptance. A condition refusal is the exceptional
+    # existing-object case; resolve it before claiming that immutable status.
+    if existing:
         response = client.get_object(Bucket=BUCKET, Key=PREFIX + path)
         with response['Body'] as stream:
             if bounded_control_read(stream, kind='recovery', declared=response.get('ContentLength'), expected=len(payload)) != payload:
-                raise ValueError('Recovery status failed complete readback.')
+                raise ValueError('Existing recovery status differs.')
     return {'path': path, 'bytes': len(payload), 'sha256': sha256}
 
 
@@ -361,7 +367,6 @@ def select_recoveries(client, root, manifest, selected_record, accepted_record, 
     descriptor = store_recovery_index(client, index)
     updated = dict(pointer, recovery=descriptor,
                    recovery_inputs=recovery_inputs(selected_record.sha256, manifest_digest, manifest, accepted_record.value))
-    verify_recovery_status(client, descriptor, updated, public_url=public_url)
     check_recovery_inputs(client, selected_record, accepted_record, pointer_record)
     if updated != pointer:
         put_json(client, PREFIX + 'manifest.json', updated, IfMatch=pointer_etag)
@@ -378,13 +383,14 @@ def public_probe(base, pointer, manifest):
     with open_public(request) as response:
         if json.loads(public_control(response)) != manifest or response.headers.get('Access-Control-Allow-Origin') != '*':
             raise ValueError('Public manifest or browser access differs.')
-    # Recovery links are selected by the pointer and need their own public proof.
+    # A bounded gateway smoke check verifies recovery routing and browser headers.
     if descriptor := pointer.get('recovery'):
-        with open_public(public_request(base + descriptor['path'], {'Origin': 'https://civictechdc.github.io'})) as response:
-            payload = public_control(response, kind='recovery', expected=descriptor['bytes'])
-            if (len(payload) != descriptor['bytes'] or hashlib.sha256(payload).hexdigest() != descriptor['sha256']
+        request = public_request(base + descriptor['path'], {'Origin': 'https://civictechdc.github.io'})
+        request.method = 'HEAD'
+        with open_public(request) as response:
+            if (response.status != 200 or int(response.headers.get('Content-Length', -1)) != descriptor['bytes']
                     or response.headers.get('Access-Control-Allow-Origin') != '*'):
-                raise ValueError('Public recovery status failed verification.')
+                raise ValueError('Public recovery status smoke check failed.')
     if manifest.get('version') == 6:
         return public_probe_selected(base, manifest)
     # Detail views need the navigation and observation files as well as Parquet.
@@ -405,7 +411,7 @@ def public_probe(base, pointer, manifest):
             'Origin': 'https://civictechdc.github.io', 'Range': 'bytes=0-3'})
         with open_public(request) as response:
             if (response.status != 206 or response.headers.get('Content-Range') != f"bytes 0-3/{item['bytes']}"
-                    or response.read() != b'PAR1' or response.headers.get('Access-Control-Allow-Origin') != '*'
+                    or response.read(5) != b'PAR1' or response.headers.get('Access-Control-Allow-Origin') != '*'
                     or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
                 raise ValueError('Public Parquet range validation failed: ' + name)
 
@@ -413,8 +419,8 @@ def public_probe(base, pointer, manifest):
 def public_probe_selected(base, manifest):
     """Verify root custody and sample one selected partition's public ranges.
 
-    Every newly uploaded object already receives complete private readback. This
-    bounded sample checks the browser gateway without fetching all reused data.
+    Successful PUT responses accept uploads. This bounded sample checks the
+    browser gateway without downloading the complete publication.
     """
     from viewer_publication.filename_native import ViewerAssets, validate_publication
     def read_asset(path):
@@ -440,7 +446,7 @@ def public_probe_selected(base, manifest):
                             raise ValueError('Public partition browser access differs')
                         if is_parquet:
                             if (response.status != 206 or response.headers.get('Content-Range') != f"bytes 0-3/{item['bytes']}"
-                                    or response.read() != b'PAR1' or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
+                                    or response.read(5) != b'PAR1' or 'content-range' not in response.headers.get('Access-Control-Expose-Headers', '').lower()):
                                 raise ValueError('Public selected Parquet range differs')
                         elif response.status != 200 or int(response.headers.get('Content-Length', -1)) != item['bytes']:
                             raise ValueError('Public selected supporting file length differs')
@@ -454,7 +460,7 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
            probe=public_probe, publication_plan=None, validation=None, plan=None):
     from viewer_publication.client import require_publication_client
     require_publication_client(client)
-    if not all(callable(getattr(client, name, None)) for name in ('get_object', 'put_object', 'download_file')):
+    if not all(callable(getattr(client, name, None)) for name in ('get_object', 'put_object')):
         raise TypeError('Viewer publication client requires conditional writes and complete file upload/readback')
     if plan is not None:
         if plan.mode != 'full':
@@ -471,7 +477,7 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
     # Bind accepted status to the unmodified prepared manifest. Presentation-only
     # publication timestamps below do not change the accepted indexing inputs.
     recovery_manifest = manifest
-    print(f"Uploading and reading back {len(files)} viewer objects for {manifest['info']['catalog_id']}", flush=True)
+    print(f"Uploading {len(files)} viewer objects for {manifest['info']['catalog_id']}", flush=True)
     release_plan = publication_plan or dict(release='releases/' + uuid.uuid4().hex + '/',
                                     published_at=datetime.now(timezone.utc).isoformat())
     release = release_plan['release']
@@ -508,32 +514,34 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
                    'Metadata': {'sha256': expected}}
         upload_local = getattr(client, 'upload_verified_file', None) if local is not None else None
         if upload_local is not None:
-            receipt = upload_local(str(path), BUCKET, key, ExtraArgs=options, validation=local)
+            upload_local(str(path), BUCKET, key, ExtraArgs=options, validation=local)
         else:
             # Plain SDK adapters also get one explicitly conditional single PUT.
             # Managed upload_file can retry/multipart without this condition.
+            existing = False
             try:
                 with path.open('rb') as stream:
-                    response = client.put_object(Bucket=BUCKET, Key=key, Body=stream,
+                    client.put_object(Bucket=BUCKET, Key=key, Body=stream,
                         ContentLength=path.stat().st_size, IfNoneMatch='*', **options)
             except ClientError as error:
                 if error.response['Error']['Code'] not in ('PreconditionFailed', '412'):
                     raise
-                response = None  # Verify the existing immutable bytes; never resend.
-            receipt = response.get('_verified_transfer') if isinstance(response, dict) else None
-        confirm = getattr(client, 'confirm_transfer', None)
-        verified = confirm is not None and confirm(receipt, bucket=BUCKET, key=key,
-                                                   size=path.stat().st_size, sha256=expected)
-        if not verified:
-            # Plain SDK clients retain independent full-byte readback. A guarded
-            # result can replace it only while its exact remote version remains.
-            with tempfile.TemporaryDirectory(prefix='viewer-readback-') as folder:
-                downloaded = Path(folder) / 'object'
-                client.download_file(BUCKET, key, str(downloaded))
-                if downloaded.stat().st_size != path.stat().st_size or digest(downloaded) != expected:
-                    raise ValueError('Uploaded object failed readback: ' + name)
+                existing = True
+            if existing:
+                # No successful acknowledgment exists for a refused condition.
+                # Resolve only that exceptional collision, never every upload.
+                current = client.get_object(Bucket=BUCKET, Key=key)
+                actual, size = hashlib.sha256(), 0
+                with current['Body'] as stream:
+                    while chunk := stream.read(1024 * 1024):
+                        size += len(chunk)
+                        if size > path.stat().st_size:
+                            raise ValueError('Existing immutable object exceeds prepared size: ' + name)
+                        actual.update(chunk)
+                if size != path.stat().st_size or actual.hexdigest() != expected:
+                    raise ValueError('Existing immutable object differs: ' + name)
         if path.stat().st_size > 1_000_000:
-            print(f'Verified {name}: {path.stat().st_size:,} bytes', flush=True)
+            print(f'Uploaded {name}: {path.stat().st_size:,} bytes', flush=True)
         return path.stat().st_size
 
     with ThreadPoolExecutor(max_workers=6) as pool:
@@ -565,9 +573,6 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
         if error.response['Error']['Code'] in ('PreconditionFailed', '412'):
             return dict(result, status='superseded', reason='Another viewer publisher advanced the manifest.')
         raise
-    actual, _, _ = read_json(client, PREFIX + 'manifest.json')
-    if actual != pointer:
-        raise ValueError('Selected viewer manifest failed readback.')
     with open_public(public_request(public_url + 'manifest.json')) as response:
         if json.loads(public_control(response)) != pointer:
             raise ValueError('Public viewer manifest differs from the selected publication.')
