@@ -1,6 +1,6 @@
 ---
 id: cef-u7wj
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T19:35:19Z
