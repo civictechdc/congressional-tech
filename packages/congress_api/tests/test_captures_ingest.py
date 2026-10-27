@@ -221,3 +221,28 @@ def test_old_prior_attempt_without_attempt_number_keeps_own_response(tmp_path):
     a,b=pq.read_table(stage/'captures.parquet').to_pylist()
     assert (a['attempt_status'],a['complete'])==(206,False)
     assert (b['attempt_status'],b['complete'])==(200,True)
+
+
+@pytest.mark.parametrize('which,expected',[
+    ('final','size_limit'),('prior','stored'),('member','stored'),
+    ('near-cap','stored'),('specific-outcome','request_failed'),('specific-error','stored')])
+def test_confirmed_legacy_cutoff_is_a_line_outcome_only_for_its_final_response(tmp_path,which,expected):
+    record=dict(url='https://example.org/a',http_status=200,retrieved_at=STAMP,
+                outcome='request_failed' if which=='specific-outcome' else 'saved')
+    if which=='specific-error':record['error_type']='timeout'
+    cap=dict(body(),bytes=(62<<20 if which=='near-cap' else 64<<20),complete=False)
+    if which=='prior':
+        cap.update(pointer=['prior_attempts',0,'content','body'])
+        record['prior_attempts']=[dict(http_status=200)]
+    if which=='member':cap.update(pointer=['archive_members',0,'body'],member_path='member.pdf')
+    captures=[cap]
+    if which in {'prior','member'}:captures.append(body(complete=True,pointer=['content','body']))
+    stage=ingest(tmp_path,[dict(record=record,captures=captures)])
+    assert {r['outcome'] for r in pq.read_table(stage/'captures.parquet').to_pylist()}=={expected}
+
+
+def test_new_failed_outcome_is_not_reinterpreted_as_stored(tmp_path):
+    stage=ingest(tmp_path,[dict(run_id='new',mode='fetch',family='documents',
+        requested_url='https://example.org/a',url='https://example.org/a',retrieved_at=STAMP,
+        http_status=200,outcome='failed',captures=[body(complete=True)])])
+    assert pq.read_table(stage/'captures.parquet')['outcome'].to_pylist()==['failed']
