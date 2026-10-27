@@ -112,6 +112,7 @@ One JSON object of about 1 KB per fetch line or recovery import; a run writes nu
 | `provider_status` | int or null | A fetching provider's own status. |
 | `outcome` | `stored` \| `unchanged` \| `failed` \| `retry_later` \| `size_limit` \| `request_failed` | `retry_later` is a 429 or 503, or any response carrying `Retry-After`. The last two are incomplete. |
 | `transport` | string | `direct`, `zyte`, … |
+| `error_type` | string, optional | Final transfer failure code; a stable identifier, never an exception message or local path. |
 | `response_headers` | object | Allowlisted only: `content-type`, `content-length`, `content-disposition`, `last-modified`, `etag`, `content-encoding`, `retry-after`, `date`, `cache-control`, `accept-ranges`. |
 | `redirects` | list of {url, http_status} | — |
 | `prior_attempts` | list of {url, retrieved_at, transport, http_status, sha256} | Earlier attempts in the same line. |
@@ -134,6 +135,7 @@ One JSON object of about 1 KB per fetch line or recovery import; a run writes nu
 | `bytes` | int | Original size. |
 | `media_type` | string or null | The server's claim. MUST NOT be used to classify. |
 | `sniffed_format`, `sniff_version` | string | The format sniffed from the first bytes (values in §6.2) and the sniff code's version, which also versions `intact`. |
+| `sniff_error` | string, optional | The sniffer's stable error code, such as `pdf_reader_size_limit`; resource failures propagate for retry and never become a damage verdict. |
 | `intact` | bool or null | For a PDF: true when `%%EOF` appears in its last 8 KB, else when the pinned PDF reader opens it within its 16 MiB size limit; false when it rejects the file or that required read exceeds the limit (reported as `pdf_reader_size_limit`). A missing reader or resource failure is a failed reading, not a damage verdict. Null for other formats and for an older gzip PDF whose prefix alone was read. |
 | `stored_suffix` | `''` \| `.gz` | The physical key's suffix ([[ARCHITECTURE]] §7.1). |
 | `stored_md5`, `stored_bytes` | hex, int | Only on the creating line. |
