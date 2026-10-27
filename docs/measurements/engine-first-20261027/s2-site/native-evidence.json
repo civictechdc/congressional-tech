@@ -184,7 +184,7 @@
     ]
   },
   "statistics_job": {
-    "scratch": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/panel-stats-native",
+    "scratch": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/stats-reviewed-native",
     "inputs": [
       {
         "name": "panel_files",
@@ -339,9 +339,9 @@
             "files": 39
           },
           {
-            "bodies": 59,
+            "bodies": 58,
             "decision": "landing",
-            "files": 61
+            "files": 60
           },
           {
             "bodies": 16,
@@ -354,9 +354,9 @@
             "files": 47
           },
           {
-            "bodies": 85,
+            "bodies": 86,
             "decision": "real_document",
-            "files": 87
+            "files": 88
           },
           {
             "bodies": 38,
@@ -390,7 +390,7 @@
             "stratum": "files_listed_together"
           },
           {
-            "files": 61,
+            "files": 60,
             "stratum": "landing_pages"
           },
           {
@@ -406,7 +406,7 @@
             "stratum": "listing_pages"
           },
           {
-            "files": 44,
+            "files": 45,
             "stratum": "short_real_pages"
           },
           {
@@ -423,7 +423,7 @@
         "name": "short_real",
         "data": [
           {
-            "files": 44,
+            "files": 45,
             "max_visible_bytes": 1929,
             "min_visible_bytes": 580
           }

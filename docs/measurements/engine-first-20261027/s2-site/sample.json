@@ -16,7 +16,8 @@
       "packages/congress_api/src/congress_api/retention/saved_response_reviews.json": "202f3108e389c4811b94e9015eb0d0d035e84e22ad6c410b3a63f83765799ce0"
     },
     "candidate_job_sha256": "f22c4aabd2df924143de523a86524a2749341359baa2077748e49a9c967eb7f6",
-    "selection_output_sha256": "af7fc503c845c61e0767975425d32ed820d3f418f48c874e486e9d6060cd353f"
+    "selection_output_sha256": "af7fc503c845c61e0767975425d32ed820d3f418f48c874e486e9d6060cd353f",
+    "source_snapshot_sha256": "db03317389db7453270a15056209c7498b0750caaec4d7053aa5b0b945dde70d"
   },
   "limitations": [
     "This coverage panel is not a probability sample of the archive; prior weights are not used to claim population accuracy.",
@@ -7572,8 +7573,8 @@
       "body_key": "bodies/sha256/0b/0bf90c57369641ee2efb4fbe40bf6cde84c173b1bee06cf0e8fe405fc7b0c825.gz",
       "context_url": "https://www.usaid.gov/sites/default/files/documents/2022-05-20_USG_Ukraine_Complex_Emergency_Fact_Sheet_16.pdf",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "A generic agency-wide administrative-leave notice replaces the requested Ukraine fact sheet; the requested document is absent.",
+      "decision": "real_document",
+      "rationale": "The retained body is an authored USAID policy notice with dated administrative-leave and reduction-in-force instructions, travel provisions, and personnel benefits. Its substantive main content qualifies independently of the absent Ukraine fact sheet named by the request URL.",
       "reviewer": "site",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
@@ -7593,7 +7594,7 @@
         "selection_rank": 8
       },
       "strata": [
-        "landing_pages"
+        "short_real_pages"
       ]
     },
     {
