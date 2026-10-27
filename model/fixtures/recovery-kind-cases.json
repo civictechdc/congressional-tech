@@ -1,0 +1,69 @@
+[
+  {
+    "id": "0",
+    "category": "requested_content_in_official_amendment_packet",
+    "match_basis": "user_accepted_url_variant",
+    "expected_kind": "requested_content_in_official_amendment_packet",
+    "receipt_key": "receipts/documents/2026-10-15/download-filename-recovery-all-20261015-000001.jsonl.gz",
+    "receipt_line": 68,
+    "capture_index": 0,
+    "mode": "retained_import",
+    "body_hex": "6429cdd218a0ce70c9da165131683979c23254dba112d996fc8223cd30b9b386"
+  },
+  {
+    "id": "1",
+    "category": "same_article_publisher_text_available",
+    "match_basis": "user_accepted_url_variant",
+    "expected_kind": "same_article_publisher_text_available",
+    "receipt_key": "receipts/documents/2026-10-15/download-filename-recovery-all-20261015-000051.jsonl.gz",
+    "receipt_line": 27,
+    "capture_index": 0,
+    "mode": "retained_import",
+    "body_hex": "bc5d8dcdf56ac79af27a7cd15c955e5d3aa41bd1c8111408a27baa04b33832eb"
+  },
+  {
+    "id": "2",
+    "category": "official_public_statement_counterpart",
+    "match_basis": "user_accepted_url_variant",
+    "expected_kind": "official_public_statement_counterpart",
+    "receipt_key": "receipts/documents/2026-10-15/download-filename-recovery-all-20261015-000052.jsonl.gz",
+    "receipt_line": 5,
+    "capture_index": 0,
+    "mode": "retained_import",
+    "body_hex": "223ce1eb817081cbde8ce033cc2796318fd10098fce6952d5740bbd865a029e4"
+  },
+  {
+    "id": "3",
+    "category": "official_report_counterpart_available",
+    "match_basis": "user_accepted_url_variant",
+    "expected_kind": "official_report_counterpart_available",
+    "receipt_key": "receipts/documents/2026-10-15/download-filename-recovery-all-20261015-000056.jsonl.gz",
+    "receipt_line": 6,
+    "capture_index": 0,
+    "mode": "retained_import",
+    "body_hex": "c93ca9e60008d378208aa9d36cc977e9459d450eb0b04987f62422e69a4aa7b7"
+  },
+  {
+    "id": "4",
+    "category": "related_final_report_available",
+    "match_basis": "user_accepted_url_variant",
+    "expected_kind": "related_final_report_available",
+    "receipt_key": "receipts/documents/2026-10-15/download-filename-recovery-all-20261015-000056.jsonl.gz",
+    "receipt_line": 81,
+    "capture_index": 0,
+    "mode": "retained_import",
+    "body_hex": "f5461b7166b0f32600adc7d9390d064fafb0a852810e4bba49ab6691ca4ec747"
+  },
+  {
+    "id": "fallback",
+    "category": null,
+    "match_basis": "user_accepted_url_variant",
+    "expected_kind": "recovered_document"
+  },
+  {
+    "id": "unknown",
+    "category": "not_registered",
+    "match_basis": "user_accepted_url_variant",
+    "expected_kind": null
+  }
+]
