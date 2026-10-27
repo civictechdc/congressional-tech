@@ -216,8 +216,9 @@ def mapping_steps(*, existing=False, counter=False):
     # Ordinary old labels describe content/inspection, not transfer success.
     # Status and body presence decide those rows; explicit transfer failures keep
     # their distinct incomplete/retry meaning.
-    transfer = {'retry_later','request_failed','size_limit','stored','unchanged'}
-    cases = ' '.join('WHEN '+literal(k)+' THEN '+literal(v if v in transfer else 'derive')
+    transfer = {'retry_later','request_failed','size_limit','stored','unchanged','failed',
+                'archive_throttled','exception','request_or_parse_error','resource_limit','timeout'}
+    cases = ' '.join('WHEN '+literal(k)+' THEN '+literal(v if k in transfer else 'derive')
                      for k,v in LEGACY_OUTCOMES.items())
     step('mapped', f'''SELECT *,
         CASE WHEN raw_mode='retained_import' OR recovery IS NOT NULL
@@ -236,6 +237,17 @@ def mapping_steps(*, existing=False, counter=False):
     final_complete = first(get('entry','complete',kind='bool'),
         "CASE WHEN attempt=0 THEN coalesce(json_get_bool(line,'complete'),json_get_bool(record,'complete')) END",
         "NOT (coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))")
+    explicit_complete = first(get('entry','complete',kind='bool'),
+        "CASE WHEN attempt=0 THEN coalesce(json_get_bool(line,'complete'),json_get_bool(record,'complete')) END")
+    top_level = "json_get_str(entry,'member_path') IS NULL AND position('archive_members' IN coalesce(pointer_json,''))=0"
+    legacy_cutoff = f'''(bool_or(attempt=0 AND body_bytes=67108864 AND ({top_level})
+        AND ({explicit_complete}) IS FALSE) OVER (PARTITION BY receipt_key,receipt_line))
+        AND NOT coalesce(bool_or(attempt=0 AND ({top_level}) AND ({explicit_complete}) IS TRUE)
+            OVER (PARTITION BY receipt_key,receipt_line),false)
+        AND capture_mode='fetch' AND json_get_str(line,'mode') IS NULL
+        AND (raw_outcome IS NULL OR raw_outcome IN ('saved','captured','complete','html','html_body','pdf','retained'))
+        AND coalesce(json_get_str(line,'error_type'),json_get_str(record,'error_type'),
+            json_get_json(line,'error'),json_get_json(record,'error'),json_get_str(record,'_ingest_error_json')) IS NULL'''
     source_sha = "arrow_cast(sha256(json_canonical(coalesce(json_get_json(record,'meeting'),record))), 'FixedSizeBinary(32)')"
     retry = first(get('headers','retry-after'), get('headers','Retry-After'), 'item_retry')
     columns = dict(
@@ -244,6 +256,7 @@ def mapping_steps(*, existing=False, counter=False):
         outcome=f"""CASE WHEN line_status IN (429,503) OR {retry} IS NOT NULL THEN 'retry_later'
             WHEN line_status=304 THEN 'unchanged'
             WHEN mapped_outcome<>'derive' THEN mapped_outcome
+            WHEN {legacy_cutoff} THEN 'size_limit'
             WHEN body_sha IS NOT NULL AND (line_status BETWEEN 200 AND 299 OR line_status IS NULL)
             THEN 'stored' ELSE 'failed' END""",
         family='entry_family', requested_url='requested', url='final_url',
