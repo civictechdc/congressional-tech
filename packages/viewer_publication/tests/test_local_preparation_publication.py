@@ -269,3 +269,123 @@ def test_local_state_parent_is_durable_before_first_remote_put(ready, monkeypatc
     monkeypatch.setattr(remote, 'put_object', require_parent)
     assert publish(ready)['status'] == 'published'
     assert remote.puts and durable
+
+
+
+def test_pretransfer_is_bounded_exact_and_core_replays_without_duplicate_puts(ready, monkeypatch):
+    import threading
+    remote, root, _ = ready
+    remote.meta.config.max_pool_connections = 8
+    put = remote.put_object
+    lock, rendezvous = threading.Lock(), threading.Barrier(8)
+    active = peak = arrivals = 0
+    observed, calls = [], {}
+    upload = local.ContinuedPublicationClient.upload_verified_file
+    def exact_headers(client, filename, bucket, key, ExtraArgs=None, **kwargs):
+        calls.setdefault(key, []).append((bucket, dict(ExtraArgs or {})))
+        return upload(client, filename, bucket, key, ExtraArgs=ExtraArgs, **kwargs)
+    monkeypatch.setattr(local.ContinuedPublicationClient, 'upload_verified_file', exact_headers)
+    accepted = local.attempt.verify_prepared(local.publisher, root).plan
+    planned_keys = {local.publisher.PREFIX + name for name in accepted.files}
+    def counted(**kwargs):
+        nonlocal active, peak, arrivals
+        is_asset = '/viewer-v2/' in kwargs['Key'] and hasattr(kwargs['Body'], 'name')
+        if is_asset:
+            with lock:
+                active += 1; peak = max(peak, active); arrivals += 1
+                first = arrivals <= 8
+            try:
+                if first: rendezvous.wait(timeout=10)
+                observed.append({key: kwargs[key] for key in ('Key','IfNoneMatch','ContentType','CacheControl','Metadata')})
+                return put(**kwargs)
+            finally:
+                with lock: active -= 1
+        return put(**kwargs)
+    monkeypatch.setattr(remote, 'put_object', counted)
+    assert publish(ready, pretransfer_workers=8)['status'] == 'published'
+    assert peak == 8 and active == 0
+    keys = [key for key, *_ in remote.puts]
+    assert len(keys) == len(set(keys)), 'Core must replay accepted uploads, not send another PUT'
+    assert len(observed) >= 8
+    assert set(keys[:len(planned_keys)]) == planned_keys, 'Pre-transfer must finish plan assets before core control writes'
+    for key in planned_keys:
+        assert len(calls[key]) == 2 and calls[key][0] == calls[key][1], 'Pre-transfer and core must use identical bucket/key/headers'
+    for row in observed:
+        assert row['IfNoneMatch'] == '*'
+        assert row['CacheControl'] == 'public, max-age=31536000, immutable'
+        assert row['Metadata']['sha256'] == hashlib.sha256(remote.objects[row['Key']]).hexdigest()
+        assert row['ContentType'] == ('application/vnd.apache.parquet' if row['Key'].endswith('.parquet') else 'application/json' if row['Key'].endswith('.json') else 'application/octet-stream')
+    before = len(remote.puts)
+    assert publish(ready, resume=True, pretransfer_workers=8)['status'] == 'published'
+    assert len(remote.puts) == before
+
+
+def test_failed_pretransfer_drains_before_unlock_then_resumes_original_conditions(ready, monkeypatch):
+    import threading
+    import time
+    remote, root, _ = ready
+    remote.meta.config.max_pool_connections = 4
+    put = remote.put_object
+    lock, joined = threading.Lock(), threading.Barrier(4)
+    active = arrivals = 0
+    conditions = []
+    with monkeypatch.context() as patch:
+        def fail_one(**kwargs):
+            nonlocal active, arrivals
+            with lock:
+                active += 1; arrivals += 1; ordinal = arrivals
+            try:
+                if ordinal <= 4: joined.wait(timeout=10)
+                if ordinal == 1: raise KeyboardInterrupt('injected pre-transfer interruption')
+                time.sleep(.03)
+                with (root / '.local-publication.lock').open('ab') as other:
+                    with pytest.raises(BlockingIOError):
+                        local.fcntl.flock(other, local.fcntl.LOCK_EX | local.fcntl.LOCK_NB)
+                conditions.append(kwargs['IfNoneMatch'])
+                return put(**kwargs)
+            finally:
+                with lock: active -= 1
+        patch.setattr(remote, 'put_object', fail_one)
+        with pytest.raises(KeyboardInterrupt):
+            publish(ready, pretransfer_workers=4)
+    assert active == 0 and conditions and set(conditions) == {'*'}
+    assert not any(key == local.publisher.PREFIX + 'manifest.json' for key, *_ in remote.puts)
+    assert publish(ready, resume=True, pretransfer_workers=4)['status'] == 'published'
+    keys = [key for key, *_ in remote.puts]
+    assert len(keys) == len(set(keys))
+
+
+@pytest.mark.parametrize('workers', [-1, 33, True])
+def test_pretransfer_rejects_unbounded_worker_configuration(ready, workers):
+    with pytest.raises(ValueError, match='between 0 and 32'):
+        publish(ready, pretransfer_workers=workers)
+    assert not ready[0].puts
+
+
+def test_pretransfer_requires_sdk_pool_and_source_drift_blocks_selection(ready):
+    remote, root, _ = ready
+    with pytest.raises(ValueError, match='matching SDK connection pool'):
+        publish(ready, pretransfer_workers=16)
+    remote.meta.config.max_pool_connections = 16
+    changed = []
+    def advance(key):
+        if not changed:
+            changed.append(key)
+            remote.versions['indexes/catalog.json'] = 'advanced during pre-transfer'
+    remote.after_put = advance
+    assert publish(ready, pretransfer_workers=16)['status'] == 'superseded'
+    assert not any(key == local.publisher.PREFIX + 'manifest.json' for key, *_ in remote.puts)
+
+
+def test_wrong_bytes_in_pretransfer_are_rejected_before_core_selection(ready, monkeypatch):
+    remote, root, _ = ready
+    remote.meta.config.max_pool_connections = 1
+    put = remote.put_object
+    def corrupt(**kwargs):
+        path = Path(kwargs['Body'].name)
+        raw = bytearray(path.read_bytes()); raw[0] ^= 1; path.write_bytes(raw)
+        return put(**kwargs)
+    monkeypatch.setattr(remote, 'put_object', corrupt)
+    with pytest.raises(ValueError, match='upload bytes'):
+        publish(ready, pretransfer_workers=1)
+    assert not any(key == local.publisher.PREFIX + 'manifest.json' for key, *_ in remote.puts)

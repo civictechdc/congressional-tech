@@ -7,6 +7,8 @@ import fcntl
 import hashlib
 import json
 import os
+import re
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
 from viewer_publication import attempt, publish_viewer_r2 as publisher
@@ -41,12 +43,61 @@ def read_receipt(path):
     return value, raw
 
 
-def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False, probe=None, journal_mode='local'):
+def pretransfer_assets(client, plan, workers):
+    """Transfer only accepted v6 content-addressed payloads; selection stays core-owned."""
+    if plan.manifest.get('version') != 6:
+        raise ValueError('Parallel pre-transfer requires a verified v6 plan')
+    plan.require(plan.root, plan.manifest)
+
+    def transfer(item):
+        name, path = item
+        match = re.fullmatch(r'releases/([a-f0-9]{32})/([a-f0-9]{32})/viewer-v2/([^/]+)', name)
+        if not match or match[3] == 'manifest.json' or match[3].startswith('recovery'):
+            return
+        proof = plan.validation.file(path)
+        if proof['sha256'] != match[1] + match[2]:
+            raise ValueError('Pre-transfer asset address differs from verified bytes')
+        content_type = ('application/vnd.apache.parquet' if name.endswith('.parquet') else
+                        'application/json' if name.endswith('.json') else 'application/octet-stream')
+        client.upload_verified_file(str(path), publisher.BUCKET, publisher.PREFIX + name,
+            validation=proof, ExtraArgs=dict(ContentType=content_type,
+                CacheControl='public, max-age=31536000, immutable', Metadata={'sha256': proof['sha256']}))
+
+    pending, items, exhausted = set(), iter(plan.files.items()), False
+    # The executor context drains running workers before any exception escapes
+    # the full-operation local lock. Submitted work is bounded too.
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        try:
+            while True:
+                while not exhausted and len(pending) < workers:
+                    item = next(items, None)
+                    if item is None:
+                        exhausted = True
+                        break
+                    pending.add(pool.submit(transfer, item))
+                if not pending:
+                    return
+                done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                for future in done:
+                    future.result()
+        except BaseException:
+            for future in pending:
+                future.cancel()
+            raise
+
+
+def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False, probe=None, journal_mode='local', pretransfer_workers=0):
     """Publish with a synced local event chain, or explicitly select remote journaling.
 
     Keep the complete preparation directory on persistent local storage for resume.
     The receipt binds the chosen journal authority; modes cannot be switched.
     """
+    if type(pretransfer_workers) is not int or not 0 <= pretransfer_workers <= 32:
+        raise ValueError('Pre-transfer workers must be between 0 and 32')
+    if pretransfer_workers:
+        pool = getattr(getattr(getattr(client, 'meta', None), 'config', None), 'max_pool_connections', None)
+        if journal_mode != 'local' or not isinstance(pool, int) or pool < pretransfer_workers:
+            raise ValueError('Pre-transfer requires local journaling and a matching SDK connection pool')
     if journal_mode not in ('local', 'remote'):
         raise ValueError('Unsupported local publication journal mode')
     root = Path(root).resolve(strict=True)
@@ -137,13 +188,16 @@ def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False
             check_inputs()
             guarded = ContinuedPublicationClient(client, continuation=state, guard=PublicationGuard(),
                 journal=state.record, after_write=lambda *args: None)
+            if pretransfer_workers:
+                pretransfer_assets(guarded, verified.plan, pretransfer_workers)
             result = publisher.upload(guarded, root / 'publication', manifest,
                 previous_etag=binding['viewer']['etag'], selected_etag=binding['source']['etag'],
                 public_url=public_url, publication_plan=receipt['release_plan'], plan=verified.plan,
                 **({'probe': probe} if probe is not None else {}))
             state.record('publication_completed', result)
             state.save('publication-result.json', publisher.encoded(result), replace=True)
-            return dict(result, attempt=prepared['attempt'], preparation_reused=resume, journal_mode=journal_mode)
+            return dict(result, attempt=prepared['attempt'], preparation_reused=resume, journal_mode=journal_mode,
+                pretransfer_workers=pretransfer_workers)
         except BaseException as error:
             try:
                 state.record('publication_failed', {'error_type': type(error).__name__, 'error': str(error)})
@@ -161,10 +215,18 @@ def main(argv=None):
     parser.add_argument('--resume', action='store_true')
     parser.add_argument('--journal-mode', choices=('local', 'remote'), default='local')
     parser.add_argument('--report', type=Path, required=True)
+    parser.add_argument('--pretransfer-workers', type=int, choices=range(33), default=0,
+        help='Opt-in v6 asset concurrency (0 disables; at most 32), with matching SDK pool')
     args = parser.parse_args(argv)
     try:
-        result = publish_local(make_client(), args.directory, public_url=args.public_url, resume=args.resume,
-            journal_mode=args.journal_mode)
+        if args.pretransfer_workers:
+            from congress_shared.storage import connect_r2
+            client = connect_r2(connect_timeout=15, read_timeout=180,
+                retries={'total_max_attempts': 1}, max_pool_connections=args.pretransfer_workers)
+        else:
+            client = make_client()
+        result = publish_local(client, args.directory, public_url=args.public_url, resume=args.resume,
+            journal_mode=args.journal_mode, pretransfer_workers=args.pretransfer_workers)
     except BaseException as error:
         try:
             save_report(args.report, dict(status='failed', error_type=type(error).__name__, error=str(error)))
