@@ -120,6 +120,7 @@ def mapping_steps(*, existing=False):
         ELSE record_value END AS record FROM enriched''')
     step('header_entries', f'''SELECT receipt_key,receipt_line,capture_index,
         unnest(coalesce({get('line','response_header_items',kind='array')},
+                        {get(get('line','_ingest_header_items_json'),kind='array')},
                         {get('record','response_header_items',kind='array')},
                         {get(get('record','_ingest_header_items_json'),kind='array')},
                         {get('record','headers',kind='array')},
@@ -136,7 +137,9 @@ def mapping_steps(*, existing=False):
         return first(integer('line', *path), integer('record', *path))
     recovery = first(both('recovery_evidence', kind='json'),get('record','_ingest_recovery_json'))
     association = first(get('record','source_associations',0,kind='json'),get(get('record','_ingest_assoc_json'),0,kind='json'))
-    root_headers = first(get('line','response_headers',kind='json'),
+    root_headers = first(get('line','_ingest_headers_json'),
+                         get('line','response_headers',kind='json'),
+                         get('line','_ingest_other_headers_json'),
                          get('record','_ingest_headers_json'),get('record','response_headers',kind='json'))
     headers = first(root_headers,get('record','_ingest_other_headers_json'),
                     get('record', 'headers', kind='json'))

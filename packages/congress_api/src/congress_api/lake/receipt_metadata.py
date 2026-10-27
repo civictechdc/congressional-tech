@@ -148,7 +148,13 @@ def _compact(*,engine,work,counter=None,files=None,receipt_keys=None,destination
         FROM small_records WHERE is_list GROUP BY receipt_key,receipt_line""")
     step('record_metadata','SELECT * FROM record_objects UNION ALL SELECT * FROM record_lists',
         materialize=True,release_after=['record_objects','record_lists','small_records'])
-    roots={n:'"'+n+'"' for n in sorted(root_names) if n in {*SCALARS,'response_headers','recovery_evidence','prior_attempts','writer'}}
+    roots={n:'"'+n+'"' for n in sorted(root_names) if n in {*SCALARS,'recovery_evidence','prior_attempts','writer'}}
+    # Headers can be top-level on new lines, with case-preserving field names
+    # absent from an older typed counter. Keep their small raw fragments once.
+    roots.update({name:get('__raw_line',field,kind='json') for name,field in [
+        ('_ingest_headers_json','response_headers'),
+        ('_ingest_header_items_json','response_header_items'),
+        ('_ingest_other_headers_json','headers')]})
     roots['_ingest_record_sha']="""CASE WHEN __receipt_family='congress/meetings'
         THEN encode(sha256(json_canonical(coalesce(nullif(json_get_json(__raw_line,'record','meeting'),'null'),
             nullif(json_get_json(__raw_line,'record'),'null')))),'hex') END"""
