@@ -100,9 +100,11 @@ def _typed(result, filename):
             match = re.fullmatch(r'(hr|s|hjres|sjres|hconres|sconres|hres|sres)([0-9]+)', reference.lower())
             if match: keys.add(f'{congress}-{match[1]}-{int(match[2])}')
     stem = filename.rsplit('.', 1)[0]
-    package = stem if (one('package_family') in {'BILLS', 'CHRG', 'CRPT', 'CPRT'}
-        and any(match.get('canonical_filename', '').rsplit('.', 1)[0].lower() == stem.lower()
-                for match in result.get('matches', []))) else None
+    package = None
+    if (one('package_family') or '').upper() in {'BILLS', 'CHRG', 'CRPT', 'CPRT'}:
+        package = next((match['canonical_filename'].rsplit('.', 1)[0]
+            for match in result.get('matches', [])
+            if match.get('canonical_filename', '').rsplit('.', 1)[0].lower() == stem.lower()), None)
     return dict(valid=bool(result['valid']),
         **{name: list(metadata.get(name, [])) for name in ('document_kind', 'document_family', 'committee_code')},
         congress=congress, date_token=one('date_token'), measure_type=one('measure_type'),
