@@ -45,6 +45,6 @@ def test_invalid_json_fails_without_emitting_input_text():
 
     for body in (b'{"private-value":', b'{"number":NaN}', b'\xff'):
         actual = read_page(body, 'json')
-        assert actual['status'] == 'failed'
+        assert actual['status'] == 'error'
         assert actual['fingerprint'] is None
         assert 'private-value' not in json.dumps(actual)

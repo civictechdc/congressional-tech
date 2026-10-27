@@ -109,18 +109,23 @@ def test_gzip_prefixes_do_not_turn_an_unchecked_pdf_into_a_damaged_one():
 
 
 def test_reader_or_storage_failure_is_not_a_completed_damage_verdict():
-    from congress_api.retention.sniff import read_sniff
+    from congress_api.retention.sniff import read_sniff, SniffReadError, SniffResourceError
     from congress_api.retention.pdf_tools import PdfToolError
 
     def unavailable(data):
         raise PdfToolError('private input must never appear in a reading')
     body = b'%PDF-1.7\nno end'
-    row = read_sniff(Ranges(body), stored_size=len(body), pdf_reader=unavailable)
-    assert row['status'] == 'failed' and row['intact'] is None
-    assert row['error_type'] == 'PdfToolError'
-    assert 'private' not in str(row)
-    row = read_sniff(lambda start, length: b'', stored_size=100)
-    assert row['status'] == 'failed' and row['error_type'] == 'short_range'
+    with pytest.raises(SniffResourceError) as caught:
+        read_sniff(Ranges(body), stored_size=len(body), pdf_reader=unavailable)
+    assert caught.value.error_type == 'PdfToolError'
+    assert 'private' not in str(caught.value)
+    with pytest.raises(SniffReadError, match='short_range'):
+        read_sniff(lambda start, length: b'', stored_size=100)
+    def missing(start, length):
+        raise OSError('private storage path')
+    with pytest.raises(SniffReadError) as caught:
+        read_sniff(missing, stored_size=100)
+    assert 'private' not in str(caught.value)
 
 
 def test_corrupt_or_oversized_zip_is_a_reported_refusal_not_generic_zip_success():
@@ -132,7 +137,8 @@ def test_corrupt_or_oversized_zip_is_a_reported_refusal_not_generic_zip_success(
         (office([('a', b'x' * 100)]), ZipLimits(max_archive_bytes=80), 'archive_size_limit'),
     ):
         row = read_sniff(Ranges(body), stored_size=len(body), zip_limits=limits)
-        assert row['status'] == 'failed' and row['error_type'] == expected
+        assert row['status'] == ('size_limit' if expected == 'archive_size_limit' else 'error')
+        assert row['error_type'] == expected
 
 
 def test_compressed_office_is_bounded_and_content_identified():
@@ -165,6 +171,6 @@ def test_gzip_storage_must_have_a_readable_gzip_header():
 
     for body in (b'not gzip', b'\x1f\x8b\x08\x00'):
         row = read_sniff(Ranges(body), stored_size=len(body), stored_gzip=True)
-        assert row['status'] == 'failed' and row['error_type'] == 'invalid_gzip'
+        assert row['status'] == 'error' and row['error_type'] == 'invalid_gzip'
     body = gzip.compress(b'')
     assert read_sniff(Ranges(body), stored_size=len(body), stored_gzip=True)['format'] == 'empty'
