@@ -1,0 +1,127 @@
+{
+  "note": "Synthetic acceptance settings only, never real registry seeds. Listing thresholds are provisional; the labeled sample must settle the published registry.",
+  "page_signals": [
+    {
+      "id": "near_empty",
+      "kind": "threshold",
+      "number": 128
+    },
+    {
+      "id": "listing_links",
+      "kind": "threshold",
+      "number": 20
+    },
+    {
+      "id": "listing_percent",
+      "kind": "threshold",
+      "number": 80
+    },
+    {
+      "id": "generic_error",
+      "kind": "error_word",
+      "pattern": "(?i)access denied|forbidden|not found|retry later|service unavailable|\\berror\\b|just a moment|client challenge|attention required|checking your browser"
+    },
+    {
+      "id": "visible_challenge",
+      "kind": "body_marker",
+      "pattern": "(?i)verify you are human|checking your browser|please enable javascript and cookies"
+    },
+    {
+      "id": "error_routes",
+      "kind": "error_url",
+      "pattern": "(?i)/(404|error|errors|notfound|not-found|page-not-found)(\\b|[/.?_-])|[?&]aspxerrorpath="
+    },
+    {
+      "id": "download_wrapper",
+      "kind": "wrapper_marker",
+      "pattern": "(?i)download will begin shortly|^download file\\b"
+    },
+    {
+      "id": "metadata_roots",
+      "kind": "source_record_root",
+      "pattern": "^(\\{[^}]+\\})?(mods|mets|premis|committee-meeting|witness-list)$"
+    },
+    {
+      "id": "api_endpoint",
+      "kind": "api_endpoint",
+      "pattern": "^https?://api\\.(congress|govinfo)\\.gov/"
+    },
+    {
+      "id": "feed_roots",
+      "kind": "feed_root",
+      "pattern": "^(\\{[^}]+\\})?(rss|feed|urlset|sitemapindex)$"
+    },
+    {
+      "id": "feed_urls",
+      "kind": "feed_url",
+      "pattern": "(?i)/(rss|feed|sitemap)([/.?]|$)"
+    }
+  ],
+  "file_shapes": [
+    {
+      "id": "extensions",
+      "pattern": "(?i)\\.(pdf|xml|docx?|xlsx?|pptx?|zip|rtf|txt|csv)($|[?#])"
+    },
+    {
+      "id": "publisher_routes",
+      "pattern": "(?i)/(download|media-center/files|wp-content/uploads|_cache/files|imo/media/doc|services/files)/|/sites/.*/files/|(^|/)files\\.serve(/|$)"
+    }
+  ],
+  "formats": [
+    {
+      "kind": "preference",
+      "value": "pdf",
+      "rank": 0
+    },
+    {
+      "kind": "preference",
+      "value": "docx",
+      "rank": 1
+    },
+    {
+      "kind": "preference",
+      "value": "doc",
+      "rank": 2
+    },
+    {
+      "kind": "preference",
+      "value": "html",
+      "rank": 3
+    },
+    {
+      "kind": "preference",
+      "value": "xml",
+      "rank": 4
+    },
+    {
+      "kind": "preference",
+      "value": "json",
+      "rank": 5
+    },
+    {
+      "kind": "preference",
+      "value": "text",
+      "rank": 6
+    },
+    {
+      "kind": "preference",
+      "value": "image",
+      "rank": 7
+    },
+    {
+      "kind": "preference",
+      "value": "zip",
+      "rank": 8
+    },
+    {
+      "kind": "generic_stem",
+      "value": "index",
+      "rank": null
+    },
+    {
+      "kind": "generic_stem",
+      "value": "download",
+      "rank": null
+    }
+  ]
+}
