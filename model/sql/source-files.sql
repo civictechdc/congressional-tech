@@ -5,7 +5,7 @@ WITH captured AS (
  CASE WHEN bool_or(is_real_file) THEN 'document' ELSE min(record_role) END AS record_role,
  min(arrow_cast(CASE WHEN import_date IS NULL THEN cast(retrieved_at AS TIMESTAMP WITH TIME ZONE) END,'Timestamp(Microsecond, Some("UTC"))')) AS first_fetched,
  max(arrow_cast(CASE WHEN import_date IS NULL THEN cast(retrieved_at AS TIMESTAMP WITH TIME ZONE) END,'Timestamp(Microsecond, Some("UTC"))')) AS last_fetched,
- CASE WHEN count(CASE WHEN import_date IS NULL AND retrieved_at IS NOT NULL THEN 1 END)=0
+ CASE WHEN count(CASE WHEN import_date IS NULL THEN 1 END)=0
  THEN min(cast(import_date AS DATE)) END AS in_archive_since
  FROM capture_sources GROUP BY source_id,body_sha,filename,source_url
 ), originals AS (
