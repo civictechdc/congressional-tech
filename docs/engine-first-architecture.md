@@ -192,7 +192,7 @@ SITE (static) → pointer → release → list (whole) / detail, links, sources,
 | Capture scheduler | raw writer | §12; DM §7.7 | fetcher, release reader |
 | Raw verifier | raw writer | §7.4 | object store |
 | Captures ingest | lake producer | §8.2; DM §6.1 | engine |
-| Parsers (sniff, html, xml, json, fingerprint) | lake producer | §8.3; DM §6.2 | engine, object store |
+| Parsers (sniff, html, xml, json; fingerprint only when a candidate needs one, DM §6.2) | lake producer | §8.3; DM §6.2 | engine, object store |
 | Filename reader | lake producer | §8.4; DM §6.3 | engine |
 | Meeting parsers | lake producer | §8.5; DM §6.5, §6.7 | engine |
 | Model | publisher | §9; DM §7 | engine, registries, model profile |
@@ -226,7 +226,7 @@ Every capture entry records the suffix its body is stored under. Writers MUST NO
 
 **Crash between a body and its receipt.** The body is kept and the raw check finds it (§7.4), but its origin is not recorded unless a later fetch of the same URL gets the same content. This loss of attribution is accepted.
 
-**Older bodies** keep their `.gz` form. Older gzip PDFs gain a one-time `.pdf` copy ([[DATA-MODEL]] §5.1), so a saved PDF is a plain link the browser's own viewer opens and PDFs up to 1.19 GB never pass through the page; other `.gz` bodies are small enough to unpack in the browser (§11.5). A 412 on a copy MUST be checked against the expected MD5 with one HEAD, since older capture code can write such copies without recording them.
+**Older bodies** keep their `.gz` form. Older gzip PDFs gain a one-time `.pdf` copy ([[DATA-MODEL]] §5.1), so a saved PDF is a plain link the browser's own viewer opens and PDFs up to 1.19 GB never pass through the page. A 412 on a copy MUST be checked against the expected MD5 with one HEAD, since older capture code can write such copies without recording them.
 
 ### 7.2 Receipts
 
@@ -248,9 +248,9 @@ Receipts are public and permanent, so they carry no credentials, cookies or loca
 
 **Lock.** An indefinite R2 bucket lock, set per prefix, covers `bodies/`, `receipts/` and `provenance/`. Creates stay allowed.
 
-**Full re-hash** is an explicit job that downloads bodies and records each one's size, ETag and verified SHA-256 under `provenance/verification/`, skipping keys whose record has `sha256_verified` true. No older line records an MD5, and receipts record a stored size for 672,063 of the 1,036,256 older bodies; the other 364,193, nearly all Senate captions, have one only in the old capture index. So until the re-hash runs once, after the PDF copies, the first raw check records a listing baseline: each older body's size and ETag, the size checked against its recorded stored size, from the receipts else the old index. The baseline is then raw's own record of that size. Afterwards the re-hash runs only before a migration.
+**Full re-hash** is an explicit job that downloads bodies and records each one's size, ETag and verified SHA-256 under `provenance/verification/`, skipping keys whose record has `sha256_verified` true. No older line records an MD5, and receipts record a stored size for only 672,063 of the 1,036,256 older bodies. So until the re-hash runs once, after the PDF copies, the first raw check records a listing baseline: each older body's size and ETag, the size checked against its recorded stored size where one exists. The baseline is then raw's own record of that size. Afterwards the re-hash runs only before a migration.
 
-**Raw check.** Each week the maintenance job makes one LIST of `bodies/` and joins it to the recorded keys of `captures` and the verification records. It confirms that every recorded key exists and that every stored body has the size and ETag its creating line or verification record gives. A body with neither is re-hashed once, and 25 random bodies are downloaded and checked end to end; nothing else reads body bytes, and there is no per-body HEAD. The listing proves that each body is present and was not replaced; the sample is the only content check, and R2's durability is the accepted guard against decay.
+**Raw check.** Each week the maintenance job makes one LIST of `bodies/` and joins it to the recorded keys of `captures` and the verification records. It confirms that every recorded key exists and that every stored body has the size and ETag its creating line or verification record gives. A body with neither is re-hashed once, and 25 random bodies are downloaded and checked end to end; nothing else reads body bytes, and there is no per-body HEAD. The listing proves that each body is present and was not replaced; the sample is the only content check.
 
 **Durability.** Raw is kept in one R2 bucket with no second copy. R2's own durability guards against hardware loss. A provider-side loss is the accepted risk.
 
@@ -280,7 +280,7 @@ One row per `(body, parser, parser_version)`; each media family has its own pars
 - **HTML, XML and JSON** are read in full once per version, with each body's links recorded as written. The model resolves the links against every address the page was fetched at, so link context covers all history while a page fetched many times stores its links once.
 - **PDF, ZIP and captions** get no full reading. Full-text extraction of every PDF (about 403 GB) is deferred to `pdf_text`; ZIP members are captured as their own entries.
 - **Text fingerprints come from the page readings** ([[DATA-MODEL]] §6.2), and a ZIP's from its member hashes in `captures`; no other format needs one today, so there is no fingerprint parser and no full-corpus text pass.
-- **One bad input cannot stop publishing:** a parse that crashes or hangs is retried once, then recorded as an error ([[DATA-MODEL]] §6).
+- **One bad input cannot stop publishing:** a parse that crashes or hangs is retried once, then settled by an `unreadable` provenance record, which a rebuild reads too ([[DATA-MODEL]] §6).
 
 **Versions** are pinned, and a new one is backfilled in background batches before the profile moves to it ([[DATA-MODEL]] §7.1).
 
@@ -445,7 +445,7 @@ backfill:    one producer's work list for a new version or table, in batches   (
 ```
 
 - **Order.** The lake steps run first, each on its own work list: `sniff` before the format parsers, which need formats. The concurrency group (§10.3.7) keeps anything from landing between the lake steps and the pin.
-- **Budgets.** Each daily lake step has a work-list budget, set per runner class with its resources. A step whose work list exceeds it, such as a registry change that adds thousands of fingerprint candidates, is left to a backfill: publish refuses at once, rather than after the model runs, and starts that step's backfill, which runs next in the concurrency group.
+- **Budgets.** Each daily lake step has a work-list budget, set per runner class with its resources. A step whose work list exceeds it, such as a new sniff version that re-reads every body, is left to a backfill: publish refuses at once, rather than after the model runs, and starts that step's backfill, which runs next in the concurrency group.
 - **Idempotent steps.** Each step is keyed by its input, is a no-op when that has not changed, and commits durably, so a failed run resumes by running again, with no journal.
 - **Capture reads the public release.** It builds its queue from the live release's `url_state` and applies its `capture_scope.json`, so it needs no lake or release credentials, and it follows what its fetchers discover in the same run, such as the documents an API response lists. After a failed canary, capture works from a slightly older schedule, which is safe because body writes are create-only.
 - **Status.** Every publish run writes `viewer-publications/status.json`: input identity, rows per output, durations, bytes and the live release.

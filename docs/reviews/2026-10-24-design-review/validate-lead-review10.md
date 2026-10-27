@@ -29,3 +29,11 @@ The Fable reviewer (`fable-review10.md`) read the four docs blind at 41f86b72 an
 - **Weekly job into raw (F1).** New plan B15, phase 1, first: each run writes its records to raw as an import run, and the rescued batch is imported once.
 - **Legacy PDF checks dropped (F2).** Unchecked: 32,087.
 - **Simplifications (F3, F6, F7).** Parser tables keep one row per input with list columns; a parse that crashes is retried once, then recorded as `error`; 26 registries become 17.
+
+## Second pass (`fable-rereview10.md`): 84/100, B
+
+The lead checked N1–N8 against the text, and all hold. N1 is a determinism argument: crash and time bounds depend on the run. Fixed in place:
+- **N1, by owner decision:** a second crash now writes a producer `unreadable` decision in provenance rather than an `error` row, so a rebuild from raw skips the same inputs. This replaces F6's `error_type = 'crash'`.
+- **N2, N4, N5 (both), N6, N7.**
+
+N3 (the weekly runs as an "import run") and N8 (B15's receipts before B0's patch) wait for the weekly-job patch, so they match its real line shape.

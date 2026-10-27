@@ -174,7 +174,7 @@ New lines MUST NOT carry:
 | `url_variants` | `id`, `canonical_url`, `variant_url`, `basis`, `decided_at`, `supersedes` | `url_key` (§7.2) |
 | `reviews` | `id`, `target` (a link key), `verdict` (`hide`, `duplicate_of`, `title_override`, `kind_override`, `withdraw`), `value`, `note`, `reviewer`, `decided_at`, `supersedes` | `reviews` (§7.9) |
 | `verification` | `key`, `size`, `etag`, `sha256_verified`, `checked_at`, `job`; more for a cleaned receipt. A listing baseline records size and ETag, the size checked against the recorded stored size, with `sha256_verified` false until a whole read or the full re-hash verifies the body; a `.pdf` copy's record adds the end-marker check, `intact` | The maintenance job; `suffix` for `.pdf` copies (§7.5) and `intact` (§7.3) |
-| `unreadable` | `id`, `body_sha256` (or `record_sha`), `parser`, `parser_version`, `reason`, `decided_by`, `decided_at`, `supersedes` | The parsers' work lists, which drop the input (§7.1) |
+| `unreadable` | `id`, `body_sha256` (or `record_sha`), `parser`, `parser_version`, `reason`, `decided_by` (a person, or the producer after a second crash, §6), `decided_at`, `supersedes` | The parsers' work lists, which drop the input (§7.1); the model reports each per release |
 
 - A cleaned receipt's record adds `original_size`, `original_etag`, the backup object compared, the fields cut, and the counts of cookies, credential parameters and paths removed.
 - Written by the re-hash jobs, the PDF-copy job (for each `.gz` source and `.pdf` copy) and the receipt cleanup.
@@ -192,7 +192,7 @@ Iceberg tables in Basin Catalog, append-only ([[ARCHITECTURE]] §8).
 
 **One row per input.** Every parser table (§6.2, §6.3, §6.5, §6.7) holds one row per input and version with a `status`, its many-valued outputs as lists, so an input that yields nothing still has its row and leaves the work list (§7.1).
 - `status` is `completed`, `error` or `size_limit`. `size_limit` is decided before reading, from the input's size against the version's declared byte bound; `error` is a rejection of the input, with its `error_type`.
-- Each input is parsed within the version's time and memory bounds. A parse that crashes, hangs or exceeds them is retried once in the run, then recorded as `error` with `error_type = 'crash'`, so one bad input cannot hold the work list open; a new version retries it.
+- Each input is parsed within the version's time and memory bounds. A parse that crashes, hangs or exceeds them is retried once in the run; a second failure writes an `unreadable` decision naming the producer (§5.3), so one bad input cannot hold the work list open. The decision is in raw, so a rebuild skips the same inputs even though a crash depends on the run; a new version retries them.
 - A failure to read the input (raw, network or catalog) writes no row, so the input stays on the work list.
 
 **Versions.** The model reads only pinned parser versions (§7.1); a table keeps the versions any kept release's profile names, and its next table-version rebuild omits the rest.
@@ -385,7 +385,7 @@ One row per input and parser version, with the witnesses it lists in `appearance
 | `parser_version` | string | — |
 | `status`, `error_type` | string | §6. |
 | `source` | string | `house_xml`, `congress_gov`, `senate_page` or `mods`. |
-| `appearances` | list<struct> | One element per witness, in source order; an input's entries sharing a `name_key` keep the first. Empty when it lists none. Fields below. |
+| `appearances` | list<struct> | One element per witness, in source order; an input's entries sharing a `name_key` keep the first, so `witness_key` (§7.11) is unique per occasion. Empty when it lists none. Fields below. |
 
 Each `appearances` element:
 
@@ -419,7 +419,7 @@ The model is one engine job of named steps ([[ARCHITECTURE]] §9.1) over `captur
 
 ### 7.1 Model Profile and Registries
 
-The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input whose read always fails (§6) is settled by a person's provenance `unreadable` decision (§5.3), which removes it from that parser's work list.
+The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input that crashes its parser twice, or whose read always fails, is settled by a provenance `unreadable` decision (§5.3, §6), which removes it from that parser's work list.
 
 - It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6), each parser, the catalog, each registry the model or a producer reads, and the release writer settings (§8.1); until the engine's export meets [[ARCHITECTURE]] §10.2 by itself (spicy-stack ss-iwqu), also the runner class and the engine's limits (threads, batch rows, batch bytes).
 - A parser or catalog version is the SHA-256 of its source files, the vocabularies it reads and its locked dependencies.
