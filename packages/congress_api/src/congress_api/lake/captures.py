@@ -160,7 +160,11 @@ def mapping_steps(*, existing=False):
     cases = ' '.join('WHEN '+literal(k)+' THEN '+literal(v if k in transfer else 'derive')
                      for k,v in LEGACY_OUTCOMES.items())
     step('mapped', f'''SELECT *,
-        CASE WHEN raw_mode='retained_import' OR recovery IS NOT NULL
+        CASE WHEN raw_mode='retained_import'
+             AND {get('association','basis')}='direct_official_package'
+             AND requested={get('association','original_url')}
+             AND final_url=requested THEN 'fetch'
+             WHEN raw_mode='retained_import' OR recovery IS NOT NULL
              OR {get('association','original_url')} IS NOT NULL THEN 'retained_import'
              ELSE 'fetch' END AS capture_mode,
         CASE raw_outcome {cases} ELSE 'derive' END AS mapped_outcome,

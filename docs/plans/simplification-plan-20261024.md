@@ -8,7 +8,7 @@
 - **Two phases (§4):** phase 1 switches the site to an engine-built release of documents, rebuilt from raw, reusing every per-item result raw or legacy data already settles; phase 2 adds hearings, witnesses, the spicy-regs entities and the large one-time raw jobs.
 - **First:** B15 (the weekly job's records into raw), the lock probe, the lock on `bodies/` and `provenance/`, B0, then the lock on `receipts/`; M1, M2 and S1 run beside them, since they touch no raw (§4–5).
 - **Open (§8):** Basin file growth (M1); memory and the older receipts (M2); the rules on real data (S1); the widest is the model (track E).
-- **Owner actions,** each before the step it blocks: the rescued batch's import and the weekly job's raw token (B15); the bucket lock (B1); B0's two patterns and scan report; the credentials (B0's rewriter; the capture, publish and maintenance tokens before F1); the 123 import lines (before D1); six recovery excerpts (B7) and facts only derived tables hold (D1, E4), before the switch; the real-device speed runs (A11); widening fingerprint candidates (S2).
+- **Owner actions,** each before the step it blocks: the rescued batch's import and the weekly job's raw token (B15); the bucket lock (B1); B0's two patterns and scan report; the credentials (B0's rewriter; the capture, publish and maintenance tokens before F1); facts only derived tables hold (D1, E4), before the switch; the real-device speed runs (A11); widening fingerprint candidates (S2).
 - **Detail:** behavior in [[ARCHITECTURE]]; schemas, derivations, registries and invariants in [[DATA-MODEL]]; code in [[BINDINGS]].
 
 ## 1. Introduction
@@ -357,7 +357,6 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | Whether `list` with titles fits the phone heap budget (*est.* 17–30 MB more; 46% of documents have a publisher label) | A11 on the first engine-built release; F0 sets a provisional budget | Titles stay in `list`, or move back to `detail` |
 | Roster history: spicy-regs keeps the current Congress only | A spicy-regs change publishing its captured rosters as dated history | Rosters show current seats until then |
 | How often one printed hearing covers several meetings, leaving its MODS witnesses on the package | D4, counting packages that more than one meeting's jackets resolve to | Whether multi-day hearings need a per-day rule |
-| Whether the 123 `direct_official_package` import lines are recoveries or fetches | The owner, on S2's sample of them | Their kind, or a move into `mode = fetch` by the ingest mapping |
 | How many House event pages only the committee explorer's POST calendar API finds, which capture's scope drops ([[BINDINGS]] §3.1) | A count from the explorer's discovery before the switch | Whether capture needs that API as a seed |
 | Senate card coverage by committee site (judiciary 98.6%, hsgac 64.8%, indian 54.8%, jec 0%) | D4, on every Senate hearing page | Which sites need a second page layout |
 | Event IDs never name two chambers (observed on 18,140, not promised by the publishers) | Invariant 15 at every publish | The meeting key, if one ever does |
