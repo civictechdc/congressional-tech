@@ -146,3 +146,13 @@ def test_stage_refuses_a_version_that_does_not_name_its_code_and_inputs(tmp_path
     captures=input_tables(tmp_path, [])
     with pytest.raises(ValueError, match='version'):
         reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'job',catalog_version='wrong')
+
+
+def test_local_stage_command_writes_only_local_outputs(tmp_path, capsys):
+    captures=input_tables(tmp_path, [])
+    inventory=tmp_path/'inventory.json'; inventory.write_text('[]')
+    assert reader().main(['--captures',str(captures),'--recovery-inventory',str(inventory),
+        '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--work',str(tmp_path/'stage')]) == 0
+    result=json.loads(capsys.readouterr().out)
+    assert result['catalog_version'] == reader().current_version()
+    assert pq.read_metadata(result['readings']).num_rows == 0
