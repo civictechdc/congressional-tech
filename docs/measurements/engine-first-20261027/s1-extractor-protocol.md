@@ -1,0 +1,11 @@
+# S1 main-content extractor comparison
+
+This protocol precedes extraction measurements. Compare the locked Trafilatura and readability-lxml versions on the complete population of HTML endpoints whose distinct bodies were saved on one receipt line, excluding recovery imports and incomplete attempts. The approximately 2,250 endpoints are an estimate to check, not a sample-size target. Read only existing local bodies; record missing bodies, without fetching them through capture. Keep the selected body's identity, endpoint and receipt locator in the experiment input.
+
+Normalize each extractor's text with NFKC, collapse whitespace and trim, as DM §6.2 requires. Empty output is a failed extraction and has no fingerprint. Measure each body once per arm after imports, in interleaved order, on an otherwise idle host. Record milliseconds per page, total time, peak RSS, input bytes, failures, empty results and exact equality within each endpoint. Retain per-body output hashes and lengths; compare full text for any hash equality used as evidence.
+
+Choose the extractor with the higher number of nonempty equal endpoint groups, provided it preserves substantive content on the fixture and stratified short-page checks. A result that discards both pages to the same short navigation text does not count as success. Break an equality tie by lower total time. Report disagreements and the sample used for substantive-content review; never describe sampled review as exhaustive. No hand-written main-content extractor or automatic successful fallback is introduced. The chosen implementation and locked dependency closure become part of the parser version.
+
+Before model SQL, preserve the acceptance sheet's fixtures as executable inputs with expected outputs, including changed page furniture, archive-relative links, ungrouped links, short pages and every sniff format. Parser output retains links as written in document order, including repeats, without resolving URLs, dropping links or classifying a page. SQL owns those later decisions.
+
+The comparison and parser qualification are local work. Results, actual dependency versions, source pins and reproduction commands will be committed here after execution. No extraction result or selection is claimed by this protocol.

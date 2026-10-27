@@ -17,7 +17,11 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["PyYAML>=6,<7"]
+dev = [
+    "PyYAML>=6,<7",
+    "readability-lxml>=0.9",
+    "trafilatura>=2.0.0",
+]
 
 [tool.uv]
 package = false
