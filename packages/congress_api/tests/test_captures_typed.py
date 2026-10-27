@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 
 from docspec_client.client import NativeDatasets
 from congress_api.lake.receipt_metadata import BOOLS, NUMBERS, STRINGS
@@ -49,10 +50,18 @@ def test_bounded_metadata_fanout_preserves_public_rows(tmp_path):
     assert all('typed-metadata-payload-stays-raw' not in str(row) for row in actual.to_pylist())
 
 
-def test_metadata_stays_typed_for_direct_counter_and_empty_selection(tmp_path):
+@pytest.mark.parametrize("view_strings",[False,True])
+def test_metadata_stays_typed_for_direct_counter_and_empty_selection(tmp_path,view_strings):
     from congress_api.lake.receipt_metadata import compact, compact_counter
     from test_receipt_metadata import counter_fixture
     counter,files=counter_fixture(tmp_path)
+    if view_strings:
+        table=pq.read_table(counter)
+        fields=[pa.field(f.name,pa.string_view() if f.type==pa.string() else f.type,
+                         nullable=f.nullable) for f in table.schema.field('record').type]
+        schema=table.schema.set(0,pa.field('record',pa.struct(fields)))
+        pq.write_table(pa.Table.from_pylist(table.to_pylist(),schema=schema),counter)
+        assert pq.read_schema(counter).field('record').type.field('url').type==pa.string_view()
     native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     direct=compact(files=files,engine=native,work=tmp_path/'direct')
     cached=compact(counter=counter,engine=native,work=tmp_path/'counter')
