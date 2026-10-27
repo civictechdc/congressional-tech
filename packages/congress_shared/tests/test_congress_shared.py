@@ -225,3 +225,30 @@ def test_verified_file_rejects_link_changes_with_unchanged_timestamps(tmp_path, 
     assert target.read_bytes() == b"unchanged payload"
     with pytest.raises(ValueError, match="custody"):
         verified.require(target)
+
+
+def test_require_rejects_same_size_rewrite_when_timestamps_do_not_change(tmp_path, monkeypatch):
+    import congress_shared.custody as custody
+    target = tmp_path / "verified"
+    target.write_bytes(b"original")
+    original_identity = custody.custody_identity
+    def unchanged_timestamps(path):
+        identity = list(original_identity(path))
+        identity[3:5] = [1, 1]
+        return tuple(identity)
+    monkeypatch.setattr(custody, "custody_identity", unchanged_timestamps)
+    verified = custody.issue_verified_file(target, {"bytes": 8,
+        "sha256": sha256(b"original").hexdigest()})
+    verified.require(target)
+    target.write_bytes(b"replaced")
+    assert custody.custody_identity(target) == verified.custody
+    with pytest.raises(ValueError, match="custody"):
+        verified.require(target)
+
+
+def test_require_does_not_turn_an_unchecked_digest_into_byte_authority(tmp_path):
+    target = tmp_path / "verified"
+    target.write_bytes(b"payload")
+    verified = VerifiedFile(target, "0" * 64, 7)
+    with pytest.raises(ValueError, match="custody"):
+        verified.require(target)

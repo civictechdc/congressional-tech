@@ -397,7 +397,7 @@ def test_derived_upload_rejects_same_tick_same_size_mutation_before_put(tmp_path
     monkeypatch.setattr(files, "custody_identity", unchanged_timestamps)
     proof = file_identity(source)
     source.write_bytes(b"changed" * 100)
-    proof.require(source)  # The filesystem metadata cannot distinguish these bytes.
+    assert custody.custody_identity(source) == proof.custody  # Metadata alone misses these bytes.
     client = Client()
     with pytest.raises(ValueError, match="checksum"):
         R2Store(client, "bucket").put_derived_file(KEY, source, expected=proof)

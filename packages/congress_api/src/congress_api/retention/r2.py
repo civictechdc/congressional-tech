@@ -544,7 +544,8 @@ class R2Store:
             before = os.fstat(source.fileno())
             proven = isinstance(expected, VerifiedFile)
             if proven:
-                expected.require(path)
+                # The following transport scan verifies content without a second read.
+                expected._require_custody(path)
             md5, digest, count = hashlib.md5(), hashlib.sha256(), 0
             for chunk in iter(lambda: source.read(1024**2), b''):
                 md5.update(chunk)
