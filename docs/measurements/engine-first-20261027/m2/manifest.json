@@ -21,6 +21,25 @@
       "sha256": "1ec95d7b884f0ccdea1268eb9c79e3d342e68509d93adc46d7933a07f5dda5b2",
       "bytes": 84218,
       "rows": 11781
+    },
+    "conflicts_per_receipt.parquet": {
+      "sha256": "ede4fd28a33793a792ab9c8993aabdde6dad2c85940ad15c2b71cef71f09c061",
+      "bytes": 15671,
+      "rows": 2289
+    },
+    "conflicts_per_path.parquet": {
+      "sha256": "09d99dd03db3c93756fa48d392d64f4b96c2a25a061b6bb2b6df3c3522ec664e",
+      "bytes": 1912,
+      "rows": 32
     }
-  }
+  },
+  "conflict_reader_sources": {
+    "cx_m2/src/main.rs": "057d9f21fccf7261913d75682a7dd5bde626fc945e52bb77dd1f3be169fbd72f",
+    "cx_m2/src/receipt.rs": "0f97b504fcafeac48b33576d680a33916ce3fdc202c90e0e51679927be2f1782",
+    "cx_m2/Cargo.lock": "b351a05a4c8290fb69c754fbc906c3b84a665b3800eee9ade7d4c7c8b5854881",
+    "cx_m2_largest_counter_job.json": "0e4254d5e8e710d9792cc4b07037b97763338a77c212116322e68e2fdab5980c",
+    "cx_m2_receipt_counter_stage_job.json": "ca790c3491a166a96d3e7cdc6e4f8da9a9887d2c8cddf3cf1d67018bb1067d5d",
+    "cx_watch_run.py": "fc657d57dcabdb131aa42285aa49fdc815f1222d6a25cf4f2006bd95f9c80a29"
+  },
+  "conflict_reader_binary_sha256": "11be41dfd61499301963c23c51af2a814879d1f663d64933b82b9f9ee207d89d"
 }
