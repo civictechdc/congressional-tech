@@ -634,4 +634,4 @@ class DurableJournal:
         self.continuation.accept_saved(intent_name, f'journal/{self.sequence:08d}.json', proof=request_proof)
         self.sequence += 1
         self.total_bytes += len(raw)
-        self.previous = hashlib.sha256(raw).hexdigest()
+        self.previous = request_proof.sha256

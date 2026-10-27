@@ -81,6 +81,32 @@ def test_journal_acceptance_reuses_synced_request_bytes(journal, monkeypatch):
     assert sum(size for _, size in writes) == total
 
 
+def test_journal_append_reuses_saved_digest_and_preserves_chain(journal, monkeypatch):
+    import sys
+    from congress_shared import custody
+    from viewer_publication import client
+    log, continuation, remote = journal
+    original_sha = hashlib.sha256
+    production = {state.__file__, custody.__file__, client.__file__}
+    hashed = []
+    def digest(raw=b''):
+        if sys._getframe(1).f_code.co_filename in production:
+            hashed.append(raw)
+        return original_sha(raw)
+    monkeypatch.setattr(hashlib, 'sha256', digest)
+    monkeypatch.setattr(custody, 'sha256', digest)
+    previous, bodies = log.previous, []
+    for index in range(2):
+        intent, _ = write_facts(f'viewer-publications/releases/digest/{index}')
+        log.record('publication_write_intent', intent)
+        body = remote.objects[log.prefix + f'{log.sequence - 1:08d}.json']
+        assert json.loads(body)['previous'] == previous
+        previous = original_sha(body).hexdigest()
+        assert log.previous == previous
+        bodies.extend([body, body])  # Synced request proof and guarded PUT admission.
+    assert hashed == bodies
+
+
 @pytest.mark.parametrize('boundary', ['before_put', 'after_put', 'accept_link'])
 def test_journal_interruption_preserves_request_and_resumes(journal, monkeypatch, boundary):
     log, continuation, remote = journal
