@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-from congress_api.retention.receipt_cleanup import rewrite_receipt
+from congress_api.retention.receipt_cleanup import digest, rewrite_receipt
 from congress_api.retention.receipt_cleanup_stores import DirectoryFiles, R2ReceiptFiles
 from congress_api.retention.receipt_privacy import LOCAL_PATH, clean_older_line
 
@@ -55,6 +55,32 @@ def scan(root, keys):
                 fields=[dict(kind=k, path=p, examples=sorted(examples[k, p]), count=n)
                         for (k, p), n in sorted(fields.items())])
 
+def receipt_inventory(client, bucket):
+    """List every receipt once, retaining metadata for the owner's frozen input."""
+    entries = []
+    for page in client.get_paginator('list_objects_v2').paginate(Bucket=bucket, Prefix='receipts/'):
+        for row in page.get('Contents', []):
+            if not row['Key'].endswith('.jsonl.gz'):
+                raise ValueError('Unexpected receipt object; review the listing before cleanup')
+            entries.append(dict(key=row['Key'], size=row['Size'], etag=row['ETag'].strip('"')))
+    entries.sort(key=lambda entry: entry['key'])
+    if len(entries) != len({entry['key'] for entry in entries}):
+        raise ValueError('Duplicate receipt key in listing')
+    return entries
+
+
+def scan_live(store, root, keys):
+    """Verify downloads into a local mirror, then apply the same complete scan."""
+    local = DirectoryFiles(root)
+    for key in keys:
+        path = local.path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        metadata = store.get_file(key, path)
+        if (metadata is None or metadata['etag'] != digest(path)
+                or metadata['size'] != path.stat().st_size):
+            raise ValueError('Live receipt mirror failed identity verification')
+    return scan(root, keys)
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -67,7 +93,28 @@ def main(argv=None):
     parser.add_argument('--scratch', type=Path)
     parser.add_argument('--records', type=Path)
     parser.add_argument('--apply', action='store_true')
+    parser.add_argument('--scan-live', action='store_true')
+    parser.add_argument('--mirror-root', type=Path)
+    parser.add_argument('--list-inventory', action='store_true', help='Owner: read-only live listing to --inventory and --report')
     args = parser.parse_args(argv)
+    if args.list_inventory:
+        if not args.bucket or not args.inventory or args.apply:
+            parser.error('--list-inventory requires --bucket and --inventory, without --apply')
+        from congress_shared.storage import connect_r2
+        entries = receipt_inventory(connect_r2(bucket=args.bucket), args.bucket)
+        args.inventory.write_text(json.dumps([row['key'] for row in entries], indent=2) + '\n')
+        args.report.write_text(json.dumps(entries, indent=2) + '\n')
+        print(json.dumps(dict(receipts=len(entries), read_only=True)))
+        return 0
+    if args.scan_live:
+        if not args.bucket or not args.inventory or not args.mirror_root or args.apply:
+            parser.error('--scan-live requires --bucket, --inventory and --mirror-root, without --apply')
+        from congress_shared.storage import connect_r2
+        keys = json.loads(args.inventory.read_text())
+        report = scan_live(R2ReceiptFiles(connect_r2(bucket=args.bucket), args.bucket), args.mirror_root, keys)
+        args.report.write_text(json.dumps(report, indent=2) + '\n')
+        print(json.dumps({k: v for k, v in report.items() if k not in {'fields', 'patterns'}}))
+        return 1 if report['counts'] else 0
     if args.bucket and (not args.apply or not args.inventory):
         parser.error('Live rewrite needs --apply and an explicit --inventory; scan local copies first')
     keys = json.loads(args.inventory.read_text()) if args.inventory else local_keys(args.root)
