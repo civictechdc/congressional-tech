@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import pyarrow.parquet as pq
+import pytest
 
 from test_captures_ingest import files, STAMP, body
 
@@ -64,3 +65,13 @@ def test_cli_skips_ingested_unreadable_receipts_before_compaction(tmp_path,capsy
     summary=json.loads(capsys.readouterr().out)
     assert summary['no_work'] is True and summary['applied'] is False
     assert not work.exists()
+
+
+@pytest.mark.parametrize('size',['0','1025','-1'])
+def test_receipt_batch_size_must_be_explicitly_bounded(tmp_path,size):
+    from congress_api.cli.captures_ingest import main
+    with pytest.raises(SystemExit) as error:
+        main(['--receipt-inventory',str(tmp_path/'unopened.json'),
+            '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--work',str(tmp_path/'work'),
+            '--receipt-batch-size',size])
+    assert error.value.code==2
