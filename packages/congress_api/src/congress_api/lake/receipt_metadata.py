@@ -1,10 +1,12 @@
 """Narrow receipt facts before expanding bodies; payload bytes stay in raw."""
 from pathlib import Path
+from hashlib import sha256
 import json
 
 import pyarrow.parquet as pq
 
-from congress_api.retention.provenance import field, struct, list_of, run_job, file_pin, parquet_output
+from congress_api.retention.provenance import field, struct, list_of, run_job, file_pin, parquet_output, json_input
+from congress_api.retention.body_store import validate_key
 
 
 STRINGS = ('source_file','run_id','mode','outcome','family','requested_url','url','_url',
@@ -50,7 +52,7 @@ def source_schema():
     return dict(fields=[field(k,v) for k,v in roots.items()],metadata={})
 
 
-def compact(*,engine,work,counter=None,files=None):
+def _compact(*,engine,work,counter=None,files=None,receipt_keys=None,destination=None):
     """Export one small metadata row per source line through the native job.
 
     Record lists and prior attempts are narrowed independently before joining.
@@ -62,17 +64,19 @@ def compact(*,engine,work,counter=None,files=None):
     steps=[]
     def step(name,sql,**options):steps.append(dict(name=name,sql=sql,**options))
     if counter is not None:
-        schema=pq.read_schema(counter)
+        schema=pq.ParquetDataset(counter).schema
         required={'__receipt_key','__receipt_line','__raw_line','__type_conflicts',
                   '__receipt_family','record','captures','file_references'}
         if not required.issubset(schema.names):
             raise ValueError('Counter is not the validated typed/raw receipt reader result')
         inputs=[dict(name='source',kind='parquet',path=str(Path(counter).resolve()))]
+        selected=(' WHERE __receipt_key IN ('+','.join(lit(key) for key in receipt_keys)+')'
+                  if receipt_keys else ' WHERE false') if receipt_keys is not None else ''
         if '__line_shape' in schema.names:
-            step('counter','SELECT * FROM source')
+            step('counter','SELECT * FROM source'+selected)
         else:
             step('counter',"""SELECT *,CASE WHEN left(ltrim(json_get_json(__raw_line,'record')),1)='['
-                THEN 'record:array' ELSE 'record:object' END AS __line_shape FROM source""")
+                THEN 'record:array' ELSE 'record:object' END AS __line_shape FROM source"""+selected)
         record_type=schema.field('record').type
         record_names=set(record_type.names)
         root_names=set(schema.names)
@@ -136,12 +140,14 @@ def compact(*,engine,work,counter=None,files=None):
     final_meta['_ingest_prior_attempts_json']='p.prior_json'
     step('small_records',f'''SELECT r.receipt_key,r.receipt_line,r.record_index,r.is_list,
         {obj(final_meta)} AS metadata FROM records r LEFT JOIN prior_metadata p
-        USING(receipt_key,receipt_line,record_index)''')
+        USING(receipt_key,receipt_line,record_index)''',materialize=True,
+        release_after=['object_records','list_entries','list_records','records','prior_entries','prior_metadata'])
     step('record_objects',"SELECT receipt_key,receipt_line,json_get_json(json_array(metadata),0) AS record_json FROM small_records WHERE NOT is_list")
     step('record_lists',"""SELECT receipt_key,receipt_line,
         json_get_json(json_array(array_agg(metadata ORDER BY record_index)),0) AS record_json
         FROM small_records WHERE is_list GROUP BY receipt_key,receipt_line""")
-    step('record_metadata','SELECT * FROM record_objects UNION ALL SELECT * FROM record_lists')
+    step('record_metadata','SELECT * FROM record_objects UNION ALL SELECT * FROM record_lists',
+        materialize=True,release_after=['record_objects','record_lists','small_records'])
     roots={n:'"'+n+'"' for n in sorted(root_names) if n in {*SCALARS,'response_headers','recovery_evidence','prior_attempts','writer'}}
     roots['_ingest_record_sha']="""CASE WHEN __receipt_family='congress/meetings'
         THEN encode(sha256(json_canonical(coalesce(nullif(json_get_json(__raw_line,'record','meeting'),'null'),
@@ -149,17 +155,157 @@ def compact(*,engine,work,counter=None,files=None):
     step('root_metadata',f'''SELECT __receipt_key AS receipt_key,__receipt_line AS receipt_line,
         json_get_json(json_array({obj(roots)}),0) AS line,
         json_get_json(__raw_line,'captures') AS caps_json,
-        json_get_json(__raw_line,'file_references') AS refs_json FROM counter''')
-    destination=work/'receipt-metadata.parquet'
+        json_get_json(__raw_line,'file_references') AS refs_json FROM counter''',
+        materialize=True,release_after=['counter','source'])
+    destination=Path(destination) if destination is not None else work/'receipt-metadata.parquet'
     sql='''SELECT r.receipt_key AS __receipt_key,r.receipt_line AS __receipt_line,
         r.line,r.caps_json,r.refs_json,m.record_json FROM root_metadata r
         LEFT JOIN record_metadata m USING(receipt_key,receipt_line)'''
-    result=run_job(work,engine,inputs=inputs,steps=steps,
-        outputs=[parquet_output(work,'receipt-metadata',sql,['__receipt_key','__receipt_line'])],queries=[
-        dict(name='source_counts',sql='SELECT count(*) AS rows,count(DISTINCT __receipt_key) AS receipts FROM counter')])
+    if counter is not None and receipt_keys==[]:
+        # An explicit empty work list needs the same typed schema, without
+        # building any JSON/list expansion plan or reading receipt payloads.
+        steps=[dict(name='root_metadata',sql='''SELECT __receipt_key AS receipt_key,
+            __receipt_line AS receipt_line,__raw_line FROM source WHERE false''')]
+        sql='''SELECT receipt_key AS __receipt_key,receipt_line AS __receipt_line,
+            json_get_json(__raw_line) AS line,json_get_json(__raw_line) AS caps_json,
+            json_get_json(__raw_line) AS refs_json,json_get_json(__raw_line) AS record_json
+            FROM root_metadata'''
+    output=parquet_output(work,'receipt-metadata',sql,['__receipt_key','__receipt_line'])
+    output['path']=str(destination.resolve())
+    result=run_job(work,engine,inputs=inputs,steps=steps,outputs=[output],queries=[
+        dict(name='source_counts',sql='SELECT count(*) AS rows,count(DISTINCT receipt_key) AS receipts FROM root_metadata'),
+        dict(name='receipt_keys',sql='SELECT DISTINCT receipt_key FROM root_metadata ORDER BY receipt_key')])
     actual=pq.read_metadata(destination).num_rows
     if actual!=result['source_counts'][0]['rows']:
         raise ValueError('Receipt metadata projection changed the source line population')
-    (work/'metadata.json').write_text(json.dumps(dict(version=1,rows=actual,
-        source=result['source_counts'][0],file=file_pin(destination)),indent=2)+'\n')
+    return destination,result['source_counts'][0],[row['receipt_key'] for row in result['receipt_keys']]
+
+
+def _producer(engine):
+    return dict(sha256=sha256(Path(__file__).read_bytes()).hexdigest(),
+                source_revision=engine.source_revision,binary_sha256=engine.binary_sha256)
+
+
+def _sources(counter=None,files=None):
+    if counter is not None:
+        path=Path(counter).resolve()
+        paths=sorted(path.glob('*.parquet')) if path.is_dir() else [path]
+    else:
+        paths=sorted({Path(item['path']).resolve() for item in files})
+    if not paths:
+        raise ValueError('Receipt metadata requires pinned source files')
+    return [dict(path=str(path),**file_pin(path)) for path in paths]
+
+
+def _write_descriptor(root,*,engine,producer,source,outputs,keys,batch_size):
+    if producer!=_producer(engine):
+        raise ValueError('Receipt metadata producer changed during projection')
+    files=[dict(path=path.relative_to(root).as_posix(),**file_pin(path),
+                rows=pq.read_metadata(path).num_rows) for path in sorted(outputs)]
+    descriptor=dict(version=2,kind='receipt-metadata',producer=producer,source=source,
+        selection=dict(receipt_keys=keys,receipt_batch_size=batch_size),
+        rows=sum(item['rows'] for item in files),receipts=len(keys),files=files)
+    (root/'metadata.json').write_text(json.dumps(descriptor,indent=2,sort_keys=True)+'\n')
+
+
+def compact(*,engine,work,counter=None,files=None):
+    """Project a direct receipt set or one counter to one pinned Parquet file."""
+    root=Path(work).resolve()
+    producer=_producer(engine)
+    source=_sources(counter,files)
+    destination,counts,keys=_compact(engine=engine,work=root,counter=counter,files=files)
+    _write_descriptor(root,engine=engine,producer=producer,source=source,
+                      outputs=[destination],keys=keys,batch_size=None)
     return destination
+
+
+def compact_counter(counter,*,engine,work,receipt_keys=None,receipt_batch_size=64):
+    """Orchestrate bounded filename lists; native jobs interpret and export rows.
+
+    Each batch filters keys before JSON extraction. A giant individual receipt
+    can still exceed native limits. Without Parquet predicate pruning, B batches
+    can scan O(B*N) source rows; no application row join/export replaces that scan.
+    """
+    if type(receipt_batch_size) is not int or not 1<=receipt_batch_size<=1024:
+        raise ValueError('Receipt batch size must be an integer from 1 to 1024')
+    if receipt_keys is not None:
+        receipt_keys=list(receipt_keys)
+        if len(receipt_keys)!=len(set(receipt_keys)):
+            raise ValueError('Receipt selection requires unique keys')
+        for key in receipt_keys:
+            validate_key(key)
+            if not key.startswith('receipts/'):
+                raise ValueError('Receipt selection requires receipt keys')
+    root=Path(work).resolve();root.mkdir(parents=True,exist_ok=False)
+    producer=_producer(engine);source=_sources(counter=counter)
+    selection=root/'selection';selection.mkdir()
+    inputs=[dict(name='source',kind='parquet',path=str(Path(counter).resolve()))]
+    where=''
+    if receipt_keys is not None:
+        inputs.append(json_input(selection,'requested',[dict(receipt_key=key) for key in receipt_keys],receipt_key='Utf8'))
+        where=' WHERE __receipt_key IN (SELECT receipt_key FROM requested)'
+    queries=[dict(name='keys',sql='SELECT __receipt_key AS receipt_key,count(*) AS rows FROM source'+where+
+                  ' GROUP BY __receipt_key ORDER BY __receipt_key')]
+    if receipt_keys is not None:
+        queries.append(dict(name='missing',sql='''SELECT r.receipt_key FROM requested r LEFT ANTI JOIN source s
+            ON r.receipt_key=s.__receipt_key LIMIT 1'''))
+    result=run_job(selection,engine,inputs=inputs,steps=[],outputs=[],queries=queries)
+    if result.get('missing'):
+        raise ValueError('Requested receipt key is not present in counter')
+    keys=[row['receipt_key'] for row in result['keys']]
+    for key in keys:
+        validate_key(key)
+        if not key.startswith('receipts/'):
+            raise ValueError('Counter contains an invalid receipt key')
+    parts=root/'parts';parts.mkdir();jobs=root/'jobs';jobs.mkdir()
+    batches=[keys[index:index+receipt_batch_size] for index in range(0,len(keys),receipt_batch_size)] or [[]]
+    outputs=[];projected=0
+    for index,batch in enumerate(batches):
+        output,counts,actual_keys=_compact(counter=counter,engine=engine,work=jobs/f'batch-{index:06}',
+            receipt_keys=batch,destination=parts/f'part-{index:06}.parquet')
+        if actual_keys!=batch:
+            raise ValueError('Receipt metadata batch changed its source key population')
+        outputs.append(output);projected+=counts['rows']
+    if projected!=sum(row['rows'] for row in result['keys']):
+        raise ValueError('Receipt metadata batches changed the source line population')
+    _write_descriptor(root,engine=engine,producer=producer,source=source,
+                      outputs=outputs,keys=keys,batch_size=receipt_batch_size)
+    return parts
+
+
+def validate_metadata(path,engine=None):
+    """Validate generated metadata pins/version without reopening raw sources."""
+    path=Path(path).resolve();root=path.parent
+    descriptor=json.loads((root/'metadata.json').read_text())
+    if descriptor.get('version')!=2 or descriptor.get('kind')!='receipt-metadata':
+        raise ValueError('Unsupported receipt metadata descriptor')
+    producer=descriptor.get('producer',{})
+    if producer.get('sha256')!=sha256(Path(__file__).read_bytes()).hexdigest():
+        raise ValueError('Receipt metadata producer does not match current definition')
+    if engine is not None and any(producer.get(name)!=getattr(engine,name)
+                                   for name in ('source_revision','binary_sha256')):
+        raise ValueError('Receipt metadata runtime does not match current engine')
+    size=descriptor.get('selection',{}).get('receipt_batch_size')
+    if path.is_dir() and (type(size) is not int or not 1<=size<=1024):
+        raise ValueError('Invalid receipt metadata batch bound')
+    files=descriptor.get('files',[])
+    if not files or [item['path'] for item in files]!=sorted(item['path'] for item in files):
+        raise ValueError('Receipt metadata files must be explicitly sorted')
+    actual=sorted(path.iterdir()) if path.is_dir() else [path]
+    declared=[];rows=0
+    for item in files:
+        relative=Path(item['path']);part=root/relative
+        if relative.is_absolute() or '..' in relative.parts or part.is_symlink() or not part.resolve().is_relative_to(root):
+            raise ValueError('Unsafe receipt metadata part path')
+        if file_pin(part)!={key:item[key] for key in ('sha256','size')}:
+            raise ValueError('Receipt metadata part pin changed')
+        count=pq.read_metadata(part).num_rows
+        if count!=item['rows']:
+            raise ValueError('Receipt metadata part row count changed')
+        declared.append(part);rows+=count
+    if declared!=actual or rows!=descriptor.get('rows'):
+        raise ValueError('Receipt metadata part inventory changed')
+    keys=descriptor.get('selection',{}).get('receipt_keys',[])
+    if len(keys)!=len(set(keys)) or len(keys)!=descriptor.get('receipts'):
+        raise ValueError('Receipt metadata receipt-key count changed')
+    return descriptor
