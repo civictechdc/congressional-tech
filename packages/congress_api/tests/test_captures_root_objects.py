@@ -103,10 +103,11 @@ def test_missing_typed_root_prior_is_narrowed_before_payload_fanout(tmp_path):
     raw['prior_attempts'][0]['content']={'body':marker*5000}
     counter=minimal_counter(tmp_path,[(key,raw)],True)
     output=compact(counter=counter,engine=native(),work=tmp_path/'metadata')
-    [metadata]=pq.read_table(output).to_pylist()
-    assert marker not in metadata['line'] and marker not in metadata['record_json']
-    assert len(metadata['line'].encode())<32768
-    line=json.loads(metadata['line'])
+    narrow=pq.read_table(output)
+    [metadata]=narrow.to_pylist()
+    assert marker not in str(metadata['line']) and marker not in str(metadata['record_values'])
+    assert narrow['line'].nbytes<32768
+    line=metadata['line']
     prior=line.get('prior_attempts')
     if prior is None:
         prior=json.loads(line['_ingest_prior_attempts_json'])

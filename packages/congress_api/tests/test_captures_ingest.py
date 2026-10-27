@@ -285,9 +285,10 @@ def test_payload_is_removed_before_capture_fanout(tmp_path):
     metadata=compact(files=[dict(key='receipts/documents/2026-10-20/run.jsonl.gz',
         path=str(tmp_path/'input/receipt.gz'))],engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
         work=tmp_path/'inspect-metadata')
-    [row]=pq.read_table(metadata).to_pylist()
-    assert marker not in row['line'] and marker not in row['record_json']
-    assert len(row['record_json'].encode())<32768
+    narrow=pq.read_table(metadata)
+    [row]=narrow.to_pylist()
+    assert marker not in str(row['line']) and marker not in str(row['record_values'])
+    assert narrow['record_values'].nbytes<32768
     assert pq.read_metadata(stage/'captures.parquet').num_rows==100
 
 
