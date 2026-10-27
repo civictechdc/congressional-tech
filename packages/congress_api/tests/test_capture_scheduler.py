@@ -31,12 +31,17 @@ def release(tmp_path, rows, *, entries=None):
     policy=dict(version=1,entries=entries if entries is not None else [dict(family='documents',
         patterns=[r'https://fixture\.test/[^#]*'],exclusions=[])])
     (root/'capture_scope.json').write_text(json.dumps(policy))
-    files=[]
-    for name in ['url_state.parquet','capture_scope.json']:
-        data=(root/name).read_bytes()
-        files.append(dict(name=name,sha256=hashlib.sha256(data).hexdigest(),size=len(data),rows=len(rows) if name.endswith('parquet') else None))
-    identity=hashlib.sha256(json.dumps([1,[[f['name'],f['sha256'],f['size'],f['rows']] for f in files]],separators=(',',':')).encode()).hexdigest()
-    (root/'manifest.json').write_text(json.dumps(dict(schema_version=1,release_id=identity,files=files)))
+    sql={}
+    project=Path(__file__).resolve().parents[3]
+    for key,name in [('url_normalized','url-normalized.sql'),('url_keys','url-keys.sql')]:
+        text=(project/'model/sql'/name).read_text()
+        sql[key]=dict(text=text,sha256=hashlib.sha256(text.encode()).hexdigest())
+    (root/'capture_profile.json').write_text(json.dumps(dict(version=1,engine_revision=engine().source_revision,
+        sql=sql,url_rules=json.loads((project/'model/registries/url-rules.json').read_text()),
+        url_variants_file='url_variants.parquet')))
+    pq.write_table(pa.Table.from_pylist([],schema=pa.schema([('canonical_url',pa.string()),
+        ('variant_url',pa.string())])),root/'url_variants.parquet')
+    write_manifest(root)
     # Finite authored identity adapter: this checks scheduler joins, not E's
     # normalization algorithm or its registry qualification. Unknown URLs have
     # no key and therefore refuse the native identity contract.
@@ -50,6 +55,17 @@ def release(tmp_path, rows, *, entries=None):
     return root
 
 
+def write_manifest(root):
+    files=[]
+    for name in ['url_state.parquet','capture_scope.json','capture_profile.json','url_variants.parquet']:
+        data=(root/name).read_bytes()
+        files.append(dict(name=name,sha256=hashlib.sha256(data).hexdigest(),size=len(data),
+            rows=pq.read_metadata(root/name).num_rows if name.endswith('parquet') else None))
+    identity=hashlib.sha256(json.dumps([1,[[f[k] for k in ('name','sha256','size','rows')] for f in files]],
+        separators=(',',':')).encode()).hexdigest()
+    (root/'manifest.json').write_text(json.dumps(dict(schema_version=1,release_id=identity,files=files)))
+
+
 ASOF='2026-10-28T00:00:00Z'
 IDENTITY=dict(job='capture-scheduler-fixture',commit='a'*40,lockfile_digest='b'*64)
 LIMITS=ZipLimits(max_archive_bytes=1024,max_member_bytes=1024,max_total_bytes=2048,
@@ -59,7 +75,6 @@ LIMITS=ZipLimits(max_archive_bytes=1024,max_member_bytes=1024,max_total_bytes=20
 def load(root,work):
     from congress_api.acquisition.capture_scheduler import load_release
     selected=load_release(release_root=root,work=work)
-    selected['url_keys_sql']=root/'fixture-url-keys.sql'
     return selected
 
 
@@ -258,7 +273,7 @@ def test_public_pointer_is_pinned_once_and_inputs_are_verified(tmp_path):
     session=PublicSession(root)
     selected=load_release(pointer='https://public.fixture/viewer-publications/current.json',
         session=session,work=tmp_path/'download')
-    assert len(session.calls)==4
+    assert len(session.calls)==6
     assert sum(url.endswith('current.json') for url,_ in session.calls)==1
     assert all(options['allow_redirects'] is False for _,options in session.calls)
     assert Path(selected['state']).read_bytes()==(root/'url_state.parquet').read_bytes()
@@ -267,7 +282,7 @@ def test_public_pointer_is_pinned_once_and_inputs_are_verified(tmp_path):
 def test_cli_preview_uses_local_release_without_opening_raw_storage(tmp_path,capsys):
     from congress_api.cli.capture_schedule import main
     root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)])
-    main(['--release-root',str(root),'--url-keys-sql',str(root/'fixture-url-keys.sql'),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
+    main(['--release-root',str(root),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
         '--request-budget','20','--byte-budget','1073741824','--spool-budget','1073741824',
         '--as-of',ASOF,'--work',str(tmp_path/'preview')])
     result=json.loads(capsys.readouterr().out)
@@ -383,3 +398,58 @@ def test_discovery_uses_one_bounded_shared_worker_per_format(tmp_path):
         pace=lambda *_:None,worker_factory=Worker)
     assert result['captures']==2 and len(instances)==1
     assert len(instances[0].calls)==2 and instances[0].closed
+
+
+@pytest.mark.parametrize('change',['sql_hash','engine_revision'])
+def test_release_profile_refuses_unqualified_sql_or_engine_before_planning(tmp_path,change):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    root=release(tmp_path,[])
+    path=root/'capture_profile.json';profile=json.loads(path.read_text())
+    if change=='sql_hash':profile['sql']['url_keys']['text']+=' -- changed'
+    else:profile['engine_revision']='0'*40
+    path.write_text(json.dumps(profile));write_manifest(root)
+    with pytest.raises(ValueError,match='profile|revision|SQL'):
+        selected=load(root,tmp_path/'read')
+        plan_queue(selected,engine=engine(),work=tmp_path/'plan',as_of=ASOF,request_budget=20)
+    assert not (tmp_path/'plan').exists()
+
+
+def test_public_release_rejects_authored_workspace_identity_override(tmp_path):
+    from congress_api.acquisition.capture_scheduler import load_release,plan_queue
+    root=release(tmp_path,[])
+    selected=load_release(pointer='https://public.fixture/current.json',session=PublicSession(root),work=tmp_path/'read')
+    selected['url_keys_sql']=root/'fixture-url-keys.sql'
+    with pytest.raises(ValueError,match='public|override'):
+        plan_queue(selected,engine=engine(),work=tmp_path/'plan',as_of=ASOF,request_budget=20)
+    assert not (tmp_path/'plan').exists()
+
+
+def test_active_release_variant_keeps_future_seed_alias_out_of_queue(tmp_path):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=1,
+        next_attempt_at=datetime(2027,1,1,tzinfo=timezone.utc))])
+    pq.write_table(pa.Table.from_pylist([dict(canonical_url='https://fixture.test/a',
+        variant_url='https://fixture.test/b')]),root/'url_variants.parquet')
+    write_manifest(root)
+    seed=tmp_path/'seed.json';seed.write_text(json.dumps(dict(url='https://fixture.test/b')))
+    result=plan_queue(load(root,tmp_path/'read'),engine=engine(),work=tmp_path/'plan',as_of=ASOF,
+        request_budget=20,seed_inventories=[seed])
+    assert pq.read_table(result['queue']).num_rows==0
+
+
+def test_actual_parser_worker_discovers_and_captures_local_link(tmp_path):
+    result,adapter,raw=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],{
+        'https://fixture.test/a':(200,b'<html><a href="/b">b</a></html>',{'content-type':'text/html'}),
+        'https://fixture.test/b':(200,b'%PDF-1.7\n%%EOF',{})},discover=None)
+    assert adapter.calls==['https://fixture.test/a','https://fixture.test/b']
+    assert result['discovery_jobs']==1 and result['discovery_errors']==[]
+    assert result['captures']==2 and len(list(raw.rglob('*.jsonl.gz')))==2
+
+
+def test_public_cli_rejects_authored_override_before_work_or_network(tmp_path):
+    from congress_api.cli.capture_schedule import main
+    with pytest.raises(SystemExit):
+        main(['--pointer','https://public.fixture/current.json','--url-keys-sql',str(tmp_path/'workspace.sql'),
+            '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--request-budget','20',
+            '--byte-budget','1000','--spool-budget','1000','--work',str(tmp_path/'work')])
+    assert not (tmp_path/'work').exists()
