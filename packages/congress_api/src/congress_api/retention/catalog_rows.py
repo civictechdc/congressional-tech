@@ -4,6 +4,7 @@ A logical row may exceed a native chunk. Only explicit full logical reads
 reassemble it; projected core reads never fetch occurrence data.
 """
 
+from bisect import bisect_left, bisect_right
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 import base64
@@ -482,13 +483,17 @@ class CatalogRows:
         return core, descriptor
 
     def _core(self, pin, schema):
+        # The content key detects caller mutations; Arrow schemas are immutable.
+        # Reuse validation only for the exact admitted descriptor and schema.
+        key = sha256(encoded(pin)).hexdigest()
+        if self._cached and self._cached[0] == key:
+            if not self._cached[3].equals(schema, check_metadata=True):
+                raise ValueError("Catalog occurrence logical schema differs")
+            return self._cached[1], self._cached[2]
         checked = self._checked(pin, schema)
         if checked is None:
             return None
         release, descriptor = checked
-        key = sha256(encoded(pin)).hexdigest()
-        if self._cached and self._cached[0] == key:
-            return self._cached[1], descriptor
         empty = pa.Table.from_batches([], schema=schema)
         physical = core_table(empty).schema
         tables = []
@@ -531,7 +536,7 @@ class CatalogRows:
         self._owner_positions = {
             identity: position for position, identity in enumerate(ids)
         }
-        self._cached = key, table
+        self._cached = key, table, descriptor, schema
         return table, descriptor
 
     def _parts(self, descriptor, row=None):
@@ -665,8 +670,8 @@ class CatalogRows:
         expected = 0
         for part in self._parts(descriptor, row):
             cache_key = sha256(encoded(part)).hexdigest()
-            values = self._children.get(cache_key)
-            if values is None:
+            cached = self._children.get(cache_key)
+            if cached is None:
                 batches = []
                 rows = size = 0
                 with self.native.source_batches(
@@ -713,13 +718,17 @@ class CatalogRows:
                     )
                 ):
                     raise ValueError("Catalog occurrence child owner differs")
-                self._children[cache_key] = values
+                # Retain the validated sorted positions with the same bounded
+                # two-part cache. Owner lookups now slice instead of scanning.
+                cached = values, owner_rows
+                self._children[cache_key] = cached
                 if len(self._children) > 2:
                     self._children.popitem(last=False)
             self._children.move_to_end(cache_key)
-            selected = values.filter(
-                pc.equal(values["owner_row"], row)
-            ).combine_chunks()
+            values, owner_rows = cached
+            start = bisect_left(owner_rows, row)
+            stop = bisect_right(owner_rows, row, lo=start)
+            selected = values.slice(start, stop - start)
             orders = selected["occurrence_order"].to_pylist()
             if (
                 orders != list(range(expected, expected + len(selected)))

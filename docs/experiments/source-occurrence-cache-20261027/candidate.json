@@ -1,0 +1,81 @@
+{
+  "seconds": 30.59942533299909,
+  "counters": {
+    "schema_decodes": 5,
+    "descriptor_checks": 1,
+    "owner_comparison_rows": 0
+  },
+  "native_reads": [
+    0,
+    1
+  ],
+  "rows": 6614,
+  "observations": 20234,
+  "files": {
+    "releases/08613783e9c816917f7ea7f1ca797219/b3b9869d4f6a5dea938d8f6e39870e9b/viewer-v2/occurrences.parquet": {
+      "bytes": 1283698,
+      "sha256": "08613783e9c816917f7ea7f1ca797219b3b9869d4f6a5dea938d8f6e39870e9b"
+    },
+    "releases/35b125072ca863ae784ac1e9e3caadfb/f5b669644c40191def2175ff5893a337/viewer-v2/observation_rows.bin": {
+      "bytes": 30306,
+      "sha256": "35b125072ca863ae784ac1e9e3caadfbf5b669644c40191def2175ff5893a337"
+    },
+    "releases/4a5231c7a187b3e6b355169cefbf310d/b906ffd50e6e75862496fe4aae4cc295/viewer-v2/details.parquet": {
+      "bytes": 1008457,
+      "sha256": "4a5231c7a187b3e6b355169cefbf310db906ffd50e6e75862496fe4aae4cc295"
+    },
+    "releases/6b012b602e4e03b65a3b70ef20403c88/f41e7089feab72a8535148de0ec1473a/viewer-v2/filenames.parquet": {
+      "bytes": 2291297,
+      "sha256": "6b012b602e4e03b65a3b70ef20403c88f41e7089feab72a8535148de0ec1473a"
+    },
+    "releases/a12f6612100217731f1987d42d9b8fb0/3c5629cab113a7d21e58fa00675130fa/viewer-v2/observations.bin": {
+      "bytes": 835833,
+      "sha256": "a12f6612100217731f1987d42d9b8fb03c5629cab113a7d21e58fa00675130fa"
+    },
+    "releases/eae60f21eb8636bdfffe54b13d4a72bc/ce1174bb11955905bb18e792b60c129e/viewer-v2/observation_index.json": {
+      "bytes": 2575,
+      "sha256": "eae60f21eb8636bdfffe54b13d4a72bcce1174bb11955905bb18e792b60c129e"
+    }
+  },
+  "source_sha256": "3a04699fc8504532918dab36c9fa3a4010e1c5866589bdd78933064d0316b3d4",
+  "inputs": [
+    {
+      "file": "native-input-0.arrow",
+      "sha256": "421819d246727a26ecb29acd816ba71b3b424522a71279f334c5107efd7a3038"
+    },
+    {
+      "file": "native-input-1.arrow",
+      "sha256": "9321df0a35e3dc747648a41563bdac0a91ff29c0de2d0bb0e667f30e625d51e3"
+    }
+  ],
+  "metadata": "Reconstructed one-part directory and descriptor binding; exact retained native Arrow bytes; no network calls",
+  "metrics": {
+    "native_source_leaves_read": 1,
+    "native_source_rows_read": 6614,
+    "serialized_values": 26848,
+    "max_serialized_value_bytes": 73498,
+    "max_reference_list_python_estimate": 29056,
+    "max_observation_part_arrow_bytes": 1375727,
+    "max_batch_arrow_bytes": 1417576,
+    "max_admitted_buffer_bytes": 15560855,
+    "max_python_json_estimate": 27855912,
+    "max_occurrence_pending_python_bytes": 67108380,
+    "observation_serializations": 20234,
+    "dedup_entries": 20183,
+    "dedup_sqlite_cache_bytes": 8388608,
+    "dedup_disk_bytes": 901120,
+    "decoded_parts": 23,
+    "max_decoded_part_bytes": 1048506,
+    "verification_lookups": 20234,
+    "max_detail_incoming_buffer_bytes": 243739,
+    "max_detail_staged_arrow_bytes": 5435710,
+    "max_detail_pending_buffer_bytes": 5454154,
+    "max_detail_staged_buffer_bytes": 5454154,
+    "max_physical_group_bytes": 2691155,
+    "max_planned_native_rows": 128,
+    "min_planned_native_rows": 128,
+    "max_native_batch_arrow_bytes": 243391,
+    "max_native_batch_buffer_bytes": 243739,
+    "max_native_batch_rows": 128
+  }
+}
