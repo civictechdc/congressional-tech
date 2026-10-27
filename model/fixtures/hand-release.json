@@ -11,13 +11,13 @@
   ],
   "meetings": [{"event_id": 118001, "chamber": "house", "title": "Transportation infrastructure hearing", "meeting_date": "2024-05-01"}],
   "expected": {
-    "list_order": ["alternate", "excerpt", "hidden", "recovered", "version-one", "version-two", "substitute"],
+    "list_order": ["alternate", "excerpt", "hidden", "version-one", "version-two", "recovered", "substitute"],
     "list_rows": 7,
     "visible_rows": 6,
     "hidden_link_resolves": true,
     "body_17_link_list_row": 0,
     "alternate_formats": ["pdf", "xml"],
-    "version_lookup_rows": [4, 5],
+    "version_lookup_rows": [3, 4],
     "recovery_kinds": ["requested_content_in_official_hearing", "recovered_document", "official_substitute"],
     "meeting_title": "Transportation infrastructure hearing"
   }

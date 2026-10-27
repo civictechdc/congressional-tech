@@ -47,7 +47,7 @@ def test_hand_release_covers_the_reader_outcomes(engine, tmp_path):
     assert len(rows) == expected['list_rows']
     assert sum(not row['hidden'] for row in rows) == expected['visible_rows']
     assert [row['filename'] for row in rows] == ['Agenda.pdf', 'Hearing excerpt.pdf', 'Hidden.pdf',
-        'Recovered.pdf', 'Record.pdf', 'Record.pdf', 'Substitute.pdf']
+        'Record.pdf', 'Record.pdf', 'Recovered.pdf', 'Substitute.pdf']
     assert 'document_id' not in rows[0]
     details = pq.read_table(output / 'detail.parquet').to_pylist()
     assert [item['format'] for item in details[0]['alternates']] == ['xml']
