@@ -242,15 +242,31 @@ def test_owned_retained_link_reuses_hash_and_bytes_and_invalidates_on_mutation(t
         VerifiedFile(saved).require(destination)
 
 
-def test_proven_remote_file_skips_sha_pass_but_keeps_transport_md5(tmp_path, monkeypatch):
+def test_proven_remote_file_checks_sha_and_md5_in_one_preflight_read(tmp_path, monkeypatch):
     source = tmp_path / 'source'; source.write_bytes(b'catalog' * 100)
     proof = file_identity(source)
     client = Client(); store = R2Store(client, 'bucket')
-    monkeypatch.setattr(hashlib, 'sha256', lambda *a, **kw: pytest.fail('duplicate SHA-256 pass'))
+    original_open = Path.open
+    read_bytes = []
+    class CountedReader:
+        def __init__(self, stream): self.stream = stream
+        def __getattr__(self, name): return getattr(self.stream, name)
+        def __enter__(self): return self
+        def __exit__(self, *args): self.stream.close()
+        def read(self, *args):
+            chunk = self.stream.read(*args)
+            read_bytes.append(len(chunk))
+            return chunk
+    def counted_open(path, *args, **kwargs):
+        stream = original_open(path, *args, **kwargs)
+        return CountedReader(stream) if path == source and args == ('rb',) else stream
+    monkeypatch.setattr(Path, 'open', counted_open)
     assert store.put_derived_file(KEY, source, expected=proof)
+    # One shared SHA/MD5 preflight read, then the service consumes the upload.
+    assert sum(read_bytes) == 2 * len(b'catalog' * 100)
     assert client.data == b'catalog' * 100
     source.write_bytes(b'changed' * 100)
-    with pytest.raises(ValueError, match='custody'):
+    with pytest.raises(ValueError, match='custody|checksum'):
         store.put_derived_file(KEY, source, expected=proof)
     assert len(client.puts) == 1
 
@@ -316,13 +332,15 @@ def test_remote_snapshot_history_handoff_preserves_proof_and_rechecks_restored_f
         monkeypatch.setattr(hashlib, 'sha256', Counted)
         key = f"catalog-history/sha256/{proof['sha256']}/document-filenames.parquet"
         if handoff.endswith('changed'):
-            with pytest.raises(ValueError, match='checksum' if handoff == 'serialized_changed' else 'custody'):
+            with pytest.raises(ValueError, match='checksum' if handoff == 'serialized_changed' else 'custody|checksum'):
                 store.put_derived_file(key, path, expected=expected)
             assert not client.puts
         else:
             assert store.put_derived_file(key, path, expected=expected)
             assert client.data == payloads[0]
-        assert sum(hashed_bytes) == (len(payloads[0]) if handoff.startswith('serialized') else 0)
+        # Actual bytes are SHA-checked in the transport MD5 pass. A changed
+        # issued file may instead be rejected by its metadata before that read.
+        assert sum(hashed_bytes) in ({0, len(payloads[0])} if handoff == 'changed' else {len(payloads[0])})
     assert not client.responses and all(response['Body'].closed for response in responses)
 
 
@@ -351,7 +369,7 @@ def test_remote_read_to_owned_retention_reuses_only_issued_file_custody(tmp_path
     monkeypatch.setattr(files, 'sha256', Counted)
     destination = tmp_path / 'retained' / 'documents.parquet'
     if handoff.endswith('changed'):
-        with pytest.raises(ValueError, match='checksum' if handoff == 'serialized_changed' else 'custody'):
+        with pytest.raises(ValueError, match='checksum' if handoff == 'serialized_changed' else 'custody|checksum'):
             files.retain_verified_file(source, destination, expected=expected, key=KEY)
         assert not destination.exists()
     else:
@@ -362,3 +380,25 @@ def test_remote_read_to_owned_retention_reuses_only_issued_file_custody(tmp_path
         if handoff == 'issued':
             assert retained['version'] == 'source-version'
     assert sum(hashed_bytes) == (len(data) if handoff.startswith('serialized') else 0)
+
+
+def test_derived_upload_rejects_same_tick_same_size_mutation_before_put(tmp_path, monkeypatch):
+    import congress_shared.custody as custody
+    import congress_api.retention.derived_files as files
+
+    source = tmp_path / "source"
+    source.write_bytes(b"catalog" * 100)
+    original_identity = custody.custody_identity
+    def unchanged_timestamps(path):
+        value = list(original_identity(path))
+        value[3:5] = [1, 1]
+        return tuple(value)
+    monkeypatch.setattr(custody, "custody_identity", unchanged_timestamps)
+    monkeypatch.setattr(files, "custody_identity", unchanged_timestamps)
+    proof = file_identity(source)
+    source.write_bytes(b"changed" * 100)
+    proof.require(source)  # The filesystem metadata cannot distinguish these bytes.
+    client = Client()
+    with pytest.raises(ValueError, match="checksum"):
+        R2Store(client, "bucket").put_derived_file(KEY, source, expected=proof)
+    assert client.puts == []
