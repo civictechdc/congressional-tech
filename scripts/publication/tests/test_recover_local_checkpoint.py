@@ -141,3 +141,127 @@ def test_main_writes_structured_failure_report(tmp_path,monkeypatch):
     with pytest.raises(FileNotFoundError):tool.main()
     result=json.loads(report.read_bytes())
     assert result['status']=='failed' and result['command']=='local-checkpoint-resume'
+
+
+def old_compact_adoption(tmp_path,monkeypatch):
+    f=fixture(tmp_path,monkeypatch)
+    f.code['target_revision']=tool.COMPACT_RUNTIME
+    adopt(f)
+    path=f.root/'continuation.json'
+    c=json.loads(path.read_bytes())
+    marker=c['binding']['checkpoint_reuse']
+    marker['recovery_tool_sha256']=tool.ORIGINAL_TOOL_SHA256
+    tool.save(f.root/tool.RECEIPT,marker);tool.save(path,c)
+    result=json.loads((f.root/'checkpoint-adoption-result.json').read_bytes())
+    result['receipt_sha256']=tool.digest(f.root/tool.RECEIPT)
+    tool.save(f.root/'checkpoint-adoption-result.json',result)
+    with sqlite3.connect(f.root/'publication.renderer-upgrade/stages.sqlite') as db:
+        renderer=json.loads(db.execute('SELECT binding FROM build').fetchone()[0])
+        renderer['preparation']=c['binding']
+        db.execute('UPDATE build SET binding=?',(tool.canonical_json_bytes(renderer).decode(),))
+        db.execute('CREATE TABLE assets(path TEXT,bytes INTEGER,sha256 TEXT)')
+        db.execute('INSERT INTO assets VALUES (?,?,?)',('releases/a/file.bin',27,'original-asset-hash'))
+        db.execute("INSERT INTO progress VALUES ('source-route:completed-leaf','{\"retained\":true}')")
+        db.execute("INSERT INTO progress VALUES ('component-entries','null')")
+    f.optimized_code=dict(f.code,compact_implementation='new',target_implementation='optimized',
+                          target_revision='optimized-head',reviewed_source_cache_revision=tool.SOURCE_CACHE)
+    f.optimized_identity=dict(f.identity,implementation='optimized')
+    f.optimized_requirements=dict(f.requirements,implementation='optimized-renderer')
+    return f
+
+
+def rebind(f,**changes):
+    options=dict(authorization='User authorized exact source-cache checkpoint reuse',
+                 code=f.optimized_code,identity=f.optimized_identity,requirements=f.optimized_requirements)
+    options.update(changes)
+    return tool.rebind_copy(f.root,**options)
+
+
+def states(f):
+    with sqlite3.connect(f.root/'publication.renderer-upgrade/stages.sqlite') as db:
+        return {name:db.execute('SELECT * FROM '+name).fetchall() for name in ('progress','assets','chunks','chunk_assets')}
+
+
+def test_rebind_preserves_all_tasks_assets_references_and_origin(tmp_path,monkeypatch):
+    f=old_compact_adoption(tmp_path,monkeypatch)
+    before=states(f)
+    previous=json.loads((f.root/'continuation.json').read_bytes())['binding']
+    result=rebind(f)
+    assert result['status']=='rebound_local_checkpoint' and result['reused_chunks']==2
+    assert states(f)==before
+    binding=json.loads((f.root/'continuation.json').read_bytes())['binding']
+    marker=binding['checkpoint_reuse']
+    assert binding['provenance_revision']=='optimized-head'
+    assert marker['previous_preparation_binding']==previous
+    assert marker['previous_preparation_binding']['checkpoint_reuse']['original_preparation_binding']['provenance_revision']==tool.ORIGIN
+    assert marker['code']['reviewed_source_cache_revision']==tool.SOURCE_CACHE
+    assert marker['reused_tasks']==sorted(row[0] for row in before['progress'])
+    with sqlite3.connect(f.root/'publication.renderer-upgrade/stages.sqlite') as db:
+        raw,created=db.execute('SELECT binding,created FROM build').fetchone()
+        renderer=json.loads(raw)
+        assert renderer['preparation']==binding and created=='original-created'
+        assert renderer['requirements']==f.optimized_requirements
+    with tool.authorized_continuation(f.root):
+        calculated=dict(binding);calculated.pop('checkpoint_reuse')
+        assert tool.attempt.Continuation(f.root,calculated,resume=True).value['binding']==binding
+
+
+@pytest.mark.parametrize('damage',['accepted_phase','receipt','manifest','finished','old_code',
+                                   'old_marker','catalog','dependencies','policy','unreviewed_code'])
+def test_rebind_refuses_changed_or_accepted_context(tmp_path,monkeypatch,damage):
+    f=old_compact_adoption(tmp_path,monkeypatch)
+    options={}
+    if damage=='accepted_phase':
+        p=f.root/'continuation.json';v=json.loads(p.read_bytes());v['phases']['prepared']={};tool.save(p,v)
+    elif damage=='receipt':tool.save(f.root/'preparation.json',{})
+    elif damage=='manifest':tool.save(f.root/'publication/manifest.json',{})
+    elif damage=='finished':
+        with sqlite3.connect(f.root/'publication.renderer-upgrade/stages.sqlite') as db:db.execute("INSERT INTO progress VALUES ('finished','{}')")
+    elif damage=='old_code':
+        p=f.root/'continuation.json';v=json.loads(p.read_bytes());v['binding']['provenance_revision']='other';tool.save(p,v)
+    elif damage=='old_marker':
+        p=f.root/tool.RECEIPT;v=json.loads(p.read_bytes());v['authorization']='altered';tool.save(p,v)
+    elif damage=='catalog':
+        with sqlite3.connect(f.root/'publication.renderer-upgrade/stages.sqlite') as db:
+            v=json.loads(db.execute('SELECT binding FROM build').fetchone()[0]);v['source']['selector_sha256']='other'
+            db.execute('UPDATE build SET binding=?',(json.dumps(v),))
+    elif damage=='dependencies':options['identity']=dict(f.optimized_identity,dependencies='other')
+    elif damage=='policy':options['requirements']=dict(f.optimized_requirements,policy={'different':1})
+    elif damage=='unreviewed_code':options['code']=dict(f.optimized_code,reviewed_source_cache_revision='other')
+    before=states(f)
+    with pytest.raises(ValueError):rebind(f,**options)
+    assert states(f)==before
+    assert not (f.root/'checkpoint-rebind.json').exists()
+
+
+def test_rebind_cli_refuses_changed_native_execution(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    from congress_api.retention.docspec import NativeDatasets
+    f=old_compact_adoption(tmp_path,monkeypatch)
+    executable=tmp_path/'different-native';executable.write_bytes(b'different native bytes')
+    monkeypatch.setattr(NativeDatasets,'from_config',lambda *args:SimpleNamespace(execution_files=lambda:[executable]))
+    report=tmp_path/'native-refusal.json'
+    monkeypatch.setattr('sys.argv',['recover_local_checkpoint.py','rebind','--directory',str(f.root),
+        '--authorization','authorized','--native-config',str(tmp_path/'config.json'),
+        '--metadata-cache',str(tmp_path/'cache'),'--report',str(report)])
+    before=states(f)
+    with pytest.raises(ValueError,match='Native executable/configuration'):
+        tool.main()
+    assert states(f)==before
+    assert json.loads(report.read_bytes())['status']=='failed'
+
+
+def test_rebind_preserves_arbitrary_completed_unaccepted_stages(tmp_path,monkeypatch):
+    f=old_compact_adoption(tmp_path,monkeypatch)
+    with sqlite3.connect(f.root/'publication.renderer-upgrade/stages.sqlite') as db:
+        db.executemany('INSERT INTO progress VALUES (?,?)',[
+            ('stage:component_preparation','null'),
+            ('stage:component_metadata','{"path":"retained-component-root","rows":2}'),
+            ('stage:source_preparation','{"path":"retained-source-root","rows":2}'),
+            ('stage:browse_preparation','{"path":"retained-browse-root","rows":2}')])
+    before=states(f)
+    result=rebind(f)
+    assert states(f)==before
+    assert result['preserved_state']['progress']['rows']==len(before['progress'])
+    bound=json.loads((f.root/'continuation.json').read_bytes())['binding']
+    assert bound['checkpoint_reuse']['reused_tasks']==sorted(row[0] for row in before['progress'])
