@@ -1995,6 +1995,51 @@
           "d"
         ]
       }
+    },
+    {
+      "id": "source-in-several-member-directories",
+      "files": [
+        {
+          "source_id": "a",
+          "body_sha": "a",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "container/a/",
+          "stem": "report",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "container/b/",
+          "stem": "report",
+          "is_real_file": true
+        }
+      ],
+      "extra_directories": [
+        {
+          "source_id": "a",
+          "directory_key": "container/b/",
+          "stem": "report"
+        }
+      ],
+      "publisher_links": [],
+      "expected": {
+        "components": [
+          [
+            "a",
+            "x"
+          ]
+        ]
+      }
     }
   ],
   "links": [
