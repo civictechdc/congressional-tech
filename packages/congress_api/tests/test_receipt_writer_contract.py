@@ -93,3 +93,36 @@ def test_error_codes_cannot_contain_paths_or_exception_messages(tmp_path):
                          write_date='2026-10-27',archive_limits=None)
     with pytest.raises(ValueError,match='error code'):writer.write(FetchResult(a),family='documents')
     assert not root.exists()
+
+
+@pytest.mark.parametrize(('status','headers'),[(206,[]),(200,[{'name':'Content-Range','value':'bytes 0-1/10'}])])
+def test_provider_partial_response_stays_incomplete_in_published_receipt(tmp_path,status,headers):
+    import base64
+    from congress_api.acquisition.fetcher import Fetcher
+    from congress_api.models.raw_fetch import Transfer
+    from congress_api.transport.raw_adapters import ProviderAdapter
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    class Direct:
+        def hop(self,url,destination,**kwargs):
+            destination.write_bytes(b'cut off direct body')
+            return Transfer(destination,url,200,{},False,'body_error')
+    class Response:
+        status_code=200
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def iter_content(self,chunk_size):
+            yield json.dumps({'url':URL,'statusCode':status,'httpResponseHeaders':headers,
+                              'httpResponseBody':base64.b64encode(b'ab').decode()}).encode()
+    fetcher=Fetcher(scope=lambda url:url==URL,direct=Direct(),provider=ProviderAdapter(lambda _:Response()),
+                    pace=lambda *args:None,directory=tmp_path/'spool',spool_limit=5000)
+    result=fetcher.fetch(URL)
+    root=tmp_path/'raw'
+    writer=ReceiptWriter(BodyStore(LocalAdapter(root)),identity=WRITER,run_id='run',
+                         write_date='2026-10-27',archive_limits=None)
+    key,line=writer.write(result,family='documents')
+    published=json.loads(gzip.decompress((root/key).read_bytes()))
+    assert published==line and line['outcome']=='request_failed'
+    assert line['error_type']=='partial_response' and line['http_status']==status
+    assert not line['captures'][0]['complete'] and not line['captures'][1]['complete']
+    assert result.final.body.path.read_bytes()==b'ab'
