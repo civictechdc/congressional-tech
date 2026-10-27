@@ -153,3 +153,9 @@ def test_credential_after_apostrophe_in_recorded_url_is_refused(tmp_path):
     with pytest.raises(ValueError, match='Credential'):
         BodyStore(adapter).put(RECEIPT, path, 'application/x-ndjson')
     assert adapter.calls == []
+
+
+def test_recorded_suffix_resolves_the_physical_body_key():
+    from congress_api.retention.body_keys import physical_body_object_key
+    assert physical_body_object_key(KEY, 'application/pdf', stored_suffix='') == KEY
+    assert physical_body_object_key(KEY + '.gz', 'application/pdf', stored_suffix='.gz') == KEY + '.gz'

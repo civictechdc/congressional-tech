@@ -25,6 +25,8 @@ class LocalStore:
         self.root = Path(root)
         self.excluded_body_hashes = excluded_body_hashes
         self.store_uncompressed_pdfs = store_uncompressed_pdfs
+        from congress_api.retention.body_store import BodyStore, LocalAdapter
+        self.raw = BodyStore(LocalAdapter(root))
 
     def read(self, key):
         path = self.root / key

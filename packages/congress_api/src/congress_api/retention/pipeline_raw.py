@@ -159,7 +159,7 @@ class _Md5Writer:
         self.destination.flush()
 
 
-def receipt_line(item, *, run_id, writer, sha256, outcome, stored=None):
+def receipt_line(item, *, run_id, writer, sha256, outcome, stored=None, suffix=''):
     """One [[DATA-MODEL]] §5.2 fetch line for one snapshot file."""
     # A git filename is a path, never a URL query or fragment. Keep local source
     # paths out of the public record and encode URL punctuation in git names.
@@ -169,7 +169,7 @@ def receipt_line(item, *, run_id, writer, sha256, outcome, stored=None):
         pointer=['content', 'body'], attempt=0, complete=True, context_url=url,
         member_path=None, entry_index=None, expansion=None, sha256=sha256, bytes=item.size,
         media_type=media_type(item.path), sniffed_format=None, sniff_version=None, intact=None,
-        stored_suffix='', fidelity='saved-record', git_blob_sha=item.git_blob_sha,
+        stored_suffix=suffix, fidelity='saved-record', git_blob_sha=item.git_blob_sha,
     )
     if stored:
         capture.update(stored_md5=stored[0], stored_bytes=stored[1])
@@ -215,21 +215,23 @@ def archive(store, files, *, writer, run_id=None, day=None):
         for item in kept:
             if item.sha256 in known:
                 lines.append(receipt_line(item, run_id=run_id, writer=writer,
-                                          sha256=item.sha256, outcome='unchanged'))
+                                          sha256=item.sha256, outcome='unchanged',
+                                          suffix=known[item.sha256].suffix))
                 continue
             sha256, md5, stored_path, stored_bytes, encoded = stored_body(item, scratch)
             if sha256 in known:
                 outcome, stored = 'unchanged', None
             else:
-                fresh = store.put_file(
-                    body_key(sha256), stored_path, content_type=media_type(item.path),
-                    content_encoding='gzip' if encoded else None, md5=md5)
-                known[sha256] = fresh
+                result = store.raw.put_prepared(
+                    body_key(sha256), stored_path, media_type(item.path),
+                    encoding='gzip' if encoded else None)
+                fresh = result.outcome == 'stored'
+                known[sha256] = result
                 created += fresh
                 outcome, stored = ('stored', (md5.hexdigest(), stored_bytes)) if fresh \
                     else ('unchanged', None)
             lines.append(receipt_line(item, run_id=run_id, writer=writer, sha256=sha256,
-                                      outcome=outcome, stored=stored))
+                                      outcome=outcome, stored=stored, suffix=known[sha256].suffix))
             scratch.unlink(missing_ok=True)
     day = day or datetime.now(timezone.utc).date().isoformat()
     keys = receipt_keys(run_id, len(lines), day)

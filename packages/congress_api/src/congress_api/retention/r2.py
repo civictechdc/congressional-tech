@@ -149,17 +149,13 @@ class AsyncBodies:
         _configure_retries(client)
 
     async def put(self, key, data):
-        from botocore.exceptions import ClientError
+        from io import BytesIO
+        from congress_api.retention.body_store import AsyncR2Adapter, create_stored_async
         if not key.startswith('bodies/'):
             raise ValueError('Async body upload requires a body key')
-        try:
-            result = await self.client.put_object(**put_parameters(self.bucket, key, data, IfNoneMatch='*'))
-        except ClientError as error:
-            if error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
-                return False
-            raise
-        verify_upload(result, data)
-        return True
+        media = 'application/gzip' if key.endswith('.gz') else 'application/octet-stream'
+        result = await create_stored_async(AsyncR2Adapter(self.client, self.bucket), key, BytesIO(data), media)
+        return result.outcome == 'stored'
 
     async def read(self, key):
         from aiohttp import ClientPayloadError
@@ -189,6 +185,8 @@ class R2Store:
         self.excluded_body_hashes = excluded_body_hashes
         self.store_uncompressed_pdfs = store_uncompressed_pdfs
         self.index_etags = {}
+        from congress_api.retention.body_store import BodyStore, R2Adapter
+        self.raw = BodyStore(R2Adapter(client, bucket))
         self.cache_dir = Path(cache_dir) if cache_dir is not None else None
         self._manifest_cache_dir = self.cache_dir / 'r2-native-manifests' if self.cache_dir is not None else None
         self._immutable_cache_dir = self.cache_dir / 'r2-immutable' if self.cache_dir is not None else None

@@ -60,8 +60,8 @@ def validate_record(value):
     walk(value)
 
 
-def create_stored(adapter, key, source, media, *, encoding=None, operation='create', body_identity=True):
-    """Create already prepared bytes; receipt validation finishes before adapter I/O."""
+def prepare_stored(key, source, *, operation='create', body_identity=True):
+    """Validate and hash already prepared bytes before storage I/O."""
     validate_key(key, operation, body_identity=body_identity)
     if key.startswith(('receipts/', 'provenance/')):
         source.seek(0)
@@ -83,13 +83,27 @@ def create_stored(adapter, key, source, media, *, encoding=None, operation='crea
     source.seek(0)
     if size > 5 * 1024**3:
         raise ValueError('Single-PUT size limit exceeded')
-    created = adapter.create(key, source, media=media, encoding=encoding,
-                             md5=digest.hexdigest(), size=size)
+    return dict(md5=digest.hexdigest(), size=size)
+
+
+def write_result(key, created, *, md5, size):
     suffix = '.gz' if key.endswith('.gz') else '.pdf' if key.endswith('.pdf') else ''
     if not created and not key.startswith('bodies/'):
         raise RuntimeError(f'Concurrent update or reused receipt name: {key}')
     return WriteResult('stored' if created else 'unchanged', suffix,
-                       digest.hexdigest() if created else None, size if created else None)
+                       md5 if created else None, size if created else None)
+
+
+def create_stored(adapter, key, source, media, *, encoding=None, operation='create', body_identity=True):
+    facts = prepare_stored(key, source, operation=operation, body_identity=body_identity)
+    created = adapter.create(key, source, media=media, encoding=encoding, **facts)
+    return write_result(key, created, **facts)
+
+
+async def create_stored_async(adapter, key, source, media):
+    facts = prepare_stored(key, source, body_identity=False)
+    created = await adapter.create(key, source, media=media, encoding=None, **facts)
+    return write_result(key, created, **facts)
 
 
 def compressible(media):
@@ -102,6 +116,28 @@ class BodyStore:
     def __init__(self, adapter):
         self.adapter, self.known = adapter, {}
 
+    def existing(self, key):
+        """The run set and one legacy-key HEAD, without reading body bytes."""
+        if key in self.known:
+            return replace(self.known[key], outcome='unchanged', md5=None, size=None)
+        if self.adapter.head(key + '.gz') is not None:
+            result = WriteResult('unchanged', '.gz')
+            self.known[key] = result
+            return result
+        return None
+
+    def put_prepared(self, key, file, media, *, encoding=None):
+        """Use a caller's streaming compression without another compression pass."""
+        validate_key(key)
+        if not key.startswith('bodies/') or key.endswith(('.gz', '.pdf')):
+            raise ValueError('Prepared body requires a suffix-free identity')
+        result = self.existing(key)
+        if result is None:
+            with Path(file).open('rb') as source:
+                result = create_stored(self.adapter, key, source, media, encoding=encoding)
+            self.known[key] = result
+        return result
+
     def put(self, key, file, media, *, operation='create'):
         validate_key(key, operation)
         if not key.startswith('bodies/'):
@@ -109,12 +145,8 @@ class BodyStore:
                 return create_stored(self.adapter, key, source, media)
         if key.endswith(('.gz', '.pdf')):
             raise ValueError('New body writes require a suffix-free identity')
-        if key in self.known:
-            return replace(self.known[key], outcome='unchanged', md5=None, size=None)
-        older = self.adapter.head(key + '.gz')
-        if older is not None:
-            result = WriteResult('unchanged', '.gz')
-        else:
+        result = self.existing(key)
+        if result is None:
             with Path(file).open('rb') as source, tempfile.TemporaryFile() as prepared:
                 if compressible(media):
                     with gzip.GzipFile(filename='', fileobj=prepared, mode='wb', mtime=0) as zipped:
@@ -141,8 +173,7 @@ class R2Adapter:
             raise
         return dict(size=value['ContentLength'], etag=value['ETag'].strip('"'))
 
-    def create(self, key, source, *, media, encoding, md5, size):
-        from botocore.exceptions import ClientError
+    def parameters(self, key, source, *, media, encoding, md5, size):
         options = dict(ContentEncoding=encoding) if encoding else {}
         if key.endswith('.pdf'):
             options.update(ContentDisposition='inline', CacheControl='public, max-age=31536000, immutable')
@@ -151,17 +182,36 @@ class R2Adapter:
         else:
             body = source
             options['ContentLength'] = size
+        return dict(Bucket=self.bucket, Key=key, Body=body, ContentType=media,
+                    IfNoneMatch='*', ContentMD5=base64.b64encode(bytes.fromhex(md5)).decode(), **options)
+
+    @staticmethod
+    def verify(result, md5):
+        if result['ETag'].strip('"') != md5:
+            raise ValueError('Upload checksum mismatch')
+        return True
+
+    def create(self, key, source, **facts):
+        from botocore.exceptions import ClientError
         try:
-            result = self.client.put_object(Bucket=self.bucket, Key=key, Body=body,
-                ContentType=media, IfNoneMatch='*',
-                ContentMD5=base64.b64encode(bytes.fromhex(md5)).decode(), **options)
+            result = self.client.put_object(**self.parameters(key, source, **facts))
         except ClientError as error:
             if error.response['Error']['Code'] in {'412', 'PreconditionFailed'}:
                 return False
             raise
-        if result['ETag'].strip('"') != md5:
-            raise ValueError('Upload checksum mismatch')
-        return True
+        return self.verify(result, facts['md5'])
+
+
+class AsyncR2Adapter(R2Adapter):
+    async def create(self, key, source, **facts):
+        from botocore.exceptions import ClientError
+        try:
+            result = await self.client.put_object(**self.parameters(key, source, **facts))
+        except ClientError as error:
+            if error.response['Error']['Code'] in {'412', 'PreconditionFailed'}:
+                return False
+            raise
+        return self.verify(result, facts['md5'])
 
 
 class LocalAdapter:
