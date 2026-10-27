@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 
 from congress_api.lake.versions import version_digest
 from congress_api.retention.body_store import BodyStore, LocalAdapter
-from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, timestamp_key, instant
+from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, timestamp_key, instant, file_pin
 
 
 ROOT = Path(__file__).resolve().parents[6]
@@ -262,7 +262,8 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
         'filename-readings', 'SELECT ' + ','.join(columns) + ' FROM parsed_readings', PK)])
     unreadable_key = unreadable_path = None
     if decision_count:
-        unreadable_key = 'provenance/unreadable/' + timestamp_key(decided_at) + '.jsonl'
+        unreadable_key = ('provenance/unreadable/' + timestamp_key(decided_at) + '-'
+                          + file_pin(decisions_path)['sha256'] + '.jsonl')
         BodyStore(LocalAdapter(work/'raw')).put(unreadable_key,decisions_path,'application/x-ndjson')
         unreadable_path = str(work/'raw'/unreadable_key)
     return dict(readings=work/'filename-readings.parquet', work_list=work/'work-list.parquet',
@@ -283,9 +284,10 @@ def append(staged, *, engine, work, catalog_root, table):
         table=table, keys=PK, definition='filename_readings:' + version)
 
 
-def main(argv=None, *, worker_factory=None):
+def main(argv=None, *, worker_factory=None,engine_factory=None):
     import argparse
     from docspec_client.client import NativeDatasets
+    from congress_api.lake.tables import validate_catalog_authority
     parser = argparse.ArgumentParser(description='Stage missing filename readings through native jobs')
     parser.add_argument('--captures', type=Path, required=True)
     parser.add_argument('--recovery-inventory', type=Path, required=True,
@@ -296,15 +298,16 @@ def main(argv=None, *, worker_factory=None):
     parser.add_argument('--vocabularies', type=Path)
     parser.add_argument('--unreadable-inventory', type=Path)
     parser.add_argument('--decided-at', required=True)
-    parser.add_argument('--apply', action='store_true', help='Append through the local native catalog')
-    parser.add_argument('--catalog-root', type=Path)
-    parser.add_argument('--table', help='Explicit namespace.table for local native append')
+    parser.add_argument('--apply', action='store_true', help='Append through the selected native catalog')
+    parser.add_argument('--catalog-root', type=Path,
+                        help='Local catalog authority; omit for an explicitly configured remote engine')
+    parser.add_argument('--table', help='Explicit namespace.table for native append')
     parser.add_argument('--create-table', action='store_true')
-    parser.add_argument('--table-location', type=Path)
+    parser.add_argument('--table-location',help='Local table path or exact remote object URI')
     parser.add_argument('--create-namespace', action='store_true')
     args = parser.parse_args(argv)
-    if args.apply and (args.catalog_root is None or not args.table):
-        parser.error('--apply requires --catalog-root and --table')
+    if args.apply and not args.table:
+        parser.error('--apply requires --table')
     if args.create_table and (not args.apply or args.table_location is None):
         parser.error('--create-table requires --apply and --table-location')
     if args.create_namespace and not args.create_table:
@@ -316,19 +319,25 @@ def main(argv=None, *, worker_factory=None):
                                       for part in identifiers):
             parser.error('--table must be an explicit namespace.table')
         table = dict(namespace=identifiers[:-1], name=identifiers[-1])
+    engine=(engine_factory or NativeDatasets.from_config)(args.engine_config)
+    if args.apply:
+        try:
+            validate_catalog_authority(engine,args.catalog_root)
+        except ValueError as error:
+            parser.error(str(error))
     recovery_files = json.loads(args.recovery_inventory.read_text())
     vocabularies = json.loads(args.vocabularies.read_text()) if args.vocabularies else None
     result = stage(captures=args.captures, recovery_files=recovery_files,
-        engine=NativeDatasets.from_config(args.engine_config), work=args.work,
+        engine=engine, work=args.work,
         existing=args.existing, vocabularies=vocabularies,decided_at=args.decided_at,
         unreadable_files=json.loads(args.unreadable_inventory.read_text()) if args.unreadable_inventory else [],
         worker_factory=worker_factory)
     if args.apply:
         if args.create_table:
-            create_table(engine=NativeDatasets.from_config(args.engine_config),
+            create_table(engine=engine,
                 work=args.work/'create', catalog_root=args.catalog_root, table=table,
                 location=args.table_location, create_namespace=args.create_namespace)
-        result['append'] = append(result, engine=NativeDatasets.from_config(args.engine_config),
+        result['append'] = append(result, engine=engine,
             work=args.work/'append', catalog_root=args.catalog_root, table=table)
     print(json.dumps(result, default=str, sort_keys=True))
     return 0

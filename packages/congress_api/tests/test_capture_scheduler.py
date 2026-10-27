@@ -13,7 +13,7 @@ import pytest
 from docspec_client.client import NativeDatasets
 from docspec_client.models import DocSpecFailure
 from congress_api.models.raw_fetch import Transfer
-from congress_api.archive_profile import build_capture_profile
+from congress_api.models.archive_profile import build_capture_profile
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.body_store import BodyStore, LocalAdapter
 

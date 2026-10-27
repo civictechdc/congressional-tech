@@ -120,9 +120,6 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
     inputs=[json_input(jobs,'accepted_input',mappings,original_url='Utf8',recovered_url='Utf8',
         body_key='Utf8',kind='Utf8',recovery_basis='Utf8',recovery_status='Utf8'),capture,
         json_input(jobs,'kind_registry',kinds,category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8')]
-    # Keep exact recovered-URL evidence first. Only an absent exact source time
-    # uses the earliest valid fetch of the same body, with its source locator.
-    # Select that source once before category/kind resolution and report export.
     steps=[dict(name='captures',sql=projection),
         dict(name='accepted',sql='''SELECT *,substr(body_key,18,64) AS body_hex FROM accepted_input'''),
         dict(name='recovery_pairs',materialize=True,sql='''SELECT original_url,body_hex,count(*) AS receipt_rows,
@@ -134,30 +131,23 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
                 c.receipt_key,c.receipt_line,c.capture_index) AS ordinal FROM accepted a JOIN captures c
             ON a.body_hex=c.body_hex AND (a.original_url=c.original_url OR a.recovered_url=c.url)
             WHERE c.recovered_filename IS NOT NULL'''),
+        dict(name='decisions',materialize=True,sql='''SELECT a.*,r.receipt_rows,r.category,r.category_count,r.bases,r.recovered_urls,
+            CASE WHEN r.category IS NOT NULL THEN k.kind ELSE b.kind END AS display_kind,n.recovered_filename,
+            b.import_category,
+            (r.category IS NOT NULL AND k.kind IS NULL) AS unknown_category
+            FROM accepted a LEFT JOIN recovery_pairs r ON a.original_url=r.original_url AND a.body_hex=r.body_hex
+            LEFT JOIN kind_registry k ON r.category=k.category
+            LEFT JOIN kind_registry b ON a.recovery_basis=b.match_basis
+            LEFT JOIN name_candidates n ON a.original_url=n.original_url AND a.body_hex=n.body_hex AND n.ordinal=1'''),
         dict(name='source_candidates',sql='''SELECT a.original_url,a.body_hex,c.retrieved_at,c.bytes,c.media_type,
             c.receipt_key AS source_receipt_key,c.receipt_line AS source_receipt_line,c.capture_index AS source_capture_index,
             c.sniffed_format,c.sniff_version,c.intact,c.stored_suffix,c.recovery_category AS source_category,
-            row_number() OVER (PARTITION BY a.original_url,a.body_hex ORDER BY
-                CASE WHEN a.recovered_url=c.url THEN 0 ELSE 1 END,
-                CASE WHEN a.recovered_url=c.url THEN try_cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE) END DESC,
-                CASE WHEN a.recovered_url IS DISTINCT FROM c.url THEN try_cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE) END ASC,
+            row_number() OVER (PARTITION BY a.original_url,a.body_hex ORDER BY c.retrieved_at DESC,
                 c.receipt_key,c.receipt_line,c.capture_index) AS ordinal
-            FROM accepted a LEFT JOIN recovery_pairs r ON a.original_url=r.original_url AND a.body_hex=r.body_hex
-            JOIN captures c ON a.body_hex=c.body_hex
-            WHERE r.receipt_rows IS NULL AND (a.recovered_url=c.url OR c.mode='fetch')
-                AND try_cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE) IS NOT NULL
+            FROM decisions a JOIN captures c ON a.body_hex=c.body_hex AND a.recovered_url=c.url
+            WHERE a.receipt_rows IS NULL AND try_cast(c.retrieved_at AS TIMESTAMP) IS NOT NULL
                 AND regexp_like(c.retrieved_at,'[Tt ][0-9]{2}:[0-9]{2}')
-                AND regexp_like(c.retrieved_at,'(Z|[+-][0-9]{2}:[0-9]{2})$')'''),
-        dict(name='selected_sources',materialize=True,sql='SELECT * FROM source_candidates WHERE ordinal=1'),
-        dict(name='decisions',materialize=True,sql='''SELECT a.*,r.receipt_rows,r.category,r.category_count,r.bases,r.recovered_urls,
-            CASE WHEN coalesce(s.source_category,r.category) IS NOT NULL THEN k.kind ELSE b.kind END AS display_kind,
-            n.recovered_filename,b.import_category,
-            (coalesce(s.source_category,r.category) IS NOT NULL AND k.kind IS NULL) AS unknown_category
-            FROM accepted a LEFT JOIN recovery_pairs r ON a.original_url=r.original_url AND a.body_hex=r.body_hex
-            LEFT JOIN selected_sources s ON a.original_url=s.original_url AND a.body_hex=s.body_hex
-            LEFT JOIN kind_registry k ON coalesce(s.source_category,r.category)=k.category
-            LEFT JOIN kind_registry b ON a.recovery_basis=b.match_basis
-            LEFT JOIN name_candidates n ON a.original_url=n.original_url AND a.body_hex=n.body_hex AND n.ordinal=1''')]
+                AND regexp_like(c.retrieved_at,'(Z|[+-][0-9]{2}:[0-9]{2})$')''')]
     q=lambda text:text.replace("'","''")
     pin=file_pin(accepted)['sha256']
     decision_sql=f'''SELECT encode(sha256('accepted:{pin}:' || original_url || ':' || body_hex),'hex') AS id,
@@ -175,7 +165,7 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
              WHEN s.bytes IS NULL THEN 'source_size_not_established'
              WHEN s.stored_suffix IS NULL THEN 'stored_suffix_not_established'
              WHEN i.category IS NULL THEN 'recovery_category_not_established' ELSE 'ready_for_owner_import' END AS status
-        FROM decisions d LEFT JOIN selected_sources s ON d.original_url=s.original_url AND d.body_hex=s.body_hex
+        FROM decisions d LEFT JOIN source_candidates s ON d.original_url=s.original_url AND d.body_hex=s.body_hex AND s.ordinal=1
         LEFT JOIN kind_registry i ON i.category=coalesce(s.source_category,d.category,d.import_category) AND i.kind=d.display_kind
         WHERE d.receipt_rows IS NULL'''
     receipt_only='''SELECT c.* FROM captures c LEFT JOIN accepted a ON c.original_url=a.original_url AND c.body_hex=a.body_hex

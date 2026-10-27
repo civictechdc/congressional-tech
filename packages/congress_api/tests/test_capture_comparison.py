@@ -57,6 +57,8 @@ def test_unexplained_receipt_fact_change_is_not_accepted_as_restoration(tmp_path
     report=compare_old(new,old,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
                        work=tmp_path/'comparison')
     assert report['unexplained']==1 and report['owner_gate'] is True
+    [changed]=pq.read_table(tmp_path/'comparison/changed-fields.parquet').to_pylist()
+    assert (changed['old_bytes'],changed['new_bytes'])==(100,99)
 
 
 @pytest.mark.parametrize('old_time,new_time,expected,unexplained,reason', [
@@ -92,3 +94,27 @@ def test_fetch_time_comparison_accepts_only_declared_restoration(
         assert row['retrieved_at_reason']==reason
     else:
         assert changed==[]
+
+
+@pytest.mark.parametrize('old_count,new_count,old_only,new_only,matched',[
+    (2,1,1,0,1),(1,2,0,1,1),(2,2,0,0,2),
+])
+def test_comparison_preserves_repeated_capture_occurrences(
+        tmp_path,old_count,new_count,old_only,new_only,matched):
+    from congress_api.lake.capture_comparison import compare_old
+    old=tmp_path/'old.parquet';new=tmp_path/'new.parquet'
+    base=dict(receipt_key='receipts/f/2026-10-20/run.gz',receipt_line=1,
+        pointer_json='[]',context_url='https://example.org/a',bytes=100,
+        stored_bytes=42,media_type='text/plain',fidelity='exact-bytes',http_status=200,
+        retrieved_at='2026-10-20T00:00:00Z')
+    pq.write_table(pa.Table.from_pylist([dict(base,sha256='a'*64,reference_kind='capture')
+        for _ in range(old_count)]),old)
+    pq.write_table(pa.Table.from_pylist([dict(base,sha256=bytes.fromhex('a'*64),capture_index=i)
+        for i in range(new_count)]),new)
+    report=compare_old(new,old,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+                       work=tmp_path/'comparison')
+    assert report['matched']==matched
+    assert report['old_only']==old_only and report['new_only']==new_only
+    assert report['owner_gate'] is bool(old_only or new_only)
+    assert pq.read_metadata(tmp_path/'comparison/old-only.parquet').num_rows==old_only
+    assert pq.read_metadata(tmp_path/'comparison/new-only.parquet').num_rows==new_only

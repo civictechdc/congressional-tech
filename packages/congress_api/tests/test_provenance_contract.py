@@ -74,3 +74,24 @@ def test_url_spelling_and_category_vocabulary_are_not_rewritten():
         kind='explicit-profile-kind')
     expected=dict(row)
     assert validate_provenance('recoveries',row)==expected
+
+
+def test_explicit_owner_recovery_supersedes_without_mutating_the_base(tmp_path):
+    import json
+    from congress_api.cli.provenance import main
+    from congress_api.retention.provenance import load_stage
+    base=dict(recovery(),id='base-decision',kind='recovered_document',decided_by='reconciliation')
+    owner=dict(base,id='owner-decision',kind='requested_content_in_official_hearing',
+               decided_by='owner',decided_at='2026-10-27T21:28:14Z',supersedes=base['id'])
+    staged=[]
+    for name,row in [('base',base),('owner',owner)]:
+        records=tmp_path/(name+'.jsonl')
+        records.write_text(json.dumps(row)+'\n')
+        root=tmp_path/name
+        main(['--records',str(records),'--kind','recoveries','--decided-at',row['decided_at'],'--stage',str(root)])
+        _,manifest=load_stage(root)
+        path=root/manifest['provenance']
+        staged.append((path,path.read_bytes()))
+        assert json.loads(path.read_text())==row
+    assert staged[0][0].read_bytes()==staged[0][1]
+    assert owner['supersedes']==base['id'] and owner['kind']!='rejected'

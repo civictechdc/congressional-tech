@@ -16,6 +16,7 @@ RULES = {
     'storage': 'Enrich creating storage metadata; stored_md5 and stored_suffix are new, stored_sha256 is not a target column.',
     'bodiless_context': 'A bodiless target row retains its line URL even when the old metadata row omitted context.',
     'old_only': 'Every remaining old-only row is an owner gate. No inferred capture row or automatic dismissal is permitted.',
+    'occurrences': 'Match repeated capture facts one-to-one after secondary-reference normalization; identical body/pointer facts never collapse capture multiplicity.',
 }
 
 
@@ -42,17 +43,26 @@ def compare_old(evidence, old_index, *, engine, work):
     old_order = ','.join('"'+f+'"' for f in old_schema.names)
     steps = [dict(name='old_numbered',sql=f'SELECT *,row_number() OVER (ORDER BY {old_order}) AS old_row FROM old_input'),
         dict(name='old_facts',sql=projection(old_schema,True).replace('FROM old_input',',old_row FROM old_numbered')),
-        dict(name='new_facts',sql=projection(new_schema)),
+        dict(name='new_values',sql=projection(new_schema)),
         dict(name='secondary_duplicates',sql='''SELECT o.old_row FROM old_facts o
             WHERE o.reference_kind IN ('file','retained-file') AND EXISTS (
               SELECT 1 FROM old_facts c WHERE c.receipt_key=o.receipt_key
                 AND c.receipt_line=o.receipt_line AND c.body_sha=o.body_sha
                 AND (c.context_url IS NOT DISTINCT FROM o.context_url)
                 AND c.reference_kind IN ('capture','embedded'))'''),
-        dict(name='old_normalized',sql='SELECT * FROM old_facts WHERE old_row NOT IN (SELECT old_row FROM secondary_duplicates)')]
+        dict(name='old_values',sql='SELECT * FROM old_facts WHERE old_row NOT IN (SELECT old_row FROM secondary_duplicates)')]
+    occurrence_keys='receipt_key,receipt_line,body_sha,pointer'
+    occurrence_order='context_url,bytes,media_type,fidelity,http_status,retrieved_at,stored_bytes'
+    steps.extend([
+        dict(name='old_normalized',sql=f'''SELECT *,row_number() OVER (
+            PARTITION BY {occurrence_keys} ORDER BY {occurrence_order},old_row) AS occurrence
+            FROM old_values'''),
+        dict(name='new_facts',sql=f'''SELECT *,row_number() OVER (
+            PARTITION BY {occurrence_keys} ORDER BY {occurrence_order},capture_index) AS occurrence
+            FROM new_values''')])
     join = '''o.receipt_key=n.receipt_key AND o.receipt_line=n.receipt_line
         AND (o.body_sha IS NOT DISTINCT FROM n.body_sha)
-        AND (o.pointer IS NOT DISTINCT FROM n.pointer)'''
+        AND (o.pointer IS NOT DISTINCT FROM n.pointer) AND o.occurrence=n.occurrence'''
     stable = ' OR '.join(f'(o."{k}" IS DISTINCT FROM n."{k}")'
                          for k in ('bytes','media_type','fidelity'))
     old_time='try_cast(o.retrieved_at AS TIMESTAMP WITH TIME ZONE)'
