@@ -21,6 +21,54 @@ class VerifiedTransfer:
     etag: str
 
 
+class _HashingUpload:
+    """Hash the final sequential pass consumed by a seekable PUT body."""
+    def __init__(self, stream):
+        self.stream = stream
+        self.start = stream.tell()
+        self._reset()
+
+    def _reset(self):
+        self.count, self.digest, self.sequential = 0, hashlib.sha256(), True
+
+    def __getattr__(self, name):
+        return getattr(self.stream, name)
+
+    def _record(self, chunk):
+        self.count += len(chunk)
+        self.digest.update(chunk)
+        return chunk
+
+    def read(self, size=-1):
+        return self._record(self.stream.read(size))
+
+    def readinto(self, buffer):
+        chunk = self.read(len(buffer))
+        buffer[:len(chunk)] = chunk
+        return len(chunk)
+
+    def readline(self, size=-1):
+        return self._record(self.stream.readline(size))
+
+    def __iter__(self):
+        while chunk := self.readline():
+            yield chunk
+
+    def seek(self, offset, whence=0):
+        position = self.stream.seek(offset, whence)
+        if position == self.start:
+            self._reset()  # SDK checksum/signing probes may rewind before sending.
+        elif position != self.start + self.count:
+            self.sequential = False
+        return position
+
+    def require(self, size, digest):
+        if (not self.sequential or self.count != size
+                or self.stream.tell() != self.start + self.count
+                or self.digest.hexdigest() != digest):
+            raise ValueError('Publication upload bytes differ from expected identity')
+
+
 class CallbackPublicationGuard:
     """Adapter for a caller that deliberately runs one complete check per write."""
     def __init__(self, callback):
@@ -135,6 +183,7 @@ class GuardedPublicationClient:
         if not kwargs.get('IfMatch') and kwargs.get('IfNoneMatch') != '*':
             raise ValueError('Publication write requires an explicit condition')
         body = kwargs['Body']
+        consumed = None
         if isinstance(body, bytes):
             size, digest = len(body), hashlib.sha256(body).hexdigest()
         else:
@@ -143,7 +192,7 @@ class GuardedPublicationClient:
                 from congress_api.retention.derived_files import VerifiedFile
                 if not isinstance(local_validation, VerifiedFile) or start != 0:
                     raise ValueError('Invalid local publication file proof')
-                local_validation.require(body.name)
+                local_validation._require_custody(body.name)
                 size, digest = local_validation['bytes'], local_validation['sha256']
             else:
                 digestor = hashlib.sha256()
@@ -153,6 +202,8 @@ class GuardedPublicationClient:
                     digestor.update(chunk)
                 body.seek(start)
                 digest = digestor.hexdigest()
+            consumed = _HashingUpload(body)
+            kwargs['Body'] = consumed
         if native_metadata:
             parts = key.split('/')
             if (len(parts) != 4 or not parts[2]
@@ -192,6 +243,8 @@ class GuardedPublicationClient:
             try:
                 # A successful service response accepts the upload. Read bytes
                 # only when the request failed and its outcome needs resolution.
+                if request_error is None and consumed is not None:
+                    consumed.require(size, digest)
                 version = verify() if request_error is not None else result['ETag']
                 if not isinstance(version, str) or not version:
                     raise ValueError('Publication PUT omitted its ETag')
@@ -237,7 +290,6 @@ class GuardedPublicationClient:
             raise ValueError('Publication file exceeds single-PUT limit')
         options = dict(ExtraArgs or {})
         if validation is not None:
-            validation.require(path)
             options['_local_validation'] = validation
         with path.open('rb') as stream:
             result = self.put_object(Bucket=bucket, Key=key, Body=stream,
@@ -328,7 +380,10 @@ class ConditionalManifestPublisher:
             if path.stat().st_size >= 5 * 1024**3:
                 raise ValueError('Immutable viewer asset exceeds single-PUT limit')
             if validation is not None:
-                validation.require(path)
+                from congress_api.retention.derived_files import VerifiedFile
+                if not isinstance(validation, VerifiedFile):
+                    raise ValueError('Invalid local publication file proof')
+                validation._require_custody(path)
                 size, digest = int(validation['bytes']), str(validation['sha256'])
             else:
                 size = path.stat().st_size
@@ -336,14 +391,16 @@ class ConditionalManifestPublisher:
                     digest = hashlib.file_digest(digest_stream, 'sha256').hexdigest()
             try:
                 with path.open('rb') as stream:
+                    consumed = _HashingUpload(stream)
                     response = self.client.put_object(
                         Bucket=self.bucket,
                         Key=key,
-                        Body=stream,
+                        Body=consumed,
                         ContentLength=size,
                         ContentType=content_type,
                         IfNoneMatch='*',
                     )
+                    consumed.require(size, digest)
                 etag = (response or {}).get('ETag') or ''
             except Exception as error:
                 code = getattr(error, 'response', {}).get('Error', {}).get('Code')
@@ -361,7 +418,7 @@ class ConditionalManifestPublisher:
                 digestor.update(chunk)
             body.seek(start)
             digest = digestor.hexdigest()
-            payload = body
+            payload = _HashingUpload(body)
         else:
             raw = bytes(body) if isinstance(body, (bytes, bytearray)) else body.read()
             size = len(raw)
@@ -376,6 +433,8 @@ class ConditionalManifestPublisher:
                 ContentType=content_type,
                 IfNoneMatch='*',
             )
+            if isinstance(payload, _HashingUpload):
+                payload.require(size, digest)
             etag = (response or {}).get('ETag') or ''
         except Exception as error:
             code = getattr(error, 'response', {}).get('Error', {}).get('Code')
