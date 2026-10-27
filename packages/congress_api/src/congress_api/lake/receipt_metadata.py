@@ -28,7 +28,7 @@ def get(value,*path,kind='str'):
 
 
 def obj(fields):
-    # C1 can expose Utf8View; this private shape always stores ordinary Utf8.
+    # Normalize metadata strings to the native VARCHAR type (Utf8View).
     return 'named_struct('+','.join(lit(k)+','+(f'cast({v} AS VARCHAR)'
         if SCALARS.get(k,'str')=='str' else v) for k,v in fields.items())+')'
 
@@ -153,7 +153,7 @@ def metadata_plan(*,counter=None,files=None,receipt_keys=None):
         UNION ALL SELECT * FROM root_prior_sources''')
     step('prior_entries','''SELECT receipt_key,receipt_line,record_index,
         unnest(json_get_array(prior_json)) AS prior_value,
-        unnest(range(0,cast(coalesce(json_length(prior_json),0) AS BIGINT))) AS prior_index FROM prior_sources''')
+        unnest(range(0,cast(coalesce(array_length(json_get_array(prior_json)),0) AS BIGINT))) AS prior_index FROM prior_sources''')
     prior={n:scalar_json('prior_value',n,k) for n,k in SCALARS.items()}
     step('prior_metadata',f'''SELECT receipt_key,receipt_line,record_index,
         json_get_json(json_array(array_agg({obj(prior)} ORDER BY prior_index)),0) AS prior_json
