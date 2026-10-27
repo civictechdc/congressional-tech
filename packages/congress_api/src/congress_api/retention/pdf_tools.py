@@ -41,14 +41,11 @@ MEMORY_LIMIT = 512 * 1024**2
 
 
 def _resident_bytes(pid):
-    """Poppler has no children; use the same system RSS units as capture's guard."""
+    """Keep PDF errors distinct while sharing the owned-process RSS reader."""
+    from congress_api.retention.process_resources import ProcessResourceError, resident_bytes
     try:
-        result = subprocess.run(['ps', '-o', 'rss=', '-p', str(pid)],
-                                capture_output=True, text=True, timeout=1)
-        if result.returncode not in (0, 1) or result.stderr.strip():
-            raise PdfToolError('PDF reader memory measurement unavailable')
-        return int(result.stdout.strip()) * 1024 if result.stdout.strip() else 0
-    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        return resident_bytes(pid)
+    except ProcessResourceError as exc:
         raise PdfToolError('PDF reader memory measurement unavailable') from exc
 
 
