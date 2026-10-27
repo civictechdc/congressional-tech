@@ -15,8 +15,17 @@ SOURCE = ROOT / 'packages/congress_api/src/congress_api'
 SURVIVING = (
     'retention/body_store.py', 'retention/receipt_privacy.py', 'retention/writer_identity.py',
     'retention/pipeline_raw.py', 'retention/archive_members.py', 'retention/sniff.py',
+    'models/raw_fetch.py', 'acquisition/fetcher.py', 'transport/raw_adapters.py',
+    'retention/receipt_writer.py', 'retention/archive_expander.py',
+    'retention/provenance.py', 'retention/recovery_facts.py',
+    'retention/raw_verifier.py', 'retention/raw_repair.py',
+    'cli/provenance.py', 'cli/raw_verify.py', 'cli/raw_repair.py',
     # These old raw adapters remain operational until the switch and must obey the same rule.
     'retention/raw_storage.py', 'retention/raw_archive.py', 'acquisition/raw_sync.py',
+)
+OTHER_SURVIVING = (
+    ROOT / 'packages/corpus_recovery/src/corpus_recovery/reconcile.py',
+    ROOT / 'packages/viewer_publication/src/viewer_publication/review_provenance.py',
 )
 TEST_SWITCH = re.compile(r'^(?:PYTEST(?:_.*)?|UNITTEST(?:_.*)?|TEST_MODE|TESTING)$', re.I)
 
@@ -45,6 +54,7 @@ def violations(source):
 
 def test_surviving_raw_components_have_no_test_selected_inputs():
     found = {name: violations((SOURCE / name).read_text()) for name in SURVIVING}
+    found.update({str(path.relative_to(ROOT)): violations(path.read_text()) for path in OTHER_SURVIVING})
     assert {name: errors for name, errors in found.items() if errors} == {}
 
 
