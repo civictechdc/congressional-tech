@@ -57,7 +57,11 @@ def append_rows(source, *, engine,work,catalog_root,table,keys,definition,
         raise ValueError('Append requires work keys and an explicit writer definition')
     quoted=[_identifier(k) for k in keys]
     source_pin=file_pin(source)
-    writer=sha256((definition+'\n').encode()+Path(__file__).read_bytes()).hexdigest()
+    writer_definition=json.dumps(dict(definition=definition,keys=keys,
+        source_revision=engine.source_revision,binary_sha256=engine.binary_sha256,
+        layout=dict(file_bytes=file_bytes,row_group_rows=row_group_rows,row_group_bytes=row_group_bytes)),
+        sort_keys=True,separators=(',',':')).encode()
+    writer=sha256(writer_definition+Path(__file__).read_bytes()).hexdigest()
     identity_prefix=source_pin['sha256']+':'+writer+':'
     key_json='json_array('+','.join(quoted)+')'
     # Source hash covers all values; the native sorted key hash covers which
