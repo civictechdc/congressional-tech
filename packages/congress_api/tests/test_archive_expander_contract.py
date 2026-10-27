@@ -74,3 +74,17 @@ def test_malformed_mapped_rtfd_releases_internal_payload_views(tmp_path):
     path.write_bytes(data)
     result=expand_archive(path,directory=tmp_path/'members',limits=ZipLimits())
     assert result.status=='corrupt_archive' and result.members==()
+
+
+@pytest.mark.parametrize('entries',[[],[('member.txt',b'abc')]])
+def test_zip_comment_end_signature_uses_the_validated_directory(tmp_path,entries):
+    from congress_api.retention.archive_expander import expand_archive
+    from congress_api.retention.archive_members import ZipLimits
+    path=tmp_path/'source'
+    with zipfile.ZipFile(path,'w') as archive:
+        archive.comment=b'comment PK\x05\x06 not an end record'
+        for name,data in entries:
+            archive.writestr(name,data)
+    result=expand_archive(path,directory=tmp_path/'members',limits=ZipLimits())
+    assert result.status=='expanded'
+    assert [(member.member_path,member.body.path.read_bytes()) for member in result.members]==entries
