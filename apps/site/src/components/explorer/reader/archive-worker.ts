@@ -3,6 +3,10 @@ import {awaitShared} from './filenames/cache.ts';
 
 let session:Promise<Awaited<ReturnType<typeof openArchive>>>|undefined;
 const pending=new Map<number,AbortController>();
+async function displayedDates(reader:any,rows:any[],signal:AbortSignal){
+  for(let i=0;i<rows.length;i+=4)await Promise.all(rows.slice(i,i+4).filter(row=>row.date_kind==='import_day').map(async row=>{row.in_archive_since=(await reader.entry(row.list_row,signal)).detail.in_archive_since;}));
+  return rows;
+}
 self.onmessage=async({data})=>{
   if(data.cancel){pending.get(data.cancel)?.abort();return;}
   const {id,url,pointerUrl,rawBase,releaseId}=data;if(!id||!url||!pointerUrl)return;
@@ -16,16 +20,16 @@ self.onmessage=async({data})=>{
       case '/search':{
         result=await reader.search(args,controller.signal);
         // Only visible import-day rows need detail reads for the date absent from list.
-        for(let i=0;i<result.rows.length;i+=4)await Promise.all(result.rows.slice(i,i+4).filter(row=>row.date_kind==='import_day').map(async row=>{row.in_archive_since=(await reader.entry(row.list_row,controller.signal)).detail.in_archive_since;}));
+        await displayedDates(reader,result.rows,controller.signal);
         break;
       }
-      case '/lookup':result=await reader.lookup(args.url);break;
+      case '/lookup':result=await displayedDates(reader,await reader.lookup(args.url),controller.signal);break;
       case '/entry':{
         const index=args.key?await reader.resolve(args.key):args.index;
         if(index===null)throw new Error('This document was not found in the archive.');
         const entry=await reader.entry(index,controller.signal);
         const [meetings,versions]=await Promise.all([reader.meetings(),reader.versions(index,controller.signal)]);
-        result={entry,meetings,versions};break;
+        result={entry,meetings,versions:await displayedDates(reader,versions,controller.signal)};break;
       }
       case '/saved':result=await reader.openSaved(args);break;
       default:throw new Error('Unknown archive request.');

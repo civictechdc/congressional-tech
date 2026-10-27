@@ -22,9 +22,16 @@ export const facetFields = ['document_kind','document_family','committee_keys','
 const arrayFields = new Set(['document_kind','document_family','committee_keys','chambers','meeting_keys','measure_keys','bioguide_ids','witness_keys','version_keys']);
 
 export function lookupUrl(value: string): string {
-  const url = new URL(value);
-  if(!/^https?:$/.test(url.protocol) || url.username || url.password)throw new Error('Enter a public HTTP or HTTPS address.');
-  return url.host.toLowerCase().replace(/^www\./,'') + url.pathname.replace(/\/$/,'') + url.search;
+  const validated = new URL(value);
+  if (!/^https?:$/.test(validated.protocol) || validated.username || validated.password) throw new Error('Enter a public HTTP or HTTPS address.');
+  // WHATWG URL resolves dot segments and punycodes hosts; the fixed release key does neither.
+  const match = /^([a-zA-Z][a-zA-Z0-9+.-]*):\/\/([^/?#]*)([^?#]*)(\?[^#]*)?(?:#.*)?$/.exec(value);
+  if (!match || !match[2]) throw new Error('Enter an absolute public address.');
+  const scheme = match[1].toLowerCase();
+  let host = match[2].toLowerCase().replace(/^www\./, '');
+  if (scheme === 'http') host = host.replace(/:80$/, '');
+  if (scheme === 'https') host = host.replace(/:443$/, '');
+  return host + match[3].replace(/\/$/, '') + (match[4] ?? '');
 }
 
 /** Keep decoded list columns, never a retained catalog of row objects. */
@@ -52,9 +59,10 @@ function column(values: any[], isArray: boolean) {
 }
 
 export async function openArchive(pointerUrl: string, options: any = {}) {
-  const fetcher=options.fetcher??fetch, heapBytes=options.heapBytes??128*1024*1024;
+  const fetcher=options.fetcher??fetch, heapBytes=options.heapBytes??256*1024*1024;
   options.signal?.throwIfAborted();
   const metrics={rangeRequests:0,rangeBytes:0,decodedBytes:0,decodedPeak:0,listColumns:0};
+  const retained={entries:new Map<string,any>(),bytes:0,maxBytes:options.indexBytes??32*1024*1024};
   const compressed=byteCache(options.cacheBytes??48*1024*1024,options.cacheBytes??48*1024*1024);
   const pointer=async()=>{
     const response=await fetcher(pointerUrl,{cache:'no-store', signal:options.signal});
@@ -110,10 +118,19 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   async function table(name: string, whole=false){
     if(!tables.has(name)){const pending=(async()=>{
       const descriptor=files.get(name);if(!descriptor)throw new Error(`Archive file not found: ${name}`);
-      let file;
+      let file,transport;
       if(whole){const bytes=await verified(name);file={byteLength:bytes.byteLength,slice:async(start: number,end: number)=>bytes.slice(start,end).buffer};}
-      else file=rangeFile(new URL(name,base).href,descriptor.size,immutableFetch,compressed,metrics).file();
+      else {transport=rangeFile(new URL(name,base).href,descriptor.size,immutableFetch,compressed,metrics,retained);file=transport.file();}
       const metadata=await parquetMetadataAsync(file);
+      if(transport){
+        const ranges:number[][]=[];
+        for(const group of metadata.row_groups)for(const leaf of group.columns){
+          for(const prefix of ['offset_index','column_index'])if(leaf[prefix+'_offset']!=null&&leaf[prefix+'_length'])ranges.push([Number(leaf[prefix+'_offset']),Number(leaf[prefix+'_offset'])+leaf[prefix+'_length']]);
+          const column=leaf.meta_data;
+          if(column?.dictionary_page_offset!=null)ranges.push([Number(column.dictionary_page_offset),Number(column.data_page_offset)]);
+        }
+        transport.retain(ranges);
+      }
       if(Number(metadata.num_rows)!==descriptor.rows)throw new Error('Archive row count failed verification.');
       return {file,metadata,names:fields(metadata)};
     })();tables.set(name,pending);pending.catch(()=>{if(tables.get(name)===pending)tables.delete(name);});}
@@ -150,7 +167,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
   const entities=new Map<string,Promise<any[]>>();
   const entity=(name: string)=>{
     if(!files.has(name+'.parquet'))return Promise.resolve([]);
-    if(!entities.has(name))entities.set(name,(async()=>{const input=await table(name+'.parquet',true);return parquetReadObjects({...input,compressors});})());
+    if(!entities.has(name)){const pending=(async()=>{const input=await table(name+'.parquet',true);try{return await parquetReadObjects({...input,compressors});}finally{tables.delete(name+'.parquet');}})();entities.set(name,pending);pending.catch(()=>{if(entities.get(name)===pending)entities.delete(name);});}
     return entities.get(name)!;
   };
   const checkedRow=(index: number)=>{if(!Number.isSafeInteger(index)||index<0||index>=count)throw new Error('Invalid archive list row.');return row(index);};
@@ -214,7 +231,13 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       const rows=await read('urls.parquet',undefined,undefined,{lookup_key:{$eq:binary}});
       return rows.map(item=>checkedRow(item.list_row));
     },
-    async versions(index: number,signal?: AbortSignal){checkedRow(index);const keys=value('version_keys',index)??[];if(!keys.length)return [];const versions=[];let offset=0;do{const page=await reader.search({version_keys:keys,includeHidden:true,offset,limit:1000},signal);versions.push(...page.rows);if(page.next===null)break;offset=page.next;}while(true);return versions.sort(captures);},
+    async versions(index: number,signal?: AbortSignal){
+      checkedRow(index);const keys=value('version_keys',index)??[];if(!keys.length)return [];
+      const indexes:number[]=[];
+      for(let i=0;i<count;i++){if(i%scanBatchRows===0)await yieldToMessages(signal);if(columns.get('version_keys').matches(i,keys))indexes.push(i);}
+      // One O(N) scan, then O(V log V) ordering of this address's versions.
+      return indexes.map(row).sort(captures);
+    },
     meetings:()=>entity('meetings'),committees:()=>entity('committees'),urlState:()=>entity('url_state'),
     schema:async()=>JSON.parse(new TextDecoder().decode(await verified('schema.json'))),
     async openSaved(detail: any){
