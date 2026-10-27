@@ -1,5 +1,5 @@
 {
-  "source": "Engine recovery-kinds registry at 083a67ff; display labels preserve each named claim.",
+  "source": "Engine recovery-kinds registry at 4d8e94dc; display labels preserve each named claim.",
   "expected_labels": {
     "recovered_document": "Recovered document",
     "requested_content_in_official_hearing": "Requested content in an official hearing",
@@ -14,14 +14,21 @@
     "same_article_publisher_text_available": "Publisher text of the same article available",
     "official_public_statement_counterpart": "Official public statement counterpart",
     "official_report_counterpart_available": "Official report counterpart available",
-    "related_final_report_available": "Related final report available"
+    "related_final_report_available": "Related final report available",
+    "full_recording_recovered": "Full recording recovered",
+    "explicit_retained_download_wrapper": "Retained download wrapper"
   },
-  "unknown": {"kind": "future_limited_claim", "label": "future_limited_claim"},
+  "unknown": {
+    "kind": "future_limited_claim",
+    "label": "future_limited_claim"
+  },
   "render_cases": [
     "requested_content_in_official_amendment_packet",
     "same_article_publisher_text_available",
     "official_public_statement_counterpart",
     "official_report_counterpart_available",
-    "related_final_report_available"
+    "related_final_report_available",
+    "full_recording_recovered",
+    "explicit_retained_download_wrapper"
   ]
 }
