@@ -20,6 +20,12 @@ from viewer_publication.client import ContinuedPublicationClient
 RECEIPT = 'local-publication-receipt.json'
 KIND = 'local_preparation'
 LOCAL_STATE = 'local-publication-state'
+MAX_PRETRANSFER_WORKERS = 512
+COMPATIBLE_ADAPTER_SHA256 = '447a6a7f2f88ceae0d0d3e139ea6d653122575aab23a7660e03a6bd704647f82'
+
+
+def adapter_sha256():
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 def sync_directory(path):
@@ -86,14 +92,17 @@ def pretransfer_assets(client, plan, workers):
             raise
 
 
-def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False, probe=None, journal_mode='local', pretransfer_workers=0):
+def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False, probe=None, journal_mode='local', pretransfer_workers=0, resume_adapter_sha256=None):
     """Publish with a synced local event chain, or explicitly select remote journaling.
 
     Keep the complete preparation directory on persistent local storage for resume.
     The receipt binds the chosen journal authority; modes cannot be switched.
     """
-    if type(pretransfer_workers) is not int or not 0 <= pretransfer_workers <= 32:
-        raise ValueError('Pre-transfer workers must be between 0 and 32')
+    if type(pretransfer_workers) is not int or not 0 <= pretransfer_workers <= MAX_PRETRANSFER_WORKERS:
+        raise ValueError('Pre-transfer workers must be between 0 and 512')
+    if resume_adapter_sha256 is not None and (resume_adapter_sha256 != COMPATIBLE_ADAPTER_SHA256
+            or not resume or journal_mode != 'local'):
+        raise ValueError('Adapter compatibility requires explicit local resume of the exact supported predecessor')
     if pretransfer_workers:
         pool = getattr(getattr(getattr(client, 'meta', None), 'config', None), 'max_pool_connections', None)
         if journal_mode != 'local' or not isinstance(pool, int) or pool < pretransfer_workers:
@@ -128,7 +137,7 @@ def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False
                 preparation_sha256=prepared['preparation_sha256'], attempt=prepared['attempt'],
                 name=prepared['artifact_name'], run_id=producer['run_id'], run_attempt=producer['run_attempt'],
                 provenance_revision=preparation['binding']['provenance_revision'],
-                adapter_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
+                adapter_sha256=resume_adapter_sha256 or adapter_sha256())
             encoded = (json.dumps(custody, sort_keys=True, separators=(',', ':')) + '\n').encode()
             if resume:
                 if read_receipt(receipt_path)[1] != encoded:
@@ -186,6 +195,14 @@ def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False
 
         try:
             check_inputs()
+            if resume_adapter_sha256 is not None:
+                state.record('local_adapter_compatibility_authorized', dict(
+                    version=1, predecessor_adapter_sha256=resume_adapter_sha256,
+                    current_adapter_sha256=adapter_sha256(),
+                    original_local_receipt_sha256=custody['local_receipt_sha256'],
+                    preparation_sha256=custody['preparation_sha256'],
+                    attempt=custody['attempt'], pretransfer_workers=pretransfer_workers,
+                    authorization='Explicit --resume-adapter-sha256 for bounded concurrency increase; original custody and journal binding retained'))
             guarded = ContinuedPublicationClient(client, continuation=state, guard=PublicationGuard(),
                 journal=state.record, after_write=lambda *args: None)
             if pretransfer_workers:
@@ -215,8 +232,10 @@ def main(argv=None):
     parser.add_argument('--resume', action='store_true')
     parser.add_argument('--journal-mode', choices=('local', 'remote'), default='local')
     parser.add_argument('--report', type=Path, required=True)
-    parser.add_argument('--pretransfer-workers', type=int, choices=range(33), default=0,
-        help='Opt-in v6 asset concurrency (0 disables; at most 32), with matching SDK pool')
+    parser.add_argument('--pretransfer-workers', type=int, choices=range(MAX_PRETRANSFER_WORKERS + 1), default=0,
+        help='Opt-in v6 asset concurrency (0 disables; at most 512), with matching SDK pool')
+    parser.add_argument('--resume-adapter-sha256', choices=(COMPATIBLE_ADAPTER_SHA256,),
+        help='Explicitly resume the exact supported predecessor receipt/journal without rebinding custody')
     args = parser.parse_args(argv)
     try:
         if args.pretransfer_workers:
@@ -226,7 +245,8 @@ def main(argv=None):
         else:
             client = make_client()
         result = publish_local(client, args.directory, public_url=args.public_url, resume=args.resume,
-            journal_mode=args.journal_mode, pretransfer_workers=args.pretransfer_workers)
+            journal_mode=args.journal_mode, pretransfer_workers=args.pretransfer_workers,
+            resume_adapter_sha256=args.resume_adapter_sha256)
     except BaseException as error:
         try:
             save_report(args.report, dict(status='failed', error_type=type(error).__name__, error=str(error)))

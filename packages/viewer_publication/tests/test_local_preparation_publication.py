@@ -355,9 +355,9 @@ def test_failed_pretransfer_drains_before_unlock_then_resumes_original_condition
     assert len(keys) == len(set(keys))
 
 
-@pytest.mark.parametrize('workers', [-1, 33, True])
+@pytest.mark.parametrize('workers', [-1, 513, True])
 def test_pretransfer_rejects_unbounded_worker_configuration(ready, workers):
-    with pytest.raises(ValueError, match='between 0 and 32'):
+    with pytest.raises(ValueError, match='between 0 and 512'):
         publish(ready, pretransfer_workers=workers)
     assert not ready[0].puts
 
@@ -389,3 +389,142 @@ def test_wrong_bytes_in_pretransfer_are_rejected_before_core_selection(ready, mo
     with pytest.raises(ValueError, match='upload bytes'):
         publish(ready, pretransfer_workers=1)
     assert not any(key == local.publisher.PREFIX + 'manifest.json' for key, *_ in remote.puts)
+
+
+def predecessor_checkpoint(ready, monkeypatch):
+    """Issue original authority and retain several completed immutable writes."""
+    remote, root, _ = ready
+    record = local.LocalContinuation.record
+    verified = []
+    with monkeypatch.context() as patch:
+        patch.setattr(local, 'adapter_sha256', lambda: local.COMPATIBLE_ADAPTER_SHA256)
+        def stopped(state, event, value):
+            result = record(state, event, value)
+            if event == 'publication_write_verified':
+                verified.append(value['key'])
+                if len(verified) == 3:
+                    raise KeyboardInterrupt('stop after durable predecessor acknowledgments')
+            return result
+        patch.setattr(local.LocalContinuation, 'record', stopped)
+        with pytest.raises(KeyboardInterrupt):
+            publish(ready)
+    assert len(verified) >= 3  # Core drains already-running uploads before releasing the lock.
+    return (root / local.RECEIPT).read_bytes(), (root / local.LOCAL_STATE / 'events.jsonl').read_bytes(), verified
+
+
+def test_exact_predecessor_resume_preserves_receipt_history_and_completed_puts(ready, monkeypatch):
+    remote, root, _ = ready
+    receipt, journal, completed = predecessor_checkpoint(ready, monkeypatch)
+    before, before_meta = read_local_journal(root / local.LOCAL_STATE / 'events.jsonl')
+    remote.meta.config.max_pool_connections = 256
+    assert publish(ready, resume=True, pretransfer_workers=256,
+                   resume_adapter_sha256=local.COMPATIBLE_ADAPTER_SHA256)['status'] == 'published'
+    assert (root / local.RECEIPT).read_bytes() == receipt
+    assert (root / local.LOCAL_STATE / 'events.jsonl').read_bytes().startswith(journal)
+    state, _ = read_local_journal(root / local.LOCAL_STATE / 'events.jsonl')
+    assert state['binding'] == before['binding']
+    for key in completed:
+        assert state['writes'][key] == before['writes'][key]
+    keys = [key for key, *_ in remote.puts]
+    assert len(keys) == len(set(keys))
+    events = [json.loads(line) for line in (root / local.LOCAL_STATE / 'events.jsonl').read_bytes().splitlines()]
+    audit = next(e for e in events if e['event'] == 'local_adapter_compatibility_authorized')
+    assert audit['sequence'] >= before_meta['events']  # Normal reconciliation may append its checkpoint first.
+    assert audit['value']['predecessor_adapter_sha256'] == local.COMPATIBLE_ADAPTER_SHA256
+    assert audit['value']['current_adapter_sha256'] == local.adapter_sha256()
+    assert audit['value']['original_local_receipt_sha256'] == hashlib.sha256(receipt).hexdigest()
+    assert audit['value']['pretransfer_workers'] == 256
+
+
+@pytest.mark.parametrize('change', ['no-opt-in','unknown-predecessor','wrong-adapter','run','directory','preparation','journal'])
+def test_predecessor_resume_refuses_arbitrary_or_mismatched_authority(ready,monkeypatch,change):
+    remote,root,_ = ready
+    predecessor_checkpoint(ready,monkeypatch)
+    options = dict(resume=True,resume_adapter_sha256=local.COMPATIBLE_ADAPTER_SHA256)
+    if change == 'no-opt-in':options.pop('resume_adapter_sha256')
+    elif change == 'unknown-predecessor':options['resume_adapter_sha256']='a'*64
+    elif change == 'journal':
+        path=root/local.LOCAL_STATE/'events.jsonl'
+        raw=path.read_bytes();path.write_bytes(raw[:-1])
+    else:
+        path=root/local.RECEIPT
+        receipt=json.loads(path.read_bytes())
+        field,value={'wrong-adapter':('adapter_sha256','a'*64),'run':('run_id','wrong'),
+            'directory':('directory_identity',{'device':0,'inode':0}),
+            'preparation':('preparation_sha256','a'*64)}[change]
+        receipt[field]=value
+        path.write_bytes((json.dumps(receipt,sort_keys=True,separators=(',',':'))+'\n').encode())
+    before=len(remote.puts)
+    with pytest.raises(ValueError):publish(ready,**options)
+    assert len(remote.puts)==before
+
+
+@pytest.mark.parametrize('mode,resume',[('remote',True),('local',False)])
+def test_predecessor_override_is_only_local_explicit_resume(ready,mode,resume):
+    with pytest.raises(ValueError,match='explicit local resume'):
+        publish(ready,resume=resume,journal_mode=mode,resume_adapter_sha256=local.COMPATIBLE_ADAPTER_SHA256)
+    assert not ready[0].puts
+
+
+def test_predecessor_resume_keeps_source_selection_check(ready,monkeypatch):
+    remote,root,_=ready
+    receipt,journal,_=predecessor_checkpoint(ready,monkeypatch)
+    remote.versions['indexes/catalog.json']='new-source'
+    before=len(remote.puts)
+    assert publish(ready,resume=True,resume_adapter_sha256=local.COMPATIBLE_ADAPTER_SHA256)['status']=='superseded'
+    assert len(remote.puts)==before and (root/local.RECEIPT).read_bytes()==receipt
+
+
+def test_predecessor_resume_keeps_prepared_content_check(ready,monkeypatch):
+    remote,root,_=ready
+    predecessor_checkpoint(ready,monkeypatch)
+    receipt=json.loads((root/'preparation.json').read_bytes())
+    path=next(root/name for name in receipt['files'] if name.endswith('.parquet'))
+    raw=path.read_bytes();path.write_bytes(bytes([raw[0]^1])+raw[1:])
+    before=len(remote.puts)
+    with pytest.raises(ValueError):publish(ready,resume=True,resume_adapter_sha256=local.COMPATIBLE_ADAPTER_SHA256)
+    assert len(remote.puts)==before
+
+
+@pytest.mark.parametrize('workers',[256,512])
+def test_high_bounded_concurrency_uses_configured_executor_and_no_duplicate_puts(ready,monkeypatch,workers):
+    remote,_,_=ready
+    remote.meta.config.max_pool_connections=workers
+    original=local.ThreadPoolExecutor
+    limits=[]
+    def pool(*,max_workers):
+        limits.append(max_workers)
+        return original(max_workers=max_workers)
+    monkeypatch.setattr(local,'ThreadPoolExecutor',pool)
+    assert publish(ready,pretransfer_workers=workers)['status']=='published'
+    assert limits==[workers]
+    keys=[key for key,*_ in remote.puts]
+    assert len(keys)==len(set(keys))
+
+
+def test_high_concurrency_refuses_undersized_sdk_pool(ready):
+    ready[0].meta.config.max_pool_connections=511
+    with pytest.raises(ValueError,match='matching SDK connection pool'):
+        publish(ready,pretransfer_workers=512)
+    assert not ready[0].puts
+
+
+@pytest.mark.parametrize('workers',[256,512])
+def test_cli_matches_high_concurrency_sdk_pool(tmp_path,monkeypatch,workers):
+    from congress_shared import storage
+    called={}
+    client=object()
+    def connect(**kwargs):called['sdk']=kwargs;return client
+    def run(actual,root,**kwargs):
+        assert actual is client
+        called['publish']=kwargs
+        return dict(status='published')
+    monkeypatch.setattr(storage,'connect_r2',connect)
+    monkeypatch.setattr(local,'publish_local',run)
+    report=tmp_path/'report.json'
+    assert local.main(['--directory',str(tmp_path),'--report',str(report),'--resume',
+        '--pretransfer-workers',str(workers),'--resume-adapter-sha256',local.COMPATIBLE_ADAPTER_SHA256])==0
+    assert called['sdk']['max_pool_connections']==workers
+    assert called['sdk']['retries']=={'total_max_attempts':1}
+    assert called['publish']['pretransfer_workers']==workers
+    assert called['publish']['resume_adapter_sha256']==local.COMPATIBLE_ADAPTER_SHA256
