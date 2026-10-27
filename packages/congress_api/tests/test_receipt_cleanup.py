@@ -214,3 +214,17 @@ def test_r2_rewriter_adapter_uses_only_single_conditional_put(tmp_path):
     assert client.calls == []
     store.put_file('receipts/family/undated/run.jsonl.gz', source, if_match='old-etag')
     assert len(client.calls) == 1
+
+
+def test_scan_groups_paths_and_bounds_examples_per_field(tmp_path):
+    from congress_api.cli.receipt_cleanup import scan
+    root = tmp_path
+    key = 'receipts/family/undated/run.jsonl.gz'
+    path = root / key
+    path.parent.mkdir(parents=True)
+    path.write_bytes(encode([{'path': f'/tmp/source/{i}.pdf'} for i in range(10)]))
+    report = scan(root, [key])
+    assert len(report['fields']) == 1
+    [field] = report['fields']
+    assert field['path'] == 'path' and field['count'] == 10
+    assert len(field['examples']) == 3
