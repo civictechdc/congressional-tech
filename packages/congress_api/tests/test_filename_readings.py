@@ -26,6 +26,7 @@ class Worker:
     def __enter__(self): return self
     def __exit__(self, *args): pass
     def parse(self, input_id, payload):
+        assert isinstance(payload, bytes)
         row = reader().parse_payload(payload)
         return dict(status='completed', value=row)
 
@@ -250,3 +251,66 @@ def test_worker_cannot_author_a_terminal_decision_before_its_second_failure(tmp_
         reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'stage',
             worker_factory=PrematureWorker,decided_at=STAMP)
     assert not (tmp_path/'stage/raw').exists()
+
+
+@pytest.mark.parametrize('filename,expected',[
+    ('bills-119hr6028ih.pdf','BILLS-119hr6028ih'),
+    ('BiLlS-119HR6028IH.PDF','BILLS-119hr6028ih'),
+    ('cHrG-118SHRG49104057.Pdf','CHRG-118shrg49104057')])
+def test_recognized_case_variants_keep_canonical_package_keys_and_literal_fields(filename,expected):
+    row=reader().read_filename(filename,'',catalog_version='v')
+    assert row['valid'] and row['package_id']==expected
+    assert next(value['value'] for value in row['fields'] if value['field']=='package_family') == filename.split('-')[0]
+
+
+def test_actual_worker_produces_completed_rows_and_settles_transport_size_limit(tmp_path):
+    from congress_api.retention.parser_worker import ParserWorker
+    captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
+        url='https://a.test/BILLS-119hr6028ih.pdf')])
+    complete=reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'complete',decided_at=STAMP)
+    [row]=pq.read_table(complete['readings']).to_pylist()
+    assert row['status']=='completed' and row['measure_keys']==['119-hr-6028']
+    def limited_worker(*args,**bounds):
+        bounds['max_input_bytes']=1
+        return ParserWorker(*args,**bounds)
+    limited=reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'limited',
+        decided_at=STAMP,worker_factory=limited_worker)
+    [row]=pq.read_table(limited['readings']).to_pylist()
+    assert row['status']=='size_limit' and row['error_type']=='worker_input_size_limit'
+    assert limited['unreadable_key'] is None
+    again=reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'again',
+        existing=limited['readings'],decided_at=STAMP,worker_factory=limited_worker)
+    assert pq.read_metadata(again['readings']).num_rows==0
+
+
+def test_actual_worker_terminal_failure_stages_raw_evidence_and_rebuild_skips_it(tmp_path):
+    from congress_api.retention.parser_worker import ParserWorker
+    crash=tmp_path/'crash.py'
+    crash.write_text("def parse(payload):\n    raise RuntimeError('fixture parser crash')\n")
+    def crashing_worker(parser,version,callable_path,**bounds):
+        return ParserWorker(parser,version,str(crash)+':parse',**bounds)
+    captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
+        url='https://a.test/Bad.pdf')])
+    result=reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'stage',
+        worker_factory=crashing_worker,decided_at=STAMP)
+    assert pq.read_metadata(result['readings']).num_rows==0
+    [line]=Path(result['unreadable_path']).read_text().splitlines()
+    assert json.loads(line)['reason']=='parser_crash'
+    repeat=reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'repeat',
+        worker_factory=crashing_worker,decided_at=STAMP,
+        unreadable_files=[dict(key=result['unreadable_key'],path=result['unreadable_path'])])
+    assert pq.read_metadata(repeat['work_list']).num_rows==0 and repeat['unreadable_key'] is None
+
+
+def test_filename_cli_creates_a_second_table_without_recreating_existing_namespace(tmp_path,capsys):
+    captures=input_tables(tmp_path,[])
+    inventory=tmp_path/'inventory.json'; inventory.write_text('[]')
+    common=['--captures',str(captures),'--recovery-inventory',str(inventory),
+        '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--decided-at',STAMP,'--apply',
+        '--catalog-root',str(tmp_path/'catalog'),'--create-table']
+    assert reader().main([*common,'--work',str(tmp_path/'first'),'--table','archive.first',
+        '--table-location',str(tmp_path/'first-data'),'--create-namespace'])==0
+    capsys.readouterr()
+    assert reader().main([*common,'--work',str(tmp_path/'second'),'--table','archive.second',
+        '--table-location',str(tmp_path/'second-data')])==0
+    assert json.loads(capsys.readouterr().out)['append']['files']==[]
