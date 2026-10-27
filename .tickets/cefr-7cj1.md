@@ -1,6 +1,6 @@
 ---
 id: cefr-7cj1
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T21:02:06Z
@@ -42,3 +42,7 @@ Correction contract de2cb49f precedes restoration. Restored reconcile.py exactly
 **2026-10-27T21:57:17Z**
 
 Corrected immutable stage shared/raw-recoveries-owner-32c13ffa,manifestSHA4378dd96e3ab017be3a9ac56179a22dd253c66450154538ed325d6c8816faaaf. Existing provenance path writes57explicit owner/supersedes records;24028base records byte-identical,24085physical/24028active,57activeowner/0orphans/0rejections. MIN over41retainedcandidates resolves24times with0time/locator mismatches. All12351previously-ready rows equal field-for-field;0changesoutside81;12432ready/0unresolved;6excerpt records unchanged. Final metadata job30.45s,maxRSS394575872B. Existing consumer inspections bothapplyfalse validate24085records/2objects and12432requests. Earlier13.98s/15.55s audit-query refusals produced no accepted stage. Correction CODE/ARCH review remains open; no live imports. Maintained source returns to baseline; scratch native job is retained reproducibility evidence only.
+
+**2026-10-27T22:11:16Z**
+
+CORRECTED local scope approved: CODE and ARCH APPROVE for de2cb49f/32c13ffa/5ad06027 and immutable raw-recoveries-owner-32c13ffa. Both reviewers independently verified18pins, authoritybytes, unchangedbase24028 and restoredreconcile; independent69recovery/provenance checks13.91s, broader95checks81.07s. Data-only57supersedes plus24MIN41candidates →24085physical/24028active/12432ready/0unresolved. BothprovenancefilesrequiredbyD3/E. ExactownergatesupdatedB7README; actualimportsnotrun.
