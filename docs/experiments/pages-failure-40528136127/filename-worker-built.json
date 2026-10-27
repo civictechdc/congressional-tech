@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "status": "failed",
+  "error": "Error: page.evaluate: Error: Unsupported filename catalog version.\n    at a.onmessage (http://127.0.0.1:4173/congressional-tech/_astro/session.D8kS52KI.js:1:3156)",
+  "viewer_url": "https://congressional-data.spicygov.ai/viewer-publications/manifest.json",
+  "pages_url": "http://127.0.0.1:4173/congressional-tech/dashboard/"
+}
