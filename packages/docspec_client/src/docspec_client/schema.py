@@ -137,7 +137,7 @@ def application_schema(schema: pa.Schema, expected_schema: pa.Schema | None = No
 
 
 def _cast_column(column: Any, target_type: pa.DataType) -> Any:
-    if column.type == target_type:
+    if column.type.equals(target_type, check_metadata=True):
         return column
     if (pa.types.is_string(column.type) or pa.types.is_large_string(column.type)) and pa.types.is_timestamp(target_type):
         if column.null_count == len(column):
@@ -152,7 +152,7 @@ def _cast_column(column: Any, target_type: pa.DataType) -> Any:
 
 
 def _cast_array(array: Any, target_type: pa.DataType) -> Any:
-    if array.type == target_type:
+    if array.type.equals(target_type, check_metadata=True):
         return array
     if pa.types.is_struct(target_type):
         children = [
