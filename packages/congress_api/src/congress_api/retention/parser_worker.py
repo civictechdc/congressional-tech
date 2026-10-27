@@ -24,6 +24,20 @@ class _Failure(Exception):
     pass
 
 
+@contextlib.contextmanager
+def reading_input():
+    """Mark bounded raw I/O so an interrupted read cannot settle an input."""
+    marker = os.environ.get('DOCSPEC_PARSER_IO_MARKER')
+    if marker is None:
+        raise RuntimeError('Raw read phase requires a supervised parser')
+    path = Path(marker)
+    path.touch()
+    try:
+        yield
+    finally:
+        path.unlink(missing_ok=True)
+
+
 class ParserWorker:
     """Own one persistent subprocess for one explicit parser/version pair."""
 
@@ -122,6 +136,7 @@ class ParserWorker:
                 if self._process is None:
                     self._start()
                 try:
+                    (Path(self._directory.name) / 'phase').unlink(missing_ok=True)
                     # One tiny command, one input in flight: never block on input bytes.
                     if os.write(self._process.stdin.fileno(), b'parse\n') != 6:
                         raise _Failure('parser_crash')
@@ -138,6 +153,9 @@ class ParserWorker:
                 except _Failure as exc:
                     reason = str(exc)
                 self._stop()
+                reading = (Path(self._directory.name) / 'phase').exists()
+                if reading:
+                    return {'status': 'read_error', 'reason': reason}
                 if attempt == 1:
                     return {'status': 'unreadable', 'reason': reason, 'attempts': 2}
         except BaseException:
@@ -149,6 +167,7 @@ class ParserWorker:
 
 def _child():
     callable_path, directory, memory, output = sys.argv[1:]
+    os.environ['DOCSPEC_PARSER_IO_MARKER'] = str(Path(directory) / 'phase')
     module, name = callable_path.rsplit(':', 1)
     if module.endswith('.py'):
         spec = importlib.util.spec_from_file_location('parser_callable', module)

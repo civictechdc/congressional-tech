@@ -1,0 +1,220 @@
+{
+  "type": "struct",
+  "schema-id": 0,
+  "identifier-field-ids": [
+    1,
+    2,
+    3
+  ],
+  "fields": [
+    {
+      "id": 1,
+      "name": "body_sha",
+      "required": true,
+      "type": "fixed[32]"
+    },
+    {
+      "id": 2,
+      "name": "parser",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 3,
+      "name": "parser_version",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 4,
+      "name": "status",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 5,
+      "name": "error_type",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 6,
+      "name": "format",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 7,
+      "name": "xml_root",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 8,
+      "name": "title",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 9,
+      "name": "heading",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 10,
+      "name": "text_head",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 11,
+      "name": "content_date",
+      "required": false,
+      "type": "date"
+    },
+    {
+      "id": 12,
+      "name": "base_href",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 13,
+      "name": "text_bytes",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "id": 14,
+      "name": "link_count",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "id": 15,
+      "name": "link_text_bytes",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "id": 16,
+      "name": "intact",
+      "required": false,
+      "type": "boolean"
+    },
+    {
+      "id": 17,
+      "name": "named_meetings",
+      "required": true,
+      "type": {
+        "type": "list",
+        "element-id": 101,
+        "element-required": true,
+        "element": "long"
+      }
+    },
+    {
+      "id": 18,
+      "name": "links",
+      "required": true,
+      "type": {
+        "type": "list",
+        "element-id": 102,
+        "element-required": true,
+        "element": {
+          "type": "struct",
+          "fields": [
+            {
+              "id": 110,
+              "name": "href",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 111,
+              "name": "text",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 112,
+              "name": "tag",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 113,
+              "name": "basis",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 114,
+              "name": "group_path",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 115,
+              "name": "doc_type",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 116,
+              "name": "add_date",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 117,
+              "name": "publish_date",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 118,
+              "name": "remove_date",
+              "required": false,
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 19,
+      "name": "fingerprint",
+      "required": false,
+      "type": "fixed[32]"
+    },
+    {
+      "id": 20,
+      "name": "fields",
+      "required": true,
+      "type": {
+        "type": "list",
+        "element-id": 103,
+        "element-required": true,
+        "element": {
+          "type": "struct",
+          "fields": [
+            {
+              "id": 120,
+              "name": "field",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 121,
+              "name": "value",
+              "required": true,
+              "type": "string"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

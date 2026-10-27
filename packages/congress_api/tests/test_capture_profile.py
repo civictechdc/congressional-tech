@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from congress_api.archive_profile import build_capture_profile, validate_capture_profile
+from congress_api.models.archive_profile import build_capture_profile, validate_capture_profile
 
 ROOT=Path(__file__).parents[3]
 REVISION='a'*40

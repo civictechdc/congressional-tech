@@ -28,6 +28,9 @@ def parse(body):
     if body == b"reading":
         from congress_api.retention.parser_worker import reading_input
         with reading_input(): time.sleep(30)
+    if body == b"unknown_phase":
+        open(os.environ['DOCSPEC_PARSER_IO_MARKER'], "w").write("unknown")
+        os._exit(12)
     if body == b"memory":
         data = bytearray(180 * 1024**2)
         time.sleep(30)
@@ -110,4 +113,10 @@ def test_completed_large_result_is_released_before_the_next_invocation(parser):
 def test_hung_raw_read_remains_pending_instead_of_becoming_unreadable(parser):
     with worker(parser) as run:
         assert run.parse('missing', b'reading') == {'status': 'read_error', 'reason': 'timeout'}
+        assert run.parse('next', b'valid')['status'] == 'completed'
+
+
+def test_unknown_raw_phase_is_pending_after_the_child_has_stopped(parser):
+    with worker(parser) as run:
+        assert run.parse('uncertain', b'unknown_phase') == {'status': 'read_error', 'reason': 'parser_crash'}
         assert run.parse('next', b'valid')['status'] == 'completed'

@@ -32,7 +32,8 @@ def sniff_version():
     digest = hashlib.sha256()
     for name in ('retention/sniff.py', 'retention/archive_members.py',
                  'retention/pdf_tools.py', 'retention/image_tools.py',
-                 'parsers/document_links.py'):
+                 'parsers/document_links.py', 'lake/readings.py',
+                 'retention/parser_worker.py', 'retention/process_resources.py'):
         digest.update(name.encode() + b'\0' + (root / name).read_bytes())
     digest.update(json.dumps({'readers': reader_versions(), 'lxml': version('lxml')},
                              sort_keys=True, separators=(',', ':')).encode())
