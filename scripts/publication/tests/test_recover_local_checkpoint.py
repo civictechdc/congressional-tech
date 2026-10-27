@@ -24,7 +24,7 @@ def fixture(tmp_path, monkeypatch):
     asset.parent.mkdir(parents=True)
     asset.write_bytes(b'unchanged observation bytes')
     old = dict(provenance_revision=tool.ORIGIN, code_runtime=dict(implementation='old',dependencies='runtime',publisher_version=10),
-               publisher_version=10, source=dict(sha256='catalog'), native_execution={}, run_id='original',run_attempt='1')
+               publisher_version=10, source=dict(sha256='catalog',value={'version':2}), native_execution={}, run_id='original',run_attempt='1')
     renderer = dict(preparation=old, source=dict(selector_sha256='catalog'), requirements=dict(policy={},compression={}),previous='old',reviews=None)
     continuation = dict(binding=old,phases={},writes={},versions={},version=1)
     tool.save(root/'continuation.json', continuation)
@@ -265,3 +265,145 @@ def test_rebind_preserves_arbitrary_completed_unaccepted_stages(tmp_path,monkeyp
     assert result['preserved_state']['progress']['rows']==len(before['progress'])
     bound=json.loads((f.root/'continuation.json').read_bytes())['binding']
     assert bound['checkpoint_reuse']['reused_tasks']==sorted(row[0] for row in before['progress'])
+
+
+def finished_checkpoint(tmp_path,monkeypatch):
+    """Synthetic finished checkpoint with the exact original marker shape."""
+    f=old_compact_adoption(tmp_path,monkeypatch)
+    f.optimized_code['target_revision']=tool.SOURCE_CACHE_RUNTIME
+    rebind(f)
+    p=f.root/'continuation.json';c=json.loads(p.read_bytes())
+    marker=c['binding']['checkpoint_reuse'];marker['recovery_tool_sha256']=tool.SOURCE_CACHE_TOOL_SHA256
+    tool.save(f.root/tool.RECEIPT,marker);tool.save(p,c)
+    result=json.loads((f.root/'checkpoint-rebind-result.json').read_bytes())
+    result['receipt_sha256']=tool.digest(f.root/tool.RECEIPT);tool.save(f.root/'checkpoint-rebind-result.json',result)
+    roots={name:{'path':name+'-root'} for name in ('components','sources','browse')}
+    manifest=dict(version=6,source_identity=marker['catalog_identity'],source_manifest=c['binding']['source']['value'],
+                  requirements=f.optimized_requirements,roots=roots)
+    tool.save(f.root/'publication/manifest.json',manifest)
+    with sqlite3.connect(f.root/'publication.renderer-upgrade/stages.sqlite') as db:
+        renderer=json.loads(db.execute('SELECT binding FROM build').fetchone()[0]);renderer['preparation']=c['binding']
+        db.execute('UPDATE build SET binding=?',(tool.canonical_json_bytes(renderer).decode(),))
+        db.executemany('INSERT INTO progress VALUES (?,?)',[
+            ('stage:component_preparation','null'),
+            ('stage:component_metadata',json.dumps(roots['components'])),
+            ('stage:source_preparation',json.dumps(roots['sources'])),
+            ('stage:browse_preparation',json.dumps(roots['browse'])),
+            ('stage:inventory','null'),('finished',json.dumps(manifest))])
+        path=f.root/'publication/manifest.json'
+        db.execute('INSERT INTO assets VALUES (?,?,?)',('manifest.json',path.stat().st_size,tool.digest(path)))
+    monkeypatch.setattr(tool,'RECOVERY_READER','reviewed-reader-fixture')
+    monkeypatch.setattr(tool,'FINISHED_DATABASE_SHA256',tool.digest(f.root/'publication.renderer-upgrade/stages.sqlite'))
+    f.reader_code=dict(f.optimized_code,reviewed_recovery_revision=tool.RECOVERY_READER,
+                      source_cache_implementation='optimized',target_implementation='reader-code',target_revision='reader-head')
+    f.reader_identity=dict(f.optimized_identity,implementation='reader-code')
+    f.reader_requirements=dict(f.optimized_requirements,implementation='reader-controls')
+    return f
+
+
+def finished_rebind(f,**changes):
+    options=dict(authorization='User explicitly authorized finished checkpoint reuse',
+        code=f.reader_code,identity=f.reader_identity,requirements=f.reader_requirements)
+    options.update(changes)
+    return tool.rebind_finished_copy(f.root,**options)
+
+
+def test_finished_rebind_removes_only_control_tasks_preserving_manifest_and_assets(tmp_path,monkeypatch):
+    f=finished_checkpoint(tmp_path,monkeypatch)
+    before=states(f);old_manifest=(f.root/'publication/manifest.json').read_bytes()
+    result=finished_rebind(f)
+    after=states(f)
+    assert after['assets']==before['assets'] and after['chunks']==before['chunks']
+    assert after['chunk_assets']==before['chunk_assets']
+    assert after['progress']==[row for row in before['progress'] if row[0] not in ('finished','stage:inventory')]
+    assert (f.root/'publication/manifest.json').read_bytes()==old_manifest
+    marker=json.loads((f.root/tool.RECEIPT).read_bytes())
+    assert marker['removed_task_results']=={name:raw for name,raw in before['progress'] if name in ('finished','stage:inventory')}
+    assert result['invalidated_tasks']==['finished','stage:inventory']
+    assert marker['previous_preparation_binding']['provenance_revision']==tool.SOURCE_CACHE_RUNTIME
+    assert marker['previous_database_sha256']==tool.FINISHED_DATABASE_SHA256
+
+
+@pytest.mark.parametrize('damage',['unreviewed','accepted','receipt','writes','manifest','database','policy','runtime','marker'])
+def test_finished_rebind_refuses_unqualified_checkpoint(tmp_path,monkeypatch,damage):
+    f=finished_checkpoint(tmp_path,monkeypatch);options={}
+    if damage=='unreviewed':monkeypatch.setattr(tool,'RECOVERY_READER',None)
+    elif damage in ('accepted','writes'):
+        p=f.root/'continuation.json';c=json.loads(p.read_bytes())
+        c['phases' if damage=='accepted' else 'writes']['already']={};tool.save(p,c)
+    elif damage=='receipt':tool.save(f.root/'preparation.json',{})
+    elif damage=='manifest':(f.root/'publication/manifest.json').write_bytes(b'{}')
+    elif damage=='database':monkeypatch.setattr(tool,'FINISHED_DATABASE_SHA256','wrong-hash')
+    elif damage=='policy':options['requirements']=dict(f.reader_requirements,policy={'changed':1})
+    elif damage=='runtime':options['identity']=dict(f.reader_identity,dependencies='other')
+    elif damage=='marker':
+        p=f.root/tool.RECEIPT;m=json.loads(p.read_bytes());m['authorization']='changed';tool.save(p,m)
+    before=states(f)
+    with pytest.raises(ValueError):finished_rebind(f,**options)
+    assert states(f)==before and not (f.root/'checkpoint-finished-rebind.json').exists()
+
+
+@pytest.mark.parametrize('changed_requirements',[False,True])
+def test_normal_resume_reuses_all_large_stages_and_regenerates_controls(tmp_path,monkeypatch,changed_requirements):
+    import sys
+    sys.path[:0]=[str(ROOT/'packages/congress_api/tests'),str(ROOT/'packages/viewer_publication/tests')]
+    from congress_api.retention.catalog_cache import LocalStore
+    from congress_api.retention.catalog_publication import read_catalog
+    from test_catalog_coalesced_batches import Native
+    from test_native_catalog_selection import seed
+    from viewer_publication import publish_filename_viewer as builder
+    from viewer_publication import filename_native as renderer
+    store,native=LocalStore(tmp_path/'store'),Native()
+    seed(tmp_path,store,native);snapshot=read_catalog(store,native=native)
+    root=tmp_path/'real-run';root.mkdir()
+    identity=tool.publisher.full_release_identity()
+    base=dict(version=1,provenance_revision=tool.SOURCE_CACHE_RUNTIME,code_runtime=identity,
+        publisher_version=identity['publisher_version'],source=dict(sha256=snapshot.identity['selector_sha256'],value=snapshot.manifest),
+        viewer=None,accepted=None,native_execution={},mode='full',run_id='original',run_attempt='1')
+    marker=dict(version=1,kind='authorized_local_checkpoint_rebind',
+        recovery_tool_sha256=tool.SOURCE_CACHE_TOOL_SHA256,
+        code=dict(target_revision=tool.SOURCE_CACHE_RUNTIME,reviewed_source_cache_revision=tool.SOURCE_CACHE,
+                  target_implementation=identity['implementation']),
+        previous_preparation_binding=dict(base),catalog_identity=snapshot.identity)
+    binding=dict(base,checkpoint_reuse=marker)
+    tool.save(root/tool.RECEIPT,marker)
+    tool.save(root/'continuation.json',dict(version=1,binding=binding,phases={},writes={},versions={}))
+    tool.save(root/'checkpoint-adoption-result.json',dict(status='adopted_local_checkpoint'))
+    tool.save(root/'checkpoint-rebind-result.json',dict(status='rebound_local_checkpoint',
+        target_revision=tool.SOURCE_CACHE_RUNTIME,receipt_sha256=tool.digest(root/tool.RECEIPT)))
+    old=builder.publish_selected(snapshot,root/'publication',review_identities=None,preparation_binding=binding)
+    dbpath=root/'publication.renderer-upgrade/stages.sqlite'
+    with sqlite3.connect(dbpath) as db:chunks=dict(db.execute('SELECT label,count(*) FROM chunks GROUP BY label'))
+    monkeypatch.setattr(tool,'EXPECTED_CHUNKS',chunks)
+    monkeypatch.setattr(tool,'RECOVERY_READER','reviewed-reader-fixture')
+    monkeypatch.setattr(tool,'FINISHED_DATABASE_SHA256',tool.digest(dbpath))
+    requirements=(dict(old['requirements'],implementation='new-reviewed-control-identity')
+                  if changed_requirements else dict(old['requirements']))
+    code=dict(reviewed_recovery_revision=tool.RECOVERY_READER,
+              source_cache_implementation=identity['implementation'],target_implementation='new-code',target_revision='new-head')
+    old_bytes=(root/'publication/manifest.json').read_bytes()
+    tool.rebind_finished_copy(root,authorization='authorized fixture',code=code,
+        identity=dict(identity,implementation='new-code'),requirements=requirements)
+    assert (root/'publication/manifest.json').read_bytes()==old_bytes
+    def fail(*args,**kwargs):raise AssertionError('A retained large stage reran')
+    for cls,names in [(renderer.NativeComponents,['plan','prepare','finish','ordered_records']),
+                      (renderer.NativeSourceAssets,['render']), (renderer.BrowsePages,['build','change'])]:
+        for name in names:monkeypatch.setattr(cls,name,fail)
+    monkeypatch.setattr(renderer,'native_requirements',lambda *args,**kwargs:requirements)
+    calls=[];reach,inventory=renderer._reachable_assets,renderer.write_inventory
+    def reachable(*args,**kwargs):calls.append('reachable');return reach(*args,**kwargs)
+    def indexed(*args,**kwargs):calls.append('inventory');return inventory(*args,**kwargs)
+    monkeypatch.setattr(renderer,'_reachable_assets',reachable);monkeypatch.setattr(renderer,'write_inventory',indexed)
+    native.reads.clear()
+    new_binding=json.loads((root/'continuation.json').read_bytes())['binding']
+    new=builder.publish_selected(snapshot,root/'publication',review_identities=None,
+        preparation_binding=new_binding,resume_preparation=True)
+    assert not native.reads
+    assert calls==['reachable','inventory']
+    assert new['roots']==old['roots'] and new['source_identity']==old['source_identity']
+    assert new['requirements']==requirements
+    assert (new['proof']!=old['proof']) is changed_requirements
+    assert ((root/'publication/manifest.json').read_bytes()!=old_bytes) is changed_requirements
+    with sqlite3.connect(dbpath) as db:
+        assert json.loads(db.execute("SELECT result FROM progress WHERE task='finished'").fetchone()[0])==new
+        assert db.execute("SELECT count(*) FROM progress WHERE task='stage:inventory'").fetchone()[0]==1
