@@ -2,9 +2,9 @@
 from hashlib import sha256
 import json
 from pathlib import Path
-import re
 
 from congress_api.retention.provenance import parquet_output, run_job, json_input
+from congress_api.lake.receipt_metadata import get, lit as literal
 
 
 # These are observed producer vocabularies, not fuzzy success guesses. New values
@@ -46,15 +46,6 @@ COLUMNS = [*PK, 'run_id', 'mode', 'outcome', 'family', 'requested_url', 'url',
     'writer_job', 'writer_commit']
 
 
-def literal(value):
-    return "'" + str(value).replace("'", "''") + "'"
-
-
-def get(value, *path, kind='str'):
-    args = ','.join(str(p) if isinstance(p, int) else literal(p) for p in path)
-    return f'json_get_{kind}({value}' + (',' + args if args else '') + ')'
-
-
 def first(*values):
     return 'coalesce(' + ','.join(values) + ')'
 
@@ -73,76 +64,23 @@ def fetch_time(value):
     return stamp(*fields, get(value, 'capture_date'))
 
 
-def receipt_input(files):
-    # An empty typed projection retains exact source JSON, including mixed-type
-    # paths. The engine reader supplies stable, one-based source positions.
-    return dict(name='receipts', kind='json_lines', files=files,
-                schema=dict(fields=[], metadata={}))
-
-
 def compact_counter(counter, *, engine, work):
-    """Reuse the verified M2 reader result without its large body payloads.
-
-    Typed metadata takes the ordinary path. Only mixed records, list-valued
-    records and inline source identity retain original record JSON. Capture and
-    reference JSON is small metadata and preserves pointers the census projection
-    did not type. The original raw evidence is never rewritten.
-    """
-    import pyarrow.parquet as pq
-    schema = pq.read_schema(counter)
-    required = {'__receipt_key','__receipt_line','__raw_line','__type_conflicts',
-                '__receipt_family','record','captures','file_references'}
-    if not required.issubset(schema.names):
-        raise ValueError('Counter is not the validated typed/raw receipt reader result')
-    work = Path(work).resolve()
-    work.mkdir(parents=True, exist_ok=False)
-    names = [n for n in schema.names if not n.startswith('__')
-             and n not in {'record','captures','file_references'}]
-    fields = ','.join(literal(n)+',"'+n+'"' for n in names)
-    record_fields=','.join(literal(f.name)+',get_field(record,'+literal(f.name)+')'
-                           for f in schema.field('record').type)
-    supplements=','.join(literal(name)+',json_get_json(__raw_line,\'record\','+literal(source)+')'
-        for name,source in [('_ingest_headers_json','response_headers'),
-                            ('_ingest_other_headers_json','headers'),
-                            ('_ingest_header_items_json','response_header_items'),
-                            ('_ingest_prior_attempts_json','prior_attempts')])
-    sql = f'''SELECT __receipt_key,__receipt_line,
-        json_get_json(json_array(named_struct({fields},'archive_member_count',
-            json_length(__raw_line,'record','archive_members'))),0) AS line,
-        CASE WHEN coalesce(array_length(captures),0)>0
-            THEN json_get_json(__raw_line,'captures') END AS caps_json,
-        CASE WHEN coalesce(array_length(file_references),0)>0
-            THEN json_get_json(__raw_line,'file_references') END AS refs_json,
-        CASE WHEN record IS NULL OR coalesce(array_length(__type_conflicts),0)>0
-                 OR __receipt_family='congress/meetings'
-            THEN json_get_json(__raw_line,'record')
-            ELSE json_get_json(json_array(named_struct({record_fields},{supplements})),0) END AS record_json
-        FROM counter'''
-    run_job(work, engine,
-        inputs=[dict(name='counter',kind='parquet',path=str(Path(counter).resolve()))],
-        steps=[], outputs=[parquet_output(work,'receipt-metadata',sql,
-                                          ['__receipt_key','__receipt_line'])])
-    return work/'receipt-metadata.parquet'
+    from congress_api.lake.receipt_metadata import compact
+    return compact(counter=counter,engine=engine,work=work)
 
 
-def mapping_steps(*, existing=False, counter=False):
+def mapping_steps(*, existing=False):
     steps = []
     def step(name, sql, materialize=False):
         steps.append(dict(name=name, sql=sql, materialize=materialize))
 
-    skip = (' WHERE __source_key NOT IN (SELECT DISTINCT receipt_key FROM existing_captures)'
+    skip = (' WHERE __receipt_key NOT IN (SELECT DISTINCT receipt_key FROM existing_captures)'
             if existing else '')
-    position = ('__receipt_key AS receipt_key,__receipt_line AS receipt_line,line,caps_json,refs_json,record_json'
-                if counter else '__source_key AS receipt_key,__source_line AS receipt_line,__raw_line AS line')
-    if counter and existing:
-        skip = ' WHERE __receipt_key NOT IN (SELECT DISTINCT receipt_key FROM existing_captures)'
-    if counter:
-        skip += (' AND ' if skip else ' WHERE ')+'__receipt_key IN (SELECT receipt_key FROM selected_receipts)'
-    step('lines', 'SELECT ' + position + ' FROM receipts' + skip)
-    caps = get('caps_json', kind='array') if counter else get('line', 'captures', kind='array')
-    refs = get('refs_json', kind='array') if counter else get('line', 'file_references', kind='array')
-    record = 'record_json' if counter else get('line', 'record', kind='json')
-    step('lists', f'SELECT *,{caps} AS caps,{refs} AS refs FROM lines')
+    skip += (' AND ' if skip else ' WHERE ')+'__receipt_key IN (SELECT receipt_key FROM selected_receipts)'
+    step('lines','SELECT __receipt_key AS receipt_key,__receipt_line AS receipt_line,'
+        'line,caps_json,refs_json,record_json FROM receipts'+skip)
+    record='record_json'
+    step('lists',f"SELECT *,{get('caps_json',kind='array')} AS caps,{get('refs_json',kind='array')} AS refs FROM lines")
     step('primary_entries', '''SELECT receipt_key,receipt_line,line,
         CASE WHEN coalesce(array_length(caps),0)>0 THEN 'capture'
              WHEN coalesce(array_length(refs),0)>0 THEN 'file' ELSE 'line' END AS reference_kind,
@@ -183,7 +121,8 @@ def mapping_steps(*, existing=False, counter=False):
         unnest(coalesce({get('line','response_header_items',kind='array')},
                         {get('record','response_header_items',kind='array')},
                         {get(get('record','_ingest_header_items_json'),kind='array')},
-                        {get('record','headers',kind='array')})) AS item FROM records''')
+                        {get('record','headers',kind='array')},
+                        {get(get('record','_ingest_other_headers_json'),kind='array')})) AS item FROM records''')
     step('item_headers', '''SELECT receipt_key,receipt_line,capture_index,
         max(CASE WHEN lower(json_get_str(item,'name'))='content-disposition'
             THEN json_get_str(item,'value') END) AS item_disposition,
@@ -194,8 +133,8 @@ def mapping_steps(*, existing=False, counter=False):
         return first(get('line', *path, kind=kind), get('record', *path, kind=kind))
     def num(*path):
         return first(integer('line', *path), integer('record', *path))
-    recovery = both('recovery_evidence', kind='json')
-    association = get('record', 'source_associations', 0, kind='json')
+    recovery = first(both('recovery_evidence', kind='json'),get('record','_ingest_recovery_json'))
+    association = first(get('record','source_associations',0,kind='json'),get(get('record','_ingest_assoc_json'),0,kind='json'))
     root_headers = first(get('line','response_headers',kind='json'),
                          get('record','_ingest_headers_json'),get('record','response_headers',kind='json'))
     headers = first(root_headers,get('record','_ingest_other_headers_json'),
@@ -248,7 +187,7 @@ def mapping_steps(*, existing=False, counter=False):
         AND (raw_outcome IS NULL OR raw_outcome IN ('saved','captured','complete','html','html_body','pdf','retained'))
         AND coalesce(json_get_str(line,'error_type'),json_get_str(record,'error_type'),
             json_get_json(line,'error'),json_get_json(record,'error'),json_get_str(record,'_ingest_error_json')) IS NULL'''
-    source_sha = "arrow_cast(sha256(json_canonical(coalesce(json_get_json(record,'meeting'),record))), 'FixedSizeBinary(32)')"
+    source_sha = "arrow_cast(decode(json_get_str(line,'_ingest_record_sha'),'hex'), 'FixedSizeBinary(32)')"
     retry = first(get('headers','retry-after'), get('headers','Retry-After'), 'item_retry')
     columns = dict(
         receipt_key='receipt_key', receipt_line='cast(receipt_line AS INT)',
@@ -267,7 +206,7 @@ def mapping_steps(*, existing=False, counter=False):
         member_path=first(get('entry','member_path'),
             "CASE WHEN position('archive_members' IN coalesce(pointer_json,''))>0 AND reference_kind='capture' THEN json_get_str(entry,'original_path') END"),
         expansion=first(get('entry','expansion'),
-            "CASE WHEN coalesce(json_length(record,'archive_members'),json_get_int(line,'archive_member_count'),0)>0 AND position('archive_members' IN coalesce(pointer_json,''))=0 THEN 'expanded' END"),
+            "CASE WHEN coalesce(json_length(record,'archive_members'),json_get_int(record,'_ingest_archive_member_count'),json_get_int(line,'archive_member_count'),0)>0 AND position('archive_members' IN coalesce(pointer_json,''))=0 THEN 'expanded' END"),
         h_content_disposition=first(get('headers','content-disposition'), get('headers','Content-Disposition'),'item_disposition'),
         retry_after=f"CASE WHEN try_cast({retry} AS BIGINT) IS NOT NULL THEN to_timestamp_micros(cast(extract(epoch FROM fetched)*1000000 AS BIGINT)+try_cast({retry} AS BIGINT)*1000000) ELSE try_cast({retry} AS TIMESTAMP WITH TIME ZONE) END",
         retrieved_at='fetched', sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')", bytes='body_bytes',
@@ -309,15 +248,16 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
     """
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
-    mapping_digest = sha256(Path(__file__).read_bytes()).hexdigest()
+    mapping_digest = sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest()
     keys = [f['key'] for f in files]
     if len(keys) != len(set(keys)) or any(not k.startswith('receipts/') for k in keys):
         raise ValueError('Receipt inventory needs unique raw receipt keys')
-    inputs = ([dict(name='receipts',kind='parquet',path=str(Path(counter).resolve()))]
-              if counter is not None else [receipt_input(files)])
-    if counter is not None:
-        inputs.append(json_input(work,'selected_receipts',[dict(receipt_key=k) for k in keys],
-                                 receipt_key='Utf8'))
+    if counter is None:
+        from congress_api.lake.receipt_metadata import compact
+        counter=compact(files=files,engine=engine,work=work/'receipt-metadata')
+    inputs = [dict(name='receipts',kind='parquet',path=str(Path(counter).resolve()))]
+    inputs.append(json_input(work,'selected_receipts',[dict(receipt_key=k) for k in keys],
+                             receipt_key='Utf8'))
     if existing is not None:
         inputs.append(dict(name='existing_captures', kind='parquet', path=str(Path(existing).resolve())))
     checks = [dict(name='positions',sql='''SELECT receipt_key,receipt_line,'invalid source locator' AS reason
@@ -341,7 +281,7 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
                 OR count(DISTINCT coalesce(json_get_str(item,'retrieved_at'),json_get_str(item,'captured_at'),json_get_str(item,'observed_at')))>1
             LIMIT 1''')]
     results = run_job(work, engine, inputs=inputs,
-        steps=mapping_steps(existing=existing is not None, counter=counter is not None),
+        steps=mapping_steps(existing=existing is not None),
         outputs=[parquet_output(work, 'capture-evidence', 'SELECT * FROM capture_facts', PK)],
         queries=checks)
     for name in ('positions','invalid', 'secondary', 'list_facts'):
@@ -356,7 +296,7 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
             'SELECT '+','.join('"'+c+'"' for c in COLUMNS)+' FROM facts', PK)],
         queries=[dict(name='counts', sql='SELECT count(*) AS rows,count(DISTINCT receipt_key) AS receipts FROM facts'),
                  dict(name='receipts',sql='SELECT DISTINCT receipt_key FROM facts ORDER BY receipt_key')])
-    if mapping_digest != sha256(Path(__file__).read_bytes()).hexdigest():
+    if mapping_digest != sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest():
         raise ValueError('Receipt mapping changed while staging; accepted inventory was not written')
     (work/'ingested-receipts.json').write_text(json.dumps(dict(version=1,
         mapping_digest=mapping_digest, receipt_keys=[r['receipt_key'] for r in accepted['receipts']]), indent=2)+'\n')
