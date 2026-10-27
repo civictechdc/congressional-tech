@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {build} from 'esbuild';
 import React from 'react';
@@ -28,4 +29,16 @@ test('all recovery kinds and hidden direct links show their recorded decisions',
 test('list rows distinguish editions and import dates without inventing captures',()=>{
   const html=renderToStaticMarkup(React.createElement(ArchiveRows,{rows:[row,{...row,list_row:1,date_kind:'import_day',first_captured:null,in_archive_since:'2020-01-02'}],onSelect:()=>{}}));
   assert(html.includes('Captured 2024-01-02'));assert(html.includes('In our archive since 2020-01-02 (original capture date not recorded)'));assert(html.includes('2023-12-01'));
+});
+
+
+test('new counterpart and related-file claims retain their exact meaning on the page',async()=>{
+  const fixture=JSON.parse(await readFile(new URL('./fixtures/recovery-labels.json',import.meta.url),'utf8'));
+  for(const kind of fixture.render_cases){
+    const html=render({document:row,detail:{...detail,saved_body:null},sources:[],recoveries:[{kind,body:new Uint8Array(32).fill(19),suffix:'.gz',bytes:20,imported_at:'2024-01-01'}]});
+    assert(html.includes(fixture.expected_labels[kind]),kind);
+    assert(html.includes('Recovered and related files'));
+    assert(!html.includes('Recovered document'),kind+' is not a recovered original');
+    assert(!html.includes('Official substitute'),kind+' retains its narrower claim');
+  }
 });
