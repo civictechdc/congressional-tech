@@ -143,5 +143,44 @@
         }
       ]
     }
+  },
+  {
+    "id": "xml-namespaced-link",
+    "parser": "xml",
+    "body": "<root xmlns:xlink=\"http://www.w3.org/1999/xlink\"><a xlink:href=\"relative.xml\">XML</a></root>",
+    "expected": {
+      "links": [
+        {
+          "href": "relative.xml",
+          "text": "XML",
+          "tag": "a",
+          "basis": "{http://www.w3.org/1999/xlink}href",
+          "group_path": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "html-two-embedded-contexts",
+    "parser": "html",
+    "body": "<html><body><script id=\"__NEXT_DATA__\" type=\"application/json\">{\"one\": \"<ul><li><a href=\\\"a.pdf\\\">A</a></li></ul>\", \"two\": \"<ul><li><a href=\\\"b.xml\\\">B</a></li></ul>\"}</script></body></html>",
+    "expected": {
+      "links": [
+        {
+          "href": "a.pdf",
+          "text": "A",
+          "tag": "a",
+          "basis": "href",
+          "group_path": "html[1]/body[1]/script[1]@[\"one\"]/ul[1]/li[1]"
+        },
+        {
+          "href": "b.xml",
+          "text": "B",
+          "tag": "a",
+          "basis": "href",
+          "group_path": "html[1]/body[1]/script[1]@[\"two\"]/ul[1]/li[1]"
+        }
+      ]
+    }
   }
 ]
