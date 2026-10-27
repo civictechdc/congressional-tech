@@ -1,6 +1,6 @@
 ---
 id: cef-vai0
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T19:44:24Z
