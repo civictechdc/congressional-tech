@@ -182,5 +182,15 @@
         }
       ]
     }
+  },
+  {
+    "id": "html-comments-and-prefixed-tags",
+    "parser": "html",
+    "body": "<html><body>Hello<!-- never visible --> world<fb:like></fb:like></body></html>",
+    "expected": {
+      "text_head": "Hello world",
+      "text_bytes": 11,
+      "links": []
+    }
   }
 ]
