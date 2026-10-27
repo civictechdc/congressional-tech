@@ -134,7 +134,7 @@ One JSON object of about 1 KB per fetch line or recovery import; a run writes nu
 | `bytes` | int | Original size. |
 | `media_type` | string or null | The server's claim. MUST NOT be used to classify. |
 | `sniffed_format`, `sniff_version` | string | The format sniffed from the first bytes (values in §6.2) and the sniff code's version, which also versions `intact`. |
-| `intact` | bool or null | For a PDF: true when `%%EOF` appears in its last 8 KB, else when the pinned PDF reader opens it within the reader's size limit; false otherwise. Null for other formats and for a PDF over that limit. |
+| `intact` | bool or null | For a PDF: true when `%%EOF` appears in its last 8 KB, else when the pinned PDF reader opens it within its 16 MiB size limit; false when it rejects the file or that required read exceeds the limit (reported as `pdf_reader_size_limit`). A missing reader or resource failure is a failed reading, not a damage verdict. Null for other formats and for an older gzip PDF whose prefix alone was read. |
 | `stored_suffix` | `''` \| `.gz` | The physical key's suffix ([[ARCHITECTURE]] §7.1). |
 | `stored_md5`, `stored_bytes` | hex, int | Only on the creating line. |
 | `fidelity` | `exact-bytes` \| `saved-text` \| `saved-record` \| `retained-file` | How faithful the stored bytes are. |
@@ -282,6 +282,7 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
   - An XML document list's link `text` is its entry's description.
   - `doc_type` and the three dates are kept as the publisher wrote them; `remove_date` marks a committee's removal of the document from its hearing page.
 - `sniff` reads every body whose capture rows carry no sniff at the pinned version, with one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`). For a bare PDF it also reads the last 8 KB, and runs the bounded reader only when that finds no `%%EOF`; borrowed PDF checks join in the model (§7.3).
+  - ZIP package detection shares the archive reader's bounds (64 MiB archive, 1 MiB directory, 1,024 entries). It currently reads the bounded archive to inspect root `[Content_Types].xml` or a bounded `mimetype` member naming an OpenDocument type; these packages sniff as `docx`, never from a URL or media type. An unsupported or over-limit ZIP is a failed reading, not an assumed generic archive. Stored gzip ZIPs obey the same decompressed limit.
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
 - `html`, `xml`, `json` read every body of their format once per version and record each body's fingerprint and links. No parser reads embedded PDF titles.
 - **Page populations**, nested, on one snapshot: the bodies the server labels HTML or XML (287,765); those of them with a 2xx good fetch (214,041), over which links resolve (§7.2); and the page readings' candidates, which add JSON and pages served under other labels (289,179). Links: *est.* 4.2M, from an 80-body sample, once per page body.

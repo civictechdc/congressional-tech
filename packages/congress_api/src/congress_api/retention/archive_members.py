@@ -153,21 +153,45 @@ def _unsafe_name(name):
 
 
 def is_office_zip(body: bytes, *, limits: ZipLimits = ZipLimits()):
-    """Identify an Open XML package by its exact root directory member name.
+    """Identify Open XML or OpenDocument using the shared bounded inspector.
 
-    This bounded directory-only check does not read compressed member bytes.
+    Open XML reads directory names; OpenDocument reads only its small mimetype.
     A generic archive containing a stored Office document remains generic.
     Malformed or refused archives return False for the normal reader to report.
     """
-    if len(body) > limits.max_archive_bytes:
-        return False
     try:
-        end = _directory_preflight(body, limits)
-        with ZipFile(_ArchiveView(body, end)) as archive:
-            return any(info.orig_filename == '[Content_Types].xml'
-                       for info in archive.infolist())
+        return inspect_office_zip(body, limits=limits)
     except (ArchiveReadError, BadZipFile, UnicodeError, ValueError, NotImplementedError):
         return False
+
+
+def inspect_office_zip(body: bytes, *, limits: ZipLimits = ZipLimits()):
+    """Identify Open XML or OpenDocument bytes, reporting refused ZIP reads.
+
+    Only a bounded root mimetype member is decompressed for OpenDocument. A
+    malformed or refused archive cannot be mistaken for a generic archive.
+    """
+    if len(body) > limits.max_archive_bytes:
+        raise ArchiveReadError('archive_size_limit', 'ZIP archive bytes exceed their limit')
+    end = _directory_preflight(body, limits)
+    with ZipFile(_ArchiveView(body, end)) as archive:
+        entries = archive.infolist()
+        if any(info.orig_filename == '[Content_Types].xml' for info in entries):
+            return True
+        for info in entries:
+            if info.orig_filename != 'mimetype':
+                continue
+            if info.flag_bits & 1 or info.compress_type not in (ZIP_STORED, ZIP_DEFLATED):
+                raise ArchiveReadError('unsupported_mimetype', 'Office mimetype is unreadable')
+            if info.file_size > 256 or info.compress_size > 512:
+                raise ArchiveReadError('mimetype_size_limit', 'Office mimetype exceeds its bound')
+            with archive.open(info) as source:
+                data = source.read(257)
+            if len(data) != info.file_size:
+                raise ArchiveReadError('corrupt_archive', 'Office mimetype size disagrees')
+            if data.strip().startswith(b'application/vnd.oasis.opendocument.'):
+                return True
+    return False
 
 
 def iter_zip_members(body: bytes, *, archive_path: str,

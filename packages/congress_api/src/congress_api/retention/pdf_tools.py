@@ -18,6 +18,10 @@ class PdfToolError(ValueError):
     """The alternate reader could not finish within its declared limits."""
 
 
+class PdfToolRejectedError(PdfToolError):
+    """The reader ran successfully but could not open the supplied document."""
+
+
 class PdfToolTimeoutError(PdfToolError):
     """The reader exceeded its elapsed-time allowance."""
 
@@ -83,7 +87,7 @@ def _run(command, *, output_limit=OUTPUT_LIMIT, timeout=TIMEOUT, memory_limit=No
             except subprocess.TimeoutExpired as exc:
                 raise PdfToolTimeoutError('PDF tool deadline exceeded') from exc
             if code:
-                raise PdfToolError('PDF tool rejected document')
+                raise PdfToolRejectedError('PDF tool rejected document')
         return bytes(output['stdout']), bytes(output['stderr'])
     finally:
         if process.poll() is None:
@@ -126,6 +130,25 @@ def readable_pdf(data):
     return pages is not None
 
 
+def check_pdf(data):
+    """Check a bounded PDF; infrastructure and resource failures stay errors.
+
+    The file reader supplies the shared CPU, RSS, time and output bounds. A
+    damaged document is distinct from a missing reader or a resource refusal.
+    """
+    import re
+    if len(data) > BODY_LIMIT:
+        raise PdfToolError('PDF reader input limit exceeded')
+    with TemporaryDirectory(prefix='pdf-check-') as directory:
+        path = Path(directory) / 'source.pdf'
+        path.write_bytes(data)
+        try:
+            info = _read_file(path, 'pdfinfo', [])
+        except PdfToolRejectedError:
+            return False
+    return re.search(rb'^Pages:\s+([1-9][0-9]*)\s*$', info, re.M) is not None
+
+
 def opening_page_text(data, page):
     """Extract only the requested opening page, preserving page boundaries."""
     if page not in (1, 2):
@@ -145,7 +168,9 @@ def _read_file(path, tool, args):
     if not path.is_file():
         raise PdfToolError('PDF reader requires a regular local file')
     with path.open('rb') as source:
-        if not source.read(1024).lstrip().startswith(b'%PDF-'):
+        from congress_api.parsers.document_links import binary_pdf_header
+        prefix = source.read(1024)
+        if not prefix.lstrip().startswith(b'%PDF-') and not binary_pdf_header(prefix):
             raise PdfToolError('PDF reader input is not a PDF')
     command = [sys.executable, str(Path(__file__).resolve()), tool, *args,
                str(path), *(['-'] if tool == 'pdftotext' else [])]
