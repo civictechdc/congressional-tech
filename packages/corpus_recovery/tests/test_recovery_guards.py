@@ -19,12 +19,12 @@ class GuardTests(unittest.TestCase):
             local_check=self.local, cloud_check=self.cloud, protected_check=self.protected,
             clock=lambda: self.now)
 
-    def test_many_immutable_writes_share_only_expensive_clearance(self):
+    def test_many_immutable_writes_recheck_pins_and_share_only_cloud_clearance(self):
         self.guard.boundary()
         for _ in range(1000): self.guard.check()
-        self.assertEqual(self.guard.counts, dict(local=1002, hashed_files=1, cloud=1, protected=1))
+        self.assertEqual(self.guard.counts, dict(local=1002, hashed_files=1002, cloud=1, protected=1))
         self.guard.shared_commit()
-        self.assertEqual(self.guard.counts, dict(local=1004, hashed_files=1, cloud=2, protected=2))
+        self.assertEqual(self.guard.counts, dict(local=1004, hashed_files=1004, cloud=2, protected=2))
 
     def test_unknown_cloud_invalidates_allowance(self):
         self.guard.check(); self.now = 31
@@ -100,5 +100,35 @@ def test_same_size_rewrite_with_restored_mtime_invalidates_cached_guard_pin(tmp_
         cloud_check=lambda:None, protected_check=lambda:None)
     guard.boundary(); before=path.stat()
     path.write_bytes(b'other'); os.utime(path, ns=(before.st_atime_ns,before.st_mtime_ns))
+    with pytest.raises(RuntimeError, match='Pinned input changed'):
+        guard.shared_commit()
+
+
+@__import__('pytest').mark.parametrize('next_check', ['check', 'shared_commit'])
+def test_changed_pin_is_rehashed_even_when_metadata_is_identical(tmp_path, monkeypatch, next_check):
+    import pytest
+    from corpus_recovery import guards
+    path = tmp_path / 'pin'
+    path.write_bytes(b'first')
+    custody = guards._identity(path)
+    monkeypatch.setattr(guards, '_identity', lambda candidate: custody)
+    guard = RecoveryGuard(pins={path:hashlib.sha256(b'first').hexdigest()},
+        local_check=lambda:None, cloud_check=lambda:None, protected_check=lambda:None)
+    guard.boundary()
+    path.write_bytes(b'other')
+    with pytest.raises(RuntimeError, match='Pinned input changed'):
+        getattr(guard, next_check)()
+
+
+def test_remote_check_cannot_hide_same_metadata_pin_change(tmp_path, monkeypatch):
+    import pytest
+    from corpus_recovery import guards
+    path = tmp_path / 'pin'
+    path.write_bytes(b'first')
+    custody = guards._identity(path)
+    monkeypatch.setattr(guards, '_identity', lambda candidate: custody)
+    guard = RecoveryGuard(pins={path:hashlib.sha256(b'first').hexdigest()},
+        local_check=lambda:None, cloud_check=lambda:None,
+        protected_check=lambda:path.write_bytes(b'other'))
     with pytest.raises(RuntimeError, match='Pinned input changed'):
         guard.shared_commit()
