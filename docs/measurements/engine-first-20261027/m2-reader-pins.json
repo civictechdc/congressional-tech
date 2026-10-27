@@ -1,0 +1,11 @@
+{
+  "cx_m2/src/main.rs": "057d9f21fccf7261913d75682a7dd5bde626fc945e52bb77dd1f3be169fbd72f",
+  "cx_m2/src/receipt.rs": "c3629fac9cd36c56888a88cf912e8c454fcba975ebaf491969d58e6672e2da01",
+  "cx_m2/Cargo.lock": "b351a05a4c8290fb69c754fbc906c3b84a665b3800eee9ade7d4c7c8b5854881",
+  "cx_m2_receipt_schema.json": "2cd9e47391162b828e33d7a90de119a82bedcce02671a310d41836ef51e808ae",
+  "cx_m2_receipt_stage256_job.json": "a5580cbff38b6ad66f703bff66c3f60062c424b224732e891a4f6dea86a01169",
+  "cx_m2_stage_counts_job.json": "6df01c5307dd94ee68059774aabf70dbdf45ba889f96be2321596596698122be",
+  "binary_sha256": "ccada94c7762adbf5a3320cd15793ce2f30d691a7670332512dda822d9c13331",
+  "build": "Cargo default dev, debug_assertions=true; local mechanism only; optimized Linux qualification remains incomplete",
+  "stage_bytes": 1656781104
+}
