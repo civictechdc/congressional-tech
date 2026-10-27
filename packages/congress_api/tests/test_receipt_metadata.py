@@ -117,3 +117,38 @@ def test_metadata_validation_refuses_changed_parts_definition_and_runtime(tmp_pa
         output.write(b'changed')
     with pytest.raises(ValueError,match='pin'):
         validate_metadata(parts)
+
+
+def test_prior_metadata_contains_only_real_array_attempts(tmp_path):
+    from congress_api.lake.receipt_metadata import metadata_plan
+    from congress_api.retention.provenance import run_job
+    counter,files=counter_fixture(tmp_path)
+    table=pq.read_table(counter);rows=table.to_pylist()
+    # Absent, null, empty and object-shaped values contain no array attempts.
+    # Explicit null elements of a real array still occupy their source slot.
+    values=[None,None,[],dict(http_status=200,complete=False),
+            [dict(http_status=206,complete=False)],[None,dict(http_status=503,complete=False)]]
+    for index,(row,value) in enumerate(zip(rows,values)):
+        source=json.loads(row['__raw_line']);source['record'].pop('prior_attempts',None)
+        if index:
+            source['record']['prior_attempts']=value
+            source['prior_attempts']=value
+        row['__raw_line']=json.dumps(source)
+    pq.write_table(pa.Table.from_pylist(rows,schema=table.schema),counter)
+    plan=metadata_plan(counter=counter)
+    boundary=next(index for index,step in enumerate(plan['steps']) if step['name']=='prior_metadata')
+    steps=plan['steps'][:boundary+1]
+    work=tmp_path/'prior';work.mkdir()
+    result=run_job(work,engine(),inputs=plan['inputs'],steps=steps,outputs=[],queries=[
+        dict(name='prior',sql='''SELECT receipt_key,receipt_line,record_index,
+            cast(prior_json AS VARCHAR) AS value FROM prior_metadata
+            ORDER BY receipt_key,receipt_line,record_index''')])['prior']
+    assert [(row['receipt_key'],row['receipt_line'],row['record_index']) for row in result]==[
+        (files[2]['key'],1,-1),(files[2]['key'],1,0),(files[2]['key'],2,-1),(files[2]['key'],2,0)]
+    for row in result:
+        attempts=json.loads(row['value'])
+        if row['receipt_line']==1:
+            assert len(attempts)==1 and attempts[0]['http_status']==206 and attempts[0]['complete'] is False
+        else:
+            assert len(attempts)==2 and all(value is None for value in attempts[0].values())
+            assert attempts[1]['http_status']==503 and attempts[1]['complete'] is False
