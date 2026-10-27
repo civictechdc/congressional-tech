@@ -121,10 +121,9 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
         if name in {'sha256','stored_sha256'} and (pa.types.is_binary(schema.field(name).type) or pa.types.is_fixed_size_binary(schema.field(name).type)):
             value=f"lower(encode({value},'hex'))"
         return value
-    index_key=column('body_key')
-    if 'body_key' not in schema.names:
-        sha=column('sha256')
-        index_key=f"concat('bodies/sha256/',substr({sha},1,2),'/',{sha},'.gz')"
+    sha=column('sha256')
+    derived=f"CASE WHEN regexp_like({sha},'^[a-f0-9]{{64}}$') THEN concat('bodies/sha256/',substr({sha},1,2),'/',{sha},'.gz') END"
+    index_key=f"coalesce({column('body_key')},{derived})"
     entry={'Struct':[field(n,t) for n,t in dict(body_key='Utf8',sha256='Utf8',stored_suffix='Utf8',
         stored_md5='Utf8',stored_sha256='Utf8',stored_bytes='Int64',bytes='Int64').items()]}
     receipt_schema={n:{'List':field('item',entry)} for n in ('captures','file_references')}
@@ -134,32 +133,41 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
     inputs+=captures['inputs'] if native else [dict(name='old',kind='parquet',path=str(Path(captures).resolve()))]
     steps=[('index_refs',f"SELECT {index_key} AS key,{column('stored_bytes','BIGINT')} AS size,{column('stored_sha256')} AS stored_sha256,{column('receipt_key')} AS receipt_key,{column('receipt_line','BIGINT')} AS receipt_line,{column('pointer_json')} AS pointer_json FROM old"),
         ('receipt_entries',"SELECT __source_key AS receipt_key,__source_line AS receipt_line,unnest(captures) AS c FROM receipts UNION ALL SELECT __source_key,__source_line,unnest(file_references) AS c FROM receipts"),
-        ('receipt_refs',"""SELECT coalesce(c['body_key'],concat('bodies/sha256/',substr(c['sha256'],1,2),'/',c['sha256'],coalesce(c['stored_suffix'],'.gz'))) AS key,c['stored_bytes'] AS size,c['stored_md5'] AS md5,c['stored_sha256'] AS stored_sha256,receipt_key,receipt_line FROM receipt_entries"""),
+        ('receipt_refs',"""SELECT coalesce(c['body_key'],CASE WHEN regexp_like(c['sha256'],'^[a-f0-9]{64}$') THEN concat('bodies/sha256/',substr(c['sha256'],1,2),'/',c['sha256'],coalesce(c['stored_suffix'],'.gz')) END) AS key,c['stored_bytes'] AS size,c['stored_md5'] AS md5,c['stored_sha256'] AS stored_sha256,receipt_key,receipt_line FROM receipt_entries"""),
         ('all_refs','SELECT key,size,cast(NULL AS VARCHAR) AS md5 FROM index_refs UNION ALL SELECT key,size,md5 FROM receipt_refs'),
         ('refs',"SELECT key,min(size) AS size,min(md5) AS md5,count(DISTINCT size)>1 OR count(DISTINCT md5)>1 AS conflicting FROM all_refs WHERE key IS NOT NULL GROUP BY key"),
-        ('ranked_previous','SELECT *,row_number() OVER(PARTITION BY key ORDER BY checked_at DESC,__source_key DESC,__source_line DESC) AS ranking FROM previous'),
+        ('ranked_previous','SELECT *,row_number() OVER(PARTITION BY key ORDER BY checked_at DESC,__source_key DESC,__source_line DESC) AS ranking FROM previous WHERE key LIKE \'bodies/%\''),
         ('verified','SELECT * FROM ranked_previous WHERE ranking=1'),
-        ('expected','SELECT coalesce(r.key,v.key) AS key,r.size,r.md5,r.conflicting,v.size AS verified_size,v.etag AS verified_etag,v.sha256_verified FROM refs r FULL OUTER JOIN verified v ON r.key=v.key'),
-        ('compared',"""SELECT coalesce(l.key,e.key) AS key,l.size,l.etag,e.key IS NOT NULL AS referenced,l.key IS NULL AS missing,
+        ('expected','SELECT coalesce(r.key,v.key) AS key,r.size,r.md5,r.conflicting,r.key IS NOT NULL AS has_capture,v.key IS NOT NULL AS has_verification,v.size AS verified_size,v.etag AS verified_etag,v.sha256_verified FROM refs r FULL OUTER JOIN verified v ON r.key=v.key'),
+        ('compared',"""SELECT coalesce(l.key,e.key) AS key,l.size,l.etag,e.key IS NOT NULL AS referenced,l.key IS NULL AS missing,coalesce(e.has_capture,false) AS has_capture,coalesce(e.has_verification,false) AS has_verification,
             coalesce(e.conflicting,false) OR (e.size IS NOT NULL AND l.size<>e.size) OR (e.verified_size IS NOT NULL AND l.size<>e.verified_size)
             OR (e.verified_etag IS NOT NULL AND l.etag<>e.verified_etag) OR (e.md5 IS NOT NULL AND l.etag<>e.md5) AS mismatch,
             coalesce(e.sha256_verified,false) AS sha256_verified FROM listing l FULL OUTER JOIN expected e ON l.key=e.key"""),
         ('sample',f"SELECT key,size,etag FROM listing ORDER BY sha256('{seed}' || key),key LIMIT 25"),
-        ('work','SELECT key,size,etag FROM compared WHERE NOT referenced AND NOT missing UNION SELECT key,size,etag FROM sample'),
-        ('digest_repairs',"""SELECT i.key,i.receipt_key,i.receipt_line,i.pointer_json,min(r.stored_sha256) AS stored_sha256,
-            min(r.size) AS stored_bytes FROM index_refs i JOIN receipt_refs r ON i.key=r.key AND i.receipt_key=r.receipt_key AND i.receipt_line=r.receipt_line
-            WHERE r.stored_sha256 IS NOT NULL AND i.stored_sha256 IS DISTINCT FROM r.stored_sha256
-            GROUP BY i.key,i.receipt_key,i.receipt_line,i.pointer_json HAVING count(DISTINCT r.stored_sha256)=1""")]
+        ('orphans','SELECT key,size,etag FROM compared WHERE NOT has_capture AND NOT missing'),
+        ('work','SELECT key,size,etag FROM compared WHERE NOT has_capture AND NOT has_verification AND NOT missing UNION SELECT key,size,etag FROM sample'),
+        ('digest_facts',"""SELECT key,receipt_key,receipt_line,min(stored_sha256) AS stored_sha256,
+            min(size) AS stored_bytes,count(DISTINCT stored_sha256) AS hashes,count(DISTINCT size) AS sizes
+            FROM receipt_refs WHERE stored_sha256 IS NOT NULL GROUP BY key,receipt_key,receipt_line"""),
+        ('digest_conflicts',"SELECT * FROM digest_facts WHERE hashes>1 OR sizes>1 OR NOT regexp_like(stored_sha256,'^[a-f0-9]{64}$')"),
+        ('digest_repairs',"""SELECT DISTINCT i.key,i.receipt_key,i.receipt_line,i.pointer_json,
+            i.stored_sha256 AS old_stored_sha256,r.stored_sha256,r.stored_bytes
+            FROM index_refs i JOIN digest_facts r ON i.key=r.key AND i.receipt_key=r.receipt_key AND i.receipt_line=r.receipt_line
+            WHERE r.hashes=1 AND r.sizes<=1 AND regexp_like(r.stored_sha256,'^[a-f0-9]{64}$')
+            AND (i.stored_sha256 IS DISTINCT FROM r.stored_sha256)""")]
+
     if native:
         steps.insert(0,('old',captures['sql']))
     reports=run_job(engine,work/'inventory',inputs=inputs,steps=steps,
         outputs=[output('baseline',work/'baseline.parquet','SELECT key,size,etag,sha256_verified FROM compared WHERE NOT missing'),
                  output('anomalies',work/'anomalies.parquet','SELECT * FROM compared WHERE missing OR mismatch'),
                  output('work',work/'work.parquet','SELECT * FROM work'),
-                 output('digest-repairs',work/'digest-repairs.parquet','SELECT * FROM digest_repairs')],
+                 output('orphans',work/'orphans.parquet','SELECT * FROM orphans'),
+                 output('digest-conflicts',work/'digest-conflicts.parquet','SELECT * FROM digest_conflicts',('key','receipt_key','receipt_line')),
+                 output('digest-repairs',work/'digest-repairs.parquet','SELECT * FROM digest_repairs',('key','receipt_key','receipt_line','pointer_json','old_stored_sha256'))],
         queries=[dict(name='counts',sql="SELECT count(*) AS listed,count(*) FILTER(WHERE etag LIKE '%-%') AS multipart FROM listing"),
                  dict(name='issues',sql='SELECT count(*) FILTER(WHERE missing) AS missing,count(*) FILTER(WHERE mismatch AND NOT missing) AS mismatches FROM compared'),
-                 dict(name='repairs',sql='SELECT count(*) AS digest_repairs FROM digest_repairs'),
+                 dict(name='repairs',sql='SELECT (SELECT count(*) FROM digest_repairs) AS digest_repairs,(SELECT count(*) FROM digest_conflicts) AS digest_conflicts,(SELECT count(*) FROM orphans) AS orphans'),
                  dict(name='capture_rows',sql='SELECT count(*) AS rows FROM old')])
     if native and reports['capture_rows'][0]['rows']!=captures['expected_rows']:
         raise ValueError('Selected capture source count differs from pinned manifest')
@@ -174,7 +182,7 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
             errors+=not measured['sha256_verified']
             out.write(json.dumps(measured,separators=(',',':'))+'\n')
     records=work/'verification.jsonl'
-    valid=not counts['missing'] and not counts['mismatches'] and not errors
+    valid=not counts['missing'] and not counts['mismatches'] and not counts['digest_conflicts'] and not errors
     result=dict(counts,checked=checked,content_errors=errors,valid=bool(valid),records=str(records),
                 capture_identity=captures['identity'] if native else file_pin(captures)['sha256'])
     if valid:
