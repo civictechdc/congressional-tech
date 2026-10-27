@@ -114,15 +114,16 @@ def test_native_effective_names_and_work_anti_join(tmp_path):
     ]
     captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=i,capture_index=0,mode='fetch',**row)
         for i,row in enumerate(cases,1)])
-    result=reader().stage(captures=captures, recovery_files=[], engine=engine(), work=tmp_path/'job', catalog_version='v')
+    version = reader().current_version()
+    result=reader().stage(captures=captures, recovery_files=[], engine=engine(), work=tmp_path/'job', catalog_version=version)
     rows=pq.read_table(result['readings']).to_pylist()
     assert len(rows) == 9  # Same path name at different exact URLs remains separate work.
     names={r['filename'] for r in rows}
     assert names == {'café.pdf','a%20+b.pdf','%FF.pdf','Member%20.pdf','Requested Name.pdf','source.pdf','path.pdf','question?mark.pdf'}
     member=next(r for r in rows if r['filename']=='Member%20.pdf'); assert member['source_url']==''
-    second=reader().stage(captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'again',catalog_version='v')
+    second=reader().stage(captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'again',catalog_version=version)
     assert pq.read_metadata(second['readings']).num_rows == 0
-    newer=reader().stage(captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'new',catalog_version='v2')
+    newer=reader().stage(captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'new',vocabularies={'member_surnames': {'119': ['New']}})
     assert pq.read_metadata(newer['readings']).num_rows == 9
 
 
@@ -136,6 +137,12 @@ def test_recovery_original_work_deduplicates_and_rejection_removes_name_override
                dict(body_sha256='d'*64,id='d',original_url='https://a.test/Another.pdf',recovered_filename='Other Body.pdf',kind='recovered_document',decided_at='2026-10-03T00:00:00Z')]
     with gzip.open(path,'wt') as out:
         for row in decisions: out.write(json.dumps(row)+'\n')
-    result=reader().stage(captures=captures,recovery_files=[dict(key='provenance/recoveries/source.jsonl',path=str(path))],engine=engine(),work=tmp_path/'job',catalog_version='v')
+    result=reader().stage(captures=captures,recovery_files=[dict(key='provenance/recoveries/source.jsonl',path=str(path))],engine=engine(),work=tmp_path/'job')
     rows=pq.read_table(result['readings']).to_pylist()
     assert {(r['filename'],r['source_url']) for r in rows} == {('Original.pdf','https://a.test/Original.pdf'),('Named.pdf','https://a.test/Another.pdf'),('Other Body.pdf','https://a.test/Another.pdf')}
+
+
+def test_stage_refuses_a_version_that_does_not_name_its_code_and_inputs(tmp_path):
+    captures=input_tables(tmp_path, [])
+    with pytest.raises(ValueError, match='version'):
+        reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'job',catalog_version='wrong')
