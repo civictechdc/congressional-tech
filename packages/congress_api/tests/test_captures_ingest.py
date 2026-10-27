@@ -128,6 +128,18 @@ def test_rebuild_and_incremental_missing_receipt_equivalence(tmp_path):
     assert json.loads((delta/'ingested-receipts.json').read_text())['receipt_keys']==[two[0]['key']]
 
 
+def test_ingested_receipt_is_never_reopened_by_stage(tmp_path):
+    from congress_api.lake.captures import stage_captures
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    key='receipts/documents/2026-10-19/already.jsonl.gz'
+    prior=tmp_path/'existing.parquet'
+    pq.write_table(pa.table({'receipt_key':[key]}),prior)
+    pending=files(tmp_path/'pending',[dict(record=dict(url='https://example.org/new'))])
+    stage=stage_captures([dict(key=key,path='/unopened/absent-receipt.gz'),*pending],
+        engine=engine,work=tmp_path/'stage',existing=prior)
+    assert pq.read_table(stage/'captures.parquet')['receipt_key'].to_pylist()==[pending[0]['key']]
+
+
 def test_inline_record_sha_canonical_json_required(tmp_path):
     record = dict(z=2, meeting=dict(z=['é', dict(b=2, a=1)], a='value'))
     stage = ingest(tmp_path, [dict(record=record)],

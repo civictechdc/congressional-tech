@@ -16,6 +16,7 @@ def test_local_ingest_cli_stage_and_explicit_append(tmp_path):
         retrieved_at=STAMP,http_status=200,outcome='stored',captures=[body()])])) )
     work=tmp_path/'stage'
     assert main(['--receipt-inventory',str(inventory),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
+        '--receipt-batch-size','1',
         '--work',str(work),'--apply','--catalog-root',str(tmp_path/'catalog'),
         '--table','archive.captures_v1','--create-table','--create-namespace',
         '--table-location',str(tmp_path/'data')])==0
