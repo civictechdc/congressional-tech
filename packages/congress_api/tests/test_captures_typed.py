@@ -11,8 +11,7 @@ from docspec_client.client import NativeDatasets
 from congress_api.lake.receipt_metadata import BOOLS, NUMBERS, STRINGS
 
 
-def test_bounded_metadata_fanout_preserves_public_rows(tmp_path):
-    from congress_api.lake.captures import stage_captures
+def bounded_counter(tmp_path,*,header_padding=0):
     key='receipts/documents/2026-10-20/typed-fixture.jsonl.gz'
     fields=[*(pa.field(n,pa.string()) for n in STRINGS if n!='error_type'),
         *(pa.field(n,pa.int64()) for n in NUMBERS),*(pa.field(n,pa.bool_()) for n in BOOLS)]
@@ -29,15 +28,20 @@ def test_bounded_metadata_fanout_preserves_public_rows(tmp_path):
     for line in range(1,4097):
         record=dict(url=f'https://example.test/typed-fixture/{line}.pdf',http_status=200,
             retrieved_at='2026-10-20T12:34:56Z',outcome='stored',mode='fetch',complete=True)
-        raw=dict(record=dict(record,content={'body':'typed-metadata-payload-stays-raw'+('x'*4096)}),captures=captures)
+        raw_record=dict(record,content={'body':'typed-metadata-payload-stays-raw'+('x'*4096)})
+        if header_padding:
+            raw_record['response_headers']={'X-Padding':'window-padding-marker'+('x'*(header_padding-len('window-padding-marker'))),
+                'content-disposition':'attachment; filename="window.pdf"'}
+        raw=dict(record=raw_record,captures=captures)
         rows.append(dict(record=record,captures=captures,__receipt_key=key,__receipt_line=line,
             __receipt_family='documents',__line_shape='record:object',__raw_line=json.dumps(raw),
             __type_conflicts=[],__field_paths=[]))
     counter=tmp_path/'counter.parquet'
     pq.write_table(pa.Table.from_pylist(rows,schema=schema),counter,row_group_size=8192)
-    stage=stage_captures([dict(key=key)],engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
-        work=tmp_path/'stage',validated_counter=counter)
-    actual=pq.read_table(stage/'captures.parquet')
+    return counter,key
+
+
+def assert_bounded_capture_rows(actual,key):
     assert actual.num_rows==131072
     assert actual['receipt_key'].to_pylist()==[key]*131072
     assert actual['receipt_line'].to_pylist()==[line for line in range(1,4097) for _ in range(32)]
@@ -48,6 +52,14 @@ def test_bounded_metadata_fanout_preserves_public_rows(tmp_path):
                        ('retrieved_at',datetime(2026,10,20,12,34,56,tzinfo=timezone.utc))]:
         assert actual[name].to_pylist()==[value]*131072
     assert all('typed-metadata-payload-stays-raw' not in str(row) for row in actual.to_pylist())
+
+
+def test_bounded_metadata_fanout_preserves_public_rows(tmp_path):
+    from congress_api.lake.captures import stage_captures
+    counter,key=bounded_counter(tmp_path)
+    stage=stage_captures([dict(key=key)],engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        work=tmp_path/'stage',validated_counter=counter)
+    assert_bounded_capture_rows(pq.read_table(stage/'captures.parquet'),key)
 
 
 @pytest.mark.parametrize("view_strings",[False,True])
