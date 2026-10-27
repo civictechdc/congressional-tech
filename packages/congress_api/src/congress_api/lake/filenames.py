@@ -128,8 +128,10 @@ def _work_inputs(captures, recovery_files, existing, work):
 def stage(*, captures, recovery_files, engine, work, existing=None, catalog_version=None,
           vocabularies=None):
     """Stage native missing pairs and local parser rows; does not commit a lake table."""
+    version = current_version(vocabularies=vocabularies)
+    if catalog_version is not None and catalog_version != version:
+        raise ValueError('Catalog version does not match the current parser and inputs')
     work = Path(work).resolve(); work.mkdir(parents=True, exist_ok=False)
-    version = catalog_version or current_version(vocabularies=vocabularies)
     inputs = _work_inputs(captures, recovery_files, existing, work)
     steps = [dict(name='current_recoveries', sql='''SELECT * FROM (
         SELECT r.*,row_number() OVER (PARTITION BY original_url,body_sha256
@@ -177,3 +179,4 @@ def stage(*, captures, recovery_files, engine, work, existing=None, catalog_vers
         'filename-readings', 'SELECT ' + ','.join(columns) + ' FROM parsed_readings', PK)])
     return dict(readings=work/'filename-readings.parquet', work_list=work/'work-list.parquet',
                 catalog_version=version)
+
