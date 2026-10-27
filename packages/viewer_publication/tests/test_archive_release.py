@@ -101,3 +101,23 @@ def test_converted_catalog_keeps_rows_and_shared_body_keys_choose_first(engine, 
     assert listed[0]['document_date'] is not None and listed[1]['document_date'] is None
     assert all(row['in_archive_since'] is None for row in pq.read_table(output / 'detail.parquet').to_pylist())
     assert manifest['origin']['catalog_id'] == 'fixture-catalog'
+
+
+def test_rescued_committee_inventory_is_read_by_the_engine(engine, tmp_path):
+    import gzip
+    from viewer_publication.archive_release import committee_input
+
+    path = tmp_path / 'inventory.gz'
+    with gzip.open(path, 'wt') as out:
+        out.write(json.dumps({'congress': 119, 'committee': {'systemCode': 'hsag00',
+            'name': 'Agriculture', 'chamber': 'House', 'subcommittees': [
+                {'systemCode': 'hsag03', 'name': 'Nutrition'}]}}) + '\n')
+        out.write(json.dumps({'congress': 118, 'committee': {'systemCode': 'hsag00',
+            'name': 'Older name', 'chamber': 'House'}}) + '\n')
+    input_spec, steps = committee_input(path)
+    spec = tmp_path / 'job.json'
+    spec.write_text(json.dumps(dict(scratch=str(tmp_path / 'native'), inputs=[input_spec],
+        steps=steps, outputs=[], queries=[dict(name='rows', sql='SELECT * FROM committee_source ORDER BY system_code') ])))
+    rows = engine.run_job(spec)['queries'][0]['data']
+    assert rows == [dict(system_code='hsag00', name='Agriculture', chamber='house'),
+                    dict(system_code='hsag03', name='Nutrition', chamber='house')]
