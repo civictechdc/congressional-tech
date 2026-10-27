@@ -1,0 +1,20 @@
+[
+  {"id":"scheme-host-port-fragment","url":"HTTP://WWW.Example.GOV:80/Path/#part","key":"example.gov/Path"},
+  {"id":"path-case","url":"https://example.gov/path/","key":"example.gov/path"},
+  {"id":"nondefault-port","url":"https://example.gov:8080/a","key":"example.gov:8080/a"},
+  {"id":"space","url":"https://example.gov/a b.pdf","key":"example.gov/a%20b.pdf"},
+  {"id":"escapes","url":"https://example.gov/%7eA%2fb.pdf","key":"example.gov/~A%2Fb.pdf"},
+  {"id":"unicode","url":"https://example.gov/café","key":"example.gov/caf%C3%A9"},
+  {"id":"parameters","url":"https://example.gov/a?z=2&a=&a&z=1&v=a+b&utm_source=x","key":"example.gov/a?a&a=&v=a+b&z=1&z=2"},
+  {"id":"host-strip","url":"https://www.congress.gov/bill/1?q=state&x=2","key":"congress.gov/bill/1?x=2"},
+  {"id":"host-strip-negative","url":"https://example.gov/a?q=keep","key":"example.gov/a?q=keep"},
+  {"id":"arbitrary-url-parameter","url":"https://example.gov/a?url=https://other.gov/a","key":"example.gov/a?url=https://other.gov/a"},
+  {"id":"archive","url":"https://web.archive.org/web/20250610160415id_/https://example.gov/a.pdf","key":"example.gov/a.pdf"},
+  {"id":"loc","url":"https://webarchive.loc.gov/all/20110707213402/http://example.gov/a.pdf","key":"example.gov/a.pdf"},
+  {"id":"two-wrappers","url":"https://web.archive.org/web/20250610160415/https://webarchive.loc.gov/all/20110707213402/https://example.gov/a.pdf","key":"example.gov/a.pdf"},
+  {"id":"three-wrappers","url":"https://web.archive.org/web/20250610160415/https://webarchive.loc.gov/all/20110707213402/https://web.archive.org/web/20250610160415/https://example.gov/a.pdf","key":null,"error":"wrapped_after_two"},
+  {"id":"proofpoint-v2","url":"https://urldefense.proofpoint.com/v2/url?u=https-3A__example.gov_a.pdf&d=fixture","key":"example.gov/a.pdf"},
+  {"id":"dot-segments","url":"https://example.gov/a/../b","key":"example.gov/b"},
+  {"id":"invalid","url":"not a URL","key":null,"error":"invalid_url"},
+  {"id":"null","url":null,"key":null,"error":"invalid_url"}
+]
