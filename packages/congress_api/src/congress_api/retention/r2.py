@@ -153,7 +153,8 @@ class AsyncBodies:
         from congress_api.retention.body_store import AsyncR2Adapter, create_stored_async
         if not key.startswith('bodies/'):
             raise ValueError('Async body upload requires a body key')
-        media = 'application/gzip' if key.endswith('.gz') else 'application/octet-stream'
+        media = ('application/pdf' if key.endswith('.pdf') else
+                 'application/gzip' if key.endswith('.gz') else 'application/octet-stream')
         result = await create_stored_async(AsyncR2Adapter(self.client, self.bucket), key, BytesIO(data), media)
         return result.outcome == 'stored'
 

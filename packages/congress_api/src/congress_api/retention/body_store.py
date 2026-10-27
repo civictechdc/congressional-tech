@@ -94,8 +94,12 @@ def write_result(key, created, *, md5, size):
                        md5 if created else None, size if created else None)
 
 
-def create_stored(adapter, key, source, media, *, encoding=None, operation='create', body_identity=True):
+def create_stored(adapter, key, source, media, *, encoding=None, operation='create', body_identity=True,
+                  expected_md5=None, expected_size=None):
     facts = prepare_stored(key, source, operation=operation, body_identity=body_identity)
+    if ((expected_md5 is not None and facts['md5'] != expected_md5)
+            or (expected_size is not None and facts['size'] != expected_size)):
+        raise ValueError('Prepared bytes differ from their qualified checksum or size')
     created = adapter.create(key, source, media=media, encoding=encoding, **facts)
     return write_result(key, created, **facts)
 
@@ -126,7 +130,7 @@ class BodyStore:
             return result
         return None
 
-    def put_prepared(self, key, file, media, *, encoding=None):
+    def put_prepared(self, key, file, media, *, encoding=None, expected_md5=None, expected_size=None):
         """Use a caller's streaming compression without another compression pass."""
         validate_key(key)
         if not key.startswith('bodies/') or key.endswith(('.gz', '.pdf')):
@@ -134,7 +138,8 @@ class BodyStore:
         result = self.existing(key)
         if result is None:
             with Path(file).open('rb') as source:
-                result = create_stored(self.adapter, key, source, media, encoding=encoding)
+                result = create_stored(self.adapter, key, source, media, encoding=encoding,
+                                       expected_md5=expected_md5, expected_size=expected_size)
             self.known[key] = result
         return result
 
@@ -148,13 +153,21 @@ class BodyStore:
         result = self.existing(key)
         if result is None:
             with Path(file).open('rb') as source, tempfile.TemporaryFile() as prepared:
+                identity = hashlib.sha256()
+                def copy(destination):
+                    while chunk := source.read(1024**2):
+                        identity.update(chunk)
+                        destination.write(chunk)
                 if compressible(media):
                     with gzip.GzipFile(filename='', fileobj=prepared, mode='wb', mtime=0) as zipped:
-                        shutil.copyfileobj(source, zipped, 1024**2)
-                    prepared.seek(0)
-                    result = create_stored(self.adapter, key, prepared, media, encoding='gzip')
+                        copy(zipped)
                 else:
-                    result = create_stored(self.adapter, key, source, media)
+                    copy(prepared)
+                if identity.hexdigest() != key.rsplit('/',1)[1]:
+                    raise ValueError('Original body identity differs from its key')
+                prepared.seek(0)
+                result = create_stored(self.adapter, key, prepared, media,
+                                       encoding='gzip' if compressible(media) else None)
         self.known[key] = result
         return result
 

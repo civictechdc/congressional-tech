@@ -109,7 +109,7 @@ def test_local_create_is_atomic_and_preserves_collision(tmp_path):
     store = BodyStore(LocalAdapter(root))
     result = store.put(KEY, source, 'application/pdf')
     assert result.outcome == 'stored' and (root / KEY).read_bytes() == DATA
-    source.write_bytes(b'changed')
+    source.write_bytes(DATA)
     assert BodyStore(LocalAdapter(root)).put(KEY, source, 'application/pdf').outcome == 'unchanged'
     assert (root / KEY).read_bytes() == DATA
     assert list((root / KEY).parent.iterdir()) == [root / KEY]

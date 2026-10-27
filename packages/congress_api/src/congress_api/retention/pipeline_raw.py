@@ -224,11 +224,12 @@ def archive(store, files, *, writer, run_id=None, day=None):
             else:
                 result = store.raw.put_prepared(
                     body_key(sha256), stored_path, media_type(item.path),
-                    encoding='gzip' if encoded else None)
+                    encoding='gzip' if encoded else None,
+                    expected_md5=md5.hexdigest(), expected_size=stored_bytes)
                 fresh = result.outcome == 'stored'
                 known[sha256] = result
                 created += fresh
-                outcome, stored = ('stored', (md5.hexdigest(), stored_bytes)) if fresh \
+                outcome, stored = ('stored', (result.md5, result.size)) if fresh \
                     else ('unchanged', None)
             lines.append(receipt_line(item, run_id=run_id, writer=writer, sha256=sha256,
                                       outcome=outcome, stored=stored, suffix=known[sha256].suffix))
