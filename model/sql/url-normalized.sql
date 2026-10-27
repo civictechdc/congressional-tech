@@ -32,21 +32,20 @@ WITH literals AS (
 ), components AS (
  SELECT *,regexp_replace((regexp_match(parsed,'^https?://([^/?#]+)'))[1],'^www\.','') AS authority,
  coalesce((regexp_match(parsed,'^https?://[^/?#]+([^?#]*)'))[1],'') AS path,
- (regexp_match(parsed,'\?([^#]*)'))[1] AS query FROM serialized
+ (regexp_match(split_part(parsed,'#',1),'\?(.*)$'))[1] AS query FROM serialized
 ), pairs AS (
  SELECT url,authority,unnest(string_to_array(query,'&')) AS pair FROM components WHERE query<>''
 ), kept_pairs AS (
  SELECT p.* FROM pairs p WHERE NOT EXISTS (
  SELECT 1 FROM url_rules r WHERE r.kind='strip'
- AND (r.host_pattern IS NULL OR regexp_like(p.authority,r.host_pattern))
+ AND (r.host_pattern IS NULL OR regexp_like(regexp_replace(p.authority,':[0-9]+$',''),r.host_pattern))
  AND regexp_like(split_part(p.pair,'=',1),r.pattern))
 ), queries AS (
  SELECT url,string_agg(pair,'&' ORDER BY pair) AS query FROM kept_pairs GROUP BY url
 ), base_keys AS (
  SELECT c.url,
  CASE WHEN c.conflict THEN 'wrapper_conflict'
- WHEN c.still_wrapped THEN 'wrapped_after_two'
- WHEN c.authority IS NULL THEN 'invalid_url' END AS error,
+ WHEN c.authority IS NULL THEN 'invalid_url' END AS error,c.still_wrapped,
  c.authority || regexp_replace(c.path,'/$','') ||
  coalesce('?' || q.query,'') AS base_key
  FROM components c LEFT JOIN queries q ON c.url=q.url

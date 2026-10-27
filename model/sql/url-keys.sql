@@ -2,7 +2,8 @@
 WITH mappings AS (
  SELECT DISTINCT v.base_key AS variant,c.base_key AS canonical,
  v.error AS variant_error,c.error AS canonical_error
- FROM url_variants p JOIN url_normalized v ON p.variant_url=v.url JOIN url_normalized c ON p.canonical_url=c.url
+ FROM url_variants p JOIN url_normalized v ON p.variant_url IS NOT DISTINCT FROM v.url
+ JOIN url_normalized c ON p.canonical_url IS NOT DISTINCT FROM c.url
 ), validation AS (
  SELECT CASE WHEN count(*)>0 THEN 1 END AS priority FROM (SELECT input_id FROM url_inputs GROUP BY input_id HAVING count(*)>1)
  UNION ALL SELECT CASE WHEN count(*)>0 THEN 2 END FROM (SELECT variant FROM mappings GROUP BY variant HAVING count(DISTINCT canonical)>1)
@@ -15,9 +16,9 @@ WITH mappings AS (
  SELECT variant,max(canonical) AS canonical FROM mappings GROUP BY variant
 ), selected AS (
  SELECT i.input_id,i.url,coalesce(checks.error,b.error) AS error,
- coalesce(m.canonical,b.base_key) AS candidate
+ coalesce(m.canonical,b.base_key) AS candidate,coalesce(b.still_wrapped,false) AS still_wrapped
  FROM url_inputs i CROSS JOIN checks
  LEFT JOIN url_normalized b ON i.url IS NOT DISTINCT FROM b.url
  LEFT JOIN resolved_mappings m ON b.base_key=m.variant
 )
-SELECT input_id,url,CASE WHEN error IS NULL THEN candidate END AS url_key,error FROM selected
+SELECT input_id,url,CASE WHEN error IS NULL THEN candidate END AS url_key,error,still_wrapped FROM selected
