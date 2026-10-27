@@ -594,26 +594,57 @@ class NativeComponents:
         self._task('component-entries',self._prepare_entries)
 
     def _register_chunks(self):
-        from congress_api.retention.catalog_batches import CatalogComponentReader
+        from itertools import groupby, islice
+        from congress_api.retention.catalog_batches import CatalogComponentReader, PROOF_PAGE_ENTRIES
         reader = CatalogComponentReader(self.snapshot.store)
-        for component, raw_reference in self.db.execute('SELECT id,reference FROM components ORDER BY page,id'):
-            reference = json.loads(raw_reference)
-            proof = reader.read(reference)
-            if proof['component'] != component:
-                raise ValueError('Selected viewer component identity differs')
-            self.db.execute('UPDATE components SET proof=? WHERE id=?',
-                            (encoded(dict(validation=proof['validation'])).decode(), component))
-            self.db.execute('INSERT INTO stats VALUES (?,0,0,0,0)', (component,))
-            for label in ('filenames', 'documents'):
-                table = proof['tables'][label]
-                for chunk in table['chunks']:
-                    raw_pin = encoded(chunk['release']).decode()
-                    old = self.db.execute('SELECT pin,schema,label FROM chunks WHERE name=?', (chunk['name'],)).fetchone()
-                    if old and old != (raw_pin, table['schema'], label):
-                        raise ValueError('Mixed physical native viewer chunk metadata')
-                    self.db.execute('INSERT OR IGNORE INTO chunks VALUES (?,?,?,?)',
-                                    (chunk['name'], label, raw_pin, table['schema']))
-                    self.db.execute('INSERT INTO views VALUES (?,?,?)', (chunk['name'], component, chunk['rows']))
+        rows = self.db.execute('SELECT id,reference,page FROM components ORDER BY page,id')
+        def groups():
+            for raw_page, members in groupby(rows, key=lambda row: row[2]):
+                bounded = list(islice(members, PROOF_PAGE_ENTRIES + 1))
+                if len(bounded) > PROOF_PAGE_ENTRIES:
+                    raise ValueError('Selected component proof page exceeds its member bound')
+                yield json.loads(raw_page), bounded
+        def read_page(reference):
+            # Keep prefetched pages within this batch, not a growing corpus cache.
+            return CatalogComponentReader(self.snapshot.store).page(reference, remember=False)
+        pending = groups()
+        with ThreadPoolExecutor(max_workers=COMPONENT_SCOPE_WORKERS) as pool:
+            while batch := list(islice(pending, COMPONENT_SCOPE_WORKERS)):
+                futures = [pool.submit(read_page, reference) for reference, _ in batch]
+                try:
+                    pages = [future.result() for future in futures]
+                except BaseException:
+                    for future in futures:
+                        future.cancel()
+                    raise
+                futures.clear()
+                for index, (reference, members) in enumerate(batch):
+                    for component, raw_reference, _ in members:
+                        self._register_component(component, raw_reference, reader,
+                                                 page=pages[index], expected_page=reference)
+                    pages[index] = None
+                    batch[index] = None
+
+    def _register_component(self, component, raw_reference, reader, *, page=None, expected_page=None):
+        reference = json.loads(raw_reference)
+        if expected_page is not None and reference.get('page') != expected_page:
+            raise ValueError('Selected component proof page differs from its staged reference')
+        proof = reader.read(reference, page=page)
+        if proof['component'] != component:
+            raise ValueError('Selected viewer component identity differs')
+        self.db.execute('UPDATE components SET proof=? WHERE id=?',
+                        (encoded(dict(validation=proof['validation'])).decode(), component))
+        self.db.execute('INSERT INTO stats VALUES (?,0,0,0,0)', (component,))
+        for label in ('filenames', 'documents'):
+            table = proof['tables'][label]
+            for chunk in table['chunks']:
+                raw_pin = encoded(chunk['release']).decode()
+                old = self.db.execute('SELECT pin,schema,label FROM chunks WHERE name=?', (chunk['name'],)).fetchone()
+                if old and old != (raw_pin, table['schema'], label):
+                    raise ValueError('Mixed physical native viewer chunk metadata')
+                self.db.execute('INSERT OR IGNORE INTO chunks VALUES (?,?,?,?)',
+                                (chunk['name'], label, raw_pin, table['schema']))
+                self.db.execute('INSERT INTO views VALUES (?,?,?)', (chunk['name'], component, chunk['rows']))
 
     def _prepare_chunk(self,name,label,raw_pin,schema_text):
         from congress_api.retention.catalog_partitions import CatalogTable
