@@ -13,7 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.acquisition.capture_seeds import inventories
-from congress_api.archive_profile import RULE_FIELDS, validate_capture_profile
+from congress_api.models.archive_profile import RULE_FIELDS, validate_capture_profile
 from congress_api.acquisition.fetcher import CaptureScope, Fetcher, HostPacer
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.body_store import validate_record
