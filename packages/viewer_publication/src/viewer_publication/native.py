@@ -112,7 +112,9 @@ def prepare_native_output(publisher=None, builder=None, client=None, snapshot=No
     started = time.perf_counter()
     try:
         recovery = index_catalog_recoveries(snapshot, publisher.validated_accepted(accepted_record[0]),
-            previous=previous_recovery, max_ordered_bytes=96 << 20, metrics=memory_metrics)
+            previous=previous_recovery, max_ordered_bytes=96 << 20, metrics=memory_metrics,
+            admission_directory=(Path(target).with_name(Path(target).name + '.recovery-admission')
+                                 if preparation_binding is not None else None))
         publisher.require_native_recovery(recovery, manifest)
     except BaseException:
         seconds = time.perf_counter() - started

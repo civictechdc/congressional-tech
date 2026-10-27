@@ -180,3 +180,39 @@ def test_overbudget_source_refuses_and_discards_partial_private_index(tmp_path, 
         assert source._spill_db is None and source._temp_dir is None and not source._initial_ready
     finally:
         source.close()
+
+
+@pytest.mark.parametrize('failure', ['opening', 'truncation'])
+def test_recovery_retry_reuses_completed_metadata_and_preserves_exact_json(tmp_path, monkeypatch, failure):
+    from contextlib import contextmanager
+    from congress_api.retention.catalog_batches import SelectedCatalogTable
+    from congress_api.retention.immutable_metadata import encoded
+    import pyarrow as pa
+    store, native = LocalStore(tmp_path / 'store'), Native()
+    seed(tmp_path, store, native)
+    snapshot = read_catalog(store, native=native)
+    expected = index_catalog_recoveries(snapshot, [], max_ordered_bytes=1 << 20)
+    folder = tmp_path / 'owned.recovery-admission'
+    original, once = native.source_batches, [True]
+    @contextmanager
+    def interrupted(*args, **kwargs):
+        with original(*args, **kwargs) as reader:
+            if not once[0]:
+                yield reader
+                return
+            once[0] = False
+            if failure == 'opening':
+                raise OSError('native input temporarily unavailable')
+            def batches():
+                yield reader.read_next_batch().slice(0, 1)
+                raise OSError('native input truncated')
+            with pa.RecordBatchReader.from_batches(reader.schema, batches()) as partial:
+                yield partial
+    monkeypatch.setattr(native, 'source_batches', interrupted)
+    with pytest.raises((OSError, pa.ArrowException), match='unavailable|truncated'):
+        index_catalog_recoveries(snapshot, [], max_ordered_bytes=1 << 20, admission_directory=folder)
+    assert (folder / 'complete.json').is_file()
+    monkeypatch.setattr(SelectedCatalogTable, '_admit', lambda *args: pytest.fail('metadata admission repeated'))
+    monkeypatch.setattr(snapshot.components, 'items', lambda *args: pytest.fail('source members enumerated again'))
+    actual = index_catalog_recoveries(snapshot, [], max_ordered_bytes=1 << 20, admission_directory=folder)
+    assert encoded(actual) == encoded(expected)

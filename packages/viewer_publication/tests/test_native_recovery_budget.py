@@ -52,3 +52,18 @@ def test_native_preparation_uses_the_qualified_recovery_caller_cap(tmp_path, mon
     _, actual = preparation.prepare_native_output(publisher, fixture_builder, remote, snapshot, tmp_path / 'next',
         accepted_record=(None,) * 4, viewer_record=previous)
     assert seen == [96 << 20] and actual == expected
+
+
+def test_owned_preparation_places_recovery_admission_beside_publication_only(tmp_path):
+    from types import SimpleNamespace
+    from test_native_preparation import ABSENT
+    snapshot, native, remote, manifest, expected, previous = first(tmp_path)
+    checked_builder = SimpleNamespace(publish_selected=lambda *args, **kwargs: manifest)
+    for owned in (False, True):
+        target = tmp_path / ('owned-publication' if owned else 'ordinary-publication')
+        _, actual = preparation.prepare_native_output(publisher, checked_builder, remote, snapshot, target,
+            accepted_record=ABSENT, viewer_record=ABSENT,
+            preparation_binding={'owned_fixture': True} if owned else None)
+        directory = target.with_name(target.name + '.recovery-admission')
+        assert (directory / 'complete.json').is_file() == owned
+        assert actual == expected

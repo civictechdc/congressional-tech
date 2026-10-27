@@ -285,7 +285,8 @@ class NativeCatalogSnapshot:
         count = {'filenames': 'source_rows', 'documents': 'document_rows'}[label]
         return SelectedCatalogTable(self.schemas[label], lambda: self.components.items(self.selection['components']),
             store=self.store, native=client, label=label, rows=self.selection['counts'][count],
-            max_ordered_bytes=max_ordered_bytes)
+            max_ordered_bytes=max_ordered_bytes,
+            selection_identity=dict(source=self.identity, components=self.selection['components']))
 
     def changes_since(self, identity):
         """Yield exact old/new scopes since a retained selection identity.
