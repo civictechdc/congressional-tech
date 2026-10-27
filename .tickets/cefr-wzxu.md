@@ -1,6 +1,6 @@
 ---
 id: cefr-wzxu
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T18:36:48Z
@@ -26,3 +26,7 @@ Local native binding passes 132 producer/golden tests with engine-6fc6a94: neste
 **2026-10-27T20:29:37Z**
 
 Confirmed CODE findings fixed in 2916f16a/fba99d79 with real worker integration. ARCH source-ownership contract 2111e22d reproduces the D1 coupling; dedicated lake.filenames package retains import, callback and module CLI paths. Complete 141 focused producer/actual-worker/native-table/module-CLI/golden checks pass with engine-656e7b5. Generic versions helper remains shared for D2. Ticket remains open until bounded independent fix review closes the concern; live backfill/platform/E qualification remain separate gates.
+
+**2026-10-27T20:50:50Z**
+
+Bounded fix followup CODE APPROVE and ARCH APPROVE, no remaining concern (run2/d3-followup/review.md). Actual engine-1c2473b runner test_filename_readings.py:26 passed33.38s; full D3/golden group141 passed on preceding snapshot. Local producer, native append and version isolation complete. Live backfill, Linux runtime and full E profile qualification remain owner/engine gates with exact command in run2 report.
