@@ -181,3 +181,13 @@ def test_missing_existing_reference_fails_without_receipt_or_upload(tmp_path):
         retained_reference=True)
     with pytest.raises(ValueError,match='missing|absent'):
         import_retained(writer,source)
+
+
+def test_duplicate_accepted_original_link_refuses_without_losing_a_decision(tmp_path):
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
+    value=json.loads(accepted.read_text());value['recoveries'].append(dict(value['recoveries'][0],body_key='bodies/sha256/22/'+'2'*64+'.gz'))
+    accepted.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='accepted|ambiguous'):
+        reconcile(accepted,captures,registry,output=tmp_path/'staged',
+            engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),decided_at=STAMP,decided_by='reconciliation')
+    assert not (tmp_path/'staged'/'manifest.json').exists()
