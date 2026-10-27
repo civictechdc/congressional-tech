@@ -398,9 +398,32 @@ def test_workflow_checkpoints_before_failure_and_cannot_publish_partial_work():
     assert steps[checkpoint]['with']['path'] == 'viewer-preparation/'
     assert steps[checkpoint]['with']['include-hidden-files'] == 'true'
     assert steps[accepted]['if'] == "steps.prepare.outputs.status == 'prepared'"
-    for name in ('Verify complete preparation inventory', 'Publish accepted preparation'):
-        step = next(s for s in steps if s.get('name') == name)
-        assert step['if'] == "steps.prepare.outputs.status == 'prepared' || steps.resume.outputs.resume == 'true'"
+    publish = next(s for s in steps if s.get('name') == 'Publish accepted preparation')
+    assert publish['if'] == "steps.prepare.outputs.status == 'prepared' || steps.resume.outputs.resume == 'true'"
+    assert 'publish-viewer-r2.py publish --directory viewer-preparation' in publish['run']
+    assert '--resume --resume-descriptor "$RUNNER_TEMP/viewer-resume.json"' in publish['run']
+    assert '--artifact-id "$ARTIFACT_ID" --artifact-digest "$ARTIFACT_DIGEST"' in publish['run']
+    assert steps[marker]['if'] == "steps.prepare.outputs.status == 'preparation_checkpoint'"
+    assert 'exit 1' in steps[marker]['run']
+    assert steps[marker].get('continue-on-error', 'false') == 'false'
+
+
+@pytest.mark.parametrize('resume_publication', [False, True])
+def test_publish_rejects_partial_preparation_before_artifact_or_remote_access(tmp_path, resume_publication):
+    from viewer_publication import attempt
+
+    root = partial(tmp_path / 'incomplete')
+
+    def forbidden_artifact(*args):
+        pytest.fail('Incomplete preparation reached artifact admission')
+
+    # Both workflow publish branches enter this maintained function. Its full
+    # prepared-inventory check must run before any remote or artifact operation.
+    with pytest.raises(FileNotFoundError) as error:
+        attempt.publish(object(), object(), root, artifact={}, public_url='unused',
+            resume=resume_publication, attempt='original' if resume_publication else None,
+            verify_artifact=forbidden_artifact)
+    assert Path(error.value.filename) == root / 'preparation.json'
 
 
 @pytest.mark.parametrize('historical_accepted', [False, True])
