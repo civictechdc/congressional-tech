@@ -1,0 +1,148 @@
+"""B0: permit exactly the named cleanup, including interrupted conditional rewrites."""
+import gzip
+import hashlib
+import json
+from pathlib import Path
+import pytest
+
+
+def encode(rows):
+    return gzip.compress(b''.join(json.dumps(x).encode() + b'\n' for x in rows), mtime=0)
+
+
+class Files:
+    """Injected file transfer with compare-and-swap and create-only backup semantics."""
+    def __init__(self, objects=None):
+        self.objects, self.puts = objects or {}, []
+
+    def get_file(self, key, path):
+        if key not in self.objects:
+            return None
+        data = self.objects[key]
+        path.write_bytes(data)
+        return dict(size=len(data), etag=hashlib.md5(data).hexdigest())
+
+    def put_file(self, key, path, *, if_match=None, create_only=False):
+        if create_only and key in self.objects:
+            raise ValueError('existing backup')
+        if if_match is not None:
+            assert key in self.objects
+            assert hashlib.md5(self.objects[key]).hexdigest() == if_match
+        assert create_only or if_match is not None
+        self.puts.append((key, if_match, create_only))
+        self.objects[key] = path.read_bytes()
+
+
+def test_named_cleanup_is_recursive_and_keeps_other_values():
+    from congress_api.retention.receipt_privacy import clean_older_line
+    source = dict(record=dict(
+        response_headers={'Set-Cookie': 'private', 'AUTHORIZATION': 'private', 'etag': 'keep'},
+        nested=[{'name': 'x-archive-orig-set-cookie', 'value': 'private', 'extra': 7},
+                ['Cookie', 'private']],
+        body_path='/private/tmp/a/b/document.pdf',
+        error='cannot open /Users/example/cache/doc.xml; retry',
+        windows='C:\\Users\\example\\doc.pdf',
+        url='https://example.gov/home/reports/a.pdf?x=1',
+        links=[{'url': 'https://example.gov/a', 'text': 'keep'}]),
+        captures=[{'pointer': ['content', 'body']}])
+    source['record']['content'] = dict(body=None, sha256='a' * 64)
+    cleaned, cuts = clean_older_line(source)
+    assert source['record']['response_headers']['Set-Cookie'] == 'private'
+    assert cleaned['record'] == dict(response_headers={'etag': 'keep'},
+        nested=[{'name': 'x-archive-orig-set-cookie', 'extra': 7}, ['Cookie', None]],
+        body_path='document.pdf', error='cannot open doc.xml; retry', windows='doc.pdf',
+        url=source['record']['url'], links=source['record']['links'],
+        content=source['record']['content'])
+    assert sum(n for (kind, _, _), n in cuts.items() if kind == 'header') == 4
+    assert sum(n for (kind, _, _), n in cuts.items() if kind == 'path') == 3
+
+
+def test_urls_embedded_in_error_text_and_link_values_never_change():
+    from congress_api.retention.receipt_privacy import clean_older_line
+    row = {'error': 'failed at https://example.gov/home/x.pdf after /tmp/read/x.pdf',
+           'links': ['https://example.gov/private/x.pdf']}
+    cleaned, _ = clean_older_line(row)
+    assert cleaned == dict(error='failed at https://example.gov/home/x.pdf after x.pdf',
+                          links=row['links'])
+
+
+def test_path_keys_are_cut_except_keys_a_pointer_uses():
+    from congress_api.retention.receipt_privacy import clean_older_line
+    row = dict(record={'/tmp/a.json': {'body': None}, '/tmp/b.json': 2},
+               captures=[{'pointer': ['/tmp/a.json', 'body']}])
+    cleaned, cuts = clean_older_line(row)
+    assert cleaned['record'] == {'/tmp/a.json': {'body': None}, 'b.json': 2}
+    assert any(kind == 'protected_path' for kind, _, _ in cuts)
+
+
+def test_basename_collisions_are_refused():
+    from congress_api.retention.receipt_privacy import clean_older_line
+    with pytest.raises(ValueError, match='collision'):
+        clean_older_line({'/tmp/a/item': 1, '/tmp/b/item': 2})
+
+
+def test_rewrite_backs_up_then_cas_then_verifies_and_records(tmp_path):
+    from congress_api.retention.receipt_cleanup import rewrite_receipt
+    key = 'receipts/documents/2026-10-01/run.jsonl.gz'
+    untouched = b'{ "url": "https://example.gov/a.pdf", "keep": 2 }\n'
+    raw = gzip.compress(untouched + b'{"headers":{"Set-Cookie":"private"},"path":"/tmp/a.pdf"}\n', mtime=0)
+    live, backup, recorded = Files({key: raw}), Files(), []
+    result = rewrite_receipt(live, backup, key, scratch=tmp_path, record=recorded.append)
+    assert backup.objects[key] == raw
+    assert live.puts == [(key, hashlib.md5(raw).hexdigest(), False)]
+    lines = gzip.decompress(live.objects[key]).splitlines(keepends=True)
+    assert lines[0] == untouched
+    assert json.loads(lines[1]) == dict(headers={}, path='a.pdf')
+    assert recorded == [result] and result['backup_object'] == key
+    assert result['original_etag'] == hashlib.md5(raw).hexdigest()
+    assert result['cookies_removed'] == 1 and result['paths_removed'] == 1
+    assert result['credential_parameters_removed'] == 0
+    assert result['verified'] is True
+    # A verified rerun transfers nothing and performs no second rewrite.
+    assert rewrite_receipt(live, backup, key, scratch=tmp_path, verified=result) == result
+    assert len(live.puts) == 1
+
+
+def test_crash_after_write_resumes_from_the_immutable_backup(tmp_path):
+    from congress_api.retention.receipt_cleanup import rewrite_receipt
+    key = 'receipts/documents/undated/old.jsonl.gz'
+    original = encode([{'path': '/tmp/a.pdf'}])
+    live, backup = Files({key: original}), Files()
+    def crash(result):
+        raise RuntimeError('lost after rewrite')
+    with pytest.raises(RuntimeError, match='lost'):
+        rewrite_receipt(live, backup, key, scratch=tmp_path, record=crash)
+    result = rewrite_receipt(live, backup, key, scratch=tmp_path)
+    assert result['verified'] is True and len(live.puts) == 1
+    assert backup.objects[key] == original
+
+
+def test_no_match_records_result_without_rewriting(tmp_path):
+    from congress_api.retention.receipt_cleanup import rewrite_receipt
+    key = 'receipts/family/undated/run.jsonl.gz'
+    original = encode([{'url': 'https://example.gov/a'}])
+    live, backup = Files({key: original}), Files()
+    result = rewrite_receipt(live, backup, key, scratch=tmp_path)
+    assert result['changed'] is False and result['verified'] is True
+    assert not live.puts and not backup.puts
+
+
+def test_changed_live_object_is_never_rebased_or_overwritten(tmp_path):
+    from congress_api.retention.receipt_cleanup import rewrite_receipt
+    key = 'receipts/family/undated/run.jsonl.gz'
+    backup = Files({key: encode([{'path': '/tmp/original'}])})
+    live = Files({key: encode([{'path': '/tmp/different'}])})
+    with pytest.raises(ValueError, match='changed'):
+        rewrite_receipt(live, backup, key, scratch=tmp_path)
+    assert not live.puts and not backup.puts
+
+
+def test_cleaner_never_changes_urls_links_or_pointer_targets():
+    from congress_api.retention.receipt_cleanup import verify_line
+    row = {'record': {'content': {'body': None}, 'url': 'https://example.gov/a',
+                      'links': ['keep']}, 'captures': [{'pointer': ['content', 'body']}]}
+    for bad in [dict(row, record=dict(row['record'], url='https://example.gov/b')),
+                dict(row, record=dict(row['record'], links=[])),
+                dict(row, record=dict(row['record'], content={'body': 'changed'}))]:
+        with pytest.raises(ValueError):
+            verify_line(row, bad)
