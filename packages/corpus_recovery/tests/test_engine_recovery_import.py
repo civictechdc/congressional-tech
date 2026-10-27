@@ -142,3 +142,42 @@ def test_legacy_projection_uses_native_capture_rows_and_recovery_fallbacks(tmp_p
     assert [row['capture_index'] for row in captures]==[0,1]
     assert all(row['original_url']=='https://docs.house.gov/a' for row in captures)
     assert all(row['mode']=='retained_import' and row['match_basis']=='verified_archive_capture' for row in captures)
+
+
+def test_existing_reference_import_uses_key_presence_without_body_reads(tmp_path):
+    from congress_api.retention.body_store import WriteResult
+    digest='a'*64
+    class Adapter:
+        def __init__(self):self.calls=[]
+        def head(self,key):self.calls.append(('head',key));return dict(size=10,etag='stored')
+        def create(self,key,source,**kwargs):
+            self.calls.append(('create',key))
+            assert key.startswith('receipts/')
+            return True
+    adapter=Adapter()
+    writer=ReceiptWriter(BodyStore(adapter),identity=WRITER,run_id='reference-import',
+                         write_date='2026-10-27',archive_limits=None)
+    source=dict(original_url='https://docs.house.gov/missing.pdf',recovered_url='https://archive.example/copy.pdf',
+        body_sha256=digest,bytes=100,stored_suffix='.gz',retrieved_at='2019-01-01T00:00:00Z',
+        media_type='application/pdf',category='recovered_document',match_basis='verified_archive_capture',
+        imported_at=STAMP,evidence_sha256='c'*64,retained_reference=True,
+        sniffed_format=None,sniff_version=None,intact=None)
+    key,line=import_retained(writer,source)
+    assert adapter.calls==[('head',f'bodies/sha256/aa/{digest}.gz'),('create',key)]
+    assert line['captures'][0]['stored_suffix']=='.gz'
+    assert line['captures'][0]['bytes']==100 and line['captures'][0]['sniffed_format'] is None
+    assert line['captures'][0]['fidelity']=='retained-file'
+
+
+def test_missing_existing_reference_fails_without_receipt_or_upload(tmp_path):
+    class Adapter:
+        def head(self,key):return None
+        def create(self,*args,**kwargs):raise AssertionError('Missing reference must not upload')
+    writer=ReceiptWriter(BodyStore(Adapter()),identity=WRITER,run_id='missing-reference',
+                         write_date='2026-10-27',archive_limits=None)
+    source=dict(original_url='https://docs.house.gov/missing',recovered_url='https://archive.example/copy',
+        body_sha256='a'*64,bytes=10,stored_suffix='.gz',retrieved_at=STAMP,
+        category='recovered_document',match_basis='verified_archive_capture',imported_at=STAMP,
+        retained_reference=True)
+    with pytest.raises(ValueError,match='missing|absent'):
+        import_retained(writer,source)
