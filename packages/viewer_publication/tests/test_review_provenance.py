@@ -7,7 +7,7 @@ import pytest
 
 from docspec_client.client import NativeDatasets
 from congress_api.retention.provenance import record_review, apply_staged
-from congress_api.retention.review_provenance import stage_reviews
+from viewer_publication.review_provenance import stage_reviews
 from congress_api.retention.body_store import BodyStore,LocalAdapter
 
 STAMP='2026-10-27T12:00:00Z'
