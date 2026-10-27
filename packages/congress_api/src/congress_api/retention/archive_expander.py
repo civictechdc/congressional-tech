@@ -9,7 +9,7 @@ import zlib
 
 from congress_api.models.raw_fetch import BodyFile
 from congress_api.parsers.file_wrapper import regular_file
-from congress_api.retention.archive_members import ArchiveReadError, _directory_preflight, inspect_office_zip
+from congress_api.retention.archive_members import ArchiveReadError, _ArchiveView, _directory_preflight, inspect_office_zip
 from congress_api.retention.sniff import read_sniff_file
 
 CHUNK = 1024**2
@@ -67,41 +67,41 @@ def expand_archive(path, *, directory, limits):
                                 digest.update(chunk)
                     name = wrapped.name
                     return Expansion('expanded',(ExpandedMember(name,0,_body(output,digest.hexdigest(),length)),))
-            _directory_preflight(view,limits)
+            end = _directory_preflight(view,limits)
             if inspect_office_zip(view,limits=limits):
                 return Expansion(None)
-        total = 0
-        with ZipFile(path) as archive:
-            for position, entry in enumerate(archive.infolist()):
-                if entry.is_dir():
-                    continue
-                reason = ('encrypted_member' if entry.flag_bits & 1 else
-                          'unsupported_compression' if entry.compress_type not in {ZIP_STORED,ZIP_DEFLATED} else
-                          'member_size_limit' if entry.file_size > limits.max_member_bytes else
-                          'aggregate_size_limit' if entry.file_size > limits.max_total_bytes-total else None)
-                if reason:
-                    refusal = refusal or reason
-                    continue
-                directory.mkdir(parents=True,exist_ok=True)
-                output = directory/(uuid4().hex+'.member')
-                digest, count = hashlib.sha256(), 0
-                try:
-                    with archive.open(entry) as member, output.open('xb') as target:
-                        while chunk := member.read(min(CHUNK,limits.max_member_bytes-count+1)):
-                            count += len(chunk)
-                            total += len(chunk)
-                            if count > limits.max_member_bytes or total > limits.max_total_bytes:
-                                raise ArchiveReadError('member_size_limit' if count > limits.max_member_bytes else
-                                                       'aggregate_size_limit','Expanded member exceeds registry limit')
-                            target.write(chunk)
-                            digest.update(chunk)
-                    if count != entry.file_size:
-                        raise ArchiveReadError('corrupt_member','Expanded member size differs')
-                except (BadZipFile,EOFError,ValueError,RuntimeError,NotImplementedError,zlib.error) as exc:
-                    output.unlink(missing_ok=True)
-                    refusal = refusal or getattr(exc,'status','corrupt_member')
-                    continue
-                members.append(ExpandedMember(entry.orig_filename,position,_body(output,digest.hexdigest(),count)))
+            total = 0
+            with _ArchiveView(view,end) as bounded, ZipFile(bounded) as archive:
+                for position, entry in enumerate(archive.infolist()):
+                    if entry.is_dir():
+                        continue
+                    reason = ('encrypted_member' if entry.flag_bits & 1 else
+                              'unsupported_compression' if entry.compress_type not in {ZIP_STORED,ZIP_DEFLATED} else
+                              'member_size_limit' if entry.file_size > limits.max_member_bytes else
+                              'aggregate_size_limit' if entry.file_size > limits.max_total_bytes-total else None)
+                    if reason:
+                        refusal = refusal or reason
+                        continue
+                    directory.mkdir(parents=True,exist_ok=True)
+                    output = directory/(uuid4().hex+'.member')
+                    digest, count = hashlib.sha256(), 0
+                    try:
+                        with archive.open(entry) as member, output.open('xb') as target:
+                            while chunk := member.read(min(CHUNK,limits.max_member_bytes-count+1)):
+                                count += len(chunk)
+                                total += len(chunk)
+                                if count > limits.max_member_bytes or total > limits.max_total_bytes:
+                                    raise ArchiveReadError('member_size_limit' if count > limits.max_member_bytes else
+                                                           'aggregate_size_limit','Expanded member exceeds registry limit')
+                                target.write(chunk)
+                                digest.update(chunk)
+                        if count != entry.file_size:
+                            raise ArchiveReadError('corrupt_member','Expanded member size differs')
+                    except (BadZipFile,EOFError,ValueError,RuntimeError,NotImplementedError,zlib.error) as exc:
+                        output.unlink(missing_ok=True)
+                        refusal = refusal or getattr(exc,'status','corrupt_member')
+                        continue
+                    members.append(ExpandedMember(entry.orig_filename,position,_body(output,digest.hexdigest(),count)))
     except (ArchiveReadError,BadZipFile,UnicodeError,ValueError,NotImplementedError) as exc:
         return Expansion(getattr(exc,'status','corrupt_archive'),tuple(members))
     return Expansion(refusal or 'expanded',tuple(members))

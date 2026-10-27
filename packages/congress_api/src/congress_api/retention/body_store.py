@@ -120,6 +120,19 @@ class BodyStore:
     def __init__(self, adapter):
         self.adapter, self.known = adapter, {}
 
+    def reference(self, key, *, stored_suffix):
+        """Verify an existing raw reference; recovery imports need no whole reread."""
+        validate_key(key)
+        if not key.startswith('bodies/') or key.endswith(('.gz','.pdf')) or stored_suffix not in {'','.gz'}:
+            raise ValueError('Invalid retained body reference')
+        if key in self.known and self.known[key].suffix==stored_suffix:
+            return replace(self.known[key],outcome='unchanged',md5=None,size=None)
+        if self.adapter.head(key+stored_suffix) is None:
+            raise ValueError('Missing retained body reference')
+        result=WriteResult('unchanged',stored_suffix)
+        self.known[key]=result
+        return result
+
     def existing(self, key):
         """The run set and one legacy-key HEAD, without reading body bytes."""
         if key in self.known:
