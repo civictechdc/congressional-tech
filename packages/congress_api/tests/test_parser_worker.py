@@ -25,6 +25,9 @@ def parse(body):
         return result
     if body == b"crash": os._exit(12)
     if body == b"hang": time.sleep(30)
+    if body == b"reading":
+        from congress_api.retention.parser_worker import reading_input
+        with reading_input(): time.sleep(30)
     if body == b"memory":
         data = bytearray(180 * 1024**2)
         time.sleep(30)
@@ -102,3 +105,9 @@ def test_completed_large_result_is_released_before_the_next_invocation(parser):
         assert first['status'] == second['status'] == 'completed'
         assert first['value']['pid'] == second['value']['pid']
         assert second['value']['count'] == 2
+
+
+def test_hung_raw_read_remains_pending_instead_of_becoming_unreadable(parser):
+    with worker(parser) as run:
+        assert run.parse('missing', b'reading') == {'status': 'read_error', 'reason': 'timeout'}
+        assert run.parse('next', b'valid')['status'] == 'completed'

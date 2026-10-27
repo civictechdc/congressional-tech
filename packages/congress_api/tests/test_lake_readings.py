@@ -12,7 +12,7 @@ from docspec_client.client import NativeDatasets
 
 
 def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></body></html>',
-          *, copies=2, size=None, missing=False):
+          *, copies=2, size=None, missing=False, body_format='html'):
     raw=tmp_path/'raw';raw.mkdir()
     digest=hashlib.sha256(body).digest()
     key='bodies/sha256/'+digest.hex()[:2]+'/'+digest.hex()
@@ -22,7 +22,7 @@ def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></b
     schema=pa.schema([('sha256',pa.binary(32)),('stored_bytes',pa.int64()),('stored_suffix',pa.string()),
         ('sniffed_format',pa.string()),('sniff_version',pa.string())])
     pq.write_table(pa.Table.from_pylist([dict(sha256=digest,stored_bytes=len(body) if size is None else size,
-        stored_suffix='',sniffed_format='html',sniff_version='sniff-fixture')]*copies,schema=schema),captures)
+        stored_suffix='',sniffed_format=body_format,sniff_version='sniff-fixture')]*copies,schema=schema),captures)
     inventory=tmp_path/'bodies.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,
         stored_bytes=len(body) if size is None else size,stored_gzip=False)],schema=pa.schema([
@@ -86,9 +86,8 @@ def test_sniff_reads_only_a_prefix_of_large_ordinary_file(tmp_path):
 
 
 def test_completed_error_reading_and_local_native_append_noop(tmp_path):
-    args,_=setup(tmp_path,body=b'<broken')
-    result=readings.stage(**args,work=tmp_path/'stage',parser='xml',sniff_version='sniff-fixture',
-                          candidate_format='html')
+    args,_=setup(tmp_path,body=b'<broken',body_format='xml')
+    result=readings.stage(**args,work=tmp_path/'stage',parser='xml',sniff_version='sniff-fixture')
     assert pq.read_table(result['readings']).to_pylist()[0]['status']=='error'
     table=dict(namespace=['archive'],name='readings')
     readings.create_table(engine=args['engine'],work=tmp_path/'create',catalog_root=tmp_path/'catalog',
