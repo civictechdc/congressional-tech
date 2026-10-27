@@ -38,6 +38,10 @@ def _spool(response, destination, limit):
     return digest.hexdigest(), size, complete, error
 
 
+def _partial_response(status, headers):
+    return status == 206 or any(key.lower() == 'content-range' for key in headers)
+
+
 class DirectAdapter:
     """Adapt requests or the existing native one-hop session without page parsing."""
     def __init__(self, session):
@@ -47,7 +51,7 @@ class DirectAdapter:
         with self.session.get(url, headers={**UA, **headers}, timeout=(15, 300),
                               stream=True, allow_redirects=False) as response:
             sha, size, complete, error = _spool(response, destination, limit)
-            if response.status_code == 206 or 'content-range' in {k.lower() for k in response.headers}:
+            if _partial_response(response.status_code,response.headers):
                 complete, error = False, error or 'partial_response'
             return Transfer(Path(destination), response.url, response.status_code,
                             {k.lower(): v for k, v in response.headers.items()},
@@ -174,8 +178,10 @@ class ProviderAdapter:
                 raw_headers = meta.get('httpResponseHeaders') or []
                 headers = {item['name'].lower(): item['value'] for item in raw_headers}
                 # Zyte already removes HTTP content encoding; do not decode again.
+                partial = _partial_response(meta['statusCode'],headers)
                 return Transfer(destination, meta.get('url') or url, meta['statusCode'], headers,
-                                True, provider_status=status, sha256=sha, size=size)
+                                not partial, 'partial_response' if partial else None,
+                                provider_status=status, sha256=sha, size=size)
         finally:
             provider_path.unlink(missing_ok=True)
 
