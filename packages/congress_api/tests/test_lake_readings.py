@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -144,3 +145,31 @@ def test_readings_cli_stages_locally_and_reports_pending_without_applying(tmp_pa
     result=json.loads(capsys.readouterr().out)
     assert result['pending_reads']==1 and result['applied'] is False
     assert pq.ParquetFile(result['readings']).metadata.num_rows==0
+
+
+def test_post_read_decoded_bound_is_an_error_not_pre_read_size_limit(tmp_path):
+    import gzip
+    body=gzip.compress(b'x'*(readings.MAX_DECODED_BYTES+1),mtime=0)
+    args,_=setup(tmp_path,body=body)
+    rows=pq.read_table(args['body_inventory']).to_pylist()
+    rows[0]['stored_gzip']=True
+    pq.write_table(pa.Table.from_pylist(rows),args['body_inventory'])
+    result=stage(args,tmp_path/'stage')
+    row=pq.read_table(result['readings']).to_pylist()[0]
+    assert row['status']=='error' and row['error_type']=='decoded_size_limit'
+    assert result['pending_reads']==0 and result['read_bytes']>0
+
+
+def test_unreadable_batches_from_one_run_use_distinct_stable_raw_keys(tmp_path):
+    class FailedWorker:
+        def __init__(self,*args,**kwargs):pass
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def parse(self,*args):return dict(status='unreadable',reason='parser_crash',attempts=2)
+    args,_=setup(tmp_path)
+    page=stage(args,tmp_path/'html',worker_factory=FailedWorker)
+    sniff=readings.stage(**args,work=tmp_path/'sniff',parser='sniff',worker_factory=FailedWorker)
+    repeated=stage(args,tmp_path/'repeated',worker_factory=FailedWorker)
+    assert page['unreadable_key']!=sniff['unreadable_key']
+    assert page['unreadable_key']==repeated['unreadable_key']
+    assert Path(page['unreadable_path']).read_bytes()==Path(repeated['unreadable_path']).read_bytes()
