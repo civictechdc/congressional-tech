@@ -9,6 +9,7 @@ from tempfile import TemporaryDirectory
 
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from hashlib import sha256
 import os
 
@@ -414,14 +415,29 @@ class SelectedCatalogTable:
             except sqlite3.IntegrityError as error:
                 raise ValueError('Duplicate selected catalog component') from error
 
-            def read_chunk(reference):
-                identity = encoded(reference).decode()
+            @lru_cache(maxsize=64)
+            def decoded_chunk(identity):
+                # Full reference bytes are the cache key, including length and
+                # digest. SQLite retains evicted entries; parsed values stay bounded.
                 saved = db.execute('SELECT body FROM chunks WHERE identity=?', (identity,)).fetchone()
                 if saved:
                     return json.loads(saved[0])
-                value = reader.chunks.read(reference)
+                value = reader.chunks.read(json.loads(identity))
                 db.execute('INSERT INTO chunks VALUES (?,?,?)', (identity, identity, encoded(value).decode()))
                 return value
+
+            def read_chunk(reference):
+                return decoded_chunk(encoded(reference).decode())
+
+            logical_schema = self.schema_arrow
+
+            @lru_cache(maxsize=16)
+            def require_schema(schema_text):
+                physical_schema = _component_schema(dict(schema=schema_text))
+                # Cache only exact immutable schemas for this one selected scan.
+                # Nullable additions remain checked against its logical schema.
+                if not can_read_catalog_schema(physical_schema, logical_schema):
+                    raise ValueError('Selected catalog application schemas differ')
 
             logical_rows = 0
             for raw_page, in db.execute('SELECT DISTINCT page FROM members ORDER BY page'):
@@ -430,11 +446,9 @@ class SelectedCatalogTable:
                 for component, in db.execute('SELECT component FROM members WHERE page=? ORDER BY component', (raw_page,)):
                     proof = reader.read(dict(page=page_ref, component=component), page=page, read_chunk=read_chunk)
                     table = proof['tables'][self.label]
-                    physical_schema = _component_schema(table)
                     # Old pins retain exact types and metadata. The selected
                     # logical schema may add nullable fields without rewriting them.
-                    if not can_read_catalog_schema(physical_schema, self.schema_arrow):
-                        raise ValueError('Selected catalog application schemas differ')
+                    require_schema(table['schema'])
                     for view in table['chunks']:
                         name, identity = view['name'], encoded(page['chunks'][view['name']]).decode()
                         prior = db.execute('SELECT identity,schema FROM physical WHERE name=?', (name,)).fetchone()

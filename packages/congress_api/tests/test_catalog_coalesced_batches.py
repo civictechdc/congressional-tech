@@ -201,3 +201,49 @@ def test_selected_nullable_adaptation_refuses_other_schema_changes_before_payloa
     with pytest.raises(ValueError, match='application schemas differ'):
         list(reader.iter_batches())
     assert not native.reads
+
+
+def test_selected_scan_reuses_exact_schema_and_decoded_chunk_admission(tmp_path, monkeypatch):
+    from congress_api.retention import catalog_batches as module
+    store, native = Store(tmp_path), Native()
+    selected = list(iterator_prepared_components(store, prepare(store, native, 130)))
+    compatibility, chunk_queries = [], []
+    original_check, original_connect = module.can_read_catalog_schema, module.sqlite3.connect
+    def checked(physical, logical):
+        compatibility.append((physical, logical))
+        return original_check(physical, logical)
+    def connect(*args, **kwargs):
+        db = original_connect(*args, **kwargs)
+        db.set_trace_callback(lambda sql: chunk_queries.append(sql) if sql.startswith('SELECT body FROM chunks') else None)
+        return db
+    monkeypatch.setattr(module, 'can_read_catalog_schema', checked)
+    monkeypatch.setattr(module.sqlite3, 'connect', connect)
+    reader = module.SelectedCatalogTable(SCHEMA, lambda: iter(selected), store=store, native=native,
+        label='filenames', rows=130, max_ordered_bytes=1 << 20)
+    actual = pa.Table.from_batches(list(reader.iter_batches(columns=['source_id'], include_order=True)))
+    assert actual.to_pylist() == [dict(source_id=f'source-{i}', _catalog_order=i)for i in range(130)]
+    assert len(compatibility) == 1
+    assert len(chunk_queries) == 2  # Shared filename/document pins, once each.
+    native.reads.clear()
+    again = pa.Table.from_batches(list(reader.iter_batches(columns=['source_id'], include_order=True)))
+    assert again.equals(actual, check_metadata=True)
+    assert len(compatibility) == 2 and len(chunk_queries) == 4  # Fresh admission per scan.
+
+
+def test_selected_decoded_chunk_cache_binds_entire_reference_before_native_read(tmp_path):
+    from copy import deepcopy
+    from congress_api.retention.catalog_batches import SelectedCatalogTable
+    store, native = Store(tmp_path), Native()
+    selected = list(iterator_prepared_components(store, prepare(store, native, 2)))
+    owner = CatalogComponentReader(store)
+    page = deepcopy(owner.page(selected[1][1]['page']))
+    # Same digest/key, wrong length after the first component warmed the cache.
+    name = page['components'][selected[1][0]]['tables']['filenames']['chunks'][0]['name']
+    page['chunks'][name]['bytes'] += 1
+    selected[1] = selected[1][0], dict(selected[1][1], page=owner.pages.put(page))
+    native.reads.clear()
+    reader = SelectedCatalogTable(SCHEMA, lambda: iter(selected), store=store, native=native,
+        label='filenames', rows=2, max_ordered_bytes=1 << 20)
+    with pytest.raises(ValueError, match='metadata identity'):
+        list(reader.iter_batches())
+    assert not native.reads
