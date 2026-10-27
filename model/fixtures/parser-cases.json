@@ -221,5 +221,29 @@
       "content_date": "2026-10-27",
       "links": []
     }
+  },
+  {
+    "id": "html-dated-heading",
+    "parser": "html",
+    "body": "<html><body><h1>Hearing of October 27, 2026</h1><p>Published evidence.</p></body></html>",
+    "expected": {
+      "content_date": "2026-10-27"
+    }
+  },
+  {
+    "id": "html-conflicting-dated-heading",
+    "parser": "html",
+    "body": "<html><body><h1>October 27, 2026 and October 28, 2026</h1></body></html>",
+    "expected": {
+      "content_date": null
+    }
+  },
+  {
+    "id": "html-instant-date-in-new-york",
+    "parser": "html",
+    "body": "<html><head><meta name=\"date\" content=\"2026-10-27T02:00:00Z\"></head><body><p>Published evidence.</p></body></html>",
+    "expected": {
+      "content_date": "2026-10-26"
+    }
   }
 ]
