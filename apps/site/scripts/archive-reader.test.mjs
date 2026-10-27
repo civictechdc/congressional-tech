@@ -134,3 +134,12 @@ test('a transient meeting failure can be retried within the same reader session'
   const reader=await openArchive('https://fixture.test/manifest.json',{fetcher});
   await assert.rejects(reader.meetings());assert.equal((await reader.meetings())[0].event_id,118001n);
 });
+
+test('pasted-address versions apply hearing and format filters with capture paging',async()=>{
+  const reader=await openArchive('https://fixture.test/manifest.json',{fetcher:localFetch});
+  const url='https://fixture.test/record.pdf';
+  assert.deepEqual((await reader.lookupRows(url,{limit:1})).rows.map(row=>row.list_row),[4]);
+  assert.deepEqual((await reader.lookupRows(url,{limit:1,offset:1})).rows.map(row=>row.list_row),[3]);
+  assert.equal((await reader.lookupRows(url,{meeting_keys:['118001']})).total,0);
+  assert.equal((await reader.lookupRows(url,{format:['xml']})).total,0);
+});

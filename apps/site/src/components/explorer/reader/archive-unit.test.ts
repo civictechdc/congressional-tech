@@ -73,3 +73,18 @@ test('pinned index and dictionary bytes survive data-cache pressure',async()=>{
   await file.slice(0,20);await file.slice(9800,9850);await file.slice(200,500);await file.slice(500,800);
   const before=requests.length;await file.slice(0,20);await file.slice(9800,9850);assert.equal(requests.length,before);
 });
+
+test('worker payloads preserve native int64 sizes through structured cloning',async()=>{
+  const {createWorkerClient}=await import('./filenames/client.ts');let message;
+  const worker={postMessage(value){message=value;},terminate(){}};
+  const client=createWorkerClient({context:()=>({}),createWorker:()=>worker});
+  const request=client.request('/saved',undefined,{saved_bytes:100n});assert.equal(message.payload.saved_bytes,100n);
+  worker.onmessage({data:{id:1,result:{url:'https://raw.test/body'}}});await request;client.dispose();
+});
+
+test('partial pinned ranges are composed with missing data without refetching dictionaries',async()=>{
+  const bytes=Uint8Array.from({length:200},(_,i)=>i),ranges=[];
+  const file=rangeFile('https://raw.test/partial',200,async(_url,options)=>{const [start,end]=options.headers.Range.slice(6).split('-').map(Number);ranges.push([start,end+1]);return new Response(bytes.slice(start,end+1),{status:206,headers:{'Content-Range':`bytes ${start}-${end}/200`}});},byteCache(1));
+  file.retain([[0,20]]);await file.slice(0,20);ranges.length=0;
+  assert.deepEqual(new Uint8Array(await file.slice(0,200)),bytes);assert.deepEqual(ranges,[[20,200]]);
+});

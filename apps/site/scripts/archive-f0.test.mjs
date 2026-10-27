@@ -21,7 +21,7 @@ async function localFetch(url,options={}){
   }finally{await handle.close();}
 }
 test('F0 indexes retain warm detail reads on different pages under cache pressure',async()=>{
-  const reader=await openArchive('https://fixture.test/manifest.json',{fetcher:localFetch,heapBytes:512*1024*1024,cacheBytes:1024*1024});
+  const reader=await openArchive('https://fixture.test/manifest.json',{fetcher:localFetch,heapBytes:512*1024*1024,cacheBytes:1});
   assert.equal(reader.count,manifest.files.find(item=>item.name==='list.parquet').rows);
   assert(reader.count>4096,'The full fixture must cover several native 1024-row pages.');
   await reader.entry(0);
