@@ -78,3 +78,22 @@ def test_job_forwards_explicit_remote_connection_and_named_secrets(tmp_path):
     arguments = log.read_text().splitlines()
     assert arguments[arguments.index('--remote') + 1] == str(client.remote)
     assert arguments[-3:] == ['job', '--spec', str(tmp_path / 'job.json')]
+
+
+def test_create_file_forwards_to_same_pinned_remote_adapter(tmp_path):
+    client, log, _ = executable(tmp_path)
+    client.remote = tmp_path / 'remote.json'
+    assert client.create_file(tmp_path / 'upload.json') == {'steps': [], 'outputs': []}
+    arguments = log.read_text().splitlines()
+    assert arguments[-3:] == ['create-file', '--spec', str(tmp_path / 'upload.json')]
+    assert arguments[arguments.index('--remote') + 1] == str(client.remote)
+
+
+@pytest.mark.parametrize('missing', ['remote', 'limits', 'binary_sha256', 'source_revision'])
+def test_create_file_refuses_missing_configuration_before_executing(tmp_path, missing):
+    client, log, _ = executable(tmp_path)
+    client.remote = tmp_path / 'remote.json'
+    setattr(client, missing, None)
+    with pytest.raises(ValueError, match='remote|limits|pin'):
+        client.create_file(tmp_path / 'upload.json')
+    assert not log.exists()
