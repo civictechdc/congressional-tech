@@ -1,0 +1,434 @@
+{
+  "selection_job": {
+    "scratch": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/native",
+    "inputs": [
+      {
+        "name": "cap",
+        "kind": "parquet",
+        "path": "/Users/mikewolfd/Work/congressional-tech/output/incremental-updates-20261019/adoption-inputs/captures.parquet"
+      },
+      {
+        "name": "seeds",
+        "kind": "json_lines",
+        "files": [
+          {
+            "key": "seeds",
+            "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/seeds.jsonl.gz"
+          }
+        ],
+        "schema": {
+          "fields": [
+            {
+              "name": "sha256",
+              "data_type": "Utf8",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            },
+            {
+              "name": "seed_kind",
+              "data_type": "Utf8",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            },
+            {
+              "name": "quota",
+              "data_type": "Int64",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            }
+          ],
+          "metadata": {}
+        }
+      }
+    ],
+    "steps": [
+      {
+        "name": "matched",
+        "sql": "SELECT s.sha256,s.seed_kind,s.quota,c.body_key,c.context_url,c.original_path,c.family,c.bytes,c.http_status,c.receipt_key,c.receipt_line,\n row_number() OVER(PARTITION BY s.sha256 ORDER BY c.context_url NULLS LAST,c.original_path NULLS LAST,c.receipt_key NULLS LAST,c.receipt_line) AS context_rank\n FROM cap c JOIN seeds s ON c.sha256=s.sha256",
+        "materialize": true
+      },
+      {
+        "name": "summary",
+        "sql": "SELECT sha256,count(DISTINCT context_url) AS n_urls,max(context_url) AS last_context_url,\n max(bytes) AS max_bytes FROM matched GROUP BY sha256",
+        "materialize": false
+      },
+      {
+        "name": "population",
+        "sql": "SELECT m.*,s.n_urls,s.last_context_url,s.max_bytes,lower(regexp_replace(regexp_replace(coalesce(m.context_url,''),'^https?://',''),'/.*$','')) AS host,\n CASE WHEN s.max_bytes<5000 THEN 'under5k' WHEN s.max_bytes<15000 THEN '5to15k' WHEN s.max_bytes<40000 THEN '15to40k' ELSE '40kplus' END AS size_bucket\n FROM matched m JOIN summary s ON m.sha256=s.sha256 WHERE m.context_rank=1",
+        "materialize": false
+      },
+      {
+        "name": "stratified",
+        "sql": "SELECT *,row_number() OVER(PARTITION BY seed_kind,host,size_bucket ORDER BY encode(sha256('S2-20261027:'||sha256),'hex')) AS within_stratum_rank FROM population",
+        "materialize": false
+      },
+      {
+        "name": "ranked",
+        "sql": "SELECT *,row_number() OVER(PARTITION BY seed_kind ORDER BY within_stratum_rank,encode(sha256('S2-20261027:'||sha256),'hex')) AS selection_rank FROM stratified",
+        "materialize": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "population.parquet",
+        "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/population.parquet",
+        "sql": "SELECT * FROM ranked",
+        "settings": {
+          "profile": "whole",
+          "row_group_rows": 65536,
+          "order_by": [
+            {
+              "field": "seed_kind"
+            },
+            {
+              "field": "sha256"
+            }
+          ],
+          "columns": [],
+          "dictionary_columns": [],
+          "delta_columns": [],
+          "key_column": null,
+          "created_by": "docspec archive release v1",
+          "footer_limit": 524288
+        }
+      },
+      {
+        "name": "selected.parquet",
+        "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/selected.parquet",
+        "sql": "SELECT * FROM ranked WHERE selection_rank<=quota",
+        "settings": {
+          "profile": "whole",
+          "row_group_rows": 65536,
+          "order_by": [
+            {
+              "field": "seed_kind"
+            },
+            {
+              "field": "sha256"
+            }
+          ],
+          "columns": [],
+          "dictionary_columns": [],
+          "delta_columns": [],
+          "key_column": null,
+          "created_by": "docspec archive release v1",
+          "footer_limit": 524288
+        }
+      }
+    ]
+  },
+  "selection_result": {
+    "steps": [
+      {
+        "name": "matched",
+        "storage": "memory"
+      },
+      {
+        "name": "summary",
+        "storage": "view"
+      },
+      {
+        "name": "population",
+        "storage": "view"
+      },
+      {
+        "name": "stratified",
+        "storage": "view"
+      },
+      {
+        "name": "ranked",
+        "storage": "view"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "population.parquet",
+        "sha256": "6d221f2ef5463872072092ede94d564e0153ccb07446a4a4c56dc191919408cf",
+        "md5": "d0f4e460163f7757b62c1ab25b4fda3b",
+        "size": 408520,
+        "rows": 3044,
+        "footer_bytes": 4339
+      },
+      {
+        "name": "selected.parquet",
+        "sha256": "af7fc503c845c61e0767975425d32ed820d3f418f48c874e486e9d6060cd353f",
+        "md5": "7b0b78565150d972873e729757701151",
+        "size": 49636,
+        "rows": 284,
+        "footer_bytes": 4328
+      }
+    ]
+  },
+  "supplemental_query_job": {
+    "scratch": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/listing-candidates-native",
+    "inputs": [
+      {
+        "name": "m",
+        "kind": "parquet",
+        "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/mirrors.parquet"
+      }
+    ],
+    "steps": [],
+    "outputs": [],
+    "queries": [
+      {
+        "name": "listing_candidates",
+        "sql": "SELECT * FROM m WHERE n_urls BETWEEN 2 AND 20 AND max_bytes BETWEEN 500 AND 1500000\n AND lower(context_url) NOT LIKE '%gpo.gov%' AND lower(context_url) NOT LIKE '%govinfo.gov%'\n AND lower(last_context_url) NOT LIKE '%gpo.gov%' AND lower(last_context_url) NOT LIKE '%govinfo.gov%'\n AND context_url NOT LIKE '%youtube%'\n AND regexp_match(lower(regexp_replace(context_url,'[?#].*$','')),'[.](pdf|xml|docx?|txt|zip)$') IS NULL\n AND regexp_match(lower(regexp_replace(last_context_url,'[?#].*$','')),'[.](pdf|xml|docx?|txt|zip)$') IS NULL\n ORDER BY n_urls DESC,sha256 LIMIT 40"
+      }
+    ]
+  },
+  "statistics_job": {
+    "scratch": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/stats-reviewed-native",
+    "inputs": [
+      {
+        "name": "panel_files",
+        "kind": "json_lines",
+        "files": [
+          {
+            "key": "panel_files",
+            "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/panel_files.jsonl.gz"
+          }
+        ],
+        "schema": {
+          "fields": [
+            {
+              "name": "id",
+              "data_type": "Utf8",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            },
+            {
+              "name": "body_sha256",
+              "data_type": "Utf8",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            },
+            {
+              "name": "decision",
+              "data_type": "Utf8",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            },
+            {
+              "name": "strata",
+              "data_type": {
+                "List": {
+                  "name": "item",
+                  "data_type": "Utf8",
+                  "nullable": true,
+                  "dict_id": 0,
+                  "dict_is_ordered": false,
+                  "metadata": {}
+                }
+              },
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            }
+          ],
+          "metadata": {}
+        }
+      },
+      {
+        "name": "panel_bodies",
+        "kind": "json_lines",
+        "files": [
+          {
+            "key": "panel_bodies",
+            "path": "/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-site/s2/panel_bodies.jsonl.gz"
+          }
+        ],
+        "schema": {
+          "fields": [
+            {
+              "name": "sha256",
+              "data_type": "Utf8",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            },
+            {
+              "name": "text_bytes",
+              "data_type": "Int64",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            },
+            {
+              "name": "stored_bytes",
+              "data_type": "Int64",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            },
+            {
+              "name": "decoded_bytes",
+              "data_type": "Int64",
+              "nullable": true,
+              "dict_id": 0,
+              "dict_is_ordered": false,
+              "metadata": {}
+            }
+          ],
+          "metadata": {}
+        }
+      }
+    ],
+    "steps": [],
+    "outputs": [],
+    "queries": [
+      {
+        "name": "totals",
+        "sql": "SELECT count(*) files,count(DISTINCT body_sha256) bodies,count(*) FILTER(WHERE decision='owner_decision_required') owner_questions FROM panel_files"
+      },
+      {
+        "name": "decisions",
+        "sql": "SELECT decision,count(*) files,count(DISTINCT body_sha256) bodies FROM panel_files GROUP BY decision ORDER BY decision"
+      },
+      {
+        "name": "strata",
+        "sql": "SELECT stratum,count(*) files FROM (SELECT unnest(strata) stratum FROM panel_files) GROUP BY stratum ORDER BY stratum"
+      },
+      {
+        "name": "short_real",
+        "sql": "SELECT count(*) files,min(b.text_bytes) min_visible_bytes,max(b.text_bytes) max_visible_bytes FROM panel_files f JOIN panel_bodies b ON f.body_sha256=b.sha256 WHERE f.decision='real_document' AND b.text_bytes<2048"
+      }
+    ]
+  },
+  "statistics": {
+    "steps": [],
+    "outputs": [],
+    "queries": [
+      {
+        "name": "totals",
+        "data": [
+          {
+            "bodies": 287,
+            "files": 291,
+            "owner_questions": 47
+          }
+        ]
+      },
+      {
+        "name": "decisions",
+        "data": [
+          {
+            "bodies": 2,
+            "decision": "challenge",
+            "files": 2
+          },
+          {
+            "bodies": 39,
+            "decision": "download_wrapper",
+            "files": 39
+          },
+          {
+            "bodies": 58,
+            "decision": "landing",
+            "files": 60
+          },
+          {
+            "bodies": 16,
+            "decision": "listing",
+            "files": 16
+          },
+          {
+            "bodies": 47,
+            "decision": "owner_decision_required",
+            "files": 47
+          },
+          {
+            "bodies": 86,
+            "decision": "real_document",
+            "files": 88
+          },
+          {
+            "bodies": 38,
+            "decision": "soft_error",
+            "files": 38
+          },
+          {
+            "bodies": 1,
+            "decision": "source_record",
+            "files": 1
+          }
+        ]
+      },
+      {
+        "name": "strata",
+        "data": [
+          {
+            "files": 61,
+            "stratum": "archive_members"
+          },
+          {
+            "files": 2,
+            "stratum": "challenge_pages"
+          },
+          {
+            "files": 39,
+            "stratum": "download_pages"
+          },
+          {
+            "files": 3,
+            "stratum": "files_listed_together"
+          },
+          {
+            "files": 60,
+            "stratum": "landing_pages"
+          },
+          {
+            "files": 1,
+            "stratum": "links_outside_list_items"
+          },
+          {
+            "files": 2,
+            "stratum": "listing_captured_twice"
+          },
+          {
+            "files": 16,
+            "stratum": "listing_pages"
+          },
+          {
+            "files": 45,
+            "stratum": "short_real_pages"
+          },
+          {
+            "files": 38,
+            "stratum": "soft_error_pages"
+          },
+          {
+            "files": 6,
+            "stratum": "widely_mirrored_documents"
+          }
+        ]
+      },
+      {
+        "name": "short_real",
+        "data": [
+          {
+            "files": 45,
+            "max_visible_bytes": 1929,
+            "min_visible_bytes": 580
+          }
+        ]
+      }
+    ]
+  }
+}

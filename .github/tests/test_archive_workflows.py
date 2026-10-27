@@ -45,6 +45,7 @@ def test_new_capture_uses_scheduler_and_separate_lock_with_explicit_switch():
     preflight = next(i for i, step in enumerate(job['steps']) if 'doctor --lane production-offline' in step.get('run', ''))
     effect = next(i for i, step in enumerate(job['steps']) if 'capture_schedule' in step.get('run', ''))
     assert preflight < effect and 'env' not in job['steps'][preflight]
+    assert job['steps'][effect]['env']['DATA_GOV_API_KEY'] == '${{ secrets.DATA_GOV_API_KEY }}'
     publisher = workflow('archive-jobs.yml')
     assert publisher['on']['workflow_run']['workflows'] == [value['name']]
 
