@@ -598,3 +598,26 @@ def test_preparation_external_spill_and_recovery_within_staging_budget(tmp_path)
         )
     finally:
         resumed_work.close()
+
+
+def test_dependency_sort_initializes_parquet_settings_in_fresh_process():
+    """A prior DuckDB connection must not hide extension startup ordering."""
+    import os
+    import subprocess
+    import sys
+    import textwrap
+    code = textwrap.dedent("""\
+        from test_catalog_dependency_preparation import owner, values
+        table = values().slice(0, 1)
+        prepared = owner()
+        selection = prepared.adopt([table])
+        selected = prepared.selected(selection)
+        try:
+            assert selected.source(table['source_id'][0].as_py()) == table.to_pylist()[0]
+        finally:
+            selected.close()
+        assert prepared.preparation_reads['sort_runs'] == 1
+    """)
+    result = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True,
+        timeout=60, env={**os.environ, 'PYTHONPATH': os.pathsep.join(sys.path)})
+    assert result.returncode == 0, result.stdout + result.stderr
