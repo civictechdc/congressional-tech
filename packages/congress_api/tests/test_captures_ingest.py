@@ -258,3 +258,54 @@ def test_payload_is_removed_before_capture_fanout(tmp_path):
     assert marker not in row['line'] and marker not in row['record_json']
     assert len(row['record_json'].encode())<32768
     assert pq.read_metadata(stage/'captures.parquet').num_rows==100
+
+
+def test_prior_attempt_keeps_status_code_and_recorded_completeness(tmp_path):
+    stage=ingest(tmp_path,[dict(record=dict(http_status=200,complete=True,
+        prior_attempts=[dict(status_code=206,complete=False)]),captures=[
+            body(pointer=['prior_attempts',0,'content','body']),
+            body(pointer=['content','body'])])])
+    prior,final=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert (prior['attempt_status'],prior['complete'])==(206,False)
+    assert (final['attempt_status'],final['complete'])==(200,True)
+
+
+@pytest.mark.parametrize('captured_member',[False,True])
+def test_archive_expansion_requires_a_captured_member(tmp_path,captured_member):
+    captures=[body(pointer=['content','body'])]
+    if captured_member:
+        captures.append(body(pointer=['archive_members',0,'body'],member_path='inside.pdf'))
+    stage=ingest(tmp_path,[dict(record=dict(archive_members=[dict(error='unreadable')]),
+                               captures=captures)])
+    rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert rows[0]['expansion']==('expanded' if captured_member else None)
+    if captured_member:assert rows[1]['expansion'] is None
+
+
+def test_sparse_bodiless_record_list_never_silently_loses_later_facts(tmp_path):
+    # A single line cannot choose the first sparse element and discard the
+    # only recorded HTTP status/time. Refusal keeps the receipt pending.
+    with pytest.raises(ValueError,match='list.*facts'):
+        ingest(tmp_path,[dict(record=[dict(url='https://example.org/a'),
+            dict(url='https://example.org/a',status_code=404,observed_at=STAMP)])])
+
+
+def test_http_date_retry_after_preserves_publisher_deadline(tmp_path):
+    stage=ingest(tmp_path,[dict(record=dict(http_status=503,retrieved_at=STAMP,
+        response_headers={'retry-after':'Wed, 21 Oct 2026 07:28:00 GMT'}))])
+    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert row['retry_after'].isoformat()=='2026-10-21T07:28:00+00:00'
+
+
+@pytest.mark.parametrize('same_url',[True,False])
+def test_owner_decided_direct_official_package_is_a_fetch_only_for_same_source(tmp_path,same_url):
+    original='https://example.org/package.zip'
+    actual=original if same_url else 'https://archive.org/copy.zip'
+    stage=ingest(tmp_path,[dict(mode='retained_import',record=dict(url=actual,
+        requested_url=actual,retrieved_at=STAMP,http_status=200,outcome='saved',
+        source_associations=[dict(original_url=original,basis='direct_official_package')]),
+        captures=[body(complete=True)])])
+    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert row['mode']==('fetch' if same_url else 'retained_import')
+    assert row['original_url']==(None if same_url else original)
+    assert row['retrieved_at'].isoformat()=='2026-10-20T12:34:56+00:00'
