@@ -319,8 +319,10 @@ class NativeDatasets:
         if self._has_runtime_pins():
             self.verify_runtime()
         command = [*self._command(remote=remote), *map(str, args)]
+        environment = ({'env': {**os.environ, **self._remote_secrets}}
+                       if remote and self.remote is not None and self._remote_secrets else {})
         result = subprocess.run(command, capture_output=True, text=True,
-                                timeout=self.timeout)
+                                timeout=self.timeout, **environment)
         if result.returncode:
             raise DocSpecFailure(command, result)
         return json.loads(result.stdout) if result.stdout.strip() else None
@@ -421,9 +423,7 @@ class NativeDatasets:
             raise ValueError('SQL job requires explicit host limits')
         if self.binary_sha256 is None or self.source_revision is None:
             raise ValueError('SQL job requires binary and source revision pins')
-        if self.remote is not None:
-            raise ValueError('SQL job remote adapter is not yet bound')
-        return self._call('job', '--spec', Path(spec).resolve(), remote=False)
+        return self._call('job', '--spec', Path(spec).resolve(), remote=True)
 
     def run_ipc(
         self,
