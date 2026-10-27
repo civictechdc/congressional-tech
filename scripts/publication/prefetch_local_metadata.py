@@ -17,7 +17,7 @@ import re
 import sqlite3
 import time
 
-from congress_api.retention.r2 import R2Store
+from congress_api.retention.r2 import R2Store, _read_stream
 from congress_shared.custody import write_atomic_bytes
 from viewer_publication.constants import BUCKET
 from viewer_publication.publication_cli import save_report
@@ -73,6 +73,31 @@ def checked(raw, hint):
     return raw
 
 
+def read_hint(store, hint):
+    """Bound headers and body while reusing maintained body-retry ownership."""
+    etag = None
+    def request():
+        return store.client.get_object(Bucket=store.bucket, Key=hint.key,
+            **({'IfMatch': etag} if etag else {}))
+    def consume(response, source):
+        nonlocal etag
+        size = response.get('ContentLength')
+        if type(size) is not int or not 0 < size <= MAX_BYTES:
+            raise ValueError('Metadata response exceeds its byte bound: ' + hint.key)
+        if hint.size is not None and size != hint.size:
+            raise ValueError('Metadata response declared size differs from hint: ' + hint.key)
+        if etag is not None and response['ETag'] != etag:
+            raise ValueError('Metadata response changed during bounded read: ' + hint.key)
+        etag = response['ETag']
+        # One extra byte detects a lying ContentLength without buffering the
+        # whole response. _read_stream closes the body on every outcome.
+        raw = source.read(size + 1)
+        if len(raw) != size:
+            raise ValueError('Metadata response actual size differs from declaration: ' + hint.key)
+        return checked(raw, hint)
+    return _read_stream(store.client, hint.key, request, consume)
+
+
 def prefetch(client, hints, cache_dir, *, workers=16, progress=None):
     if type(workers) is not int or not 1 <= workers <= 32:
         raise ValueError('Metadata prefetch workers must be between 1 and 32')
@@ -91,7 +116,7 @@ def prefetch(client, hints, cache_dir, *, workers=16, progress=None):
                 return 'cached', len(raw)
             except (OSError, ValueError):
                 pass  # Refetch corrupt cache bytes; never authorize their use.
-        raw = checked(store.read(hint.key), hint)
+        raw = read_hint(store, hint)
         write_atomic_bytes(path, raw, temp_mode='unique')
         return 'downloaded', len(raw)
     result = dict(status='prefetched', total=len(hints), completed=0, cached=0,

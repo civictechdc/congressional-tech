@@ -78,7 +78,7 @@ def test_corrupt_local_cache_is_refetched_and_remote_corruption_is_not_cached(tm
     path.unlink()
     remote.objects[hint.key] = b'corrupt'
     events = []
-    with pytest.raises(ValueError, match='identity mismatch'):
+    with pytest.raises(ValueError, match='identity mismatch|declared size differs'):
         prefetcher.prefetch(ReadOnlyClient(remote), [hint], tmp_path, workers=1, progress=events.append)
     assert not path.exists() and events[-1]['failures'] == 1
 
@@ -136,3 +136,68 @@ def test_prefetch_cli_sizes_real_sdk_pool_to_workers(tmp_path, monkeypatch, work
     monkeypatch.setattr(prefetcher, 'prefetch', observed)
     assert prefetcher.main(['--stages', str(tmp_path / 'unused.sqlite'), '--metadata-cache', str(tmp_path / 'cache'),
         '--workers', str(workers), '--report', str(tmp_path / 'report.json')]) == 0
+
+
+class ObservedBody:
+    def __init__(self, available):
+        self.available = available
+        self.requests = []
+        self.closed = False
+    def read(self, size=-1):
+        assert size > 0, 'unbounded read requested'
+        self.requests.append(size)
+        count = min(size, self.available)
+        self.available -= count
+        return b'x' * count
+    def close(self):
+        self.closed = True
+
+
+@pytest.mark.parametrize('declared,available,expected_reads', [
+    (prefetcher.MAX_BYTES + 1, prefetcher.MAX_BYTES + 1, []),
+    (32, prefetcher.MAX_BYTES * 4, [33]),
+    (prefetcher.MAX_BYTES, prefetcher.MAX_BYTES * 4, [prefetcher.MAX_BYTES + 1]),
+])
+def test_oversized_metadata_refused_with_bounded_read_and_closed_body(tmp_path, declared, available, expected_reads):
+    hint, raw = item({'version': 1})
+    # Routing hints provide a digest without a declared size. The transport
+    # limit must hold even before an authoritative reference is available.
+    hint = prefetcher.Hint(hint.key, hint.sha256)
+    body = ObservedBody(available)
+    remote = Remote({})
+    remote.get_object = lambda **parameters: dict(Body=body, ContentLength=declared, ETag='version-one')
+    with pytest.raises(ValueError, match='byte bound|actual size differs'):
+        prefetcher.prefetch(ReadOnlyClient(remote), [hint], tmp_path, workers=1)
+    assert body.requests == expected_reads and body.closed
+    assert not list(tmp_path.rglob('*.json'))
+
+
+def test_proof_declared_length_mismatch_refused_before_body_read(tmp_path):
+    hint, raw = item({'version': 1}, prefetcher.PROOFS)
+    body = ObservedBody(len(raw))
+    remote = Remote({})
+    remote.get_object = lambda **parameters: dict(Body=body, ContentLength=len(raw) + 1, ETag='version-one')
+    with pytest.raises(ValueError, match='declared size differs'):
+        prefetcher.prefetch(ReadOnlyClient(remote), [hint], tmp_path, workers=1)
+    assert not body.requests and body.closed
+    assert not list(tmp_path.rglob('*.json'))
+
+
+def test_bounded_body_retry_closes_and_pins_original_etag(tmp_path):
+    from botocore.exceptions import IncompleteReadError
+    hint, raw = item({'version': 1})
+    class InterruptedBody(io.BytesIO):
+        def read(self, size=-1):
+            assert size == len(raw) + 1
+            raise IncompleteReadError(actual_bytes=1, expected_bytes=len(raw))
+    bodies = [InterruptedBody(raw), io.BytesIO(raw)]
+    remote = Remote({})
+    requests = []
+    def get_object(**parameters):
+        requests.append(parameters)
+        return dict(Body=bodies[len(requests) - 1], ContentLength=len(raw), ETag='version-one')
+    remote.get_object = get_object
+    result = prefetcher.prefetch(ReadOnlyClient(remote), [hint], tmp_path, workers=1)
+    assert result['downloaded'] == 1
+    assert 'IfMatch' not in requests[0] and requests[1]['IfMatch'] == 'version-one'
+    assert all(body.closed for body in bodies)
