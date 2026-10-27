@@ -70,10 +70,12 @@ def write_records(store,kind,records,*,timestamp):
     key=f'provenance/{kind}/{timestamp}.jsonl'
     with TemporaryDirectory(prefix='raw-provenance-') as temporary:
         path=Path(temporary)/'records.jsonl'
-        count=0
+        count=0;seen=set()
         with path.open('x',encoding='utf-8') as out:
             for row in records:
                 validate_provenance(kind,row)
+                if row['id'] in seen:raise ValueError('Duplicate provenance decision ID')
+                seen.add(row['id'])
                 out.write(json.dumps(row,ensure_ascii=False,separators=(',',':'),allow_nan=False)+'\n')
                 count+=1
         if not count:raise ValueError('Empty provenance batch')
