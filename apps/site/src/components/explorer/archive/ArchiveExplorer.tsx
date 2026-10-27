@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
 import {createArchiveClient} from '../reader/archive-client.ts';
+import {openSavedBlob} from './saved-tab.ts';
 import {ArchiveDetail,ArchiveRows,keyHex} from './ArchiveDetail.tsx';
 import {RequestMessage,useRequest,integer} from '../view/request-state.tsx';
 
@@ -7,33 +8,34 @@ const pageSize=30;
 type Navigation={text:string;hearing:string;format:string;sort:string;offset:number;key:string};
 const readNavigation=():Navigation=>{const q=new URLSearchParams(location.search);return {text:q.get('q')||'',hearing:q.get('hearing')||'',format:q.get('format')||'',sort:q.get('sort')||'',offset:Math.max(0,Number(q.get('offset'))||0),key:q.get('key')||''};};
 export default function ArchiveExplorer({pointerUrl,rawBase}:{pointerUrl:string;rawBase:string}){
+  const [historyEpoch,setHistoryEpoch]=useState(0);
   const [client,setClient]=useState<ReturnType<typeof createArchiveClient>>();
   const [nav,setNav]=useState<Navigation>({text:'',hearing:'',format:'',sort:'',offset:0,key:''});
   useEffect(()=>{
     setNav(readNavigation());const connection=createArchiveClient(new URL(pointerUrl,location.href).href,new URL(rawBase,location.href).href,()=>location.reload());setClient(connection);
-    const pop=()=>setNav(readNavigation());window.addEventListener('popstate',pop);
+    const pop=()=>{setNav(readNavigation());setHistoryEpoch(value=>value+1);};window.addEventListener('popstate',pop);
     const dispose=()=>connection.dispose();const hide=(event:PageTransitionEvent)=>{if(!event.persisted)dispose();};window.addEventListener('pagehide',hide);
     return ()=>{window.removeEventListener('popstate',pop);window.removeEventListener('pagehide',hide);dispose();};
   },[pointerUrl,rawBase]);
   function navigate(change:Partial<Navigation>,replace=false){
     setNav(previous=>{const next={...previous,...change};const url=new URL(location.href);url.search='';for(const [name,value] of Object.entries({q:next.text,hearing:next.hearing,format:next.format,sort:next.sort,offset:next.offset,key:next.key}))if(value)url.searchParams.set(name,String(value));history[replace?'replaceState':'pushState']({},'',url);return next;});
   }
-  return client?<Workspace client={client} nav={nav} navigate={navigate} rawBase={new URL(rawBase,location.href).href}/>:<p role="status">Loading the document archive…</p>;
+  return client?<Workspace key={historyEpoch} client={client} nav={nav} navigate={navigate} rawBase={new URL(rawBase,location.href).href}/>:<p role="status">Loading the document archive…</p>;
 }
 function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof createArchiveClient>;nav:Navigation;navigate:(change:Partial<Navigation>,replace?:boolean)=>void;rawBase:string}){
   const [selection,setSelection]=useState<number|null>(null),[savedError,setSavedError]=useState('');
   const [info,retryInfo]=useRequest(signal=>client.request('info',{},signal),[client]);
   const [rows,retryRows]=useRequest(async signal=>{
-    if(/^https?:\/\//i.test(nav.text)){const result=await client.request('lookup',{url:nav.text},signal);return {total:result.length,rows:result,offset:0,next:null};}
+    if(/^https?:\/\//i.test(nav.text)){return client.request('lookup',{url:nav.text,query:{meeting_keys:nav.hearing?[nav.hearing]:[],format:nav.format?[nav.format]:[],sort:nav.sort,offset:nav.offset,limit:pageSize}},signal);}
     return client.request('search',{text:nav.text,meeting_keys:nav.hearing?[nav.hearing]:[],format:nav.format?[nav.format]:[],sort:nav.sort,offset:nav.offset,limit:pageSize},signal);
   },[client,nav.text,nav.hearing,nav.format,nav.sort,nav.offset]);
   const [detail,retryDetail]=useRequest(signal=>selection!==null||nav.key?client.request('entry',nav.key?{key:nav.key}:{index:selection},signal):Promise.resolve(null),[client,nav.key,selection]);
-  useEffect(()=>{if(detail.status==='ready'&&detail.value&&!nav.key){navigate({key:keyHex(detail.value.entry.detail.link_key)},true);setSelection(null);}},[detail]);
+  useEffect(()=>{if(detail.status==='ready'&&detail.value&&detail.value.entry.detail.link_key&&!nav.key){navigate({key:keyHex(detail.value.entry.detail.link_key)},true);setSelection(null);}},[detail]);
   const select=(index:number)=>{setSelection(index);navigate({key:''});setSavedError('');};
   const close=()=>{setSelection(null);navigate({key:''});};
   async function openSaved(record:any){
-    const tab=window.open('about:blank','_blank');
-    try{const result=await client.request('saved',{...record,saved_body:keyHex(record.saved_body)});if(result.blob){const url=URL.createObjectURL(result.blob);if(tab)tab.location.href=url;else window.open(url,'_blank');setTimeout(()=>URL.revokeObjectURL(url),60_000);}else if(tab)tab.location.href=result.url;}
+    const tab=window.open('about:blank','_blank');if(tab)tab.opener=null;
+    try{const result=await client.request('saved',{...record,saved_body:keyHex(record.saved_body)});if(result.blob){if(!tab)throw new Error('Allow a new tab to open this saved file.');await openSavedBlob(tab,result.blob);}else if(tab)tab.location.href=result.url;}
     catch(error){tab?.close();setSavedError(error instanceof Error?error.message:String(error));}
   }
   const filter=(change:Partial<Navigation>)=>{setSelection(null);navigate({...change,key:'',offset:0});};

@@ -414,7 +414,7 @@ The reader MUST accept the current and the previous `schema_version` of the rele
 A saved file opens at its physical key: `saved_body` plus `saved_suffix`.
 
 - Bodies written to §7.1 open directly; older gzip PDFs open their `.pdf` copy once it is recorded, and until then unpack like other `.gz` bodies.
-- Other `.gz` bodies are fetched and unpacked with the browser's `DecompressionStream`, then opened with the media type from `detail`; those whose original size in `detail` exceeds 100 MB (313, up to 1.19 GB) are offered as a labeled compressed download.
+- Other `.gz` bodies are fetched and unpacked with the browser's `DecompressionStream`, then opened with the media type from `detail`; unpacked active content stays in an opaque sandbox with subresources blocked and no opener, preserving the raw origin's isolation; those whose original size in `detail` exceeds 100 MB (313, up to 1.19 GB) are offered as a labeled compressed download.
 - A recovery is labeled by kind and links the recovered file.
 - A link key that no longer resolves opens a not-found notice; a pasted address is looked up in `urls`, and several matches are shown as versions.
 
