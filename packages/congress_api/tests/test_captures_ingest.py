@@ -1,0 +1,135 @@
+"""D1 receipt facts: expected rows precede the versioned native mapping."""
+import gzip
+import hashlib
+import json
+import os
+from pathlib import Path
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytest
+
+from docspec_client.client import NativeDatasets
+
+STAMP = '2026-10-20T12:34:56Z'
+SHA = 'a' * 64
+KEY = 'bodies/sha256/aa/' + SHA + '.gz'
+
+
+def files(root, rows, key='receipts/documents/2026-10-20/run.jsonl.gz'):
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / 'receipt.gz'
+    with gzip.open(path, 'wt') as out:
+        for row in rows:
+            out.write(json.dumps(row, separators=(',', ':')) + '\n')
+    return [dict(key=key, path=str(path))]
+
+
+def ingest(root, rows, *, key='receipts/documents/2026-10-20/run.jsonl.gz', **kwargs):
+    from congress_api.lake.captures import stage_captures
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    return stage_captures(files(root / 'input', rows, key), engine=engine, work=root / 'stage', **kwargs)
+
+
+def body(**more):
+    return dict(sha256=SHA, body_key=KEY, bytes=123, **more)
+
+
+def test_bodiless_status_time_and_non_http_capture_status(tmp_path):
+    stage = ingest(tmp_path, [
+        dict(source_file='old-run', record=dict(url='https://example.org/gone', status_code=404,
+            observed_at=STAMP, capture_status=200)),
+        dict(record=dict(url='https://example.org/meeting', meetingStatus='200',
+            capture_status=200, checked_at=STAMP, started_at=STAMP)),
+    ])
+    a, b = pq.read_table(stage / 'captures.parquet').to_pylist()
+    assert a['http_status'] == a['attempt_status'] == 404
+    assert a['retrieved_at'].isoformat() == '2026-10-20T12:34:56+00:00'
+    assert a['run_id'] == 'old-run' and a['outcome'] == 'failed'
+    assert a['sha256'] is None and a['capture_index'] == 0
+    assert b['http_status'] is None and b['retrieved_at'] is None
+
+
+def test_new_attempts_do_not_borrow_final_success(tmp_path):
+    stage = ingest(tmp_path, [dict(run_id='new', mode='fetch', family='documents',
+        requested_url='https://example.org/a', url='https://example.org/final',
+        retrieved_at=STAMP, http_status=200, outcome='stored',
+        prior_attempts=[dict(url='https://example.org/a', retrieved_at=STAMP, http_status=206)],
+        captures=[dict(body(), attempt=1, complete=False, stored_suffix=''),
+                  dict(body(), attempt=0, complete=True, stored_suffix='.gz')])])
+    a, b = pq.read_table(stage / 'captures.parquet').to_pylist()
+    assert a['http_status'] == b['http_status'] == 200
+    assert (a['attempt_status'], a['complete']) == (206, False)
+    assert (b['attempt_status'], b['complete']) == (200, True)
+    assert a['stored_suffix'] == '' and a['sha256'] == bytes.fromhex(SHA)
+    assert 'stored_sha256' not in a
+
+
+def test_old_capture_and_matching_reference_enrich_storage_only(tmp_path):
+    stage = ingest(tmp_path, [dict(record=dict(url='https://example.org/a', http_status=200,
+        retrieved_at=STAMP, outcome='saved'), captures=[body(status_code=206, complete=False)],
+        file_references=[body(http_status=200, complete=True, stored_bytes=42)])])
+    [row] = pq.read_table(stage / 'captures.parquet').to_pylist()
+    assert row['stored_bytes'] == 42 and row['stored_suffix'] == '.gz'
+    assert row['attempt_status'] == 206 and row['complete'] is False
+
+
+def test_unmatched_secondary_reference_refuses_with_locator(tmp_path):
+    with pytest.raises(ValueError, match='secondary.*receipts/documents.*:1'):
+        ingest(tmp_path, [dict(captures=[body()], file_references=[
+            dict(sha256='b'*64, body_key='bodies/sha256/bb/'+'b'*64+'.gz')])])
+
+
+def test_legacy_recovery_without_mode_and_imported_at(tmp_path):
+    stage = ingest(tmp_path, [dict(source_file='recovery-20261015', record=dict(
+        url='https://archive.org/copy', retrieved_at=STAMP,
+        source_associations=[dict(original_url='https://example.org/dead', basis='accepted_copy')]),
+        file_references=[body()])])
+    [row] = pq.read_table(stage / 'captures.parquet').to_pylist()
+    assert row['mode'] == 'retained_import'
+    assert row['original_url'] == 'https://example.org/dead'
+    assert row['match_basis'] == 'accepted_copy'
+    assert row['imported_at'].isoformat() == '2026-10-20T00:00:00+00:00'
+
+
+@pytest.mark.parametrize('value', ['invented-success', 'False'])
+def test_unknown_outcome_refuses_before_output(tmp_path, value):
+    with pytest.raises(ValueError, match='unknown.*outcome'):
+        ingest(tmp_path, [dict(record=dict(outcome=value))])
+    assert not (tmp_path / 'stage/captures.parquet').exists()
+
+
+def test_cap_and_line_fetch_times_and_64mib_completeness(tmp_path):
+    stage = ingest(tmp_path, [dict(record=dict(url='https://example.org/a',
+        captured_at=STAMP, http_status=200), captures=[dict(body(), bytes=64<<20,
+        parent_retrieved_at='2026-10-19T00:00:00Z'), body(capture_date='2026-10-18')])])
+    a, b = pq.read_table(stage / 'captures.parquet').to_pylist()
+    assert a['complete'] is False and b['complete'] is True
+    assert a['retrieved_at'].isoformat() == '2026-10-19T00:00:00+00:00'
+    assert b['retrieved_at'].isoformat() == '2026-10-18T00:00:00+00:00'
+
+
+def test_rebuild_and_incremental_missing_receipt_equivalence(tmp_path):
+    from congress_api.lake.captures import stage_captures
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    one = files(tmp_path/'one', [dict(record=dict(url='https://example.org/one'))])
+    two = files(tmp_path/'two', [dict(record=dict(url='https://example.org/two'))],
+                key='receipts/documents/undated/two.jsonl.gz')
+    first = stage_captures(one, engine=engine, work=tmp_path/'first')
+    delta = stage_captures(one+two, engine=engine, work=tmp_path/'delta',
+                           existing=first/'captures.parquet')
+    rebuilt = stage_captures(two+one, engine=engine, work=tmp_path/'rebuilt')
+    rows = pa.concat_tables([pq.read_table(first/'captures.parquet'),
+                             pq.read_table(delta/'captures.parquet')]).sort_by('receipt_key')
+    assert rows.equals(pq.read_table(rebuilt/'captures.parquet').sort_by('receipt_key'))
+    assert pq.read_metadata(delta/'captures.parquet').num_rows == 1
+
+
+def test_inline_record_sha_canonical_json_required(tmp_path):
+    record = dict(z=2, meeting=dict(z=['é', dict(b=2, a=1)], a='value'))
+    stage = ingest(tmp_path, [dict(record=record)],
+                   key='receipts/congress/meetings/2026-10-20/run.jsonl.gz')
+    [row] = pq.read_table(stage/'captures.parquet').to_pylist()
+    compact = json.dumps(record['meeting'], ensure_ascii=False, sort_keys=True,
+                         separators=(',', ':')).encode()
+    assert row['record_sha'] == hashlib.sha256(compact).digest()
