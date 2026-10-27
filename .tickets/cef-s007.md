@@ -25,3 +25,7 @@ Preregistered M1 workload and decision method under docs/measurements/engine-fir
 **2026-10-27T06:05:27Z**
 
 Engine binding committed: bb02e08 shared writer/layout admission and guarded append; 90c1fa0 scoped probe. Full locked/offline test:385 lib,348 integration,15 process,2 layout,10 probe passed;17 ignored live/qualification tests. fmt/clippy, bin/example build, native contracts and safe --plan pass. Independent source reviews approve probe6a36797b and storagea93198f3; reports retained in scratch. Basin remains owner-gated; protocol156a8b1d; no format/cap choice.
+
+**2026-10-27T08:19:53Z**
+
+Release-profile contract97b86f6 and bindingdf52da3 pass full locked offline engine suite385lib/348integration/15process/2layout/11probe;17ignored. Independent source approval61c924d4. Owner recipef576fc23 requires --release. No Basin calls or verdict.
