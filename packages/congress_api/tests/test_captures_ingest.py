@@ -189,9 +189,11 @@ def test_exact_arrow_schema_and_unchanged_source_receipt(tmp_path):
 def test_verified_counter_projection_keeps_raw_metadata_missing_from_typed_fields(tmp_path):
     from congress_api.lake.captures import compact_counter, stage_captures
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    record=dict(url='https://example.org/a',http_status=200,retrieved_at=STAMP)
+    record=dict(url='https://example.org/a',http_status=200,retrieved_at=STAMP,
+        prior_attempts=[dict(http_status=206)],response_header_items=[
+            dict(name='Content-Disposition',value='attachment; filename=retained.pdf')])
     source=dict(source_file='run',record=record,captures=[body(pointer=['content','body'],
-        status_code=206,complete=False)])
+        status_code=206,complete=False),body(pointer=['prior_attempts',0,'content','body'],complete=False)])
     receipt_key='receipts/documents/2026-10-20/run.jsonl.gz'
     captures_type=pa.list_(pa.struct([('body_key',pa.string()),('sha256',pa.string()),('bytes',pa.int64())]))
     schema=pa.schema([('source_file',pa.string()),
