@@ -41,6 +41,7 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_CAPTURE_R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.ARCHIVE_CAPTURE_R2_SECRET_ACCESS_KEY }}
           ZYTE_TOKEN: ${{ secrets.ZYTE_TOKEN }}
+          DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
           ARCHIVE_POINTER: ${{ vars.ARCHIVE_POINTER_URL }}
           REQUEST_BUDGET: ${{ vars.ARCHIVE_CAPTURE_REQUEST_BUDGET }}
           BYTE_BUDGET: ${{ vars.ARCHIVE_CAPTURE_BYTE_BUDGET }}
