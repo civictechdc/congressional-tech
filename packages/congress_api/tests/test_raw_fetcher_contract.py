@@ -248,3 +248,53 @@ def test_provider_combined_source_and_decoded_files_fit_spool_budget(tmp_path):
     result=ProviderAdapter(lambda _:Response()).hop(URL,tmp_path/'body',limit=1500,headers={})
     assert not result.complete and result.error=='size_limit'
     assert sum(p.stat().st_size for p in tmp_path.iterdir()) <= 1500
+
+
+@pytest.mark.parametrize(('status','headers'),[(206,[]),(200,[{'name':'Content-Range','value':'bytes 0-1/10'}])])
+def test_provider_partial_publisher_response_is_incomplete(tmp_path,status,headers):
+    from congress_api.transport.raw_adapters import ProviderAdapter
+    class Response:
+        status_code=200
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def iter_content(self,chunk_size):
+            yield json.dumps({'url':URL,'statusCode':status,'httpResponseHeaders':headers,
+                              'httpResponseBody':base64.b64encode(b'ab').decode()}).encode()
+    result=ProviderAdapter(lambda _:Response()).hop(URL,tmp_path/'body',limit=2000,headers={})
+    assert not result.complete and result.error=='partial_response'
+    assert result.http_status==status and result.provider_status==200
+    assert result.path.read_bytes()==b'ab'
+
+
+def test_waiting_host_does_not_block_other_hosts_or_retry_observations():
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    from congress_api.acquisition.fetcher import HostPacer
+    sleeping,released=threading.Event(),threading.Event()
+    now=[0.0]
+    def sleep(seconds):
+        sleeping.set()
+        assert released.wait(5)
+        now[0]+=seconds
+    pacer=HostPacer({'default_gap_seconds':0.2,'provider_gap_seconds':0,
+                    'hosts':{'docs.house.gov':{'gap_seconds':1.2,'backoffs':{}}}},
+                   clock=lambda:now[0],sleep=sleep,utc_now=lambda:0)
+    pacer(URL,'direct')
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        waiting=pool.submit(pacer,URL,'direct')
+        assert sleeping.wait(2)
+        other=pool.submit(pacer,'https://www.senate.gov/a','direct')
+        observation=pool.submit(pacer.observe,URL,'direct',429,{'retry-after':'120'})
+        try:
+            other_finished=other.done() or other.exception(timeout=1) is None
+            observation_finished=observation.done() or observation.exception(timeout=1) is None
+        except TimeoutError:
+            other_finished=other.done()
+            observation_finished=observation.done()
+        finally:
+            released.set()
+        waiting.result(timeout=2)
+        other.result(timeout=2)
+        observation.result(timeout=2)
+    assert other_finished and observation_finished
+    assert now[0] >= 120  # The waiting request rechecks a newly observed server deadline.

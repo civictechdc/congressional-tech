@@ -48,3 +48,29 @@ def test_nested_archive_stays_one_member(tmp_path):
     result=expand_archive(archive(tmp_path,[('nested.zip',b'PK\x03\x04nested')]),
                           directory=tmp_path/'members',limits=ZipLimits())
     assert result.status=='expanded' and len(result.members)==1
+
+
+def test_malformed_mapped_zip_keeps_corrupt_refusal_during_cleanup(tmp_path):
+    from congress_api.retention.archive_expander import expand_archive
+    from congress_api.retention.archive_members import ZipLimits
+    from congress_api.retention.sniff import read_sniff_file
+    path=archive(tmp_path,[('a',b'x')])
+    data=path.read_bytes().replace(b'PK\x01\x02',b'BAD!',1)
+    path.write_bytes(data)
+    result=expand_archive(path,directory=tmp_path/'members',limits=ZipLimits())
+    assert result.status=='corrupt_archive' and result.members==()
+    row=read_sniff_file(path)
+    assert row['status']=='error' and row['error_type']=='corrupt_archive'
+
+
+def test_malformed_mapped_rtfd_releases_internal_payload_views(tmp_path):
+    import gzip
+    from congress_api.retention.archive_expander import expand_archive
+    from congress_api.retention.archive_members import ZipLimits
+    fixture=Path(__file__).parent/'fixtures/capture-failures/wrapped-letter.rtfd.gz'
+    data=bytearray(gzip.decompress(fixture.read_bytes()))
+    data[-30]=99  # Reject attributes after the parser has created its payload views.
+    path=tmp_path/'source'
+    path.write_bytes(data)
+    result=expand_archive(path,directory=tmp_path/'members',limits=ZipLimits())
+    assert result.status=='corrupt_archive' and result.members==()
