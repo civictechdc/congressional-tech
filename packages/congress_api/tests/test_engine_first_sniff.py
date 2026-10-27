@@ -183,3 +183,16 @@ def test_gzip_storage_must_have_a_readable_gzip_header():
         assert row['status'] == 'error' and row['error_type'] == 'invalid_gzip'
     body = gzip.compress(b'')
     assert read_sniff(Ranges(body), stored_size=len(body), stored_gzip=True)['format'] == 'empty'
+
+
+def test_original_gzip_does_not_pretend_to_be_a_bare_pdf_or_zip():
+    from congress_api.retention.sniff import read_sniff
+
+    for original in (b'%PDF-1.7\n%%EOF', office([('[Content_Types].xml', b'<Types/>')])):
+        for storage_compressed in (False, True):
+            body = gzip.compress(original)
+            if storage_compressed:
+                body = gzip.compress(body)
+            row = read_sniff(Ranges(body), stored_size=len(body), stored_gzip=storage_compressed)
+            assert row['status'] == 'completed' and row['format'] == 'other'
+            assert row['intact'] is None
