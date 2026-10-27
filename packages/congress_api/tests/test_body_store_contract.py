@@ -172,3 +172,22 @@ def test_local_interrupted_copy_does_not_publish_partial_body(tmp_path):
                                   md5=hashlib.md5(DATA).hexdigest(), size=len(DATA))
     assert not (root / KEY).exists()
     assert list((root / KEY).parent.iterdir()) == []
+
+
+def test_prepared_input_preserves_the_callers_qualified_checksum(tmp_path):
+    source=tmp_path/'body'
+    source.write_bytes(b'changed after qualification')
+    adapter=Adapter()
+    with pytest.raises(ValueError,match='qualified'):
+        BodyStore(adapter).put_prepared(KEY,source,'application/pdf',
+            expected_md5=hashlib.md5(DATA).hexdigest(),expected_size=len(DATA))
+    assert [c[0] for c in adapter.calls] == ['head']
+
+
+def test_original_input_must_match_the_content_address_before_create(tmp_path):
+    source=tmp_path/'body'
+    source.write_bytes(b'wrong original bytes')
+    adapter=Adapter()
+    with pytest.raises(ValueError,match='identity'):
+        BodyStore(adapter).put(KEY,source,'text/html')
+    assert [c[0] for c in adapter.calls] == ['head']
