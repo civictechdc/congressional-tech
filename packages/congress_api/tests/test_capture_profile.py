@@ -29,13 +29,18 @@ def test_public_profile_contains_the_exact_shared_definition_and_active_variant_
     assert validate_capture_profile(value,engine_revision=REVISION)==value
 
 
-@pytest.mark.parametrize('change', ['engine','sql','path','version','duplicate_rule'])
+@pytest.mark.parametrize('change', ['engine','sql','path','version','version_bool',
+                                   'duplicate_rule','kind_list','decoder_list','missing_replacement'])
 def test_changed_or_incompatible_profile_refuses_before_capture(change):
     value=deepcopy(profile())
     if change=='engine':value['engine_revision']='b'*40
     elif change=='sql':value['sql']['url_keys']['text']+=' --changed'
     elif change=='path':value['url_variants_file']='../mutable.parquet'
     elif change=='version':value['version']=2
+    elif change=='version_bool':value['version']=True
+    elif change=='kind_list':value['url_rules'][0]['kind']=[]
+    elif change=='decoder_list':value['url_rules'][0]['decoder']=[]
+    elif change=='missing_replacement':value['url_rules'][0]['replacement']=None
     else:value['url_rules'].append(value['url_rules'][0])
     with pytest.raises(ValueError):
         validate_capture_profile(value,engine_revision=REVISION)
