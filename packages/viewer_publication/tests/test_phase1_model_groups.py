@@ -14,12 +14,12 @@ CASES=json.loads((ROOT/'model/fixtures/s1-model-cases.json').read_text())['group
 @pytest.mark.parametrize('case',CASES,ids=lambda x:x['id'])
 def test_native_model_groups_preserve_editions_and_publisher_context(case,tmp_path):
     from viewer_publication.archive_model import grouping_steps,registry_inputs
-    files=[dict(x,body_sha=x['body_sha']) for x in case['files']]
+    files=[dict(x,body_sha=x['body_sha'],directory_key=x['directory']) for x in case['files']]
     inputs=registry_inputs(tmp_path/'registries')
     inputs.append(json_input(tmp_path,'source_files',files,source_id='Utf8',body_sha='Utf8',
-        format='Utf8',directory='Utf8',stem='Utf8',is_real_file='Boolean'))
-    inputs.append(json_input(tmp_path,'source_endpoints',files,source_id='Utf8',body_sha='Utf8',
-        context_url='Utf8',member_path='Utf8'))
+        format='Utf8',directory_key='Utf8',stem='Utf8',is_real_file='Boolean'))
+    inputs.append(json_input(tmp_path,'source_endpoints',[dict(x,endpoint_key=x['context_url']) for x in files],source_id='Utf8',body_sha='Utf8',
+        endpoint_key='Utf8',member_path='Utf8'))
     inputs.append(json_input(tmp_path,'body_fingerprints',files,body_sha='Utf8',fingerprint='Utf8'))
     inputs.append(json_input(tmp_path,'publisher_links',case.get('publisher_links',[]),
         source_id='Utf8',page_body='Utf8',context='Utf8',group_path='Utf8'))

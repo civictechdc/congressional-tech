@@ -38,3 +38,19 @@ def registry_inputs(directory,*,root=ROOT):
             raise ValueError('Registry must contain records: '+name)
         inputs.append(json_input(directory,name,value,**fields))
     return inputs
+
+
+def grouping_steps(*,node_limit=10_000_000,root=ROOT):
+    """Join narrow source/body memberships through the one native graph step.
+
+    Inputs are source_files, source_endpoints (with the shared normalized
+    endpoint_key), publisher_links, and once-per-body body_fingerprints.
+    """
+    steps=[dict(name='fingerprints',sql='SELECT body_sha,max(fingerprint) AS fingerprint FROM body_fingerprints GROUP BY body_sha',materialize=True)]
+    for name in ['endpoint-bodies','fingerprint-candidates','ambiguous-endpoints','edition-bodies',
+                 'rendition-members','valid-rendition-members','source-edges']:
+        steps.append(dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True))
+    steps.append(dict(name='source_components',components=dict(sql='SELECT left_node,right_node FROM source_edges',
+        left='left_node',right='right_node',node_limit=node_limit)))
+    steps.append(dict(name='source_labels',sql="SELECT f.source_id,c.component FROM source_files f JOIN source_components c ON c.node='s:'||f.source_id",materialize=True))
+    return steps
