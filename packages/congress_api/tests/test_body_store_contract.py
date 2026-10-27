@@ -191,3 +191,20 @@ def test_original_input_must_match_the_content_address_before_create(tmp_path):
     with pytest.raises(ValueError,match='identity'):
         BodyStore(adapter).put(KEY,source,'text/html')
     assert [c[0] for c in adapter.calls] == ['head']
+
+
+def test_retained_reference_uses_exact_recorded_key_without_body_read():
+    adapter=Adapter(old={'size':99,'etag':'old'})
+    store=BodyStore(adapter)
+    result=store.reference(KEY,stored_suffix='.gz')
+    assert result.outcome=='unchanged' and result.suffix=='.gz'
+    assert adapter.calls==[('head',KEY+'.gz')]
+    assert store.reference(KEY,stored_suffix='.gz').suffix=='.gz'
+    assert len(adapter.calls)==1
+
+
+def test_missing_retained_reference_never_fabricates_a_body():
+    adapter=Adapter()
+    with pytest.raises(ValueError,match='Missing retained'):
+        BodyStore(adapter).reference(KEY,stored_suffix='.gz')
+    assert adapter.calls==[('head',KEY+'.gz')]
