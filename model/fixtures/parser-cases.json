@@ -192,5 +192,21 @@
       "text_bytes": 11,
       "links": []
     }
+  },
+  {
+    "id": "html-native-relative-component",
+    "parser": "html",
+    "body": "<html><body><script id=\"__NEXT_DATA__\">{\"props\": {\"pageProps\": {\"event\": {\"documents\": [{\"__typename\": \"ComponentElementLink\", \"route\": \"memo.pdf\", \"label\": \"Hearing memorandum\"}]}}}}</script></body></html>",
+    "expected": {
+      "links": [
+        {
+          "href": "memo.pdf",
+          "text": "Hearing memorandum",
+          "tag": "[\"props\",\"pageProps\",\"event\",\"documents\",0,\"route\"]",
+          "basis": "next_link",
+          "group_path": null
+        }
+      ]
+    }
   }
 ]
