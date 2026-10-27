@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "python3 scripts/stage-document-reviews.py && astro build",
+    "build": "../../.venv/bin/python -I scripts/stage-document-reviews.py && astro build",
     "preview": "astro preview",
     "generate:explorer-types": "node scripts/generate-explorer-types.mjs",
     "check:explorer-types": "node scripts/generate-explorer-types.mjs --check",
@@ -18,7 +18,11 @@
     "canary:archive": "node --expose-gc scripts/verify-archive.mjs",
     "measure:archive": "node scripts/measure-archive.mjs",
     "targets:archive": "node scripts/archive-targets.mjs",
-    "contract:archive": "node scripts/contract-archive.mjs"
+    "contract:archive": "node scripts/contract-archive.mjs",
+    "test:archive-f0": "node --test scripts/archive-f0.test.mjs",
+    "test:archive-shards": "node --test scripts/archive-shards.test.mjs",
+    "canary:archive-local": "node --expose-gc scripts/canary-archive-local.mjs",
+    "test:archive-saved-browser": "node scripts/archive-saved-browser.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.0",
