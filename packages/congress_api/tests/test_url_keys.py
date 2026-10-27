@@ -43,9 +43,12 @@ def test_normalized_variant_is_substituted_once(tmp_path):
 @pytest.mark.parametrize('variants,error', [
     ([('a','b'),('a','c')],'variant_conflict'),
     ([('a','b'),('b','c')],'variant_chain'),
-    ([('a','b'),('b','a')],'variant_chain')])
+    ([('a','b'),('b','a')],'variant_chain'),
+    ([(None,'b')],'invalid_variant'),
+    ([('a',None)],'invalid_variant')])
 def test_invalid_variant_graph_refuses_usable_join_keys(tmp_path,variants,error):
-    records=[dict(variant_url='https://example.gov/'+a,canonical_url='https://example.gov/'+b)
+    records=[dict(variant_url=None if a is None else 'https://example.gov/'+a,
+                  canonical_url=None if b is None else 'https://example.gov/'+b)
              for a,b in variants]
     result=execute(tmp_path,[dict(id='one',url='https://example.gov/a')],records)
     assert result==[dict(input_id='one',url='https://example.gov/a',url_key=None,error=error,still_wrapped=False)]

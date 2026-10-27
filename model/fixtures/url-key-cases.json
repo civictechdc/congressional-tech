@@ -7,6 +7,7 @@
   {"id":"unicode","url":"https://example.gov/café","key":"example.gov/caf%C3%A9"},
   {"id":"parameters","url":"https://example.gov/a?z=2&a=&a&z=1&v=a+b&utm_source=x","key":"example.gov/a?a&a=&v=a+b&z=1&z=2"},
   {"id":"host-strip","url":"https://www.congress.gov/bill/1?q=state&x=2","key":"congress.gov/bill/1?x=2"},
+  {"id":"host-strip-port","url":"https://congress.gov:8443/a?q=state&x=2","key":"congress.gov:8443/a?x=2"},
   {"id":"host-strip-negative","url":"https://example.gov/a?q=keep","key":"example.gov/a?q=keep"},
   {"id":"arbitrary-url-parameter","url":"https://example.gov/a?url=https://other.gov/a","key":"example.gov/a?url=https://other.gov/a"},
   {"id":"archive","url":"https://web.archive.org/web/20250610160415id_/https://example.gov/a.pdf","key":"example.gov/a.pdf"},
