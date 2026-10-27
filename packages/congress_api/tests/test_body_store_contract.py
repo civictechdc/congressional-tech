@@ -159,3 +159,16 @@ def test_recorded_suffix_resolves_the_physical_body_key():
     from congress_api.retention.body_keys import physical_body_object_key
     assert physical_body_object_key(KEY, 'application/pdf', stored_suffix='') == KEY
     assert physical_body_object_key(KEY + '.gz', 'application/pdf', stored_suffix='.gz') == KEY + '.gz'
+
+
+def test_local_interrupted_copy_does_not_publish_partial_body(tmp_path):
+    class Interrupted(io.BytesIO):
+        def read(self, size=-1):
+            raise OSError('interrupted source')
+
+    root = tmp_path / 'raw'
+    with pytest.raises(OSError, match='interrupted'):
+        LocalAdapter(root).create(KEY, Interrupted(DATA), media='application/pdf', encoding=None,
+                                  md5=hashlib.md5(DATA).hexdigest(), size=len(DATA))
+    assert not (root / KEY).exists()
+    assert list((root / KEY).parent.iterdir()) == []
