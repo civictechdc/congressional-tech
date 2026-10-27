@@ -65,6 +65,7 @@ class _RangeFile(RawIOBase):
     def _fetch(self, byte_range, budget):
         if len(self.source['requests']) >= 16 or self.transferred + budget > 3 * 1024**2:
             self.fail('ZIP range request or transfer budget exceeded')
+        data = None
         try:
             with get_with_retry(self.session, self.url, allowed=(200, 206), stream=True,
                                 headers={'Accept-Encoding': 'identity', 'Range': byte_range,
@@ -75,15 +76,17 @@ class _RangeFile(RawIOBase):
                 self.media_type = response.headers.get('Content-Type', 'application/zip')
                 if response.headers.get('Content-Encoding', 'identity') != 'identity':
                     self.fail('ZIP ranges must use identity content encoding')
+                # Freeze only on completion or refusal, including interrupted streams below.
                 data = bytearray()
                 for chunk in response.iter_content(8192):
                     remaining = budget - len(data)
                     data.extend(chunk[:max(0, remaining)])
-                    self.last_data = bytes(data)
                     if len(chunk) > remaining:
+                        self.last_data = bytes(data)
                         receipt['truncated'] = True
                         self.fail('Publisher exceeded the ZIP range byte limit')
-                body = bytes(data)
+                self.last_data = body = bytes(data)
+                data = None
                 self.transferred += len(body)
                 receipt.update(bytes=len(body), sha256=hashlib.sha256(body).hexdigest())
                 if response.status_code != 206 or response.url != self.url:
@@ -107,6 +110,8 @@ class _RangeFile(RawIOBase):
                         self.fail('ZIP source Last-Modified changed between requests')
                 return body, start, end, size, response.headers
         except (requests.RequestException, HttpRequestError) as error:
+            if data is not None:
+                self.last_data = bytes(data)
             if isinstance(error, HttpRequestError):
                 self.source['request_failure'] = {'http_status': error.status, **error.details}
             raise ZipMemberReadError('ZIP range transfer failed: ' + type(error).__name__,
