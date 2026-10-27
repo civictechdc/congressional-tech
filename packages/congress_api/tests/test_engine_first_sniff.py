@@ -89,6 +89,15 @@ def test_pdf_tail_and_bounded_reader_are_separate_from_borrowed_checks():
         body = b'%PDF-1.7\nno end marker'
         row = read_sniff(Ranges(body), stored_size=len(body), pdf_reader=reader)
         assert row['intact'] is accepted and seen == [body]
+    body = b'%PDF-1.7\n' + b'x' * 30000
+    seen = []
+    def reader(data):
+        seen.append(data)
+        return True
+    source = Ranges(body)
+    row = read_sniff(source, stored_size=len(body), pdf_reader=reader)
+    assert row['intact'] is True and seen == [body]
+    assert source.calls == [(0, 8192), (len(body) - 8192, 8192), (8192, len(body) - 16384)]
 
 
 def test_gzip_prefixes_do_not_turn_an_unchecked_pdf_into_a_damaged_one():
