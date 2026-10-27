@@ -258,7 +258,7 @@ class CatalogComponentReader:
         self._schema_cache = {}
         self._chunk_cache = {}
 
-    def page(self, reference):
+    def page(self, reference, *, remember=True):
         import os
         if ('PYTEST_CURRENT_TEST' not in os.environ
                 and isinstance(reference, dict)
@@ -272,7 +272,7 @@ class CatalogComponentReader:
                 or not 0 < len(page['components']) <= PROOF_PAGE_ENTRIES
                 or not isinstance(page.get('requirements'), dict) or not page['requirements']):
             raise ValueError('Invalid catalog component proof page')
-        if ('PYTEST_CURRENT_TEST' not in os.environ
+        if (remember and 'PYTEST_CURRENT_TEST' not in os.environ
                 and isinstance(reference, dict)
                 and isinstance(reference.get('sha256'), str)
                 and len(_PARSED_COMPONENT_PAGES) < 32768):
