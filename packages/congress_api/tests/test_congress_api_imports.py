@@ -56,6 +56,8 @@ def test_responsibility_import_fences():
     ('parsers/example.py', 'def parse():\n    from ..retention import tables'),
     ('matching/example.py', 'from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from ..acquisition import gaps'),
     ('retention/example.py', 'from ..cli import inventory'),
+    ('retention/example.py', 'from ..lake import captures'),
+    ('lake/example.py', 'from ..acquisition import raw_sync'),
     ('transport/example.py', 'from ..acquisition import meetings'),
     ('adapters/example.py', 'from ..retention import tables'),
     ('acquisition/example.py', 'from ..adapters import meetings'),
@@ -76,6 +78,8 @@ def test_fences_reject_forbidden_imports(path, code):
     ('acquisition/example.py', 'from ..transport import http'),
     ('adapters/example.py', 'from committee_meeting import Meeting'),
     ('cli/example.py', 'from ..acquisition import meetings'),
+    ('lake/example.py', 'from ..retention import provenance'),
+    ('cli/example.py', 'from ..lake import captures'),
 ])
 def test_fences_allow_intended_dependencies(path, code):
     assert not list(violations(code, path))
