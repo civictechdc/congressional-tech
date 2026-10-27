@@ -23,3 +23,28 @@ def test_reading_preserves_unresolved_publisher_evidence(case):
         else:
             assert actual[field] == expected
     assert read_page(case['body'].encode(), case['parser']) == actual
+
+
+def test_main_content_ignores_furniture_but_keeps_substantive_changes():
+    from congress_api.parsers.archive_readings import read_page
+
+    paragraph = 'The committee received evidence on public transportation and its effect on rural communities. '
+    def page(menu, evidence):
+        return (f'<html><body><nav>{menu}</nav><main><article><h1>Hearing record</h1>'
+                f'<p>{paragraph * 12}</p><p>{evidence}</p></article></main><footer>{menu}</footer></body></html>').encode()
+    a = read_page(page('Home Search', 'The nominee is Alice Smith.'), 'html')
+    b = read_page(page('Menu Archive', 'The nominee is Alice Smith.'), 'html')
+    c = read_page(page('Home Search', 'The nominee is Bob Jones.'), 'html')
+    assert a['fingerprint'] is not None
+    assert a['fingerprint'] == b['fingerprint']
+    assert a['fingerprint'] != c['fingerprint']
+
+
+def test_invalid_json_fails_without_emitting_input_text():
+    from congress_api.parsers.archive_readings import read_page
+
+    for body in (b'{"private-value":', b'{"number":NaN}', b'\xff'):
+        actual = read_page(body, 'json')
+        assert actual['status'] == 'failed'
+        assert actual['fingerprint'] is None
+        assert 'private-value' not in json.dumps(actual)

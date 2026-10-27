@@ -208,5 +208,18 @@
         }
       ]
     }
+  },
+  {
+    "id": "mods-owned-events-and-held-date",
+    "parser": "xml",
+    "body": "<mods xmlns=\"http://www.loc.gov/mods/v3\"><extension><eventId>118001</eventId><heldDate>2026-10-27</heldDate></extension><relatedItem type=\"other\"><extension><eventId>999999</eventId></extension></relatedItem><relatedItem type=\"constituent\"><extension><eventId>118002</eventId><heldDate>2026-10-27</heldDate></extension></relatedItem></mods>",
+    "expected": {
+      "named_meetings": [
+        118001,
+        118002
+      ],
+      "content_date": "2026-10-27",
+      "links": []
+    }
   }
 ]
