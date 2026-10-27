@@ -1,4 +1,5 @@
 """Stable viewer assets derived from one exact selected native catalog."""
+from concurrent.futures import ThreadPoolExecutor
 import ast
 from collections import OrderedDict
 from hashlib import sha256
@@ -433,6 +434,9 @@ class NativeSourceAssets:
             return dict(rows=len(table), files=files, facets=facets, occurrences_split='source_occurrences' in schema.names)
 
 
+COMPONENT_SCOPE_WORKERS = 6
+
+
 class NativeComponents:
     """Stage changed component metadata, then read each changed physical pin once.
 
@@ -493,13 +497,37 @@ class NativeComponents:
                 self._retire_tree(child)
 
     def plan(self, root, previous=None, *, prefix=''):
+        # Incremental reuse retains the serial path, including prior-tree checks.
+        if root is None or previous is not None:
+            return self._plan(root, previous, prefix=prefix)
+        with ThreadPoolExecutor(max_workers=COMPONENT_SCOPE_WORKERS) as pool:
+            return self._plan(root, prefix=prefix, pool=pool)
+
+    def _scope_page(self, reference, prefix):
+        from congress_api.retention.partition_routing import RoutingPages
+        # Each worker owns its reader caches; only validated pages cross threads.
+        return RoutingPages(self.snapshot.store, self.routes.objects.namespace)._read(reference, prefix)
+
+    def _scope_batch(self, children, characters, prefix, pool):
+        futures = [pool.submit(self._scope_page, children[char], prefix + char)
+                   if children[char] is not None else None for char in characters]
+        try:
+            # Admit the bounded batch before any recursive SQLite writes.
+            return [future.result() if future is not None else None for future in futures]
+        except BaseException:
+            for future in futures:
+                if future is not None:
+                    future.cancel()
+            raise
+
+    def _plan(self, root, previous=None, *, prefix='', pool=None, page=None):
         if root is None:
             self._retire_tree(previous)
             return None
         if previous is not None and previous.get('native_sha256') == root['sha256']:
             self.metrics['component_subtrees_reused'] = self.metrics.get('component_subtrees_reused', 0) + 1
             return previous
-        node = self.routes._read(root, prefix)
+        node = self.routes._read(root, prefix) if page is None else page
         old = self.assets.read_node(previous) if previous is not None else {}
         if old and (old.get('kind') not in ('component-branch', 'component-leaf') or old.get('prefix') != prefix):
             raise ValueError('Previous viewer component routing differs')
@@ -512,14 +540,22 @@ class NativeComponents:
                 old_members = None
             children = {}
             old_characters = {self._hash(key)[len(prefix)] for key in old_members} if old_members else set()
-            for char in sorted(set(node['children']) | set(old.get('children', {})) | old_characters):
-                child_previous = old.get('children', {}).get(char)
-                if old_members is not None:
-                    # This temporary in-process value owns no publication path.
-                    subset = {key: value for key, value in old_members.items()
-                              if self._hash(key).startswith(prefix + char)}
-                    child_previous = self._old_members(prefix + char, subset) if subset else None
-                children[char] = self.plan(node['children'].get(char), child_previous, prefix=prefix + char)
+            characters = sorted(set(node['children']) | set(old.get('children', {})) | old_characters)
+            width = COMPONENT_SCOPE_WORKERS if pool is not None else 1
+            for offset in range(0, len(characters), width):
+                batch = characters[offset:offset + width]
+                pages = (self._scope_batch(node['children'], batch, prefix, pool)
+                         if pool is not None else [None] * len(batch))
+                for index, char in enumerate(batch):
+                    child_previous = old.get('children', {}).get(char)
+                    if old_members is not None:
+                        # This temporary in-process value owns no publication path.
+                        subset = {key: value for key, value in old_members.items()
+                                  if self._hash(key).startswith(prefix + char)}
+                        child_previous = self._old_members(prefix + char, subset) if subset else None
+                    children[char] = self._plan(node['children'].get(char), child_previous,
+                        prefix=prefix + char, pool=pool, page=pages[index])
+                    pages[index] = None
             return self._stage(dict(kind='component-branch', prefix=prefix, native_sha256=root['sha256'],
                         children={char: value for char, value in children.items() if value is not None}))
         previous_members = old.get('members', {})
