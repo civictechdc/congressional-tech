@@ -81,7 +81,7 @@ def reconciliation_inputs(tmp_path):
     registry=tmp_path/'kinds.json';registry.write_text(json.dumps([
         dict(category='requested_content_in_official_hearing',match_basis=None,kind='requested_content_in_official_hearing'),
         dict(category='recovered_document',match_basis=None,kind='recovered_document'),
-        dict(category=None,match_basis='verified_archive_capture',kind='recovered_document')]))
+        dict(category=None,match_basis='verified_archive_capture',kind='recovered_document',import_category='recovered_document')]))
     return accepted,captures,registry
 
 
@@ -211,3 +211,30 @@ def test_native_projection_filters_unrelated_fetches_but_keeps_all_recoveries(tm
     assert len(selected)==3
     assert [row['sha256'] for row in selected if row['mode']=='fetch']==['1'*64]
     assert [row['sha256'] for row in selected if row['mode']=='retained_import']==['1'*64,'2'*64]
+
+
+def test_explicit_import_category_is_not_replaced_by_display_kind(tmp_path):
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
+    kinds=json.loads(registry.read_text())
+    kinds.append(dict(category='retained-copy',match_basis=None,kind='recovered_document'))
+    kinds[-2]['import_category']='retained-copy'
+    registry.write_text(json.dumps(kinds))
+    result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),decided_at=STAMP,decided_by='reconciliation')
+    missing=pq.read_table(tmp_path/'staged'/result['missing_imports']).to_pylist()
+    assert missing[0]['category']=='retained-copy'
+    assert missing[0]['category']!='recovered_document'
+    assert missing[0]['status']=='ready_for_owner_import'
+
+
+@pytest.mark.parametrize('import_category',[None,'not-a-registered-category'])
+def test_basis_only_kind_cannot_invent_an_import_category(tmp_path,import_category):
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
+    kinds=json.loads(registry.read_text());kinds[-1]['import_category']=import_category
+    registry.write_text(json.dumps(kinds))
+    result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),decided_at=STAMP,decided_by='reconciliation')
+    missing=pq.read_table(tmp_path/'staged'/result['missing_imports']).to_pylist()
+    assert missing[0]['category'] is None
+    assert missing[0]['status']=='recovery_category_not_established'
+    assert result['import_counts']==dict(ready=0,unresolved=1)
