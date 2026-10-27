@@ -123,3 +123,22 @@ def test_missing_original_time_is_reported_without_inventing_it(tmp_path):
     missing=pq.read_table(tmp_path/'staged'/result['missing_imports']).to_pylist()
     assert missing[0]['retrieved_at'] is None
     assert missing[0]['status']=='source_timestamp_not_established'
+
+
+def test_legacy_projection_uses_native_capture_rows_and_recovery_fallbacks(tmp_path):
+    from corpus_recovery.reconcile import project_legacy
+    raw=tmp_path/'counter.parquet'
+    first=dict(sha256='1'*64,bytes=12,media_type='text/plain',retrieved_at='2019-01-01T00:00:00Z',context_url='https://archive.example/a')
+    second=dict(first,sha256='2'*64,bytes=20)
+    rows=[dict(__receipt_key='receipts/legacy/2019-01-01/run.jsonl.gz',__receipt_line=1,
+        mode=None,record=dict(url='https://archive.example/a',mode='retained_import',
+            source_associations=[dict(original_url='https://docs.house.gov/a',basis='verified_archive_capture')]),
+        captures=[first,second],file_references=[])]
+    pq.write_table(pa.Table.from_pylist(rows),raw)
+    output=tmp_path/'projection';output.mkdir()
+    projected=project_legacy(raw,output=output,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
+    captures=pq.read_table(projected).to_pylist()
+    assert [row['sha256'] for row in captures]==['1'*64,'2'*64]
+    assert [row['capture_index'] for row in captures]==[0,1]
+    assert all(row['original_url']=='https://docs.house.gov/a' for row in captures)
+    assert all(row['mode']=='retained_import' and row['match_basis']=='verified_archive_capture' for row in captures)
