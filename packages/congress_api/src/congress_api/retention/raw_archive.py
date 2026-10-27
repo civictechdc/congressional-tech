@@ -21,6 +21,7 @@ import pyarrow.parquet as pq
 from congress_api.models.content import CapturedBody
 from congress_api.parsers.archive_links import allowed_url, capture_links, related_links
 from congress_api.parsers.source_family import family
+from congress_api.retention.receipt_privacy import public_receipt
 from congress_api.retention.body_files import CapturedFile
 from congress_api.retention.bundles import separate
 from congress_api.retention.capture_inspection import inspect_body
@@ -516,7 +517,7 @@ class _Acquisition:
             self.sequence += 1
             key = f"receipts/{owner}/{self.day}/download-{self.run_id}-{self.sequence:06d}.jsonl.gz"
             payload = "".join(
-                json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n"
+                json.dumps(public_receipt(r), ensure_ascii=False, separators=(",", ":")) + "\n"
                 for r in batch
             )
             self.store.put(

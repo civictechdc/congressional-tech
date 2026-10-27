@@ -3,6 +3,10 @@ from bisect import bisect_right
 from collections import Counter
 from pathlib import PurePosixPath, PureWindowsPath
 import re
+import json
+from functools import cache
+from pathlib import Path
+from urllib.parse import unquote_plus, urlsplit
 
 # These named filesystem roots are the proposed B0 pattern, subject to the
 # owner's review of the full scan. URL spans are excluded before matching.
@@ -108,3 +112,56 @@ def clean_older_line(line):
 
     return walk(line, ()), cuts
 
+
+
+@cache
+def credential_parameters():
+    """The raw writer's versioned parameter policy; bare YouTube key is excluded."""
+    return json.loads((Path(__file__).resolve().parents[5]
+                       / 'model/registries/credential-parameters.json').read_text())
+
+
+def public_receipt(line):
+    """Keep the running legacy writer's shape while enforcing new privacy rules."""
+    cleaned, cuts = clean_older_line(line)
+    if any(kind == 'protected_path' for kind, _, _ in cuts):
+        raise ValueError('A local path is used as a receipt pointer key')
+    names = {row['parameter'].casefold() for row in credential_parameters()}
+    allowed = frozenset('content-type content-length content-disposition last-modified etag content-encoding retry-after date cache-control accept-ranges'.split())
+
+    def url(match):
+        value = match[0]
+        parts = urlsplit(value)
+        if parts.username is not None or parts.password is not None:
+            raise ValueError('Credentials in URL authority')
+        if '?' not in value:
+            return value
+        before, _, rest = value.partition('?')
+        query, sep, fragment = rest.partition('#')
+        kept = [part for part in query.split('&')
+                if unquote_plus(part.partition('=')[0]).casefold() not in names]
+        return before + ('?' + '&'.join(kept) if kept else '') + (sep + fragment if sep else '')
+
+    def walk(value, header=False):
+        if isinstance(value, str):
+            return URL.sub(url, value)
+        if isinstance(value, list):
+            if header:
+                value = [item for item in value if
+                         isinstance(item, dict) and str(item.get('name', '')).casefold() in allowed
+                         or isinstance(item, list) and len(item) == 2
+                         and str(item[0]).casefold() in allowed]
+            return [walk(child) for child in value]
+        if not isinstance(value, dict):
+            return value
+        result = {}
+        for key, child in value.items():
+            if header and key.casefold() not in allowed:
+                continue
+            new_key = URL.sub(url, key)
+            if new_key in result:
+                raise ValueError('Credential removal would collide receipt keys')
+            result[new_key] = walk(child, key.casefold() in {
+                'headers', 'response_headers', 'response_header_items', 'httpresponseheaders'})
+        return result
+    return walk(cleaned)

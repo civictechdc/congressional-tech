@@ -12,6 +12,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.compute as pc
 
+from congress_api.retention.receipt_privacy import public_receipt
 from corpus_recovery.assemble import assemble, index_rows
 from corpus_recovery.acknowledge import reconcile_lost_acknowledgment
 from corpus_recovery.inventory import head_body, reusable_result
@@ -141,7 +142,7 @@ def import_batch(store, *, prepared, body_paths, raw_storage, operation, source_
     for offset in range(0, len(receipts), 100):
         batch = receipts[offset:offset + 100]
         key = f'{receipt_prefix}-{offset // 100 + 1:06d}.jsonl.gz'
-        payload = gzip.compress((''.join(json.dumps(r, separators=(',', ':')) + '\n'
+        payload = gzip.compress((''.join(json.dumps(public_receipt(r), separators=(',', ':')) + '\n'
                                        for r in batch)).encode(), mtime=0)
         save_payload(key, payload)
         checked_put(store, key, payload, immutable=True, guard=guard, journal=journal)
