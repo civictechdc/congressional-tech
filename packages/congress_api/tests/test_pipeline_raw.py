@@ -171,3 +171,40 @@ def test_dry_run_plans_keys_without_connecting(tmp_path, monkeypatch, capsys):
     assert summary['body_keys'] == [f'bodies/sha256/{sha[:2]}/{sha}']
     assert (summary['files'], summary['skipped'], summary['missing']) == (1, 1, 0)
     assert summary['receipts'] == ['receipts/pipeline-data/<UTC date>/<run_id>-000001.jsonl.gz']
+
+
+def test_rescued_import_is_registered_but_weekly_fetch_is_not(tmp_path, capsys):
+    """Both move source records, not recoveries; only rescue excludes capture dates."""
+    root = batch(tmp_path, [{'README.md': b'x'}])
+    cli.main(['--rescue-batch', str(root), '--dry-run'])
+    summary = json.loads(capsys.readouterr().out)
+    registry = json.loads((cli.ROOT / 'model/registries/import-runs.json').read_text())
+    assert summary['import_run'] in registry
+    assert summary['import_run']['run_id'] == pipeline_raw.RESCUE_RUN_ID
+    assert summary['import_run']['date'] == '2026-10-27'
+    [item] = list(pipeline_raw.rescue_files(root))
+    line = pipeline_raw.receipt_line(item, run_id=pipeline_raw.RESCUE_RUN_ID, writer=WRITER,
+                                     sha256=item.sha256, outcome='unchanged')
+    assert line['mode'] == 'fetch' and line['retrieved_at'] == '2026-10-05T14:05:58Z'
+
+
+def test_receipt_encodes_git_paths_as_url_paths(tmp_path):
+    """A git filename cannot inject a query credential or a local path into a receipt."""
+    checkout(tmp_path, {'name?api_key=private#part.json': b'{}'})
+    bucket = Bucket()
+    summary = pipeline_raw.archive(R2Store(bucket, 'raw'), pipeline_raw.checkout_files(tmp_path),
+                                   writer=WRITER)
+    [line] = receipt(bucket, summary['receipts'][0])
+    assert line['url'].endswith('/name%3Fapi_key%3Dprivate%23part.json')
+    assert line['requested_url'].endswith('/name%3Fapi_key%3Dprivate%23part.json')
+    assert str(tmp_path) not in json.dumps(line)
+    assert set(line['writer']) == {'job', 'commit', 'lockfile_digest'}
+
+
+def test_unsafe_receipt_identity_is_refused_before_storage(tmp_path):
+    checkout(tmp_path, {'README.md': b'x'})
+    bucket = Bucket()
+    with pytest.raises(ValueError, match='writer'):
+        pipeline_raw.archive(R2Store(bucket, 'raw'), pipeline_raw.checkout_files(tmp_path),
+                             writer=dict(WRITER, authorization='secret'))
+    assert bucket.puts == []
