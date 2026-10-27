@@ -149,3 +149,68 @@ test('native accepted mapping digest matches Python ASCII JSON for Unicode URLs'
  const result=await verifyLivePublication(nativeFixture(undefined,accepted,expected));
  assert.equal(result.recovery_identity.accepted_sha256,expected);
 });
+
+for (const [version, makeFixture] of [[5, fixture], [6, nativeFixture]]) {
+ test(`v${version} shares one raw review response between independent validators`, async () => {
+  const options = makeFixture(), original = options.fetcher;
+  let requests = 0, bytes = 0;
+  options.fetcher = async (url, settings) => {
+   const response = await original(url, settings);
+   if (String(url).endsWith('/document-reviews/reviews.json')) {
+    requests++;
+    bytes += (await response.clone().arrayBuffer()).byteLength;
+    assert.equal(settings.cache, 'no-store');
+   }
+   return response;
+  };
+  const result = await verifyLivePublication(options);
+  assert.equal(requests, 1);
+  assert.equal(bytes, options.descriptor.bytes);
+  assert.equal(result.observations.filter(item => item.url.endsWith('/document-reviews/reviews.json')).length, 1);
+  assert.equal(result.loader.info.reviewed_search, true);
+  assert.equal(result.loader.rows.length, 1);
+  assert.equal(result.bytes, result.observations.reduce((sum, item) => sum + item.bytes, 0));
+ });
+ test(`v${version} fetches reviews anew and rejects changed bytes under the original descriptor`, async () => {
+  for (const damage of ['length', 'digest', 'http']) {
+   const options = makeFixture(), original = options.fetcher;
+   let changed = false, requests = 0;
+   options.fetcher = async (url, settings) => {
+    const response = await original(url, settings);
+    if (!String(url).endsWith('/document-reviews/reviews.json')) return response;
+    requests++;
+    if (!changed) return response;
+    if (damage === 'http') return new Response('unavailable', {status: 503});
+    const raw = await response.text();
+    return new Response(damage === 'length' ? raw + ' ' : raw.replace('"bill"', '"ball"'));
+   };
+   assert.equal((await verifyLivePublication(options)).loader.info.reviewed_search, true);
+   changed = true;
+   await assert.rejects(verifyLivePublication(options), damage === 'length' ? /unexpected response length/ : damage === 'digest' ? /failed verification/ : /HTTP 503/);
+   assert.equal(requests, 2, 'each invocation must fetch its own review bytes');
+  }
+ });
+ test(`v${version} preserves review schema, reference and identity validation`, async () => {
+  for (const [change, error] of [
+   [data => data.version = 2, /different catalog pair/],
+   [data => data.rows[0].evidence.body = 'evidence/missing.pdf', /Invalid review evidence link/],
+   [data => data.rows[0].document_id = 'invalid', version === 6 ? /stable identity differs/ : /identity inventory/],
+   [data => data.rows[0].status = 'unknown', /Invalid reviewed group/],
+  ]) {
+   const options = makeFixture(), original = options.fetcher;
+   const reviewUrl = 'https://pages.test/project/data/document-reviews/reviews.json';
+   const data = await (await original(reviewUrl)).json();
+   change(data);
+   const raw = JSON.stringify(data);
+   options.descriptor = {...options.descriptor, bytes: Buffer.byteLength(raw), sha256: hash(raw)};
+   let requests = 0;
+   options.fetcher = async (url, settings) => {
+    if (String(url) !== reviewUrl) return original(url, settings);
+    requests++;
+    return new Response(raw);
+   };
+   await assert.rejects(verifyLivePublication(options), error);
+   assert.equal(requests, 1);
+  }
+ });
+}
