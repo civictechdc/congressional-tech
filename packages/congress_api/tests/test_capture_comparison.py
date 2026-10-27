@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 
+import pytest
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -56,3 +57,38 @@ def test_unexplained_receipt_fact_change_is_not_accepted_as_restoration(tmp_path
     report=compare_old(new,old,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
                        work=tmp_path/'comparison')
     assert report['unexplained']==1 and report['owner_gate'] is True
+
+
+@pytest.mark.parametrize('old_time,new_time,expected,unexplained,reason', [
+    (None,'2026-10-20T08:00:00Z',1,0,'missing_time_restored'),
+    ('2026-10-20T08:00:00Z',None,0,1,'timestamp_lost'),
+    ('2026-10-20T08:00:00Z','2026-10-21T08:00:00Z',0,1,'timestamp_changed'),
+    ('2026-10-20T08:00:00Z','2026-10-20T10:00:00+02:00',0,0,'unchanged'),
+    ('2026-10-20T08:00:00Z','invalid',0,1,'invalid_new_timestamp'),
+    ('invalid','2026-10-20T08:00:00Z',0,1,'invalid_old_timestamp'),
+])
+def test_fetch_time_comparison_accepts_only_declared_restoration(
+        tmp_path,old_time,new_time,expected,unexplained,reason):
+    from congress_api.lake.capture_comparison import compare_old
+    old=tmp_path/'old.parquet';new=tmp_path/'new.parquet'
+    base=dict(receipt_key='receipts/f/2026-10-20/run.gz',receipt_line=1,
+        pointer_json='[]',context_url='https://example.org/a',bytes=100,
+        stored_bytes=42,media_type='text/plain',fidelity='exact-bytes',http_status=200)
+    old_row=dict(base,sha256='a'*64,reference_kind='capture',retrieved_at=old_time)
+    new_row=dict(base,sha256=bytes.fromhex('a'*64),capture_index=0,retrieved_at=new_time)
+    for path,row in ((old,old_row),(new,new_row)):
+        fields=pa.Table.from_pylist([row]).schema
+        fields=fields.set(fields.get_field_index('retrieved_at'),pa.field('retrieved_at',pa.string()))
+        pq.write_table(pa.Table.from_pylist([row],schema=fields),path)
+    report=compare_old(new,old,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+                       work=tmp_path/'comparison')
+    assert report['expected_changes']==expected
+    assert report['unexplained']==unexplained
+    assert report['owner_gate'] is bool(unexplained)
+    changed=pq.read_table(tmp_path/'comparison/changed-fields.parquet').to_pylist()
+    if expected or unexplained:
+        [row]=changed
+        assert row['old_retrieved_at']==old_time and row['new_retrieved_at']==new_time
+        assert row['retrieved_at_reason']==reason
+    else:
+        assert changed==[]
