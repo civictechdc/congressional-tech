@@ -335,8 +335,16 @@ class R2Store:
             self._write_manifest_disk_cache(immutable_path, data)
         return data
 
-    def put(self, key, body, *, immutable=False):
+    def put(self, key, body, *, immutable=None):
         from botocore.exceptions import ClientError
+        from io import BytesIO
+        from congress_api.retention.body_store import RAW_PREFIXES, R2Adapter, create_stored
+        if key.startswith(RAW_PREFIXES):
+            media = ('application/pdf' if key.endswith('.pdf') else
+                     'application/gzip' if key.endswith('.gz') else 'application/octet-stream')
+            return create_stored(R2Adapter(self.client, self.bucket), key, BytesIO(body), media,
+                operation='replace' if immutable is False else 'create', body_identity=False).outcome == 'stored'
+
 
         if self._manifest_cache_dir is not None and immutable and key.startswith('indexes/native-manifests/'):
             disk_path = self._manifest_cache_dir / key.removeprefix('indexes/native-manifests/')
@@ -411,44 +419,13 @@ class R2Store:
         gzip ``content_encoding``; ``md5`` skips re-hashing a file the caller
         just wrote. R2 still checks the sent ``Content-MD5`` against the bytes.
         """
-        from pathlib import Path
-        from botocore.exceptions import ClientError
+        from congress_api.retention.body_store import R2Adapter, create_stored
         if not key.startswith('bodies/'):
             raise ValueError('File upload requires a body key')
-        if self.excluded_body_hashes:
-            from congress_api.retention.raw_storage import enforce_body_ingest_gate
-            enforce_body_ingest_gate(
-                self, key, Path(path).read_bytes(), excluded_hashes=self.excluded_body_hashes
-            )
         with Path(path).open('rb') as source:
-            digest = md5 or hashlib.file_digest(source, 'md5')
-            import os
-            length = os.fstat(source.fileno()).st_size
-            source.seek(0)
-            extra = (
-                dict(
-                    ContentType='application/pdf',
-                    ContentDisposition='inline',
-                    CacheControl=PDF_CACHE_CONTROL,
-                    IfNoneMatch='*',
-                )
-                if key.endswith('.pdf')
-                else dict(ContentType=content_type, IfNoneMatch='*')
-            )
-            if content_encoding and not key.endswith('.pdf'):
-                extra['ContentEncoding'] = content_encoding
-            try:
-                result = self.client.put_object(
-                    Bucket=self.bucket, Key=key, Body=source, ContentLength=length,
-                    ContentMD5=base64.b64encode(digest.digest()).decode(),
-                    **extra)
-            except ClientError as error:
-                if error.response['Error']['Code'] in {'PreconditionFailed', '412'}:
-                    return False
-                raise
-        if result['ETag'].strip('"') != digest.hexdigest():
-            raise ValueError('Upload checksum mismatch')
-        return True
+            return create_stored(R2Adapter(self.client, self.bucket), key, source,
+                'application/pdf' if key.endswith('.pdf') else content_type,
+                encoding=content_encoding, body_identity=False).outcome == 'stored'
 
     def put_pdf_file(self, key_or_sha256, path):
         """Stream an uncompressed PDF file to bodies/sha256/<xx>/<sha256>.pdf."""
