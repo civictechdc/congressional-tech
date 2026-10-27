@@ -21,6 +21,8 @@ The full projection and initial reconciliation took 803.55 seconds with 6,253,90
 
 The five unlisted categories are `requested_content_in_official_amendment_packet` (two mappings), `same_article_publisher_text_available` (one), `official_public_statement_counterpart` (one), `official_report_counterpart_available` (two), and `related_final_report_available` (one). Exact rejected rows and native reports remain in raw scratch under `b7b8-impl/recoveries-24028/`; no success manifest or provenance file was produced.
 
+A display kind is distinct from the category recorded on an import receipt. Basis-registry rows can name an explicit `import_category`; it must resolve to a category row with the same display kind. A recorded source category takes precedence. Without a registered choice, the import request remains unresolved even when its display kind is known. The initial source-time counts above do not establish current import readiness.
+
 ## Six excerpt decisions
 
 The [native decision list](excerpt-decisions.json) joins the accepted backup to the six qualified two-page advisory extracts. Its exact source is `.cache/nara-filename-estimate-20261015/waysmeans-package-final/advisory-content-recovered.json`, SHA-256 `c02a4e41d51df74b6782ebcc4a05eaea2ae3f26aa0b23a9c69476e521a7375a0`.
@@ -64,4 +66,4 @@ For owner-confirmed rejections, write explicit decision records to `OWNER_REJECT
 .venv/bin/python -I -m congress_api.cli.provenance --stage "$B7_REJECTIONS" --bucket congressional-tech-raw --apply
 ```
 
-Focused recovery/review/fetch/receipt/import-fence checks: 79 passed. One earlier doctor import timed out under contention; no preflight was bypassed. No credentials, live-storage jobs, network writes or PDF body reads occurred.
+Focused recovery/review/fetch/receipt/import-fence checks: 82 passed after the category-separation correction. One earlier doctor import timed out under contention; no preflight was bypassed. No credentials, live-storage jobs, network writes or PDF body reads occurred.

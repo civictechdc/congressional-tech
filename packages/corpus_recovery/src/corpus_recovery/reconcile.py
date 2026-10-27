@@ -110,14 +110,16 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
     kinds=json.loads(registry.read_text())
     if not isinstance(kinds,list) or not kinds:raise ValueError('Recovery-kind registry is required')
     for row in kinds:
-        if set(row)!={'category','match_basis','kind'} or not row['kind'] or bool(row['category'])==bool(row['match_basis']):
+        if (not {'category','match_basis','kind'}.issubset(row)
+                or set(row)-{'category','match_basis','kind','import_category'}
+                or not row['kind'] or bool(row['category'])==bool(row['match_basis'])):
             raise ValueError('Registry rows map exactly one category or match basis to a display kind')
     capture,projection=capture_input(captures)
     output=Path(output);output.mkdir(parents=True,exist_ok=False)
     jobs=output/'jobs';jobs.mkdir()
     inputs=[json_input(jobs,'accepted_input',mappings,original_url='Utf8',recovered_url='Utf8',
         body_key='Utf8',kind='Utf8',recovery_basis='Utf8',recovery_status='Utf8'),capture,
-        json_input(jobs,'kind_registry',kinds,category='Utf8',match_basis='Utf8',kind='Utf8')]
+        json_input(jobs,'kind_registry',kinds,category='Utf8',match_basis='Utf8',kind='Utf8',import_category='Utf8')]
     steps=[dict(name='captures',sql=projection),
         dict(name='accepted',sql='''SELECT *,substr(body_key,18,64) AS body_hex FROM accepted_input'''),
         dict(name='recovery_pairs',materialize=True,sql='''SELECT original_url,body_hex,count(*) AS receipt_rows,
@@ -131,6 +133,7 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
             WHERE c.recovered_filename IS NOT NULL'''),
         dict(name='decisions',materialize=True,sql='''SELECT a.*,r.receipt_rows,r.category,r.category_count,r.bases,r.recovered_urls,
             CASE WHEN r.category IS NOT NULL THEN k.kind ELSE b.kind END AS display_kind,n.recovered_filename,
+            b.import_category,
             (r.category IS NOT NULL AND k.kind IS NULL) AS unknown_category
             FROM accepted a LEFT JOIN recovery_pairs r ON a.original_url=r.original_url AND a.body_hex=r.body_hex
             LEFT JOIN kind_registry k ON r.category=k.category
@@ -138,7 +141,7 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
             LEFT JOIN name_candidates n ON a.original_url=n.original_url AND a.body_hex=n.body_hex AND n.ordinal=1'''),
         dict(name='source_candidates',sql='''SELECT a.original_url,a.body_hex,c.retrieved_at,c.bytes,c.media_type,
             c.receipt_key AS source_receipt_key,c.receipt_line AS source_receipt_line,c.capture_index AS source_capture_index,
-            c.sniffed_format,c.sniff_version,c.intact,c.stored_suffix,
+            c.sniffed_format,c.sniff_version,c.intact,c.stored_suffix,c.recovery_category AS source_category,
             row_number() OVER (PARTITION BY a.original_url,a.body_hex ORDER BY c.retrieved_at DESC,
                 c.receipt_key,c.receipt_line,c.capture_index) AS ordinal
             FROM decisions a JOIN captures c ON a.body_hex=c.body_hex AND a.recovered_url=c.url
@@ -154,14 +157,16 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
         '{q(decided_by)}' AS decided_by,'{q(decided_at)}' AS decided_at,cast(NULL AS VARCHAR) AS supersedes
         FROM decisions'''
     missing_sql=f'''SELECT d.original_url,d.recovered_url,d.body_hex AS body_sha256,d.body_key,
-        d.display_kind AS category,d.recovery_basis AS match_basis,s.retrieved_at,s.bytes,s.media_type,
+        i.category,d.display_kind,d.recovery_basis AS match_basis,s.retrieved_at,s.bytes,s.media_type,
         s.source_receipt_key,s.source_receipt_line,s.source_capture_index,d.recovered_filename,
-        s.sniffed_format,s.sniff_version,s.intact,s.stored_suffix,
+        s.sniffed_format,s.sniff_version,s.intact,s.stored_suffix,s.source_category,d.import_category AS planned_category,
         '{pin}' AS evidence_sha256,
         CASE WHEN s.retrieved_at IS NULL THEN 'source_timestamp_not_established'
              WHEN s.bytes IS NULL THEN 'source_size_not_established'
-             WHEN s.stored_suffix IS NULL THEN 'stored_suffix_not_established' ELSE 'ready_for_owner_import' END AS status
+             WHEN s.stored_suffix IS NULL THEN 'stored_suffix_not_established'
+             WHEN i.category IS NULL THEN 'recovery_category_not_established' ELSE 'ready_for_owner_import' END AS status
         FROM decisions d LEFT JOIN source_candidates s ON d.original_url=s.original_url AND d.body_hex=s.body_hex AND s.ordinal=1
+        LEFT JOIN kind_registry i ON i.category=coalesce(s.source_category,d.category,d.import_category) AND i.kind=d.display_kind
         WHERE d.receipt_rows IS NULL'''
     receipt_only='''SELECT c.* FROM captures c LEFT JOIN accepted a ON c.original_url=a.original_url AND c.body_hex=a.body_hex
         WHERE c.mode='retained_import' AND a.original_url IS NULL'''
