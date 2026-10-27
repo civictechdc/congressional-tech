@@ -466,7 +466,8 @@ A **registry** is a versioned list a rule depends on.
 Every link join (link targets, recoveries' original links, the `url_state` queue) MUST use `url_key`. `source_id`, `requested_url`, `url_state`'s key and link URL keys (§8.2) MUST NOT use `url_key`.
 
 ```
-url_key(url) := unwrap(url), then:
+url_key(url) := unwrap(url), then parse/serialize with the WHATWG URL parser
+                (including its dot-segment and whitespace normalization), then:
                 drop the scheme, so http and https match; lowercase the host;
                 drop "www.", the default port, the fragment and a trailing slash;
                 normalize percent-encoding [RFC3986 §6.2.2]: uppercase escape hex,
