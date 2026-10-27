@@ -62,6 +62,8 @@ def test_new_attempts_do_not_borrow_final_success(tmp_path):
     assert (a['attempt_status'], a['complete']) == (206, False)
     assert (b['attempt_status'], b['complete']) == (200, True)
     assert a['stored_suffix'] == '' and a['sha256'] == bytes.fromhex(SHA)
+    assert a['mode'] == b['mode'] == 'fetch'
+    assert a['original_url'] is None and b['original_url'] is None
     assert 'stored_sha256' not in a
 
 
