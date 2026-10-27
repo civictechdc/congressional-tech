@@ -139,7 +139,7 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 
 - A converter writes the pinned catalog pair in the release format ([[DATA-MODEL]] §8.1) with the final writer settings. It uses the engine's RunSpec where it can.
 - This release is the reader's fixture (track A). Its manifest records that it came from the pinned catalog. It does not go live: the explorer waits for the engine-built release.
-- **It fills what it can:** meeting keys from URLs, document dates from the old metadata, link labels from the old occurrences, and committee names from today's committee file. It keeps all 1.24M of today's catalog rows, so it is about twice the target `list`.
+- **It fills what it can:** meeting keys from URLs, unambiguous document dates from the old metadata, link labels from the old occurrences, and committee names from today's committee file. Capture and import dates stay unknown where legacy timestamps do not distinguish them. It keeps all 1.24M of today's catalog rows, so it is about twice the target `list`.
 - **It cannot show** format groups, meeting titles, other versions or the new recovery kinds, so a small hand-built fixture release covers them: one document with PDF and XML alternates, one titled hearing in `meetings`, two versions of one address, one of each recovery kind and one hidden document. The contract test runs both.
 - **It assumes nothing unique about old bodies:** 141,762 body keys appear in several old documents, so F0 resolves each link key to the first document in list order.
 - The converter is a migration tool, deleted at the switch.
