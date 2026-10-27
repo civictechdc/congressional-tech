@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
+from urllib.parse import urlsplit
 
 from congress_api.retention.body_store import BodyStore,LocalAdapter,validate_record
 from congress_api.retention.receipt_privacy import cut_paths
@@ -31,17 +32,39 @@ def validate_provenance(kind,row):
     required=({'id','target','verdict','value','note','reviewer','decided_at','supersedes'} if kind=='reviews' else
         {'id','original_url','recovered_url','recovered_filename','body_sha256','kind','match_basis',
          'evidence_sha256','identity_note','decided_by','decided_at','supersedes'})
-    if set(row)!=required or not isinstance(row['id'],str) or not row['id']:
+    if set(row)!=required or not isinstance(row['id'],str) or not row['id'].strip():
         raise ValueError('Incomplete provenance record')
+    def text(name,*,nullable=False,allow_blank=False):
+        value=row[name]
+        if nullable and value is None:return
+        if not isinstance(value,str) or (not allow_blank and not value.strip()):
+            raise ValueError('Invalid provenance '+name)
+
+    def url(name,*,nullable=False):
+        if nullable and row[name] is None:return
+        text(name)
+        try:parts=urlsplit(row[name])
+        except ValueError:raise ValueError('Invalid provenance '+name) from None
+        if parts.scheme not in {'http','https'} or not parts.netloc:
+            raise ValueError('Invalid provenance '+name)
+
+    def digest(name,*,nullable=False):
+        value=row[name]
+        if nullable and value is None:return
+        if not isinstance(value,str) or re.fullmatch('[0-9a-fA-F]{64}',value) is None:
+            raise ValueError('Invalid provenance '+name)
+
     instant(row['decided_at'])
-    if row['supersedes'] is not None and (not isinstance(row['supersedes'],str) or not row['supersedes']
+    if row['supersedes'] is not None and (not isinstance(row['supersedes'],str) or not row['supersedes'].strip()
                                          or row['supersedes']==row['id']):
         raise ValueError('Invalid superseded decision')
     if kind=='reviews':
         verdict=row['verdict']
-        if verdict not in VERDICTS or re.fullmatch('[0-9a-f]{16}',row['target'] or '') is None:
+        if (not isinstance(verdict,str) or verdict not in VERDICTS or not isinstance(row['target'],str)
+                or re.fullmatch('[0-9a-f]{16}',row['target']) is None):
             raise ValueError('Invalid review target or verdict')
-        if not isinstance(row['reviewer'],str) or not row['reviewer']:raise ValueError('Review needs a reviewer')
+        text('reviewer')
+        text('note',nullable=True,allow_blank=True)
         value=row['value']
         if ((verdict=='kind_override' and (not isinstance(value,list) or not value or
                 any(not isinstance(v,str) or not v for v in value)))
@@ -51,8 +74,15 @@ def validate_provenance(kind,row):
             or verdict=='withdraw' and (value is not None or row['supersedes'] is None)):
             raise ValueError('Invalid review value')
     else:
-        if re.fullmatch('[0-9a-f]{64}',row['body_sha256'] or '') is None or not row['kind'] or not row['decided_by']:
-            raise ValueError('Invalid recovery decision')
+        url('original_url')
+        url('recovered_url',nullable=True)
+        digest('body_sha256')
+        digest('evidence_sha256',nullable=True)
+        text('kind')
+        text('decided_by')
+        text('match_basis',nullable=True)
+        text('recovered_filename',nullable=True,allow_blank=True)
+        text('identity_note',nullable=True,allow_blank=True)
     validate_record(row)
     def paths(value):
         if isinstance(value,str) and cut_paths(value)[1]:raise ValueError('Local path in public provenance')
