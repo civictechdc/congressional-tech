@@ -61,6 +61,8 @@ def test_sample_orphan_dedup_and_original_gzip_is_not_transfer_encoding(tmp_path
     result = verify(store,captures=captures,receipts=receipts,previous=previous,
                     engine=engine(),work=tmp_path/'job',checked_at='2026-10-27T00:00:00Z',seed='fixed')
     assert result['valid'] and result['listed'] == 1 and result['checked'] == 1
+    assert result['orphans']==1
+    assert pq.read_table(tmp_path/'job/orphans.parquet')['key'].to_pylist()==[key(original,'')]
     assert store.list_calls == 1 and store.reads == [key(original,'')]
     [record] = [json.loads(line) for line in Path(result['records']).read_text().splitlines()]
     assert record['sha256_verified'] is True and record['key'] == key(original,'')
@@ -113,6 +115,7 @@ def test_only_25_referenced_bodies_are_read_and_listing_is_one_traversal(tmp_pat
     result=verify(store,captures=captures,receipts=receipts,previous=previous,engine=engine(),
                   work=tmp_path/'job',checked_at='2026-10-27T00:00:00Z',seed='fixed')
     assert result['valid'] and result['checked']==25 and result['listed']==30
+    assert result['orphans']==0
     assert store.list_calls==1 and len(store.reads)==len(set(store.reads))==25
 
 
@@ -144,3 +147,41 @@ def test_staged_verification_is_create_only_and_bound_to_accepted_bytes(tmp_path
     Path(result['records']).write_text('{}\n')
     with pytest.raises(ValueError,match='changed'):
         apply_staged(tmp_path/'job',store)
+
+
+def test_receipt_cleanup_verification_records_are_not_expected_bodies(tmp_path):
+    data=b'body and receipt have different verification roles'
+    stored=gzip.compress(data,mtime=0)
+    captures,receipts,previous=inputs(tmp_path,[dict(body_key=key(data),stored_bytes=len(stored))],
+        previous=[dict(key='receipts/f/2026-10-27/cleaned.jsonl.gz',size=200,etag='receipt-etag',
+                       sha256_verified=False,checked_at='2026-10-26T00:00:00Z',job='receipt-cleanup')])
+    result=verify(Store({key(data):(stored,None)}),captures=captures,receipts=receipts,previous=previous,
+        engine=engine(),work=tmp_path/'job',checked_at='2026-10-27T00:00:00Z',seed='fixed')
+    assert result['valid'] and result['listed']==1 and result['missing']==0
+
+
+def test_null_identity_rows_do_not_fabricate_body_references(tmp_path):
+    captures,receipts,previous=inputs(tmp_path,[],receipts=[dict(captures=[{}])])
+    schema=pa.schema([('sha256',pa.binary(32)),('stored_sha256',pa.binary(32)),
+                      ('stored_bytes',pa.int64()),('receipt_key',pa.string()),
+                      ('receipt_line',pa.int64()),('pointer_json',pa.string())])
+    pq.write_table(pa.Table.from_pylist([dict(receipt_key='metadata-only',receipt_line=1)],schema=schema),captures)
+    data=b'known orphan'
+    result=verify(Store({key(data):(gzip.compress(data,mtime=0),None)}),captures=captures,
+        receipts=receipts,previous=previous,engine=engine(),work=tmp_path/'job',
+        checked_at='2026-10-27T00:00:00Z',seed='fixed')
+    assert result['valid'] and result['missing']==0 and result['orphans']==1
+
+
+def test_equal_index_digest_does_not_hide_conflicting_receipt_evidence(tmp_path):
+    data=b'conflicted receipt facts'
+    stored=gzip.compress(data,mtime=0)
+    locator='receipts/f/2026-10-27/run.jsonl.gz'
+    captures,receipts,previous=inputs(tmp_path,[dict(body_key=key(data),stored_bytes=len(stored),
+        stored_sha256='1'*64,receipt_key=locator,receipt_line=1,pointer_json='["body"]')],
+        receipts=[dict(captures=[dict(body_key=key(data),stored_sha256='1'*64,stored_bytes=len(stored)),
+                                 dict(body_key=key(data),stored_sha256='2'*64,stored_bytes=len(stored))])])
+    result=verify(Store({key(data):(stored,None)}),captures=captures,receipts=receipts,previous=previous,
+        engine=engine(),work=tmp_path/'job',checked_at='2026-10-27T00:00:00Z',seed='fixed')
+    assert not result['valid'] and result['digest_conflicts']==1 and result['digest_repairs']==0
+    assert pq.read_table(tmp_path/'job/digest-repairs.parquet').num_rows==0
