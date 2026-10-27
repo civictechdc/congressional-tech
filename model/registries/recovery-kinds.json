@@ -65,18 +65,31 @@
     "kind": "related_final_report_available"
   },
   {
+    "category": "full_recording_recovered",
+    "match_basis": null,
+    "kind": "full_recording_recovered"
+  },
+  {
     "category": null,
     "match_basis": "user_accepted_url_variant",
-    "kind": "recovered_document"
+    "kind": "recovered_document",
+    "import_category": "recovered_document"
   },
   {
     "category": null,
     "match_basis": "verified_archive_capture",
-    "kind": "recovered_document"
+    "kind": "recovered_document",
+    "import_category": "recovered_document"
   },
   {
     "category": null,
     "match_basis": "official_document_identifier",
-    "kind": "recovered_document"
+    "kind": "recovered_document",
+    "import_category": "recovered_document"
+  },
+  {
+    "category": null,
+    "match_basis": "explicit_retained_download_wrapper",
+    "kind": "explicit_retained_download_wrapper"
   }
 ]

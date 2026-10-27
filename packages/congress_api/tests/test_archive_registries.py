@@ -16,6 +16,16 @@ ROOT = Path(__file__).parents[3]
 def test_recovery_registry_keeps_categories_and_refuses_unknown_or_duplicate(duplicate, tmp_path):
     cases = json.loads((ROOT / 'model/fixtures/recovery-kind-cases.json').read_text())
     registry = json.loads((ROOT / 'model/registries/recovery-kinds.json').read_text())
+    registered = {(row['category'], row['match_basis']) for row in registry}
+    sampled = {(row['category'], None if row['category'] else row['match_basis'])
+               for row in cases if row['expected_kind'] is not None}
+    assert registered == sampled
+    for case in cases:
+        if case['expected_kind'] is None:
+            continue
+        assert case['receipt_key'].startswith('receipts/') and case['receipt_line'] > 0
+        assert case['mode'] == 'retained_import'
+        assert case['body_hex'] is None or len(case['body_hex']) == 64
     if duplicate:
         registry += [registry[0]]
     # These are small authored test inputs, not an application export path.
