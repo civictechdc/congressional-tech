@@ -112,3 +112,18 @@ test('a changed pointer requests one reload and retries are not poisoned',async(
   await assert.rejects(reader.entry(0),/reload|not found/i);
   assert.equal(reads,2);
 });
+
+test('shard descriptors use half-open absolute ranges and keep the same document links',async()=>{
+  const files=manifest.files.map(file=>file.name==='detail.parquet'?{...file,name:'detail-00000.parquet',shard:'detail',row_range:[0,file.rows]}:file);
+  const id=createHash('sha256').update(JSON.stringify([manifest.schema_version,files.map(f=>[f.name,f.sha256,f.size,f.rows])])).digest('hex');
+  const sharded={...manifest,files,release_id:id};
+  const fetcher=async(url,options)=>{
+    if(new URL(url).pathname==='/manifest.json')return Response.json({release_id:id});
+    if(String(url).endsWith('/manifest.json'))return Response.json(sharded);
+    if(String(url).endsWith('/detail-00000.parquet'))return localFetch(String(url).replace('detail-00000.parquet','detail.parquet'),options);
+    return localFetch(url,options);
+  };
+  const reader=await openArchive('https://fixture.test/manifest.json',{fetcher});
+  assert.equal((await reader.entry(4)).document.filename,'Record.pdf');
+  assert.equal(await reader.resolve('11'.repeat(8)),0);
+});
