@@ -1,0 +1,147 @@
+[
+  {
+    "id": "html-links-order-and-context",
+    "parser": "html",
+    "body": "<html><head><title>Hearing</title><base href=\"../files/\"></head><body><h1>Evidence</h1><ul><li><a href=\"a.pdf\">PDF</a><a href=\"a.xml\">XML</a><a href=\"a.pdf\">Again</a></li></ul><a href=\"unlisted.pdf\">Outside</a><iframe src=\"viewer\"></iframe><meta http-equiv=\"refresh\" content=\"0; url=next\"></body></html>",
+    "expected": {
+      "title": "Hearing",
+      "heading": "Evidence",
+      "base_href": "../files/",
+      "links": [
+        {
+          "href": "a.pdf",
+          "text": "PDF",
+          "tag": "a",
+          "basis": "href",
+          "group_path": "html[1]/body[1]/ul[1]/li[1]"
+        },
+        {
+          "href": "a.xml",
+          "text": "XML",
+          "tag": "a",
+          "basis": "href",
+          "group_path": "html[1]/body[1]/ul[1]/li[1]"
+        },
+        {
+          "href": "a.pdf",
+          "text": "Again",
+          "tag": "a",
+          "basis": "href",
+          "group_path": "html[1]/body[1]/ul[1]/li[1]"
+        },
+        {
+          "href": "unlisted.pdf",
+          "text": "Outside",
+          "tag": "a",
+          "basis": "href",
+          "group_path": null
+        },
+        {
+          "href": "viewer",
+          "text": "",
+          "tag": "iframe",
+          "basis": "src",
+          "group_path": null
+        },
+        {
+          "href": "next",
+          "text": "",
+          "tag": "meta",
+          "basis": "meta_refresh",
+          "group_path": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "xml-house-description-and-dates",
+    "parser": "xml",
+    "body": "<committee-meeting><meeting-document type=\"BR\" add-date=\"2026-10-01\" publish-date=\"2026-10-02\" remove-date=\"2026-10-03\"><description>Committee briefing</description><file><file-url>../brief.pdf</file-url></file></meeting-document></committee-meeting>",
+    "expected": {
+      "xml_root": "committee-meeting",
+      "links": [
+        {
+          "href": "../brief.pdf",
+          "text": "Committee briefing",
+          "tag": "file-url",
+          "basis": "text",
+          "group_path": "committee-meeting[1]/meeting-document[1]",
+          "doc_type": "BR",
+          "add_date": "2026-10-01",
+          "publish_date": "2026-10-02",
+          "remove_date": "2026-10-03"
+        }
+      ]
+    }
+  },
+  {
+    "id": "json-all-url-strings-in-order",
+    "parser": "json",
+    "body": "{\"url\":\"https://example.gov/a\",\"items\":[\"relative.pdf\",\"https://example.gov/a\",{\"url\":\"http://example.gov/b\"}],\"false\":\"not a URL\"}",
+    "expected": {
+      "links": [
+        {
+          "href": "https://example.gov/a",
+          "tag": "[\"url\"]",
+          "basis": "json_url",
+          "text": "",
+          "group_path": null
+        },
+        {
+          "href": "https://example.gov/a",
+          "tag": "[\"items\",1]",
+          "basis": "json_url",
+          "text": "",
+          "group_path": null
+        },
+        {
+          "href": "http://example.gov/b",
+          "tag": "[\"items\",2,\"url\"]",
+          "basis": "json_url",
+          "text": "",
+          "group_path": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "xml-external-entity-does-not-resolve",
+    "parser": "xml",
+    "body": "<!DOCTYPE root [<!ENTITY secret SYSTEM \"file:///does-not-exist-engine-first\">]><root>&secret;<a href=\"kept.pdf\">Kept</a></root>",
+    "expected": {
+      "xml_root": "root",
+      "links": [
+        {
+          "href": "kept.pdf",
+          "tag": "a",
+          "text": "Kept",
+          "basis": "href",
+          "group_path": null
+        }
+      ]
+    }
+  },
+  {
+    "id": "html-embedded-data",
+    "parser": "html",
+    "body": "<html><body><script id=\"__NEXT_DATA__\" type=\"application/json\">{\"link\":\"https://example.gov/embedded\"}</script><a href=\"after\">After</a></body></html>",
+    "expected": {
+      "links": [
+        {
+          "href": "https://example.gov/embedded",
+          "tag": "[\"link\"]",
+          "text": "",
+          "basis": "json_url",
+          "group_path": null
+        },
+        {
+          "href": "after",
+          "text": "After",
+          "tag": "a",
+          "basis": "href",
+          "group_path": null
+        }
+      ]
+    }
+  }
+]
