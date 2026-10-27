@@ -87,4 +87,7 @@ def test_every_snapshot_save_also_keeps_the_snapshot_in_raw():
         assert step['env']['R2_ACCESS_KEY_ID'] == '${{ secrets.R2_ACCESS_KEY_ID }}'
     script = (ROOT / '.github/scripts/save-pipeline-data.sh').read_text().splitlines()
     push = script.index('git push -q -f origin snapshot:pipeline-data')
-    assert script[push + 1:] == ['cd ..', 'python -m congress_api.cli.pipeline_raw --snapshot pipeline-data']
+    tail = '\n'.join(script[push + 1:])
+    assert 'prepare-raw-writer.sh' in tail
+    assert '"$writer_root/.venv/bin/python" -I -m congress_api.cli.pipeline_raw --snapshot "$snapshot_root"' in tail
+    assert 'git -C "$application_root" rev-parse HEAD' in '\n'.join(script)

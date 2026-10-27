@@ -111,7 +111,7 @@ def _format(prefix):
 
 
 def read_sniff(read_range, *, stored_size, stored_gzip=False, pdf_reader=check_pdf,
-               zip_limits=ZipLimits()):
+               zip_limits=ZipLimits(), zip_inspector=None):
     """Return facts or an input rejection; raise read/resource failures for retry.
 
     read_range(start, length) returns exactly the requested immutable bytes.
@@ -159,6 +159,9 @@ def read_sniff(read_range, *, stored_size, stored_gzip=False, pdf_reader=check_p
                 row['intact'] = pdf_reader(data)
                 if type(row['intact']) is not bool:
                     raise SniffRefusal('invalid_reader_result')
+        elif row['format'] == 'zip' and zip_inspector is not None and not stored_gzip:
+            if zip_inspector():
+                row['format'] = 'docx'
         elif row['format'] == 'zip':
             if stored_size > zip_limits.max_archive_bytes:
                 raise SniffRefusal('archive_size_limit')
@@ -180,3 +183,18 @@ def read_sniff(read_range, *, stored_size, stored_gzip=False, pdf_reader=check_p
         row.update(status='size_limit' if code.endswith('_limit') else 'error',
                    intact=None, error_type=code)
     return row
+
+
+def read_sniff_file(path, *, zip_limits=ZipLimits()):
+    """Use the same sniffer on a spool; ZIP metadata uses a read-only mapping."""
+    import mmap
+    path = Path(path)
+    with path.open('rb') as source:
+        size = source.seek(0, 2)
+        def read(start, length):
+            source.seek(start)
+            return source.read(length)
+        def office():
+            with mmap.mmap(source.fileno(), 0, access=mmap.ACCESS_READ) as view:
+                return inspect_office_zip(view, limits=zip_limits)
+        return read_sniff(read, stored_size=size, zip_limits=zip_limits, zip_inspector=office)

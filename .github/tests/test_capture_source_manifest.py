@@ -1,6 +1,11 @@
 import importlib.util
 from pathlib import Path
 import subprocess
+import hashlib
+
+import pytest
+
+from congress_api.retention.writer_identity import writer_identity
 
 SCRIPT = Path(__file__).parents[1] / 'scripts/capture-source-manifest.py'
 spec = importlib.util.spec_from_file_location('capture_source_manifest', SCRIPT)
@@ -18,13 +23,19 @@ def test_package_rule_data_affects_parity_but_bytecode_does_not(tmp_path):
         path = tmp_path / 'packages/source-fetch' / filename
         path.parent.mkdir(exist_ok=True)
         path.write_text('')
-    subprocess.run(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.org',
-                    'commit', '--allow-empty', '-qm', 'fixture'], cwd=tmp_path, check=True)
+    (tmp_path / 'uv.lock').write_text('locked dependencies\n')
+    (tmp_path / '.gitignore').write_text('__pycache__/\n*.egg-info/\n')
     guide = tmp_path / 'packages/house-naming/src/house_naming/data/guide.json'
     guide.parent.mkdir(parents=True)
     guide.write_text('{}')
+    commit(tmp_path)
     before = source.manifest(tmp_path)
+    assert before['code_revision'] == writer_identity(tmp_path, 'capture')['commit']
+    assert before['lockfile_digest'] == hashlib.sha256((tmp_path / 'uv.lock').read_bytes()).hexdigest()
     guide.write_text('{"changed":true}')
+    with pytest.raises(ValueError, match='clean'):
+        source.manifest(tmp_path)
+    commit(tmp_path)
     after = source.manifest(tmp_path)
     assert before['source_digest'] != after['source_digest']
     assert str(guide.relative_to(tmp_path)) in after['source_sha256']
@@ -35,3 +46,35 @@ def test_package_rule_data_affects_parity_but_bytecode_does_not(tmp_path):
     metadata.parent.mkdir()
     metadata.write_text('generated installation metadata')
     assert source.manifest(tmp_path) == after
+
+
+def commit(root):
+    subprocess.run(['git', 'add', '.'], cwd=root, check=True)
+    subprocess.run(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.org',
+                    'commit', '-qm', 'fixture'], cwd=root, check=True)
+
+
+def test_manifest_cli_keeps_generated_report_and_native_binary_outside_clean_source(tmp_path):
+    root = tmp_path/'application'
+    root.mkdir()
+    subprocess.run(['git','init','-q',str(root)],check=True)
+    for package in ('congress_api','congress_shared','committee_meeting','house-naming'):
+        path=root/'packages'/package
+        (path/'src').mkdir(parents=True)
+        (path/'pyproject.toml').write_text('')
+    native=root/'packages/source-fetch'
+    native.mkdir()
+    for name in ('main.rs','Cargo.toml','Cargo.lock'):
+        (native/name).write_text('pinned source\n')
+    (root/'uv.lock').write_text('locked dependencies\n')
+    commit(root)
+    binary=tmp_path/'source-fetch'
+    binary.write_bytes(b'pinned native binary')
+    output=tmp_path/'source-manifest.json'
+    source.main(['--root',str(root),'--output',str(output),'--native-binary',str(binary)])
+    result=__import__('json').loads(output.read_text())
+    assert result['code_revision']==writer_identity(root,'capture')['commit']
+    assert result['lockfile_digest']==hashlib.sha256((root/'uv.lock').read_bytes()).hexdigest()
+    assert result['native_binary_sha256']==hashlib.sha256(binary.read_bytes()).hexdigest()
+    assert subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True)==''
+    assert not (root/'raw-capture-source-manifest.json').exists()

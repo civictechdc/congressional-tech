@@ -10,18 +10,15 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-import subprocess
 
-from congress_api.retention.body_files import file_digest
+from congress_api.retention.writer_identity import writer_identity
 from congress_api.retention import pipeline_raw
 
 ROOT = Path(__file__).resolve().parents[5]
 
 
 def writer(job):
-    commit = subprocess.run(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], check=True,
-                            capture_output=True, text=True).stdout.strip()
-    return dict(job=job, commit=commit, lockfile_digest=file_digest(ROOT / 'uv.lock'))
+    return writer_identity(ROOT, job)
 
 
 def main(argv=None):
@@ -52,11 +49,12 @@ def main(argv=None):
         from congress_shared.storage import connect_r2
         from congress_api.retention.r2 import R2Store
 
+        identity = writer(args.job)
         # The capture writer's retry policy; R2Store adds its own 429 backoff.
         client = connect_r2(bucket=args.bucket, retries={'mode': 'standard', 'max_attempts': 5})
         store = R2Store(client, args.bucket)
         summary = pipeline_raw.archive(
-            store, files, writer=writer(args.job),
+            store, files, writer=identity,
             run_id=pipeline_raw.RESCUE_RUN_ID if args.rescue_batch else None)
     if import_run:
         summary['import_run'] = import_run

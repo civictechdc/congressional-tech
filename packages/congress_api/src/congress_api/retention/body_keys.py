@@ -3,7 +3,7 @@ import re
 
 
 _BODY_KEY = re.compile(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})\.gz')
-_PUBLIC_BODY_OBJECT_KEY = re.compile(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})\.(gz|pdf)')
+_PUBLIC_BODY_OBJECT_KEY = re.compile(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})(?:\.(gz|pdf))?')
 _SHA256_DIGEST = re.compile(r'[a-f0-9]{64}')
 PDF_MAGIC = b'%PDF-'
 
@@ -47,7 +47,8 @@ def is_pdf_format(content_type_or_format) -> bool:
     return False
 
 
-def physical_body_object_key(body_key: str, content_type_or_format=None, *, is_pdf: bool | None = None) -> str:
+def physical_body_object_key(body_key: str, content_type_or_format=None, *, is_pdf: bool | None = None,
+                             stored_suffix: str | None = None) -> str:
     """Map immutable logical ``body_key`` (``bodies/sha256/<xx>/<sha256>.gz``) to its physical R2 object key.
 
     Logical ``row['body_key']`` is hashed into all 1.68M ``source_id``s and 1.24M ``document_id``s
@@ -58,6 +59,10 @@ def physical_body_object_key(body_key: str, content_type_or_format=None, *, is_p
     digest = body_object_digest(body_key)
     if digest is None:
         raise ValueError(f'Invalid logical body_key: {body_key!r}')
+    if stored_suffix is not None:
+        if stored_suffix not in {'', '.gz', '.pdf'}:
+            raise ValueError('Invalid recorded stored suffix')
+        return f'bodies/sha256/{digest[:2]}/{digest}{stored_suffix}'
     pdf = is_pdf if is_pdf is not None else is_pdf_format(content_type_or_format)
     ext = 'pdf' if pdf else 'gz'
     return f'bodies/sha256/{digest[:2]}/{digest}.{ext}'

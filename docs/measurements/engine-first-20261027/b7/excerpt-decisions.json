@@ -1,0 +1,70 @@
+{
+  "owner_decisions": [
+    {
+      "advisory_url": "https://waysandmeans.house.gov/?p=398351",
+      "bytes": 258239,
+      "container_sha256": "85bd65e80e8d438a804886233a39825aa6d797ac87bf096b4e4d9db06a40f170",
+      "official_transcript": "http://docs.house.gov/meetings/WM/WM00/20150422/103372/HHRG-114-WM00-Transcript-20150422.pdf",
+      "original_url": "https://waysandmeans.house.gov/?p=398351",
+      "pages": 2,
+      "recovered_url": "http://docs.house.gov/meetings/WM/WM00/20150422/103372/HHRG-114-WM00-Transcript-20150422.pdf",
+      "recovery_basis": "user_accepted_url_variant",
+      "sha256": "19611c198e727b2f95d16d130c1ec060b40db8ba1e9f39ab548960bc3d3877ca"
+    },
+    {
+      "advisory_url": "https://waysandmeans.house.gov/?type=document&p=397895",
+      "bytes": 384252,
+      "container_sha256": "7b5ec3c88468a558d8cdf8021f306d0045b3dbc6ee877559e952e9697aa6cb7c",
+      "official_transcript": "http://docs.house.gov/meetings/WM/WM00/20150113/102805/HHRG-114-WM00-Transcript-20150113.pdf",
+      "original_url": "https://waysandmeans.house.gov/?type=document&p=397895",
+      "pages": 2,
+      "recovered_url": "http://docs.house.gov/meetings/WM/WM00/20150113/102805/HHRG-114-WM00-Transcript-20150113.pdf",
+      "recovery_basis": "user_accepted_url_variant",
+      "sha256": "c578bcecd3d11c9679ec7ccdd376d1d0201fc799e1b93277c2252cf1fa0ffde8"
+    },
+    {
+      "advisory_url": "https://waysandmeans.house.gov/?type=document&p=397940",
+      "bytes": 41389,
+      "container_sha256": "e3e64eb5b14038995202b98afa18626b3174ae3fe340e784e8f7b6dc0d35b723",
+      "official_transcript": "http://docs.house.gov/meetings/WM/WM00/20150127/102843/HHRG-114-WM00-Transcript-20150127.pdf",
+      "original_url": "https://waysandmeans.house.gov/?type=document&p=397940",
+      "pages": 2,
+      "recovered_url": "http://docs.house.gov/meetings/WM/WM00/20150127/102843/HHRG-114-WM00-Transcript-20150127.pdf",
+      "recovery_basis": "user_accepted_url_variant",
+      "sha256": "a983c2aebe9a03b163756539737593176dc5f4c2764c36d9867e4cedc144e68c"
+    },
+    {
+      "advisory_url": "https://waysandmeans.house.gov/?type=document&p=397952",
+      "bytes": 113201,
+      "container_sha256": "f1c39845d9ed41cfc24aee981b3c06a9771497847a9ca651697eeed2464cc67a",
+      "official_transcript": "http://docs.house.gov/meetings/WM/WM00/20150203/102922/HHRG-114-WM00-Transcript-20150203.pdf",
+      "original_url": "https://waysandmeans.house.gov/?type=document&p=397952",
+      "pages": 2,
+      "recovered_url": "http://docs.house.gov/meetings/WM/WM00/20150203/102922/HHRG-114-WM00-Transcript-20150203.pdf",
+      "recovery_basis": "user_accepted_url_variant",
+      "sha256": "97c27cad272902c1f092c9c7e78ecd4258cbb3a50b334279cdf901ddd16289a2"
+    },
+    {
+      "advisory_url": "https://waysandmeans.house.gov/?type=document&p=398016",
+      "bytes": 706095,
+      "container_sha256": "2ac0b76ffcb84d97d9b7c3d738729aea1bc73581096f61cf995ddc6894a38ea9",
+      "official_transcript": "http://docs.house.gov/meetings/WM/WM06/20150211/102947/HHRG-114-WM06-Transcript-20150211.pdf",
+      "original_url": "https://waysandmeans.house.gov/?type=document&p=398016",
+      "pages": 2,
+      "recovered_url": "http://docs.house.gov/meetings/WM/WM06/20150211/102947/HHRG-114-WM06-Transcript-20150211.pdf",
+      "recovery_basis": "user_accepted_url_variant",
+      "sha256": "2306c6201e4211fc14f362823b014011842536e998e585fd3a0adc468d4f45fe"
+    },
+    {
+      "advisory_url": "https://waysandmeans.house.gov/?type=document&p=398172",
+      "bytes": 294245,
+      "container_sha256": "2bba5efd661b90b114fdb10c41547226739876212fa65ee6d55e0cb982137338",
+      "official_transcript": "http://docs.house.gov/meetings/WM/WM03/20150317/103155/HHRG-114-WM03-Transcript-20150317.pdf",
+      "original_url": "https://waysandmeans.house.gov/?type=document&p=398172",
+      "pages": 2,
+      "recovered_url": "http://docs.house.gov/meetings/WM/WM03/20150317/103155/HHRG-114-WM03-Transcript-20150317.pdf",
+      "recovery_basis": "user_accepted_url_variant",
+      "sha256": "8843d2be2d2bcf33bdb95820aee3e137ca4c8d201c609c3ffaf107d19e4b7bf0"
+    }
+  ]
+}

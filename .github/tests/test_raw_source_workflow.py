@@ -58,7 +58,15 @@ def recording_command(tmp_path):
     scripts = tmp_path / '.github/scripts'
     scripts.mkdir(parents=True)
     shutil.copy(ROOT / '.github/scripts/capture-memory-guard.py', scripts)
+    writer = tmp_path / 'clean-writer'
+    (writer / '.venv/bin').mkdir(parents=True)
+    (writer / '.venv/bin/python').symlink_to(sys.executable)
+    (writer / '.venv/bin/raw-source-sync').symlink_to(command)
+    writer_scripts = writer / '.github/scripts'
+    writer_scripts.mkdir(parents=True)
+    shutil.copy(ROOT / '.github/scripts/capture-memory-guard.py', writer_scripts)
     return {
+        "RAW_WRITER_ROOT": str(writer),
         "PATH": f"{tmp_path}:{os.defpath}",
         "GITHUB_WORKSPACE": str(tmp_path),
         "CAPTURE_LIMIT": "31",
@@ -307,7 +315,7 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
     assert all(
         step["if"] == "(steps.operation.outputs.mode == 'capture' || steps.operation.outputs.mode == 'validate') && steps.fetcher.outputs.cache-hit != 'true'" for step in native
     )
-    assert sum(step.get("run", "").count('raw-source-sync "') for step in STEPS) == 1
+    assert sum(step.get("run", "").count('"$RAW_WRITER_ROOT/.venv/bin/raw-source-sync" "') for step in STEPS) == 1
     assert SUMMARY["if"] == "${{ always() }}"
     artifact = next(
         step
@@ -472,7 +480,7 @@ def test_capture_can_explicitly_select_historical_queue(tmp_path, recording_comm
 
 def test_source_digest_mismatch_stops_before_acquisition(tmp_path, recording_command):
     step = next(s for s in STEPS if s.get('name') == 'Record and check capture source revision')
-    script = tmp_path / '.github/scripts/capture-source-manifest.py'
+    script = Path(recording_command['RAW_WRITER_ROOT']) / '.github/scripts/capture-source-manifest.py'
     script.write_text("from pathlib import Path\nPath('raw-capture-source-manifest.json').write_text('{\"source_digest\":\"actual\"}')\n")
     result = run_step(step, tmp_path, EXPECTED_SOURCE_DIGEST='expected', **recording_command)
     assert result.returncode != 0

@@ -17,12 +17,18 @@ WRITER = dict(job='test', commit='c' * 40, lockfile_digest='d' * 64)
 
 
 class Bucket:
-    """A local object store with R2's create-only PUT; it has no HEAD or GET."""
+    """R2 create-only PUT and legacy-key HEAD; no body download exists."""
 
     def __init__(self):
         self.meta = SimpleNamespace(config=SimpleNamespace(retries={}),
                                     events=SimpleNamespace(register_first=lambda *a, **k: None))
         self.objects, self.puts = {}, []
+
+    def head_object(self, **args):
+        value = self.objects.get(args['Key'])
+        if value is None:
+            raise ClientError({'Error': {'Code': '404'}}, 'HeadObject')
+        return dict(ContentLength=len(value['Body']), ETag=hashlib.md5(value['Body']).hexdigest())
 
     def put_object(self, **args):
         body = args['Body'] if isinstance(args['Body'], bytes) else args['Body'].read()
@@ -208,3 +214,17 @@ def test_unsafe_receipt_identity_is_refused_before_storage(tmp_path):
         pipeline_raw.archive(R2Store(bucket, 'raw'), pipeline_raw.checkout_files(tmp_path),
                              writer=dict(WRITER, authorization='secret'))
     assert bucket.puts == []
+
+
+def test_weekly_writer_reuses_the_legacy_body_suffix_without_upload(tmp_path):
+    data = b'{"meeting": 1}'
+    checkout(tmp_path, {'congress_meetings.json': data})
+    bucket = Bucket()
+    key = pipeline_raw.body_key(hashlib.sha256(data).hexdigest())
+    bucket.objects[key + '.gz'] = {'Body': gzip.compress(data, mtime=0)}
+    result = pipeline_raw.archive(R2Store(bucket, 'raw'), pipeline_raw.checkout_files(tmp_path),
+                                  writer=WRITER)
+    assert result['created'] == 0 and bucket.puts == result['receipts']
+    [line] = receipt(bucket, result['receipts'][0])
+    assert line['captures'][0]['stored_suffix'] == '.gz'
+    assert 'stored_md5' not in line['captures'][0]

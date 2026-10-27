@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# Replace the pipeline-data branch with a single snapshot commit of ./pipeline-data,
-# so raw caches never accumulate history. Usage: save-pipeline-data.sh "<what changed>"
-# Every snapshot is then kept in the raw bucket instead: create-only bodies and one
-# receipt per run. Needs CLOUDFLARE_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.
+# Replace pipeline-data with one snapshot, then retain it using clean application code.
+# Reports, changed derived files and pipeline-data never enter the writer checkout.
 set -euo pipefail
-cd pipeline-data
+application_root=$(git rev-parse --show-toplevel)
+application_revision=$(git -C "$application_root" rev-parse HEAD)
+snapshot_root="$application_root/pipeline-data"
+cd "$snapshot_root"
 git config user.name "github-actions[bot]"
 git config user.email "github-actions[bot]@users.noreply.github.com"
 git checkout -q --orphan snapshot
 git add -A
 git commit -q -m "Pipeline data snapshot: $1 ($(date -u +%Y-%m-%d))"
 git push -q -f origin snapshot:pipeline-data
-cd ..
-python -m congress_api.cli.pipeline_raw --snapshot pipeline-data
+cd "$application_root"
+writer_work=$(mktemp -d "$RUNNER_TEMP/pipeline-raw-writer.XXXXXX")
+trap 'rm -rf "$writer_work"' EXIT
+writer_root="$writer_work/application"
+"$application_root/.github/scripts/prepare-raw-writer.sh" "$application_root" "$writer_root" "$application_revision"
+"$writer_root/.venv/bin/python" -I -m congress_api.cli.pipeline_raw --snapshot "$snapshot_root"

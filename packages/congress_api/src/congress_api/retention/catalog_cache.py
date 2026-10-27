@@ -25,6 +25,8 @@ class LocalStore:
         self.root = Path(root)
         self.excluded_body_hashes = excluded_body_hashes
         self.store_uncompressed_pdfs = store_uncompressed_pdfs
+        from congress_api.retention.body_store import BodyStore, LocalAdapter
+        self.raw = BodyStore(LocalAdapter(root))
 
     def read(self, key):
         path = self.root / key
@@ -81,10 +83,12 @@ class LocalStore:
             paths = sorted(paths)
         return (str(path.relative_to(self.root)) for path in paths if path.is_file())
 
-    def put(self, key, data, *, immutable=False):
-        if key.startswith("bodies/") and self.excluded_body_hashes:
-            from congress_api.retention.raw_storage import enforce_body_ingest_gate
-            enforce_body_ingest_gate(self, key, data, excluded_hashes=self.excluded_body_hashes)
+    def put(self, key, data, *, immutable=None):
+        from io import BytesIO
+        from congress_api.retention.body_store import RAW_PREFIXES, LocalAdapter, create_stored
+        if key.startswith(RAW_PREFIXES):
+            return create_stored(LocalAdapter(self.root), key, BytesIO(data), 'application/octet-stream',
+                operation='replace' if immutable is False else 'create', body_identity=False).outcome == 'stored'
         path = self.root / key
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(dir=path.parent)

@@ -417,6 +417,7 @@ async def run_async(
                     counts['body_uploads'] += 1
                     # Only this event loop mutates confirmed body identities.
                     archive.body_info[info['sha256']] = info
+                    archive.retained_body_hashes.add(info['sha256'])
                     return info
 
                 async def read_metadata(data, key):
@@ -440,7 +441,7 @@ async def run_async(
 
                 async def retain(key, data):
                     digest = key.rsplit('/', 1)[-1].removesuffix('.gz')
-                    if digest in archive.body_info:
+                    if digest in archive.retained_body_hashes:
                         return archive.body_info[digest]
                     if key not in uploads:
                         uploads[key] = asyncio.create_task(upload(data))
