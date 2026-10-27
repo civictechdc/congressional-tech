@@ -52,3 +52,29 @@ def commit(root):
     subprocess.run(['git', 'add', '.'], cwd=root, check=True)
     subprocess.run(['git', '-c', 'user.name=Test', '-c', 'user.email=test@example.org',
                     'commit', '-qm', 'fixture'], cwd=root, check=True)
+
+
+def test_manifest_cli_keeps_generated_report_and_native_binary_outside_clean_source(tmp_path):
+    root = tmp_path/'application'
+    root.mkdir()
+    subprocess.run(['git','init','-q',str(root)],check=True)
+    for package in ('congress_api','congress_shared','committee_meeting','house-naming'):
+        path=root/'packages'/package
+        (path/'src').mkdir(parents=True)
+        (path/'pyproject.toml').write_text('')
+    native=root/'packages/source-fetch'
+    native.mkdir()
+    for name in ('main.rs','Cargo.toml','Cargo.lock'):
+        (native/name).write_text('pinned source\n')
+    (root/'uv.lock').write_text('locked dependencies\n')
+    commit(root)
+    binary=tmp_path/'source-fetch'
+    binary.write_bytes(b'pinned native binary')
+    output=tmp_path/'source-manifest.json'
+    source.main(['--root',str(root),'--output',str(output),'--native-binary',str(binary)])
+    result=__import__('json').loads(output.read_text())
+    assert result['code_revision']==writer_identity(root,'capture')['commit']
+    assert result['lockfile_digest']==hashlib.sha256((root/'uv.lock').read_bytes()).hexdigest()
+    assert result['native_binary_sha256']==hashlib.sha256(binary.read_bytes()).hexdigest()
+    assert subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True)==''
+    assert not (root/'raw-capture-source-manifest.json').exists()
