@@ -109,8 +109,8 @@ def _settings(profile, order, *, columns=None, dictionary=(), delta=()):
 def _core(steps, output):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
     steps += [_step('ordered', "SELECT *,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True),
-        _step('source_rows', """SELECT o.list_row,s.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY s.source_key)-1 AS INT) AS ordinal,
-            cast(row_number() OVER(ORDER BY o.list_row,s.source_key)-1 AS INT) AS source_index
+        _step('source_rows', """SELECT o.list_row,s.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS ordinal,
+            cast(row_number() OVER(ORDER BY o.list_row,s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS source_index
             FROM source_input s JOIN ordered o ON s.doc_key=o.doc_key""", materialize=True),
         _step('source_ranges', 'SELECT doc_key,min(source_index) AS src_start,cast(count(*) AS INT) AS src_len FROM source_rows GROUP BY doc_key'),
         _step('recovery_rows', """SELECT o.list_row,r.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY r.recovery_key)-1 AS INT) AS ordinal,
@@ -119,7 +119,7 @@ def _core(steps, output):
         _step('recovery_ranges', 'SELECT doc_key,min(recovery_index) AS rec_start,cast(count(*) AS INT) AS rec_len FROM recovery_rows GROUP BY doc_key'),
         _step('details', f"""SELECT o.*,CASE WHEN saved_kind='recovery' THEN {_hash_key('o.source_url', 'url:')}
             ELSE {_binary('substr(body_hex,1,16)', 8)} END AS link_key,
-            {_binary('body_hex', 32)} AS saved_body,suffix AS saved_suffix,media_type AS saved_media_type,bytes AS saved_bytes,
+            {_binary('body_hex', 32)} AS saved_body,CASE WHEN body_hex IS NOT NULL THEN suffix END AS saved_suffix,CASE WHEN body_hex IS NOT NULL THEN media_type END AS saved_media_type,bytes AS saved_bytes,
             coalesce(s.src_start,cast(0 AS INT)) AS src_start,coalesce(s.src_len,cast(0 AS INT)) AS src_len,
             coalesce(r.rec_start,cast(0 AS INT)) AS rec_start,coalesce(r.rec_len,cast(0 AS INT)) AS rec_len
             FROM ordered o LEFT JOIN source_ranges s ON o.doc_key=s.doc_key LEFT JOIN recovery_ranges r ON o.doc_key=r.doc_key"""),
@@ -218,7 +218,7 @@ def _auxiliary():
             ['chamber', 'meeting_type', 'status', 'committees.list.item.system_code', 'committees.list.item.role', 'subject_keys.list.item']),
         ('committees', f"""SELECT system_code,name,chamber,cast(NULL AS VARCHAR) AS committee_type,
             cast(NULL AS VARCHAR) AS parent_system_code,{names} AS names,cast(NULL AS VARCHAR) AS website,
-            true AS is_current FROM committee_input""", ['system_code'], ['chamber', 'committee_type', 'parent_system_code']),
+            cast(NULL AS BOOLEAN) AS is_current FROM committee_input""", ['system_code'], ['chamber', 'committee_type', 'parent_system_code']),
         ('url_state', f"""SELECT cast(NULL AS VARCHAR) AS requested_url,cast(0 AS INT) AS attempts,
             {TS} AS last_attempt,cast(NULL AS SMALLINT) AS last_status,cast(NULL AS VARCHAR) AS last_outcome,
             {TS} AS last_good_at,{TS} AS next_attempt_at WHERE false""", ['requested_url'], ['last_outcome']),
@@ -327,9 +327,13 @@ def convert_catalog(documents, filenames, captures, committees, *, catalog_id, o
         _step('document_bodies', 'SELECT document_id,unnest(body_keys) AS body_key FROM legacy_documents'),
         _step('body_groups', f"SELECT document_id,array_agg({_match('body_key', '([0-9a-f]{64})')} ORDER BY body_key) AS bodies FROM document_bodies GROUP BY document_id", materialize=True),
         _step('document_codes', 'SELECT document_id,unnest(committee_code) AS code FROM legacy_documents'),
+        _step('committee_aliases', """SELECT system_code,chamber,upper(system_code) AS code FROM committee_source
+            UNION SELECT system_code,chamber,upper(substr(system_code,3)) AS code FROM committee_source
+            UNION SELECT system_code,chamber,upper(substr(system_code,3,2)) AS code FROM committee_source
+            WHERE lower(chamber)='house' AND right(system_code,2)='00'"""),
         _step('committee_groups', """SELECT d.document_id,array_agg(DISTINCT c.system_code ORDER BY c.system_code) AS committee_keys,
-            array_agg(DISTINCT lower(c.chamber) ORDER BY lower(c.chamber)) AS chambers FROM document_codes d JOIN committee_source c
-            ON upper(d.code)=upper(c.system_code) OR upper(d.code)=upper(substr(c.system_code,3)) GROUP BY d.document_id""", materialize=True),
+            array_agg(DISTINCT lower(c.chamber) ORDER BY lower(c.chamber)) AS chambers FROM document_codes d JOIN committee_aliases c
+            ON upper(d.code)=c.code GROUP BY d.document_id""", materialize=True),
         _step('normalized', _normal('legacy_documents d LEFT JOIN body_metadata b ON d.body_key=b.body_key LEFT JOIN committee_groups c ON d.document_id=c.document_id LEFT JOIN body_groups g ON d.document_id=g.document_id',
             body_expected='d.body_key IS NOT NULL', doc_key='d.document_id', filename='d.filename', title='array_element(d.source_link_label,1)',
             source_url='d.source_url', body_hex=body_hex, format="lower(coalesce(array_element(d.format,1),'other'))",
@@ -339,13 +343,17 @@ def convert_catalog(documents, filenames, captures, committees, *, catalog_id, o
             suffix="CASE WHEN regexp_like(d.body_key,'[.]pdf$') THEN '.pdf' WHEN regexp_like(d.body_key,'[.]gz$') THEN '.gz' ELSE '' END",
             media_type="coalesce(b.media_type,CASE WHEN array_element(d.format,1)='pdf' THEN 'application/pdf' ELSE 'application/octet-stream' END)",
             bytes='b.bytes', meeting_keys=_meeting_keys('d.source_url'), link_bodies='g.bodies'), materialize=True),
-        _step('source_input', """SELECT f.document_id AS doc_key,f.source_id AS source_key,f.source_url AS url,
+        _step('source_candidates', """SELECT f.document_id AS doc_key,f.source_id AS source_key,f.source_url AS url,
             cast(NULL AS VARCHAR) AS member_path,coalesce(f.body_key=d.body_key,false) AS is_saved,
             cast(NULL AS DATE) AS first_seen,
             array_element(f.source_page_url,1) AS listed_on,array_element(f.source_link_label,1) AS link_text,
             cast(NULL AS VARCHAR) AS doc_type,cast(NULL AS DATE) AS posted
             FROM legacy_filenames f JOIN (SELECT document_id,body_key FROM legacy_documents) d ON f.document_id=d.document_id
             WHERE f.source_url IS NOT NULL""", materialize=True),
+        _step('source_input', """SELECT doc_key,min(source_key) AS source_key,url,member_path,
+            bool_or(is_saved) AS is_saved,min(first_seen) AS first_seen,min(listed_on) AS listed_on,
+            min(link_text) AS link_text,min(doc_type) AS doc_type,min(posted) AS posted
+            FROM source_candidates GROUP BY doc_key,url,member_path""", materialize=True),
         _step('recovery_input', """SELECT cast(NULL AS VARCHAR) AS doc_key,cast(NULL AS VARCHAR) AS recovery_key,
             cast(NULL AS VARCHAR) AS original_url,cast(NULL AS VARCHAR) AS kind,arrow_cast(NULL,'FixedSizeBinary(32)') AS body,
             cast(NULL AS VARCHAR) AS suffix,cast(NULL AS BIGINT) AS bytes,cast(NULL AS DATE) AS imported_at,
