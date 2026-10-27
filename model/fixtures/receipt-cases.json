@@ -1,0 +1,109 @@
+[
+  {
+    "id": "embedded-and-retained-copy-of-one-caption",
+    "basis": {
+      "receipt_key": "receipts/senate/captions/2026-09-29/assemble-20260930.jsonl.gz",
+      "receipt_line": 804,
+      "population": "all 285 matching duplicate-reference lines checked by cx_m2_verified_gap_job.json"
+    },
+    "input": {
+      "captures": [
+        {
+          "pointer": [
+            "raw_body",
+            "body"
+          ],
+          "body_key": "bodies/sha256/87/87fe702ca34c8d73b7c15b48c50737f63ac64b57a18a67bebd7b41c77129b6cd.gz",
+          "sha256": "87fe702ca34c8d73b7c15b48c50737f63ac64b57a18a67bebd7b41c77129b6cd",
+          "bytes": 31496,
+          "string_encoding": "utf-8",
+          "fidelity": "exact-bytes",
+          "media_type": "application/x-mpegURL",
+          "context_url": "https://www-senate-gov-media-srs.akamaized.net/hls/live/2036800/armed/armedA041823/master.m3u8",
+          "captured_at": "2026-09-29T02:12:37.958291+00:00",
+          "status_code": 200
+        }
+      ],
+      "file_references": [
+        {
+          "reference_kind": "file",
+          "original_path": "87fe702ca34c8d73b7c15b48c50737f63ac64b57a18a67bebd7b41c77129b6cd.gz",
+          "pointer_json": "[\"reused_from_recording_receipt\",\"body_path\"]",
+          "fidelity": "retained-file",
+          "resolution": "digest_verified",
+          "context_url": "https://www-senate-gov-media-srs.akamaized.net/hls/live/2036800/armed/armedA041823/master.m3u8",
+          "retrieved_at": "2026-09-29T02:12:37.958291+00:00",
+          "http_status": 200,
+          "family": "senate/captions",
+          "body_key": "bodies/sha256/87/87fe702ca34c8d73b7c15b48c50737f63ac64b57a18a67bebd7b41c77129b6cd.gz",
+          "sha256": "87fe702ca34c8d73b7c15b48c50737f63ac64b57a18a67bebd7b41c77129b6cd",
+          "bytes": 31496,
+          "stored_sha256": "9a38b59748502fa285e3a3d7f9586ec32f04a81c836fa28e46ac9a9ab02b89d0",
+          "stored_bytes": 4549,
+          "capture_date": "2026-09-29"
+        }
+      ]
+    },
+    "expected": {
+      "rows": 1,
+      "sha256": "87fe702ca34c8d73b7c15b48c50737f63ac64b57a18a67bebd7b41c77129b6cd",
+      "bytes": 31496,
+      "context_url": "https://www-senate-gov-media-srs.akamaized.net/hls/live/2036800/armed/armedA041823/master.m3u8",
+      "fidelity": "exact-bytes",
+      "attempt_status": 200,
+      "retrieved_at": "2026-09-29T02:12:37.958291+00:00",
+      "stored_bytes": 4549,
+      "stored_suffix": ".gz",
+      "pointer": [
+        "raw_body",
+        "body"
+      ]
+    }
+  },
+  {
+    "id": "unmatched-secondary-reference-refuses",
+    "input": {
+      "captures": [
+        {
+          "pointer": [
+            "raw_body",
+            "body"
+          ],
+          "body_key": "bodies/sha256/87/87fe702ca34c8d73b7c15b48c50737f63ac64b57a18a67bebd7b41c77129b6cd.gz",
+          "sha256": "87fe702ca34c8d73b7c15b48c50737f63ac64b57a18a67bebd7b41c77129b6cd",
+          "bytes": 31496,
+          "string_encoding": "utf-8",
+          "fidelity": "exact-bytes",
+          "media_type": "application/x-mpegURL",
+          "context_url": "https://www-senate-gov-media-srs.akamaized.net/hls/live/2036800/armed/armedA041823/master.m3u8",
+          "captured_at": "2026-09-29T02:12:37.958291+00:00",
+          "status_code": 200
+        }
+      ],
+      "file_references": [
+        {
+          "reference_kind": "file",
+          "original_path": "87fe702ca34c8d73b7c15b48c50737f63ac64b57a18a67bebd7b41c77129b6cd.gz",
+          "pointer_json": "[\"reused_from_recording_receipt\",\"body_path\"]",
+          "fidelity": "retained-file",
+          "resolution": "digest_verified",
+          "context_url": "https://www-senate-gov-media-srs.akamaized.net/hls/live/2036800/armed/armedA041823/master.m3u8",
+          "retrieved_at": "2026-09-29T02:12:37.958291+00:00",
+          "http_status": 200,
+          "family": "senate/captions",
+          "body_key": "bodies/sha256/00/0000000000000000000000000000000000000000000000000000000000000000.gz",
+          "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "bytes": 31496,
+          "stored_sha256": "9a38b59748502fa285e3a3d7f9586ec32f04a81c836fa28e46ac9a9ab02b89d0",
+          "stored_bytes": 4549,
+          "capture_date": "2026-09-29"
+        }
+      ]
+    },
+    "expected": {
+      "refused": true,
+      "reason": "secondary body not represented by captures",
+      "locator_required": true
+    }
+  }
+]
