@@ -22,7 +22,7 @@ from viewer_publication.filename_recoveries import accepted_rows
 
 class CatalogRecoverySources:
     """Adapt selected source lookups; preserve the original encounter ordering."""
-    def __init__(self, snapshot, *, max_ordered_bytes, initial=False, metrics=None):
+    def __init__(self, snapshot, *, max_ordered_bytes, initial=False, metrics=None, admission_directory=None):
         from congress_api.retention.catalog_dependency_storage import CatalogDependencyStorage
         self.snapshot, self.max_ordered_bytes = snapshot, max_ordered_bytes
         self.owner = CatalogDependencyStorage.for_snapshot(snapshot)
@@ -30,6 +30,7 @@ class CatalogRecoverySources:
         self._temp_dir = None
         self._spill_db = None
         self.initial, self._initial_ready = initial, False
+        self.admission_directory = admission_directory
         self.metrics = metrics if metrics is not None else {}
 
     def _get_spill_db(self):
@@ -63,7 +64,10 @@ class CatalogRecoverySources:
             columns = [name for name in dict.fromkeys([*FIELDS, 'source_resolved_url', 'source_id', 'document_id'])
                        if name in self.snapshot.schemas['filenames'].names]
             table = self.snapshot.table('filenames', max_ordered_bytes=self.max_ordered_bytes)
-            for incoming in table.iter_batches(columns=columns, batch_size=128, include_order=True):
+            options = dict(columns=columns, batch_size=128, include_order=True)
+            if self.admission_directory is not None:
+                options['admission_directory'] = self.admission_directory
+            for incoming in table.iter_batches(**options):
                 for batch in bounded_batches(pa.Table.from_batches([incoming]), stage='initial recovery', metrics=self.metrics):
                     for row in batch.to_pylist():
                         position = row.pop('_catalog_order')
@@ -177,7 +181,7 @@ class CatalogRecoverySources:
         self.close()
 
 
-def index_catalog_recoveries(snapshot, rows, *, max_ordered_bytes, previous=None, metrics=None):
+def index_catalog_recoveries(snapshot, rows, *, max_ordered_bytes, previous=None, metrics=None, admission_directory=None):
     """Bind recovery updates to exact retained catalog ancestry and row values."""
     source_identity = previous['source_identity'] if previous is not None else None
 
@@ -192,7 +196,7 @@ def index_catalog_recoveries(snapshot, rows, *, max_ordered_bytes, previous=None
     info = dict(catalog_id=snapshot.schemas['filenames'].metadata[b'catalog_id'].decode(),
                 rows=counts['source_rows'], entries=counts['document_rows'])
     with closing(CatalogRecoverySources(snapshot, max_ordered_bytes=max_ordered_bytes,
-            initial=previous is None, metrics=metrics)) as sources:
+            initial=previous is None, metrics=metrics, admission_directory=admission_directory)) as sources:
         return index_selected_recoveries(info, snapshot.identity, sources, rows,
             previous=previous, previous_identity=source_identity,
             changed_sources=changed_rows() if previous is not None else (), metrics=metrics)
