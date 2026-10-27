@@ -1,5 +1,6 @@
 """Public release scheduling and bounded, append-only raw capture."""
 from datetime import datetime, timezone
+from contextlib import ExitStack
 import hashlib
 import json
 from pathlib import Path
@@ -13,7 +14,6 @@ import pyarrow.parquet as pq
 
 from congress_api.acquisition.capture_seeds import inventories
 from congress_api.acquisition.fetcher import CaptureScope, Fetcher, HostPacer
-from congress_api.parsers.archive_readings import read_page
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.body_store import validate_record
 from congress_api.retention.pipeline_raw import new_run_id
@@ -23,6 +23,7 @@ from congress_api.retention.receipt_privacy import credential_parameters
 
 ROOT = Path(__file__).resolve().parents[5]
 REGISTRY = ROOT / 'model/registries/capture-scope.json'
+URL_KEYS = ROOT / 'model/sql/url-keys.sql'
 HEX = re.compile('[0-9a-f]{64}')
 PAGE_BYTES = 8 << 20
 RELEASE_FILE_BYTES = 128 << 20
@@ -177,6 +178,40 @@ def _records(path):
             yield from batch.to_pylist()
 
 
+def _url_binding(release):
+    path=Path(release.get('url_keys_sql',URL_KEYS))
+    if not path.is_file():
+        raise ValueError('Shared url_key SQL is unavailable; bind model/sql/url-keys.sql')
+    definition=path.read_text()
+    inputs=release.get('url_key_inputs',[])
+    if not isinstance(inputs,list) or any(not isinstance(item,dict) for item in inputs):
+        raise ValueError('Shared url_key profile inputs must be native input declarations')
+    digest=hashlib.sha256(definition.encode()).hexdigest()
+    if release.get('url_key_definition_sha256',digest)!=digest:
+        raise ValueError('Shared url_key definition changed within the capture run')
+    return definition,inputs,digest
+
+
+def _key_steps(definition,sources):
+    union=' UNION ALL '.join(f"SELECT {_literal(prefix+':')} || {column} AS input_id,{column} AS url FROM {name}"
+        for name,prefix,column in sources)
+    return [dict(name='url_inputs',sql=f'SELECT DISTINCT input_id,url FROM ({union}) WHERE url IS NOT NULL'),
+        dict(name='url_keys',sql=definition,materialize=True)]
+
+
+def _key_queries():
+    return [dict(name='invalid_url_keys',sql='''SELECT count(*) AS violations FROM url_inputs i
+        FULL JOIN url_keys k ON i.input_id=k.input_id WHERE i.input_id IS NULL OR k.input_id IS NULL
+        OR (k.url IS DISTINCT FROM i.url) OR k.url_key IS NULL OR k.url_key='' '''),
+        dict(name='duplicate_url_keys',sql='''SELECT count(*) AS violations FROM
+            (SELECT input_id FROM url_keys GROUP BY input_id HAVING count(*)>1)''')]
+
+
+def _check_keys(values):
+    if any(values[name][0]['violations'] for name in ('invalid_url_keys','duplicate_url_keys')):
+        raise ValueError('Shared url_key definition did not preserve one key per input')
+
+
 def _reviewed_cutoffs(urls):
     urls=tuple(urls)
     if len(urls)>1024 or any(not isinstance(url,str) or not url or len(url.encode('utf-8'))>16384 for url in urls):
@@ -197,6 +232,7 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
     """Account for every reviewed URL, including deadline/budget/scope deferrals."""
     urls=_reviewed_cutoffs(urls)
     if not urls:return []
+    definition,profile_inputs,_=_url_binding(release)
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
     policy=CapturePolicy(release['scope'])
     inputs=[dict(name='states',kind='parquet',path=str(Path(release['state']).resolve())),
@@ -205,9 +241,18 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
             files=[dict(key='attempted',path=str(attempted))] if attempted.exists() else [],
             schema=dict(fields=[field('url','Utf8'),field('attempted','Boolean'),field('complete','Boolean'),
                 field('outcome','Utf8'),field('http_status','Int32'),field('error_type','Utf8')],metadata={}))]
-    values=run_job(work,engine,inputs=inputs,outputs=[],steps=[dict(name='selected_states',
-        sql=f"SELECT requested_url,next_attempt_at,{policy.sql('requested_url')} AS family FROM states")],
-        queries=[dict(name='cutoffs',sql=f"""SELECT k.url AS requested_url,
+    inputs.extend(profile_inputs)
+    steps=_key_steps(definition,[('states','state','requested_url'),('attempted','attempted','url'),('cutoffs','cutoff','url')])
+    steps.extend([dict(name='selected_states',sql=f"""SELECT s.requested_url,s.next_attempt_at,
+        {policy.sql('s.requested_url')} AS family,k.url_key FROM states s JOIN url_keys k
+        ON k.input_id='state:' || s.requested_url"""),
+        dict(name='selected_attempts',sql="""SELECT a.*,k.url_key FROM attempted a JOIN url_keys k
+            ON k.input_id='attempted:' || a.url"""),
+        dict(name='reviewed_cutoffs',sql="""SELECT DISTINCT c.url,k.url_key FROM cutoffs c JOIN url_keys k
+            ON k.input_id='cutoff:' || c.url""")])
+    values=run_job(work,engine,inputs=inputs,outputs=[],steps=steps,
+        queries=[*_key_queries(),dict(name='cutoffs',sql=f"""SELECT requested_url,disposition,reason,
+            next_attempt_at,complete,outcome,http_status FROM (SELECT k.url AS requested_url,
             CASE WHEN a.attempted THEN 'attempted'
                  WHEN a.url IS NOT NULL OR s.requested_url IS NOT NULL AND s.family IS NULL THEN 'refused'
                  ELSE 'deferred' END AS disposition,
@@ -216,18 +261,21 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
                  WHEN s.family IS NULL THEN 'outside_capture_scope'
                  WHEN s.next_attempt_at>to_timestamp({_literal(_utc(as_of))}) THEN 'not_due'
                  ELSE {_literal(stop_reason or 'not_attempted')} END AS reason,
-            s.next_attempt_at,a.complete,a.outcome,a.http_status
-            FROM (SELECT DISTINCT url FROM cutoffs) k
-            LEFT JOIN selected_states s ON k.url=s.requested_url
-            LEFT JOIN attempted a ON k.url=a.url ORDER BY k.url""")])
+            s.next_attempt_at,a.complete,a.outcome,a.http_status,
+            row_number() OVER(PARTITION BY k.url ORDER BY CASE WHEN k.url=s.requested_url THEN 0 ELSE 1 END,
+                s.next_attempt_at DESC NULLS LAST,s.requested_url) AS ordinal
+            FROM reviewed_cutoffs k LEFT JOIN selected_states s ON k.url_key=s.url_key
+            LEFT JOIN selected_attempts a ON k.url_key=a.url_key) WHERE ordinal=1 ORDER BY requested_url""")])
+    _check_keys(values)
     return values['cutoffs']
 
 
 def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
                seed_files=(),discovery_files=(),attempted=None,cutoff_urls=()):
-    """Native due/seed anti-joins and priority selection; exact requested URL key."""
+    """Use shared URL keys for matching, retaining literal requested URL outputs."""
     _positive(request_budget,'request budget');as_of=_utc(as_of)
     cutoff_urls=_reviewed_cutoffs(cutoff_urls)
+    definition,profile_inputs,definition_sha256=_url_binding(release)
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
     required={'requested_url','attempts','next_attempt_at','last_outcome'}
     schema=pq.read_schema(release['state'])
@@ -251,31 +299,46 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     inputs.append(dict(name='attempted',kind='json_lines',files=[] if attempted is None else [dict(key='attempted',path=str(attempted))],
         schema=dict(fields=[field('url','Utf8')],metadata={})))
     inputs.append(json_input(work,'cutoffs',(dict(url=url) for url in cutoff_urls),url='Utf8'))
+    inputs.extend(profile_inputs)
     steps=[dict(name='seed_rows',sql="""SELECT url,source,pointer FROM seeds UNION ALL
-        SELECT url_resolve(href,coalesce(url_resolve(base_href,context),context)) AS url,source,pointer FROM discovery"""),
-        dict(name='observations',sql="""SELECT url,array_agg(DISTINCT json_array(url,source,pointer)
-            ORDER BY json_array(url,source,pointer)) AS observations FROM seed_rows WHERE url IS NOT NULL GROUP BY url"""),
+        SELECT url_resolve(href,coalesce(url_resolve(base_href,context),context)) AS url,source,pointer FROM discovery""")]
+    steps.extend(_key_steps(definition,[('states','state','requested_url'),('seed_rows','seed','url'),
+        ('attempted','attempted','url'),('cutoffs','cutoff','url')]))
+    steps.extend([dict(name='keyed_states',sql="""SELECT s.*,k.url_key FROM states s JOIN url_keys k
+        ON k.input_id='state:' || s.requested_url"""),
+        dict(name='keyed_seeds',sql="""SELECT s.*,k.url_key FROM seed_rows s JOIN url_keys k
+            ON k.input_id='seed:' || s.url"""),
+        dict(name='keyed_attempts',sql="""SELECT DISTINCT k.url_key FROM attempted a JOIN url_keys k
+            ON k.input_id='attempted:' || a.url"""),
+        dict(name='keyed_cutoffs',sql="""SELECT DISTINCT k.url_key FROM cutoffs c JOIN url_keys k
+            ON k.input_id='cutoff:' || c.url"""),
+        dict(name='observations',sql="""SELECT url_key,min(url) AS url,array_agg(DISTINCT json_array(url,source,pointer)
+            ORDER BY json_array(url,source,pointer)) AS observations FROM keyed_seeds GROUP BY url_key"""),
         dict(name='candidates',sql=f"""SELECT requested_url,attempts,cast(last_outcome AS VARCHAR) AS last_outcome,next_attempt_at,
-                coalesce(o.observations,make_array(json_array(requested_url,{_literal('release:'+release['release_id'])},'[]'))) AS observations
-            FROM states s LEFT JOIN observations o ON s.requested_url=o.url
-            UNION ALL SELECT o.url AS requested_url,0 AS attempts,cast(NULL AS VARCHAR) AS last_outcome,cast(NULL AS TIMESTAMP) AS next_attempt_at,o.observations
-            FROM observations o LEFT ANTI JOIN states s ON o.url=s.requested_url"""),
+                coalesce(o.observations,make_array(json_array(requested_url,{_literal('release:'+release['release_id'])},'[]'))) AS observations,s.url_key
+            FROM keyed_states s LEFT JOIN observations o ON s.url_key=o.url_key
+            UNION ALL SELECT o.url AS requested_url,0 AS attempts,cast(NULL AS VARCHAR) AS last_outcome,
+                cast(NULL AS TIMESTAMP) AS next_attempt_at,o.observations,o.url_key
+            FROM observations o LEFT ANTI JOIN keyed_states s ON o.url_key=s.url_key"""),
         dict(name='scoped',sql=f"""SELECT c.*,{policy.sql('requested_url')} AS family,
-            CASE WHEN attempts=0 THEN 0 WHEN last_outcome='size_limit' OR k.url IS NOT NULL
-            THEN 1 ELSE 2 END AS priority FROM candidates c LEFT JOIN (SELECT DISTINCT url FROM cutoffs) k ON c.requested_url=k.url
-            LEFT ANTI JOIN attempted a ON c.requested_url=a.url"""),
-        dict(name='due',sql=f"SELECT * FROM scoped WHERE family IS NOT NULL AND (next_attempt_at IS NULL OR next_attempt_at<=to_timestamp({_literal(as_of)}))")]
+            CASE WHEN attempts=0 THEN 0 WHEN last_outcome='size_limit' OR k.url_key IS NOT NULL
+            THEN 1 ELSE 2 END AS priority FROM candidates c LEFT JOIN keyed_cutoffs k ON c.url_key=k.url_key
+            LEFT ANTI JOIN keyed_attempts a ON c.url_key=a.url_key"""),
+        dict(name='eligible',sql=f"SELECT * FROM scoped WHERE family IS NOT NULL AND (next_attempt_at IS NULL OR next_attempt_at<=to_timestamp({_literal(as_of)}))"),
+        dict(name='due',sql="""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY url_key
+            ORDER BY priority,next_attempt_at NULLS FIRST,requested_url) AS ordinal FROM eligible) WHERE ordinal=1""")])
     values=run_job(work,engine,inputs=inputs,steps=steps,outputs=[parquet_output(work,'queue',
         f'SELECT requested_url,family,priority,next_attempt_at,observations FROM due ORDER BY priority,next_attempt_at NULLS FIRST,requested_url LIMIT {request_budget}',
         ['priority','next_attempt_at','requested_url'])],queries=[
-        dict(name='counts',sql="SELECT count(*) AS due,count(*) FILTER(WHERE priority=0) AS queue,count(*) FILTER(WHERE priority=1) AS cutoffs FROM due"),
+        *_key_queries(),dict(name='counts',sql="SELECT count(*) AS due,count(*) FILTER(WHERE priority=0) AS queue,count(*) FILTER(WHERE priority=1) AS cutoffs FROM due"),
         dict(name='bad_states',sql="SELECT count(*) AS violations FROM states WHERE requested_url IS NULL OR attempts IS NULL OR attempts<0 OR octet_length(requested_url)>16384"),
         dict(name='large_observations',sql='SELECT count(*) AS violations FROM observations WHERE array_length(observations)>256'),
         dict(name='duplicates',sql='SELECT count(*) AS violations FROM (SELECT requested_url FROM states GROUP BY requested_url HAVING count(*)>1)')])
+    _check_keys(values)
     if any(values[name][0]['violations'] for name in ('bad_states','duplicates','large_observations')):
         raise ValueError('Invalid or duplicate url_state rows')
     return dict(queue=str(work/'queue.parquet'),counts=values['counts'][0],release_id=release['release_id'],
-                as_of=as_of,seed_files=files)
+                as_of=as_of,seed_files=files,url_key_definition_sha256=definition_sha256)
 
 
 class _Counted:
@@ -298,22 +361,47 @@ def _allowance(byte_budget,spool_budget,archive_limits,hops):
     return limit,3*limit+overhead
 
 
+def read_discovery_payload(payload):
+    """Shared worker entry; bound and verify the owned file before parsing."""
+    from congress_api.parsers.archive_readings import read_page
+    path=Path(payload['path'])
+    if path.stat().st_size!=payload['bytes'] or payload['bytes']>PAGE_BYTES:
+        raise ValueError('Discovery input exceeds or differs from its declared bytes')
+    with path.open('rb') as source:body=source.read(PAGE_BYTES+1)
+    if len(body)!=payload['bytes'] or hashlib.sha256(body).hexdigest()!=payload['sha256']:
+        raise ValueError('Discovery input changed after raw storage')
+    return read_page(body,payload['parser'])
+
+
 def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_budget,
                 store,identity,direct,provider=None,resolve=resolve_host,pace=None,
                 archive_limits=None,seed_inventories=(),cutoff_urls=(),
-                discover=read_page,max_discovery_jobs=8,headers=None):
+                discover=None,max_discovery_jobs=8,headers=None,worker_factory=None):
     """One sequential raw writer. No state/index or table writes occur here."""
     for name,value in [('request budget',request_budget),('byte budget',byte_budget),('spool budget',spool_budget),('discovery jobs',max_discovery_jobs)]:
         _positive(value,name)
+    _,_,url_key_digest=_url_binding(release)
+    release=dict(release,url_key_definition_sha256=url_key_digest)
+    if discover is None and worker_factory is None:
+        try:
+            from congress_api.retention.parser_worker import ParserWorker
+        except ModuleNotFoundError as error:
+            if error.name!='congress_api.retention.parser_worker':raise
+            raise ValueError('Shared bounded discovery worker is unavailable') from None
+        worker_factory=ParserWorker
     as_of=_utc(as_of);cutoff_urls=_reviewed_cutoffs(cutoff_urls)
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
     policy=CapturePolicy(release['scope'],resolve=resolve);policy.require_capture()
     archive_limits=archive_limits or ZipLimits();hops=14 if provider is not None else 7
     stats=dict(release_id=release['release_id'],as_of=as_of,run_id=new_run_id(),requests=0,
         fetched_bytes=0,captures=0,receipts=[],refusals=[],discovery_errors=[],discovery_refused=0,cutoffs=[],cutoff_attempts=[],
-        budgets=dict(requests=request_budget,bytes=byte_budget,spool=spool_budget),spool_reserved_bound=0,stop_reason=None)
+        budgets=dict(requests=request_budget,bytes=byte_budget,spool=spool_budget),spool_reserved_bound=0,
+        url_key_definition_sha256=url_key_digest,stop_reason=None)
     writer=ReceiptWriter(store,identity=identity,run_id=stats['run_id'],write_date=datetime.now(timezone.utc).date().isoformat(),archive_limits=archive_limits)
     attempted=work/'attempted.jsonl.gz';discovered=[];generation=0
+    workers={};worker_stack=ExitStack()
+    worker_version=hashlib.sha256(json.dumps(['capture-discovery',identity['commit'],
+        identity['lockfile_digest']],separators=(',',':')).encode()).hexdigest()
     plan=plan_queue(release,engine=engine,work=work/'plan-0',as_of=as_of,
         request_budget=request_budget,seed_inventories=seed_inventories,cutoff_urls=cutoff_urls)
     stats['initial_counts']=plan['counts'];seed_files=plan['seed_files']
@@ -359,7 +447,20 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
                     if body.size>PAGE_BYTES:
                         stats['discovery_errors'].append(dict(url=url,reason='discovery_size_limit'))
                     else:
-                        facts=discover(body.path.read_bytes(),body.sniffed_format)
+                        if discover is not None:
+                            facts=discover(body.path.read_bytes(),body.sniffed_format)
+                        else:
+                            parser=body.sniffed_format
+                            if parser not in workers:
+                                workers[parser]=worker_stack.enter_context(worker_factory(parser,worker_version,
+                                    'congress_api.acquisition.capture_scheduler:read_discovery_payload',
+                                    timeout_seconds=30,memory_bytes=512<<20,max_input_bytes=PAGE_BYTES+16384))
+                            outcome=workers[parser].parse(body.sha256,dict(path=str(body.path),bytes=body.size,
+                                sha256=body.sha256,parser=parser))
+                            if outcome['status']=='unreadable':
+                                facts=dict(status='error',error_type=outcome['reason'])
+                            elif outcome['status']=='completed':facts=outcome['value']
+                            else:raise ValueError('Invalid bounded discovery worker result')
                         if facts['status']!='completed':
                             stats['discovery_errors'].append(dict(url=url,reason=facts['error_type']))
                         else:
@@ -391,6 +492,7 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
         # D discovery replans plus initial planning and this report give D+2
         # linear input passes (ten at the default D=8), not one per capture.
         try:
+            worker_stack.close()
             stats['cutoffs']=cutoff_report(release,urls=cutoff_urls,attempted=attempted,engine=engine,
                 work=work/'cutoff-report',as_of=as_of,stop_reason=stats['stop_reason'])
         finally:

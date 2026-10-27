@@ -37,6 +37,16 @@ def release(tmp_path, rows, *, entries=None):
         files.append(dict(name=name,sha256=hashlib.sha256(data).hexdigest(),size=len(data),rows=len(rows) if name.endswith('parquet') else None))
     identity=hashlib.sha256(json.dumps([1,[[f['name'],f['sha256'],f['size'],f['rows']] for f in files]],separators=(',',':')).encode()).hexdigest()
     (root/'manifest.json').write_text(json.dumps(dict(schema_version=1,release_id=identity,files=files)))
+    # Finite authored identity adapter: this checks scheduler joins, not E's
+    # normalization algorithm or its registry qualification. Unknown URLs have
+    # no key and therefore refuse the native identity contract.
+    pairs=[('https://fixture.test/'+name,'fixture:'+name) for name in
+        ['a','b','c','z','new','queue','old','cut','future','good','pending','missing','child','end']]
+    pairs.extend([('https://fixture.test/a%20b.pdf','fixture:space-alias'),
+                  ('https://fixture.test/a b.pdf','fixture:space-alias'),
+                  ('https://outside.example/a','outside:a')])
+    values=','.join("('"+url+"','"+key+"')" for url,key in pairs)
+    (root/'fixture-url-keys.sql').write_text('SELECT i.input_id,i.url,f.url_key FROM url_inputs i LEFT JOIN (VALUES '+values+') f(url,url_key) ON i.url=f.url')
     return root
 
 
@@ -48,7 +58,9 @@ LIMITS=ZipLimits(max_archive_bytes=1024,max_member_bytes=1024,max_total_bytes=20
 
 def load(root,work):
     from congress_api.acquisition.capture_scheduler import load_release
-    return load_release(release_root=root,work=work)
+    selected=load_release(release_root=root,work=work)
+    selected['url_keys_sql']=root/'fixture-url-keys.sql'
+    return selected
 
 
 def test_native_queue_priority_seeds_and_future_schedule(tmp_path):
@@ -93,11 +105,17 @@ class Adapter:
         return Transfer(destination,url,status,headers,True,sha256=hashlib.sha256(data).hexdigest(),size=len(data))
 
 
+def fixture_discover(body,parser):
+    from congress_api.parsers.archive_readings import read_page
+    return read_page(body,parser)
+
+
 def run_fixture(tmp_path,rows,responses,**options):
     from congress_api.acquisition.capture_scheduler import run_capture
     root=release(tmp_path,rows)
     selected=load(root,tmp_path/'read')
     adapter=Adapter(responses)
+    options.setdefault('discover',fixture_discover)
     store=BodyStore(LocalAdapter(tmp_path/'raw'))
     result=run_capture(selected,engine=engine(),work=tmp_path/'capture',as_of=ASOF,
         request_budget=options.pop('request_budget',100),byte_budget=options.pop('byte_budget',2**30),
@@ -161,7 +179,7 @@ def test_provider_fallback_keeps_both_attempts_and_budget_accounting(tmp_path):
     provider=Adapter({'https://fixture.test/a':(200,b'publisher bytes',{})})
     result=run_capture(load(root,tmp_path/'read'),engine=engine(),work=tmp_path/'capture',as_of=ASOF,
         request_budget=14,byte_budget=2**30,spool_budget=2**30,store=BodyStore(LocalAdapter(tmp_path/'raw')),
-        identity=IDENTITY,direct=direct,provider=provider,resolve=lambda _:['8.8.8.8'],archive_limits=LIMITS,pace=lambda *_:None)
+        identity=IDENTITY,direct=direct,provider=provider,discover=fixture_discover,resolve=lambda _:['8.8.8.8'],archive_limits=LIMITS,pace=lambda *_:None)
     assert result['requests']==2 and result['fetched_bytes']==len(b'deniedpublisher bytes')
     [receipt]=list((tmp_path/'raw').rglob('*.jsonl.gz'))
     with gzip.open(receipt,'rt') as source:line=json.loads(source.readline())
@@ -249,7 +267,7 @@ def test_public_pointer_is_pinned_once_and_inputs_are_verified(tmp_path):
 def test_cli_preview_uses_local_release_without_opening_raw_storage(tmp_path,capsys):
     from congress_api.cli.capture_schedule import main
     root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)])
-    main(['--release-root',str(root),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
+    main(['--release-root',str(root),'--url-keys-sql',str(root/'fixture-url-keys.sql'),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
         '--request-budget','20','--byte-budget','1073741824','--spool-budget','1073741824',
         '--as-of',ASOF,'--work',str(tmp_path/'preview')])
     result=json.loads(capsys.readouterr().out)

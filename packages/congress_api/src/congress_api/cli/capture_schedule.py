@@ -27,6 +27,8 @@ def main(argv=None):
     parser.add_argument('--cutoff-urls',type=Path,help='Owner-reviewed exact URL list; no raw index')
     parser.add_argument('--as-of',default=datetime.now(timezone.utc).isoformat())
     parser.add_argument('--engine-config',type=Path,default=os.environ.get('DOCSPEC_JOB_CONFIG'))
+    parser.add_argument('--url-keys-sql',type=Path,help='Shared E url_key definition; no identity fallback')
+    parser.add_argument('--url-key-inputs',type=Path,help='Profile native input declarations for shared URL rules/variants')
     parser.add_argument('--local-store',type=Path,help='Local create-only body/receipt destination')
     parser.add_argument('--bucket',default='congressional-tech-raw')
     parser.add_argument('--max-discovery-jobs',type=int,default=8)
@@ -40,6 +42,8 @@ def main(argv=None):
     identity=writer_identity(ROOT,'capture-scheduler') if args.apply else None
     args.work.mkdir(parents=True,exist_ok=False)
     release=load_release(work=args.work/'release',release_root=args.release_root,pointer=args.pointer)
+    if args.url_keys_sql:release['url_keys_sql']=args.url_keys_sql
+    if args.url_key_inputs:release['url_key_inputs']=json.loads(args.url_key_inputs.read_text())
     engine=NativeDatasets.from_config(args.engine_config)
     cutoffs=json.loads(args.cutoff_urls.read_text()) if args.cutoff_urls else []
     if not isinstance(cutoffs,list) or any(not isinstance(url,str) for url in cutoffs):
