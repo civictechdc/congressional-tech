@@ -114,9 +114,10 @@ def test_unknown_or_ambiguous_categories_refuse_staging(tmp_path,category):
     assert not (tmp_path/'staged'/'manifest.json').exists()
 
 
-def test_missing_original_time_is_reported_without_inventing_it(tmp_path):
+@pytest.mark.parametrize('retrieved_at',[None,'not-a-time','2019-01-01'])
+def test_missing_original_time_is_reported_without_inventing_it(tmp_path,retrieved_at):
     accepted,captures,registry=reconciliation_inputs(tmp_path)
-    rows=pq.read_table(captures).to_pylist();rows[1]['retrieved_at']=None
+    rows=pq.read_table(captures).to_pylist();rows[1]['retrieved_at']=retrieved_at
     pq.write_table(pa.Table.from_pylist(rows),captures)
     result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
         engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),decided_at=STAMP,decided_by='reconciliation')
