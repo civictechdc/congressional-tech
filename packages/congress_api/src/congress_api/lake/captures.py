@@ -99,6 +99,13 @@ def compact_counter(counter, *, engine, work):
     names = [n for n in schema.names if not n.startswith('__')
              and n not in {'record','captures','file_references'}]
     fields = ','.join(literal(n)+',"'+n+'"' for n in names)
+    record_fields=','.join(literal(f.name)+',get_field(record,'+literal(f.name)+')'
+                           for f in schema.field('record').type)
+    supplements=','.join(literal(name)+',json_get_json(__raw_line,\'record\','+literal(source)+')'
+        for name,source in [('_ingest_headers_json','response_headers'),
+                            ('_ingest_other_headers_json','headers'),
+                            ('_ingest_header_items_json','response_header_items'),
+                            ('_ingest_prior_attempts_json','prior_attempts')])
     sql = f'''SELECT __receipt_key,__receipt_line,
         json_get_json(json_array(named_struct({fields},'archive_member_count',
             json_length(__raw_line,'record','archive_members'))),0) AS line,
@@ -109,7 +116,7 @@ def compact_counter(counter, *, engine, work):
         CASE WHEN record IS NULL OR coalesce(array_length(__type_conflicts),0)>0
                  OR __receipt_family='congress/meetings'
             THEN json_get_json(__raw_line,'record')
-            ELSE json_get_json(json_array(record),0) END AS record_json
+            ELSE json_get_json(json_array(named_struct({record_fields},{supplements})),0) END AS record_json
         FROM counter'''
     run_job(work, engine,
         inputs=[dict(name='counter',kind='parquet',path=str(Path(counter).resolve()))],
@@ -175,6 +182,7 @@ def mapping_steps(*, existing=False, counter=False):
     step('header_entries', f'''SELECT receipt_key,receipt_line,capture_index,
         unnest(coalesce({get('line','response_header_items',kind='array')},
                         {get('record','response_header_items',kind='array')},
+                        {get(get('record','_ingest_header_items_json'),kind='array')},
                         {get('record','headers',kind='array')})) AS item FROM records''')
     step('item_headers', '''SELECT receipt_key,receipt_line,capture_index,
         max(CASE WHEN lower(json_get_str(item,'name'))='content-disposition'
@@ -188,8 +196,10 @@ def mapping_steps(*, existing=False, counter=False):
         return first(integer('line', *path), integer('record', *path))
     recovery = both('recovery_evidence', kind='json')
     association = get('record', 'source_associations', 0, kind='json')
-    root_headers = both('response_headers', kind='json')
-    headers = first(root_headers, get('record', 'headers', kind='json'))
+    root_headers = first(get('line','response_headers',kind='json'),
+                         get('record','_ingest_headers_json'),get('record','response_headers',kind='json'))
+    headers = first(root_headers,get('record','_ingest_other_headers_json'),
+                    get('record', 'headers', kind='json'))
     step('facts', f'''SELECT r.*,h.item_disposition,h.item_retry,{recovery} AS recovery,
         {association} AS association,{headers} AS headers,
         {both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
@@ -222,7 +232,7 @@ def mapping_steps(*, existing=False, counter=False):
         {get('entry','body_key')} AS body_key
         FROM facts''')
     attempt_status = first(integer('entry','http_status'), integer('entry','status_code'),
-        f"CASE WHEN attempt>0 THEN coalesce(json_get_int(json_get_json(json_get_json(line,'prior_attempts'),attempt-1),'http_status'),json_get_int(json_get_json(json_get_json(record,'prior_attempts'),attempt-1),'http_status')) ELSE line_status END")
+        f"CASE WHEN attempt>0 THEN coalesce(json_get_int(json_get_json(json_get_json(line,'prior_attempts'),attempt-1),'http_status'),json_get_int(json_get_json(coalesce(json_get_str(record,'_ingest_prior_attempts_json'),json_get_json(record,'prior_attempts')),attempt-1),'http_status')) ELSE line_status END")
     final_complete = first(get('entry','complete',kind='bool'),
         "CASE WHEN attempt=0 THEN coalesce(json_get_bool(line,'complete'),json_get_bool(record,'complete')) END",
         "NOT (coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))")
