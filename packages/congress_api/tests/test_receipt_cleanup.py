@@ -146,3 +146,71 @@ def test_cleaner_never_changes_urls_links_or_pointer_targets():
                 dict(row, record=dict(row['record'], content={'body': 'changed'}))]:
         with pytest.raises(ValueError):
             verify_line(row, bad)
+
+
+def test_local_command_scan_apply_and_resume_use_the_same_rules(tmp_path, capsys):
+    from congress_api.cli.receipt_cleanup import main
+    root, backup, scratch = (tmp_path / name for name in ('local', 'backup', 'scratch'))
+    key = 'receipts/documents/2026-10-01/run.jsonl.gz'
+    path = root / key
+    path.parent.mkdir(parents=True)
+    raw = encode([{'response_headers': {'authorization': 'never-report-this'},
+                   'path': '/tmp/a.pdf', 'url': 'https://example.gov/a.pdf'}])
+    path.write_bytes(raw)
+    report, records = tmp_path / 'report.json', tmp_path / 'records.jsonl'
+    main(['--root', str(root), '--report', str(report)])
+    scan = json.loads(report.read_text())
+    assert scan['receipts'] == 1 and scan['lines'] == 1
+    assert scan['counts'] == dict(header=1, path=1)
+    assert 'never-report-this' not in report.read_text() + capsys.readouterr().out
+    args = ['--root', str(root), '--report', str(report), '--apply',
+            '--backup-root', str(backup), '--scratch', str(scratch), '--records', str(records)]
+    assert main(args) == 0
+    assert (backup / key).read_bytes() == raw
+    first = path.read_bytes()
+    assert main(args) == 0
+    assert path.read_bytes() == first and len(records.read_text().splitlines()) == 1
+    main(['--root', str(root), '--report', str(report)])
+    assert json.loads(report.read_text())['counts'] == {}
+
+
+def test_local_adapter_refuses_stale_cas_and_backup_overwrite(tmp_path):
+    from congress_api.retention.receipt_cleanup_stores import DirectoryFiles
+    store = DirectoryFiles(tmp_path / 'store')
+    key, source = 'receipts/family/undated/run.jsonl.gz', tmp_path / 'input'
+    source.write_bytes(b'original')
+    store.put_file(key, source, create_only=True)
+    with pytest.raises(FileExistsError):
+        store.put_file(key, source, create_only=True)
+    source.write_bytes(b'changed')
+    with pytest.raises(ValueError, match='race'):
+        store.put_file(key, source, if_match='0' * 32)
+    assert store.path(key).read_bytes() == b'original'
+    with pytest.raises(ValueError):
+        store.put_file('receipts/../../escape', source, create_only=True)
+
+
+def test_r2_rewriter_adapter_uses_only_single_conditional_put(tmp_path):
+    from congress_api.retention.receipt_cleanup_stores import R2ReceiptFiles
+    import base64
+    class Client:
+        def __init__(self):
+            self.calls = []
+        def put_object(self, **args):
+            self.calls.append(args)
+            payload = args['Body'].read()
+            assert base64.b64decode(args['ContentMD5']) == hashlib.md5(payload).digest()
+            assert args['IfMatch'] == 'old-etag'
+            assert args['ContentLength'] == len(payload)
+            assert 'IfNoneMatch' not in args
+            return dict(ETag='"'+hashlib.md5(payload).hexdigest()+'"')
+    client = Client()
+    store = R2ReceiptFiles(client, 'fixture')
+    source = tmp_path / 'file'
+    source.write_bytes(b'content')
+    for key in ('bodies/x', 'provenance/x'):
+        with pytest.raises(ValueError):
+            store.put_file(key, source, if_match='old-etag')
+    assert client.calls == []
+    store.put_file('receipts/family/undated/run.jsonl.gz', source, if_match='old-etag')
+    assert len(client.calls) == 1
