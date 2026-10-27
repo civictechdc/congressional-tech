@@ -156,3 +156,24 @@ def test_local_stage_command_writes_only_local_outputs(tmp_path, capsys):
     result=json.loads(capsys.readouterr().out)
     assert result['catalog_version'] == reader().current_version()
     assert pq.read_metadata(result['readings']).num_rows == 0
+
+
+def test_native_filename_table_preserves_schema_partition_and_noop_append(tmp_path):
+    module=reader()
+    module.create_table(engine=engine(),work=tmp_path/'create',catalog_root=tmp_path/'catalog',
+        table={'namespace':['archive'],'name':'filename_readings'},location=tmp_path/'data',create_namespace=True)
+    captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
+        url='https://a.test/BILLS-119hr6028ih.pdf')])
+    stage=module.stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'stage')
+    first=module.append(stage,engine=engine(),work=tmp_path/'append',catalog_root=tmp_path/'catalog',
+        table={'namespace':['archive'],'name':'filename_readings'})
+    assert sum(part['rows'] for part in first['files']) == 1
+    second=module.append(stage,engine=engine(),work=tmp_path/'again',catalog_root=tmp_path/'catalog',
+        table={'namespace':['archive'],'name':'filename_readings'})
+    assert second['files'] == [] and first['metadata_location'] == second['metadata_location']
+    metadata=json.loads(Path(first['metadata_location']).read_text())
+    schema=metadata['schemas'][0]
+    assert schema['identifier-field-ids'] == [1,2,3]
+    assert metadata['format-version'] == 2 and metadata['properties']['gc.enabled'] == 'true'
+    assert metadata['partition-specs'][0]['fields'][0]['source-id'] == 3
+    assert [field['name'] for field in schema['fields']] == module.SCHEMA.names
