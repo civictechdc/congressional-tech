@@ -17,6 +17,12 @@ from viewer_publication.release_identity import source_files, encoded
 ORIGIN = '33e8f85230e6936962b178d064984950ae1f38dc'
 COMPACT = '708955ea59197c4956a53a405b7e30428eeee263'
 PRODUCER = 'packages/viewer_publication/src/viewer_publication/filename_native.py'
+COMPACT_RUNTIME = '146931b328d8af5384f8540b6b5bd3b050159815'
+SOURCE_CACHE = 'fe82754f0aa26ce60dc592f0a4a2f29c1a6f67c4'
+ORIGINAL_TOOL_SHA256 = '81d4977b3392bc83b6ca2d833d645cf623ba808fa262a196c746dbb6548bf4e4'
+SOURCE_CACHE_FILES = (PRODUCER,
+    'packages/congress_api/src/congress_api/retention/catalog_rows.py',
+    'packages/congress_api/src/congress_api/retention/catalog_dependency_storage.py')
 EXPECTED_CHUNKS = {'documents': 74, 'filenames': 106}
 RECEIPT = 'checkpoint-adoption.json'
 
@@ -36,28 +42,31 @@ def git(root, *args):
 
 
 def code_proof(root):
-    """Only the exact reviewed compact renderer may differ in production inputs."""
+    """Permit only the two exact reviewed production trees."""
     current = source_files(root)
-    expected = {}
-    differences = []
-    for name, sha in current.items():
-        old = hashlib.sha256(subprocess.check_output(
-            ['git', 'show', ORIGIN + ':' + name], cwd=root)).hexdigest()
-        expected[name] = old
-        if old != sha:
-            differences.append(name)
-    if differences != [PRODUCER]:
-        raise ValueError('Production changes exceed the reviewed compact renderer')
-    approved = subprocess.check_output(['git', 'show', COMPACT + ':' + PRODUCER], cwd=root)
-    if hashlib.sha256(approved).hexdigest() != current[PRODUCER]:
-        raise ValueError('Renderer is not the exact reviewed compact implementation')
-    subprocess.run(['git', 'merge-base', '--is-ancestor', COMPACT, 'HEAD'], cwd=root, check=True)
-    return dict(original_revision=ORIGIN, reviewed_compact_revision=COMPACT,
+    def blob(revision, name):
+        return hashlib.sha256(subprocess.check_output(
+            ['git', 'show', revision + ':' + name], cwd=root)).hexdigest()
+    origin = {name:blob(ORIGIN, name) for name in current}
+    compact = dict(origin, **{PRODUCER:blob(COMPACT, PRODUCER)})
+    optimized = dict(compact, **{name:blob(SOURCE_CACHE, name) for name in SOURCE_CACHE_FILES})
+    if current == compact:
+        approved, compatibility = COMPACT, 'Only the reviewed document flat-occurrence export is omitted; retained document and observation binaries are reused.'
+    elif current == optimized:
+        approved, compatibility = SOURCE_CACHE, 'Exact reviewed compact export plus validated occurrence schema/owner-slice caching; completed binary assets and task results are unchanged.'
+    else:
+        raise ValueError('Production changes exceed the exact reviewed compact/source-cache implementations')
+    subprocess.run(['git', 'merge-base', '--is-ancestor', approved, 'HEAD'], cwd=root, check=True)
+    result = dict(original_revision=ORIGIN, reviewed_compact_revision=COMPACT,
         target_revision=git(root, 'rev-parse', 'HEAD').decode(),
-        original_implementation=hashlib.sha256(encoded(expected)).hexdigest(),
+        original_implementation=hashlib.sha256(encoded(origin)).hexdigest(),
         target_implementation=hashlib.sha256(encoded(current)).hexdigest(),
-        changed_production_files=differences,
-        compatibility='Only the reviewed document flat-occurrence export is omitted; retained document and observation binaries are reused.')
+        changed_production_files=[name for name in current if current[name] != origin[name]],
+        compatibility=compatibility)
+    if approved == SOURCE_CACHE:
+        result.update(reviewed_source_cache_revision=SOURCE_CACHE,
+                      compact_implementation=hashlib.sha256(encoded(compact)).hexdigest())
+    return result
 
 
 def verify_copy(archive, directory, inventory, copy_receipt=None):
@@ -181,6 +190,103 @@ def adopt_copy(directory, *, authorization, code, identity, requirements, copy_p
     return result
 
 
+def table_proof(db, query):
+    digest = hashlib.sha256()
+    count = 0
+    for row in db.execute(query):
+        digest.update(canonical_json_bytes(row));digest.update(b'\n');count += 1
+    return dict(rows=count, sha256=digest.hexdigest())
+
+
+def rebind_copy(directory, *, authorization, code, identity, requirements):
+    """One explicit old-146 to reviewed-source-cache rebind; no payload/task edits."""
+    root = Path(directory)
+    if not authorization.strip() or code.get('reviewed_source_cache_revision') != SOURCE_CACHE:
+        raise ValueError('Rebind requires authorization and the exact reviewed source-cache code')
+    if any((root / name).exists() for name in ('preparation.json','prepared-result.json',
+            'publication/manifest.json','publication/recovery-prepared.json','checkpoint-rebind.json')):
+        raise ValueError('Only an unaccepted, not-yet-rebound checkpoint may be rebound')
+    old_bytes = (root / 'continuation.json').read_bytes()
+    continuation = json.loads(old_bytes)
+    old = continuation['binding']
+    marker_bytes = (root / RECEIPT).read_bytes()
+    marker = json.loads(marker_bytes)
+    result_before = json.loads((root / 'checkpoint-adoption-result.json').read_bytes())
+    if continuation['phases'] or continuation['writes'] or continuation['versions']:
+        raise ValueError('Accepted phases or publication state forbid rebind')
+    if (old['provenance_revision'] != COMPACT_RUNTIME or old.get('checkpoint_reuse') != marker
+            or marker.get('kind') != 'authorized_local_checkpoint_reuse'
+            or marker.get('recovery_tool_sha256') != ORIGINAL_TOOL_SHA256
+            or marker['code'].get('original_revision') != ORIGIN
+            or marker['code'].get('reviewed_compact_revision') != COMPACT
+            or marker['code'].get('target_revision') != COMPACT_RUNTIME
+            or marker['code'].get('target_implementation') != code['compact_implementation']
+            or marker['code'].get('original_implementation') != code['original_implementation']
+            or old['code_runtime']['implementation'] != code['compact_implementation']
+            or result_before.get('status') != 'adopted_local_checkpoint'
+            or result_before.get('target_revision') != COMPACT_RUNTIME
+            or result_before.get('receipt_sha256') != hashlib.sha256(marker_bytes).hexdigest()):
+        raise ValueError('Checkpoint is not the known old-146 authorized adoption')
+    for key in ('source','viewer','accepted','native_execution','mode','run_id','run_attempt','publisher_version'):
+        if old.get(key) != marker['original_preparation_binding'].get(key):
+            raise ValueError('Original protected inputs or native execution changed')
+    if (identity['implementation'] != code['target_implementation']
+            or {k:v for k,v in old['code_runtime'].items() if k != 'implementation'}
+               != {k:v for k,v in identity.items() if k != 'implementation'}
+            or old['publisher_version'] != identity['publisher_version']):
+        raise ValueError('Native dependencies/runtime/publisher or target identity changed')
+    database = root / 'publication.renderer-upgrade/stages.sqlite'
+    with sqlite3.connect(database, timeout=0) as db:
+        db.execute('PRAGMA synchronous=FULL')
+        db.execute('BEGIN IMMEDIATE')
+        rows = db.execute('SELECT binding,created FROM build').fetchall()
+        if len(rows) != 1:
+            raise ValueError('Checkpoint requires its single renderer binding')
+        raw, created = rows[0]
+        renderer = json.loads(raw)
+        if (renderer['preparation'] != old or renderer['source'] != marker['catalog_identity']
+                or renderer['source']['selector_sha256'] != old['source']['sha256']):
+            raise ValueError('Preparation, catalog and original marker bindings differ')
+        before_policy = {k:v for k,v in renderer['requirements'].items() if k != 'implementation'}
+        after_policy = {k:v for k,v in requirements.items() if k != 'implementation'}
+        if before_policy != after_policy:
+            raise ValueError('Renderer policy/compression/runtime changed')
+        tasks = [name for name, in db.execute('SELECT task FROM progress ORDER BY task')]
+        chunks = dict(db.execute('SELECT label,count(*) FROM chunks GROUP BY label'))
+        expected_tasks = {'component-registration','stage:component_scope'} | {
+            'component-chunk:' + name for name, in db.execute('SELECT name FROM chunks')}
+        if chunks != EXPECTED_CHUNKS or not expected_tasks <= set(tasks) or 'finished' in tasks:
+            raise ValueError('Checkpoint lost required chunks or already finished publication')
+        preserved = dict(
+            progress=table_proof(db, 'SELECT task,result FROM progress ORDER BY task'),
+            assets=table_proof(db, 'SELECT path,bytes,sha256 FROM assets ORDER BY path'),
+            chunk_assets=table_proof(db, 'SELECT name,reference FROM chunk_assets ORDER BY name'))
+        new_marker = dict(version=1, kind='authorized_local_checkpoint_rebind',
+            authorization=authorization, at=datetime.now(timezone.utc).isoformat(),
+            recovery_tool_sha256=digest(__file__), code=code,
+            previous_preparation_binding=old,
+            previous_marker_sha256=hashlib.sha256(marker_bytes).hexdigest(),
+            previous_continuation_sha256=hashlib.sha256(old_bytes).hexdigest(),
+            previous_renderer_binding_sha256=hashlib.sha256(raw.encode()).hexdigest(),
+            catalog_identity=renderer['source'], reused_tasks=tasks, preserved_state=preserved,
+            compatibility='Exact reviewed fe82754f source-cache optimization. No task, asset, data or chunk-reference rows changed.')
+        new_binding = dict(old, code_runtime=identity, provenance_revision=code['target_revision'], checkpoint_reuse=new_marker)
+        new_renderer = dict(renderer, preparation=new_binding, requirements=requirements)
+        save(root / 'checkpoint-rebind.json', new_marker)
+        db.execute('UPDATE build SET binding=?', (canonical_json_bytes(new_renderer).decode(),))
+        db.commit()
+    # Original marker/binding remain embedded in the new bound provenance chain.
+    continuation['binding'] = new_binding
+    save(root / RECEIPT, new_marker)
+    save(root / 'continuation.json', continuation)
+    result = dict(status='rebound_local_checkpoint', directory=str(root),
+        target_revision=code['target_revision'], previous_revision=COMPACT_RUNTIME,
+        reused_chunks=sum(EXPECTED_CHUNKS.values()), preserved_state=preserved,
+        receipt_sha256=digest(root / RECEIPT), continuation_sha256=digest(root / 'continuation.json'))
+    save(root / 'checkpoint-rebind-result.json', result)
+    return result
+
+
 @contextmanager
 def authorized_continuation(directory):
     """Explicit local guard override; bind origin evidence into the final receipt."""
@@ -188,6 +294,8 @@ def authorized_continuation(directory):
     if not (root / 'checkpoint-adoption-result.json').is_file():
         raise ValueError('Adoption was not completed; discard/reclone any incomplete copy')
     marker = json.loads((root / RECEIPT).read_bytes())
+    if marker.get('kind') == 'authorized_local_checkpoint_rebind' and not (root / 'checkpoint-rebind-result.json').is_file():
+        raise ValueError('Rebind did not complete; restore the quiescent checkpoint copy')
     if marker['recovery_tool_sha256'] != digest(__file__):
         raise ValueError('Local recovery tool differs from the adopted operation')
     original = attempt.Continuation
@@ -213,7 +321,7 @@ def main():
     sys.path.insert(0, str(repo / 'scripts/publication'))
     from prepare_local_release import make_client
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['adopt', 'resume'])
+    parser.add_argument('operation', choices=['adopt', 'rebind', 'resume'])
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--archive', type=Path)
     parser.add_argument('--archive-inventory', type=Path)
@@ -233,17 +341,22 @@ def main():
         if actual_execution != old['native_execution']:
             raise ValueError('Native executable/configuration paths or bytes changed')
         proof = code_proof(repo)
-        if args.operation == 'adopt':
-            if not args.archive or not args.archive_inventory or not args.authorization:
-                parser.error('adopt requires archive, archive-inventory and authorization')
-            copy = verify_copy(args.archive, args.directory, args.archive_inventory, args.copy_receipt)
+        if args.operation in ('adopt', 'rebind'):
+            if not args.authorization:
+                parser.error('adopt/rebind requires authorization')
+            if args.operation == 'adopt':
+                if not args.archive or not args.archive_inventory:
+                    parser.error('adopt requires archive and archive-inventory')
+                copy = verify_copy(args.archive, args.directory, args.archive_inventory, args.copy_receipt)
             dbpath = args.directory / 'publication.renderer-upgrade/stages.sqlite'
             with sqlite3.connect(dbpath.resolve().as_uri() + '?mode=ro', uri=True) as db:
                 previous = json.loads(db.execute('SELECT binding FROM build').fetchone()[0])['requirements']
             requirements = filename_native.native_requirements(filename_viewer,
                 DecodedPolicy(**previous['policy']), CompressionPolicy(**previous['compression']))
-            result = adopt_copy(args.directory, authorization=args.authorization, code=proof,
-                identity=publisher.full_release_identity(), requirements=requirements, copy_proof=copy)
+            options = dict(authorization=args.authorization, code=proof,
+                identity=publisher.full_release_identity(), requirements=requirements)
+            result = (adopt_copy(args.directory, **options, copy_proof=copy) if args.operation == 'adopt'
+                      else rebind_copy(args.directory, **options))
         else:
             marker = json.loads((args.directory / RECEIPT).read_bytes())
             if marker['code'] != proof:
