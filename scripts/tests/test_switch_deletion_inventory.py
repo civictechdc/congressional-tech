@@ -45,6 +45,23 @@ class Wrapper:
     assert calls['Wrapper.method']=='package.covers.cover'
 
 
+def test_nested_definitions_are_qualified_and_unknown_calls_stay_unknown(inventory):
+    source=b'''def caller(argument):
+    def nested():
+        return 1
+    nested()
+    argument()
+    len([])
+    unknown.run()
+'''
+    calls={row['name']:row for row in inventory.py_index('example.py',source)['calls']}
+    assert calls['nested']['target']=='example.caller.nested'
+    assert calls['nested']['resolution']=='lexical_definition_reference'
+    assert calls['argument']['resolution']=='unresolved_local_call_syntax'
+    assert calls['len']['resolution']=='unresolved_name_call_syntax'
+    assert calls['unknown.run']['resolution']=='unresolved_attribute_call_syntax'
+
+
 def test_tracked_target_source_is_read_and_build_target_is_excluded(inventory,tmp_path):
     subprocess.run(['git','init','-q',str(tmp_path)],check=True)
     source='src/engine/history/target/tests.rs'
