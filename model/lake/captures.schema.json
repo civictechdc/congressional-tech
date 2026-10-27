@@ -1,0 +1,233 @@
+{
+  "type": "struct",
+  "schema-id": 0,
+  "identifier-field-ids": [
+    1,
+    2,
+    3
+  ],
+  "fields": [
+    {
+      "id": 1,
+      "name": "receipt_key",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 2,
+      "name": "receipt_line",
+      "required": true,
+      "type": "int"
+    },
+    {
+      "id": 3,
+      "name": "capture_index",
+      "required": true,
+      "type": "int"
+    },
+    {
+      "id": 4,
+      "name": "run_id",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 5,
+      "name": "mode",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 6,
+      "name": "outcome",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 7,
+      "name": "family",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 8,
+      "name": "requested_url",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 9,
+      "name": "url",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 10,
+      "name": "record_sha",
+      "required": false,
+      "type": "fixed[32]"
+    },
+    {
+      "id": 11,
+      "name": "http_status",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "id": 12,
+      "name": "attempt_status",
+      "required": false,
+      "type": "int"
+    },
+    {
+      "id": 13,
+      "name": "complete",
+      "required": false,
+      "type": "boolean"
+    },
+    {
+      "id": 14,
+      "name": "context_url",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 15,
+      "name": "member_path",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 16,
+      "name": "expansion",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 17,
+      "name": "h_content_disposition",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 18,
+      "name": "retry_after",
+      "required": false,
+      "type": "timestamptz"
+    },
+    {
+      "id": 19,
+      "name": "retrieved_at",
+      "required": false,
+      "type": "timestamptz"
+    },
+    {
+      "id": 20,
+      "name": "sha256",
+      "required": false,
+      "type": "fixed[32]"
+    },
+    {
+      "id": 21,
+      "name": "bytes",
+      "required": false,
+      "type": "long"
+    },
+    {
+      "id": 22,
+      "name": "media_type",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 23,
+      "name": "fidelity",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 24,
+      "name": "sniffed_format",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 25,
+      "name": "sniff_version",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 26,
+      "name": "intact",
+      "required": false,
+      "type": "boolean"
+    },
+    {
+      "id": 27,
+      "name": "stored_suffix",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 28,
+      "name": "stored_md5",
+      "required": false,
+      "type": "fixed[16]"
+    },
+    {
+      "id": 29,
+      "name": "stored_bytes",
+      "required": false,
+      "type": "long"
+    },
+    {
+      "id": 30,
+      "name": "recovery_category",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 31,
+      "name": "original_url",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 32,
+      "name": "recovered_url",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 33,
+      "name": "match_basis",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 34,
+      "name": "evidence_sha256",
+      "required": false,
+      "type": "fixed[32]"
+    },
+    {
+      "id": 35,
+      "name": "imported_at",
+      "required": false,
+      "type": "timestamptz"
+    },
+    {
+      "id": 36,
+      "name": "writer_job",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 37,
+      "name": "writer_commit",
+      "required": false,
+      "type": "string"
+    }
+  ]
+}

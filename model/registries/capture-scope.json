@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "family": "congress/meetings",
+      "patterns": [
+        "^https://api\\.congress\\.gov/v3/committee-meeting/[^#]+$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "house/witness-xml",
+      "patterns": [
+        "^https://docs\\.house\\.gov/meetings/[^#]*[Ww]List[^#]*\\.xml(?:\\?[^#]*)?$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "house/meeting-xml",
+      "patterns": [
+        "^https://docs\\.house\\.gov/meetings/[^#]*/HMTG-[^#]+\\.xml(?:\\?[^#]*)?$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "govinfo/mods",
+      "patterns": [
+        "^https://(?:www\\.)?govinfo\\.gov/metadata/pkg/[^/#]+/mods\\.xml(?:\\?[^#]*)?$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "govinfo/mets",
+      "patterns": [
+        "^https://(?:www\\.)?govinfo\\.gov/metadata/pkg/[^/#]+/(?:mets|dip)\\.xml(?:\\?[^#]*)?$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "govinfo/premis",
+      "patterns": [
+        "^https://(?:www\\.)?govinfo\\.gov/metadata/pkg/[^/#]+/premis\\.xml(?:\\?[^#]*)?$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "govinfo/transcript-html",
+      "patterns": [
+        "^https://(?:www\\.)?govinfo\\.gov/content/pkg/[^/#]+/html/[^#]+$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "documents",
+      "patterns": [
+        "^https://docs\\.house\\.gov/(?:meetings|billsthisweek)/[^#]+$",
+        "^https://(?:www\\.)?govinfo\\.gov/content/pkg/[^#]+$",
+        "^https://(?:www\\.)?gpo\\.gov/fdsys/pkg/[^#]+$",
+        "^https://(?:[a-z0-9-]+\\.)*(?:house|senate)\\.gov/(?:imo/media/doc|uploads|download|downloads|services/files)/[^#]+$",
+        "^https://(?:[a-z0-9-]+\\.)+senate\\.gov/(?:public/)?index\\.cfm\\?a=files\\.serve(?:&[^#]*)?$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "house/pages",
+      "patterns": [
+        "^https://docs\\.house\\.gov/(?:Committee|committee|Calendar|calendar|ByEvent\\.aspx)[^#]*$",
+        "^https://(?:[a-z0-9-]+\\.)+house\\.gov/(?:hearings?|events?|calendar|meetings?|markups?|committee-activity|wp-json)(?:/|\\?)[^#]*$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "senate/pages",
+      "patterns": [
+        "^https://(?:[a-z0-9-]+\\.)+senate\\.gov/(?:hearings?|events?|calendar|meetings?|markups?|committee-activity|wp-json)(?:/|\\?)[^#]*$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "senate/captions",
+      "patterns": [
+        "^https://www-senate-gov-media-srs\\.akamaized\\.net/hls/[^#]+\\.(?:vtt|srt)(?:\\?[^#]*)?$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "senate/players",
+      "patterns": [
+        "^https://(?:www\\.)?senate\\.gov/isvp/?\\?[^#]+$",
+        "^https://www-senate-gov-media-srs\\.akamaized\\.net/hls/[^#]+\\.m3u8(?:\\?[^#]*)?$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    },
+    {
+      "family": "youtube/captions",
+      "patterns": [
+        "^https://(?:www\\.)?youtube\\.com/api/timedtext\\?[^#]+$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
+    }
+  ]
+}

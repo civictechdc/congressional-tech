@@ -1,0 +1,7 @@
+[
+  {"priority": 0, "parameter": "file"},
+  {"priority": 1, "parameter": "filename"},
+  {"priority": 2, "parameter": "name"},
+  {"priority": 3, "parameter": "document"},
+  {"priority": 4, "parameter": "attachment"}
+]
