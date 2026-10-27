@@ -1868,6 +1868,133 @@
           "group_path": "html[1]/body[1]/ul[1]/li[1]"
         }
       ]
+    },
+    {
+      "id": "candidate-fingerprint-propagation-only",
+      "files": [
+        {
+          "source_id": "a",
+          "body_sha": "a",
+          "format": "pdf",
+          "context_url": "https://fixture.test/edition",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "A",
+          "directory": "https://fixture.test/a/",
+          "stem": "a",
+          "is_real_file": true
+        },
+        {
+          "source_id": "b",
+          "body_sha": "b",
+          "format": "pdf",
+          "context_url": "https://fixture.test/edition",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "B",
+          "directory": "https://fixture.test/b/",
+          "stem": "b",
+          "is_real_file": true
+        },
+        {
+          "source_id": "c",
+          "body_sha": "c",
+          "format": "pdf",
+          "context_url": "https://fixture.test/equal",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "A",
+          "directory": "https://fixture.test/c/",
+          "stem": "c",
+          "is_real_file": true
+        },
+        {
+          "source_id": "d",
+          "body_sha": "d",
+          "format": "pdf",
+          "context_url": "https://fixture.test/equal",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "A",
+          "directory": "https://fixture.test/d/",
+          "stem": "d",
+          "is_real_file": true
+        },
+        {
+          "source_id": "e",
+          "body_sha": "e",
+          "format": "pdf",
+          "context_url": "https://fixture.test/single",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "A",
+          "directory": "https://fixture.test/e/",
+          "stem": "e",
+          "is_real_file": true
+        },
+        {
+          "source_id": "z",
+          "body_sha": "z",
+          "format": "xml",
+          "context_url": "https://fixture.test/xml",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "directory": "https://fixture.test/z/",
+          "stem": "z",
+          "is_real_file": true
+        }
+      ],
+      "publisher_links": [
+        {
+          "source_id": "c",
+          "page_body": "page-candidate",
+          "context": "https://fixture.test/candidate",
+          "group_path": "list/item"
+        },
+        {
+          "source_id": "z",
+          "page_body": "page-candidate",
+          "context": "https://fixture.test/candidate",
+          "group_path": "list/item"
+        },
+        {
+          "source_id": "e",
+          "page_body": "page-noncandidate",
+          "context": "https://fixture.test/noncandidate",
+          "group_path": "list/item"
+        },
+        {
+          "source_id": "z",
+          "page_body": "page-noncandidate",
+          "context": "https://fixture.test/noncandidate",
+          "group_path": "list/item"
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ],
+          [
+            "c",
+            "d"
+          ],
+          [
+            "e",
+            "z"
+          ]
+        ],
+        "edition_bodies": [
+          "a",
+          "b",
+          "c",
+          "d"
+        ]
+      }
     }
   ],
   "links": [
