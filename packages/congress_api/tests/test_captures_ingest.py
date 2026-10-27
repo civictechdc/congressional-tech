@@ -140,6 +140,21 @@ def test_ingested_receipt_is_never_reopened_by_stage(tmp_path):
     assert pq.read_table(stage/'captures.parquet')['receipt_key'].to_pylist()==[pending[0]['key']]
 
 
+def test_staging_refuses_metadata_with_a_different_producer(tmp_path):
+    from congress_api.lake.receipt_metadata import compact
+    from congress_api.lake.captures import stage_captures
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    source=files(tmp_path/'raw',[dict(record=dict(url='https://example.org/a'))])
+    metadata=compact(files=source,engine=engine,work=tmp_path/'metadata')
+    manifest=metadata.parent/'metadata.json'
+    descriptor=json.loads(manifest.read_text())
+    descriptor['producer']['sha256']='0'*64
+    manifest.write_text(json.dumps(descriptor))
+    with pytest.raises(ValueError,match='producer'):
+        stage_captures([dict(key=source[0]['key'])],engine=engine,work=tmp_path/'stage',counter=metadata)
+    assert not (tmp_path/'stage/ingested-receipts.json').exists()
+
+
 def test_inline_record_sha_canonical_json_required(tmp_path):
     record = dict(z=2, meeting=dict(z=['é', dict(b=2, a=1)], a='value'))
     stage = ingest(tmp_path, [dict(record=record)],
