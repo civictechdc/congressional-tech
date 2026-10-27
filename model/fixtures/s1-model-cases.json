@@ -1,0 +1,1684 @@
+{
+  "note": "Synthetic acceptance data; these URLs are never registry seed evidence. Expected outcomes precede SQL.",
+  "roles": [
+    {
+      "id": "good-pdf",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "good-pdf",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/good-pdf",
+        "url": "https://fixture.test/good-pdf",
+        "member_path": null,
+        "format": "pdf",
+        "intact": true,
+        "intact_basis": "capture",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "broken-pdf",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "broken-pdf",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/broken-pdf",
+        "url": "https://fixture.test/broken-pdf",
+        "member_path": null,
+        "format": "pdf",
+        "intact": false,
+        "intact_basis": "read",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "damaged",
+        "real_file": false
+      }
+    },
+    {
+      "id": "reader-limit-pdf",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "reader-limit-pdf",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/reader-limit-pdf",
+        "url": "https://fixture.test/reader-limit-pdf",
+        "member_path": null,
+        "format": "pdf",
+        "intact": false,
+        "intact_basis": "read",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12,
+        "error_type": "pdf_reader_size_limit"
+      },
+      "expected": {
+        "record_role": "damaged",
+        "real_file": false
+      }
+    },
+    {
+      "id": "unchecked-gzip-pdf",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "unchecked-gzip-pdf",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/unchecked-gzip-pdf",
+        "url": "https://fixture.test/unchecked-gzip-pdf",
+        "member_path": null,
+        "format": "pdf",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "caption",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "caption",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/caption",
+        "url": "https://fixture.test/caption",
+        "member_path": null,
+        "format": "vtt",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "caption",
+        "real_file": false
+      }
+    },
+    {
+      "id": "playlist",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "playlist",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/playlist",
+        "url": "https://fixture.test/playlist",
+        "member_path": null,
+        "format": "m3u8",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "playlist",
+        "real_file": false
+      }
+    },
+    {
+      "id": "archive-original",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "archive-original",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/archive-original",
+        "url": "https://fixture.test/archive-original",
+        "member_path": null,
+        "format": "warc",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "envelope",
+        "real_file": false
+      }
+    },
+    {
+      "id": "api-without-reading",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "api-without-reading",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/api-without-reading",
+        "url": "https://api.congress.gov/v3/committee-meeting/119/house/118611",
+        "member_path": null,
+        "format": "json",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": null,
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "api",
+        "real_file": false
+      }
+    },
+    {
+      "id": "missing-page-reading",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "missing-page-reading",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/missing-page-reading",
+        "url": "https://fixture.test/missing-page-reading",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": null,
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": null,
+        "real_file": false
+      }
+    },
+    {
+      "id": "rejected-page-reading",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "rejected-page-reading",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/rejected-page-reading",
+        "url": "https://fixture.test/rejected-page-reading",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "error",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": null,
+        "real_file": false
+      }
+    },
+    {
+      "id": "mods",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "mods",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/mods",
+        "url": "https://fixture.test/mods",
+        "member_path": null,
+        "format": "xml",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": "{http://www.loc.gov/mods/v3}mods",
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "source_record",
+        "real_file": false
+      }
+    },
+    {
+      "id": "house-witness-list",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "house-witness-list",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/house-witness-list",
+        "url": "https://fixture.test/house-witness-list",
+        "member_path": null,
+        "format": "xml",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": "witness-list",
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "source_record",
+        "real_file": false
+      }
+    },
+    {
+      "id": "soft-error",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "soft-error",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/soft-error",
+        "url": "https://fixture.test/soft-error",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "Page Not Found",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 300,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "error_response",
+        "real_file": false
+      }
+    },
+    {
+      "id": "near-empty",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "near-empty",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/near-empty",
+        "url": "https://fixture.test/near-empty",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 10,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "error_response",
+        "real_file": false
+      }
+    },
+    {
+      "id": "download-wrapper",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "download-wrapper",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/download-wrapper",
+        "url": "https://fixture.test/download-wrapper",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "Your download will begin shortly. Please wait.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "wrapper",
+        "real_file": false
+      }
+    },
+    {
+      "id": "short-real-page",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "short-real-page",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/short-real-page",
+        "url": "https://fixture.test/short-real-page",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 180,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "link-heavy-listing",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "link-heavy-listing",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/link-heavy-listing",
+        "url": "https://fixture.test/link-heavy-listing",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 1000,
+        "link_count": 30,
+        "link_text_bytes": 900
+      },
+      "expected": {
+        "record_role": "listing",
+        "real_file": false
+      }
+    },
+    {
+      "id": "feed",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "feed",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/feed",
+        "url": "https://fixture.test/feed",
+        "member_path": null,
+        "format": "xml",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": "rss",
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "listing",
+        "real_file": false
+      }
+    },
+    {
+      "id": "html-at-file-shaped-url",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "html-at-file-shaped-url",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/html-at-file-shaped-url",
+        "url": "https://fixture.test/a.pdf",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": false
+      }
+    },
+    {
+      "id": "member-html-is-not-container-file-shaped",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "member-html-is-not-container-file-shaped",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/archive.zip",
+        "url": "https://fixture.test/archive.zip",
+        "member_path": "report.html",
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "cut-off-attempt",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": false,
+        "sha256": "cut-off-attempt",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/cut-off-attempt",
+        "url": "https://fixture.test/cut-off-attempt",
+        "member_path": null,
+        "format": "pdf",
+        "intact": true,
+        "intact_basis": "capture",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": false
+      }
+    },
+    {
+      "id": "good-provider-retry",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 201,
+        "complete": true,
+        "sha256": "good-provider-retry",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/good-provider-retry",
+        "url": "https://fixture.test/good-provider-retry",
+        "member_path": null,
+        "format": "pdf",
+        "intact": true,
+        "intact_basis": "capture",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      }
+    },
+    {
+      "id": "import-is-not-fetch",
+      "input": {
+        "mode": "retained_import",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "import-is-not-fetch",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/import-is-not-fetch",
+        "url": "https://fixture.test/import-is-not-fetch",
+        "member_path": null,
+        "format": "pdf",
+        "intact": true,
+        "intact_basis": "read",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": false
+      }
+    },
+    {
+      "id": "zero-byte",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "zero-byte",
+        "bytes": 0,
+        "context_url": "https://fixture.test/zero-byte",
+        "url": "https://fixture.test/zero-byte",
+        "member_path": null,
+        "format": "text",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": false
+      }
+    },
+    {
+      "id": "no-format",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "attempt_status": 200,
+        "complete": true,
+        "sha256": "no-format",
+        "bytes": 1000,
+        "context_url": "https://fixture.test/no-format",
+        "url": "https://fixture.test/no-format",
+        "member_path": null,
+        "format": null,
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "",
+        "heading": "",
+        "text_head": "A substantive committee hearing page with an agenda and testimony.",
+        "text_bytes": 400,
+        "link_count": 1,
+        "link_text_bytes": 12
+      },
+      "expected": {
+        "record_role": null,
+        "real_file": false
+      }
+    }
+  ],
+  "groups": [
+    {
+      "id": "replaced-pdf-stable-xml",
+      "files": [
+        {
+          "source_id": "p1",
+          "body_sha": "p1",
+          "format": "pdf",
+          "context_url": "https://fixture.test/report.pdf",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page1",
+          "directory": "https://fixture.test/files/",
+          "stem": "p1",
+          "is_real_file": true
+        },
+        {
+          "source_id": "p2",
+          "body_sha": "p2",
+          "format": "pdf",
+          "context_url": "https://fixture.test/report.pdf",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page2",
+          "directory": "https://fixture.test/files/",
+          "stem": "p2",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page1",
+          "directory": "https://fixture.test/files/",
+          "stem": "x",
+          "is_real_file": true
+        },
+        {
+          "source_id": "xm",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/xm",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page2",
+          "directory": "https://fixture.test/files/",
+          "stem": "xm",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "p1"
+          ],
+          [
+            "p2"
+          ],
+          [
+            "x",
+            "xm"
+          ]
+        ],
+        "edition_bodies": [
+          "p1",
+          "p2"
+        ]
+      }
+    },
+    {
+      "id": "edition-mirrors-keep-apart",
+      "files": [
+        {
+          "source_id": "p1",
+          "body_sha": "p1",
+          "format": "pdf",
+          "context_url": "https://fixture.test/shared.pdf",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "p1",
+          "is_real_file": true
+        },
+        {
+          "source_id": "p2",
+          "body_sha": "p2",
+          "format": "pdf",
+          "context_url": "https://fixture.test/shared.pdf",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "p2",
+          "is_real_file": true
+        },
+        {
+          "source_id": "m1",
+          "body_sha": "p1",
+          "format": "pdf",
+          "context_url": "https://fixture.test/m1",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "mirror1",
+          "directory": "https://fixture.test/files/",
+          "stem": "m1",
+          "is_real_file": true
+        },
+        {
+          "source_id": "m2",
+          "body_sha": "p2",
+          "format": "pdf",
+          "context_url": "https://fixture.test/m2",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "mirror2",
+          "directory": "https://fixture.test/files/",
+          "stem": "m2",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x1",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x1",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "mirror1",
+          "directory": "https://fixture.test/files/",
+          "stem": "x1",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x2",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x2",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "mirror2",
+          "directory": "https://fixture.test/files/",
+          "stem": "x2",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "p1",
+            "m1"
+          ],
+          [
+            "p2",
+            "m2"
+          ],
+          [
+            "x1",
+            "x2"
+          ]
+        ],
+        "edition_bodies": [
+          "p1",
+          "p2"
+        ]
+      }
+    },
+    {
+      "id": "repackaged-edition-known-limit",
+      "files": [
+        {
+          "source_id": "p1",
+          "body_sha": "repack1",
+          "format": "pdf",
+          "context_url": "https://fixture.test/p1",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "a",
+          "directory": "https://fixture.test/files/",
+          "stem": "p1",
+          "is_real_file": true
+        },
+        {
+          "source_id": "p2",
+          "body_sha": "repack2",
+          "format": "pdf",
+          "context_url": "https://fixture.test/p2",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "b",
+          "directory": "https://fixture.test/files/",
+          "stem": "p2",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x1",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x1",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "a",
+          "directory": "https://fixture.test/files/",
+          "stem": "x1",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x2",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x2",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "b",
+          "directory": "https://fixture.test/files/",
+          "stem": "x2",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "p1",
+            "p2",
+            "x1",
+            "x2"
+          ]
+        ],
+        "edition_bodies": []
+      }
+    },
+    {
+      "id": "member-position-not-endpoint",
+      "files": [
+        {
+          "source_id": "old",
+          "body_sha": "old",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a.zip",
+          "member_path": "report.pdf",
+          "entry_index": 2,
+          "fingerprint": null,
+          "publisher_group": "a",
+          "directory": "https://fixture.test/files/",
+          "stem": "old",
+          "is_real_file": true
+        },
+        {
+          "source_id": "new",
+          "body_sha": "new",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a.zip",
+          "member_path": "report.pdf",
+          "entry_index": 4,
+          "fingerprint": null,
+          "publisher_group": "b",
+          "directory": "https://fixture.test/files/",
+          "stem": "new",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "a",
+          "directory": "https://fixture.test/files/",
+          "stem": "x",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "old"
+          ],
+          [
+            "new"
+          ],
+          [
+            "x"
+          ]
+        ],
+        "edition_bodies": [
+          "old",
+          "new"
+        ]
+      }
+    },
+    {
+      "id": "duplicate-member-name",
+      "files": [
+        {
+          "source_id": "a",
+          "body_sha": "a",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a.zip",
+          "member_path": "report.pdf",
+          "entry_index": 0,
+          "fingerprint": null,
+          "publisher_group": "g",
+          "directory": "https://fixture.test/files/",
+          "stem": "a",
+          "is_real_file": true
+        },
+        {
+          "source_id": "b",
+          "body_sha": "b",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a.zip",
+          "member_path": "report.pdf",
+          "entry_index": 1,
+          "fingerprint": null,
+          "publisher_group": "g",
+          "directory": "https://fixture.test/files/",
+          "stem": "b",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "g",
+          "directory": "https://fixture.test/files/",
+          "stem": "x",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ],
+          [
+            "x"
+          ]
+        ],
+        "edition_bodies": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "id": "linked-govinfo-package",
+      "files": [
+        {
+          "source_id": "zip",
+          "body_sha": "zip",
+          "format": "zip",
+          "context_url": "https://fixture.test/zip",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page",
+          "directory": "https://fixture.test/files/",
+          "stem": "zip",
+          "is_real_file": true
+        },
+        {
+          "source_id": "pdf",
+          "body_sha": "pdf",
+          "format": "pdf",
+          "context_url": "https://fixture.test/pdf",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page",
+          "directory": "https://fixture.test/files/",
+          "stem": "pdf",
+          "is_real_file": true
+        },
+        {
+          "source_id": "html",
+          "body_sha": "html",
+          "format": "html",
+          "context_url": "https://fixture.test/html",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page",
+          "directory": "https://fixture.test/files/",
+          "stem": "html",
+          "is_real_file": true
+        },
+        {
+          "source_id": "mods",
+          "body_sha": "mods",
+          "format": "xml",
+          "context_url": "https://fixture.test/mods",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page",
+          "directory": "https://fixture.test/files/",
+          "stem": "mods",
+          "is_real_file": false
+        },
+        {
+          "source_id": "mets",
+          "body_sha": "mets",
+          "format": "xml",
+          "context_url": "https://fixture.test/mets",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page",
+          "directory": "https://fixture.test/files/",
+          "stem": "mets",
+          "is_real_file": false
+        },
+        {
+          "source_id": "premis",
+          "body_sha": "premis",
+          "format": "xml",
+          "context_url": "https://fixture.test/premis",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page",
+          "directory": "https://fixture.test/files/",
+          "stem": "premis",
+          "is_real_file": false
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "zip",
+            "pdf",
+            "html"
+          ]
+        ],
+        "excluded": [
+          "mods",
+          "mets",
+          "premis"
+        ]
+      }
+    },
+    {
+      "id": "two-pdfs-in-one-package",
+      "files": [
+        {
+          "source_id": "zip",
+          "body_sha": "zip",
+          "format": "zip",
+          "context_url": "https://fixture.test/zip",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page",
+          "directory": "https://fixture.test/files/",
+          "stem": "zip",
+          "is_real_file": true
+        },
+        {
+          "source_id": "a",
+          "body_sha": "a",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page",
+          "directory": "https://fixture.test/files/",
+          "stem": "a",
+          "is_real_file": true
+        },
+        {
+          "source_id": "b",
+          "body_sha": "b",
+          "format": "pdf",
+          "context_url": "https://fixture.test/b",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "page",
+          "directory": "https://fixture.test/files/",
+          "stem": "b",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "zip"
+          ],
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ],
+        "rendition_groups": []
+      }
+    },
+    {
+      "id": "same-format-publisher-list",
+      "files": [
+        {
+          "source_id": "a",
+          "body_sha": "a",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "li",
+          "directory": "https://fixture.test/files/",
+          "stem": "a",
+          "is_real_file": true
+        },
+        {
+          "source_id": "b",
+          "body_sha": "b",
+          "format": "pdf",
+          "context_url": "https://fixture.test/b",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "li",
+          "directory": "https://fixture.test/files/",
+          "stem": "b",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "a"
+          ],
+          [
+            "b"
+          ]
+        ],
+        "rendition_groups": []
+      }
+    },
+    {
+      "id": "ungrouped-page-links",
+      "files": [
+        {
+          "source_id": "p",
+          "body_sha": "p",
+          "format": "pdf",
+          "context_url": "https://fixture.test/p",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "a",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "b",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "p"
+          ],
+          [
+            "x"
+          ]
+        ],
+        "rendition_groups": []
+      }
+    },
+    {
+      "id": "one-body-two-names",
+      "files": [
+        {
+          "source_id": "a",
+          "body_sha": "p",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "li",
+          "directory": "https://fixture.test/files/",
+          "stem": "a",
+          "is_real_file": true
+        },
+        {
+          "source_id": "b",
+          "body_sha": "p",
+          "format": "pdf",
+          "context_url": "https://fixture.test/b",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "li",
+          "directory": "https://fixture.test/files/",
+          "stem": "b",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "li",
+          "directory": "https://fixture.test/files/",
+          "stem": "x",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "a",
+            "b",
+            "x"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "template-pages-remain-separate-contexts",
+      "files": [
+        {
+          "source_id": "p",
+          "body_sha": "p",
+          "format": "pdf",
+          "context_url": "https://fixture.test/p",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "template@contextA/li",
+          "directory": "https://fixture.test/files/",
+          "stem": "p",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "template@contextB/li",
+          "directory": "https://fixture.test/files/",
+          "stem": "x",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "p"
+          ],
+          [
+            "x"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "equal-main-content-at-one-endpoint",
+      "files": [
+        {
+          "source_id": "direct",
+          "body_sha": "d",
+          "format": "html",
+          "context_url": "https://fixture.test/hearing",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "main",
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "direct",
+          "is_real_file": true
+        },
+        {
+          "source_id": "provider",
+          "body_sha": "p",
+          "format": "html",
+          "context_url": "https://fixture.test/hearing",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": "main",
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "provider",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "direct",
+            "provider"
+          ]
+        ],
+        "edition_bodies": []
+      }
+    },
+    {
+      "id": "same-stem-fallback",
+      "files": [
+        {
+          "source_id": "pdf",
+          "body_sha": "p",
+          "format": "pdf",
+          "context_url": "https://fixture.test/pdf",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "Report",
+          "is_real_file": true
+        },
+        {
+          "source_id": "xml",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/xml",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "Report",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "pdf",
+            "xml"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "generic-and-case-sensitive-stems",
+      "files": [
+        {
+          "source_id": "a",
+          "body_sha": "a",
+          "format": "pdf",
+          "context_url": "https://fixture.test/a",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "index",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "index",
+          "is_real_file": true
+        },
+        {
+          "source_id": "b",
+          "body_sha": "b",
+          "format": "pdf",
+          "context_url": "https://fixture.test/b",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "Report",
+          "is_real_file": true
+        },
+        {
+          "source_id": "y",
+          "body_sha": "y",
+          "format": "xml",
+          "context_url": "https://fixture.test/y",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "report",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "a"
+          ],
+          [
+            "x"
+          ],
+          [
+            "b"
+          ],
+          [
+            "y"
+          ]
+        ]
+      }
+    },
+    {
+      "id": "publisher-members-do-not-fallback",
+      "files": [
+        {
+          "source_id": "p",
+          "body_sha": "p",
+          "format": "pdf",
+          "context_url": "https://fixture.test/p",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": "one",
+          "directory": "https://fixture.test/files/",
+          "stem": "report",
+          "is_real_file": true
+        },
+        {
+          "source_id": "x",
+          "body_sha": "x",
+          "format": "xml",
+          "context_url": "https://fixture.test/x",
+          "member_path": null,
+          "entry_index": null,
+          "fingerprint": null,
+          "publisher_group": null,
+          "directory": "https://fixture.test/files/",
+          "stem": "report",
+          "is_real_file": true
+        }
+      ],
+      "expected": {
+        "components": [
+          [
+            "p"
+          ],
+          [
+            "x"
+          ]
+        ]
+      }
+    }
+  ],
+  "links": [
+    {
+      "id": "relative-base",
+      "context": "https://fixture.test/one/page",
+      "base": "../files/",
+      "href": "report.pdf",
+      "expected": [
+        "https://fixture.test/files/report.pdf"
+      ]
+    },
+    {
+      "id": "same-body-second-directory",
+      "context": "https://fixture.test/two/page",
+      "base": null,
+      "href": "report.pdf",
+      "expected": [
+        "https://fixture.test/two/report.pdf"
+      ]
+    },
+    {
+      "id": "member-sibling",
+      "context": "https://fixture.test/a.zip",
+      "member_path": "html/report.html",
+      "base": null,
+      "href": "../pdf/report.pdf",
+      "expected": [
+        {
+          "context_url": "https://fixture.test/a.zip",
+          "member_path": "pdf/report.pdf"
+        }
+      ]
+    },
+    {
+      "id": "concatenated-href",
+      "context": "https://fixture.test/page",
+      "base": null,
+      "href": "https://fixture.test/a.pdfhttps://fixture.test/b.xml",
+      "expected": [
+        "https://fixture.test/a.pdf",
+        "https://fixture.test/b.xml"
+      ]
+    },
+    {
+      "id": "space-key",
+      "url": "https://www.FIXTURE.test/a b.pdf",
+      "equal_to": "http://fixture.test/a%20b.pdf/"
+    },
+    {
+      "id": "placeholder-contexts",
+      "body": "template",
+      "distinct_contexts": 101,
+      "expected": {
+        "real_file": false,
+        "resolved_links": 0
+      }
+    }
+  ]
+}
