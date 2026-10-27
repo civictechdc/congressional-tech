@@ -1,0 +1,7121 @@
+[
+  {
+    "id": "HLCN00-hlcn00",
+    "code": "HLCN00",
+    "system_code": "hlcn00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLCN00-hlcn00"
+  },
+  {
+    "id": "CN00-hlcn00",
+    "code": "CN00",
+    "system_code": "hlcn00",
+    "chamber": "house",
+    "sample_id": "committee-codes:CN00-hlcn00"
+  },
+  {
+    "id": "CN-hlcn00",
+    "code": "CN",
+    "system_code": "hlcn00",
+    "chamber": "house",
+    "sample_id": "committee-codes:CN-hlcn00"
+  },
+  {
+    "id": "HLEF00-hlef00",
+    "code": "HLEF00",
+    "system_code": "hlef00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLEF00-hlef00"
+  },
+  {
+    "id": "EF00-hlef00",
+    "code": "EF00",
+    "system_code": "hlef00",
+    "chamber": "house",
+    "sample_id": "committee-codes:EF00-hlef00"
+  },
+  {
+    "id": "EF-hlef00",
+    "code": "EF",
+    "system_code": "hlef00",
+    "chamber": "house",
+    "sample_id": "committee-codes:EF-hlef00"
+  },
+  {
+    "id": "HLFD00-hlfd00",
+    "code": "HLFD00",
+    "system_code": "hlfd00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLFD00-hlfd00"
+  },
+  {
+    "id": "FD00-hlfd00",
+    "code": "FD00",
+    "system_code": "hlfd00",
+    "chamber": "house",
+    "sample_id": "committee-codes:FD00-hlfd00"
+  },
+  {
+    "id": "FD-hlfd00",
+    "code": "FD",
+    "system_code": "hlfd00",
+    "chamber": "house",
+    "sample_id": "committee-codes:FD-hlfd00"
+  },
+  {
+    "id": "HLGW00-hlgw00",
+    "code": "HLGW00",
+    "system_code": "hlgw00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLGW00-hlgw00"
+  },
+  {
+    "id": "GW00-hlgw00",
+    "code": "GW00",
+    "system_code": "hlgw00",
+    "chamber": "house",
+    "sample_id": "committee-codes:GW00-hlgw00"
+  },
+  {
+    "id": "GW-hlgw00",
+    "code": "GW",
+    "system_code": "hlgw00",
+    "chamber": "house",
+    "sample_id": "committee-codes:GW-hlgw00"
+  },
+  {
+    "id": "HLHK00-hlhk00",
+    "code": "HLHK00",
+    "system_code": "hlhk00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLHK00-hlhk00"
+  },
+  {
+    "id": "HK00-hlhk00",
+    "code": "HK00",
+    "system_code": "hlhk00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HK00-hlhk00"
+  },
+  {
+    "id": "HK-hlhk00",
+    "code": "HK",
+    "system_code": "hlhk00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HK-hlhk00"
+  },
+  {
+    "id": "HLIE00-hlie00",
+    "code": "HLIE00",
+    "system_code": "hlie00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIE00-hlie00"
+  },
+  {
+    "id": "IE00-hlie00",
+    "code": "IE00",
+    "system_code": "hlie00",
+    "chamber": "house",
+    "sample_id": "committee-codes:IE00-hlie00"
+  },
+  {
+    "id": "IE-hlie00",
+    "code": "IE",
+    "system_code": "hlie00",
+    "chamber": "house",
+    "sample_id": "committee-codes:IE-hlie00"
+  },
+  {
+    "id": "HLIG00-hlig00",
+    "code": "HLIG00",
+    "system_code": "hlig00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG00-hlig00"
+  },
+  {
+    "id": "IG00-hlig00",
+    "code": "IG00",
+    "system_code": "hlig00",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG00-hlig00"
+  },
+  {
+    "id": "IG-hlig00",
+    "code": "IG",
+    "system_code": "hlig00",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG-hlig00"
+  },
+  {
+    "id": "HLIG01-hlig01",
+    "code": "HLIG01",
+    "system_code": "hlig01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG01-hlig01"
+  },
+  {
+    "id": "IG01-hlig01",
+    "code": "IG01",
+    "system_code": "hlig01",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG01-hlig01"
+  },
+  {
+    "id": "HLIG02-hlig02",
+    "code": "HLIG02",
+    "system_code": "hlig02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG02-hlig02"
+  },
+  {
+    "id": "IG02-hlig02",
+    "code": "IG02",
+    "system_code": "hlig02",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG02-hlig02"
+  },
+  {
+    "id": "HLIG03-hlig03",
+    "code": "HLIG03",
+    "system_code": "hlig03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG03-hlig03"
+  },
+  {
+    "id": "IG03-hlig03",
+    "code": "IG03",
+    "system_code": "hlig03",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG03-hlig03"
+  },
+  {
+    "id": "HLIG04-hlig04",
+    "code": "HLIG04",
+    "system_code": "hlig04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG04-hlig04"
+  },
+  {
+    "id": "IG04-hlig04",
+    "code": "IG04",
+    "system_code": "hlig04",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG04-hlig04"
+  },
+  {
+    "id": "HLIG05-hlig05",
+    "code": "HLIG05",
+    "system_code": "hlig05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG05-hlig05"
+  },
+  {
+    "id": "IG05-hlig05",
+    "code": "IG05",
+    "system_code": "hlig05",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG05-hlig05"
+  },
+  {
+    "id": "HLIG06-hlig06",
+    "code": "HLIG06",
+    "system_code": "hlig06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG06-hlig06"
+  },
+  {
+    "id": "IG06-hlig06",
+    "code": "IG06",
+    "system_code": "hlig06",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG06-hlig06"
+  },
+  {
+    "id": "HLIG07-hlig07",
+    "code": "HLIG07",
+    "system_code": "hlig07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG07-hlig07"
+  },
+  {
+    "id": "IG07-hlig07",
+    "code": "IG07",
+    "system_code": "hlig07",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG07-hlig07"
+  },
+  {
+    "id": "HLIG08-hlig08",
+    "code": "HLIG08",
+    "system_code": "hlig08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG08-hlig08"
+  },
+  {
+    "id": "IG08-hlig08",
+    "code": "IG08",
+    "system_code": "hlig08",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG08-hlig08"
+  },
+  {
+    "id": "HLIG09-hlig09",
+    "code": "HLIG09",
+    "system_code": "hlig09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG09-hlig09"
+  },
+  {
+    "id": "IG09-hlig09",
+    "code": "IG09",
+    "system_code": "hlig09",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG09-hlig09"
+  },
+  {
+    "id": "HLIG10-hlig10",
+    "code": "HLIG10",
+    "system_code": "hlig10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG10-hlig10"
+  },
+  {
+    "id": "IG10-hlig10",
+    "code": "IG10",
+    "system_code": "hlig10",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG10-hlig10"
+  },
+  {
+    "id": "HLIG11-hlig11",
+    "code": "HLIG11",
+    "system_code": "hlig11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIG11-hlig11"
+  },
+  {
+    "id": "IG11-hlig11",
+    "code": "IG11",
+    "system_code": "hlig11",
+    "chamber": "house",
+    "sample_id": "committee-codes:IG11-hlig11"
+  },
+  {
+    "id": "HLIJ00-hlij00",
+    "code": "HLIJ00",
+    "system_code": "hlij00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLIJ00-hlij00"
+  },
+  {
+    "id": "IJ00-hlij00",
+    "code": "IJ00",
+    "system_code": "hlij00",
+    "chamber": "house",
+    "sample_id": "committee-codes:IJ00-hlij00"
+  },
+  {
+    "id": "IJ-hlij00",
+    "code": "IJ",
+    "system_code": "hlij00",
+    "chamber": "house",
+    "sample_id": "committee-codes:IJ-hlij00"
+  },
+  {
+    "id": "HLMH00-hlmh00",
+    "code": "HLMH00",
+    "system_code": "hlmh00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLMH00-hlmh00"
+  },
+  {
+    "id": "MH00-hlmh00",
+    "code": "MH00",
+    "system_code": "hlmh00",
+    "chamber": "house",
+    "sample_id": "committee-codes:MH00-hlmh00"
+  },
+  {
+    "id": "MH-hlmh00",
+    "code": "MH",
+    "system_code": "hlmh00",
+    "chamber": "house",
+    "sample_id": "committee-codes:MH-hlmh00"
+  },
+  {
+    "id": "HLQJ00-hlqj00",
+    "code": "HLQJ00",
+    "system_code": "hlqj00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLQJ00-hlqj00"
+  },
+  {
+    "id": "QJ00-hlqj00",
+    "code": "QJ00",
+    "system_code": "hlqj00",
+    "chamber": "house",
+    "sample_id": "committee-codes:QJ00-hlqj00"
+  },
+  {
+    "id": "QJ-hlqj00",
+    "code": "QJ",
+    "system_code": "hlqj00",
+    "chamber": "house",
+    "sample_id": "committee-codes:QJ-hlqj00"
+  },
+  {
+    "id": "HLRK00-hlrk00",
+    "code": "HLRK00",
+    "system_code": "hlrk00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLRK00-hlrk00"
+  },
+  {
+    "id": "RK00-hlrk00",
+    "code": "RK00",
+    "system_code": "hlrk00",
+    "chamber": "house",
+    "sample_id": "committee-codes:RK00-hlrk00"
+  },
+  {
+    "id": "RK-hlrk00",
+    "code": "RK",
+    "system_code": "hlrk00",
+    "chamber": "house",
+    "sample_id": "committee-codes:RK-hlrk00"
+  },
+  {
+    "id": "HLVC00-hlvc00",
+    "code": "HLVC00",
+    "system_code": "hlvc00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLVC00-hlvc00"
+  },
+  {
+    "id": "VC00-hlvc00",
+    "code": "VC00",
+    "system_code": "hlvc00",
+    "chamber": "house",
+    "sample_id": "committee-codes:VC00-hlvc00"
+  },
+  {
+    "id": "VC-hlvc00",
+    "code": "VC",
+    "system_code": "hlvc00",
+    "chamber": "house",
+    "sample_id": "committee-codes:VC-hlvc00"
+  },
+  {
+    "id": "HLZI00-hlzi00",
+    "code": "HLZI00",
+    "system_code": "hlzi00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLZI00-hlzi00"
+  },
+  {
+    "id": "ZI00-hlzi00",
+    "code": "ZI00",
+    "system_code": "hlzi00",
+    "chamber": "house",
+    "sample_id": "committee-codes:ZI00-hlzi00"
+  },
+  {
+    "id": "ZI-hlzi00",
+    "code": "ZI",
+    "system_code": "hlzi00",
+    "chamber": "house",
+    "sample_id": "committee-codes:ZI-hlzi00"
+  },
+  {
+    "id": "HLZS00-hlzs00",
+    "code": "HLZS00",
+    "system_code": "hlzs00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HLZS00-hlzs00"
+  },
+  {
+    "id": "ZS00-hlzs00",
+    "code": "ZS00",
+    "system_code": "hlzs00",
+    "chamber": "house",
+    "sample_id": "committee-codes:ZS00-hlzs00"
+  },
+  {
+    "id": "ZS-hlzs00",
+    "code": "ZS",
+    "system_code": "hlzs00",
+    "chamber": "house",
+    "sample_id": "committee-codes:ZS-hlzs00"
+  },
+  {
+    "id": "HOTL00-hotl00",
+    "code": "HOTL00",
+    "system_code": "hotl00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HOTL00-hotl00"
+  },
+  {
+    "id": "HSAG00-hsag00",
+    "code": "HSAG00",
+    "system_code": "hsag00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG00-hsag00"
+  },
+  {
+    "id": "AG00-hsag00",
+    "code": "AG00",
+    "system_code": "hsag00",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG00-hsag00"
+  },
+  {
+    "id": "AG-hsag00",
+    "code": "AG",
+    "system_code": "hsag00",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG-hsag00"
+  },
+  {
+    "id": "HSAG01-hsag01",
+    "code": "HSAG01",
+    "system_code": "hsag01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG01-hsag01"
+  },
+  {
+    "id": "AG01-hsag01",
+    "code": "AG01",
+    "system_code": "hsag01",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG01-hsag01"
+  },
+  {
+    "id": "HSAG02-hsag02",
+    "code": "HSAG02",
+    "system_code": "hsag02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG02-hsag02"
+  },
+  {
+    "id": "AG02-hsag02",
+    "code": "AG02",
+    "system_code": "hsag02",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG02-hsag02"
+  },
+  {
+    "id": "HSAG03-hsag03",
+    "code": "HSAG03",
+    "system_code": "hsag03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG03-hsag03"
+  },
+  {
+    "id": "AG03-hsag03",
+    "code": "AG03",
+    "system_code": "hsag03",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG03-hsag03"
+  },
+  {
+    "id": "HSAG04-hsag04",
+    "code": "HSAG04",
+    "system_code": "hsag04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG04-hsag04"
+  },
+  {
+    "id": "AG04-hsag04",
+    "code": "AG04",
+    "system_code": "hsag04",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG04-hsag04"
+  },
+  {
+    "id": "HSAG05-hsag05",
+    "code": "HSAG05",
+    "system_code": "hsag05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG05-hsag05"
+  },
+  {
+    "id": "AG05-hsag05",
+    "code": "AG05",
+    "system_code": "hsag05",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG05-hsag05"
+  },
+  {
+    "id": "HSAG06-hsag06",
+    "code": "HSAG06",
+    "system_code": "hsag06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG06-hsag06"
+  },
+  {
+    "id": "AG06-hsag06",
+    "code": "AG06",
+    "system_code": "hsag06",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG06-hsag06"
+  },
+  {
+    "id": "HSAG07-hsag07",
+    "code": "HSAG07",
+    "system_code": "hsag07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG07-hsag07"
+  },
+  {
+    "id": "AG07-hsag07",
+    "code": "AG07",
+    "system_code": "hsag07",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG07-hsag07"
+  },
+  {
+    "id": "HSAG08-hsag08",
+    "code": "HSAG08",
+    "system_code": "hsag08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG08-hsag08"
+  },
+  {
+    "id": "AG08-hsag08",
+    "code": "AG08",
+    "system_code": "hsag08",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG08-hsag08"
+  },
+  {
+    "id": "HSAG14-hsag14",
+    "code": "HSAG14",
+    "system_code": "hsag14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG14-hsag14"
+  },
+  {
+    "id": "AG14-hsag14",
+    "code": "AG14",
+    "system_code": "hsag14",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG14-hsag14"
+  },
+  {
+    "id": "HSAG15-hsag15",
+    "code": "HSAG15",
+    "system_code": "hsag15",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG15-hsag15"
+  },
+  {
+    "id": "AG15-hsag15",
+    "code": "AG15",
+    "system_code": "hsag15",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG15-hsag15"
+  },
+  {
+    "id": "HSAG16-hsag16",
+    "code": "HSAG16",
+    "system_code": "hsag16",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG16-hsag16"
+  },
+  {
+    "id": "AG16-hsag16",
+    "code": "AG16",
+    "system_code": "hsag16",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG16-hsag16"
+  },
+  {
+    "id": "HSAG20-hsag20",
+    "code": "HSAG20",
+    "system_code": "hsag20",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG20-hsag20"
+  },
+  {
+    "id": "AG20-hsag20",
+    "code": "AG20",
+    "system_code": "hsag20",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG20-hsag20"
+  },
+  {
+    "id": "HSAG21-hsag21",
+    "code": "HSAG21",
+    "system_code": "hsag21",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG21-hsag21"
+  },
+  {
+    "id": "AG21-hsag21",
+    "code": "AG21",
+    "system_code": "hsag21",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG21-hsag21"
+  },
+  {
+    "id": "HSAG22-hsag22",
+    "code": "HSAG22",
+    "system_code": "hsag22",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG22-hsag22"
+  },
+  {
+    "id": "AG22-hsag22",
+    "code": "AG22",
+    "system_code": "hsag22",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG22-hsag22"
+  },
+  {
+    "id": "HSAG23-hsag23",
+    "code": "HSAG23",
+    "system_code": "hsag23",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG23-hsag23"
+  },
+  {
+    "id": "AG23-hsag23",
+    "code": "AG23",
+    "system_code": "hsag23",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG23-hsag23"
+  },
+  {
+    "id": "HSAG24-hsag24",
+    "code": "HSAG24",
+    "system_code": "hsag24",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG24-hsag24"
+  },
+  {
+    "id": "AG24-hsag24",
+    "code": "AG24",
+    "system_code": "hsag24",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG24-hsag24"
+  },
+  {
+    "id": "HSAG25-hsag25",
+    "code": "HSAG25",
+    "system_code": "hsag25",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG25-hsag25"
+  },
+  {
+    "id": "AG25-hsag25",
+    "code": "AG25",
+    "system_code": "hsag25",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG25-hsag25"
+  },
+  {
+    "id": "HSAG26-hsag26",
+    "code": "HSAG26",
+    "system_code": "hsag26",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG26-hsag26"
+  },
+  {
+    "id": "AG26-hsag26",
+    "code": "AG26",
+    "system_code": "hsag26",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG26-hsag26"
+  },
+  {
+    "id": "HSAG27-hsag27",
+    "code": "HSAG27",
+    "system_code": "hsag27",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG27-hsag27"
+  },
+  {
+    "id": "AG27-hsag27",
+    "code": "AG27",
+    "system_code": "hsag27",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG27-hsag27"
+  },
+  {
+    "id": "HSAG28-hsag28",
+    "code": "HSAG28",
+    "system_code": "hsag28",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG28-hsag28"
+  },
+  {
+    "id": "AG28-hsag28",
+    "code": "AG28",
+    "system_code": "hsag28",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG28-hsag28"
+  },
+  {
+    "id": "HSAG29-hsag29",
+    "code": "HSAG29",
+    "system_code": "hsag29",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAG29-hsag29"
+  },
+  {
+    "id": "AG29-hsag29",
+    "code": "AG29",
+    "system_code": "hsag29",
+    "chamber": "house",
+    "sample_id": "committee-codes:AG29-hsag29"
+  },
+  {
+    "id": "HSAP00-hsap00",
+    "code": "HSAP00",
+    "system_code": "hsap00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP00-hsap00"
+  },
+  {
+    "id": "AP00-hsap00",
+    "code": "AP00",
+    "system_code": "hsap00",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP00-hsap00"
+  },
+  {
+    "id": "AP-hsap00",
+    "code": "AP",
+    "system_code": "hsap00",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP-hsap00"
+  },
+  {
+    "id": "HSAP01-hsap01",
+    "code": "HSAP01",
+    "system_code": "hsap01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP01-hsap01"
+  },
+  {
+    "id": "AP01-hsap01",
+    "code": "AP01",
+    "system_code": "hsap01",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP01-hsap01"
+  },
+  {
+    "id": "HSAP02-hsap02",
+    "code": "HSAP02",
+    "system_code": "hsap02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP02-hsap02"
+  },
+  {
+    "id": "AP02-hsap02",
+    "code": "AP02",
+    "system_code": "hsap02",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP02-hsap02"
+  },
+  {
+    "id": "HSAP03-hsap03",
+    "code": "HSAP03",
+    "system_code": "hsap03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP03-hsap03"
+  },
+  {
+    "id": "AP03-hsap03",
+    "code": "AP03",
+    "system_code": "hsap03",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP03-hsap03"
+  },
+  {
+    "id": "HSAP04-hsap04",
+    "code": "HSAP04",
+    "system_code": "hsap04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP04-hsap04"
+  },
+  {
+    "id": "AP04-hsap04",
+    "code": "AP04",
+    "system_code": "hsap04",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP04-hsap04"
+  },
+  {
+    "id": "HSAP05-hsap05",
+    "code": "HSAP05",
+    "system_code": "hsap05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP05-hsap05"
+  },
+  {
+    "id": "AP05-hsap05",
+    "code": "AP05",
+    "system_code": "hsap05",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP05-hsap05"
+  },
+  {
+    "id": "HSAP06-hsap06",
+    "code": "HSAP06",
+    "system_code": "hsap06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP06-hsap06"
+  },
+  {
+    "id": "AP06-hsap06",
+    "code": "AP06",
+    "system_code": "hsap06",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP06-hsap06"
+  },
+  {
+    "id": "HSAP07-hsap07",
+    "code": "HSAP07",
+    "system_code": "hsap07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP07-hsap07"
+  },
+  {
+    "id": "AP07-hsap07",
+    "code": "AP07",
+    "system_code": "hsap07",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP07-hsap07"
+  },
+  {
+    "id": "HSAP08-hsap08",
+    "code": "HSAP08",
+    "system_code": "hsap08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP08-hsap08"
+  },
+  {
+    "id": "AP08-hsap08",
+    "code": "AP08",
+    "system_code": "hsap08",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP08-hsap08"
+  },
+  {
+    "id": "HSAP09-hsap09",
+    "code": "HSAP09",
+    "system_code": "hsap09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP09-hsap09"
+  },
+  {
+    "id": "AP09-hsap09",
+    "code": "AP09",
+    "system_code": "hsap09",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP09-hsap09"
+  },
+  {
+    "id": "HSAP10-hsap10",
+    "code": "HSAP10",
+    "system_code": "hsap10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP10-hsap10"
+  },
+  {
+    "id": "AP10-hsap10",
+    "code": "AP10",
+    "system_code": "hsap10",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP10-hsap10"
+  },
+  {
+    "id": "HSAP11-hsap11",
+    "code": "HSAP11",
+    "system_code": "hsap11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP11-hsap11"
+  },
+  {
+    "id": "AP11-hsap11",
+    "code": "AP11",
+    "system_code": "hsap11",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP11-hsap11"
+  },
+  {
+    "id": "HSAP12-hsap12",
+    "code": "HSAP12",
+    "system_code": "hsap12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP12-hsap12"
+  },
+  {
+    "id": "AP12-hsap12",
+    "code": "AP12",
+    "system_code": "hsap12",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP12-hsap12"
+  },
+  {
+    "id": "HSAP13-hsap13",
+    "code": "HSAP13",
+    "system_code": "hsap13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP13-hsap13"
+  },
+  {
+    "id": "AP13-hsap13",
+    "code": "AP13",
+    "system_code": "hsap13",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP13-hsap13"
+  },
+  {
+    "id": "HSAP14-hsap14",
+    "code": "HSAP14",
+    "system_code": "hsap14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP14-hsap14"
+  },
+  {
+    "id": "AP14-hsap14",
+    "code": "AP14",
+    "system_code": "hsap14",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP14-hsap14"
+  },
+  {
+    "id": "HSAP15-hsap15",
+    "code": "HSAP15",
+    "system_code": "hsap15",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP15-hsap15"
+  },
+  {
+    "id": "AP15-hsap15",
+    "code": "AP15",
+    "system_code": "hsap15",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP15-hsap15"
+  },
+  {
+    "id": "HSAP18-hsap18",
+    "code": "HSAP18",
+    "system_code": "hsap18",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP18-hsap18"
+  },
+  {
+    "id": "AP18-hsap18",
+    "code": "AP18",
+    "system_code": "hsap18",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP18-hsap18"
+  },
+  {
+    "id": "HSAP19-hsap19",
+    "code": "HSAP19",
+    "system_code": "hsap19",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP19-hsap19"
+  },
+  {
+    "id": "AP19-hsap19",
+    "code": "AP19",
+    "system_code": "hsap19",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP19-hsap19"
+  },
+  {
+    "id": "HSAP20-hsap20",
+    "code": "HSAP20",
+    "system_code": "hsap20",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP20-hsap20"
+  },
+  {
+    "id": "AP20-hsap20",
+    "code": "AP20",
+    "system_code": "hsap20",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP20-hsap20"
+  },
+  {
+    "id": "HSAP23-hsap23",
+    "code": "HSAP23",
+    "system_code": "hsap23",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP23-hsap23"
+  },
+  {
+    "id": "AP23-hsap23",
+    "code": "AP23",
+    "system_code": "hsap23",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP23-hsap23"
+  },
+  {
+    "id": "HSAP24-hsap24",
+    "code": "HSAP24",
+    "system_code": "hsap24",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAP24-hsap24"
+  },
+  {
+    "id": "AP24-hsap24",
+    "code": "AP24",
+    "system_code": "hsap24",
+    "chamber": "house",
+    "sample_id": "committee-codes:AP24-hsap24"
+  },
+  {
+    "id": "HSAS00-hsas00",
+    "code": "HSAS00",
+    "system_code": "hsas00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS00-hsas00"
+  },
+  {
+    "id": "AS00-hsas00",
+    "code": "AS00",
+    "system_code": "hsas00",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS00-hsas00"
+  },
+  {
+    "id": "AS-hsas00",
+    "code": "AS",
+    "system_code": "hsas00",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS-hsas00"
+  },
+  {
+    "id": "HSAS01-hsas01",
+    "code": "HSAS01",
+    "system_code": "hsas01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS01-hsas01"
+  },
+  {
+    "id": "AS01-hsas01",
+    "code": "AS01",
+    "system_code": "hsas01",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS01-hsas01"
+  },
+  {
+    "id": "HSAS02-hsas02",
+    "code": "HSAS02",
+    "system_code": "hsas02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS02-hsas02"
+  },
+  {
+    "id": "AS02-hsas02",
+    "code": "AS02",
+    "system_code": "hsas02",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS02-hsas02"
+  },
+  {
+    "id": "HSAS03-hsas03",
+    "code": "HSAS03",
+    "system_code": "hsas03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS03-hsas03"
+  },
+  {
+    "id": "AS03-hsas03",
+    "code": "AS03",
+    "system_code": "hsas03",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS03-hsas03"
+  },
+  {
+    "id": "HSAS04-hsas04",
+    "code": "HSAS04",
+    "system_code": "hsas04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS04-hsas04"
+  },
+  {
+    "id": "AS04-hsas04",
+    "code": "AS04",
+    "system_code": "hsas04",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS04-hsas04"
+  },
+  {
+    "id": "HSAS05-hsas05",
+    "code": "HSAS05",
+    "system_code": "hsas05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS05-hsas05"
+  },
+  {
+    "id": "AS05-hsas05",
+    "code": "AS05",
+    "system_code": "hsas05",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS05-hsas05"
+  },
+  {
+    "id": "HSAS06-hsas06",
+    "code": "HSAS06",
+    "system_code": "hsas06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS06-hsas06"
+  },
+  {
+    "id": "AS06-hsas06",
+    "code": "AS06",
+    "system_code": "hsas06",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS06-hsas06"
+  },
+  {
+    "id": "HSAS07-hsas07",
+    "code": "HSAS07",
+    "system_code": "hsas07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS07-hsas07"
+  },
+  {
+    "id": "AS07-hsas07",
+    "code": "AS07",
+    "system_code": "hsas07",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS07-hsas07"
+  },
+  {
+    "id": "HSAS08-hsas08",
+    "code": "HSAS08",
+    "system_code": "hsas08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS08-hsas08"
+  },
+  {
+    "id": "AS08-hsas08",
+    "code": "AS08",
+    "system_code": "hsas08",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS08-hsas08"
+  },
+  {
+    "id": "HSAS11-hsas11",
+    "code": "HSAS11",
+    "system_code": "hsas11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS11-hsas11"
+  },
+  {
+    "id": "AS11-hsas11",
+    "code": "AS11",
+    "system_code": "hsas11",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS11-hsas11"
+  },
+  {
+    "id": "HSAS12-hsas12",
+    "code": "HSAS12",
+    "system_code": "hsas12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS12-hsas12"
+  },
+  {
+    "id": "AS12-hsas12",
+    "code": "AS12",
+    "system_code": "hsas12",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS12-hsas12"
+  },
+  {
+    "id": "HSAS20-hsas20",
+    "code": "HSAS20",
+    "system_code": "hsas20",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS20-hsas20"
+  },
+  {
+    "id": "AS20-hsas20",
+    "code": "AS20",
+    "system_code": "hsas20",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS20-hsas20"
+  },
+  {
+    "id": "HSAS22-hsas22",
+    "code": "HSAS22",
+    "system_code": "hsas22",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS22-hsas22"
+  },
+  {
+    "id": "AS22-hsas22",
+    "code": "AS22",
+    "system_code": "hsas22",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS22-hsas22"
+  },
+  {
+    "id": "HSAS23-hsas23",
+    "code": "HSAS23",
+    "system_code": "hsas23",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS23-hsas23"
+  },
+  {
+    "id": "AS23-hsas23",
+    "code": "AS23",
+    "system_code": "hsas23",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS23-hsas23"
+  },
+  {
+    "id": "HSAS24-hsas24",
+    "code": "HSAS24",
+    "system_code": "hsas24",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS24-hsas24"
+  },
+  {
+    "id": "AS24-hsas24",
+    "code": "AS24",
+    "system_code": "hsas24",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS24-hsas24"
+  },
+  {
+    "id": "HSAS25-hsas25",
+    "code": "HSAS25",
+    "system_code": "hsas25",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS25-hsas25"
+  },
+  {
+    "id": "AS25-hsas25",
+    "code": "AS25",
+    "system_code": "hsas25",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS25-hsas25"
+  },
+  {
+    "id": "HSAS26-hsas26",
+    "code": "HSAS26",
+    "system_code": "hsas26",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS26-hsas26"
+  },
+  {
+    "id": "AS26-hsas26",
+    "code": "AS26",
+    "system_code": "hsas26",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS26-hsas26"
+  },
+  {
+    "id": "HSAS27-hsas27",
+    "code": "HSAS27",
+    "system_code": "hsas27",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS27-hsas27"
+  },
+  {
+    "id": "AS27-hsas27",
+    "code": "AS27",
+    "system_code": "hsas27",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS27-hsas27"
+  },
+  {
+    "id": "HSAS28-hsas28",
+    "code": "HSAS28",
+    "system_code": "hsas28",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS28-hsas28"
+  },
+  {
+    "id": "AS28-hsas28",
+    "code": "AS28",
+    "system_code": "hsas28",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS28-hsas28"
+  },
+  {
+    "id": "HSAS29-hsas29",
+    "code": "HSAS29",
+    "system_code": "hsas29",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS29-hsas29"
+  },
+  {
+    "id": "AS29-hsas29",
+    "code": "AS29",
+    "system_code": "hsas29",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS29-hsas29"
+  },
+  {
+    "id": "HSAS30-hsas30",
+    "code": "HSAS30",
+    "system_code": "hsas30",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS30-hsas30"
+  },
+  {
+    "id": "AS30-hsas30",
+    "code": "AS30",
+    "system_code": "hsas30",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS30-hsas30"
+  },
+  {
+    "id": "HSAS33-hsas33",
+    "code": "HSAS33",
+    "system_code": "hsas33",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS33-hsas33"
+  },
+  {
+    "id": "AS33-hsas33",
+    "code": "AS33",
+    "system_code": "hsas33",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS33-hsas33"
+  },
+  {
+    "id": "HSAS34-hsas34",
+    "code": "HSAS34",
+    "system_code": "hsas34",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS34-hsas34"
+  },
+  {
+    "id": "AS34-hsas34",
+    "code": "AS34",
+    "system_code": "hsas34",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS34-hsas34"
+  },
+  {
+    "id": "HSAS35-hsas35",
+    "code": "HSAS35",
+    "system_code": "hsas35",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSAS35-hsas35"
+  },
+  {
+    "id": "AS35-hsas35",
+    "code": "AS35",
+    "system_code": "hsas35",
+    "chamber": "house",
+    "sample_id": "committee-codes:AS35-hsas35"
+  },
+  {
+    "id": "HSBA00-hsba00",
+    "code": "HSBA00",
+    "system_code": "hsba00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA00-hsba00"
+  },
+  {
+    "id": "BA00-hsba00",
+    "code": "BA00",
+    "system_code": "hsba00",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA00-hsba00"
+  },
+  {
+    "id": "BA-hsba00",
+    "code": "BA",
+    "system_code": "hsba00",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA-hsba00"
+  },
+  {
+    "id": "HSBA01-hsba01",
+    "code": "HSBA01",
+    "system_code": "hsba01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA01-hsba01"
+  },
+  {
+    "id": "BA01-hsba01",
+    "code": "BA01",
+    "system_code": "hsba01",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA01-hsba01"
+  },
+  {
+    "id": "HSBA02-hsba02",
+    "code": "HSBA02",
+    "system_code": "hsba02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA02-hsba02"
+  },
+  {
+    "id": "BA02-hsba02",
+    "code": "BA02",
+    "system_code": "hsba02",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA02-hsba02"
+  },
+  {
+    "id": "HSBA03-hsba03",
+    "code": "HSBA03",
+    "system_code": "hsba03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA03-hsba03"
+  },
+  {
+    "id": "BA03-hsba03",
+    "code": "BA03",
+    "system_code": "hsba03",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA03-hsba03"
+  },
+  {
+    "id": "HSBA04-hsba04",
+    "code": "HSBA04",
+    "system_code": "hsba04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA04-hsba04"
+  },
+  {
+    "id": "BA04-hsba04",
+    "code": "BA04",
+    "system_code": "hsba04",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA04-hsba04"
+  },
+  {
+    "id": "HSBA05-hsba05",
+    "code": "HSBA05",
+    "system_code": "hsba05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA05-hsba05"
+  },
+  {
+    "id": "BA05-hsba05",
+    "code": "BA05",
+    "system_code": "hsba05",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA05-hsba05"
+  },
+  {
+    "id": "HSBA06-hsba06",
+    "code": "HSBA06",
+    "system_code": "hsba06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA06-hsba06"
+  },
+  {
+    "id": "BA06-hsba06",
+    "code": "BA06",
+    "system_code": "hsba06",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA06-hsba06"
+  },
+  {
+    "id": "HSBA07-hsba07",
+    "code": "HSBA07",
+    "system_code": "hsba07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA07-hsba07"
+  },
+  {
+    "id": "BA07-hsba07",
+    "code": "BA07",
+    "system_code": "hsba07",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA07-hsba07"
+  },
+  {
+    "id": "HSBA08-hsba08",
+    "code": "HSBA08",
+    "system_code": "hsba08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA08-hsba08"
+  },
+  {
+    "id": "BA08-hsba08",
+    "code": "BA08",
+    "system_code": "hsba08",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA08-hsba08"
+  },
+  {
+    "id": "HSBA09-hsba09",
+    "code": "HSBA09",
+    "system_code": "hsba09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA09-hsba09"
+  },
+  {
+    "id": "BA09-hsba09",
+    "code": "BA09",
+    "system_code": "hsba09",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA09-hsba09"
+  },
+  {
+    "id": "HSBA10-hsba10",
+    "code": "HSBA10",
+    "system_code": "hsba10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA10-hsba10"
+  },
+  {
+    "id": "BA10-hsba10",
+    "code": "BA10",
+    "system_code": "hsba10",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA10-hsba10"
+  },
+  {
+    "id": "HSBA11-hsba11",
+    "code": "HSBA11",
+    "system_code": "hsba11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA11-hsba11"
+  },
+  {
+    "id": "BA11-hsba11",
+    "code": "BA11",
+    "system_code": "hsba11",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA11-hsba11"
+  },
+  {
+    "id": "HSBA13-hsba13",
+    "code": "HSBA13",
+    "system_code": "hsba13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA13-hsba13"
+  },
+  {
+    "id": "BA13-hsba13",
+    "code": "BA13",
+    "system_code": "hsba13",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA13-hsba13"
+  },
+  {
+    "id": "HSBA14-hsba14",
+    "code": "HSBA14",
+    "system_code": "hsba14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA14-hsba14"
+  },
+  {
+    "id": "BA14-hsba14",
+    "code": "BA14",
+    "system_code": "hsba14",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA14-hsba14"
+  },
+  {
+    "id": "HSBA15-hsba15",
+    "code": "HSBA15",
+    "system_code": "hsba15",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA15-hsba15"
+  },
+  {
+    "id": "BA15-hsba15",
+    "code": "BA15",
+    "system_code": "hsba15",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA15-hsba15"
+  },
+  {
+    "id": "HSBA16-hsba16",
+    "code": "HSBA16",
+    "system_code": "hsba16",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA16-hsba16"
+  },
+  {
+    "id": "BA16-hsba16",
+    "code": "BA16",
+    "system_code": "hsba16",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA16-hsba16"
+  },
+  {
+    "id": "HSBA17-hsba17",
+    "code": "HSBA17",
+    "system_code": "hsba17",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA17-hsba17"
+  },
+  {
+    "id": "BA17-hsba17",
+    "code": "BA17",
+    "system_code": "hsba17",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA17-hsba17"
+  },
+  {
+    "id": "HSBA18-hsba18",
+    "code": "HSBA18",
+    "system_code": "hsba18",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA18-hsba18"
+  },
+  {
+    "id": "BA18-hsba18",
+    "code": "BA18",
+    "system_code": "hsba18",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA18-hsba18"
+  },
+  {
+    "id": "HSBA19-hsba19",
+    "code": "HSBA19",
+    "system_code": "hsba19",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA19-hsba19"
+  },
+  {
+    "id": "BA19-hsba19",
+    "code": "BA19",
+    "system_code": "hsba19",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA19-hsba19"
+  },
+  {
+    "id": "HSBA20-hsba20",
+    "code": "HSBA20",
+    "system_code": "hsba20",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA20-hsba20"
+  },
+  {
+    "id": "BA20-hsba20",
+    "code": "BA20",
+    "system_code": "hsba20",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA20-hsba20"
+  },
+  {
+    "id": "HSBA21-hsba21",
+    "code": "HSBA21",
+    "system_code": "hsba21",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBA21-hsba21"
+  },
+  {
+    "id": "BA21-hsba21",
+    "code": "BA21",
+    "system_code": "hsba21",
+    "chamber": "house",
+    "sample_id": "committee-codes:BA21-hsba21"
+  },
+  {
+    "id": "HSBU00-hsbu00",
+    "code": "HSBU00",
+    "system_code": "hsbu00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSBU00-hsbu00"
+  },
+  {
+    "id": "BU00-hsbu00",
+    "code": "BU00",
+    "system_code": "hsbu00",
+    "chamber": "house",
+    "sample_id": "committee-codes:BU00-hsbu00"
+  },
+  {
+    "id": "BU-hsbu00",
+    "code": "BU",
+    "system_code": "hsbu00",
+    "chamber": "house",
+    "sample_id": "committee-codes:BU-hsbu00"
+  },
+  {
+    "id": "HSED00-hsed00",
+    "code": "HSED00",
+    "system_code": "hsed00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED00-hsed00"
+  },
+  {
+    "id": "ED00-hsed00",
+    "code": "ED00",
+    "system_code": "hsed00",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED00-hsed00"
+  },
+  {
+    "id": "ED-hsed00",
+    "code": "ED",
+    "system_code": "hsed00",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED-hsed00"
+  },
+  {
+    "id": "HSED01-hsed01",
+    "code": "HSED01",
+    "system_code": "hsed01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED01-hsed01"
+  },
+  {
+    "id": "ED01-hsed01",
+    "code": "ED01",
+    "system_code": "hsed01",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED01-hsed01"
+  },
+  {
+    "id": "HSED02-hsed02",
+    "code": "HSED02",
+    "system_code": "hsed02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED02-hsed02"
+  },
+  {
+    "id": "ED02-hsed02",
+    "code": "ED02",
+    "system_code": "hsed02",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED02-hsed02"
+  },
+  {
+    "id": "HSED03-hsed03",
+    "code": "HSED03",
+    "system_code": "hsed03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED03-hsed03"
+  },
+  {
+    "id": "ED03-hsed03",
+    "code": "ED03",
+    "system_code": "hsed03",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED03-hsed03"
+  },
+  {
+    "id": "HSED04-hsed04",
+    "code": "HSED04",
+    "system_code": "hsed04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED04-hsed04"
+  },
+  {
+    "id": "ED04-hsed04",
+    "code": "ED04",
+    "system_code": "hsed04",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED04-hsed04"
+  },
+  {
+    "id": "HSED05-hsed05",
+    "code": "HSED05",
+    "system_code": "hsed05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED05-hsed05"
+  },
+  {
+    "id": "ED05-hsed05",
+    "code": "ED05",
+    "system_code": "hsed05",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED05-hsed05"
+  },
+  {
+    "id": "HSED06-hsed06",
+    "code": "HSED06",
+    "system_code": "hsed06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED06-hsed06"
+  },
+  {
+    "id": "ED06-hsed06",
+    "code": "ED06",
+    "system_code": "hsed06",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED06-hsed06"
+  },
+  {
+    "id": "HSED07-hsed07",
+    "code": "HSED07",
+    "system_code": "hsed07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED07-hsed07"
+  },
+  {
+    "id": "ED07-hsed07",
+    "code": "ED07",
+    "system_code": "hsed07",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED07-hsed07"
+  },
+  {
+    "id": "HSED08-hsed08",
+    "code": "HSED08",
+    "system_code": "hsed08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED08-hsed08"
+  },
+  {
+    "id": "ED08-hsed08",
+    "code": "ED08",
+    "system_code": "hsed08",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED08-hsed08"
+  },
+  {
+    "id": "HSED10-hsed10",
+    "code": "HSED10",
+    "system_code": "hsed10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED10-hsed10"
+  },
+  {
+    "id": "ED10-hsed10",
+    "code": "ED10",
+    "system_code": "hsed10",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED10-hsed10"
+  },
+  {
+    "id": "HSED11-hsed11",
+    "code": "HSED11",
+    "system_code": "hsed11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED11-hsed11"
+  },
+  {
+    "id": "ED11-hsed11",
+    "code": "ED11",
+    "system_code": "hsed11",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED11-hsed11"
+  },
+  {
+    "id": "HSED12-hsed12",
+    "code": "HSED12",
+    "system_code": "hsed12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED12-hsed12"
+  },
+  {
+    "id": "ED12-hsed12",
+    "code": "ED12",
+    "system_code": "hsed12",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED12-hsed12"
+  },
+  {
+    "id": "HSED13-hsed13",
+    "code": "HSED13",
+    "system_code": "hsed13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED13-hsed13"
+  },
+  {
+    "id": "ED13-hsed13",
+    "code": "ED13",
+    "system_code": "hsed13",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED13-hsed13"
+  },
+  {
+    "id": "HSED14-hsed14",
+    "code": "HSED14",
+    "system_code": "hsed14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSED14-hsed14"
+  },
+  {
+    "id": "ED14-hsed14",
+    "code": "ED14",
+    "system_code": "hsed14",
+    "chamber": "house",
+    "sample_id": "committee-codes:ED14-hsed14"
+  },
+  {
+    "id": "HSFA00-hsfa00",
+    "code": "HSFA00",
+    "system_code": "hsfa00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA00-hsfa00"
+  },
+  {
+    "id": "FA00-hsfa00",
+    "code": "FA00",
+    "system_code": "hsfa00",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA00-hsfa00"
+  },
+  {
+    "id": "FA-hsfa00",
+    "code": "FA",
+    "system_code": "hsfa00",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA-hsfa00"
+  },
+  {
+    "id": "HSFA01-hsfa01",
+    "code": "HSFA01",
+    "system_code": "hsfa01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA01-hsfa01"
+  },
+  {
+    "id": "FA01-hsfa01",
+    "code": "FA01",
+    "system_code": "hsfa01",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA01-hsfa01"
+  },
+  {
+    "id": "HSFA02-hsfa02",
+    "code": "HSFA02",
+    "system_code": "hsfa02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA02-hsfa02"
+  },
+  {
+    "id": "FA02-hsfa02",
+    "code": "FA02",
+    "system_code": "hsfa02",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA02-hsfa02"
+  },
+  {
+    "id": "HSFA03-hsfa03",
+    "code": "HSFA03",
+    "system_code": "hsfa03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA03-hsfa03"
+  },
+  {
+    "id": "FA03-hsfa03",
+    "code": "FA03",
+    "system_code": "hsfa03",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA03-hsfa03"
+  },
+  {
+    "id": "HSFA04-hsfa04",
+    "code": "HSFA04",
+    "system_code": "hsfa04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA04-hsfa04"
+  },
+  {
+    "id": "FA04-hsfa04",
+    "code": "FA04",
+    "system_code": "hsfa04",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA04-hsfa04"
+  },
+  {
+    "id": "HSFA05-hsfa05",
+    "code": "HSFA05",
+    "system_code": "hsfa05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA05-hsfa05"
+  },
+  {
+    "id": "FA05-hsfa05",
+    "code": "FA05",
+    "system_code": "hsfa05",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA05-hsfa05"
+  },
+  {
+    "id": "HSFA06-hsfa06",
+    "code": "HSFA06",
+    "system_code": "hsfa06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA06-hsfa06"
+  },
+  {
+    "id": "FA06-hsfa06",
+    "code": "FA06",
+    "system_code": "hsfa06",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA06-hsfa06"
+  },
+  {
+    "id": "HSFA07-hsfa07",
+    "code": "HSFA07",
+    "system_code": "hsfa07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA07-hsfa07"
+  },
+  {
+    "id": "FA07-hsfa07",
+    "code": "FA07",
+    "system_code": "hsfa07",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA07-hsfa07"
+  },
+  {
+    "id": "HSFA08-hsfa08",
+    "code": "HSFA08",
+    "system_code": "hsfa08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA08-hsfa08"
+  },
+  {
+    "id": "FA08-hsfa08",
+    "code": "FA08",
+    "system_code": "hsfa08",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA08-hsfa08"
+  },
+  {
+    "id": "HSFA11-hsfa11",
+    "code": "HSFA11",
+    "system_code": "hsfa11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA11-hsfa11"
+  },
+  {
+    "id": "FA11-hsfa11",
+    "code": "FA11",
+    "system_code": "hsfa11",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA11-hsfa11"
+  },
+  {
+    "id": "HSFA12-hsfa12",
+    "code": "HSFA12",
+    "system_code": "hsfa12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA12-hsfa12"
+  },
+  {
+    "id": "FA12-hsfa12",
+    "code": "FA12",
+    "system_code": "hsfa12",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA12-hsfa12"
+  },
+  {
+    "id": "HSFA13-hsfa13",
+    "code": "HSFA13",
+    "system_code": "hsfa13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA13-hsfa13"
+  },
+  {
+    "id": "FA13-hsfa13",
+    "code": "FA13",
+    "system_code": "hsfa13",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA13-hsfa13"
+  },
+  {
+    "id": "HSFA14-hsfa14",
+    "code": "HSFA14",
+    "system_code": "hsfa14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA14-hsfa14"
+  },
+  {
+    "id": "FA14-hsfa14",
+    "code": "FA14",
+    "system_code": "hsfa14",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA14-hsfa14"
+  },
+  {
+    "id": "HSFA15-hsfa15",
+    "code": "HSFA15",
+    "system_code": "hsfa15",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA15-hsfa15"
+  },
+  {
+    "id": "FA15-hsfa15",
+    "code": "FA15",
+    "system_code": "hsfa15",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA15-hsfa15"
+  },
+  {
+    "id": "HSFA16-hsfa16",
+    "code": "HSFA16",
+    "system_code": "hsfa16",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA16-hsfa16"
+  },
+  {
+    "id": "FA16-hsfa16",
+    "code": "FA16",
+    "system_code": "hsfa16",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA16-hsfa16"
+  },
+  {
+    "id": "HSFA17-hsfa17",
+    "code": "HSFA17",
+    "system_code": "hsfa17",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA17-hsfa17"
+  },
+  {
+    "id": "FA17-hsfa17",
+    "code": "FA17",
+    "system_code": "hsfa17",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA17-hsfa17"
+  },
+  {
+    "id": "HSFA18-hsfa18",
+    "code": "HSFA18",
+    "system_code": "hsfa18",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA18-hsfa18"
+  },
+  {
+    "id": "FA18-hsfa18",
+    "code": "FA18",
+    "system_code": "hsfa18",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA18-hsfa18"
+  },
+  {
+    "id": "HSFA19-hsfa19",
+    "code": "HSFA19",
+    "system_code": "hsfa19",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSFA19-hsfa19"
+  },
+  {
+    "id": "FA19-hsfa19",
+    "code": "FA19",
+    "system_code": "hsfa19",
+    "chamber": "house",
+    "sample_id": "committee-codes:FA19-hsfa19"
+  },
+  {
+    "id": "HSGO00-hsgo00",
+    "code": "HSGO00",
+    "system_code": "hsgo00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO00-hsgo00"
+  },
+  {
+    "id": "GO00-hsgo00",
+    "code": "GO00",
+    "system_code": "hsgo00",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO00-hsgo00"
+  },
+  {
+    "id": "GO-hsgo00",
+    "code": "GO",
+    "system_code": "hsgo00",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO-hsgo00"
+  },
+  {
+    "id": "HSGO01-hsgo01",
+    "code": "HSGO01",
+    "system_code": "hsgo01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO01-hsgo01"
+  },
+  {
+    "id": "GO01-hsgo01",
+    "code": "GO01",
+    "system_code": "hsgo01",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO01-hsgo01"
+  },
+  {
+    "id": "HSGO02-hsgo02",
+    "code": "HSGO02",
+    "system_code": "hsgo02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO02-hsgo02"
+  },
+  {
+    "id": "GO02-hsgo02",
+    "code": "GO02",
+    "system_code": "hsgo02",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO02-hsgo02"
+  },
+  {
+    "id": "HSGO03-hsgo03",
+    "code": "HSGO03",
+    "system_code": "hsgo03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO03-hsgo03"
+  },
+  {
+    "id": "GO03-hsgo03",
+    "code": "GO03",
+    "system_code": "hsgo03",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO03-hsgo03"
+  },
+  {
+    "id": "HSGO04-hsgo04",
+    "code": "HSGO04",
+    "system_code": "hsgo04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO04-hsgo04"
+  },
+  {
+    "id": "GO04-hsgo04",
+    "code": "GO04",
+    "system_code": "hsgo04",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO04-hsgo04"
+  },
+  {
+    "id": "HSGO05-hsgo05",
+    "code": "HSGO05",
+    "system_code": "hsgo05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO05-hsgo05"
+  },
+  {
+    "id": "GO05-hsgo05",
+    "code": "GO05",
+    "system_code": "hsgo05",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO05-hsgo05"
+  },
+  {
+    "id": "HSGO06-hsgo06",
+    "code": "HSGO06",
+    "system_code": "hsgo06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO06-hsgo06"
+  },
+  {
+    "id": "GO06-hsgo06",
+    "code": "GO06",
+    "system_code": "hsgo06",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO06-hsgo06"
+  },
+  {
+    "id": "HSGO07-hsgo07",
+    "code": "HSGO07",
+    "system_code": "hsgo07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO07-hsgo07"
+  },
+  {
+    "id": "GO07-hsgo07",
+    "code": "GO07",
+    "system_code": "hsgo07",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO07-hsgo07"
+  },
+  {
+    "id": "HSGO08-hsgo08",
+    "code": "HSGO08",
+    "system_code": "hsgo08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO08-hsgo08"
+  },
+  {
+    "id": "GO08-hsgo08",
+    "code": "GO08",
+    "system_code": "hsgo08",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO08-hsgo08"
+  },
+  {
+    "id": "HSGO09-hsgo09",
+    "code": "HSGO09",
+    "system_code": "hsgo09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO09-hsgo09"
+  },
+  {
+    "id": "GO09-hsgo09",
+    "code": "GO09",
+    "system_code": "hsgo09",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO09-hsgo09"
+  },
+  {
+    "id": "HSGO10-hsgo10",
+    "code": "HSGO10",
+    "system_code": "hsgo10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO10-hsgo10"
+  },
+  {
+    "id": "GO10-hsgo10",
+    "code": "GO10",
+    "system_code": "hsgo10",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO10-hsgo10"
+  },
+  {
+    "id": "HSGO11-hsgo11",
+    "code": "HSGO11",
+    "system_code": "hsgo11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO11-hsgo11"
+  },
+  {
+    "id": "GO11-hsgo11",
+    "code": "GO11",
+    "system_code": "hsgo11",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO11-hsgo11"
+  },
+  {
+    "id": "HSGO12-hsgo12",
+    "code": "HSGO12",
+    "system_code": "hsgo12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO12-hsgo12"
+  },
+  {
+    "id": "GO12-hsgo12",
+    "code": "GO12",
+    "system_code": "hsgo12",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO12-hsgo12"
+  },
+  {
+    "id": "HSGO13-hsgo13",
+    "code": "HSGO13",
+    "system_code": "hsgo13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO13-hsgo13"
+  },
+  {
+    "id": "GO13-hsgo13",
+    "code": "GO13",
+    "system_code": "hsgo13",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO13-hsgo13"
+  },
+  {
+    "id": "HSGO14-hsgo14",
+    "code": "HSGO14",
+    "system_code": "hsgo14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO14-hsgo14"
+  },
+  {
+    "id": "GO14-hsgo14",
+    "code": "GO14",
+    "system_code": "hsgo14",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO14-hsgo14"
+  },
+  {
+    "id": "HSGO15-hsgo15",
+    "code": "HSGO15",
+    "system_code": "hsgo15",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO15-hsgo15"
+  },
+  {
+    "id": "GO15-hsgo15",
+    "code": "GO15",
+    "system_code": "hsgo15",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO15-hsgo15"
+  },
+  {
+    "id": "HSGO16-hsgo16",
+    "code": "HSGO16",
+    "system_code": "hsgo16",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO16-hsgo16"
+  },
+  {
+    "id": "GO16-hsgo16",
+    "code": "GO16",
+    "system_code": "hsgo16",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO16-hsgo16"
+  },
+  {
+    "id": "HSGO18-hsgo18",
+    "code": "HSGO18",
+    "system_code": "hsgo18",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO18-hsgo18"
+  },
+  {
+    "id": "GO18-hsgo18",
+    "code": "GO18",
+    "system_code": "hsgo18",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO18-hsgo18"
+  },
+  {
+    "id": "HSGO19-hsgo19",
+    "code": "HSGO19",
+    "system_code": "hsgo19",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO19-hsgo19"
+  },
+  {
+    "id": "GO19-hsgo19",
+    "code": "GO19",
+    "system_code": "hsgo19",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO19-hsgo19"
+  },
+  {
+    "id": "HSGO20-hsgo20",
+    "code": "HSGO20",
+    "system_code": "hsgo20",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO20-hsgo20"
+  },
+  {
+    "id": "GO20-hsgo20",
+    "code": "GO20",
+    "system_code": "hsgo20",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO20-hsgo20"
+  },
+  {
+    "id": "HSGO21-hsgo21",
+    "code": "HSGO21",
+    "system_code": "hsgo21",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO21-hsgo21"
+  },
+  {
+    "id": "GO21-hsgo21",
+    "code": "GO21",
+    "system_code": "hsgo21",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO21-hsgo21"
+  },
+  {
+    "id": "HSGO22-hsgo22",
+    "code": "HSGO22",
+    "system_code": "hsgo22",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO22-hsgo22"
+  },
+  {
+    "id": "GO22-hsgo22",
+    "code": "GO22",
+    "system_code": "hsgo22",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO22-hsgo22"
+  },
+  {
+    "id": "HSGO23-hsgo23",
+    "code": "HSGO23",
+    "system_code": "hsgo23",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO23-hsgo23"
+  },
+  {
+    "id": "GO23-hsgo23",
+    "code": "GO23",
+    "system_code": "hsgo23",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO23-hsgo23"
+  },
+  {
+    "id": "HSGO24-hsgo24",
+    "code": "HSGO24",
+    "system_code": "hsgo24",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO24-hsgo24"
+  },
+  {
+    "id": "GO24-hsgo24",
+    "code": "GO24",
+    "system_code": "hsgo24",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO24-hsgo24"
+  },
+  {
+    "id": "HSGO25-hsgo25",
+    "code": "HSGO25",
+    "system_code": "hsgo25",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO25-hsgo25"
+  },
+  {
+    "id": "GO25-hsgo25",
+    "code": "GO25",
+    "system_code": "hsgo25",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO25-hsgo25"
+  },
+  {
+    "id": "HSGO26-hsgo26",
+    "code": "HSGO26",
+    "system_code": "hsgo26",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO26-hsgo26"
+  },
+  {
+    "id": "GO26-hsgo26",
+    "code": "GO26",
+    "system_code": "hsgo26",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO26-hsgo26"
+  },
+  {
+    "id": "HSGO27-hsgo27",
+    "code": "HSGO27",
+    "system_code": "hsgo27",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO27-hsgo27"
+  },
+  {
+    "id": "GO27-hsgo27",
+    "code": "GO27",
+    "system_code": "hsgo27",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO27-hsgo27"
+  },
+  {
+    "id": "HSGO28-hsgo28",
+    "code": "HSGO28",
+    "system_code": "hsgo28",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO28-hsgo28"
+  },
+  {
+    "id": "GO28-hsgo28",
+    "code": "GO28",
+    "system_code": "hsgo28",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO28-hsgo28"
+  },
+  {
+    "id": "HSGO29-hsgo29",
+    "code": "HSGO29",
+    "system_code": "hsgo29",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO29-hsgo29"
+  },
+  {
+    "id": "GO29-hsgo29",
+    "code": "GO29",
+    "system_code": "hsgo29",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO29-hsgo29"
+  },
+  {
+    "id": "HSGO30-hsgo30",
+    "code": "HSGO30",
+    "system_code": "hsgo30",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO30-hsgo30"
+  },
+  {
+    "id": "GO30-hsgo30",
+    "code": "GO30",
+    "system_code": "hsgo30",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO30-hsgo30"
+  },
+  {
+    "id": "HSGO33-hsgo33",
+    "code": "HSGO33",
+    "system_code": "hsgo33",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSGO33-hsgo33"
+  },
+  {
+    "id": "GO33-hsgo33",
+    "code": "GO33",
+    "system_code": "hsgo33",
+    "chamber": "house",
+    "sample_id": "committee-codes:GO33-hsgo33"
+  },
+  {
+    "id": "HSHA00-hsha00",
+    "code": "HSHA00",
+    "system_code": "hsha00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA00-hsha00"
+  },
+  {
+    "id": "HA00-hsha00",
+    "code": "HA00",
+    "system_code": "hsha00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA00-hsha00"
+  },
+  {
+    "id": "HA-hsha00",
+    "code": "HA",
+    "system_code": "hsha00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA-hsha00"
+  },
+  {
+    "id": "HSHA01-hsha01",
+    "code": "HSHA01",
+    "system_code": "hsha01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA01-hsha01"
+  },
+  {
+    "id": "HA01-hsha01",
+    "code": "HA01",
+    "system_code": "hsha01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA01-hsha01"
+  },
+  {
+    "id": "HSHA02-hsha02",
+    "code": "HSHA02",
+    "system_code": "hsha02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA02-hsha02"
+  },
+  {
+    "id": "HA02-hsha02",
+    "code": "HA02",
+    "system_code": "hsha02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA02-hsha02"
+  },
+  {
+    "id": "HSHA03-hsha03",
+    "code": "HSHA03",
+    "system_code": "hsha03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA03-hsha03"
+  },
+  {
+    "id": "HA03-hsha03",
+    "code": "HA03",
+    "system_code": "hsha03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA03-hsha03"
+  },
+  {
+    "id": "HSHA04-hsha04",
+    "code": "HSHA04",
+    "system_code": "hsha04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA04-hsha04"
+  },
+  {
+    "id": "HA04-hsha04",
+    "code": "HA04",
+    "system_code": "hsha04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA04-hsha04"
+  },
+  {
+    "id": "HSHA05-hsha05",
+    "code": "HSHA05",
+    "system_code": "hsha05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA05-hsha05"
+  },
+  {
+    "id": "HA05-hsha05",
+    "code": "HA05",
+    "system_code": "hsha05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA05-hsha05"
+  },
+  {
+    "id": "HSHA06-hsha06",
+    "code": "HSHA06",
+    "system_code": "hsha06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA06-hsha06"
+  },
+  {
+    "id": "HA06-hsha06",
+    "code": "HA06",
+    "system_code": "hsha06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA06-hsha06"
+  },
+  {
+    "id": "HSHA07-hsha07",
+    "code": "HSHA07",
+    "system_code": "hsha07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA07-hsha07"
+  },
+  {
+    "id": "HA07-hsha07",
+    "code": "HA07",
+    "system_code": "hsha07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA07-hsha07"
+  },
+  {
+    "id": "HSHA08-hsha08",
+    "code": "HSHA08",
+    "system_code": "hsha08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA08-hsha08"
+  },
+  {
+    "id": "HA08-hsha08",
+    "code": "HA08",
+    "system_code": "hsha08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA08-hsha08"
+  },
+  {
+    "id": "HSHA09-hsha09",
+    "code": "HSHA09",
+    "system_code": "hsha09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA09-hsha09"
+  },
+  {
+    "id": "HA09-hsha09",
+    "code": "HA09",
+    "system_code": "hsha09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA09-hsha09"
+  },
+  {
+    "id": "HSHA22-hsha22",
+    "code": "HSHA22",
+    "system_code": "hsha22",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA22-hsha22"
+  },
+  {
+    "id": "HA22-hsha22",
+    "code": "HA22",
+    "system_code": "hsha22",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA22-hsha22"
+  },
+  {
+    "id": "HSHA27-hsha27",
+    "code": "HSHA27",
+    "system_code": "hsha27",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHA27-hsha27"
+  },
+  {
+    "id": "HA27-hsha27",
+    "code": "HA27",
+    "system_code": "hsha27",
+    "chamber": "house",
+    "sample_id": "committee-codes:HA27-hsha27"
+  },
+  {
+    "id": "HSHF00-hshf00",
+    "code": "HSHF00",
+    "system_code": "hshf00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHF00-hshf00"
+  },
+  {
+    "id": "HF00-hshf00",
+    "code": "HF00",
+    "system_code": "hshf00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HF00-hshf00"
+  },
+  {
+    "id": "HF-hshf00",
+    "code": "HF",
+    "system_code": "hshf00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HF-hshf00"
+  },
+  {
+    "id": "HSHM00-hshm00",
+    "code": "HSHM00",
+    "system_code": "hshm00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM00-hshm00"
+  },
+  {
+    "id": "HM00-hshm00",
+    "code": "HM00",
+    "system_code": "hshm00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM00-hshm00"
+  },
+  {
+    "id": "HM-hshm00",
+    "code": "HM",
+    "system_code": "hshm00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM-hshm00"
+  },
+  {
+    "id": "HSHM01-hshm01",
+    "code": "HSHM01",
+    "system_code": "hshm01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM01-hshm01"
+  },
+  {
+    "id": "HM01-hshm01",
+    "code": "HM01",
+    "system_code": "hshm01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM01-hshm01"
+  },
+  {
+    "id": "HSHM02-hshm02",
+    "code": "HSHM02",
+    "system_code": "hshm02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM02-hshm02"
+  },
+  {
+    "id": "HM02-hshm02",
+    "code": "HM02",
+    "system_code": "hshm02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM02-hshm02"
+  },
+  {
+    "id": "HSHM03-hshm03",
+    "code": "HSHM03",
+    "system_code": "hshm03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM03-hshm03"
+  },
+  {
+    "id": "HM03-hshm03",
+    "code": "HM03",
+    "system_code": "hshm03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM03-hshm03"
+  },
+  {
+    "id": "HSHM04-hshm04",
+    "code": "HSHM04",
+    "system_code": "hshm04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM04-hshm04"
+  },
+  {
+    "id": "HM04-hshm04",
+    "code": "HM04",
+    "system_code": "hshm04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM04-hshm04"
+  },
+  {
+    "id": "HSHM05-hshm05",
+    "code": "HSHM05",
+    "system_code": "hshm05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM05-hshm05"
+  },
+  {
+    "id": "HM05-hshm05",
+    "code": "HM05",
+    "system_code": "hshm05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM05-hshm05"
+  },
+  {
+    "id": "HSHM06-hshm06",
+    "code": "HSHM06",
+    "system_code": "hshm06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM06-hshm06"
+  },
+  {
+    "id": "HM06-hshm06",
+    "code": "HM06",
+    "system_code": "hshm06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM06-hshm06"
+  },
+  {
+    "id": "HSHM07-hshm07",
+    "code": "HSHM07",
+    "system_code": "hshm07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM07-hshm07"
+  },
+  {
+    "id": "HM07-hshm07",
+    "code": "HM07",
+    "system_code": "hshm07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM07-hshm07"
+  },
+  {
+    "id": "HSHM08-hshm08",
+    "code": "HSHM08",
+    "system_code": "hshm08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM08-hshm08"
+  },
+  {
+    "id": "HM08-hshm08",
+    "code": "HM08",
+    "system_code": "hshm08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM08-hshm08"
+  },
+  {
+    "id": "HSHM09-hshm09",
+    "code": "HSHM09",
+    "system_code": "hshm09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM09-hshm09"
+  },
+  {
+    "id": "HM09-hshm09",
+    "code": "HM09",
+    "system_code": "hshm09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM09-hshm09"
+  },
+  {
+    "id": "HSHM10-hshm10",
+    "code": "HSHM10",
+    "system_code": "hshm10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM10-hshm10"
+  },
+  {
+    "id": "HM10-hshm10",
+    "code": "HM10",
+    "system_code": "hshm10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM10-hshm10"
+  },
+  {
+    "id": "HSHM11-hshm11",
+    "code": "HSHM11",
+    "system_code": "hshm11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM11-hshm11"
+  },
+  {
+    "id": "HM11-hshm11",
+    "code": "HM11",
+    "system_code": "hshm11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM11-hshm11"
+  },
+  {
+    "id": "HSHM12-hshm12",
+    "code": "HSHM12",
+    "system_code": "hshm12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSHM12-hshm12"
+  },
+  {
+    "id": "HM12-hshm12",
+    "code": "HM12",
+    "system_code": "hshm12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HM12-hshm12"
+  },
+  {
+    "id": "HSIF00-hsif00",
+    "code": "HSIF00",
+    "system_code": "hsif00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF00-hsif00"
+  },
+  {
+    "id": "IF00-hsif00",
+    "code": "IF00",
+    "system_code": "hsif00",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF00-hsif00"
+  },
+  {
+    "id": "IF-hsif00",
+    "code": "IF",
+    "system_code": "hsif00",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF-hsif00"
+  },
+  {
+    "id": "HSIF01-hsif01",
+    "code": "HSIF01",
+    "system_code": "hsif01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF01-hsif01"
+  },
+  {
+    "id": "IF01-hsif01",
+    "code": "IF01",
+    "system_code": "hsif01",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF01-hsif01"
+  },
+  {
+    "id": "HSIF02-hsif02",
+    "code": "HSIF02",
+    "system_code": "hsif02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF02-hsif02"
+  },
+  {
+    "id": "IF02-hsif02",
+    "code": "IF02",
+    "system_code": "hsif02",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF02-hsif02"
+  },
+  {
+    "id": "HSIF03-hsif03",
+    "code": "HSIF03",
+    "system_code": "hsif03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF03-hsif03"
+  },
+  {
+    "id": "IF03-hsif03",
+    "code": "IF03",
+    "system_code": "hsif03",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF03-hsif03"
+  },
+  {
+    "id": "HSIF04-hsif04",
+    "code": "HSIF04",
+    "system_code": "hsif04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF04-hsif04"
+  },
+  {
+    "id": "IF04-hsif04",
+    "code": "IF04",
+    "system_code": "hsif04",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF04-hsif04"
+  },
+  {
+    "id": "HSIF06-hsif06",
+    "code": "HSIF06",
+    "system_code": "hsif06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF06-hsif06"
+  },
+  {
+    "id": "IF06-hsif06",
+    "code": "IF06",
+    "system_code": "hsif06",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF06-hsif06"
+  },
+  {
+    "id": "HSIF07-hsif07",
+    "code": "HSIF07",
+    "system_code": "hsif07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF07-hsif07"
+  },
+  {
+    "id": "IF07-hsif07",
+    "code": "IF07",
+    "system_code": "hsif07",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF07-hsif07"
+  },
+  {
+    "id": "HSIF10-hsif10",
+    "code": "HSIF10",
+    "system_code": "hsif10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF10-hsif10"
+  },
+  {
+    "id": "IF10-hsif10",
+    "code": "IF10",
+    "system_code": "hsif10",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF10-hsif10"
+  },
+  {
+    "id": "HSIF11-hsif11",
+    "code": "HSIF11",
+    "system_code": "hsif11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF11-hsif11"
+  },
+  {
+    "id": "IF11-hsif11",
+    "code": "IF11",
+    "system_code": "hsif11",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF11-hsif11"
+  },
+  {
+    "id": "HSIF12-hsif12",
+    "code": "HSIF12",
+    "system_code": "hsif12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF12-hsif12"
+  },
+  {
+    "id": "IF12-hsif12",
+    "code": "IF12",
+    "system_code": "hsif12",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF12-hsif12"
+  },
+  {
+    "id": "HSIF13-hsif13",
+    "code": "HSIF13",
+    "system_code": "hsif13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF13-hsif13"
+  },
+  {
+    "id": "IF13-hsif13",
+    "code": "IF13",
+    "system_code": "hsif13",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF13-hsif13"
+  },
+  {
+    "id": "HSIF14-hsif14",
+    "code": "HSIF14",
+    "system_code": "hsif14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF14-hsif14"
+  },
+  {
+    "id": "IF14-hsif14",
+    "code": "IF14",
+    "system_code": "hsif14",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF14-hsif14"
+  },
+  {
+    "id": "HSIF15-hsif15",
+    "code": "HSIF15",
+    "system_code": "hsif15",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF15-hsif15"
+  },
+  {
+    "id": "IF15-hsif15",
+    "code": "IF15",
+    "system_code": "hsif15",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF15-hsif15"
+  },
+  {
+    "id": "HSIF16-hsif16",
+    "code": "HSIF16",
+    "system_code": "hsif16",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF16-hsif16"
+  },
+  {
+    "id": "IF16-hsif16",
+    "code": "IF16",
+    "system_code": "hsif16",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF16-hsif16"
+  },
+  {
+    "id": "HSIF17-hsif17",
+    "code": "HSIF17",
+    "system_code": "hsif17",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF17-hsif17"
+  },
+  {
+    "id": "IF17-hsif17",
+    "code": "IF17",
+    "system_code": "hsif17",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF17-hsif17"
+  },
+  {
+    "id": "HSIF18-hsif18",
+    "code": "HSIF18",
+    "system_code": "hsif18",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSIF18-hsif18"
+  },
+  {
+    "id": "IF18-hsif18",
+    "code": "IF18",
+    "system_code": "hsif18",
+    "chamber": "house",
+    "sample_id": "committee-codes:IF18-hsif18"
+  },
+  {
+    "id": "HSII00-hsii00",
+    "code": "HSII00",
+    "system_code": "hsii00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII00-hsii00"
+  },
+  {
+    "id": "II00-hsii00",
+    "code": "II00",
+    "system_code": "hsii00",
+    "chamber": "house",
+    "sample_id": "committee-codes:II00-hsii00"
+  },
+  {
+    "id": "II-hsii00",
+    "code": "II",
+    "system_code": "hsii00",
+    "chamber": "house",
+    "sample_id": "committee-codes:II-hsii00"
+  },
+  {
+    "id": "HSII01-hsii01",
+    "code": "HSII01",
+    "system_code": "hsii01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII01-hsii01"
+  },
+  {
+    "id": "II01-hsii01",
+    "code": "II01",
+    "system_code": "hsii01",
+    "chamber": "house",
+    "sample_id": "committee-codes:II01-hsii01"
+  },
+  {
+    "id": "HSII02-hsii02",
+    "code": "HSII02",
+    "system_code": "hsii02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII02-hsii02"
+  },
+  {
+    "id": "II02-hsii02",
+    "code": "II02",
+    "system_code": "hsii02",
+    "chamber": "house",
+    "sample_id": "committee-codes:II02-hsii02"
+  },
+  {
+    "id": "HSII03-hsii03",
+    "code": "HSII03",
+    "system_code": "hsii03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII03-hsii03"
+  },
+  {
+    "id": "II03-hsii03",
+    "code": "II03",
+    "system_code": "hsii03",
+    "chamber": "house",
+    "sample_id": "committee-codes:II03-hsii03"
+  },
+  {
+    "id": "HSII04-hsii04",
+    "code": "HSII04",
+    "system_code": "hsii04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII04-hsii04"
+  },
+  {
+    "id": "II04-hsii04",
+    "code": "II04",
+    "system_code": "hsii04",
+    "chamber": "house",
+    "sample_id": "committee-codes:II04-hsii04"
+  },
+  {
+    "id": "HSII05-hsii05",
+    "code": "HSII05",
+    "system_code": "hsii05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII05-hsii05"
+  },
+  {
+    "id": "II05-hsii05",
+    "code": "II05",
+    "system_code": "hsii05",
+    "chamber": "house",
+    "sample_id": "committee-codes:II05-hsii05"
+  },
+  {
+    "id": "HSII06-hsii06",
+    "code": "HSII06",
+    "system_code": "hsii06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII06-hsii06"
+  },
+  {
+    "id": "II06-hsii06",
+    "code": "II06",
+    "system_code": "hsii06",
+    "chamber": "house",
+    "sample_id": "committee-codes:II06-hsii06"
+  },
+  {
+    "id": "HSII07-hsii07",
+    "code": "HSII07",
+    "system_code": "hsii07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII07-hsii07"
+  },
+  {
+    "id": "II07-hsii07",
+    "code": "II07",
+    "system_code": "hsii07",
+    "chamber": "house",
+    "sample_id": "committee-codes:II07-hsii07"
+  },
+  {
+    "id": "HSII08-hsii08",
+    "code": "HSII08",
+    "system_code": "hsii08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII08-hsii08"
+  },
+  {
+    "id": "II08-hsii08",
+    "code": "II08",
+    "system_code": "hsii08",
+    "chamber": "house",
+    "sample_id": "committee-codes:II08-hsii08"
+  },
+  {
+    "id": "HSII09-hsii09",
+    "code": "HSII09",
+    "system_code": "hsii09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII09-hsii09"
+  },
+  {
+    "id": "II09-hsii09",
+    "code": "II09",
+    "system_code": "hsii09",
+    "chamber": "house",
+    "sample_id": "committee-codes:II09-hsii09"
+  },
+  {
+    "id": "HSII10-hsii10",
+    "code": "HSII10",
+    "system_code": "hsii10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII10-hsii10"
+  },
+  {
+    "id": "II10-hsii10",
+    "code": "II10",
+    "system_code": "hsii10",
+    "chamber": "house",
+    "sample_id": "committee-codes:II10-hsii10"
+  },
+  {
+    "id": "HSII11-hsii11",
+    "code": "HSII11",
+    "system_code": "hsii11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII11-hsii11"
+  },
+  {
+    "id": "II11-hsii11",
+    "code": "II11",
+    "system_code": "hsii11",
+    "chamber": "house",
+    "sample_id": "committee-codes:II11-hsii11"
+  },
+  {
+    "id": "HSII13-hsii13",
+    "code": "HSII13",
+    "system_code": "hsii13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII13-hsii13"
+  },
+  {
+    "id": "II13-hsii13",
+    "code": "II13",
+    "system_code": "hsii13",
+    "chamber": "house",
+    "sample_id": "committee-codes:II13-hsii13"
+  },
+  {
+    "id": "HSII14-hsii14",
+    "code": "HSII14",
+    "system_code": "hsii14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII14-hsii14"
+  },
+  {
+    "id": "II14-hsii14",
+    "code": "II14",
+    "system_code": "hsii14",
+    "chamber": "house",
+    "sample_id": "committee-codes:II14-hsii14"
+  },
+  {
+    "id": "HSII15-hsii15",
+    "code": "HSII15",
+    "system_code": "hsii15",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII15-hsii15"
+  },
+  {
+    "id": "II15-hsii15",
+    "code": "II15",
+    "system_code": "hsii15",
+    "chamber": "house",
+    "sample_id": "committee-codes:II15-hsii15"
+  },
+  {
+    "id": "HSII20-hsii20",
+    "code": "HSII20",
+    "system_code": "hsii20",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII20-hsii20"
+  },
+  {
+    "id": "II20-hsii20",
+    "code": "II20",
+    "system_code": "hsii20",
+    "chamber": "house",
+    "sample_id": "committee-codes:II20-hsii20"
+  },
+  {
+    "id": "HSII22-hsii22",
+    "code": "HSII22",
+    "system_code": "hsii22",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII22-hsii22"
+  },
+  {
+    "id": "II22-hsii22",
+    "code": "II22",
+    "system_code": "hsii22",
+    "chamber": "house",
+    "sample_id": "committee-codes:II22-hsii22"
+  },
+  {
+    "id": "HSII24-hsii24",
+    "code": "HSII24",
+    "system_code": "hsii24",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSII24-hsii24"
+  },
+  {
+    "id": "II24-hsii24",
+    "code": "II24",
+    "system_code": "hsii24",
+    "chamber": "house",
+    "sample_id": "committee-codes:II24-hsii24"
+  },
+  {
+    "id": "HSJU00-hsju00",
+    "code": "HSJU00",
+    "system_code": "hsju00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU00-hsju00"
+  },
+  {
+    "id": "JU00-hsju00",
+    "code": "JU00",
+    "system_code": "hsju00",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU00-hsju00"
+  },
+  {
+    "id": "JU-hsju00",
+    "code": "JU",
+    "system_code": "hsju00",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU-hsju00"
+  },
+  {
+    "id": "HSJU01-hsju01",
+    "code": "HSJU01",
+    "system_code": "hsju01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU01-hsju01"
+  },
+  {
+    "id": "JU01-hsju01",
+    "code": "JU01",
+    "system_code": "hsju01",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU01-hsju01"
+  },
+  {
+    "id": "HSJU02-hsju02",
+    "code": "HSJU02",
+    "system_code": "hsju02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU02-hsju02"
+  },
+  {
+    "id": "JU02-hsju02",
+    "code": "JU02",
+    "system_code": "hsju02",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU02-hsju02"
+  },
+  {
+    "id": "HSJU03-hsju03",
+    "code": "HSJU03",
+    "system_code": "hsju03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU03-hsju03"
+  },
+  {
+    "id": "JU03-hsju03",
+    "code": "JU03",
+    "system_code": "hsju03",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU03-hsju03"
+  },
+  {
+    "id": "HSJU04-hsju04",
+    "code": "HSJU04",
+    "system_code": "hsju04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU04-hsju04"
+  },
+  {
+    "id": "JU04-hsju04",
+    "code": "JU04",
+    "system_code": "hsju04",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU04-hsju04"
+  },
+  {
+    "id": "HSJU05-hsju05",
+    "code": "HSJU05",
+    "system_code": "hsju05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU05-hsju05"
+  },
+  {
+    "id": "JU05-hsju05",
+    "code": "JU05",
+    "system_code": "hsju05",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU05-hsju05"
+  },
+  {
+    "id": "HSJU06-hsju06",
+    "code": "HSJU06",
+    "system_code": "hsju06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU06-hsju06"
+  },
+  {
+    "id": "JU06-hsju06",
+    "code": "JU06",
+    "system_code": "hsju06",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU06-hsju06"
+  },
+  {
+    "id": "HSJU07-hsju07",
+    "code": "HSJU07",
+    "system_code": "hsju07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU07-hsju07"
+  },
+  {
+    "id": "JU07-hsju07",
+    "code": "JU07",
+    "system_code": "hsju07",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU07-hsju07"
+  },
+  {
+    "id": "HSJU08-hsju08",
+    "code": "HSJU08",
+    "system_code": "hsju08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU08-hsju08"
+  },
+  {
+    "id": "JU08-hsju08",
+    "code": "JU08",
+    "system_code": "hsju08",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU08-hsju08"
+  },
+  {
+    "id": "HSJU09-hsju09",
+    "code": "HSJU09",
+    "system_code": "hsju09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU09-hsju09"
+  },
+  {
+    "id": "JU09-hsju09",
+    "code": "JU09",
+    "system_code": "hsju09",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU09-hsju09"
+  },
+  {
+    "id": "HSJU10-hsju10",
+    "code": "HSJU10",
+    "system_code": "hsju10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU10-hsju10"
+  },
+  {
+    "id": "JU10-hsju10",
+    "code": "JU10",
+    "system_code": "hsju10",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU10-hsju10"
+  },
+  {
+    "id": "HSJU11-hsju11",
+    "code": "HSJU11",
+    "system_code": "hsju11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU11-hsju11"
+  },
+  {
+    "id": "JU11-hsju11",
+    "code": "JU11",
+    "system_code": "hsju11",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU11-hsju11"
+  },
+  {
+    "id": "HSJU12-hsju12",
+    "code": "HSJU12",
+    "system_code": "hsju12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU12-hsju12"
+  },
+  {
+    "id": "JU12-hsju12",
+    "code": "JU12",
+    "system_code": "hsju12",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU12-hsju12"
+  },
+  {
+    "id": "HSJU13-hsju13",
+    "code": "HSJU13",
+    "system_code": "hsju13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSJU13-hsju13"
+  },
+  {
+    "id": "JU13-hsju13",
+    "code": "JU13",
+    "system_code": "hsju13",
+    "chamber": "house",
+    "sample_id": "committee-codes:JU13-hsju13"
+  },
+  {
+    "id": "HSPW00-hspw00",
+    "code": "HSPW00",
+    "system_code": "hspw00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW00-hspw00"
+  },
+  {
+    "id": "PW00-hspw00",
+    "code": "PW00",
+    "system_code": "hspw00",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW00-hspw00"
+  },
+  {
+    "id": "PW-hspw00",
+    "code": "PW",
+    "system_code": "hspw00",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW-hspw00"
+  },
+  {
+    "id": "HSPW01-hspw01",
+    "code": "HSPW01",
+    "system_code": "hspw01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW01-hspw01"
+  },
+  {
+    "id": "PW01-hspw01",
+    "code": "PW01",
+    "system_code": "hspw01",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW01-hspw01"
+  },
+  {
+    "id": "HSPW02-hspw02",
+    "code": "HSPW02",
+    "system_code": "hspw02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW02-hspw02"
+  },
+  {
+    "id": "PW02-hspw02",
+    "code": "PW02",
+    "system_code": "hspw02",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW02-hspw02"
+  },
+  {
+    "id": "HSPW03-hspw03",
+    "code": "HSPW03",
+    "system_code": "hspw03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW03-hspw03"
+  },
+  {
+    "id": "PW03-hspw03",
+    "code": "PW03",
+    "system_code": "hspw03",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW03-hspw03"
+  },
+  {
+    "id": "HSPW04-hspw04",
+    "code": "HSPW04",
+    "system_code": "hspw04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW04-hspw04"
+  },
+  {
+    "id": "PW04-hspw04",
+    "code": "PW04",
+    "system_code": "hspw04",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW04-hspw04"
+  },
+  {
+    "id": "HSPW05-hspw05",
+    "code": "HSPW05",
+    "system_code": "hspw05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW05-hspw05"
+  },
+  {
+    "id": "PW05-hspw05",
+    "code": "PW05",
+    "system_code": "hspw05",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW05-hspw05"
+  },
+  {
+    "id": "HSPW06-hspw06",
+    "code": "HSPW06",
+    "system_code": "hspw06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW06-hspw06"
+  },
+  {
+    "id": "PW06-hspw06",
+    "code": "PW06",
+    "system_code": "hspw06",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW06-hspw06"
+  },
+  {
+    "id": "HSPW07-hspw07",
+    "code": "HSPW07",
+    "system_code": "hspw07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW07-hspw07"
+  },
+  {
+    "id": "PW07-hspw07",
+    "code": "PW07",
+    "system_code": "hspw07",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW07-hspw07"
+  },
+  {
+    "id": "HSPW08-hspw08",
+    "code": "HSPW08",
+    "system_code": "hspw08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW08-hspw08"
+  },
+  {
+    "id": "PW08-hspw08",
+    "code": "PW08",
+    "system_code": "hspw08",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW08-hspw08"
+  },
+  {
+    "id": "HSPW09-hspw09",
+    "code": "HSPW09",
+    "system_code": "hspw09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW09-hspw09"
+  },
+  {
+    "id": "PW09-hspw09",
+    "code": "PW09",
+    "system_code": "hspw09",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW09-hspw09"
+  },
+  {
+    "id": "HSPW10-hspw10",
+    "code": "HSPW10",
+    "system_code": "hspw10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW10-hspw10"
+  },
+  {
+    "id": "PW10-hspw10",
+    "code": "PW10",
+    "system_code": "hspw10",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW10-hspw10"
+  },
+  {
+    "id": "HSPW11-hspw11",
+    "code": "HSPW11",
+    "system_code": "hspw11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW11-hspw11"
+  },
+  {
+    "id": "PW11-hspw11",
+    "code": "PW11",
+    "system_code": "hspw11",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW11-hspw11"
+  },
+  {
+    "id": "HSPW12-hspw12",
+    "code": "HSPW12",
+    "system_code": "hspw12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW12-hspw12"
+  },
+  {
+    "id": "PW12-hspw12",
+    "code": "PW12",
+    "system_code": "hspw12",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW12-hspw12"
+  },
+  {
+    "id": "HSPW13-hspw13",
+    "code": "HSPW13",
+    "system_code": "hspw13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW13-hspw13"
+  },
+  {
+    "id": "PW13-hspw13",
+    "code": "PW13",
+    "system_code": "hspw13",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW13-hspw13"
+  },
+  {
+    "id": "HSPW14-hspw14",
+    "code": "HSPW14",
+    "system_code": "hspw14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW14-hspw14"
+  },
+  {
+    "id": "PW14-hspw14",
+    "code": "PW14",
+    "system_code": "hspw14",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW14-hspw14"
+  },
+  {
+    "id": "HSPW33-hspw33",
+    "code": "HSPW33",
+    "system_code": "hspw33",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSPW33-hspw33"
+  },
+  {
+    "id": "PW33-hspw33",
+    "code": "PW33",
+    "system_code": "hspw33",
+    "chamber": "house",
+    "sample_id": "committee-codes:PW33-hspw33"
+  },
+  {
+    "id": "HSQA00-hsqa00",
+    "code": "HSQA00",
+    "system_code": "hsqa00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSQA00-hsqa00"
+  },
+  {
+    "id": "QA00-hsqa00",
+    "code": "QA00",
+    "system_code": "hsqa00",
+    "chamber": "house",
+    "sample_id": "committee-codes:QA00-hsqa00"
+  },
+  {
+    "id": "QA-hsqa00",
+    "code": "QA",
+    "system_code": "hsqa00",
+    "chamber": "house",
+    "sample_id": "committee-codes:QA-hsqa00"
+  },
+  {
+    "id": "HSRO00-hsro00",
+    "code": "HSRO00",
+    "system_code": "hsro00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSRO00-hsro00"
+  },
+  {
+    "id": "RO00-hsro00",
+    "code": "RO00",
+    "system_code": "hsro00",
+    "chamber": "house",
+    "sample_id": "committee-codes:RO00-hsro00"
+  },
+  {
+    "id": "RO-hsro00",
+    "code": "RO",
+    "system_code": "hsro00",
+    "chamber": "house",
+    "sample_id": "committee-codes:RO-hsro00"
+  },
+  {
+    "id": "HSRU00-hsru00",
+    "code": "HSRU00",
+    "system_code": "hsru00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSRU00-hsru00"
+  },
+  {
+    "id": "RU00-hsru00",
+    "code": "RU00",
+    "system_code": "hsru00",
+    "chamber": "house",
+    "sample_id": "committee-codes:RU00-hsru00"
+  },
+  {
+    "id": "RU-hsru00",
+    "code": "RU",
+    "system_code": "hsru00",
+    "chamber": "house",
+    "sample_id": "committee-codes:RU-hsru00"
+  },
+  {
+    "id": "HSRU01-hsru01",
+    "code": "HSRU01",
+    "system_code": "hsru01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSRU01-hsru01"
+  },
+  {
+    "id": "RU01-hsru01",
+    "code": "RU01",
+    "system_code": "hsru01",
+    "chamber": "house",
+    "sample_id": "committee-codes:RU01-hsru01"
+  },
+  {
+    "id": "HSRU02-hsru02",
+    "code": "HSRU02",
+    "system_code": "hsru02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSRU02-hsru02"
+  },
+  {
+    "id": "RU02-hsru02",
+    "code": "RU02",
+    "system_code": "hsru02",
+    "chamber": "house",
+    "sample_id": "committee-codes:RU02-hsru02"
+  },
+  {
+    "id": "HSRU04-hsru04",
+    "code": "HSRU04",
+    "system_code": "hsru04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSRU04-hsru04"
+  },
+  {
+    "id": "RU04-hsru04",
+    "code": "RU04",
+    "system_code": "hsru04",
+    "chamber": "house",
+    "sample_id": "committee-codes:RU04-hsru04"
+  },
+  {
+    "id": "HSRU05-hsru05",
+    "code": "HSRU05",
+    "system_code": "hsru05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSRU05-hsru05"
+  },
+  {
+    "id": "RU05-hsru05",
+    "code": "RU05",
+    "system_code": "hsru05",
+    "chamber": "house",
+    "sample_id": "committee-codes:RU05-hsru05"
+  },
+  {
+    "id": "HSSM00-hssm00",
+    "code": "HSSM00",
+    "system_code": "hssm00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM00-hssm00"
+  },
+  {
+    "id": "SM00-hssm00",
+    "code": "SM00",
+    "system_code": "hssm00",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM00-hssm00"
+  },
+  {
+    "id": "SM-hssm00",
+    "code": "SM",
+    "system_code": "hssm00",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM-hssm00"
+  },
+  {
+    "id": "HSSM01-hssm01",
+    "code": "HSSM01",
+    "system_code": "hssm01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM01-hssm01"
+  },
+  {
+    "id": "SM01-hssm01",
+    "code": "SM01",
+    "system_code": "hssm01",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM01-hssm01"
+  },
+  {
+    "id": "HSSM02-hssm02",
+    "code": "HSSM02",
+    "system_code": "hssm02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM02-hssm02"
+  },
+  {
+    "id": "SM02-hssm02",
+    "code": "SM02",
+    "system_code": "hssm02",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM02-hssm02"
+  },
+  {
+    "id": "HSSM03-hssm03",
+    "code": "HSSM03",
+    "system_code": "hssm03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM03-hssm03"
+  },
+  {
+    "id": "SM03-hssm03",
+    "code": "SM03",
+    "system_code": "hssm03",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM03-hssm03"
+  },
+  {
+    "id": "HSSM04-hssm04",
+    "code": "HSSM04",
+    "system_code": "hssm04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM04-hssm04"
+  },
+  {
+    "id": "SM04-hssm04",
+    "code": "SM04",
+    "system_code": "hssm04",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM04-hssm04"
+  },
+  {
+    "id": "HSSM05-hssm05",
+    "code": "HSSM05",
+    "system_code": "hssm05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM05-hssm05"
+  },
+  {
+    "id": "SM05-hssm05",
+    "code": "SM05",
+    "system_code": "hssm05",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM05-hssm05"
+  },
+  {
+    "id": "HSSM06-hssm06",
+    "code": "HSSM06",
+    "system_code": "hssm06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM06-hssm06"
+  },
+  {
+    "id": "SM06-hssm06",
+    "code": "SM06",
+    "system_code": "hssm06",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM06-hssm06"
+  },
+  {
+    "id": "HSSM07-hssm07",
+    "code": "HSSM07",
+    "system_code": "hssm07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM07-hssm07"
+  },
+  {
+    "id": "SM07-hssm07",
+    "code": "SM07",
+    "system_code": "hssm07",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM07-hssm07"
+  },
+  {
+    "id": "HSSM08-hssm08",
+    "code": "HSSM08",
+    "system_code": "hssm08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM08-hssm08"
+  },
+  {
+    "id": "SM08-hssm08",
+    "code": "SM08",
+    "system_code": "hssm08",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM08-hssm08"
+  },
+  {
+    "id": "HSSM09-hssm09",
+    "code": "HSSM09",
+    "system_code": "hssm09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM09-hssm09"
+  },
+  {
+    "id": "SM09-hssm09",
+    "code": "SM09",
+    "system_code": "hssm09",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM09-hssm09"
+  },
+  {
+    "id": "HSSM10-hssm10",
+    "code": "HSSM10",
+    "system_code": "hssm10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM10-hssm10"
+  },
+  {
+    "id": "SM10-hssm10",
+    "code": "SM10",
+    "system_code": "hssm10",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM10-hssm10"
+  },
+  {
+    "id": "HSSM11-hssm11",
+    "code": "HSSM11",
+    "system_code": "hssm11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM11-hssm11"
+  },
+  {
+    "id": "SM11-hssm11",
+    "code": "SM11",
+    "system_code": "hssm11",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM11-hssm11"
+  },
+  {
+    "id": "HSSM12-hssm12",
+    "code": "HSSM12",
+    "system_code": "hssm12",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM12-hssm12"
+  },
+  {
+    "id": "SM12-hssm12",
+    "code": "SM12",
+    "system_code": "hssm12",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM12-hssm12"
+  },
+  {
+    "id": "HSSM13-hssm13",
+    "code": "HSSM13",
+    "system_code": "hssm13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM13-hssm13"
+  },
+  {
+    "id": "SM13-hssm13",
+    "code": "SM13",
+    "system_code": "hssm13",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM13-hssm13"
+  },
+  {
+    "id": "HSSM14-hssm14",
+    "code": "HSSM14",
+    "system_code": "hssm14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM14-hssm14"
+  },
+  {
+    "id": "SM14-hssm14",
+    "code": "SM14",
+    "system_code": "hssm14",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM14-hssm14"
+  },
+  {
+    "id": "HSSM15-hssm15",
+    "code": "HSSM15",
+    "system_code": "hssm15",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM15-hssm15"
+  },
+  {
+    "id": "SM15-hssm15",
+    "code": "SM15",
+    "system_code": "hssm15",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM15-hssm15"
+  },
+  {
+    "id": "HSSM16-hssm16",
+    "code": "HSSM16",
+    "system_code": "hssm16",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM16-hssm16"
+  },
+  {
+    "id": "SM16-hssm16",
+    "code": "SM16",
+    "system_code": "hssm16",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM16-hssm16"
+  },
+  {
+    "id": "HSSM17-hssm17",
+    "code": "HSSM17",
+    "system_code": "hssm17",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM17-hssm17"
+  },
+  {
+    "id": "SM17-hssm17",
+    "code": "SM17",
+    "system_code": "hssm17",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM17-hssm17"
+  },
+  {
+    "id": "HSSM18-hssm18",
+    "code": "HSSM18",
+    "system_code": "hssm18",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM18-hssm18"
+  },
+  {
+    "id": "SM18-hssm18",
+    "code": "SM18",
+    "system_code": "hssm18",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM18-hssm18"
+  },
+  {
+    "id": "HSSM19-hssm19",
+    "code": "HSSM19",
+    "system_code": "hssm19",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM19-hssm19"
+  },
+  {
+    "id": "SM19-hssm19",
+    "code": "SM19",
+    "system_code": "hssm19",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM19-hssm19"
+  },
+  {
+    "id": "HSSM20-hssm20",
+    "code": "HSSM20",
+    "system_code": "hssm20",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM20-hssm20"
+  },
+  {
+    "id": "SM20-hssm20",
+    "code": "SM20",
+    "system_code": "hssm20",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM20-hssm20"
+  },
+  {
+    "id": "HSSM21-hssm21",
+    "code": "HSSM21",
+    "system_code": "hssm21",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM21-hssm21"
+  },
+  {
+    "id": "SM21-hssm21",
+    "code": "SM21",
+    "system_code": "hssm21",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM21-hssm21"
+  },
+  {
+    "id": "HSSM22-hssm22",
+    "code": "HSSM22",
+    "system_code": "hssm22",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM22-hssm22"
+  },
+  {
+    "id": "SM22-hssm22",
+    "code": "SM22",
+    "system_code": "hssm22",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM22-hssm22"
+  },
+  {
+    "id": "HSSM23-hssm23",
+    "code": "HSSM23",
+    "system_code": "hssm23",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM23-hssm23"
+  },
+  {
+    "id": "SM23-hssm23",
+    "code": "SM23",
+    "system_code": "hssm23",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM23-hssm23"
+  },
+  {
+    "id": "HSSM24-hssm24",
+    "code": "HSSM24",
+    "system_code": "hssm24",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM24-hssm24"
+  },
+  {
+    "id": "SM24-hssm24",
+    "code": "SM24",
+    "system_code": "hssm24",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM24-hssm24"
+  },
+  {
+    "id": "HSSM25-hssm25",
+    "code": "HSSM25",
+    "system_code": "hssm25",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM25-hssm25"
+  },
+  {
+    "id": "SM25-hssm25",
+    "code": "SM25",
+    "system_code": "hssm25",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM25-hssm25"
+  },
+  {
+    "id": "HSSM26-hssm26",
+    "code": "HSSM26",
+    "system_code": "hssm26",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM26-hssm26"
+  },
+  {
+    "id": "SM26-hssm26",
+    "code": "SM26",
+    "system_code": "hssm26",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM26-hssm26"
+  },
+  {
+    "id": "HSSM27-hssm27",
+    "code": "HSSM27",
+    "system_code": "hssm27",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSM27-hssm27"
+  },
+  {
+    "id": "SM27-hssm27",
+    "code": "SM27",
+    "system_code": "hssm27",
+    "chamber": "house",
+    "sample_id": "committee-codes:SM27-hssm27"
+  },
+  {
+    "id": "HSSO00-hsso00",
+    "code": "HSSO00",
+    "system_code": "hsso00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSO00-hsso00"
+  },
+  {
+    "id": "SO00-hsso00",
+    "code": "SO00",
+    "system_code": "hsso00",
+    "chamber": "house",
+    "sample_id": "committee-codes:SO00-hsso00"
+  },
+  {
+    "id": "SO-hsso00",
+    "code": "SO",
+    "system_code": "hsso00",
+    "chamber": "house",
+    "sample_id": "committee-codes:SO-hsso00"
+  },
+  {
+    "id": "HSSY00-hssy00",
+    "code": "HSSY00",
+    "system_code": "hssy00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY00-hssy00"
+  },
+  {
+    "id": "SY00-hssy00",
+    "code": "SY00",
+    "system_code": "hssy00",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY00-hssy00"
+  },
+  {
+    "id": "SY-hssy00",
+    "code": "SY",
+    "system_code": "hssy00",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY-hssy00"
+  },
+  {
+    "id": "HSSY01-hssy01",
+    "code": "HSSY01",
+    "system_code": "hssy01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY01-hssy01"
+  },
+  {
+    "id": "SY01-hssy01",
+    "code": "SY01",
+    "system_code": "hssy01",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY01-hssy01"
+  },
+  {
+    "id": "HSSY02-hssy02",
+    "code": "HSSY02",
+    "system_code": "hssy02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY02-hssy02"
+  },
+  {
+    "id": "SY02-hssy02",
+    "code": "SY02",
+    "system_code": "hssy02",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY02-hssy02"
+  },
+  {
+    "id": "HSSY03-hssy03",
+    "code": "HSSY03",
+    "system_code": "hssy03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY03-hssy03"
+  },
+  {
+    "id": "SY03-hssy03",
+    "code": "SY03",
+    "system_code": "hssy03",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY03-hssy03"
+  },
+  {
+    "id": "HSSY04-hssy04",
+    "code": "HSSY04",
+    "system_code": "hssy04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY04-hssy04"
+  },
+  {
+    "id": "SY04-hssy04",
+    "code": "SY04",
+    "system_code": "hssy04",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY04-hssy04"
+  },
+  {
+    "id": "HSSY05-hssy05",
+    "code": "HSSY05",
+    "system_code": "hssy05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY05-hssy05"
+  },
+  {
+    "id": "SY05-hssy05",
+    "code": "SY05",
+    "system_code": "hssy05",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY05-hssy05"
+  },
+  {
+    "id": "HSSY06-hssy06",
+    "code": "HSSY06",
+    "system_code": "hssy06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY06-hssy06"
+  },
+  {
+    "id": "SY06-hssy06",
+    "code": "SY06",
+    "system_code": "hssy06",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY06-hssy06"
+  },
+  {
+    "id": "HSSY07-hssy07",
+    "code": "HSSY07",
+    "system_code": "hssy07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY07-hssy07"
+  },
+  {
+    "id": "SY07-hssy07",
+    "code": "SY07",
+    "system_code": "hssy07",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY07-hssy07"
+  },
+  {
+    "id": "HSSY08-hssy08",
+    "code": "HSSY08",
+    "system_code": "hssy08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY08-hssy08"
+  },
+  {
+    "id": "SY08-hssy08",
+    "code": "SY08",
+    "system_code": "hssy08",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY08-hssy08"
+  },
+  {
+    "id": "HSSY10-hssy10",
+    "code": "HSSY10",
+    "system_code": "hssy10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY10-hssy10"
+  },
+  {
+    "id": "SY10-hssy10",
+    "code": "SY10",
+    "system_code": "hssy10",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY10-hssy10"
+  },
+  {
+    "id": "HSSY11-hssy11",
+    "code": "HSSY11",
+    "system_code": "hssy11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY11-hssy11"
+  },
+  {
+    "id": "SY11-hssy11",
+    "code": "SY11",
+    "system_code": "hssy11",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY11-hssy11"
+  },
+  {
+    "id": "HSSY13-hssy13",
+    "code": "HSSY13",
+    "system_code": "hssy13",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY13-hssy13"
+  },
+  {
+    "id": "SY13-hssy13",
+    "code": "SY13",
+    "system_code": "hssy13",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY13-hssy13"
+  },
+  {
+    "id": "HSSY14-hssy14",
+    "code": "HSSY14",
+    "system_code": "hssy14",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY14-hssy14"
+  },
+  {
+    "id": "SY14-hssy14",
+    "code": "SY14",
+    "system_code": "hssy14",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY14-hssy14"
+  },
+  {
+    "id": "HSSY15-hssy15",
+    "code": "HSSY15",
+    "system_code": "hssy15",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY15-hssy15"
+  },
+  {
+    "id": "SY15-hssy15",
+    "code": "SY15",
+    "system_code": "hssy15",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY15-hssy15"
+  },
+  {
+    "id": "HSSY16-hssy16",
+    "code": "HSSY16",
+    "system_code": "hssy16",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY16-hssy16"
+  },
+  {
+    "id": "SY16-hssy16",
+    "code": "SY16",
+    "system_code": "hssy16",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY16-hssy16"
+  },
+  {
+    "id": "HSSY17-hssy17",
+    "code": "HSSY17",
+    "system_code": "hssy17",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY17-hssy17"
+  },
+  {
+    "id": "SY17-hssy17",
+    "code": "SY17",
+    "system_code": "hssy17",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY17-hssy17"
+  },
+  {
+    "id": "HSSY18-hssy18",
+    "code": "HSSY18",
+    "system_code": "hssy18",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY18-hssy18"
+  },
+  {
+    "id": "SY18-hssy18",
+    "code": "SY18",
+    "system_code": "hssy18",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY18-hssy18"
+  },
+  {
+    "id": "HSSY19-hssy19",
+    "code": "HSSY19",
+    "system_code": "hssy19",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY19-hssy19"
+  },
+  {
+    "id": "SY19-hssy19",
+    "code": "SY19",
+    "system_code": "hssy19",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY19-hssy19"
+  },
+  {
+    "id": "HSSY20-hssy20",
+    "code": "HSSY20",
+    "system_code": "hssy20",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY20-hssy20"
+  },
+  {
+    "id": "SY20-hssy20",
+    "code": "SY20",
+    "system_code": "hssy20",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY20-hssy20"
+  },
+  {
+    "id": "HSSY21-hssy21",
+    "code": "HSSY21",
+    "system_code": "hssy21",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSSY21-hssy21"
+  },
+  {
+    "id": "SY21-hssy21",
+    "code": "SY21",
+    "system_code": "hssy21",
+    "chamber": "house",
+    "sample_id": "committee-codes:SY21-hssy21"
+  },
+  {
+    "id": "HSVR00-hsvr00",
+    "code": "HSVR00",
+    "system_code": "hsvr00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR00-hsvr00"
+  },
+  {
+    "id": "VR00-hsvr00",
+    "code": "VR00",
+    "system_code": "hsvr00",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR00-hsvr00"
+  },
+  {
+    "id": "VR-hsvr00",
+    "code": "VR",
+    "system_code": "hsvr00",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR-hsvr00"
+  },
+  {
+    "id": "HSVR01-hsvr01",
+    "code": "HSVR01",
+    "system_code": "hsvr01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR01-hsvr01"
+  },
+  {
+    "id": "VR01-hsvr01",
+    "code": "VR01",
+    "system_code": "hsvr01",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR01-hsvr01"
+  },
+  {
+    "id": "HSVR02-hsvr02",
+    "code": "HSVR02",
+    "system_code": "hsvr02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR02-hsvr02"
+  },
+  {
+    "id": "VR02-hsvr02",
+    "code": "VR02",
+    "system_code": "hsvr02",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR02-hsvr02"
+  },
+  {
+    "id": "HSVR03-hsvr03",
+    "code": "HSVR03",
+    "system_code": "hsvr03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR03-hsvr03"
+  },
+  {
+    "id": "VR03-hsvr03",
+    "code": "VR03",
+    "system_code": "hsvr03",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR03-hsvr03"
+  },
+  {
+    "id": "HSVR04-hsvr04",
+    "code": "HSVR04",
+    "system_code": "hsvr04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR04-hsvr04"
+  },
+  {
+    "id": "VR04-hsvr04",
+    "code": "VR04",
+    "system_code": "hsvr04",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR04-hsvr04"
+  },
+  {
+    "id": "HSVR05-hsvr05",
+    "code": "HSVR05",
+    "system_code": "hsvr05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR05-hsvr05"
+  },
+  {
+    "id": "VR05-hsvr05",
+    "code": "VR05",
+    "system_code": "hsvr05",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR05-hsvr05"
+  },
+  {
+    "id": "HSVR06-hsvr06",
+    "code": "HSVR06",
+    "system_code": "hsvr06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR06-hsvr06"
+  },
+  {
+    "id": "VR06-hsvr06",
+    "code": "VR06",
+    "system_code": "hsvr06",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR06-hsvr06"
+  },
+  {
+    "id": "HSVR07-hsvr07",
+    "code": "HSVR07",
+    "system_code": "hsvr07",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR07-hsvr07"
+  },
+  {
+    "id": "VR07-hsvr07",
+    "code": "VR07",
+    "system_code": "hsvr07",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR07-hsvr07"
+  },
+  {
+    "id": "HSVR08-hsvr08",
+    "code": "HSVR08",
+    "system_code": "hsvr08",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR08-hsvr08"
+  },
+  {
+    "id": "VR08-hsvr08",
+    "code": "VR08",
+    "system_code": "hsvr08",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR08-hsvr08"
+  },
+  {
+    "id": "HSVR09-hsvr09",
+    "code": "HSVR09",
+    "system_code": "hsvr09",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR09-hsvr09"
+  },
+  {
+    "id": "VR09-hsvr09",
+    "code": "VR09",
+    "system_code": "hsvr09",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR09-hsvr09"
+  },
+  {
+    "id": "HSVR10-hsvr10",
+    "code": "HSVR10",
+    "system_code": "hsvr10",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR10-hsvr10"
+  },
+  {
+    "id": "VR10-hsvr10",
+    "code": "VR10",
+    "system_code": "hsvr10",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR10-hsvr10"
+  },
+  {
+    "id": "HSVR11-hsvr11",
+    "code": "HSVR11",
+    "system_code": "hsvr11",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSVR11-hsvr11"
+  },
+  {
+    "id": "VR11-hsvr11",
+    "code": "VR11",
+    "system_code": "hsvr11",
+    "chamber": "house",
+    "sample_id": "committee-codes:VR11-hsvr11"
+  },
+  {
+    "id": "HSWM00-hswm00",
+    "code": "HSWM00",
+    "system_code": "hswm00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSWM00-hswm00"
+  },
+  {
+    "id": "WM00-hswm00",
+    "code": "WM00",
+    "system_code": "hswm00",
+    "chamber": "house",
+    "sample_id": "committee-codes:WM00-hswm00"
+  },
+  {
+    "id": "WM-hswm00",
+    "code": "WM",
+    "system_code": "hswm00",
+    "chamber": "house",
+    "sample_id": "committee-codes:WM-hswm00"
+  },
+  {
+    "id": "HSWM01-hswm01",
+    "code": "HSWM01",
+    "system_code": "hswm01",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSWM01-hswm01"
+  },
+  {
+    "id": "WM01-hswm01",
+    "code": "WM01",
+    "system_code": "hswm01",
+    "chamber": "house",
+    "sample_id": "committee-codes:WM01-hswm01"
+  },
+  {
+    "id": "HSWM02-hswm02",
+    "code": "HSWM02",
+    "system_code": "hswm02",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSWM02-hswm02"
+  },
+  {
+    "id": "WM02-hswm02",
+    "code": "WM02",
+    "system_code": "hswm02",
+    "chamber": "house",
+    "sample_id": "committee-codes:WM02-hswm02"
+  },
+  {
+    "id": "HSWM03-hswm03",
+    "code": "HSWM03",
+    "system_code": "hswm03",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSWM03-hswm03"
+  },
+  {
+    "id": "WM03-hswm03",
+    "code": "WM03",
+    "system_code": "hswm03",
+    "chamber": "house",
+    "sample_id": "committee-codes:WM03-hswm03"
+  },
+  {
+    "id": "HSWM04-hswm04",
+    "code": "HSWM04",
+    "system_code": "hswm04",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSWM04-hswm04"
+  },
+  {
+    "id": "WM04-hswm04",
+    "code": "WM04",
+    "system_code": "hswm04",
+    "chamber": "house",
+    "sample_id": "committee-codes:WM04-hswm04"
+  },
+  {
+    "id": "HSWM05-hswm05",
+    "code": "HSWM05",
+    "system_code": "hswm05",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSWM05-hswm05"
+  },
+  {
+    "id": "WM05-hswm05",
+    "code": "WM05",
+    "system_code": "hswm05",
+    "chamber": "house",
+    "sample_id": "committee-codes:WM05-hswm05"
+  },
+  {
+    "id": "HSWM06-hswm06",
+    "code": "HSWM06",
+    "system_code": "hswm06",
+    "chamber": "house",
+    "sample_id": "committee-codes:HSWM06-hswm06"
+  },
+  {
+    "id": "WM06-hswm06",
+    "code": "WM06",
+    "system_code": "hswm06",
+    "chamber": "house",
+    "sample_id": "committee-codes:WM06-hswm06"
+  },
+  {
+    "id": "HTZT00-htzt00",
+    "code": "HTZT00",
+    "system_code": "htzt00",
+    "chamber": "house",
+    "sample_id": "committee-codes:HTZT00-htzt00"
+  },
+  {
+    "id": "HZGO34-hzgo34",
+    "code": "HZGO34",
+    "system_code": "hzgo34",
+    "chamber": "house",
+    "sample_id": "committee-codes:HZGO34-hzgo34"
+  },
+  {
+    "id": "JCFM00-jcfm00",
+    "code": "JCFM00",
+    "system_code": "jcfm00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JCFM00-jcfm00"
+  },
+  {
+    "id": "JCOV00-jcov00",
+    "code": "JCOV00",
+    "system_code": "jcov00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JCOV00-jcov00"
+  },
+  {
+    "id": "JCPK00-jcpk00",
+    "code": "JCPK00",
+    "system_code": "jcpk00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JCPK00-jcpk00"
+  },
+  {
+    "id": "JCSE00-jcse00",
+    "code": "JCSE00",
+    "system_code": "jcse00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JCSE00-jcse00"
+  },
+  {
+    "id": "JCUC00-jcuc00",
+    "code": "JCUC00",
+    "system_code": "jcuc00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JCUC00-jcuc00"
+  },
+  {
+    "id": "JHJE00-jhje00",
+    "code": "JHJE00",
+    "system_code": "jhje00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JHJE00-jhje00"
+  },
+  {
+    "id": "JJEC00-jjec00",
+    "code": "JJEC00",
+    "system_code": "jjec00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JJEC00-jjec00"
+  },
+  {
+    "id": "JOCP00-jocp00",
+    "code": "JOCP00",
+    "system_code": "jocp00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JOCP00-jocp00"
+  },
+  {
+    "id": "JSDF00-jsdf00",
+    "code": "JSDF00",
+    "system_code": "jsdf00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSDF00-jsdf00"
+  },
+  {
+    "id": "JSEC00-jsec00",
+    "code": "JSEC00",
+    "system_code": "jsec00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSEC00-jsec00"
+  },
+  {
+    "id": "JSEC01-jsec01",
+    "code": "JSEC01",
+    "system_code": "jsec01",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSEC01-jsec01"
+  },
+  {
+    "id": "JSEC02-jsec02",
+    "code": "JSEC02",
+    "system_code": "jsec02",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSEC02-jsec02"
+  },
+  {
+    "id": "JSEC03-jsec03",
+    "code": "JSEC03",
+    "system_code": "jsec03",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSEC03-jsec03"
+  },
+  {
+    "id": "JSEC04-jsec04",
+    "code": "JSEC04",
+    "system_code": "jsec04",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSEC04-jsec04"
+  },
+  {
+    "id": "JSEC05-jsec05",
+    "code": "JSEC05",
+    "system_code": "jsec05",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSEC05-jsec05"
+  },
+  {
+    "id": "JSEC06-jsec06",
+    "code": "JSEC06",
+    "system_code": "jsec06",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSEC06-jsec06"
+  },
+  {
+    "id": "JSEC07-jsec07",
+    "code": "JSEC07",
+    "system_code": "jsec07",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSEC07-jsec07"
+  },
+  {
+    "id": "JSEC08-jsec08",
+    "code": "JSEC08",
+    "system_code": "jsec08",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSEC08-jsec08"
+  },
+  {
+    "id": "JSID00-jsid00",
+    "code": "JSID00",
+    "system_code": "jsid00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSID00-jsid00"
+  },
+  {
+    "id": "JSIE00-jsie00",
+    "code": "JSIE00",
+    "system_code": "jsie00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSIE00-jsie00"
+  },
+  {
+    "id": "JSIF00-jsif00",
+    "code": "JSIF00",
+    "system_code": "jsif00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSIF00-jsif00"
+  },
+  {
+    "id": "JSIG00-jsig00",
+    "code": "JSIG00",
+    "system_code": "jsig00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSIG00-jsig00"
+  },
+  {
+    "id": "JSIH00-jsih00",
+    "code": "JSIH00",
+    "system_code": "jsih00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSIH00-jsih00"
+  },
+  {
+    "id": "JSLC00-jslc00",
+    "code": "JSLC00",
+    "system_code": "jslc00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSLC00-jslc00"
+  },
+  {
+    "id": "JSPR00-jspr00",
+    "code": "JSPR00",
+    "system_code": "jspr00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSPR00-jspr00"
+  },
+  {
+    "id": "JSTX00-jstx00",
+    "code": "JSTX00",
+    "system_code": "jstx00",
+    "chamber": "joint",
+    "sample_id": "committee-codes:JSTX00-jstx00"
+  },
+  {
+    "id": "SCNC00-scnc00",
+    "code": "SCNC00",
+    "system_code": "scnc00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SCNC00-scnc00"
+  },
+  {
+    "id": "SLET00-slet00",
+    "code": "SLET00",
+    "system_code": "slet00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SLET00-slet00"
+  },
+  {
+    "id": "SLIA00-slia00",
+    "code": "SLIA00",
+    "system_code": "slia00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SLIA00-slia00"
+  },
+  {
+    "id": "SLIA01-slia01",
+    "code": "SLIA01",
+    "system_code": "slia01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SLIA01-slia01"
+  },
+  {
+    "id": "SLIN00-slin00",
+    "code": "SLIN00",
+    "system_code": "slin00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SLIN00-slin00"
+  },
+  {
+    "id": "SLIN01-slin01",
+    "code": "SLIN01",
+    "system_code": "slin01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SLIN01-slin01"
+  },
+  {
+    "id": "SLIN02-slin02",
+    "code": "SLIN02",
+    "system_code": "slin02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SLIN02-slin02"
+  },
+  {
+    "id": "SLIN03-slin03",
+    "code": "SLIN03",
+    "system_code": "slin03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SLIN03-slin03"
+  },
+  {
+    "id": "SLIN06-slin06",
+    "code": "SLIN06",
+    "system_code": "slin06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SLIN06-slin06"
+  },
+  {
+    "id": "SOWG00-sowg00",
+    "code": "SOWG00",
+    "system_code": "sowg00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SOWG00-sowg00"
+  },
+  {
+    "id": "SP2K00-sp2k00",
+    "code": "SP2K00",
+    "system_code": "sp2k00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SP2K00-sp2k00"
+  },
+  {
+    "id": "SPAG00-spag00",
+    "code": "SPAG00",
+    "system_code": "spag00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SPAG00-spag00"
+  },
+  {
+    "id": "SPIA00-spia00",
+    "code": "SPIA00",
+    "system_code": "spia00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SPIA00-spia00"
+  },
+  {
+    "id": "SSAF00-ssaf00",
+    "code": "SSAF00",
+    "system_code": "ssaf00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF00-ssaf00"
+  },
+  {
+    "id": "SSAF01-ssaf01",
+    "code": "SSAF01",
+    "system_code": "ssaf01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF01-ssaf01"
+  },
+  {
+    "id": "SSAF02-ssaf02",
+    "code": "SSAF02",
+    "system_code": "ssaf02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF02-ssaf02"
+  },
+  {
+    "id": "SSAF03-ssaf03",
+    "code": "SSAF03",
+    "system_code": "ssaf03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF03-ssaf03"
+  },
+  {
+    "id": "SSAF04-ssaf04",
+    "code": "SSAF04",
+    "system_code": "ssaf04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF04-ssaf04"
+  },
+  {
+    "id": "SSAF05-ssaf05",
+    "code": "SSAF05",
+    "system_code": "ssaf05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF05-ssaf05"
+  },
+  {
+    "id": "SSAF06-ssaf06",
+    "code": "SSAF06",
+    "system_code": "ssaf06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF06-ssaf06"
+  },
+  {
+    "id": "SSAF07-ssaf07",
+    "code": "SSAF07",
+    "system_code": "ssaf07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF07-ssaf07"
+  },
+  {
+    "id": "SSAF08-ssaf08",
+    "code": "SSAF08",
+    "system_code": "ssaf08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF08-ssaf08"
+  },
+  {
+    "id": "SSAF09-ssaf09",
+    "code": "SSAF09",
+    "system_code": "ssaf09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF09-ssaf09"
+  },
+  {
+    "id": "SSAF10-ssaf10",
+    "code": "SSAF10",
+    "system_code": "ssaf10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF10-ssaf10"
+  },
+  {
+    "id": "SSAF11-ssaf11",
+    "code": "SSAF11",
+    "system_code": "ssaf11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF11-ssaf11"
+  },
+  {
+    "id": "SSAF12-ssaf12",
+    "code": "SSAF12",
+    "system_code": "ssaf12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF12-ssaf12"
+  },
+  {
+    "id": "SSAF13-ssaf13",
+    "code": "SSAF13",
+    "system_code": "ssaf13",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF13-ssaf13"
+  },
+  {
+    "id": "SSAF14-ssaf14",
+    "code": "SSAF14",
+    "system_code": "ssaf14",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF14-ssaf14"
+  },
+  {
+    "id": "SSAF15-ssaf15",
+    "code": "SSAF15",
+    "system_code": "ssaf15",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF15-ssaf15"
+  },
+  {
+    "id": "SSAF16-ssaf16",
+    "code": "SSAF16",
+    "system_code": "ssaf16",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF16-ssaf16"
+  },
+  {
+    "id": "SSAF17-ssaf17",
+    "code": "SSAF17",
+    "system_code": "ssaf17",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAF17-ssaf17"
+  },
+  {
+    "id": "SSAP00-ssap00",
+    "code": "SSAP00",
+    "system_code": "ssap00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP00-ssap00"
+  },
+  {
+    "id": "SSAP01-ssap01",
+    "code": "SSAP01",
+    "system_code": "ssap01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP01-ssap01"
+  },
+  {
+    "id": "SSAP02-ssap02",
+    "code": "SSAP02",
+    "system_code": "ssap02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP02-ssap02"
+  },
+  {
+    "id": "SSAP03-ssap03",
+    "code": "SSAP03",
+    "system_code": "ssap03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP03-ssap03"
+  },
+  {
+    "id": "SSAP04-ssap04",
+    "code": "SSAP04",
+    "system_code": "ssap04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP04-ssap04"
+  },
+  {
+    "id": "SSAP05-ssap05",
+    "code": "SSAP05",
+    "system_code": "ssap05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP05-ssap05"
+  },
+  {
+    "id": "SSAP06-ssap06",
+    "code": "SSAP06",
+    "system_code": "ssap06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP06-ssap06"
+  },
+  {
+    "id": "SSAP07-ssap07",
+    "code": "SSAP07",
+    "system_code": "ssap07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP07-ssap07"
+  },
+  {
+    "id": "SSAP08-ssap08",
+    "code": "SSAP08",
+    "system_code": "ssap08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP08-ssap08"
+  },
+  {
+    "id": "SSAP09-ssap09",
+    "code": "SSAP09",
+    "system_code": "ssap09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP09-ssap09"
+  },
+  {
+    "id": "SSAP10-ssap10",
+    "code": "SSAP10",
+    "system_code": "ssap10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP10-ssap10"
+  },
+  {
+    "id": "SSAP11-ssap11",
+    "code": "SSAP11",
+    "system_code": "ssap11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP11-ssap11"
+  },
+  {
+    "id": "SSAP12-ssap12",
+    "code": "SSAP12",
+    "system_code": "ssap12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP12-ssap12"
+  },
+  {
+    "id": "SSAP13-ssap13",
+    "code": "SSAP13",
+    "system_code": "ssap13",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP13-ssap13"
+  },
+  {
+    "id": "SSAP14-ssap14",
+    "code": "SSAP14",
+    "system_code": "ssap14",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP14-ssap14"
+  },
+  {
+    "id": "SSAP15-ssap15",
+    "code": "SSAP15",
+    "system_code": "ssap15",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP15-ssap15"
+  },
+  {
+    "id": "SSAP16-ssap16",
+    "code": "SSAP16",
+    "system_code": "ssap16",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP16-ssap16"
+  },
+  {
+    "id": "SSAP17-ssap17",
+    "code": "SSAP17",
+    "system_code": "ssap17",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP17-ssap17"
+  },
+  {
+    "id": "SSAP18-ssap18",
+    "code": "SSAP18",
+    "system_code": "ssap18",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP18-ssap18"
+  },
+  {
+    "id": "SSAP19-ssap19",
+    "code": "SSAP19",
+    "system_code": "ssap19",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP19-ssap19"
+  },
+  {
+    "id": "SSAP20-ssap20",
+    "code": "SSAP20",
+    "system_code": "ssap20",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP20-ssap20"
+  },
+  {
+    "id": "SSAP21-ssap21",
+    "code": "SSAP21",
+    "system_code": "ssap21",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP21-ssap21"
+  },
+  {
+    "id": "SSAP22-ssap22",
+    "code": "SSAP22",
+    "system_code": "ssap22",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP22-ssap22"
+  },
+  {
+    "id": "SSAP23-ssap23",
+    "code": "SSAP23",
+    "system_code": "ssap23",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP23-ssap23"
+  },
+  {
+    "id": "SSAP24-ssap24",
+    "code": "SSAP24",
+    "system_code": "ssap24",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAP24-ssap24"
+  },
+  {
+    "id": "SSAS00-ssas00",
+    "code": "SSAS00",
+    "system_code": "ssas00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS00-ssas00"
+  },
+  {
+    "id": "SSAS01-ssas01",
+    "code": "SSAS01",
+    "system_code": "ssas01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS01-ssas01"
+  },
+  {
+    "id": "SSAS02-ssas02",
+    "code": "SSAS02",
+    "system_code": "ssas02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS02-ssas02"
+  },
+  {
+    "id": "SSAS03-ssas03",
+    "code": "SSAS03",
+    "system_code": "ssas03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS03-ssas03"
+  },
+  {
+    "id": "SSAS04-ssas04",
+    "code": "SSAS04",
+    "system_code": "ssas04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS04-ssas04"
+  },
+  {
+    "id": "SSAS05-ssas05",
+    "code": "SSAS05",
+    "system_code": "ssas05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS05-ssas05"
+  },
+  {
+    "id": "SSAS06-ssas06",
+    "code": "SSAS06",
+    "system_code": "ssas06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS06-ssas06"
+  },
+  {
+    "id": "SSAS07-ssas07",
+    "code": "SSAS07",
+    "system_code": "ssas07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS07-ssas07"
+  },
+  {
+    "id": "SSAS08-ssas08",
+    "code": "SSAS08",
+    "system_code": "ssas08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS08-ssas08"
+  },
+  {
+    "id": "SSAS09-ssas09",
+    "code": "SSAS09",
+    "system_code": "ssas09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS09-ssas09"
+  },
+  {
+    "id": "SSAS10-ssas10",
+    "code": "SSAS10",
+    "system_code": "ssas10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS10-ssas10"
+  },
+  {
+    "id": "SSAS11-ssas11",
+    "code": "SSAS11",
+    "system_code": "ssas11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS11-ssas11"
+  },
+  {
+    "id": "SSAS12-ssas12",
+    "code": "SSAS12",
+    "system_code": "ssas12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS12-ssas12"
+  },
+  {
+    "id": "SSAS13-ssas13",
+    "code": "SSAS13",
+    "system_code": "ssas13",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS13-ssas13"
+  },
+  {
+    "id": "SSAS14-ssas14",
+    "code": "SSAS14",
+    "system_code": "ssas14",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS14-ssas14"
+  },
+  {
+    "id": "SSAS15-ssas15",
+    "code": "SSAS15",
+    "system_code": "ssas15",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS15-ssas15"
+  },
+  {
+    "id": "SSAS16-ssas16",
+    "code": "SSAS16",
+    "system_code": "ssas16",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS16-ssas16"
+  },
+  {
+    "id": "SSAS17-ssas17",
+    "code": "SSAS17",
+    "system_code": "ssas17",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS17-ssas17"
+  },
+  {
+    "id": "SSAS18-ssas18",
+    "code": "SSAS18",
+    "system_code": "ssas18",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS18-ssas18"
+  },
+  {
+    "id": "SSAS19-ssas19",
+    "code": "SSAS19",
+    "system_code": "ssas19",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS19-ssas19"
+  },
+  {
+    "id": "SSAS20-ssas20",
+    "code": "SSAS20",
+    "system_code": "ssas20",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS20-ssas20"
+  },
+  {
+    "id": "SSAS21-ssas21",
+    "code": "SSAS21",
+    "system_code": "ssas21",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSAS21-ssas21"
+  },
+  {
+    "id": "SSBK00-ssbk00",
+    "code": "SSBK00",
+    "system_code": "ssbk00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK00-ssbk00"
+  },
+  {
+    "id": "SSBK02-ssbk02",
+    "code": "SSBK02",
+    "system_code": "ssbk02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK02-ssbk02"
+  },
+  {
+    "id": "SSBK03-ssbk03",
+    "code": "SSBK03",
+    "system_code": "ssbk03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK03-ssbk03"
+  },
+  {
+    "id": "SSBK04-ssbk04",
+    "code": "SSBK04",
+    "system_code": "ssbk04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK04-ssbk04"
+  },
+  {
+    "id": "SSBK05-ssbk05",
+    "code": "SSBK05",
+    "system_code": "ssbk05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK05-ssbk05"
+  },
+  {
+    "id": "SSBK06-ssbk06",
+    "code": "SSBK06",
+    "system_code": "ssbk06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK06-ssbk06"
+  },
+  {
+    "id": "SSBK07-ssbk07",
+    "code": "SSBK07",
+    "system_code": "ssbk07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK07-ssbk07"
+  },
+  {
+    "id": "SSBK08-ssbk08",
+    "code": "SSBK08",
+    "system_code": "ssbk08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK08-ssbk08"
+  },
+  {
+    "id": "SSBK09-ssbk09",
+    "code": "SSBK09",
+    "system_code": "ssbk09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK09-ssbk09"
+  },
+  {
+    "id": "SSBK10-ssbk10",
+    "code": "SSBK10",
+    "system_code": "ssbk10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK10-ssbk10"
+  },
+  {
+    "id": "SSBK11-ssbk11",
+    "code": "SSBK11",
+    "system_code": "ssbk11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK11-ssbk11"
+  },
+  {
+    "id": "SSBK12-ssbk12",
+    "code": "SSBK12",
+    "system_code": "ssbk12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK12-ssbk12"
+  },
+  {
+    "id": "SSBK13-ssbk13",
+    "code": "SSBK13",
+    "system_code": "ssbk13",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBK13-ssbk13"
+  },
+  {
+    "id": "SSBU00-ssbu00",
+    "code": "SSBU00",
+    "system_code": "ssbu00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSBU00-ssbu00"
+  },
+  {
+    "id": "SSCM00-sscm00",
+    "code": "SSCM00",
+    "system_code": "sscm00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM00-sscm00"
+  },
+  {
+    "id": "SSCM01-sscm01",
+    "code": "SSCM01",
+    "system_code": "sscm01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM01-sscm01"
+  },
+  {
+    "id": "SSCM02-sscm02",
+    "code": "SSCM02",
+    "system_code": "sscm02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM02-sscm02"
+  },
+  {
+    "id": "SSCM03-sscm03",
+    "code": "SSCM03",
+    "system_code": "sscm03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM03-sscm03"
+  },
+  {
+    "id": "SSCM04-sscm04",
+    "code": "SSCM04",
+    "system_code": "sscm04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM04-sscm04"
+  },
+  {
+    "id": "SSCM05-sscm05",
+    "code": "SSCM05",
+    "system_code": "sscm05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM05-sscm05"
+  },
+  {
+    "id": "SSCM06-sscm06",
+    "code": "SSCM06",
+    "system_code": "sscm06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM06-sscm06"
+  },
+  {
+    "id": "SSCM07-sscm07",
+    "code": "SSCM07",
+    "system_code": "sscm07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM07-sscm07"
+  },
+  {
+    "id": "SSCM08-sscm08",
+    "code": "SSCM08",
+    "system_code": "sscm08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM08-sscm08"
+  },
+  {
+    "id": "SSCM09-sscm09",
+    "code": "SSCM09",
+    "system_code": "sscm09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM09-sscm09"
+  },
+  {
+    "id": "SSCM10-sscm10",
+    "code": "SSCM10",
+    "system_code": "sscm10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM10-sscm10"
+  },
+  {
+    "id": "SSCM11-sscm11",
+    "code": "SSCM11",
+    "system_code": "sscm11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM11-sscm11"
+  },
+  {
+    "id": "SSCM12-sscm12",
+    "code": "SSCM12",
+    "system_code": "sscm12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM12-sscm12"
+  },
+  {
+    "id": "SSCM13-sscm13",
+    "code": "SSCM13",
+    "system_code": "sscm13",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM13-sscm13"
+  },
+  {
+    "id": "SSCM14-sscm14",
+    "code": "SSCM14",
+    "system_code": "sscm14",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM14-sscm14"
+  },
+  {
+    "id": "SSCM15-sscm15",
+    "code": "SSCM15",
+    "system_code": "sscm15",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM15-sscm15"
+  },
+  {
+    "id": "SSCM16-sscm16",
+    "code": "SSCM16",
+    "system_code": "sscm16",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM16-sscm16"
+  },
+  {
+    "id": "SSCM17-sscm17",
+    "code": "SSCM17",
+    "system_code": "sscm17",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM17-sscm17"
+  },
+  {
+    "id": "SSCM18-sscm18",
+    "code": "SSCM18",
+    "system_code": "sscm18",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM18-sscm18"
+  },
+  {
+    "id": "SSCM19-sscm19",
+    "code": "SSCM19",
+    "system_code": "sscm19",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM19-sscm19"
+  },
+  {
+    "id": "SSCM20-sscm20",
+    "code": "SSCM20",
+    "system_code": "sscm20",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM20-sscm20"
+  },
+  {
+    "id": "SSCM21-sscm21",
+    "code": "SSCM21",
+    "system_code": "sscm21",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM21-sscm21"
+  },
+  {
+    "id": "SSCM22-sscm22",
+    "code": "SSCM22",
+    "system_code": "sscm22",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM22-sscm22"
+  },
+  {
+    "id": "SSCM23-sscm23",
+    "code": "SSCM23",
+    "system_code": "sscm23",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM23-sscm23"
+  },
+  {
+    "id": "SSCM24-sscm24",
+    "code": "SSCM24",
+    "system_code": "sscm24",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM24-sscm24"
+  },
+  {
+    "id": "SSCM25-sscm25",
+    "code": "SSCM25",
+    "system_code": "sscm25",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM25-sscm25"
+  },
+  {
+    "id": "SSCM26-sscm26",
+    "code": "SSCM26",
+    "system_code": "sscm26",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM26-sscm26"
+  },
+  {
+    "id": "SSCM27-sscm27",
+    "code": "SSCM27",
+    "system_code": "sscm27",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM27-sscm27"
+  },
+  {
+    "id": "SSCM28-sscm28",
+    "code": "SSCM28",
+    "system_code": "sscm28",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM28-sscm28"
+  },
+  {
+    "id": "SSCM29-sscm29",
+    "code": "SSCM29",
+    "system_code": "sscm29",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM29-sscm29"
+  },
+  {
+    "id": "SSCM30-sscm30",
+    "code": "SSCM30",
+    "system_code": "sscm30",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM30-sscm30"
+  },
+  {
+    "id": "SSCM31-sscm31",
+    "code": "SSCM31",
+    "system_code": "sscm31",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM31-sscm31"
+  },
+  {
+    "id": "SSCM32-sscm32",
+    "code": "SSCM32",
+    "system_code": "sscm32",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM32-sscm32"
+  },
+  {
+    "id": "SSCM33-sscm33",
+    "code": "SSCM33",
+    "system_code": "sscm33",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM33-sscm33"
+  },
+  {
+    "id": "SSCM34-sscm34",
+    "code": "SSCM34",
+    "system_code": "sscm34",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM34-sscm34"
+  },
+  {
+    "id": "SSCM35-sscm35",
+    "code": "SSCM35",
+    "system_code": "sscm35",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM35-sscm35"
+  },
+  {
+    "id": "SSCM36-sscm36",
+    "code": "SSCM36",
+    "system_code": "sscm36",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM36-sscm36"
+  },
+  {
+    "id": "SSCM37-sscm37",
+    "code": "SSCM37",
+    "system_code": "sscm37",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM37-sscm37"
+  },
+  {
+    "id": "SSCM38-sscm38",
+    "code": "SSCM38",
+    "system_code": "sscm38",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM38-sscm38"
+  },
+  {
+    "id": "SSCM39-sscm39",
+    "code": "SSCM39",
+    "system_code": "sscm39",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSCM39-sscm39"
+  },
+  {
+    "id": "SSEG00-sseg00",
+    "code": "SSEG00",
+    "system_code": "sseg00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG00-sseg00"
+  },
+  {
+    "id": "SSEG01-sseg01",
+    "code": "SSEG01",
+    "system_code": "sseg01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG01-sseg01"
+  },
+  {
+    "id": "SSEG02-sseg02",
+    "code": "SSEG02",
+    "system_code": "sseg02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG02-sseg02"
+  },
+  {
+    "id": "SSEG03-sseg03",
+    "code": "SSEG03",
+    "system_code": "sseg03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG03-sseg03"
+  },
+  {
+    "id": "SSEG04-sseg04",
+    "code": "SSEG04",
+    "system_code": "sseg04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG04-sseg04"
+  },
+  {
+    "id": "SSEG05-sseg05",
+    "code": "SSEG05",
+    "system_code": "sseg05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG05-sseg05"
+  },
+  {
+    "id": "SSEG06-sseg06",
+    "code": "SSEG06",
+    "system_code": "sseg06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG06-sseg06"
+  },
+  {
+    "id": "SSEG07-sseg07",
+    "code": "SSEG07",
+    "system_code": "sseg07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG07-sseg07"
+  },
+  {
+    "id": "SSEG08-sseg08",
+    "code": "SSEG08",
+    "system_code": "sseg08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG08-sseg08"
+  },
+  {
+    "id": "SSEG09-sseg09",
+    "code": "SSEG09",
+    "system_code": "sseg09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG09-sseg09"
+  },
+  {
+    "id": "SSEG10-sseg10",
+    "code": "SSEG10",
+    "system_code": "sseg10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEG10-sseg10"
+  },
+  {
+    "id": "SSEV00-ssev00",
+    "code": "SSEV00",
+    "system_code": "ssev00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV00-ssev00"
+  },
+  {
+    "id": "SSEV01-ssev01",
+    "code": "SSEV01",
+    "system_code": "ssev01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV01-ssev01"
+  },
+  {
+    "id": "SSEV02-ssev02",
+    "code": "SSEV02",
+    "system_code": "ssev02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV02-ssev02"
+  },
+  {
+    "id": "SSEV03-ssev03",
+    "code": "SSEV03",
+    "system_code": "ssev03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV03-ssev03"
+  },
+  {
+    "id": "SSEV04-ssev04",
+    "code": "SSEV04",
+    "system_code": "ssev04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV04-ssev04"
+  },
+  {
+    "id": "SSEV05-ssev05",
+    "code": "SSEV05",
+    "system_code": "ssev05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV05-ssev05"
+  },
+  {
+    "id": "SSEV06-ssev06",
+    "code": "SSEV06",
+    "system_code": "ssev06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV06-ssev06"
+  },
+  {
+    "id": "SSEV07-ssev07",
+    "code": "SSEV07",
+    "system_code": "ssev07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV07-ssev07"
+  },
+  {
+    "id": "SSEV08-ssev08",
+    "code": "SSEV08",
+    "system_code": "ssev08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV08-ssev08"
+  },
+  {
+    "id": "SSEV09-ssev09",
+    "code": "SSEV09",
+    "system_code": "ssev09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV09-ssev09"
+  },
+  {
+    "id": "SSEV10-ssev10",
+    "code": "SSEV10",
+    "system_code": "ssev10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV10-ssev10"
+  },
+  {
+    "id": "SSEV11-ssev11",
+    "code": "SSEV11",
+    "system_code": "ssev11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV11-ssev11"
+  },
+  {
+    "id": "SSEV12-ssev12",
+    "code": "SSEV12",
+    "system_code": "ssev12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV12-ssev12"
+  },
+  {
+    "id": "SSEV13-ssev13",
+    "code": "SSEV13",
+    "system_code": "ssev13",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV13-ssev13"
+  },
+  {
+    "id": "SSEV14-ssev14",
+    "code": "SSEV14",
+    "system_code": "ssev14",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV14-ssev14"
+  },
+  {
+    "id": "SSEV15-ssev15",
+    "code": "SSEV15",
+    "system_code": "ssev15",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV15-ssev15"
+  },
+  {
+    "id": "SSEV16-ssev16",
+    "code": "SSEV16",
+    "system_code": "ssev16",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV16-ssev16"
+  },
+  {
+    "id": "SSEV17-ssev17",
+    "code": "SSEV17",
+    "system_code": "ssev17",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV17-ssev17"
+  },
+  {
+    "id": "SSEV18-ssev18",
+    "code": "SSEV18",
+    "system_code": "ssev18",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSEV18-ssev18"
+  },
+  {
+    "id": "SSFI00-ssfi00",
+    "code": "SSFI00",
+    "system_code": "ssfi00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI00-ssfi00"
+  },
+  {
+    "id": "SSFI01-ssfi01",
+    "code": "SSFI01",
+    "system_code": "ssfi01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI01-ssfi01"
+  },
+  {
+    "id": "SSFI02-ssfi02",
+    "code": "SSFI02",
+    "system_code": "ssfi02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI02-ssfi02"
+  },
+  {
+    "id": "SSFI03-ssfi03",
+    "code": "SSFI03",
+    "system_code": "ssfi03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI03-ssfi03"
+  },
+  {
+    "id": "SSFI04-ssfi04",
+    "code": "SSFI04",
+    "system_code": "ssfi04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI04-ssfi04"
+  },
+  {
+    "id": "SSFI05-ssfi05",
+    "code": "SSFI05",
+    "system_code": "ssfi05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI05-ssfi05"
+  },
+  {
+    "id": "SSFI06-ssfi06",
+    "code": "SSFI06",
+    "system_code": "ssfi06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI06-ssfi06"
+  },
+  {
+    "id": "SSFI07-ssfi07",
+    "code": "SSFI07",
+    "system_code": "ssfi07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI07-ssfi07"
+  },
+  {
+    "id": "SSFI08-ssfi08",
+    "code": "SSFI08",
+    "system_code": "ssfi08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI08-ssfi08"
+  },
+  {
+    "id": "SSFI09-ssfi09",
+    "code": "SSFI09",
+    "system_code": "ssfi09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI09-ssfi09"
+  },
+  {
+    "id": "SSFI10-ssfi10",
+    "code": "SSFI10",
+    "system_code": "ssfi10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI10-ssfi10"
+  },
+  {
+    "id": "SSFI11-ssfi11",
+    "code": "SSFI11",
+    "system_code": "ssfi11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI11-ssfi11"
+  },
+  {
+    "id": "SSFI12-ssfi12",
+    "code": "SSFI12",
+    "system_code": "ssfi12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI12-ssfi12"
+  },
+  {
+    "id": "SSFI13-ssfi13",
+    "code": "SSFI13",
+    "system_code": "ssfi13",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI13-ssfi13"
+  },
+  {
+    "id": "SSFI14-ssfi14",
+    "code": "SSFI14",
+    "system_code": "ssfi14",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI14-ssfi14"
+  },
+  {
+    "id": "SSFI16-ssfi16",
+    "code": "SSFI16",
+    "system_code": "ssfi16",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI16-ssfi16"
+  },
+  {
+    "id": "SSFI19-ssfi19",
+    "code": "SSFI19",
+    "system_code": "ssfi19",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI19-ssfi19"
+  },
+  {
+    "id": "SSFI20-ssfi20",
+    "code": "SSFI20",
+    "system_code": "ssfi20",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI20-ssfi20"
+  },
+  {
+    "id": "SSFI21-ssfi21",
+    "code": "SSFI21",
+    "system_code": "ssfi21",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFI21-ssfi21"
+  },
+  {
+    "id": "SSFR00-ssfr00",
+    "code": "SSFR00",
+    "system_code": "ssfr00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR00-ssfr00"
+  },
+  {
+    "id": "SSFR01-ssfr01",
+    "code": "SSFR01",
+    "system_code": "ssfr01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR01-ssfr01"
+  },
+  {
+    "id": "SSFR02-ssfr02",
+    "code": "SSFR02",
+    "system_code": "ssfr02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR02-ssfr02"
+  },
+  {
+    "id": "SSFR03-ssfr03",
+    "code": "SSFR03",
+    "system_code": "ssfr03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR03-ssfr03"
+  },
+  {
+    "id": "SSFR04-ssfr04",
+    "code": "SSFR04",
+    "system_code": "ssfr04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR04-ssfr04"
+  },
+  {
+    "id": "SSFR06-ssfr06",
+    "code": "SSFR06",
+    "system_code": "ssfr06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR06-ssfr06"
+  },
+  {
+    "id": "SSFR07-ssfr07",
+    "code": "SSFR07",
+    "system_code": "ssfr07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR07-ssfr07"
+  },
+  {
+    "id": "SSFR09-ssfr09",
+    "code": "SSFR09",
+    "system_code": "ssfr09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR09-ssfr09"
+  },
+  {
+    "id": "SSFR10-ssfr10",
+    "code": "SSFR10",
+    "system_code": "ssfr10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR10-ssfr10"
+  },
+  {
+    "id": "SSFR11-ssfr11",
+    "code": "SSFR11",
+    "system_code": "ssfr11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR11-ssfr11"
+  },
+  {
+    "id": "SSFR12-ssfr12",
+    "code": "SSFR12",
+    "system_code": "ssfr12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR12-ssfr12"
+  },
+  {
+    "id": "SSFR13-ssfr13",
+    "code": "SSFR13",
+    "system_code": "ssfr13",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR13-ssfr13"
+  },
+  {
+    "id": "SSFR14-ssfr14",
+    "code": "SSFR14",
+    "system_code": "ssfr14",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR14-ssfr14"
+  },
+  {
+    "id": "SSFR15-ssfr15",
+    "code": "SSFR15",
+    "system_code": "ssfr15",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSFR15-ssfr15"
+  },
+  {
+    "id": "SSGA00-ssga00",
+    "code": "SSGA00",
+    "system_code": "ssga00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA00-ssga00"
+  },
+  {
+    "id": "SSGA01-ssga01",
+    "code": "SSGA01",
+    "system_code": "ssga01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA01-ssga01"
+  },
+  {
+    "id": "SSGA02-ssga02",
+    "code": "SSGA02",
+    "system_code": "ssga02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA02-ssga02"
+  },
+  {
+    "id": "SSGA03-ssga03",
+    "code": "SSGA03",
+    "system_code": "ssga03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA03-ssga03"
+  },
+  {
+    "id": "SSGA04-ssga04",
+    "code": "SSGA04",
+    "system_code": "ssga04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA04-ssga04"
+  },
+  {
+    "id": "SSGA05-ssga05",
+    "code": "SSGA05",
+    "system_code": "ssga05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA05-ssga05"
+  },
+  {
+    "id": "SSGA06-ssga06",
+    "code": "SSGA06",
+    "system_code": "ssga06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA06-ssga06"
+  },
+  {
+    "id": "SSGA07-ssga07",
+    "code": "SSGA07",
+    "system_code": "ssga07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA07-ssga07"
+  },
+  {
+    "id": "SSGA08-ssga08",
+    "code": "SSGA08",
+    "system_code": "ssga08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA08-ssga08"
+  },
+  {
+    "id": "SSGA09-ssga09",
+    "code": "SSGA09",
+    "system_code": "ssga09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA09-ssga09"
+  },
+  {
+    "id": "SSGA10-ssga10",
+    "code": "SSGA10",
+    "system_code": "ssga10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA10-ssga10"
+  },
+  {
+    "id": "SSGA11-ssga11",
+    "code": "SSGA11",
+    "system_code": "ssga11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA11-ssga11"
+  },
+  {
+    "id": "SSGA13-ssga13",
+    "code": "SSGA13",
+    "system_code": "ssga13",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA13-ssga13"
+  },
+  {
+    "id": "SSGA14-ssga14",
+    "code": "SSGA14",
+    "system_code": "ssga14",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA14-ssga14"
+  },
+  {
+    "id": "SSGA15-ssga15",
+    "code": "SSGA15",
+    "system_code": "ssga15",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA15-ssga15"
+  },
+  {
+    "id": "SSGA16-ssga16",
+    "code": "SSGA16",
+    "system_code": "ssga16",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA16-ssga16"
+  },
+  {
+    "id": "SSGA17-ssga17",
+    "code": "SSGA17",
+    "system_code": "ssga17",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA17-ssga17"
+  },
+  {
+    "id": "SSGA18-ssga18",
+    "code": "SSGA18",
+    "system_code": "ssga18",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA18-ssga18"
+  },
+  {
+    "id": "SSGA19-ssga19",
+    "code": "SSGA19",
+    "system_code": "ssga19",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA19-ssga19"
+  },
+  {
+    "id": "SSGA20-ssga20",
+    "code": "SSGA20",
+    "system_code": "ssga20",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA20-ssga20"
+  },
+  {
+    "id": "SSGA22-ssga22",
+    "code": "SSGA22",
+    "system_code": "ssga22",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSGA22-ssga22"
+  },
+  {
+    "id": "SSHR00-sshr00",
+    "code": "SSHR00",
+    "system_code": "sshr00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR00-sshr00"
+  },
+  {
+    "id": "SSHR01-sshr01",
+    "code": "SSHR01",
+    "system_code": "sshr01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR01-sshr01"
+  },
+  {
+    "id": "SSHR02-sshr02",
+    "code": "SSHR02",
+    "system_code": "sshr02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR02-sshr02"
+  },
+  {
+    "id": "SSHR03-sshr03",
+    "code": "SSHR03",
+    "system_code": "sshr03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR03-sshr03"
+  },
+  {
+    "id": "SSHR04-sshr04",
+    "code": "SSHR04",
+    "system_code": "sshr04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR04-sshr04"
+  },
+  {
+    "id": "SSHR05-sshr05",
+    "code": "SSHR05",
+    "system_code": "sshr05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR05-sshr05"
+  },
+  {
+    "id": "SSHR06-sshr06",
+    "code": "SSHR06",
+    "system_code": "sshr06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR06-sshr06"
+  },
+  {
+    "id": "SSHR07-sshr07",
+    "code": "SSHR07",
+    "system_code": "sshr07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR07-sshr07"
+  },
+  {
+    "id": "SSHR08-sshr08",
+    "code": "SSHR08",
+    "system_code": "sshr08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR08-sshr08"
+  },
+  {
+    "id": "SSHR09-sshr09",
+    "code": "SSHR09",
+    "system_code": "sshr09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR09-sshr09"
+  },
+  {
+    "id": "SSHR10-sshr10",
+    "code": "SSHR10",
+    "system_code": "sshr10",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR10-sshr10"
+  },
+  {
+    "id": "SSHR11-sshr11",
+    "code": "SSHR11",
+    "system_code": "sshr11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR11-sshr11"
+  },
+  {
+    "id": "SSHR12-sshr12",
+    "code": "SSHR12",
+    "system_code": "sshr12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSHR12-sshr12"
+  },
+  {
+    "id": "SSJU00-ssju00",
+    "code": "SSJU00",
+    "system_code": "ssju00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU00-ssju00"
+  },
+  {
+    "id": "SSJU01-ssju01",
+    "code": "SSJU01",
+    "system_code": "ssju01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU01-ssju01"
+  },
+  {
+    "id": "SSJU02-ssju02",
+    "code": "SSJU02",
+    "system_code": "ssju02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU02-ssju02"
+  },
+  {
+    "id": "SSJU03-ssju03",
+    "code": "SSJU03",
+    "system_code": "ssju03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU03-ssju03"
+  },
+  {
+    "id": "SSJU04-ssju04",
+    "code": "SSJU04",
+    "system_code": "ssju04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU04-ssju04"
+  },
+  {
+    "id": "SSJU05-ssju05",
+    "code": "SSJU05",
+    "system_code": "ssju05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU05-ssju05"
+  },
+  {
+    "id": "SSJU06-ssju06",
+    "code": "SSJU06",
+    "system_code": "ssju06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU06-ssju06"
+  },
+  {
+    "id": "SSJU07-ssju07",
+    "code": "SSJU07",
+    "system_code": "ssju07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU07-ssju07"
+  },
+  {
+    "id": "SSJU09-ssju09",
+    "code": "SSJU09",
+    "system_code": "ssju09",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU09-ssju09"
+  },
+  {
+    "id": "SSJU11-ssju11",
+    "code": "SSJU11",
+    "system_code": "ssju11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU11-ssju11"
+  },
+  {
+    "id": "SSJU12-ssju12",
+    "code": "SSJU12",
+    "system_code": "ssju12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU12-ssju12"
+  },
+  {
+    "id": "SSJU14-ssju14",
+    "code": "SSJU14",
+    "system_code": "ssju14",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU14-ssju14"
+  },
+  {
+    "id": "SSJU15-ssju15",
+    "code": "SSJU15",
+    "system_code": "ssju15",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU15-ssju15"
+  },
+  {
+    "id": "SSJU17-ssju17",
+    "code": "SSJU17",
+    "system_code": "ssju17",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU17-ssju17"
+  },
+  {
+    "id": "SSJU18-ssju18",
+    "code": "SSJU18",
+    "system_code": "ssju18",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU18-ssju18"
+  },
+  {
+    "id": "SSJU19-ssju19",
+    "code": "SSJU19",
+    "system_code": "ssju19",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU19-ssju19"
+  },
+  {
+    "id": "SSJU20-ssju20",
+    "code": "SSJU20",
+    "system_code": "ssju20",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU20-ssju20"
+  },
+  {
+    "id": "SSJU21-ssju21",
+    "code": "SSJU21",
+    "system_code": "ssju21",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU21-ssju21"
+  },
+  {
+    "id": "SSJU22-ssju22",
+    "code": "SSJU22",
+    "system_code": "ssju22",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU22-ssju22"
+  },
+  {
+    "id": "SSJU23-ssju23",
+    "code": "SSJU23",
+    "system_code": "ssju23",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU23-ssju23"
+  },
+  {
+    "id": "SSJU24-ssju24",
+    "code": "SSJU24",
+    "system_code": "ssju24",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU24-ssju24"
+  },
+  {
+    "id": "SSJU25-ssju25",
+    "code": "SSJU25",
+    "system_code": "ssju25",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU25-ssju25"
+  },
+  {
+    "id": "SSJU26-ssju26",
+    "code": "SSJU26",
+    "system_code": "ssju26",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU26-ssju26"
+  },
+  {
+    "id": "SSJU27-ssju27",
+    "code": "SSJU27",
+    "system_code": "ssju27",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU27-ssju27"
+  },
+  {
+    "id": "SSJU28-ssju28",
+    "code": "SSJU28",
+    "system_code": "ssju28",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSJU28-ssju28"
+  },
+  {
+    "id": "SSRA00-ssra00",
+    "code": "SSRA00",
+    "system_code": "ssra00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSRA00-ssra00"
+  },
+  {
+    "id": "SSSB00-sssb00",
+    "code": "SSSB00",
+    "system_code": "sssb00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB00-sssb00"
+  },
+  {
+    "id": "SSSB01-sssb01",
+    "code": "SSSB01",
+    "system_code": "sssb01",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB01-sssb01"
+  },
+  {
+    "id": "SSSB02-sssb02",
+    "code": "SSSB02",
+    "system_code": "sssb02",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB02-sssb02"
+  },
+  {
+    "id": "SSSB03-sssb03",
+    "code": "SSSB03",
+    "system_code": "sssb03",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB03-sssb03"
+  },
+  {
+    "id": "SSSB04-sssb04",
+    "code": "SSSB04",
+    "system_code": "sssb04",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB04-sssb04"
+  },
+  {
+    "id": "SSSB05-sssb05",
+    "code": "SSSB05",
+    "system_code": "sssb05",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB05-sssb05"
+  },
+  {
+    "id": "SSSB06-sssb06",
+    "code": "SSSB06",
+    "system_code": "sssb06",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB06-sssb06"
+  },
+  {
+    "id": "SSSB07-sssb07",
+    "code": "SSSB07",
+    "system_code": "sssb07",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB07-sssb07"
+  },
+  {
+    "id": "SSSB08-sssb08",
+    "code": "SSSB08",
+    "system_code": "sssb08",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB08-sssb08"
+  },
+  {
+    "id": "SSSB11-sssb11",
+    "code": "SSSB11",
+    "system_code": "sssb11",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB11-sssb11"
+  },
+  {
+    "id": "SSSB12-sssb12",
+    "code": "SSSB12",
+    "system_code": "sssb12",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSSB12-sssb12"
+  },
+  {
+    "id": "SSVA00-ssva00",
+    "code": "SSVA00",
+    "system_code": "ssva00",
+    "chamber": "senate",
+    "sample_id": "committee-codes:SSVA00-ssva00"
+  }
+]

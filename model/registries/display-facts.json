@@ -1,0 +1,38 @@
+[
+  {
+    "id": "document_kind",
+    "field": "document_kind",
+    "label": "Document kind",
+    "sample_id": "display-facts:document_kind"
+  },
+  {
+    "id": "document_family",
+    "field": "document_family",
+    "label": "Document family",
+    "sample_id": "display-facts:document_family"
+  },
+  {
+    "id": "committee_code",
+    "field": "committee_code",
+    "label": "Committee",
+    "sample_id": "display-facts:committee_code"
+  },
+  {
+    "id": "congress",
+    "field": "congress",
+    "label": "Congress",
+    "sample_id": "display-facts:congress"
+  },
+  {
+    "id": "measure_references",
+    "field": "measure_references",
+    "label": "Measure",
+    "sample_id": "display-facts:measure_references"
+  },
+  {
+    "id": "date_token_candidates",
+    "field": "date_token_candidates",
+    "label": "Document date",
+    "sample_id": "display-facts:date_token_candidates"
+  }
+]

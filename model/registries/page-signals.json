@@ -1,0 +1,56 @@
+[
+  {
+    "id": "near_empty",
+    "kind": "threshold",
+    "number": 128,
+    "sample_id": "page-signals:near_empty"
+  },
+  {
+    "id": "listing_links",
+    "kind": "threshold",
+    "number": 20,
+    "sample_id": "page-signals:listing_links"
+  },
+  {
+    "id": "listing_percent",
+    "kind": "threshold",
+    "number": 80,
+    "sample_id": "page-signals:listing_percent"
+  },
+  {
+    "id": "generic_error",
+    "kind": "error_word",
+    "pattern": "(?i)access denied|forbidden|not found|retry later|service unavailable|\\berror\\b|just a moment|client challenge|attention required|checking your browser",
+    "sample_id": "page-signals:generic_error"
+  },
+  {
+    "id": "visible_challenge",
+    "kind": "body_marker",
+    "pattern": "(?i)verify you are human|checking your browser|please enable javascript and cookies|this site requires javascript and cookies",
+    "sample_id": "page-signals:visible_challenge"
+  },
+  {
+    "id": "metadata_roots",
+    "kind": "source_record_root",
+    "pattern": "^(\\{[^}]+\\})?(mods|mets|premis|committee-meeting|witness-list)$",
+    "sample_id": "page-signals:metadata_roots"
+  },
+  {
+    "id": "api_endpoint",
+    "kind": "api_endpoint",
+    "pattern": "^https?://api\\.(congress|govinfo)\\.gov/",
+    "sample_id": "page-signals:api_endpoint"
+  },
+  {
+    "id": "article_preview",
+    "kind": "wrapper_marker",
+    "pattern": "(?i)article preview|check access to the full text|section snippets",
+    "sample_id": "page-signals:article_preview"
+  },
+  {
+    "id": "download_wrapper",
+    "kind": "wrapper_marker",
+    "pattern": "(?i)download will begin shortly|^download file\\b",
+    "sample_id": "page-signals:download_wrapper"
+  }
+]

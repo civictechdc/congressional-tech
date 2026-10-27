@@ -1,0 +1,44 @@
+[
+  {
+    "id": "code-br",
+    "basis": "doc_type",
+    "pattern": "(?i)^br$",
+    "document_kind": "legislative-text",
+    "sample_id": "publisher-kinds:code-br"
+  },
+  {
+    "id": "code-ca",
+    "basis": "doc_type",
+    "pattern": "(?i)^ca$",
+    "document_kind": "committee-amendment",
+    "sample_id": "publisher-kinds:code-ca"
+  },
+  {
+    "id": "code-cr",
+    "basis": "doc_type",
+    "pattern": "(?i)^cr$",
+    "document_kind": "committee-report",
+    "sample_id": "publisher-kinds:code-cr"
+  },
+  {
+    "id": "code-cv",
+    "basis": "doc_type",
+    "pattern": "(?i)^cv$",
+    "document_kind": "committee-vote",
+    "sample_id": "publisher-kinds:code-cv"
+  },
+  {
+    "id": "code-sd",
+    "basis": "doc_type",
+    "pattern": "(?i)^sd$",
+    "document_kind": "support-document",
+    "sample_id": "publisher-kinds:code-sd"
+  },
+  {
+    "id": "label-hearing-transcript",
+    "basis": "text",
+    "pattern": "(?i)^hearing transcript$",
+    "document_kind": "transcript",
+    "sample_id": "publisher-kinds:label-hearing-transcript"
+  }
+]
