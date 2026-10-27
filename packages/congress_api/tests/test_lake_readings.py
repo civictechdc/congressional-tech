@@ -24,9 +24,9 @@ def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></b
     pq.write_table(pa.Table.from_pylist([dict(sha256=digest,stored_bytes=len(body) if size is None else size,
         stored_suffix='',sniffed_format=body_format,sniff_version='sniff-fixture')]*copies,schema=schema),captures)
     inventory=tmp_path/'bodies.parquet'
-    pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,
+    pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,
         stored_bytes=len(body) if size is None else size,stored_gzip=False)],schema=pa.schema([
-        ('body_sha',pa.binary(32)),('physical_key',pa.string()),('stored_bytes',pa.int64()),
+        ('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),
         ('stored_gzip',pa.bool_())])),inventory)
     return dict(captures=captures,body_inventory=inventory,local_root=raw,
                 engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
