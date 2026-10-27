@@ -61,6 +61,10 @@ def test_complete_fingerprints_and_coverage_qualify_the_actual_count(tmp_path):
     result=measurement.measure(path,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'work')
     assert result['matching_candidates']==3 and result['unknown_candidates']==0
     assert result['status']=='complete' and result['decision_ready'] is True
+    descriptor=json.loads(path.read_text());descriptor['coverage']['publisher']='pending';path.write_text(json.dumps(descriptor))
+    partial=measurement.measure(path,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'partial')
+    assert partial['matching_candidates']==3 and partial['status']=='incomplete'
+    assert partial['decision_ready'] is False
 
 
 def test_missing_reference_fingerprints_are_unknown_not_zero(tmp_path):
@@ -84,3 +88,16 @@ def test_missing_or_changed_relations_and_historical_proxy_refuse(tmp_path):
     with pytest.raises(ValueError,match='canonical'):
         measurement.measure(path,engine=None,work=tmp_path/'work')
     assert not (tmp_path/'work').exists()
+
+
+def test_conflicting_fingerprints_refuse_a_qualified_count(tmp_path):
+    path=inputs(tmp_path)
+    descriptor=json.loads(path.read_text())
+    relation=path.parent/descriptor['relations']['fingerprints']['path']
+    table=pq.read_table(relation)
+    conflict=pa.Table.from_pylist([dict(body_key=FIXTURE['expected']['matching_bodies'][0],fingerprint='d'*64)],schema=table.schema)
+    pq.write_table(pa.concat_tables([table,conflict]),relation)
+    descriptor['relations']['fingerprints']['sha256']=sha256(relation.read_bytes()).hexdigest();path.write_text(json.dumps(descriptor))
+    with pytest.raises(ValueError,match='invariant'):
+        measurement.measure(path,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'work')
+    assert not (tmp_path/'work/measurement.json').exists()
