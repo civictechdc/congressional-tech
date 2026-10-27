@@ -1,0 +1,116 @@
+name: Archive publish, backfill and maintenance
+
+on:
+  workflow_run:
+    workflows: ["Capture archive sources"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '17 7 * * 0'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Run the committed job specification
+        type: choice
+        options: [publish, backfill, maintenance]
+        default: publish
+        required: true
+
+permissions:
+  contents: read
+
+# One workflow-level group protects all lake writers and release retention.
+concurrency:
+  group: archive-lake-and-publication
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  publish:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.operation == 'publish') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    environment: archive-publish
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-project
+      - name: Admit the model binding before runtime or storage access
+        run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --check-binding
+      - name: Install and verify the pinned publish runtime
+        env:
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
+      - uses: ./.github/actions/setup-node-project
+      - uses: ./.github/actions/setup-publication-browser
+      - name: Run the single publisher with its local contract and HTTPS canary gates
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
+          R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_PUBLISH_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.ARCHIVE_PUBLISH_R2_SECRET_ACCESS_KEY }}
+        run: .venv/bin/python -I .github/scripts/run-archive-job.py publish
+
+  backfill:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.operation == 'backfill'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    environment: archive-backfill
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-project
+      - name: Admit the backfill binding before runtime or storage access
+        run: .venv/bin/python -I .github/scripts/run-archive-job.py backfill --check-binding
+      - name: Install and verify the pinned backfill runtime
+        env:
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
+      - name: Run the committed producer backfill specification
+        env:
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
+        run: .venv/bin/python -I .github/scripts/run-archive-job.py backfill
+
+  maintenance:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'maintenance'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    environment: archive-maintenance
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-project
+      - name: Admit the maintenance binding before runtime or storage access
+        run: .venv/bin/python -I .github/scripts/run-archive-job.py maintenance --check-binding
+      - name: Install and verify the pinned maintenance runtime
+        env:
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_MAINTENANCE_ENGINE_CREDENTIALS }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
+      - name: Run raw checks, retained receipt evidence and catalog maintenance
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_MAINTENANCE_ENGINE_CREDENTIALS }}
+          R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_MAINTENANCE_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.ARCHIVE_MAINTENANCE_R2_SECRET_ACCESS_KEY }}
+        run: .venv/bin/python -I .github/scripts/run-archive-job.py maintenance

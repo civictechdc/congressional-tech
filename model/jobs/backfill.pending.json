@@ -1,0 +1,4 @@
+{
+  "status": "blocked",
+  "reason": "Producer backfill job spec is not bound; backfill refused before storage access."
+}

@@ -170,16 +170,11 @@ def workflow(name):
 
 def test_workflow_installation_preserves_execution_gates_and_secret_boundaries():
     capture = workflow('capture-raw-sources.yml')['jobs']
-    publish = workflow('publish-filename-viewer.yml')['jobs']['publish']
-    steps = [(job, step) for job in [capture['capture'], capture['update_catalog_after_capture'], publish]
+    steps = [(job, step) for job in [capture['capture'], capture['update_catalog_after_capture']]
              for step in job['steps'] if 'setup-native-runtime.py' in step.get('run', '')]
-    assert len(steps) == 3
+    assert len(steps) == 2
     assert steps[0][1]['if'] == "steps.operation.outputs.mode != 'validate'"
     assert 'if' not in steps[1][1]
-    assert steps[2][1]['if'] == (
-        "steps.resume.outputs.preparation_resume == 'true' || "
-        "(steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required')"
-    )
     for job, step in steps:
         assert step['env']['DOCSPEC_RUNTIME_ARTIFACT'] == '${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}'
         assert step['env']['DOCSPEC_ENGINE_CREDENTIALS'] == '${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}'
@@ -188,11 +183,9 @@ def test_workflow_installation_preserves_execution_gates_and_secret_boundaries()
         assert '--github-env "$GITHUB_ENV"' in step['run']
         assert 'DOCSPEC_RUNTIME_CONFIG' not in job.get('env', {})
         assert job['runs-on'] == 'ubuntu-24.04'
-    prepare = next(step for step in publish['steps'] if step.get('id') == 'prepare')
-    assert 'DOCSPEC_RUNTIME_CONFIG' not in prepare.get('env', {})  # Keep installed path from GITHUB_ENV.
     assert capture['capture']['timeout-minutes'] == capture['update_catalog_after_capture']['timeout-minutes'] == '360'
-    assert publish['timeout-minutes'] == '180'
-    for job in [capture['capture'], capture['update_catalog_after_capture'], publish]:
+    assert workflow('archive-jobs.yml')['jobs']['publish']['timeout-minutes'] == '180'
+    for job in [capture['capture'], capture['update_catalog_after_capture']]:
         for step in job['steps']:
             if step.get('uses', '').startswith('actions/upload-artifact'):
                 assert 'docspec-runtime' not in step.get('with', {}).get('path', '')
