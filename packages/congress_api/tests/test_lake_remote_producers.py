@@ -55,12 +55,17 @@ def test_remote_create_and_append_preserve_native_jobs_and_uri(tmp_path):
 
 @pytest.mark.parametrize('remote,root',[(False,None),(True,'local-catalog')])
 def test_table_binding_rejects_missing_or_ambiguous_authority_before_work(tmp_path,remote,root):
-    from congress_api.lake.tables import create_table
+    from congress_api.lake.tables import create_table,append_rows
     engine=RecordingEngine(remote=remote)
     with pytest.raises(ValueError,match='catalog'):
         create_table(engine=engine,work=tmp_path/'refused',catalog_root=root,
             table=dict(namespace=['archive'],name='captures'),schema={},location='s3://fixture/table')
     assert not (tmp_path/'refused').exists() and engine.jobs==[]
+    with pytest.raises(ValueError,match='catalog'):
+        append_rows(tmp_path/'unopened.parquet',engine=engine,work=tmp_path/'refused-append',
+            catalog_root=root,table=dict(namespace=['archive'],name='captures'),
+            keys=['receipt_key'],definition='fixture')
+    assert not (tmp_path/'refused-append').exists() and engine.jobs==[]
 
 
 def test_local_binding_still_normalizes_host_paths(tmp_path):
