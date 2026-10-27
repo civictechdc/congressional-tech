@@ -87,7 +87,7 @@ M1, M2 and S settle the lake format, the receipt reader, the model's memory and 
 
 **Decides:** Iceberg stays if the rows read back unchanged and the file and manifest counts, projected to ten years at the measured growth, keep a full scan of `captures` under a minute on the smallest runner. Otherwise the lake tables move to dated Parquet files with an `If-Match` manifest per table: the same atomicity, without time travel. The fallback changes the scope of C1, C2 and D.
 
-All three tests run on scratch tables, with Basin's catalog-level compaction and snapshot expiration on.
+All three tests run on scratch tables, with Basin's catalog-level compaction and snapshot expiration on. The precommitted workload, conservative growth projection, paired cap-cost rule and prepared owner commands are in `docs/measurements/engine-first-20261027/m1.md`; missing evidence makes the result incomplete, never a format decision.
 
 1. **Guarded commits.** An append whose base snapshot a second client's commit has moved fails rather than being rebased, recomputes its work list and lands within three retries; two ingest runs on the same receipts leave exactly one copy of each row. A second client's commit stands in for Basin's maintenance, which cannot be timed.
 2. **Growth, expiration and drops.** With snapshot expiration at its shortest age, append day-sized batches (about 315 KB) across at least ten Basin maintenance runs.
