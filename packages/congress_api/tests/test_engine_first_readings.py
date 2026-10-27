@@ -48,3 +48,15 @@ def test_invalid_json_fails_without_emitting_input_text():
         assert actual['status'] == 'error'
         assert actual['fingerprint'] is None
         assert 'private-value' not in json.dumps(actual)
+
+
+def test_empty_display_facts_use_the_native_fold_shape():
+    from congress_api.parsers.archive_readings import read_page
+    from congress_api.retention.sniff import read_sniff
+
+    for parser, body in [('html', b'<html><p>Hearing record</p></html>'),
+                         ('xml', b'<meeting/>'), ('json', b'{"meeting":1}')]:
+        assert read_page(body, parser)['fields'] == []
+    body = b'%PDF-1.7\n%%EOF'
+    assert read_sniff(lambda start, length: body[start:start + length],
+                      stored_size=len(body))['fields'] == []
