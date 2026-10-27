@@ -1,0 +1,393 @@
+{
+  "version": 1,
+  "note": "Literal serialization vectors generated once from the existing catalog ID functions. Synthetic logical body keys are inputs, not retained-body claims. Logical-key construction precedes these formulas.",
+  "serialization": {
+    "encoding": "UTF-8",
+    "ensure_ascii": false,
+    "separators": [
+      ",",
+      ":"
+    ],
+    "allow_nan": false
+  },
+  "source_ids": [
+    {
+      "name": "ordinary",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "Agenda.pdf",
+        "source_url": "https://fixture.test/Agenda.pdf"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "9cd0153814d0a198933d3863f5953a250faca778bfbba21181facf32ee69fcae"
+    },
+    {
+      "name": "missing-all",
+      "formula": "source_id",
+      "inputs": {},
+      "compact_json": "[null,null,null]",
+      "expected_hex": "fe44a8cccd89edae70b54c5e58399979bd7d8b12643a8396ad62d089a781b692"
+    },
+    {
+      "name": "explicit-nulls",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": null,
+        "filename": null,
+        "source_url": null
+      },
+      "compact_json": "[null,null,null]",
+      "expected_hex": "fe44a8cccd89edae70b54c5e58399979bd7d8b12643a8396ad62d089a781b692"
+    },
+    {
+      "name": "missing-body-url",
+      "formula": "source_id",
+      "inputs": {
+        "filename": "Metadata.xml"
+      },
+      "compact_json": "[null,\"Metadata.xml\",null]",
+      "expected_hex": "5732997be4839e592a902b9666ae2bd595340d62ac1d3261b184e00403474ca1"
+    },
+    {
+      "name": "null-body-url",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": null,
+        "filename": "Metadata.xml",
+        "source_url": null
+      },
+      "compact_json": "[null,\"Metadata.xml\",null]",
+      "expected_hex": "5732997be4839e592a902b9666ae2bd595340d62ac1d3261b184e00403474ca1"
+    },
+    {
+      "name": "empty-strings",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "",
+        "filename": "",
+        "source_url": ""
+      },
+      "compact_json": "[\"\",\"\",\"\"]",
+      "expected_hex": "799c55d702efedb7750db18b36386fc3a3f4be7dddcfb649adeb41a3ed0da228"
+    },
+    {
+      "name": "empty-filename",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "",
+        "source_url": "https://fixture.test/Agenda.pdf"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "ee746920e37e582a78000c54550f8f257a4f6b67fc4f59bd2168e0c441023208"
+    },
+    {
+      "name": "null-filename",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": null,
+        "source_url": "https://fixture.test/Agenda.pdf"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",null,\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "006bbce5c15f2841a6c90671eb990daac68b89c4f4ff8816387f9c47888c223a"
+    },
+    {
+      "name": "unicode",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "Café-東京-📄.pdf",
+        "source_url": "https://fixture.test/é?q=東京"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Café-東京-📄.pdf\",\"https://fixture.test/é?q=東京\"]",
+      "expected_hex": "f1897fad4dd769cace6e4b7637c3cda298f0b4da017542658e8e06897c406765"
+    },
+    {
+      "name": "unicode-nfc",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "Café.pdf",
+        "source_url": "https://fixture.test/Agenda.pdf"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Café.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "6abe6223df0d27d5fdae36dd2cf548d783b62ea8a16debf96676f19cb2350f72"
+    },
+    {
+      "name": "unicode-nfd",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "Café.pdf",
+        "source_url": "https://fixture.test/Agenda.pdf"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Café.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "14f8a25eb8481dff95bfaad832ee496749459954ea10c5ed7cc619bea7a78671"
+    },
+    {
+      "name": "quotes-backslashes-controls",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "a\"b\\c\tline\nreturn\r.pdf",
+        "source_url": "https://fixture.test/Agenda.pdf"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"a\\\"b\\\\c\\tline\\nreturn\\r.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "913cd16ce2c3d0480abd1bc21d8851c627d5d8ac749288b58a3c429182e6d8ab"
+    },
+    {
+      "name": "unicode-line-separators",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "a b c.pdf",
+        "source_url": "https://fixture.test/Agenda.pdf"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"a b c.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "e96aeed7922acc89d589b764040f474e991ed4cc55237270cadc0543e9ce9085"
+    },
+    {
+      "name": "literal-url-spelling",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "Agenda.pdf",
+        "source_url": "https://EXAMPLE.test/a/../doc%2Fone.pdf?b=2&a=%2f#fragment"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://EXAMPLE.test/a/../doc%2Fone.pdf?b=2&a=%2f#fragment\"]",
+      "expected_hex": "03586dd6e4f8b7d6f8ae86e96a5eebfc84273c5459893d2fdfaf6fbddb032fcd"
+    },
+    {
+      "name": "query-order-one",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "Agenda.pdf",
+        "source_url": "https://fixture.test/a?b=2&a=1"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://fixture.test/a?b=2&a=1\"]",
+      "expected_hex": "8854c606ba7590cf75ca252addde02d592be7869ecc510de32fb9d780cfa8c4a"
+    },
+    {
+      "name": "query-order-two",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "Agenda.pdf",
+        "source_url": "https://fixture.test/a?a=1&b=2"
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://fixture.test/a?a=1&b=2\"]",
+      "expected_hex": "77cb3ab40cd1149353814b93872e4fa28dff02013a6483c396fcfdb3ff1f4979"
+    },
+    {
+      "name": "ignored-interpretation",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "Agenda.pdf",
+        "source_url": "https://fixture.test/Agenda.pdf",
+        "body_format": [
+          "html"
+        ],
+        "record_role": [
+          "error-response"
+        ],
+        "title": "Changed interpretation",
+        "http_status": 404
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "9cd0153814d0a198933d3863f5953a250faca778bfbba21181facf32ee69fcae"
+    },
+    {
+      "name": "null-body-URL-present",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": null,
+        "filename": "Agenda.pdf",
+        "source_url": "https://fixture.test/Agenda.pdf"
+      },
+      "compact_json": "[null,\"Agenda.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "00471148456d4f0119b54fb184331183d3ad37377398a780f8ebb2041426cd4f"
+    },
+    {
+      "name": "body-present-URL-null",
+      "formula": "source_id",
+      "inputs": {
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "filename": "Agenda.pdf",
+        "source_url": null
+      },
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",null]",
+      "expected_hex": "5a91dccd695b3ae5822e8944465106685ba35e2faae668378f51c464ecb8e7bf"
+    }
+  ],
+  "document_ids": [
+    {
+      "name": "one-body",
+      "formula": "bodies",
+      "inputs": {
+        "bodies": [
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab"
+        ],
+        "source_ids": []
+      },
+      "compact_json": "[\"bodies\",[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\"]]",
+      "expected_hex": "c0ad382dc212cca2408a38afb24fead9752319ced7a05e67830a9e335787cad9"
+    },
+    {
+      "name": "bodies-unsorted",
+      "formula": "bodies",
+      "inputs": {
+        "bodies": [
+          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+          "bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101",
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab"
+        ],
+        "source_ids": []
+      },
+      "compact_json": "[\"bodies\",[\"bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101\",\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\"]]",
+      "expected_hex": "f50439fb671c65109ee70edb9c806d9b8ed624a2a16e11dc4baf6abf85af8fda"
+    },
+    {
+      "name": "bodies-duplicated",
+      "formula": "bodies",
+      "inputs": {
+        "bodies": [
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+          "bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101",
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab"
+        ],
+        "source_ids": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ]
+      },
+      "compact_json": "[\"bodies\",[\"bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101\",\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\"]]",
+      "expected_hex": "f50439fb671c65109ee70edb9c806d9b8ed624a2a16e11dc4baf6abf85af8fda"
+    },
+    {
+      "name": "bodies-reordered",
+      "formula": "bodies",
+      "inputs": {
+        "bodies": [
+          "bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101",
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+        ],
+        "source_ids": []
+      },
+      "compact_json": "[\"bodies\",[\"bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101\",\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\"]]",
+      "expected_hex": "f50439fb671c65109ee70edb9c806d9b8ed624a2a16e11dc4baf6abf85af8fda"
+    },
+    {
+      "name": "bodies-ignore-sources",
+      "formula": "bodies",
+      "inputs": {
+        "bodies": [
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab"
+        ],
+        "source_ids": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ]
+      },
+      "compact_json": "[\"bodies\",[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\"]]",
+      "expected_hex": "c0ad382dc212cca2408a38afb24fead9752319ced7a05e67830a9e335787cad9"
+    },
+    {
+      "name": "no-bodies-one-source",
+      "formula": "sources",
+      "inputs": {
+        "bodies": [],
+        "source_ids": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ]
+      },
+      "compact_json": "[\"sources\",[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"]]",
+      "expected_hex": "502e7bbcb768ad036625a237e4c044da1fdf7d39c3b1bf0874c7290ac0cc4c84"
+    },
+    {
+      "name": "sources-unsorted",
+      "formula": "sources",
+      "inputs": {
+        "bodies": [],
+        "source_ids": [
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ]
+      },
+      "compact_json": "[\"sources\",[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"]]",
+      "expected_hex": "2fd4a4da23b678188d4100535519e2fe4b058bb9df7d458422a600d2cb602d59"
+    },
+    {
+      "name": "sources-duplicated",
+      "formula": "sources",
+      "inputs": {
+        "bodies": [],
+        "source_ids": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ]
+      },
+      "compact_json": "[\"sources\",[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"]]",
+      "expected_hex": "2fd4a4da23b678188d4100535519e2fe4b058bb9df7d458422a600d2cb602d59"
+    },
+    {
+      "name": "sources-reordered",
+      "formula": "sources",
+      "inputs": {
+        "bodies": [],
+        "source_ids": [
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ]
+      },
+      "compact_json": "[\"sources\",[\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"]]",
+      "expected_hex": "2fd4a4da23b678188d4100535519e2fe4b058bb9df7d458422a600d2cb602d59"
+    },
+    {
+      "name": "empty",
+      "formula": "sources",
+      "inputs": {
+        "bodies": [],
+        "source_ids": []
+      },
+      "compact_json": "[\"sources\",[]]",
+      "expected_hex": "766f4edac6c5e970cbdcdf8c44301da1e9ad5a84f6d6d22827aa1da7410a787c"
+    },
+    {
+      "name": "distinct-second-body",
+      "formula": "bodies",
+      "inputs": {
+        "bodies": [
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+        ],
+        "source_ids": []
+      },
+      "compact_json": "[\"bodies\",[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\"]]",
+      "expected_hex": "bafdf0434fd0269da593fa4b603f74623701f9b77fe99a8cb6ff55aaaca83c77"
+    },
+    {
+      "name": "zero-body-key",
+      "formula": "bodies",
+      "inputs": {
+        "bodies": [
+          "bodies/sha256/00/0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "source_ids": []
+      },
+      "compact_json": "[\"bodies\",[\"bodies/sha256/00/0000000000000000000000000000000000000000000000000000000000000000\"]]",
+      "expected_hex": "aac08a0444c721f0433e2392ac19a8d7495de84c3c0960c096e21e548c6b9ced"
+    }
+  ]
+}
