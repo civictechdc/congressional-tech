@@ -1,0 +1,24 @@
+{
+  "note": "Synthetic release acceptance input. Expected reader outcomes precede the converter and its SQL. Hash strings below are fixture bytes, not retained-body claims.",
+  "documents": [
+    {"name": "alternate", "filename": "Agenda.pdf", "title": "Transportation agenda", "body_byte": 17, "format": "pdf", "document_date": "2024-05-01", "first_captured": "2024-05-02", "hidden": false, "meeting_keys": ["118001"], "alternates": [{"body_byte": 18, "format": "xml", "suffix": ".gz", "size": 1200}], "source_url": "https://fixture.test/agenda.pdf"},
+    {"name": "hidden", "filename": "Hidden.pdf", "title": "Removed duplicate", "body_byte": 97, "format": "pdf", "document_date": null, "first_captured": "2024-05-02", "hidden": true, "review_note": "Superseded by the complete record", "review_decided_at": "2024-06-01", "extra_link_body_bytes": [17], "source_url": "https://fixture.test/hidden.pdf"},
+    {"name": "excerpt", "filename": "Hearing excerpt.pdf", "title": "Two-page hearing excerpt", "body_byte": 81, "format": "pdf", "document_date": null, "first_captured": null, "hidden": false, "source_url": "https://fixture.test/dead-excerpt.pdf", "recovery": {"kind": "requested_content_in_official_hearing", "recovered_url": "https://fixture.test/transcript.pdf", "identity_note": "The requested statement occupies pages 8–9 of the hearing record", "imported_at": "2024-05-03"}},
+    {"name": "recovered", "filename": "Recovered.pdf", "title": "Recovered saved copy", "body_byte": 49, "format": "pdf", "document_date": "2020-01-01", "first_captured": null, "hidden": false, "source_url": "https://fixture.test/dead.pdf", "recovery": {"kind": "recovered_document", "recovered_url": "https://fixture.test/archive/dead.pdf", "identity_note": null, "imported_at": "2024-05-03"}},
+    {"name": "version-one", "filename": "Record.pdf", "title": "Record before revision", "body_byte": 33, "format": "pdf", "document_date": "2020-01-01", "first_captured": "2020-01-02", "hidden": false, "version_names": ["version-two"], "source_url": "https://fixture.test/record.pdf"},
+    {"name": "version-two", "filename": "Record.pdf", "title": "Revised record", "body_byte": 34, "format": "pdf", "document_date": "2021-01-01", "first_captured": "2021-01-02", "hidden": false, "version_names": ["version-one"], "source_url": "https://fixture.test/record.pdf"},
+    {"name": "substitute", "filename": "Substitute.pdf", "title": "Official substitute", "body_byte": 65, "format": "pdf", "document_date": null, "first_captured": null, "hidden": false, "source_url": "https://fixture.test/unavailable.pdf", "recovery": {"kind": "official_substitute", "recovered_url": "https://fixture.test/official-statement.pdf", "identity_note": "The publisher supplied its official replacement", "imported_at": "2024-05-03"}}
+  ],
+  "meetings": [{"event_id": 118001, "chamber": "house", "title": "Transportation infrastructure hearing", "meeting_date": "2024-05-01"}],
+  "expected": {
+    "list_order": ["alternate", "excerpt", "hidden", "recovered", "version-one", "version-two", "substitute"],
+    "list_rows": 7,
+    "visible_rows": 6,
+    "hidden_link_resolves": true,
+    "body_17_link_list_row": 0,
+    "alternate_formats": ["pdf", "xml"],
+    "version_lookup_rows": [4, 5],
+    "recovery_kinds": ["requested_content_in_official_hearing", "recovered_document", "official_substitute"],
+    "meeting_title": "Transportation infrastructure hearing"
+  }
+}
