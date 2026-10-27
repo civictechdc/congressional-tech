@@ -1,5 +1,12 @@
 import {withVerifiedJson} from './startup.ts';
 
+interface ReviewPlacement {
+  document_id?: string;
+  group?: number;
+  source_ids?: string[];
+  sources?: number[];
+}
+
 export const reviewStartupPolicy = Object.freeze({deadlineMs: 15_000, maxBytes: 16 * 1024 * 1024});
 
 /**
@@ -16,13 +23,13 @@ export async function loadReviews(descriptor: any, manifest: any, fetcher: any, 
   const policy = {...reviewStartupPolicy, ...configuredPolicy};
   try {
     return await withVerifiedJson(policy, 'Document reviews', async (verified: any) => {
-      let placement = null;
+      let placement: Map<number, ReviewPlacement> | null = null;
       if (bound) {
         const binding = await verified(fetcher, new URL(bound.path, manifestUrl).href, bound.sha256, bound.bytes, 'document review binding');
         if (binding.version !== (manifest.version === 6 ? 2 : 1) || binding.review_sha256 !== descriptor.review_sha256 || binding.catalog_id !== manifest.info.catalog_id) {
           throw new Error('Document review binding belongs to a different publication.');
         }
-        placement = new Map(binding.rows.map(row => [row.index, row]));
+        placement = new Map<number, ReviewPlacement>(binding.rows.map(row => [row.index, row]));
       }
       const data = await verified(fetcher, descriptor.url, descriptor.sha256, descriptor.bytes, 'document review publication');
       if (data.version !== 1 || data.review_sha256 !== descriptor.review_sha256 || (!placement && (data.catalog_id !== manifest.info.catalog_id ||

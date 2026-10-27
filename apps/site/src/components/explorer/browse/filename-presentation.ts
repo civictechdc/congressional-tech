@@ -623,35 +623,7 @@ const storedReadingLabels = [
 ] as const;
 
 /** Stored filename readings whose words are not already the code in the filename. */
-export function filenameReadings(row: {
-  package_family?: readonly string[] | null;
-  package_family_label?: readonly string[] | null;
-  document_token_label?: readonly string[] | null;
-  document_type?: readonly string[] | null;
-  amendment_marker_label?: readonly string[] | null;
-  citation_marker_label?: readonly string[] | null;
-  publication_code_label?: readonly string[] | null;
-  local_code_token_label?: readonly string[] | null;
-  revision_marker_label?: readonly string[] | null;
-  revision_number?: readonly string[] | null;
-  version_token_label?: readonly string[] | null;
-  meeting_wording_label?: readonly string[] | null;
-  draft_label?: readonly string[] | null;
-  enbloc_marker_label?: readonly string[] | null;
-  nomination_wording_label?: readonly string[] | null;
-  committee_token_label?: readonly string[] | null;
-  subcommittee_token_label?: readonly string[] | null;
-  scope_token_label?: readonly string[] | null;
-  degree_token_label?: readonly string[] | null;
-  document_abbreviation_label?: readonly string[] | null;
-  document_abbreviation?: readonly string[] | null;
-  collection_token_label?: readonly string[] | null;
-  qualifier_wording?: readonly string[] | null;
-  document_wording?: readonly string[] | null;
-  subject_role_wording?: readonly string[] | null;
-  context_role_wording?: readonly string[] | null;
-  relation_wording?: readonly string[] | null;
-}): { label: string; value: string }[] {
+export function filenameReadings(row: FilenameRecord): { label: string; value: string }[] {
   const readings: { label: string; value: string }[] = [];
   const labels = distinctText(row.package_family_label);
   const codes = distinctText(row.package_family).filter(code => !labels.some(label => label.toLowerCase().includes(code.toLowerCase())));

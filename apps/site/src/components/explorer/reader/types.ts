@@ -23,6 +23,7 @@ export interface ExplorerRecordRef {
 export type QueryKind = 'meeting' | 'committee_term' | 'material' | 'appearance' | 'data_issue';
 
 export interface QueryRow extends ExplorerRecordRef {
+  source_ids?: readonly string[] | null;
   position?: string | null;
   organization?: string | null;
   kind: QueryKind;
