@@ -314,3 +314,16 @@ def test_filename_cli_creates_a_second_table_without_recreating_existing_namespa
     assert reader().main([*common,'--work',str(tmp_path/'second'),'--table','archive.second',
         '--table-location',str(tmp_path/'second-data')])==0
     assert json.loads(capsys.readouterr().out)['append']['files']==[]
+
+
+def test_actual_worker_startup_failure_propagates_without_unreadable_decision(tmp_path):
+    from congress_api.retention.parser_worker import ParserWorker
+    bad=tmp_path/'bad_startup.py'; bad.write_text('not_the_callable = True\n')
+    def startup_failure(parser,version,callable_path,**bounds):
+        return ParserWorker(parser,version,str(bad)+':missing',**bounds)
+    captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
+        url='https://a.test/Bad.pdf')])
+    with pytest.raises(RuntimeError,match='startup'):
+        reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'stage',
+            worker_factory=startup_failure,decided_at=STAMP)
+    assert not (tmp_path/'stage/raw').exists()

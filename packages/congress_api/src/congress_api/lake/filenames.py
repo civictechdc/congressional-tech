@@ -64,6 +64,7 @@ def _vocabulary(path, expected_sha):
 
 def parse_payload(payload):
     """Shared worker entry; package initialization and vocabulary reads are cached."""
+    payload = json.loads(payload)
     vocabularies = _vocabulary(payload['vocabulary_path'], payload['vocabulary_sha256'])
     row = read_filename(payload['filename'], payload['source_url'], parser=_parser(),
         catalog_version=payload['catalog_version'], vocabularies=vocabularies)
@@ -113,12 +114,16 @@ def _typed(result, filename):
         fields=[dict(field=name, value=value) for name, values in sorted(metadata.items()) for value in values])
 
 
-def read_filename(filename, source_url, *, catalog_version, parser=None, vocabularies=None):
-    """Read one independent source name, preserving ambiguity and stable errors."""
-    row = dict(filename=filename, source_url=source_url or '', catalog_version=catalog_version,
-        status='completed', error_type=None, valid=False, document_kind=[], document_family=[],
+def _reading(filename, source_url, catalog_version, *, status='completed', error_type=None):
+    return dict(filename=filename, source_url=source_url or '', catalog_version=catalog_version,
+        status=status, error_type=error_type, valid=False, document_kind=[], document_family=[],
         committee_code=[], congress=None, date_token=None, measure_type=None, measure_number=None,
         filename_date=None, measure_keys=[], bioguide_ids=[], package_id=None, fields=[])
+
+
+def read_filename(filename, source_url, *, catalog_version, parser=None, vocabularies=None):
+    """Read one independent source name, preserving ambiguity and stable errors."""
+    row = _reading(filename, source_url, catalog_version)
     try:
         if len(filename.encode('utf-8')) > MAX_FILENAME_BYTES:
             row.update(status='size_limit', error_type='input-too-large')
@@ -223,9 +228,14 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
                         payload = dict(filename=item['filename'],source_url=item['source_url'],
                             catalog_version=version,vocabulary_path=str(vocabulary_path),
                             vocabulary_sha256=vocabulary_sha)
-                        outcome = worker.parse(item['input_id'],payload)
+                        encoded = json.dumps(payload,ensure_ascii=False,separators=(',', ':'),
+                                             allow_nan=False).encode('utf-8')
+                        outcome = worker.parse(item['input_id'],encoded)
                         if outcome['status'] == 'completed':
                             yield outcome['value']
+                        elif outcome['status'] == 'size_limit':
+                            yield _reading(item['filename'],item['source_url'],version,
+                                status='size_limit',error_type='worker_input_size_limit')
                         elif (outcome['status'] == 'unreadable' and outcome.get('attempts') == 2
                               and isinstance(outcome.get('reason'),str)
                               and re.fullmatch('[a-z][a-z0-9_]*',outcome['reason'])):
