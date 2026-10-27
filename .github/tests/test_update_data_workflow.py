@@ -75,3 +75,16 @@ def test_house_directory_and_site_pages_precede_xml_fallback_and_save_partial_pr
     raw = yaml.load((ROOT / '.github/workflows/capture-raw-sources.yml').read_text(), Loader=yaml.BaseLoader)
     assert any('pipeline-data/meeting-inventory/house-sites.json.gz' in step.get('run', '')
                for step in raw['jobs']['capture']['steps'])
+
+
+def test_every_snapshot_save_also_keeps_the_snapshot_in_raw():
+    workflow = yaml.load((ROOT / '.github/workflows/update-data.yml').read_text(), Loader=yaml.BaseLoader)
+    saves = [step for job in workflow['jobs'].values() for step in job['steps']
+             if '.github/scripts/save-pipeline-data.sh' in step.get('run', '')]
+    assert len(saves) == 4
+    for step in saves:
+        assert set(step['env']) == {'CLOUDFLARE_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'}
+        assert step['env']['R2_ACCESS_KEY_ID'] == '${{ secrets.R2_ACCESS_KEY_ID }}'
+    script = (ROOT / '.github/scripts/save-pipeline-data.sh').read_text().splitlines()
+    push = script.index('git push -q -f origin snapshot:pipeline-data')
+    assert script[push + 1:] == ['cd ..', 'python -m congress_api.cli.pipeline_raw --snapshot pipeline-data']
