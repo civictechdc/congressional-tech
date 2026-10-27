@@ -47,25 +47,27 @@ def minimal_counter(tmp_path,rows,field_paths):
     schema=pa.schema([('record',pa.struct([('url',pa.string())])),('captures',body),
         ('file_references',body),('__receipt_key',pa.string()),('__receipt_line',pa.int64()),
         ('__receipt_family',pa.string()),('__raw_line',pa.string()),('__type_conflicts',pa.list_(pa.string()))])
-    if field_paths:
+    if field_paths is not False:
         schema=schema.append(pa.field('__field_paths',pa.list_(pa.string())))
     data=[]
     for key,raw in rows:
         row=dict(record=None,captures=raw['captures'],file_references=None,__receipt_key=key,
             __receipt_line=1,__receipt_family='documents',__raw_line=json.dumps(raw),__type_conflicts=[])
-        if field_paths:
+        if field_paths is not False:
             # Root entries use C1's exact path#kind representation; descendants
             # are irrelevant to the three root-object presence decisions.
             row['__field_paths']=[json.dumps([name],separators=(',',':'))+'#'+kind
                 for name,kind in [('prior_attempts','array'),('writer','object'),('recovery_evidence','object')]
                 if name in raw]
+            if field_paths is None:
+                row['__field_paths']=None
         data.append(row)
     path=tmp_path/'counter.parquet'
     pq.write_table(pa.Table.from_pylist(data,schema=schema),path)
     return path
 
 
-@pytest.mark.parametrize('field_paths',[False,True])
+@pytest.mark.parametrize('field_paths',[False,True,None])
 def test_actual_writer_root_facts_equal_direct_and_missing_typed_counter(tmp_path,field_paths):
     from congress_api.lake.captures import stage_captures
     files,rows=modern_receipts(tmp_path)
