@@ -1,0 +1,8 @@
+[
+  {"id":"integer-conflict","schema":{"n":"nullable int64"},"input":{"n":"wrong"},"expected_paths":[["n"]]},
+  {"id":"explicit-null","schema":{"n":"nullable int64"},"input":{"n":null},"expected_paths":[]},
+  {"id":"missing-field","schema":{"n":"nullable int64"},"input":{},"expected_paths":[]},
+  {"id":"whole-struct-conflict","schema":{"record":{"title":"nullable string"}},"input":{"record":[]},"expected_paths":[["record"]]},
+  {"id":"child-conflict","schema":{"record":{"title":"nullable string"}},"input":{"record":{"title":5}},"expected_paths":[["record","title"]]},
+  {"id":"nested-list-values","schema":{"items":[{"n":"nullable int64"}]},"input":{"items":[{"n":1},{"n":"wrong"},null,5]},"expected_paths":[["items",1,"n"],["items",3]]}
+]
