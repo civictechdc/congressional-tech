@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {open,readFile,stat} from 'node:fs/promises';
 import {join} from 'node:path';
+import {asyncBufferFromFile,parquetMetadataAsync} from 'hyparquet';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
 const folder=process.env.ARCHIVE_F0;
 const manifest=JSON.parse(await readFile(join(folder,'manifest.json')));
@@ -24,9 +25,12 @@ test('F0 indexes retain warm detail reads on different pages under cache pressur
   assert.equal(reader.count,manifest.files.find(item=>item.name==='list.parquet').rows);
   assert(reader.count>4096,'The full fixture must cover several native 1024-row pages.');
   await reader.entry(0);
-  for(const index of [2048,4096]){
+  const metadata=await parquetMetadataAsync(await asyncBufferFromFile(join(folder,'detail.parquet')));
+  const dictionaries=metadata.row_groups[0].columns.map(item=>item.meta_data).filter(item=>item.dictionary_page_offset!=null).map(item=>[Number(item.dictionary_page_offset),Number(item.data_page_offset)]);
+  for(const index of [2048,4096,0]){
     const before=requests.length;await reader.entry(index);
     const pages=requests.slice(before).filter(item=>item.path.endsWith('/detail.parquet'));
+    for(const page of pages)assert(!dictionaries.some(([start,end])=>page.start<end&&page.end+1>start),'A warmed dictionary is never fetched again, including when revisiting page zero.');
     assert(pages.length>0,'A different detail page requires native data bytes.');
     assert(Math.max(...pages.map(item=>item.began))<Math.min(...pages.map(item=>item.ended)),'Warmed detail fetches share one concurrent round trip; indexes and dictionaries stay retained.');
   }
