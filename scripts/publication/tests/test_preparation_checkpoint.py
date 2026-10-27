@@ -9,7 +9,7 @@ import time
 import pytest
 
 from viewer_publication import resume
-from test_workflow_resume import execute, workflow
+from test_workflow_resume import execute
 
 ROOT = Path(__file__).resolve().parents[3]
 spec = importlib.util.spec_from_file_location('workflow_preparation',
@@ -384,44 +384,8 @@ def test_checkpoint_verification_consumes_the_elapsed_job_budget(tmp_path, monke
         assert waits == [100 - restore_seconds]
 
 
-def test_workflow_checkpoints_before_failure_and_cannot_publish_partial_work():
-    job = workflow()['jobs']['publish']
-    steps = job['steps']
-    prepare = next(i for i, s in enumerate(steps) if s.get('id') == 'prepare')
-    checkpoint = next(i for i, s in enumerate(steps) if s.get('id') == 'checkpoint')
-    marker = next(i for i, s in enumerate(steps) if s.get('name', '').startswith('Require an explicit new run'))
-    accepted = next(i for i, s in enumerate(steps) if s.get('id') == 'accepted')
-    restore = next(i for i, s in enumerate(steps) if s.get('name') == 'Restore explicitly selected incomplete preparation')
-    assert restore < prepare < checkpoint < marker < accepted
-    assert job['timeout-minutes'] == '180'
-    assert steps[checkpoint]['if'] == "steps.prepare.outputs.status == 'preparation_checkpoint'"
-    assert steps[checkpoint]['with']['path'] == 'viewer-preparation/'
-    assert steps[checkpoint]['with']['include-hidden-files'] == 'true'
-    assert steps[accepted]['if'] == "steps.prepare.outputs.status == 'prepared'"
-    for name in ('Verify complete preparation inventory', 'Publish accepted preparation'):
-        step = next(s for s in steps if s.get('name') == name)
-        assert step['if'] == "steps.prepare.outputs.status == 'prepared' || steps.resume.outputs.resume == 'true'"
 
 
-@pytest.mark.parametrize('historical_accepted', [False, True])
-def test_fidelity_gate_requires_new_supervisor_checks_except_in_older_accepted_code(tmp_path, historical_accepted):
-    step = next(s for s in workflow()['jobs']['publish']['steps'] if s.get('name') == 'Verify publication fidelity and recovery mapping')
-    paths = [line.strip() for line in step['run'].splitlines() if line.strip().endswith('.py')]
-    added = {'scripts/publication/tests/test_workflow_resume.py', 'scripts/publication/tests/test_preparation_checkpoint.py'}
-    assert added <= set(paths)
-    for path in set(paths) - added:
-        target = tmp_path / 'tests' / Path(path).name
-        target.parent.mkdir(exist_ok=True)
-        target.touch()
-    bindir = tmp_path / 'bin'
-    bindir.mkdir()
-    interpreter = bindir / 'python'
-    interpreter.write_text('#!/bin/sh\nfor path in "$@"; do\ncase "$path" in *.py) test -f "$path" || exit 7;; esac\ndone\nprintf "%s\\n" "$@"\n')
-    interpreter.chmod(0o755)
-    result = runner.subprocess.run(['bash', '-e', '-c', step['run']], cwd=tmp_path,
-        env=dict(os.environ, ACCEPTED_RESUME=str(historical_accepted).lower(),
-            PATH=str(bindir) + os.pathsep + os.environ['PATH']), capture_output=True, text=True, timeout=10)
-    assert result.returncode == (0 if historical_accepted else 7)
 
 
 def test_original_code_checkout_can_differ_from_new_dispatch_workflow_head(tmp_path):
@@ -450,3 +414,13 @@ def test_invalid_partial_descriptors_never_authorize_checkout(tmp_path, field, v
     result, output = execute(tmp_path, json.dumps(descriptor))
     assert result.returncode != 0
     assert not output.exists()
+
+
+def test_retired_checkpoint_workflow_has_no_restore_or_publish_path():
+    import yaml
+    assert not (ROOT / '.github/workflows/publish-filename-viewer.yml').exists()
+    value = yaml.load((ROOT / '.github/workflows/archive-jobs.yml').read_text(), Loader=yaml.BaseLoader)
+    steps = value['jobs']['publish']['steps']
+    assert not any(step.get('uses', '').startswith('actions/download-artifact') for step in steps)
+    assert 'resume_descriptor' not in json.dumps(value)
+    assert not any('prepare_workflow_resume.py' in step.get('run', '') for step in steps)
