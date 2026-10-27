@@ -11,12 +11,12 @@
   },
   {
     "id": "download_parameter",
-    "pattern": "(?i)[?&]download=1(?:[&#]|$)",
+    "pattern": "(?i)^[^?#]*\\?(?:[^#]*&)?download=1(?:[&#]|$)",
     "sample_id": "file-shapes:download_parameter"
   },
   {
     "id": "file_id_parameter",
-    "pattern": "(?i)[?&]file_id=",
+    "pattern": "(?i)^[^?#]*\\?(?:[^#]*&)?file_id=",
     "sample_id": "file-shapes:file_id_parameter"
   }
 ]

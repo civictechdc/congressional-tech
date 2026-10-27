@@ -52,5 +52,23 @@
     "kind": "wrapper_marker",
     "pattern": "(?i)download will begin shortly|^download file\\b",
     "sample_id": "page-signals:download_wrapper"
+  },
+  {
+    "id": "error_routes",
+    "kind": "error_url",
+    "pattern": "(?i)/(404|error|errors|notfound|not-found|page-not-found)(\\b|[/.?_-])|[?&]aspxerrorpath=",
+    "sample_id": "page-signals:error_routes"
+  },
+  {
+    "id": "feed_roots",
+    "kind": "feed_root",
+    "pattern": "^(\\{[^}]+\\})?(rss|feed|urlset|sitemapindex)$",
+    "sample_id": "page-signals:feed_roots"
+  },
+  {
+    "id": "feed_urls",
+    "kind": "feed_url",
+    "pattern": "(?i)/(rss|feed|sitemap)([/.?]|$)",
+    "sample_id": "page-signals:feed_urls"
   }
 ]
