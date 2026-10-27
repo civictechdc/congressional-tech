@@ -276,5 +276,16 @@ export function dateLabels(document: any,detail: any){
 }
 export function recoveryLabel(kind: string){
   return ({recovered_document:'Recovered document',official_substitute:'Official substitute',
-    requested_content_in_official_hearing:'Requested content in an official hearing'} as Record<string,string>)[kind]??kind;
+    requested_content_in_official_hearing:'Requested content in an official hearing',
+    official_updated_revision_available:'Official updated revision available',
+    official_introduced_bill_counterpart:'Official introduced bill counterpart',
+    official_recorded_votes_available:'Official recorded votes available',
+    requested_content_in_official_report:'Requested content in an official report',
+    official_complete_statement_text_available:'Official complete statement text available',
+    official_alternate_amendment_available:'Official alternate amendment available',
+    requested_content_in_official_amendment_packet:'Requested content in an official amendment packet',
+    same_article_publisher_text_available:'Publisher text of the same article available',
+    official_public_statement_counterpart:'Official public statement counterpart',
+    official_report_counterpart_available:'Official report counterpart available',
+    related_final_report_available:'Related final report available'} as Record<string,string>)[kind]??kind;
 }

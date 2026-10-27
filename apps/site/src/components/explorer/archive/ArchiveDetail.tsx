@@ -33,7 +33,7 @@ export function ArchiveDetail({entry,meetings=[],versions=[],rawBase,onSelect,on
     <div className="archive-dates"><p>{labels.capture}</p>{labels.document&&<p>Document date: {labels.document}</p>}{labels.removed&&<p>{labels.removed}</p>}</div>
     <section><h3>Saved copies</h3>{detail.saved_body?<ul><li><CopyLink detail={detail} label={`Open saved ${text(document.format).toUpperCase()}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>
       {(detail.alternates??[]).map((alternate:any,i:number)=><li key={i}><CopyLink detail={bodyDetail(alternate,alternate.format)} label={`Open alternate ${text(alternate.format).toUpperCase()}`} rawBase={rawBase} onOpenSaved={onOpenSaved}/></li>)}</ul>:<p>No original saved copy is recorded.</p>}</section>
-    {recoveries.length>0&&<section><h3>Recovered copies</h3><ul>{recoveries.map((recovery:any,i:number)=><li key={i}>
+    {recoveries.length>0&&<section><h3>Recovered and related files</h3><ul>{recoveries.map((recovery:any,i:number)=><li key={i}>
       <CopyLink detail={bodyDetail(recovery,document.format)} label={recoveryLabel(recovery.kind)} rawBase={rawBase} onOpenSaved={onOpenSaved}/>
       {recovery.identity_note&&<p>{recovery.identity_note}</p>}<p>Added to the archive {day(recovery.imported_at)}{recovery.recovered_url&&<> · <PublicLink url={recovery.recovered_url}>Recovery source</PublicLink></>}</p>
     </li>)}</ul></section>}
