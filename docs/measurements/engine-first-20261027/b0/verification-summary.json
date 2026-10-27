@@ -1,0 +1,19 @@
+{
+  "receipts": 2289,
+  "changed": 887,
+  "verified": 2289,
+  "lines": 2596054,
+  "original_compressed_bytes": 1082812244,
+  "cleaned_compressed_bytes": 948672297,
+  "full_scan": {
+    "header": 1138754,
+    "path": 1549970
+  },
+  "clean_rescan": {},
+  "scan_seconds": 458.75,
+  "rewrite_seconds": 2483.89,
+  "rescan_seconds": 434.65,
+  "scan_max_rss_bytes": 5258313728,
+  "rewrite_max_rss_bytes": 6084034560,
+  "scope": "local scratch copies only; no remote access or live writer update"
+}
