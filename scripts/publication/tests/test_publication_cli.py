@@ -197,7 +197,10 @@ def test_export_pins_cli_publish_to_r2(tmp_path, monkeypatch):
     puts = []
     class FakeS3:
         def put_object(self, **kwargs):
-            puts.append(kwargs)
+            body = kwargs['Body']
+            payload = body if isinstance(body, bytes) else body.read()
+            assert len(payload) == kwargs['ContentLength']
+            puts.append(dict(kwargs, Body=payload))
             return {'ETag': '"etag-123"'}
 
     monkeypatch.setattr(cli, 'make_client', lambda: FakeS3())
@@ -210,6 +213,9 @@ def test_export_pins_cli_publish_to_r2(tmp_path, monkeypatch):
     keys = [p['Key'] for p in puts]
     assert any('viewer-publications/releases/v-test-export/viewer-v2/sources.parquet' in k for k in keys)
     assert any('viewer-publications/manifest.json' in k for k in keys)
+    for name in ('sources.parquet', 'components.parquet'):
+        uploaded = next(put['Body'] for put in puts if put['Key'].endswith('/' + name))
+        assert uploaded == (target / name).read_bytes()
 
 
 

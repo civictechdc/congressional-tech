@@ -89,13 +89,30 @@ def test_journal_append_reuses_saved_digest_and_preserves_chain(journal, monkeyp
     original_sha = hashlib.sha256
     production = {state.__file__, custody.__file__, client.__file__}
     hashed = []
+    class ObservedDigest:
+        def __init__(self, raw):
+            self.parts = [raw]
+            self.inner = original_sha(raw)
+            hashed.append(self.parts)
+        def update(self, raw):
+            self.parts.append(bytes(raw))
+            self.inner.update(raw)
+        def __getattr__(self, name):
+            return getattr(self.inner, name)
     def digest(raw=b''):
         if sys._getframe(1).f_code.co_filename in production:
-            hashed.append(raw)
+            return ObservedDigest(raw)
         return original_sha(raw)
     monkeypatch.setattr(hashlib, 'sha256', digest)
     monkeypatch.setattr(custody, 'sha256', digest)
-    previous, bodies = log.previous, []
+    previous, bodies, serialized = log.previous, [], []
+    original_encode = log._encoded_event
+    def encode(*args, **options):
+        raw = original_encode(*args, **options)
+        if options.get('nonce'):
+            serialized.append(raw)
+        return raw
+    monkeypatch.setattr(log, '_encoded_event', encode)
     for index in range(2):
         intent, _ = write_facts(f'viewer-publications/releases/digest/{index}')
         log.record('publication_write_intent', intent)
@@ -103,8 +120,10 @@ def test_journal_append_reuses_saved_digest_and_preserves_chain(journal, monkeyp
         assert json.loads(body)['previous'] == previous
         previous = original_sha(body).hexdigest()
         assert log.previous == previous
-        bodies.extend([body, body])  # Synced request proof and guarded PUT admission.
-    assert hashed == bodies
+        # Synced request proof, guarded PUT admission, and current-byte verification.
+        bodies.extend([body, body, body])
+    assert [b''.join(parts) for parts in hashed] == bodies
+    assert serialized == bodies[::3]  # Encode each accepted wire event only once.
 
 
 @pytest.mark.parametrize('boundary', ['before_put', 'after_put', 'accept_link'])
