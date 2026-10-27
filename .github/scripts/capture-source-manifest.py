@@ -3,10 +3,11 @@ import hashlib
 from importlib.metadata import version
 import json
 from pathlib import Path
-import subprocess
+from congress_api.retention.writer_identity import writer_identity
 
 
 def manifest(root):
+    identity = writer_identity(root, 'capture')
     paths = set()
     for package in ('congress_api', 'congress_shared', 'committee_meeting', 'house-naming'):
         paths.update(p for p in (root / 'packages' / package / 'src').rglob('*')
@@ -17,7 +18,7 @@ def manifest(root):
     paths.update(root / 'packages/source-fetch' / name for name in ('main.rs', 'Cargo.toml', 'Cargo.lock'))
     sources = {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(paths)}
     digest = hashlib.sha256(json.dumps(sources, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-    return dict(code_revision=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip(),
+    return dict(code_revision=identity['commit'], lockfile_digest=identity['lockfile_digest'],
                 source_sha256=sources, source_digest=digest)
 
 
