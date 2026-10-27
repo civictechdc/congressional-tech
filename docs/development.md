@@ -17,6 +17,7 @@ source .venv/bin/activate
 python scripts/dev.py doctor
 python scripts/dev.py prepare-baseline
 python scripts/dev.py inventory
+export DOCSPEC_JOB_CONFIG=/absolute/path/to/approved-local-runtime.json
 python scripts/dev.py test production-offline
 python scripts/dev.py test active-experiment-regression
 ```
@@ -25,6 +26,14 @@ python scripts/dev.py test active-experiment-regression
 both Poppler commands (`pdfinfo`, `pdftotext`) and the `ps` command used by
 the PDF memory guard. Import and command probes have
 bounded timeouts. Missing native commands fail before pytest starts.
+The `production-offline` lane also requires `DOCSPEC_JOB_CONFIG`: an explicit
+local DocSpec runtime configuration with executable SHA-256, source revision,
+platform, build features and a limits file. Doctor reuses the client's runtime
+verifier before starting pytest. Missing or invalid setup gives one actionable
+error; native checks never silently become skipped. This lane refuses remote or
+credential-file configuration before loading it. It neither searches for an
+executable nor starts the engine during preflight. CI must supply its approved
+runtime; a missing platform artifact remains a setup gate.
 `prepare-baseline` may fetch exactly commit
 `38f75574d217d3e4908e3f37e0c0906b1090990a` from `origin` when it is absent. It checks
 that identity against `content_rule_freeze.json` and verifies the historical
