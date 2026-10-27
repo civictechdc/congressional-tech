@@ -89,9 +89,6 @@ class LocalStore:
         if key.startswith(RAW_PREFIXES):
             return create_stored(LocalAdapter(self.root), key, BytesIO(data), 'application/octet-stream',
                 operation='replace' if immutable is False else 'create', body_identity=False).outcome == 'stored'
-        if key.startswith("bodies/") and self.excluded_body_hashes:
-            from congress_api.retention.raw_storage import enforce_body_ingest_gate
-            enforce_body_ingest_gate(self, key, data, excluded_hashes=self.excluded_body_hashes)
         path = self.root / key
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(dir=path.parent)

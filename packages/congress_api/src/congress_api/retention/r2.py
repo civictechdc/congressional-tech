@@ -374,10 +374,6 @@ class R2Store:
 
         self._flush_manifests()
 
-        if key.startswith("bodies/") and self.excluded_body_hashes:
-            from congress_api.retention.raw_storage import enforce_body_ingest_gate
-            enforce_body_ingest_gate(self, key, body, excluded_hashes=self.excluded_body_hashes)
-
         options = {}
         if immutable:
             options["IfNoneMatch"] = "*"
