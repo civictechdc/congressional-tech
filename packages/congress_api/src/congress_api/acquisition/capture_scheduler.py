@@ -177,10 +177,57 @@ def _records(path):
             yield from batch.to_pylist()
 
 
+def _reviewed_cutoffs(urls):
+    urls=tuple(urls)
+    if len(urls)>1024 or any(not isinstance(url,str) or not url or len(url.encode('utf-8'))>16384 for url in urls):
+        raise ValueError('Reviewed cutoff input exceeds its metadata allowance')
+    for url in urls:
+        validate_record(url)
+    return urls
+
+
+def _record_attempt(path,url,*,attempted,complete=None,outcome=None,http_status=None,error_type=None):
+    import gzip
+    with gzip.open(path,'at',encoding='utf-8') as out:
+        out.write(json.dumps(dict(url=url,attempted=attempted,complete=complete,outcome=outcome,
+            http_status=http_status,error_type=error_type))+'\n')
+
+
+def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason):
+    """Account for every reviewed URL, including deadline/budget/scope deferrals."""
+    urls=_reviewed_cutoffs(urls)
+    if not urls:return []
+    work=Path(work);work.mkdir(parents=True,exist_ok=False)
+    policy=CapturePolicy(release['scope'])
+    inputs=[dict(name='states',kind='parquet',path=str(Path(release['state']).resolve())),
+        json_input(work,'cutoffs',(dict(url=url) for url in urls),url='Utf8'),
+        dict(name='attempted',kind='json_lines',
+            files=[dict(key='attempted',path=str(attempted))] if attempted.exists() else [],
+            schema=dict(fields=[field('url','Utf8'),field('attempted','Boolean'),field('complete','Boolean'),
+                field('outcome','Utf8'),field('http_status','Int32'),field('error_type','Utf8')],metadata={}))]
+    values=run_job(work,engine,inputs=inputs,outputs=[],steps=[dict(name='selected_states',
+        sql=f"SELECT requested_url,next_attempt_at,{policy.sql('requested_url')} AS family FROM states")],
+        queries=[dict(name='cutoffs',sql=f"""SELECT k.url AS requested_url,
+            CASE WHEN a.attempted THEN 'attempted'
+                 WHEN a.url IS NOT NULL OR s.requested_url IS NOT NULL AND s.family IS NULL THEN 'refused'
+                 ELSE 'deferred' END AS disposition,
+            CASE WHEN a.url IS NOT NULL THEN a.error_type
+                 WHEN s.requested_url IS NULL THEN 'not_in_release'
+                 WHEN s.family IS NULL THEN 'outside_capture_scope'
+                 WHEN s.next_attempt_at>to_timestamp({_literal(_utc(as_of))}) THEN 'not_due'
+                 ELSE {_literal(stop_reason or 'not_attempted')} END AS reason,
+            s.next_attempt_at,a.complete,a.outcome,a.http_status
+            FROM (SELECT DISTINCT url FROM cutoffs) k
+            LEFT JOIN selected_states s ON k.url=s.requested_url
+            LEFT JOIN attempted a ON k.url=a.url ORDER BY k.url""")])
+    return values['cutoffs']
+
+
 def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
                seed_files=(),discovery_files=(),attempted=None,cutoff_urls=()):
     """Native due/seed anti-joins and priority selection; exact requested URL key."""
     _positive(request_budget,'request budget');as_of=_utc(as_of)
+    cutoff_urls=_reviewed_cutoffs(cutoff_urls)
     work=Path(work);work.mkdir(parents=True,exist_ok=False)
     required={'requested_url','attempts','next_attempt_at','last_outcome'}
     schema=pq.read_schema(release['state'])
@@ -258,11 +305,12 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
     """One sequential raw writer. No state/index or table writes occur here."""
     for name,value in [('request budget',request_budget),('byte budget',byte_budget),('spool budget',spool_budget),('discovery jobs',max_discovery_jobs)]:
         _positive(value,name)
-    as_of=_utc(as_of);work=Path(work);work.mkdir(parents=True,exist_ok=False)
+    as_of=_utc(as_of);cutoff_urls=_reviewed_cutoffs(cutoff_urls)
+    work=Path(work);work.mkdir(parents=True,exist_ok=False)
     policy=CapturePolicy(release['scope'],resolve=resolve);policy.require_capture()
     archive_limits=archive_limits or ZipLimits();hops=14 if provider is not None else 7
     stats=dict(release_id=release['release_id'],as_of=as_of,run_id=new_run_id(),requests=0,
-        fetched_bytes=0,captures=0,receipts=[],refusals=[],discovery_errors=[],discovery_refused=0,cutoffs=[],
+        fetched_bytes=0,captures=0,receipts=[],refusals=[],discovery_errors=[],discovery_refused=0,cutoffs=[],cutoff_attempts=[],
         budgets=dict(requests=request_budget,bytes=byte_budget,spool=spool_budget),spool_reserved_bound=0,stop_reason=None)
     writer=ReceiptWriter(store,identity=identity,run_id=stats['run_id'],write_date=datetime.now(timezone.utc).date().isoformat(),archive_limits=archive_limits)
     attempted=work/'attempted.jsonl.gz';discovered=[];generation=0
@@ -288,7 +336,9 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
                 continue
             family=policy.family(url)
             if family is None:
-                stats['refusals'].append(dict(url=url,reason='outside_capture_scope'));continue
+                stats['refusals'].append(dict(url=url,reason='outside_capture_scope'))
+                _record_attempt(attempted,url,attempted=False,error_type='outside_capture_scope')
+                continue
             observations=[dict(url=value[0],source=value[1],pointer=json.loads(value[2]))
                           for value in map(json.loads,row['observations'])]
             with TemporaryDirectory(prefix='body-',dir=work) as spool:
@@ -299,10 +349,10 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
                 key,line=writer.write(result,family=family,observations=observations)
                 stats['receipts'].append(key);stats['captures']+=1
                 if row['priority']==1:
-                    stats['cutoffs'].append(dict(url=url,outcome=line['outcome'],complete=result.final.complete,
+                    stats['cutoff_attempts'].append(dict(url=url,outcome=line['outcome'],complete=result.final.complete,
                         reason=result.final.error))
-                import gzip
-                with gzip.open(attempted,'at',encoding='utf-8') as out:out.write(json.dumps(dict(url=url))+'\n')
+                _record_attempt(attempted,url,attempted=True,complete=result.final.complete,
+                    outcome=line['outcome'],http_status=line['http_status'],error_type=result.final.error)
                 body=result.final.body;links=[]
                 if (body is not None and result.final.complete and result.final.http_status is not None
                         and 200<=result.final.http_status<300 and body.sniffed_format in {'html','xml','json'}):
@@ -338,4 +388,10 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
         raise
     finally:
         stats['discovery_jobs']=generation
-        (work/'summary.json').write_text(json.dumps(stats,ensure_ascii=False,indent=2)+'\n')
+        # D discovery replans plus initial planning and this report give D+2
+        # linear input passes (ten at the default D=8), not one per capture.
+        try:
+            stats['cutoffs']=cutoff_report(release,urls=cutoff_urls,attempted=attempted,engine=engine,
+                work=work/'cutoff-report',as_of=as_of,stop_reason=stats['stop_reason'])
+        finally:
+            (work/'summary.json').write_text(json.dumps(stats,ensure_ascii=False,indent=2)+'\n')
