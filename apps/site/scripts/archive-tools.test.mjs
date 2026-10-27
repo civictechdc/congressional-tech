@@ -29,3 +29,7 @@ test('canary checks pointer caching and one global deadline',async()=>{
   await assert.rejects(verifyArchive({pointerUrl:'https://public.test/manifest.json',fetcher:async()=>Response.json({release_id:'ab'.repeat(32)})}),/no-store/);
   await assert.rejects(verifyArchive({pointerUrl:'https://public.test/manifest.json',deadlineMs:15,fetcher:async(_url,options)=>new Promise((_,reject)=>{options.signal.addEventListener('abort',()=>reject(options.signal.reason),{once:true});})}),/deadline/);
 });
+
+test('pinned candidate canaries still check live pointer cache policy',async()=>{
+  await assert.rejects(verifyArchive({pointerUrl:'https://public.test/manifest.json',releaseId:'ab'.repeat(32),fetcher:async()=>Response.json({release_id:'cd'.repeat(32)})}),/no-store/);
+});

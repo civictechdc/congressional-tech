@@ -143,3 +143,12 @@ test('pasted-address versions apply hearing and format filters with capture pagi
   assert.equal((await reader.lookupRows(url,{meeting_keys:['118001']})).total,0);
   assert.equal((await reader.lookupRows(url,{format:['xml']})).total,0);
 });
+
+test('mandatory release files cannot be omitted as empty optional entities',async()=>{
+  for(const omitted of ['url_state.parquet','recoveries.parquet','schema.json','capture_scope.json']){
+    const files=manifest.files.filter(item=>item.name!==omitted),id=createHash('sha256').update(JSON.stringify([manifest.schema_version,files.map(f=>[f.name,f.sha256,f.size,f.rows])])).digest('hex');
+    const fetcher=async(url,options)=>new URL(url).pathname==='/manifest.json'?Response.json({release_id:id}):String(url).endsWith('/manifest.json')?Response.json({...manifest,files,release_id:id}):localFetch(url,options);
+    await assert.rejects(openArchive('https://fixture.test/manifest.json',{fetcher}),/required|missing/i);
+  }
+  const reader=await openArchive('https://fixture.test/manifest.json',{fetcher:localFetch});assert.equal((await reader.recoveryRange(0,1)).length,1);
+});
