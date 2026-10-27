@@ -63,6 +63,14 @@ class DocSpecFailure(RuntimeError, OSError):
         self.command = tuple(command)
         self.returncode = result.returncode if result is not None else 1
         self.stderr = result.stderr if result is not None else ''
+        self.stdout = result.stdout if result is not None else ''
+        self.completed: dict[str, Any] | None = None
+        try:
+            report = json.loads(self.stdout)
+        except (TypeError, ValueError):
+            report = None
+        if isinstance(report, dict) and report.get('status') == 'failed' and isinstance(report.get('completed'), dict):
+            self.completed = report['completed']
         self.status_code: int | None = None
         self.code: str | None = None
         self.pre_admission: bool | None = None

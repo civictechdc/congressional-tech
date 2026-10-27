@@ -415,6 +415,16 @@ class NativeDatasets:
     def run(self, request: Any) -> Any:
         return self._request('/run', request)
 
+    def run_job(self, spec: Path | str) -> dict[str, Any]:
+        """Run a declarative SQL job through the verified executable adapter."""
+        if self.limits is None:
+            raise ValueError('SQL job requires explicit host limits')
+        if self.binary_sha256 is None or self.source_revision is None:
+            raise ValueError('SQL job requires binary and source revision pins')
+        if self.remote is not None:
+            raise ValueError('SQL job remote adapter is not yet bound')
+        return self._call('job', '--spec', Path(spec).resolve(), remote=False)
+
     def run_ipc(
         self,
         table: pa.Table,
