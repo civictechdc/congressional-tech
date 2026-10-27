@@ -43,8 +43,11 @@ def _normal(table, **values):
     return 'SELECT ' + ','.join(f'{expression} AS "{name}"' for name, expression in values.items()) + ' FROM ' + table
 
 
-def _step(name, sql, *, materialize=False):
-    return dict(name=name, sql=sql, materialize=materialize)
+def _step(name, sql, *, materialize=False, release_after=()):
+    step = dict(name=name, sql=sql, materialize=materialize)
+    if release_after:
+        step['release_after'] = list(release_after)
+    return step
 
 
 def _field(name, kind):
@@ -108,14 +111,14 @@ def _settings(profile, order, *, columns=None, dictionary=(), delta=()):
 
 def _core(steps, output):
     order = ['filename', 'document_date', 'first_captured', 'doc_key']
-    steps += [_step('ordered', "SELECT *,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True),
+    steps += [_step('ordered', "SELECT *,cast(row_number() OVER(ORDER BY filename,document_date NULLS LAST,first_captured NULLS LAST,doc_key)-1 AS INT) AS list_row FROM normalized", materialize=True, release_after=["normalized"]),
         _step('source_rows', """SELECT o.list_row,s.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS ordinal,
             cast(row_number() OVER(ORDER BY o.list_row,s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS source_index
-            FROM source_input s JOIN ordered o ON s.doc_key=o.doc_key""", materialize=True),
+            FROM source_input s JOIN ordered o ON s.doc_key=o.doc_key""", materialize=True, release_after=["source_input"]),
         _step('source_ranges', 'SELECT doc_key,min(source_index) AS src_start,cast(count(*) AS INT) AS src_len FROM source_rows GROUP BY doc_key'),
         _step('recovery_rows', """SELECT o.list_row,r.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY r.recovery_key)-1 AS INT) AS ordinal,
             cast(row_number() OVER(ORDER BY o.list_row,r.recovery_key)-1 AS INT) AS recovery_index
-            FROM recovery_input r JOIN ordered o ON r.doc_key=o.doc_key""", materialize=True),
+            FROM recovery_input r JOIN ordered o ON r.doc_key=o.doc_key""", materialize=True, release_after=["recovery_input"]),
         _step('recovery_ranges', 'SELECT doc_key,min(recovery_index) AS rec_start,cast(count(*) AS INT) AS rec_len FROM recovery_rows GROUP BY doc_key'),
         _step('details', f"""SELECT o.*,CASE WHEN saved_kind='recovery' THEN {_hash_key('o.source_url', 'url:')}
             ELSE {_binary('substr(body_hex,1,16)', 8)} END AS link_key,
@@ -323,7 +326,7 @@ def convert_catalog(documents, filenames, captures, committees, *, catalog_id, o
     date = f"CASE WHEN cardinality(d.date_token)=1 THEN try_cast(CASE WHEN regexp_like({raw_date},'^[0-9]{{8}}$') THEN concat(substr({raw_date},1,4),'-',substr({raw_date},5,2),'-',substr({raw_date},7,2)) ELSE {raw_date} END AS DATE) ELSE NULL END"
     body_hex = _match('d.body_key', '([0-9a-f]{64})')
     steps = committee_steps + [_step('body_metadata', """SELECT body_key,max(bytes) AS bytes,max(media_type) AS media_type
-        FROM legacy_captures WHERE body_key IS NOT NULL GROUP BY body_key""", materialize=True),
+        FROM legacy_captures WHERE body_key IS NOT NULL GROUP BY body_key""", materialize=True, release_after=['legacy_captures']),
         _step('document_bodies', 'SELECT document_id,unnest(body_keys) AS body_key FROM legacy_documents'),
         _step('body_groups', f"SELECT document_id,array_agg({_match('body_key', '([0-9a-f]{64})')} ORDER BY body_key) AS bodies FROM document_bodies GROUP BY document_id", materialize=True),
         _step('document_codes', 'SELECT document_id,unnest(committee_code) AS code FROM legacy_documents'),
@@ -342,18 +345,18 @@ def convert_catalog(documents, filenames, captures, committees, *, catalog_id, o
             document_date=date, document_date_source=f"CASE WHEN {date} IS NULL THEN NULL ELSE 'filename' END",
             suffix="CASE WHEN regexp_like(d.body_key,'[.]pdf$') THEN '.pdf' WHEN regexp_like(d.body_key,'[.]gz$') THEN '.gz' ELSE '' END",
             media_type="coalesce(b.media_type,CASE WHEN array_element(d.format,1)='pdf' THEN 'application/pdf' ELSE 'application/octet-stream' END)",
-            bytes='b.bytes', meeting_keys=_meeting_keys('d.source_url'), link_bodies='g.bodies'), materialize=True),
+            bytes='b.bytes', meeting_keys=_meeting_keys('d.source_url'), link_bodies='g.bodies'), materialize=True, release_after=['body_metadata', 'body_groups', 'document_bodies', 'committee_groups', 'document_codes', 'committee_aliases']),
         _step('source_candidates', """SELECT f.document_id AS doc_key,f.source_id AS source_key,f.source_url AS url,
             cast(NULL AS VARCHAR) AS member_path,coalesce(f.body_key=d.body_key,false) AS is_saved,
             cast(NULL AS DATE) AS first_seen,
             array_element(f.source_page_url,1) AS listed_on,array_element(f.source_link_label,1) AS link_text,
             cast(NULL AS VARCHAR) AS doc_type,cast(NULL AS DATE) AS posted
             FROM legacy_filenames f JOIN (SELECT document_id,body_key FROM legacy_documents) d ON f.document_id=d.document_id
-            WHERE f.source_url IS NOT NULL""", materialize=True),
+            WHERE f.source_url IS NOT NULL"""),
         _step('source_input', """SELECT doc_key,min(source_key) AS source_key,url,member_path,
             bool_or(is_saved) AS is_saved,min(first_seen) AS first_seen,min(listed_on) AS listed_on,
             min(link_text) AS link_text,min(doc_type) AS doc_type,min(posted) AS posted
-            FROM source_candidates GROUP BY doc_key,url,member_path""", materialize=True),
+            FROM source_candidates GROUP BY doc_key,url,member_path""", materialize=True, release_after=['source_candidates', 'legacy_documents', 'legacy_filenames']),
         _step('recovery_input', """SELECT cast(NULL AS VARCHAR) AS doc_key,cast(NULL AS VARCHAR) AS recovery_key,
             cast(NULL AS VARCHAR) AS original_url,cast(NULL AS VARCHAR) AS kind,arrow_cast(NULL,'FixedSizeBinary(32)') AS body,
             cast(NULL AS VARCHAR) AS suffix,cast(NULL AS BIGINT) AS bytes,cast(NULL AS DATE) AS imported_at,
