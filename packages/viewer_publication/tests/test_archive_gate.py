@@ -57,8 +57,23 @@ def test_success_first_publish_and_lost_race():
         store.value = {'release_id': 'c' * 64}; store.etag = 'competitor'; return passed()
     with pytest.raises(RuntimeError, match='lost pointer race'):
         gate_and_flip(store, bucket='fake', release_id='b' * 64, previous_release_id='a' * 64,
-                      expected_etag='original', canary=passed, contract=competing)
+                      expected_etag='original', canary=competing, contract=passed)
     assert store.value == {'release_id': 'c' * 64}
+
+
+def test_local_contract_precedes_upload_canary_and_contract_failure_stops_it():
+    events = []
+    store = Pointer()
+    def check(name):
+        events.append(name)
+        return passed()
+    gate_and_flip(store, bucket='fake', release_id='b' * 64, previous_release_id=None,
+                  expected_etag=None, contract=lambda: check('contract'), canary=lambda: check('upload-canary'))
+    assert events == ['contract', 'upload-canary']
+    def refuse(): raise RuntimeError('local candidate refused')
+    with pytest.raises(RuntimeError):
+        gate_and_flip(Pointer(), bucket='fake', release_id='b' * 64, previous_release_id=None,
+                      expected_etag=None, contract=refuse, canary=lambda: pytest.fail('upload reached'))
 
 
 def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
@@ -78,6 +93,7 @@ def test_real_canary_failure_against_hand_candidate_does_not_flip(tmp_path):
         raise RuntimeError('actual canary refused missing saved body')
     with pytest.raises(RuntimeError, match='actual canary refused'):
         gate_and_flip(store, bucket='fake', release_id=manifest['release_id'], previous_release_id='a' * 64,
-                      expected_etag='original', canary=canary, contract=lambda: pytest.fail('contract reached'))
+                      expected_etag='original', canary=canary,
+                      contract=lambda: {'status': 'passed', 'releaseId': manifest['release_id']})
     assert store.etag == 'original' and not store.puts
     assert store.value == {'release_id': 'a' * 64, 'previous_release_id': None}

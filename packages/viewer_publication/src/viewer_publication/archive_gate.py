@@ -15,7 +15,8 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
             raise ValueError('Invalid release ID')
     if release_id is None or bool(previous_release_id) != bool(expected_etag):
         raise ValueError('Outgoing release and pointer ETag must be pinned together')
-    for name, check in [('canary', canary), ('contract', contract)]:
+    # Admit the local candidate before the publisher uploads and probes HTTPS.
+    for name, check in [('contract', contract), ('canary', canary)]:
         receipt = check()
         if not isinstance(receipt, dict) or receipt.get('status') != 'passed' or receipt.get('releaseId') != release_id:
             raise ValueError(f'Archive {name} did not pass for the candidate')
