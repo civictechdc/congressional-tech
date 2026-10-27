@@ -127,3 +127,10 @@ test('shard descriptors use half-open absolute ranges and keep the same document
   assert.equal((await reader.entry(4)).document.filename,'Record.pdf');
   assert.equal(await reader.resolve('11'.repeat(8)),0);
 });
+
+test('a transient meeting failure can be retried within the same reader session',async()=>{
+  let failed=false;
+  const fetcher=async(url,options)=>{if(String(url).endsWith('/meetings.parquet')&&!failed){failed=true;return new Response(null,{status:503});}return localFetch(url,options);};
+  const reader=await openArchive('https://fixture.test/manifest.json',{fetcher});
+  await assert.rejects(reader.meetings());assert.equal((await reader.meetings())[0].event_id,118001n);
+});

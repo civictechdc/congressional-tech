@@ -56,3 +56,20 @@ test('generic worker transport pins release replies and cancels pending calls',a
   workers[0].onerror();const retry=client.request('info');assert.equal(workers[1].last.releaseId,pin);
   workers[1].onmessage({data:{id:3,result:{},releaseId:'cd'.repeat(32)}});await assert.rejects(retry,/changed/);client.dispose();
 });
+
+test('fixed lookup spelling agrees with producer for dot paths and Unicode hosts',()=>{
+  for(const [url,expected] of [
+    ['https://example.test/a/../report.pdf','example.test/a/../report.pdf'],
+    ['https://example.test/a/%2e%2e/report.pdf/','example.test/a/%2e%2e/report.pdf'],
+    ['https://www.BÜCHER.test:443/report.pdf#old','bücher.test/report.pdf'],
+  ])assert.equal(lookupUrl(url),expected);
+});
+
+test('pinned index and dictionary bytes survive data-cache pressure',async()=>{
+  const bytes=new Uint8Array(10000),requests=[];
+  const cache=byteCache(500,400),retained={entries:new Map(),bytes:0,maxBytes:1024};
+  const file=rangeFile('https://raw.test/indexed',bytes.length,async(_url,options)=>{const [start,end]=options.headers.Range.slice(6).split('-').map(Number);requests.push([start,end]);return new Response(bytes.slice(start,end+1),{status:206,headers:{'Content-Range':`bytes ${start}-${end}/${bytes.length}`}});},cache,{},retained);
+  file.retain([[0,20],[9800,9850]]);
+  await file.slice(0,20);await file.slice(9800,9850);await file.slice(200,500);await file.slice(500,800);
+  const before=requests.length;await file.slice(0,20);await file.slice(9800,9850);assert.equal(requests.length,before);
+});
