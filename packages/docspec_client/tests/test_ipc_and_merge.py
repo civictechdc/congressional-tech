@@ -215,3 +215,27 @@ def test_producer_parquet_uses_lossless_iceberg_integer_widths(tmp_path, logical
     restored = restore_application_schema(stored, expected_schema=schema)
     assert restored.equals(table, check_metadata=True)
     assert table.schema.equals(schema, check_metadata=True)
+
+
+@pytest.mark.parametrize('container', ['struct', 'list', 'large_list'])
+def test_readback_restores_nested_array_metadata_and_list_fields(container):
+    native = pa.struct([pa.field('labels', pa.list_(pa.field('element', pa.string(),
+        metadata={b'PARQUET:field_id': b'52'})), metadata={b'PARQUET:field_id': b'5'})])
+    declared = pa.struct([pa.field('labels', pa.list_(pa.field('application_item', pa.string(),
+        metadata={b'origin': b'application-item'})), metadata={b'origin': b'application-field'})])
+    values = [{'labels': ['é', None]}, None, {'labels': []}, {'labels': None}]
+    if container != 'struct':
+        wrap = pa.list_ if container == 'list' else pa.large_list
+        native = wrap(pa.field('element', native, metadata={b'PARQUET:field_id': b'3'}))
+        declared = wrap(pa.field('observation', declared, metadata={b'origin': b'application-observation'}))
+        values = [values, None, [], [None]]
+    original = pa.array(values + values, type=native).slice(1, 6)
+    physical = pa.Table.from_arrays([pa.chunked_array([original.slice(0, 2), original.slice(2)])], names=['value'])
+    schema = pa.schema([pa.field('value', declared, metadata={b'origin': b'application-column'})],
+                       metadata={b'origin': b'application-schema'})
+    restored = restore_application_schema(physical, expected_schema=schema)
+    assert restored.schema.equals(schema, check_metadata=True)
+    assert restored.to_pylist() == physical.to_pylist()
+    assert restored['value'].type.equals(declared, check_metadata=True)
+    assert all(chunk.type.equals(declared, check_metadata=True) for chunk in restored['value'].chunks)
+    assert not physical['value'].type.equals(declared, check_metadata=True)

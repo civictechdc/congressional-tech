@@ -663,41 +663,55 @@ class NativeComponents:
             [field for field in dict.fromkeys([*self.viewer.LIST_COLUMNS, 'document_kind_source']) if field in schema.names])
         core_schema = pa.schema([field for field in schema if field.name != 'source_occurrences'], metadata=schema.metadata)
         requested = columns if label == 'filenames' else [*core_schema.names, '_catalog_order']
-        size, document_batches = 0, []
-        for batch in table.iter_batches(columns=requested):
-            size += batch.nbytes
-            if size > self.policy.row_arrow_bytes:
-                raise ValueError('Native viewer component core chunk exceeds its Arrow byte bound')
-            if label == 'documents':
-                document_batches.append(batch.select(core_schema.names))
-            for row in batch.select(columns).to_pylist():
-                component = row['document_id']
-                if label == 'filenames':
-                    self.db.execute('INSERT INTO member_ids VALUES (?,?,?)',
-                                    (component, row['_catalog_order'], row['source_id']))
-                    self.db.execute('UPDATE stats SET n=n+1,saved=saved+?,api=api+?,video=video+? WHERE id=?',
-                        (int(saved_response(row)), int(bool(self.viewer.api_reference(row.get('source_url')))),
-                         int(bool(self.viewer.video_reference(row.get('source_url')))), component))
-                else:
-                    self.db.execute('UPDATE components SET record=? WHERE id=?', (encoded(row).decode(), component))
+        from viewer_publication.filename_budget import ArrowStager, bounded_batches
+        document_ids = []
+        def prepare(staging=None):
+            for incoming in table.iter_batches(columns=requested):
+                source = pa.Table.from_batches([incoming])
+                for batch in bounded_batches(source, policy=self.policy, metrics=self.metrics,
+                        stage='native component core', python_values=False):
+                    if staging is not None:
+                        staging.append(batch.select(core_schema.names))
+                        if 'source_occurrences' in schema.names:
+                            # Own only IDs, independent of a sliced IPC frame's parent buffers.
+                            document_ids.append(pa.concat_arrays([batch.column('document_id')]))
+                    records = pa.Table.from_batches([batch.select(columns)])
+                    for values in bounded_batches(records, policy=self.policy, metrics=self.metrics,
+                            stage='native component records'):
+                        for row in values.to_pylist():
+                            component = row['document_id']
+                            if label == 'filenames':
+                                self.db.execute('INSERT INTO member_ids VALUES (?,?,?)',
+                                                (component, row['_catalog_order'], row['source_id']))
+                                self.db.execute('UPDATE stats SET n=n+1,saved=saved+?,api=api+?,video=video+? WHERE id=?',
+                                    (int(saved_response(row)), int(bool(self.viewer.api_reference(row.get('source_url')))),
+                                     int(bool(self.viewer.video_reference(row.get('source_url')))), component))
+                            else:
+                                self.db.execute('UPDATE components SET record=? WHERE id=?', (encoded(row).decode(), component))
         if label == 'documents':
             import pyarrow.parquet as pq
             with tempfile.TemporaryDirectory(prefix='viewer-document-chunk-') as folder:
                 folder = Path(folder)
                 path = folder / 'documents.parquet'
-                exported = pa.Table.from_batches(document_batches, schema=core_schema)
-                pq.write_table(exported, path, compression=self.compression.codec, compression_level=self.compression.level,
-                               row_group_size=self.compression.row_group_size)
-                reference = dict(document_file=dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported)),
+                with pq.ParquetWriter(path, core_schema, compression=self.compression.codec,
+                                     compression_level=self.compression.level) as writer:
+                    staging = ArrowStager(writer, core_schema, row_group_size=self.compression.row_group_size,
+                        policy=self.policy, metrics=self.metrics, stage='native_component_documents')
+                    prepare(staging)
+                    staging.flush()
+                reference = dict(document_file=dict(self.assets.put_file(path, name='documents.parquet'), rows=table.rows),
                     document_occurrences_split='source_occurrences' in schema.names)
                 if 'source_occurrences' in schema.names:
                     from congress_api.retention.catalog_rows import CatalogRows
                     owner = CatalogRows(native=self.snapshot.native, store=self.snapshot.store)
-                    source = typed_observations(schema, exported['document_id'], lambda identity:
+                    identities = pa.chunked_array(document_ids, type=core_schema.field('document_id').type)
+                    source = typed_observations(schema, identities, lambda identity:
                         owner.occurrences(pin, schema=physical, owner_id=identity))
-                    reference['document_observations'] = dict(rows=len(exported), files=publish_occurrence_assets(
+                    reference['document_observations'] = dict(rows=table.rows, files=publish_occurrence_assets(
                         source, folder, self.assets, policy=self.policy, metrics=self.metrics))
                 self.db.execute('INSERT INTO chunk_assets VALUES (?,?)', (name, encoded(reference).decode()))
+        else:
+            prepare()
     def _prepare_entries(self):
         for component, raw_reference, raw_proof, raw_record in self.db.execute(
                 'SELECT id,reference,proof,record FROM components ORDER BY id'):
