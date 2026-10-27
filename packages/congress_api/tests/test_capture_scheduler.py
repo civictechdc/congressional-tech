@@ -453,3 +453,24 @@ def test_public_cli_rejects_authored_override_before_work_or_network(tmp_path):
             '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--request-budget','20',
             '--byte-budget','1000','--spool-budget','1000','--work',str(tmp_path/'work')])
     assert not (tmp_path/'work').exists()
+
+
+@pytest.mark.parametrize('name',['capture_profile.json','url_variants.parquet'])
+def test_release_profile_files_are_manifest_verified(tmp_path,name):
+    from congress_api.acquisition.capture_scheduler import load_release
+    root=release(tmp_path,[])
+    with (root/name).open('ab') as out:out.write(b'changed')
+    with pytest.raises(ValueError,match='identity|size'):
+        load_release(release_root=root,work=tmp_path/'read')
+
+
+def test_missing_release_profile_has_no_workspace_fallback(tmp_path):
+    from congress_api.acquisition.capture_scheduler import load_release
+    root=release(tmp_path,[])
+    manifest=json.loads((root/'manifest.json').read_text())
+    manifest['files']=[row for row in manifest['files'] if row['name']!='capture_profile.json']
+    manifest['release_id']=hashlib.sha256(json.dumps([1,[[row[k] for k in ('name','sha256','size','rows')]
+        for row in manifest['files']]],separators=(',',':')).encode()).hexdigest()
+    (root/'manifest.json').write_text(json.dumps(manifest))
+    with pytest.raises(ValueError,match='scheduler input'):
+        load_release(release_root=root,work=tmp_path/'read')
