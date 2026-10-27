@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "note": "Synthetic measurement inputs. Duplicate membership and duplicate identical fingerprints do not inflate body counts. Unknown text never becomes a non-match or a zero-success.",
+  "rendition_members": [
+    {
+      "group_kind": "same_stem",
+      "group_id": "s1",
+      "body_key": "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz"
+    },
+    {
+      "group_kind": "same_stem",
+      "group_id": "s1",
+      "body_key": "bodies/sha256/44/4444444444444444444444444444444444444444444444444444444444444444.gz"
+    },
+    {
+      "group_kind": "same_stem",
+      "group_id": "s1",
+      "body_key": "bodies/sha256/44/4444444444444444444444444444444444444444444444444444444444444444.gz"
+    },
+    {
+      "group_kind": "same_stem",
+      "group_id": "s1",
+      "body_key": "bodies/sha256/55/5555555555555555555555555555555555555555555555555555555555555555.gz"
+    },
+    {
+      "group_kind": "same_stem",
+      "group_id": "s1",
+      "body_key": "bodies/sha256/88/8888888888888888888888888888888888888888888888888888888888888888.gz"
+    },
+    {
+      "group_kind": "same_stem",
+      "group_id": "s2",
+      "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz"
+    },
+    {
+      "group_kind": "same_stem",
+      "group_id": "s2",
+      "body_key": "bodies/sha256/44/4444444444444444444444444444444444444444444444444444444444444444.gz"
+    },
+    {
+      "group_kind": "publisher",
+      "group_id": "p1",
+      "body_key": "bodies/sha256/33/3333333333333333333333333333333333333333333333333333333333333333.gz"
+    },
+    {
+      "group_kind": "publisher",
+      "group_id": "p1",
+      "body_key": "bodies/sha256/66/6666666666666666666666666666666666666666666666666666666666666666.gz"
+    },
+    {
+      "group_kind": "publisher",
+      "group_id": "p2",
+      "body_key": "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz"
+    },
+    {
+      "group_kind": "publisher",
+      "group_id": "p2",
+      "body_key": "bodies/sha256/77/7777777777777777777777777777777777777777777777777777777777777777.gz"
+    },
+    {
+      "group_kind": "same_stem",
+      "group_id": "unrelated",
+      "body_key": "bodies/sha256/99/9999999999999999999999999999999999999999999999999999999999999999.gz"
+    }
+  ],
+  "edition_bodies": [
+    {
+      "body_key": "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz"
+    },
+    {
+      "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz"
+    },
+    {
+      "body_key": "bodies/sha256/33/3333333333333333333333333333333333333333333333333333333333333333.gz"
+    }
+  ],
+  "fingerprint_candidates": [
+    {
+      "body_key": "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz"
+    },
+    {
+      "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz"
+    },
+    {
+      "body_key": "bodies/sha256/33/3333333333333333333333333333333333333333333333333333333333333333.gz"
+    },
+    {
+      "body_key": "bodies/sha256/88/8888888888888888888888888888888888888888888888888888888888888888.gz"
+    }
+  ],
+  "fingerprints": [
+    {
+      "body_key": "bodies/sha256/11/1111111111111111111111111111111111111111111111111111111111111111.gz",
+      "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "body_key": "bodies/sha256/22/2222222222222222222222222222222222222222222222222222222222222222.gz",
+      "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "body_key": "bodies/sha256/33/3333333333333333333333333333333333333333333333333333333333333333.gz",
+      "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "body_key": "bodies/sha256/44/4444444444444444444444444444444444444444444444444444444444444444.gz",
+      "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "body_key": "bodies/sha256/44/4444444444444444444444444444444444444444444444444444444444444444.gz",
+      "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "body_key": "bodies/sha256/55/5555555555555555555555555555555555555555555555555555555555555555.gz",
+      "fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "body_key": "bodies/sha256/66/6666666666666666666666666666666666666666666666666666666666666666.gz",
+      "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "body_key": "bodies/sha256/77/7777777777777777777777777777777777777777777777777777777777777777.gz",
+      "fingerprint": null
+    },
+    {
+      "body_key": "bodies/sha256/88/8888888888888888888888888888888888888888888888888888888888888888.gz",
+      "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "body_key": "bodies/sha256/99/9999999999999999999999999999999999999999999999999999999999999999.gz",
+      "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "expected": {
+    "eligible_candidates": 4,
+    "matching_candidates": 2,
+    "unknown_candidates": 1,
+    "known_nonmatching_candidates": 1,
+    "status": "incomplete",
+    "matching_bodies": [
+      "bodies/sha256/44/4444444444444444444444444444444444444444444444444444444444444444.gz",
+      "bodies/sha256/66/6666666666666666666666666666666666666666666666666666666666666666.gz"
+    ]
+  },
+  "complete_variant": {
+    "body_key": "bodies/sha256/77/7777777777777777777777777777777777777777777777777777777777777777.gz",
+    "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "matching_candidates": 3
+  }
+}
