@@ -152,7 +152,7 @@
       "entry": "preference-json",
       "value": "json",
       "expected": 5,
-      "source": "Pinned filename extension census; existing PDF-first preference"
+      "source": "Retained raw-rescue Congress committee JSON body blobs/5d919cacded7b0a03e908b642cb2c5e8a3242abd7659c5711fc5b6330520c61d, parsed by F0 committee input seed compiler"
     },
     {
       "id": "formats:preference-text",
@@ -9142,6 +9142,62 @@
       "value": "https://example.test/a?download=10",
       "expected": false,
       "source": "Authored boundary fixture; never a registry seed"
+    },
+    {
+      "id": "file-shapes:download-fragment",
+      "registry": "file-shapes",
+      "entry": null,
+      "value": "https://example.test/page#?download=1",
+      "expected": false,
+      "source": "Authored boundary: URL query parsing must ignore fragment text and embedded question marks"
+    },
+    {
+      "id": "file-shapes:download-nested-question",
+      "registry": "file-shapes",
+      "entry": null,
+      "value": "https://example.test/page?next=a?download=1",
+      "expected": false,
+      "source": "Authored boundary: URL query parsing must ignore fragment text and embedded question marks"
+    },
+    {
+      "id": "file-shapes:file_id-fragment",
+      "registry": "file-shapes",
+      "entry": null,
+      "value": "https://example.test/page#?file_id=1",
+      "expected": false,
+      "source": "Authored boundary: URL query parsing must ignore fragment text and embedded question marks"
+    },
+    {
+      "id": "file-shapes:file_id-nested-question",
+      "registry": "file-shapes",
+      "entry": null,
+      "value": "https://example.test/page?next=a?file_id=1",
+      "expected": false,
+      "source": "Authored boundary: URL query parsing must ignore fragment text and embedded question marks"
+    },
+    {
+      "id": "page-signals:feed_roots",
+      "registry": "page-signals",
+      "entry": "feed_roots",
+      "value": "rss",
+      "expected": true,
+      "source": "https://www.rssboard.org/rss-specification top-level rss element; primary public specification"
+    },
+    {
+      "id": "page-signals:feed_urls",
+      "registry": "page-signals",
+      "entry": "feed_urls",
+      "value": "https://judiciary.house.gov/rss.xml",
+      "expected": true,
+      "source": "packages/congress_api/tests/fixtures/meeting_inventory/house-sites/judiciary.html:505 retained RSS href"
+    },
+    {
+      "id": "page-signals:error_routes",
+      "registry": "page-signals",
+      "entry": "error_routes",
+      "value": "https://www.congress.gov/error",
+      "expected": true,
+      "source": "Existing DM7.3/S1 acceptance error route; real response sample not yet qualified"
     }
   ]
 }
