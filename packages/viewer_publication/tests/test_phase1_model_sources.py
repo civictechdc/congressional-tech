@@ -33,14 +33,16 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
         body_hex='Utf8',run_id='Utf8',mode='Utf8',url='Utf8',requested_url='Utf8',context_url='Utf8',member_path='Utf8',
         h_content_disposition='Utf8',retrieved_at='Utf8',format='Utf8',is_real_file='Boolean',record_role='Utf8'))
     inputs.append(json_input(tmp_path,'current_recoveries',[dict(id='recovered',original_url='https://fixture.test/dead.pdf',
-        recovered_filename='dead-original.pdf',kind='recovered_document')],id='Utf8',original_url='Utf8',recovered_filename='Utf8',kind='Utf8'))
-    steps=[dict(name='capture_evidence',sql="SELECT *,decode(body_hex,'hex') AS sha256 FROM fixture_captures"),
+        recovered_filename='dead-original.pdf',kind='recovered_document'),dict(id='failed-recovery',original_url='https://fixture.test/failed.pdf',recovered_filename='failed.pdf',kind='recovered_document')],id='Utf8',original_url='Utf8',recovered_filename='Utf8',kind='Utf8'))
+    steps=[dict(name='capture_evidence',sql="SELECT receipt_key,receipt_line,capture_index,run_id,mode,url,requested_url,context_url,member_path,h_content_disposition,retrieved_at,format,decode(body_hex,'hex') AS sha256 FROM fixture_captures"),
         dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+source_steps(),outputs=[],queries=[
             dict(name='files',sql='SELECT filename,source_url,body_sha,is_real_file,cast(first_fetched AS VARCHAR) AS first_fetched,cast(in_archive_since AS VARCHAR) AS in_archive_since FROM source_files ORDER BY filename'),
             dict(name='members',sql="SELECT count(*) AS n FROM capture_sources WHERE source_url IS NULL AND member_path IS NOT NULL"),
             dict(name='ids',sql="SELECT count(*) AS n FROM source_files WHERE source_id<>encode(sha256(json_array(CASE WHEN body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(body_sha,1,2)||'/'||body_sha||'.gz' END,filename,source_url)),'hex')")])
+
+    assert len(result['files'])==7
     files={x['filename']:x for x in result['files']}
     assert set(files)=={'one.pdf','two.pdf','mirror.pdf','failed.pdf','report.pdf','import.pdf','dead-original.pdf'}
     assert files['one.pdf']['source_url']=='https://fixture.test/a'
