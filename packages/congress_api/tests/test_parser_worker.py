@@ -95,7 +95,8 @@ def test_worker_requires_valid_settings_and_an_open_context(parser):
 
 
 def test_completed_large_result_is_released_before_the_next_invocation(parser):
-    with worker(parser) as run:
+    # Include the installed package imports as well as this reading's working state.
+    with worker(parser, memory_bytes=256 * 1024**2) as run:
         first = run.parse('one', b'retained')
         second = run.parse('two', b'retained')
         assert first['status'] == second['status'] == 'completed'
