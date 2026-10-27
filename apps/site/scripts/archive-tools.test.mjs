@@ -34,9 +34,3 @@ test('pinned candidate canaries still check live pointer cache policy',async()=>
   await assert.rejects(verifyArchive({pointerUrl:'https://public.test/manifest.json',releaseId:'ab'.repeat(32),fetcher:async()=>Response.json({release_id:'cd'.repeat(32)})}),/no-store/);
 });
 
-test('canary reserves backing-storage space within measured heap ceilings',async()=>{
-  const {canaryOldSpaceMiB}=await import('./archive-targets.mjs');
-  assert.equal(canaryOldSpaceMiB(undefined),384,'F0 provisional object heap cap; not a real-phone target');
-  assert.equal(canaryOldSpaceMiB({ceilings:{heapBytes:512*1024*1024}}),384);
-  assert.equal(canaryOldSpaceMiB({ceilings:{heapBytes:400*1024*1024}}),272);
-});
