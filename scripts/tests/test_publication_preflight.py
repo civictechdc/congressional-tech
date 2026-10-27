@@ -131,15 +131,9 @@ def test_stdlib_sigv4_matches_maintained_botocore_without_sdk_at_runtime(monkeyp
 def test_early_cli_imports_without_site_packages_and_workflow_keeps_fresh_write_path():
     result=subprocess.run([sys.executable,'-S',str(ROOT/'scripts/publication_preflight.py'),'--help'],capture_output=True,text=True,check=True)
     assert '--report' in result.stdout
-    import yaml
-    workflow=yaml.safe_load((ROOT/'.github/workflows/publish-filename-viewer.yml').read_text())
-    steps=workflow['jobs']['publish']['steps']
-    early=next(i for i,s in enumerate(steps) if s.get('id')=='preflight')
-    setup=next(i for i,s in enumerate(steps) if s.get('uses')=='./.github/actions/setup-python-project')
-    assert early<setup and 'preparation_required' in steps[setup]['if'] and "github.event_name == 'push'" in steps[setup]['if']
-    assert next(s for s in steps if s.get('id')=='prepare')['if'].find('preparation_required')>=0
-    publication=next(s for s in steps if s.get('name')=='Publish accepted preparation')
-    assert '--artifact-id' in publication['run'] and '--resume --resume-descriptor' in publication['run']
+    # The stdlib legacy CLI remains testable until F5 removes its consumers.
+    # Its disabled CI path is retired; the new pipeline refuses its pending model.
+    assert not (ROOT/'.github/workflows/publish-filename-viewer.yml').exists()
 
 
 @pytest.mark.parametrize('key,kind',[
