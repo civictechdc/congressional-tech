@@ -133,3 +133,53 @@ def test_inline_record_sha_canonical_json_required(tmp_path):
     compact = json.dumps(record['meeting'], ensure_ascii=False, sort_keys=True,
                          separators=(',', ':')).encode()
     assert row['record_sha'] == hashlib.sha256(compact).digest()
+
+
+def test_headers_items_retry_deadline_and_not_modified(tmp_path):
+    stage = ingest(tmp_path, [
+        dict(record=dict(url='https://example.org/a', http_status=304, retrieved_at=STAMP)),
+        dict(record=dict(url='https://example.org/b', http_status=200, retrieved_at=STAMP,
+            response_header_items=[dict(name='Retry-After', value='120'),
+                                   dict(name='Content-Disposition', value='attachment; filename=x.pdf')]),
+            captures=[body()]),
+    ])
+    a, b = pq.read_table(stage/'captures.parquet').to_pylist()
+    assert a['outcome'] == 'unchanged'
+    assert b['outcome'] == 'retry_later'
+    assert b['retry_after'].isoformat() == '2026-10-20T12:36:56+00:00'
+    assert b['h_content_disposition'] == 'attachment; filename=x.pdf'
+
+
+def test_list_record_pointer_selects_its_own_response(tmp_path):
+    stage = ingest(tmp_path, [dict(record=[dict(url='https://example.org/a', status_code=206),
+        dict(url='https://example.org/b', status_code=200)], captures=[
+            body(pointer=[0, 'content', 'body']), body(pointer=['1', 'content', 'body'])])])
+    a, b = pq.read_table(stage/'captures.parquet').to_pylist()
+    assert (a['url'], a['attempt_status']) == ('https://example.org/a', 206)
+    assert (b['url'], b['attempt_status']) == ('https://example.org/b', 200)
+
+
+def test_list_bodiless_conflicting_facts_refuse(tmp_path):
+    with pytest.raises(ValueError, match='list.*facts'):
+        ingest(tmp_path, [dict(record=[dict(url='https://example.org/a'),
+                                        dict(url='https://example.org/b')])])
+
+
+def test_secondary_storage_conflicts_and_unknown_mode_refuse(tmp_path):
+    with pytest.raises(ValueError, match='storage conflict'):
+        ingest(tmp_path/'conflict', [dict(captures=[body()], file_references=[
+            body(stored_bytes=12), body(stored_bytes=13)])])
+    with pytest.raises(ValueError, match='unknown mode'):
+        ingest(tmp_path/'mode', [dict(record=dict(mode='invented'))])
+
+
+def test_exact_arrow_schema_and_unchanged_source_receipt(tmp_path):
+    source = dict(record=dict(http_status=200, retrieved_at=STAMP), captures=[body()])
+    stage = ingest(tmp_path, [source])
+    schema = pq.read_schema(stage/'captures.parquet')
+    assert schema.field('sha256').type == pa.binary(32)
+    assert schema.field('stored_md5').type == pa.binary(16)
+    assert schema.field('receipt_line').type == pa.int32()
+    assert schema.field('retrieved_at').type == pa.timestamp('us', 'UTC')
+    with gzip.open(tmp_path/'input/receipt.gz', 'rt') as inp:
+        assert json.loads(inp.read()) == source
