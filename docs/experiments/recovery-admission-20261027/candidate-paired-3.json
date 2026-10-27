@@ -1,0 +1,84 @@
+{
+  "seconds": 1.3491579160036054,
+  "cpu_seconds": 1.3461740000000002,
+  "comparison_digest_seconds": 0.030453250001301058,
+  "components": 2048,
+  "logical_source_rows": 2766,
+  "input_page_sha256": [
+    "00014989557e12c7cf5d4e776edaf735505e56cbde33fa1b0b1a237020107942",
+    "00022b99840c9928dc0a6c615d8ca346b93cf0d70f3e99d01a1038272461749a",
+    "0002991eb6f60210cf2e17b24982c71b41b1318cd5bfa40f336001e479fde992",
+    "0006559088f22af72bfe47f58ef8d7b2125d3211284370d80b9eec324ead020b",
+    "0009b56f3f45fc137006533cd0c9b32aec7f012e93d1256cceedda9ff75862ea",
+    "000e0815048506762e2af4736fa6929b144f52afab22b4fb53c3f2feaeddd68e",
+    "0010a22062d49c3465c5907c0f779a2e7517891caac61eafd458dbfb9c095087",
+    "0012878c56654e3c1d276e201b754112e515709ba9713cb30a0045291e399115",
+    "0017f766bbf6504440d740711552ff21489337f474ac715acbeb97c28a434280",
+    "00199ebe775330aeb3777772f69d591770674a9c5b08f1cecddec03a0187597b",
+    "002049464a1c948df1895dd296c0bcd81888bae7daa275de98e9fe31cf750567",
+    "0021de7e7de39674695a013e42ec0807f11c0cc430804b73ca9984242ea822e9",
+    "00227b6cf6cf07ab857533488c275a614ed78a1f2fbaf5ec547cd3afb579a7ba",
+    "00230c102cdef504983d7697f366183dd033273848e27282f255e2d570faae82",
+    "0025cc89f7d841804142a611253f6655b87aa435fbfe1e33f3fcc4d2a6e44c6c",
+    "002853d59401063069e4ee42cc92d464272177f9d2cf7a3ea7423da6ad29a0a6",
+    "002b29eb8b65f7b92fe17f35246448a0d3148c7c8b1caa529ca20c2deae3ed4b",
+    "002c9335651a960f0aad2e1118e4d066d6d78531d25cec94dfc1cd2a9310065f",
+    "002cdef89c0dcc3fcc74e4245bd0cb8d34e1282cab3784412f041474f5074a6d",
+    "002f2ac9cec07fc469d5e04cedded82f3f8fc1701d98756e0058e88e2f7cf4fd",
+    "00301ffdaae81be40e79cdf5dc921d04d8ccdbcad4fd2f49c0493757cb516e26",
+    "0031c6e96e283c87bf07e0ec97c738b1cc498dba20eb4a98dda9b77273e105c1",
+    "003834eef89fdc2e8665cf715b133504721c2215f04415f01ad7c6855cbeec80",
+    "00393e8d3de9c7ffca89684d7ff31901a61cfddca4bade64c7e6da599fd016aa",
+    "00436dff60b6042eef9eca89c7bf8feddad12668cff35a216594eae359ca1c6e",
+    "004781faa224c21c57ca9c5deb234987dd7cc715a5388bd6266c7f6e17589667",
+    "004a0fbac0a1613fde0ef26636ebca0d5bf742227b164bb09d98df086fdf5e34",
+    "004aa06ea08cdda99fd473a246dd14a3f961729c760a718ec1277694c0459025",
+    "004dc23b7917ecd8c813658d48c2e3a0405c27d01230efbefd55290c868ce65b",
+    "004fa473e21f07586b148d8b2d06e9840004dfa527b2ef396f0251bbab368253",
+    "00502554ab3e905f7b17eeaf0516f4aa157c4dc613b01e0d07afd423ff668c43",
+    "005327fbc6d2eafddaeca76b2895a443f4138e14c09863d0cdb9698d4a82e596"
+  ],
+  "statistics": {
+    "compatibility_calls": 1,
+    "chunk_sql_reads": 1650,
+    "binding_encodes": 2048,
+    "binding_json_bytes": 483666989
+  },
+  "admission": {
+    "members": {
+      "rows": 2048,
+      "sha256": "2e0c569e5e0ac996a00ce878f7ae6806b41c65cf1c8be222423a935ea8c48002"
+    },
+    "chunks": {
+      "rows": 158,
+      "sha256": "4a1ec53fd3efa413ab825cbe5a521fa1da6bf28c9dc844be8236f98586ab30a6"
+    },
+    "physical": {
+      "rows": 85,
+      "sha256": "b2a1d769731046af1d9e805caca6bdb7add24b01f3636713446154dc7c29dea7"
+    },
+    "views": {
+      "rows": 2048,
+      "sha256": "b8d94aa0ce1548b6060a2011bac9660ef2dd3988d18a093707517430e8057781"
+    }
+  },
+  "recovery_sha256": "ac74a42f3437581c195e1e2071f77c69c8d69f859935c44fdb5821c7f90da94a",
+  "recovery_rows": 4,
+  "recovery_entries": 3,
+  "recovery_metrics": {
+    "max_batch_arrow_bytes": 1332,
+    "max_admitted_buffer_bytes": 1412,
+    "max_python_json_estimate": 33176,
+    "max_initial_recovery_index_row_bytes": 527,
+    "initial_recovery_scans": 1,
+    "initial_recovery_rows": 4,
+    "initial_recovery_scan_seconds": 0.0024591249966761097,
+    "initial_recovery_sqlite_bytes": 32768,
+    "affected_urls": 3,
+    "changed_source_ids": 0,
+    "exact_output_bytes": 918,
+    "initial_url_enumeration": true
+  },
+  "source_file": "/Users/mikewolfd/.codex/worktrees/v6-continuation-capacity/congressional-tech/packages/congress_api/src/congress_api/retention/catalog_batches.py",
+  "source_sha256": "ae9e8e61e4ece71b861058748fcd53962bdff58d40642023632460c19f1a1f00"
+}
