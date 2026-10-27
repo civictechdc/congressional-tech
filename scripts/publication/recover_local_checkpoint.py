@@ -25,7 +25,7 @@ SOURCE_CACHE_FILES = (PRODUCER,
     'packages/congress_api/src/congress_api/retention/catalog_dependency_storage.py')
 SOURCE_CACHE_RUNTIME = '3a8b9376d68215922230e447c93b2176892aa09e'
 SOURCE_CACHE_TOOL_SHA256 = 'e6030ee6d4deb7d8f2c9019ee3c1360f38ae3c9de07e50a1a499b2516edba0bf'
-RECOVERY_READER = None  # Set only after the final producer commit is reviewed.
+RECOVERY_READER = 'e67e3a4a9d02f638fed934b97361df2178ac2d8f'  # Set only after the final producer commit is reviewed.
 FINISHED_DATABASE_SHA256 = '4cdbd05dd02d768302ebc5a30da002ba41eb2545aad8af72ad5caf734c840f06'
 EXPECTED_CHUNKS = {'documents': 74, 'filenames': 106}
 RECEIPT = 'checkpoint-adoption.json'
