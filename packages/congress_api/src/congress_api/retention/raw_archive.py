@@ -240,6 +240,17 @@ def existing_body_info(payload, info):
 class _Acquisition:
     """Shared receipt, body and URL behavior for maintained native acquisition."""
 
+    @property
+    def retained_body_hashes(self):
+        """Only writes confirmed in this run can bypass another key-based create.
+
+        ``body_info`` also reads the persisted index, whose rows cannot prove
+        that a body exists. The run set is shared by sync and async retention.
+        """
+        if not hasattr(self, '_retained_body_hashes'):
+            self._retained_body_hashes = set()
+        return self._retained_body_hashes
+
     def _seed_catalog_source(self, source):
         from congress_api.retention.capture_url_admission import (
             PROVENANCE_COLUMNS, publisher_download_candidate, independent_publisher_link,
@@ -374,7 +385,7 @@ class _Acquisition:
                 data,
                 excluded_hashes=exclusions,
             )
-        if digest not in self.body_info:
+        if digest not in self.retained_body_hashes:
             compressed, info = body_payload(data)
             created = self.store.put(info['body_key'], compressed, immutable=True)
             # An orphan from an interrupted run may use different gzip bytes.
@@ -387,6 +398,7 @@ class _Acquisition:
                 else:
                     self.store.put(pdf_key, data, immutable=True)
             self.body_info[digest] = info
+            self.retained_body_hashes.add(digest)
         return self.body_info[digest]["body_key"]
 
 
