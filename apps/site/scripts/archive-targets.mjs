@@ -7,8 +7,9 @@ export const targetNames=['startupMs','searchMs','detailMs','heapBytes'];
 const positive=value=>Number.isFinite(value)&&value>0;
 export function checkTargets(sample,targets){
   if(targets?.status!=='measured'||targetNames.some(name=>!positive(targets.ceilings?.[name])))throw new Error('Measured archive targets are missing or invalid.');
-  for(const name of targetNames)if(!Number.isFinite(sample[name])||sample[name]>targets.ceilings[name])throw new Error(`Archive ${name} exceeds its measured target.`);
+  for(const name of targetNames)if(!Number.isFinite(sample[name])||sample[name]<0||sample[name]>targets.ceilings[name])throw new Error(`Archive ${name} exceeds its measured target.`);
 }
+const sampleHeapInvalid=measurements=>measurements.some(receipt=>receipt.samples.some(sample=>sample.heapBytes<sample.workerHeapBytes));
 export async function writeTargets({measurements,ceilings,output}){
   if(!Array.isArray(measurements)||!['real-phone','real-desktop'].every(kind=>measurements.some(item=>item.deviceClass===kind)))throw new Error('Targets require real-phone and real-desktop measurements.');
   const devices=[];
@@ -20,6 +21,8 @@ export async function writeTargets({measurements,ceilings,output}){
     }
     devices.push({deviceClass:receipt.deviceClass,sha256:createHash('sha256').update(JSON.stringify(receipt)).digest('hex'),runtime:receipt.runtime??null,releases:[...new Set(receipt.samples.map(sample=>sample.releaseId))]});
   }
+  if(sampleHeapInvalid(measurements))throw new Error('Measured heap must include its worker backing storage.');
+  if(!devices[0].releases.some(id=>devices.every(device=>device.releases.includes(id))))throw new Error('Both real devices must measure the same release.');
   const targets={version:1,status:'measured',ceilings,devices};
   let pending=false;try{const existing=JSON.parse(await readFile(output));if(existing.status!=='owner-gated')throw new Error('Measured targets already exist; use a new output file for review.');pending=true;}catch(error){if(error.code!=='ENOENT')throw error;}
   if(pending){const temporary=String(output)+'.pending';await writeFile(temporary,JSON.stringify(targets,null,2)+'\n',{flag:'wx'});await rename(temporary,output);}else await writeFile(output,JSON.stringify(targets,null,2)+'\n',{flag:'wx'});return targets;

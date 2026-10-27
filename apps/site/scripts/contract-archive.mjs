@@ -6,7 +6,7 @@ import {argumentsMap,checkTargets,readTargets} from './archive-targets.mjs';
 import {startArchiveServer} from './archive-server.mjs';
 import {browserDependency,browserHeap,heapSampler} from './archive-browser.mjs';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
-const args=argumentsMap(process.argv.slice(2)),targets=await readTargets(args.targets);
+const args=argumentsMap(process.argv.slice(2));if(!args['next-release'])throw new Error('Supply --next-release for the required browser stale-tab check.');const targets=await readTargets(args.targets);
 const {chromium}=browserDependency('playwright');
 const server=await startArchiveServer({release:resolve(args.release),nextRelease:args['next-release']?resolve(args['next-release']):undefined,siteDist:resolve(args.dist||'dist'),bodies:args.bodies?JSON.parse(await readFile(args.bodies)):{}});
 const browser=await chromium.launch({headless:true,...(args['browser-executable']?{executablePath:args['browser-executable']}:{})});
@@ -18,9 +18,10 @@ try{
   for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
     server.state.missingFile=null;server.state.flipOnMissing=null;server.state.releaseId=server.manifest.release_id;
     const context=await browser.newContext({viewport}),page=await context.newPage();page.setDefaultTimeout(60000);
+    const sampler=heapSampler(browser,page);
     try{
-      const sampler=heapSampler(browser,page);const errors=[];page.on('pageerror',error=>errors.push(error.message));let started=performance.now();
-      await page.goto(server.pageUrl);await page.locator('[data-archive-ready="true"]').waitFor();await page.locator('.archive-document').first().waitFor();const startupMs=performance.now()-started;
+      const errors=[];page.on('pageerror',error=>errors.push(error.message));let started=performance.now();
+      await page.goto(server.pageUrl);await page.locator('[data-archive-ready="true"]').waitFor();await page.locator('.archive-document').first().waitFor();const observedReleaseId=await page.locator('[data-archive-ready="true"]').getAttribute('data-archive-release');if(observedReleaseId!==server.manifest.release_id)throw new Error('The measured page selected a different release than its fixture.');const startupMs=performance.now()-started;
       const initialTotal=await page.locator('[data-archive-total]').innerText();
       assert(!initialTotal.startsWith('0 '),'Release must contain visible documents');
       if(args.hand==='true')assert.equal(initialTotal,'6 documents');
@@ -52,11 +53,11 @@ try{
       // Missing public keys have a usable error and retry, including on a phone-sized page.
       await page.goto(server.pageUrl+'?key='+'ff'.repeat(8));await page.getByRole('alert').waitFor();assert((await page.getByRole('alert').innerText()).includes('not found'));
       const finalHeap=measuredHeap,memory=finalHeap.heapBytes>initialHeap.heapBytes?finalHeap:initialHeap;
-      const sample={releaseId:server.manifest.release_id,startupMs,searchMs,detailMs,...memory};if(targets)checkTargets(sample,targets);
+      const sample={releaseId:observedReleaseId,pageUrl:page.url(),startupMs,searchMs,detailMs,...memory};if(targets)checkTargets(sample,targets);
       assert.deepEqual(errors,[]);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'The phone profile must not overflow horizontally');
       if(args.screenshot)await page.screenshot({path:args.screenshot.replace(/(\.[a-z]+)$/i,`-${viewport.width}$1`),fullPage:true});
       results.push({viewport,...sample,publicKey,status:'passed'});
-    }finally{await context.close();}
+    }finally{try{await sampler.stop();}finally{await context.close();}}
   }
   if(server.nextManifest){
     server.state.releaseId=server.manifest.release_id;server.state.missingFile=server.manifest.files.find(file=>file.name==='detail.parquet'||file.shard==='detail').name;server.state.flipOnMissing=server.nextManifest.release_id;

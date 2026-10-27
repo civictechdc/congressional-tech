@@ -9,24 +9,30 @@ export function browserDependency(name){
 }
 /** Runtime.getHeapUsage includes worker isolates and their external backing storage. */
 export async function browserHeap(browser,page,{requireWorker=true}={}){
-  const main=await page.context().newCDPSession(page),root=await browser.newBrowserCDPSession();
+  const main=await page.context().newCDPSession(page);
   const heap=value=>value.usedSize+(value.backingStorageSize||0)+(value.embedderHeapUsedSize||0);
   try{
     const pageHeap=heap(await main.send('Runtime.getHeapUsage'));
-    const {targetInfos}=await root.send('Target.getTargets');let workerHeap=0,sequence=0;
-    for(const target of targetInfos.filter(item=>item.type==='worker'&&item.url.includes('archive-worker'))){
-      const {sessionId}=await root.send('Target.attachToTarget',{targetId:target.targetId,flatten:false}),id=++sequence;
+    const attached=[];
+    main.on('Target.attachedToTarget',event=>{if(event.targetInfo.type==='worker'&&event.targetInfo.url.includes('archive-worker'))attached.push(event);});
+    // A page session auto-attaches only its related targets, never another open tab.
+    await main.send('Target.setAutoAttach',{autoAttach:true,waitForDebuggerOnStart:false,flatten:false});
+    let workerHeap=0,sequence=0,workerIsolates=0;
+    for(const {sessionId} of attached){
+      const id=++sequence;
+      let cleanup=()=>{};
       const response=new Promise((resolve,reject)=>{
-        const timeout=setTimeout(()=>{root.off('Target.receivedMessageFromTarget',receive);reject(new Error('Worker heap sampling timed out.'));},30000);
-        function receive(event){if(event.sessionId!==sessionId)return;const message=JSON.parse(event.message);if(message.id!==id)return;clearTimeout(timeout);root.off('Target.receivedMessageFromTarget',receive);message.error?reject(new Error(message.error.message)):resolve(message.result);}
-        root.on('Target.receivedMessageFromTarget',receive);
+        const timeout=setTimeout(()=>{cleanup();reject(new Error('Worker heap sampling timed out.'));},30000);
+        cleanup=()=>{clearTimeout(timeout);main.off('Target.receivedMessageFromTarget',receive);};
+        function receive(event){if(event.sessionId!==sessionId)return;const message=JSON.parse(event.message);if(message.id!==id)return;clearTimeout(timeout);main.off('Target.receivedMessageFromTarget',receive);message.error?reject(new Error(message.error.message)):resolve(message.result);}
+        main.on('Target.receivedMessageFromTarget',receive);
       });
-      await root.send('Target.sendMessageToTarget',{sessionId,message:JSON.stringify({id,method:'Runtime.getHeapUsage',params:{}})});
-      workerHeap+=heap(await response);await root.send('Target.detachFromTarget',{sessionId});
+      response.catch(()=>{});
+      try{await main.send('Target.sendMessageToTarget',{sessionId,message:JSON.stringify({id,method:'Runtime.getHeapUsage',params:{}})});workerHeap+=heap(await response);workerIsolates++;}finally{cleanup();}
     }
     if(requireWorker&&!workerHeap)throw new Error('The archive worker heap was not sampled.');
-    return {heapBytes:pageHeap+workerHeap,workerHeapBytes:workerHeap,pageHeapBytes:pageHeap};
-  }finally{await main.detach();await root.detach();}
+    return {heapBytes:pageHeap+workerHeap,workerHeapBytes:workerHeap,pageHeapBytes:pageHeap,workerIsolates};
+  }finally{await main.detach();}
 }
 
 export function heapSampler(browser,page){
@@ -34,5 +40,5 @@ export function heapSampler(browser,page){
   const running=(async()=>{while(!stopped){const value=await browserHeap(browser,page,{requireWorker:false});samples++;if(value.heapBytes>latest.heapBytes)latest=value;await new Promise(resolve=>setTimeout(resolve,50));}})();
   // Observe a sampling error immediately; stop() still propagates it to the caller.
   running.catch(()=>{});
-  return {async stop(){stopped=true;await running;const final=await browserHeap(browser,page);if(final.heapBytes>latest.heapBytes)latest=final;return {...latest,heapSamples:samples+1};}};
+  let result;return {stop(){return result??=(async()=>{stopped=true;await running;const final=await browserHeap(browser,page);if(final.heapBytes>latest.heapBytes)latest=final;return {...latest,heapSamples:samples+1};})();}};
 }

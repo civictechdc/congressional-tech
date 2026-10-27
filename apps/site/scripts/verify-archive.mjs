@@ -25,7 +25,7 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
   const bounded=async(url,options={})=>{
     safeUrl(url,local);const response=await fetcher(url,{...options,signal:options.signal?AbortSignal.any([options.signal,controller.signal]):controller.signal});
     const path=new URL(url).pathname,cache=response.headers.get('Cache-Control')||'';
-    if(response.ok&&path===pointer.pathname&&!cache.includes('no-store')){await response.body?.cancel();throw new Error('Archive pointer must be no-store.');}
+    if(path===pointer.pathname&&!cache.includes('no-store')){await response.body?.cancel();throw new Error('Archive pointer must be no-store.');}
     if(response.ok&&path.includes('/releases/')){
       if(!cache.includes('immutable')){await response.body?.cancel();throw new Error('Archive release files must be immutable.');}
       if(options.headers?.Range&&response.headers.get('Accept-Ranges')!=='bytes'){await response.body?.cancel();throw new Error('Archive host must advertise byte ranges.');}
@@ -35,6 +35,7 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
   };
   const timed=async(name,run)=>{const begin=performance.now(),value=await run();operations[name]=performance.now()-begin;if(name!=='stale')sample();return value;};
   try{
+    const livePointer=await bounded(pointer.href,{cache:'no-store'});if(livePointer.ok){const value=await livePointer.json();if(!/^[a-f0-9]{64}$/.test(value.release_id))throw new Error('Invalid live archive pointer.');}else{await livePointer.body?.cancel();if(livePointer.status!==404||!releaseId)throw new Error('Could not read the archive pointer.');}
     const reader=await timed('startup',()=>openArchive(pointer.href,{fetcher:bounded,releaseId,rawBase,heapBytes,signal:controller.signal}));
     const initial=await timed('listScan',()=>reader.search({limit:30},controller.signal));
     if(!initial.total)throw new Error('Archive candidate has no visible documents.');
@@ -49,12 +50,10 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
     const sourceEntry=entries.find(entry=>entry.sources.length)??await reader.entry(initial.rows[0].list_row,controller.signal);
     if(!sourceEntry.sources.length)throw new Error('Archive candidate did not exercise a source range.');
     operations.sources=sourceEntry.sources.length;
-    const recoveryRows=await reader.search({saved_kind:['recovery'],limit:1},controller.signal);
-    let recovery=entries.find(entry=>entry.recoveries.length);
-    if(!recovery&&recoveryRows.rows.length)recovery=await timed('recovery',()=>reader.entry(recoveryRows.rows[0].list_row,controller.signal));
-    // The release may have no recoveries; record actual absence instead of claiming a range read.
-    const recoveryDescriptor=reader.manifest.files.find(file=>file.name==='recoveries.parquet');
-    if(Number(recoveryDescriptor?.rows)>0&&!recovery?.recoveries.length)throw new Error('Archive recovery range was not exercised.');
+    const recoveryCount=reader.manifest.files.find(file=>file.name==='recoveries.parquet').rows;
+    const [probe]=await timed('recoveryRange',()=>reader.recoveryRange(0,Math.min(1,recoveryCount),controller.signal));
+    let recovery;
+    if(probe){recovery=await timed('recoveryAttachment',()=>reader.entry(probe.list_row,controller.signal));if(!recovery.recoveries.some(item=>item.ordinal===probe.ordinal))throw new Error('Archive recovery range is not attached to its document.');}
     operations.recoveryRows=recovery?.recoveries.length??0;
     await timed('urlState',()=>reader.urlState());
     if(checkSaved){
