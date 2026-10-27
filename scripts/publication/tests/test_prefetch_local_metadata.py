@@ -118,3 +118,21 @@ def test_selectors_and_conditional_reads_stay_remote(tmp_path):
     assert store.read('indexes/catalog.json') == b'changed'
     client.get_object(Bucket='fixture', Key=hint.key, IfMatch='original-etag')['Body'].close()
     assert remote.calls[-1] == (hint.key, {'IfMatch': 'original-etag'})
+
+
+@pytest.mark.parametrize('workers', [16, 32])
+def test_prefetch_cli_sizes_real_sdk_pool_to_workers(tmp_path, monkeypatch, workers):
+    monkeypatch.setenv('R2_ENDPOINT_URL', 'https://unused.invalid')
+    monkeypatch.setenv('R2_ACCESS_KEY_ID', 'fixture')
+    monkeypatch.setenv('R2_SECRET_ACCESS_KEY', 'fixture')
+    monkeypatch.setattr(prefetcher, 'read_hints', lambda path: [])
+    def observed(client, hints, cache_dir, **options):
+        assert client.meta.config.max_pool_connections == workers
+        assert client.meta.config.retries == dict(mode='standard', total_max_attempts=3)
+        assert options['workers'] == workers
+        with pytest.raises(PermissionError):
+            client.put_object(Bucket='fixture', Key='refused', Body=b'refused')
+        return dict(status='prefetched', completed=0, total=0)
+    monkeypatch.setattr(prefetcher, 'prefetch', observed)
+    assert prefetcher.main(['--stages', str(tmp_path / 'unused.sqlite'), '--metadata-cache', str(tmp_path / 'cache'),
+        '--workers', str(workers), '--report', str(tmp_path / 'report.json')]) == 0

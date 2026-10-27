@@ -38,9 +38,10 @@ class ReadOnlyClient:
         raise PermissionError('Local preparation refuses SDK operation: ' + name)
 
 
-def make_client():
+def make_client(*, max_pool_connections=None):
+    options = {'max_pool_connections': max_pool_connections} if max_pool_connections is not None else {}
     return ReadOnlyClient(connect_r2(connect_timeout=15, read_timeout=180,
-                                     retries=dict(RETRIES)))
+                                     retries=dict(RETRIES), **options))
 
 
 def arguments(argv=None):

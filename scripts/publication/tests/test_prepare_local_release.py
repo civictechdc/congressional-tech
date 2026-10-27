@@ -207,3 +207,15 @@ def test_maintained_prepare_receives_cache_without_caching_selected_control(tmp_
             native=object(), metadata_cache_dir=cache)
     assert caught.value is original
     assert reads == ['indexes/catalog.json', 'viewer/manifest.json', 'accepted']
+
+
+@pytest.mark.parametrize('workers', [16, 32])
+def test_read_client_pool_matches_requested_prefetch_concurrency(monkeypatch, workers):
+    monkeypatch.setenv('R2_ENDPOINT_URL', 'https://unused.invalid')
+    monkeypatch.setenv('R2_ACCESS_KEY_ID', 'fixture')
+    monkeypatch.setenv('R2_SECRET_ACCESS_KEY', 'fixture')
+    client = adapter.make_client(max_pool_connections=workers)
+    assert client.meta.config.max_pool_connections == workers
+    assert client.meta.config.retries == dict(mode='standard', total_max_attempts=3)
+    with pytest.raises(PermissionError):
+        client.put_object(Bucket='fixture', Key='refused', Body=b'refused')

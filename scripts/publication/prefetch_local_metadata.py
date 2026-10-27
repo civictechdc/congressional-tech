@@ -147,7 +147,7 @@ def main(argv=None):
             latest.update(event)
             save_report(args.report, latest)
             print(json.dumps(event, sort_keys=True), flush=True)
-        result = dict(operation, **prefetch(make_client(), hints, args.metadata_cache, workers=args.workers,
+        result = dict(operation, **prefetch(make_client(max_pool_connections=args.workers), hints, args.metadata_cache, workers=args.workers,
             progress=progress))
         save_report(args.report, result)
     except BaseException as error:
