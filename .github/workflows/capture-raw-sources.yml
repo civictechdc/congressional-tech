@@ -184,10 +184,20 @@ jobs:
             -e packages/congress_shared -e packages/viewer_publication -e 'packages/congress_api[archive,test]' 'PyYAML>=6,<7'
           mkdir -p tests
           ln -sfn "$PWD"/packages/congress_api/tests/* "$PWD"/packages/viewer_publication/tests/* tests/
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.21"
+      - name: Prepare isolated raw writer
+        env:
+          RAW_WRITER_REVISION: ${{ github.sha }}
+        run: |
+          .github/scripts/prepare-raw-writer.sh "$GITHUB_WORKSPACE" "$RUNNER_TEMP/raw-writer" "$RAW_WRITER_REVISION"
+          echo "RAW_WRITER_ROOT=$RUNNER_TEMP/raw-writer" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/raw-writer/.venv/bin" >> "$GITHUB_PATH"
       - name: Identify installed validation environment
         id: runtime
         run: |
-          python -m pip freeze --exclude-editable > /tmp/raw-source-dependencies.txt
+          uv pip freeze --python "$RAW_WRITER_ROOT/.venv/bin/python" --exclude-editable > /tmp/raw-source-dependencies.txt
           python --version >> /tmp/raw-source-dependencies.txt
           pdfinfo -v 2>> /tmp/raw-source-dependencies.txt
           pdftotext -v 2>> /tmp/raw-source-dependencies.txt
@@ -274,14 +284,16 @@ jobs:
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
         run: >-
-          python .github/scripts/setup-native-runtime.py
+          "$RAW_WRITER_ROOT/.venv/bin/python" -I "$RAW_WRITER_ROOT/.github/scripts/setup-native-runtime.py"
           --directory "$RUNNER_TEMP/docspec-runtime" --output native-runtime-check.json
           --github-env "$GITHUB_ENV"
       - name: Record and check capture source revision
         env:
           EXPECTED_SOURCE_DIGEST: ${{ inputs.expected_source_digest }}
         run: |
-          python .github/scripts/capture-source-manifest.py
+          "$RAW_WRITER_ROOT/.venv/bin/python" -I "$RAW_WRITER_ROOT/.github/scripts/capture-source-manifest.py" \
+            --root "$RAW_WRITER_ROOT" --output "$GITHUB_WORKSPACE/raw-capture-source-manifest.json" \
+            --native-binary "$GITHUB_WORKSPACE/packages/source-fetch/target/release/source-fetch"
           python - <<'PYCODE'
           import json, os
           expected = os.environ.get('EXPECTED_SOURCE_DIGEST')
@@ -350,9 +362,10 @@ jobs:
           esac
           guard=()
           if [ "$SYNC_MODE" = capture ]; then
-            guard=(python .github/scripts/capture-memory-guard.py --output raw-capture-memory.json --)
+            guard=("$RAW_WRITER_ROOT/.venv/bin/python" -I "$RAW_WRITER_ROOT/.github/scripts/capture-memory-guard.py" --output raw-capture-memory.json --)
           fi
-          "${guard[@]}" raw-source-sync "${args[@]}" "${seeds[@]}"
+          export PYTHONPATH= PYTHONSAFEPATH=1
+          "${guard[@]}" "$RAW_WRITER_ROOT/.venv/bin/raw-source-sync" "${args[@]}" "${seeds[@]}"
           test -s raw-capture-summary.json
       - name: Verify completed capture checkpoint
         if: steps.operation.outputs.mode == 'capture'

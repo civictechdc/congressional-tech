@@ -41,6 +41,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.21"
       - name: Install packages
         run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/docspec_client -e packages/youtube_api -e 'packages/congress_api[archive]'
 
@@ -89,6 +92,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.21"
       - name: Install packages
         run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/docspec_client -e packages/youtube_api -e 'packages/congress_api[archive]'
 
@@ -251,6 +257,9 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.21"
       - name: Install packages
         run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/docspec_client -e packages/youtube_api -e 'packages/congress_api[archive]'
       - name: Refresh official committee metadata

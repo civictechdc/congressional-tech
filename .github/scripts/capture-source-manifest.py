@@ -1,4 +1,5 @@
 """Record the exact project source and native binary used by a capture runner."""
+import argparse
 import hashlib
 from importlib.metadata import version
 import json
@@ -22,13 +23,22 @@ def manifest(root):
                 source_sha256=sources, source_digest=digest)
 
 
-if __name__ == '__main__':
-    root = Path.cwd()
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--root',type=Path,default=Path.cwd())
+    parser.add_argument('--output',type=Path,default=Path('raw-capture-source-manifest.json'))
+    parser.add_argument('--native-binary',type=Path)
+    args = parser.parse_args(argv)
+    root = args.root.resolve()
     result = manifest(root)
     result['runtime_versions'] = {name: version(name) for name in
                                   ('pyarrow', 'pypdf', 'Pillow', 'boto3', 'botocore', 'aiobotocore', 'lxml', 'pydantic')}
-    binary = root / 'packages/source-fetch/target/release/source-fetch'
+    binary = args.native_binary or root / 'packages/source-fetch/target/release/source-fetch'
     if binary.exists():
         result['native_binary_sha256'] = hashlib.sha256(binary.read_bytes()).hexdigest()
-    Path('raw-capture-source-manifest.json').write_text(json.dumps(result, indent=2) + '\n')
+    args.output.write_text(json.dumps(result, indent=2) + '\n')
     print(json.dumps({k: v for k, v in result.items() if k != 'source_sha256'}), flush=True)
+
+
+if __name__ == '__main__':
+    main()

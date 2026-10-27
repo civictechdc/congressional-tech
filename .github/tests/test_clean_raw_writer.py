@@ -85,7 +85,10 @@ def test_capture_executes_from_isolated_application_and_keeps_artifacts_external
     runtime = next(step for step in steps if step.get('name')=='Require an approved native runtime before archive access')
     manifest = next(step for step in steps if step.get('name')=='Record and check capture source revision')
     capture = next(step for step in steps if step.get('id')=='sync')
-    assert steps.index(prepare)<steps.index(runtime)<steps.index(manifest)<steps.index(capture)
+    validation = next(step for step in steps if step.get('name')=='Identify installed validation environment')
+    assert steps.index(prepare)<steps.index(validation)<steps.index(runtime)<steps.index(manifest)<steps.index(capture)
+    assert 'uv pip freeze --python "$RAW_WRITER_ROOT/.venv/bin/python"' in validation['run']
+    assert '"$RUNNER_TEMP/raw-writer/.venv/bin" >> "$GITHUB_PATH"' in prepare['run']
     assert '${{ github.sha }}' in prepare['env'].values()
     assert 'prepare-raw-writer.sh' in prepare['run'] and 'RAW_WRITER_ROOT=' in prepare['run']
     assert '$RAW_WRITER_ROOT/.venv/bin/python' in manifest['run']
@@ -108,3 +111,57 @@ def test_weekly_writer_uses_pinned_clean_python_after_snapshot_save():
     for job in workflow['jobs'].values():
         assert any(step.get('uses')=='astral-sh/setup-uv@v6' or
                    step.get('uses')=='./.github/actions/setup-python-project' for step in job['steps'])
+
+
+def test_weekly_snapshot_executes_clean_writer_beside_dirty_reports(tmp_path):
+    original = tmp_path/'job'
+    application(original)
+    scripts = original/'.github/scripts'
+    scripts.mkdir(parents=True)
+    for name in ('save-pipeline-data.sh','prepare-raw-writer.sh'):
+        shutil.copy(ROOT/'.github/scripts'/name,scripts/name)
+    git(original,'add','.')
+    git(original,'commit','-qm','snapshot tools')
+    revision = git(original,'rev-parse','HEAD')
+    snapshot = original/'pipeline-data'
+    application(snapshot)
+    remote = tmp_path/'snapshot-origin.git'
+    subprocess.run(['git','init','--bare','-q',str(remote)],check=True)
+    git(snapshot,'remote','add','origin',str(remote))
+    (original/'application.py').write_text('dirty derived data\n')
+    (original/'report.json').write_text('{}')
+    env = tools(tmp_path)
+    probe = tmp_path/'writer-python'
+    probe.write_text(f'#!{sys.executable}\n' +
+        "import hashlib,json,os,pathlib,subprocess,sys\n"
+        "root=pathlib.Path(__file__).resolve().parents[2]\n"
+        "assert sys.argv[1:4]==['-I','-m','congress_api.cli.pipeline_raw']\n"
+        "snapshot=pathlib.Path(sys.argv[sys.argv.index('--snapshot')+1])\n"
+        "assert snapshot.is_absolute() and not snapshot.is_relative_to(root)\n"
+        "status=subprocess.check_output(['git','status','--porcelain'],cwd=root,text=True)\n"
+        "assert status==''\n"
+        "value=dict(root=str(root),snapshot=str(snapshot),commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),application=(root/'application.py').read_text(),lockfile_digest=hashlib.sha256((root/'uv.lock').read_bytes()).hexdigest())\n"
+        "pathlib.Path(os.environ['WRITER_EXECUTION']).write_text(json.dumps(value))\n")
+    probe.chmod(0o755)
+    uv = Path(env['PATH'].split(os.pathsep)[0])/'uv'
+    uv.write_text(f'#!{sys.executable}\n' +
+        "import os,pathlib,shutil,sys\n"
+        "assert sys.argv[1:3]==['sync','--locked']\n"
+        "root=pathlib.Path(sys.argv[sys.argv.index('--project')+1])\n"
+        "(root/'.venv/bin').mkdir(parents=True)\n"
+        "shutil.copy(os.environ['WRITER_PROBE'],root/'.venv/bin/python')\n")
+    temporary = tmp_path/'temporary'
+    temporary.mkdir()
+    env.update(RUNNER_TEMP=str(temporary),WRITER_EXECUTION=str(tmp_path/'execution.json'),WRITER_PROBE=str(probe))
+    result = subprocess.run(['bash',str(scripts/'save-pipeline-data.sh'),'fixture'],cwd=original,
+                            env=env,capture_output=True,text=True)
+    assert result.returncode == 0,result.stderr
+    executed = json.loads(Path(env['WRITER_EXECUTION']).read_text())
+    assert executed['commit']==revision
+    assert executed['application']=='committed application\n'
+    assert executed['lockfile_digest']==__import__('hashlib').sha256((original/'uv.lock').read_bytes()).hexdigest()
+    assert executed['snapshot']==str(snapshot)
+    assert not Path(executed['root']).is_relative_to(original)
+    assert git(snapshot,'rev-parse','HEAD')==subprocess.check_output(
+        ['git','--git-dir',str(remote),'rev-parse','pipeline-data'],text=True).strip()
+    assert (original/'application.py').read_text()=='dirty derived data\n'
