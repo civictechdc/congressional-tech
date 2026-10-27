@@ -47,7 +47,8 @@ def as_protected(record_dict):
 
 
 def prepare(publisher=None, client=None, root=None, *, run_id, run_attempt, public_url, native=None,
-            renderer_upgrade=False, resume_preparation=False, stage_timings=None, stage_event=None, memory_metrics=None):
+            renderer_upgrade=False, resume_preparation=False, stage_timings=None, stage_event=None, memory_metrics=None,
+            metadata_cache_dir=None):
     """Read inputs and accept complete local output; perform no publication writes."""
     if publisher is None:
         from viewer_publication import publish_viewer_r2 as publisher
@@ -82,7 +83,8 @@ def prepare(publisher=None, client=None, root=None, *, run_id, run_attempt, publ
         native = NativeDatasets.from_config(configuration)
     from congress_api.retention.catalog_publication import read_catalog
     from congress_api.retention.r2 import R2Store
-    snapshot = read_catalog(R2Store(client, publisher.BUCKET), native=native)
+    store_options = {'cache_dir': metadata_cache_dir} if metadata_cache_dir is not None else {}
+    snapshot = read_catalog(R2Store(client, publisher.BUCKET, **store_options), native=native)
     if (snapshot.manifest != selected['value'] or snapshot.identity['selector_sha256'] != selected['sha256']
             or snapshot.version != selected['etag']):
         raise ValueError('Catalog changed before native viewer preparation')

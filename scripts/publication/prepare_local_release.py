@@ -38,9 +38,10 @@ class ReadOnlyClient:
         raise PermissionError('Local preparation refuses SDK operation: ' + name)
 
 
-def make_client():
+def make_client(*, max_pool_connections=None):
+    options = {'max_pool_connections': max_pool_connections} if max_pool_connections is not None else {}
     return ReadOnlyClient(connect_r2(connect_timeout=15, read_timeout=180,
-                                     retries=dict(RETRIES)))
+                                     retries=dict(RETRIES), **options))
 
 
 def arguments(argv=None):
@@ -53,6 +54,7 @@ def arguments(argv=None):
     parser.add_argument('--renderer-upgrade', action='store_true')
     parser.add_argument('--resume-preparation', action='store_true')
     parser.add_argument('--report', type=Path, required=True)
+    parser.add_argument('--metadata-cache', type=Path, help='Maintained immutable metadata disk cache')
     args = parser.parse_args(argv)
     if not args.run_id or not args.run_attempt:
         parser.error('prepare requires --run-id and --run-attempt')
@@ -73,15 +75,17 @@ def main(argv=None):
         allowed_operations=list(READ_OPERATIONS), directory=str(args.directory.resolve()),
         native_config=str(args.native_config.resolve()), run_id=str(args.run_id),
         run_attempt=str(args.run_attempt), renderer_upgrade=args.renderer_upgrade,
-        resume_preparation=args.resume_preparation)
+        resume_preparation=args.resume_preparation,
+        metadata_cache_dir=str(args.metadata_cache.resolve()) if args.metadata_cache else None)
     save_report(receipt_path, receipt)
     try:
         native = NativeDatasets.from_config(args.native_config)
+        options = {'metadata_cache_dir': args.metadata_cache} if args.metadata_cache else {}
         result = attempt.prepare(publisher, make_client(), args.directory,
             run_id=args.run_id, run_attempt=args.run_attempt, public_url=args.public_url,
             native=native, renderer_upgrade=args.renderer_upgrade,
             resume_preparation=args.resume_preparation,
-            stage_event=lambda event: print(json.dumps(event, sort_keys=True), flush=True))
+            stage_event=lambda event: print(json.dumps(event, sort_keys=True), flush=True), **options)
         save_report(args.report, result)
     except BaseException as error:
         outcome = dict(status='failed', command='prepare', error_type=type(error).__name__,
