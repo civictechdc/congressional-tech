@@ -51,17 +51,13 @@ def test_owner_decisions_are_a_new_version_with_the_four_applied_rules():
     assert old['version']==1 and new['version']==2
     assert new['previous_version_sha256']==hashlib.sha256(path.read_bytes()).hexdigest()
     before={x['id']:x for x in old['files']}
-    changed=[x for x in new['files'] if before[x['id']]['decision']=='owner_decision_required']
-    assert len(changed)==47
+    changed=[x for x in new['files'] if x!=before[x['id']]]
+    assert len(changed)==4
     assert all(x['reviewer']=='owner' and x['applied_rule'] and x['prior_rationale'] for x in changed)
-    assert all(x['decision']!='owner_decision_required' for x in new['files'])
-    assert sum(x['applied_rule']=='frontmatter_package_pointer' for x in changed)==38
-    assert sum(x['applied_rule']=='separate_document_overview' for x in changed)==6
-    oneoffs={x['id']:(x['decision'],x['applied_rule']) for x in changed if x['id'] in {'p059','p064','p118','p165'}}
-    assert oneoffs=={'p059':('real_document','self_contained_document'),
+    assert sum(x['decision']=='owner_decision_required' for x in new['files'])==43
+    assert {x['id']:(x['decision'],x['applied_rule']) for x in changed}=={
+        'p059':('real_document','self_contained_document'),
         'p064':('real_document','self_contained_document'),
         'p118':('download_wrapper','preview_access_pointer'),
-        'p165':('landing','frontmatter_package_pointer')}
+        'p165':('landing','metadata_pointer')}
     assert new['bodies']==old['bodies'] and new['relationships']==old['relationships']
-    assert {x['id']:x for x in new['files'] if x['id'] not in {r['id'] for r in changed}}=={
-        x['id']:x for x in old['files'] if x['decision']!='owner_decision_required'}

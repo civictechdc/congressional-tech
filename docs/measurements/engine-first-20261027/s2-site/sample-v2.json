@@ -24,7 +24,7 @@
     "Grouping labels record the publisher assertion and link structure; target-body admission must still pass the model real-file gate.",
     "The two-context event-record example differs in query-key spelling, not directory. Owner referral records the stronger real listing case still needed if required.",
     "Real mirror examples have two or three recorded addresses; this panel does not establish accuracy for real documents mirrored over 100 times.",
-    "Owner decisions resolve the 47 file labels. Repeated-listing and high-mirror coverage limits remain observations, not accuracy claims."
+    "Four one-offs use the closest existing principles. The other43 referred labels await owner decisions5–6; no new content signal, threshold or URL-template rule is built."
   ],
   "files": [
     {
@@ -541,9 +541,10 @@
       "body_key": "bodies/sha256/81/8194a3540d0c2f0b4a5e179668ee98dc6b9f2f519cd35f6299e879841453a5ed.gz",
       "context_url": "https://www.congress.gov/bill/116th-congress/house-bill/3373?q=%7B%22search%22%3A%22hr+3373%22%7D",
       "selection": "prior-human-review",
-      "decision": "landing",
-      "rationale": "This page describes and links a separate document; its authored summary does not turn it into that document.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The overview includes an authored CRS summary alongside bill metadata, but not the bill text.",
+      "reviewer": "site",
+      "owner_question": "Do authored CRS summaries embedded in bill-overview pages count as real web documents, or do these entire overview responses remain metadata about the bill?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/external/provider-responses/2026-10-12/download-20261012T143832Z-26fc45ddb833-000011.jsonl.gz",
@@ -561,12 +562,7 @@
         "reviewed_category": "usable_html",
         "review_basis": "Read retained HTML title and rendered-text extraction; unrelated redirects, error pages, shells and download interstitials are not recovered source content."
       },
-      "strata": [],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Do authored CRS summaries embedded in bill-overview pages count as real web documents, or do these entire overview responses remain metadata about the bill?",
-      "prior_rationale": "The overview includes an authored CRS summary alongside bill metadata, but not the bill text.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "separate_document_overview"
+      "strata": []
     },
     {
       "id": "h019",
@@ -574,9 +570,10 @@
       "body_key": "bodies/sha256/05/05dffc168d6fdb36162e9a9437be0d0ed127d61981cb7f9a498a8379239573b3.gz",
       "context_url": "https://www.congress.gov/bill/116th-congress/house-resolution/410?q=%7B%22search%22%3A%5B%22hres+410%22%5D%7D&s=2&r=1",
       "selection": "prior-human-review",
-      "decision": "landing",
-      "rationale": "This page describes and links a separate document; its authored summary does not turn it into that document.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The resolution overview includes an authored CRS summary alongside legislative metadata, but not the resolution text.",
+      "reviewer": "site",
+      "owner_question": "Do authored CRS summaries embedded in bill-overview pages count as real web documents, or do these entire overview responses remain metadata about the bill?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/external/provider-responses/2026-10-15/download-20261015T154641Z-2156702c3368-000001.jsonl.gz",
@@ -594,12 +591,7 @@
         "reviewed_category": "usable_html",
         "review_basis": "Read retained HTML title and rendered-text extraction; unrelated redirects, error pages, shells and download interstitials are not recovered source content."
       },
-      "strata": [],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Do authored CRS summaries embedded in bill-overview pages count as real web documents, or do these entire overview responses remain metadata about the bill?",
-      "prior_rationale": "The resolution overview includes an authored CRS summary alongside legislative metadata, but not the resolution text.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "separate_document_overview"
+      "strata": []
     },
     {
       "id": "h020",
@@ -607,9 +599,10 @@
       "body_key": "bodies/sha256/e9/e9671817bcb67e2ceac1c0194855c5991fd84ad07fccae5be06c03bf11ccc55e.gz",
       "context_url": "https://www.congress.gov/bill/116th-congress/house-resolution/442?q=%7B%22search%22%3A%5B%22H.Res.+442%22%5D%7D&s=4&r=1",
       "selection": "prior-human-review",
-      "decision": "landing",
-      "rationale": "This page describes and links a separate document; its authored summary does not turn it into that document.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The overview mixes a substantive CRS summary and bill-status metadata; inclusion needs one consistent boundary.",
+      "reviewer": "site",
+      "owner_question": "Do authored CRS summaries embedded in bill-overview pages count as real web documents, or do these entire overview responses remain metadata about the bill?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/external/provider-responses/2026-10-15/download-20261015T154641Z-2156702c3368-000001.jsonl.gz",
@@ -627,12 +620,7 @@
         "reviewed_category": "usable_html",
         "review_basis": "Read retained HTML title and rendered-text extraction; unrelated redirects, error pages, shells and download interstitials are not recovered source content."
       },
-      "strata": [],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Do authored CRS summaries embedded in bill-overview pages count as real web documents, or do these entire overview responses remain metadata about the bill?",
-      "prior_rationale": "The overview mixes a substantive CRS summary and bill-status metadata; inclusion needs one consistent boundary.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "separate_document_overview"
+      "strata": []
     },
     {
       "id": "h021",
@@ -2587,9 +2575,10 @@
       "body_key": "bodies/sha256/2f/2f1f18b5eab9cd0762be7f5b604a2c7c54a732b420249082e17eef94a069cf42.gz",
       "context_url": "https://science.house.gov/2023/1/h-r-369-the",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This page describes and links a separate document; its authored summary does not turn it into that document.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The bill entry mixes a short authored summary with metadata and links to separate legislative text.",
+      "reviewer": "site",
+      "owner_question": "Should a short bill summary embedded in a bill landing entry count as a document, or remain metadata about the linked bill?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/house/pages/2026-10-11/download-20261011T134611Z-e84fedd3f9c2-000013.jsonl.gz",
@@ -2607,12 +2596,7 @@
         "within_stratum_rank": 2,
         "selection_rank": 22
       },
-      "strata": [],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Should a short bill summary embedded in a bill landing entry count as a document, or remain metadata about the linked bill?",
-      "prior_rationale": "The bill entry mixes a short authored summary with metadata and links to separate legislative text.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "separate_document_overview"
+      "strata": []
     },
     {
       "id": "p058",
@@ -3714,9 +3698,10 @@
       "body_key": "bodies/sha256/1b/1be9551ab97c8e0cbea23e394a6fd49608fbcea8f1ef9a44e4fb504f0363c5f0.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-112shrg78095.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The GovInfo HTML rendition contains hearing front matter and contents, ending before substantive testimony.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T212738Z-f3c0ed43a983-000019.jsonl.gz",
@@ -3736,12 +3721,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The GovInfo HTML rendition contains hearing front matter and contents, ending before substantive testimony.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p096",
@@ -3833,9 +3813,10 @@
       "body_key": "bodies/sha256/26/26580e455b1c8a0d1e2ab938ed02efd2b8cb3e11cd05a18eeaacceee616a5394.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-113hhrg86196.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The GovInfo HTML rendition contains hearing front matter and contents, ending before substantive testimony.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T155518Z-dd3002e94e36-000005.jsonl.gz",
@@ -3855,12 +3836,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The GovInfo HTML rendition contains hearing front matter and contents, ending before substantive testimony.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p100",
@@ -3958,9 +3934,10 @@
       "body_key": "bodies/sha256/3c/3cabfd2335bd9297b50bc311f2375185322188d3557ee4e0724e854bba83564c.gz",
       "context_url": "https://www.gao.gov/products/GAO-06-672",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This page describes and links a separate document; its authored summary does not turn it into that document.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The report product page contains substantial authored highlights and recommendation updates alongside links to the full report.",
+      "reviewer": "site",
+      "owner_question": "Do authored report highlights and recommendation updates embedded in a product page count as a real web document, or is the product page excluded as report metadata?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/external/provider-responses/2026-10-12/download-20261012T103014Z-d7600155aff3-000011.jsonl.gz",
@@ -3978,12 +3955,7 @@
         "within_stratum_rank": 1,
         "selection_rank": 47
       },
-      "strata": [],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Do authored report highlights and recommendation updates embedded in a product page count as a real web document, or is the product page excluded as report metadata?",
-      "prior_rationale": "The report product page contains substantial authored highlights and recommendation updates alongside links to the full report.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "separate_document_overview"
+      "strata": []
     },
     {
       "id": "p104",
@@ -4369,9 +4341,10 @@
       "body_key": "bodies/sha256/8b/8b805c6fc3f473663c50b96ec9b2ced4aba4cb02b0fd5eaefc4812a06e2d7707.gz",
       "context_url": "https://www.congress.gov/bill/116th-congress/house-bill/4754?q=%7B%22search%22%3A%5B%22hr+4754%22%5D%7D&s=4&r=1",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This page describes and links a separate document; its authored summary does not turn it into that document.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The bill overview mixes legislative metadata and an embedded authored summary, without the bill text.",
+      "reviewer": "site",
+      "owner_question": "Do authored summaries embedded in bill-overview pages count as real web documents, or do those responses remain bill metadata?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/external/provider-responses/2026-10-12/download-20261012T150643Z-1dd16a33b003-000012.jsonl.gz",
@@ -4389,12 +4362,7 @@
         "within_stratum_rank": 1,
         "selection_rank": 26
       },
-      "strata": [],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Do authored summaries embedded in bill-overview pages count as real web documents, or do those responses remain bill metadata?",
-      "prior_rationale": "The bill overview mixes legislative metadata and an embedded authored summary, without the bill text.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "separate_document_overview"
+      "strata": []
     },
     {
       "id": "p118",
@@ -5812,7 +5780,7 @@
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-106shrg63802.zip",
       "selection": "stratified-short-page",
       "decision": "landing",
-      "rationale": "The cover-only errata rendition has no corrections and points through its package to the document PDF.",
+      "rationale": "The retained cover supplies metadata rather than the errata corrections; apply the existing metadata/landing principle.",
       "reviewer": "owner",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
@@ -5838,7 +5806,7 @@
       "prior_owner_question": "Should this cover-only errata rendition count as a real partial document despite the absent correction text and conflicting cover wording?",
       "prior_rationale": "The retained errata rendition contains front matter but no visible correction, and the cover wording mixes subjects.",
       "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      "applied_rule": "metadata_pointer"
     },
     {
       "id": "p166",
@@ -5908,9 +5876,10 @@
       "body_key": "bodies/sha256/11/11d0ee3e08df8bdf7e4f1e6b0aa519b26f58ca1c80ae1bf8b6e2065629ab4bac.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-106hhrg56933.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T171546Z-305b676bed7b-000001.jsonl.gz",
@@ -5930,12 +5899,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p169",
@@ -5943,9 +5907,10 @@
       "body_key": "bodies/sha256/11/11f6dc94d51947a3b805c103f2cf8b43324eed0d73a4ab27ef1c1209b801ca32.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-114hhrg94665.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T213741Z-0d3060784a53-000007.jsonl.gz",
@@ -5965,12 +5930,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p170",
@@ -5978,9 +5938,10 @@
       "body_key": "bodies/sha256/1e/1e8b98d04e04d775dcc5aa07852e230beac60bfc3474a6d711f10b9ff6f6666a.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg38142.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000005.jsonl.gz",
@@ -6000,12 +5961,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p171",
@@ -6013,9 +5969,10 @@
       "body_key": "bodies/sha256/23/23b3031546267828cd0235e0f063e875571a8e85f89a664ef208320a8f1b4e85.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-110jhrg35120.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T211751Z-44f44d363da0-000014.jsonl.gz",
@@ -6035,12 +5992,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p172",
@@ -6048,9 +6000,10 @@
       "body_key": "bodies/sha256/29/29f6004fb598595f74ec46c3f920ab6916d9b13df126c19fc42a88a4f62b14bd.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg54411.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T232203Z-1f53dec3c056-000001.jsonl.gz",
@@ -6070,12 +6023,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p173",
@@ -6083,9 +6031,10 @@
       "body_key": "bodies/sha256/32/3297303d8bb4ec171ad05e6aee6f08eb9160717bff7499ddc80a0ad2a560b2b2.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-108hhrg89554.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T075901Z-706c5f543461-000005.jsonl.gz",
@@ -6105,12 +6054,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p174",
@@ -6118,9 +6062,10 @@
       "body_key": "bodies/sha256/3f/3f50ceeb8751676f27d7836cff25131e6be299e54d0029f0798d88a8784810fc.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg61321.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T161311Z-2add37b71978-000004.jsonl.gz",
@@ -6140,12 +6085,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p175",
@@ -6153,9 +6093,10 @@
       "body_key": "bodies/sha256/56/56faadf37ff28c6337ed73a5c2c23a9d55efda8d31fb5d3bc2a2c6c6b7e3806f.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-113hhrg87123.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T155518Z-dd3002e94e36-000005.jsonl.gz",
@@ -6175,12 +6116,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p176",
@@ -6188,9 +6124,10 @@
       "body_key": "bodies/sha256/64/64d7069a554f37fbc13ae8ecdc49fc7fa14b887a1e488dd33a7fd00cc7b59aec.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg38819.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T211751Z-44f44d363da0-000009.jsonl.gz",
@@ -6210,12 +6147,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p177",
@@ -6223,9 +6155,10 @@
       "body_key": "bodies/sha256/6a/6a746c57338aa4ad8997c2e0c408c3036e427f2cdb7f45659eeed173ea619bac.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-107hhrg80045.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T075901Z-706c5f543461-000002.jsonl.gz",
@@ -6245,12 +6178,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p178",
@@ -6258,9 +6186,10 @@
       "body_key": "bodies/sha256/70/700311a80be6316063f54b4b764f5e0a9279c2db9fce29cc51e3c4860b774897.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-119shrg60018.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T161311Z-2add37b71978-000004.jsonl.gz",
@@ -6280,12 +6209,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p179",
@@ -6293,9 +6217,10 @@
       "body_key": "bodies/sha256/71/71ee2d34573f3fefff10955069b6e8166672c72ee55887cb0d43b2e15bb06fe3.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg27228.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T210507Z-94e20175a244-000017.jsonl.gz",
@@ -6315,12 +6240,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p180",
@@ -6328,9 +6248,10 @@
       "body_key": "bodies/sha256/7e/7e63c092d72052d020cd2795bc3276ec6a04c924e29907e99f466ab55f1e88c6.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-111hhrg56391.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T211751Z-44f44d363da0-000022.jsonl.gz",
@@ -6350,12 +6271,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p181",
@@ -6363,9 +6279,10 @@
       "body_key": "bodies/sha256/87/8752a18d741723400b1d91263aa10fcf38a22812dbf5ae43a1eab23029e4b8aa.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg37068.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000005.jsonl.gz",
@@ -6385,12 +6302,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p182",
@@ -6398,9 +6310,10 @@
       "body_key": "bodies/sha256/87/87ff909cd3a04ebbb2c9fa7b8d9169eca4eeb7d796fafa12922fc1156d7ba7f3.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-107hhrg87942.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T075901Z-706c5f543461-000004.jsonl.gz",
@@ -6420,12 +6333,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p183",
@@ -6433,9 +6341,10 @@
       "body_key": "bodies/sha256/95/95a8b98d372ffe51d6452803ce9708ea603c850214bdfc502fccc27921bfd662.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg28499.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000002.jsonl.gz",
@@ -6455,12 +6364,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p184",
@@ -6468,9 +6372,10 @@
       "body_key": "bodies/sha256/9a/9a2f829bc9bc7e4ad76264d418700f01b0a9945f300cd73864c6cacbc90bd17f.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg20783.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000002.jsonl.gz",
@@ -6490,12 +6395,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p185",
@@ -6503,9 +6403,10 @@
       "body_key": "bodies/sha256/a2/a2e2da5a05e84f64736c433eb30f9128970f8c6325890a04e46dff64c428f580.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg40659.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000005.jsonl.gz",
@@ -6525,12 +6426,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p186",
@@ -6538,9 +6434,10 @@
       "body_key": "bodies/sha256/a3/a399425f92439235d8182c1e1401bb8a7cdd06802cbb5083145af68af4498d66.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-113hhrg82446.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T155518Z-dd3002e94e36-000004.jsonl.gz",
@@ -6560,12 +6457,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p187",
@@ -6573,9 +6465,10 @@
       "body_key": "bodies/sha256/ac/acdd42c1675cb5835cb063ae99c87ae3d12a031c2bafabbd642342007d111621.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg22264.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T210507Z-94e20175a244-000015.jsonl.gz",
@@ -6595,12 +6488,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p188",
@@ -6608,9 +6496,10 @@
       "body_key": "bodies/sha256/b0/b07058a3022b889f35627a245e3baf2da6b07e8f724fbd6054c143813c84673a.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg43840.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000005.jsonl.gz",
@@ -6630,12 +6519,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p189",
@@ -6643,9 +6527,10 @@
       "body_key": "bodies/sha256/c1/c1ef92135a0265d3267962413ee5cf54640331bd412eba3112e0e8fd04d7845a.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg38542.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T211751Z-44f44d363da0-000012.jsonl.gz",
@@ -6665,12 +6550,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p190",
@@ -6678,9 +6558,10 @@
       "body_key": "bodies/sha256/c3/c37de6b1c8e3e89ce4314132a12670386989456fa2a393aafee27055091ab86e.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-107shrg22887.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T075901Z-706c5f543461-000004.jsonl.gz",
@@ -6700,12 +6581,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p191",
@@ -6713,9 +6589,10 @@
       "body_key": "bodies/sha256/ca/caf669838b5b4a3b1fb9f87d326f1ff532637932de24b87ed28053343e4a4e0a.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-108jhrg89738.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T210507Z-94e20175a244-000010.jsonl.gz",
@@ -6735,12 +6612,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p192",
@@ -6748,9 +6620,10 @@
       "body_key": "bodies/sha256/d3/d32bf7a9f80522eeaa96f6056a73e0f0c580f3183831fb33bc5bc99ea0b98ca8.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg29577.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000002.jsonl.gz",
@@ -6770,12 +6643,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p193",
@@ -6783,9 +6651,10 @@
       "body_key": "bodies/sha256/d9/d9801b015e31acc006ecf165d6275d739aa094222ff24467b56877a769e05461.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg55785.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T232203Z-1f53dec3c056-000003.jsonl.gz",
@@ -6805,12 +6674,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p194",
@@ -6818,9 +6682,10 @@
       "body_key": "bodies/sha256/dd/dd9d2938b569ff9f870c7ccd43a83268a34fed1d7bd4aa27ef75b87985052149.gz",
       "context_url": "http://frwebgate.access.gpo.gov/cgi-bin/getdoc.cgi?dbname=111_house_hearings&docid=f:53433.wais",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-12/download-20261012T135713Z-2d7114fabc2a-000001.jsonl.gz",
@@ -6838,12 +6703,7 @@
         "within_stratum_rank": 1,
         "selection_rank": 2
       },
-      "strata": [],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      "strata": []
     },
     {
       "id": "p195",
@@ -6851,9 +6711,10 @@
       "body_key": "bodies/sha256/de/de0ad2c33cb1dc8a7eeff08d505de243a62503141c30bc395e177fa2db428cf0.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg23825.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000002.jsonl.gz",
@@ -6873,12 +6734,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p196",
@@ -6886,9 +6742,10 @@
       "body_key": "bodies/sha256/e2/e2610320e7ed893040a5813690b85c26522dcf453660900ed06aac6fbdbf2a08.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-109hhrg27649.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000003.jsonl.gz",
@@ -6908,12 +6765,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p197",
@@ -6921,9 +6773,10 @@
       "body_key": "bodies/sha256/ea/ea73a013d4ccf6b808f75b42ed1987c9700279bc9cfd07897d4db6f3a832a0bd.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-110hhrg55888.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000006.jsonl.gz",
@@ -6943,12 +6796,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p198",
@@ -6956,9 +6804,10 @@
       "body_key": "bodies/sha256/eb/eb286929dc88b81a20c0f08ed7c42755137c83396d0e0118c425ecf5a4e9b72b.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-108jhrg87773.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T083600Z-c0331880fe9b-000001.jsonl.gz",
@@ -6978,12 +6827,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p199",
@@ -6991,9 +6835,10 @@
       "body_key": "bodies/sha256/eb/eb659a9af047cfaa7c045ee0178920ef994739f807099e3ef6de299cbba8604e.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-117hhrg44535.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T175810Z-602f8f1a7c65-000002.jsonl.gz",
@@ -7013,12 +6858,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p200",
@@ -7026,9 +6866,10 @@
       "body_key": "bodies/sha256/f6/f62010c7ac1b53c73ea4296a9d7294d04e9b753ac847eef1e284d6a534f5c25d.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-118hhrg55064.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-05/download-20261005T232203Z-1f53dec3c056-000002.jsonl.gz",
@@ -7048,12 +6889,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p201",
@@ -7061,9 +6897,10 @@
       "body_key": "bodies/sha256/fb/fbd288fe48d750f52b264614db1d05024cb08f7251c1e4a30d6ea92bc084693e.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-107hhrg77901.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T075901Z-706c5f543461-000002.jsonl.gz",
@@ -7083,12 +6920,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p202",
@@ -7096,9 +6928,10 @@
       "body_key": "bodies/sha256/fc/fc8851358c0c8c6348297e629501bf8d68abef9be982808ebc322f56a20b3c58.gz",
       "context_url": "https://www.govinfo.gov/content/pkg/CHRG-119hhrg60026.zip",
       "selection": "stratified-short-page",
-      "decision": "landing",
-      "rationale": "This retained rendition contains only publication front matter and points through its package to a separate PDF rendition.",
-      "reviewer": "owner",
+      "decision": "owner_decision_required",
+      "rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
+      "reviewer": "site",
+      "owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
       "source_capture": {
         "basis": "pinned legacy capture snapshot",
         "receipt_key": "receipts/documents/2026-10-06/download-20261006T001509Z-df0f0d59852d-000003.jsonl.gz",
@@ -7118,12 +6951,7 @@
       },
       "strata": [
         "archive_members"
-      ],
-      "prior_decision": "owner_decision_required",
-      "prior_owner_question": "Are cover/front-matter-only GovInfo HTML renditions real partial documents, or metadata about the separately available full hearing?",
-      "prior_rationale": "The inspected GovInfo HTML contains cover/front matter and no substantive hearing text; many explicitly refer readers to the PDF.",
-      "owner_decision_basis": "2026-10-27 owner decisions 5–7",
-      "applied_rule": "frontmatter_package_pointer"
+      ]
     },
     {
       "id": "p203",
@@ -13926,5 +13754,5 @@
     }
   ],
   "previous_version_sha256": "c190161a522d98f073f6f8299c93c18fa1845cf59fd4d1aa6f1a4707bc9316cc",
-  "owner_decisions": "2026-10-27 owner decisions 5–7"
+  "owner_decisions": "2026-10-27 decision7 stands; decisions5–6 on hold pending owner complexity review"
 }
