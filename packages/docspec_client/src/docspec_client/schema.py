@@ -4,7 +4,7 @@ import pyarrow as pa
 
 
 def native_storage_schema(schema_or_table: Any, *, native_types: bool = True) -> Any:
-    """Use lossless Iceberg types for unsigned values and binary offsets.
+    """Use lossless Iceberg types for integer widths and binary offsets.
 
     The application retains the original schema in its immutable selection.
     Native pins describe the physical representation; schema-bound reads restore
@@ -21,6 +21,13 @@ def native_storage_schema(schema_or_table: Any, *, native_types: bool = True) ->
         return value.with_type(data_type(value.type))
 
     def data_type(value: pa.DataType) -> pa.DataType:
+        # Iceberg stores narrow integers as Int32 and UInt32 as Int64.
+        # Widen producer arrays too, so writer fields and arrays agree.
+        if (pa.types.is_int8(value) or pa.types.is_int16(value)
+                or pa.types.is_uint8(value) or pa.types.is_uint16(value)):
+            return pa.int32()
+        if pa.types.is_uint32(value):
+            return pa.int64()
         if pa.types.is_uint64(value):
             return pa.decimal128(20, 0)
         if pa.types.is_binary(value):

@@ -185,3 +185,33 @@ def test_run_ipc_and_update_ipc_headers_and_payload(tmp_path, monkeypatch):
     assert pin2['dataset']['version'] == 'upsert-o1'
     assert captured[1]['path'] == '/updates/run'
     assert captured[1]['spec']['merge'] == merge
+
+
+@pytest.mark.parametrize('logical,physical,low,high', [
+    (pa.int8(), pa.int32(), -(1 << 7), (1 << 7) - 1),
+    (pa.int16(), pa.int32(), -(1 << 15), (1 << 15) - 1),
+    (pa.uint8(), pa.int32(), 0, (1 << 8) - 1),
+    (pa.uint16(), pa.int32(), 0, (1 << 16) - 1),
+    (pa.uint32(), pa.int64(), 0, (1 << 32) - 1),
+])
+def test_producer_parquet_uses_lossless_iceberg_integer_widths(tmp_path, logical, physical, low, high):
+    import pyarrow.parquet as pq
+    from docspec_client.transport import _write_producer_parquet
+    schema = pa.schema([
+        pa.field('value', logical, metadata={b'origin': b'application-width'}),
+        pa.field('samples', pa.list_(pa.field('reading', logical))),
+    ], metadata={b'origin': b'application-schema'})
+    table = pa.Table.from_pylist([
+        dict(value=low, samples=[low, high, None]),
+        dict(value=high, samples=None),
+        dict(value=None, samples=[]),
+    ], schema=schema)
+    path = tmp_path / 'producer.parquet'
+    _write_producer_parquet(table, path)
+    stored = pq.read_table(path)
+    assert stored.schema.field('value').type == physical
+    assert stored.schema.field('samples').type.value_type == physical
+    assert stored.to_pylist() == table.to_pylist()
+    restored = restore_application_schema(stored, expected_schema=schema)
+    assert restored.equals(table, check_metadata=True)
+    assert table.schema.equals(schema, check_metadata=True)
