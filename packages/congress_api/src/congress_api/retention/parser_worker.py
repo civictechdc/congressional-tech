@@ -126,6 +126,8 @@ class ParserWorker:
                     if os.write(self._process.stdin.fileno(), b'parse\n') != 6:
                         raise _Failure('parser_crash')
                     response = self._response(time.monotonic() + self.timeout_seconds)
+                    if not isinstance(response, dict):
+                        raise _Failure('parser_crash')
                     if response.get('failure') in ('memory_limit', 'output_limit'):
                         raise _Failure(response['failure'])
                     if set(response) != {'value'}:
@@ -175,6 +177,7 @@ def _child():
             with contextlib.redirect_stdout(sys.stderr):
                 value = function((Path(directory) / 'input').read_bytes())
             send({'value': value})
+            del value
         except MemoryError:
             send({'failure': 'memory_limit'})
             return
