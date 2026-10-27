@@ -125,6 +125,12 @@ def load_stage(root):
             for line in source:
                 validate_provenance(value['kind'],json.loads(line));count+=1
     if count!=value['records']:raise ValueError('Stage record count differs')
+    for item in value.get('artifacts',[]):
+        relative=Path(item['path']);path=(root/relative).resolve()
+        if relative.is_absolute() or '..' in relative.parts or not path.is_relative_to(root):
+            raise ValueError('Unsafe staged artifact path')
+        if file_pin(path)!={k:item[k] for k in ('sha256','size')}:
+            raise ValueError('Staged import evidence changed')
     return root,value
 
 
