@@ -22,6 +22,8 @@ def main(argv=None):
     source=parser.add_mutually_exclusive_group()
     source.add_argument('--validated-counter',type=Path)
     source.add_argument('--metadata',type=Path)
+    parser.add_argument('--receipt-batch-size',type=int,default=64,
+                        help='Receipt keys per native metadata batch (1..1024; default 64)')
     parser.add_argument('--existing',type=Path)
     parser.add_argument('--old-index',type=Path)
     parser.add_argument('--engine-config',default=os.environ.get('DOCSPEC_JOB_CONFIG'))
@@ -34,6 +36,8 @@ def main(argv=None):
         help='Explicitly create the namespace while creating the table; omit for an existing namespace')
     parser.add_argument('--table-location',type=Path)
     args=parser.parse_args(argv)
+    if not 1<=args.receipt_batch_size<=1024:
+        parser.error('--receipt-batch-size must be between 1 and 1024')
     if not args.engine_config:
         parser.error('An explicit pinned engine configuration is required')
     if args.apply and (not args.catalog_root or not args.table):
@@ -74,7 +78,8 @@ def main(argv=None):
     metadata=args.metadata
     if args.validated_counter:
         metadata=compact_counter(args.validated_counter,engine=engine,
-            work=args.work.parent/(args.work.name+'-metadata'))
+            work=args.work.parent/(args.work.name+'-metadata'),
+            receipt_keys=[f['key'] for f in normalized],receipt_batch_size=args.receipt_batch_size)
     # Native receipt file declarations accept only source key and local path;
     # listing metadata remains in the preceding inventory job for inspection.
     reader_files=[{k:item[k] for k in ('key','path') if k in item} for item in normalized]

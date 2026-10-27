@@ -13,6 +13,7 @@ import pytest
 from docspec_client.client import NativeDatasets
 from docspec_client.models import DocSpecFailure
 from congress_api.models.raw_fetch import Transfer
+from congress_api.archive_profile import build_capture_profile
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.body_store import BodyStore, LocalAdapter
 
@@ -31,14 +32,12 @@ def release(tmp_path, rows, *, entries=None):
     policy=dict(version=1,entries=entries if entries is not None else [dict(family='documents',
         patterns=[r'https://fixture\.test/[^#]*'],exclusions=[])])
     (root/'capture_scope.json').write_text(json.dumps(policy))
-    sql={}
     project=Path(__file__).resolve().parents[3]
-    for key,name in [('url_normalized','url-normalized.sql'),('url_keys','url-keys.sql')]:
-        text=(project/'model/sql'/name).read_text()
-        sql[key]=dict(text=text,sha256=hashlib.sha256(text.encode()).hexdigest())
-    (root/'capture_profile.json').write_text(json.dumps(dict(version=1,engine_revision=engine().source_revision,
-        sql=sql,url_rules=json.loads((project/'model/registries/url-rules.json').read_text()),
-        url_variants_file='url_variants.parquet')))
+    profile=build_capture_profile(engine_revision=engine().source_revision,
+        url_normalized_sql=(project/'model/sql/url-normalized.sql').read_text(),
+        url_keys_sql=(project/'model/sql/url-keys.sql').read_text(),
+        url_rules=json.loads((project/'model/registries/url-rules.json').read_text()))
+    (root/'capture_profile.json').write_text(json.dumps(profile))
     pq.write_table(pa.Table.from_pylist([],schema=pa.schema([('canonical_url',pa.string()),
         ('variant_url',pa.string())])),root/'url_variants.parquet')
     write_manifest(root)

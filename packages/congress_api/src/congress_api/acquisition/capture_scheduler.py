@@ -13,6 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.acquisition.capture_seeds import inventories
+from congress_api.archive_profile import RULE_FIELDS, validate_capture_profile
 from congress_api.acquisition.fetcher import CaptureScope, Fetcher, HostPacer
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.body_store import validate_record
@@ -186,38 +187,19 @@ def _url_binding(release,engine):
     for key,name in [('state','url_state.parquet'),('scope','capture_scope.json'),
                      ('profile','capture_profile.json'),('variants','url_variants.parquet')]:
         _identity(release[key],release['identities'][name])
-    profile=json.loads(Path(release['profile']).read_text())
-    if (not isinstance(profile,dict) or set(profile)!={'version','engine_revision','sql','url_rules','url_variants_file'}
-            or type(profile['version']) is not int or profile['version']!=1
-            or profile['url_variants_file']!='url_variants.parquet'
-            or not isinstance(profile['sql'],dict) or set(profile['sql'])!={'url_normalized','url_keys'}
-            or not isinstance(profile['url_rules'],list)):
-        raise ValueError('Invalid capture profile')
-    if profile['engine_revision']!=engine.source_revision:
-        raise ValueError('Capture profile engine revision differs from configured engine')
+    profile=validate_capture_profile(json.loads(Path(release['profile']).read_text()),
+        engine_revision=engine.source_revision)
     definitions={}
     for name in ('url_normalized','url_keys'):
-        entry=profile['sql'][name]
-        if (not isinstance(entry,dict) or set(entry)!={'text','sha256'} or not isinstance(entry['text'],str)
-                or hashlib.sha256(entry['text'].encode('utf-8')).hexdigest()!=entry['sha256']):
-            raise ValueError('Capture profile SQL hash differs')
-        definitions[name]=entry['text']
+        definitions[name]=profile['sql'][name]['text']
         override=release.get(name+'_sql')
         if override is not None:
             if not Path(override).is_file():raise ValueError('Authored url_key SQL is unavailable')
             definitions[name]=Path(override).read_text()
-    fields=('id','kind','host_pattern','pattern','replacement','decoder')
-    rules=[]
-    for row in profile['url_rules']:
-        if (not isinstance(row,dict) or not set(fields).issubset(row)
-                or any(row[name] is not None and not isinstance(row[name],str) for name in fields)
-                or not row['id'] or row['kind'] not in {'wrapper','strip'} or not row['pattern']):
-            raise ValueError('Invalid capture profile URL rule')
-        rules.append({name:row[name] for name in fields})
     inputs=release.get('url_key_inputs')
     if inputs is not None and (not isinstance(inputs,list) or any(not isinstance(item,dict) for item in inputs)):
         raise ValueError('Authored url_key profile inputs must be native input declarations')
-    binding=dict(sql=definitions,rules=rules,variants_sha256=release['identities']['url_variants.parquet']['sha256'],
+    binding=dict(sql=definitions,rules=profile['url_rules'],variants_sha256=release['identities']['url_variants.parquet']['sha256'],
         engine_revision=profile['engine_revision'],authored_inputs=inputs)
     digest=hashlib.sha256(json.dumps(binding,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
     if release.get('url_key_definition_sha256',digest)!=digest:
@@ -227,8 +209,7 @@ def _url_binding(release,engine):
 
 def _profile_inputs(release,binding,work):
     if binding['authored_inputs'] is not None:return binding['authored_inputs']
-    return [json_input(work,'url_rules',binding['rules'],**{name:'Utf8' for name in
-                ('id','kind','host_pattern','pattern','replacement','decoder')}),
+    return [json_input(work,'url_rules',binding['rules'],**{name:'Utf8' for name in RULE_FIELDS}),
             dict(name='url_variants',kind='parquet',path=str(Path(release['variants']).resolve()))]
 
 
