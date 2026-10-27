@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import socket
 from tempfile import TemporaryDirectory
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import parse_qsl, urljoin, urlsplit
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -19,6 +19,7 @@ from congress_api.retention.body_store import validate_record
 from congress_api.retention.pipeline_raw import new_run_id
 from congress_api.retention.provenance import field, json_input, parquet_output, run_job
 from congress_api.retention.receipt_writer import ReceiptWriter
+from congress_api.retention.receipt_privacy import credential_parameters
 
 ROOT = Path(__file__).resolve().parents[5]
 REGISTRY = ROOT / 'model/registries/capture-scope.json'
@@ -88,6 +89,20 @@ class CapturePolicy:
             exclude=' OR '.join(f'regexp_like({column},{_literal(pattern)})' for pattern in entry['exclusions']) or 'false'
             choices.append(f'WHEN ({include}) AND NOT ({exclude}) THEN {_literal(entry["family"])}')
         return 'CASE '+' '.join(choices)+" ELSE cast(NULL AS VARCHAR) END" if choices else 'cast(NULL AS VARCHAR)'
+
+
+def _safe_reference(value):
+    """Check URI references without resolving or rewriting their identity."""
+    if not isinstance(value,str):return False
+    try:
+        if len(value.encode('utf-8'))>16384:return False
+        validate_record(value)
+        parts=urlsplit(value)
+        names={row['parameter'].casefold() for row in credential_parameters()}
+        return (parts.username is None and parts.password is None and
+            not any(name.casefold() in names for name,_ in parse_qsl(parts.query,keep_blank_values=True)))
+    except (ValueError,UnicodeError):
+        return False
 
 
 def _identity(path,entry):
@@ -247,7 +262,7 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
     policy=CapturePolicy(release['scope'],resolve=resolve);policy.require_capture()
     archive_limits=archive_limits or ZipLimits();hops=14 if provider is not None else 7
     stats=dict(release_id=release['release_id'],as_of=as_of,run_id=new_run_id(),requests=0,
-        fetched_bytes=0,captures=0,receipts=[],refusals=[],discovery_errors=[],cutoffs=[],
+        fetched_bytes=0,captures=0,receipts=[],refusals=[],discovery_errors=[],discovery_refused=0,cutoffs=[],
         budgets=dict(requests=request_budget,bytes=byte_budget,spool=spool_budget),spool_reserved_bound=0,stop_reason=None)
     writer=ReceiptWriter(store,identity=identity,run_id=stats['run_id'],write_date=datetime.now(timezone.utc).date().isoformat(),archive_limits=archive_limits)
     attempted=work/'attempted.jsonl.gz';discovered=[];generation=0
@@ -266,7 +281,11 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
             stats['spool_reserved_bound']=max(stats['spool_reserved_bound'],reserved)
             row=next(pending,None)
             if row is None:stats['stop_reason']='queue_empty';break
-            url=row['requested_url'];validate_record(url)
+            url=row['requested_url']
+            try:validate_record(url)
+            except ValueError:
+                stats['refusals'].append(dict(reason='unsafe_recorded_url'))
+                continue
             family=policy.family(url)
             if family is None:
                 stats['refusals'].append(dict(url=url,reason='outside_capture_scope'));continue
@@ -294,8 +313,13 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
                         if facts['status']!='completed':
                             stats['discovery_errors'].append(dict(url=url,reason=facts['error_type']))
                         else:
-                            links=[dict(href=link['href'],base_href=facts['base_href'],context=result.final.url,
-                                source=key,pointer=json.dumps([index])) for index,link in enumerate(facts['links'])]
+                            for index,link in enumerate(facts['links']):
+                                if (not _safe_reference(link['href']) or facts['base_href'] is not None
+                                        and not _safe_reference(facts['base_href'])):
+                                    stats['discovery_refused']+=1
+                                    continue
+                                links.append(dict(href=link['href'],base_href=facts['base_href'],context=result.final.url,
+                                    source=key,pointer=json.dumps([index])))
                 # The surrounding spool owns every original attempt file and
                 # removes them only after body+receipt storage has completed.
             if links:
