@@ -231,12 +231,7 @@ def test_explicit_import_category_is_not_replaced_by_display_kind(tmp_path):
 def test_basis_only_kind_cannot_invent_an_import_category(tmp_path,import_category):
     accepted,captures,registry=reconciliation_inputs(tmp_path)
     kinds=json.loads(registry.read_text());kinds[-1]['import_category']=import_category
-    if import_category is None:
-        # A display label alone supplies no category when the registry has no
-        # self-mapped category. The receipt-only row still uses an admitted alias.
-        kinds[1]['category']='archived-copy'
-        rows=pq.read_table(captures).to_pylist();rows[-1]['recovery_category']='archived-copy'
-        pq.write_table(pa.Table.from_pylist(rows),captures)
+    assert any(row['category']=='recovered_document' and row['kind']=='recovered_document' for row in kinds)
     registry.write_text(json.dumps(kinds))
     result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
         engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),decided_at=STAMP,decided_by='reconciliation')
@@ -246,10 +241,13 @@ def test_basis_only_kind_cannot_invent_an_import_category(tmp_path,import_catego
     assert result['import_counts']==dict(ready=0,unresolved=1)
 
 
-def test_registered_identity_category_admits_basis_only_import(tmp_path):
-    accepted,captures,registry=reconciliation_inputs(tmp_path)
-    kinds=json.loads(registry.read_text());kinds[-1]['import_category']=None
-    registry.write_text(json.dumps(kinds))
+def test_canonical_registry_explicitly_admits_copy_imports(tmp_path):
+    accepted,captures,_=reconciliation_inputs(tmp_path)
+    registry=Path(__file__).parents[3]/'model/registries/recovery-kinds.json'
+    kinds=json.loads(registry.read_text())
+    for basis in ('user_accepted_url_variant','verified_archive_capture','official_document_identifier'):
+        assert next(row for row in kinds if row['match_basis']==basis)['import_category']=='recovered_document'
+    assert any(row['category']=='recovered_document' and row['kind']=='recovered_document' for row in kinds)
     result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
         engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),decided_at=STAMP,decided_by='reconciliation')
     missing=pq.read_table(tmp_path/'staged'/result['missing_imports']).to_pylist()
