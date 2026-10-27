@@ -26,9 +26,7 @@ class Worker:
     def __enter__(self): return self
     def __exit__(self, *args): pass
     def parse(self, input_id, payload):
-        row = reader().read_filename(payload['filename'], payload['source_url'],
-            catalog_version=self.version, vocabularies=payload.get('vocabularies'))
-        if row['filename_date'] is not None: row['filename_date'] = row['filename_date'].isoformat()
+        row = reader().parse_payload(payload)
         return dict(status='completed', value=row)
 
 
@@ -193,7 +191,9 @@ def test_native_filename_table_preserves_schema_partition_and_noop_append(tmp_pa
     assert second['files'] == [] and first['metadata_location'] == second['metadata_location']
     metadata=json.loads(Path(first['metadata_location']).read_text())
     schema=metadata['schemas'][0]
-    assert schema['identifier-field-ids'] == [1,2,3]
+    # Iceberg represents identifier fields as a set, independent of PK sort order.
+    assert set(schema['identifier-field-ids']) == {1,2,3}
+    assert all(field['required'] for field in schema['fields'] if field['id'] in {1,2,3})
     assert metadata['format-version'] == 2 and metadata['properties']['gc.enabled'] == 'true'
     assert metadata['partition-specs'][0]['fields'][0]['source-id'] == 3
     assert [field['name'] for field in schema['fields']] == module.SCHEMA.names
@@ -236,3 +236,17 @@ def test_terminal_worker_result_stages_raw_provenance_and_rebuild_skips_it(tmp_p
         worker_factory=TerminalWorker,decided_at=STAMP,
         unreadable_files=[dict(key=key,path=result['unreadable_path'])])
     assert repeat['unreadable_key'] is None and pq.read_metadata(repeat['work_list']).num_rows == 0
+
+
+class PrematureWorker(Worker):
+    def parse(self, input_id, payload):
+        return dict(status='unreadable',reason='timeout',attempts=1)
+
+
+def test_worker_cannot_author_a_terminal_decision_before_its_second_failure(tmp_path):
+    captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
+        url='https://a.test/Bad.pdf')])
+    with pytest.raises(ValueError,match='worker result'):
+        reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'stage',
+            worker_factory=PrematureWorker,decided_at=STAMP)
+    assert not (tmp_path/'stage/raw').exists()
