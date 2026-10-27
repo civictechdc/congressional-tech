@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 
 from congress_api.retention.body_store import BODY
 from congress_api.retention.provenance import (field, parquet_output, parquet_records,
-                                               run_job as execute_job)
+                                               file_pin, run_job as execute_job)
 
 
 def selected_captures(storage):
@@ -175,7 +175,8 @@ def verify(store, *, captures, receipts, previous, engine, work, checked_at, see
             out.write(json.dumps(measured,separators=(',',':'))+'\n')
     records=work/'verification.jsonl'
     valid=not counts['missing'] and not counts['mismatches'] and not errors
-    result=dict(counts,checked=checked,content_errors=errors,valid=bool(valid),records=str(records))
+    result=dict(counts,checked=checked,content_errors=errors,valid=bool(valid),records=str(records),
+                capture_identity=captures['identity'] if native else file_pin(captures)['sha256'])
     if valid:
         # Typed native output is serialized only at the raw-record writer boundary;
         # all matching, winner selection and verification decisions remain native.
