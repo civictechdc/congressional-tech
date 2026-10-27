@@ -76,8 +76,11 @@ def decode_provider(source, destination, *, limit, chunk_bytes=CHUNK, metadata_l
         raise ValueError('Invalid provider decoding limit')
     with Path(source).open('rb') as stream, mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ) as view:
         matches = re.finditer(rb'"httpResponseBody"\s*:\s*"', view)
-        match = next(matches,None)
-        if match is None or next(matches,None) is not None:
+        match, extra = next(matches,None), next(matches,None)
+        # A regex iterator exports its input buffer until released. Drop it
+        # before any exception or mmap.close, including duplicate-key refusal.
+        del matches
+        if match is None or extra is not None:
             raise ValueError('Expected one provider response body')
         start = match.end()
         end = view.find(b'"', start)
@@ -86,7 +89,11 @@ def decode_provider(source, destination, *, limit, chunk_bytes=CHUNK, metadata_l
         metadata = json.loads(view[:start] + view[end:], object_pairs_hook=_unique_object)
         if (not isinstance(metadata, dict) or metadata.get('httpResponseBody') != ''
                 or type(metadata.get('statusCode')) is not int
-                or not 100 <= metadata['statusCode'] <= 599):
+                or not 100 <= metadata['statusCode'] <= 599
+                or not isinstance(metadata.get('url'),str)
+                or not isinstance(metadata.get('httpResponseHeaders',[]),list)
+                or any(not isinstance(item,dict) or not isinstance(item.get('name'),str)
+                       or not isinstance(item.get('value'),str) for item in metadata.get('httpResponseHeaders',[]))):
             raise ValueError('Invalid provider response metadata')
         digest, size, encoded, pending = hashlib.sha256(), 0, b'', b''
         with Path(destination).open('xb') as target:
