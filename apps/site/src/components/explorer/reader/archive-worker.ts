@@ -14,7 +14,7 @@ self.onmessage=async({data})=>{
   try{
     session??=openArchive(pointerUrl,{rawBase,releaseId,reload:releaseId=>self.postMessage({event:'reload',releaseId})}).catch(error=>{session=undefined;throw error;});
     const reader=await awaitShared(session,controller.signal),request=new URL(url,'https://archive.invalid/');
-    const args=JSON.parse(request.searchParams.get('args')||'{}');let result;
+    const args=data.payload??{};let result;
     switch(request.pathname){
       case '/info':result={releaseId:reader.releaseId,count:reader.count,facets:reader.manifest.facet_counts};break;
       case '/search':{
@@ -23,7 +23,7 @@ self.onmessage=async({data})=>{
         await displayedDates(reader,result.rows,controller.signal);
         break;
       }
-      case '/lookup':result=await displayedDates(reader,await reader.lookup(args.url),controller.signal);break;
+      case '/lookup':result=await reader.lookupRows(args.url,args.query,controller.signal);await displayedDates(reader,result.rows,controller.signal);break;
       case '/entry':{
         const index=args.key?await reader.resolve(args.key):args.index;
         if(index===null)throw new Error('This document was not found in the archive.');

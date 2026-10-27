@@ -39,7 +39,7 @@ export function createWorkerClient({createWorker, context, validate = () => {}, 
     current.onerror = current.onmessageerror = () => fail(current);
     return current;
   }
-  function request(url: string, signal?: AbortSignal): Promise<any> {
+  function request(url: string, signal?: AbortSignal, payload?: unknown): Promise<any> {
     return new Promise((resolve, reject) => {
       signal?.throwIfAborted(); const current = reader(), id = ++sequence;
       const settle = (error: unknown, value?: unknown) => {
@@ -51,7 +51,7 @@ export function createWorkerClient({createWorker, context, validate = () => {}, 
         try {current.postMessage({cancel: id});} catch {fail(current);}
       };
       pending.set(id, {url, settle}); signal?.addEventListener('abort', abort, {once: true});
-      try {current.postMessage({id, url, ...context()});} catch (error) {settle(error); fail(current);}
+      try {current.postMessage({id, url, ...context(), ...(payload===undefined?{}:{payload})});} catch (error) {settle(error); fail(current);}
     });
   }
   return {request, get pendingCount() {return pending.size;}, dispose() {disposed = true; if (worker) fail(worker);}};

@@ -43,12 +43,12 @@ function column(values: any[], isArray: boolean) {
       const offsets = new Uint32Array(values.length + 1); let length = 0;
       for (let i = 0; i < values.length; i++) { offsets[i] = length; length += (values[i] ?? []).length; } offsets[values.length] = length;
       const codes = new Uint32Array(length); let cursor = 0;
-      for (const row of values) for (const value of row ?? []) codes[cursor++] = code(value);
+      for (const row of values) for (const value of row ?? []) codes[cursor++] = code(value);lookup.clear();
       return { get: (i: number) => Array.from(codes.subarray(offsets[i], offsets[i + 1]), id => dictionary[id]),
         matches: (i: number, wanted: any[]) => { for (let j = offsets[i]; j < offsets[i + 1]; j++) if (wanted.includes(dictionary[codes[j]])) return true; return false; },
         bytes: codes.byteLength + offsets.byteLength + retainedBytes(dictionary) };
     }
-    const codes = Uint32Array.from(values, code);
+    const codes = Uint32Array.from(values, code);lookup.clear();
     return { get: (i: number) => dictionary[codes[i]], matches: (i: number, wanted: any[]) => wanted.includes(dictionary[codes[i]]), bytes: codes.byteLength + retainedBytes(dictionary) };
   }
   if(values.every(value=>typeof value==='boolean')){const codes=Uint8Array.from(values,Number);return {get:(i: number)=>Boolean(codes[i]),matches:(i: number,wanted:any[])=>wanted.includes(Boolean(codes[i])),bytes:codes.byteLength};}
@@ -230,6 +230,13 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       const binary=new Uint8Array(await crypto.subtle.digest('SHA-256',utf8.encode('lookup:'+lookupUrl(url)))).slice(0,8);
       const rows=await read('urls.parquet',undefined,undefined,{lookup_key:{$eq:binary}});
       return rows.map(item=>checkedRow(item.list_row));
+    },
+    async lookupRows(url: string,query: any={},signal?: AbortSignal){
+      signal?.throwIfAborted();const offset=query.offset??0,limit=query.limit??100;
+      if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>1000)throw new Error('Invalid archive page.');
+      const found=(await reader.lookup(url)).filter(item=>matches(item.list_row,query,''));
+      if(query.sort==='document_date')found.sort((a,b)=>(date(b.document_date)??'').localeCompare(date(a.document_date)??'')||captures(a,b));else found.sort(captures);
+      return {total:found.length,rows:found.slice(offset,offset+limit),offset,next:offset+limit<found.length?offset+limit:null};
     },
     async versions(index: number,signal?: AbortSignal){
       checkedRow(index);const keys=value('version_keys',index)??[];if(!keys.length)return [];

@@ -31,6 +31,15 @@ export function rangeFile(url, byteLength, fetcher = fetch, cache = byteCache(48
       cache.get(key); metrics.rangeHits = (metrics.rangeHits || 0) + 1;
       return item.bytes.slice(start - item.start, end - item.start);
     }
+    if(pieces.length){
+      const gaps:number[][]=[];let cursor=start;
+      for(const item of pieces){if(item.start>cursor)gaps.push([cursor,Math.min(item.start,end)]);cursor=Math.max(cursor,Math.min(item.end,end));}
+      if(cursor<end)gaps.push([cursor,end]);
+      const loaded=await Promise.all(gaps.map(async([left,right])=>({start:left,end:right,bytes:await slice(left,right,signal)})));
+      const result=new Uint8Array(end-start);
+      for(const item of [...pieces,...loaded]){const left=Math.max(start,item.start),right=Math.min(end,item.end);if(left<right)result.set(new Uint8Array(item.bytes,left-item.start,right-left),left-start);}
+      const bytes=result.buffer;cache.set(`${url}:${start}/${end}`,{url,start,end,bytes},bytes.byteLength);return bytes;
+    }
     const key = `${url}:${start}/${end}`;
     const bytes = await sharedLoad(pending, key, async () => {
       const response = await fetcher(url, { headers: { Range: `bytes=${start}-${end - 1}` } });
