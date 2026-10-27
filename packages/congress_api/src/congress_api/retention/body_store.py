@@ -18,6 +18,10 @@ RAW_PREFIXES = ('bodies/', 'receipts/', 'provenance/')
 BODY = re.compile(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})(\.gz|\.pdf)?')
 
 
+class RawNameCollision(RuntimeError):
+    """A receipt or provenance key was reused; the existing object is preserved."""
+
+
 @dataclass(frozen=True)
 class WriteResult:
     outcome: str
@@ -90,7 +94,7 @@ def prepare_stored(key, source, *, operation='create', body_identity=True):
 def write_result(key, created, *, md5, size):
     suffix = '.gz' if key.endswith('.gz') else '.pdf' if key.endswith('.pdf') else ''
     if not created and not key.startswith('bodies/'):
-        raise RuntimeError(f'Concurrent update or reused receipt name: {key}')
+        raise RawNameCollision(f'Concurrent update or reused receipt name: {key}')
     return WriteResult('stored' if created else 'unchanged', suffix,
                        md5 if created else None, size if created else None)
 

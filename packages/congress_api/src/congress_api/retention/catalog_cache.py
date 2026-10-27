@@ -85,10 +85,13 @@ class LocalStore:
 
     def put(self, key, data, *, immutable=None):
         from io import BytesIO
-        from congress_api.retention.body_store import RAW_PREFIXES, LocalAdapter, create_stored
+        from congress_api.retention.body_store import RAW_PREFIXES, LocalAdapter, RawNameCollision, create_stored
         if key.startswith(RAW_PREFIXES):
-            return create_stored(LocalAdapter(self.root), key, BytesIO(data), 'application/octet-stream',
-                operation='replace' if immutable is False else 'create', body_identity=False).outcome == 'stored'
+            try:
+                return create_stored(LocalAdapter(self.root), key, BytesIO(data), 'application/octet-stream',
+                    operation='replace' if immutable is False else 'create', body_identity=False).outcome == 'stored'
+            except RawNameCollision as error:
+                raise ValueError(f'Conflicting immutable object: {key}') from error
         path = self.root / key
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(dir=path.parent)
