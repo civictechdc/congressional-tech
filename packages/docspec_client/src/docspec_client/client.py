@@ -419,11 +419,20 @@ class NativeDatasets:
 
     def run_job(self, spec: Path | str) -> dict[str, Any]:
         """Run a declarative SQL job through the verified executable adapter."""
+        return self._run_spec('job', spec)
+
+    def create_file(self, spec: Path | str) -> dict[str, Any]:
+        """Transfer a known file once through the native create-only adapter."""
+        if self.remote is None:
+            raise ValueError('create-file requires explicit remote configuration')
+        return self._run_spec('create-file', spec)
+
+    def _run_spec(self, command: str, spec: Path | str) -> dict[str, Any]:
         if self.limits is None:
-            raise ValueError('SQL job requires explicit host limits')
+            raise ValueError(f'{command} requires explicit host limits')
         if self.binary_sha256 is None or self.source_revision is None:
-            raise ValueError('SQL job requires binary and source revision pins')
-        return self._call('job', '--spec', Path(spec).resolve(), remote=True)
+            raise ValueError(f'{command} requires binary and source revision pins')
+        return self._call(command, '--spec', Path(spec).resolve(), remote=True)
 
     def run_ipc(
         self,
