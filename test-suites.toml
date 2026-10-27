@@ -37,6 +37,7 @@ commit = "38f75574d217d3e4908e3f37e0c0906b1090990a"
 parser = "packages/congress_api/src/congress_api/parsers/document_cover.py"
 
 [lanes.production-offline]
+required_job_config_env = "DOCSPEC_JOB_CONFIG"
 roots = [
     "tests",
     "packages/committee_meeting/tests",

@@ -125,7 +125,32 @@ def doctor(config, lane_name=None):
             errors.append(str(error))
     if errors:
         raise ValueError('\n'.join(errors))
+    job_runtime(config, lane_name)
     print('Doctor passed.')
+
+
+def job_runtime(config, lane_name):
+    """Verify explicit local native-job setup without executing or loading secrets."""
+    variable = config['lanes'].get(lane_name, {}).get('required_job_config_env')
+    if not variable:
+        return
+    remedy = f'{variable} must name an explicit pinned local runtime; see docs/development.md'
+    location = os.environ.get(variable)
+    if not location:
+        raise ValueError(remedy)
+    try:
+        settings = json.loads(Path(location).read_text())
+        if (not isinstance(settings, dict) or 'remote' in settings or 'credentials' in settings
+                or not all(settings.get(key) for key in ('limits', 'source_revision',
+                                                         'binary_sha256', 'platform', 'build_features'))):
+            raise ValueError('local job pins and limits are required; remote/credentials are forbidden')
+        from docspec_client import NativeDatasets
+        with NativeDatasets.from_config(location) as native:
+            if native.limits is None or not native.limits.is_file():
+                raise ValueError('configured limits file is unavailable')
+            native.verify_runtime()
+    except (OSError, ValueError, TypeError) as error:
+        raise ValueError(f'{remedy}: {error}') from None
 
 
 def test(config, name, paths, pytest_args):
