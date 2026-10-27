@@ -142,3 +142,19 @@ def test_compressed_office_is_bounded_and_content_identified():
     body = gzip.compress(plain)
     row = read_sniff(Ranges(body), stored_size=len(body), stored_gzip=True)
     assert row['status'] == 'completed' and row['format'] == 'docx'
+
+
+def test_real_bounded_pdf_reader_opens_structure_without_an_end_marker():
+    from pypdf import PdfWriter
+    from congress_api.retention.sniff import read_sniff
+
+    output = BytesIO()
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    writer.write(output)
+    data = output.getvalue().replace(b'%%EOF', b'')
+    for body in (data, b'\x00\xff' + data):
+        row = read_sniff(Ranges(body), stored_size=len(body))
+        assert row['status'] == 'completed' and row['intact'] is True
+    row = read_sniff(Ranges(data[:100]), stored_size=100)
+    assert row['status'] == 'completed' and row['intact'] is False
