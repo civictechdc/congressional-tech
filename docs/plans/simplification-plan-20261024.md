@@ -60,11 +60,11 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 3. F0 and the hand-built fixture; C0; track A and track B's items 2–9 (item 8 as its one-time script), 11 and 12.
 4. Track C, then D (items 1–3 and 5), then E (the document core, [[DATA-MODEL]] §7.1–7.10, and `urls`), then F (items 1, 2, 4 and 5).
 
-Phase 1's model reads `captures`, the document `readings`, `filename_readings`, provenance and the document registries. Its releases carry `meetings.parquet` with keys only and omit the other entity files ([[DATA-MODEL]] §8.1): hearing keys come from document evidence, chambers from committee codes, `witness_keys` and transcript links are empty, a document dated only by its meeting shows no date, and an undated banded URL takes its family's shortest recheck band ([[DATA-MODEL]] §7.5, §7.7).
+Phase 1's model reads `captures`, the document `readings`, `filename_readings`, provenance and the document registries. Its releases carry `meetings.parquet` with keys only, omit the other entity files, and from the first carry `schema.json` and each file's producer and coverage in the manifest ([[DATA-MODEL]] §8.1): hearing keys come from document evidence, chambers from committee codes, `witness_keys` and transcript links are empty, a document dated only by its meeting shows no date, and an undated banded URL takes its family's shortest recheck band ([[DATA-MODEL]] §7.5, §7.7).
 
 **Phase 2, connections and one-time raw jobs,** adding files and facts. Three items can also change the document core: B13 (an unchecked PDF found broken leaves the list, and its links open the not-found notice), S2's widening and a fingerprint parser (editions can split).
-- hearings and witnesses: B14, D4, and the meeting and appearance relations ([[DATA-MODEL]] §7.11), cheap: about 60k bodies (9 GB) plus the 199,156 inline records already in the receipts;
-- the spicy-regs entities (committees, members, rosters, bills, CBO estimates, floor votes, nominations), with their pin lists and the committee explorer's move (F3–F4), after spicy-stack ss-vhi2's retention change;
+- hearings, witnesses and recordings: B14, D4, and the meeting, appearance and recording relations ([[DATA-MODEL]] §7.11), cheap: about 60k bodies (9 GB) plus the 199,156 inline records already in the receipts;
+- the spicy-regs entities (committees, members, rosters, bills, CBO estimates, floor votes, amendments, committee activities, nominations), with their pin lists and the committee explorer's move (F3–F4), after spicy-stack ss-vhi2's retention change;
 - the large raw jobs: B13 (PDF copies), B10 (full re-hash), S2's edition-count widening, and C4's dense IDs (ss-6jg6);
 - engine and tooling: export bytes independent of the runner class (ss-iwqu; phase 1 pins the runner class and limits instead), a `fingerprint` parser only if a PDF or unexpanded-ZIP candidate appears, and the review forms (B8).
 
@@ -312,13 +312,28 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 - **The freeze:** no browser or engine performance work beyond this plan until there is a user or a measured failure on real data.
 - **Committee explorer and weekly retention onto incremental tables:** the approach conflicts with the design. Re-scope it before starting.
 - **Considered, not chosen,** so not re-proposed without new information: showing the original link's last status (36,768 documents' URLs last returned 404 or 410), showing saved-file size (2,467 files over 50 MB), and saving resolved links between publishes (revisit only if a measured reprint shows link resolution is the slow step).
+- **The MCP coverage tasks** (`docs/youtube-coverage/congressional-explorer-mcp-data-coverage-tasks.md`, a proposal): its producer fixes (tasks 1–10) may land on today's exporter so the MCP gains them before the switch, as work the switch deletes; the target covers each, and the switch checks it does:
+
+  | Task | Covered by |
+  |---|---|
+  | 1 identifiers, 9 coverage | [[DATA-MODEL]] §8–9: native keys, `schema.json`, the manifest's producer and coverage |
+  | 2–3 participants, ownership | D4 and [[DATA-MODEL]] §7.11, unnamed witnesses kept apart |
+  | 4 legislative items | `subject_keys`; spicy-regs amendments and committee activities; markup votes parked below |
+  | 5 committee history | spicy-regs `committees`; its other fields are spicy-regs' to add |
+  | 6 sittings, versions | `sittings`, editions, `version_keys`, alternates |
+  | 7 file and text catalog | `recordings`; recoveries and reviews in the same release |
+  | 8 reference data | Not covered: archive routes, session dates and chamber control, channel mappings |
+  | 10 replay and rebuild | The switch: everything rebuilt from raw, parity by cause |
+  | 11–15 the two MCP servers | Their own plan, reading release manifests; full research tables are decided then |
+
 - **Parquet variant for the folds:** revisit when all three hold:
   - an iceberg-rust release writes variant through its Parquet writer (0.10.1, the pinned release, has none; 0.11 is expected to add it);
   - Basin Catalog accepts format-version 3 tables;
   - DataFusion core or a maintained crate can query variant.
 
   The candidates are nested, mixed-type readings such as Congress.gov API JSON and MODS or meeting XML trees.
-- **Caption text as a spoken transcript:** the captions are linked by `video_key` and held in raw (99% of Senate meeting videos in the 118th–119th Congresses); assembling them into timestamped, searchable text is full-text work beside `pdf_text`.
+- **Structured transcripts:** the captions and subtitles are held in raw and, in phase 2, listed per recording (99% of Senate meeting videos in the 118th–119th Congresses have them); turning them and the printed transcripts (`pdf_text`) into timed speaker turns is full-text work. Such a reading can also name witnesses a source left unnamed, as attributes that never move a `witness_key` ([[DATA-MODEL]] §7.11).
+- **Committee markup votes:** spicy-regs has amendments and committee activities but no committee vote tallies; the House committee repository is the source if one is needed.
 - **Full-text extraction of every PDF:** one later read of about 403 GB into `pdf_text` ([[DATA-MODEL]] §6.6). It gives page counts and text fingerprints for every PDF, which makes dedupe across sites cheap to revisit.
 
 ## 8. Uncertainties and Tests

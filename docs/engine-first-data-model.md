@@ -328,6 +328,8 @@ Committees, members, terms, current rosters, bills, CBO estimates, floor votes a
 | `committee_assignments` | `congress`, `system_code`, `bioguide_id`, `position`, `rank`, `party` | Current-Congress seats from the House Clerk's and the Senate's files |
 | `congress_bills` | `bill_id`, `title`, `short_title`, `sponsor_bioguide_id`, `introduced_date`, `latest_action_date`, `latest_action_text`, `stage`, `policy_area` | 422,011 measures from the 6th Congress, keyed by `bill_id`, an opaque string: `{congress}-{type}-{number}` with the type lowercase, as `measure_keys` writes it |
 | `bill_committees` | `bill_id`, `system_code` | The committees each bill was referred to: 286,721 rows over 167,162 bills of the 108th–119th Congresses |
+| `amendments` | `amendment_id`, `purpose`, `sponsor_bioguide_id`, `latest_action_date`, `latest_action_text`, `amended_bill_id`, `amended_amendment_id` (all strings) | Amendments to a bill or to another amendment; the 119th Congress only until spicy-regs backfills |
+| `bill_committee_activities` | `bill_id`, `system_code`, `activity_name`, `activity_date` (a UTC instant), `occurrence` | What each committee did on a bill and when (referred, hearings, markup, reported), as BILLSTATUS lists it; filling Congress by Congress |
 | `cbo_cost_estimates` | `bill_id`, `publication_id`, `pub_date`, `description` | CBO cost estimates from the 108th Congress, 913–1,666 a Congress |
 | `roll_call_votes` | `vote_id`, `chamber`, `vote_day`, `question`, `result`, `yea`, `nay`, `bill_id`, `documents` | Floor roll-call votes, House from the 101st Congress and Senate from the 108th, keyed `{congress}-{chamber}-{session}-{roll_number}`; a Senate vote's `documents` entry with `type = 'PN'` names a nomination by `number` `{number}[-{part}]`, in the vote's own Congress when the entry's is null |
 | `bill_vote_references` | `bill_id`, `congress`, `chamber`, `session`, `roll_number` | Floor votes a bill's actions name, joined to `roll_call_votes` by building that `vote_id` (19,766 of 19,766) |
@@ -394,7 +396,7 @@ Each `appearances` element:
 | `event_id` | long, nullable | The meeting, for a House witness list or a Congress.gov record. |
 | `package_id` | string, nullable | The GovInfo package, for a MODS record. |
 | `page_url` | string, nullable | The hearing page's source URL, for a Senate page. |
-| `name_key` | string | The recorded name, NFKC, casefolded, punctuation dropped, whitespace collapsed. It survives re-parsing and reordering; two spellings give two keys. |
+| `name_key` | string | The recorded name, NFKC, casefolded, punctuation dropped, whitespace collapsed. It survives re-parsing and reordering; two spellings give two keys. With no recorded name, `#` and the entry's 1-based position in the source's list, so unnamed witnesses stay apart. |
 | `name` | string, nullable | As recorded. |
 | `honorific`, `given`, `middle`, `family`, `suffix` | string, nullable | When the source splits the name (House XML). |
 | `position`, `organization`, `on_behalf_of`, `location` | string, nullable | As recorded. |
@@ -442,6 +444,8 @@ A **registry** is a versioned list a rule depends on.
 | display facts | Filename-reading fields a document page shows, by name | `detail`'s `facts` (§8.1) | profile |
 | committee codes | Filename committee code → Congress.gov system code: `hs`, `ss` and `js` prefixes, `hl` for Intelligence and the select committees, and the joint, commission and two-letter forms | `committee_keys` (§7.5) | profile |
 | meeting sources | URL patterns of meeting records (Congress.gov committee-meeting records, docs.house.gov `committee-meeting` and `witness-list` XML) and of Senate committee hearing pages | the meeting and appearance producers' work lists (§6.5, §6.7) | profile |
+| recording sources | URL patterns of caption, subtitle and playlist files, how each names its video (such as a YouTube `v` parameter or a senate.gov filename), its format, and its language and production (publisher, human or automatic) where the URL says | `recordings` (§7.11) | profile |
+| release schema | Each release file's columns with type and a one-line meaning, and each file's known coverage gaps, such as "rosters: current Congress only" | `schema.json` and the manifest's `coverage` (§8.1) | profile |
 | import runs | `run_id` and date of each bulk import run | dates (§7.4) | profile |
 | recovery kinds | `prior_access_category`, and match basis, → display kind | `recoveries` (§7.8) | profile |
 | recheck intervals | `(family, interval)` for every family, with bands by meeting age where pages change as a meeting ages | `url_state` (§7.7) | profile |
@@ -785,7 +789,13 @@ bills          := the pinned congress_bills row of every bill_id a listed docume
                   measure_keys or a meeting's subject_keys names, with its committees of
                   referral (bill_committees), its CBO estimates, and its floor votes once
                   each: votes whose bill_id is it (basis vote_record), then votes its
-                  actions name (bill_vote_references, basis bill_action)
+                  actions name (bill_vote_references, basis bill_action); its amendments,
+                  by amended_bill_id or through amended_amendment_id to the bill the
+                  chain reaches; and its committee activities, dated by §4
+recordings     := per video_key a meeting's videos names, the caption, subtitle and
+                  playlist bodies whose URLs the recording-source registry ties to it,
+                  one per (format, language, production), from its latest good fetch;
+                  a streamed track's segment files are not tracks
 nomination_id  := '{congress}-pn-{number}', plus '-{int(part)}' unless the part is 0:
                   spicy-regs' citation form (PN730-2 is 119-pn-730-2)
 nominations    := per nomination_id a meeting's subject_keys names, the pinned row whose
@@ -795,11 +805,12 @@ nominations    := per nomination_id a meeting's subject_keys names, the pinned r
 ```
 
 - No witness is matched across occasions or sources beyond the current records and the transcript link; the witness table that matches them comes later and keys on `witness_key`.
+- A name or role a later reading supplies, such as a structured transcript from captions, subtitles or `pdf_text`, is an attribute of the appearance and never part of `witness_key`, so links survive it.
 - The model reports appearances whose `name_key` differs only by a title or initial within one occasion, as input for that table, and Senate page cards with no links.
 
 ## 8. Release Files
 
-Release files are what the site and the capture job read: `list` for search, facets and sorting; `detail` for everything a document page acts on; `links` and `urls` to resolve a public link or a pasted address; `sources` and `recoveries` for where a document was published and what recovers it; the entity files for hearings, witnesses, committees, members, rosters, bills and nominations; `url_state` and `capture_scope.json` for the capture job.
+Release files are what the site and the capture job read: `list` for search, facets and sorting; `detail` for everything a document page acts on; `links` and `urls` to resolve a public link or a pasted address; `sources` and `recoveries` for where a document was published and what recovers it; the entity files for hearings, recordings, witnesses, committees, members, rosters, bills and nominations; `url_state` and `capture_scope.json` for the capture job; `schema.json` and the manifest for any other consumer, such as an MCP server.
 
 ### 8.1 Files
 
@@ -824,14 +835,16 @@ Sizes are *est.* at about 0.65M listed documents, scaled from today's 1.24M cata
 | `recoveries.parquet` | `list_row` int32, `ordinal` int32, `kind` dict, `body` fsb(32), `suffix` dict, `bytes` int64 (original size), `imported_at` date32, `recovered_url` string, `identity_note` string nullable | `(list_row, ordinal)`, ordinal in the recovery order | Ranged | 1–3 MB |
 | `meetings.parquet` | `event_id` int64, `chamber` dict nullable, `title` string nullable, `meeting_date` date32 nullable, `meeting_type` dict nullable, `session` int16 nullable, `status` dict nullable, `sittings` List<Struct<start ts, end ts, place string>> (`place`: room, building and address, comma-joined), `committees` List<Struct<system_code dict, role dict>>, `subject_keys` List<dict>, `transcripts` List<Struct<package_id string, list_row int32>>, `videos` List<Struct<name string, url string, video_key string>>; every meeting with a current record, and every meeting a listed document references (null fields when it has no record) | `event_id` | Whole; one row group | *est.* 2–4 MB |
 | `witnesses.parquet` | `witness_key` string, `occasion` dict, `event_id` int64 nullable, `package_id` string nullable, `page_url` string nullable, `name` string nullable, `position`, `organization`, `on_behalf_of`, `location`, `panel` (strings, nullable), `panel_order`, `display_order` int16 nullable, `witness_type` dict nullable, `testified` bool nullable, `bioguide_id` dict nullable | `(occasion, panel_order, display_order, witness_key)` | Whole | *est.* a few MB |
+| `recordings.parquet` | `video_key` string, `event_ids` List<int64>, `tracks` List<Struct<body fsb(32), suffix dict, format dict, language dict nullable, production dict nullable>> | `video_key` | Whole | *est.*, measured with S2 |
 | `committees.parquet` | `system_code` string, `name` string, `chamber` dict, `committee_type` dict nullable, `parent_system_code` dict nullable, `names` List<Struct<name string, start date32, end date32>>, `website` string nullable, `is_current` bool nullable | `system_code` | Whole | Under 1 MB |
 | `members.parquet` | `bioguide_id` string, `name` string, `terms` List<Struct<chamber dict, state dict, district int16, party dict, start date32, end date32>>, latest first, `cross_ids` Struct<lis, opensecrets, govtrack, icpsr, wikidata string; fec List<string>> | `bioguide_id` | Whole | *est.* about 2 MB |
 | `rosters.parquet` | `congress` int16, `system_code` dict, `bioguide_id` dict, `title` dict nullable, `rank` int16 nullable, `party` dict nullable | `(system_code, rank, bioguide_id)` | Whole | Under 1 MB |
-| `bills.parquet` | `bill_id` string, `title` string nullable, `short_title` string nullable, `sponsor_bioguide_id` dict nullable, `introduced`, `latest_action_date` date32 nullable, `latest_action_text` string nullable, `stage` dict nullable, `policy_area` dict nullable, `committees` List<dict> (system codes), `cbo_estimates` List<Struct<publication_id string, date date32, description string>>, `floor_votes` List<Struct<vote_id string, basis dict, chamber dict, date date32, question string, result string, yea int16, nay int16>> | `bill_id` | Whole | *est.* a few MB |
+| `bills.parquet` | `bill_id` string, `title` string nullable, `short_title` string nullable, `sponsor_bioguide_id` dict nullable, `introduced`, `latest_action_date` date32 nullable, `latest_action_text` string nullable, `stage` dict nullable, `policy_area` dict nullable, `committees` List<dict> (system codes), `cbo_estimates` List<Struct<publication_id string, date date32, description string>>, `floor_votes` List<Struct<vote_id string, basis dict, chamber dict, date date32, question string, result string, yea int16, nay int16>>, `amendments` List<Struct<amendment_id string, purpose string, sponsor_bioguide_id dict, latest_action_date date32, latest_action_text string>>, `committee_activities` List<Struct<system_code dict, activity dict, date date32>> | `bill_id` | Whole | *est.* a few MB |
 | `nominations.parquet` | `nomination_id` string, `description` string, `organization` string nullable, `received` date32 nullable, `latest_action_date` date32 nullable, `latest_action_text` string nullable (the outcome, such as a voice vote), `committees` List<dict>, `transcripts` List<string> (package IDs), `floor_votes` List<Struct<vote_id string, date date32, question string, result string, yea int16, nay int16>> (cloture, then confirmation, as cast) | `nomination_id` | Whole | Under 1 MB |
 | `url_state.parquet` | §7.7 | `requested_url` | Whole | 10 MB |
 | `capture_scope.json` | The capture-scope registry at the profile's version | — | Content only | Under 50 KB |
-| `manifest.json` | `schema_version`; `files[]` {name, sha256, md5, size, rows, row_range, shard}; `facet_counts` over the non-hidden rows of `list`; `release_id` | — | Deterministic, content only | 5–20 KB |
+| `schema.json` | Every file's columns, with type and meaning, from the release-schema registry | — | Content only | *est.* under 50 KB |
+| `manifest.json` | `schema_version`; `files[]` {name, sha256, md5, size, rows, row_range, shard, producer, coverage}; `facet_counts` over the non-hidden rows of `list`; `release_id` | — | Deterministic, content only | 5–20 KB |
 | `inputs/<input_digest>.json` | The input identity (§8.3); the pinned snapshot IDs, provenance set and spicy-regs generation digests; the SHA-256 of the receipt-key list; the run | — | One per input identity | About 2 KB |
 | `inputs/receipts/<sha256>.json.gz` | The sorted receipt keys the identity hashes, written once per distinct list | — | Content-addressed | *est.* under 1 MB |
 | `viewer-publications/manifest.json` (the pointer) | `release_id`, `previous_release_id` (null until the second flip) | — | — | Under 1 KB |
@@ -841,6 +854,7 @@ Sizes are *est.* at about 0.65M listed documents, scaled from today's 1.24M cata
 - `detail.parquet`: `link_key` fsb(8) (the saved body's key, or for a recovery-only document the link URL key of its first recovery in the recovery order); `saved_body` fsb(32), `saved_suffix` dict, `saved_media_type` dict, `saved_bytes` int64 (original size, which the reader reads before opening an older gzip copy); `document_date_source` dict nullable; `in_archive_since` date32 nullable; `removed_on` date32 nullable; `review_note` string nullable, `review_decided_at` date32 nullable; `src_start`, `src_len`, `rec_start`, `rec_len` int32; `alternates` List<Struct<format dict, body fsb(32), suffix dict, size int64>>; `package_id` string nullable; and `facts`, a fold of the display-facts registry's fields, dates as `YYYY-MM-DD`.
 - Nothing else is published: raw readings, every parsed field and per-copy fetch history stay in the lake, and a document's ID is recomputed, not stored. A model run at a release's inputs record reproduces it: it reads `captures` filtered to the recorded receipt keys and every other table at the pinned versions, which no kept release's table versions drop (§6), so snapshot expiry does not matter.
 - `detail` and `sources` MAY be split into fixed row-range shards, which the manifest lists with their ranges; the export writes none until [[ARCHITECTURE]] §10.1's growth rule calls for them.
+- `producer` is `archive`, or `spicy-regs` with the generation digests the file is built from (`committees` through `nominations`), so a consumer of both projects never takes a spicy-regs fact back as the archive's. `coverage` is the file's Congress and date range over its rows, with the release-schema registry's gaps for it.
 - A release MAY omit the entity files (`witnesses` through `nominations`) or carry `meetings` with keys only; the manifest lists what it has, and the reader offers a connection only when its file is present.
 
 ### 8.2 `link_key`
@@ -935,7 +949,7 @@ A conforming implementation MUST satisfy, and SHOULD test, each of the following
 16. `list` is sorted by its order, unique and not empty.
 17. The source and recovery ranges partition their files exactly; a recovery-only document's recovery range is not empty.
 18. Every `link_key` resolves to exactly one row, and keys are unique; a link URL key resolves by the attachment rule; every lookup key names at least one row.
-19. Manifest digests equal the uploaded objects'; the release ID recomputes (§8.3); facet counts equal counts over the non-hidden rows of `list`; an inputs record exists; `url_state` decodes; the pointer's `release_id`, and `previous_release_id` when set, name releases whose files exist.
+19. Manifest digests equal the uploaded objects'; every file names its producer, and `schema.json` describes exactly the columns each file carries; the release ID recomputes (§8.3); facet counts equal counts over the non-hidden rows of `list`; an inputs record exists; `url_state` decodes; the pointer's `release_id`, and `previous_release_id` when set, name releases whose files exist.
 
 ## 11. References
 
