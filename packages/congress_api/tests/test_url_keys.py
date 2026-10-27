@@ -28,7 +28,8 @@ def execute(tmp_path, cases, variants=()):
 def test_native_url_keys_preserve_exact_urls_and_normalize_only_join_keys(tmp_path):
     cases=json.loads((ROOT/'model/fixtures/url-key-cases.json').read_text())
     result=execute(tmp_path,cases)
-    assert result==[dict(input_id=c['id'],url=c['url'],url_key=c['key'],error=c.get('error'))
+    assert result==[dict(input_id=c['id'],url=c['url'],url_key=c['key'],error=c.get('error'),
+                        still_wrapped=c.get('still_wrapped',False))
                    for c in sorted(cases,key=lambda c:c['id'])]
 
 
@@ -36,7 +37,7 @@ def test_normalized_variant_is_substituted_once(tmp_path):
     case=dict(id='one',url='http://www.example.gov/alias/')
     result=execute(tmp_path,[case],[dict(variant_url='https://example.gov/alias',
                                       canonical_url='https://example.gov/Canonical')])
-    assert result==[dict(input_id='one',url=case['url'],url_key='example.gov/Canonical',error=None)]
+    assert result==[dict(input_id='one',url=case['url'],url_key='example.gov/Canonical',error=None,still_wrapped=False)]
 
 
 @pytest.mark.parametrize('variants,error', [
@@ -47,4 +48,4 @@ def test_invalid_variant_graph_refuses_usable_join_keys(tmp_path,variants,error)
     records=[dict(variant_url='https://example.gov/'+a,canonical_url='https://example.gov/'+b)
              for a,b in variants]
     result=execute(tmp_path,[dict(id='one',url='https://example.gov/a')],records)
-    assert result==[dict(input_id='one',url='https://example.gov/a',url_key=None,error=error)]
+    assert result==[dict(input_id='one',url='https://example.gov/a',url_key=None,error=error,still_wrapped=False)]
