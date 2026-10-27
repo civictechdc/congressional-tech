@@ -57,6 +57,8 @@ def test_unexplained_receipt_fact_change_is_not_accepted_as_restoration(tmp_path
     report=compare_old(new,old,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
                        work=tmp_path/'comparison')
     assert report['unexplained']==1 and report['owner_gate'] is True
+    [changed]=pq.read_table(tmp_path/'comparison/changed-fields.parquet').to_pylist()
+    assert (changed['old_bytes'],changed['new_bytes'])==(100,99)
 
 
 @pytest.mark.parametrize('old_time,new_time,expected,unexplained,reason', [
