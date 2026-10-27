@@ -122,17 +122,25 @@ class HostPacer:
         if any(not isinstance(v,(int,float)) or not math.isfinite(v) or v < 0 for v in values):
             raise ValueError('Host pacing values must be finite and nonnegative')
         self.clock,self.sleep,self.utc_now = clock or time.monotonic,sleep or time.sleep,utc_now or time.time
-        self.lock,self.deadlines = threading.Lock(),{}
+        self.lock,self.deadlines,self.starts = threading.Lock(),{},{}
+        self.new_lock = threading.Lock
 
     def __call__(self,url,transport):
         host = urlsplit(url).hostname
         key = (host,transport)
         gap = self.provider_gap if transport == 'zyte' else self.hosts.get(host,{}).get('gap_seconds',self.default_gap)
         with self.lock:
-            delay = max(0,self.deadlines.get(key,0)-self.clock())
-            if delay:
+            gate = self.starts.setdefault(key,self.new_lock())
+        # Serialize starts for this host only. Observations use the short
+        # deadline lock and may extend a wait while this caller is asleep.
+        with gate:
+            while True:
+                with self.lock:
+                    delay = max(0,self.deadlines.get(key,0)-self.clock())
+                    if not delay:
+                        self.deadlines[key] = self.clock()+gap
+                        return
                 self.sleep(delay)
-            self.deadlines[key] = self.clock()+gap
 
     def observe(self,url,transport,status,headers):
         from email.utils import parsedate_to_datetime
