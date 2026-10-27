@@ -3,7 +3,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 
-from congress_api.retention.provenance import parquet_output, run_job, json_input
+from congress_api.retention.provenance import parquet_output, run_job, json_input, file_pin
 from congress_api.lake.receipt_metadata import get, lit as literal
 
 
@@ -64,9 +64,10 @@ def fetch_time(value):
     return stamp(*fields, get(value, 'capture_date'))
 
 
-def compact_counter(counter, *, engine, work):
-    from congress_api.lake.receipt_metadata import compact
-    return compact(counter=counter,engine=engine,work=work)
+def compact_counter(counter, *, engine, work, receipt_keys=None, receipt_batch_size=64):
+    from congress_api.lake.receipt_metadata import compact_counter as compact
+    return compact(counter,engine=engine,work=work,receipt_keys=receipt_keys,
+                   receipt_batch_size=receipt_batch_size)
 
 
 def mapping_steps(*, existing=False):
@@ -245,7 +246,8 @@ def mapping_steps(*, existing=False):
     for name in ('retrieved_at', 'retry_after', 'imported_at'):
         columns[name] = f"arrow_cast({columns[name]}, 'Timestamp(Microsecond, Some(\"UTC\"))')"
     step('capture_facts', 'SELECT '+','.join(f'{columns[k]} AS "{k}"' for k in COLUMNS)
-         + ',reference_kind,pointer_json,body_key,unknown_mode,unknown_outcome FROM attempt_facts')
+         + ',reference_kind,pointer_json,body_key,unknown_mode,unknown_outcome FROM attempt_facts',
+         materialize=True)
     return steps
 
 
@@ -261,9 +263,19 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
     keys = [f['key'] for f in files]
     if len(keys) != len(set(keys)) or any(not k.startswith('receipts/') for k in keys):
         raise ValueError('Receipt inventory needs unique raw receipt keys')
+    if existing is not None:
+        from congress_api.lake.receipt_inventory import select_receipts
+        files=select_receipts(files,existing,engine=engine,work=work/'inventory')
+        keys=[f['key'] for f in files]
+    if not files:
+        raise ValueError('No missing receipt keys to stage')
     if counter is None:
         from congress_api.lake.receipt_metadata import compact
-        counter=compact(files=files,engine=engine,work=work/'receipt-metadata')
+        reader_files=[{k:f[k] for k in ('key','path')} for f in files]
+        counter=compact(files=reader_files,engine=engine,work=work/'receipt-metadata')
+    from congress_api.lake.receipt_metadata import validate_metadata
+    metadata=validate_metadata(counter)
+    metadata_pin=file_pin(Path(counter).resolve().parent/'metadata.json')
     inputs = [dict(name='receipts',kind='parquet',path=str(Path(counter).resolve()))]
     inputs.append(json_input(work,'selected_receipts',[dict(receipt_key=k) for k in keys],
                              receipt_key='Utf8'))
@@ -306,5 +318,8 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
     if mapping_digest != sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest():
         raise ValueError('Receipt mapping changed while staging; accepted inventory was not written')
     (work/'ingested-receipts.json').write_text(json.dumps(dict(version=1,
-        mapping_digest=mapping_digest, receipt_keys=[r['receipt_key'] for r in accepted['receipts']]), indent=2)+'\n')
+        mapping_digest=mapping_digest, metadata=metadata_pin,
+        metadata_producer=metadata['producer'],
+        engine=dict(source_revision=engine.source_revision,binary_sha256=engine.binary_sha256),
+        receipt_keys=[r['receipt_key'] for r in accepted['receipts']]), indent=2)+'\n')
     return work
