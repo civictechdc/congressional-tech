@@ -118,7 +118,7 @@ def compact_counter(counter, *, engine, work):
     return work/'receipt-metadata.parquet'
 
 
-def mapping_steps(*, existing=False, canonical_json=False, counter=False):
+def mapping_steps(*, existing=False, counter=False):
     steps = []
     def step(name, sql, materialize=False):
         steps.append(dict(name=name, sql=sql, materialize=materialize))
@@ -169,6 +169,16 @@ def mapping_steps(*, existing=False, canonical_json=False, counter=False):
     step('records', f'''SELECT *,CASE WHEN left(ltrim(record_value),1)='['
         THEN array_element({get('record_value',kind='array')},cast({pointer_index} AS BIGINT)+1)
         ELSE record_value END AS record FROM enriched''')
+    step('header_entries', f'''SELECT receipt_key,receipt_line,capture_index,
+        unnest(coalesce({get('line','response_header_items',kind='array')},
+                        {get('record','response_header_items',kind='array')},
+                        {get('record','headers',kind='array')})) AS item FROM records''')
+    step('item_headers', '''SELECT receipt_key,receipt_line,capture_index,
+        max(CASE WHEN lower(json_get_str(item,'name'))='content-disposition'
+            THEN json_get_str(item,'value') END) AS item_disposition,
+        max(CASE WHEN lower(json_get_str(item,'name'))='retry-after'
+            THEN json_get_str(item,'value') END) AS item_retry
+        FROM header_entries GROUP BY receipt_key,receipt_line,capture_index''')
     def both(*path, kind='str'):
         return first(get('line', *path, kind=kind), get('record', *path, kind=kind))
     def num(*path):
@@ -177,7 +187,7 @@ def mapping_steps(*, existing=False, canonical_json=False, counter=False):
     association = get('record', 'source_associations', 0, kind='json')
     root_headers = both('response_headers', kind='json')
     headers = first(root_headers, get('record', 'headers', kind='json'))
-    step('facts', f'''SELECT *,{recovery} AS recovery,
+    step('facts', f'''SELECT r.*,h.item_disposition,h.item_retry,{recovery} AS recovery,
         {association} AS association,{headers} AS headers,
         {both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
         {first(get('line','http_status',kind='int'),get('line','status_code',kind='int'),get('record','http_status',kind='int'),get('record','status_code',kind='int'))} AS line_status,
@@ -187,10 +197,15 @@ def mapping_steps(*, existing=False, canonical_json=False, counter=False):
         {first(get('line','run_id'),get('line','source_file'),get('record','source_file'))} AS source_run,
         {first(get('line','requested_url'),get('record','requested_url'),get('record','_url'),get('record','url'),get('line','url'),get('record','final_url'),get('record','resolved_url'),get('record','source_url'))} AS requested,
         {first(get('line','url'),get('record','url'),get('record','_url'),get('record','final_url'),get('record','resolved_url'),get('record','source_url'))} AS final_url
-        FROM records''')
+        FROM records r LEFT JOIN item_headers h USING(receipt_key,receipt_line,capture_index)''')
     modes = ','.join(literal(v) for v in sorted(LEGACY_MODES))
     outcomes = ','.join(literal(v) for v in sorted(LEGACY_OUTCOMES))
-    cases = ' '.join('WHEN '+literal(k)+' THEN '+literal(v) for k,v in LEGACY_OUTCOMES.items())
+    # Ordinary old labels describe content/inspection, not transfer success.
+    # Status and body presence decide those rows; explicit transfer failures keep
+    # their distinct incomplete/retry meaning.
+    transfer = {'retry_later','request_failed','size_limit','stored','unchanged'}
+    cases = ' '.join('WHEN '+literal(k)+' THEN '+literal(v if v in transfer else 'derive')
+                     for k,v in LEGACY_OUTCOMES.items())
     step('mapped', f'''SELECT *,
         CASE WHEN raw_mode='retained_import' OR recovery IS NOT NULL
              OR {get('association','original_url')} IS NOT NULL THEN 'retained_import'
@@ -200,7 +215,7 @@ def mapping_steps(*, existing=False, canonical_json=False, counter=False):
         (raw_outcome IS NOT NULL AND raw_outcome NOT IN ({outcomes})) AS unknown_outcome,
         {first(integer('entry','attempt'),'0')} AS attempt,
         {first(integer('entry','bytes'),integer('entry','size'))} AS body_bytes,
-        {get('entry','pointer',kind='json')} AS pointer_json,
+        {first(get('entry','pointer',kind='json'),get('entry','pointer_json'))} AS pointer_json,
         {get('entry','body_key')} AS body_key
         FROM facts''')
     attempt_status = first(integer('entry','http_status'), integer('entry','status_code'),
@@ -208,14 +223,15 @@ def mapping_steps(*, existing=False, canonical_json=False, counter=False):
     final_complete = first(get('entry','complete',kind='bool'),
         "CASE WHEN attempt=0 THEN coalesce(json_get_bool(line,'complete'),json_get_bool(record,'complete')) END",
         "NOT (coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))")
-    source_sha = ("decode(sha256(json_canonical(coalesce(json_get_json(record,'meeting'),record))),'hex')"
-                  if canonical_json else "arrow_cast(NULL,'FixedSizeBinary(32)')")
+    source_sha = "arrow_cast(sha256(json_canonical(coalesce(json_get_json(record,'meeting'),record))), 'FixedSizeBinary(32)')"
+    retry = first(get('headers','retry-after'), get('headers','Retry-After'), 'item_retry')
     columns = dict(
         receipt_key='receipt_key', receipt_line='cast(receipt_line AS INT)',
         capture_index='cast(capture_index AS INT)', run_id='source_run', mode='capture_mode',
-        outcome="""CASE WHEN line_status IN (429,503) OR json_get_str(headers,'retry-after') IS NOT NULL THEN 'retry_later'
+        outcome=f"""CASE WHEN line_status IN (429,503) OR {retry} IS NOT NULL THEN 'retry_later'
+            WHEN line_status=304 THEN 'unchanged'
             WHEN mapped_outcome<>'derive' THEN mapped_outcome
-            WHEN line_status BETWEEN 200 AND 299 OR (line_status IS NULL AND body_sha IS NOT NULL)
+            WHEN body_sha IS NOT NULL AND (line_status BETWEEN 200 AND 299 OR line_status IS NULL)
             THEN 'stored' ELSE 'failed' END""",
         family='entry_family', requested_url='requested', url='final_url',
         record_sha=f"CASE WHEN line_family='congress/meetings' AND body_sha IS NULL THEN {source_sha} ELSE arrow_cast(NULL,'FixedSizeBinary(32)') END",
@@ -226,8 +242,8 @@ def mapping_steps(*, existing=False, canonical_json=False, counter=False):
             "CASE WHEN position('archive_members' IN coalesce(pointer_json,''))>0 AND reference_kind='capture' THEN json_get_str(entry,'original_path') END"),
         expansion=first(get('entry','expansion'),
             "CASE WHEN coalesce(json_length(record,'archive_members'),json_get_int(line,'archive_member_count'),0)>0 AND position('archive_members' IN coalesce(pointer_json,''))=0 THEN 'expanded' END"),
-        h_content_disposition=first(get('headers','content-disposition'), get('headers','Content-Disposition')),
-        retry_after="CASE WHEN try_cast(json_get_str(headers,'retry-after') AS BIGINT) IS NOT NULL THEN to_timestamp_micros(cast(extract(epoch FROM fetched)*1000000 AS BIGINT)+try_cast(json_get_str(headers,'retry-after') AS BIGINT)*1000000) ELSE try_cast(json_get_str(headers,'retry-after') AS TIMESTAMP WITH TIME ZONE) END",
+        h_content_disposition=first(get('headers','content-disposition'), get('headers','Content-Disposition'),'item_disposition'),
+        retry_after=f"CASE WHEN try_cast({retry} AS BIGINT) IS NOT NULL THEN to_timestamp_micros(cast(extract(epoch FROM fetched)*1000000 AS BIGINT)+try_cast({retry} AS BIGINT)*1000000) ELSE try_cast({retry} AS TIMESTAMP WITH TIME ZONE) END",
         retrieved_at='fetched', sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')", bytes='body_bytes',
         media_type=get('entry','media_type'), fidelity=get('entry','fidelity'),
         sniffed_format=get('entry','sniffed_format'), sniff_version=get('entry','sniff_version'),
@@ -250,7 +266,7 @@ def mapping_steps(*, existing=False, canonical_json=False, counter=False):
     return steps
 
 
-def stage_captures(files, *, engine, work, existing=None, canonical_json=False, counter=None):
+def stage_captures(files, *, engine, work, existing=None, counter=None):
     """Create immutable local staging, refusing unknown vocabularies or lost bodies.
 
     Table appends are a separate explicit engine operation. A failed native read
@@ -274,13 +290,20 @@ def stage_captures(files, *, engine, work, existing=None, canonical_json=False, 
         AND s.body_key=json_get_str(p.entry,'body_key') AND s.sha=json_get_str(p.entry,'sha256')
         WHERE s.sha IS NOT NULL UNION ALL
         SELECT receipt_key,receipt_line,'secondary storage conflict' AS reason FROM secondary
-        WHERE size_variants>1 OR md5_variants>1 LIMIT 1''')]
+        WHERE size_variants>1 OR md5_variants>1 LIMIT 1'''),
+        dict(name='list_facts',sql='''SELECT receipt_key,receipt_line,'list record conflicting facts' AS reason
+            FROM (SELECT receipt_key,receipt_line,unnest(json_get_array(record_value)) AS item
+                  FROM primary_entries WHERE reference_kind='line' AND left(ltrim(record_value),1)='[')
+            GROUP BY receipt_key,receipt_line HAVING
+                count(DISTINCT coalesce(json_get_str(item,'url'),json_get_str(item,'requested_url')))>1
+                OR count(DISTINCT coalesce(json_get_int(item,'http_status'),json_get_int(item,'status_code')))>1
+                OR count(DISTINCT coalesce(json_get_str(item,'retrieved_at'),json_get_str(item,'captured_at'),json_get_str(item,'observed_at')))>1
+            LIMIT 1''')]
     results = run_job(work, engine, inputs=inputs,
-        steps=mapping_steps(existing=existing is not None, canonical_json=canonical_json,
-                            counter=counter is not None),
+        steps=mapping_steps(existing=existing is not None, counter=counter is not None),
         outputs=[parquet_output(work, 'capture-evidence', 'SELECT * FROM capture_facts', PK)],
         queries=checks)
-    for name in ('invalid', 'secondary'):
+    for name in ('invalid', 'secondary', 'list_facts'):
         if results[name]:
             row = results[name][0]
             raise ValueError(f"{row['reason']}: {row['receipt_key']}:{row['receipt_line']}")
