@@ -15,3 +15,9 @@ tags: [engine-first, raw]
 
 Explicit scope and pacing policies; bounded file-backed transfers; typed receipts after bodies; archive refusal facts; focused contract suite passes.
 
+
+## Notes
+
+**2026-10-27T14:08:16Z**
+
+Core components implemented through be8605b0; required contracts landed first. Focused B2 group: 114 passed, 1 duplicate-member fixture warning. No live jobs/credentials/network writes. Independent code and architecture review pending with raw parent; leave ticket open. Evidence docs/measurements/engine-first-20261027/b2/README.md and scratch codex-raw/b2-plan/cxb_b2_group.log.
