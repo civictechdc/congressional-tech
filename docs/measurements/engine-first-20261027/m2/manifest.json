@@ -1,0 +1,26 @@
+{
+  "input": "B0 verified cleaned 2289-receipt mirror",
+  "binary": "ccada94c7762adbf5a3320cd15793ce2f30d691a7670332512dda822d9c13331",
+  "files": {
+    "field_presence_census.parquet": {
+      "sha256": "88fac50948418492405fe6fa5fc64d3f479be14f1d6cd8b57d218fab42f0dad1",
+      "bytes": 4209693,
+      "rows": 1547462
+    },
+    "family_shapes.parquet": {
+      "sha256": "9fe0d4a7f969cae8de06e3ed1471471b0551f110b9749639fc44a8313d1aba73",
+      "bytes": 1619,
+      "rows": 37
+    },
+    "shape_mode_outcomes.parquet": {
+      "sha256": "49140b3922a520fa17f5368243e542ea04b23b776ffb8071bf7720398a939edf",
+      "bytes": 6140,
+      "rows": 193
+    },
+    "census_field_families.parquet": {
+      "sha256": "1ec95d7b884f0ccdea1268eb9c79e3d342e68509d93adc46d7933a07f5dda5b2",
+      "bytes": 84218,
+      "rows": 11781
+    }
+  }
+}
