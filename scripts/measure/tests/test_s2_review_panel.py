@@ -43,7 +43,7 @@ def test_s2_review_panel_has_evidence_and_expected_coverage():
             assert relation['owner_question']
 
 
-def test_owner_decisions_are_a_new_version_with_the_four_applied_rules():
+def test_owner_decisions_preserve_the_sample_and_record_existing_rule_outcomes():
     import hashlib
     path=ROOT/'docs/measurements/engine-first-20261027/s2-site/sample.json'
     old=json.loads(path.read_text())
@@ -52,12 +52,15 @@ def test_owner_decisions_are_a_new_version_with_the_four_applied_rules():
     assert new['previous_version_sha256']==hashlib.sha256(path.read_bytes()).hexdigest()
     before={x['id']:x for x in old['files']}
     changed=[x for x in new['files'] if x!=before[x['id']]]
-    assert len(changed)==4
+    assert len(changed)==47
     assert all(x['reviewer']=='owner' and x['applied_rule'] and x['prior_rationale'] for x in changed)
-    assert sum(x['decision']=='owner_decision_required' for x in new['files'])==43
-    assert {x['id']:(x['decision'],x['applied_rule']) for x in changed}=={
+    assert sum(x['decision']=='owner_decision_required' for x in new['files'])==0
+    assert {x['id']:(x['decision'],x['applied_rule']) for x in changed if x['id'] in {'p059','p064','p118','p165'}}=={
         'p059':('real_document','self_contained_document'),
         'p064':('real_document','self_contained_document'),
         'p118':('download_wrapper','preview_access_pointer'),
-        'p165':('landing','metadata_pointer')}
+        'p165':('real_document','self_contained_document')}
+    assert sum(x['decision']=='real_document' for x in changed)==46
+    assert sum(x['decision']=='download_wrapper' for x in changed)==1
+    assert next(x for x in new['files'] if x['id']=='h024')['decision']=='real_document'
     assert new['bodies']==old['bodies'] and new['relationships']==old['relationships']
