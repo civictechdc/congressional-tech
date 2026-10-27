@@ -230,8 +230,8 @@ def capture_digest_matches(table, expected):
     return False
 
 
-def source_fingerprint():
-    """Source interpretation changes independently of filename and PDF-cover rules."""
+def source_fingerprint_paths():
+    """Files owned by the source interpretation fingerprint."""
     from congress_api.retention import (
         body_files, capture_inspection, catalog_availability, catalog_staging, document_index,
         document_recovery, image_tools, pdf_tools, raw_catalog,
@@ -254,10 +254,16 @@ def source_fingerprint():
             for path in Path(module.__file__).parent.rglob("*.py")
             if path.name != "document_cover.py"
         )
+    return sorted(paths)
+
+
+def source_fingerprint(*, read_bytes=None):
+    """Source interpretation changes independently of filename and PDF-cover rules."""
+    read_bytes = read_bytes or Path.read_bytes
     digest = sha256()
-    for path in sorted(paths):
+    for path in source_fingerprint_paths():
         digest.update(path.name.encode())
-        digest.update(path.read_bytes())
+        digest.update(read_bytes(path))
     return digest.hexdigest()
 
 

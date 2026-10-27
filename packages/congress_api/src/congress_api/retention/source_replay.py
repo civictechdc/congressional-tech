@@ -17,11 +17,26 @@ from .immutable_metadata import encoded
 from .raw_values import NATIVE_CAPTURE_SCHEMA
 from .source_capture_inputs import SourceCaptureInputs
 from .source_observations import SourceObservationTrace
-from .source_update_proof import source_update_requirements
+from .source_update_proof import source_update_operation, source_update_requirements
+
+
+@dataclass(frozen=True)
+class _RetainedSourceSeeds:
+    """Read-only seed snapshot; its caller keeps the owning WorkingCatalog open."""
+    _rows: DiskRows
+    sha256: str
+
+    def __iter__(self):
+        return iter(self._rows)
+
+    def __len__(self):
+        return len(self._rows)
 
 
 def retain_source_seeds(working, values):
-    """Spool ordered seed input and preserve its existing canonical fingerprint."""
+    """Spool ordered seed input once and preserve its canonical fingerprint."""
+    if isinstance(values, _RetainedSourceSeeds):
+        return values, values.sha256
     rows, digest = DiskRows(working.connection, 'requested_seeds'), sha256(b'[')
     first = True
     for value in values:
@@ -31,7 +46,8 @@ def retain_source_seeds(working, values):
         digest.update(encoded(value))
         rows.append(value)
     digest.update(b']')
-    return rows, digest.hexdigest()
+    retained = _RetainedSourceSeeds(rows, digest.hexdigest())
+    return retained, retained.sha256
 
 
 def _capture_file(path, tables):
@@ -76,6 +92,7 @@ class PreparedSourceReplay:
         self.close()
 
 
+@source_update_operation()
 def prepare_source_replay(store, *, snapshot, changes, observations, root, directory, read_body, seeds=(),
                           changed_dependencies=()):
     """Close old/new input owners before recomputing source facts.
