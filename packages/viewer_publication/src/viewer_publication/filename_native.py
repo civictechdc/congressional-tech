@@ -412,8 +412,8 @@ class NativeSourceAssets:
                 source = table.cast(written.schema_arrow)
             with ObservationCounts(source) as counts:
                 if 'source_occurrences' in schema.names:
-                    observations = typed_observations(schema, table['source_id'], lambda identity:
-                        self.dependencies.source_occurrences(self.snapshot.selection['dependency'], release, identity))
+                    occurrences = self.dependencies.source_occurrence_reader(self.snapshot.selection['dependency'], release)
+                    observations = typed_observations(schema, table['source_id'], occurrences)
                     files.update(publish_occurrence_assets(observations, folder, self.assets, counts=counts,
                         policy=self.policy, metrics=self.metrics))
                 else:

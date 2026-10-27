@@ -1,0 +1,18 @@
+{
+  "baseline": {
+    "head": "7ec869f4c6a056fdb13db6febb2bb792a9107115",
+    "source_sha256": {
+      "packages/congress_api/src/congress_api/retention/catalog_rows.py": "219c30ab09ae0da6db4b9cede0399504179ca8c2bfdf2e6e70f95983765cecfd",
+      "packages/congress_api/src/congress_api/retention/catalog_dependency_storage.py": "e81e19dacd35e752c20f9826a88902fdcc4ddc6e17b943919b70a883c9bc8422",
+      "packages/viewer_publication/src/viewer_publication/filename_native.py": "2cfa47cc02610917c03a0345fa0be9479dc6f50ae3818c728ecf72ab940cc61a"
+    }
+  },
+  "candidate": {
+    "head": "146931b328d8af5384f8540b6b5bd3b050159815",
+    "source_sha256": {
+      "packages/congress_api/src/congress_api/retention/catalog_rows.py": "c9ae3ab868d9a1c92ec2ab626af9d83f5a8382837d079b5677a903fec275c01a",
+      "packages/congress_api/src/congress_api/retention/catalog_dependency_storage.py": "9fafc8d674d18db2146b68d2ec3c7c73513a68ebecf3a61560d8b5b207c230d8",
+      "packages/viewer_publication/src/viewer_publication/filename_native.py": "5eb574f63b8fd8f9d5428fc4444dbc8b2c5e7d67299b4eb103aa992ca793d1dd"
+    }
+  }
+}
