@@ -111,3 +111,49 @@ def test_setup_fetches_only_declared_commit_then_verifies_parser(monkeypatch):
     monkeypatch.setattr(dev.subprocess, 'run', lambda *a, **kw: SimpleNamespace(stdout=source))
     assert commit in dev.baseline(config, fetch=True)
     assert ['git', 'fetch', '--no-tags', '--depth=1', 'origin', commit] in calls
+
+
+def test_native_lane_requires_one_explicit_local_runtime_before_pytest(monkeypatch):
+    monkeypatch.delenv('DOCSPEC_JOB_CONFIG', raising=False)
+    assert dev.declaration()['lanes']['production-offline']['required_job_config_env'] == 'DOCSPEC_JOB_CONFIG'
+    with pytest.raises(ValueError, match='DOCSPEC_JOB_CONFIG.*explicit.*runtime'):
+        dev.job_runtime(dev.declaration(), 'production-offline')
+
+
+@pytest.mark.parametrize('settings', [{}, {'version': 1, 'remote': 'not-to-be-opened'},
+                                     {'version': 1, 'credentials': 'not-to-be-opened'}])
+def test_native_runtime_refuses_bad_shape_and_credentials_without_loading_them(tmp_path, monkeypatch, settings):
+    import json
+    from docspec_client import NativeDatasets
+    config = tmp_path / 'runtime.json'
+    config.write_text(json.dumps(settings))
+    monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(config))
+    def forbidden(*args, **kwargs):
+        pytest.fail('configuration must refuse before credential-aware loader')
+    monkeypatch.setattr(NativeDatasets, 'from_config', forbidden)
+    with pytest.raises(ValueError, match='DOCSPEC_JOB_CONFIG'):
+        dev.job_runtime(dev.declaration(), 'production-offline')
+
+
+def test_native_runtime_verifies_pins_without_starting_engine(tmp_path, monkeypatch):
+    import json
+    from hashlib import sha256
+    binary = tmp_path / 'engine'
+    binary.write_bytes(b'\xcf\xfa\xed\xfeauthored fixture')
+    binary.chmod(0o755)
+    limits = tmp_path / 'limits.json'
+    limits.write_text('{}')
+    config = tmp_path / 'runtime.json'
+    settings = dict(version=1, binary=str(binary), workspace=str(tmp_path / 'workspace'), limits=str(limits),
+                    source_revision='1' * 40, binary_sha256=sha256(binary.read_bytes()).hexdigest(),
+                    platform='darwin-arm64', build_features=['remote'])
+    config.write_text(json.dumps(settings))
+    monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(config))
+    def forbidden(*args, **kwargs):
+        pytest.fail('preflight must not execute native code')
+    monkeypatch.setattr(dev.subprocess, 'run', forbidden)
+    dev.job_runtime(dev.declaration(), 'production-offline')
+    assert not (tmp_path / 'workspace').exists()
+    binary.write_bytes(b'changed')
+    with pytest.raises(ValueError, match='DOCSPEC_JOB_CONFIG.*approved SHA-256'):
+        dev.job_runtime(dev.declaration(), 'production-offline')
