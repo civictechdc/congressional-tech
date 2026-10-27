@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from native_test_helpers import require_native_docspec
 from types import SimpleNamespace
 
 from congress_api.retention import (
@@ -66,6 +67,7 @@ def test_weekly_table_schemas_keys_and_merges_cover_all_datasets() -> None:
 
 
 def test_incremental_meetings_and_committees_retention_tables(tmp_path: Path) -> None:
+    require_native_docspec()
     with WeeklyRetentionTables(tmp_path / "docspec-ws") as wt:
         m1 = _meeting_record("115001", title="Original Title", update_date="2026-01-10T00:00:00Z")
         m2 = _meeting_record("115002", title="Second Hearing", update_date="2026-01-11T00:00:00Z")
@@ -115,6 +117,7 @@ def test_incremental_meetings_and_committees_retention_tables(tmp_path: Path) ->
 
 
 def test_incremental_gpo_house_senate_and_youtube_tables(tmp_path: Path) -> None:
+    require_native_docspec()
     with WeeklyRetentionTables(tmp_path / "docspec-ws") as wt:
         # GPO hearings with UpdateMergeSpec latest_or_backfill
         initial_hearings = {
@@ -224,6 +227,7 @@ def test_incremental_gpo_house_senate_and_youtube_tables(tmp_path: Path) -> None
 
 
 def test_incremental_captions_transcripts_and_rejected_pages_tables(tmp_path: Path) -> None:
+    require_native_docspec()
     with WeeklyRetentionTables(tmp_path / "docspec-ws") as wt:
         # Captions: first a successful observation with kind='asr', then an error receipt
         captions.upsert_captions(
@@ -300,6 +304,7 @@ def test_incremental_captions_transcripts_and_rejected_pages_tables(tmp_path: Pa
 
 
 def test_sync_weekly_tables_cli_and_explorer_state_pack(tmp_path: Path):
+    require_native_docspec()
     import gzip
     from committee_explorer.state import pack, unpack
     from congress_api.cli import sync_weekly_tables

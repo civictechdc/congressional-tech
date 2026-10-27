@@ -5,6 +5,7 @@ import socket
 from datetime import datetime, timezone
 from hashlib import sha256
 from pathlib import Path
+from native_test_helpers import require_native_docspec
 
 import pytest
 from committee_explorer.export import export
@@ -269,6 +270,7 @@ def test_youtube_cache_export_keeps_malformed_input_failures(tmp_path, body, err
 
 
 def test_manifest_parquet_tables_and_docspec_views_resolve_every_record_and_source(tmp_path):
+    require_native_docspec()
     import pyarrow.parquet as pq
     from committee_explorer.docspec_views import (
         COMMITTEE_ROLLUP_DATASET,
@@ -354,6 +356,7 @@ def test_manifest_parquet_tables_and_docspec_views_resolve_every_record_and_sour
 
 
 def test_spilled_sources_and_sharded_docspec_publication_keep_checksums(tmp_path):
+    require_native_docspec()
     import pyarrow as pa
     import pyarrow.parquet as pq
     from committee_explorer.assemble import _SOURCE_CACHE_LIMIT, SpilledSourceSequence, _SpilledSources

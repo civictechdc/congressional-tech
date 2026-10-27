@@ -54,6 +54,21 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-python-project
+      - name: Install the approved DocSpec runtime for native fixture checks
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          CLOUDFLARE_ACCOUNT_ID: "174055408ff1560e60601c4d12c561c4"
+          DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+        run: |
+          if [[ -z "${DOCSPEC_RUNTIME_ARTIFACT:-}" || -z "${DOCSPEC_ENGINE_CREDENTIALS:-}" ]]; then
+            echo "Approved DocSpec fixture runtime unavailable: use a trusted validation run with the configured private artifact."
+            exit 1
+          fi
+          python .github/scripts/setup-native-runtime.py \
+            --directory "$RUNNER_TEMP/docspec-validation" \
+            --output "$RUNNER_TEMP/docspec-validation.json"
+          echo "DOCSPEC_BINARY=$RUNNER_TEMP/docspec-validation/docspec" >> "$GITHUB_ENV"
       - name: Test models, retained-source adapters and publication offline
         run: python scripts/dev.py test production-offline
       - name: Test active experiment fixtures and historical PDF worker
