@@ -5,10 +5,6 @@ import json
 from pathlib import Path
 import platform
 import tomllib
-import threading
-
-_source_cache = {}
-_source_lock = threading.RLock()
 
 PACKAGES = ('pyarrow', 'boto3', 'botocore', 'lxml', 'duckdb', 'zstandard', 'ijson')
 
@@ -56,19 +52,16 @@ def source_files(root):
         '.python-version', 'pyproject.toml', 'uv.lock', '.github/actions/setup-python-project/action.yml'))
     paths = sorted(path for path in paths if path.is_file())
     custody = custody_of(paths)
-    with _source_lock:
-        cached = _source_cache.get(root.resolve())
-        if cached is not None and cached[0] == custody:
-            return dict(cached[1])
-        values = {}
-        for path in paths:
-            with path.open('rb') as stream:
-                values[str(path.relative_to(root))] = hashlib.file_digest(stream, 'sha256').hexdigest()
-        after = custody_of(paths)
-        if after != custody:
-            raise ValueError('Release source changed during hashing')
-        _source_cache[root.resolve()] = (custody, values)
-        return dict(values)
+    # File metadata may remain identical across same-tick rewrites. Hash source
+    # bytes on every identity check; metadata only detects changes during a read.
+    values = {}
+    for path in paths:
+        with path.open('rb') as stream:
+            values[str(path.relative_to(root))] = hashlib.file_digest(stream, 'sha256').hexdigest()
+    after = custody_of(paths)
+    if after != custody:
+        raise ValueError('Release source changed during hashing')
+    return values
 
 
 def runtime_fingerprint(packages, python=None):
