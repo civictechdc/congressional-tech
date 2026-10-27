@@ -1,0 +1,82 @@
+[
+  {
+    "category": "recovered_document",
+    "match_basis": null,
+    "kind": "recovered_document"
+  },
+  {
+    "category": "requested_content_in_official_hearing",
+    "match_basis": null,
+    "kind": "requested_content_in_official_hearing"
+  },
+  {
+    "category": "official_updated_revision_available",
+    "match_basis": null,
+    "kind": "official_updated_revision_available"
+  },
+  {
+    "category": "official_introduced_bill_counterpart",
+    "match_basis": null,
+    "kind": "official_introduced_bill_counterpart"
+  },
+  {
+    "category": "official_recorded_votes_available",
+    "match_basis": null,
+    "kind": "official_recorded_votes_available"
+  },
+  {
+    "category": "requested_content_in_official_report",
+    "match_basis": null,
+    "kind": "requested_content_in_official_report"
+  },
+  {
+    "category": "official_complete_statement_text_available",
+    "match_basis": null,
+    "kind": "official_complete_statement_text_available"
+  },
+  {
+    "category": "official_alternate_amendment_available",
+    "match_basis": null,
+    "kind": "official_alternate_amendment_available"
+  },
+  {
+    "category": "requested_content_in_official_amendment_packet",
+    "match_basis": null,
+    "kind": "requested_content_in_official_amendment_packet"
+  },
+  {
+    "category": "same_article_publisher_text_available",
+    "match_basis": null,
+    "kind": "same_article_publisher_text_available"
+  },
+  {
+    "category": "official_public_statement_counterpart",
+    "match_basis": null,
+    "kind": "official_public_statement_counterpart"
+  },
+  {
+    "category": "official_report_counterpart_available",
+    "match_basis": null,
+    "kind": "official_report_counterpart_available"
+  },
+  {
+    "category": "related_final_report_available",
+    "match_basis": null,
+    "kind": "related_final_report_available"
+  },
+  {
+    "category": null,
+    "match_basis": "user_accepted_url_variant",
+    "kind": "recovered_document"
+  },
+  {
+    "category": null,
+    "match_basis": "verified_archive_capture",
+    "kind": "recovered_document"
+  },
+  {
+    "category": null,
+    "match_basis": "official_document_identifier",
+    "kind": "recovered_document"
+  }
+]
