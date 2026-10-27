@@ -244,3 +244,13 @@ def test_owner_inventory_lists_all_receipt_prefixes_without_writes():
     result = receipt_inventory(Client(), 'raw')
     assert result == [dict(key='receipts/a/2026-10-27/new.jsonl.gz', size=3, etag='aa'),
                       dict(key='receipts/b/undated/old.jsonl.gz', size=2, etag='bb')]
+
+
+def test_owner_final_rescan_reads_every_live_receipt_through_local_copies(tmp_path):
+    from congress_api.cli.receipt_cleanup import scan_live
+    key = 'receipts/family/undated/run.jsonl.gz'
+    store = Files({key: encode([{'url': 'https://example.gov/a', 'headers': {'etag': 'keep'}}])})
+    report = scan_live(store, tmp_path / 'mirror', [key])
+    assert report['receipts'] == 1 and report['lines'] == 1 and report['counts'] == {}
+    assert (tmp_path / 'mirror' / key).read_bytes() == store.objects[key]
+    assert store.puts == []
