@@ -81,3 +81,34 @@ test('a missing immutable file rereads the pointer exactly once',async()=>{
   await assert.rejects(reader.entry(0),/not found/i);
   assert.equal(pointerReads,2);
 });
+
+
+test('candidate selection is explicit and scans support facets, dates and cancellation',async()=>{
+  const live='ee'.repeat(32);
+  const otherPointer=async(url,options)=>new URL(url).pathname==='/manifest.json'
+    ? Response.json({release_id:live,previous_release_id:null}) : localFetch(url,options);
+  const reader=await openArchive('https://fixture.test/manifest.json',{fetcher:otherPointer,releaseId});
+  assert.equal(reader.releaseId,releaseId);
+  assert.equal(reader.count,7);
+  assert.equal((await reader.facets()).saved_kind.recovery,3);
+  assert.deepEqual((await reader.versions(3)).map(row=>row.list_row),[4,3]);
+  const signal=AbortSignal.abort();
+  await assert.rejects(reader.search({},signal));
+  await assert.rejects(reader.entry(0,signal));
+  assert.equal((await reader.entry(2)).document.hidden,true);
+});
+
+test('a changed pointer requests one reload and retries are not poisoned',async()=>{
+  let reads=0,reloaded;
+  const next='ab'.repeat(32);
+  const fetcher=async(url,options)=>{
+    if(new URL(url).pathname==='/manifest.json')return Response.json({release_id:++reads===1?releaseId:next});
+    if(String(url).endsWith('/detail.parquet'))return new Response('',{status:404});
+    return localFetch(url,options);
+  };
+  const reader=await openArchive('https://fixture.test/manifest.json',{fetcher,reload:id=>{reloaded=id;}});
+  await assert.rejects(reader.entry(0),/reload/i);
+  assert.equal(reloaded,next);assert.equal(reads,2);
+  await assert.rejects(reader.entry(0),/reload|not found/i);
+  assert.equal(reads,2);
+});
