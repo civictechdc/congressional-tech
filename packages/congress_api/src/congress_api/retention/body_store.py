@@ -3,6 +3,7 @@ from dataclasses import dataclass, replace
 import base64
 import gzip
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -43,8 +44,9 @@ def validate_record(value):
 
     def walk(node):
         if isinstance(node, str):
-            for match in URL.finditer(node):
-                parts = urlsplit(match[0])
+            urls = [node] if node.lower().startswith(('http://', 'https://')) else [m[0] for m in URL.finditer(node)]
+            for url in urls:
+                parts = urlsplit(url)
                 if parts.username is not None or parts.password is not None or any(
                         name.casefold() in names for name, _ in parse_qsl(parts.query, keep_blank_values=True)):
                     raise ValueError('Credential in recorded URL')
@@ -63,10 +65,15 @@ def create_stored(adapter, key, source, media, *, encoding=None, operation='crea
     validate_key(key, operation, body_identity=body_identity)
     if key.startswith(('receipts/', 'provenance/')):
         source.seek(0)
-        reader = gzip.GzipFile(fileobj=source) if key.endswith('.gz') else source
+        encoded = source.read(2) == b'\x1f\x8b'
+        source.seek(0)
+        reader = gzip.GzipFile(fileobj=source) if encoded else source
         try:
             for line in reader:
-                validate_record(json.loads(line))
+                # This boundary checks public URLs. The receipt writer owns JSON
+                # schema; opaque historical payloads remain valid storage inputs.
+                text = line.decode('utf-8')
+                validate_record(json.loads(text) if text.lstrip().startswith(('{', '[', '"')) else text)
         finally:
             if reader is not source:
                 reader.close()
@@ -137,9 +144,16 @@ class R2Adapter:
     def create(self, key, source, *, media, encoding, md5, size):
         from botocore.exceptions import ClientError
         options = dict(ContentEncoding=encoding) if encoding else {}
+        if key.endswith('.pdf'):
+            options.update(ContentDisposition='inline', CacheControl='public, max-age=31536000, immutable')
+        if isinstance(source, io.BytesIO):
+            body = source.getvalue()
+        else:
+            body = source
+            options['ContentLength'] = size
         try:
-            result = self.client.put_object(Bucket=self.bucket, Key=key, Body=source,
-                ContentLength=size, ContentType=media, IfNoneMatch='*',
+            result = self.client.put_object(Bucket=self.bucket, Key=key, Body=body,
+                ContentType=media, IfNoneMatch='*',
                 ContentMD5=base64.b64encode(bytes.fromhex(md5)).decode(), **options)
         except ClientError as error:
             if error.response['Error']['Code'] in {'412', 'PreconditionFailed'}:

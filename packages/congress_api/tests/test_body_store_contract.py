@@ -144,3 +144,12 @@ def test_checksum_failure_is_not_success(tmp_path):
     source.write_bytes(DATA)
     with pytest.raises(ValueError, match='checksum'):
         BodyStore(R2Adapter(Client(), 'raw')).put(KEY, source, 'application/pdf')
+
+
+def test_credential_after_apostrophe_in_recorded_url_is_refused(tmp_path):
+    path = tmp_path / 'receipt'
+    path.write_bytes(gzip.compress(json.dumps({'url': "https://docs.house.gov/a'/?api_key=secret"}).encode()))
+    adapter = Adapter()
+    with pytest.raises(ValueError, match='Credential'):
+        BodyStore(adapter).put(RECEIPT, path, 'application/x-ndjson')
+    assert adapter.calls == []
