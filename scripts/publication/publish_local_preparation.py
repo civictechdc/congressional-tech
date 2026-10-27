@@ -12,9 +12,20 @@ from pathlib import Path
 from viewer_publication import attempt, publish_viewer_r2 as publisher
 from viewer_publication.continuation import MAX_STATE_BYTES, bounded_json
 from viewer_publication.publication_cli import make_client, save_report
+from viewer_publication.local import LocalContinuation
+from viewer_publication.client import ContinuedPublicationClient
 
 RECEIPT = 'local-publication-receipt.json'
 KIND = 'local_preparation'
+LOCAL_STATE = 'local-publication-state'
+
+
+def sync_directory(path):
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
 
 
 def read_receipt(path):
@@ -30,8 +41,14 @@ def read_receipt(path):
     return value, raw
 
 
-def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False, probe=None):
-    """Use the maintained inventory, conditional publisher and remote journal."""
+def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False, probe=None, journal_mode='local'):
+    """Publish with a synced local event chain, or explicitly select remote journaling.
+
+    Keep the complete preparation directory on persistent local storage for resume.
+    The receipt binds the chosen journal authority; modes cannot be switched.
+    """
+    if journal_mode not in ('local', 'remote'):
+        raise ValueError('Unsupported local publication journal mode')
     root = Path(root).resolve(strict=True)
     receipt_path = root / RECEIPT
     with (root / '.local-publication.lock').open('ab') as lock:
@@ -55,7 +72,7 @@ def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False
             preparation = json.loads(raw)
             producer = preparation.get('artifact_producer', preparation['binding'])
             info = root.stat()
-            custody = dict(version=1, kind=KIND, directory=str(root),
+            custody = dict(version=1, kind=KIND, journal_mode=journal_mode, directory=str(root),
                 directory_identity=dict(device=info.st_dev, inode=info.st_ino),
                 preparation_sha256=prepared['preparation_sha256'], attempt=prepared['attempt'],
                 name=prepared['artifact_name'], run_id=producer['run_id'], run_attempt=producer['run_attempt'],
@@ -75,16 +92,66 @@ def publish_local(client, root, *, public_url=publisher.PUBLIC_URL, resume=False
                     stream.write(encoded)
                     stream.flush()
                     os.fsync(stream.fileno())
-                directory = os.open(root, os.O_RDONLY)
-                try:
-                    os.fsync(directory)
-                finally:
-                    os.close(directory)
+                sync_directory(root)
             return dict(custody, local_receipt_sha256=hashlib.sha256(encoded).hexdigest())
 
-        return attempt.publish(publisher, client, root, artifact={'kind': KIND},
-            public_url=public_url, resume=resume, attempt=prior.get('attempt') if prior else None,
-            verify_artifact=verify_local, **({'probe': probe} if probe is not None else {}))
+        if journal_mode == 'remote':
+            return attempt.publish(publisher, client, root, artifact={'kind': KIND},
+                public_url=public_url, resume=resume, attempt=prior.get('attempt') if prior else None,
+                verify_artifact=verify_local, **({'probe': probe} if probe is not None else {}))
+
+        verified = attempt.verify_prepared(publisher, root)
+        receipt, manifest, prepared = verified
+        if receipt['binding']['mode'] != 'full':
+            raise ValueError('Local journaling requires full preparation; select --journal-mode remote for recovery-only output')
+        custody = verify_local({'kind': KIND}, prepared)
+        state = LocalContinuation(root / LOCAL_STATE, {'custody': custody}, resume=resume)
+        # LocalContinuation syncs its journal and own directory. Persist the
+        # new state directory's entry in the preparation parent before any PUT.
+        sync_directory(root)
+        binding = receipt['binding']
+        versions = state.value['versions']
+        protected = (('indexes/catalog.json', 'source'), (publisher.ACCEPTED_KEY, 'accepted'),
+                     (publisher.PREFIX + 'manifest.json', 'viewer'))
+        if not versions:
+            versions.update({key: binding[name]['etag'] for key, name in protected})
+            state.flush()
+        if resume:
+            # A pointer may have committed before its acknowledgment was synced.
+            # Reconcile its exact bytes and version before checking selectors.
+            state.reconcile(client, publisher.BUCKET)
+
+        def check_inputs():
+            for key, name in protected:
+                current = attempt.record_input(publisher, client, key, optional=name != 'source')
+                if current['etag'] != versions[key] or (name != 'viewer' and current['value'] != binding[name]['value']):
+                    raise attempt.Superseded('Publication input changed: ' + key)
+
+        class PublicationGuard:
+            def check(self):
+                return None  # Immutable uploads remain unselected until guarded commit.
+            def shared_commit(self):
+                check_inputs()
+
+        try:
+            check_inputs()
+            guarded = ContinuedPublicationClient(client, continuation=state, guard=PublicationGuard(),
+                journal=state.record, after_write=lambda *args: None)
+            result = publisher.upload(guarded, root / 'publication', manifest,
+                previous_etag=binding['viewer']['etag'], selected_etag=binding['source']['etag'],
+                public_url=public_url, publication_plan=receipt['release_plan'], plan=verified.plan,
+                **({'probe': probe} if probe is not None else {}))
+            state.record('publication_completed', result)
+            state.save('publication-result.json', publisher.encoded(result), replace=True)
+            return dict(result, attempt=prepared['attempt'], preparation_reused=resume, journal_mode=journal_mode)
+        except BaseException as error:
+            try:
+                state.record('publication_failed', {'error_type': type(error).__name__, 'error': str(error)})
+            except BaseException as diagnostic:
+                error.add_note('Local publication diagnostic failed: ' + type(diagnostic).__name__)
+            if isinstance(error, attempt.Superseded):
+                return dict(status='superseded', reason=str(error), attempt=prepared['attempt'], journal_mode=journal_mode)
+            raise
 
 
 def main(argv=None):
@@ -92,10 +159,12 @@ def main(argv=None):
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--public-url', default=publisher.PUBLIC_URL)
     parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--journal-mode', choices=('local', 'remote'), default='local')
     parser.add_argument('--report', type=Path, required=True)
     args = parser.parse_args(argv)
     try:
-        result = publish_local(make_client(), args.directory, public_url=args.public_url, resume=args.resume)
+        result = publish_local(make_client(), args.directory, public_url=args.public_url, resume=args.resume,
+            journal_mode=args.journal_mode)
     except BaseException as error:
         try:
             save_report(args.report, dict(status='failed', error_type=type(error).__name__, error=str(error)))
