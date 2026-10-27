@@ -123,6 +123,7 @@ def test_rebuild_and_incremental_missing_receipt_equivalence(tmp_path):
                              pq.read_table(delta/'captures.parquet')]).sort_by('receipt_key')
     assert rows.equals(pq.read_table(rebuilt/'captures.parquet').sort_by('receipt_key'))
     assert pq.read_metadata(delta/'captures.parquet').num_rows == 1
+    assert json.loads((delta/'ingested-receipts.json').read_text())['receipt_keys']==[two[0]['key']]
 
 
 def test_inline_record_sha_canonical_json_required(tmp_path):
@@ -183,3 +184,38 @@ def test_exact_arrow_schema_and_unchanged_source_receipt(tmp_path):
     assert schema.field('retrieved_at').type == pa.timestamp('us', 'UTC')
     with gzip.open(tmp_path/'input/receipt.gz', 'rt') as inp:
         assert json.loads(inp.read()) == source
+
+
+def test_verified_counter_projection_keeps_raw_metadata_missing_from_typed_fields(tmp_path):
+    from congress_api.lake.captures import compact_counter, stage_captures
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    record=dict(url='https://example.org/a',http_status=200,retrieved_at=STAMP)
+    source=dict(source_file='run',record=record,captures=[body(pointer=['content','body'],
+        status_code=206,complete=False)])
+    receipt_key='receipts/documents/2026-10-20/run.jsonl.gz'
+    captures_type=pa.list_(pa.struct([('body_key',pa.string()),('sha256',pa.string()),('bytes',pa.int64())]))
+    schema=pa.schema([('source_file',pa.string()),
+        ('record',pa.struct([('url',pa.string()),('http_status',pa.int64()),('retrieved_at',pa.string())])),
+        ('captures',captures_type),('file_references',captures_type),
+        ('__receipt_key',pa.string()),('__receipt_line',pa.int64()),
+        ('__receipt_family',pa.string()),('__raw_line',pa.string()),('__type_conflicts',pa.list_(pa.string()))])
+    counter=tmp_path/'counter.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(source, __receipt_key=receipt_key,__receipt_line=1,
+        __receipt_family='documents',__raw_line=json.dumps(source),__type_conflicts=[])],schema=schema),counter)
+    metadata=compact_counter(counter,engine=engine,work=tmp_path/'compact')
+    actual=stage_captures([dict(key=receipt_key)],engine=engine,work=tmp_path/'counter-stage',counter=metadata)
+    expected=ingest(tmp_path/'direct',[source])
+    a=pq.read_table(actual/'capture-evidence.parquet')
+    b=pq.read_table(expected/'capture-evidence.parquet')
+    assert a.equals(b),([{k:(x[k],y[k]) for k in x if x[k]!=y[k]}
+        for x,y in zip(a.to_pylist(),b.to_pylist())],[(x,y) for x,y in zip(a.schema,b.schema) if x!=y])
+
+
+def test_old_prior_attempt_without_attempt_number_keeps_own_response(tmp_path):
+    stage=ingest(tmp_path,[dict(record=dict(http_status=200,retrieved_at=STAMP,
+        outcome='saved',prior_attempts=[dict(http_status=206)]),captures=[
+            dict(body(),bytes=64<<20,pointer=['prior_attempts',0,'content','body']),
+            body(pointer=['content','body'])])])
+    a,b=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert (a['attempt_status'],a['complete'])==(206,False)
+    assert (b['attempt_status'],b['complete'])==(200,True)
