@@ -166,8 +166,7 @@ def reconcile(accepted,captures,registry,*,output,engine,decided_at,decided_by):
              WHEN s.stored_suffix IS NULL THEN 'stored_suffix_not_established'
              WHEN i.category IS NULL THEN 'recovery_category_not_established' ELSE 'ready_for_owner_import' END AS status
         FROM decisions d LEFT JOIN source_candidates s ON d.original_url=s.original_url AND d.body_hex=s.body_hex AND s.ordinal=1
-        LEFT JOIN kind_registry identity_category ON identity_category.category=d.display_kind AND identity_category.kind=d.display_kind
-        LEFT JOIN kind_registry i ON i.category=coalesce(s.source_category,d.category,d.import_category,identity_category.category) AND i.kind=d.display_kind
+        LEFT JOIN kind_registry i ON i.category=coalesce(s.source_category,d.category,d.import_category) AND i.kind=d.display_kind
         WHERE d.receipt_rows IS NULL'''
     receipt_only='''SELECT c.* FROM captures c LEFT JOIN accepted a ON c.original_url=a.original_url AND c.body_hex=a.body_hex
         WHERE c.mode='retained_import' AND a.original_url IS NULL'''
