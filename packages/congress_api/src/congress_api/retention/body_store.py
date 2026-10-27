@@ -12,7 +12,7 @@ import shutil
 import tempfile
 from urllib.parse import parse_qsl, urlsplit
 
-from congress_api.retention.receipt_privacy import URL, credential_parameters
+from congress_api.retention.receipt_privacy import credential_parameters
 
 RAW_PREFIXES = ('bodies/', 'receipts/', 'provenance/')
 BODY = re.compile(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})(\.gz|\.pdf)?')
@@ -44,7 +44,8 @@ def validate_record(value):
 
     def walk(node):
         if isinstance(node, str):
-            urls = [node] if node.lower().startswith(('http://', 'https://')) else [m[0] for m in URL.finditer(node)]
+            urls = ([node] if node.lower().startswith(('http://', 'https://')) else
+                    re.findall(r'https?://[^\s<>]+',node,re.I))
             for url in urls:
                 parts = urlsplit(url)
                 if parts.username is not None or parts.password is not None or any(
