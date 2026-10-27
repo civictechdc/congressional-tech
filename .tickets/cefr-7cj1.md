@@ -1,6 +1,6 @@
 ---
 id: cefr-7cj1
-status: closed
+status: in_progress
 deps: []
 links: []
 created: 2026-10-27T21:02:06Z
@@ -26,3 +26,11 @@ Full local stage7a8c74a6 retains24028decisions,12432ready imports,0unresolved in
 **2026-10-27T21:17:22Z**
 
 CODE APPROVE and ARCH APPROVE for owner decisions ac9a747c/7a8c74a6/d560351d. Independent focused23 passed10.51s; native audit verifies all81 transitions, six excerpts/no rejections, 24 earliest fetch times and locators, immutable pins. Local restage24028 decisions/12432 ready/0unresolved. Actual body/provenance imports remain owner gated; exact commands in b7/README.md.
+
+**2026-10-27T21:33:10Z**
+
+Owner correction received212814Z after initial local approval. The57 must be superseding owner decision records, not a category-rule change; six excerpts need no change. Prior immutable stage remains unimported and is superseded as selected evidence. Planning data-only correction and reuse of existing41 source-time candidates; actual imports remain gated.
+
+**2026-10-27T21:45:19Z**
+
+Approved correction plan chooses57 explicit superseding owner records plus MIN over the retained41 candidates. Alternatives rejected: retaining generalized category/alias rules adds two permanent rules; a decision-override CLI adds a permanent path; rescanning101MB facts adds unnecessary work. Correction contracts reproduce1 category failure/2 existing-mechanism passes. Only revoked generalized feature fixture assumptions are retired; baseline assertions remain unchanged.
