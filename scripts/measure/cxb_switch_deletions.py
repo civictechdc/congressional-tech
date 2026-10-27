@@ -27,7 +27,9 @@ HARD_KEEP = [CA+'lake/', CA+'retention/body_store.py', CA+'retention/receipt_wri
     CA+'retention/raw_repair.py', CA+'acquisition/fetcher.py', CA+'acquisition/capture_scheduler.py',
     CA+'transport/raw_adapters.py', CA+'parsers/archive_readings.py', CA+'parsers/sniff.py',
     'packages/house-naming/', 'packages/news_lake/', 'apps/committee_youtube/',
-    'model/', 'apps/site/src/components/explorer/reader/archive', *SPEED_KEEP]
+    'model/', 'apps/site/src/components/explorer/reader/archive',
+    SITE+'cache.ts', SITE+'cooperative.ts',
+    'apps/site/src/components/explorer/reader/range-file.ts', *SPEED_KEEP]
 
 
 def git(repo, *args):
@@ -281,7 +283,8 @@ def seeds():
             gate='F1/E target publish active; preserve namespace firewall and lifted public canary probes'),
         group(7,'V6 preparer and local/legacy site reader',[*[VP+n+'.py' for n in v6],
             'scripts/publication/publish-filename-viewer.py','scripts/publication/filename-test-fixture.py',
-            SITE+'catalog-v6.ts',SITE+'observations.ts',SITE+'detail-record.ts',SITE+'recoveries.ts'],
+            SITE+'catalog-v6.ts',SITE+'observations.ts',SITE+'detail-record.ts',SITE+'recoveries.ts',
+            'apps/site/src/components/explorer/reader/range-file.ts'],
             partial={SITE+n+'.ts':['*manual*'] for n in 'catalog bootstrap worker startup session client publication cache cooperative types'.split()},
             gate='Track A target active; split legacy route from repurposed reader shell, retain source evidence'),
         group(8,'Old review publication',[VP+'filename_reviews.py','apps/site/scripts/stage-document-reviews.py',
@@ -649,6 +652,25 @@ def build(ct, ds, ct_rev, ds_rev):
             f['actions']=['partial_catalog_binding_split_forms_survive']
         if f['path']=='scripts/publication/pipeline_status.py':
             f['preserve_until_decided']=['heartbeat if target capture retains it']
+        if f['path']==SITE+'cache.ts':
+            f['preserve_symbols']=['byteCache','retainedBytes','awaitShared','sharedLoad']
+        if f['path']==SITE+'cooperative.ts':
+            f['preserve_symbols']=['scanBatchRows','yieldToMessages']
+        if f['path']==SITE+'client.ts':
+            f['preserve_symbols']=['CatalogWorker','createWorkerClient']
+            f['cut_symbols_after_gate']=['createFilenameClient','publicationLifecycle']
+            f['split_gate']='Migrate every old filename session caller before cutting only legacy helpers.'
+        if f['path']==SITE+'startup.ts':
+            f['preserve_symbols']=['withVerifiedBytes']
+            f['preserve_behavior']=['caller cancellation','startup deadline','byte digest verification']
+            f['preserve_until_lifted']=['withVerifiedJson until legacy review readers migrate after B8 import']
+            f['cut_symbols_after_gate']=['canonicalJson after old v6 and recovery consumers migrate']
+        if f['path']=='apps/site/src/components/explorer/reader/range-file.ts':
+            f['preserve_symbols']=['rangeFile (entire shared module)']
+            f['evidence_limits'].append('catalog-v6.ts re-exports this shared module; deleting the re-export never authorizes deleting range-file.ts.')
+        if f['repo']=='ds' and f['path']=='src/export.rs':
+            f['preserve_symbols']=['portable_schema','portable_batch']
+            f['evidence_limits'].append('The new native job export calls these helpers; parked lifecycle migration does not remove this target dependency.')
     # Explicit rewrite and speed keep inventories are accounted separately.
     rewrites=[]
     for p in ['apps/site/FILENAME-VIEWER.md','.github/workflows/raw-source-tables.md']:
@@ -675,7 +697,12 @@ def build(ct, ds, ct_rev, ds_rev):
              evidence='If site F1 deletion is merged later, regenerate and attach its actual deletion commit.'),
         dict(subject='Historical mixed tests',status='reconstructed_from_review_named_commit_below',
              baseline_files=27,baseline_wc_l=5948,
-             evidence='Original scripts/JSON were scratch-only; reconstruct the module split at the review source commit, compare its exact count and retain current drift separately.')]
+             evidence='Original scripts/JSON were scratch-only; reconstruct the module split at the review source commit, compare its exact count and retain current drift separately.'),
+        dict(subject='Site reader split',status='site_owner_keep_boundaries_recorded',
+             evidence='New archive readers retain cache/cooperative/range-file modules and worker/verified-byte helpers. Old Explorer, Listing, Evidence, RecordDetail and browse callers still require their legacy files until the switch.'),
+        dict(subject='Legacy ID fixture',status='replace_surviving_test_consumer_before_cut',
+             path='packages/congress_api/tests/test_id_golden_vectors.py',
+             evidence='The E3 fixture still imports retention.index.bipartite; migrate its consumer before cutting that source module.')]
     verify_docs={'docs/plans/bindings-20261025.md','apps/site/FILENAME-VIEWER.md',
                  '.github/workflows/raw-source-tables.md'}
     scans={repo:{p:digest(b) for p,b in data['bodies'].items()
