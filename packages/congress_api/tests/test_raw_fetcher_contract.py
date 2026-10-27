@@ -222,3 +222,29 @@ def test_range_entity_change_retains_only_incomplete_evidence(tmp_path):
     result=download_ranges(Session(),URL,tmp_path/'body',size=2,validator='"old"')
     assert not result.complete and result.error=='range_entity_changed'
     assert result.path.read_bytes()==b''
+
+
+def test_partial_http_response_is_not_a_complete_fetch(tmp_path):
+    from congress_api.transport.raw_adapters import DirectAdapter
+    class Response:
+        status_code,url,headers=206,URL,{'content-range':'bytes 0-1/10'}
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def iter_content(self,chunk_size):yield b'ab'
+    class Session:
+        def get(self,*args,**kwargs):return Response()
+    result=DirectAdapter(Session()).hop(URL,tmp_path/'body',limit=100,headers={})
+    assert not result.complete and result.error=='partial_response'
+
+
+def test_provider_combined_source_and_decoded_files_fit_spool_budget(tmp_path):
+    from congress_api.transport.raw_adapters import ProviderAdapter
+    class Response:
+        status_code=200
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def iter_content(self,chunk_size):
+            yield json.dumps({'url':URL,'statusCode':200,'httpResponseBody':base64.b64encode(b'x'*1000).decode()}).encode()
+    result=ProviderAdapter(lambda _:Response()).hop(URL,tmp_path/'body',limit=1500,headers={})
+    assert not result.complete and result.error=='size_limit'
+    assert sum(p.stat().st_size for p in tmp_path.iterdir()) <= 1500
