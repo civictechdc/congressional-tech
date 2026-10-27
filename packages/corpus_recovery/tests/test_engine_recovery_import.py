@@ -57,8 +57,7 @@ def test_invalid_recovery_refused_before_any_raw_write(tmp_path,field,value):
         import_retained(Writer(),source)
 
 
-def test_native_reconciliation_preserves_both_sides_and_missing_imports(tmp_path):
-    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+def reconciliation_inputs(tmp_path):
     one,two,three='1'*64,'2'*64,'3'*64
     accepted=tmp_path/'accepted.json'
     accepted.write_text(json.dumps(dict(version=1,recoveries=[
@@ -83,6 +82,12 @@ def test_native_reconciliation_preserves_both_sides_and_missing_imports(tmp_path
         dict(category='requested_content_in_official_hearing',match_basis=None,kind='requested_content_in_official_hearing'),
         dict(category='recovered_document',match_basis=None,kind='recovered_document'),
         dict(category=None,match_basis='verified_archive_capture',kind='recovered_document')]))
+    return accepted,captures,registry
+
+
+def test_native_reconciliation_preserves_both_sides_and_missing_imports(tmp_path):
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
     result=reconcile(accepted,captures,registry,output=tmp_path/'staged',engine=engine,
                      decided_at=STAMP,decided_by='accepted-mapping-reconciliation')
     assert result['counts']==dict(accepted=2,matched=1,accepted_only=1,receipt_only=1,
@@ -93,3 +98,28 @@ def test_native_reconciliation_preserves_both_sides_and_missing_imports(tmp_path
     missing=pq.read_table(tmp_path/'staged'/'missing-imports.parquet').to_pylist()
     assert len(missing)==1 and missing[0]['original_url']=='https://docs.house.gov/b'
     assert missing[0]['retrieved_at']=='2019-01-01T00:00:00Z'
+
+
+@pytest.mark.parametrize('category', ['unknown-category','ambiguous-category'])
+def test_unknown_or_ambiguous_categories_refuse_staging(tmp_path,category):
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
+    rows=pq.read_table(captures).to_pylist()
+    if category=='unknown-category':rows[0]['recovery_category']='unlisted'
+    else:rows.append(dict(rows[0],recovery_category='recovered_document'))
+    pq.write_table(pa.Table.from_pylist(rows),captures)
+    with pytest.raises(ValueError,match='unknown|ambiguous'):
+        reconcile(accepted,captures,registry,output=tmp_path/'staged',
+            engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+            decided_at=STAMP,decided_by='reconciliation')
+    assert not (tmp_path/'staged'/'manifest.json').exists()
+
+
+def test_missing_original_time_is_reported_without_inventing_it(tmp_path):
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
+    rows=pq.read_table(captures).to_pylist();rows[1]['retrieved_at']=None
+    pq.write_table(pa.Table.from_pylist(rows),captures)
+    result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),decided_at=STAMP,decided_by='reconciliation')
+    missing=pq.read_table(tmp_path/'staged'/result['missing_imports']).to_pylist()
+    assert missing[0]['retrieved_at'] is None
+    assert missing[0]['status']=='source_timestamp_not_established'
