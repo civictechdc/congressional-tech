@@ -18,15 +18,15 @@ from weakref import WeakValueDictionary
 CHUNK_BYTES = 1024 * 1024
 
 
-def custody_identity(path: Path | str) -> tuple[int, int, int, int, int]:
-    """Return ``(st_dev, st_ino, st_size, st_mtime_ns, st_ctime_ns)`` for a regular file."""
+def custody_identity(path: Path | str) -> tuple[int, int, int, int, int, int]:
+    """Return ``(st_dev, st_ino, st_size, st_mtime_ns, st_ctime_ns, st_nlink)`` for a regular file."""
     resolved = Path(path)
     if resolved.is_symlink():
         raise ValueError(f"Custody-verified file cannot be a symlink: {resolved}")
     stat = resolved.stat()
     if not S_ISREG(stat.st_mode):
         raise ValueError(f"Custody-verified file must be a regular file: {resolved}")
-    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+    return (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_nlink)
 
 
 class VerifiedFile(dict):
@@ -47,7 +47,7 @@ class VerifiedFile(dict):
         *,
         pid: int | None = None,
         target: Path | str | None = None,
-        identity: tuple[int, int, int, int, int] | None = None,
+        identity: tuple[int, int, int, int, int, int] | None = None,
     ) -> None:
         if isinstance(path_or_value, Mapping):
             super().__init__(path_or_value)
@@ -112,7 +112,7 @@ class VerifiedFile(dict):
     def __delattr__(self, name: str) -> None:
         raise AttributeError("VerifiedFile attributes are immutable")
 
-    def _rebind_custody(self, identity: tuple[int, int, int, int, int]) -> None:
+    def _rebind_custody(self, identity: tuple[int, int, int, int, int, int]) -> None:
         object.__setattr__(self, "identity", identity)
         object.__setattr__(self, "custody", identity)
 
@@ -147,7 +147,7 @@ def verify_local_file(
     expected_size: int | None = None,
     *,
     sha256_factory: Callable[[], Any] = sha256,
-    identity_fn: Callable[[Path | str], tuple[int, int, int, int, int]] = custody_identity,
+    identity_fn: Callable[[Path | str], tuple[int, int, int, int, int, int]] = custody_identity,
 ) -> VerifiedFile:
     """Stream-verify a local regular file and return an issued :class:`VerifiedFile`."""
     resolved_path = Path(path)

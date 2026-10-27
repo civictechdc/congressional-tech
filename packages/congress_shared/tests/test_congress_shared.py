@@ -197,3 +197,31 @@ def test_r2_config_and_connect_r2() -> None:
     assert captured["aws_secret_access_key"] == "secret-key"
     assert captured["region_name"] == "auto"
     assert "config" in captured
+
+
+@pytest.mark.parametrize("change", ["add", "remove"])
+def test_verified_file_rejects_link_changes_with_unchanged_timestamps(tmp_path, monkeypatch, change):
+    import os
+    import congress_shared.custody as custody
+
+    target = tmp_path / "verified"
+    target.write_bytes(b"unchanged payload")
+    alias = tmp_path / "alias"
+    if change == "remove":
+        os.link(target, alias)
+    original_identity = custody.custody_identity
+    def unchanged_timestamps(path):
+        identity = list(original_identity(path))
+        identity[3:5] = [1, 1]
+        return tuple(identity)
+    monkeypatch.setattr(custody, "custody_identity", unchanged_timestamps)
+    verified = custody.issue_verified_file(target, {"bytes": target.stat().st_size,
+        "sha256": sha256(target.read_bytes()).hexdigest()})
+    verified.require(target)
+    if change == "remove":
+        alias.unlink()
+    else:
+        os.link(target, alias)
+    assert target.read_bytes() == b"unchanged payload"
+    with pytest.raises(ValueError, match="custody"):
+        verified.require(target)

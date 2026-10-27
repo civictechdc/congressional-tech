@@ -234,7 +234,7 @@ def test_owned_retained_link_reuses_hash_and_bytes_and_invalidates_on_mutation(t
     assert source.stat().st_ino == destination.stat().st_ino
     assert saved.require(destination) and identity.require(source)
     source.unlink()
-    # Removing an owned alias changes ctime and conservatively invalidates reuse.
+    # Removing an owned alias changes link count, even when ctime stays unchanged.
     with pytest.raises(ValueError, match='custody'):
         saved.require(destination)
     assert destination.read_bytes() == b'owned immutable catalog bytes'
