@@ -404,8 +404,13 @@ class R2Store:
         pdf_key = physical_body_object_key(key_or_sha256, is_pdf=True)
         return self.put(pdf_key, data, immutable=True)
 
-    def put_file(self, key, path):
-        """Conditionally retain an immutable body without loading it in memory."""
+    def put_file(self, key, path, *, content_type='application/gzip', content_encoding=None, md5=None):
+        """Conditionally retain an immutable body without loading it in memory.
+
+        New-shape bodies (no key suffix) name their original media type and a
+        gzip ``content_encoding``; ``md5`` skips re-hashing a file the caller
+        just wrote. R2 still checks the sent ``Content-MD5`` against the bytes.
+        """
         from pathlib import Path
         from botocore.exceptions import ClientError
         if not key.startswith('bodies/'):
@@ -416,7 +421,7 @@ class R2Store:
                 self, key, Path(path).read_bytes(), excluded_hashes=self.excluded_body_hashes
             )
         with Path(path).open('rb') as source:
-            digest = hashlib.file_digest(source, 'md5')
+            digest = md5 or hashlib.file_digest(source, 'md5')
             import os
             length = os.fstat(source.fileno()).st_size
             source.seek(0)
@@ -428,8 +433,10 @@ class R2Store:
                     IfNoneMatch='*',
                 )
                 if key.endswith('.pdf')
-                else dict(ContentType='application/gzip', IfNoneMatch='*')
+                else dict(ContentType=content_type, IfNoneMatch='*')
             )
+            if content_encoding and not key.endswith('.pdf'):
+                extra['ContentEncoding'] = content_encoding
             try:
                 result = self.client.put_object(
                     Bucket=self.bucket, Key=key, Body=source, ContentLength=length,
