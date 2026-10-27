@@ -164,7 +164,7 @@ def test_fresh_process_restore_hashes_complete_inventory_and_refuses_corruption(
     script = '''
 import importlib.util, json, pathlib, sys
 from viewer_publication.local import LocalContinuation
-from viewer_publication.continuation import bounded_json
+from viewer_publication.local import read_local_journal
 from congress_api.retention import viewer_inventory
 from corpus_recovery.publication import prepare_viewer
 root, checkout = map(pathlib.Path, sys.argv[1:])
@@ -172,7 +172,7 @@ def load(name, path):
  spec=importlib.util.spec_from_file_location(name,path); module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);return module
 import viewer_publication.publish_viewer_r2 as publisher
 control=load('restored_plan_control',checkout/'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py')
-state=bounded_json(root/'continuation.json')
+state,_=read_local_journal(root/'events.jsonl')
 run=LocalContinuation(root,state['binding'],resume=True)
 hashes=[];original=viewer_inventory.file_identity
 viewer_inventory.file_identity=lambda path: hashes.append(str(path)) or original(path)

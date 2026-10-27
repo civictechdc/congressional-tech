@@ -20,10 +20,11 @@ from congress_api.retention.viewer_inventory import verify_inventory, issue_inve
 
 
 class PreparedVerification(tuple):
-    def __new__(cls, receipt, manifest, result, validation, plan):
+    def __new__(cls, receipt, manifest, result, validation, plan, continuation):
         value = super().__new__(cls, (receipt, manifest, result))
         value.validation = validation
         value.plan = plan
+        value.continuation = continuation
         return value
 
 
@@ -252,7 +253,7 @@ def verify_prepared(publisher, root, *, validation=None):
         source_pins=receipt['binding']['code_runtime'], release_plan=receipt['release_plan'],
         conditions=dict(previous_etag=protected['viewer'].etag, selected_etag=protected['source'].etag),
         mode=receipt['binding']['mode'])
-    return PreparedVerification(receipt, manifest, result, validation, plan)
+    return PreparedVerification(receipt, manifest, result, validation, plan, continuation)
 
 
 def github_json(route):
@@ -332,7 +333,7 @@ def publish(publisher, client, root, *, artifact, public_url, resume=False, atte
         raise ValueError('Explicit attempt differs from prepared attempt')
     if resume and attempt is None:
         raise ValueError('Explicit resume requires the original attempt identity')
-    continuation = Continuation(root, binding, resume=True)
+    continuation = verified.continuation
     versions = continuation.value['versions']
     if not versions:
         versions.update({key: binding[name]['etag'] for key, name in (

@@ -218,9 +218,6 @@ jobs:
           github-token: ${{ github.token }}
           path: viewer-preparation
           merge-multiple: true
-      - name: Verify complete preparation inventory
-        if: steps.prepare.outputs.status == 'prepared' || steps.resume.outputs.resume == 'true'
-        run: python scripts/publication/publish-viewer-r2.py verify-prepared --directory viewer-preparation
       - name: Publish accepted preparation
         if: steps.prepare.outputs.status == 'prepared' || steps.resume.outputs.resume == 'true'
         env:

@@ -27,3 +27,9 @@ Library code for assembly, transfer, and the write guards is in [`packages/corpu
 ## What a sealed batch protects
 
 Later steps trust the batch only when every named file still matches the manifest hash. That is what stops a retry from importing a different PDF than the one you reviewed. The commands do not delete the previous batch when you make a new one.
+
+Local publication recovery uses the synced `events.jsonl`, including accepted phase
+checkpoints. New attempts do not write a duplicate `continuation.json`. Resume and
+status inspection read the event history; older derived checkpoints are ignored
+when that history is present. Pass `events.jsonl` to `pipeline_status.py --continuation`
+when inspecting a local attempt.

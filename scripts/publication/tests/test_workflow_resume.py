@@ -116,9 +116,9 @@ def test_workflow_uses_one_validated_selection_and_keeps_unchanged_skip():
     checkout = next(i for i, step in enumerate(steps) if step.get('name') == 'Check out the original preparation revision')
     setup = next(i for i, step in enumerate(steps) if step.get('uses') == './.github/actions/setup-python-project')
     restore = next(i for i, step in enumerate(steps) if step.get('name') == 'Restore explicitly selected preparation')
-    verify = next(i for i, step in enumerate(steps) if step.get('name') == 'Verify complete preparation inventory')
     publish = next(i for i, step in enumerate(steps) if step.get('name') == 'Publish accepted preparation')
-    assert admission < checkout < setup < restore < verify < publish
+    assert admission < checkout < setup < restore < publish
+    assert not any('verify-prepared' in step.get('run', '') for step in steps)
     assert steps[checkout]['with']['ref'] == '${{ steps.resume.outputs.revision }}'
     assert steps[restore]['with']['artifact-ids'] == '${{ steps.resume.outputs.artifact_id }}'
     assert steps[restore]['with']['run-id'] == '${{ steps.resume.outputs.run_id }}'

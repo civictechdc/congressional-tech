@@ -23,6 +23,8 @@ def test_observation_does_not_read_or_write_build(tmp_path, monkeypatch, phases,
         assert 'native selector' in value['next_read_only_checks'][2]['check']
     assert not value['publication_complete'] and not value['resume_authorized']
     assert all(Path(item['path']).is_absolute() for item in value['next_read_only_checks'])
+    assert Path(value['next_read_only_checks'][0]['path']).name == 'events.jsonl'
+    assert 'without an accepted acknowledgment' in value['next_read_only_checks'][-1]['check']
 
 
 def test_absent_build_does_not_invent_retained_evidence(tmp_path):
