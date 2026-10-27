@@ -29,3 +29,7 @@ Independent B2 code-review findings fixed: contract regressions 1cc57e84 (5 fail
 **2026-10-27T14:20:01Z**
 
 Final review-fix group includes provider206/content-range through Fetcher and published ReceiptWriter: 135 passed, 1 expected duplicate-member fixture warning in 3.57 seconds. Latest log b2-plan/cxb_b2_review_fixed_group.log. Public APIs unchanged; architecture review pending.
+
+**2026-10-27T14:27:37Z**
+
+B2 architecture concern fixed: contract1526907d reproduced both empty/member ZIP comment-signature failures; extraction now reuses the preflight-selected bounded _ArchiveView through ZipFile. Focused archive/sniff/Foundation-wrapper/import-fence runner100 passed/1 expected duplicate-name warning in12.96s; evidence b2-plan/cxb_b2_eocd_fixed.log. No public API/spec changes; architecture finding addressed.
