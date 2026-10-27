@@ -87,7 +87,14 @@ def compare_old(evidence, old_index, *, engine, work):
         OR {restored_time}
         OR (o.stored_bytes IS NULL AND n.stored_bytes IS NOT NULL)
         OR (o.body_sha IS NULL AND o.context_url IS NULL AND n.context_url IS NOT NULL)'''
+    fact_values=[]
+    for name in ('reference_kind','context_url','bytes','stored_bytes','media_type','fidelity','http_status'):
+        kind='BIGINT' if name in {'bytes','stored_bytes','http_status'} else 'VARCHAR'
+        fact_values.extend(f'cast({side}."{name}" AS {kind}) AS "{label}_{name}"'
+                           for side,label in [('o','old'),('n','new')])
+    fact_values=','.join(fact_values)
     steps += [dict(name='matched',sql=f'''SELECT o.old_row,n.receipt_key,n.receipt_line,n.capture_index,
+        n.body_sha,n.pointer,{fact_values},
         cast(o.retrieved_at AS VARCHAR) AS old_retrieved_at,
         cast(n.retrieved_at AS VARCHAR) AS new_retrieved_at,
         {time_reason} AS retrieved_at_reason,
