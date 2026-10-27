@@ -94,7 +94,8 @@ class GuardedPublicationClient:
         return dict(result, _verified_transfer=receipt)
 
     def confirm_transfer(self, receipt, *, bucket, key, size, sha256):
-        # Consume the acknowledgment issued by this client for this exact request.
+        # Consume this client's acknowledgment for the exact request. It records
+        # that write's ETag; the next shared commit still needs a fresh guard.
         with self.lock:
             issued = self._receipts.pop(id(receipt), None)
         if issued is not receipt or receipt is None:
