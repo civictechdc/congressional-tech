@@ -254,37 +254,9 @@ def mapping_steps(*, existing=False):
     return steps
 
 
-def stage_captures(files, *, engine, work, existing=None, counter=None):
-    """Create immutable local staging, refusing unknown vocabularies or lost bodies.
-
-    Table appends are a separate explicit engine operation. A failed native read
-    leaves no accepted receipt-key list, so that receipt remains work on retry.
-    """
-    work = Path(work).resolve()
-    work.mkdir(parents=True, exist_ok=False)
-    mapping_digest = sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest()
-    keys = [f['key'] for f in files]
-    if len(keys) != len(set(keys)) or any(not k.startswith('receipts/') for k in keys):
-        raise ValueError('Receipt inventory needs unique raw receipt keys')
-    if existing is not None:
-        from congress_api.lake.receipt_inventory import select_receipts
-        files=select_receipts(files,existing,engine=engine,work=work/'inventory')
-        keys=[f['key'] for f in files]
-    if not files:
-        raise ValueError('No missing receipt keys to stage')
-    if counter is None:
-        from congress_api.lake.receipt_metadata import compact
-        reader_files=[{k:f[k] for k in ('key','path')} for f in files]
-        counter=compact(files=reader_files,engine=engine,work=work/'receipt-metadata')
-    from congress_api.lake.receipt_metadata import validate_metadata
-    metadata=validate_metadata(counter)
-    metadata_pin=file_pin(Path(counter).resolve().parent/'metadata.json')
-    inputs = [dict(name='receipts',kind='parquet',path=str(Path(counter).resolve()))]
-    inputs.append(json_input(work,'selected_receipts',[dict(receipt_key=k) for k in keys],
-                             receipt_key='Utf8'))
-    if existing is not None:
-        inputs.append(dict(name='existing_captures', kind='parquet', path=str(Path(existing).resolve())))
-    checks = [dict(name='positions',sql='''SELECT receipt_key,receipt_line,'invalid source locator' AS reason
+def capture_checks():
+    """Bounded refusal diagnostics, shared by inline and prebuilt inputs."""
+    return [dict(name='positions',sql='''SELECT receipt_key,receipt_line,'invalid source locator' AS reason
               FROM lines WHERE receipt_key IS NULL OR receipt_line IS NULL OR receipt_line<1 LIMIT 1'''),
         dict(name='invalid', sql='''SELECT receipt_key,receipt_line,
         CASE WHEN unknown_mode THEN 'unknown mode' ELSE 'unknown outcome' END AS reason
@@ -301,15 +273,74 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
                   FROM primary_entries WHERE reference_kind='line' AND left(ltrim(record_value),1)='[')
             GROUP BY receipt_key,receipt_line HAVING
                 count(DISTINCT json_canonical(item))>1
-            LIMIT 1''')]
+            LIMIT 1'''),
+        dict(name='missing',sql='''SELECT r.receipt_key,cast(0 AS BIGINT) AS receipt_line,
+            'selected receipt not present' AS reason FROM selected_receipts r
+            LEFT ANTI JOIN lines l ON r.receipt_key=l.receipt_key LIMIT 1''')]
+
+
+def stage_captures(files, *, engine, work, existing=None, counter=None,validated_counter=None):
+    """Create immutable local staging, refusing unknown vocabularies or lost bodies.
+
+    Table appends are a separate explicit engine operation. A failed native read
+    leaves no accepted receipt-key list, so that receipt remains work on retry.
+    """
+    if counter is not None and validated_counter is not None:
+        raise ValueError('Choose prebuilt metadata or a validated counter')
+    work = Path(work).resolve()
+    work.mkdir(parents=True, exist_ok=False)
+    mapping_digest = sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest()
+    keys = [f['key'] for f in files]
+    if len(keys) != len(set(keys)) or any(not k.startswith('receipts/') for k in keys):
+        raise ValueError('Receipt inventory needs unique raw receipt keys')
+    if existing is not None:
+        from congress_api.lake.receipt_inventory import select_receipts
+        files=select_receipts(files,existing,engine=engine,work=work/'inventory')
+        keys=[f['key'] for f in files]
+    if not files:
+        raise ValueError('No missing receipt keys to stage')
+    from congress_api.lake.receipt_metadata import metadata_plan,producer,source_pins,validate_metadata
+    if counter is None:
+        reader_files=[{k:f[k] for k in ('key','path') if k in f} for f in files]
+        plan=metadata_plan(counter=validated_counter,files=reader_files,
+                           receipt_keys=keys if validated_counter is not None else None)
+        inputs=plan['inputs']
+        steps=plan['steps']+[dict(name='receipts',sql=plan['sql'])]
+        input_pin=dict(kind='validated-counter' if validated_counter is not None else 'receipt-files',
+            producer=producer(engine),sources=source_pins(counter=validated_counter,files=reader_files))
+        metadata_names=['root_metadata','record_metadata']
+    else:
+        metadata=validate_metadata(counter)
+        input_pin=dict(kind='metadata',descriptor=file_pin(Path(counter).resolve().parent/'metadata.json'),
+                       producer=metadata['producer'])
+        inputs=[dict(name='receipts',kind='parquet',path=str(Path(counter).resolve()))]
+        steps=[]
+        metadata_names=[]
+    inputs.append(json_input(work,'selected_receipts',[dict(receipt_key=k) for k in keys],
+                             receipt_key='Utf8'))
+    if existing is not None:
+        inputs.append(dict(name='existing_captures', kind='parquet', path=str(Path(existing).resolve())))
+    mapping=mapping_steps(existing=existing is not None)
+    steps+=mapping
+    steps.append(dict(name='source_counts',sql='''SELECT count(*) AS rows,
+        count(DISTINCT receipt_key) AS receipts FROM lines''',materialize=True))
+    checks=capture_checks()
+    violations=' UNION ALL '.join(f"SELECT {index} AS check_order,v.* FROM ({check['sql']}) v"
+                                  for index,check in enumerate(checks))
+    stale=metadata_names+['receipts','selected_receipts']+[
+        step['name'] for step in mapping if step['name']!='capture_facts']
+    if existing is not None:
+        stale.append('existing_captures')
+    steps.append(dict(name='capture_violations',sql=violations,materialize=True,release_after=stale))
     results = run_job(work, engine, inputs=inputs,
-        steps=mapping_steps(existing=existing is not None),
+        steps=steps,
         outputs=[parquet_output(work, 'capture-evidence', 'SELECT * FROM capture_facts', PK)],
-        queries=checks)
-    for name in ('positions','invalid', 'secondary', 'list_facts'):
-        if results[name]:
-            row = results[name][0]
-            raise ValueError(f"{row['reason']}: {row['receipt_key']}:{row['receipt_line']}")
+        queries=[dict(name='violations',sql='''SELECT * FROM capture_violations
+            ORDER BY check_order,receipt_key,receipt_line LIMIT 1'''),
+            dict(name='source_counts',sql='SELECT * FROM source_counts')])
+    if results['violations']:
+        row=results['violations'][0]
+        raise ValueError(f"{row['reason']}: {row['receipt_key']}:{row['receipt_line']}")
     final = work/'export'
     final.mkdir()
     accepted = run_job(final, engine,
@@ -320,9 +351,11 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
                  dict(name='receipts',sql='SELECT DISTINCT receipt_key FROM facts ORDER BY receipt_key')])
     if mapping_digest != sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest():
         raise ValueError('Receipt mapping changed while staging; accepted inventory was not written')
-    (work/'ingested-receipts.json').write_text(json.dumps(dict(version=1,
-        mapping_digest=mapping_digest, metadata=metadata_pin,
-        metadata_producer=metadata['producer'],
+    input_pin['job']=file_pin(work/'job.json')
+    input_pin['selection']=file_pin(work/'selected_receipts.jsonl.gz')
+    outputs=json.loads((work/'result.json').read_text())['outputs']+json.loads((final/'result.json').read_text())['outputs']
+    (work/'ingested-receipts.json').write_text(json.dumps(dict(version=2,
+        mapping_digest=mapping_digest,input=input_pin,outputs=outputs,source_counts=results['source_counts'][0],
         engine=dict(source_revision=engine.source_revision,binary_sha256=engine.binary_sha256),
         receipt_keys=[r['receipt_key'] for r in accepted['receipts']]), indent=2)+'\n')
     return work

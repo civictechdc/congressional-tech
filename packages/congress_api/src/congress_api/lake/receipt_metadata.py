@@ -52,15 +52,14 @@ def source_schema():
     return dict(fields=[field(k,v) for k,v in roots.items()],metadata={})
 
 
-def _compact(*,engine,work,counter=None,files=None,receipt_keys=None,destination=None):
-    """Export one small metadata row per source line through the native job.
+def metadata_plan(*,counter=None,files=None,receipt_keys=None):
+    """Build shared native narrowing steps without exporting intermediate rows.
 
     Record lists and prior attempts are narrowed independently before joining.
     In particular, neither a complete page body nor a prior response body is
     repeated once per capture. Intermediate order is immaterial; the target
     mapping orders by its unique receipt positions.
     """
-    work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     steps=[]
     def step(name,sql,**options):steps.append(dict(name=name,sql=sql,**options))
     if counter is not None:
@@ -128,10 +127,10 @@ def _compact(*,engine,work,counter=None,files=None,receipt_keys=None,destination
     list_meta.update(fragments('record_value'))
     step('list_records',f'''SELECT receipt_key,receipt_line,record_index,true AS is_list,
         {obj(list_meta)} AS metadata,json_get_json(record_value,'prior_attempts') AS prior_json FROM list_entries''')
-    step('records','SELECT * FROM object_records UNION ALL SELECT * FROM list_records')
+    step('metadata_records','SELECT * FROM object_records UNION ALL SELECT * FROM list_records')
     step('prior_entries','''SELECT receipt_key,receipt_line,record_index,
         unnest(json_get_array(prior_json)) AS prior_value,
-        unnest(range(0,cast(coalesce(json_length(prior_json),0) AS BIGINT))) AS prior_index FROM records''')
+        unnest(range(0,cast(coalesce(json_length(prior_json),0) AS BIGINT))) AS prior_index FROM metadata_records''')
     prior={n:scalar_json('prior_value',n,k) for n,k in SCALARS.items()}
     step('prior_metadata',f'''SELECT receipt_key,receipt_line,record_index,
         json_get_json(json_array(array_agg({obj(prior)} ORDER BY prior_index)),0) AS prior_json
@@ -139,16 +138,18 @@ def _compact(*,engine,work,counter=None,files=None,receipt_keys=None,destination
     final_meta={n:'get_field(r.metadata,'+lit(n)+')' for n in metadata}
     final_meta['_ingest_prior_attempts_json']='p.prior_json'
     step('small_records',f'''SELECT r.receipt_key,r.receipt_line,r.record_index,r.is_list,
-        {obj(final_meta)} AS metadata FROM records r LEFT JOIN prior_metadata p
+        {obj(final_meta)} AS metadata FROM metadata_records r LEFT JOIN prior_metadata p
         USING(receipt_key,receipt_line,record_index)''',materialize=True,
-        release_after=['object_records','list_entries','list_records','records','prior_entries','prior_metadata'])
+        release_after=['object_records','list_entries','list_records','metadata_records','prior_entries','prior_metadata'])
     step('record_objects',"SELECT receipt_key,receipt_line,json_get_json(json_array(metadata),0) AS record_json FROM small_records WHERE NOT is_list")
     step('record_lists',"""SELECT receipt_key,receipt_line,
         json_get_json(json_array(array_agg(metadata ORDER BY record_index)),0) AS record_json
         FROM small_records WHERE is_list GROUP BY receipt_key,receipt_line""")
     step('record_metadata','SELECT * FROM record_objects UNION ALL SELECT * FROM record_lists',
         materialize=True,release_after=['record_objects','record_lists','small_records'])
-    roots={n:'"'+n+'"' for n in sorted(root_names) if n in {*SCALARS,'recovery_evidence','prior_attempts','writer'}}
+    roots={n:typed(n,kind) for n,kind in sorted(SCALARS.items())}
+    roots.update({n:'"'+n+'"' for n in sorted(root_names)
+                  if n in {'recovery_evidence','prior_attempts','writer'}})
     # Headers can be top-level on new lines, with case-preserving field names
     # absent from an older typed counter. Keep their small raw fragments once.
     roots.update({name:get('__raw_line',field,kind='json') for name,field in [
@@ -163,7 +164,6 @@ def _compact(*,engine,work,counter=None,files=None,receipt_keys=None,destination
         json_get_json(__raw_line,'captures') AS caps_json,
         json_get_json(__raw_line,'file_references') AS refs_json FROM counter''',
         materialize=True,release_after=['counter','source'])
-    destination=Path(destination) if destination is not None else work/'receipt-metadata.parquet'
     sql='''SELECT r.receipt_key AS __receipt_key,r.receipt_line AS __receipt_line,
         r.line,r.caps_json,r.refs_json,m.record_json FROM root_metadata r
         LEFT JOIN record_metadata m USING(receipt_key,receipt_line)'''
@@ -176,9 +176,16 @@ def _compact(*,engine,work,counter=None,files=None,receipt_keys=None,destination
             json_get_json(__raw_line) AS line,json_get_json(__raw_line) AS caps_json,
             json_get_json(__raw_line) AS refs_json,json_get_json(__raw_line) AS record_json
             FROM root_metadata'''
-    output=parquet_output(work,'receipt-metadata',sql,['__receipt_key','__receipt_line'])
+    return dict(inputs=inputs,steps=steps,sql=sql)
+
+
+def _compact(*,engine,work,counter=None,files=None,receipt_keys=None,destination=None):
+    work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
+    plan=metadata_plan(counter=counter,files=files,receipt_keys=receipt_keys)
+    destination=Path(destination) if destination is not None else work/'receipt-metadata.parquet'
+    output=parquet_output(work,'receipt-metadata',plan['sql'],['__receipt_key','__receipt_line'])
     output['path']=str(destination.resolve())
-    result=run_job(work,engine,inputs=inputs,steps=steps,outputs=[output],queries=[
+    result=run_job(work,engine,inputs=plan['inputs'],steps=plan['steps'],outputs=[output],queries=[
         dict(name='source_counts',sql='SELECT count(*) AS rows,count(DISTINCT receipt_key) AS receipts FROM root_metadata'),
         dict(name='receipt_keys',sql='SELECT DISTINCT receipt_key FROM root_metadata ORDER BY receipt_key')])
     actual=pq.read_metadata(destination).num_rows
@@ -187,12 +194,12 @@ def _compact(*,engine,work,counter=None,files=None,receipt_keys=None,destination
     return destination,result['source_counts'][0],[row['receipt_key'] for row in result['receipt_keys']]
 
 
-def _producer(engine):
+def producer(engine):
     return dict(sha256=sha256(Path(__file__).read_bytes()).hexdigest(),
                 source_revision=engine.source_revision,binary_sha256=engine.binary_sha256)
 
 
-def _sources(counter=None,files=None):
+def source_pins(counter=None,files=None):
     if counter is not None:
         path=Path(counter).resolve()
         paths=sorted(path.glob('*.parquet')) if path.is_dir() else [path]
@@ -203,12 +210,12 @@ def _sources(counter=None,files=None):
     return [dict(path=str(path),**file_pin(path)) for path in paths]
 
 
-def _write_descriptor(root,*,engine,producer,source,outputs,keys,batch_size):
-    if producer!=_producer(engine):
+def _write_descriptor(root,*,engine,definition,source,outputs,keys,batch_size):
+    if definition!=producer(engine):
         raise ValueError('Receipt metadata producer changed during projection')
     files=[dict(path=path.relative_to(root).as_posix(),**file_pin(path),
                 rows=pq.read_metadata(path).num_rows) for path in sorted(outputs)]
-    descriptor=dict(version=2,kind='receipt-metadata',producer=producer,source=source,
+    descriptor=dict(version=2,kind='receipt-metadata',producer=definition,source=source,
         selection=dict(receipt_keys=keys,receipt_batch_size=batch_size),
         rows=sum(item['rows'] for item in files),receipts=len(keys),files=files)
     (root/'metadata.json').write_text(json.dumps(descriptor,indent=2,sort_keys=True)+'\n')
@@ -217,10 +224,10 @@ def _write_descriptor(root,*,engine,producer,source,outputs,keys,batch_size):
 def compact(*,engine,work,counter=None,files=None):
     """Project a direct receipt set or one counter to one pinned Parquet file."""
     root=Path(work).resolve()
-    producer=_producer(engine)
-    source=_sources(counter,files)
+    definition=producer(engine)
+    source=source_pins(counter,files)
     destination,counts,keys=_compact(engine=engine,work=root,counter=counter,files=files)
-    _write_descriptor(root,engine=engine,producer=producer,source=source,
+    _write_descriptor(root,engine=engine,definition=definition,source=source,
                       outputs=[destination],keys=keys,batch_size=None)
     return destination
 
@@ -243,7 +250,7 @@ def compact_counter(counter,*,engine,work,receipt_keys=None,receipt_batch_size=6
             if not key.startswith('receipts/'):
                 raise ValueError('Receipt selection requires receipt keys')
     root=Path(work).resolve();root.mkdir(parents=True,exist_ok=False)
-    producer=_producer(engine);source=_sources(counter=counter)
+    definition=producer(engine);source=source_pins(counter=counter)
     selection=root/'selection';selection.mkdir()
     inputs=[dict(name='source',kind='parquet',path=str(Path(counter).resolve()))]
     where=''
@@ -274,7 +281,7 @@ def compact_counter(counter,*,engine,work,receipt_keys=None,receipt_batch_size=6
         outputs.append(output);projected+=counts['rows']
     if projected!=sum(row['rows'] for row in result['keys']):
         raise ValueError('Receipt metadata batches changed the source line population')
-    _write_descriptor(root,engine=engine,producer=producer,source=source,
+    _write_descriptor(root,engine=engine,definition=definition,source=source,
                       outputs=outputs,keys=keys,batch_size=receipt_batch_size)
     return parts
 
