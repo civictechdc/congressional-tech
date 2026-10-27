@@ -77,3 +77,27 @@ def test_metadata_stays_typed_for_direct_counter_and_empty_selection(tmp_path,vi
     assert table['record_is_list'].to_pylist()==[False]*6
     assert table.schema.field('line').type.field('url').type==pa.string()
     assert table.schema.field('record_values').type.value_type.field('url').type==pa.string()
+
+
+def test_empty_list_duplicate_list_and_object_pointer_preserve_grain(tmp_path):
+    from congress_api.lake.captures import stage_captures
+    from congress_api.lake.receipt_metadata import compact
+    from test_captures_ingest import body,files
+    native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    source=files(tmp_path/'input',[
+        dict(record=[]),
+        dict(record=dict(url='https://example.test/object',http_status=206),
+             captures=[body(pointer=[37,'content','body'])]),
+        dict(record=[dict(url='https://example.test/same',http_status=404)]*2)])
+    metadata=compact(files=source,engine=native,work=tmp_path/'metadata')
+    private=pq.read_table(metadata)
+    assert private['record_is_list'].to_pylist()==[True,False,True]
+    assert private['record_values'].to_pylist()[0] is None
+    stage=stage_captures([dict(key=source[0]['key'])],engine=native,
+        work=tmp_path/'stage',counter=metadata)
+    rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert len(rows)==3
+    assert [row['capture_index'] for row in rows]==[0,0,0]
+    assert [row['url'] for row in rows]==[None,'https://example.test/object','https://example.test/same']
+    assert [row['http_status'] for row in rows]==[None,206,404]
+    assert [row['sha256'] is None for row in rows]==[True,False,True]
