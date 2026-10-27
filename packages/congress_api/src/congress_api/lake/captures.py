@@ -221,7 +221,7 @@ def mapping_steps(*, existing=False):
         expansion=first(get('entry','expansion'),
             f"CASE WHEN ({top_level}) AND bool_or(body_sha IS NOT NULL AND NOT ({top_level})) OVER (PARTITION BY receipt_key,receipt_line,attempt,coalesce(json_get_str(entry,'context_url'),final_url)) THEN 'expanded' END"),
         h_content_disposition=first(get('headers','content-disposition'), get('headers','Content-Disposition'),'item_disposition'),
-        retry_after=f"CASE WHEN try_cast({retry} AS BIGINT) IS NOT NULL THEN to_timestamp_micros(cast(extract(epoch FROM fetched)*1000000 AS BIGINT)+try_cast({retry} AS BIGINT)*1000000) ELSE try_cast({retry} AS TIMESTAMP WITH TIME ZONE) END",
+        retry_after=f"CASE WHEN try_cast({retry} AS BIGINT)>=0 THEN to_timestamp_micros(try_cast((extract(epoch FROM fetched)+try_cast({retry} AS DECIMAL(20,0)))*1000000 AS BIGINT)) ELSE http_date({retry}) END",
         retrieved_at='fetched', sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')", bytes='body_bytes',
         media_type=get('entry','media_type'), fidelity=get('entry','fidelity'),
         sniffed_format=get('entry','sniffed_format'), sniff_version=get('entry','sniff_version'),
