@@ -23,11 +23,10 @@ import threading
 import time
 from urllib.parse import urlsplit
 
-import pyarrow as pa
 import pyarrow.parquet as pq
 
 from congress_api.retention.bundles import restore, separate
-from congress_api.retention.raw_archive import CAPTURE_SCHEMA as SCHEMA
+from congress_api.retention.raw_archive import CAPTURE_SCHEMA as SCHEMA, prepare_capture_table
 from congress_api.parsers.source_family import family
 
 FAMILIES = ('congress/meetings', 'congress/committees', 'house/meeting-xml',
@@ -184,7 +183,7 @@ class Receipts:
             if len(self.batch)>=8192:self.flush()
 
     def flush(self):
-        if self.batch:self.writer.write_table(pa.Table.from_pylist(self.batch,schema=SCHEMA));self.batch.clear()
+        if self.batch:self.writer.write_table(prepare_capture_table(self.batch));self.batch.clear()
 
     def close(self):
         self.flush();self.writer.close()

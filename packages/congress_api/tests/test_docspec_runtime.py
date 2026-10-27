@@ -542,15 +542,10 @@ def test_cleanup_safe_matrix():
     assert cleanup_safe(TimeoutError("timeout")) is False
 
 
-def test_read_arrow_pin_and_header_verification():
+def test_read_arrow_pin_and_header_verification(tmp_path):
     from docspec_client import NativeDatasets, DocSpecFailure
     import pyarrow as pa
     import pyarrow.ipc as ipc
-
-    client = NativeDatasets.__new__(NativeDatasets)
-    client._closed = False
-    client.timeout = 10
-    client._responses = set()
 
     pin = {
         'id': 'v1',
@@ -605,28 +600,34 @@ def test_read_arrow_pin_and_header_verification():
         def check_response(self, resp):
             pass
 
+    def client_for(**host_options):
+        # Each scenario owns its client and verified-pin cache, like a real host.
+        client = NativeDatasets(tmp_path / 'docspec', tmp_path / 'workspace', timeout=10)
+        client._execution_host = lambda: MockHost(**host_options)
+        return client
+
     # 1. Projected cols empty raises ValueError
-    client._execution_host = lambda: MockHost()
+    client = client_for()
     with pytest.raises(ValueError, match='Projected column list must not be empty'):
         client.read_arrow(pin, group='evidence', columns=[])
 
     # 2. Release differs raises ValueError
-    client._execution_host = lambda: MockHost(release_ret={'id': 'v2'})
+    client = client_for(release_ret={'id': 'v2'})
     with pytest.raises(ValueError, match='Native release differs'):
         client.read_arrow(pin, group='evidence')
 
     # 3. Headers differ raises ValueError
-    client._execution_host = lambda: MockHost(headers_mod={'docspec-version': 'mismatch'})
+    client = client_for(headers_mod={'docspec-version': 'mismatch'})
     with pytest.raises(ValueError, match='Native stream differs'):
         client.read_arrow(pin, group='evidence')
 
     # 4. Valid read succeeds
-    client._execution_host = lambda: MockHost()
+    client = client_for()
     table = client.read_arrow(pin, group='evidence')
     assert table.num_rows == 3
 
     # 5. Truncated stream raises DocSpecFailure with request_timeout
-    client._execution_host = lambda: MockHost(stream_bytes=b'truncated')
+    client = client_for(stream_bytes=b'truncated')
     with pytest.raises(DocSpecFailure) as exc_info:
         client.read_arrow(pin, group='evidence')
     assert exc_info.value.code == 'request_timeout'
