@@ -20,11 +20,23 @@ def _literal(value):
     return "'"+str(value).replace("'","''")+"'"
 
 
+def validate_catalog_authority(engine,catalog_root):
+    """Require one native authority, without opening its catalog or objects."""
+    local=catalog_root is not None
+    remote=engine.remote is not None
+    if local==remote:
+        raise ValueError('Exactly one local or explicitly configured remote catalog is required')
+    return str(Path(catalog_root).resolve()) if local else None
+
+
 def _job(engine, work, *, catalog_root, inputs=(), operations=()):
+    catalog=validate_catalog_authority(engine,catalog_root)
     work=Path(work).resolve()
     work.mkdir(parents=True,exist_ok=False)
-    spec=dict(scratch=str(work/'native'),catalog_root=str(Path(catalog_root).resolve()),
+    spec=dict(scratch=str(work/'native'),
         inputs=list(inputs),steps=[],outputs=[],table_operations=list(operations))
+    if catalog is not None:
+        spec['catalog_root']=catalog
     path=work/'job.json'
     path.write_text(json.dumps(spec,indent=2)+'\n')
     result=engine.run_job(path)
@@ -39,7 +51,8 @@ def create_table(*,engine,work,catalog_root,table,schema,location,create_namespa
     if create_namespace:
         operations.append(dict(kind='create_namespace',name='namespace',
                                namespace=table['namespace'],properties={}))
-    operation=dict(kind='create',name='create',table=table,location=str(Path(location).resolve()),
+    target=str(location) if engine.remote is not None else str(Path(location).resolve())
+    operation=dict(kind='create',name='create',table=table,location=target,
         schema=schema,format_version=2,properties={'gc.enabled':'true','commit.retry.num-retries':'0'})
     if partition_spec is not None:
         operation['partition_spec']=partition_spec
@@ -55,6 +68,7 @@ def append_rows(source, *, engine,work,catalog_root,table,keys,definition,
     identify the whole work. Sorting the keys costs O(K log K); the anti-join is
     expected O(N+M). Python neither joins rows nor retries a table commit.
     """
+    validate_catalog_authority(engine,catalog_root)
     source=Path(source).resolve()
     if not keys or not isinstance(definition,str) or not definition:
         raise ValueError('Append requires work keys and an explicit writer definition')
