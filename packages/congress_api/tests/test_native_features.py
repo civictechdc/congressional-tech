@@ -580,35 +580,33 @@ def _load_setup_module():
 def test_ct_x0nk_artifact_descriptor_accepts_only_exact_contracts():
     setup = _load_setup_module()
     sha = "a" * 64
-    good = setup.artifact_descriptor(json.dumps({
-        "version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
+    revision = setup.QUALIFIED_DOCSPEC_RUNTIME['source_revision']
+    descriptor = {
+        "version": 1, "platform": "linux-amd64", "source_revision": revision,
         "bucket": "qualified-runtime-bucket",
-        "key": f"runtime/docspec/{'b' * 40}/linux-amd64/{sha}/docspec",
+        "key": f"runtime/docspec/{revision}/linux-amd64/{sha}/docspec",
         "bytes": 1024, "sha256": sha,
-    }))
+    }
+    good = setup.artifact_descriptor(json.dumps(descriptor))
     assert good["build_features"] == ["remote"]
     for bad in [
         {},  # missing required fields
-        {"version": 2, "platform": "linux-amd64", "source_revision": "b" * 40,
-         "bucket": "qualified-runtime-bucket", "key": "x", "bytes": 1, "sha256": sha},
-        {"version": 1, "platform": "darwin-arm64", "source_revision": "b" * 40,
-         "bucket": "qualified-runtime-bucket", "key": "k", "bytes": 1, "sha256": sha},
-        {"version": 1, "platform": "linux-amd64", "source_revision": "short",
-         "bucket": "qualified-runtime-bucket", "key": "k", "bytes": 1, "sha256": sha},
-        {"version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
-         "bucket": "Bad_Bucket", "key": "k", "bytes": 1, "sha256": sha},
-        {"version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
-         "bucket": "qualified-runtime-bucket", "key": "mismatched/key", "bytes": 1,
-         "sha256": sha},
-        {"version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
-         "bucket": "qualified-runtime-bucket", "bytes": 1, "sha256": sha},
-        {"version": 1, "platform": "linux-amd64", "source_revision": "b" * 40,
-         "bucket": "qualified-runtime-bucket",
-         "key": f"runtime/docspec/{'b' * 40}/linux-amd64/{sha}/docspec",
-         "bytes": 1, "sha256": sha, "build_features": ["test-util"]},
+        dict(descriptor, version=2),
+        dict(descriptor, platform="darwin-arm64"),
+        dict(descriptor, source_revision="short"),
+        dict(descriptor, bucket="Bad_Bucket"),
+        dict(descriptor, key="mismatched/key"),
+        {name: value for name, value in descriptor.items() if name != "key"},
+        dict(descriptor, build_features=["test-util"]),
     ]:
         with pytest.raises(setup.SetupFailure):
             setup.artifact_descriptor(json.dumps(bad))
+    # A self-consistent descriptor still cannot select an unqualified engine.
+    other_revision = "0" * 40 if revision != "0" * 40 else "1" * 40
+    with pytest.raises(setup.SetupFailure, match='differs from the qualified DocSpec revision'):
+        setup.artifact_descriptor(json.dumps(dict(
+            descriptor, source_revision=other_revision,
+            key=f"runtime/docspec/{other_revision}/linux-amd64/{sha}/docspec")))
 
 
 def test_ct_x0nk_engine_credentials_require_exactly_the_three_secrets():

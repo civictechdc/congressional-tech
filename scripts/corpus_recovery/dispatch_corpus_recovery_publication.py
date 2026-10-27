@@ -67,14 +67,14 @@ class SelectedRuntime:
         package = name.partition(".")[0]
         if package in self.PACKAGES:
             return self.root / self.PACKAGES[package] / package
-        if package.startswith("filename_"):
+        # The script wrapper aliases the canonical package module in sys.modules.
+        if package.startswith("filename_") or package == "publication_cli":
             return (
                 self.root / self.PACKAGES["viewer_publication"] / "viewer_publication"
             )
         if package in {
             "recovery_viewer_builder",
             "recovery_viewer_publisher",
-            "publication_cli",
         }:
             return self.root / "scripts/publication"
         if package in {"viewer_release_identity", "publication_preflight"}:
