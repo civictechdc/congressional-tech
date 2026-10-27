@@ -16,3 +16,9 @@ Run2 owner reassignment. Phase1 only; spicy-regs pins phase2. Reuse engine movem
 
 Sorted content-addressed receipt lists verified and preserved for kept inputs; local maintenance test retains live/last-good and removes only old unkept release lists
 
+
+## Notes
+
+**2026-10-27T18:57:48Z**
+
+Receipt helpers implemented a4237c67, agreedshape foldedDM8.1f1de2acf. Canonical sorted receipt lists and all producing input identities remain perrelease; corruption/missing evidence refuses kept-list validation. Engine confirmed it will adopt helpers in publisher and owns actual maintenance retention; consumer proof of live/last-good retention and old-prefix deletion remains open until that integration. Focused helper/gate17 and full11612/same36 pass; no storage writes.

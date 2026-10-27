@@ -31,6 +31,10 @@ jobs:
           path: pipeline-data
           persist-credentials: false
       - uses: ./.github/actions/setup-python-project
+      - name: Require the approved local capture engine before credentials or writes
+        # An approved Linux local-job setup must export DOCSPEC_JOB_CONFIG.
+        # Its distribution is owner-gated; the remote/lake config is unsuitable.
+        run: .venv/bin/python scripts/dev.py doctor --lane production-offline
       - name: Capture from the public release and weekly inventory seeds
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
