@@ -26,6 +26,8 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
         row=capture(index);row.update(body_hex='b'*64,url='https://fixture.test/package.zip',context_url='https://fixture.test/package.zip',member_path=path);rows.append(row)
     row=capture(7);row.update(body_hex='c'*64,run_id='legacy-import',url='https://fixture.test/import.pdf',context_url='https://fixture.test/import.pdf');rows.append(row)
     row=capture(8);row.update(body_hex='d'*64,mode='retained_import',url='https://fixture.test/recovered.pdf',context_url='https://fixture.test/recovered.pdf',is_real_file=False);rows.append(row)
+    row=capture(9);row.update(body_hex='c'*64,url='https://fixture.test/import.pdf',context_url='https://fixture.test/import.pdf',retrieved_at=None);rows.append(row)
+    row=capture(10);row.update(body_hex='e'*64,run_id='legacy-import',url='https://fixture.test/only-import.pdf',context_url='https://fixture.test/only-import.pdf');rows.append(row)
     inputs=registry_inputs(tmp_path/'registries')
     inputs=[x for x in inputs if x['name']!='import_runs']
     inputs.append(json_input(tmp_path,'import_runs',[dict(run_id='legacy-import',date='2026-10-10')],run_id='Utf8',date='Utf8'))
@@ -42,14 +44,15 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
             dict(name='members',sql="SELECT count(*) AS n FROM capture_sources WHERE source_url IS NULL AND member_path IS NOT NULL"),
             dict(name='ids',sql="SELECT count(*) AS n FROM source_files WHERE source_id<>encode(sha256(json_array(CASE WHEN body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(body_sha,1,2)||'/'||body_sha||'.gz' END,filename,source_url)),'hex')")])
 
-    assert len(result['files'])==7
+    assert len(result['files'])==8
     files={x['filename']:x for x in result['files']}
-    assert set(files)=={'one.pdf','two.pdf','mirror.pdf','failed.pdf','report.pdf','import.pdf','dead-original.pdf'}
+    assert set(files)=={'one.pdf','two.pdf','mirror.pdf','failed.pdf','report.pdf','import.pdf','only-import.pdf','dead-original.pdf'}
     assert files['one.pdf']['source_url']=='https://fixture.test/a'
     assert files['two.pdf']['body_sha']=='a'*64
     assert files['report.pdf']['source_url'] is None and files['report.pdf']['body_sha']=='b'*64
     assert files['failed.pdf']['body_sha'] is None and files['failed.pdf']['is_real_file'] is False
     assert files['dead-original.pdf']['body_sha'] is None and files['dead-original.pdf']['is_real_file'] is False
-    assert files['import.pdf']['first_fetched'] is None and files['import.pdf']['in_archive_since']=='2026-10-10'
+    assert files['import.pdf']['first_fetched'] is None and files['import.pdf']['in_archive_since'] is None
+    assert files['only-import.pdf']['first_fetched'] is None and files['only-import.pdf']['in_archive_since']=='2026-10-10'
     assert files['mirror.pdf']['first_fetched'].startswith('2026-10-19')
     assert result['members']==[dict(n=2)] and result['ids']==[dict(n=0)]
