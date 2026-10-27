@@ -239,6 +239,38 @@ def test_terminal_worker_result_stages_raw_provenance_and_rebuild_skips_it(tmp_p
     assert repeat['unreadable_key'] is None and pq.read_metadata(repeat['work_list']).num_rows == 0
 
 
+def test_same_time_unreadable_batches_share_one_raw_store_and_rebuild(tmp_path):
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    from congress_api.retention.provenance import file_pin, timestamp_key
+    raw=tmp_path/'shared-raw';store=BodyStore(LocalAdapter(raw))
+    captures_rows=[];staged=[];inventory=[]
+    for index,name in enumerate(['Bad.pdf','OtherBad.pdf']):
+        source=tmp_path/f'input-{index}';source.mkdir()
+        row=dict(receipt_key=f'r-{index}',receipt_line=1,capture_index=0,mode='fetch',
+            url='https://a.test/'+name)
+        captures_rows.append(row)
+        result=reader().stage(captures=input_tables(source,[row]),recovery_files=[],engine=engine(),
+            work=tmp_path/f'stage-{index}',worker_factory=TerminalWorker,decided_at=STAMP)
+        assert pq.read_metadata(result['readings']).num_rows==0
+        assert store.put(result['unreadable_key'],result['unreadable_path'],
+            'application/x-ndjson').outcome=='stored'
+        staged.append(result)
+        inventory.append(dict(key=result['unreadable_key'],path=str(raw/result['unreadable_key'])))
+    assert len({item['key'] for item in inventory})==2
+    records=[]
+    for result,item in zip(staged,inventory):
+        assert item['key']=='provenance/unreadable/'+timestamp_key(STAMP)+'-'+file_pin(item['path'])['sha256']+'.jsonl'
+        assert Path(item['path']).read_bytes()==Path(result['unreadable_path']).read_bytes()
+        records.extend(map(json.loads,Path(item['path']).read_text().splitlines()))
+    assert len(records)==2 and len({row['record_sha'] for row in records})==2
+    assert len({row['parser_version'] for row in records})==1
+    assert all(row['decided_at']==STAMP and row['parser']=='filename' for row in records)
+    repeat=reader().stage(captures=input_tables(tmp_path,captures_rows),recovery_files=[],engine=engine(),
+        work=tmp_path/'rebuilt',worker_factory=TerminalWorker,decided_at=STAMP,unreadable_files=inventory)
+    assert pq.read_metadata(repeat['work_list']).num_rows==0
+    assert pq.read_metadata(repeat['readings']).num_rows==0 and repeat['unreadable_key'] is None
+
+
 class PrematureWorker(Worker):
     def parse(self, input_id, payload):
         return dict(status='unreadable',reason='timeout',attempts=1)
