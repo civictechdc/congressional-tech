@@ -53,22 +53,20 @@ def expand_archive(path, *, directory, limits):
         with path.open('rb') as source, mmap.mmap(source.fileno(),0,access=mmap.ACCESS_READ) as view:
             if magic == b'rtfd':
                 wrapped = regular_file(view)
-                length = len(wrapped.data)
-                if length > limits.max_member_bytes or length > limits.max_total_bytes:
-                    del wrapped
-                    return Expansion('member_size_limit' if length > limits.max_member_bytes else 'aggregate_size_limit')
-                directory.mkdir(parents=True,exist_ok=True)
-                output = directory/(uuid4().hex+'.member')
-                digest = hashlib.sha256()
-                with output.open('xb') as target:
-                    for start in range(0,length,CHUNK):
-                        chunk = wrapped.data[start:start+CHUNK]
-                        target.write(chunk)
-                        digest.update(chunk)
-                        del chunk
-                name = wrapped.name
-                del wrapped
-                return Expansion('expanded',(ExpandedMember(name,0,_body(output,digest.hexdigest(),length)),))
+                with wrapped.data as payload:
+                    length = len(payload)
+                    if length > limits.max_member_bytes or length > limits.max_total_bytes:
+                        return Expansion('member_size_limit' if length > limits.max_member_bytes else 'aggregate_size_limit')
+                    directory.mkdir(parents=True,exist_ok=True)
+                    output = directory/(uuid4().hex+'.member')
+                    digest = hashlib.sha256()
+                    with output.open('xb') as target:
+                        for start in range(0,length,CHUNK):
+                            with payload[start:start+CHUNK] as chunk:
+                                target.write(chunk)
+                                digest.update(chunk)
+                    name = wrapped.name
+                    return Expansion('expanded',(ExpandedMember(name,0,_body(output,digest.hexdigest(),length)),))
             _directory_preflight(view,limits)
             if inspect_office_zip(view,limits=limits):
                 return Expansion(None)

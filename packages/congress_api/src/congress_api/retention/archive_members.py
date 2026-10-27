@@ -77,6 +77,11 @@ class _ArchiveView(RawIOBase):
     def __init__(self, body, end):
         self.body, self.end, self.position = memoryview(body), end, 0
 
+    def close(self):
+        if not self.closed:
+            self.body.release()
+        super().close()
+
     def seekable(self):
         return True
 
@@ -125,7 +130,8 @@ def _directory_preflight(body, limits):
     cursor = offset - size
     if cursor < 0:
         raise ArchiveReadError('corrupt_archive', 'ZIP central directory exceeds the archive')
-    validate_zip_directory(memoryview(body)[cursor:offset], expected_count=count, limits=limits)
+    with memoryview(body) as source, source[cursor:offset] as directory:
+        validate_zip_directory(directory, expected_count=count, limits=limits)
     return offset + 22
 
 
@@ -174,7 +180,7 @@ def inspect_office_zip(body: bytes, *, limits: ZipLimits = ZipLimits()):
     if len(body) > limits.max_archive_bytes:
         raise ArchiveReadError('archive_size_limit', 'ZIP archive bytes exceed their limit')
     end = _directory_preflight(body, limits)
-    with ZipFile(_ArchiveView(body, end)) as archive:
+    with _ArchiveView(body, end) as view, ZipFile(view) as archive:
         entries = archive.infolist()
         if any(info.orig_filename == '[Content_Types].xml' for info in entries):
             return True
@@ -212,15 +218,17 @@ def iter_zip_members(body: bytes, *, archive_path: str,
     if len(body) > limits.max_archive_bytes:
         raise ArchiveReadError('archive_size_limit', 'ZIP archive bytes exceed their limit')
     end = _directory_preflight(body, limits)
+    view = _ArchiveView(body, end)
     try:
         # Comments do not describe members. Omit them from the view so ZIP end
         # signatures inside comments cannot confuse the stdlib end-record scan.
-        archive = ZipFile(_ArchiveView(body, end))
+        archive = ZipFile(view)
     except (BadZipFile, UnicodeError, ValueError, NotImplementedError) as exc:
+        view.close()
         raise ArchiveReadError('corrupt_archive', type(exc).__name__) from exc
     total = 0
     exhausted = False
-    with archive:
+    with view, archive:
         for position, info in enumerate(archive.infolist()):
             if info.is_dir():
                 continue
