@@ -324,6 +324,18 @@ def test_http_date_retry_after_preserves_publisher_deadline(tmp_path):
     assert row['retry_after'].isoformat()=='2026-10-21T07:28:00+00:00'
 
 
+@pytest.mark.parametrize('value,expected',[
+    ('Wednesday, 21-Oct-26 07:28:00 GMT','2026-10-21T07:28:00+00:00'),
+    ('Wed Oct 21 07:28:00 2026','2026-10-21T07:28:00+00:00'),
+    ('invalid',None),('-1',None),('9223372036854775807',None),
+])
+def test_retry_deadline_accepts_http_dates_and_refuses_invalid_delays(tmp_path,value,expected):
+    stage=ingest(tmp_path,[dict(record=dict(http_status=503,retrieved_at=STAMP,
+        response_headers={'retry-after':value}))])
+    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert (row['retry_after'].isoformat() if row['retry_after'] else None)==expected
+
+
 @pytest.mark.parametrize('same_url',[True,False])
 def test_owner_decided_direct_official_package_is_a_fetch_only_for_same_source(tmp_path,same_url):
     original='https://example.org/package.zip'
