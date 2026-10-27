@@ -24,3 +24,8 @@ test('targets require both real devices and measured worker heap',async()=>{
     assert.throws(()=>checkTargets(sample,{status:'measured',ceilings:{}}),/target/i);
   }finally{await rm(folder,{recursive:true,force:true});}
 });
+
+test('canary checks pointer caching and one global deadline',async()=>{
+  await assert.rejects(verifyArchive({pointerUrl:'https://public.test/manifest.json',fetcher:async()=>Response.json({release_id:'ab'.repeat(32)})}),/no-store/);
+  await assert.rejects(verifyArchive({pointerUrl:'https://public.test/manifest.json',deadlineMs:15,fetcher:async(_url,options)=>new Promise((_,reject)=>{options.signal.addEventListener('abort',()=>reject(options.signal.reason),{once:true});})}),/deadline/);
+});
