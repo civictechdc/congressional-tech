@@ -10,6 +10,20 @@ const args=argumentsMap(process.argv.slice(2));if(!args['next-release'])throw ne
 const {chromium}=browserDependency('playwright');
 const server=await startArchiveServer({release:resolve(args.release),nextRelease:args['next-release']?resolve(args['next-release']):undefined,siteDist:resolve(args.dist||'dist'),bodies:args.bodies?JSON.parse(await readFile(args.bodies)):{}});
 const browser=await chromium.launch({headless:true,...(args['browser-executable']?{executablePath:args['browser-executable']}:{})});
+const fixtureBodyReads=[];
+async function fixtureContext(options={}){
+  const context=await browser.newContext(options);
+  // The built artifact keeps its real raw origin. This test adapter redirects
+  // only body reads to the explicit fixture store, including deliberate 404s.
+  await context.route(/^https?:\/\/[^/]+\/bodies\/sha256\//,async route=>{
+    if(!['GET','HEAD'].includes(route.request().method()))return route.abort();
+    const url=new URL(route.request().url());
+    const response=await route.fetch({url:server.rawBase+url.pathname.slice(1)+url.search});
+    fixtureBodyReads.push({path:url.pathname,status:response.status()});
+    await route.fulfill({response});
+  });
+  return context;
+}
 const results=[];
 const fixtureReader=args.hand==='true'?await openArchive(server.pointerUrl):null;
 const fixtureEntries=fixtureReader?await Promise.all([1,2,5,6].map(index=>fixtureReader.entry(index))):[];
@@ -17,7 +31,7 @@ const hex=value=>Buffer.from(value).toString('hex');
 try{
   for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
     server.state.missingFile=null;server.state.flipOnMissing=null;server.state.releaseId=server.manifest.release_id;
-    const context=await browser.newContext({viewport}),page=await context.newPage();page.setDefaultTimeout(60000);
+    const context=await fixtureContext({viewport}),page=await context.newPage();page.setDefaultTimeout(60000);
     const sampler=heapSampler(browser,page);
     try{
       const errors=[];page.on('pageerror',error=>errors.push(error.message));let started=performance.now();
@@ -61,8 +75,9 @@ try{
   }
   if(server.nextManifest){
     server.state.releaseId=server.manifest.release_id;server.state.missingFile=server.manifest.files.find(file=>file.name==='detail.parquet'||file.shard==='detail').name;server.state.flipOnMissing=server.nextManifest.release_id;
-    const context=await browser.newContext(),page=await context.newPage();page.setDefaultTimeout(60000);
+    const context=await fixtureContext(),page=await context.newPage();page.setDefaultTimeout(60000);
     try{const before=server.state.pointerReads;await page.goto(server.pageUrl+'?key='+results[0].publicKey);await page.locator(`[data-archive-release="${server.nextManifest.release_id}"]`).waitFor();assert.equal(new URL(page.url()).searchParams.get('key'),results[0].publicKey);assert(server.state.pointerReads>=before+3);results.push({operation:'404-reload',status:'passed'});}finally{await context.close();}
   }
-  const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?'measured':'owner-gated',results};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
+  if(args.hand==='true')assert(fixtureBodyReads.some(read=>read.status===404),'Hand saved-copy checks must exercise the local missing-body store');
+  const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?'measured':'owner-gated',results,fixtureBodyReads};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
 }finally{await browser.close();await server.close();}

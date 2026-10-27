@@ -33,6 +33,7 @@ jobs:
       - uses: ./.github/actions/setup-python-project
       - name: Capture from the public release and weekly inventory seeds
         env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_CAPTURE_R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.ARCHIVE_CAPTURE_R2_SECRET_ACCESS_KEY }}
           ZYTE_TOKEN: ${{ secrets.ZYTE_TOKEN }}

@@ -52,6 +52,7 @@ jobs:
       - uses: ./.github/actions/setup-publication-browser
       - name: Run the single publisher with its local contract and HTTPS canary gates
         env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_PUBLISH_ENGINE_CREDENTIALS }}
@@ -107,6 +108,7 @@ jobs:
         run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
       - name: Run raw checks, retained receipt evidence and catalog maintenance
         env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.ARCHIVE_MAINTENANCE_ENGINE_CREDENTIALS }}
           R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_MAINTENANCE_R2_ACCESS_KEY_ID }}

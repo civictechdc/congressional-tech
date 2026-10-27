@@ -61,6 +61,15 @@ def test_pending_model_spec_refuses_before_importing_publisher_or_accessing_stor
     assert config['publish']['spec'] == 'model/jobs/publish.pending.json'
 
 
+def test_every_new_r2_writer_has_an_explicit_endpoint_source():
+    for name in ['archive-jobs.yml', 'capture-archive.yml']:
+        for job in workflow(name)['jobs'].values():
+            for step in job['steps']:
+                env = step.get('env', {})
+                if 'R2_ACCESS_KEY_ID' in env:
+                    assert env['CLOUDFLARE_ACCOUNT_ID'] == '${{ vars.CLOUDFLARE_ACCOUNT_ID }}'
+
+
 def test_deploy_and_validation_add_local_archive_contract_before_upload():
     for name, job in [('deploy-pages.yml', 'build'), ('validate-explorer.yml', 'validate')]:
         steps = workflow(name)['jobs'][job]['steps']
