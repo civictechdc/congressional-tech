@@ -64,7 +64,7 @@ def test_missing_raw_input_writes_no_reading_or_unreadable_decision(tmp_path):
     assert result['pending_reads']==1 and result['unreadable_path'] is None
 
 
-def test_active_unreadable_skips_only_its_parser_version_and_supersession_restores_work(tmp_path):
+def test_active_unreadable_skips_only_its_parser_version(tmp_path):
     args,digest=setup(tmp_path)
     decision=dict(id='one',body_sha256=digest.hex(),parser='html',parser_version=readings.current_version('html'),
                   supersedes=None)
@@ -94,4 +94,17 @@ def test_completed_error_reading_and_local_native_append_noop(tmp_path):
         table=table,location=tmp_path/'table',create_namespace=True)
     first=readings.append(result,engine=args['engine'],work=tmp_path/'append',catalog_root=tmp_path/'catalog',table=table)
     repeated=readings.append(result,engine=args['engine'],work=tmp_path/'repeat',catalog_root=tmp_path/'catalog',table=table)
-    assert first['status']=='appended' and repeated['status']=='empty'
+    assert first['kind']==repeated['kind']=='append'
+    assert sum(item['rows'] for item in first['files'])==1 and repeated['files']==[]
+    assert first['snapshot']==repeated['snapshot']
+    assert first['metadata_location']==repeated['metadata_location']
+
+
+def test_absent_inventory_entry_remains_on_the_work_list(tmp_path):
+    args,_=setup(tmp_path)
+    inventory=pq.read_table(args['body_inventory']).slice(0,0)
+    pq.write_table(inventory,args['body_inventory'])
+    result=stage(args,tmp_path/'stage')
+    assert pq.ParquetFile(result['work_list']).metadata.num_rows==1
+    assert pq.ParquetFile(result['readings']).metadata.num_rows==0
+    assert result['pending_reads']==1 and result['unreadable_path'] is None

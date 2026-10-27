@@ -479,6 +479,22 @@
         }
       ],
       "gaps": []
+    },
+    {
+      "name": "url_variants.parquet",
+      "columns": [
+        {
+          "name": "canonical_url",
+          "type": "string",
+          "meaning": "Active canonical URL for capture joins"
+        },
+        {
+          "name": "variant_url",
+          "type": "string",
+          "meaning": "Active alternate URL for capture joins"
+        }
+      ],
+      "gaps": []
     }
   ]
 }
