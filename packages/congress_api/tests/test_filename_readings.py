@@ -17,6 +17,26 @@ def reader():
     return filenames
 
 
+STAMP = '2026-10-27T18:00:00Z'
+
+
+class Worker:
+    def __init__(self, parser, version, callable_path, **bounds):
+        self.parser, self.version, self.bounds = parser, version, bounds
+    def __enter__(self): return self
+    def __exit__(self, *args): pass
+    def parse(self, input_id, payload):
+        row = reader().read_filename(payload['filename'], payload['source_url'],
+            catalog_version=self.version, vocabularies=payload.get('vocabularies'))
+        if row['filename_date'] is not None: row['filename_date'] = row['filename_date'].isoformat()
+        return dict(status='completed', value=row)
+
+
+class TerminalWorker(Worker):
+    def parse(self, input_id, payload):
+        return dict(status='unreadable', reason='timeout', attempts=2)
+
+
 def engine():
     return NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
 
@@ -115,15 +135,15 @@ def test_native_effective_names_and_work_anti_join(tmp_path):
     captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=i,capture_index=0,mode='fetch',**row)
         for i,row in enumerate(cases,1)])
     version = reader().current_version()
-    result=reader().stage(captures=captures, recovery_files=[], engine=engine(), work=tmp_path/'job', catalog_version=version)
+    result=reader().stage(worker_factory=Worker, decided_at=STAMP, captures=captures, recovery_files=[], engine=engine(), work=tmp_path/'job', catalog_version=version)
     rows=pq.read_table(result['readings']).to_pylist()
     assert len(rows) == 9  # Same path name at different exact URLs remains separate work.
     names={r['filename'] for r in rows}
     assert names == {'café.pdf','a%20+b.pdf','%FF.pdf','Member%20.pdf','Requested Name.pdf','source.pdf','path.pdf','question?mark.pdf'}
     member=next(r for r in rows if r['filename']=='Member%20.pdf'); assert member['source_url']==''
-    second=reader().stage(captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'again',catalog_version=version)
+    second=reader().stage(worker_factory=Worker, decided_at=STAMP, captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'again',catalog_version=version)
     assert pq.read_metadata(second['readings']).num_rows == 0
-    newer=reader().stage(captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'new',vocabularies={'member_surnames': {'119': ['New']}})
+    newer=reader().stage(worker_factory=Worker, decided_at=STAMP, captures=captures,recovery_files=[],existing=result['readings'],engine=engine(),work=tmp_path/'new',vocabularies={'member_surnames': {'119': ['New']}})
     assert pq.read_metadata(newer['readings']).num_rows == 9
 
 
@@ -137,7 +157,7 @@ def test_recovery_original_work_deduplicates_and_rejection_removes_name_override
                dict(body_sha256='d'*64,id='d',original_url='https://a.test/Another.pdf',recovered_filename='Other Body.pdf',kind='recovered_document',decided_at='2026-10-03T00:00:00Z')]
     with gzip.open(path,'wt') as out:
         for row in decisions: out.write(json.dumps(row)+'\n')
-    result=reader().stage(captures=captures,recovery_files=[dict(key='provenance/recoveries/source.jsonl',path=str(path))],engine=engine(),work=tmp_path/'job')
+    result=reader().stage(worker_factory=Worker, decided_at=STAMP, captures=captures,recovery_files=[dict(key='provenance/recoveries/source.jsonl',path=str(path))],engine=engine(),work=tmp_path/'job')
     rows=pq.read_table(result['readings']).to_pylist()
     assert {(r['filename'],r['source_url']) for r in rows} == {('Original.pdf','https://a.test/Original.pdf'),('Named.pdf','https://a.test/Another.pdf'),('Other Body.pdf','https://a.test/Another.pdf')}
 
@@ -145,14 +165,14 @@ def test_recovery_original_work_deduplicates_and_rejection_removes_name_override
 def test_stage_refuses_a_version_that_does_not_name_its_code_and_inputs(tmp_path):
     captures=input_tables(tmp_path, [])
     with pytest.raises(ValueError, match='version'):
-        reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'job',catalog_version='wrong')
+        reader().stage(worker_factory=Worker, decided_at=STAMP, captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'job',catalog_version='wrong')
 
 
 def test_local_stage_command_writes_only_local_outputs(tmp_path, capsys):
     captures=input_tables(tmp_path, [])
     inventory=tmp_path/'inventory.json'; inventory.write_text('[]')
     assert reader().main(['--captures',str(captures),'--recovery-inventory',str(inventory),
-        '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--work',str(tmp_path/'stage')]) == 0
+        '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--decided-at',STAMP,'--work',str(tmp_path/'stage')],worker_factory=Worker) == 0
     result=json.loads(capsys.readouterr().out)
     assert result['catalog_version'] == reader().current_version()
     assert pq.read_metadata(result['readings']).num_rows == 0
@@ -164,7 +184,7 @@ def test_native_filename_table_preserves_schema_partition_and_noop_append(tmp_pa
         table={'namespace':['archive'],'name':'filename_readings'},location=tmp_path/'data',create_namespace=True)
     captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
         url='https://a.test/BILLS-119hr6028ih.pdf')])
-    stage=module.stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'stage')
+    stage=module.stage(worker_factory=Worker, decided_at=STAMP, captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'stage')
     first=module.append(stage,engine=engine(),work=tmp_path/'append',catalog_root=tmp_path/'catalog',
         table={'namespace':['archive'],'name':'filename_readings'})
     assert sum(part['rows'] for part in first['files']) == 1
@@ -177,3 +197,42 @@ def test_native_filename_table_preserves_schema_partition_and_noop_append(tmp_pa
     assert metadata['format-version'] == 2 and metadata['properties']['gc.enabled'] == 'true'
     assert metadata['partition-specs'][0]['fields'][0]['source-id'] == 3
     assert [field['name'] for field in schema['fields']] == module.SCHEMA.names
+
+
+@pytest.mark.parametrize('arguments', [
+    ['--apply'], ['--create-table'], ['--create-namespace'],
+    ['--apply','--catalog-root','unused','--table','not-qualified']])
+def test_apply_requires_explicit_local_authority_before_input_reads(tmp_path, arguments):
+    with pytest.raises(SystemExit) as raised:
+        reader().main(['--captures','missing','--recovery-inventory','missing',
+            '--engine-config','missing','--decided-at',STAMP,'--work',str(tmp_path/'unused'),*arguments])
+    assert raised.value.code == 2 and not (tmp_path/'unused').exists()
+
+
+def test_explicit_local_apply_command_keeps_empty_work_a_noop(tmp_path, capsys):
+    captures=input_tables(tmp_path, [])
+    inventory=tmp_path/'inventory.json'; inventory.write_text('[]')
+    assert reader().main(['--captures',str(captures),'--recovery-inventory',str(inventory),
+        '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--decided-at',STAMP,'--work',str(tmp_path/'stage'),
+        '--apply','--catalog-root',str(tmp_path/'catalog'),'--table','archive.filename_readings',
+        '--create-table','--create-namespace','--table-location',str(tmp_path/'data')],worker_factory=Worker) == 0
+    result=json.loads(capsys.readouterr().out)
+    assert result['append']['files'] == [] and (tmp_path/'catalog').exists()
+
+
+def test_terminal_worker_result_stages_raw_provenance_and_rebuild_skips_it(tmp_path):
+    captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
+        url='https://a.test/Bad.pdf')])
+    result=reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'stage',
+        worker_factory=TerminalWorker,decided_at=STAMP)
+    assert pq.read_metadata(result['readings']).num_rows == 0
+    key=result['unreadable_key']
+    records=Path(result['unreadable_path']).read_text().splitlines()
+    assert key.startswith('provenance/unreadable/') and len(records)==1
+    row=json.loads(records[0])
+    assert row['parser']=='filename' and row['reason']=='timeout' and row['supersedes'] is None
+    assert len(row['record_sha'])==64 and row['parser_version']==result['catalog_version']
+    repeat=reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'again',
+        worker_factory=TerminalWorker,decided_at=STAMP,
+        unreadable_files=[dict(key=key,path=result['unreadable_path'])])
+    assert repeat['unreadable_key'] is None and pq.read_metadata(repeat['work_list']).num_rows == 0
