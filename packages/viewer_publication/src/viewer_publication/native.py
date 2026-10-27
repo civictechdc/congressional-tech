@@ -112,7 +112,7 @@ def prepare_native_output(publisher=None, builder=None, client=None, snapshot=No
     started = time.perf_counter()
     try:
         recovery = index_catalog_recoveries(snapshot, publisher.validated_accepted(accepted_record[0]),
-            previous=previous_recovery, max_ordered_bytes=64 << 20, metrics=memory_metrics)
+            previous=previous_recovery, max_ordered_bytes=96 << 20, metrics=memory_metrics)
         publisher.require_native_recovery(recovery, manifest)
     except BaseException:
         seconds = time.perf_counter() - started
