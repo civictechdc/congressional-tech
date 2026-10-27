@@ -1,6 +1,6 @@
 ---
 id: cefr-qajr
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T14:08:31Z
@@ -21,3 +21,7 @@ A digest found in the old index cannot skip a missing raw body write; synchronou
 **2026-10-27T14:10:07Z**
 
 Contract commit 0e411a74 reproduces original bug (3 failed,1 passed). Implementation adds shared per-run confirmed hash set independent of persisted index metadata. Focused project runner test_body_existence_by_key.py, test_raw_source_sync.py, test_body_store_contract.py, test_surviving_raw_ratchets.py: 88 passed in13.06s. Includes new receipt and old-index stored digest comparison against actual compressed bytes. Legacy collision readbacks remain in legacy path; new BodyStore path untouched. Pending independent review.
+
+**2026-10-27T15:38:48Z**
+
+Local done:88 focused checks pass, independent CODE APPROVE. Sync/async capture confirm only successful current-run writes; index membership cannot skip a missing body. Creating receipt/index stored hashes match actual bytes. Live repairs remain B12 owner actions.

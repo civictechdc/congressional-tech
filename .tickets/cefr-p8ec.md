@@ -1,6 +1,6 @@
 ---
 id: cefr-p8ec
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T13:54:32Z
@@ -33,3 +33,7 @@ Final review-fix group includes provider206/content-range through Fetcher and pu
 **2026-10-27T14:27:37Z**
 
 B2 architecture concern fixed: contract1526907d reproduced both empty/member ZIP comment-signature failures; extraction now reuses the preflight-selected bounded _ArchiveView through ZipFile. Focused archive/sniff/Foundation-wrapper/import-fence runner100 passed/1 expected duplicate-name warning in12.96s; evidence b2-plan/cxb_b2_eocd_fixed.log. No public API/spec changes; architecture finding addressed.
+
+**2026-10-27T15:38:48Z**
+
+Local done: typed file-backed fetch/receipt/archive contracts pass135 checks; bounded ZIP-view fix passes100 focused checks. Code and architecture findings reproduced before fixes and resolved in56785668/800533e9/c6dc8e72/42eb6537/e273e22a. F2 wiring and hosted/native transport qualification are separate; no live capture ran.
