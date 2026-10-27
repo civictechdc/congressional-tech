@@ -103,3 +103,44 @@ def test_whole_check_detects_corruption_and_reads_no_head():
     [listing]=list(store.listing())
     result=check_body(store,listing,checked_at='2026-10-27T00:00:00Z')
     assert result['sha256_verified'] is False and result['error'] == 'identity_mismatch'
+
+
+def test_only_25_referenced_bodies_are_read_and_listing_is_one_traversal(tmp_path):
+    originals=[f'source-{n}'.encode() for n in range(30)]
+    values={key(data):(gzip.compress(data,mtime=0),None) for data in originals}
+    store=Store(values)
+    captures,receipts,previous=inputs(tmp_path,[dict(body_key=k,stored_bytes=len(v[0])) for k,v in values.items()])
+    result=verify(store,captures=captures,receipts=receipts,previous=previous,engine=engine(),
+                  work=tmp_path/'job',checked_at='2026-10-27T00:00:00Z',seed='fixed')
+    assert result['valid'] and result['checked']==25 and result['listed']==30
+    assert store.list_calls==1 and len(store.reads)==len(set(store.reads))==25
+
+
+def test_failed_listing_never_claims_a_verified_baseline(tmp_path):
+    class Broken(Store):
+        def listing(self):
+            yield dict(key=key(b'x'),size=1,etag='untrusted')
+            raise OSError('listing interrupted')
+    captures,receipts,previous=inputs(tmp_path,[])
+    with pytest.raises(OSError,match='listing interrupted'):
+        verify(Broken({}),captures=captures,receipts=receipts,previous=previous,engine=engine(),
+               work=tmp_path/'job',checked_at='2026-10-27T00:00:00Z',seed='fixed')
+    assert not (tmp_path/'job/verification.jsonl').exists()
+
+
+def test_staged_verification_is_create_only_and_bound_to_accepted_bytes(tmp_path):
+    from congress_api.cli.raw_verify import apply_staged
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    data=b'local sample'
+    captures,receipts,previous=inputs(tmp_path,[])
+    result=verify(Store({key(data):(gzip.compress(data,mtime=0),None)}),captures=captures,
+        receipts=receipts,previous=previous,engine=engine(),work=tmp_path/'job',
+        checked_at='2026-10-27T00:00:00Z',seed='fixed')
+    store=BodyStore(LocalAdapter(tmp_path/'raw'))
+    applied=apply_staged(tmp_path/'job',store)
+    assert (tmp_path/'raw'/applied['provenance']).is_file()
+    with pytest.raises(RuntimeError,match='reused'):
+        apply_staged(tmp_path/'job',store)
+    Path(result['records']).write_text('{}\n')
+    with pytest.raises(ValueError,match='changed'):
+        apply_staged(tmp_path/'job',store)
