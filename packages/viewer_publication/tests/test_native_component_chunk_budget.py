@@ -141,10 +141,14 @@ def test_large_typed_chunk_keeps_occurrences_in_exact_document_order(tmp_path, m
         assert len(retained) == 1 and retained[0].num_chunks > 1
         assert retained[0].to_pylist() == expected['document_id'].to_pylist()
         assert retained[0].get_total_buffer_size() < 8192
-        occurrences = reference['document_observations']['files']['occurrences']
-        with pq.ParquetFile(current.assets.root / occurrences['path']) as file:
-            actual = [(row['owner_id'], row['occurrence_order'],
-                       None if row['occurrence_is_null'] else {'label': row['label']})
-                      for row in file.read().to_pylist()]
-        assert actual == [(row['document_id'], index, value) for row in expected.to_pylist()
-                          for index, value in enumerate(row['source_occurrences'] or [])]
+        from viewer_publication.filename_observations import block_items
+        files = reference['document_observations']['files']
+        assert 'occurrences' not in files
+        index = json.loads((current.assets.root / files['observation_index']['path']).read_bytes())
+        dictionary = [value for block in index['observations']['blocks'] for value in
+                      block_items(current.assets.root / files['observations']['path'], block)]
+        refs = [value for block in index['references']['blocks'] for value in
+                block_items(current.assets.root / files['observation_rows']['path'], block)]
+        actual = [None if row is None else [None if dictionary[i] is None else
+                  {field:dictionary[i].get(field) for field in index['fields']} for i in row] for row in refs]
+        assert actual == expected['source_occurrences'].to_pylist()
