@@ -228,3 +228,19 @@ def test_scan_groups_paths_and_bounds_examples_per_field(tmp_path):
     [field] = report['fields']
     assert field['path'] == 'path' and field['count'] == 10
     assert len(field['examples']) == 3
+
+
+def test_owner_inventory_lists_all_receipt_prefixes_without_writes():
+    from congress_api.cli.receipt_cleanup import receipt_inventory
+    class Paginator:
+        def paginate(self, **kwargs):
+            assert kwargs == dict(Bucket='raw', Prefix='receipts/')
+            yield {'Contents': [{'Key': 'receipts/b/undated/old.jsonl.gz', 'Size': 2, 'ETag': '"bb"'}]}
+            yield {'Contents': [{'Key': 'receipts/a/2026-10-27/new.jsonl.gz', 'Size': 3, 'ETag': '"aa"'}]}
+    class Client:
+        def get_paginator(self, name):
+            assert name == 'list_objects_v2'
+            return Paginator()
+    result = receipt_inventory(Client(), 'raw')
+    assert result == [dict(key='receipts/a/2026-10-27/new.jsonl.gz', size=3, etag='aa'),
+                      dict(key='receipts/b/undated/old.jsonl.gz', size=2, etag='bb')]
