@@ -193,3 +193,20 @@ def test_duplicate_accepted_original_link_refuses_without_losing_a_decision(tmp_
         reconcile(accepted,captures,registry,output=tmp_path/'staged',
             engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),decided_at=STAMP,decided_by='reconciliation')
     assert not (tmp_path/'staged'/'manifest.json').exists()
+
+
+def test_native_projection_filters_unrelated_fetches_but_keeps_all_recoveries(tmp_path):
+    from corpus_recovery.reconcile import project_legacy
+    raw=tmp_path/'counter.parquet'
+    caps=[dict(sha256=digest*64,bytes=12,media_type='text/plain',retrieved_at=STAMP,context_url='https://archive.example/a') for digest in ('1','2')]
+    record=dict(url='https://archive.example/a',mode='retained_import',source_associations=[dict(original_url='https://docs.house.gov/a',basis='verified_archive_capture')])
+    rows=[dict(__receipt_key='receipts/legacy/run',__receipt_line=1,record=record,captures=caps,file_references=[]),
+          dict(__receipt_key='receipts/fetch/run',__receipt_line=1,record=dict(record,mode='fetch',source_associations=[]),captures=caps,file_references=[])]
+    pq.write_table(pa.Table.from_pylist(rows),raw)
+    accepted=tmp_path/'accepted.json';accepted.write_text(json.dumps(dict(version=1,recoveries=[dict(body_key='bodies/sha256/11/'+'1'*64+'.gz')])))
+    output=tmp_path/'projection';output.mkdir()
+    path=project_legacy(raw,output=output,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),accepted=accepted)
+    selected=pq.read_table(path).to_pylist()
+    assert len(selected)==3
+    assert [row['sha256'] for row in selected if row['mode']=='fetch']==['1'*64]
+    assert [row['sha256'] for row in selected if row['mode']=='retained_import']==['1'*64,'2'*64]
