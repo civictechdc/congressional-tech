@@ -78,3 +78,8 @@ jobs:
       - name: Build the static site
         working-directory: apps/site
         run: npm run build
+      - uses: ./.github/actions/setup-publication-browser
+      - name: Require the archive contract against native hand releases
+        env:
+          VIEWER_BENCHMARK_MODULES: ${{ env.PUBLICATION_BROWSER_MODULES }}
+        run: .venv/bin/python -I .github/scripts/verify-archive-contract.py --work "$RUNNER_TEMP/archive-contract"

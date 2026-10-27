@@ -19,8 +19,8 @@ WORKFLOW_PATH = ROOT / ".github/workflows/capture-raw-sources.yml"
 
 
 def test_filename_viewer_trigger_tracks_capture_workflow_name():
-    capture = yaml.load(WORKFLOW_PATH.read_text(), Loader=yaml.BaseLoader)
-    viewer = yaml.load((WORKFLOW_PATH.parent / "publish-filename-viewer.yml").read_text(),
+    capture = yaml.load((WORKFLOW_PATH.parent / "capture-archive.yml").read_text(), Loader=yaml.BaseLoader)
+    viewer = yaml.load((WORKFLOW_PATH.parent / "archive-jobs.yml").read_text(),
                        Loader=yaml.BaseLoader)
     assert viewer["on"]["workflow_run"]["workflows"] == [capture["name"]]
 # BaseLoader preserves GitHub's `on` key instead of treating it as YAML 1.1 True.
@@ -329,8 +329,11 @@ def test_shared_writer_lock_revision_credentials_and_single_rebuild():
             # Pages reads a hash-verified immutable generation. It does not
             # write R2 objects or participate in the archive writer lock.
             # Its read-only client calls are checked in test_filename_publication.
-            if path.name == 'publish-filename-viewer.yml':
-                assert writer['concurrency']['group'] == 'filename-viewer-publication'
+            if path.name == 'archive-jobs.yml':
+                assert writer['concurrency']['group'] == 'archive-lake-and-publication'
+                assert 'raw-source-sync' not in path.read_text()
+            elif path.name == 'capture-archive.yml':
+                assert writer['concurrency']['group'] == 'archive-capture'
                 assert 'raw-source-sync' not in path.read_text()
             elif path.name == 'update-data.yml':
                 # Weekly snapshots write only create-only bodies and run-named

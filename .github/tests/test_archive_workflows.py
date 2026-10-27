@@ -24,7 +24,7 @@ def test_publish_backfill_maintenance_share_one_non_canceling_group():
         assert 'gh ' not in commands and 'git push' not in commands
         assert 'github.ref' in job['if'] or 'head_branch' in job['if']
     steps = value['jobs']['publish']['steps']
-    invocation = next(step for step in steps if 'run-archive-job.py publish' in step.get('run', ''))
+    invocation = next(step for step in steps if step.get('run', '').endswith('run-archive-job.py publish'))
     assert 'canary:' not in invocation['run'] and 'contract:' not in invocation['run'], 'Publisher owns stages once'
     assert invocation['env']['VIEWER_BENCHMARK_MODULES'] == '${{ env.PUBLICATION_BROWSER_MODULES }}'
 

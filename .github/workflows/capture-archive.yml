@@ -1,0 +1,63 @@
+name: Capture archive sources
+
+on:
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: archive-capture
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  capture:
+    # Owner enables only after disabling old capture and completing final publish.
+    if: github.ref == 'refs/heads/main' && vars.ARCHIVE_CAPTURE_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    environment: archive-capture
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/checkout@v5
+        with:
+          ref: pipeline-data
+          path: pipeline-data
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-project
+      - name: Capture from the public release and weekly inventory seeds
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.ARCHIVE_CAPTURE_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.ARCHIVE_CAPTURE_R2_SECRET_ACCESS_KEY }}
+          ZYTE_TOKEN: ${{ secrets.ZYTE_TOKEN }}
+          ARCHIVE_POINTER: ${{ vars.ARCHIVE_POINTER_URL }}
+          REQUEST_BUDGET: ${{ vars.ARCHIVE_CAPTURE_REQUEST_BUDGET }}
+          BYTE_BUDGET: ${{ vars.ARCHIVE_CAPTURE_BYTE_BUDGET }}
+          SPOOL_BUDGET: ${{ vars.ARCHIVE_CAPTURE_SPOOL_BUDGET }}
+        run: |
+          set -euo pipefail
+          for value in "$REQUEST_BUDGET" "$BYTE_BUDGET" "$SPOOL_BUDGET"; do
+            [[ "$value" =~ ^[1-9][0-9]*$ ]] || { echo 'Capture budgets must be positive integers' >&2; exit 2; }
+          done
+          seeds=()
+          for path in pipeline-data/congress_meetings.jsonl.gz pipeline-data/gpo-evidence.jsonl.gz \
+            pipeline-data/meeting-inventory/house.json.gz pipeline-data/meeting-inventory/house-sites.json.gz \
+            pipeline-data/meeting-inventory/senate.json.gz; do
+            if [[ -f "$path" ]]; then seeds+=(--seed-inventory "$path"); fi
+          done
+          .venv/bin/python -I -m congress_api.cli.capture_schedule \
+            --pointer "$ARCHIVE_POINTER" --request-budget "$REQUEST_BUDGET" \
+            --byte-budget "$BYTE_BUDGET" --spool-budget "$SPOOL_BUDGET" \
+            --work "$RUNNER_TEMP/archive-capture" --apply "${seeds[@]}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: archive-capture-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/archive-capture/*.json
+          if-no-files-found: ignore

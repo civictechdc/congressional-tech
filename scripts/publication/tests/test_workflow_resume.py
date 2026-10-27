@@ -96,60 +96,12 @@ def test_descriptor_bound_counts_encoded_bytes_and_refuses_duplicate_fields():
             b'"artifact_id": "456", "artifact_id": "457"'))
 
 
-def workflow():
-    return yaml.load((ROOT / '.github/workflows/publish-filename-viewer.yml').read_text(), Loader=yaml.BaseLoader)
 
 
-def test_current_workflow_selects_capacity_and_local_journal_checks():
-    script = next(step['run'] for step in workflow()['jobs']['publish']['steps']
-        if step.get('name') == 'Verify publication fidelity and recovery mapping')
-    selected = [line.strip() for line in script.splitlines() if line.strip().endswith('.py')]
-    assert 'packages/viewer_publication/tests/test_publication_capacity.py' in selected
-    assert 'packages/viewer_publication/tests/test_local_continuation.py' in selected
 
 
-def test_workflow_uses_one_validated_selection_and_keeps_unchanged_skip():
-    value = workflow()
-    assert set(value['on']['workflow_dispatch']['inputs']) == {'resume_descriptor'}
-    steps = value['jobs']['publish']['steps']
-    admission = next(i for i, step in enumerate(steps) if step.get('id') == 'resume')
-    checkout = next(i for i, step in enumerate(steps) if step.get('name') == 'Check out the original preparation revision')
-    setup = next(i for i, step in enumerate(steps) if step.get('uses') == './.github/actions/setup-python-project')
-    restore = next(i for i, step in enumerate(steps) if step.get('name') == 'Restore explicitly selected preparation')
-    verify = next(i for i, step in enumerate(steps) if step.get('name') == 'Verify complete preparation inventory')
-    publish = next(i for i, step in enumerate(steps) if step.get('name') == 'Publish accepted preparation')
-    assert admission < checkout < setup < restore < verify < publish
-    assert steps[checkout]['with']['ref'] == '${{ steps.resume.outputs.revision }}'
-    assert steps[restore]['with']['artifact-ids'] == '${{ steps.resume.outputs.artifact_id }}'
-    assert steps[restore]['with']['run-id'] == '${{ steps.resume.outputs.run_id }}'
-    assert '--resume --resume-descriptor "$RUNNER_TEMP/viewer-resume.json"' in steps[publish]['run']
-    assert 'inputs.artifact_id' not in json.dumps(steps)
-    assert steps[setup]['if'] == "github.event_name == 'push' || steps.resume.outputs.resume == 'true' || steps.resume.outputs.preparation_resume == 'true' || steps.preflight.outputs.status == 'preparation_required'"
-    assert next(s for s in steps if s.get('id') == 'preflight')['if'] == "steps.resume.outputs.resume == 'false' && steps.resume.outputs.preparation_resume == 'false'"
-    assert next(s for s in steps if s.get('id') == 'prepare')['if'] == "steps.resume.outputs.preparation_resume == 'true' || (steps.resume.outputs.resume == 'false' && steps.preflight.outputs.status == 'preparation_required')"
 
 
-@pytest.mark.parametrize('historical', [False, True])
-def test_workflow_fixture_paths_belong_to_selected_current_or_historical_checkout(tmp_path, historical):
-    steps = workflow()['jobs']['publish']['steps']
-    script = next(s['run'] for s in steps if s.get('name') == 'Verify publication fidelity and recovery mapping')
-    paths = [line.strip() for line in script.splitlines() if line.strip().endswith('.py')]
-    expected = [('tests/' + Path(path).name) if historical else path for path in paths]
-    for path in expected:
-        target = tmp_path / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.touch()
-    # Exercise the actual workflow shell; replace only the final interpreter.
-    bindir = tmp_path / 'bin'
-    bindir.mkdir()
-    python = bindir / 'python'
-    python.write_text('#!/bin/sh\nprintf "%s\\n" "$@"\n')
-    python.chmod(0o755)
-    result = subprocess.run(['bash', '-e', '-c', script], cwd=tmp_path,
-        env=dict(os.environ, PATH=str(bindir) + os.pathsep + os.environ['PATH']),
-        capture_output=True, text=True, timeout=10)
-    assert result.returncode == 0, result.stderr
-    assert result.stdout.splitlines() == ['-m', 'pytest', '-q', *expected]
 
 
 def test_resume_validator_and_bootstrap_are_in_release_identity():
@@ -160,28 +112,10 @@ def test_resume_validator_and_bootstrap_are_in_release_identity():
     assert 'scripts/publication/prepare_workflow_resume.py' in files
 
 
-def test_new_preparation_requires_native_runtime_while_resume_and_noop_skip_it(tmp_path):
-    steps=workflow()['jobs']['publish']['steps']
-    guard=next(step for step in steps if step.get('name')=='Require approved native runtime for preparation')
-    prepare=next(step for step in steps if step.get('id')=='prepare')
-    assert guard['if']==prepare['if']
-    assert 'prepare_workflow_resume.py run' in prepare['run']
-    # Execute the current workflow shell in a minimal checkout, without any
-    # inherited runtime/provider credentials or installed-checkout package paths.
-    relative=Path('.github/scripts/setup-native-runtime.py')
-    setup=tmp_path/relative
-    setup.parent.mkdir(parents=True)
-    original=(ROOT/relative).read_bytes()
-    setup.write_bytes(original)
-    env=dict(PATH=str(Path(sys.executable).parent)+os.pathsep+os.defpath,
-        PYTHONPATH=os.pathsep.join(str(ROOT/p) for p in ('packages/congress_shared/src','packages/congress_api/src','packages/docspec_client/src')),PYTHONDONTWRITEBYTECODE='1',
-        HOME=str(tmp_path),RUNNER_TEMP=str(tmp_path),GITHUB_ENV=str(tmp_path/'github-env'),
-        AWS_EC2_METADATA_DISABLED='true')
-    result=subprocess.run(['bash','-e','-c',guard['run']],cwd=tmp_path,
-        env=env,capture_output=True,text=True,timeout=10)
-    assert result.returncode==1
-    assert result.stderr=='Native runtime setup refused: Runtime artifact descriptor must be valid JSON\n'
-    assert result.stdout==''
-    assert setup.read_bytes()==original
-    assert {path.relative_to(tmp_path) for path in tmp_path.rglob('*')}=={
-        Path('.github'),Path('.github/scripts'),relative}
+
+
+def test_retired_resume_workflow_cannot_dispatch_mutations():
+    assert not (ROOT / '.github/workflows/publish-filename-viewer.yml').exists()
+    value = yaml.load((ROOT / '.github/workflows/archive-jobs.yml').read_text(), Loader=yaml.BaseLoader)
+    assert set(value['on']['workflow_dispatch']['inputs']) == {'operation'}
+    assert 'resume_descriptor' not in json.dumps(value)

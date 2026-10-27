@@ -238,24 +238,11 @@ def test_document_archive_copy_refuses_changed_source_custody(catalog, tmp_path,
     assert source.read_bytes() == expected and not (target / 'manifest.json').exists()
 
 
-def test_failed_preparation_upload_keeps_memory_receipts_without_partial_payloads(tmp_path):
+
+
+def test_retired_preparation_cannot_upload_partial_payloads_from_ci():
+    assert not (ROOT / '.github/workflows/publish-filename-viewer.yml').exists()
     import yaml
-    workflow = yaml.safe_load((ROOT / '.github/workflows/publish-filename-viewer.yml').read_text())
-    uploads = [step for job in workflow['jobs'].values() for step in job['steps']
-               if step.get('uses') == 'actions/upload-artifact@v4' and step.get('if') == 'always()']
-    assert len(uploads) == 1
-    patterns = uploads[0]['with']['path'].splitlines()
-    root = 'viewer-preparation/publication/'
-    assert root + 'preparation-memory-failure.json' in patterns
-    assert root + '**/preparation-memory-failure.json' in patterns
-    # Exercise root and nested receipts against the entire diagnostic path list.
-    receipts = {root + 'preparation-memory-failure.json',
-                root + 'catalog/viewer-v2/preparation-memory-failure.json'}
-    partials = {root + 'catalog/viewer-v2/documents.parquet',
-                root + 'catalog/viewer-v2/observation-rows.bin',
-                root + 'catalog/viewer-v2/manifest.json', root + 'other.json'}
-    for name in receipts | partials:
-        path = tmp_path / name; path.parent.mkdir(parents=True, exist_ok=True); path.touch()
-    matched = {str(path.relative_to(tmp_path)) for pattern in patterns for path in tmp_path.glob(pattern)}
-    assert matched == receipts
-    assert uploads[0]['with']['if-no-files-found'] == 'ignore'
+    value = yaml.load((ROOT / '.github/workflows/archive-jobs.yml').read_text(), Loader=yaml.BaseLoader)
+    assert 'viewer-preparation/' not in json.dumps(value)
+    assert 'resume_descriptor' not in json.dumps(value)
