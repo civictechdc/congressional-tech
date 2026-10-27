@@ -27,6 +27,8 @@ def prepare_repair(captures,repairs,*,engine,work,expected):
     if identity!=expected:
         raise ValueError('Capture selection changed before repair preparation')
     schema=captures['schema'] if native else pq.read_schema(captures)
+    if '_capture_order' not in schema.names or schema.field('_capture_order').type!=pa.int64():
+        raise ValueError('Repair requires an explicit Int64 observation order')
     if not all(name in schema.names for name in (*LOCATOR,'stored_sha256','stored_bytes')):
         raise ValueError('Repair input lacks exact old capture locators')
     work=Path(work).resolve()
@@ -36,7 +38,9 @@ def prepare_repair(captures,repairs,*,engine,work,expected):
     steps=[dict(name='old',sql=captures['sql'])] if native else []
     sha='stored_sha256'
     binary=pa.types.is_binary(schema.field(sha).type) or pa.types.is_fixed_size_binary(schema.field(sha).type)
-    corrected_sha="decode(c.stored_sha256,'hex')" if binary else 'c.stored_sha256'
+    corrected_sha=("arrow_cast(decode(c.stored_sha256,'hex'),'FixedSizeBinary(32)')"
+                   if pa.types.is_fixed_size_binary(schema.field(sha).type) else
+                   "decode(c.stored_sha256,'hex')" if binary else 'c.stored_sha256')
     if 'body_key' in schema.names:
         key='o.body_key'
     else:
@@ -59,19 +63,28 @@ def prepare_repair(captures,repairs,*,engine,work,expected):
         dict(name='patched',sql='SELECT '+','.join(projection)+' FROM old o LEFT JOIN fixes c ON '+match),
         dict(name='changed',sql='SELECT '+','.join(projection)+' FROM old o JOIN fixes c ON '+match+
              f' WHERE (o.stored_sha256 IS DISTINCT FROM {corrected_sha}) OR (c.stored_bytes IS NOT NULL AND (o.stored_bytes IS DISTINCT FROM c.stored_bytes))'),
-        dict(name='ordered',sql='SELECT *,row_number() OVER(ORDER BY '+','.join('"'+n+'"' for n in schema.names)+') AS _repair_order FROM patched')]
-    exports=[parquet_output(work,'corrected','SELECT * FROM ordered',['_repair_order']),
-             parquet_output(work,'changed','SELECT * FROM changed',list(unchanged))]
+        ]
+    exports=[parquet_output(work,'corrected','SELECT * FROM patched',['_capture_order']),
+             parquet_output(work,'changed','SELECT * FROM changed',['_capture_order'])]
     exports[0]['settings']['columns']=schema.names
     reports=run_job(work,engine,inputs=inputs,steps=steps,outputs=exports,queries=[dict(name='audit',sql=f"""SELECT
         (SELECT count(*) FROM old) AS before_rows,(SELECT count(*) FROM patched) AS after_rows,
         (SELECT count(*) FROM evidence)-(SELECT count(*) FROM fixes) AS ambiguous,
         (SELECT count(*) FROM changed) AS changed,
+        (SELECT count(*) FROM fixes c LEFT ANTI JOIN old o ON {match}) AS unmatched,
+        (SELECT count(*) FROM old WHERE _capture_order IS NULL OR _capture_order<0) AS invalid_order,
+        (SELECT count(DISTINCT _capture_order) FROM old) AS distinct_order,
         (SELECT count(*) FROM (SELECT {fields} FROM old EXCEPT ALL SELECT {fields} FROM patched)) AS lost,
         (SELECT count(*) FROM (SELECT {fields} FROM patched EXCEPT ALL SELECT {fields} FROM old)) AS added""")])
     audit=reports['audit'][0]
-    if audit['ambiguous'] or audit['before_rows']!=audit['after_rows'] or audit['lost'] or audit['added']:
+    if (audit['ambiguous'] or audit['unmatched'] or audit['invalid_order']
+            or audit['before_rows']!=audit['after_rows'] or audit['distinct_order']!=audit['before_rows']
+            or audit['lost'] or audit['added']):
         raise ValueError('Ambiguous repair evidence or changed unrelated capture facts')
+    if native and audit['before_rows']!=captures['expected_rows']:
+        raise ValueError('Selected capture count differs from its pinned manifest')
+    if not native and file_pin(captures)['sha256']!=expected:
+        raise ValueError('Capture selection changed during repair preparation')
     output=work/'corrected.parquet'
     manifest=dict(version=1,kind='native' if native else 'flat',expected=expected,output=str(output),
         output_pin=file_pin(output),changed=str(work/'changed.parquet'),changed_pin=file_pin(work/'changed.parquet'),
@@ -107,9 +120,15 @@ def apply_flat(work,captures):
                 shutil.copyfileobj(source,out,1024**2)
                 out.flush()
                 os.fsync(out.fileno())
+            if file_pin(temporary)!=manifest['output_pin']:
+                raise ValueError('Repair stage changed during replacement')
+            os.chmod(temporary,captures.stat().st_mode & 0o777)
             if file_pin(captures)['sha256']!=manifest['expected']:
                 raise ValueError('Capture selection changed during replacement')
             os.replace(temporary,captures)
+            directory=os.open(captures.parent,os.O_RDONLY)
+            try:os.fsync(directory)
+            finally:os.close(directory)
         finally:
             Path(temporary).unlink(missing_ok=True)
     return manifest['audit']
@@ -144,10 +163,11 @@ def apply_native(work,storage):
         raise ValueError('Repair cannot append or remove capture observations')
     selected['captures']['head']=head
     with pq.ParquetFile(manifest['changed']) as source:
-        for batch in source.iter_batches(batch_size=storage.max_capture_rows):
+        for number,batch in enumerate(source.iter_batches(batch_size=storage.max_capture_rows)):
             current=RawSnapshot(storage,selected,base.version)
             selected['bodies']=storage._prepare_bodies(current,pa.Table.from_batches([batch]),
-                                                       operation=operation,base_id=base.identity)
+                                                       operation=f'{operation}-bodies-{number}',base_id=base.identity)
+    load_repair(work)
     data=encoded(selected)
     result=storage.publish(dict(base=base,manifest=selected,data=data,changed=selected!=base.manifest,
                                 already_applied=False,delivery=None))
