@@ -261,5 +261,5 @@ def read_page(body, parser):
             else:
                 row['fingerprint'] = fingerprint(text)
     except (etree.Error, UnicodeError, ValueError, RuntimeError) as error:
-        row.update(status='failed', error_type=type(error).__name__, fingerprint=None)
+        row.update(status='error', error_type=type(error).__name__, fingerprint=None)
     return row
