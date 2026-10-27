@@ -25,3 +25,7 @@ Page contracts precede binding: literal/order/group/date/namespace/entity/finger
 **2026-10-27T08:57:00Z**
 
 Sniff binding 35315b74 covers all 14 DM formats, exact PDF ranges, the actual bounded reader, Office/ODF and double-gzip WARC. The 87 focused checks pass. The full lane started at 8c731589 with runtime binding 35315b74: 11,368 passed, 33 failed and three setup errors; all 36 baseline failure identities remain unchanged, including subtests (cx_after_s1_sniff_full_comparison.json). Parser status fix 540c4ceb follows DM; its oversized-PDF and ZIP rules were corrected in place. Expected fixtures 8c731589 and b39ae086 cover 25 roles, 15 groups and six link cases before SQL. Current page replay completed. S1 remains open.
+
+**2026-10-27T11:16:26Z**
+
+Owner-bounded extractor choice: Trafilatura on existing available evidence; no more comparisons. Current replay3425/0errors. Bounded native real-slice cache join found212HouseXML;12hash-checked readings complete. Selected available GovInfoZIP empty; EOT body absent. Semantic slice/grouping SQL and real registry seeds keep S1 open.
