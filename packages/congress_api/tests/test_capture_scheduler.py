@@ -331,3 +331,37 @@ def test_attempted_alias_is_not_scheduled_again(tmp_path):
     result=plan_queue(load(root,tmp_path/'read'),engine=engine(),work=tmp_path/'plan',as_of=ASOF,
         request_budget=20,attempted=attempted)
     assert pq.read_table(result['queue']).num_rows==0
+
+
+def test_missing_shared_url_definition_refuses_before_native_planning(tmp_path):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    selected=load(release(tmp_path,[]),tmp_path/'read')
+    selected['url_keys_sql']=tmp_path/'missing-shared-url-keys.sql'
+    with pytest.raises(ValueError,match='url_key'):
+        plan_queue(selected,engine=engine(),work=tmp_path/'plan',as_of=ASOF,request_budget=20)
+    assert not (tmp_path/'plan').exists()
+
+
+def test_discovery_uses_one_bounded_shared_worker_per_format(tmp_path):
+    from congress_api.acquisition.capture_scheduler import run_capture,read_discovery_payload
+    instances=[]
+    class Worker:
+        def __init__(self,parser,version,callable_path,**limits):
+            self.calls=[];self.closed=False;self.limits=limits;instances.append(self)
+            assert parser=='html' and len(version)==64
+            assert callable_path=='congress_api.acquisition.capture_scheduler:read_discovery_payload'
+            assert limits['timeout_seconds']>0 and limits['memory_bytes']>0 and limits['max_input_bytes']>0
+        def __enter__(self):return self
+        def __exit__(self,*_):self.closed=True
+        def parse(self,input_id,payload):
+            self.calls.append(input_id)
+            return dict(status='completed',value=read_discovery_payload(payload))
+    root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)])
+    adapter=Adapter({'https://fixture.test/a':(200,b'<html><a href="/b">b</a></html>',{}),
+                     'https://fixture.test/b':(200,b'<html>second page</html>',{})})
+    result=run_capture(load(root,tmp_path/'read'),engine=engine(),work=tmp_path/'capture',as_of=ASOF,
+        request_budget=100,byte_budget=2**30,spool_budget=2**30,store=BodyStore(LocalAdapter(tmp_path/'raw')),
+        identity=IDENTITY,direct=adapter,resolve=lambda _:['8.8.8.8'],archive_limits=LIMITS,
+        pace=lambda *_:None,worker_factory=Worker)
+    assert result['captures']==2 and len(instances)==1
+    assert len(instances[0].calls)==2 and instances[0].closed
