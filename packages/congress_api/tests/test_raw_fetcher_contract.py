@@ -170,3 +170,55 @@ def test_range_requests_pin_every_range_with_if_range(tmp_path):
     result = download_ranges(Session(), URL, tmp_path / 'ranges', size=6, validator='"v1"', range_bytes=2)
     assert result.complete and result.path.read_bytes() == b'ababab'
     assert not (tmp_path / 'ranges.ranges.json').exists()
+
+
+def test_host_registry_spaces_house_starts_and_honors_retry_after():
+    from congress_api.acquisition.fetcher import HostPacer
+    now, sleeps = [0.0], []
+    def sleep(seconds):
+        sleeps.append(seconds)
+        now[0] += seconds
+    pacer = HostPacer({'default_gap_seconds':0.2,'provider_gap_seconds':0,
+                      'hosts':{'docs.house.gov':{'gap_seconds':1.2,'backoffs':{'403':60}}}},
+                     clock=lambda:now[0],sleep=sleep,utc_now=lambda:0)
+    pacer(URL,'direct')
+    pacer(URL,'direct')
+    assert sleeps[-1] == pytest.approx(1.2)
+    pacer.observe(URL,'direct',403,{})
+    pacer(URL,'direct')
+    assert sleeps[-1] == pytest.approx(60)
+    pacer.observe(URL,'direct',200,{'retry-after':'120'})
+    pacer(URL,'direct')
+    assert sleeps[-1] == pytest.approx(120)
+
+
+def test_provider_adapter_disables_redirects_and_keeps_separate_status(tmp_path):
+    from congress_api.transport.raw_adapters import ProviderAdapter
+    class Response:
+        status_code=200
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def iter_content(self,chunk_size):
+            yield json.dumps({'url':URL,'statusCode':302,'httpResponseBody':'',
+                              'httpResponseHeaders':[{'name':'Location','value':'/next.pdf'}]}).encode()
+    def request(payload):
+        assert payload['followRedirect'] is False
+        return Response()
+    result=ProviderAdapter(request).hop(URL,tmp_path/'body',limit=1000,headers={})
+    assert result.provider_status==200 and result.http_status==302 and result.complete
+    assert result.headers['location']=='/next.pdf'
+
+
+def test_range_entity_change_retains_only_incomplete_evidence(tmp_path):
+    from congress_api.transport.raw_adapters import download_ranges
+    class Response:
+        status_code,url=206,URL
+        headers={'content-range':'bytes 0-1/2','etag':'"changed"'}
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def iter_content(self,chunk_size):raise AssertionError('Do not read changed entity')
+    class Session:
+        def get(self,*args,**kwargs):return Response()
+    result=download_ranges(Session(),URL,tmp_path/'body',size=2,validator='"old"')
+    assert not result.complete and result.error=='range_entity_changed'
+    assert result.path.read_bytes()==b''
