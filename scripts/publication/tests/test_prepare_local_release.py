@@ -171,3 +171,39 @@ def test_production_client_constructor_uses_standard_three_attempt_budget(monkey
     assert client.meta.config.retries == dict(mode='standard', total_max_attempts=3)
     assert client.meta.config.connect_timeout == 15
     assert client.meta.config.read_timeout == 180
+
+
+def test_adapter_forwards_explicit_metadata_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(adapter.NativeDatasets, 'from_config', lambda path: object())
+    monkeypatch.setattr(adapter, 'make_client', lambda: object())
+    seen = {}
+    def prepare(*args, **options):
+        seen.update(options)
+        return {'status': 'prepared'}
+    monkeypatch.setattr(adapter.attempt, 'prepare', prepare)
+    cache = tmp_path / 'cache'
+    assert adapter.main([*flags(tmp_path), '--metadata-cache', str(cache)]) == 0
+    assert seen['metadata_cache_dir'] == cache
+
+
+def test_maintained_prepare_receives_cache_without_caching_selected_control(tmp_path, monkeypatch):
+    import congress_api.retention.catalog_publication as catalog
+    pub = SimpleNamespace(PREFIX='viewer/', ACCEPTED_KEY='accepted', BUCKET='fixture', PUBLISHER_VERSION=6,
+        validated_accepted=lambda value: None, full_release_identity=lambda: {'runtime': 'current'})
+    reads = []
+    def read_identity(client, key, optional=False):
+        reads.append(key)
+        return ({'version': 2} if key == 'indexes/catalog.json' else None, 'etag', None, 'a' * 64)
+    pub.read_identity = read_identity
+    cache = tmp_path / 'cache'
+    original = ValueError('stop after constructing maintained cached store')
+    def read_catalog(store, **options):
+        assert store.cache_dir == cache
+        raise original
+    monkeypatch.setattr(catalog, 'read_catalog', read_catalog)
+    with pytest.raises(ValueError) as caught:
+        attempt.prepare(pub, adapter.ReadOnlyClient(sdk_client()), tmp_path / 'fresh',
+            run_id='new', run_attempt='1', public_url='https://fixture.invalid',
+            native=object(), metadata_cache_dir=cache)
+    assert caught.value is original
+    assert reads == ['indexes/catalog.json', 'viewer/manifest.json', 'accepted']
