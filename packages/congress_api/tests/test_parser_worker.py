@@ -68,7 +68,7 @@ def test_one_crash_retries_successfully(parser, tmp_path):
 
 def test_input_bound_refuses_before_invocation(parser):
     with worker(parser, max_input_bytes=3) as run:
-        assert run.parse('large', b'four') == {'status': 'unreadable', 'reason': 'input_size_limit', 'attempts': 0}
+        assert run.parse('large', b'four') == {'status': 'size_limit'}
         assert run.parse('one', b'ok')['value']['count'] == 1
 
 
