@@ -407,9 +407,11 @@ class DependencyPreparation:
             'SELECT part FROM parts WHERE giant=0 ORDER BY part')]
         with TemporaryDirectory(prefix='sort-', dir=self.directory) as scratch:
             connection = duckdb.connect(config=dict(threads='1', preserve_insertion_order='false',
-                enable_external_file_cache='false', parquet_metadata_cache='false',
+                enable_external_file_cache='false',
                 memory_limit=f'{SORT_MEMORY_BYTES}B', temp_directory=scratch,
                 max_temp_directory_size=f'{scratch_limit}B'))
+            # Parquet settings are registered after the built-in extension loads.
+            connection.execute("SET parquet_metadata_cache=false")
             monitor = connection.cursor()
             connection.execute("SET enable_profiling='no_output'")
             try:
