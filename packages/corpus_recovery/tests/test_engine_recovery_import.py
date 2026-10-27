@@ -275,14 +275,15 @@ def test_source_category_controls_import_kind_and_preserves_excerpts(tmp_path):
     assert not any(row['kind']=='rejected' for row in decisions)
 
 
-@pytest.mark.parametrize('source_time',[None,'2019-01-01'])
-def test_missing_exact_source_time_uses_earliest_valid_same_body_fetch(tmp_path,source_time):
+@pytest.mark.parametrize('source_time,earliest_url',[
+    (None,'https://alias.example/earliest'),('2019-01-01',None)])
+def test_missing_exact_source_time_uses_earliest_valid_same_body_fetch(tmp_path,source_time,earliest_url):
     accepted,captures,registry=reconciliation_inputs(tmp_path)
     rows=pq.read_table(captures).to_pylist()
     source=rows[1]
     source['retrieved_at']=source_time
     rows.extend([
-        dict(source,url='https://alias.example/earliest',retrieved_at='2020-01-01T00:00:00Z',
+        dict(source,url=earliest_url,retrieved_at='2020-01-01T00:00:00Z',
             receipt_key='receipts/earliest',receipt_line=2,capture_index=3),
         # Lexically earlier, but its UTC time is later than the chosen fetch.
         dict(source,url='https://alias.example/later',retrieved_at='2019-12-31T20:30:00-05:00',
