@@ -299,25 +299,28 @@ def typed_observations(schema, identities, occurrences):
     return Source()
 
 
-def publish_occurrence_assets(source, folder, assets, *, policy, metrics, counts=None):
+def publish_occurrence_assets(source, folder, assets, *, policy, metrics, counts=None, include_flat=True):
     from viewer_publication.filename_observations import publish_observations
     from viewer_publication.filename_exports import OccurrenceParquetWriter
-    with OccurrenceParquetWriter(source, folder / 'occurrences.parquet', policy=policy, metrics=metrics) as writer:
+    from contextlib import nullcontext
+    with (OccurrenceParquetWriter(source, folder / 'occurrences.parquet', policy=policy, metrics=metrics)
+          if include_flat else nullcontext()) as writer:
         publish_observations(source, folder, counts=counts, policy=policy, metrics=metrics,
                              occurrence_writer=writer)
-    flat = writer.result()
     result = {name: assets.put_file(folder / filename, name=name + suffix)
               for name, filename, suffix in [('observations', 'observations.bin', '.bin'),
                   ('observation_rows', 'observation-rows.bin', '.bin'),
                   ('observation_index', 'observation-index.json', '.json')]}
-    result['occurrences'] = dict(
-        assets.put_file(folder / 'occurrences.parquet', name='occurrences.parquet'),
-        rows=flat['rows'],
-        parent_rows=flat['parent_rows'],
-        fields=flat['fields'],
-        row_slices=flat['row_slices'],
-        browse_ranges=flat['browse_ranges'],
-    )
+    if include_flat:
+        flat = writer.result()
+        result['occurrences'] = dict(
+            assets.put_file(folder / 'occurrences.parquet', name='occurrences.parquet'),
+            rows=flat['rows'],
+            parent_rows=flat['parent_rows'],
+            fields=flat['fields'],
+            row_slices=flat['row_slices'],
+            browse_ranges=flat['browse_ranges'],
+        )
     return result
 
 
@@ -708,7 +711,7 @@ class NativeComponents:
                     source = typed_observations(schema, identities, lambda identity:
                         owner.occurrences(pin, schema=physical, owner_id=identity))
                     reference['document_observations'] = dict(rows=table.rows, files=publish_occurrence_assets(
-                        source, folder, self.assets, policy=self.policy, metrics=self.metrics))
+                        source, folder, self.assets, policy=self.policy, metrics=self.metrics, include_flat=False))
                 self.db.execute('INSERT INTO chunk_assets VALUES (?,?)', (name, encoded(reference).decode()))
         else:
             prepare()
