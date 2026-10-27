@@ -44,7 +44,7 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT):
     """Join narrow source/body memberships through the one native graph step.
 
     Inputs are source_files, source_endpoints (with the shared normalized
-    endpoint_key), publisher_links, and once-per-body body_fingerprints.
+    endpoint_key), source_directories, publisher_links, and body_fingerprints.
     """
     steps=[dict(name='fingerprints',sql='SELECT body_sha,max(fingerprint) AS fingerprint FROM body_fingerprints GROUP BY body_sha',materialize=True)]
     for name in ['endpoint-bodies','fingerprint-candidates','ambiguous-endpoints','edition-bodies',
@@ -53,4 +53,14 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT):
     steps.append(dict(name='source_components',components=dict(sql='SELECT left_node,right_node FROM source_edges',
         left='left_node',right='right_node',node_limit=node_limit)))
     steps.append(dict(name='source_labels',sql="SELECT f.source_id,c.component FROM source_files f JOIN source_components c ON c.node='s:'||f.source_id",materialize=True))
+    return steps
+
+
+def source_steps(*,root=ROOT):
+    """Derive source grain and addresses from classified fetches and originals."""
+    steps=[]
+    for name,file in [('filename_inputs','source-filename-inputs'),('effective_filenames','effective-filenames'),
+                      ('capture_source_names','capture-source-names'),('capture_sources','capture-sources'),('source_files','source-files'),
+                      ('source_directories','source-directories')]:
+        steps.append(dict(name=name,sql=(Path(root)/'model/sql'/(file+'.sql')).read_text(),materialize=True))
     return steps
