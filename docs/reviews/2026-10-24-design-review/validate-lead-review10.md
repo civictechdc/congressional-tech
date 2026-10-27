@@ -22,3 +22,10 @@ The Fable reviewer (`fable-review10.md`) read the four docs blind at 41f86b72 an
 | F14 three HTML/XML counts | Partly | They are nested populations, not contradictions: 287,765 bodies labeled HTML or XML, of which 214,041 have a 2xx; page-reading candidates add JSON and sniff-chosen bodies (289,179). A re-count on the 10-15 index gives 286,103 ⊃ 212,501, and 286,769 with JSON (`r10v_htmlxml.py`); it differs from the documented figures because the snapshot and selector differ. The real gap is that no doc defines them. |
 | F15 the `.gz` logical key in IDs | Not checked | It depends on whether document IDs reach page URLs (the 16-hex ID decision). |
 | F16–F19 repetition, plan IDs in specs, ceremony, small items | Hold | F17: DM cites B13 three times, plus B0, E1, A11 and F0. |
+
+## Owner decisions (2026-10-26) and what changed
+
+- **Doc fixes, all.** Fixed or folded in place: F4, F5, F8, F9 (fixtures now in `docs/plans/fixtures-20261026.md`), F10 (the release HEAD dropped; the copier's check kept, with its reason), F11, F12, F13, F14 (the populations defined once; repeated counts dropped from schema notes; counts that justify a rule stay), F16, F17, F18 (tables of contents and status sections gone; the W3C labels and key words stay) and F19. Two F19 items were left on purpose: the chamber spelling map stays in DM §3 because it covers several inputs, and DM §7.8's PK is the tested uniqueness §3 defines.
+- **Weekly job into raw (F1).** New plan B15, phase 1, first: each run writes its records to raw as an import run, and the rescued batch is imported once.
+- **Legacy PDF checks dropped (F2).** Unchecked: 32,087.
+- **Simplifications (F3, F6, F7).** Parser tables keep one row per input with list columns; a parse that crashes is retried once, then recorded as `error`; 26 registries become 17.

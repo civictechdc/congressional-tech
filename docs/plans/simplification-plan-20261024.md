@@ -1,37 +1,21 @@
 # Congressional Document Archive: Implementation Plan
 
-**Note, 2026-10-24**
+**Note, 2026-10-24.** Not a specification: it carries no normative requirements, cites contracts rather than restating them, and names no existing files.
 
 ## Abstract
 
 - **Goal:** build the system of [[ARCHITECTURE]] and [[DATA-MODEL]] from today's congressional-tech and docspec-rs code, beside the old pipeline, then switch and delete what is bound to nothing (§2). Work runs in dependency order, with no schedule or effort estimates.
 - **Two phases (§4):** phase 1 switches the site to an engine-built release of documents, rebuilt from raw, reusing every per-item result raw or legacy data already settles; phase 2 adds hearings, witnesses, the spicy-regs entities and the large one-time raw jobs.
-- **First:** the lock probe, the lock on `bodies/` and `provenance/`, B0, then the lock on `receipts/`; M1, M2 and S1 run beside them, since they touch no raw (§4–5).
+- **First:** B15 (the weekly job's records into raw), the lock probe, the lock on `bodies/` and `provenance/`, B0, then the lock on `receipts/`; M1, M2 and S1 run beside them, since they touch no raw (§4–5).
 - **Open (§8):** Basin file growth (M1); memory and the older receipts (M2); the rules on real data (S1); the widest is the model (track E).
-- **Owner actions,** each before the step it blocks: the bucket lock (B1); B0's two patterns and scan report; the credentials (B0's rewriter; the capture, publish and maintenance tokens before F1); the 123 import lines (before D1); six recovery excerpts (B7) and facts only derived tables hold (D1, E4), before the switch; the real-device speed runs (A11); widening fingerprint candidates (S2).
+- **Owner actions,** each before the step it blocks: the rescued batch's import and the weekly job's raw token (B15); the bucket lock (B1); B0's two patterns and scan report; the credentials (B0's rewriter; the capture, publish and maintenance tokens before F1); the 123 import lines (before D1); six recovery excerpts (B7) and facts only derived tables hold (D1, E4), before the switch; the real-device speed runs (A11); widening fingerprint candidates (S2).
 - **Detail:** behavior in [[ARCHITECTURE]]; schemas, derivations, registries and invariants in [[DATA-MODEL]]; code in [[BINDINGS]].
-
-## Status of This Document
-
-A Note, not a specification: it carries no normative requirements, cites contracts rather than restating them, and names no existing files.
-
-## Table of Contents
-
-1. [Introduction](#1-introduction)
-2. [Strategy](#2-strategy)
-3. [Constraints and Rules](#3-constraints-and-rules)
-4. [Order of Work](#4-order-of-work)
-5. [First Steps](#5-first-steps)
-6. [Tracks](#6-tracks)
-7. [Parked](#7-parked)
-8. [Uncertainties and Tests](#8-uncertainties-and-tests)
-9. [References](#9-references)
 
 ## 1. Introduction
 
 The raw log already exists: bodies, receipts and provenance in the R2 bucket `congressional-tech-raw`, backed up on 2026-10-24. Its bodies keep their stored form; the only changes are uncompressed copies of older gzip PDFs (B13) and the one-time cleanup of older receipts (B0), as [[ARCHITECTURE]] §7.1–7.2 specify. Everything above raw is rebuilt.
 
-Already in place: the hosted setup refuses an engine revision other than the qualified one; today's capture index carries `stored_sha256` from the receipt and never derives it; the gzip-deleting path is gone; the 12,431 recoveries that existed only in `accepted.json` have a write-once copy under `provenance/recoveries/`, a whole file the model never reads ([[DATA-MODEL]] §5.3); and the versions of the weekly meeting job's source records from 2026-10-05 to 2026-10-26, which that job overwrites on each run, are kept in a local content-addressed batch until B14 imports it; later versions are kept only by re-running the rescue. The bucket lock is pending with the owner.
+Already in place: the hosted setup refuses an engine revision other than the qualified one; today's capture index carries `stored_sha256` from the receipt and never derives it; the gzip-deleting path is gone; the 12,431 recoveries that existed only in `accepted.json` have a write-once copy under `provenance/recoveries/`, a whole file the model never reads ([[DATA-MODEL]] §5.3); and the versions of the weekly meeting job's source records from 2026-10-05 to 2026-10-26, which that job overwrites on each run, are kept in a local content-addressed batch until B15 imports it. The bucket lock is pending with the owner.
 
 ## 2. Strategy
 
@@ -42,7 +26,7 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 **One implementation per component** ([[BINDINGS]] §2, rule 1): where today has several, the binding picks one and the rest are deleted. External systems are the only variation, injected as adapters ([[ARCHITECTURE]] §4, principle 8).
 
 **Reuse before re-reading.** A per-item result that raw or legacy data already settles is borrowed, with its basis recorded, and only the gaps are read; an old decision across items (grouping, matching, roles) is never borrowed, only used as a parity oracle. Measured on the 2026-10-16 snapshot (`measurements/phase1-inventory-20261026/`):
-- PDF integrity: borrowed where a capture check or an old-reader page read settles it, and listed unchecked until B13's whole read elsewhere ([[DATA-MODEL]] §7.3 holds the counts), so no PDF is read whole in phase 1 beyond §8's sample, and the copies wait;
+- PDF integrity: borrowed where a capture check settles it, and listed unchecked until B13's whole read elsewhere ([[DATA-MODEL]] §7.3 holds the counts, and why old-reader opens are not borrowed), so no PDF is read whole in phase 1 beyond §8's sample, and the copies wait;
 - ZIP fingerprints: the member hashes are in `captures`;
 - run fresh because they are small or the old data cannot serve: `sniff` (about 1.04M short range reads; old formats cover 36% in other categories), the page readings (289,179 bodies, 5 GB; old readings hold no titles, text sizes or links), the filename readings (7–18 minutes; parser changed since the old catalog, which becomes their diff oracle) and the receipt ingest (all local, about a minute);
 - deferred: the full re-hash (until then B9's listing baseline checks each older body's size against its recorded stored size) and the PDF copies.
@@ -71,7 +55,7 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 ## 4. Order of Work
 
 **Phase 1, the documents-only switch:** the site serves an engine-built release of documents, saved copies, sources, recoveries and dead-link lookups, rebuilt from raw; capture runs from it; the old pipeline is deleted, except the weekly meeting job, whose inventories seed capture until B14.
-1. On a scratch bucket with the same lock rule, record the status of a create-only PUT to an existing key, an unconditional PUT, a DELETE and a multipart create; if the first is not 412, B3 and [[ARCHITECTURE]] §7.1 change before any lock. List `provenance/` and record each object that is not a `<kind>/<ts>.jsonl` record. Then the owner locks `bodies/` and `provenance/` (B1); the old writers are patched and B0 runs; then `receipts/` is locked.
+1. B15 first, since each weekly run overwrites another version. On a scratch bucket with the same lock rule, record the status of a create-only PUT to an existing key, an unconditional PUT, a DELETE and a multipart create; if the first is not 412, B3 and [[ARCHITECTURE]] §7.1 change before any lock. List `provenance/` and record each object that is not a `<kind>/<ts>.jsonl` record. Then the owner locks `bodies/` and `provenance/` (B1); the old writers are patched and B0 runs; then `receipts/` is locked.
 2. M1, M2 and S1, beside item 1; S2's document fixtures and the labeled sample beside track C.
 3. F0 and the hand-built fixture; C0; track A and track B's items 2–9 (item 8 as its one-time script), 11 and 12.
 4. Track C, then D (items 1–3 and 5), then E (the document core, [[DATA-MODEL]] §7.1–7.10, and `urls`), then F (items 1, 2, 4 and 5).
@@ -139,62 +123,8 @@ S writes every rule as SQL with its fixtures (E1), in two parts:
 - **S2, beside track C:** the rest of the SQL and fixtures, the labeled sample, the edition count and the raw-only check; its meeting, witness and spicy-regs rows wait for phase 2.
 
 - **What S writes (E1):** the reference model profile; every registry as a versioned file with its first contents and sample tests, seeded as [[BINDINGS]] §4 lists.
-- **Fixtures first:** each fixture below is written with its expected outcome before any SQL, so the table is the acceptance sheet. S adds a row for each format of [[DATA-MODEL]] §6.2 the table does not yet name.
+- **Fixtures first:** each fixture of [[FIXTURES]], the acceptance sheet, is written with its expected outcome before any SQL. S adds a row for each format of [[DATA-MODEL]] §6.2 the sheet does not yet name.
 - **An executable model:** S1's fixtures run as the draft SQL over fixture tables and over real slices (the GovInfo ZIPs, the End of Term lines, docs.house.gov's `.xml` URLs, the pages saved twice in one fetch and the short-page sample), before any further change to the rules they cover.
-
-| Part | Fixture | Expected outcome |
-|---|---|---|
-| S1 | A PDF replaced while its XML stays, with historical pages linking both | Three documents: each PDF edition alone, and the XML alone |
-| S1 | Two editions served at one address, and two mirrors that each pair one of them with the same XML | No document holds both editions |
-| S1 | Re-packaged copies of each edition, each paired with one XML, never at a shared address | The known limit: such a copy can join the XML; the edition count measures how often |
-| S1 | A ZIP repacked so `report.pdf` moves to another position, with mirrors pairing each edition with the same XML | One edition-ambiguous endpoint; the editions stay apart |
-| S1 | Two archive members with one name and different bytes | An edition-ambiguous endpoint; neither member takes a rendition edge |
-| S1 | A linked GovInfo ZIP holding one hearing's HTML and PDF with its METS (`dip.xml`), MODS and PREMIS manifests; a linked ZIP holding two different PDFs | The ZIP, HTML and PDF form one document and the manifests join none; no rendition edges |
-| S1 | Several same-format files listed together; unrelated files on one page outside any list item | Each stays its own document; the unlisted files get no publisher group |
-| S1 | One PDF body under two download names, listed with its XML | One document with both names and the XML; the group counts one PDF body |
-| S1 | One page template under two hearings, where only hearing A's PDF and hearing B's XML were captured | No rendition edge between them |
-| S1 | One page saved by a direct attempt and a provider retry with different page furniture; an archived page also imported as a rendered recovery | One document each: equal main-content fingerprints; the recovery attaches as labeled evidence |
-| S1 | A page with relative links saved in two directories; a relative `<base href>`; a page whose relative links point at sibling archive members | Each copy's links resolve against its own address and base; member links target endpoints in the same container |
-| S1 | A concatenated `href` whose two targets both exist | Two links, in `href` order, one target each |
-| S1 | URLs written with raw spaces and with `%20` | One `url_key` |
-| S1 | A placeholder page at thousands of addresses | Not a real file; it connects nothing, and its links are not resolved |
-| S1 | A short real hearing page; a short soft-error page; a near-empty page; a "your download will begin" page | `document`; `error_response`; `error_response`; `wrapper`, with its file link queued |
-| S1 | A broken PDF; a valid PDF with trailing bytes after its end marker; a new valid PDF; a PDF over the reader's limit with no end marker in its tail; an older gzip PDF that no check has reached | `damaged`; real; real, from the `intact` its capture recorded; `damaged` and reported; listed as `unchecked` until B13, and reported |
-| S1 | An Office file; an End of Term `.warc.gz` or `.arc.gz` envelope stored beside its payload | One body, no members; `envelope`, and the payload's endpoint holds one real body |
-| S1 | An older line with outcome `html` and a 2xx response; a site home page or "Under Maintenance" page served at a `.pdf` URL | A good fetch; not a real file (file-shaped), reported by error type |
-| S1 | A feed page | `listing`, and no link context |
-| S1 | A response with no declared length read to a clean end; a body assembled from ranges of one entity; ranges whose entity changed in between | Complete; complete; not complete |
-| S1 | A cut-off direct attempt and a complete provider retry in one fetch | The retry's body is real; the cut-off body is not |
-| S1 | A recovered file that a real fetch also saved | A real body and link key; the recovery attaches as labeled evidence |
-| S2 | One body under two filenames | Two source files in one document, which shows the saved file's name |
-| S2 | Two editions served at one address | Two documents sharing a `version_keys` entry |
-| S2 | A House witness list with two panels, a member witness and witness documents; one witness name at two meetings | Two panels; the member keeps the source's `bioguide_id`; each document carries its witness's `witness_key`; two keys for the name, not matched |
-| S2 | One Congress.gov meeting record copied on 11 receipt lines, and a second version with a later `updateDate` | One `record_sha` per version; the later version is current |
-| S2 | A Senate hearing page whose witness cards hold their testimony links | Appearances with the page as occasion; each testimony carries its witness's `witness_key` |
-| S2 | A postponed meeting on a bill, recorded by House XML and Congress.gov | The House XML record is current; `status` postponed; the bill in `subject_keys` |
-| S2 | A Senate hearing transcript whose MODS record lists witnesses and names no meeting | Appearances keyed by the package; the transcript's page lists them, and no document is credited to them |
-| S2 | A Senate meeting whose Congress.gov record names a transcript jacket whose MODS record lists witnesses | The witnesses attach to the meeting, one `witness_key` each; the meeting's `transcripts` gives the transcript's list row |
-| S2 | A joint (`NoChamber`) meeting's jacket held only as a `jhrg` package, and jacket 49104057 held as `CHRG-118shrg049104057` | Both resolve; the meeting's `chamber` is null |
-| S2 | A Senate meeting video and a House YouTube video | `video_key`s `senate:{filename}` and `youtube:{id}` |
-| S2 | A bill with one floor vote naming it and one named only in its actions; a nomination with a hearing, a cloture vote and a confirmation vote; one confirmed by voice vote | Two `floor_votes`, basis `vote_record` then `bill_action`; the nomination's two votes in order; the voice vote only in `latest_action_text` |
-| S2 | An older recovery line with no category and no `recovery_evidence`, recovering a link a document was fetched from | Kind from its match basis; original link and import date from its fallbacks; one source file for its original link |
-| S2 | A dead link pasted as `http://www.…/a.pdf/` for a document fetched from `https://…/a.pdf`; a published address that redirected to the saved file and later died | One lookup key finds each |
-| S2 | A committee renamed on a boundary day; two subcommittees sharing a name | The half-open interval gives one name per day; `committee_keys` keep them apart |
-| S2 | A bill named by a filename and by a meeting's related items | One `bill_id`; both find its title, sponsor and stage in the pinned `congress_bills` |
-| S2 | A publish after spicy-regs moves a family's pointer | The new generation is pinned, recorded in `inputs/`, and changes the input identity |
-| S2 | A kept release whose bills generation is four generations old | Spicy-regs' retention plan keeps it, citing the archive's pin list |
-| S2 | A file named only by its download header; a URL with `?file=a.pdf&name=b.pdf` | The header's name (`filename*` first); `a.pdf` |
-| S2 | An exact copy and a provider's saved-text copy at one URL | The exact copy is the saved file |
-| S2 | A file whose kind only the publisher gives, by `doc_type`, and another by link text only | Each gets the publisher-kind registry's kind |
-| S2 | A committee-removed document; one removed and later re-added | `removed_on` set; null |
-| S2 | A meeting named only by a GovInfo MODS record; a meeting with no record | The package's source files carry the meeting; the meeting is listed by key with null details |
-| S2 | A `Retry-After` beyond the family's recheck interval; a URL whose latest line has no time | `next_attempt_at` capped at the interval; due now |
-| S2 | A relist whose first page is stored and a later page fails | The next run repeats the whole window |
-| S2 | A queue link carrying a credential parameter | The queue row has it removed |
-| S2 | A recovery at an edition-ambiguous link; a recovery import for a linked URL never fetched | A document of its own each; the URL enters the queue |
-| S2 | A recovery-only link that later downloads | Its link URL key opens the document that now holds the download, where the recovery attaches |
-| S2 | Two recoveries equal in kind, time and body; decisions that match one recovery row twice; a recovery whose decision rejects it | Both shown, in receipt order; one recovery, from the latest decision; no recovery |
-| S2 | Two merged documents with different title overrides; two active merges on one document; a hide and its withdrawal | The latest override by `(decided_at, id)`; both merges applied; visible again |
 
 - **The labeled sample** sets the page thresholds and the final file-shape list. It is the sample of [[ARCHITECTURE]] §15, item 2, and its rubric is [[ARCHITECTURE]] §9.2–9.3.
   - It is a hand-labeled stratified sample of a few hundred files, starting from the responses already labeled by hand and the 2026-10-25 short-page sample ([[BINDINGS]] §4).
@@ -262,9 +192,9 @@ These components survive, so they are bound now.
 7. **Recovery importer:** reconcile `accepted.json` with the receipts, so recoveries become provenance records the model reads, each with its kind.
    - New imports write date-shaped receipts with their recovery category, and provenance, through the receipt writer and the body store, with no guards or upload loop of their own.
    - Six accepted recoveries attach a 2-page excerpt to full 95–196-page transcripts; the owner reviews them, and each one confirmed wrong gets a `rejected` decision.
-   - Its records, B8's and `legacy_pdf_checks` (D2) are staged where the model reads them during E4's parity, and are written under `provenance/` once it passes.
+   - Its records and B8's are staged where the model reads them during E4's parity, and are written under `provenance/` once it passes.
 8. **Review recorder:** in phase 1, one script writes the 86 published assistant reviews of document kinds as `kind_override` records on their files' link keys, with the assistant as reviewer, and writes any new review as a provenance record ([[DATA-MODEL]] §5.3, §7.9); the review forms that record verdicts come in phase 2.
-9. **Raw verifier** ([[ARCHITECTURE]] §7.4, §10.3.7), in the maintenance job, joining to the old capture index until D1 exists. Its first run records the listing baseline ([[DATA-MODEL]] §5.3), checking each older body's listed size against its recorded stored size (from the receipts, else the old index for the 364,193 bodies whose receipts record none); it then runs weekly.
+9. **Raw verifier** ([[ARCHITECTURE]] §7.4, §10.3.7), in the maintenance job, joining to the old capture index until D1 exists. Its first run records the listing baseline ([[DATA-MODEL]] §5.3), checking each older body's listed size against its recorded stored size (from the receipts, else the old index, [[ARCHITECTURE]] §7.4); it then runs weekly.
 10. **The one-time full re-hash** (phase 2; [[ARCHITECTURE]] §7.4), after B13, skipping keys whose record has `sha256_verified` true.
 11. **A ratchet test:** no test-only branch or test-only input substitution may appear in a surviving component; tests inject adapters instead ([[ARCHITECTURE]] §15, item 7).
 12. **Owed while the old capture path runs,** which skips the upload of any digest its index holds: B9's first run also reports index rows whose object is missing, and they are repaired; wrong `stored_sha256` rows are repaired in place; and the daily capture is confirmed to write correct values. These matter only until the switch.
@@ -273,9 +203,11 @@ These components survive, so they are bound now.
     - **Size:** the largest raw write in the plan, so the lock and the refusal matrix come first: about 260,175 uploads and 403 GB once decompressed (about $72 a year of storage under the lock).
 14. **Meeting fetches through the fetcher** (phase 2) like every other fetch: the Congress.gov meeting API, the House meeting and witness-list XML, Senate committee hearing pages and the meeting inventories; committees come from spicy-regs ([[DATA-MODEL]] §6.4) ([[ARCHITECTURE]] §7.2, §8.5; [[DATA-MODEL]] §6.5).
     - An incremental relist is keyed by its API endpoint and time window, and the window advances only when every page through the last has a good fetch, so a partial run repeats it; the old pending-state path goes only after S2's later-page-failure fixture passes.
-    - Its first run imports the weekly job's kept snapshots (§1) as one import run, the way the 2026-09-30 assembly imported the earlier ones; that job and capture's inventory seeds then stop.
+    - Once it runs, the weekly job and capture's inventory seeds stop; their records are already in raw (B15).
+15. **The weekly meeting job's records into raw** (phase 1, first; [[ARCHITECTURE]] §7.2): each run also writes every source record it saves as bodies and one import-run receipt ([[DATA-MODEL]] §5.2), through the existing raw writer, keeping its branch as it is; the rescued batch (§1) is imported once the same way, the way the 2026-09-30 assembly imported the earlier snapshots. Its runs pause with capture during B0's window. B14 replaces it.
 
 **Done when:**
+- every weekly run since B15, and the rescued batch, is in raw;
 - every older receipt is cleaned and verified;
 - the refusal matrix passes;
 - the lock is on all three prefixes;
@@ -320,12 +252,11 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
      A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
 2. **Parsers,** written in S1, appending through the engine:
-   - first a one-time import writes `legacy_pdf_checks` ([[DATA-MODEL]] §5.3) from the old readings, which are deleted only after it;
-   - then `sniff` over every older body: about 1.04M short ranged GETs, timed in the run;
+   - first `sniff` over every older body: about 1.04M short ranged GETs, timed in the run;
    - then HTML, XML and JSON (about 5 GB), recording page fingerprints, with the table's size (links and `text_head` included) measured. There is no PDF parser and no fingerprint parser for now;
    - then M2's link join and grouping, repeated on the real links and fingerprints.
 3. **Filename reader:** a producer that runs the filename parser over its work list and appends through the engine.
-4. **Meeting parsers** (phase 2; needs B14): once per input and version, over the meeting-source registry's work list, with completion rows:
+4. **Meeting parsers** (phase 2; needs B14): one row per input and version, over the meeting-source registry's work list ([[DATA-MODEL]] §6):
    - Congress.gov records, the 199,156 inline receipt records (18,140 meetings, keyed by `record_sha`) and response bodies alike, and House `committee-meeting` XML, into `meeting_records`;
    - House witness lists, Congress.gov records, Senate hearing page cards and the `mods.xml` records already in raw into `appearance_records`, each witness with its name key and document links.
 5. Enable Basin's catalog-level compaction and snapshot expiration.
@@ -404,7 +335,7 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | Which maintained extractor gives stable main content | S1, on the pages saved twice in one fetch | The page fingerprint |
 | How many links pages hold (*est.* 4.2M, from 80 pages) and how large the link join is | M2's sample of at least 2,000 pages; D2's link backfill confirms | The link-join budget and M2's memory verdict |
 | The 33,369 never-sniffed PDF candidates are PDFs | Phase 1's `sniff` | The copy count |
-| Borrowed PDF checks agree with a fresh read (198,676 agree today, 3 disagree), and how many unchecked PDFs are broken | A whole read in phase 1 of 1,000 borrowed-check PDFs, stratified by basis, and 100 unchecked ones (*est.* 3 GB), each checked against its key | The borrowed basis stands if at most one of the 1,000 disagrees; the owner revisits the unchecked listing if more than 5 of the 100 are broken |
+| Borrowed PDF checks agree with a fresh read (198,676 agree today, 3 disagree), and how many unchecked PDFs are broken | A whole read in phase 1 of 1,000 capture-checked PDFs, stratified by line date (2026-10-01 alone, or later), and 100 unchecked ones (*est.* 3 GB), each checked against its key | The borrowed basis stands if at most one of the 1,000 disagrees; the owner revisits the unchecked listing if more than 5 of the 100 are broken |
 | No older body beyond the 61 known has a multipart ETag | B9's first run | Nothing, unless the count changes |
 | The numbers in the specifications reproduce: each review round found 10–20 of about 370 wrong | Each load-bearing number re-derived from its committed script before a rule relies on it | Corrections in place |
 | Speed and heap targets on real phones and desktops | A11 | The canary's and contract test's thresholds |
@@ -412,8 +343,9 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 | Roster history: spicy-regs keeps the current Congress only | A spicy-regs change publishing its captured rosters as dated history | Rosters show current seats until then |
 | How often one printed hearing covers several meetings, leaving its MODS witnesses on the package | D4, counting packages that more than one meeting's jackets resolve to | Whether multi-day hearings need a per-day rule |
 | Whether the 123 `direct_official_package` import lines are recoveries or fetches | The owner, on S2's sample of them | Their kind, or a move into `mode = fetch` by the ingest mapping |
+| How many House event pages only the committee explorer's POST calendar API finds, which capture's scope drops ([[BINDINGS]] §3.1) | A count from the explorer's discovery before the switch | Whether capture needs that API as a seed |
 | Senate card coverage by committee site (judiciary 98.6%, hsgac 64.8%, indian 54.8%, jec 0%) | D4, on every Senate hearing page | Which sites need a second page layout |
-| Event IDs never name two chambers (observed on 18,140, not promised by the publishers) | Invariant 16 at every publish | The meeting key, if one ever does |
+| Event IDs never name two chambers (observed on 18,140, not promised by the publishers) | Invariant 15 at every publish | The meeting key, if one ever does |
 | Nominations before the 119th Congress | spicy-stack ss-vhi2's backfill | How far back nomination pages reach |
 | How often one witness gets two keys at one meeting (spelling, titles, initials) | A sample of House and Congress.gov witness lists in S2 | What the later witness table must match |
 
@@ -427,3 +359,6 @@ Each row names an unknown, the step that settles it and what it decides, and clo
 
 **[BINDINGS]**
 : *Congressional Document Archive: Implementation Bindings.* Note, 2026-10-25. `docs/plans/bindings-20261025.md`.
+
+**[FIXTURES]**
+: *Congressional Document Archive: Acceptance Fixtures.* Note, 2026-10-26. `docs/plans/fixtures-20261026.md`.

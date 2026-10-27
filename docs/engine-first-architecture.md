@@ -1,6 +1,6 @@
 # Congressional Document Archive: Architecture
 
-**Editor's Draft, 2026-10-24**
+**Editor's Draft, 2026-10-24**, of the target system, independent of any current implementation.
 
 ## Abstract
 
@@ -10,30 +10,6 @@
 - **One job publishes:** one deterministic SQL job over the lake writes an immutable release, and the pointer flips to it only after the site's own reader has loaded it (§10).
 - **Engine first:** docspec-rs does all data movement, joins, grouping and export, and holds no application policy; the application supplies fetchers, parsers, SQL, registries and the site (§13).
 - **Detail:** [[DATA-MODEL]] holds every schema, derivation, order, registry and invariant; [[IMPLEMENTATION-PLAN]] holds the order of work, the measurements still to run and the open uncertainties.
-
-## Status of This Document
-
-This is an Editor's Draft of the target system, independent of any current implementation; [[IMPLEMENTATION-PLAN]] is a Note.
-
-## Table of Contents
-
-1. [Introduction](#1-introduction)
-2. [Conformance](#2-conformance)
-3. [Terminology](#3-terminology)
-4. [Principles](#4-principles)
-5. [Scale](#5-scale)
-6. [System Overview](#6-system-overview)
-7. [Raw Log](#7-raw-log)
-8. [Lake](#8-lake)
-9. [Model](#9-model)
-10. [Releases](#10-releases)
-11. [Site](#11-site)
-12. [Orchestration](#12-orchestration)
-13. [Engine Capabilities](#13-engine-capabilities)
-14. [Security](#14-security)
-15. [Verification](#15-verification)
-16. [Performance](#16-performance)
-17. [References](#17-references)
 
 ## 1. Introduction
 
@@ -119,8 +95,8 @@ Five conformance classes each conform by meeting the requirements that apply to 
 **recovery**, **recovery import**
 : Content imported for a link the publisher no longer serves directly, attached to that link as labeled evidence; and the receipt line that records it.
 
-**work list**, **completion row**
-: A lake producer's unprocessed inputs, found by an anti-join against its rows; and a row recording that an input produced nothing.
+**work list**
+: A lake producer's unprocessed inputs, found by an anti-join against its rows; every input leaves a row, even one that produced nothing.
 
 **release**, **pointer**, **live release**, **last-good release**
 : One immutable set of Parquet files and a manifest under `viewer-publications/releases/<release_id>/`; `viewer-publications/manifest.json`; the release it names as current; and the one it names as previous.
@@ -244,13 +220,13 @@ Each fetched body is stored once, at `bodies/sha256/<aa>/<sha>` ([[DATA-MODEL]] 
 2. else checks with one HEAD whether the older copy `…/<sha>.gz` exists, and if so records the attempt as `unchanged` with suffix `.gz`;
 3. else MUST store the body with one create-only PUT (`If-None-Match: *`) carrying `Content-MD5`. A 412 means the body exists: the writer MUST record the attempt as `unchanged` with suffix `''`, with no HEAD, download or comparison.
 
-Every capture entry records the suffix its body is stored under. Writers MUST NOT use multipart upload: multipart ETags are not MD5s, and no body approaches the 5 GB single-PUT limit. Every body-store adapter keeps these semantics; local disk writes a temporary file and links it into place, never replacing an existing one.
+Every capture entry records the suffix its body is stored under. Writers MUST NOT use multipart upload: multipart ETags are not MD5s, and no body approaches the 5 GB single-PUT limit. Every body-store adapter keeps these semantics.
 
 **Nothing is cut off.** The fetcher MUST spool each body to a temporary file, so any size up to the single-PUT limit is stored whole. An attempt is complete only as [[DATA-MODEL]] §5.2 defines it; an incomplete body is kept as evidence, never a real file, and its URL is retried.
 
 **Crash between a body and its receipt.** The body is kept and the raw check finds it (§7.4), but its origin is not recorded unless a later fetch of the same URL gets the same content. This loss of attribution is accepted.
 
-**Older bodies** keep their `.gz` form; older gzip PDFs gain a one-time `.pdf` copy ([[DATA-MODEL]] §5.1).
+**Older bodies** keep their `.gz` form. Older gzip PDFs gain a one-time `.pdf` copy ([[DATA-MODEL]] §5.1), so a saved PDF is a plain link the browser's own viewer opens and PDFs up to 1.19 GB never pass through the page; other `.gz` bodies are small enough to unpack in the browser (§11.5). A 412 on a copy MUST be checked against the expected MD5 with one HEAD, since older capture code can write such copies without recording them.
 
 ### 7.2 Receipts
 
@@ -272,9 +248,9 @@ Receipts are public and permanent, so they carry no credentials, cookies or loca
 
 **Lock.** An indefinite R2 bucket lock, set per prefix, covers `bodies/`, `receipts/` and `provenance/`. Creates stay allowed.
 
-**Full re-hash** is an explicit job that downloads bodies and records each one's size, ETag and verified SHA-256 under `provenance/verification/`, skipping keys whose record has `sha256_verified` true. Older lines record the stored bytes' SHA-256 and size, never their MD5 (all 1,036,256 bodies), so until it runs once, after the PDF copies, the first raw check records a listing baseline: each older body's size and ETag, the size checked against its recorded stored size. Afterwards it runs only before a migration.
+**Full re-hash** is an explicit job that downloads bodies and records each one's size, ETag and verified SHA-256 under `provenance/verification/`, skipping keys whose record has `sha256_verified` true. No older line records an MD5, and receipts record a stored size for 672,063 of the 1,036,256 older bodies; the other 364,193, nearly all Senate captions, have one only in the old capture index. So until the re-hash runs once, after the PDF copies, the first raw check records a listing baseline: each older body's size and ETag, the size checked against its recorded stored size, from the receipts else the old index. The baseline is then raw's own record of that size. Afterwards the re-hash runs only before a migration.
 
-**Raw check.** Each week the maintenance job makes one LIST of `bodies/` and joins it to the recorded keys of `captures` and the verification records. It confirms that every recorded key exists and that every stored body has the size and ETag its creating line or verification record gives. A body with neither is re-hashed once, and 25 random bodies are downloaded and checked end to end; nothing else reads body bytes, and there is no per-body HEAD.
+**Raw check.** Each week the maintenance job makes one LIST of `bodies/` and joins it to the recorded keys of `captures` and the verification records. It confirms that every recorded key exists and that every stored body has the size and ETag its creating line or verification record gives. A body with neither is re-hashed once, and 25 random bodies are downloaded and checked end to end; nothing else reads body bytes, and there is no per-body HEAD. The listing proves that each body is present and was not replaced; the sample is the only content check, and R2's durability is the accepted guard against decay.
 
 **Durability.** Raw is kept in one R2 bucket with no second copy. R2's own durability guards against hardware loss. A provider-side loss is the accepted risk.
 
@@ -304,7 +280,7 @@ One row per `(body, parser, parser_version)`; each media family has its own pars
 - **HTML, XML and JSON** are read in full once per version, with each body's links recorded as written. The model resolves the links against every address the page was fetched at, so link context covers all history while a page fetched many times stores its links once.
 - **PDF, ZIP and captions** get no full reading. Full-text extraction of every PDF (about 403 GB) is deferred to `pdf_text`; ZIP members are captured as their own entries.
 - **Text fingerprints come from the page readings** ([[DATA-MODEL]] §6.2), and a ZIP's from its member hashes in `captures`; no other format needs one today, so there is no fingerprint parser and no full-corpus text pass.
-- **An operational failure writes no row** ([[DATA-MODEL]] §6.2).
+- **One bad input cannot stop publishing:** a parse that crashes or hangs is retried once, then recorded as an error ([[DATA-MODEL]] §6).
 
 **Versions** are pinned, and a new one is backfilled in background batches before the profile moves to it ([[DATA-MODEL]] §7.1).
 
@@ -364,24 +340,7 @@ Joins between links, recoveries and source files use `url_key`, which unwraps re
 
 ### 10.1 Release Files
 
-The model's job writes the release files as Parquet [[PARQUET]] ([[DATA-MODEL]] §8.1); the site's files link by list row number and by the keys of hearings, bills, members, witnesses and committees:
-
-| File | Purpose |
-|---|---|
-| `list.parquet` | Search, facets and sorting by title, filename, committee and chamber, and the keys that connect documents: hearing, committee, bill, member, witness and other versions |
-| `detail.parquet` | Everything a document page acts on |
-| `links.parquet` | Public link key to list row |
-| `urls.parquet` | Every address a document was fetched from or recovers, so a dead publisher link finds its documents |
-| `sources.parquet` | Where the document was published, and which page listed it |
-| `recoveries.parquet` | A document's recoveries |
-| `meetings.parquet` | Hearings: title, date, type, status, sittings and place, committees and their roles, what they cover, printed transcripts, recording links |
-| `witnesses.parquet` | Who testified at each hearing, for whom, on which panel |
-| `committees.parquet` | Committees and subcommittees: names over time, type, parent |
-| `members.parquet` | Members: name, party, state, terms |
-| `rosters.parquet` | Who sits on each committee in the current Congress |
-| `bills.parquet` | Each referenced bill's title, sponsor, status, policy area, committees, CBO estimates and floor votes |
-| `nominations.parquet` | Each nomination a hearing covers: nominee and position, committees, printed hearings, outcome and votes |
-| `url_state.parquet`, `capture_scope.json` | Capture's schedule, queue and scope, read by the capture job |
+The model's job writes the release files as Parquet [[PARQUET]]; [[DATA-MODEL]] §8.1 lists each with its purpose and columns. They link by list row number and by the keys of hearings, bills, members, witnesses and committees.
 
 - **Documents only.** There are no per-copy pages.
 - **Links point at a file.** A document's ID changes whenever a version joins its group, but a file's digest never does, so a public link carries a link key, and `links` maps every real body of every listed document to its document's row. Old links keep resolving when a group or its saved file changes, and a recovery-only page keeps its link after the original finally downloads. A pasted publisher link finds its documents through `urls`, keyed by a fixed normalization of the address ([[DATA-MODEL]] §8.2).
@@ -416,7 +375,7 @@ The release ID ([[DATA-MODEL]] §8.3) is computed after export and before upload
 
 #### 10.3.4 Upload
 
-Files are uploaded to `viewer-publications/releases/<release_id>/` with a create-only PUT and `Content-MD5`. A 412 on a rerun MUST be checked against the expected MD5 with one HEAD of that object's ETag. The release's `manifest.json` holds only content, so a release that re-emerges writes identical bytes; `inputs/<input_digest>.json` records each input identity that produced it, and `inputs/receipts/<sha256>.json.gz` its receipt keys ([[DATA-MODEL]] §8.1). Before the canary, publish adds the candidate's spicy-regs generations to `viewer-publications/pins/spicy-generations.json`, the list spicy-regs' retention reads beside DocSpec's so it keeps them.
+Files are uploaded to `viewer-publications/releases/<release_id>/` with a create-only PUT and `Content-MD5`. A 412 on a rerun is success, as for a body (§7.1): the release ID hashes every file's digest (§10.3.3). The release's `manifest.json` holds only content, so a release that re-emerges writes identical bytes; `inputs/<input_digest>.json` records each input identity that produced it, and `inputs/receipts/<sha256>.json.gz` its receipt keys ([[DATA-MODEL]] §8.1). Before the canary, publish adds the candidate's spicy-regs generations to `viewer-publications/pins/spicy-generations.json`, the list spicy-regs' retention reads beside DocSpec's so it keeps them.
 
 #### 10.3.5 Canary
 
@@ -436,7 +395,7 @@ From the second flip on, at least the live and last-good releases exist. The mai
 
 ### 11.1 Reads
 
-The site reads pointer → release manifest → `list`, then `detail`, `links`, `urls`, `sources`, `recoveries`, `meetings`, `witnesses`, `committees`, `members`, `rosters`, `bills` and `nominations` as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent page reads; link lookups also use the column index.
+The site reads pointer → release manifest → `list`, then the other release files as needed. Search and facet filtering run in a Web Worker over `list`, decoded column by column into arrays and dictionary codes, because objects would cost hundreds of MB of heap on a phone. Details and ranges are HTTP Range reads of single pages through the Parquet offset index. A row group's offset indexes and the dictionary pages of its dictionary-encoded columns are fetched once per session and kept in the reader's byte cache, so after that a detail view is one round trip of concurrent page reads; link lookups also use the column index.
 
 ### 11.2 Devices and Speed
 
@@ -465,7 +424,7 @@ The reader shows dates and hearings as follows:
 
 - **Capture date:** the reader MUST label it by `date_kind` ([[DATA-MODEL]] §8.1): `captured` as "Captured <date>", `import_day` as "In our archive since <date> (original capture date not recorded)", `unknown` as "Capture date not recorded".
 - **Document date:** the reader MUST show it with its source and, for a document a committee removed from its hearing page, "Removed from the hearing page by the committee on <date>".
-- **Hearings, bills, members, witnesses and versions.** The hearing, committee, chamber, bill, member and witness filters MUST match a document when the key is any element of its `meeting_keys`, `committee_keys`, `chambers`, `measure_keys`, `bioguide_ids` or `witness_keys`, with committee names taken from `committees.parquet`; documents sharing a `version_keys` entry are shown as each other's versions, by capture date. A hearing lists its witnesses with the documents each submitted; a member's page joins their terms, roster seats, witness appearances and documents by `bioguide_id`; a committee's page joins its roster, hearings, bills and documents by system code; a bill's page joins its title, sponsor, status, committees, cost estimates, floor votes, hearings and documents by `bill_id`; a hearing opens its transcript by list row and shows its recordings and its nominations with their votes; a transcript's page lists the printed hearing's witnesses by package ID; a vote, member or bill links out to spicy-regs by `vote_id`, `bioguide_id` or `bill_id` for member positions, money and lobbying. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
+- **Hearings, bills, members, witnesses and versions.** The hearing, committee, chamber, bill, member and witness filters MUST match a document when the key is any element of its `meeting_keys`, `committee_keys`, `chambers`, `measure_keys`, `bioguide_ids` or `witness_keys`, with committee names taken from `committees.parquet`; documents sharing a `version_keys` entry are shown as each other's versions, by capture date. Hearing, member, committee, bill and transcript pages join their files by the keys of [[DATA-MODEL]] §9, and a vote, member or bill links out to spicy-regs for member positions, money and lobbying. A hearing with no meeting record is shown by its key; the reader loads `meetings.parquet` at most once per session.
 
 ### 11.7 Origin
 
@@ -477,7 +436,7 @@ Four jobs run on the schedules below; all but capture share one concurrency grou
 
 ```
 capture:     live url_state → fetchers → bodies → receipts             (daily; network-bound)
-publish:     captures → readings (sniff → html, xml, json → fingerprint),
+publish:     captures → readings (sniff → html, xml, json),
              filename_readings, meeting_records, appearance_records
              → pin inputs → completeness gate → input identity → early skip
              → model + export → canary → flip → status                  (after capture, or on demand)
@@ -489,8 +448,6 @@ backfill:    one producer's work list for a new version or table, in batches   (
 - **Budgets.** Each daily lake step has a work-list budget, set per runner class with its resources. A step whose work list exceeds it, such as a registry change that adds thousands of fingerprint candidates, is left to a backfill: publish refuses at once, rather than after the model runs, and starts that step's backfill, which runs next in the concurrency group.
 - **Idempotent steps.** Each step is keyed by its input, is a no-op when that has not changed, and commits durably, so a failed run resumes by running again, with no journal.
 - **Capture reads the public release.** It builds its queue from the live release's `url_state` and applies its `capture_scope.json`, so it needs no lake or release credentials, and it follows what its fetchers discover in the same run, such as the documents an API response lists. After a failed canary, capture works from a slightly older schedule, which is safe because body writes are create-only.
-- **Pinned engine.** The engine binary is pinned by revision and by a digest per runner OS recorded in the application repository, and MUST be checked against that digest before any storage access.
-- **Resources.** Threads, memory pool and scratch are set explicitly per runner class; the memory pool MUST NOT exceed the machine.
 - **Status.** Every publish run writes `viewer-publications/status.json`: input identity, rows per output, durations, bytes and the live release.
 - **Local runs.** The same commands run locally or in CI, and correctness MUST NOT depend on a CI feature, with one exception: whoever runs publish, a backfill or maintenance outside CI MUST NOT run it while another of them runs (§10.3.7).
 
@@ -505,12 +462,12 @@ The engine (docspec-rs) MUST provide these capabilities; what its paths may not 
 2. **Table operations** through the REST catalog: append, each commit asserting its table UUID and base snapshot, with the conflict retry of §8.1; create; and drop with purge.
 3. **Deterministic multi-file export** to §10.2, with the per-file writer settings of [[DATA-MODEL]] §8.1, SHA-256 and MD5 computed while writing, and row-range shards once §10.1's growth rule calls for them; the bytes depend on no runner limit (spicy-stack ss-iwqu).
 4. **Connected components** over a relation of the same job, returning a deterministic component label and no ID, in memory over interned dense integer IDs, refusing above a configured node count and reserving its true heap (spicy-stack ss-6jg6; today's string-keyed tables need *est.* 1.65 GiB at 1.7M rows).
-5. **Streaming I/O:** no re-read of a just-written object and no HEAD of an immutable file, except as §7.1 and §10.3.4 allow. File and row-group sizes come from writer settings ([[DATA-MODEL]] §6, §8.1).
-6. **Bounded resources** set by configuration: compute threads, memory pool and scratch space. Sorts and aggregates spill or fail clearly within the pool. Hash-join builds do not spill, and join selection builds the smaller input by the row counts scans report, so plans keep wide columns off both join inputs: join on keys first, reduce, then attach the wide column.
+5. **Streaming I/O:** no re-read of a just-written object and no HEAD of an immutable file, except as §7.1 allows. File and row-group sizes come from writer settings ([[DATA-MODEL]] §6, §8.1).
+6. **Bounded resources** set by configuration per runner class: compute threads, a memory pool no larger than the machine, and scratch space. Sorts and aggregates spill or fail clearly within the pool. Hash-join builds do not spill, and join selection builds the smaller input by the row counts scans report, so plans keep wide columns off both join inputs: join on keys first, reduce, then attach the wide column.
 7. **A thin interface:** a library plus a CLI that runs a declarative job spec (inputs, SQL steps, outputs, export settings) and returns a machine-readable result.
 8. **Generic URL and JSON functions** DataFusion lacks, as SQL functions: reference resolution by the WHATWG URL parser [[URL]] and percent-encoding normalization [[RFC3986]] §6.2.2 (spicy-stack ss-7qz3), and `json_array`, the compact JSON of [[DATA-MODEL]] §3 that every ID formula hashes (ss-e53d).
 
-The engine paths this system uses MUST NOT contain application policy (ID formulas, field names, grouping rules, registry values), body or filename parsers, table maintenance (Basin Catalog does it), bookkeeping that duplicates Iceberg, resume machinery beyond per-step commits, or test-only production paths. Engine code that serves other consumers is outside this specification.
+The engine paths this system uses MUST NOT contain application policy (ID formulas, field names, grouping rules, registry values), body or filename parsers, table maintenance (Basin Catalog does it), bookkeeping that duplicates Iceberg, or resume machinery beyond per-step commits; §15's ratchets apply to them too. Engine code that serves other consumers is outside this specification.
 
 Iceberg is used only to read, append, create and drop. If replace or branching is ever needed, it is added upstream to iceberg-rust rather than worked around.
 
@@ -519,6 +476,7 @@ Iceberg is used only to read, append, create and drop. If replace or branching i
 Raw isolation in one bucket rests on create-only writers plus the bucket lock (§7.4).
 
 - **Credentials.** R2 tokens scope object permissions to buckets, never to prefixes, so any writing token can delete unlocked keys. Capture, publish and maintenance use separate tokens, each revocable on its own; only maintenance deletes release prefixes and drops lake tables.
+- **Pinned engine.** The engine binary is pinned by revision and by a digest per runner OS recorded in the application repository, and MUST be checked against that digest before any storage access.
 - **Public data.** Everything stored is public records, readable publicly; receipts carry allowlisted headers only (§7.2).
 
 ## 15. Verification
@@ -548,7 +506,7 @@ Raw isolation in one bucket rests on create-only writers plus the bucket lock (�
 
 A normal day moves about 4,000–8,000 object operations and 2 GB, inside R2's free tier at today's scale.
 
-The repeated work principle 4 accepts: capture re-fetches and re-hashes URLs on their recheck schedule; work-list anti-joins scan the keys already processed; the model recomputes every relation each run, link resolution, `url_key` and meeting references included; the `fingerprint` producer evaluates the real-file rule once more before the pin; a release upload is the whole release on any day with a change; and the raw check lists every body's metadata.
+The repeated work principle 4 accepts: capture re-fetches and re-hashes URLs on their recheck schedule; work-list anti-joins scan the keys already processed; the model recomputes every relation each run, link resolution, `url_key` and meeting references included; a release upload is the whole release on any day with a change; and the raw check lists every body's metadata.
 
 Link matching grows with links times the source files at each matched address: about 696k pairs today, the most real files at one address being 47, the members of one GovInfo ZIP (a top-level URL holds at most 3). The model reports the largest.
 
