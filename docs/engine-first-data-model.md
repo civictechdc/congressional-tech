@@ -74,7 +74,7 @@ Terms are defined in [[ARCHITECTURE]] §3; this section adds the primitives its 
 
 **Model relations and release files** use Arrow types: `fsb(n)` is `fixed_size_binary(n)`; `dict` is a string written with a dictionary; `ts` is `timestamp[us, UTC]`; `int16` is INT32 annotated as 16-bit; `date32` is a day-precision date.
 
-**Dates.** A `ts`, or a spicy-regs instant such as `1977-02-04T04:59:00Z`, becomes a `date32` in America/New_York (the time-zone database pinned with the engine). A date interval is half-open, `[start, end)`.
+**Dates.** A `ts`, or a spicy-regs instant such as `1977-02-04T04:59:00Z`, becomes a `date32` in America/New_York. The model uses the time-zone database pinned with the engine; a content-date parser uses its locked time-zone package, included in its parser version. A date interval is half-open, `[start, end)`.
 
 **Folds.** A fold MUST hold only display-only facts; anything the model filters, joins or sorts on, or the site acts on, MUST be a native column.
 - A fold is `list<struct<field, value: string>>`, one value per element, the field repeated for a multi-valued fact; `field` is a `string` in lake tables and a `dict` in release files.
@@ -278,6 +278,7 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
 - **PK:** `(body_sha, parser, parser_version)`; partitioned by `(parser, parser_version)`.
 - `links`: every link in an HTML or XML page, in document order, `href` as written, and every string in a JSON body that parses as an absolute http(s) URL, its key path as `tag`.
   - `group_path` is the path of the nearest grouping ancestor (`li`, `tr`, `meeting-document`, `witness-document`, `document`) as element names with 1-based sibling indexes from the root, or null; only rendition groups read it (§7.5).
+    For markup in a JSON string, its path is prefixed by the script's element path, `@`, and the compact JSON key path, so different strings cannot share a group.
   - An XML document list's link `text` is its entry's description.
   - `doc_type` and the three dates are kept as the publisher wrote them; `remove_date` marks a committee's removal of the document from its hearing page.
 - `sniff` reads every body whose capture rows carry no sniff at the pinned version, with one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`). For a bare PDF it also reads the last 8 KB, and runs the bounded reader only when that finds no `%%EOF`; borrowed PDF checks join in the model (§7.3).

@@ -27,6 +27,8 @@ archive = [
     "house-naming-guide",
     "surt>=0.3.1,<0.4",
     "ijson>=3.4,<4",
+    "trafilatura==2.0.0",
+    "pytz==2026.5",
 ]
 test = ["pytest>=9,<10"]
 

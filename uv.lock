@@ -469,7 +469,9 @@ archive = [
     { name = "house-naming-guide" },
     { name = "ijson" },
     { name = "pyarrow" },
+    { name = "pytz" },
     { name = "surt" },
+    { name = "trafilatura" },
 ]
 test = [
     { name = "pytest" },
@@ -492,8 +494,10 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.11,<3" },
     { name = "pypdf", extras = ["fonts"], specifier = ">=6,<7" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=9,<10" },
+    { name = "pytz", marker = "extra == 'archive'", specifier = "==2026.5" },
     { name = "requests" },
     { name = "surt", marker = "extra == 'archive'", specifier = ">=0.3.1,<0.4" },
+    { name = "trafilatura", marker = "extra == 'archive'", specifier = "==2.0.0" },
     { name = "yt-dlp" },
 ]
 provides-extras = ["archive", "test"]
@@ -557,7 +561,6 @@ dependencies = [
 dev = [
     { name = "pyyaml" },
     { name = "readability-lxml" },
-    { name = "trafilatura" },
 ]
 
 [package.metadata]
@@ -579,7 +582,6 @@ requires-dist = [
 dev = [
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "readability-lxml", specifier = ">=0.9" },
-    { name = "trafilatura", specifier = ">=2.0.0" },
 ]
 
 [[package]]
