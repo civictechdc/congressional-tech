@@ -6,7 +6,7 @@ function cancel(stream: any) {
   try { Promise.resolve(stream?.cancel()).catch(() => {}); } catch {}
 }
 
-export async function withVerifiedJson(policy: any, label: string, run: (verified: any) => Promise<any>, callerSignal?: AbortSignal): Promise<any> {
+export async function withVerifiedBytes(policy: any, label: string, run: (verified: any) => Promise<any>, callerSignal?: AbortSignal): Promise<any> {
   if (!Number.isFinite(policy.deadlineMs) || policy.deadlineMs <= 0 || !Number.isSafeInteger(policy.maxBytes) || policy.maxBytes < 1) throw new Error(`Invalid ${label.toLowerCase()} startup policy.`);
   const controller = new AbortController(), {signal} = controller;
   const abort = () => controller.abort(callerSignal?.reason);
@@ -59,7 +59,7 @@ export async function withVerifiedJson(policy: any, label: string, run: (verifie
       if (offset !== length) throw new Error(`${name[0].toUpperCase()}${name.slice(1)} failed verification.`);
       const hash = [...new Uint8Array(await wait(crypto.subtle.digest('SHA-256', bytes)))].map(value => value.toString(16).padStart(2, '0')).join('');
       if (hash !== sha256) throw new Error(`${name[0].toUpperCase()}${name.slice(1)} failed verification.`);
-      return JSON.parse(new TextDecoder().decode(bytes));
+      return bytes;
     } catch (error) { cancel(reader); throw error; }
     finally { reader.releaseLock(); }
   };
@@ -80,4 +80,10 @@ export function canonicalJson(value: any): string {
   const ordered = (val: any): any => Array.isArray(val) ? val.map(ordered) : val && typeof val === 'object'
     ? Object.fromEntries(Object.keys(val).sort().map(key=>[key,ordered(val[key])])) : val;
   return JSON.stringify(ordered(value));
+}
+
+
+export function withVerifiedJson(policy: any, label: string, run: (verified: any) => Promise<any>, signal?: AbortSignal): Promise<any> {
+  return withVerifiedBytes(policy, label, verified => run(async (...args: any[]) =>
+    JSON.parse(new TextDecoder().decode(await verified(...args)))), signal);
 }
