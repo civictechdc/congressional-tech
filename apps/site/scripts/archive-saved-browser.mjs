@@ -13,7 +13,7 @@ try{
   const popupPromise=page.waitForEvent('popup');await page.locator('#hostile-saved-fixture').click();const popup=await popupPromise;
   await popup.locator('iframe[sandbox]').waitFor();const frame=popup.frames().find(frame=>frame!==popup.mainFrame());await frame.waitForSelector('h1');
   assert.equal(await popup.evaluate(()=>opener),null);
-  assert.equal(await popup.locator('iframe').getAttribute('sandbox'),'');
+  assert.equal(await popup.locator('iframe').getAttribute('sandbox'),'');assert.equal(await popup.locator('a[href^="blob:"]').count(),0,'Active blob URLs are never exposed as navigable links');
   assert.equal(await page.evaluate(()=>localStorage.getItem('archive-fixture-sentinel')),'unchanged');assert.equal(await popup.evaluate(()=>document.body.dataset.compromised),undefined);
   assert(!outgoing.some(url=>url.endsWith('/unexpected-raw-subresource')));
   console.log(JSON.stringify({status:'passed',operation:'saved HTML remains in a sandboxed opaque frame with subresources blocked'}));await popup.close();
