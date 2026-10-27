@@ -248,3 +248,13 @@ def test_new_failed_outcome_is_not_reinterpreted_as_stored(tmp_path):
         requested_url='https://example.org/a',url='https://example.org/a',retrieved_at=STAMP,
         http_status=200,outcome='failed',captures=[body(complete=True)])])
     assert pq.read_table(stage/'captures.parquet')['outcome'].to_pylist()==['failed']
+
+
+def test_payload_is_removed_before_capture_fanout(tmp_path):
+    marker='body-payload-must-stay-in-raw-'
+    stage=ingest(tmp_path,[dict(source_file='fanout',record=dict(url='https://example.org/a',
+        http_status=200,content=dict(body=marker*20000)),captures=[body() for _ in range(100)])])
+    [row]=pq.read_table(stage/'receipt-metadata/receipt-metadata.parquet').to_pylist()
+    assert marker not in row['line'] and marker not in row['record_json']
+    assert len(row['record_json'].encode())<32768
+    assert pq.read_metadata(stage/'captures.parquet').num_rows==100
