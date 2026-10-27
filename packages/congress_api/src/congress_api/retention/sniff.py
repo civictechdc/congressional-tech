@@ -119,7 +119,7 @@ def read_sniff(read_range, *, stored_size, stored_gzip=False, pdf_reader=check_p
     O(archive limit) for ZIP package metadata. No work grows per capture URL.
     """
     row = dict(parser='sniff', parser_version=sniff_version(), status='completed',
-               error_type=None, format=None, intact=None, fields={})
+               error_type=None, format=None, intact=None, fields=[])
     def read(start, length):
         try:
             data = read_range(start, length)
