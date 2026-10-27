@@ -135,7 +135,8 @@ def mapping_steps(*, existing=False):
         return first(get('line', *path, kind=kind), get('record', *path, kind=kind))
     def num(*path):
         return first(integer('line', *path), integer('record', *path))
-    recovery = first(both('recovery_evidence', kind='json'),get('record','_ingest_recovery_json'))
+    recovery = first(get('line','_ingest_recovery_json'),both('recovery_evidence', kind='json'),
+                     get('record','_ingest_recovery_json'))
     association = first(get('record','source_associations',0,kind='json'),get(get('record','_ingest_assoc_json'),0,kind='json'))
     root_headers = first(get('line','_ingest_headers_json'),
                          get('line','response_headers',kind='json'),
@@ -180,7 +181,8 @@ def mapping_steps(*, existing=False):
         {get('entry','body_key')} AS body_key
         FROM facts''')
     step('attempt_facts', '''SELECT *,coalesce(
-        json_get_json(json_get_json(line,'prior_attempts'),attempt-1),
+        json_get_json(coalesce(json_get_str(line,'_ingest_prior_attempts_json'),
+            json_get_json(line,'prior_attempts')),attempt-1),
         json_get_json(coalesce(json_get_str(record,'_ingest_prior_attempts_json'),
             json_get_json(record,'prior_attempts')),attempt-1)) AS prior_record
         FROM mapped''')
@@ -236,7 +238,8 @@ def mapping_steps(*, existing=False):
         match_basis="CASE WHEN capture_mode='retained_import' THEN coalesce(json_get_str(recovery,'match_basis'),json_get_str(association,'basis')) END",
         evidence_sha256="arrow_cast(decode(json_get_str(recovery,'acquisition','evidence_sha256'),'hex'),'FixedSizeBinary(32)')",
         imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast(json_get_str(recovery,'imported_at') AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
-        writer_job=get('line','writer','job'), writer_commit=get('line','writer','commit'))
+        writer_job=first(get(get('line','_ingest_writer_json'),'job'),get('line','writer','job')),
+        writer_commit=first(get(get('line','_ingest_writer_json'),'commit'),get('line','writer','commit')))
     # C1's source positions are required, while the older Parquet counter's
     # schema declared them optional. Bind the same required lake key schema for
     # both inputs using Arrow's maintained nested-type cast, without changing
@@ -287,6 +290,9 @@ def stage_captures(files, *, engine, work, existing=None, counter=None,validated
     """
     if counter is not None and validated_counter is not None:
         raise ValueError('Choose prebuilt metadata or a validated counter')
+    if validated_counter is not None:
+        from congress_api.lake.receipt_metadata import counter_file
+        validated_counter=counter_file(validated_counter)
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
     mapping_digest = sha256(Path(__file__).read_bytes()+(Path(__file__).parent/'receipt_metadata.py').read_bytes()).hexdigest()

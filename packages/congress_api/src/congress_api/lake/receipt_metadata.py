@@ -36,6 +36,14 @@ def scalar_json(value,name,kind):
     return get(value,name,kind=kind)
 
 
+def counter_file(counter):
+    """Raw counters are qualified single files, never implicit datasets."""
+    path=Path(counter).resolve()
+    if not path.is_file():
+        raise ValueError('A validated counter must be a single local file')
+    return path
+
+
 def source_schema():
     scalars={**dict.fromkeys(STRINGS,'Utf8'),**dict.fromkeys(NUMBERS,'Int64'),**dict.fromkeys(BOOLS,'Boolean')}
     headers=struct(**dict.fromkeys(HEADERS,'Utf8'))
@@ -63,7 +71,8 @@ def metadata_plan(*,counter=None,files=None,receipt_keys=None):
     steps=[]
     def step(name,sql,**options):steps.append(dict(name=name,sql=sql,**options))
     if counter is not None:
-        schema=pq.ParquetDataset(counter).schema
+        counter=counter_file(counter)
+        schema=pq.read_schema(counter)
         required={'__receipt_key','__receipt_line','__raw_line','__type_conflicts',
                   '__receipt_family','record','captures','file_references'}
         if not required.issubset(schema.names):
@@ -113,6 +122,13 @@ def metadata_plan(*,counter=None,files=None,receipt_keys=None):
             '_ingest_assoc_json':get(raw,*prefix,'source_associations',kind='json'),
             '_ingest_error_json':get(raw,*prefix,'error',kind='json'),
             '_ingest_archive_member_count':f'json_length({raw},'+','.join(lit(p) for p in (*prefix,'archive_members'))+')'}
+    def root_json(name,kind='object'):
+        value=get('__raw_line',name,kind='json')
+        if validated and '__field_paths' in root_names:
+            label=json.dumps([name],separators=(',',':'))+'#'+kind
+            return f'''CASE WHEN __field_paths IS NULL OR array_has(__field_paths,{lit(label)})
+                THEN {value} ELSE cast(NULL AS VARCHAR) END'''
+        return value
     metadata={n:typed(n,k,record=True) for n,k in SCALARS.items()}
     metadata.update(fragments('__raw_line',('record',)))
     step('object_records',f'''SELECT __receipt_key AS receipt_key,__receipt_line AS receipt_line,
@@ -128,19 +144,26 @@ def metadata_plan(*,counter=None,files=None,receipt_keys=None):
     step('list_records',f'''SELECT receipt_key,receipt_line,record_index,true AS is_list,
         {obj(list_meta)} AS metadata,json_get_json(record_value,'prior_attempts') AS prior_json FROM list_entries''')
     step('metadata_records','SELECT * FROM object_records UNION ALL SELECT * FROM list_records')
+    root_prior=root_json('prior_attempts','array')
+    step('root_prior_sources',f'''SELECT __receipt_key AS receipt_key,__receipt_line AS receipt_line,
+        cast(-1 AS BIGINT) AS record_index,{root_prior} AS prior_json
+        FROM counter WHERE {root_prior} IS NOT NULL''')
+    step('prior_sources','''SELECT receipt_key,receipt_line,record_index,prior_json FROM metadata_records
+        UNION ALL SELECT * FROM root_prior_sources''')
     step('prior_entries','''SELECT receipt_key,receipt_line,record_index,
         unnest(json_get_array(prior_json)) AS prior_value,
-        unnest(range(0,cast(coalesce(json_length(prior_json),0) AS BIGINT))) AS prior_index FROM metadata_records''')
+        unnest(range(0,cast(coalesce(json_length(prior_json),0) AS BIGINT))) AS prior_index FROM prior_sources''')
     prior={n:scalar_json('prior_value',n,k) for n,k in SCALARS.items()}
     step('prior_metadata',f'''SELECT receipt_key,receipt_line,record_index,
         json_get_json(json_array(array_agg({obj(prior)} ORDER BY prior_index)),0) AS prior_json
-        FROM prior_entries GROUP BY receipt_key,receipt_line,record_index''')
+        FROM prior_entries GROUP BY receipt_key,receipt_line,record_index''',materialize=True,
+        release_after=['prior_entries','prior_sources','root_prior_sources'])
     final_meta={n:'get_field(r.metadata,'+lit(n)+')' for n in metadata}
     final_meta['_ingest_prior_attempts_json']='p.prior_json'
     step('small_records',f'''SELECT r.receipt_key,r.receipt_line,r.record_index,r.is_list,
         {obj(final_meta)} AS metadata FROM metadata_records r LEFT JOIN prior_metadata p
         USING(receipt_key,receipt_line,record_index)''',materialize=True,
-        release_after=['object_records','list_entries','list_records','metadata_records','prior_entries','prior_metadata'])
+        release_after=['object_records','list_entries','list_records','metadata_records'])
     step('record_objects',"SELECT receipt_key,receipt_line,json_get_json(json_array(metadata),0) AS record_json FROM small_records WHERE NOT is_list")
     step('record_lists',"""SELECT receipt_key,receipt_line,
         json_get_json(json_array(array_agg(metadata ORDER BY record_index)),0) AS record_json
@@ -148,8 +171,9 @@ def metadata_plan(*,counter=None,files=None,receipt_keys=None):
     step('record_metadata','SELECT * FROM record_objects UNION ALL SELECT * FROM record_lists',
         materialize=True,release_after=['record_objects','record_lists','small_records'])
     roots={n:typed(n,kind) for n,kind in sorted(SCALARS.items())}
-    roots.update({n:'"'+n+'"' for n in sorted(root_names)
-                  if n in {'recovery_evidence','prior_attempts','writer'}})
+    roots.update(_ingest_prior_attempts_json='p.prior_json',
+                 _ingest_recovery_json=root_json('recovery_evidence'),
+                 _ingest_writer_json=root_json('writer'))
     # Headers can be top-level on new lines, with case-preserving field names
     # absent from an older typed counter. Keep their small raw fragments once.
     roots.update({name:get('__raw_line',field,kind='json') for name,field in [
@@ -159,11 +183,12 @@ def metadata_plan(*,counter=None,files=None,receipt_keys=None):
     roots['_ingest_record_sha']="""CASE WHEN __receipt_family='congress/meetings'
         THEN encode(sha256(json_canonical(coalesce(nullif(json_get_json(__raw_line,'record','meeting'),'null'),
             nullif(json_get_json(__raw_line,'record'),'null')))),'hex') END"""
-    step('root_metadata',f'''SELECT __receipt_key AS receipt_key,__receipt_line AS receipt_line,
+    step('root_metadata',f'''SELECT c.__receipt_key AS receipt_key,c.__receipt_line AS receipt_line,
         json_get_json(json_array({obj(roots)}),0) AS line,
         json_get_json(__raw_line,'captures') AS caps_json,
-        json_get_json(__raw_line,'file_references') AS refs_json FROM counter''',
-        materialize=True,release_after=['counter','source'])
+        json_get_json(__raw_line,'file_references') AS refs_json FROM counter c LEFT JOIN prior_metadata p
+        ON c.__receipt_key=p.receipt_key AND c.__receipt_line=p.receipt_line AND p.record_index=-1''',
+        materialize=True,release_after=['counter','source','prior_metadata'])
     sql='''SELECT r.receipt_key AS __receipt_key,r.receipt_line AS __receipt_line,
         r.line,r.caps_json,r.refs_json,m.record_json FROM root_metadata r
         LEFT JOIN record_metadata m USING(receipt_key,receipt_line)'''
@@ -201,8 +226,7 @@ def producer(engine):
 
 def source_pins(counter=None,files=None):
     if counter is not None:
-        path=Path(counter).resolve()
-        paths=sorted(path.glob('*.parquet')) if path.is_dir() else [path]
+        paths=[counter_file(counter)]
     else:
         paths=sorted({Path(item['path']).resolve() for item in files})
     if not paths:
@@ -241,6 +265,7 @@ def compact_counter(counter,*,engine,work,receipt_keys=None,receipt_batch_size=6
     """
     if type(receipt_batch_size) is not int or not 1<=receipt_batch_size<=1024:
         raise ValueError('Receipt batch size must be an integer from 1 to 1024')
+    counter=counter_file(counter)
     if receipt_keys is not None:
         receipt_keys=list(receipt_keys)
         if len(receipt_keys)!=len(set(receipt_keys)):
