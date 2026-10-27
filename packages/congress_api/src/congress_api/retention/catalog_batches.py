@@ -385,14 +385,17 @@ class SelectedCatalogTable:
         self.store, self.native, self.label = store, native, label
         self.rows, self.max_ordered_bytes = rows, max_ordered_bytes
 
-    def iter_batches(self, *, columns=None, batch_size=65536):
+    def iter_batches(self, *, columns=None, batch_size=65536, include_order=False):
+        if type(include_order) is not bool:
+            raise ValueError('Catalog order output must be explicitly enabled or disabled')
         if type(batch_size) is not int or batch_size < 1:
             raise ValueError('Catalog batch size must be a positive integer')
         columns = self.schema_arrow.names if columns is None else list(columns)
         if not columns or len(set(columns)) != len(columns) or set(columns) - set(self.schema_arrow.names):
             raise ValueError('Requested catalog columns must be nonempty distinct selected fields')
-        output_schema = pa.schema([self.schema_arrow.field(name) for name in columns],
-                                  metadata=self.schema_arrow.metadata)
+        output_schema = pa.schema([self.schema_arrow.field(name) for name in columns] +
+            ([pa.field('_catalog_order', pa.int64(), nullable=False)] if include_order else []),
+            metadata=self.schema_arrow.metadata)
         reader = CatalogComponentReader(self.store)
         with TemporaryDirectory(prefix='selected-catalog-') as directory, closing(
                 sqlite3.connect(Path(directory) / 'selected.sqlite')) as db:
@@ -456,9 +459,9 @@ class SelectedCatalogTable:
                     order_column='_catalog_order', max_ordered_bytes=self.max_ordered_bytes,
                     views={name: dict(components=[member for member, _ in members], rows=sum(n for _, n in members))}, store=self.store)
                 physical_columns = [name for name in columns if name in physical_schema.names]
-                for batch in table.iter_batches(columns=physical_columns or ['document_id']):
+                for batch in table.iter_batches(columns=physical_columns or ['document_id'], include_order=include_order):
                     batch = pa.RecordBatch.from_arrays(
-                        [batch.column(field.name) if field.name in physical_columns
+                        [batch.column(field.name) if field.name in physical_columns or include_order and field.name == '_catalog_order'
                          else pa.nulls(batch.num_rows, type=field.type) for field in output_schema],
                         schema=output_schema)
                     for offset in range(0, batch.num_rows, batch_size):
