@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 
 from congress_api.lake.versions import version_digest
 from congress_api.retention.body_store import BodyStore, LocalAdapter
-from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, timestamp_key, instant
+from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, timestamp_key, instant, file_pin
 
 
 ROOT = Path(__file__).resolve().parents[6]
@@ -262,7 +262,8 @@ def stage(*, captures, recovery_files, engine, work, decided_at, existing=None, 
         'filename-readings', 'SELECT ' + ','.join(columns) + ' FROM parsed_readings', PK)])
     unreadable_key = unreadable_path = None
     if decision_count:
-        unreadable_key = 'provenance/unreadable/' + timestamp_key(decided_at) + '.jsonl'
+        unreadable_key = ('provenance/unreadable/' + timestamp_key(decided_at) + '-'
+                          + file_pin(decisions_path)['sha256'] + '.jsonl')
         BodyStore(LocalAdapter(work/'raw')).put(unreadable_key,decisions_path,'application/x-ndjson')
         unreadable_path = str(work/'raw'/unreadable_key)
     return dict(readings=work/'filename-readings.parquet', work_list=work/'work-list.parquet',
