@@ -23,7 +23,8 @@ def local_keys(root):
 
 def scan(root, keys):
     """Count matches by JSON path without recording any sensitive header value."""
-    fields, receipts, lines, sizes, affected = Counter(), 0, 0, 0, 0
+    fields, examples = Counter(), {}
+    receipts, lines, sizes, affected = 0, 0, 0, 0
     for key in keys:
         file_fields = Counter()
         path = root / key
@@ -35,19 +36,24 @@ def scan(root, keys):
                     raise ValueError(f'{key} line {number}: uncleanable receipt') from None
                 file_fields.update(cuts)
                 lines += 1
-        fields.update(file_fields)
+        for (kind, field_path, example), count in file_fields.items():
+            fields[kind, field_path] += count
+            samples = examples.setdefault((kind, field_path), set())
+            samples.add(example)
+            if len(samples) > 3:
+                samples.remove(max(samples))
         receipts += 1
         sizes += path.stat().st_size
         affected += bool(file_fields)
     totals = Counter()
-    for (kind, _, _), count in fields.items():
+    for (kind, _), count in fields.items():
         totals[kind] += count
     return dict(patterns=dict(header='case-insensitive authorization or name ending in cookie, as a key or header item',
                               local_path=LOCAL_PATH.pattern),
                 receipts=receipts, compressed_bytes=sizes, lines=lines, affected_receipts=affected,
                 counts=dict(totals),
-                fields=[dict(kind=k, path=p, example=e, count=n)
-                        for (k, p, e), n in sorted(fields.items())])
+                fields=[dict(kind=k, path=p, examples=sorted(examples[k, p]), count=n)
+                        for (k, p), n in sorted(fields.items())])
 
 
 def main(argv=None):
