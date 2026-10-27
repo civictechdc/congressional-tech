@@ -62,6 +62,9 @@ class ReceiptWriter:
         if fidelity not in {'exact-bytes','saved-text','saved-record','retained-file'}:
             raise ValueError('Invalid capture fidelity')
         attempts = (final,*result.prior_attempts)
+        if any(a.body is not None and a.body.path is None and
+               (mode != 'retained_import' or a.body.stored_suffix not in {'','.gz'}) for a in attempts):
+            raise ValueError('Only retained imports can reference an existing raw body')
         codes = [a.error for a in attempts]+[a.body.sniff_error for a in attempts if a.body]
         if any(code is not None and (not isinstance(code,str) or not ERROR_CODE.fullmatch(code)) for code in codes):
             raise ValueError('Invalid stable raw error code')
@@ -89,12 +92,13 @@ class ReceiptWriter:
                     continue
                 body = attempt.body
                 key = f'bodies/sha256/{body.sha256[:2]}/{body.sha256}'
-                stored = self.store.put(key,body.path,body.media_type or 'application/octet-stream')
+                stored = (self.store.reference(key,stored_suffix=body.stored_suffix) if body.path is None else
+                          self.store.put(key,body.path,body.media_type or 'application/octet-stream'))
                 if attempt_index == 0:
                     final_write = stored
                 capture = self._capture(body,attempt,attempt_index,stored,None,None,fidelity)
                 line['captures'].append(capture)
-                if attempt.complete and self.archive_limits is not None:
+                if body.path is not None and attempt.complete and self.archive_limits is not None:
                     expansion = expand_archive(body.path,directory=temporary/str(attempt_index),limits=self.archive_limits)
                     capture['expansion'] = expansion.status
                     for member in expansion.members:

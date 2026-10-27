@@ -5,7 +5,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class BodyFile:
-    path: Path
+    path: Path | None
     sha256: str
     size: int
     media_type: str | None
@@ -13,6 +13,7 @@ class BodyFile:
     sniff_version: str | None
     intact: bool | None
     sniff_error: str | None = None
+    stored_suffix: str | None = None
 
 
 @dataclass(frozen=True)
