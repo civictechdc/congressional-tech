@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 from pathlib import Path
+import re
 
 import pytest
 
@@ -33,6 +34,14 @@ def test_document_id_golden_bytes(case):
 
 
 def test_golden_boundary_relationships():
+    # DM §3 keeps the historical .gz identity even when storage is bare or PDF.
+    logical = r'bodies/sha256/([a-f0-9]{2})/[a-f0-9]{64}[.]gz'
+    for case in VECTORS['source_ids']:
+        key = case['inputs'].get('body_key')
+        if key:
+            assert re.fullmatch(logical, key), case['name']
+    for case in VECTORS['document_ids']:
+        assert all(re.fullmatch(logical, key) for key in case['inputs']['bodies'])
     sources = {case['name']: case['expected_hex'] for case in VECTORS['source_ids']}
     documents = {case['name']: case['expected_hex'] for case in VECTORS['document_ids']}
     assert sources['missing-all'] == sources['explicit-nulls']

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Literal serialization vectors generated once from the existing catalog ID functions. Synthetic logical body keys are inputs, not retained-body claims. Logical-key construction precedes these formulas.",
+  "note": "Literal serialization vectors generated once from the existing catalog ID functions. Synthetic logical body keys include the mandatory .gz identity suffix, independent of physical storage. Empty/null and unusual filename cases exercise serialization boundaries, not admissible model records.",
   "serialization": {
     "encoding": "UTF-8",
     "ensure_ascii": false,
@@ -15,12 +15,12 @@
       "name": "ordinary",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "Agenda.pdf",
         "source_url": "https://fixture.test/Agenda.pdf"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://fixture.test/Agenda.pdf\"]",
-      "expected_hex": "9cd0153814d0a198933d3863f5953a250faca778bfbba21181facf32ee69fcae"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"Agenda.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "f08cbe23e857f78c16b4b87d68e919fe465db475299b05c9757a0584317bba01"
     },
     {
       "name": "missing-all",
@@ -75,117 +75,117 @@
       "name": "empty-filename",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "",
         "source_url": "https://fixture.test/Agenda.pdf"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"\",\"https://fixture.test/Agenda.pdf\"]",
-      "expected_hex": "ee746920e37e582a78000c54550f8f257a4f6b67fc4f59bd2168e0c441023208"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "f13bebf87435e9b7cbfc43532ae1ae2bb81ddb9faf4ec9f5ce21573b572d0d94"
     },
     {
       "name": "null-filename",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": null,
         "source_url": "https://fixture.test/Agenda.pdf"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",null,\"https://fixture.test/Agenda.pdf\"]",
-      "expected_hex": "006bbce5c15f2841a6c90671eb990daac68b89c4f4ff8816387f9c47888c223a"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",null,\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "4b65d4c5533cefa1b63d12c20eb042814efc58f44943a206f9ddd34a46385789"
     },
     {
       "name": "unicode",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "Café-東京-📄.pdf",
         "source_url": "https://fixture.test/é?q=東京"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Café-東京-📄.pdf\",\"https://fixture.test/é?q=東京\"]",
-      "expected_hex": "f1897fad4dd769cace6e4b7637c3cda298f0b4da017542658e8e06897c406765"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"Café-東京-📄.pdf\",\"https://fixture.test/é?q=東京\"]",
+      "expected_hex": "c6525c80d59c4c5b4fa0fe2a9097fbf5e1874387e68ce60238d2f91b2b6f7893"
     },
     {
       "name": "unicode-nfc",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "Café.pdf",
         "source_url": "https://fixture.test/Agenda.pdf"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Café.pdf\",\"https://fixture.test/Agenda.pdf\"]",
-      "expected_hex": "6abe6223df0d27d5fdae36dd2cf548d783b62ea8a16debf96676f19cb2350f72"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"Café.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "e75255fa2a44605cb4909237095756e127fb7401d163fa23f2d07256a2617a4c"
     },
     {
       "name": "unicode-nfd",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "Café.pdf",
         "source_url": "https://fixture.test/Agenda.pdf"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Café.pdf\",\"https://fixture.test/Agenda.pdf\"]",
-      "expected_hex": "14f8a25eb8481dff95bfaad832ee496749459954ea10c5ed7cc619bea7a78671"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"Café.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "fe62d44481e1aca6f2bd8994e65adfa3e86a0cedde1938ed863535e9ab48969b"
     },
     {
       "name": "quotes-backslashes-controls",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "a\"b\\c\tline\nreturn\r.pdf",
         "source_url": "https://fixture.test/Agenda.pdf"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"a\\\"b\\\\c\\tline\\nreturn\\r.pdf\",\"https://fixture.test/Agenda.pdf\"]",
-      "expected_hex": "913cd16ce2c3d0480abd1bc21d8851c627d5d8ac749288b58a3c429182e6d8ab"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"a\\\"b\\\\c\\tline\\nreturn\\r.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "b0aff4161de3de90bc475a175a04d485950792c0da16c2c82fc19c6e9f5e1e5a"
     },
     {
       "name": "unicode-line-separators",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "a b c.pdf",
         "source_url": "https://fixture.test/Agenda.pdf"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"a b c.pdf\",\"https://fixture.test/Agenda.pdf\"]",
-      "expected_hex": "e96aeed7922acc89d589b764040f474e991ed4cc55237270cadc0543e9ce9085"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"a b c.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "6658e7578773a955f682247f38f88f2814c53745c252ca42f79d4d2bb1799873"
     },
     {
       "name": "literal-url-spelling",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "Agenda.pdf",
         "source_url": "https://EXAMPLE.test/a/../doc%2Fone.pdf?b=2&a=%2f#fragment"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://EXAMPLE.test/a/../doc%2Fone.pdf?b=2&a=%2f#fragment\"]",
-      "expected_hex": "03586dd6e4f8b7d6f8ae86e96a5eebfc84273c5459893d2fdfaf6fbddb032fcd"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"Agenda.pdf\",\"https://EXAMPLE.test/a/../doc%2Fone.pdf?b=2&a=%2f#fragment\"]",
+      "expected_hex": "e4d3b80585ba7c6379eadd34706fec91e0ac3cba78958610e2ea12018594625f"
     },
     {
       "name": "query-order-one",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "Agenda.pdf",
         "source_url": "https://fixture.test/a?b=2&a=1"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://fixture.test/a?b=2&a=1\"]",
-      "expected_hex": "8854c606ba7590cf75ca252addde02d592be7869ecc510de32fb9d780cfa8c4a"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"Agenda.pdf\",\"https://fixture.test/a?b=2&a=1\"]",
+      "expected_hex": "6b5aace8bec7ace92516e5748ece7602d0b5b414a5bff46f62346690ae05bba2"
     },
     {
       "name": "query-order-two",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "Agenda.pdf",
         "source_url": "https://fixture.test/a?a=1&b=2"
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://fixture.test/a?a=1&b=2\"]",
-      "expected_hex": "77cb3ab40cd1149353814b93872e4fa28dff02013a6483c396fcfdb3ff1f4979"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"Agenda.pdf\",\"https://fixture.test/a?a=1&b=2\"]",
+      "expected_hex": "1e98f97829c2460f6e5d1c5294742ce49eab8b8cf8d91ad0c99af74c6323daa1"
     },
     {
       "name": "ignored-interpretation",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "Agenda.pdf",
         "source_url": "https://fixture.test/Agenda.pdf",
         "body_format": [
@@ -197,8 +197,8 @@
         "title": "Changed interpretation",
         "http_status": 404
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",\"https://fixture.test/Agenda.pdf\"]",
-      "expected_hex": "9cd0153814d0a198933d3863f5953a250faca778bfbba21181facf32ee69fcae"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"Agenda.pdf\",\"https://fixture.test/Agenda.pdf\"]",
+      "expected_hex": "f08cbe23e857f78c16b4b87d68e919fe465db475299b05c9757a0584317bba01"
     },
     {
       "name": "null-body-URL-present",
@@ -215,12 +215,12 @@
       "name": "body-present-URL-null",
       "formula": "source_id",
       "inputs": {
-        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
+        "body_key": "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
         "filename": "Agenda.pdf",
         "source_url": null
       },
-      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"Agenda.pdf\",null]",
-      "expected_hex": "5a91dccd695b3ae5822e8944465106685ba35e2faae668378f51c464ecb8e7bf"
+      "compact_json": "[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"Agenda.pdf\",null]",
+      "expected_hex": "111639f98912d4696c5f51a76b1f5c620ca24474b8c40823825573ca7ed9ab2a"
     }
   ],
   "document_ids": [
@@ -229,36 +229,36 @@
       "formula": "bodies",
       "inputs": {
         "bodies": [
-          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab"
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz"
         ],
         "source_ids": []
       },
-      "compact_json": "[\"bodies\",[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\"]]",
-      "expected_hex": "c0ad382dc212cca2408a38afb24fead9752319ced7a05e67830a9e335787cad9"
+      "compact_json": "[\"bodies\",[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\"]]",
+      "expected_hex": "58b5a0766f178bfb2e43e496b697e624d5fd0261f59138f9930c2182860dd7bc"
     },
     {
       "name": "bodies-unsorted",
       "formula": "bodies",
       "inputs": {
         "bodies": [
-          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
-          "bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101",
-          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab"
+          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd.gz",
+          "bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101.gz",
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz"
         ],
         "source_ids": []
       },
-      "compact_json": "[\"bodies\",[\"bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101\",\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\"]]",
-      "expected_hex": "f50439fb671c65109ee70edb9c806d9b8ed624a2a16e11dc4baf6abf85af8fda"
+      "compact_json": "[\"bodies\",[\"bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101.gz\",\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd.gz\"]]",
+      "expected_hex": "a6dd1901a602b562937ecd7e2db037d492e0ccfd092e613b1324763a871fd2c4"
     },
     {
       "name": "bodies-duplicated",
       "formula": "bodies",
       "inputs": {
         "bodies": [
-          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
-          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
-          "bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101",
-          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab"
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
+          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd.gz",
+          "bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101.gz",
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz"
         ],
         "source_ids": [
           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -266,29 +266,29 @@
           "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         ]
       },
-      "compact_json": "[\"bodies\",[\"bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101\",\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\"]]",
-      "expected_hex": "f50439fb671c65109ee70edb9c806d9b8ed624a2a16e11dc4baf6abf85af8fda"
+      "compact_json": "[\"bodies\",[\"bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101.gz\",\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd.gz\"]]",
+      "expected_hex": "a6dd1901a602b562937ecd7e2db037d492e0ccfd092e613b1324763a871fd2c4"
     },
     {
       "name": "bodies-reordered",
       "formula": "bodies",
       "inputs": {
         "bodies": [
-          "bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101",
-          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
-          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+          "bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101.gz",
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
+          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd.gz"
         ],
         "source_ids": []
       },
-      "compact_json": "[\"bodies\",[\"bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101\",\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\"]]",
-      "expected_hex": "f50439fb671c65109ee70edb9c806d9b8ed624a2a16e11dc4baf6abf85af8fda"
+      "compact_json": "[\"bodies\",[\"bodies/sha256/01/0101010101010101010101010101010101010101010101010101010101010101.gz\",\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd.gz\"]]",
+      "expected_hex": "a6dd1901a602b562937ecd7e2db037d492e0ccfd092e613b1324763a871fd2c4"
     },
     {
       "name": "bodies-ignore-sources",
       "formula": "bodies",
       "inputs": {
         "bodies": [
-          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab"
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz"
         ],
         "source_ids": [
           "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -296,8 +296,8 @@
           "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         ]
       },
-      "compact_json": "[\"bodies\",[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\"]]",
-      "expected_hex": "c0ad382dc212cca2408a38afb24fead9752319ced7a05e67830a9e335787cad9"
+      "compact_json": "[\"bodies\",[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\"]]",
+      "expected_hex": "58b5a0766f178bfb2e43e496b697e624d5fd0261f59138f9930c2182860dd7bc"
     },
     {
       "name": "no-bodies-one-source",
@@ -369,25 +369,25 @@
       "formula": "bodies",
       "inputs": {
         "bodies": [
-          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab",
-          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+          "bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz",
+          "bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd.gz"
         ],
         "source_ids": []
       },
-      "compact_json": "[\"bodies\",[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\"]]",
-      "expected_hex": "bafdf0434fd0269da593fa4b603f74623701f9b77fe99a8cb6ff55aaaca83c77"
+      "compact_json": "[\"bodies\",[\"bodies/sha256/ab/abababababababababababababababababababababababababababababababab.gz\",\"bodies/sha256/cd/cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd.gz\"]]",
+      "expected_hex": "f06cdd9117d75d7d359001fd93ef55214d56bb06206ab02edf497082c2886cb6"
     },
     {
       "name": "zero-body-key",
       "formula": "bodies",
       "inputs": {
         "bodies": [
-          "bodies/sha256/00/0000000000000000000000000000000000000000000000000000000000000000"
+          "bodies/sha256/00/0000000000000000000000000000000000000000000000000000000000000000.gz"
         ],
         "source_ids": []
       },
-      "compact_json": "[\"bodies\",[\"bodies/sha256/00/0000000000000000000000000000000000000000000000000000000000000000\"]]",
-      "expected_hex": "aac08a0444c721f0433e2392ac19a8d7495de84c3c0960c096e21e548c6b9ced"
+      "compact_json": "[\"bodies\",[\"bodies/sha256/00/0000000000000000000000000000000000000000000000000000000000000000.gz\"]]",
+      "expected_hex": "c381bdc7162682e8408f6b0c7c70f2742dfcb304175f941e26ef7c6f879dba55"
     }
   ]
 }
