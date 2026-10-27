@@ -1,6 +1,6 @@
 ---
 id: cefr-xjsp
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T18:55:33Z
@@ -34,3 +34,7 @@ Confirmed F2 CODE/ARCH concerns reproduced cd94e9a8. Fixed full single-PUT allow
 **2026-10-27T19:39:48Z**
 
 Shared seam adapters now fail closed: missing model/sql/url-keys.sql or default ParserWorker refuses execution; no exact-string/normalizer or unbounded-reader fallback. Native state/seed/discovery/attempted/cutoff matching uses the supplied shared URL definition and validates one key per input, retaining literal requested output. The finite authored fixture adapter proves scheduler joins only; actual E definition/profile and default worker remain engine integration gates. 134 focused scheduler/fetcher/store/receipt/import checks pass6.34s. Shared URL definition digest is pinned across replans; bounded workers are cached per format. Source397→499lines, CLI81→85, tests361→385.
+
+**2026-10-27T21:48:25Z**
+
+Local scope complete: CODE/ARCH APPROVE including bounded shared-validator followup98abd12f; models-path bindingd64aecc3 passes69 focused checks18.32s (33scheduler/10profile/26import). Actual shared SQL/variants and persistent worker exercised with fake HTTP/local stores. Exact first-live command and release/Linux/budget prerequisites in docs/measurements/engine-first-20261027/f2/README.md; no live action ran.
