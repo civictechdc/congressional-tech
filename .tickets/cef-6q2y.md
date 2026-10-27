@@ -15,3 +15,9 @@ tags: [engine-first, reader]
 
 Native F0 and hand fixtures decode through one DOM-free reader; indexed detail and link reads, saved copies, dates, recoveries, sources, filters and stale tabs pass the project runner. Real-device speed targets remain owner-gated.
 
+
+## Notes
+
+**2026-10-27T16:02:18Z**
+
+The reader handoff is complete and independently reviewed. Corrected final F0 release 62bddc63 loads locally in desktop and phone profiles; the canary passed in 10.617 seconds. Full production-offline at 9eb923c2: 11,382 passed, 33 failed and 3 errors; all 36 baseline identities are unchanged. All15 canonical recovery labels preserve their claims. UI/label tickets are closed; this parent and the harness retain real-device target and publish/CI owner gates. No live writes or deployment.

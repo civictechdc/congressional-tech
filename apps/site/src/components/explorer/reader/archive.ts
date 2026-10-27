@@ -287,5 +287,7 @@ export function recoveryLabel(kind: string){
     same_article_publisher_text_available:'Publisher text of the same article available',
     official_public_statement_counterpart:'Official public statement counterpart',
     official_report_counterpart_available:'Official report counterpart available',
-    related_final_report_available:'Related final report available'} as Record<string,string>)[kind]??kind;
+    related_final_report_available:'Related final report available',
+    full_recording_recovered:'Full recording recovered',
+    explicit_retained_download_wrapper:'Retained download wrapper'} as Record<string,string>)[kind]??kind;
 }
