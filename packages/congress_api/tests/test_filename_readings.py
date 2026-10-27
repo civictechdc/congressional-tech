@@ -327,3 +327,53 @@ def test_actual_worker_startup_failure_propagates_without_unreadable_decision(tm
         reader().stage(captures=captures,recovery_files=[],engine=engine(),work=tmp_path/'stage',
             worker_factory=startup_failure,decided_at=STAMP)
     assert not (tmp_path/'stage/raw').exists()
+
+
+def test_filename_version_tracks_its_package_and_inputs_without_sibling_d1_changes(tmp_path):
+    import importlib.util
+    import shutil
+    module=reader()
+    original=Path(module.__file__).resolve()
+    fixture=tmp_path/'fixture'
+    relative=original.relative_to(module.ROOT)
+    destination=fixture/relative
+    shutil.copytree(original.parent,destination.parent,ignore=shutil.ignore_patterns('__pycache__'))
+    for relative_input in ('uv.lock','model/sql/effective-filenames.sql',
+        'model/registries/filename-parameters.json','model/lake/filename-readings.schema.json'):
+        target=fixture/relative_input; target.parent.mkdir(parents=True,exist_ok=True)
+        shutil.copyfile(module.ROOT/relative_input,target)
+    spec=importlib.util.spec_from_file_location('filename_version_fixture',destination)
+    loaded=importlib.util.module_from_spec(spec); spec.loader.exec_module(loaded)
+    baseline=loaded.current_version()
+    sibling=fixture/'packages/congress_api/src/congress_api/lake/captures.py'
+    sibling.parent.mkdir(parents=True,exist_ok=True)
+    sibling.write_text('# Only the independent D1 producer changed.\n')
+    assert loaded.current_version()==baseline
+    nested=destination.parent/'nested'; nested.mkdir()
+    (nested/'rule.py').write_text('producer_change = True\n')
+    assert loaded.current_version()!=baseline
+    (nested/'rule.py').unlink(); nested.rmdir()
+    assert loaded.current_version()==baseline
+    assert loaded.current_version(vocabularies={'member_surnames':{'119':['Changed']}})!=baseline
+    for relative_input in ('uv.lock','model/sql/effective-filenames.sql',
+        'model/registries/filename-parameters.json','model/lake/filename-readings.schema.json'):
+        target=fixture/relative_input; data=target.read_bytes()
+        target.write_bytes(data+b'\n')
+        assert loaded.current_version()!=baseline
+        target.write_bytes(data)
+        assert loaded.current_version()==baseline
+
+
+def test_module_cli_and_worker_callback_keep_the_public_package_path(tmp_path):
+    import subprocess
+    import sys
+    captures=input_tables(tmp_path,[dict(receipt_key='r',receipt_line=1,capture_index=0,mode='fetch',
+        url='https://a.test/BILLS-119hr6028ih.pdf')])
+    inventory=tmp_path/'recoveries.json'; inventory.write_text('[]')
+    result=subprocess.run([sys.executable,'-I','-m','congress_api.lake.filenames',
+        '--captures',str(captures),'--recovery-inventory',str(inventory),'--decided-at',STAMP,
+        '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--work',str(tmp_path/'stage')],
+        capture_output=True,text=True,check=True)
+    staged=json.loads(result.stdout)
+    [row]=pq.read_table(staged['readings']).to_pylist()
+    assert row['status']=='completed' and row['measure_keys']==['119-hr-6028']

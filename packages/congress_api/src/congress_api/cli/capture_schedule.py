@@ -27,13 +27,16 @@ def main(argv=None):
     parser.add_argument('--cutoff-urls',type=Path,help='Owner-reviewed exact URL list; no raw index')
     parser.add_argument('--as-of',default=datetime.now(timezone.utc).isoformat())
     parser.add_argument('--engine-config',type=Path,default=os.environ.get('DOCSPEC_JOB_CONFIG'))
-    parser.add_argument('--url-keys-sql',type=Path,help='Shared E url_key definition; no identity fallback')
-    parser.add_argument('--url-key-inputs',type=Path,help='Profile native input declarations for shared URL rules/variants')
+    parser.add_argument('--url-normalized-sql',type=Path,help='Authored local fixture normalization SQL')
+    parser.add_argument('--url-keys-sql',type=Path,help='Authored local fixture URL key SQL')
+    parser.add_argument('--url-key-inputs',type=Path,help='Authored local fixture native rule/variant input declarations')
     parser.add_argument('--local-store',type=Path,help='Local create-only body/receipt destination')
     parser.add_argument('--bucket',default='congressional-tech-raw')
     parser.add_argument('--max-discovery-jobs',type=int,default=8)
     parser.add_argument('--apply',action='store_true')
     args=parser.parse_args(argv)
+    if args.pointer and (args.url_keys_sql or args.url_normalized_sql or args.url_key_inputs):
+        parser.error('Public release URL identity overrides are forbidden')
     if not args.engine_config:parser.error('An explicit native engine configuration is required')
     if any(value<=0 for value in (args.request_budget,args.byte_budget,args.spool_budget,args.max_discovery_jobs)):
         parser.error('Resource budgets must be positive')
@@ -43,6 +46,7 @@ def main(argv=None):
     args.work.mkdir(parents=True,exist_ok=False)
     release=load_release(work=args.work/'release',release_root=args.release_root,pointer=args.pointer)
     if args.url_keys_sql:release['url_keys_sql']=args.url_keys_sql
+    if args.url_normalized_sql:release['url_normalized_sql']=args.url_normalized_sql
     if args.url_key_inputs:release['url_key_inputs']=json.loads(args.url_key_inputs.read_text())
     engine=NativeDatasets.from_config(args.engine_config)
     cutoffs=json.loads(args.cutoff_urls.read_text()) if args.cutoff_urls else []

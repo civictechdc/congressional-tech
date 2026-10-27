@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 import re
 
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 from congress_api.retention.provenance import file_pin
 
 
@@ -63,7 +66,16 @@ def append_rows(source, *, engine,work,catalog_root,table,keys,definition,
         sort_keys=True,separators=(',',':')).encode()
     writer=sha256(writer_definition+Path(__file__).read_bytes()).hexdigest()
     identity_prefix=source_pin['sha256']+':'+writer+':'
-    key_json='json_array('+','.join(quoted)+')'
+    schema=pq.read_schema(source)
+    # JSON has no binary scalar. Encode only binary-typed identity fields as
+    # lowercase hex; storage and the native anti-join retain the original type.
+    identity_fields=[]
+    for key,q in zip(keys,quoted):
+        kind=schema.field(key).type
+        binary=(pa.types.is_binary(kind) or pa.types.is_large_binary(kind)
+                or pa.types.is_fixed_size_binary(kind))
+        identity_fields.append(f"encode(cast({q} AS BYTEA),'hex')" if binary else q)
+    key_json='json_array('+','.join(identity_fields)+')'
     # Source hash covers all values; the native sorted key hash covers which
     # immutable rows remain work after a concurrent append or maintenance commit.
     identity_sql=(f'SELECT concat({_literal(identity_prefix)},encode(sha256('

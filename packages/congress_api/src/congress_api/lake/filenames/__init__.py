@@ -17,7 +17,7 @@ from congress_api.retention.body_store import BodyStore, LocalAdapter
 from congress_api.retention.provenance import field, json_input, list_of, struct, parquet_output, run_job, timestamp_key, instant
 
 
-ROOT = Path(__file__).resolve().parents[5]
+ROOT = Path(__file__).resolve().parents[6]
 SQL = ROOT / 'model/sql/effective-filenames.sql'
 PARAMETERS = ROOT / 'model/registries/filename-parameters.json'
 TABLE_SCHEMA = ROOT / 'model/lake/filename-readings.schema.json'
@@ -333,6 +333,3 @@ def main(argv=None, *, worker_factory=None):
     print(json.dumps(result, default=str, sort_keys=True))
     return 0
 
-
-if __name__ == '__main__':
-    raise SystemExit(main())

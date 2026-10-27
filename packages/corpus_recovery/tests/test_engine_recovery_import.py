@@ -254,3 +254,67 @@ def test_canonical_registry_explicitly_admits_copy_imports(tmp_path):
     assert missing[0]['category']=='recovered_document'
     assert missing[0]['status']=='ready_for_owner_import'
     assert result['import_counts']==dict(ready=1,unresolved=0)
+
+
+def test_source_category_controls_import_kind_and_preserves_excerpts(tmp_path):
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
+    rows=pq.read_table(captures).to_pylist()
+    # A source records that the retained material is an excerpt, even though
+    # the accepted mapping's URL basis normally describes a recovered copy.
+    rows[1]['recovery_category']='requested_content_in_official_hearing'
+    pq.write_table(pa.Table.from_pylist(rows),captures)
+    result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        decided_at=STAMP,decided_by='reconciliation')
+    [request]=pq.read_table(tmp_path/'staged'/result['missing_imports']).to_pylist()
+    assert request['category']==request['display_kind']=='requested_content_in_official_hearing'
+    assert request['status']=='ready_for_owner_import'
+    decisions=[json.loads(line) for line in (tmp_path/'staged'/result['provenance']).read_text().splitlines()]
+    assert len(decisions)==2
+    assert {row['kind'] for row in decisions}=={'requested_content_in_official_hearing'}
+    assert not any(row['kind']=='rejected' for row in decisions)
+
+
+@pytest.mark.parametrize('source_time,earliest_url',[
+    (None,'https://alias.example/earliest'),('2019-01-01',None)])
+def test_missing_exact_source_time_uses_earliest_valid_same_body_fetch(tmp_path,source_time,earliest_url):
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
+    rows=pq.read_table(captures).to_pylist()
+    source=rows[1]
+    source['retrieved_at']=source_time
+    rows.extend([
+        dict(source,url=earliest_url,retrieved_at='2020-01-01T00:00:00Z',
+            receipt_key='receipts/earliest',receipt_line=2,capture_index=3),
+        # Lexically earlier, but its UTC time is later than the chosen fetch.
+        dict(source,url='https://alias.example/later',retrieved_at='2019-12-31T20:30:00-05:00',
+            receipt_key='receipts/later'),
+        dict(source,url='https://alias.example/invalid',retrieved_at='not-a-time'),
+        dict(source,url='https://alias.example/date-only',retrieved_at='1900-01-01'),
+        dict(source,url='https://alias.example/import',mode='retained_import',
+            original_url='https://docs.house.gov/unrelated-import',retrieved_at='1990-01-01T00:00:00Z'),
+        dict(source,url='https://alias.example/other-body',sha256='f'*64,retrieved_at='1980-01-01T00:00:00Z'),
+    ])
+    pq.write_table(pa.Table.from_pylist(list(reversed(rows))),captures)
+    result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        decided_at=STAMP,decided_by='reconciliation')
+    [request]=pq.read_table(tmp_path/'staged'/result['missing_imports']).to_pylist()
+    assert request['retrieved_at']=='2020-01-01T00:00:00Z'
+    assert (request['source_receipt_key'],request['source_receipt_line'],request['source_capture_index'])==(
+        'receipts/earliest',2,3)
+    assert request['status']=='ready_for_owner_import'
+    assert result['import_counts']==dict(ready=1,unresolved=0)
+
+
+def test_valid_exact_source_keeps_priority_over_same_body_alias(tmp_path):
+    accepted,captures,registry=reconciliation_inputs(tmp_path)
+    rows=pq.read_table(captures).to_pylist()
+    rows.append(dict(rows[1],url='https://alias.example/older',retrieved_at='2010-01-01T00:00:00Z',
+                     receipt_key='receipts/alias'))
+    pq.write_table(pa.Table.from_pylist(rows),captures)
+    result=reconcile(accepted,captures,registry,output=tmp_path/'staged',
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        decided_at=STAMP,decided_by='reconciliation')
+    [request]=pq.read_table(tmp_path/'staged'/result['missing_imports']).to_pylist()
+    assert request['retrieved_at']=='2019-01-01T00:00:00Z'
+    assert request['source_receipt_key']=='receipts/b'
