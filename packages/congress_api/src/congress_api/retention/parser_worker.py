@@ -31,11 +31,11 @@ def reading_input():
     if marker is None:
         raise RuntimeError('Raw read phase requires a supervised parser')
     path = Path(marker)
-    path.write_text('reading')
+    path.touch()
     try:
         yield
     finally:
-        path.write_text('parsing')
+        path.unlink(missing_ok=True)
 
 
 class ParserWorker:
@@ -136,7 +136,7 @@ class ParserWorker:
                 if self._process is None:
                     self._start()
                 try:
-                    (Path(self._directory.name) / 'phase').write_text('parsing')
+                    (Path(self._directory.name) / 'phase').unlink(missing_ok=True)
                     # One tiny command, one input in flight: never block on input bytes.
                     if os.write(self._process.stdin.fileno(), b'parse\n') != 6:
                         raise _Failure('parser_crash')
@@ -152,8 +152,8 @@ class ParserWorker:
                     reason = 'parser_crash'
                 except _Failure as exc:
                     reason = str(exc)
-                reading = (Path(self._directory.name) / 'phase').read_text() == 'reading'
                 self._stop()
+                reading = (Path(self._directory.name) / 'phase').exists()
                 if reading:
                     return {'status': 'read_error', 'reason': reason}
                 if attempt == 1:

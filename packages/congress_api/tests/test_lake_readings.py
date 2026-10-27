@@ -13,9 +13,9 @@ from docspec_client.client import NativeDatasets
 
 
 def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></body></html>',
-          *, copies=2, size=None, missing=False, body_format='html'):
+          *, copies=2, size=None, missing=False, body_format='html',logical_body=None):
     raw=tmp_path/'raw';raw.mkdir()
-    digest=hashlib.sha256(body).digest()
+    digest=hashlib.sha256(body if logical_body is None else logical_body).digest()
     key='bodies/sha256/'+digest.hex()[:2]+'/'+digest.hex()
     path=raw/key;path.parent.mkdir(parents=True)
     if not missing:path.write_bytes(body)
@@ -149,8 +149,9 @@ def test_readings_cli_stages_locally_and_reports_pending_without_applying(tmp_pa
 
 def test_post_read_decoded_bound_is_an_error_not_pre_read_size_limit(tmp_path):
     import gzip
-    body=gzip.compress(b'x'*(readings.MAX_DECODED_BYTES+1),mtime=0)
-    args,_=setup(tmp_path,body=body)
+    decoded=b'x'*(readings.MAX_DECODED_BYTES+1)
+    body=gzip.compress(decoded,mtime=0)
+    args,_=setup(tmp_path,body=body,logical_body=decoded)
     rows=pq.read_table(args['body_inventory']).to_pylist()
     rows[0]['stored_gzip']=True
     pq.write_table(pa.Table.from_pylist(rows),args['body_inventory'])

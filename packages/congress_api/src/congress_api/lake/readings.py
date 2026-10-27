@@ -33,6 +33,7 @@ def current_version(parser):
     from congress_api.lake.versions import version_digest
     return version_digest(packages={},files={
         'parser':Path(__file__).parents[1]/'parsers/archive_readings.py',
+        'xml_helper':Path(__file__).parents[1]/'parsers/xml.py',
         'producer':Path(__file__), 'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
         'resources':Path(__file__).parents[1]/'retention/process_resources.py',
         'lock':ROOT/'uv.lock','schema':ROOT/'model/lake/readings.schema.json'},
@@ -74,7 +75,7 @@ def parse_payload(payload):
                     finally:
                         if entity is not stream:entity.close()
                 if len(data)>MAX_DECODED_BYTES:
-                    return dict(row=dict(status='size_limit',error_type='decoded_size_limit'),read_bytes=count)
+                    return dict(row=dict(status='error',error_type='decoded_size_limit'),read_bytes=count)
         if source['parser']!='sniff':
             from congress_api.parsers.archive_readings import read_page
             row=read_page(data,source['parser'])
@@ -148,6 +149,7 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         raise ValueError('Conflicting or incomplete pinned body metadata')
     parsed=work/'parsed';parsed.mkdir()
     decisions_path=parsed/'unreadable.jsonl'
+    decisions_digest=sha256()
     counters=dict(pending_reads=0,read_bytes=0,unreadable=0)
     def rows():
         with worker_factory(parser,version,'congress_api.lake.readings:parse_payload',
@@ -178,7 +180,9 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                         record=dict(id=sha256(identity.encode()).hexdigest(),body_sha256=body_hex,
                             parser=parser,parser_version=version,reason=outcome['reason'],
                             decided_by='readings',decided_at=decided_at,supersedes=None)
-                        decisions.write(json.dumps(record,separators=(',',':'))+'\n')
+                        encoded=json.dumps(record,separators=(',',':'))+'\n'
+                        decisions.write(encoded)
+                        decisions_digest.update(encoded.encode())
                         counters['unreadable']+=1;continue
                     if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
                     response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
@@ -199,7 +203,7 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         'SELECT '+','.join(columns)+' FROM parsed_readings',PK)])
     key=path=None
     if counters['unreadable']:
-        key='provenance/unreadable/'+timestamp_key(decided_at)+'.jsonl'
+        key='provenance/unreadable/'+timestamp_key(decided_at)+'-'+decisions_digest.hexdigest()+'.jsonl'
         BodyStore(LocalAdapter(work/'raw')).put(key,decisions_path,'application/x-ndjson')
         path=str(work/'raw'/key)
     return dict(readings=work/'readings.parquet',work_list=work/'work-list.parquet',
