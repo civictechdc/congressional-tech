@@ -11,6 +11,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from docspec_client.client import NativeDatasets
+from docspec_client.models import DocSpecFailure
 from congress_api.models.raw_fetch import Transfer
 from congress_api.retention.archive_members import ZipLimits
 from congress_api.retention.body_store import BodyStore, LocalAdapter
@@ -151,3 +152,117 @@ def test_scope_registry_refuses_credentials_private_addresses_and_traps():
     assert not policy('https://unrelated.example/file.pdf')
     private=CapturePolicy(path,resolve=lambda _:['127.0.0.1'])
     assert not private('https://docs.house.gov/meetings/a.pdf')
+
+
+def test_provider_fallback_keeps_both_attempts_and_budget_accounting(tmp_path):
+    from congress_api.acquisition.capture_scheduler import run_capture
+    root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)])
+    direct=Adapter({'https://fixture.test/a':(403,b'denied',{})})
+    provider=Adapter({'https://fixture.test/a':(200,b'publisher bytes',{})})
+    result=run_capture(load(root,tmp_path/'read'),engine=engine(),work=tmp_path/'capture',as_of=ASOF,
+        request_budget=14,byte_budget=2**30,spool_budget=2**30,store=BodyStore(LocalAdapter(tmp_path/'raw')),
+        identity=IDENTITY,direct=direct,provider=provider,resolve=lambda _:['8.8.8.8'],archive_limits=LIMITS,pace=lambda *_:None)
+    assert result['requests']==2 and result['fetched_bytes']==len(b'deniedpublisher bytes')
+    [receipt]=list((tmp_path/'raw').rglob('*.jsonl.gz'))
+    with gzip.open(receipt,'rt') as source:line=json.loads(source.readline())
+    assert line['http_status']==200 and len(line['captures'])==2
+    assert line['prior_attempts'][0]['http_status']==403
+    assert {capture['attempt'] for capture in line['captures']}=={0,1}
+    assert result['spool_reserved_bound']<=result['budgets']['spool']
+    assert not list((tmp_path/'capture').rglob('*.body'))
+
+
+def test_explicit_cutoff_list_and_duplicate_state_refusal(tmp_path):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=1),
+        dict(requested_url='https://fixture.test/z',attempts=1)])
+    selected=load(root,tmp_path/'read')
+    result=plan_queue(selected,engine=engine(),work=tmp_path/'plan',as_of=ASOF,request_budget=10,
+        cutoff_urls=['https://fixture.test/z','https://fixture.test/z'])
+    assert [row['requested_url'] for row in pq.read_table(result['queue']).to_pylist()]==[
+        'https://fixture.test/z','https://fixture.test/a']
+    other=tmp_path/'other';other.mkdir()
+    root=release(other,[dict(requested_url='https://fixture.test/a',attempts=0)]*2)
+    with pytest.raises((ValueError,DocSpecFailure),match='duplicate|unique|order'):
+        plan_queue(load(root,tmp_path/'duplicate-read'),engine=engine(),work=tmp_path/'duplicate-plan',as_of=ASOF,request_budget=10)
+
+
+def test_discovery_failure_does_not_change_stored_capture_outcome(tmp_path):
+    def reject(*_):return dict(status='error',error_type='invalid_page')
+    result,_,raw=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],
+        {'https://fixture.test/a':(200,b'<html>page</html>',{})},discover=reject)
+    assert result['captures']==1 and result['discovery_errors']==[dict(url='https://fixture.test/a',reason='invalid_page')]
+    with gzip.open(next(raw.rglob('*.jsonl.gz')),'rt') as source:
+        assert json.loads(source.readline())['outcome']=='stored'
+
+
+def test_discovery_budget_and_cycles_terminate_without_index_state(tmp_path):
+    result,adapter,_=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],{
+        'https://fixture.test/a':(200,b'<html><a href="/b">b</a></html>',{}),
+        'https://fixture.test/b':(200,b'<html><a href="/a">a</a><a href="/c">c</a></html>',{})},max_discovery_jobs=1)
+    assert adapter.calls==['https://fixture.test/a','https://fixture.test/b']
+    assert result['stop_reason']=='discovery_job_budget' and result['discovery_jobs']==1
+
+
+def test_byte_and_spool_budget_refuse_before_adapters(tmp_path):
+    result,adapter,_=run_fixture(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)],{},spool_budget=1024)
+    assert not adapter.calls and result['stop_reason']=='byte_or_spool_budget'
+
+
+def test_scheduler_cli_has_no_replay_or_raw_index_mode(tmp_path):
+    from congress_api.cli.capture_schedule import main
+    with pytest.raises(SystemExit):main(['--replay'])
+    with pytest.raises(SystemExit):main(['--raw-index','indexes/raw.json'])
+
+
+class PublicResponse:
+    def __init__(self,data):self.data=data
+    def __enter__(self):return self
+    def __exit__(self,*_):pass
+    def raise_for_status(self):pass
+    def iter_content(self,chunk_size):yield self.data
+
+
+class PublicSession:
+    def __init__(self,root):self.root=root;self.calls=[]
+    def get(self,url,**options):
+        self.calls.append((url,options))
+        name=url.rsplit('/',1)[1]
+        if name=='current.json':
+            manifest=json.loads((self.root/'manifest.json').read_text())
+            return PublicResponse(json.dumps(dict(release_id=manifest['release_id'])).encode())
+        return PublicResponse((self.root/name).read_bytes())
+
+
+def test_public_pointer_is_pinned_once_and_inputs_are_verified(tmp_path):
+    from congress_api.acquisition.capture_scheduler import load_release
+    root=release(tmp_path,[])
+    session=PublicSession(root)
+    selected=load_release(pointer='https://public.fixture/viewer-publications/current.json',
+        session=session,work=tmp_path/'download')
+    assert len(session.calls)==4
+    assert sum(url.endswith('current.json') for url,_ in session.calls)==1
+    assert all(options['allow_redirects'] is False for _,options in session.calls)
+    assert Path(selected['state']).read_bytes()==(root/'url_state.parquet').read_bytes()
+
+
+def test_cli_preview_uses_local_release_without_opening_raw_storage(tmp_path,capsys):
+    from congress_api.cli.capture_schedule import main
+    root=release(tmp_path,[dict(requested_url='https://fixture.test/a',attempts=0)])
+    main(['--release-root',str(root),'--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],
+        '--request-budget','20','--byte-budget','1073741824','--spool-budget','1073741824',
+        '--as-of',ASOF,'--work',str(tmp_path/'preview')])
+    result=json.loads(capsys.readouterr().out)
+    assert result['apply'] is False and result['counts']['queue']==1
+    assert not (tmp_path/'preview/capture').exists()
+
+
+def test_seed_loader_keeps_jsonl_pointer_and_refuses_credential_urls(tmp_path):
+    from congress_api.acquisition.capture_seeds import inventories
+    path=tmp_path/'meetings.jsonl.gz'
+    with gzip.open(path,'wt') as stream:
+        stream.write(json.dumps(dict(documents=[['statement','label','https://fixture.test/a']]))+'\n')
+    [row]=list(inventories([path]))
+    assert row==dict(url='https://fixture.test/a',source=path.name,pointer='["documents",0,2]')
+    with gzip.open(path,'wt') as stream:stream.write(json.dumps(dict(url='https://fixture.test/a?token=secret'))+'\n')
+    with pytest.raises(ValueError,match='Credential'):list(inventories([path]))
