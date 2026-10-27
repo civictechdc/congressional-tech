@@ -1,0 +1,15 @@
+---
+import Base from '../layouts/Base.astro';
+import ArchiveExplorer from '../components/explorer/archive/ArchiveExplorer';
+import {withBase} from '../lib/paths';
+import '../styles/explorer.css';
+import '../styles/archive.css';
+const pointerUrl=import.meta.env.PUBLIC_ARCHIVE_POINTER_URL||withBase('/data/archive/manifest.json');
+const rawBase=import.meta.env.PUBLIC_ARCHIVE_RAW_BASE_URL||'https://congressional-data.spicygov.ai/';
+---
+<Base title="Document archive" active="dashboard" description="Find congressional documents, saved copies, sources, recoveries, and earlier versions.">
+  <section class="explorer-page"><div class="container"><div class="explorer-page-heading"><div><p class="eyebrow">Congressional records</p><h1>Document archive</h1></div></div>
+    <ArchiveExplorer pointerUrl={pointerUrl} rawBase={rawBase} client:load/>
+    <noscript><p>JavaScript is required to search the document archive.</p></noscript>
+  </div></section>
+</Base>
