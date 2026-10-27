@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import re
 
-from congress_api.retention.provenance import parquet_output, run_job
+from congress_api.retention.provenance import parquet_output, run_job, json_input
 
 
 # These are observed producer vocabularies, not fuzzy success guesses. New values
@@ -129,6 +129,8 @@ def mapping_steps(*, existing=False, counter=False):
                 if counter else '__source_key AS receipt_key,__source_line AS receipt_line,__raw_line AS line')
     if counter and existing:
         skip = ' WHERE __receipt_key NOT IN (SELECT DISTINCT receipt_key FROM existing_captures)'
+    if counter:
+        skip += (' AND ' if skip else ' WHERE ')+'__receipt_key IN (SELECT receipt_key FROM selected_receipts)'
     step('lines', 'SELECT ' + position + ' FROM receipts' + skip)
     caps = get('caps_json', kind='array') if counter else get('line', 'captures', kind='array')
     refs = get('refs_json', kind='array') if counter else get('line', 'file_references', kind='array')
@@ -163,8 +165,9 @@ def mapping_steps(*, existing=False, counter=False):
         AND {get('p.entry','body_key')}=s.body_key AND {get('p.entry','sha256')}=s.sha''')
     # List-valued records keep the receipt's grain. A body pointer selects its
     # source record; a line without bodies uses its first record for line facts.
-    pointer_index = first(integer('entry', 'pointer', '0'),
+    pointer_index = first(get('entry', 'pointer', 0,kind='int'),
         f'try_cast({get("entry","pointer",0)} AS BIGINT)',
+        get('entry', 'pointer', 1,kind='int'),
         f'try_cast({get("entry","pointer",1)} AS BIGINT)', '0')
     step('records', f'''SELECT *,CASE WHEN left(ltrim(record_value),1)='['
         THEN array_element({get('record_value',kind='array')},cast({pointer_index} AS BIGINT)+1)
@@ -190,7 +193,7 @@ def mapping_steps(*, existing=False, counter=False):
     step('facts', f'''SELECT r.*,h.item_disposition,h.item_retry,{recovery} AS recovery,
         {association} AS association,{headers} AS headers,
         {both('mode')} AS raw_mode,{both('outcome')} AS raw_outcome,
-        {first(get('line','http_status',kind='int'),get('line','status_code',kind='int'),get('record','http_status',kind='int'),get('record','status_code',kind='int'))} AS line_status,
+        {first(integer('line','http_status'),integer('line','status_code'),integer('record','http_status'),integer('record','status_code'))} AS line_status,
         {first(fetch_time('entry'),fetch_time('line'),fetch_time('record'))} AS fetched,
         {first(get('line','family'),get('record','family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS line_family,
         {first(get('entry','family'),get('line','family'),get('record','family'),"regexp_replace(receipt_key,'^receipts/(.*)/[^/]+/[^/]+$','\\1')")} AS entry_family,
@@ -213,13 +216,13 @@ def mapping_steps(*, existing=False, counter=False):
         CASE raw_outcome {cases} ELSE 'derive' END AS mapped_outcome,
         (raw_mode IS NOT NULL AND raw_mode NOT IN ({modes})) AS unknown_mode,
         (raw_outcome IS NOT NULL AND raw_outcome NOT IN ({outcomes})) AS unknown_outcome,
-        {first(integer('entry','attempt'),'0')} AS attempt,
+        {first(integer('entry','attempt'), "CASE WHEN json_get_str(entry,'pointer',0)='prior_attempts' THEN coalesce(try_cast(json_as_text(entry,'pointer',1) AS BIGINT),0)+1 ELSE 0 END")} AS attempt,
         {first(integer('entry','bytes'),integer('entry','size'))} AS body_bytes,
-        {first(get('entry','pointer',kind='json'),get('entry','pointer_json'))} AS pointer_json,
+        json_canonical({first(get('entry','pointer',kind='json'),get('entry','pointer_json'))}) AS pointer_json,
         {get('entry','body_key')} AS body_key
         FROM facts''')
     attempt_status = first(integer('entry','http_status'), integer('entry','status_code'),
-        f"CASE WHEN attempt>0 THEN json_get_int(json_get_json(json_get_json(line,'prior_attempts'),attempt-1),'http_status') ELSE line_status END")
+        f"CASE WHEN attempt>0 THEN coalesce(json_get_int(json_get_json(json_get_json(line,'prior_attempts'),attempt-1),'http_status'),json_get_int(json_get_json(json_get_json(record,'prior_attempts'),attempt-1),'http_status')) ELSE line_status END")
     final_complete = first(get('entry','complete',kind='bool'),
         "CASE WHEN attempt=0 THEN coalesce(json_get_bool(line,'complete'),json_get_bool(record,'complete')) END",
         "NOT (coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))")
@@ -259,6 +262,15 @@ def mapping_steps(*, existing=False, counter=False):
         evidence_sha256="arrow_cast(decode(json_get_str(recovery,'acquisition','evidence_sha256'),'hex'),'FixedSizeBinary(32)')",
         imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast(json_get_str(recovery,'imported_at') AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
         writer_job=get('line','writer','job'), writer_commit=get('line','writer','commit'))
+    # C1's source positions are required, while the older Parquet counter's
+    # schema declared them optional. Bind the same required lake key schema for
+    # both inputs using Arrow's maintained nested-type cast, without changing
+    # values or substituting a value for a missing locator.
+    locator = '''arrow_cast(named_struct('key',receipt_key,'line',cast(receipt_line AS INT),
+        'index',cast(capture_index AS INT)),
+        'Struct("key": Utf8, "line": Int32, "index": Int32)')'''
+    for name,member in [('receipt_key','key'),('receipt_line','line'),('capture_index','index')]:
+        columns[name] = f"get_field({locator},'{member}')"
     for name in ('retrieved_at', 'retry_after', 'imported_at'):
         columns[name] = f"arrow_cast({columns[name]}, 'Timestamp(Microsecond, Some(\"UTC\"))')"
     step('capture_facts', 'SELECT '+','.join(f'{columns[k]} AS "{k}"' for k in COLUMNS)
@@ -274,14 +286,20 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
     """
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
+    mapping_digest = sha256(Path(__file__).read_bytes()).hexdigest()
     keys = [f['key'] for f in files]
     if len(keys) != len(set(keys)) or any(not k.startswith('receipts/') for k in keys):
         raise ValueError('Receipt inventory needs unique raw receipt keys')
     inputs = ([dict(name='receipts',kind='parquet',path=str(Path(counter).resolve()))]
               if counter is not None else [receipt_input(files)])
+    if counter is not None:
+        inputs.append(json_input(work,'selected_receipts',[dict(receipt_key=k) for k in keys],
+                                 receipt_key='Utf8'))
     if existing is not None:
         inputs.append(dict(name='existing_captures', kind='parquet', path=str(Path(existing).resolve())))
-    checks = [dict(name='invalid', sql='''SELECT receipt_key,receipt_line,
+    checks = [dict(name='positions',sql='''SELECT receipt_key,receipt_line,'invalid source locator' AS reason
+              FROM lines WHERE receipt_key IS NULL OR receipt_line IS NULL OR receipt_line<1 LIMIT 1'''),
+        dict(name='invalid', sql='''SELECT receipt_key,receipt_line,
         CASE WHEN unknown_mode THEN 'unknown mode' ELSE 'unknown outcome' END AS reason
         FROM capture_facts WHERE unknown_mode OR unknown_outcome LIMIT 1'''),
         dict(name='secondary', sql='''SELECT s.receipt_key,s.receipt_line,'secondary body not represented' AS reason
@@ -303,18 +321,20 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
         steps=mapping_steps(existing=existing is not None, counter=counter is not None),
         outputs=[parquet_output(work, 'capture-evidence', 'SELECT * FROM capture_facts', PK)],
         queries=checks)
-    for name in ('invalid', 'secondary', 'list_facts'):
+    for name in ('positions','invalid', 'secondary', 'list_facts'):
         if results[name]:
             row = results[name][0]
             raise ValueError(f"{row['reason']}: {row['receipt_key']}:{row['receipt_line']}")
     final = work/'export'
     final.mkdir()
-    run_job(final, engine,
+    accepted = run_job(final, engine,
         inputs=[dict(name='facts', kind='parquet', path=str(work/'capture-evidence.parquet'))],
         steps=[], outputs=[parquet_output(work, 'captures',
             'SELECT '+','.join('"'+c+'"' for c in COLUMNS)+' FROM facts', PK)],
-        queries=[dict(name='counts', sql='SELECT count(*) AS rows,count(DISTINCT receipt_key) AS receipts FROM facts')])
-    mapping_digest = sha256(Path(__file__).read_bytes()).hexdigest()
+        queries=[dict(name='counts', sql='SELECT count(*) AS rows,count(DISTINCT receipt_key) AS receipts FROM facts'),
+                 dict(name='receipts',sql='SELECT DISTINCT receipt_key FROM facts ORDER BY receipt_key')])
+    if mapping_digest != sha256(Path(__file__).read_bytes()).hexdigest():
+        raise ValueError('Receipt mapping changed while staging; accepted inventory was not written')
     (work/'ingested-receipts.json').write_text(json.dumps(dict(version=1,
-        mapping_digest=mapping_digest, receipt_keys=sorted(keys)), indent=2)+'\n')
+        mapping_digest=mapping_digest, receipt_keys=[r['receipt_key'] for r in accepted['receipts']]), indent=2)+'\n')
     return work
