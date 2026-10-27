@@ -108,3 +108,39 @@ def test_absent_inventory_entry_remains_on_the_work_list(tmp_path):
     assert pq.ParquetFile(result['work_list']).metadata.num_rows==1
     assert pq.ParquetFile(result['readings']).metadata.num_rows==0
     assert result['pending_reads']==1 and result['unreadable_path'] is None
+
+
+def test_read_only_cache_layout_keeps_physical_identity_separate_from_local_path(tmp_path):
+    args,digest=setup(tmp_path)
+    rows=pq.read_table(args['body_inventory']).to_pylist()
+    original=args['local_root']/rows[0]['physical_key']
+    cache=args['local_root']/'cached-body.stored'
+    original.rename(cache)
+    rows[0]['relative_path']='cached-body.stored'
+    pq.write_table(pa.Table.from_pylist(rows),args['body_inventory'])
+    result=stage(args,tmp_path/'stage')
+    assert pq.read_table(result['readings']).to_pylist()[0]['body_sha']==digest
+    assert result['pending_reads']==0
+    assert cache.read_bytes().startswith(b'<html>')
+
+
+@pytest.mark.parametrize('relative_path',['../outside','/absolute'])
+def test_cache_path_escape_refuses_before_body_read(tmp_path,relative_path):
+    args,_=setup(tmp_path)
+    rows=pq.read_table(args['body_inventory']).to_pylist()
+    rows[0]['relative_path']=relative_path
+    pq.write_table(pa.Table.from_pylist(rows),args['body_inventory'])
+    with pytest.raises(ValueError,match='relative|escapes'):
+        stage(args,tmp_path/'stage')
+
+
+def test_readings_cli_stages_locally_and_reports_pending_without_applying(tmp_path,capsys):
+    from congress_api.cli.readings import main
+    args,_=setup(tmp_path,missing=True)
+    spec={k:str(v) if hasattr(v,'__fspath__') else v for k,v in args.items() if k!='engine'}
+    spec.update(parser='html',sniff_version='sniff-fixture',work=str(tmp_path/'stage'))
+    path=tmp_path/'spec.json';path.write_text(json.dumps(spec))
+    assert main(['--spec',str(path)])==0
+    result=json.loads(capsys.readouterr().out)
+    assert result['pending_reads']==1 and result['applied'] is False
+    assert pq.ParquetFile(result['readings']).metadata.num_rows==0
