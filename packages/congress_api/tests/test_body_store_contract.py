@@ -208,3 +208,12 @@ def test_missing_retained_reference_never_fabricates_a_body():
     with pytest.raises(ValueError,match='Missing retained'):
         BodyStore(adapter).reference(KEY,stored_suffix='.gz')
     assert adapter.calls==[('head',KEY+'.gz')]
+
+
+def test_embedded_recorded_url_keeps_apostrophes_during_credential_check(tmp_path):
+    path=tmp_path/'receipt'
+    path.write_bytes(gzip.compress(json.dumps({'error':"request 'https://docs.house.gov/a'/?api_key=secret' failed"}).encode()))
+    adapter=Adapter()
+    with pytest.raises(ValueError,match='Credential'):
+        BodyStore(adapter).put(RECEIPT,path,'application/x-ndjson')
+    assert adapter.calls==[]
