@@ -34,6 +34,10 @@ def test_index_correction_preserves_other_fields_and_refuses_stale_input(tmp_pat
     assert pq.read_table(captures).to_pylist()==rows
     corrected=pq.read_table(Path(stage['output'])).to_pylist()
     assert corrected==[dict(rows[0],stored_sha256='1'*64,stored_bytes=11)]
+    from congress_api.cli.raw_repair import main
+    with pytest.raises(ValueError,match='Explicit capture identity'):
+        main(['--captures',str(captures),'--work',str(tmp_path/'stage'),
+              '--expected','f'*64,'--apply'])
     captures.write_bytes(b'changed selection')
     with pytest.raises(ValueError,match='changed'):
         apply_flat(tmp_path/'stage',captures)

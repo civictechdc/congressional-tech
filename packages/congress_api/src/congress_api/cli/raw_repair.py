@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from congress_api.retention.body_store import BodyStore,R2Adapter
-from congress_api.retention.raw_repair import prepare_repair,apply_flat,apply_native,restore_missing
+from congress_api.retention.raw_repair import prepare_repair,apply_flat,apply_native,restore_missing,load_repair
 from congress_api.retention.raw_verifier import selected_captures
 from congress_api.retention.writer_identity import writer_identity
 from docspec_client.client import NativeDatasets
@@ -32,6 +32,8 @@ def main(argv=None):
             return
     elif not args.work or not args.expected or not args.apply and not all((args.repairs,args.engine_config)):
         parser.error('Index preparation needs work, expected identity, repairs and engine config')
+    if args.apply and not args.restore_input and load_repair(args.work)['expected']!=args.expected:
+        raise ValueError('Explicit capture identity differs from the reviewed repair stage')
     client=None
     if args.old_native_config or args.restore_input:
         writer_identity(ROOT,'old-raw-repair')
@@ -41,7 +43,7 @@ def main(argv=None):
     if args.old_native_config:
         from congress_api.retention.r2 import R2Store
         from congress_api.retention.raw_storage import RawStorage
-        storage=RawStorage(R2Store(client,args.bucket),NativeDatasets.from_config(args.old_native_config))
+        storage=RawStorage.open(R2Store(client,args.bucket),NativeDatasets.from_config(args.old_native_config))
     if args.restore_input:
         store=BodyStore(R2Adapter(client,args.bucket))
         result=[dict(key=row['key'],outcome=restore_missing(store,row['key'],row['stored_path'],

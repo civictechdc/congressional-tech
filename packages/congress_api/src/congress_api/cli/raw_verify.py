@@ -67,7 +67,7 @@ def main(argv=None):
         if args.old_native_config:
             from congress_api.retention.r2 import R2Store
             from congress_api.retention.raw_storage import RawStorage
-            captures=selected_captures(RawStorage(R2Store(client,args.bucket),
+            captures=selected_captures(RawStorage.open(R2Store(client,args.bucket),
                 NativeDatasets.from_config(args.old_native_config)))
         result=verify(R2Source(client,args.bucket),captures=captures,
             receipts=json.loads(args.receipt_inventory.read_text()),
