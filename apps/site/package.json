@@ -13,7 +13,12 @@
     "test:built-filenames": "node --experimental-vm-modules --test scripts/built-filenames.test.mjs",
     "test:archive-unit": "node --test src/components/explorer/reader/archive-unit.test.ts",
     "test:archive-native": "node --test scripts/archive-reader.test.mjs",
-    "test:archive-presentation": "node --test scripts/archive-presentation.test.mjs"
+    "test:archive-presentation": "node --test scripts/archive-presentation.test.mjs",
+    "test:archive-tools": "node --test scripts/archive-tools.test.mjs",
+    "canary:archive": "node --expose-gc scripts/verify-archive.mjs",
+    "measure:archive": "node scripts/measure-archive.mjs",
+    "targets:archive": "node scripts/archive-targets.mjs",
+    "contract:archive": "node scripts/contract-archive.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.0",
