@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 
 from viewer_publication.filename_budget import (DEFAULT_DECODED_POLICY, DecodedBudgetExceeded, bounded_batches,
-                             failure_receipt, json_chunks, maximum, python_estimate, refuse)
+                             failure_receipt, json_chunks, maximum, refuse)
 from viewer_publication.filename_json_stream import ObservationCounts, block_items, decoded_json_default
 
 import pyarrow as pa
@@ -64,26 +64,16 @@ def observation_values(values, *, policy, metrics, stage, kind):
             raise TypeError('Observation parts must be typed Arrow arrays')
         if not batch.type.equals(kind, check_metadata=True):
             raise ValueError('Typed observation part schema differs')
-        if batch.nbytes > policy.row_arrow_bytes:
-            refuse(stage, 'observation part Arrow bytes', batch.nbytes, policy.row_arrow_bytes)
         maximum(metrics, 'max_observation_part_arrow_bytes', batch.nbytes)
-        for position in range(len(batch)):
-            count += 1
-            if count > len(values):
+        source = pa.Table.from_arrays([batch], names=['observation'])
+        for admitted in bounded_batches(source, policy=policy, metrics=metrics, stage=stage):
+            if count + len(admitted) > len(values):
                 raise ValueError('Typed observation sequence length differs')
-            yield observation_value(batch, position, policy=policy, metrics=metrics, stage=stage)
+            for row in admitted.to_pylist():
+                count += 1
+                yield row['observation']
     if count != len(values):
         raise ValueError('Typed observation sequence length differs')
-
-
-def observation_value(values, index, *, policy, metrics, stage):
-    one = pa.RecordBatch.from_arrays([values.slice(index, 1)], names=['observation'])
-    estimate = python_estimate(one)
-    if estimate > policy.row_python_estimate:
-        refuse(stage, 'single-observation Python/JSON estimate', estimate, policy.row_python_estimate)
-    maximum(metrics, 'max_python_json_estimate', estimate)
-    maximum(metrics, 'max_observation_python_estimate', estimate)
-    return values[index].as_py()
 
 
 class Blocks:
