@@ -1,3 +1,42 @@
+/** Raw filename request options; readers validate accepted filter values. */
+export interface FilenameQuery {
+  q?: string;
+  field?: string;
+  page?: number | string;
+  limit?: number | string;
+  offset?: number | string;
+  congress?: string;
+  document_kind?: string;
+  document_family?: string;
+  format?: string;
+  retained?: string;
+  scope?: string;
+  classification?: string;
+  review?: string;
+  origin?: boolean;
+  deferOrigin?: boolean;
+}
+
+export interface FilenameReaderOptions {
+  compressedBytes?: number;
+  rangeEntryBytes?: number;
+  decodedBytes?: number;
+  preferParquetOccurrences?: boolean;
+}
+
+export interface FilenameReaderMetrics {
+  metadataReads: number;
+  sourceScanVisits: number;
+  groupScanVisits: number;
+  decodedRows: number;
+  tableLoads: number;
+  normalizationValues: number;
+  rangeHits?: number;
+  rangeRequests?: number;
+  rangeBytes?: number;
+  scanYields?: number;
+}
+
 export interface FilenameCatalogInfo {
   catalog_id: string;
   rows: number;
@@ -33,6 +72,8 @@ export interface FilenameRecord {
   filename?: string | null;
   source_url?: string | null;
   source_id?: string | null;
+  document_id?: string | null;
+  capture_outcome?: string[] | null;
   document_kind?: string[] | null;
   document_kind_source?: string[] | null;
   document_family?: string[] | null;
@@ -72,7 +113,35 @@ export interface FilenameRecord {
   recovered_source_url?: string[] | null;
   api_reference?: { title: string; evidence?: string } | null;
   video_reference?: { provider: string; id: string } | null;
-  _row?: number;
+
+  package_family?: readonly string[] | null;
+  package_family_label?: readonly string[] | null;
+  document_token_label?: readonly string[] | null;
+  document_type?: readonly string[] | null;
+  amendment_marker_label?: readonly string[] | null;
+  citation_marker_label?: readonly string[] | null;
+  publication_code_label?: readonly string[] | null;
+  local_code_token_label?: readonly string[] | null;
+  revision_marker_label?: readonly string[] | null;
+  revision_number?: readonly string[] | null;
+  version_token_label?: readonly string[] | null;
+  meeting_wording_label?: readonly string[] | null;
+  draft_label?: readonly string[] | null;
+  enbloc_marker_label?: readonly string[] | null;
+  nomination_wording_label?: readonly string[] | null;
+  committee_token_label?: readonly string[] | null;
+  subcommittee_token_label?: readonly string[] | null;
+  scope_token_label?: readonly string[] | null;
+  degree_token_label?: readonly string[] | null;
+  document_abbreviation_label?: readonly string[] | null;
+  document_abbreviation?: readonly string[] | null;
+  collection_token_label?: readonly string[] | null;
+  qualifier_wording?: readonly string[] | null;
+  document_wording?: readonly string[] | null;
+  subject_role_wording?: readonly string[] | null;
+  context_role_wording?: readonly string[] | null;
+  relation_wording?: readonly string[] | null;
+  _row?: number | string;
   _review_status?: string;
   [key: string]: unknown;
 }

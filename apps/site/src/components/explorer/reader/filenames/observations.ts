@@ -100,7 +100,7 @@ export function observationReader(index: any, data: any, references: any, {metri
     const key=`observation-search:${start}`, retained=cache?.get(key);
     if(retained)return retained;
     if(!cache)return null;
-    const budget=Math.min(8*1024*1024,cache.stats.maxBytes/4), output=[];let bytes=24;
+    const budget=Math.min(8*1024*1024,cache.stats.maxBytes/4), output: string[]=[];let bytes=24;
     for(let i=0;i<rows.length;i++) {
       if(i && i % scanBatchRows===0)await yieldToMessages(signal,metrics);
       const row=rows[i], restored=row===null ? null : Object.fromEntries(index.fields.map(key=>[key,row[key]??null]));
@@ -173,19 +173,20 @@ export function parquetObservationReader(descriptor: any, readRows: any, { metri
     }
     const firstRg = candidates[0];
     const lastRg = candidates[candidates.length - 1];
-    let firstRow = null;
-    let firstRgOwners = null;
+    let firstRow: number | null = null;
+    let firstRgOwners: { owner_id?: string }[] | null = null;
     if (firstRg.minOwner === key && firstRg.maxOwner === key) {
       firstRow = firstRg.startRow;
     } else {
-      firstRgOwners = await readRows(
+      const owners: { owner_id?: string }[] = await readRows(
         descriptor,
         firstRg.startRow,
         firstRg.startRow + firstRg.numRows,
         ['owner_id'],
         signal
       );
-      const localFirst = firstRgOwners.findIndex(r => r.owner_id === key);
+      firstRgOwners = owners;
+      const localFirst = owners.findIndex(r => r.owner_id === key);
       if (localFirst >= 0) {
         firstRow = firstRg.startRow + localFirst;
       }
@@ -211,7 +212,7 @@ export function parquetObservationReader(descriptor: any, readRows: any, { metri
       ownerSliceCache.set(key, empty);
       return empty;
     }
-    let lastRowExclusive = null;
+    let lastRowExclusive: number | null = null;
     if (lastRg.minOwner === key && lastRg.maxOwner === key) {
       lastRowExclusive = lastRg.startRow + lastRg.numRows;
     } else {

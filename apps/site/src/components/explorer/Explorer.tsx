@@ -52,7 +52,7 @@ import {
   type Navigation,
   type View,
 } from "./browse/navigation.ts";
-import { issueCategories } from "./browse/kinds.ts";
+import { issueCategories, isMaterialProvider } from "./browse/kinds.ts";
 import { filenameRequest } from "./reader/filenames/session.ts";
 import type { FilenameCatalogInfo } from "./reader/filenames/types.ts";
 import {
@@ -620,7 +620,7 @@ function Workspace({
               </span>
               <select
                 value={nav.provider}
-                onChange={(event) => filter({ provider: event.target.value })}
+                onChange={(event) => { const provider = event.target.value; if (provider === '' || isMaterialProvider(provider)) filter({ provider }); }}
               >
                 <option value="">All sites</option>
                 {materialProviders.map((value) => (

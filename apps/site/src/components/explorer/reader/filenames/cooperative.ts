@@ -2,7 +2,11 @@
 export const scanBatchRows = 512;
 
 const waiters: Array<() => void> = [];
-const channel = typeof MessageChannel === 'function' ? new MessageChannel() : null;
+interface YieldMessagePort extends MessagePort {
+  ref?(): void;
+  unref?(): void;
+}
+const channel: { port1: YieldMessagePort; port2: YieldMessagePort } | null = typeof MessageChannel === 'function' ? new MessageChannel() : null;
 if (channel) {
   channel.port1.onmessage = () => {
     const resolve = waiters.shift();
