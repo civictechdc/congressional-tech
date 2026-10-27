@@ -22,3 +22,7 @@ Sorted content-addressed receipt lists verified and preserved for kept inputs; l
 **2026-10-27T18:57:48Z**
 
 Receipt helpers implemented a4237c67, agreedshape foldedDM8.1f1de2acf. Canonical sorted receipt lists and all producing input identities remain perrelease; corruption/missing evidence refuses kept-list validation. Engine confirmed it will adopt helpers in publisher and owns actual maintenance retention; consumer proof of live/last-good retention and old-prefix deletion remains open until that integration. Focused helper/gate17 and full11612/same36 pass; no storage writes.
+
+**2026-10-27T20:11:05Z**
+
+Final c1713681 full11672passed with exact36baseline identities unchanged;91merged focused pass. Engine has merged helpers/byte rule and owns publisher/maintenance consumers. Receipt-list retention/deletion consumer proof remains incomplete; keep this ticket open until integration verifies live/last-good retention and old-prefix removal.
