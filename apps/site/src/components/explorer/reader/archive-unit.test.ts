@@ -44,3 +44,15 @@ test('shared range transport checks ranges, shares bytes and retries failures',a
   await assert.rejects(retry.slice(0,2),/offline/);assert.equal((await retry.slice(0,2)).byteLength,2);
   const bad=rangeFile('https://raw.test/bad',8,async()=>new Response(bytes));await assert.rejects(bad.slice(0,2),/range/i);
 });
+
+test('generic worker transport pins release replies and cancels pending calls',async()=>{
+  const {createWorkerClient}=await import('./filenames/client.ts');
+  const workers=[];let pin;
+  const client=createWorkerClient({context:()=>({releaseId:pin}),validate:(_url,data)=>{
+    if(!/^[a-f0-9]{64}$/.test(data.releaseId)||pin&&data.releaseId!==pin)throw Error('Archive release changed');pin=data.releaseId;
+  },createWorker:()=>{const worker={postMessage(message){this.last=message;},terminate(){this.dead=true;}};workers.push(worker);return worker;}});
+  const first=client.request('info');workers[0].onmessage({data:{id:1,result:{count:7},releaseId:'ab'.repeat(32)}});assert.deepEqual(await first,{count:7});
+  const controller=new AbortController(),pending=client.request('search',controller.signal);controller.abort();await assert.rejects(pending);assert.equal(client.pendingCount,0);
+  workers[0].onerror();const retry=client.request('info');assert.equal(workers[1].last.releaseId,pin);
+  workers[1].onmessage({data:{id:3,result:{},releaseId:'cd'.repeat(32)}});await assert.rejects(retry,/changed/);client.dispose();
+});

@@ -12,7 +12,8 @@
     "test:explorer": "node --test src/components/explorer/reader/*.test.ts src/components/explorer/browse/*.test.ts src/components/explorer/reader/filenames/*.test.mjs scripts/verify-live-publication.test.mjs",
     "test:built-filenames": "node --experimental-vm-modules --test scripts/built-filenames.test.mjs",
     "test:archive-unit": "node --test src/components/explorer/reader/archive-unit.test.ts",
-    "test:archive-native": "node --test scripts/archive-reader.test.mjs"
+    "test:archive-native": "node --test scripts/archive-reader.test.mjs",
+    "test:archive-presentation": "node --test scripts/archive-presentation.test.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^4.4.0",
