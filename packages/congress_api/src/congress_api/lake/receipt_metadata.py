@@ -28,7 +28,9 @@ def get(value,*path,kind='str'):
 
 
 def obj(fields):
-    return 'named_struct('+','.join(lit(k)+','+v for k,v in fields.items())+')'
+    # C1 can expose Utf8View; this private shape always stores ordinary Utf8.
+    return 'named_struct('+','.join(lit(k)+','+(f'cast({v} AS VARCHAR)'
+        if SCALARS.get(k,'str')=='str' else v) for k,v in fields.items())+')'
 
 
 def scalar_json(value,name,kind):
@@ -120,8 +122,7 @@ def metadata_plan(*,counter=None,files=None,receipt_keys=None):
             '_ingest_header_items_json':get(raw,*prefix,'response_header_items',kind='json'),
             '_ingest_recovery_json':get(raw,*prefix,'recovery_evidence',kind='json'),
             '_ingest_assoc_json':get(raw,*prefix,'source_associations',kind='json'),
-            '_ingest_error_json':get(raw,*prefix,'error',kind='json'),
-            '_ingest_archive_member_count':f'json_length({raw},'+','.join(lit(p) for p in (*prefix,'archive_members'))+')'}
+            '_ingest_error_json':get(raw,*prefix,'error',kind='json')}
     def root_json(name,kind='object'):
         value=get('__raw_line',name,kind='json')
         if validated and '__field_paths' in root_names:
@@ -164,9 +165,9 @@ def metadata_plan(*,counter=None,files=None,receipt_keys=None):
         {obj(final_meta)} AS metadata FROM metadata_records r LEFT JOIN prior_metadata p
         USING(receipt_key,receipt_line,record_index)''',materialize=True,
         release_after=['object_records','list_entries','list_records','metadata_records'])
-    step('record_objects',"SELECT receipt_key,receipt_line,json_get_json(json_array(metadata),0) AS record_json FROM small_records WHERE NOT is_list")
+    step('record_objects',"SELECT receipt_key,receipt_line,make_array(metadata) AS record_values FROM small_records WHERE NOT is_list")
     step('record_lists',"""SELECT receipt_key,receipt_line,
-        json_get_json(json_array(array_agg(metadata ORDER BY record_index)),0) AS record_json
+        array_agg(metadata ORDER BY record_index) AS record_values
         FROM small_records WHERE is_list GROUP BY receipt_key,receipt_line""")
     step('record_metadata','SELECT * FROM record_objects UNION ALL SELECT * FROM record_lists',
         materialize=True,release_after=['record_objects','record_lists','small_records'])
@@ -184,23 +185,32 @@ def metadata_plan(*,counter=None,files=None,receipt_keys=None):
         THEN encode(sha256(json_canonical(coalesce(nullif(json_get_json(__raw_line,'record','meeting'),'null'),
             nullif(json_get_json(__raw_line,'record'),'null')))),'hex') END"""
     step('root_metadata',f'''SELECT c.__receipt_key AS receipt_key,c.__receipt_line AS receipt_line,
-        json_get_json(json_array({obj(roots)}),0) AS line,
+        {obj(roots)} AS line,__line_shape='record:array' AS record_is_list,
         json_get_json(__raw_line,'captures') AS caps_json,
         json_get_json(__raw_line,'file_references') AS refs_json FROM counter c LEFT JOIN prior_metadata p
         ON c.__receipt_key=p.receipt_key AND c.__receipt_line=p.receipt_line AND p.record_index=-1''',
         materialize=True,release_after=['counter','source','prior_metadata'])
-    sql='''SELECT r.receipt_key AS __receipt_key,r.receipt_line AS __receipt_line,
-        r.line,r.caps_json,r.refs_json,m.record_json FROM root_metadata r
+    locator='''arrow_cast(named_struct('key',receipt_key,'line',receipt_line),
+        'Struct("key": Utf8, "line": Int64)')'''
+    sql=f'''SELECT get_field({locator},'key') AS __receipt_key,get_field({locator},'line') AS __receipt_line,
+        r.line,r.caps_json,r.refs_json,m.record_values,r.record_is_list FROM root_metadata r
         LEFT JOIN record_metadata m USING(receipt_key,receipt_line)'''
     if counter is not None and receipt_keys==[]:
-        # An explicit empty work list needs the same typed schema, without
-        # building any JSON/list expansion plan or reading receipt payloads.
-        steps=[dict(name='root_metadata',sql='''SELECT __receipt_key AS receipt_key,
-            __receipt_line AS receipt_line,__raw_line FROM source WHERE false''')]
-        sql='''SELECT receipt_key AS __receipt_key,receipt_line AS __receipt_line,
-            json_get_json(__raw_line) AS line,json_get_json(__raw_line) AS caps_json,
-            json_get_json(__raw_line) AS refs_json,json_get_json(__raw_line) AS record_json
-            FROM root_metadata'''
+        # An explicit empty work list retains the same schema without building
+        # record unions or reading receipt payloads.
+        nulls={n:f"cast(NULL AS { {'str':'VARCHAR','int':'BIGINT','bool':'BOOLEAN'}[kind] })"
+               for n,kind in SCALARS.items()}
+        empty_record={n:nulls.get(n,'cast(NULL AS VARCHAR)') for n in final_meta}
+        empty_root={n:nulls.get(n,'cast(NULL AS VARCHAR)') for n in roots}
+        list_shape="__line_shape='record:array'" if '__line_shape' in schema.names else (
+            "CASE WHEN left(ltrim(json_get_json(__raw_line,'record')),1)='[' THEN true ELSE false END")
+        steps=[dict(name='root_metadata',sql="SELECT __receipt_key AS receipt_key,"+
+            "__receipt_line AS receipt_line,* EXCEPT(__receipt_key,__receipt_line) FROM source WHERE false")]
+        sql=f'''SELECT get_field({locator},'key') AS __receipt_key,get_field({locator},'line') AS __receipt_line,
+            {obj(empty_root)} AS line,json_get_json(__raw_line) AS caps_json,
+            json_get_json(__raw_line) AS refs_json,
+            CASE WHEN __raw_line IS NOT NULL THEN make_array({obj(empty_record)}) END AS record_values,
+            {list_shape} AS record_is_list FROM root_metadata'''
     return dict(inputs=inputs,steps=steps,sql=sql)
 
 
