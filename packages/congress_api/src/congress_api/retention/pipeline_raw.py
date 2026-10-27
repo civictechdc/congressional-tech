@@ -13,9 +13,11 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 from uuid import uuid4
+from urllib.parse import quote
 
 from congress_api.retention.body_files import CHUNK, file_digest
 
@@ -24,6 +26,7 @@ SKIP_PREFIXES = ('committee-explorer/',)  # Build output, rebuilt from the recor
 REPOSITORY = 'https://github.com/civictechdc/congressional-tech'
 BRANCH = 'pipeline-data'
 RECEIPT_LINES = 50_000
+RESCUE_RUN_ID = 'pipeline-data-rescue-20261027'
 MEDIA_TYPES = {
     '.json': 'application/json', '.jsonl': 'application/x-ndjson', '.xml': 'application/xml',
     '.html': 'text/html', '.htm': 'text/html', '.csv': 'text/csv', '.md': 'text/markdown',
@@ -158,7 +161,10 @@ class _Md5Writer:
 
 def receipt_line(item, *, run_id, writer, sha256, outcome, stored=None):
     """One [[DATA-MODEL]] §5.2 fetch line for one snapshot file."""
-    url = f'{REPOSITORY}/raw/{item.commit}/{item.path}'
+    # A git filename is a path, never a URL query or fragment. Keep local source
+    # paths out of the public record and encode URL punctuation in git names.
+    path = quote(item.path, safe='/')
+    url = f'{REPOSITORY}/raw/{item.commit}/{path}'
     capture = dict(
         pointer=['content', 'body'], attempt=0, complete=True, context_url=url,
         member_path=None, entry_index=None, expansion=None, sha256=sha256, bytes=item.size,
@@ -169,7 +175,7 @@ def receipt_line(item, *, run_id, writer, sha256, outcome, stored=None):
         capture.update(stored_md5=stored[0], stored_bytes=stored[1])
     return dict(
         run_id=run_id, mode='fetch', family=FAMILY,
-        requested_url=f'{REPOSITORY}/raw/{BRANCH}/{item.path}', url=url,
+        requested_url=f'{REPOSITORY}/raw/{BRANCH}/{path}', url=url,
         retrieved_at=item.committed_at, http_status=None, provider_status=None,
         outcome=outcome, transport='git', response_headers={}, redirects=[], prior_attempts=[],
         source_context=dict(observations=[]), writer=writer, captures=[capture],
@@ -195,6 +201,12 @@ def plan(files):
 
 def archive(store, files, *, writer, run_id=None, day=None):
     """Store each distinct body once, then the run's receipt; returns a summary."""
+    if (set(writer) != {'job', 'commit', 'lockfile_digest'}
+            or any(not isinstance(value, str) for value in writer.values())
+            or not re.fullmatch(r'[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)?', writer['job'])
+            or not re.fullmatch(r'[0-9a-f]{40}', writer['commit'])
+            or not re.fullmatch(r'[0-9a-f]{64}', writer['lockfile_digest'])):
+        raise ValueError('Invalid public receipt writer identity')
     run_id = run_id or new_run_id()
     kept, skipped = selected(files)
     lines, known, created = [], {}, 0

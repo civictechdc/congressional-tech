@@ -6,6 +6,7 @@ files.jsonl, commits.jsonl) without modifying it. --dry-run prints counts and
 planned keys and opens no connection.
 """
 import argparse
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -37,6 +38,13 @@ def main(argv=None):
     args = parser.parse_args(argv)
     files = list(pipeline_raw.checkout_files(args.snapshot) if args.snapshot
                  else pipeline_raw.rescue_files(args.rescue_batch))
+    import_run = None
+    if args.rescue_batch:
+        registry = json.loads((ROOT / 'model/registries/import-runs.json').read_text())
+        import_run = next(row for row in registry
+                          if row['run_id'] == pipeline_raw.RESCUE_RUN_ID)
+        if not args.dry_run and import_run['date'] != datetime.now(timezone.utc).date().isoformat():
+            raise ValueError('Register the actual UTC import date before running the rescue import')
     if args.dry_run:
         summary = pipeline_raw.plan(files)
         summary['receipts'] = pipeline_raw.receipt_keys('<run_id>', summary['files'], '<UTC date>')
@@ -47,7 +55,11 @@ def main(argv=None):
         # The capture writer's retry policy; R2Store adds its own 429 backoff.
         client = connect_r2(bucket=args.bucket, retries={'mode': 'standard', 'max_attempts': 5})
         store = R2Store(client, args.bucket)
-        summary = pipeline_raw.archive(store, files, writer=writer(args.job))
+        summary = pipeline_raw.archive(
+            store, files, writer=writer(args.job),
+            run_id=pipeline_raw.RESCUE_RUN_ID if args.rescue_batch else None)
+    if import_run:
+        summary['import_run'] = import_run
     print(json.dumps(summary, indent=1))
 
 
