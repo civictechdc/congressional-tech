@@ -228,8 +228,11 @@ class _Counted:
 def _allowance(byte_budget,spool_budget,archive_limits,hops):
     # Source+prepared copy+compression overhead, plus all expanded members and
     # a member's preparation. Each redirect can consume its full allowance.
+    # Admit the full entity range; BodyStore separately checks actual encoded
+    # stored bytes against single-PUT capacity. Compression headroom belongs
+    # in the spool reservation, not an arbitrary half-size entity ceiling.
     overhead=2*archive_limits.max_total_bytes+2*archive_limits.max_member_bytes+6*archive_limits.max_directory_bytes+(16<<20)
-    limit=min(byte_budget//hops,max(0,(spool_budget-overhead)//3),(5*1024**3)//2)
+    limit=min(byte_budget//hops,max(0,(spool_budget-overhead)//3),5*1024**3)
     return limit,3*limit+overhead
 
 
