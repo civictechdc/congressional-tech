@@ -10,11 +10,19 @@ from congress_api.retention.parser_worker import ParserWorker
 @pytest.fixture
 def parser(tmp_path):
     path = tmp_path / 'fixture_parser.py'
-    path.write_text('''import os, time
+    path.write_text('''import os, time, weakref
 count = 0
+previous = None
+class Reading(dict): pass
 def parse(body):
-    global count
+    global count, previous
     count += 1
+    if body == b"retained":
+        if previous is not None and previous() is not None: os._exit(13)
+        result = Reading(pid=os.getpid(), count=count)
+        result.working = bytearray(40 * 1024**2)
+        previous = weakref.ref(result)
+        return result
     if body == b"crash": os._exit(12)
     if body == b"hang": time.sleep(30)
     if body == b"memory":
@@ -84,3 +92,12 @@ def test_worker_requires_valid_settings_and_an_open_context(parser):
     run = worker(parser)
     with pytest.raises(RuntimeError, match='context'):
         run.parse('one', b'valid')
+
+
+def test_completed_large_result_is_released_before_the_next_invocation(parser):
+    with worker(parser) as run:
+        first = run.parse('one', b'retained')
+        second = run.parse('two', b'retained')
+        assert first['status'] == second['status'] == 'completed'
+        assert first['value']['pid'] == second['value']['pid']
+        assert second['value']['count'] == 2
