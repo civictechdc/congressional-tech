@@ -336,3 +336,16 @@ def test_owner_decided_direct_official_package_is_a_fetch_only_for_same_source(t
     assert row['mode']==('fetch' if same_url else 'retained_import')
     assert row['original_url']==(None if same_url else original)
     assert row['retrieved_at'].isoformat()=='2026-10-20T12:34:56+00:00'
+
+
+@pytest.mark.parametrize('headers',[
+    {'response_header_items':[{'name':'Retry-After','value':'120'},
+                              {'name':'Content-Disposition','value':'attachment; filename=top.pdf'}]},
+    {'headers':{'Retry-After':'120','Content-Disposition':'attachment; filename=top.pdf'}},
+    {'response_headers':{'Retry-After':'120','Content-Disposition':'attachment; filename=top.pdf'}},
+])
+def test_top_level_header_shapes_preserve_deadline_and_download_name(tmp_path,headers):
+    stage=ingest(tmp_path,[dict(http_status=503,retrieved_at=STAMP,**headers)])
+    [row]=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert row['retry_after'].isoformat()=='2026-10-20T12:36:56+00:00'
+    assert row['h_content_disposition']=='attachment; filename=top.pdf'
