@@ -19,7 +19,9 @@ def execute(tmp_path, cases, variants=()):
                    pattern='Utf8',replacement='Utf8',decoder='Utf8'),
         json_input(tmp_path,'url_variants',variants,canonical_url='Utf8',variant_url='Utf8')]
     return run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
-        steps=[dict(name='url_keys',sql=(ROOT/'model/sql/url-keys.sql').read_text())],outputs=[],
+        steps=[dict(name='url_normalized',materialize=True,
+                    sql=(ROOT/'model/sql/url-normalized.sql').read_text()),
+               dict(name='url_keys',sql=(ROOT/'model/sql/url-keys.sql').read_text())],outputs=[],
         queries=[dict(name='keys',sql='SELECT * FROM url_keys ORDER BY input_id')])['keys']
 
 
