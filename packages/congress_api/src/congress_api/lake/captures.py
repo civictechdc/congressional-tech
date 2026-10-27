@@ -171,13 +171,18 @@ def mapping_steps(*, existing=False):
         json_canonical({first(get('entry','pointer',kind='json'),get('entry','pointer_json'))}) AS pointer_json,
         {get('entry','body_key')} AS body_key
         FROM facts''')
+    step('attempt_facts', '''SELECT *,coalesce(
+        json_get_json(json_get_json(line,'prior_attempts'),attempt-1),
+        json_get_json(coalesce(json_get_str(record,'_ingest_prior_attempts_json'),
+            json_get_json(record,'prior_attempts')),attempt-1)) AS prior_record
+        FROM mapped''')
     attempt_status = first(integer('entry','http_status'), integer('entry','status_code'),
-        f"CASE WHEN attempt>0 THEN coalesce(json_get_int(json_get_json(json_get_json(line,'prior_attempts'),attempt-1),'http_status'),json_get_int(json_get_json(coalesce(json_get_str(record,'_ingest_prior_attempts_json'),json_get_json(record,'prior_attempts')),attempt-1),'http_status')) ELSE line_status END")
-    final_complete = first(get('entry','complete',kind='bool'),
-        "CASE WHEN attempt=0 THEN coalesce(json_get_bool(line,'complete'),json_get_bool(record,'complete')) END",
+        "CASE WHEN attempt>0 THEN coalesce(json_get_int(prior_record,'http_status'),json_get_int(prior_record,'status_code')) ELSE line_status END")
+    recorded_complete=first(get('entry','complete',kind='bool'),
+        "CASE WHEN attempt>0 THEN json_get_bool(prior_record,'complete') ELSE coalesce(json_get_bool(line,'complete'),json_get_bool(record,'complete')) END")
+    final_complete = first(recorded_complete,
         "NOT (coalesce(body_bytes,0)=67108864 OR mapped_outcome IN ('size_limit','request_failed'))")
-    explicit_complete = first(get('entry','complete',kind='bool'),
-        "CASE WHEN attempt=0 THEN coalesce(json_get_bool(line,'complete'),json_get_bool(record,'complete')) END")
+    explicit_complete = recorded_complete
     top_level = "json_get_str(entry,'member_path') IS NULL AND position('archive_members' IN coalesce(pointer_json,''))=0"
     legacy_cutoff = f'''(bool_or(attempt=0 AND body_bytes=67108864 AND ({top_level})
         AND ({explicit_complete}) IS FALSE) OVER (PARTITION BY receipt_key,receipt_line))
@@ -206,7 +211,7 @@ def mapping_steps(*, existing=False):
         member_path=first(get('entry','member_path'),
             "CASE WHEN position('archive_members' IN coalesce(pointer_json,''))>0 AND reference_kind='capture' THEN json_get_str(entry,'original_path') END"),
         expansion=first(get('entry','expansion'),
-            "CASE WHEN coalesce(json_length(record,'archive_members'),json_get_int(record,'_ingest_archive_member_count'),json_get_int(line,'archive_member_count'),0)>0 AND position('archive_members' IN coalesce(pointer_json,''))=0 THEN 'expanded' END"),
+            f"CASE WHEN ({top_level}) AND bool_or(body_sha IS NOT NULL AND NOT ({top_level})) OVER (PARTITION BY receipt_key,receipt_line,attempt,coalesce(json_get_str(entry,'context_url'),final_url)) THEN 'expanded' END"),
         h_content_disposition=first(get('headers','content-disposition'), get('headers','Content-Disposition'),'item_disposition'),
         retry_after=f"CASE WHEN try_cast({retry} AS BIGINT) IS NOT NULL THEN to_timestamp_micros(cast(extract(epoch FROM fetched)*1000000 AS BIGINT)+try_cast({retry} AS BIGINT)*1000000) ELSE try_cast({retry} AS TIMESTAMP WITH TIME ZONE) END",
         retrieved_at='fetched', sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')", bytes='body_bytes',
@@ -236,7 +241,7 @@ def mapping_steps(*, existing=False):
     for name in ('retrieved_at', 'retry_after', 'imported_at'):
         columns[name] = f"arrow_cast({columns[name]}, 'Timestamp(Microsecond, Some(\"UTC\"))')"
     step('capture_facts', 'SELECT '+','.join(f'{columns[k]} AS "{k}"' for k in COLUMNS)
-         + ',reference_kind,pointer_json,body_key,unknown_mode,unknown_outcome FROM mapped')
+         + ',reference_kind,pointer_json,body_key,unknown_mode,unknown_outcome FROM attempt_facts')
     return steps
 
 
@@ -276,9 +281,7 @@ def stage_captures(files, *, engine, work, existing=None, counter=None):
             FROM (SELECT receipt_key,receipt_line,unnest(json_get_array(record_value)) AS item
                   FROM primary_entries WHERE reference_kind='line' AND left(ltrim(record_value),1)='[')
             GROUP BY receipt_key,receipt_line HAVING
-                count(DISTINCT coalesce(json_get_str(item,'url'),json_get_str(item,'requested_url')))>1
-                OR count(DISTINCT coalesce(json_get_int(item,'http_status'),json_get_int(item,'status_code')))>1
-                OR count(DISTINCT coalesce(json_get_str(item,'retrieved_at'),json_get_str(item,'captured_at'),json_get_str(item,'observed_at')))>1
+                count(DISTINCT json_canonical(item))>1
             LIMIT 1''')]
     results = run_job(work, engine, inputs=inputs,
         steps=mapping_steps(existing=existing is not None),
