@@ -270,3 +270,27 @@ def test_oversized_unreadable_import_refuses_before_put_or_acknowledgment(tmp_pa
         import_unreadable(store,source,decided_at='2026-10-28T12:00:00Z',cache=tmp_path/'cache')
     assert not client.put_calls and not client.get_calls and not client.head_calls
     assert not store._provenance_acks and source.is_file()
+
+
+def test_exact_inventory_byte_limit_is_accepted_by_writer_and_next_inventory(tmp_path):
+    from congress_api.retention.provenance import import_unreadable,imported_unreadable_provenance
+    from congress_api.retention.provenance_inventory import MAX_OBJECT_BYTES,unreadable_inventory
+    source=tmp_path/'exact-limit.jsonl'
+    prefix=b'{"id":"'
+    suffix=(b'","body_sha256":"'+b'a'*64+b'","parser":"readings","parser_version":"v1",'
+        b'"reason":"timeout","decided_by":"readings","decided_at":"2026-10-28T12:00:00Z",'
+        b'"supersedes":null}\n')
+    remaining=MAX_OBJECT_BYTES-len(prefix)-len(suffix)
+    with source.open('wb') as out:
+        out.write(prefix)
+        while remaining:
+            chunk=min(65536,remaining);out.write(b'x'*chunk);remaining-=chunk
+        out.write(suffix)
+    assert source.stat().st_size==MAX_OBJECT_BYTES
+    client=R2();store=BodyStore(R2Adapter(client,'bucket'))
+    imported=import_unreadable(store,source,decided_at='2026-10-28T12:00:00Z',cache=tmp_path/'cache')
+    public,custody=imported_unreadable_provenance(imported,store,source)
+    with unreadable_inventory(store,work=tmp_path/'next') as snapshot:
+        assert snapshot.rows()==[public] and public['size']==MAX_OBJECT_BYTES
+        custody.require(public['path'])
+    assert len(client.put_calls)==1 and len(client.list_calls)==1 and not client.get_calls and not client.head_calls
