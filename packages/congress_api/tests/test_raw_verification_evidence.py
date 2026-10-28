@@ -249,3 +249,47 @@ def test_drifted_prior_measurement_does_not_authorize_unsampled_repair(tmp_path)
     report=run(tmp_path,case)
     assert not report['valid'] and report['mismatches']==1 and report['digest_repairs']==0
     assert outside not in case[0].reads and not Path(report['records']).exists()
+
+
+
+def reviewed_delta(work):
+    work.mkdir()
+    records=work/'verification.jsonl'
+    payload=(json.dumps(dict(key='bodies/sha256/'+'a'*2+'/'+'a'*64,size=1,etag='x',
+        sha256_verified=True,stored_sha256='b'*64,checked_at=STAMP,job='raw-verifier'))+'\n').encode()
+    records.write_bytes(payload)
+    (work/'report.json').write_text(json.dumps(dict(valid=True,accepted_records=1,
+        records_sha256=hashlib.sha256(payload).hexdigest(),provenance_key='provenance/verification/pinned.jsonl',
+        listed=1,checked=1)))
+    return records,payload
+
+
+def test_verification_apply_refuses_changed_source_before_frozen_copy_create(tmp_path):
+    import sys
+    from congress_api.cli.raw_verify import apply_staged
+    from congress_shared.custody import copy_checked
+    records,_=reviewed_delta(tmp_path/'job')
+    class NoPut:
+        def put(self,*args,**kwargs):raise AssertionError('unreviewed records reached storage')
+    def change_before_copy(frame,event,arg):
+        if event=='call' and frame.f_code is copy_checked.__code__:
+            records.write_text('{"different":"valid JSON"}\n')
+    previous=sys.getprofile();sys.setprofile(change_before_copy)
+    try:
+        with pytest.raises(ValueError,match='changed'):
+            apply_staged(tmp_path/'job',NoPut())
+    finally:sys.setprofile(previous)
+
+
+def test_verification_apply_uses_reviewed_frozen_bytes_after_source_replacement(tmp_path):
+    import sys
+    from congress_api.cli.raw_verify import apply_staged
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    records,payload=reviewed_delta(tmp_path/'job');raw=tmp_path/'raw'
+    def change_original_at_upload(frame,event,arg):
+        if event=='call' and frame.f_code is BodyStore.put.__code__:
+            records.write_text('{"different":"valid JSON"}\n')
+    previous=sys.getprofile();sys.setprofile(change_original_at_upload)
+    try:result=apply_staged(tmp_path/'job',BodyStore(LocalAdapter(raw)))
+    finally:sys.setprofile(previous)
+    assert (raw/result['provenance']).read_bytes()==payload
