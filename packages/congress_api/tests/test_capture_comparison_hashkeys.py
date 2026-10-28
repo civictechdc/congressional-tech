@@ -41,10 +41,12 @@ def test_actual_comparison_pivot_groups_nullable_identities_without_wide_builds(
         assert any(re.search(r'\b'+key+r'@',line) for line in aggregates),physical
     # The surviving identity anti-join builds only secondary old-row IDs.
     joins=[line for line in physical.splitlines() if 'HashJoinExec:' in line]
-    assert len(joins)==1,physical
-    [join]=joins
-    assert 'join_type=RightAnti' in join and 'old_row@' in join,physical
-    assert 'filter=' not in join,physical
+    assert len(joins)==1+int(scoped),physical
+    [join]=[line for line in joins if 'join_type=RightAnti' in line]
+    assert 'old_row@' in join and 'filter=' not in join,physical
+    scope_joins=[line for line in joins if 'join_type=RightSemi' in line]
+    assert len(scope_joins)==int(scoped),physical
+    assert all('receipt_key@' in line and 'filter=' not in line for line in scope_joins),physical
     assert 'projection=[old_row]' in physical,physical
 
 
