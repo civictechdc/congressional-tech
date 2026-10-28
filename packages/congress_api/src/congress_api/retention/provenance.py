@@ -125,7 +125,7 @@ def write_records(store,kind,records,*,timestamp):
 
 
 
-def import_unreadable(store, decisions_path, *, decided_at):
+def import_unreadable(store, decisions_path, *, decided_at, expected=None):
     """Validate and freeze producer decisions, then import exact bytes create-only."""
     stamp=timestamp_key(decided_at)
     with TemporaryDirectory(prefix='raw-unreadable-') as temporary:
@@ -136,6 +136,8 @@ def import_unreadable(store, decisions_path, *, decided_at):
                 validate_provenance('unreadable',json.loads(line))
                 out.write(line);digest.update(line);size+=len(line);count+=1
         if not count:raise ValueError('Empty unreadable batch')
+        if expected is not None and expected!=dict(sha256=digest.hexdigest(),size=size):
+            raise ValueError('Reviewed unreadable decisions changed before import')
         key='provenance/unreadable/'+stamp+'-'+digest.hexdigest()+'.jsonl'
         store.put(key,frozen,'application/x-ndjson')
     return dict(key=key,records=count,sha256=digest.hexdigest(),size=size)
@@ -201,7 +203,8 @@ def apply_staged(root,store):
     root,value=load_stage(root)
     for item in value['files']:
         if value['kind']=='unreadable':
-            import_unreadable(store,root/item['path'],decided_at=value['decided_at'])
+            import_unreadable(store,root/item['path'],decided_at=value['decided_at'],
+                expected={name:item[name] for name in ('sha256','size')})
         else:
             store.put(item['path'],root/item['path'],'application/x-ndjson')
     return dict(objects=len(value['files']),records=value['records'])

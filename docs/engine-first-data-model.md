@@ -220,10 +220,13 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `sha256` | fixed[32], nullable | Digest of the referenced body. |
 | `bytes` | long, nullable | Body size. |
 | `media_type`, `fidelity` | string, nullable | §5.2; saved-file ordering reads `fidelity` (§7.5). |
+| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Capture-time reading reused by D2; unknown older values take a retained-body reading (§6.2). |
+| `expansion` | string, nullable | §5.2; the ZIP fingerprint (§6.2) reads `expanded`. |
 | `stored_suffix` | string, nullable | §5.2. |
 | `stored_bytes` | long, nullable | Stored object size. |
 | `stored_md5` | fixed[16], nullable | Creating line only. |
 | `recovery_category`, `original_url`, `recovered_url`, `match_basis`, `evidence_sha256`, `imported_at` | string, string, string, string, fixed[32], timestamptz; nullable | Recovery rows only. `recovery_category` is `prior_access_category`; the older-line fallbacks set `original_url`, `match_basis` and `imported_at`. |
+| `writer_job`, `writer_commit` | string, nullable | Required on new rows by invariant 3; null on older rows without writer identity. |
 
 These values are **on demand, not phase-1 columns**:
 
@@ -232,8 +235,7 @@ These values are **on demand, not phase-1 columns**:
 | Prior attempts, their status and completeness | Read the pointed receipt when an individual attempt needs examination; bulk ingest does not expand or sort them. |
 | Other response headers, header items and `retry_after` | Retained in raw. Bulk ingest reads only the two flat download-name paths; scheduling uses the phase-1 intervals (§7.7). |
 | `record_sha` and inline meeting records | D4, phase 2 (§6.5): read the four `congress/meetings` receipt files (77 MB, 199,156 lines) once and compute the record hashes then. D1 stores only their pointers. |
-| Captured sniff/version/integrity and expansion details | Retained in raw; the bulk model reads its pinned body readings and the narrow member endpoints. |
-| Writer identity and metadata supplements | Raw receipts and pinned producer/profile metadata retain these facts. |
+| Other writer metadata and supplements | Raw receipts and pinned producer/profile metadata retain these facts. |
 
 - **PK:** `(receipt_key, receipt_line, capture_index)`.
 - The line's final status, completeness, mode and outcome accompany its referenced bodies. No bulk prior-attempt lookup fills a missing final fact.
@@ -244,10 +246,12 @@ These values are **on demand, not phase-1 columns**:
   - maps `retained_import` with association basis `direct_official_package` and `url == requested_url == source_associations[0].original_url` to `mode = fetch`, preserving its own fetch time. The owner identified 123 such pinned lines; the same rule applies to any matching source;
   - for other recoveries, takes `original_url` from the first source association, `match_basis` from its `basis`, and a missing `imported_at` from the receipt key's write date. The 5,587 recovery-run lines remain recoveries; `publisher_requested` is not used to classify them;
   - translates the versioned outcome/mode vocabulary, deriving a missing outcome from the final status and body presence. Unknown vocabulary refuses ingest rather than guessing success;
-  - keeps an explicitly recorded line completeness value and otherwise leaves it unknown;
+  - keeps recorded completeness. Otherwise it sets `complete` true unless the body is exactly 64 MiB or the outcome is `size_limit` or `request_failed`. Declared lengths are unused: about 61% of older 2xx HTML responses with full recorded headers declare none, and nearly all others name a `Content-Encoding`, so the length is the compressed transfer's. The pinned census has 657,713 2xx lines without recorded completeness (451,414 senate/captions and 125,245 documents); this derivation preserves their eligibility for `good_fetch`;
+  - maps a confirmed legacy final response at its writer's 64 MiB cap with explicit `complete = false` to outcome `size_limit`, preserving an explicit more-specific outcome or error. Incomplete prior attempts and archive members do not trigger that inference when the final response completed;
+  - keeps `expansion` and records `expanded` on an archive line whose members were captured; it keeps `writer_job` and `writer_commit` from the line's writer identity for invariant 3;
   - takes fetch time from the row's entry, then its line: `retrieved_at`, `captured_at`, `observed_at`, `parent_retrieved_at` or `_retrieved_at`, then `capture_date` at the start of its day, else null. `started_at`, `checked_at` and content dates are not fetch times. End of Term times remain the archive capture times;
   - accepts pointer elements as strings or integers and selects the corresponding narrow facts from a list-valued `record` (99 pinned lines), without changing primary row ordinals;
-  - reads the two flat download-name paths only, excluding prior copies and `source_metadata`; no prior arrays, header-item expansion, inline meeting hashes, writer supplements or `links` are read during bulk ingest.
+  - reads the two flat download-name paths only, excluding prior copies and `source_metadata`; no prior arrays, header-item expansion, inline meeting hashes, other writer supplements or `links` are read during bulk ingest.
 - **Read once:** each consumer reads a raw object at most once, selecting only its needed fields. D1 reads every receipt line once; D4 reads the four meeting files once in phase 2.
 - Not partitioned.
 - **Work list:** receipt keys not yet ingested, listed from date-shaped prefixes ([[ARCHITECTURE]] §8.2). The backfill also reads non-date segments.
