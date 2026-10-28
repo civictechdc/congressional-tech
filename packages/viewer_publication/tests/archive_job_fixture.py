@@ -61,3 +61,26 @@ def rebuild_model_spec(tmp_path,*,raw,qualification):
         for name,path in [('captures',captures),('readings',pages['readings']),('filename_readings',names['readings'])]:
             value[name]=dict(kind='parquet',path=str(path),**file_pin(path))
     return value
+
+
+def native_daily_spec(tmp_path,model,engine):
+    """Seed real local tables from the independently rebuilt raw fixture."""
+    from pathlib import Path
+    from congress_api.lake import captures,readings,filenames,tables
+    catalog=str(tmp_path/'catalog')
+    refs={name:dict(namespace=['archive'],name=name) for name in ['captures','readings','filename_readings']}
+    schema=json.loads((Path(__file__).resolve().parents[3]/'model/lake/captures.schema.json').read_text())
+    tables.create_table(engine=engine,work=tmp_path/'create-captures',catalog_root=catalog,
+        table=refs['captures'],schema=schema,location=tmp_path/'lake-captures',create_namespace=True)
+    for name,module in [('readings',readings),('filename_readings',filenames)]:
+        module.create_table(engine=engine,work=tmp_path/('create-'+name),catalog_root=catalog,
+            table=refs[name],location=tmp_path/('lake-'+name))
+    for name,keys,definition in [('captures',['receipt_key'],captures.current_version()),
+            ('readings',readings.PK,'fixture-current-readings'),
+            ('filename_readings',filenames.PK,'fixture-current-filenames')]:
+        tables.append_rows(model[name]['path'],engine=engine,work=tmp_path/('seed-'+name),
+            catalog_root=catalog,table=refs[name],keys=keys,definition=definition)
+    return dict(work=str(tmp_path/'daily'),decided_at='2026-10-28T12:00:00Z',catalog_root=catalog,
+        tables=refs,receipt_inventory=[],body_inventory=str(tmp_path/'inventory/bodies.parquet'),
+        local_root=str(tmp_path/'raw'),max_work_items=10,
+        provenance={kind:[] for kind in ['recoveries','reviews','unreadable']})

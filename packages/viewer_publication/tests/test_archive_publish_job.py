@@ -71,6 +71,34 @@ def test_daily_handoff_refuses_incomplete_or_inconsistent_evidence(tmp_path,chan
     assert not (tmp_path/'release').exists() and not (tmp_path/'publish').exists()
 
 
+def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
+    from archive_job_fixture import real_model_spec,native_daily_spec
+    from docspec_client.client import NativeDatasets
+    from congress_api.retention.body_store import BodyStore,R2Adapter
+    from viewer_publication.archive_model_job import load_spec
+    from viewer_publication.archive_publish_job import produce_daily_inputs
+    from viewer_publication.archive_controller import run_publish
+    from test_archive_controller import Runtime
+    from test_archive_publish import Store
+    model,_,_=real_model_spec(tmp_path)
+    path=tmp_path/'template.json';path.write_text(json.dumps(model));model=load_spec(path)
+    store=Store();probes=[]
+    def probe(**context):
+        probes.append(context['release_id'])
+        return dict(status='passed',releaseId=context['release_id'],targets='measured')
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        daily=native_daily_spec(tmp_path,model,native)
+        result=produce_daily_inputs(model,daily,engine=native,raw_store=BodyStore(R2Adapter(store,'derived-fixture')))
+        assert result['status']=='ready' and result['receipt_keys']==['receipts/documents/2026-10-27/slice.jsonl.gz']
+        assert all(result['model'][name]['kind']=='native_table' for name in ['captures','readings','filename_readings'])
+        published=run_publish(result['model'],client=store,engine=Runtime(native,store),bucket='derived-fixture',
+            work=tmp_path/'publish',receipt_keys=result['receipt_keys'],provenance=result['provenance'],
+            verified_files=result['verified_files'],run={'id':'daily'},public_origin='https://archive.fixture.test',
+            contract=probe,canary=probe)
+    assert published['status']=='published' and len(probes)==2
+    assert 'viewer-publications/manifest.json' in store.objects
+
+
 def test_default_plan_never_opens_runtime_targets_or_data_or_creates_work(tmp_path,capsys):
     value=publish_spec(tmp_path)
     Path(value['targets']['path']).unlink()
