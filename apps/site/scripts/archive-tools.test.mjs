@@ -127,3 +127,17 @@ test('provisional targets refuse a different seed identity and CLI validation re
     await assert.rejects(validateTargetFile(output,{kind:'model'}),/seed/i);
   }finally{await rm(folder,{recursive:true,force:true});}
 });
+
+
+test('Node canary keeps its decoded budget without applying browser runtime ceilings',async()=>{
+  const server=await startArchiveServer({release:fileURLToPath(new URL('../../../model/fixtures/archive-contract/current',import.meta.url))});
+  const targets={version:1,status:'owner-approved',basis:'real-device',ceilings:{startupMs:1,searchMs:1,detailMs:1,heapBytes:1}};
+  try{
+    const options={pointerUrl:server.pointerUrl,releaseId:server.manifest.release_id,local:true,checkSaved:false,targets};
+    const receipt=await verifyArchive(options);
+    assert.equal(receipt.status,'incomplete');assert.equal(receipt.savedCopyChecked,false);
+    assert(receipt.estimatedListPeakBytes>targets.ceilings.heapBytes);
+    assert.throws(()=>checkTargets({releaseId:server.manifest.release_id,startupMs:2,searchMs:2,detailMs:2,heapBytes:2},targets,server.manifest.origin),/startupMs/);
+    await assert.rejects(verifyArchive({...options,heapBytes:1}),/budget|allowance|limit|bytes/i);
+  }finally{await server.close();}
+});
