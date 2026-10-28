@@ -54,6 +54,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-python-project
+      - uses: ./.github/actions/setup-local-job-runtime
+        with:
+          url: ${{ vars.DOCSPEC_LOCAL_RUNTIME_URL }}
+          sha256: ${{ vars.DOCSPEC_LOCAL_RUNTIME_SHA256 }}
       - name: Test models, retained-source adapters and publication offline
         run: python scripts/dev.py test production-offline
       - name: Test active experiment fixtures and historical PDF worker
