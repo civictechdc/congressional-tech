@@ -44,12 +44,17 @@ def verify(run, log_lines, baseline, expected_head):
     summaries = defaultdict(list)
     selected = defaultdict(list)
     exits = defaultdict(list)
+    setup_errors = defaultdict(list)
     for line in log_lines:
         cells = line.rstrip('\n').split('\t', 2)
         if len(cells) != 3 or cells[0] not in SHARDS:
             continue
         name, _, payload = cells
         payload = ANSI.sub('', TIMESTAMP.sub('', payload)).strip()
+        if 'ERROR at teardown of ' in payload:
+            issues.append(f'{name}: teardown errors cannot prove distinct completed nodes')
+        if 'ERROR at setup of ' in payload:
+            setup_errors[name].append(payload)
         if IDENTITY.match(payload):
             failures[name].add(payload.split(' - ', 1)[0].strip())
         if match := COLLECTION.fullmatch(payload):
@@ -96,6 +101,8 @@ def verify(run, log_lines, baseline, expected_head):
             counts = rows[0]
             failed = counts.get('failed', 0) + counts.get('subtests failed', 0)
             errors = counts.get('errors', 0) + counts.get('error', 0)
+            if len(setup_errors[name]) != errors:
+                issues.append(f'{name}: every error requires an explicit setup-phase traceback')
             observed_failed = sum(case.startswith(('FAILED ', 'SUBFAILED(')) for case in failures[name])
             observed_errors = sum(case.startswith('ERROR ') for case in failures[name])
             if (failed, errors) != (observed_failed, observed_errors):
@@ -126,7 +133,8 @@ def verify(run, log_lines, baseline, expected_head):
                 issues.append(f'{name}: an infrastructure or post-job step failed')
         recorded.append(dict(name=name, job_id=job.get('databaseId'), seconds=elapsed,
                              conclusion=job.get('conclusion'), summaries=rows,
-                             selected_nodes=collection, runner_exits=statuses))
+                             selected_nodes=collection, runner_exits=statuses,
+                             setup_error_traces=setup_errors[name]))
     observed = set().union(*failures.values())
     new, missing = sorted(observed - expected), sorted(expected - observed)
     if new:
