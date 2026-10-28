@@ -95,13 +95,12 @@ def _backfill(args,engine,qualifications):
     table=dict(namespace=args.table.split('.')[:-1],name=args.table.split('.')[-1])
     options=dict(engine=engine,engine_config=args.engine_config,work=args.work,
         table=table,catalog_root=args.catalog_root,location=args.table_location,
-        validated_counter=args.validated_counter,source_qualifications=qualifications,
+        source_qualifications=qualifications,
         progress_log=args.progress_log,**costs)
     if args.prove_equivalence:
-        counter=str(args.validated_counter.resolve())
-        options['source_qualifications']={path:authority for path,authority in (qualifications or {}).items()
-            if str(Path(path).resolve())==counter}
-        return prove_equivalence(files,counts,**options,scratch_root=args.scratch_root)
+        required=metadata(args.proof_required_keys) if args.proof_required_keys else []
+        return prove_equivalence(files,counts,**options,scratch_root=args.scratch_root,
+            proof_bytes=args.proof_bytes,required_keys=required)
     return execute_batches(files,counts,**options,create_table=args.create_table,
         create_namespace=args.create_namespace,scratch_root=args.scratch_root)
 
@@ -124,6 +123,8 @@ def main(argv=None,*,engine_factory=None):
     parser.add_argument('--batch-bytes',type=int,help='Uncompressed receipt bytes per batch (default 256MiB)')
     parser.add_argument('--batch-items',type=int,help='Source list items per batch (default 200000)')
     parser.add_argument('--prove-equivalence',action='store_true',help='Compare one-shot and batched original-source generations')
+    parser.add_argument('--proof-bytes',type=int,help='Maximum logical bytes in the whole-receipt equivalence sample (default 2GiB)')
+    parser.add_argument('--proof-required-keys',type=Path,help='JSON list of mandatory proof shape/source receipt keys')
     parser.add_argument('--scratch-root',type=Path,help='Owned scratch tree, checked against the 5GiB limit')
     parser.add_argument('--progress-log',type=Path,help='Append per-batch rebuild status records to this JSONL file')
     parser.add_argument('--old-index',type=Path)
@@ -145,14 +146,22 @@ def main(argv=None,*,engine_factory=None):
             parser.error('--backfill requires --source-counts and --receipt-inventory')
         if any((args.existing,args.append_stage,args.old_index,args.receipt_root,args.receipt_family)):
             parser.error('--backfill uses an explicit inventory without staging or old-index flags')
+        if args.validated_counter:
+            parser.error('--backfill reads original receipt files; a historical validated counter is not an input')
+        if args.proof_bytes is not None and args.proof_bytes<=0:
+            parser.error('Proof logical byte cap must be positive')
+        if (args.proof_bytes is not None or args.proof_required_keys) and not args.prove_equivalence:
+            parser.error('Proof selection flags require --prove-equivalence')
+        args.proof_bytes=2<<30 if args.proof_bytes is None else args.proof_bytes
         if args.batch_bytes<=0 or args.batch_items<=0:
             parser.error('Batch byte and item targets must be positive')
         if args.prove_equivalence and (args.apply or not args.table or not args.table_location
-                or args.catalog_root is None or not args.validated_counter
+                or args.catalog_root is None
                 or args.create_table or args.create_namespace):
-            parser.error('--prove-equivalence requires local table, location and counter; omit apply/create flags')
+            parser.error('--prove-equivalence requires local table and location; omit apply/create flags')
     elif (args.source_counts or args.prove_equivalence or args.scratch_root or args.progress_log
-            or args.batch_bytes is not None or args.batch_items is not None):
+            or args.batch_bytes is not None or args.batch_items is not None
+            or args.proof_bytes is not None or args.proof_required_keys):
         parser.error('Batch metadata and equivalence flags require --backfill')
     if not args.engine_config:
         parser.error('An explicit pinned engine configuration is required')

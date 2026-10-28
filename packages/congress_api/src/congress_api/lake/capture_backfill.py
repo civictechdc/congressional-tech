@@ -79,6 +79,8 @@ def make_plan(files,counts,*,byte_target,item_target):
             if row.get(name) is not None and (not isinstance(row[name],str)
                     or not Path(row[name]).is_absolute() or '..' in Path(row[name]).parts):
                 raise ValueError('Receipt source paths must be absolute')
+        if not row.get('path') and not row.get('prepared_stage'):
+            raise ValueError('Backfill source requires original receipt files or an accepted stage')
         inventory[key]=dict(row)
     fields=('source_rows','uncompressed_bytes','list_items','expected_captures',
             'max_line_bytes','max_line_items')
@@ -96,8 +98,7 @@ def make_plan(files,counts,*,byte_target,item_target):
         raise ValueError('Source counts must equal the complete pinned receipt inventory')
     units={}
     for key,row in inventory.items():
-        kind=('prepared-stage' if row.get('prepared_stage') else
-              'receipt-files' if row.get('path') else 'counter')
+        kind='prepared-stage' if row.get('prepared_stage') else 'receipt-files'
         identity=(kind,row['prepared_stage'] if kind=='prepared-stage' else key)
         unit=units.setdefault(identity,dict(source_kind=kind,receipt_keys=[],
             uncompressed_bytes=0,list_items=0,expected_captures=0,source_rows=0))
@@ -320,10 +321,10 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
     """
     from congress_api.lake import captures,tables
     from congress_shared.custody import custody_identity
+    if validated_counter is not None:
+        raise ValueError('A historical counter is not a backfill input')
     plan=make_plan(files,counts,byte_target=byte_target,item_target=item_target)
     scopes=receipt_local_check_scopes(captures.capture_checks())
-    if any(b['source_kind']=='counter' for b in plan['batches']) and validated_counter is None:
-        raise ValueError('Counter batches require the qualified original counter')
     if create_namespace and not create_table:raise ValueError('Namespace creation requires explicit table creation')
     if create_table and location is None:raise ValueError('Table creation requires an explicit fresh location')
     if (not isinstance(table,dict) or set(table)!={'namespace','name'}
@@ -384,10 +385,8 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
             kind=batch['source_kind']
             if kind=='prepared-stage':command+=['--append-stage',batch['prepared_stage']]
             else:
-                if kind=='counter':command+=['--validated-counter',str(Path(validated_counter).resolve())]
                 if source_qualifications is not None:
-                    paths=({str(Path(validated_counter).resolve())} if kind=='counter' else
-                           {str(Path(row['path']).resolve()) for row in selected})
+                    paths={str(Path(row['path']).resolve()) for row in selected}
                     bindings={str(path):str(authority) for path,authority in source_qualifications.items()
                               if str(Path(path).resolve()) in paths}
                     qualification=directory/'qualifications.json';qualification.write_text(json.dumps(bindings)+'\n')
