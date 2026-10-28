@@ -22,14 +22,15 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     pdf=b'%PDF-1.7\nfixture retained bytes\n%%EOF\n'
     rows=[];bodies=[]
     for index,(name,data,fmt,header) in enumerate([('report.html',html,'html',None),('report.pdf',pdf,'pdf',None),('mirror.pdf',pdf,'pdf','attachment; filename="download report.pdf"')]):
-        digest=hashlib.sha256(data).hexdigest();key='bodies/sha256/'+digest[:2]+'/'+digest
-        path=raw/key;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
+        stored=gzip.compress(data,mtime=0) if fmt=='html' else data
+        digest=hashlib.sha256(data).hexdigest();key='bodies/sha256/'+digest[:2]+'/'+digest+('.gz' if fmt=='html' else '')
+        path=raw/key;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(stored)
         url='https://fixture.test/'+name
         rows.append(dict(run_id='fixture',mode='fetch',family='documents',outcome='stored',requested_url='https://fixture.test/redirect/report.pdf' if index==1 else url,url=url,
             response_headers={'content-disposition':header} if header else {},http_status=200,complete=True,retrieved_at='2026-10-27T12:00:00Z',
             captures=[dict(sha256=digest,bytes=len(data),media_type='text/html' if fmt=='html' else 'application/pdf',fidelity='saved-text' if index==1 else 'exact-bytes',
                 sniffed_format=fmt,sniff_version=readings.current_version('sniff'),intact=True if fmt=='pdf' else None,
-                stored_suffix='',stored_bytes=len(data),stored_md5=hashlib.md5(data).hexdigest())]))
+                stored_suffix='.gz' if fmt=='html' else '',stored_bytes=len(stored),stored_md5=hashlib.md5(stored).hexdigest())]))
     receipt=raw/'receipts/documents/2026-10-27/slice.jsonl.gz';receipt.parent.mkdir(parents=True)
     encoded=gzip.compress((''.join(json.dumps(r)+'\n' for r in rows)).encode(),mtime=0);receipt.write_bytes(encoded)
     qualification=tmp_path/'receipt-pin.json';qualification.write_text(json.dumps(dict(path=str(receipt),size=len(encoded),sha256=hashlib.sha256(encoded).hexdigest(),producer='fixture creation')))
@@ -43,8 +44,13 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     pages=readings.stage(captures=captures,body_inventory=inventory/'bodies.parquet',local_root=raw,engine=engine,
         work=tmp_path/'reading-stage',decided_at='2026-10-27T12:00:00Z',parser='html')
     names=filenames.stage(captures=captures,recovery_files=(),engine=engine,work=tmp_path/'filename-stage',decided_at='2026-10-27T12:00:00Z')
+    variants=tmp_path/'variants.jsonl'
+    variants.write_text(''.join(json.dumps(r)+'\n' for r in [
+        dict(id='old',canonical_url='https://fixture.test/obsolete.pdf',variant_url='https://fixture.test/mirror.pdf',basis='fixture',decided_at='2026-10-20T12:00:00Z',supersedes=None),
+        dict(id='current',canonical_url='https://fixture.test/report.pdf',variant_url='https://fixture.test/mirror.pdf',basis='fixture',decided_at='2026-10-21T12:00:00Z',supersedes='old')]))
+    variant_files=[dict(key='provenance/url_variants/fixture.jsonl',path=str(variants))]
     manifest=build_release(captures=captures,readings=pages['readings'],filename_readings=names['readings'],
-        parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},catalog_version=names['catalog_version'],
+        parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},catalog_version=names['catalog_version'],variant_files=variant_files,
         engine=engine,output=tmp_path/'release',scratch=tmp_path/'model')
     listed=pq.read_table(tmp_path/'release/list.parquet').to_pylist()
     detail=pq.read_table(tmp_path/'release/detail.parquet').to_pylist()
@@ -53,6 +59,8 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     assert listed[0]['first_captured'].isoformat()=='2026-10-27'
     assert detail[0]['saved_suffix']=='' and detail[0]['saved_body']==hashlib.sha256(pdf).digest()
     assert detail[0]['alternates'][0]['format']=='html'
+    assert detail[0]['alternates'][0]['size']==len(html)
+    assert pq.read_table(tmp_path/'release/url_variants.parquet').to_pylist()==[dict(canonical_url='https://fixture.test/report.pdf',variant_url='https://fixture.test/mirror.pdf')]
     members=pq.read_table(tmp_path/'model/evidence/source_members.parquet').to_pylist()
     assert len({m['source_id'] for m in members})==3
     assert {m['effective_filename'] for m in members}=={'report.html','report.pdf','download report.pdf'}
@@ -64,7 +72,7 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     # Identical pinned inputs must produce byte-identical content at a fresh path.
     arguments=dict(captures=captures,readings=pages['readings'],filename_readings=names['readings'],
         parser_versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']},
-        catalog_version=names['catalog_version'],engine=engine)
+        catalog_version=names['catalog_version'],engine=engine,variant_files=variant_files)
     repeated=build_release(**arguments,output=tmp_path/'repeat-release',scratch=tmp_path/'repeat-model')
     assert repeated==manifest
     for item in manifest['files']:
@@ -75,3 +83,11 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
         with pytest.raises(ValueError,match='invariant'):
             build_release(**dict(arguments,**{column:empty}),output=tmp_path/(missing+'-release'),scratch=tmp_path/(missing+'-model'))
         assert not (tmp_path/(missing+'-release')/'manifest.json').exists()
+
+    # A compressed saved original must carry its decoded size for the reader guard.
+    subset=tmp_path/'html-only';subset.mkdir()
+    run_job(subset,engine,inputs=[dict(name='captures',kind='parquet',path=str(captures))],steps=[],outputs=[
+        parquet_output(subset,'captures',"SELECT * FROM captures WHERE media_type='text/html'",['receipt_key','receipt_line','capture_index'])])
+    build_release(**dict(arguments,captures=subset/'captures.parquet'),output=tmp_path/'html-release',scratch=tmp_path/'html-model')
+    html_detail=pq.read_table(tmp_path/'html-release/detail.parquet').to_pylist()[0]
+    assert html_detail['saved_suffix']=='.gz' and html_detail['saved_bytes']==len(html)
