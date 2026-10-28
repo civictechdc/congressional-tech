@@ -116,3 +116,13 @@ def test_profile_hashes_current_definition_files_and_reuses_capture_profile():
     assert 'model/sql/profile-completeness.sql' in hashes
     assert 'model/registries/release-schema.json' in hashes
     assert 'packages/viewer_publication/src/viewer_publication/archive_format.py' in hashes
+
+
+def test_semantic_profile_pins_the_failure_producer_separately_from_leaf_parsers():
+    from viewer_publication.archive_model_profile import _definition_hashes,ROOT
+    hashes=_definition_hashes(ROOT)
+    assert {
+        'packages/congress_api/src/congress_api/lake/readings.py',
+        'packages/congress_api/src/congress_api/retention/parser_worker.py',
+        'packages/congress_api/src/congress_api/retention/process_resources.py',
+    } <= hashes.keys()
