@@ -41,3 +41,7 @@ Site continuation: executable role fixtures now cover all 14 sniff formats, plus
 **2026-10-28 current XML qualification**
 
 All twelve retained House XML entities pass current sniff/XML leaves at 519ee332, with one bounded auxiliary-cache read each and matching entity SHA-256. Roots remain eleven floorschedule/one committee-meeting. Readings and versions are retained privately; see docs/measurements/engine-first-20261027/site/s1-xml-current.md. This is current-leaf qualification, not canonical raw receipt normalization or full model qualification. Raw's exact original-receipt packet, valid GovInfo ZIP and EOT semantic cases remain open. No body was reopened after the saved-result assertion vocabulary correction.
+
+**2026-10-28T08:18:36Z**
+
+S1 fixture ZIP bytes now use fixed DOS timestamps and explicit original compression types, preserving every assertion/data/compression variant and test count. Existing55 archive/sniff cases PASS0.34s; two separate project-runner collections return identical55 literal node IDs (run4/zip-literal-ids.json). This repairs six wall-clock-dependent CI parameter identities without custom IDs or production changes. S1 canonical/raw/semantic coverage remains open.

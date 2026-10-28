@@ -3,7 +3,7 @@
 from io import BytesIO
 import struct
 import warnings
-from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
+from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile, ZipInfo
 
 import pytest
 
@@ -18,7 +18,9 @@ def archive(entries, compression=ZIP_STORED):
         warnings.simplefilter('ignore', UserWarning)
         with ZipFile(target, 'w', compression=compression) as output:
             for name, body in entries:
-                output.writestr(name, body)
+                entry = ZipInfo(name, date_time=(2000, 1, 1, 0, 0, 0))
+                entry.compress_type = compression
+                output.writestr(entry, body)
     return target.getvalue()
 
 
