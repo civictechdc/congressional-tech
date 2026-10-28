@@ -118,3 +118,26 @@ def test_wide_list_record_baseline_preserves_direct_counter_and_cache_rows(tmp_p
             expected=actual
         else:
             assert actual.equals(expected)
+
+
+def test_capture_join_boundary_contains_only_scalar_facts(tmp_path):
+    import pyarrow as pa
+    from congress_api.lake.captures import PK,mapping_steps
+    from congress_api.lake.receipt_metadata import compact
+    from congress_api.retention.provenance import json_input,parquet_output,run_job
+    from test_receipt_metadata import counter_fixture
+    counter,files=counter_fixture(tmp_path)
+    native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    metadata=compact(counter=counter,engine=native,work=tmp_path/'metadata')
+    work=tmp_path/'boundary';work.mkdir()
+    steps=mapping_steps()
+    boundary=next(index for index,step in enumerate(steps) if step['name']=='capture_scalars')
+    inputs=[dict(name='receipts',kind='parquet',path=str(metadata)),
+        json_input(work,'selected_receipts',[dict(receipt_key=row['key']) for row in files],receipt_key='Utf8')]
+    run_job(work,native,inputs=inputs,steps=steps[:boundary+1],queries=[],outputs=[
+        parquet_output(work,'scalars','SELECT * FROM capture_scalars',PK)])
+    actual=pq.read_table(work/'scalars.parquet')
+    assert actual.num_rows==6
+    assert not {'line','record','record_values','entry','recovery','association','headers','prior_record'} & set(actual.column_names)
+    assert not any(pa.types.is_nested(field.type) for field in actual.schema)
+    assert all('raw-payload' not in str(row) and 'prior prior' not in str(row) for row in actual.to_pylist())
