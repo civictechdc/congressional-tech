@@ -100,3 +100,11 @@ def test_shared_client_fallback_has_exact_path_and_preserved_public_api(inventor
     assert 'producer_input_entry' not in specs
     assert 'build_export_spec' not in specs and 'parse_export_pin' not in specs
     assert 'scripts/measure/tests/test_viewer_benchmark.py' in inventory.SPEED_KEEP
+
+
+def test_current_publisher_custody_helpers_survive_the_switch(inventory):
+    assert 'packages/congress_shared/src/congress_shared/custody.py' in inventory.HARD_KEEP
+    assert 'packages/congress_api/src/congress_api/retention/derived_files.py' in inventory.HARD_KEEP
+    publication=next(g for g in inventory.seeds() if g['binding_row']==6)
+    client='packages/viewer_publication/src/viewer_publication/client.py'
+    assert 'require_publication_client' not in publication['partial'][client]
