@@ -162,3 +162,22 @@ def test_nonrecord_provenance_is_pinned_without_becoming_a_model_input(tmp_path)
         assert not Path(spec['scratch']).exists()
     assert ('get',key) not in store.events
     assert store.objects[key]==b'not a JSONL model record'
+
+
+def test_record_acknowledgment_md5_matches_list_etag_without_normalizing_backups():
+    from viewer_publication.archive_controller import _provenance_snapshot
+    record='provenance/reviews/fixture.jsonl'
+    backup='provenance/recoveries/accepted-backup.json'
+    current=[dict(key=record,etag='"'+'b'*32+'"'),dict(key=backup,etag='"opaque-backup-2"')]
+    class MetadataStore(Store):
+        def list_objects_v2(self,*,Bucket,Prefix,**kwargs):
+            self.events.append(('list',Prefix))
+            return dict(Contents=[dict(Key=row['key'],ETag=row['etag']) for row in current],IsTruncated=False)
+    store=MetadataStore()
+    expected=[dict(key=record,etag='B'*32),dict(key=backup,etag='"opaque-backup-2"')]
+    assert _provenance_snapshot(store,'derived-fixture',expected)==sorted(current,key=lambda row:row['key'])
+    for changed in [dict(key=record,etag='c'*32),dict(key=backup,etag='opaque-backup-2')]:
+        stale=[changed if row['key']==changed['key'] else row for row in expected]
+        with pytest.raises(ValueError,match='current immutable raw inventory'):
+            _provenance_snapshot(store,'derived-fixture',stale)
+    assert store.events==[('list','provenance/')]*3
