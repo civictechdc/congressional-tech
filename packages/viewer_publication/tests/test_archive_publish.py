@@ -139,7 +139,7 @@ def test_same_content_new_input_records_identity_without_gates_or_flip(tmp_path)
     first,store,native=launch(tmp_path/'first');changed,_=record(profile={'sql':'new','parser':'pinned'})
     before=len([event for event in store.events if event==('put','viewer-publications/manifest.json')])
     def never(**kwargs):pytest.fail('unchanged content must not run gates')
-    second,_,_=launch(tmp_path/'second',store=store,native=native,input_record=changed,canary=never)
+    second,_,_=launch(tmp_path/'second',store=store,native=native,input_record=changed,contract=never,canary=never)
     assert second['status']=='release_unchanged' and first['release_id']==second['release_id']
     assert len([event for event in store.events if event==('put','viewer-publications/manifest.json')])==before
     assert len([key for key in store.objects if '/inputs/' in key and key.endswith('.json')])==2
@@ -247,3 +247,26 @@ def test_wrong_content_release_identity_refuses_before_upload(tmp_path):
     with pytest.raises(ValueError,match='release identity'):
         launch(tmp_path/'run',store=store,native=native,artifacts=artifacts)
     assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
+
+
+def test_generator_receipt_keys_keep_replay_evidence(tmp_path):
+    artifacts,manifest=candidate(tmp_path/'run');entry,keys=record();store=Store();native=Native(store)
+    def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='measured')
+    result=publish_candidate(client=store,engine=native,bucket='derived-fixture',work=tmp_path/'publish',
+        **artifacts,input_record=entry,receipt_keys=(key for key in keys),pointer=None,expected_etag=None,
+        public_origin='https://archive.example.test',contract=passed,canary=passed)
+    reader=NativeArchiveStore(client=store,engine=native,bucket='derived-fixture',work=tmp_path/'reader')
+    assert matching_live_input(reader,release_id=manifest['release_id'],digest=result['input_digest']) is not None
+
+
+@pytest.mark.parametrize('ack',[None,{},dict(ETag='')])
+def test_missing_pointer_acknowledgement_never_claims_publication(tmp_path,ack):
+    class NoPointerAck(Store):
+        def put_object(self,**request):
+            result=super().put_object(**request)
+            return ack if request['Key']=='viewer-publications/manifest.json' else result
+    store=NoPointerAck()
+    with pytest.raises(ValueError,match='acknowledged.*ETag'):
+        launch(tmp_path/'run',store=store)
+    report=json.loads(store.objects['viewer-publications/status.json'])
+    assert report['status']=='failed' and report['live_release_basis']=='unacknowledged_pointer_write'
