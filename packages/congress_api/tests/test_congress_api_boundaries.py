@@ -201,5 +201,5 @@ def test_commands_resolve_to_cli_and_old_provider_packages_are_retired():
     assert all(entry.startswith('congress_api.cli.') for entry in project['scripts'].values())
     assert {p.name for p in SOURCE.iterdir() if p.is_dir() and p.name != '__pycache__'} == {
         'models', 'parsers', 'acquisition', 'transport', 'retention', 'adapters',
-        'matching', 'transcripts', 'replay', 'cli',
+        'matching', 'transcripts', 'replay', 'cli', 'lake',
     }
