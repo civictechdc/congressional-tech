@@ -9,6 +9,7 @@ import pytest
 from congress_api.lake import readings
 from congress_api.retention.r2 import R2Store
 from test_readings_ranged_plan import inputs
+from test_readings_ranged import Client
 
 
 def listing(tmp_path,key,stored,*,etag=None,size=None):
@@ -37,12 +38,13 @@ def test_exact_listing_supplies_conditional_version_without_borrowing_suffix(tmp
 
 @pytest.mark.parametrize('change',[{'etag':'"different"'},{'size':999}])
 def test_capture_listing_conflict_is_counted_and_refused_before_get(tmp_path,change):
-    args,stored,key=inputs(tmp_path)
+    args,stored,key=inputs(tmp_path);client=Client(stored)
     with pytest.raises(readings.RawCustodyRequired) as error:
         readings.stage_once(**args,work=tmp_path/'stage',
             body_listing=listing(tmp_path,key,stored,**change),
-            body_store=R2Store(object(),'bucket',cache_dir=tmp_path/'stage/raw-pages'))
+            body_store=R2Store(client,'bucket',cache_dir=tmp_path/'stage/raw-pages'))
     assert error.value.report['conflicts']==1
+    assert not client.reads
 
 
 def test_another_suffix_cannot_supply_missing_listing_version(tmp_path):
@@ -52,3 +54,20 @@ def test_another_suffix_cannot_supply_missing_listing_version(tmp_path):
     assert result['raw_custody']['missing_pins']==1
     [row]=pq.read_table(result['work_list']).to_pylist()
     assert row['conditional_etag'] is None
+
+
+def test_listed_opaque_page_is_decoded_proved_and_parsed_by_actual_worker(tmp_path):
+    args,stored,key=inputs(tmp_path,missing='md5');etag='"multipart-12-7"'
+    class PageClient(Client):
+        def get_object(self,**kwargs):
+            self.reads.append(kwargs)
+            assert kwargs==dict(Bucket='bucket',Key=key,IfMatch=etag)
+            return dict(Body=io.BytesIO(stored),ETag=etag,ContentLength=len(stored),ContentEncoding='gzip')
+    client=PageClient(stored)
+    result=readings.stage_once(**args,work=tmp_path/'stage',
+        body_listing=listing(tmp_path,key,stored,etag=etag),
+        body_store=R2Store(client,'bucket',cache_dir=tmp_path/'stage/raw-pages'))
+    assert result['pending_reads']==0 and result['unreadable']==0
+    rows=pq.read_table(result['readings']).to_pylist()
+    assert [(r['parser'],r['status']) for r in rows]==[('html','completed'),('sniff','completed')]
+    assert len(client.reads)==1
