@@ -55,8 +55,9 @@ def rejected(tmp_path,values,reason,counts=COUNTS):
     return violations,pq.read_table(report['facts_path']).to_pylist()
 
 
-def test_valid_repeated_observations_and_prior_completeness_are_not_conflicts(tmp_path):
-    values=rows();values[1].update(http_status=404,outcome='request_failed',complete=True,
+@pytest.mark.parametrize('outcome',['request_failed','size_limit'])
+def test_valid_repeated_observations_and_prior_completeness_are_not_conflicts(tmp_path,outcome):
+    values=rows();values[1].update(http_status=404,outcome=outcome,complete=True,
         media_type='application/xml')
     report=check(tmp_path,values)
     assert report['status']=='validated' and report['violations']==0
@@ -65,8 +66,9 @@ def test_valid_repeated_observations_and_prior_completeness_are_not_conflicts(tm
     assert pq.read_metadata(report['facts_path']).num_rows==0
 
 
-def test_different_urls_and_physical_suffixes_can_share_decoded_bytes(tmp_path):
-    values=rows();values[1].update(url='https://other.test/body',stored_suffix='',stored_bytes=10,stored_md5=b'z'*16)
+@pytest.mark.parametrize('suffix',['','.pdf'])
+def test_different_urls_and_physical_suffixes_can_share_decoded_bytes(tmp_path,suffix):
+    values=rows();values[1].update(url='https://other.test/body',stored_suffix=suffix,stored_bytes=10,stored_md5=b'z'*16)
     assert check(tmp_path,values)['status']=='validated'
 
 
