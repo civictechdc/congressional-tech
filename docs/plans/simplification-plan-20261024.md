@@ -28,7 +28,7 @@ Already in place: the hosted setup refuses an engine revision other than the qua
 **Reuse before re-reading.** A per-item result that raw or legacy data already settles is borrowed, with its basis recorded, and only the gaps are read; an old decision across items (grouping, matching, roles) is never borrowed, only used as a parity oracle. Measured on the 2026-10-16 snapshot (`measurements/phase1-inventory-20261026/`):
 - PDF integrity: phase 1 reads pinned sniff and copy verification, leaving older capture checks in raw behind their pointers and listing other PDFs unchecked until B13's whole read ([[DATA-MODEL]] §7.3); no PDF is read whole in phase 1 beyond §8's sample, and the copies wait;
 - ZIP fingerprints: the member hashes are in `captures`;
-- run fresh because they are small or the old data cannot serve: `sniff` (about 1.04M short range reads; old formats cover 36% in other categories), the page readings (289,179 bodies, 5 GB; old readings hold no titles, text sizes or links), the filename readings (7–18 minutes; parser changed since the old catalog, which becomes their diff oracle) and the receipt ingest (all local, about a minute);
+- run fresh because they are small or the old data cannot serve: `sniff` and the page readings in one pass that opens each body once (673,094 opens instead of 1,324,479; old formats cover 36% in other categories, and old readings hold no titles, text sizes or links), the filename readings (7–18 minutes; parser changed since the old catalog, which becomes their diff oracle) and the receipt ingest (all local, about a minute);
 - deferred: the full re-hash (until then B9's listing baseline checks each older body's size against its recorded stored size) and the PDF copies.
 
 **Switch, then delete.** The target components are built beside the old pipeline. At the switch the publish path binds to them; the old layers are then bound to nothing and are deleted whole, as [[BINDINGS]] §6 lists them. Until the switch, the old capture job keeps writing raw data and reading the raw index, and gets raw-safety fixes only; its whole-leaf index rewrites continue until then, which is accepted.
@@ -239,24 +239,26 @@ These components survive, so they are bound now.
 Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
 1. **Captures ingest:**
-   - backfill from all 2,289 receipts (1.08 GB compressed), including the non-date segments ([[ARCHITECTURE]] §7.2), with a test sample of each older receipt shape ([[DATA-MODEL]] §6.1);
+   - backfill the narrow phase-1 index ([[DATA-MODEL]] §6.1) from all 2,289 receipts (1.08 GB compressed) in one read, including the non-date segments ([[ARCHITECTURE]] §7.2), with a test sample of each older receipt shape. Earlier attempts, other headers, `Retry-After` and inline meeting records are not ingested; they stay in raw behind each row's pointer;
    - the backfill restores the HTTP status on the about 37,000 bodiless lines that record one (`http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses);
    - it maps a fetch time from every receipt shape: 522,448 rows in dated receipts have no time in the snapshot, and 500,689 of them carry one on their own entry or line;
    - the rebuild-equivalence test;
    - **compare with the pinned old capture index** (3,909,134 rows) on receipt-derived columns, with written transformation rules for the expected differences:
      - statuses restored on bodiless lines;
      - the 5,587 lines of the 2026-10-15 recovery run read as recoveries rather than fetches;
-     - completeness per attempt;
+     - the final response's completeness (per-attempt completeness stays in raw);
      - `stored_md5` and `stored_suffix` new, `stored_sha256` gone.
 
      A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
-2. **Parsers,** written in S1, appending through the engine:
-   - first `sniff` over every older body: about 1.04M short ranged GETs, timed in the run;
-   - then HTML, XML and JSON (about 5 GB), recording page fingerprints, with the table's size (links and `text_head` included) measured. There is no PDF parser and no fingerprint parser for now;
+2. **Parsers,** written in S1, appending through the engine, each body opened once (counts from the pinned index's metadata, before any body read):
+   - no read where the writer's facts settle the format: 362,208 captions, 953 playlists and one empty body;
+   - one full read of each page body the media type routes to HTML, XML or JSON (288,223 bodies, 4.98 GB), sniffed from those bytes and parsed in the same pass; a body whose bytes say otherwise is sniffed as what it is;
+   - a bounded prefix read for the other 384,871 bodies, mostly PDFs and ZIPs, whose media type proves nothing;
+   - 673,094 object opens instead of 1,324,479, and a byte floor of 8.0 GB instead of 9.7 GB; page fingerprints and the readings table's size (links and `text_head` included) are measured in the run. There is no PDF parser and no fingerprint parser for now;
    - then M2's link join and grouping, repeated on the real links and fingerprints.
 3. **Filename reader:** a producer that runs the filename parser over its work list and appends through the engine.
 4. **Meeting parsers** (phase 2; needs B14): one row per input and version, over the meeting-source registry's work list ([[DATA-MODEL]] §6):
-   - Congress.gov records, the 199,156 inline receipt records (18,140 meetings, keyed by `record_sha`) and response bodies alike, and House `committee-meeting` XML, into `meeting_records`;
+   - Congress.gov records, the 199,156 inline receipt records (18,140 meetings; read once from the four `congress/meetings` receipt files, 77 MB, by their D1 pointers, with `record_sha` computed here) and response bodies alike, and House `committee-meeting` XML, into `meeting_records`;
    - House witness lists, Congress.gov records, Senate hearing page cards and the `mods.xml` records already in raw into `appearance_records`, each witness with its name key and document links.
 5. Enable Basin's catalog-level compaction and snapshot expiration.
 
