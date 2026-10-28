@@ -128,3 +128,12 @@ def test_whole_tree_sample_requires_three_consecutive_failures_and_resets():
     fake.remaining=3
     assert samples.sample(1) is None and samples.sample(1) is None
     with pytest.raises(RuntimeError,match='Three consecutive'):samples.sample(1)
+
+
+def test_operator_cancellation_is_never_a_transient_memory_sample_gap():
+    from congress_api.lake.capture_backfill import _MemorySamples
+    class Sampler:
+        def resident_tree(self,_pid):raise InterruptedError('operator cancellation')
+    samples=_MemorySamples(Sampler())
+    with pytest.raises(InterruptedError,match='operator cancellation'):samples.sample(1)
+    assert samples.consecutive_failures==0
