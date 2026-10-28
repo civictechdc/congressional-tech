@@ -16,6 +16,8 @@ from uuid import NAMESPACE_URL, uuid5
 import pyarrow as pa
 import pytest
 
+from native_test_helpers import NewsCITestClient as DocSpecClient, native_ci_limits
+
 from news_lake.analysis import bridges, coverage_daily
 from news_lake.analysis.views import politician_articles as politician_articles_views
 from news_lake.contract import check_corpus
@@ -23,7 +25,6 @@ from news_lake.contract.records import KIND_TABLES
 from news_lake.storage.coordinator import _merge_upsert
 from news_lake.storage.docspec_backend import (
     AppendCollisionError,
-    DocSpecClient,
     DocSpecFailure,
     DocSpecLake,
     DocSpecNewsViews,
@@ -1250,6 +1251,7 @@ def test_news_lake_cli_publish_views_export_and_compact_lifecycle(tmp_path, caps
         '--recorded-at', AT,
         '--selections', str(selections_path),
         '--binary', str(docspec),
+        '--limits', str(native_ci_limits(ws)),
     ]) == 0
     pub_out = json.loads(capsys.readouterr().out)
     assert pub_out['backend'] == 'docspec'
@@ -1262,6 +1264,7 @@ def test_news_lake_cli_publish_views_export_and_compact_lifecycle(tmp_path, caps
         '--mode', 'full',
         '--verify-oracle',
         '--binary', str(docspec),
+        '--limits', str(native_ci_limits(ws)),
     ]) == 0
     views_out = json.loads(capsys.readouterr().out)
     assert views_out['backend'] == 'docspec'
@@ -1277,6 +1280,7 @@ def test_news_lake_cli_publish_views_export_and_compact_lifecycle(tmp_path, caps
         '--destination', str(export_dir),
         '--as-of', '2026-10-20T12:00:00Z',
         '--binary', str(docspec),
+        '--limits', str(native_ci_limits(ws)),
     ]) == 0
     exp_out = json.loads(capsys.readouterr().out)
     assert exp_out['backend'] == 'docspec'
@@ -1286,6 +1290,7 @@ def test_news_lake_cli_publish_views_export_and_compact_lifecycle(tmp_path, caps
         'compact-lifecycle',
         '--workspace', str(ws),
         '--binary', str(docspec),
+        '--limits', str(native_ci_limits(ws)),
         '--compact-tables',
         '--compact-file-threshold', '2',
         '--compact-target-file-bytes', str(64 * 1024 * 1024),

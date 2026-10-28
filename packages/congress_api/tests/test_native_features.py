@@ -7,7 +7,7 @@ import shutil
 import pyarrow as pa
 import pytest
 
-from congress_api.retention.docspec import NativeDatasets
+from native_test_helpers import NativeCITestClient as NativeDatasets, NewsCITestClient as DocSpecClient
 from testing_fakes import SelectorStore, MemoryStore
 from congress_api.retention.native_features import (
     attach_occurrence_receipts,
@@ -471,7 +471,6 @@ def test_ct_sb0s_attach_and_read_occurrence_receipts_with_zero_source_rewrites(t
 def test_ct_egpe_shared_host_across_archive_and_news_callers(tmp_path):
     """Archive NativeDatasets and news DocSpecClient share one loopback Host on the same workspace."""
     from docspec_client.docspec_host import _hosts
-    from news_lake.storage.docspec_backend import DocSpecClient
 
     binary = _binary()
     ws = tmp_path / "shared-ws"
