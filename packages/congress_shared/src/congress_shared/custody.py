@@ -148,8 +148,14 @@ def verify_local_file(
     *,
     sha256_factory: Callable[[], Any] = sha256,
     identity_fn: Callable[[Path | str], tuple[int, int, int, int, int]] = custody_identity,
+    additional_hashes: Mapping[str, Callable[[], Any]] | None = None,
 ) -> VerifiedFile:
-    """Stream-verify a local regular file and return an issued :class:`VerifiedFile`."""
+    """Stream-verify one file, updating optional additional digests in that pass."""
+    factories = {} if additional_hashes is None else dict(additional_hashes)
+    if any(not isinstance(name, str) or not name or name in {"sha256", "bytes", "path", "size_bytes"}
+           or not callable(factory) for name, factory in factories.items()):
+        raise ValueError("Additional file digests require distinct names and hash factories")
+    digests = {name: factory() for name, factory in factories.items()}
     resolved_path = Path(path)
     before = identity_fn(resolved_path)
     digest = sha256_factory()
@@ -158,6 +164,8 @@ def verify_local_file(
         for chunk in iter(lambda: stream.read(CHUNK_BYTES), b""):
             size += len(chunk)
             digest.update(chunk)
+            for extra in digests.values():
+                extra.update(chunk)
     after = identity_fn(resolved_path)
     if before != after or resolved_path.stat().st_size != size:
         raise ValueError(f"Catalog changed during hashing: {resolved_path}")
@@ -171,9 +179,8 @@ def verify_local_file(
             f"File SHA-256 mismatch for {resolved_path}: expected {expected_sha256}, got {actual_sha256}"
         )
     return VerifiedFile(
-        resolved_path,
-        actual_sha256,
-        size,
+        {"sha256": actual_sha256, "bytes": size,
+         **{name: extra.hexdigest() for name, extra in digests.items()}},
         pid=os.getpid(),
         target=resolved_path.resolve(),
         identity=after,
