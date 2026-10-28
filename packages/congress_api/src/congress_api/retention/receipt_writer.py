@@ -56,6 +56,8 @@ def _inspect_stored(body):
         code=getattr(error,'error_type',None)
         return replace(body,sniff_error=code if isinstance(code,str) and ERROR_CODE.fullmatch(code)
                        else type(error).__name__)
+    if reading['status']!='completed':
+        return replace(body,sniff_error=reading['error_type'] or reading['status'])
     return replace(body,sniffed_format=reading['format'],sniff_version=reading['parser_version'],
                    intact=reading['intact'],sniff_error=reading['error_type'])
 

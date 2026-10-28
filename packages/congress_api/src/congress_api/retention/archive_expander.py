@@ -30,6 +30,8 @@ class Expansion:
 
 def _body(path, digest, size):
     facts = read_sniff_file(path)
+    if facts['status']!='completed':
+        return BodyFile(path,digest,size,None,None,None,None,facts['error_type'] or facts['status'])
     return BodyFile(path,digest,size,None,facts['format'],facts['parser_version'],facts['intact'],facts['error_type'])
 
 
