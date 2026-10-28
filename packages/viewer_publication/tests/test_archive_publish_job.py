@@ -38,6 +38,38 @@ def daily_report(tmp_path):
         provenance=dict(recoveries=[],reviews=[],unreadable=[row])),[row]
 
 
+def with_daily(tmp_path,value):
+    daily=tmp_path/'daily.json'
+    daily.write_text(json.dumps(dict(work=str(tmp_path/'daily-work'),catalog_root=None,
+        body_inventory=str(tmp_path/'body-inventory.parquet'),local_root=str(tmp_path/'raw'),
+        provenance={kind:[] for kind in ['recoveries','reviews','unreadable']})))
+    return dict(value,daily=dict(path=str(daily),**file_pin(daily)),receipt_keys=[],provenance=[])
+
+
+def test_daily_plan_checks_its_pinned_description_without_opening_raw_or_runtime(tmp_path,capsys):
+    value=with_daily(tmp_path,publish_spec(tmp_path))
+    assert invoke(tmp_path,value,'--plan')==0
+    plan=json.loads(capsys.readouterr().out)
+    assert plan['daily']==value['daily'] and plan['executed'] is False
+    assert not (tmp_path/'daily-work').exists() and not (tmp_path/'raw').exists()
+
+
+@pytest.mark.parametrize('change',['checksum','overlap','stale_receipts','stale_provenance','qualified_override'])
+def test_daily_description_refuses_before_runtime_or_storage(tmp_path,capsys,change):
+    value=with_daily(tmp_path,publish_spec(tmp_path));daily=json.loads(Path(value['daily']['path']).read_text())
+    if change=='checksum':value['daily']['sha256']='0'*64
+    elif change=='overlap':daily['work']=value['work']
+    elif change=='stale_receipts':value['receipt_keys']=['receipts/stale.jsonl.gz']
+    elif change=='stale_provenance':value['provenance']=[dict(key='provenance/backups/a.json',etag='opaque')]
+    elif change=='qualified_override':daily['provenance']['reviews']=[{'key':'provenance/reviews/stale.jsonl'}]
+    if change!='checksum':
+        Path(value['daily']['path']).write_text(json.dumps(daily))
+        value['daily']=dict(path=value['daily']['path'],**file_pin(value['daily']['path']))
+    with pytest.raises(SystemExit) as error:invoke(tmp_path,value,'--execute')
+    assert error.value.code==2
+    assert not (tmp_path/'daily-work').exists() and not Path(value['work']).exists()
+
+
 def test_daily_handoff_uses_completed_heads_full_receipts_and_acknowledged_records(tmp_path):
     from viewer_publication.archive_publish_job import completed_daily_inputs
     from viewer_publication.archive_model_job import load_spec
