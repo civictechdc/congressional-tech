@@ -1,159 +1,192 @@
-"""Independent, read-only D1 acceptance counts; never a production ingest path.
+"""Owner-selected independent receipt oracle: one C-backed event parse per line.
 
-The owner explicitly authorized DuckDB for this source-count oracle. Only small
-per-receipt metrics leave SQL. JSON payload rows are neither stored nor exported.
-Byte weights exclude JSONL terminators; list weights include primary references,
-record candidates and secondary references before the production fanout filters.
+This measurement is explicitly outside production engine data operations. Original
+JSONL gzip files are read once; only small receipt metrics and byte proofs escape.
+No DuckDB, Parquet counter, raw-row export or second payload path is used.
 """
 import argparse
-from collections import defaultdict
+from collections import Counter
+import gzip
 import json
 from pathlib import Path
+import re
 from time import perf_counter
 
-import duckdb
-import pyarrow as pa
-import pyarrow.parquet as pq
+import ijson
 
 from congress_api.lake.receipt_metadata import source_pins,recheck_source_pins
+from congress_api.retention.body_store import validate_key
+from congress_api.retention.raw_verifier import _HashedReader
+from congress_shared.custody import custody_identity
+from congress_shared.storage import single_put_md5
 
 
-def literal(value):
-    return "'"+str(value).replace("'","''")+"'"
+FIELDS=('record','captures','file_references')
+REFERENCES=FIELDS[1:]
 
 
-def count_sql(counter,files):
-    sources=[f'''SELECT cast(__receipt_key AS VARCHAR) AS key,
-        cast(__receipt_line AS BIGINT) AS source_line,__raw_line AS raw,0 AS source_id
-        FROM counter_rows''']
-    for number,item in enumerate(files,1):
-        sources.append(f'''SELECT {literal(item['key'])} AS key,row_number() OVER () AS source_line,
-            __raw_line AS raw,{number} AS source_id FROM read_csv({literal(item['path'])},
-            columns={{'__raw_line':'VARCHAR'}},header=false,delim='\x1e',quote='',escape='',
-            compression='gzip',parallel=false,max_line_size=8388608,buffer_size=8388608)''')
-    # This is independently expressed source arithmetic, not copied mapper SQL.
-    # Distinct pointer ordinals establish coverage, not reference multiplicity.
-    return '''WITH source AS NOT MATERIALIZED (
-        '''+' UNION ALL '.join(sources)+'''
-    ), parsed AS NOT MATERIALIZED (
-        SELECT key,source_line,source_id,octet_length(encode(raw)) AS line_bytes,
-            CASE WHEN json_valid(raw) AND json_type(raw)='OBJECT'
-                THEN json_extract(raw,['$.record','$.captures','$.file_references'])
-                ELSE error('Malformed source JSON object') END AS fields FROM source
-    ), shaped AS NOT MATERIALIZED (
-        SELECT key,source_line,source_id,line_bytes,
-            CASE WHEN json_type(fields[1])='ARRAY' THEN json_array_length(fields[1]) ELSE 0 END AS records,
-            CASE WHEN fields[2] IS NULL OR json_type(fields[2])='NULL' THEN 0
-                 WHEN json_type(fields[2])='ARRAY' THEN json_array_length(fields[2])
-                 ELSE error('Malformed captures list') END AS caps,
-            CASE WHEN fields[3] IS NULL OR json_type(fields[3])='NULL' THEN 0
-                 WHEN json_type(fields[3])='ARRAY' THEN json_array_length(fields[3])
-                 ELSE error('Malformed file references list') END AS refs,
-            fields[2] AS capture_list,fields[3] AS reference_list FROM parsed
-    ), weighted AS NOT MATERIALIZED (
-        SELECT key,source_line,source_id,line_bytes,records,caps,refs,
-            CASE WHEN caps>0 THEN caps WHEN refs>0 THEN refs ELSE greatest(records,1) END AS primary_items,
-            CASE WHEN caps>0 THEN capture_list WHEN refs>0 THEN reference_list ELSE '[]'::JSON END AS primary_list
-        FROM shaped
-    ), line_metrics AS NOT MATERIALIZED (
-        SELECT key,source_line,source_id,line_bytes,
-            primary_items+CASE WHEN caps+refs>0 THEN records ELSE 0 END
-                +CASE WHEN caps>0 THEN refs ELSE 0 END AS items,
-            primary_items+CASE WHEN records>0 AND caps+refs>0 THEN records-len(list_distinct(
-                list_filter(list_transform(json_extract(primary_list,'$[*]'),
-                    p->coalesce(try_cast(json_extract_string(p,'$.pointer[0]') AS BIGINT),
-                        try_cast(json_extract_string(p,'$.pointer[1]') AS BIGINT),0)),
-                    i->i>=0 AND i<records))) ELSE 0 END AS expected_captures
-        FROM weighted
-    ) SELECT key,count(*) AS source_rows,sum(line_bytes)::BIGINT AS uncompressed_bytes,
-        sum(items)::BIGINT AS list_items,sum(expected_captures)::BIGINT AS expected_captures,
-        max(line_bytes)::BIGINT AS max_line_bytes,max(items)::BIGINT AS max_line_items,
-        min(source_line) AS first_line,max(source_line) AS last_line,
-        count(DISTINCT source_id) AS source_origins,
-        min(source_id) AS source_id
-        FROM line_metrics GROUP BY key ORDER BY key'''
+def _index(event,value):
+    if event=='number' and type(value) is int:
+        return value if -(1<<63)<=value<(1<<63) else None
+    if event=='string' and re.fullmatch('[+-]?[0-9]+',value):
+        try:number=int(value)
+        except ValueError:return None
+        return number if -(1<<63)<=number<(1<<63) else None
+    return None
 
 
-def count_sources(*,counter,files,receipt_keys,work,source_qualifications,memory_bytes=2<<30,threads=1,batch_rows=32):
-    """Return complete per-receipt counts, refusing missing or malformed sources."""
-    if (type(memory_bytes) is not int or memory_bytes<=0 or type(threads) is not int or not 1<=threads<=4
-            or type(batch_rows) is not int or batch_rows<=0):
-        raise ValueError('Independent counts require positive memory and at most four threads')
+def count_line(encoded):
+    """Count direct elements and reference coverage without building a JSON tree."""
+    depth=0;root=False;field=None;active=None;entry=False;ref_field=None
+    pointer=False;position=0;slots=[None,None];seen=set();is_list=False
+    lengths=dict.fromkeys(FIELDS,0);indices={k:set() for k in REFERENCES};fallbacks=Counter()
+    def finish(name,values):
+        chosen=next((v for v in values if v is not None),None)
+        if chosen is None:chosen=0;fallbacks[name]+=1
+        indices[name].add(chosen)
+    for event,value in ijson.basic_parse(encoded):
+        if not root:
+            if event!='start_map':raise ValueError('Malformed source JSON object')
+            root=True;depth=1;continue
+        if event=='map_key':
+            if depth==1:field=value
+            elif depth==3 and entry:ref_field=value
+            continue
+        if event in {'end_map','end_array'}:
+            if pointer and depth==4:pointer=False
+            if entry and depth==3:
+                finish(active,slots);entry=False;pointer=False
+            if active and depth==2:active=None
+            depth-=1
+            continue
+        if depth==1 and field in FIELDS:
+            if field in seen:raise ValueError('Malformed duplicate source field')
+            seen.add(field)
+            if field in REFERENCES and event not in {'start_array','null'}:
+                raise ValueError('Malformed reference list')
+            if event=='start_array':active=field
+            if field=='record':is_list=event=='start_array'
+        if active and depth==2:
+            lengths[active]+=1
+            if active in REFERENCES:
+                slots=[None,None];ref_field=None
+                if event in {'start_map','start_array'}:entry=True
+                else:finish(active,slots)
+        if entry and depth==3 and ref_field=='pointer' and event=='start_array':
+            pointer=True;position=0
+        elif pointer and depth==4:
+            if position<2:slots[position]=_index(event,value)
+            position+=1
+        if event in {'start_map','start_array'}:depth+=1
+    if not root or depth:raise ValueError('Malformed source JSON object')
+    records=lengths['record'];caps=lengths['captures'];refs=lengths['file_references']
+    selected='captures' if caps else 'file_references' if refs else None
+    primary=lengths[selected] if selected else max(records,1)
+    covered=sum(0<=i<records for i in indices[selected]) if selected else 0
+    expected=primary+(records-covered if selected else 0)
+    transient=primary+(records if selected else 0)+(refs if caps else 0)
+    shapes=dict(record_list_lines=int(is_list),non_list_record_lines=int(not is_list),
+        captures_only_lines=int(caps>0 and refs==0),references_only_lines=int(refs>0 and caps==0),
+        empty_reference_list_lines=int(not caps and not refs and bool(seen.intersection(REFERENCES))))
+    anomalies=dict(pointer_fallbacks=fallbacks[selected] if selected and is_list else 0,
+        out_of_bounds_pointer_values=sum(not 0<=i<records for i in indices[selected]) if selected and is_list else 0)
+    return expected,transient,shapes,anomalies
+
+
+def _write(path,value):
+    temporary=path.with_suffix(path.suffix+'.tmp')
+    temporary.write_text(json.dumps(value,indent=2)+'\n');temporary.replace(path)
+
+
+def count_sources(*,files,receipt_keys,work,source_qualifications=None):
+    """Accept the exact original inventory after single-read byte and count checks."""
+    if ijson.backend!='yajl2_c':raise ValueError('Independent counts require the locked ijson C backend')
     keys=list(receipt_keys)
-    if (not keys or any(not isinstance(k,str) or not k.startswith('receipts/') for k in keys)
-            or len(keys)!=len(set(keys))):
+    if not keys or len(keys)!=len(set(keys)):
         raise ValueError('Receipt inventory requires unique original keys')
-    counter=Path(counter).absolute()
-    files=[dict(key=f.get('key',f.get('receipt_key')),path=str(Path(f['path']).absolute())) for f in files]
-    file_keys=[f['key'] for f in files]
-    if len(file_keys)!=len(set(file_keys)) or set(file_keys)-set(keys):
-        raise ValueError('Direct receipt inputs must have unique selected keys')
-    paths={str(counter),*(f['path'] for f in files)}
-    if set(map(str,source_qualifications))!=paths:
-        raise ValueError('Source qualifications must bind exactly the original inputs')
-    pins=source_pins(counter=counter,qualifications={str(counter):source_qualifications[str(counter)]})
-    if files:
-        pins+=source_pins(files=files,qualifications={f['path']:source_qualifications[f['path']] for f in files})
-    if 'rows' not in pins[0]['qualification']:
-        raise ValueError('Independent counts need the qualified counter creation row count')
+    for key in keys:
+        validate_key(key)
+        if not key.startswith('receipts/'):raise ValueError('Receipt inventory has a non-receipt key')
+    selected=[];identities={}
+    for source in files:
+        row=dict(source);row['key']=row.get('key',row.get('receipt_key'))
+        if (not isinstance(row.get('path'),str) or not Path(row['path']).is_absolute()
+                or '..' in Path(row['path']).parts or type(row.get('size')) is not int or row['size']<0):
+            raise ValueError('Invalid original receipt metadata')
+        row['etag']=single_put_md5(row.get('etag'))
+        row['path']=str(Path(row['path']).absolute())
+        identities[row['path']]=custody_identity(row['path'])
+        if identities[row['path']][2]!=row['size']:raise ValueError('Receipt size differs from inventory')
+        if 'rows' in row and (type(row['rows']) is not int or row['rows']<0):
+            raise ValueError('Invalid qualified source row count')
+        selected.append(row)
+    if (len(selected)!=len(keys) or {r['key'] for r in selected}!=set(keys)
+            or len(identities)!=len(selected)):
+        raise ValueError('Receipt files must exactly match the complete unique inventory')
+    bindings={str(k):str(v) for k,v in (source_qualifications or {}).items()}
+    if set(bindings)-identities.keys():raise ValueError('Unexpected source qualification binding')
+    qualified=[r for r in selected if r['path'] in bindings]
+    pins=source_pins(files=qualified,qualifications=bindings) if qualified else []
+    by_path={p['path']:p for p in pins}
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
-    sql=count_sql(counter,files);(work/'counts.sql').write_text(sql+'\n')
-    config=dict(threads=str(threads),memory_limit=str(memory_bytes)+'B',
-        temp_directory=str(work/'spill'),max_temp_directory_size='512MiB',
-        autoinstall_known_extensions='false',autoload_known_extensions='false')
-    started=perf_counter()
-    columns=['__receipt_key','__receipt_line','__raw_line']
+    started=perf_counter();result=[];proofs=[];details=[];parsed=0;last_progress=0
+    _write(work/'progress.json',dict(receipts=0,of=len(keys),source_rows=0,rows=0,secs=0))
     try:
-        with pq.ParquetFile(counter) as parquet:
-            schema=pa.schema([parquet.schema_arrow.field(k) for k in columns])
-            with pa.RecordBatchReader.from_batches(schema,parquet.iter_batches(
-                    batch_size=batch_rows,columns=columns)) as reader:
-                with duckdb.connect(config=config) as connection:
-                    connection.register('counter_rows',reader)
-                    cursor=connection.execute(sql)
-                    names=[c[0] for c in cursor.description]
-                    rows=[dict(zip(names,r)) for r in cursor.fetchall()]
-    except duckdb.Error as error:
-        resource=isinstance(error,duckdb.OutOfMemoryException)
-        (work/'error.json').write_text(json.dumps(dict(error_class=type(error).__name__,
-            kind='resource' if resource else 'invalid_source',detail=str(error) if resource else None),indent=2)+'\n')
-        raise ValueError('Malformed or invalid source, or independent count resource refusal: '+
-            type(error).__name__+'; see saved SQL and error.json') from None
-    recheck_source_pins(pins)
-    if {r['key'] for r in rows}!=set(keys):
-        raise ValueError('Counted receipt keys differ from the complete original receipt inventory')
-    source_rows=defaultdict(int)
-    for row in rows:
-        if row['source_origins']!=1 or row['first_line']!=1 or row['last_line']!=row['source_rows']:
-            raise ValueError('Invalid receipt source range or repeated original receipt keys')
-        source_rows[row['source_id']]+=row['source_rows']
-    rows_by_path={str(counter):source_rows[0],**{f['path']:source_rows[i] for i,f in enumerate(files,1)}}
-    if any(rows_by_path[p['path']]!=p['qualification']['rows'] for p in pins if 'rows' in p['qualification']):
-        raise ValueError('Source rows differ from qualified original creation counts')
-    public=('key','source_rows','uncompressed_bytes','list_items','expected_captures','max_line_bytes','max_line_items')
-    result=[{k:r[k] for k in public} for r in rows]
-    recheck_source_pins(pins)
-    (work/'metrics.json').write_text(json.dumps(dict(seconds=perf_counter()-started,
-        duckdb_version=duckdb.__version__,config=config,counter_columns=columns,batch_rows=batch_rows,
-        sources=pins,receipts=len(result),
-        expected_captures=sum(r['expected_captures'] for r in result)),indent=2)+'\n')
-    (work/'counts.json').write_text(json.dumps(result,indent=2)+'\n')
+        for source in sorted(selected,key=lambda r:r['key']):
+            path=source['path'];rows=byte_count=items=captures=max_bytes=max_items=0
+            shapes=Counter();anomalies=Counter()
+            with Path(path).open('rb') as raw:
+                hashed=_HashedReader(raw)
+                with gzip.GzipFile(fileobj=hashed,mode='rb') as decoded:
+                    for encoded in decoded:
+                        count,weight,line_shapes,line_anomalies=count_line(encoded)
+                        size=len(encoded)-(1 if encoded.endswith(b'\n') else 0)
+                        if size and encoded[size-1]==13:size-=1
+                        rows+=1;parsed+=1;byte_count+=size;items+=weight;captures+=count
+                        max_bytes=max(max_bytes,size);max_items=max(max_items,weight)
+                        shapes.update(line_shapes);anomalies.update(line_anomalies)
+                        del encoded
+            if custody_identity(path)!=identities[path]:raise ValueError('Receipt changed during source count')
+            if hashed.size!=source['size'] or hashed.md5.hexdigest()!=source['etag']:
+                raise ValueError('Receipt compressed MD5 checksum differs from inventory')
+            pin=by_path.get(str(Path(path).resolve()))
+            if pin and hashed.sha.hexdigest()!=pin['sha256']:
+                raise ValueError('Receipt checksum differs from its source qualification')
+            expected_rows=source.get('rows',pin['qualification'].get('rows') if pin else None)
+            if not rows or expected_rows is not None and rows!=expected_rows:
+                raise ValueError('Receipt source rows differ from qualified creation counts')
+            result.append(dict(key=source['key'],source_rows=rows,uncompressed_bytes=byte_count,
+                list_items=items,expected_captures=captures,max_line_bytes=max_bytes,max_line_items=max_items))
+            proofs.append(dict(key=source['key'],path=path,sha256=hashed.sha.hexdigest(),size=hashed.size,
+                etag=source['etag'],identity=identities[path]))
+            details.append(dict(key=source['key'],shapes=dict(shapes),anomalies=dict(anomalies)))
+            elapsed=perf_counter()-started
+            if elapsed-last_progress>=2 or len(result)==len(keys):
+                _write(work/'progress.json',dict(receipts=len(result),of=len(keys),source_rows=parsed,
+                    rows=sum(r['expected_captures'] for r in result),secs=elapsed));last_progress=elapsed
+        recheck_source_pins(pins)
+        for path,identity in identities.items():
+            if custody_identity(path)!=identity:raise ValueError('Receipt changed before count acceptance')
+    except (ValueError,OSError,EOFError,ijson.JSONError) as error:
+        _write(work/'error.json',dict(error_class=type(error).__name__,kind='invalid_source',detail=None))
+        message=str(error) if type(error) is ValueError else 'Malformed or invalid receipt source: '+type(error).__name__
+        raise ValueError(message) from None
+    _write(work/'metrics.json',dict(seconds=perf_counter()-started,parser='ijson.basic_parse',
+        ijson_version=ijson.__version__,ijson_backend=ijson.backend,parsed_lines=parsed,
+        sources=proofs,qualifications=pins,receipts=len(result),details=details,
+        expected_captures=sum(r['expected_captures'] for r in result)))
+    _write(work/'counts.json',result)
     return result
 
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    for name in ('counter','files','receipt-inventory','source-qualifications','work'):
-        parser.add_argument('--'+name,type=Path,required=True)
-    parser.add_argument('--memory-bytes',type=int,default=2<<30)
-    parser.add_argument('--threads',type=int,default=1)
-    parser.add_argument('--batch-rows',type=int,default=32)
-    args=parser.parse_args(argv)
-    inventory=json.loads(args.receipt_inventory.read_text())
-    rows=count_sources(counter=args.counter,files=json.loads(args.files.read_text()),
+    for name in ('files','receipt-inventory','work'):parser.add_argument('--'+name,type=Path,required=True)
+    parser.add_argument('--source-qualifications',type=Path)
+    args=parser.parse_args(argv);inventory=json.loads(args.receipt_inventory.read_text())
+    rows=count_sources(files=json.loads(args.files.read_text()),
         receipt_keys=[r if isinstance(r,str) else r['key'] for r in inventory],work=args.work,
-        source_qualifications=json.loads(args.source_qualifications.read_text()),
-        memory_bytes=args.memory_bytes,threads=args.threads,batch_rows=args.batch_rows)
+        source_qualifications=json.loads(args.source_qualifications.read_text()) if args.source_qualifications else {})
     print(json.dumps(dict(receipts=len(rows),expected_captures=sum(r['expected_captures'] for r in rows))))
     return 0
 
