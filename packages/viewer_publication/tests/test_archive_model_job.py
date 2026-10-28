@@ -59,6 +59,20 @@ def test_pending_spec_refuses_without_runtime_or_storage(tmp_path,capsys):
     assert json.loads(capsys.readouterr().out)==dict(status='blocked',reason='owner binding pending')
 
 
+@pytest.mark.parametrize('key',[
+    'provenance/recoveries/accepted-backup.json',
+    'provenance/recoveries/archive/fixture.jsonl',
+    'provenance/reviews/fixture.jsonl',
+])
+def test_model_input_requires_a_record_of_its_declared_provenance_kind(tmp_path,key):
+    from viewer_publication.archive_model_job import load_spec
+    value=spec(tmp_path)
+    value['recovery_files']=[dict(key=key,path='not-opened.json',sha256='a'*64,size=17)]
+    with pytest.raises(ValueError,match='provenance record'):
+        load_spec(write_spec(tmp_path,value))
+    assert not (tmp_path/'not-opened.json').exists()
+
+
 def test_model_cli_executes_real_raw_lake_fixture(tmp_path,capsys):
     import pyarrow.parquet as pq
     from viewer_publication.archive_model_job import main
@@ -79,3 +93,77 @@ def test_existing_output_refuses_before_input_or_runtime_access(tmp_path,capsys)
     with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
     assert error.value.code==2 and 'must be fresh' in capsys.readouterr().err
     assert not Path(value['scratch']).exists()
+
+
+def pinned_local_spec(tmp_path):
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_model_job import load_spec
+    value=spec(tmp_path)
+    source=tmp_path/'selected.parquet';source.write_bytes(b'selected A')
+    for name in ['captures','readings','filename_readings']:
+        value[name]=dict(kind='parquet',path=str(source),**file_pin(source))
+    decision=tmp_path/'review.jsonl';decision.write_bytes(b'{"selected":"A"}\n')
+    value['review_files']=[dict(key='provenance/reviews/fixture.jsonl',path=str(decision),**file_pin(decision))]
+    return load_spec(write_spec(tmp_path,value))
+
+
+@pytest.mark.parametrize('target',['captures','review_files'])
+def test_selected_local_files_stay_under_custody_during_consumption(tmp_path,target):
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path)
+    item=value[target][0] if target=='review_files' else value[target]
+    original=Path(item['path']);selected=original.read_bytes()
+    # Removing the original link changes ctime: custody must refuse acceptance,
+    # while the private retained path must still serve A rather than replacement B.
+    with pytest.raises(ValueError,match='custody changed'):
+        with model_arguments(value) as arguments:
+            entry=arguments[target][0] if target=='review_files' else arguments[target]
+            retained=Path(entry['path'])
+            assert retained!=original and retained.read_bytes()==selected
+            assert arguments['captures']['path']==arguments['readings']['path']==arguments['filename_readings']['path']
+            original.unlink();original.write_bytes(b'replacement B')
+            assert retained.read_bytes()==selected
+    assert original.read_bytes()==b'replacement B'
+
+
+@pytest.mark.parametrize('target',['captures','review_files'])
+def test_in_place_local_mutation_refuses_after_consumption(tmp_path,target):
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path)
+    item=value[target][0] if target=='review_files' else value[target]
+    with pytest.raises(ValueError,match='custody changed'):
+        with model_arguments(value) as arguments:
+            entry=arguments[target][0] if target=='review_files' else arguments[target]
+            Path(item['path']).write_bytes(b'in-place mutation')
+            assert Path(entry['path']).read_bytes()==b'in-place mutation'
+
+
+def test_provenance_etag_matches_exact_local_bytes_in_retained_inputs(tmp_path):
+    from hashlib import md5
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path);item=value['review_files'][0]
+    etag='"'+md5(Path(item['path']).read_bytes()).hexdigest().upper()+'"'
+    alias=dict(item,key='provenance/reviews/alias.jsonl');value['review_files'].append(alias)
+    with model_arguments(value,provenance_etags={item['key']:etag,alias['key']:etag.strip(chr(34)).lower()}) as arguments:
+        assert Path(arguments['review_files'][0]['path']).read_bytes()==Path(item['path']).read_bytes()
+        assert arguments['review_files'][0]['path']==arguments['review_files'][1]['path']
+    assert not list(tmp_path.glob('.model-inputs-*'))
+
+
+@pytest.mark.parametrize('failure',['changed','opaque','multipart','missing','extra','alias_conflict'])
+def test_invalid_provenance_etag_binding_refuses_before_yield(tmp_path,failure):
+    from hashlib import md5
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path);item=value['review_files'][0]
+    etags={item['key']:md5(Path(item['path']).read_bytes()).hexdigest()}
+    if failure=='changed':etags[item['key']]='0'*32
+    elif failure=='opaque':etags[item['key']]='opaque'
+    elif failure=='multipart':etags[item['key']]='a'*32+'-2'
+    elif failure=='missing':etags={}
+    elif failure=='extra':etags['provenance/reviews/extra.jsonl']='a'*32
+    else:
+        value['review_files'].append(dict(item,key='provenance/reviews/alias.jsonl'))
+        etags['provenance/reviews/alias.jsonl']='a'*32
+    with pytest.raises(ValueError,match='provenance|ETag'):
+        with model_arguments(value,provenance_etags=etags):
+            pytest.fail('Unbound provenance reached model consumption')

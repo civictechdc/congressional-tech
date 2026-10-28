@@ -91,7 +91,17 @@ def evidence_checks():
         conflicting_sniffs='(SELECT count(*) FROM sniff_conflicts)',
         conflicting_original_sizes='(SELECT count(*) FROM (SELECT sha256 FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING count(DISTINCT bytes)>1))',
         conflicting_verifications='(SELECT count(*) FROM verification_conflicts)',
-        invalid_recoveries='(SELECT count(*) FROM recovery_diagnostics WHERE is_fatal)')
+        invalid_recoveries='(SELECT count(*) FROM recovery_diagnostics WHERE is_fatal)',
+        duplicate_recovery_kind_selectors='''(SELECT count(*) FROM (
+            SELECT category AS selector FROM recovery_kinds WHERE category IS NOT NULL AND match_basis IS NULL
+            GROUP BY category HAVING count(*)>1 UNION ALL
+            SELECT match_basis AS selector FROM recovery_kinds WHERE match_basis IS NOT NULL AND category IS NULL
+            GROUP BY match_basis HAVING count(*)>1) duplicate_selectors)''',
+        invalid_recovery_kind_selectors='''(SELECT count(*) FROM recovery_kinds
+            WHERE (category IS NULL)=(match_basis IS NULL)
+            OR (category IS NOT NULL AND trim(category)='')
+            OR (match_basis IS NOT NULL AND trim(match_basis)='')
+            OR kind IS NULL OR trim(kind)='')''')
 
 
 def _sql_steps(names,*,root=ROOT):
@@ -117,6 +127,16 @@ def admission_checks(*,parser_versions,catalog_version,root=ROOT):
 def input_receipts_query():
     """Return actual receipt keys as metadata, never as a zero-count assertion."""
     return dict(name='input_receipts',sql='SELECT DISTINCT receipt_key FROM captures ORDER BY receipt_key')
+
+
+def probe_selectors_query(*,root=ROOT):
+    """Choose one visible saved document using the actual exported detail rows."""
+    limit=json.loads((Path(root)/'model/registries/reader-limits.json').read_text())['max_unpacked_bytes']
+    if type(limit) is not int or limit<=0:raise ValueError('Invalid reader unpacking limit')
+    return dict(name='probe_selectors',sql=f"""SELECT list_row AS saved_row,encode(link_key,'hex') AS link_key
+        FROM details WHERE saved_body IS NOT NULL AND NOT hidden
+        AND (saved_suffix<>'.gz' OR saved_bytes<={limit})
+        ORDER BY saved_bytes NULLS LAST,list_row LIMIT 1""")
 
 
 def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,catalog_version,
@@ -262,7 +282,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     prefix_checks=','.join(sql+' AS '+name for name,sql in evidence_checks().items())
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         lookup_extra="SELECT o.list_row,a.url FROM source_addresses a JOIN document_members m ON a.source_id=m.source_id JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key WHERE m.is_real_file",
-        metadata_queries=[input_receipts_query()],origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
+        metadata_queries=[input_receipts_query(),probe_selectors_query(root=root)],origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
         diagnostics=[dict(name='model_invariants',sql=f"""SELECT {prefix_checks},
             (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,

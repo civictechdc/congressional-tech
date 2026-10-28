@@ -706,7 +706,7 @@ Sizes are *est.* at about 0.65M listed documents, scaled from today's 1.24M cata
 
 ### 8.3 Identities
 
-The **input identity** is the SHA-256 of the compact JSON of the sorted receipt keys ingested into `captures`, the sorted keys and ETags of the pinned provenance set ([[ARCHITECTURE]] §10.3.1), the pinned spicy-regs generation digests ([[PHASE-2]] §1.1), and the model profile (§7.1).
+The **input identity** is the SHA-256 of UTF-8 compact JSON `[receipt_keys, [[provenance_key, ETag], ...], entity_digests, profile]`: distinct receipt keys ingested into `captures` sorted bytewise; the pinned provenance set sorted by key ([[ARCHITECTURE]] §10.3.1); pinned spicy-regs generation digests ([[PHASE-2]] §1.1), an empty object in phase 1; and the semantic model profile (§7.1). Object keys are sorted recursively. Snapshot selectors and run metadata are retained in the input record but excluded from this identity.
 - Equal identities mean equal model inputs: every other lake row the model reads is a deterministic function of a body or filename pair those records name and of a pinned version, complete before publish (§7.1).
 - Snapshot IDs are excluded, because a table rebuild changes them without changing content.
 

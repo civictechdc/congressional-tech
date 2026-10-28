@@ -1,18 +1,32 @@
 """Plan or execute the maintained archive model over exact immutable inputs."""
 import argparse
+from contextlib import contextmanager
+from collections.abc import Mapping
+from hashlib import md5
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import re
 from urllib.parse import urlsplit
 from uuid import UUID
 
 from congress_api.retention.body_store import validate_key
-from congress_api.retention.provenance import file_pin
+from congress_api.retention.derived_files import file_identity, check_identity, retain_verified_file
+from congress_shared.custody import custody_identity
 
 TABLES=('captures','readings','filename_readings')
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants'}
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
+
+
+def provenance_record_kind(key):
+    """Recognize model records; other raw provenance remains identity metadata."""
+    parts=key.split('/') if isinstance(key,str) else []
+    if (len(parts)==3 and parts[0]=='provenance' and parts[1] in PROVENANCE.values()
+            and parts[2].endswith('.jsonl') and parts[2][:-6]):
+        return parts[1]
+    return None
 
 
 def _local(value,base):
@@ -76,8 +90,8 @@ def load_spec(path):
         for item in files:
             _pin(item,{'key','path','sha256','size'})
             key=item['key']
-            if not isinstance(key,str) or not key.startswith('provenance/'+family+'/'):
-                raise ValueError('Provenance pin has the wrong object family')
+            if provenance_record_kind(key)!=family:
+                raise ValueError('Expected a provenance record of the declared object family')
             validate_key(key)
             result[name].append(dict(item,path=_local(item['path'],base)))
     from congress_api.lake import readings,filenames
@@ -89,40 +103,86 @@ def load_spec(path):
     return result
 
 
-def _check_pin(value):
-    if file_pin(value['path'])!={name:value[name] for name in ['sha256','size']}:
-        raise ValueError('Pinned model input changed: '+value['path'])
+def provenance_etag_md5(etag):
+    """Normalize the stored-byte checksum of a single-PUT provenance object."""
+    if isinstance(etag,str) and etag.startswith('"') and etag.endswith('"'):
+        etag=etag[1:-1]
+    if not isinstance(etag,str) or re.fullmatch('[a-fA-F0-9]{32}',etag) is None:
+        raise ValueError('Provenance ETag must be a single-PUT MD5')
+    return etag.lower()
 
 
-def model_arguments(spec):
-    """Verify local pins and fresh destinations before opening the native runtime."""
+@contextmanager
+def model_arguments(spec, *, provenance_etags=None):
+    """Hold verified local inputs until native consumption completes successfully.
+
+    The retained names prevent original-path replacement from selecting new bytes.
+    Custody checks on exit reject in-place changes before the caller accepts output.
+    One physical file has one verification and one retained name, including aliases.
+    """
     for name in ['output','scratch']:
         path=Path(spec[name])
         if path.exists() or path.is_symlink():raise ValueError('Model output and scratch must be fresh')
-    arguments={}
-    for name in TABLES:
-        value=spec[name]
-        if value['kind']=='parquet':
-            _check_pin(value)
-            arguments[name]=dict(kind='parquet',path=value['path'])
-        else:arguments[name]=dict(value)
-    for name in PROVENANCE:
-        arguments[name]=[]
-        for value in spec[name]:
-            _check_pin(value)
-            arguments[name].append({key:value[key] for key in ['key','path']})
-    return arguments
+    etags=None
+    if provenance_etags is not None:
+        keys={value['key'] for name in PROVENANCE for value in spec[name]}
+        if not isinstance(provenance_etags,Mapping) or set(provenance_etags)!=keys:
+            raise ValueError('Selected provenance keys must exactly match their ETags')
+        etags={}
+        for key,etag in provenance_etags.items():
+            etags[key]=provenance_etag_md5(etag)
+    parent=Path(spec['scratch']).parent
+    parent.mkdir(parents=True,exist_ok=True)
+    with TemporaryDirectory(prefix='.'+Path(spec['scratch']).name+'-inputs-',dir=parent) as directory:
+        retained={}
+
+        def hold(value,expected_md5=None):
+            path=Path(value['path'])
+            identity=custody_identity(path)
+            physical=identity[:2]
+            expected=dict(sha256=value['sha256'],bytes=value['size'])
+            key='Pinned model input changed: '+str(path)
+            if physical in retained:
+                source,verified=retained[physical]
+                verified.require(verified.path)
+                if identity!=source.custody:
+                    raise ValueError('Verified catalog file custody changed: '+str(path))
+                check_identity(verified,expected,key)
+                if expected_md5 is not None and source.get('md5')!=expected_md5:
+                    raise ValueError('Local provenance bytes differ from the selected ETag')
+                return str(verified.path)
+            verified=file_identity(path,additional_hashes={'md5':md5} if expected_md5 is not None else None)
+            check_identity(verified,expected,key)
+            if expected_md5 is not None and verified['md5']!=expected_md5:
+                raise ValueError('Local provenance bytes differ from the selected ETag')
+            destination=Path(directory)/(str(len(retained))+'-'+path.name)
+            owned=retain_verified_file(path,destination,expected=verified,key=key)
+            retained[physical]=(verified,owned)
+            return str(owned.path)
+
+        arguments={}
+        # Verify provenance first so any physical aliases share its one SHA/MD5 pass.
+        for name in PROVENANCE:
+            arguments[name]=[dict(key=value['key'],path=hold(value,None if etags is None else etags[value['key']]))
+                             for value in spec[name]]
+        for name in TABLES:
+            value=spec[name]
+            arguments[name]=(dict(kind='parquet',path=hold(value))
+                             if value['kind']=='parquet' else dict(value))
+        for _source,verified in retained.values():verified.require(verified.path)
+        yield arguments
+        for _source,verified in retained.values():verified.require(verified.path)
 
 
 def execute(spec):
     """Verify inputs, then invoke the one maintained model producer."""
-    arguments=model_arguments(spec)
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_model import build_release
-    with NativeDatasets.from_config(spec['engine_config']) as engine:
-        manifest=build_release(**arguments,parser_versions=spec['parser_versions'],
-            catalog_version=spec['catalog_version'],engine=engine,
-            output=Path(spec['output']),scratch=Path(spec['scratch']))
+    with model_arguments(spec) as arguments:
+        with NativeDatasets.from_config(spec['engine_config']) as engine:
+            manifest=build_release(**arguments,parser_versions=spec['parser_versions'],
+                catalog_version=spec['catalog_version'],engine=engine,
+                output=Path(spec['output']),scratch=Path(spec['scratch']))
     return dict(status='built',executed=True,release_id=manifest['release_id'],
         output=spec['output'],scratch=spec['scratch'],rows={entry['name']:entry['rows'] for entry in manifest['files']})
 

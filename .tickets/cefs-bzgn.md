@@ -26,3 +26,7 @@ Receipt helpers implemented a4237c67, agreedshape foldedDM8.1f1de2acf. Canonical
 **2026-10-27T20:11:05Z**
 
 Final c1713681 full11672passed with exact36baseline identities unchanged;91merged focused pass. Engine has merged helpers/byte rule and owns publisher/maintenance consumers. Receipt-list retention/deletion consumer proof remains incomplete; keep this ticket open until integration verifies live/last-good retention and old-prefix removal.
+
+**2026-10-28 local consumer proof**
+
+c1e78b7f adds kept_input_records and delegates the old receipt-key API to it. Every kept prefix validates its own complete evidence; shared physical objects are read once. Engine's maintenance consumer proves live/last-good/pinned retention, old unkept prefix removal, missing/corrupt kept evidence refusal and protection of every historical native selector. Latest normal merge a4a4bc5d passes 92 focused workflow/gate/receipt/maintenance checks in 2.57s, including 13 helper checks. Root's maintenance/publisher CODE review covers the shared helper and validate_receipt extraction cb340b3b; keep open until its verdict. No raw or live store addressed.

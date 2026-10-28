@@ -141,3 +141,38 @@ def test_shared_receipt_validator_and_final_gate_have_the_same_policy(name,recei
         final_gate()
         assert len(store.puts)==1
     assert receipt==original
+
+
+def test_first_engine_release_replaces_the_actual_legacy_pointer_with_its_observed_etag():
+    from io import BytesIO
+    raw=(ROOT/'apps/site/scripts/fixtures/old-viewer-pointer.json').read_bytes()
+    response=dict(Body=BytesIO(raw),ETag='observed-legacy-etag',ContentLength=len(raw))
+    try:legacy=json.loads(response['Body'].read(response['ContentLength']))
+    finally:response['Body'].close()
+    assert 'catalog_id' in legacy and 'release_id' not in legacy
+    store=Pointer(legacy);store.etag=response['ETag']
+    gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id=None,
+        expected_etag=response['ETag'],contract=passed,canary=passed)
+    assert store.value==dict(release_id='b'*64,previous_release_id=None)
+    assert store.puts[0]['IfMatch']==response['ETag']
+    assert 'IfNoneMatch' not in store.puts[0]
+
+
+@pytest.mark.parametrize('previous',[None,'a'*64])
+@pytest.mark.parametrize('etag',['',' ',0,True])
+def test_blank_or_untyped_pointer_etags_refuse_before_reader_checks(previous,etag):
+    store=Pointer({'release_id':'a'*64})
+    def reached():pytest.fail('Invalid pointer binding reached a reader check')
+    with pytest.raises(ValueError,match='pinned together'):
+        gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id=previous,
+            expected_etag=etag,contract=reached,canary=reached)
+    assert store.puts==[]
+
+
+def test_existing_engine_release_requires_the_observed_etag_before_reader_checks():
+    store=Pointer({'release_id':'a'*64})
+    def reached():pytest.fail('Missing outgoing ETag reached a reader check')
+    with pytest.raises(ValueError,match='pinned together'):
+        gate_and_flip(store,bucket='fake',release_id='b'*64,previous_release_id='a'*64,
+            expected_etag=None,contract=reached,canary=reached)
+    assert store.puts==[]
