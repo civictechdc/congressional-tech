@@ -8,7 +8,7 @@ import pyarrow.parquet as pq
 from congress_api.lake import captures,filenames,readings,tables
 from congress_api.lake.receipt_inventory import select_receipts
 from congress_api.retention.body_store import BodyStore,LocalAdapter,validate_key
-from congress_api.retention.provenance import file_pin,instant,local_unreadable_inventory
+from congress_api.retention.provenance import file_pin,instant,local_unreadable_inventory,run_job
 from congress_shared.custody import custody_identity,VerifiedFile
 
 
@@ -93,6 +93,13 @@ def _input_files(rows):
     return [dict(key=row['key'],path=row['path']) for row in rows]
 
 
+def _complete_receipt_keys(pin,*,engine,work):
+    work=Path(work);work.mkdir(parents=True,exist_ok=False)
+    rows=run_job(work,engine,inputs=[tables.table_input('current_captures',pin)],steps=[],outputs=[],
+        queries=[dict(name='receipt_keys',sql='SELECT DISTINCT receipt_key FROM current_captures ORDER BY receipt_key')])
+    return [row['receipt_key'] for row in rows['receipt_keys']]
+
+
 def _source_qualifications(spec,selected):
     bindings=spec.get('source_qualifications')
     if bindings is None or spec.get('validated_counter') is not None:return bindings
@@ -156,7 +163,7 @@ def produce_daily(spec,*,engine,raw_store):
     authority=dict(engine=engine,catalog_root=spec['catalog_root'])
     heads=tables.resolve_tables(**authority,work=work/'initial-heads',tables=spec['tables'])
     versions=dict(captures=captures.current_version())
-    report=dict(status='running',pins=None,receipt_keys=[],provenance=provenance,
+    report=dict(status='running',pins=None,receipt_keys=None,new_receipt_keys=[],provenance=provenance,
                 currentversions=versions,producerreports={})
     selected=select_receipts(spec['receipt_inventory'],heads['captures'],engine=engine,work=work/'receipt-selection')
     if selected:
@@ -170,7 +177,7 @@ def produce_daily(spec,*,engine,raw_store):
             raise ValueError('Selected receipts produced no captures')
         appended=tables.append_rows(stage/'captures.parquet',**authority,work=work/'captures-append',
             table=spec['tables']['captures'],keys=['receipt_key'],definition=manifest['mapping_digest'])
-        report['receipt_keys']=manifest['receipt_keys']
+        report['new_receipt_keys']=manifest['receipt_keys']
         report['producerreports']['captures']=dict(stage=str(stage),append=appended)
         heads.update(tables.resolve_tables(**authority,work=work/'captures-head',
             tables={'captures':spec['tables']['captures']}))
@@ -219,5 +226,6 @@ def produce_daily(spec,*,engine,raw_store):
             or readings.bundle_version(versions['parsers'],policy=readings.worker_limits())!=versions['readings']):
         raise ValueError('Daily producer definitions changed during execution')
     report['pins']=final
+    report['receipt_keys']=_complete_receipt_keys(final['captures'],engine=engine,work=work/'receipt-identity')
     report['status']='completed'
     return report
