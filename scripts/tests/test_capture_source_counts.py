@@ -135,3 +135,12 @@ def test_direct_receipt_line_capacity_refuses_an_oversized_line_explicitly(count
             receipt_keys=['receipts/fixture/source.jsonl.gz','receipts/fixture/new.jsonl.gz'],work=tmp_path/'work',
             source_qualifications={str(path):str(pin),str(direct):str(direct_pin)})
     assert not (tmp_path/'work/counts.json').exists()
+
+
+def test_projected_arrow_batches_preserve_complete_receipt_aggregation(counts,tmp_path):
+    records=[dict(record=[{},{}]),{},dict(captures=[{},{}],record=[{},{}]),
+        dict(file_references=[{}]),dict(record=[])]
+    path,pin,_=counter(tmp_path,records)
+    [row]=counts.count_sources(counter=path,files=[],receipt_keys=['receipts/fixture/source.jsonl.gz'],
+        work=tmp_path/'work',source_qualifications={str(path):str(pin)},batch_rows=1)
+    assert row['source_rows']==5 and row['expected_captures']==8 and row['list_items']==9
