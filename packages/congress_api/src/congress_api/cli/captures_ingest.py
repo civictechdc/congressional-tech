@@ -7,7 +7,8 @@ from pathlib import Path
 from docspec_client.client import NativeDatasets
 from congress_api.lake.captures import stage_captures
 from congress_api.lake.capture_comparison import compare_old
-from congress_api.lake.tables import append_rows, create_table, validate_catalog_authority
+from congress_api.lake.daily import _source_qualifications
+from congress_api.lake.tables import append_rows, create_table, resolve_tables, validate_catalog_authority
 from congress_api.lake.receipt_inventory import LocalReceiptStore, discover_receipts, select_receipts
 
 
@@ -39,6 +40,14 @@ def main(argv=None,*,engine_factory=None):
         parser.error('An explicit pinned engine configuration is required')
     if args.apply and not args.table:
         parser.error('--apply requires an explicit versioned table')
+    if args.apply and args.existing is not None:
+        parser.error('--existing is staging-only and cannot be combined with --apply')
+    table=None
+    if args.apply:
+        parts=args.table.split('.')
+        if len(parts)<2 or not all(parts):
+            parser.error('--table must name namespace.table')
+        table=dict(namespace=parts[:-1],name=parts[-1])
     if args.create_table and (not args.apply or not args.table_location):
         parser.error('--create-table requires --apply and --table-location')
     if args.create_namespace and not args.create_table:
@@ -55,11 +64,16 @@ def main(argv=None,*,engine_factory=None):
                        for k,v in qualifications.items())):
             parser.error('source qualifications must map source paths to manifest paths')
     engine=(engine_factory or NativeDatasets.from_config)(args.engine_config)
+    existing=args.existing
     if args.apply:
         try:
             validate_catalog_authority(engine,args.catalog_root)
         except ValueError as error:
             parser.error(str(error))
+        if not args.create_table:
+            existing=resolve_tables(engine=engine,
+                work=args.work.parent/(args.work.name+'-current'),catalog_root=args.catalog_root,
+                tables={'captures':table})['captures']
     selection_work=args.work.parent/(args.work.name+'-inventory')
     if args.receipt_inventory:
         files=json.loads(args.receipt_inventory.read_text())
@@ -67,7 +81,7 @@ def main(argv=None,*,engine_factory=None):
             parser.error('Receipt inventory must be a list')
     else:
         files=discover_receipts(LocalReceiptStore(args.receipt_root),args.receipt_family,
-            existing=args.existing,engine=engine,work=selection_work,mode=args.inventory_mode)
+            existing=existing,engine=engine,work=selection_work,mode=args.inventory_mode)
     normalized=[]
     for item in files:
         item=dict(key=item) if isinstance(item,str) else dict(item)
@@ -80,15 +94,16 @@ def main(argv=None,*,engine_factory=None):
             parser.error('Local receipt inputs require --receipt-root or inventory paths')
         normalized.append(item)
     if args.receipt_inventory:
-        normalized=select_receipts(normalized,args.existing,engine=engine,work=selection_work)
+        normalized=select_receipts(normalized,existing,engine=engine,work=selection_work)
     if not normalized:
         print(json.dumps(dict(stage=None,applied=False,no_work=True,receipts=0),sort_keys=True))
         return 0
     # Keep explicit qualification references for admission; the stage passes
     # only source keys and paths to the native receipt reader.
     stage=stage_captures(normalized,engine=engine,work=args.work,
-                         existing=args.existing,validated_counter=args.validated_counter,
-                         source_qualifications=qualifications)
+                         validated_counter=args.validated_counter,
+                         source_qualifications=_source_qualifications(dict(
+                             source_qualifications=qualifications,validated_counter=args.validated_counter),normalized))
     comparison=None
     if args.old_index:
         comparison=compare_old(stage/'capture-evidence.parquet',args.old_index,
@@ -97,10 +112,6 @@ def main(argv=None,*,engine_factory=None):
             print(json.dumps(dict(stage=str(stage),comparison=comparison),sort_keys=True))
             return 2
     if args.apply:
-        parts=args.table.split('.')
-        if len(parts)<2 or not all(parts):
-            parser.error('--table must name namespace.table')
-        table=dict(namespace=parts[:-1],name=parts[-1])
         if args.create_table:
             schema=Path(__file__).resolve().parents[5]/'model/lake/captures.schema.json'
             create_table(engine=engine,work=stage/'create',catalog_root=args.catalog_root,
