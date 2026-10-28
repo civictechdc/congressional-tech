@@ -152,3 +152,12 @@ def test_inventory_checksum_is_checked_during_the_same_compressed_read(counts,tm
     source,pin,_=receipt(tmp_path,[{}]);source['etag']='0'*32
     with pytest.raises(ValueError,match='checksum|MD5'):run(counts,tmp_path,[source],[pin])
     assert not (tmp_path/'work/counts.json').exists()
+
+
+def test_opaque_multipart_inventory_etag_keeps_a_separate_verified_local_md5(counts,tmp_path):
+    source,pin,_=receipt(tmp_path,[{}]);source['md5']=source['etag'].strip('"')
+    source['etag']='"opaque-multipart-16"'
+    [row]=run(counts,tmp_path,[source],[pin])
+    assert row['expected_captures']==1
+    [proof]=json.loads((tmp_path/'work/metrics.json').read_text())['sources']
+    assert proof['etag']==source['etag'] and proof['md5']==source['md5']
