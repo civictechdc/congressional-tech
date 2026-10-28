@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "expected": {
+    "node": "Functional checks, explicit decoded-list budget and global deadline; browser target metadata and release binding remain required",
+    "browser": "All measured browser timing and heap ceilings still apply to their matching profile",
+    "cross_runtime_comparison": false,
+    "invalid_target_release": "refuse"
+  },
+  "alternatives": {
+    "node_calibration": "Adds another measured profile, five Node runs and runtime-specific thresholds; not needed by ARCH10.3.5",
+    "forced_gc": "Rejected: alters the observation to satisfy a ceiling"
+  }
+}
