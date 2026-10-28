@@ -15,6 +15,9 @@ LABELS = {'failed', 'passed', 'skipped', 'deselected', 'error', 'errors', 'xfail
           'xpassed', 'warning', 'warnings', 'subtests passed', 'subtests failed'}
 ANSI = re.compile(r'\x1b\[[0-9;]*m')
 TIMESTAMP = re.compile(r'^\d{4}-\d\d-\d\dT[0-9:.]+Z\s+')
+COLLECTION = re.compile(r'^collected (\d+) items?(?: / (\d+) deselected(?: / (\d+) selected)?)?$')
+EXIT_STATUS = re.compile(r'^CT_OFFLINE_EXIT_STATUS=(\d+)$')
+TEST_STEP = 'Test the complete offline partition'
 
 
 def verify(run, log_lines, baseline, expected_head):
@@ -39,6 +42,8 @@ def verify(run, log_lines, baseline, expected_head):
         issues.append('Hosted shard job IDs must be positive and distinct')
     failures = defaultdict(set)
     summaries = defaultdict(list)
+    selected = defaultdict(list)
+    exits = defaultdict(list)
     for line in log_lines:
         cells = line.rstrip('\n').split('\t', 2)
         if len(cells) != 3 or cells[0] not in SHARDS:
@@ -47,7 +52,14 @@ def verify(run, log_lines, baseline, expected_head):
         payload = ANSI.sub('', TIMESTAMP.sub('', payload)).strip()
         if IDENTITY.match(payload):
             failures[name].add(payload.split(' - ', 1)[0].strip())
-        if match := SUMMARY.fullmatch(payload):
+        if match := COLLECTION.fullmatch(payload):
+            count = int(match[1]) - int(match[2] or 0)
+            if match[3] is not None and int(match[3]) != count:
+                issues.append(f'{name}: selected collection count is inconsistent')
+            selected[name].append(count)
+        if match := EXIT_STATUS.fullmatch(payload):
+            exits[name].append(int(match[1]))
+        if match := SUMMARY.fullmatch(payload.strip('= ')):
             counts = {}
             for item in match[1].split(', '):
                 number, label = item.split(' ', 1)
@@ -72,6 +84,12 @@ def verify(run, log_lines, baseline, expected_head):
         except (KeyError, AttributeError, TypeError, ValueError):
             issues.append(f'{name}: invalid clock or exceeded 30-minute budget')
         rows = summaries[name]
+        statuses = exits[name]
+        if len(statuses) != 1 or statuses[0] not in {0, 1}:
+            issues.append(f'{name}: missing, duplicate or abnormal runner exit status')
+        collection = selected[name]
+        if len(collection) != 1 or collection[0] <= 0:
+            issues.append(f'{name}: exactly one positive selected collection count is required')
         if len(rows) != 1:
             issues.append(f'{name}: exactly one complete pytest summary is required')
         else:
@@ -82,12 +100,33 @@ def verify(run, log_lines, baseline, expected_head):
             observed_errors = sum(case.startswith('ERROR ') for case in failures[name])
             if (failed, errors) != (observed_failed, observed_errors):
                 issues.append(f'{name}: pytest counts differ from retained failure identities')
-            if sum(counts.get(label, 0) for label in ('passed', 'failed', 'errors', 'error', 'skipped', 'xfailed', 'xpassed')) <= 0:
-                issues.append(f'{name}: no executed tests')
+            subfailed = sum(case.startswith('SUBFAILED(') for case in failures[name])
+            completed = sum(counts.get(label, 0) for label in ('passed', 'skipped', 'xfailed', 'xpassed')) + failed + errors - subfailed
+            if len(collection) != 1 or completed != collection[0]:
+                issues.append(f'{name}: completed node count differs from the selected collection')
+            expected_exit = 1 if failed or errors else 0
+            if statuses != [expected_exit]:
+                issues.append(f'{name}: runner exit differs from pytest result')
             if job.get('conclusion') != ('failure' if failed or errors else 'success'):
                 issues.append(f'{name}: job result differs from pytest result')
+        steps = job.get('steps', [])
+        steps = steps if isinstance(steps, list) else []
+        test_steps = [step for step in steps if isinstance(step, dict) and step.get('name') == TEST_STEP]
+        if len(test_steps) != 1:
+            issues.append(f'{name}: exactly one named offline test step is required')
+        for step in steps:
+            if not isinstance(step, dict) or step.get('status') != 'completed':
+                issues.append(f'{name}: an infrastructure or test step did not complete')
+                continue
+            if step.get('name') == TEST_STEP:
+                expected_result = 'success' if statuses == [0] else 'failure'
+                if step.get('conclusion') != expected_result:
+                    issues.append(f'{name}: test step result differs from runner exit')
+            elif step.get('conclusion') not in {'success', 'skipped'}:
+                issues.append(f'{name}: an infrastructure or post-job step failed')
         recorded.append(dict(name=name, job_id=job.get('databaseId'), seconds=elapsed,
-                             conclusion=job.get('conclusion'), summaries=rows))
+                             conclusion=job.get('conclusion'), summaries=rows,
+                             selected_nodes=collection, runner_exits=statuses))
     observed = set().union(*failures.values())
     new, missing = sorted(observed - expected), sorted(expected - observed)
     if new or missing:
