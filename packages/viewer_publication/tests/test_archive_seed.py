@@ -31,7 +31,7 @@ def seed_spec(tmp_path,change=None):
     pq.write_table(pa.Table.from_pylist(fixture['captures'],schema=pa.schema([('body_key',pa.string()),('bytes',pa.int64()),('stored_bytes',pa.int64())])),path);paths['captures']=path
     path=tmp_path/'accepted.json';path.write_text(compact(fixture['accepted'])+'\n');paths['accepted']=path
     value=dict(version=1,kind='seed_v5',display_only=True,catalog_id='a'*32,generation='b'*32,
-        document_rows=len(fixture['documents']),engine_config=os.environ['DOCSPEC_JOB_CONFIG'],
+        document_rows=len(fixture['documents']),engine_revision=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())['source_revision'],engine_config=os.environ['DOCSPEC_JOB_CONFIG'],
         output=str(tmp_path/'release'),scratch=str(tmp_path/'jobs'),
         input_files={name:dict(path=str(path),**file_pin(path)) for name,path in paths.items()})
     spec=tmp_path/'seed.json';spec.write_text(compact(value));return spec,fixture
