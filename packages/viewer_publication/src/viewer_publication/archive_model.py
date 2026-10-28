@@ -194,7 +194,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         'fingerprint_candidates':['body_sha'],
         'fingerprints':['body_sha']}
     extra += [dict(name=name+'.parquet',path=str(evidence/(name+'.parquet')),
-        sql='SELECT * FROM '+name,settings=_settings('whole',keys)) for name,keys in causes.items()]
+        sql=("SELECT r.*,r.body_sha AS body_sha256,d.decided_at FROM current_recoveries r LEFT JOIN remaining_recovery_decisions d ON r.decision_id=d.id" if name=='current_recoveries' else 'SELECT * FROM '+name),settings=_settings('whole',keys)) for name,keys in causes.items()]
     from congress_api.models.archive_profile import build_capture_profile
     capture_profile=build_capture_profile(engine_revision=engine.source_revision,
         url_normalized_sql=(Path(root)/'model/sql/url-normalized.sql').read_text(),
