@@ -1,0 +1,116 @@
+"""The lead window stops before unsafe effects and watches the new exact run."""
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+WINDOW = ROOT / 'codex-release2/window.md'
+
+
+def blocks():
+    return re.findall(r'```sh\n(.*?)\n```', WINDOW.read_text(), re.S)
+
+
+def test_all_operator_blocks_have_valid_shell_syntax():
+    assert len(blocks()) == 3
+    for block in blocks():
+        result = subprocess.run(['/bin/bash', '-n'], input=block, text=True, capture_output=True)
+        assert result.returncode == 0, result.stderr
+
+
+def test_readiness_precedes_every_effect_and_requires_complete_pins():
+    forward = blocks()[0]
+    prefix = forward.split('export REPO=', 1)[0]
+    result = subprocess.run(['/bin/bash'], input=prefix, text=True)
+    ready = re.search(r'^WINDOW_READY=([01])$', prefix, re.M)
+    assert ready is not None
+    if ready[1] == '0':
+        assert result.returncode != 0
+    else:
+        assert result.returncode == 0
+        assert not re.search(r'@[A-Z_]+@', WINDOW.read_text())
+
+
+@pytest.fixture
+def dispatcher(tmp_path):
+    source = re.search(r'dispatch_and_watch\(\) \{\n.*?\n\}', blocks()[0], re.S)
+    assert source is not None
+    tools = tmp_path / 'bin'; tools.mkdir()
+    fake = tools / 'gh'
+    fake.write_text('#!' + sys.executable + '\n' + r'''
+import json,os,sys
+a=sys.argv[1:]; scenario=os.environ['SCENARIO']; expected='a'*40
+with open(os.environ['GH_CALLS'],'a') as out:out.write(json.dumps(a)+'\n')
+if a[0]=='api':
+    print('b'*40 if scenario=='advanced_before_dispatch' else expected)
+elif a[:2]==['workflow','run']:
+    if scenario=='missing_url':print('Created workflow_dispatch event')
+    elif scenario=='wrong_url':print('https://github.com/elsewhere/repo/actions/runs/7')
+    else:print('https://github.com/civictechdc/congressional-tech/actions/runs/42')
+elif a[:2]==['run','view']:
+    assert a[2]=='42',a
+    fields=a[a.index('--json')+1]
+    if fields=='headSha,event':
+        print(json.dumps(dict(headSha='b'*40 if scenario=='wrong_head' else expected,
+            event='workflow_run' if scenario=='wrong_event' else 'workflow_dispatch')))
+    elif fields=='conclusion':print(json.dumps(dict(conclusion='cancelled' if scenario=='cancelled' else 'success')))
+    else:raise AssertionError(a)
+elif a[:2]==['run','watch']:
+    assert a[2]=='42',a
+    if scenario=='watch_failure':sys.exit(9)
+elif a[:2]==['run','list']:
+    print(json.dumps([dict(databaseId=7,url='https://github.com/civictechdc/congressional-tech/actions/runs/7')]))
+else:raise AssertionError(a)
+''')
+    fake.chmod(0o755)
+    calls = tmp_path / 'calls.jsonl'
+    work = tmp_path / 'window'; work.mkdir()
+    def run(scenario):
+        result = subprocess.run(['/bin/bash'], input='set -euo pipefail\n' + source[0] +
+            '\ndispatch_and_watch validate-explorer.yml\n', text=True, capture_output=True,
+            env={**os.environ, 'PATH': str(tools) + os.pathsep + os.environ['PATH'],
+                 'REPO': 'civictechdc/congressional-tech', 'WINDOW': str(work),
+                 'LANDED_APPLICATION': 'a'*40, 'SCENARIO': scenario, 'GH_CALLS': str(calls)})
+        invoked = [json.loads(line) for line in calls.read_text().splitlines()]
+        return result, invoked, work
+    return run
+
+
+def test_dispatch_watches_only_the_authoritative_new_run(dispatcher):
+    result, calls, work = dispatcher('success')
+    assert result.returncode == 0, result.stderr
+    assert calls[0][0] == 'api'
+    assert sum(c[:2] == ['workflow','run'] for c in calls) == 1
+    assert any(c[:3] == ['run','watch','42'] for c in calls)
+    assert not any(c[:3] == ['run','watch','7'] for c in calls)
+    assert (work / 'run-validate-explorer-id.txt').read_text().strip() == '42'
+
+
+@pytest.mark.parametrize('scenario', ['missing_url','wrong_url','wrong_head','wrong_event',
+                                     'watch_failure','cancelled','advanced_before_dispatch'])
+def test_dispatch_refuses_stale_heads_missing_identity_and_non_success(dispatcher, scenario):
+    result, calls, _ = dispatcher(scenario)
+    assert result.returncode != 0
+    assert sum(c[:2] == ['workflow','run'] for c in calls) <= 1
+    assert not any(c[:3] == ['run','watch','7'] for c in calls)
+    if scenario == 'advanced_before_dispatch':
+        assert not any(c[:2] == ['workflow','run'] for c in calls)
+    elif scenario in ('missing_url','wrong_url','wrong_head','wrong_event'):
+        assert not any(c[:2] == ['run','watch'] for c in calls)
+
+
+def test_pre_switch_rollback_stops_before_changes_after_publication_attempt(tmp_path):
+    rollback = blocks()[2]
+    assert rollback.index('test ! -e "$WINDOW/data-activation-started"') < rollback.index('gh variable set')
+    (tmp_path / 'previous-application-commit.txt').write_text('a'*40)
+    (tmp_path / 'landed-application-commit.txt').write_text('b'*40)
+    (tmp_path / 'data-activation-started').touch()
+    prefix = rollback.split('test -z', 1)[0]
+    result = subprocess.run(['/bin/bash'], input=prefix, text=True,
+                            env={**os.environ, 'WINDOW': str(tmp_path)})
+    assert result.returncode != 0
