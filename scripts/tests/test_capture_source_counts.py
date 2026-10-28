@@ -104,6 +104,8 @@ def test_malformed_original_json_line_refuses(counts,tmp_path):
             receipt_keys=['receipts/fixture/source.jsonl.gz','receipts/fixture/broken.jsonl.gz'],work=tmp_path/'work',
             source_qualifications={str(path):str(pin),str(direct):str(direct_pin)})
     assert not (tmp_path/'work/counts.json').exists()
+    failure=json.loads((tmp_path/'work/error.json').read_text())
+    assert failure['error_class'] and failure['kind']=='invalid_source' and failure['detail'] is None
 
 
 def test_source_row_loss_against_qualified_creation_count_refuses(counts,tmp_path):
