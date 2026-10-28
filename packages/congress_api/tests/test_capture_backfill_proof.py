@@ -98,6 +98,18 @@ def test_three_original_counter_receipts_rebuild_equally_in_fresh_native_generat
             dict(url='https://example.org/b2',status_code=404)],captures=[]),
         dict(run_id='proof',record=dict(url='https://example.org/c',http_status=503),captures=[body()])]
     counter=minimal_counter(tmp_path,list(zip(keys,records)),False)
+    # C1's actual reader retains its source shape and object record projection.
+    # The minimal legacy fixture deliberately omits both; complete them here.
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from capture_qualification_helpers import write_qualified_parquet
+    table_data=pq.read_table(counter)
+    typed=table_data.to_pylist()
+    for row,raw in zip(typed,records):
+        row['record']={'url':raw['record']['url']} if isinstance(raw['record'],dict) else None
+    table_data=pa.Table.from_pylist(typed,schema=table_data.schema).append_column(
+        '__line_shape',pa.array(['record:object','record:array','record:object']))
+    write_qualified_parquet(table_data,counter)
     counts=[]
     for key,record,items in zip(keys,records,[1,2,1]):
         size=len(json.dumps(record).encode())
