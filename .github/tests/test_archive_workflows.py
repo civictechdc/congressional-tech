@@ -165,7 +165,7 @@ def test_github_output_uses_the_owner_plan_without_running_or_opening_runtime(tm
     runner=active_publisher_fixture(tmp_path);output=tmp_path/'github-output'
     output.write_text('existing=value\n')
     result=subprocess.run([sys.executable,'-I',str(runner),'publish','--check-binding','--github-output',str(output)],
-        cwd=tmp_path,capture_output=True,text=True,timeout=15,env={'PATH':'/usr/bin:/bin'})
+        cwd=tmp_path,capture_output=True,text=True,timeout=15,env={'PATH':os.environ['PATH']})
     assert result.returncode==0,result.stderr
     assert output.read_text()=='existing=value\npublisher_work='+str(tmp_path/'private-evidence')+'\n'
     assert result.stdout==''
@@ -186,7 +186,7 @@ def test_control_characters_in_planned_work_never_reach_github_output(tmp_path):
         root=tmp_path/str(index);root.mkdir();runner=active_publisher_fixture(root,work='private'+character+'evidence')
         output=root/'github-output'
         result=subprocess.run([sys.executable,'-I',str(runner),'publish','--check-binding','--github-output',str(output)],
-            cwd=root,capture_output=True,text=True,timeout=15,env={'PATH':'/usr/bin:/bin'})
+            cwd=root,capture_output=True,text=True,timeout=15,env={'PATH':os.environ['PATH']})
         assert result.returncode!=0
         assert not output.exists()
 

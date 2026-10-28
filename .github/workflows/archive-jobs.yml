@@ -41,7 +41,8 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-python-project
       - name: Admit the model binding before runtime or storage access
-        run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --check-binding
+        id: publisher_binding
+        run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --check-binding --github-output "$GITHUB_OUTPUT"
       - name: Install and verify the pinned publish runtime
         env:
           DOCSPEC_RUNTIME_ARTIFACT: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
@@ -50,6 +51,9 @@ jobs:
         run: .venv/bin/python -I .github/scripts/setup-native-runtime.py --directory "$RUNNER_TEMP/docspec-runtime" --output "$RUNNER_TEMP/native-runtime-check.json" --github-env "$GITHUB_ENV"
       - uses: ./.github/actions/setup-node-project
       - uses: ./.github/actions/setup-publication-browser
+      - name: Build the archive site for the local contract
+        working-directory: apps/site
+        run: npm run build
       - name: Run the single publisher with its local contract and HTTPS canary gates
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
