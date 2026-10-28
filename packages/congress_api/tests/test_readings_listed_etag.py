@@ -181,3 +181,22 @@ def test_listing_size_fallback_preserves_missing_authority_refusal_before_get(tm
         readings.stage_once(**args,work=work,body_listing=path,
             body_store=R2Store(client,'bucket',cache_dir=work/'raw-pages'))
     assert not client.reads
+
+
+@pytest.mark.parametrize('direct',[False,True],ids=['selected-inventory','direct-listing'])
+def test_listing_size_without_its_version_cannot_borrow_capture_md5(tmp_path,direct):
+    args,stored,key=inputs(tmp_path,missing='size')
+    captures=pq.read_table(args['captures'])
+    pq.write_table(captures.slice(0,1),args['captures'])
+    if direct:args['body_inventory']=None
+    path=listing(tmp_path,key,stored);objects=pq.read_table(path);rows=objects.to_pylist();rows[0]['etag']=None
+    pq.write_table(pa.Table.from_pylist(rows,schema=objects.schema),path)
+    result=readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True,body_listing=path)
+    assert result['raw_custody']['missing_pins']==1
+    [row]=pq.read_table(result['work_list']).to_pylist()
+    assert row['captured_stored_bytes'] is None
+    client=Client(stored);work=tmp_path/'stage'
+    with pytest.raises(readings.RawCustodyRequired):
+        readings.stage_once(**args,work=work,body_listing=path,
+            body_store=R2Store(client,'bucket',cache_dir=work/'raw-pages'))
+    assert not client.reads
