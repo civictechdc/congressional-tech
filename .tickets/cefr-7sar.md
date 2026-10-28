@@ -28,3 +28,7 @@ Final owner exceptions follow fixture commit f91b7626: 34 public columns retain 
 **2026-10-28T03:41:21Z**
 
 Current narrow component and slice qualified:43D1PASS31.09s plus49extendedPASS/1heavy deselected43.15s, actual9b50original lines→106rows1.72s/maxRSS119472128B, public bytes identical to486. Comparator34PASS6.57s before tiny exact-pointer guard followup. Slice0old-only/0new-only,41changed rows preserved owner-gated(19context/28entrytime/1providerstatus overlapping). Full population and3,909,134-row comparison remain unfinished pending accepted end-to-end slice/resource projection; no live append. D1 README now has exact local/owner commands; ticket remains in progress.
+
+**2026-10-28T04:07:16Z**
+
+Largest complete receipt key accepted28source lines223captures55.32s/RSS8.192GB on9b, containing187MB/196-capture line. Caption complete key fails portable byte limit102.84s/RSS8.144GB; native pre-materialization profile passes910574rows/maxstring148B90.05s/RSS8.922GB. Tiny generic256×1KiB rows,batch_rows32/max64KiB passes direct query but refuses materialize=true. Exact jobs sent core/engine; no application chunking or limit increase. Full still unfinished pending native byte fit; generic batch_rows256 bounded measurement now active. Merged seam99PASS/1fixture failure fixed by engine6f6818e3 (writer identity); failed actual-release assertion then passes1check15.06s without weakening.
