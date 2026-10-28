@@ -141,3 +141,18 @@ def test_seed_data_gap_exclusions_above_three_percent_refuse_before_effects(tmp_
             public_origin='https://archive.example.test',contract=lambda **_:pytest.fail('Excluded seed reached reader'),
             canary=lambda **_:pytest.fail('Excluded seed reached canary'))
     assert native.calls==[] and 'viewer-publications/manifest.json' not in store.objects
+
+
+@pytest.mark.parametrize('unchanged',[False,True])
+def test_seed_targets_must_measure_actual_candidate_before_probe_or_upload(tmp_path,unchanged):
+    artifacts,manifest,record=seed(tmp_path);store=Store();native=Native(store)
+    def never(**context):pytest.fail('Different measured candidate reached browser probe')
+    with pytest.raises(ValueError,match='Measured.*release'):
+        publish_candidate(client=store,engine=native,bucket='derived-fixture',work=tmp_path/'publish',
+            **artifacts,input_record=record,receipt_keys=[],
+            pointer={'release_id':manifest['release_id']} if unchanged else None,
+            expected_etag='outgoing' if unchanged else None,
+            public_origin='https://archive.example.test',contract=never,canary=never,
+            measured_release_id='ab'*32)
+    assert native.calls==[]
+    assert not any('/inputs/' in key or key.endswith('/manifest.json') for key in store.objects)
