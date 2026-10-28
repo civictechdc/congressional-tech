@@ -262,18 +262,19 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
     probe adapters are injected; no model or admission policy callback is accepted.
     """
     require_publication_client(client)
-    origin=urlsplit(public_origin)
-    if origin.scheme!='https' or not origin.netloc or origin.username or origin.password or origin.query or origin.fragment:
-        raise ValueError('Production canary requires an HTTPS public origin without credentials')
-    live=_sha(pointer['release_id']) if pointer is not None else None
-    if ((live is None and expected_etag is not None) or
-            (live is not None and (not isinstance(expected_etag,str) or not expected_etag.strip()))):
-        raise ValueError('Outgoing pointer and ETag must be pinned together')
-    store=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=Path(work)/'uploads')
     started=perf_counter();failure=None
     status=dict(status='failed',input_digest=input_record.get('input_digest'),release_id=None,
-        live_release=live,live_release_basis='pinned_at_start',rows={},bytes=0,durations={})
+        live_release=None,live_release_basis='unknown',rows={},bytes=0,durations={})
     try:
+        origin=urlsplit(public_origin)
+        if origin.scheme!='https' or not origin.netloc or origin.username or origin.password or origin.query or origin.fragment:
+            raise ValueError('Production canary requires an HTTPS public origin without credentials')
+        live=_sha(pointer['release_id']) if pointer is not None else None
+        if ((live is None and expected_etag is not None) or
+                (live is not None and (not isinstance(expected_etag,str) or not expected_etag.strip()))):
+            raise ValueError('Outgoing pointer and ETag must be pinned together')
+        status.update(live_release=live,live_release_basis='pinned_at_start')
+        store=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=Path(work)/'uploads')
         receipt_keys=sorted(set(receipt_keys))
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
             profile=input_record['profile'],entity_digests=input_record['entity_digests'])

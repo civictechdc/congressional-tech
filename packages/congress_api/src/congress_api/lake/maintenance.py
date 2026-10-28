@@ -44,10 +44,10 @@ def _pin(pin,name):
             or pin['schema_id']<0 or (pin['snapshot'] is not None and
                 (not isinstance(pin['snapshot'],int) or isinstance(pin['snapshot'],bool)))):
         raise ValueError('Maintenance requires an exact native_table pin')
-    try:UUID(pin['table_uuid'])
+    try:table_uuid=str(UUID(pin['table_uuid']))
     except (ValueError,TypeError,AttributeError):
         raise ValueError('Maintenance requires a native table UUID') from None
-    return dict(pin,name=name)
+    return dict(pin,name=name,table_uuid=table_uuid)
 
 
 def _keys(keys):
@@ -148,10 +148,10 @@ def purge_generation(pin,*,table,kept_inputs,engine,work,catalog_root):
     def visit(value):
         if isinstance(value,dict):
             if 'metadata_location' in value or value.get('kind')=='native_table':
-                if (value.get('metadata_location')==selected['metadata_location']
-                        or value.get('table_uuid')==selected['table_uuid']):
+                kept=_pin({key:value[key] for key in PIN_FIELDS if key in value},'kept')
+                if (kept['metadata_location']==selected['metadata_location']
+                        or kept['table_uuid']==selected['table_uuid']):
                     raise ValueError('A kept release pins this native generation')
-                _pin({key:value[key] for key in PIN_FIELDS if key in value},'kept')
             for child in value.values():visit(child)
         elif isinstance(value,(list,tuple)):
             for child in value:visit(child)

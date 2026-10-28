@@ -376,11 +376,11 @@ Determinism is not a dedupe mechanism: one new document shifts every later row n
 
 #### 10.3.1 Pinned Inputs and Input Identity
 
-After the lake steps of §12, a publish run MUST pin, once, the current snapshots, the provenance set (every provenance key with its ETag) and the current spicy-regs generation of each reference family ([[PHASE-2]] §1.1), apply the completeness gate at them ([[DATA-MODEL]] §7.1), compute the input identity from them ([[DATA-MODEL]] §8.3), and run the model against exactly those inputs.
+After the lake steps of §12, a publish run MUST pin, once, the current snapshots, the provenance set (every provenance key with its ETag) and the current spicy-regs generation of each reference family ([[PHASE-2]] §1.1). It prepares a prospective input identity from that metadata ([[DATA-MODEL]] §8.3), then proves current completeness at those exact pins ([[DATA-MODEL]] §7.1) and that their actual receipt keys equal the retained list before accepting either an early skip or model output. A prospective match runs only the model's shared admission prefix; a changed input runs that prefix and the remaining model in one native context, without parsing provenance twice. Local file inputs retain their verified bytes under private names until native consumption completes; a custody change refuses before publication effects.
 
 #### 10.3.2 Early Skip
 
-If the input identity equals that of any input record of the live release, publish stops before the model runs. A review, registry or SQL change therefore publishes without waiting for a capture.
+If the prospective input identity equals that of any input record of the live release, publish admits its current pinned inputs (§10.3.1) and stops before the document model runs. Matching metadata never excuses missing rows in a rebuilt lake. A review, registry or SQL change therefore publishes without waiting for a capture.
 
 #### 10.3.3 Release ID
 

@@ -79,3 +79,46 @@ def test_existing_output_refuses_before_input_or_runtime_access(tmp_path,capsys)
     with pytest.raises(SystemExit) as error:main(['--spec',write_spec(tmp_path,value),'--execute'])
     assert error.value.code==2 and 'must be fresh' in capsys.readouterr().err
     assert not Path(value['scratch']).exists()
+
+
+def pinned_local_spec(tmp_path):
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_model_job import load_spec
+    value=spec(tmp_path)
+    source=tmp_path/'selected.parquet';source.write_bytes(b'selected A')
+    for name in ['captures','readings','filename_readings']:
+        value[name]=dict(kind='parquet',path=str(source),**file_pin(source))
+    decision=tmp_path/'review.jsonl';decision.write_bytes(b'{"selected":"A"}\n')
+    value['review_files']=[dict(key='provenance/reviews/fixture.jsonl',path=str(decision),**file_pin(decision))]
+    return load_spec(write_spec(tmp_path,value))
+
+
+@pytest.mark.parametrize('target',['captures','review_files'])
+def test_selected_local_files_stay_under_custody_during_consumption(tmp_path,target):
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path)
+    item=value[target][0] if target=='review_files' else value[target]
+    original=Path(item['path']);selected=original.read_bytes()
+    # Removing the original link changes ctime: custody must refuse acceptance,
+    # while the private retained path must still serve A rather than replacement B.
+    with pytest.raises(ValueError,match='custody changed'):
+        with model_arguments(value) as arguments:
+            entry=arguments[target][0] if target=='review_files' else arguments[target]
+            retained=Path(entry['path'])
+            assert retained!=original and retained.read_bytes()==selected
+            assert arguments['captures']['path']==arguments['readings']['path']==arguments['filename_readings']['path']
+            original.unlink();original.write_bytes(b'replacement B')
+            assert retained.read_bytes()==selected
+    assert original.read_bytes()==b'replacement B'
+
+
+@pytest.mark.parametrize('target',['captures','review_files'])
+def test_in_place_local_mutation_refuses_after_consumption(tmp_path,target):
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path)
+    item=value[target][0] if target=='review_files' else value[target]
+    with pytest.raises(ValueError,match='custody changed'):
+        with model_arguments(value) as arguments:
+            entry=arguments[target][0] if target=='review_files' else arguments[target]
+            Path(item['path']).write_bytes(b'in-place mutation')
+            assert Path(entry['path']).read_bytes()==b'in-place mutation'
