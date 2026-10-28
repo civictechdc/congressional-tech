@@ -123,10 +123,13 @@ def mapping_steps():
         CASE WHEN is_placeholder THEN 'line' ELSE e.reference_kind END AS reference_kind,
         CASE WHEN is_placeholder OR e.reference_kind='line' THEN selected_record_index ELSE 0 END AS list_ordinal,
         ordinal AS capture_index,"""+','.join('i.i_'+name for name in item_fields)+"""
-        FROM entry_facts e LEFT JOIN items i ON e.source_row_id=i.source_row_id
+        FROM entry_facts e LEFT JOIN (SELECT * FROM items
+            WHERE source_row_id IS NOT NULL AND item_index IS NOT NULL) i
+        ON (e.source_row_id IS NOT DISTINCT FROM i.source_row_id)
         AND (e.receipt_key IS NOT DISTINCT FROM i.receipt_key)
         AND (e.receipt_line IS NOT DISTINCT FROM i.receipt_line)
-        AND e.selected_record_index=i.item_index AND e.record_is_list AND NOT e.is_secondary""")
+        AND (e.selected_record_index IS NOT DISTINCT FROM i.item_index)
+        AND e.record_is_list AND NOT e.is_secondary""")
     list_record={name:first('i_'+name,metadata_field('record',name)) for name in item_fields}
     list_record['error_present']="(coalesce(i_error_present,false) OR "+metadata_field('record','error_present')+')'
     step('records','SELECT * EXCEPT(record,'+','.join('i_'+name for name in item_fields)+'),'+
