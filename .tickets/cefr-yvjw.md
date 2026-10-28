@@ -1,6 +1,6 @@
 ---
 id: cefr-yvjw
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T13:54:26Z
@@ -33,3 +33,7 @@ B6 workflow repair: isolated local exact-commit application clone plus uv sync -
 **2026-10-27T14:34:20Z**
 
 B6 local done: identity18pass; workflow99pass; independent code APPROVE (b6-workflow-review), architecture APPROVE+50pass (b6-workflow-arch). Dirty-root blocker resolved56265ada by clean exact-commit clone/locked env and external artifacts. Live hosted runs and B15 import/token remain owner gates, not exercised.
+
+**2026-10-28T01:41:57Z**
+
+Retro-review B1 fixed: contracts d345489f failed7 before behavior4bd92403; project focused31passed9.14s. Independent CODE and ARCH APPROVE no findings, reports run2/review-b1-{code,arch}/review.md. Setup/body/receipt failures cause zero push calls; push failure retains raw. Local bare Git/store only, no hosted/live operation.
