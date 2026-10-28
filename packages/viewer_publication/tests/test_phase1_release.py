@@ -91,3 +91,14 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     build_release(**dict(arguments,captures=subset/'captures.parquet'),output=tmp_path/'html-release',scratch=tmp_path/'html-model')
     html_detail=pq.read_table(tmp_path/'html-release/detail.parquet').to_pylist()[0]
     assert html_detail['saved_suffix']=='.gz' and html_detail['saved_bytes']==len(html)
+
+    imported=tmp_path/'imported-only';imported.mkdir()
+    registry=json.loads((Path(__file__).parents[3]/'model/registries/import-runs.json').read_text())
+    run=registry[0]
+    run_job(imported,engine,inputs=[dict(name='captures',kind='parquet',path=str(subset/'captures.parquet'))],steps=[],outputs=[
+        parquet_output(imported,'captures',"SELECT * EXCLUDE(run_id),'"+run['run_id'].replace("'","''")+"' AS run_id FROM captures",['receipt_key','receipt_line','capture_index'])])
+    build_release(**dict(arguments,captures=imported/'captures.parquet'),output=tmp_path/'import-release',scratch=tmp_path/'import-model')
+    import_list=pq.read_table(tmp_path/'import-release/list.parquet').to_pylist()[0]
+    import_detail=pq.read_table(tmp_path/'import-release/detail.parquet').to_pylist()[0]
+    assert import_list['first_captured'] is None and import_list['date_kind']=='import_day'
+    assert import_detail['in_archive_since'].isoformat()==run['date']
