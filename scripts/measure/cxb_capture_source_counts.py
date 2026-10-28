@@ -12,6 +12,8 @@ from pathlib import Path
 from time import perf_counter
 
 import duckdb
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from congress_api.lake.receipt_metadata import source_pins,recheck_source_pins
 
@@ -23,7 +25,7 @@ def literal(value):
 def count_sql(counter,files):
     sources=[f'''SELECT cast(__receipt_key AS VARCHAR) AS key,
         cast(__receipt_line AS BIGINT) AS source_line,__raw_line AS raw,0 AS source_id
-        FROM read_parquet({literal(counter)})''']
+        FROM counter_rows''']
     for number,item in enumerate(files,1):
         sources.append(f'''SELECT {literal(item['key'])} AS key,row_number() OVER () AS source_line,
             __raw_line AS raw,{number} AS source_id FROM read_csv({literal(item['path'])},
@@ -72,9 +74,10 @@ def count_sql(counter,files):
         FROM line_metrics GROUP BY key ORDER BY key'''
 
 
-def count_sources(*,counter,files,receipt_keys,work,source_qualifications,memory_bytes=2<<30,threads=1):
+def count_sources(*,counter,files,receipt_keys,work,source_qualifications,memory_bytes=2<<30,threads=1,batch_rows=32):
     """Return complete per-receipt counts, refusing missing or malformed sources."""
-    if (type(memory_bytes) is not int or memory_bytes<=0 or type(threads) is not int or not 1<=threads<=4):
+    if (type(memory_bytes) is not int or memory_bytes<=0 or type(threads) is not int or not 1<=threads<=4
+            or type(batch_rows) is not int or batch_rows<=0):
         raise ValueError('Independent counts require positive memory and at most four threads')
     keys=list(receipt_keys)
     if (not keys or any(not isinstance(k,str) or not k.startswith('receipts/') for k in keys)
@@ -99,11 +102,17 @@ def count_sources(*,counter,files,receipt_keys,work,source_qualifications,memory
         temp_directory=str(work/'spill'),max_temp_directory_size='512MiB',
         autoinstall_known_extensions='false',autoload_known_extensions='false')
     started=perf_counter()
+    columns=['__receipt_key','__receipt_line','__raw_line']
     try:
-        with duckdb.connect(config=config) as connection:
-            cursor=connection.execute(sql)
-            columns=[c[0] for c in cursor.description]
-            rows=[dict(zip(columns,r)) for r in cursor.fetchall()]
+        with pq.ParquetFile(counter) as parquet:
+            schema=pa.schema([parquet.schema_arrow.field(k) for k in columns])
+            with pa.RecordBatchReader.from_batches(schema,parquet.iter_batches(
+                    batch_size=batch_rows,columns=columns)) as reader:
+                with duckdb.connect(config=config) as connection:
+                    connection.register('counter_rows',reader)
+                    cursor=connection.execute(sql)
+                    names=[c[0] for c in cursor.description]
+                    rows=[dict(zip(names,r)) for r in cursor.fetchall()]
     except duckdb.Error as error:
         resource=isinstance(error,duckdb.OutOfMemoryException)
         (work/'error.json').write_text(json.dumps(dict(error_class=type(error).__name__,
@@ -126,7 +135,8 @@ def count_sources(*,counter,files,receipt_keys,work,source_qualifications,memory
     result=[{k:r[k] for k in public} for r in rows]
     recheck_source_pins(pins)
     (work/'metrics.json').write_text(json.dumps(dict(seconds=perf_counter()-started,
-        duckdb_version=duckdb.__version__,config=config,sources=pins,receipts=len(result),
+        duckdb_version=duckdb.__version__,config=config,counter_columns=columns,batch_rows=batch_rows,
+        sources=pins,receipts=len(result),
         expected_captures=sum(r['expected_captures'] for r in result)),indent=2)+'\n')
     (work/'counts.json').write_text(json.dumps(result,indent=2)+'\n')
     return result
@@ -138,12 +148,13 @@ def main(argv=None):
         parser.add_argument('--'+name,type=Path,required=True)
     parser.add_argument('--memory-bytes',type=int,default=2<<30)
     parser.add_argument('--threads',type=int,default=1)
+    parser.add_argument('--batch-rows',type=int,default=32)
     args=parser.parse_args(argv)
     inventory=json.loads(args.receipt_inventory.read_text())
     rows=count_sources(counter=args.counter,files=json.loads(args.files.read_text()),
         receipt_keys=[r if isinstance(r,str) else r['key'] for r in inventory],work=args.work,
         source_qualifications=json.loads(args.source_qualifications.read_text()),
-        memory_bytes=args.memory_bytes,threads=args.threads)
+        memory_bytes=args.memory_bytes,threads=args.threads,batch_rows=args.batch_rows)
     print(json.dumps(dict(receipts=len(rows),expected_captures=sum(r['expected_captures'] for r in rows))))
     return 0
 
