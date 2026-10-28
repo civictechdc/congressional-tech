@@ -113,7 +113,16 @@ def count_sources(*,files,receipt_keys,work,source_qualifications=None):
         if (not isinstance(row.get('path'),str) or not Path(row['path']).is_absolute()
                 or '..' in Path(row['path']).parts or type(row.get('size')) is not int or row['size']<0):
             raise ValueError('Invalid original receipt metadata')
-        row['etag']=single_put_md5(row.get('etag'))
+        if not isinstance(row.get('etag'),str) or not row['etag'].strip():
+            raise ValueError('Invalid original receipt ETag')
+        try:expected_md5=single_put_md5(row['etag'])
+        except ValueError:expected_md5=None
+        if row.get('md5') is not None:
+            supplied=single_put_md5(row['md5'])
+            if expected_md5 is not None and supplied!=expected_md5:
+                raise ValueError('Receipt checksum qualification contradicts its inventory')
+            expected_md5=supplied
+        row['_md5']=expected_md5
         row['path']=str(Path(row['path']).absolute())
         identities[row['path']]=custody_identity(row['path'])
         if identities[row['path']][2]!=row['size']:raise ValueError('Receipt size differs from inventory')
@@ -128,6 +137,8 @@ def count_sources(*,files,receipt_keys,work,source_qualifications=None):
     qualified=[r for r in selected if r['path'] in bindings]
     pins=source_pins(files=qualified,qualifications=bindings) if qualified else []
     by_path={p['path']:p for p in pins}
+    if any(r['_md5'] is None and str(Path(r['path']).resolve()) not in by_path for r in selected):
+        raise ValueError('Opaque receipt ETag requires an independent byte qualification')
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     started=perf_counter();result=[];proofs=[];details=[];parsed=0;last_progress=0
     _write(work/'progress.json',dict(receipts=0,of=len(keys),source_rows=0,rows=0,secs=0))
@@ -147,7 +158,7 @@ def count_sources(*,files,receipt_keys,work,source_qualifications=None):
                         shapes.update(line_shapes);anomalies.update(line_anomalies)
                         del encoded
             if custody_identity(path)!=identities[path]:raise ValueError('Receipt changed during source count')
-            if hashed.size!=source['size'] or hashed.md5.hexdigest()!=source['etag']:
+            if hashed.size!=source['size'] or (source['_md5'] is not None and hashed.md5.hexdigest()!=source['_md5']):
                 raise ValueError('Receipt compressed MD5 checksum differs from inventory')
             pin=by_path.get(str(Path(path).resolve()))
             if pin and hashed.sha.hexdigest()!=pin['sha256']:
@@ -158,7 +169,7 @@ def count_sources(*,files,receipt_keys,work,source_qualifications=None):
             result.append(dict(key=source['key'],source_rows=rows,uncompressed_bytes=byte_count,
                 list_items=items,expected_captures=captures,max_line_bytes=max_bytes,max_line_items=max_items))
             proofs.append(dict(key=source['key'],path=path,sha256=hashed.sha.hexdigest(),size=hashed.size,
-                etag=source['etag'],identity=identities[path]))
+                etag=source['etag'],md5=hashed.md5.hexdigest(),identity=identities[path]))
             details.append(dict(key=source['key'],shapes=dict(shapes),anomalies=dict(anomalies)))
             elapsed=perf_counter()-started
             if elapsed-last_progress>=2 or len(result)==len(keys):
