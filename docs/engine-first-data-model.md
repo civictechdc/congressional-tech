@@ -213,7 +213,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `requested_url`, `url` | string, nullable | Older lines take `_url`, `final_url`, `resolved_url` or `source_url`, the first present, when their ordinary address fields are absent. |
 | `context_url` | string, nullable | The source endpoint for this body. |
 | `member_path` | string, nullable | The endpoint is `(context_url, member_path)`. |
-| `h_content_disposition` | string, nullable | The flat download-name header: `record.response_headers["content-disposition"]`, else `record.response_headers["Content-Disposition"]`. The existing filename function reads it (§7.4). |
+| `h_content_disposition` | string, nullable | The flat download-name header: when root `writer.job` and `writer.commit` are both non-null, root `response_headers["content-disposition"]`, else root `response_headers["Content-Disposition"]`; then legacy `record.response_headers["content-disposition"]`, else `record.response_headers["Content-Disposition"]`. Unqualified root headers are ignored. The existing filename function reads it (§7.4). |
 | `http_status` | int, nullable | Final response status, from `http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses. |
 | `complete` | boolean, nullable | The entry's recorded completeness, else a recorded final-line value for the final response, else the older-line derivation below; `good_fetch` (§7.3) reads it. |
 | `retrieved_at` | timestamptz, nullable | Fetch time, with the older-entry fallbacks below. |
@@ -251,7 +251,7 @@ These values are **on demand, not phase-1 columns**:
   - keeps `expansion` and records `expanded` on an archive line whose members were captured; it keeps `writer_job` and `writer_commit` from the line's writer identity for invariant 3;
   - takes fetch time from the row's entry, then its line: `retrieved_at`, `captured_at`, `observed_at`, `parent_retrieved_at` or `_retrieved_at`, then `capture_date` at the start of its day, else null. `started_at`, `checked_at` and content dates are not fetch times. End of Term times remain the archive capture times;
   - accepts pointer elements as strings or integers and selects the corresponding narrow facts from a list-valued `record` (99 pinned lines), without changing primary row ordinals;
-  - reads the two flat download-name paths only, excluding prior copies and `source_metadata`; no prior arrays, header-item expansion, inline meeting hashes, other writer supplements or `links` are read during bulk ingest.
+  - reads the two flat download-name header names from root `response_headers` only when root `writer.job` and `writer.commit` are both non-null, taking lowercase before `Content-Disposition`, then falling back to the same two legacy `record.response_headers` names. Unqualified root headers, prior copies and `source_metadata` are excluded; no prior arrays, header-item expansion, inline meeting hashes, other writer supplements or `links` are read during bulk ingest.
 - **Read once:** each consumer reads a raw object at most once, selecting only its needed fields. D1 reads every receipt line once; D4 reads the four meeting files once in phase 2.
 - Not partitioned.
 - **Work list:** receipt keys not yet ingested, listed from date-shaped prefixes ([[ARCHITECTURE]] §8.2). The backfill also reads non-date segments.

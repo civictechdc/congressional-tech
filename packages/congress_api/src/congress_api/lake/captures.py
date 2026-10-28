@@ -162,7 +162,7 @@ def mapping_steps():
         family='entry_family',requested_url='requested',url='final_url',
         context_url=first('e_context_url','final_url'),
         member_path=first('e_member_path',"CASE WHEN NOT top_level AND reference_kind='capture' THEN e_original_path END"),
-        h_content_disposition=metadata_field('record','h_content_disposition'),
+        h_content_disposition=both('h_content_disposition'),
         http_status='cast(line_status AS INT)',complete='capture_complete',retrieved_at='fetched',
         sha256="arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)')",bytes='body_bytes',
         media_type='e_media_type',fidelity='e_fidelity',sniffed_format='e_sniffed_format',
