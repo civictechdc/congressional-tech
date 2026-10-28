@@ -21,19 +21,20 @@ def verifier():
     return module
 
 
-@pytest.fixture
-def evidence():
+def build_evidence(remaining=None):
     baseline = json.loads(BASELINE.read_text())
     assert len(baseline) == len(set(baseline)) == 36
+    keep = set(baseline) if remaining is None else set(remaining)
     jobs = []
     lines = []
     for index in range(6):
         name = f'Offline regressions ({index + 1}/6)'
-        cases = baseline[index::6]
-        jobs.append(dict(name=name, databaseId=index + 1, status='completed', conclusion='failure',
+        cases = [case for case in baseline[index::6] if case in keep]
+        conclusion = 'failure' if cases else 'success'
+        jobs.append(dict(name=name, databaseId=index + 1, status='completed', conclusion=conclusion,
                          startedAt='2026-10-28T10:00:00Z', completedAt='2026-10-28T10:05:00Z',
                          steps=[dict(name=name, status='completed', conclusion=conclusion) for name,conclusion in
-                                [('Set up job','success'), ('Test the complete offline partition','failure'),
+                                [('Set up job','success'), ('Test the complete offline partition',conclusion),
                                  ('Run actions/upload-artifact@v4','success'), ('Post actions/checkout@v5','success')]]))
         prefix = name + '\tUNKNOWN STEP\t2026-10-28T10:04:59.1234567Z '
         lines.extend(prefix + case + ' - fixture failure' for case in cases)
@@ -42,9 +43,14 @@ def evidence():
         lines.append(prefix + f'{failed} failed, 100 passed, {errors} errors, 5 skipped in 299.00s')
         selected = 105 + failed + errors - sum(case.startswith('SUBFAILED(') for case in cases)
         lines.append(prefix + f'collected {selected} items')
-        lines.append(prefix + 'CT_OFFLINE_EXIT_STATUS=1')
-    run = dict(headSha=HEAD, event='workflow_dispatch', status='completed', conclusion='failure', jobs=jobs)
+        lines.append(prefix + ('CT_OFFLINE_EXIT_STATUS=1' if cases else 'CT_OFFLINE_EXIT_STATUS=0'))
+    run = dict(headSha=HEAD, event='workflow_dispatch', status='completed', conclusion='failure' if keep else 'success', jobs=jobs)
     return run, lines, baseline
+
+
+@pytest.fixture
+def evidence():
+    return build_evidence()
 
 
 def test_exact_six_shards_remain_red_and_retain_both_sets(verifier, evidence):
@@ -184,3 +190,26 @@ def test_standard_pytest_banners_and_selected_collection_are_accepted(verifier, 
             payload = f'collected {selected + 2} items / 2 deselected / {selected} selected'
         decorated.append(before + 'Z ' + payload)
     assert verifier.verify(run, decorated, baseline, HEAD)['accepted'] is True
+
+
+def test_resolved_baseline_identities_are_retained_and_allowed(verifier):
+    baseline = json.loads(BASELINE.read_text())
+    resolved = {case for case in baseline if case.startswith('SUBFAILED(')}
+    assert len(resolved) == 5
+    run, lines, _ = build_evidence(set(baseline) - resolved)
+    result = verifier.verify(run, lines, baseline, HEAD)
+    assert result['accepted'] is True
+    assert result['new'] == []
+    assert result['missing'] == result['resolved'] == sorted(resolved)
+    assert result['hosted_status'] == 'red on 31 pre-existing baseline failures, no new failures; 5 resolved'
+
+
+def test_all_resolved_requires_actual_workflow_success(verifier):
+    run, lines, baseline = build_evidence(set())
+    result = verifier.verify(run, lines, baseline, HEAD)
+    assert result['accepted'] is True
+    assert result['observed'] == result['new'] == []
+    assert result['resolved'] == sorted(baseline)
+    assert result['hosted_status'] == 'green: no failures; 36 baseline identities resolved'
+    run['conclusion'] = 'failure'
+    assert verifier.verify(run, lines, baseline, HEAD)['accepted'] is False
