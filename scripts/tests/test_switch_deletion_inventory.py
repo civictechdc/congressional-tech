@@ -86,6 +86,11 @@ def test_engine_lifecycle_integration_tests_are_in_the_deferred_group(inventory)
     assert not any(fnmatch.fnmatch('tests/sql_jobs.rs',p) for p in group['patterns'])
 
 
+def test_current_native_cli_adapter_is_not_a_deletion_candidate(inventory):
+    group=next(g for g in inventory.seeds() if g['binding_row']==19)
+    assert not any(fnmatch.fnmatch('src/cli_args.rs',p) for p in group['patterns'])
+
+
 def test_shared_client_fallback_has_exact_path_and_preserved_public_api(inventory):
     group=next(g for g in inventory.seeds() if g['binding_row']==10)
     path='packages/docspec_client/src/docspec_client/transport.py'
