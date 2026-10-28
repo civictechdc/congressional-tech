@@ -35,6 +35,18 @@ def test_native_links_keep_context_base_member_and_split_positions(tmp_path):
         ('same-href-valid-context',dict(base_href=None,href='relative.pdf'),
             'https://fixture.test/one/relative.pdf',None),
         ('invalid-repaired-part',dict(href='https://fixture.test/a.pdfhttps://fixture.test/not-a-file'),None,None),
+        ('member-spaced-absolute',dict(member_path='html/page.html',href=' https://external.test/file.pdf'),
+            'https://external.test/file.pdf',None),
+        ('member-spaced-base',dict(member_path='html/page.html',base_href=' https://external.test/files/',href='file.pdf'),
+            'https://external.test/files/file.pdf',None),
+        ('member-network',dict(member_path='html/page.html',href=chr(92)*2+'external.test/file.pdf'),
+            'https://external.test/file.pdf',None),
+        ('member-internal-absolute',dict(member_path='html/page.html',href=' https://archive.invalid/file.pdf'),
+            'https://archive.invalid/file.pdf',None),
+        ('member-special-relative',dict(member_path='html/page.html',base_href=None,href='https:report.pdf'),
+            rows[0]['context_url'],'html/report.pdf'),
+        ('newline-literal',dict(href='https://fixture.test/a.pdf'+chr(10)+'https://fixture.test/b.pdf'),
+            'https://fixture.test/a.pdfhttps://fixture.test/b.pdf',None),
     ]
     rows.extend(dict(rows[0],**dict(changes,id=id)) for id,changes,_,_ in boundary)
     # Duplicate anchors keep separate publisher attribution but share target resolution.
