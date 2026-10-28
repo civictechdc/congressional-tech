@@ -13,7 +13,6 @@ from viewer_publication.constants import (
 )
 
 _LAZY_EXPORTS: dict[str, str] = {
-    'cli': 'viewer_publication.cli',
     'ConditionalManifestPublisher': 'viewer_publication.client',
     'Continuation': 'viewer_publication.continuation',
     'ContinuedPublicationClient': 'viewer_publication.client',
@@ -37,7 +36,6 @@ _LAZY_EXPORTS: dict[str, str] = {
     'prune_catalog_null_columns': 'viewer_publication.filename_exports',
     'prune_catalog_top_level_source_columns': 'viewer_publication.filename_exports',
     'prune_review_table': 'viewer_publication.compact_reviews',
-    'publication_cli': 'viewer_publication.publication_cli',
     'publish_manifest_pointer': 'viewer_publication.client',
     'require_publication_client': 'viewer_publication.client',
     'scalarize_catalog_columns': 'viewer_publication.filename_exports',

@@ -8,7 +8,6 @@ ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS_DIR = ROOT / 'scripts' / 'publication'
 
 PUBLICATION_WRAPPERS = [
-    'publish-viewer-r2.py',
     'apply-r2-edge-rules.py',
     'backfill-uncompressed-pdfs.py',
     'publish-docspec-runtime.py',
