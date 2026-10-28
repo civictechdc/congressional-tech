@@ -17,7 +17,7 @@ def blocks():
 
 
 def test_all_operator_blocks_have_valid_shell_syntax():
-    assert len(blocks()) == 3
+    assert len(blocks()) == 4
     for block in blocks():
         result = subprocess.run(['/bin/bash', '-n'], input=block, text=True, capture_output=True)
         assert result.returncode == 0, result.stderr
@@ -27,7 +27,7 @@ def test_readiness_precedes_every_effect_and_requires_complete_pins():
     forward = blocks()[0]
     prefix = forward.split('export REPO=', 1)[0]
     result = subprocess.run(['/bin/bash'], input=prefix, text=True)
-    ready = re.search(r'^WINDOW_READY=([01])$', prefix, re.M)
+    ready = re.search(r'^WINDOW_A_READY=([01])$', prefix, re.M)
     assert ready is not None
     if ready[1] == '0':
         assert result.returncode != 0
@@ -192,5 +192,100 @@ def test_baseline_mode_cannot_relax_the_publish_gate(dispatcher):
 
 
 def test_window_selects_only_the_lead_approved_hosted_baseline_gate():
-    assert 'dispatch_and_watch validate-explorer.yml --baseline-validation' in blocks()[1]
+    assert 'dispatch_and_watch validate-explorer.yml --baseline-validation' in blocks()[0]
+    assert 'dispatch_and_watch validate-explorer.yml' not in blocks()[1]
     assert 'a real hosted green' not in WINDOW.read_text()
+
+
+def test_window_a_finishes_hosted_gate_before_its_durable_completion_marker():
+    forward = blocks()[0]
+    assert 'WINDOW_A_READY=0' in forward or 'WINDOW_A_READY=1' in forward
+    assert 'WINDOW_B_READY' not in forward
+    assert forward.index('dispatch_and_watch validate-explorer.yml --baseline-validation') < forward.index('touch "$WINDOW/window-a-complete"')
+    assert 'operation=publish' not in forward
+    assert 'dispatch_and_watch deploy-pages.yml' not in forward
+
+
+def test_window_b_requires_acceptance_and_successful_window_a_before_publication(tmp_path):
+    phase = blocks()[1]
+    assert 'WINDOW_B_READY=0' in phase
+    gate = 'test -e "$WINDOW/window-a-complete"'
+    assert phase.index(gate) < phase.index('--check-binding')
+    assert phase.index(gate) < phase.index('gh workflow enable archive-jobs.yml')
+    prefix = phase.split('cd "$LANDING"', 1)[0].replace('WINDOW_B_READY=0', 'WINDOW_B_READY=1')
+    result = subprocess.run(['/bin/bash'], input=prefix, text=True, capture_output=True,
+        env={**os.environ,'WINDOW':str(tmp_path)})
+    assert result.returncode != 0
+    assert not (tmp_path / 'data-activation-started').exists()
+
+
+def test_window_a_records_pre_window_pipeline_and_pointer_before_live_effects():
+    forward=blocks()[0]
+    assert forward.index('previous-pipeline-revision.txt') < forward.index('gh workflow disable')
+    assert forward.index("evidence=w/'before-A-pointer.json'") < forward.index('gh workflow disable')
+    assert 'before-A-pointer.etag.json' in forward
+
+
+@pytest.mark.parametrize('scenario', ['success','cas409','cas412','lost_ack','status_failure','wrong_seed','wrong_status','missing_saved','bad_contract'])
+def test_after_data_rollback_uses_exact_saved_bytes_and_stops_on_uncertainty(tmp_path, monkeypatch, scenario):
+    import types
+    import hashlib
+    source=re.search(r"<<'PY_ROLLBACK'\n(.*?)\nPY_ROLLBACK",blocks()[3],re.S)
+    assert source is not None
+    seed='a'*64
+    (tmp_path/'accepted-seed-manifest.json').write_text(json.dumps(dict(release_id=seed,origin=dict(kind='seed_v5',display_only=True))))
+    (tmp_path/'accepted-publish-spec.json').write_text(json.dumps(dict(bucket='congressional-tech-raw')))
+    work=tmp_path/'post-data-rollback';evidence=work/'publish-evidence';evidence.mkdir(parents=True)
+    for name in ('contract','canary'):
+        (evidence/(name+'.json')).write_text(json.dumps(dict(status='failed' if scenario=='bad_contract' else 'passed',releaseId=seed,targets='provisional-emulated')))
+    saved=b'{ "version":1, "publisher_version":10, "catalog_id":"prior", "manifest":"old.json" }\n'
+    if scenario!='missing_saved':(evidence/'outgoing-pointer.json').write_bytes(saved)
+    calls=[]
+    client=object()
+    def connect_r2(**kwargs):
+        assert kwargs==dict(bucket='congressional-tech-raw',retries={'total_max_attempts':1});return client
+    def read_pointer(got,**kwargs):
+        assert got is client;calls.append('read_pointer');return dict(release_id='b'*64 if scenario=='wrong_seed' else seed,previous_release_id=None),'current-etag'
+    status=dict(status='published',release_id=seed,live_release=seed,live_release_basis='conditional_flip_acknowledged',input_kind='seed_v5',display_only=True)
+    if scenario=='wrong_status':status['status']='failed'
+    def publish(got,**kwargs):
+        assert got is client
+        assert kwargs==dict(bucket='congressional-tech-raw',pointer=saved,expected_etag='current-etag')
+        calls.append('pointer_put')
+        if scenario in ('cas409','cas412','lost_ack'):raise RuntimeError(scenario)
+        return types.SimpleNamespace(etag='restored-etag',sha256=hashlib.sha256(saved).hexdigest(),bytes=len(saved))
+    def write_status(got,**kwargs):
+        assert got is client
+        assert (work/'pointer-restore-ack.json').is_file()
+        ack=json.loads((work/'pointer-restore-ack.json').read_text())
+        assert ack['saved_pointer_sha256']==hashlib.sha256(saved).hexdigest()
+        calls.append('status_put')
+        if scenario=='status_failure':raise RuntimeError(scenario)
+    storage=types.ModuleType('congress_shared.storage');storage.connect_r2=connect_r2
+    archive=types.ModuleType('viewer_publication.archive_publish')
+    archive.CONTROL_BYTES=1<<20;archive.STATUS='status';archive._sha=lambda value:value
+    archive._read=lambda *args:(json.dumps(status).encode(),'status-etag')
+    archive.read_pointer=read_pointer;archive.write_status=write_status
+    writer=types.ModuleType('viewer_publication.client');writer.publish_manifest_pointer=publish
+    for name,module in [('congress_shared.storage',storage),('viewer_publication.archive_publish',archive),('viewer_publication.client',writer)]:monkeypatch.setitem(sys.modules,name,module)
+    monkeypatch.setenv('ROLLBACK_WINDOW',str(tmp_path))
+    if scenario=='success':exec(compile(source[1],str(WINDOW),'exec'),{})
+    else:
+        with pytest.raises((RuntimeError,ValueError,FileNotFoundError)):exec(compile(source[1],str(WINDOW),'exec'),{})
+    assert calls.count('pointer_put') <= 1
+    if scenario in ('cas409','cas412','lost_ack'):
+        assert calls==['read_pointer','pointer_put'];assert not (work/'pointer-restore-ack.json').exists()
+    elif scenario=='status_failure':
+        assert calls==['read_pointer','pointer_put','status_put'];assert (work/'pointer-restore-ack.json').is_file();assert not (work/'status-restored.json').exists()
+    elif scenario=='success':
+        assert calls==['read_pointer','pointer_put','status_put'];assert (work/'status-restored.json').is_file()
+    else:assert 'pointer_put' not in calls
+
+
+def test_after_data_rollback_restores_pair_before_prior_pages_and_workflow_states():
+    rollback=blocks()[3]
+    assert rollback.index('publish_manifest_pointer(client') < rollback.index('pointer-restore-ack.json')
+    assert rollback.index('git -C "$LANDING" push origin') < rollback.index('dispatch_and_watch deploy-pages.yml')
+    assert rollback.index('dispatch_and_watch deploy-pages.yml') < rollback.index('done < <(jq')
+    assert 'previous-pipeline-revision.txt' in rollback
+    assert 'archive-publish-evidence-$PUBLISH_RUN_ID-$PUBLISH_ATTEMPT' in rollback
