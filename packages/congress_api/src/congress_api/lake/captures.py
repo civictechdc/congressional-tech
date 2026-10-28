@@ -119,7 +119,7 @@ def mapping_steps():
     entry_slots=projection('entry',[(name,) for name in kinds])
     step('entry_facts','SELECT * EXCEPT(entry),'+','.join(
         scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+' FROM entry_positions')
-    step('selected_records',"""SELECT e.* EXCEPT(source_row_id,reference_kind),
+    step('selected_records',"""SELECT e.* EXCEPT(reference_kind),
         CASE WHEN is_placeholder THEN 'line' ELSE e.reference_kind END AS reference_kind,
         CASE WHEN is_placeholder OR e.reference_kind='line' THEN selected_record_index ELSE 0 END AS list_ordinal,
         ordinal AS capture_index,"""+','.join('i.i_'+name for name in item_fields)+"""
@@ -194,7 +194,7 @@ def mapping_steps():
         evidence_sha256="arrow_cast(decode("+both('recovery_sha')+",'hex'),'FixedSizeBinary(32)')",
         imported_at="CASE WHEN capture_mode='retained_import' THEN coalesce(try_cast("+both('recovery_imported')+" AS TIMESTAMP WITH TIME ZONE),try_cast(array_element(regexp_match(receipt_key,'/(\\d{4}-\\d{2}-\\d{2})/'),1) AS TIMESTAMP WITH TIME ZONE)) END",
         writer_job=metadata_field('line','writer_job'),writer_commit=metadata_field('line','writer_commit'))
-    diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',
+    diagnostics=['source_row_id','reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',
                  'is_secondary','list_ordinal','selected_record_index','body_sha','attempt','top_level','cutoff_eligible','invalid_lists',
                  'record_is_list','source_record_count','is_placeholder','primary_count']
     flags=dict(cutoff_candidate='attempt=0 AND top_level AND body_bytes=67108864 AND recorded_complete IS FALSE',
@@ -211,16 +211,40 @@ def mapping_steps():
         ON p.receipt_key=s.receipt_key AND p.receipt_line=s.receipt_line
         AND p.body_key=s.body_key AND p.body_sha=s.body_sha
         WHERE NOT p.is_secondary""")
-    step('item_references',"""SELECT *,bool_or(NOT is_placeholder AND reference_kind IN ('capture','file'))
-        OVER (PARTITION BY receipt_key,receipt_line,selected_record_index) AS has_primary_reference FROM enriched""")
-    step('retained_items',"""SELECT * FROM item_references WHERE NOT is_placeholder OR NOT has_primary_reference""")
-    step('windowed',"""SELECT *,
-        sum(CASE WHEN is_placeholder THEN 1 ELSE 0 END) OVER (PARTITION BY receipt_key,receipt_line
-            ORDER BY selected_record_index,capture_index ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS appended_index,
-        bool_or(cutoff_candidate) OVER (PARTITION BY receipt_key,receipt_line,selected_record_index) AS has_cutoff,
-        bool_or(completed_final) OVER (PARTITION BY receipt_key,receipt_line,selected_record_index) AS has_completed_final,
-        bool_or(body_sha IS NOT NULL AND NOT top_level) OVER
-            (PARTITION BY receipt_key,receipt_line,selected_record_index,attempt,context_url) AS has_member FROM retained_items""")
+    # Flags share the old partition keys. Only placeholder ranks need ordering;
+    # carry their narrow keys through that sort, never the wide capture fields.
+    # Hash groups/joins are expected O(N). The four consumers share one narrow
+    # retained_keys materialization; only P placeholders need O(P log P) order.
+    item_keys=['receipt_key','receipt_line','selected_record_index']
+    row_keys=['source_row_id',*item_keys,'capture_index']
+    member_keys=[*item_keys,'attempt','context_url']
+    def same(left,right,keys):
+        return ' AND '.join(f'({left}.{key} IS NOT DISTINCT FROM {right}.{key})' for key in keys)
+    inputs=[*row_keys,'is_placeholder','reference_kind','cutoff_candidate','completed_final',
+            'attempt','context_url','body_sha IS NOT NULL AND NOT top_level AS member_candidate']
+    step('window_inputs','SELECT '+','.join(inputs)+' FROM scalar_rows WHERE NOT is_secondary')
+    step('item_references','SELECT '+','.join(item_keys)+""",
+        bool_or(NOT is_placeholder AND reference_kind IN ('capture','file')) AS has_primary_reference
+        FROM window_inputs GROUP BY """+','.join(item_keys))
+    kept=[*row_keys,'is_placeholder','cutoff_candidate','completed_final','attempt','context_url','member_candidate']
+    step('retained_keys','SELECT '+','.join('n.'+name for name in kept)+',r.has_primary_reference '+
+        'FROM window_inputs n JOIN item_references r ON '+same('n','r',item_keys)+
+        ' WHERE NOT n.is_placeholder OR NOT r.has_primary_reference',materialize=True)
+    step('retained_items','SELECT p.*,k.has_primary_reference FROM enriched p JOIN retained_keys k ON '+
+        same('p','k',row_keys))
+    step('cutoff_flags','SELECT '+','.join(item_keys)+""",
+        bool_or(cutoff_candidate) AS has_cutoff,bool_or(completed_final) AS has_completed_final
+        FROM retained_keys GROUP BY """+','.join(item_keys))
+    step('member_flags','SELECT '+','.join(member_keys)+""",
+        bool_or(member_candidate) AS has_member FROM retained_keys GROUP BY """+','.join(member_keys))
+    step('append_ranks','SELECT '+','.join(row_keys)+""",
+        sum(1) OVER (PARTITION BY receipt_key,receipt_line ORDER BY selected_record_index,capture_index
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS appended_index
+        FROM retained_keys WHERE is_placeholder""")
+    step('windowed','SELECT p.*,r.appended_index,c.has_cutoff,c.has_completed_final,m.has_member '+
+        'FROM retained_items p JOIN cutoff_flags c ON '+same('p','c',item_keys)+
+        ' JOIN member_flags m ON '+same('p','m',member_keys)+
+        ' LEFT JOIN append_ranks r ON '+same('p','r',row_keys))
     final={name:name for name in COLUMNS}
     final.update(stored_suffix="coalesce(stored_suffix,secondary_suffix,'.gz')",
         stored_bytes='coalesce(stored_bytes,secondary_bytes)',
