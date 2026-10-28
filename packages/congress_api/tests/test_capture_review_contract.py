@@ -69,9 +69,9 @@ def body_key(data):
     return f'bodies/sha256/{digest[:2]}/{digest}'
 
 
-def writer(root, *, adapter=None):
+def writer(root, *, adapter=None, archive_limits=None):
     return ReceiptWriter(BodyStore(adapter or LocalAdapter(root)), identity=WRITER,
-        run_id='durable-before-inspection', write_date='2026-10-27', archive_limits=None)
+        run_id='durable-before-inspection', write_date='2026-10-27', archive_limits=archive_limits)
 
 
 def test_fetcher_returns_transfer_facts_without_inspection(tmp_path):
@@ -149,7 +149,7 @@ def test_missing_capture_inspection_stays_on_the_existing_sniff_work_list(tmp_pa
     args, digest = setup(fixture, body=PDF, copies=1, body_format=None)
     captures = pq.read_table(args['captures'])
     for name in ('sniffed_format', 'sniff_version'):
-        captures = captures.set_column(captures.schema.get_field_index(name), name,
+        captures = captures.append_column(name,
             pa.array([line['captures'][0][name]], type=pa.string()))
     pq.write_table(captures, args['captures'])
     args['local_root'] = root
@@ -205,3 +205,22 @@ def test_authored_identity_flags_are_unknown_before_work_or_connection(tmp_path,
             '--byte-budget', '1000', '--spool-budget', '1000', '--work', str(work)])
     assert error.value.code == 2 and 'unrecognized arguments' in capsys.readouterr().err
     assert not work.exists()
+
+
+
+def test_unavailable_inspection_defers_expansion_and_preserves_receipt(tmp_path):
+    from congress_api.retention.archive_members import ZipLimits
+    adapter, root = Adapter(PDF), tmp_path/'raw'
+    def unavailable(path):
+        assert (root/body_key(PDF)).read_bytes()==PDF
+        path.unlink()
+        raise SniffReadError('source became unavailable')
+    with TemporaryDirectory(dir=tmp_path) as spool, inspection_reads(adapter,unavailable):
+        result=fetch(adapter,spool)
+        key,line=writer(root,archive_limits=ZipLimits()).write(result,family='documents')
+    [capture]=line['captures']
+    assert (root/body_key(PDF)).read_bytes()==PDF
+    assert json.loads(gzip.decompress((root/key).read_bytes()))==line
+    assert capture['sniff_error']=='SniffReadError' and capture['expansion'] is None
+    assert capture['complete'] is True and line['outcome']=='stored'
+    assert capture['sniffed_format'] is None and capture['intact'] is None
