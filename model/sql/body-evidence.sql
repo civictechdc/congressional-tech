@@ -9,7 +9,7 @@ WITH stored AS (
  SELECT *,'bodies/sha256/'||substr(body_sha,1,2)||'/'||body_sha AS body_key FROM stored
 )
 SELECT b.body_sha,s.format,coalesce(v.intact,s.intact) AS intact,
- CASE WHEN v.intact IS NOT NULL THEN 'copy' WHEN s.intact IS NOT NULL THEN 'read' ELSE 'unchecked' END AS intact_basis,
+ CASE WHEN v.intact IS NOT NULL THEN 'copy' WHEN s.intact IS NOT NULL THEN s.intact_basis ELSE 'unchecked' END AS intact_basis,
  s.error_type,CASE WHEN v.body_sha IS NOT NULL AND s.format='pdf' THEN '.pdf'
  WHEN b.bare THEN '' ELSE '.gz' END AS suffix,
  CASE WHEN v.body_sha IS NOT NULL AND s.format='pdf' THEN pdf.size

@@ -96,7 +96,7 @@ def _reading_fields():
 def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
           sniff_version=None,parser_version=None,existing=None,unreadable_files=(),
           worker_factory=ParserWorker,unreadable_store=None):
-    """Stage missing body readings; never commit a table or write real raw data."""
+    """Stage missing readings; raw decisions require an explicitly supplied store."""
     instant(decided_at)
     version=current_version(parser)
     if parser_version is not None and parser_version!=version:
@@ -105,7 +105,8 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         sniff_version=current_version('sniff')
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     raw=Path(local_root).resolve()
-    inputs=[dict(name='captures',kind='parquet',path=str(Path(captures).resolve())),
+    inputs=[json_input(work,'parser_versions',[dict(parser='sniff',version=sniff_version)],parser='Utf8',version='Utf8'),
+            dict(name='captures',kind='parquet',path=str(Path(captures).resolve())),
             dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve()))]
     unreadable_schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')
     if unreadable_files:
@@ -123,8 +124,10 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         steps.append(dict(name='existing',sql='SELECT decode(body_hex,\'hex\') AS body_sha,* FROM existing_json'))
     steps.extend([
         dict(name='bodies',sql='SELECT DISTINCT sha256 AS body_sha FROM captures WHERE sha256 IS NOT NULL',materialize=True),
-        dict(name='known_formats',sql=f'''SELECT body_sha,format FROM existing WHERE parser='sniff'
-            AND parser_version={quote(sniff_version)} AND status='completed' '''),
+        dict(name='readings',sql='SELECT * FROM existing'),
+        *[dict(name=name.replace('-','_'),sql=(ROOT/'model/sql'/(name+'.sql')).read_text())
+          for name in ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts']],
+        dict(name='known_formats',sql='SELECT body_sha,format FROM sniff_facts'),
         dict(name='active_unreadable',sql='''SELECT u.* FROM unreadable u
             WHERE NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)''')])
     candidate=(f"NOT EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha)" if parser=='sniff' else
@@ -139,7 +142,7 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         outputs=[parquet_output(work,'work-list',sql,['body_sha'])],queries=[
         dict(name='conflicts',sql='''SELECT count(*) AS n FROM (
             SELECT body_sha FROM body_inventory GROUP BY body_sha HAVING count(*)>1
-            UNION ALL SELECT body_sha FROM known_formats GROUP BY body_sha HAVING count(DISTINCT format)>1)'''),
+            UNION ALL SELECT body_sha FROM sniff_conflicts)'''),
         dict(name='invalid_inventory',sql='''SELECT count(*) AS n FROM body_inventory
             WHERE body_sha IS NULL OR physical_key IS NULL OR relative_path IS NULL
                OR stored_bytes IS NULL OR stored_bytes<0 OR stored_gzip IS NULL''')])
@@ -229,3 +232,4 @@ def append(staged,**kwargs):
     from congress_api.lake.tables import append_rows
     return append_rows(staged['readings'],**kwargs,keys=PK,
         definition='readings:'+staged['parser']+':'+staged['parser_version'])
+
