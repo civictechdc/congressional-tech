@@ -141,3 +141,15 @@ def test_local_v6_publisher_gate_drains_and_refuses_probe_errors(tmp_path, statu
         env={**os.environ, 'PATH': str(tmp_path) + os.pathsep + os.environ['PATH'],
              'WINDOW': str(tmp_path), 'PGREP_STATUS': str(status)}, capture_output=True)
     assert (result.returncode == 0) == (expected == 0)
+
+
+def test_seed_switch_preserves_old_capture_until_raw_rebuild():
+    phase = blocks()[1]
+    assert 'seed: v5 catalog 596f08fa' in WINDOW.read_text()
+    assert 'accepted seed' in WINDOW.read_text()
+    assert 'accepted full D1/model/E4' not in WINDOW.read_text()
+    assert 'gh workflow enable capture-raw-sources.yml --repo "$REPO"' in phase
+    assert 'gh workflow enable update-data.yml --repo "$REPO"' in phase
+    assert 'gh workflow enable capture-archive.yml' not in phase
+    assert 'gh workflow disable archive-jobs.yml --repo "$REPO"' in phase
+    assert phase.index('dispatch_and_watch deploy-pages.yml') < phase.index('gh workflow enable capture-raw-sources.yml')
