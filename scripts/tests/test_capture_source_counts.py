@@ -43,6 +43,7 @@ def counter(tmp_path,records):
     ({'record':[{}, {}],'captures':[{'pointer':[0]},{'pointer':[1]}]},2,4),
     ({'record':[{}, {}],'captures':[{'pointer':['0']},{'pointer':['record','1']}]},2,4),
     ({'record':[{}, {}],'captures':[{'pointer':[0]},{'pointer':['0']}]},3,4),
+    ({'record':[{}, {}],'captures':[{},{}]},3,4),
     ({'record':[{}, {}],'captures':[{'pointer':[-1]},{'pointer':[3]}]},4,4),
     ({'record':[]},1,1),
     ({'record':[],'captures':[{'pointer':[0]}]},1,1),
