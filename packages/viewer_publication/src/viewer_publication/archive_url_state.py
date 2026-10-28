@@ -8,11 +8,12 @@ ROOT=Path(__file__).parents[4]
 
 def url_state_steps(*,root=ROOT):
     """Use shared good-fetch and URL keys, preserving explicit input diagnostics."""
-    sqls=[('lines',"""SELECT receipt_key,receipt_line,requested_url,max(family) AS family,
+    acquisition="mode='fetch' AND outcome NOT IN ('reference','saved-record')"
+    sqls=[('lines',f"""SELECT receipt_key,receipt_line,requested_url,max(family) AS family,
         max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at,
         max(http_status) AS http_status,max(outcome) AS outcome,
         count(DISTINCT json_array(family,http_status,outcome)) AS variants
-        FROM captures WHERE mode='fetch' AND outcome NOT IN ('reference','saved-record') GROUP BY receipt_key,receipt_line,requested_url"""),
+        FROM captures WHERE {acquisition} GROUP BY receipt_key,receipt_line,requested_url"""),
         ('good_lines',"SELECT DISTINCT receipt_key,receipt_line FROM good_fetches"),
         ('latest',"""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY requested_url ORDER BY
             retrieved_at DESC NULLS LAST,receipt_key DESC,receipt_line DESC) AS preference FROM url_state_lines
@@ -33,9 +34,9 @@ def url_state_steps(*,root=ROOT):
         ('page_contexts',"""SELECT DISTINCT encode(g.sha256,'hex') AS page_body,g.context_url,g.member_path
             FROM good_fetches g JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
             WHERE g.sha256 IS NOT NULL AND r.record_role IS DISTINCT FROM 'error_response'"""),
-        ('fetched_keys',"""SELECT DISTINCT k.url_key FROM (
-            SELECT requested_url AS url FROM captures WHERE mode='fetch'
-            UNION SELECT url FROM captures WHERE mode='fetch') f JOIN model_url_keys k ON f.url=k.url
+        ('fetched_keys',f"""SELECT DISTINCT k.url_key FROM (
+            SELECT unnest(make_array(requested_url,url)) AS url FROM captures WHERE {acquisition}
+            ) f JOIN model_url_keys k ON f.url=k.url
             WHERE k.error IS NULL AND k.url_key IS NOT NULL"""),
         ('scope_patterns','SELECT family,unnest(patterns) AS pattern FROM capture_scope'),
         ('scope_exclusions','SELECT family,unnest(exclusions) AS pattern FROM capture_scope'),
