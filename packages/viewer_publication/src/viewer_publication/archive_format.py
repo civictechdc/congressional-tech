@@ -119,6 +119,12 @@ def _content(path, value):
     return dict(name=path.name, sha256=sha256(data).hexdigest(), md5=md5(data).hexdigest(), size=len(data), rows=0, producer='archive', coverage={})
 
 
+def release_identity(schema_version,files):
+    """Hash the one content-only ordered file list declared by DM8.3."""
+    identity=[schema_version,[[item['name'],item['sha256'],item['size'],item['rows']] for item in files]]
+    return sha256(json.dumps(identity,ensure_ascii=False,separators=(',',':'),allow_nan=False).encode()).hexdigest()
+
+
 def _release_schema():
     # The interface registry is shared with the reader; policy metadata stays
     # content-only while all row transformations and Parquet writing stay native.
@@ -194,8 +200,7 @@ def _execute(inputs, steps, *, output, scratch, engine, origin, auxiliary=None, 
     files.append(_content(output / 'capture_scope.json', dict(version=1, entries=[]) if capture_scope is None else capture_scope))
     for name,value in (content_files or {}).items():
         files.append(_content(output/name,value))
-    identity = [1, [[item['name'], item['sha256'], item['size'], item['rows']] for item in files]]
-    release_id = sha256(json.dumps(identity, ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
+    release_id = release_identity(1,files)
     manifest = dict(schema_version=1, files=files, facet_counts=reports['facets'], release_id=release_id, origin=origin)
     _content(output / 'manifest.json', manifest)
     return manifest
