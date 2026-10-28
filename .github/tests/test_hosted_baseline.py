@@ -31,12 +31,18 @@ def evidence():
         name = f'Offline regressions ({index + 1}/6)'
         cases = baseline[index::6]
         jobs.append(dict(name=name, databaseId=index + 1, status='completed', conclusion='failure',
-                         startedAt='2026-10-28T10:00:00Z', completedAt='2026-10-28T10:05:00Z'))
+                         startedAt='2026-10-28T10:00:00Z', completedAt='2026-10-28T10:05:00Z',
+                         steps=[dict(name=name, status='completed', conclusion=conclusion) for name,conclusion in
+                                [('Set up job','success'), ('Test the complete offline partition','failure'),
+                                 ('Run actions/upload-artifact@v4','success'), ('Post actions/checkout@v5','success')]]))
         prefix = name + '\tUNKNOWN STEP\t2026-10-28T10:04:59.1234567Z '
         lines.extend(prefix + case + ' - fixture failure' for case in cases)
         failed = sum(case.startswith(('FAILED ', 'SUBFAILED(')) for case in cases)
         errors = sum(case.startswith('ERROR ') for case in cases)
         lines.append(prefix + f'{failed} failed, 100 passed, {errors} errors, 5 skipped in 299.00s')
+        selected = 105 + failed + errors - sum(case.startswith('SUBFAILED(') for case in cases)
+        lines.append(prefix + f'collected {selected} items')
+        lines.append(prefix + 'CT_OFFLINE_EXIT_STATUS=1')
     run = dict(headSha=HEAD, event='workflow_dispatch', status='completed', conclusion='failure', jobs=jobs)
     return run, lines, baseline
 
@@ -102,6 +108,10 @@ def test_added_failure_is_retained_even_with_matching_summary_counts(verifier, e
             before, tail = line.rsplit('Z ', 1)
             number, rest = tail.split(' ', 1)
             lines[index] = before + 'Z ' + str(int(number) + 1) + ' ' + rest
+        elif line.startswith('Offline regressions (1/6)') and 'collected ' in line:
+            before, tail = line.rsplit('collected ', 1)
+            number, rest = tail.split(' ', 1)
+            lines[index] = before + 'collected ' + str(int(number) + 1) + ' ' + rest
     result = verifier.verify(run, lines, baseline, HEAD)
     assert result['accepted'] is False
     assert result['new'] == ['FAILED packages/new.py::test_new']
@@ -121,7 +131,56 @@ def test_successful_shard_cannot_hide_an_infrastructure_failure(verifier, eviden
     errors = sum(case.startswith('ERROR ') for case in cases)
     lines.append(prefix + f'{failed} failed, 100 passed, {errors} errors in 299.00s')
     lines.append(last + '\tUNKNOWN STEP\t2026-10-28T10:04:59Z 100 passed in 299.00s')
+    selected = 100 + failed + errors - sum(case.startswith('SUBFAILED(') for case in cases)
+    lines = [line for line in lines if not (line.startswith(first) and 'collected ' in line)]
+    lines.append(prefix + f'collected {selected} items')
+    lines.append(last + '\tUNKNOWN STEP\t2026-10-28T10:04:59Z collected 100 items')
+    lines.append(last + '\tUNKNOWN STEP\t2026-10-28T10:04:59Z CT_OFFLINE_EXIT_STATUS=0')
+    run['jobs'][5]['steps'][1]['conclusion'] = 'success'
     run['jobs'][5]['conclusion'] = 'success'
     assert verifier.verify(run, lines, baseline, HEAD)['accepted'] is True
     run['jobs'][5]['conclusion'] = 'failure'
     assert verifier.verify(run, lines, baseline, HEAD)['accepted'] is False
+
+
+@pytest.mark.parametrize('change', ['interrupted', 'partial_exit_one', 'missing_exit', 'duplicate_exit',
+    'missing_collection', 'artifact_failure', 'post_failure', 'missing_test_step', 'wrong_test_step_result'])
+def test_matching_baseline_cannot_hide_incomplete_or_broken_steps(verifier, evidence, change):
+    run, lines, baseline = evidence
+    first = 'Offline regressions (1/6)'
+    if change == 'interrupted':
+        lines = [line.replace('CT_OFFLINE_EXIT_STATUS=1', 'CT_OFFLINE_EXIT_STATUS=2') if line.startswith(first) else line for line in lines]
+        lines.append(first + '\tUNKNOWN STEP\t2026-10-28T10:04:59Z ! KeyboardInterrupt !')
+    elif change == 'partial_exit_one':
+        for index,line in enumerate(lines):
+            if line.startswith(first) and 'collected ' in line:
+                before, tail = line.rsplit('collected ', 1)
+                number, rest = tail.split(' ', 1)
+                lines[index] = before + 'collected ' + str(int(number) + 1) + ' ' + rest
+    elif change == 'missing_exit':
+        lines = [line for line in lines if not (line.startswith(first) and 'CT_OFFLINE_EXIT_STATUS=' in line)]
+    elif change == 'duplicate_exit':
+        lines.append(next(line for line in lines if line.startswith(first) and 'CT_OFFLINE_EXIT_STATUS=' in line))
+    elif change == 'missing_collection':
+        lines = [line for line in lines if not (line.startswith(first) and 'collected ' in line)]
+    elif change == 'artifact_failure': run['jobs'][0]['steps'][2]['conclusion'] = 'failure'
+    elif change == 'post_failure': run['jobs'][0]['steps'][3]['conclusion'] = 'failure'
+    elif change == 'missing_test_step': run['jobs'][0]['steps'].pop(1)
+    elif change == 'wrong_test_step_result': run['jobs'][0]['steps'][1]['conclusion'] = 'success'
+    result = verifier.verify(run, lines, baseline, HEAD)
+    assert result['baseline'] == result['observed'] == sorted(baseline)
+    assert result['accepted'] is False
+
+
+def test_standard_pytest_banners_and_selected_collection_are_accepted(verifier, evidence):
+    run, lines, baseline = evidence
+    decorated = []
+    for line in lines:
+        before, payload = line.split('Z ', 1)
+        if '100 passed' in payload:
+            payload = '\x1b[31m================ ' + payload + ' ================\x1b[0m'
+        elif payload.startswith('collected '):
+            selected = int(payload.split()[1])
+            payload = f'collected {selected + 2} items / 2 deselected / {selected} selected'
+        decorated.append(before + 'Z ' + payload)
+    assert verifier.verify(run, decorated, baseline, HEAD)['accepted'] is True
