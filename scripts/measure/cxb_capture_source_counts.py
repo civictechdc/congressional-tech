@@ -104,8 +104,12 @@ def count_sources(*,counter,files,receipt_keys,work,source_qualifications,memory
             cursor=connection.execute(sql)
             columns=[c[0] for c in cursor.description]
             rows=[dict(zip(columns,r)) for r in cursor.fetchall()]
-    except duckdb.Error:
-        raise ValueError('Malformed or invalid source, or independent count resource refusal; see saved SQL') from None
+    except duckdb.Error as error:
+        resource=isinstance(error,duckdb.OutOfMemoryException)
+        (work/'error.json').write_text(json.dumps(dict(error_class=type(error).__name__,
+            kind='resource' if resource else 'invalid_source',detail=str(error) if resource else None),indent=2)+'\n')
+        raise ValueError('Malformed or invalid source, or independent count resource refusal: '+
+            type(error).__name__+'; see saved SQL and error.json') from None
     recheck_source_pins(pins)
     if {r['key'] for r in rows}!=set(keys):
         raise ValueError('Counted receipt keys differ from the complete original receipt inventory')
