@@ -1,20 +1,25 @@
 name: Install the approved local job runtime
-description: Check the credential-free Linux archive and offline doctor before any consumer.
+description: Install the private pinned binary with credential-free local job configuration.
 inputs:
-  url:
+  artifact:
     required: true
-    description: Approved public HTTPS archive URL.
-  sha256:
+    description: Approved DOCSPEC_RUNTIME_ARTIFACT JSON descriptor.
+  credentials:
     required: true
-    description: Approved archive SHA-256.
+    description: Private runtime download credentials; used only during this step.
+  account-id:
+    required: true
+    description: Cloudflare account hosting the private runtime bucket.
 runs:
   using: composite
   steps:
-    - name: Verify local runtime bytes and offline prerequisites
+    - name: Verify private runtime bytes and offline prerequisites
       shell: bash
       env:
-        DOCSPEC_LOCAL_RUNTIME_URL: ${{ inputs.url }}
-        DOCSPEC_LOCAL_RUNTIME_SHA256: ${{ inputs.sha256 }}
+        DOCSPEC_RUNTIME_ARTIFACT: ${{ inputs.artifact }}
+        DOCSPEC_ENGINE_CREDENTIALS: ${{ inputs.credentials }}
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.account-id }}
       run: >-
-        .venv/bin/python -I .github/scripts/setup-local-job-runtime.py
-        --directory "$RUNNER_TEMP/docspec-local-runtime" --github-env "$GITHUB_ENV"
+        .venv/bin/python -I .github/scripts/setup-native-runtime.py --local
+        --directory "$RUNNER_TEMP/docspec-local-runtime"
+        --output "$RUNNER_TEMP/docspec-local-runtime-check.json" --github-env "$GITHUB_ENV"

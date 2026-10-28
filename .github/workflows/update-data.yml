@@ -157,8 +157,9 @@ jobs:
       - uses: ./.github/actions/setup-python-project
       - uses: ./.github/actions/setup-local-job-runtime
         with:
-          url: ${{ vars.DOCSPEC_LOCAL_RUNTIME_URL }}
-          sha256: ${{ vars.DOCSPEC_LOCAL_RUNTIME_SHA256 }}
+          artifact: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
+          credentials: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
+          account-id: "174055408ff1560e60601c4d12c561c4"
 
       - name: Test source parsing and refresh decisions
         env:
