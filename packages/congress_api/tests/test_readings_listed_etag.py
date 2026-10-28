@@ -71,3 +71,27 @@ def test_listed_opaque_page_is_decoded_proved_and_parsed_by_actual_worker(tmp_pa
     rows=pq.read_table(result['readings']).to_pylist()
     assert [(r['parser'],r['status']) for r in rows]==[('html','completed'),('sniff','completed')]
     assert len(client.reads)==1
+
+
+@pytest.mark.parametrize('bare',['valid','missing','conflict','neither'])
+def test_direct_listing_chooses_recorded_copy_then_falls_back_by_owner_rule(tmp_path,bare):
+    args,stored,key=inputs(tmp_path)
+    captures=pq.read_table(args['captures']);rows=captures.to_pylist()
+    rows[1].update(stored_bytes=len(stored),stored_md5=hashlib.md5(stored).digest())
+    pq.write_table(pa.Table.from_pylist(rows,schema=captures.schema),args['captures'])
+    etag='"'+hashlib.md5(stored).hexdigest()+'"'
+    objects=[dict(key=key,size=len(stored),etag=etag),dict(key=key+'.gz',size=len(stored),etag=etag)]
+    if bare=='missing':objects=objects[1:]
+    if bare=='conflict':objects[0]['etag']='"wrong"'
+    if bare=='neither':objects=[]
+    path=tmp_path/'full-list.parquet'
+    pq.write_table(pa.Table.from_pylist(objects,schema=pa.schema([
+        ('key',pa.string()),('size',pa.int64()),('etag',pa.string())])),path)
+    args['body_inventory']=None
+    result=readings.plan(**args,work=tmp_path/'plan',parser=None,raw_ranges=True,body_listing=path)
+    [row]=pq.read_table(result['work_list']).to_pylist();report=result['raw_custody']
+    assert row['physical_key']==key+('.gz' if bare in {'missing','conflict'} else '')
+    assert report['missing_pins']==(1 if bare=='neither' else 0)
+    assert report['fallback_missing']==(1 if bare=='missing' else 2 if bare=='neither' else 0)
+    assert report['fallback_conflict']==(1 if bare=='conflict' else 0)
+    assert row['stored_gzip'] is False # An object suffix is not a storage-encoding observation.
