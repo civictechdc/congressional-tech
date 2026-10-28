@@ -389,3 +389,16 @@ def test_shared_native_probe_skips_empty_hidden_and_unreadable_saved_bodies(tmp_
         reports=run_job(tmp_path,engine,inputs=[],steps=[dict(name='details',sql=details)],
             outputs=[],queries=[probe_selectors_query()])
     assert reports['probe_selectors']==[dict(saved_row=3,link_key='0123456789abcdef')]
+
+
+@pytest.mark.parametrize('status',['measured','provisional-emulated','owner-gated'])
+def test_raw_startup_refuses_targets_without_real_device_approval_before_sdk(tmp_path,status):
+    from viewer_publication.archive_publish_job import load_spec,execute
+    value=publish_spec(tmp_path);target=Path(value['targets']['path']);targets=json.loads(target.read_text())
+    targets.update(status=status,basis='emulated' if status=='provisional-emulated' else 'unknown')
+    target.write_text(json.dumps(targets));value['targets']=dict(path=str(target),**file_pin(target))
+    path=tmp_path/'publish.json';path.write_text(json.dumps(value))
+    def never(*args,**kwargs):pytest.fail('Unqualified raw targets reached runtime or SDK')
+    with pytest.raises(ValueError,match='targets'):
+        execute(load_spec(path),runtime_factory=never,storage_factory=never)
+    assert not Path(value['work']).exists()
