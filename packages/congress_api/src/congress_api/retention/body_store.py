@@ -220,14 +220,16 @@ class R2Source:
     def __init__(self, client, bucket):
         self.client, self.bucket = client, bucket
 
-    def listing(self,prefix='bodies/'):
+    def listing(self,prefix='bodies/',*,preserve_etags=False):
         pages=self.client.get_paginator('list_objects_v2').paginate(Bucket=self.bucket,Prefix=prefix)
         for page in pages:
             for obj in page.get('Contents',[]):
-                yield dict(key=obj['Key'],size=obj['Size'],etag=obj['ETag'].strip('"'))
+                yield dict(key=obj['Key'],size=obj['Size'],
+                    etag=obj['ETag'] if preserve_etags else obj['ETag'].strip('"'))
 
     def get(self,key,*,if_match=None):
-        options={} if if_match is None else dict(IfMatch='"'+if_match+'"')
+        options={} if if_match is None else dict(IfMatch=if_match if if_match.startswith('"')
+            and if_match.endswith('"') else '"'+if_match+'"')
         return self.client.get_object(Bucket=self.bucket,Key=key,**options)
 
 
