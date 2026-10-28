@@ -1,6 +1,6 @@
 ---
 id: cefr-ng5q
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T11:10:11Z
@@ -16,3 +16,9 @@ Owner 110300Z requires original JSONL gzip batch inputs and a bounded representa
 
 Direct qualified proof fixture preserves exact outputs; family line extremes, shape/new3 required cases and byte cap tested; source authority packet from held accepted counts only.
 
+
+## Notes
+
+**2026-10-28T11:22:08Z**
+
+Implemented original gzip backfill/proof sources with family-largest line and explicit shape selections under a 2GiB logical cap; held same-pass authority packet prepared without payload rereads. Project runner proof/CLI/plan/execution 55 passed in47.45s on885; path guard followup17passed0.26s. Independent CODE review APPROVE after0e40a376 closes sole path normalization concern. Corpus native proof/full acceptance remain parent-owned.
