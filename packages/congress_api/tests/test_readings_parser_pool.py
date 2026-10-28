@@ -122,7 +122,7 @@ def test_cli_invalid_workers_refuse_before_spec_read(tmp_path,workers,capsys):
     with pytest.raises(SystemExit) as error:
         main(['--spec',str(tmp_path/'unopened'),'--parser-workers',str(workers)])
     assert error.value.code==2
-    assert 'Parser worker count' in capsys.readouterr().err
+    assert 'Parser workers' in capsys.readouterr().err
 
 
 def test_cli_pool_memory_refuses_before_transport(tmp_path,capsys):
@@ -131,7 +131,8 @@ def test_cli_pool_memory_refuses_before_transport(tmp_path,capsys):
     limits.write_text(json.dumps(dict(memory_bytes=512<<20)))
     config.write_text(json.dumps(dict(version=1,binary='/unopened',workspace=str(tmp_path/'native'),limits=str(limits))))
     spec=tmp_path/'spec.json';spec.write_text(json.dumps(dict(captures='unopened',body_inventory='unopened',
-        local_root='unopened',work=str(tmp_path/'work'),decided_at=STAMP,parser=None)))
+        local_root='unopened',work=str(tmp_path/'work'),decided_at=STAMP,parser=None,
+        apply=dict(catalog_root=str(tmp_path/'catalog'),table=dict(namespace=['archive'],name='readings')))))
     with pytest.raises(SystemExit) as error:
         main(['--spec',str(spec),'--engine-config',str(config),'--mode','daily','--execute',
             '--max-work-items','1','--raw-bucket','unopened','--parser-workers','2'])
