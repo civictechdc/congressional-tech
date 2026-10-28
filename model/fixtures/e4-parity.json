@@ -828,5 +828,11 @@
         "expected_imported_at": "2026-10-05"
       }
     }
-  ]
+  ],
+  "witness_twin": {
+    "body_key": "bodies/sha256/ff/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff.gz",
+    "filename": "saved-twin.html",
+    "source_url": "https://fixture.test/22.pdf",
+    "source_id": "c3a17177043f8de4143185391352767d8bfcdca0ea7c6e09d36625df1c416393"
+  }
 }

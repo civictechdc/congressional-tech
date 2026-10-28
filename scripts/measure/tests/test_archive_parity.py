@@ -148,7 +148,7 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
         parity.load_descriptor(path)
 
 
-def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False):
+def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False, bad_ranges=False, bad_lookup=False):
     import pyarrow as pa
     import pyarrow.parquet as pq
     from congress_api.retention.provenance import file_pin
@@ -168,7 +168,7 @@ def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False):
     manifest=convert_catalog(tmp_path/'documents.parquet',tmp_path/'filenames.parquet',tmp_path/'captures.parquet',tmp_path/'committees.parquet',
         catalog_id=parity.ORACLE_GENERATION,output=tmp_path/'release',scratch=tmp_path/'converter',engine=engine())
     release=tmp_path/'release';producer=tmp_path/'converter'
-    if bad_filename or bad_metadata:
+    if bad_filename or bad_metadata or bad_ranges or bad_lookup:
         # This is an authored bad native job, not a patch to production code.
         from hashlib import sha256
         job=json.loads((producer/'job.json').read_text())
@@ -181,6 +181,12 @@ def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False):
         if bad_metadata:
             assert 'b.bytes AS \"bytes\"' in normalized['sql']
             normalized['sql']=normalized['sql'].replace('b.bytes AS \"bytes\"','b.bytes+1 AS \"bytes\"').replace('coalesce(b.media_type,',"coalesce('application/x-corrupt',")
+        if bad_ranges:
+            details=next(step for step in job['steps'] if step['name']=='details')
+            details['sql']=details['sql'].replace('coalesce(s.src_len,cast(0 AS INT)) AS src_len','coalesce(s.src_len,cast(0 AS INT))+1 AS src_len')
+        if bad_lookup:
+            lookup=next(step for step in job['steps'] if step['name']=='url_keys')
+            lookup['sql']+=' WHERE false'
         release=tmp_path/'bad-release';release.mkdir()
         producer=tmp_path/'bad-producer';producer.mkdir()
         job['scratch']=str(producer/'native')
@@ -251,37 +257,40 @@ def test_public_bytes_cannot_change_after_the_pinned_producer_result(tmp_path):
 
 def test_model_witnesses_use_native_receipt_keys_and_match_only_source_evidence(tmp_path):
     """Caption loss, HTML addition and header names use actual capture facts."""
-    data=FIXTURE['integration']['members']
+    data=[*FIXTURE['integration']['members'],FIXTURE['witness_twin']]
     sources=[dict(receipt_key='receipts/a.jsonl',receipt_line=i,capture_index=0,source_id=m['source_id'],
         body_sha=m['body_key'].split('/')[-1][:-3],filename=m['filename'],source_url=m['source_url'],import_date=None)
         for i,m in enumerate(data)]
     captures=[dict(receipt_key=s['receipt_key'],receipt_line=s['receipt_line'],capture_index=0,
         format='vtt' if i==0 else 'html',mode='fetch',complete=True,http_status=200,outcome='stored',
         url=s['source_url'],requested_url=s['source_url'],retrieved_at='2026-10-27T00:00:00Z',
-        fidelity='exact',member_path=None,h_content_disposition='attachment; filename="capture.txt"',
+        fidelity='saved_text' if i==2 else 'exact',member_path=None,h_content_disposition='attachment; filename="capture.txt"',
         match_basis=None,original_url=None,recovered_url=None,publisher_requested=True)
         for i,s in enumerate(sources)]
     roles=[dict(receipt_key=s['receipt_key'],receipt_line=s['receipt_line'],capture_index=0,
         record_role='caption' if i==0 else 'document',is_real_file=i!=0) for i,s in enumerate(sources)]
     old=[dict(doc='old-'+str(i),source_id=s['source_id'],body_key=data[i]['body_key'],filename=s['filename'],source_url=s['source_url']) for i,s in enumerate(sources)]
     new=[dict(doc='new-'+str(i),**{k:v for k,v in r.items() if k!='doc'}) for i,r in enumerate(old)]
+    old.append(dict(doc='old-0',source_id='a'*64,body_key='bodies/sha256/ee/'+'e'*64+'.gz',filename='unobserved-real.pdf',source_url='https://fixture.test/unobserved.pdf'))
     inputs=[json_input(tmp_path,'capture_sources',sources,receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',
         source_id='Utf8',body_sha='Utf8',filename='Utf8',source_url='Utf8',import_date='Utf8'),
         json_input(tmp_path,'capture_evidence',captures,receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',
             **{k:'Utf8' for k in ['format','mode','outcome','url','requested_url','retrieved_at','fidelity','member_path','h_content_disposition','match_basis','original_url','recovered_url']},
             complete='Boolean',http_status='Int64',publisher_requested='Boolean'),
         json_input(tmp_path,'record_roles',roles,receipt_key='Utf8',receipt_line='Int64',capture_index='Int64',record_role='Utf8',is_real_file='Boolean'),
-        json_input(tmp_path,'page_facts',[],body_sha='Utf8',status='Utf8',fingerprint='Utf8',error_type='Utf8'),
+        json_input(tmp_path,'page_facts',[dict(body_sha=r['body_sha'],status='completed',fingerprint='9'*64,error_type=None) for r in sources[1:]],body_sha='Utf8',status='Utf8',fingerprint='Utf8',error_type='Utf8'),
         *[json_input(tmp_path,name,rows,doc='Utf8',source_id='Utf8',body_key='Utf8',filename='Utf8',source_url='Utf8') for name,rows in [('old_evidence_sources',old),('new_evidence_sources',new)]]]
     available={item['name']:set(f['name'] for f in item['schema']['fields']) for item in inputs}
     steps,missing=parity.model_witness_steps(available)
     assert 'direct_provider_same_text' in missing  # No retry attempt was invented.
     (tmp_path/'native').mkdir()
     reports=run_job(tmp_path/'native',engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='witnesses',
-        sql="SELECT old_doc,new_doc,subject,json_get_str(fact,'record_role') AS role,json_get_str(fact,'header_filename') AS header,evidence_ref FROM witnesses ORDER BY old_doc,new_doc,subject")])
+        sql="SELECT old_doc,new_doc,subject,json_get_str(fact,'record_role') AS role,json_get_str(fact,'header_filename') AS header,json_get_str(fact,'fingerprint') AS fingerprint,json_get_str(fact,'other_fingerprint') AS other_fingerprint,evidence_ref FROM witnesses ORDER BY old_doc,new_doc,subject")])
     assert any(r['old_doc']=='old-0' and r['role']=='caption' for r in reports['witnesses'])
     assert any(r['new_doc']=='new-1' and r['role']=='document' and r['header']=='capture.txt' for r in reports['witnesses'])
-    assert all(r['evidence_ref'].startswith('receipts/a.jsonl:') for r in reports['witnesses'])
+    assert all(r['evidence_ref'] is None or r['evidence_ref'].startswith('receipts/a.jsonl:') for r in reports['witnesses'])
+    assert all(r['role'] is None for r in reports['witnesses'] if r['old_doc']=='old-0' and r['subject']=='')
+    assert any(r['fingerprint']=='9'*64 and r['other_fingerprint']=='9'*64 for r in reports['witnesses'])
 
 
 def test_corrupt_native_download_metadata_is_not_invisible(tmp_path):
@@ -323,3 +332,18 @@ def test_recovery_causes_bind_each_visible_value_to_retained_evidence(tmp_path):
     inputs=[json_input(tmp_path,'observed_differences',rows,**{k:'Utf8' for k in rows[0]})]
     result=run_job(tmp_path,engine(),inputs=inputs,steps=parity.cause_steps(),outputs=[],queries=[dict(name='causes',sql='SELECT difference_id,cause FROM known_causes ORDER BY difference_id')])
     assert result['causes']==[dict(difference_id=field+':correct',cause='b7_owner_recoveries') for field in ['recovery.imported_at','recovery.kind']]
+
+
+def test_bad_native_attachment_ranges_refuse_before_parity(tmp_path):
+    template=f0_fixture(tmp_path,bad_ranges=True)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    with pytest.raises(ValueError,match='range|attachment'):
+        parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
+
+
+def test_missing_native_url_resolution_rows_are_unexplained(tmp_path):
+    template=f0_fixture(tmp_path,bad_lookup=True)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
+    assert result['counts']['unexplained']==4
+    assert result['decision_ready'] is False
