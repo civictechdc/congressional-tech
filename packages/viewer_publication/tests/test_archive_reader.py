@@ -4,7 +4,7 @@ from pathlib import Path
 import subprocess
 
 from docspec_client.client import NativeDatasets
-from viewer_publication.archive_release import build_fixture_release
+from viewer_publication.archive_fixture import build_fixture_release
 
 ROOT = Path(__file__).parents[3]
 

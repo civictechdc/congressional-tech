@@ -7,7 +7,7 @@ from docspec_client.client import NativeDatasets
 
 
 def test_metadata_rows_do_not_change_release_bytes_or_weaken_guards(tmp_path):
-    from viewer_publication.archive_release import build_fixture_release
+    from viewer_publication.archive_fixture import build_fixture_release
     from viewer_publication.archive_format import _execute
     engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     fixture=Path(__file__).parents[3]/'model/fixtures/hand-release.json'
