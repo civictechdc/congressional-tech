@@ -86,15 +86,22 @@ def test_config_or_build_contradictions_refuse_before_install(tmp_path,case,inst
 
 
 def test_local_archive_bootstrap_precedes_each_offline_ci_consumer():
-    for workflow,job in [('validate-explorer.yml','validate'),('update-data.yml','meetings'),('capture-archive.yml','capture')]:
+    for workflow,job in [('validate-explorer.yml','offline'),('validate-explorer.yml','validate'),('update-data.yml','meetings'),('capture-archive.yml','capture')]:
         value=yaml.load((ROOT/'.github/workflows'/workflow).read_text(),Loader=yaml.BaseLoader)
         steps=value['jobs'][job]['steps']
         setup=next(i for i,s in enumerate(steps) if s.get('uses')=='./.github/actions/setup-local-job-runtime')
-        consumer=next(i for i,s in enumerate(steps) if 'production-offline' in s.get('run','') or 'capture_schedule' in s.get('run',''))
+        consumer=next(i for i,s in enumerate(steps) if any(command in s.get('run','')
+            for command in ('production-offline','active-experiment-regression','capture_schedule')))
         assert setup<consumer
-        assert steps[setup]['with']==dict(url='${{ vars.DOCSPEC_LOCAL_RUNTIME_URL }}',sha256='${{ vars.DOCSPEC_LOCAL_RUNTIME_SHA256 }}')
+        assert steps[setup]['with']=={'artifact':'${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}',
+            'credentials':'${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}',
+            'account-id':'174055408ff1560e60601c4d12c561c4'}
     action=(ROOT/'.github/actions/setup-local-job-runtime/action.yml').read_text()
-    assert 'secrets.' not in action and 'setup-local-job-runtime.py' in action
+    assert 'secrets.' not in action and 'setup-native-runtime.py' in action
+    assert '--local' in action
+    helper=(ROOT/'.github/scripts/setup-native-runtime.py').read_text()
+    assert 'DOCSPEC_JOB_CONFIG=' in helper
+    assert 'DOCSPEC_BINARY=' in helper
 
 
 def test_existing_ci_commands_enroll_all_site_mechanism_checks():
@@ -126,3 +133,10 @@ def test_actual_browser_wrapper_runs_checked_children_and_stops_at_failure(tmp_p
     else:
         assert result.returncode==0 and len(commands)==3
         assert 'test:archive-heap-browser' in commands[2]
+
+
+def test_private_validation_runtime_keeps_main_trusted_source_boundary():
+    value=yaml.load((ROOT/'.github/workflows/validate-explorer.yml').read_text(),Loader=yaml.BaseLoader)
+    setup=next(step for step in value['jobs']['validate']['steps']
+               if step.get('uses')=='./.github/actions/setup-local-job-runtime')
+    assert setup['if'] == "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"

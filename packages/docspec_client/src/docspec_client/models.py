@@ -14,8 +14,8 @@ REQUIRED_LOOPBACK_CAPABILITIES = ('request-deadline', 'owned-stdin-eof')
 RESPONSE_LIMIT = 1 << 20  # 1 MiB bounded metadata response limit
 
 QUALIFIED_DOCSPEC_RUNTIME = {
-    'source_revision': 'c949c6762f001845d2933e55cb9d7cf237e80810',
-    'darwin_arm64_binary_sha256': 'f2ba93a6cea4bccd95bf7dc6cfbfff587482f2ea29aa096c6527371991dddfb6',
+    'source_revision': '9b59263a199b851220ecba9f31a4c06581c0b236',
+    'darwin_arm64_binary_sha256': '84572d8785e67d6902311f2f367565db5f8716e02bd7c79d591a26c89b73dc65',
     'build_features': ('remote',),
     'required_capabilities': REQUIRED_LOOPBACK_CAPABILITIES,
     'safety_prerequisites': (
