@@ -44,6 +44,7 @@ def test_measured_receipt_contradiction_refuses_even_without_index_change(tmp_pa
     case=population(tmp_path,assertion='f'*64,old_equals=old_equals)
     before=file_pin(case[1]);report=run(tmp_path,case)
     assert not report['valid'] and report['digest_conflicts']==1 and report['digest_repairs']==0
+    assert report['accepted_records']==0 and report['candidate_records']==1
     [conflict]=pq.read_table(tmp_path/'job/digest-conflicts.parquet').to_pylist()
     assert conflict['key']==case[4] and conflict['receipt_key']==LOCATOR
     assert conflict['receipt_stored_sha256']=='f'*64 and conflict['measured_stored_sha256']==case[5]
@@ -171,7 +172,9 @@ def test_native_receipt_concat_and_materialized_consumers_are_reused(tmp_path):
     from congress_api.retention.provenance import run_job
     case=population(tmp_path)
     receipts=[dict(captures=None,file_references=[]),dict(captures=[],file_references=None),
-        dict(captures=[{},{}],file_references=[{},{}])]
+        dict(captures=[{},{}],file_references=[{},{}]),
+        dict(captures=[{}],file_references=None),dict(captures=None,file_references=[{}]),
+        dict(captures=[None],file_references=[None])]
     with gzip.open(case[2][0]['path'],'wt') as out:
         for row in receipts:out.write(json.dumps(row)+'\n')
     run(tmp_path,case)
@@ -187,14 +190,16 @@ def test_native_receipt_concat_and_materialized_consumers_are_reused(tmp_path):
         dict(name='plan',sql='EXPLAIN SELECT * FROM receipt_refs'),
         dict(name='count',sql='SELECT count(*) AS n FROM receipt_refs')])
     physical=next(row['plan'] for row in result['plan'] if row['plan_type']=='physical_plan')
+    (probe/'physical.txt').write_text(physical)
     assert physical.count('UnnestExec')==1
     assert physical.count('StreamingTableExec')==1
-    assert result['count'][0]['n']==4
+    assert result['count'][0]['n']==8
     downstream=tmp_path/'consumer';downstream.mkdir()
-    result=run_job(downstream,engine(),inputs=job['inputs'],steps=job['steps'],outputs=job['outputs'],
+    result=run_job(downstream,engine(),inputs=job['inputs'],steps=job['steps'],outputs=[dict(item,path=str(downstream/Path(item['path']).name)) for item in job['outputs']],
         queries=[dict(name=name,sql='EXPLAIN SELECT * FROM '+name) for name in ('compared','orphans','work','digest_evidence')])
     for name,rows in result.items():
         physical=next(row['plan'] for row in rows if row['plan_type']=='physical_plan')
+        (downstream/(name+'-physical.txt')).write_text(physical)
         assert 'UnnestExec' not in physical and 'WindowAggExec' not in physical,(name,physical)
         assert '__raw_line' not in physical
     execution=json.loads((tmp_path/'job/inventory/result.json').read_text())
@@ -233,3 +238,14 @@ def test_new_unsampled_body_is_one_delta_and_new_sample_upgrades_old_baseline(tm
         engine=engine(),work=tmp_path/'upgrade',checked_at='2026-10-29T00:00:00Z',seed=seed)
     delta=[json.loads(line) for line in Path(report['records']).read_text().splitlines()]
     assert report['valid'] and any(row['key'] in prior_false and row['sha256_verified'] and row['stored_sha256'] for row in delta)
+
+
+def test_drifted_prior_measurement_does_not_authorize_unsampled_repair(tmp_path):
+    initial=population(tmp_path,30);outside=outside_sample(initial[0].values)
+    stored=initial[0].values[outside][0]
+    previous=[dict(key=outside,size=len(stored),etag='different-listed-object',sha256_verified=True,
+        stored_sha256=hashlib.sha256(stored).hexdigest(),checked_at='2026-10-26T00:00:00Z',job='prior')]
+    case=population(tmp_path,30,candidate=list(initial[0].values).index(outside),previous=previous)
+    report=run(tmp_path,case)
+    assert not report['valid'] and report['mismatches']==1 and report['digest_repairs']==0
+    assert outside not in case[0].reads and not Path(report['records']).exists()

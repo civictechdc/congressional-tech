@@ -31,6 +31,10 @@ def prepare_repair(captures,repairs,*,engine,work,expected):
         raise ValueError('Repair requires an explicit Int64 observation order')
     if not all(name in schema.names for name in (*LOCATOR,'stored_sha256','stored_bytes')):
         raise ValueError('Repair input lacks exact old capture locators')
+    proof={'receipt_stored_sha256','receipt_stored_bytes','measured_stored_sha256',
+           'sha256_verified','size','etag','checked_at','evidence_source'}
+    if not proof.issubset(pq.read_schema(repairs).names):
+        raise ValueError('Measured stored-byte evidence is required for repair')
     work=Path(work).resolve()
     work.mkdir(parents=True,exist_ok=False)
     inputs=captures['inputs'] if native else [dict(name='old',kind='parquet',path=str(Path(captures).resolve()))]
@@ -55,11 +59,22 @@ def prepare_repair(captures,repairs,*,engine,work,expected):
         projection.append(expression+' AS "'+name+'"')
     unchanged=[name for name in schema.names if name not in {'stored_sha256','stored_bytes'}]
     fields=','.join('"'+name+'"' for name in unchanged)
-    steps += [dict(name='evidence',sql="""SELECT key,receipt_key,receipt_line,pointer_json,
+    qualified="""sha256_verified IS TRUE AND regexp_like(stored_sha256,'^[a-f0-9]{64}$')
+        AND stored_sha256=measured_stored_sha256 AND stored_sha256=receipt_stored_sha256
+        AND stored_bytes IS NOT NULL AND stored_bytes>=0 AND size=stored_bytes
+        AND (receipt_stored_bytes IS NULL OR receipt_stored_bytes=size)
+        AND etag IS NOT NULL AND etag<>'' AND try_cast(checked_at AS TIMESTAMP WITH TIME ZONE) IS NOT NULL
+        AND evidence_source IN ('current_read','prior_verification')"""
+    steps += [dict(name='measured_repairs',sql=f"""SELECT key,receipt_key,receipt_line,pointer_json,
+        stored_sha256,stored_bytes,etag,CASE WHEN ({qualified}) THEN cast(0 AS BIGINT)
+        ELSE cast(1 AS BIGINT) END AS invalid_measurement FROM repairs""",materialize=True),
+        dict(name='evidence',sql="""SELECT key,receipt_key,receipt_line,pointer_json,
         min(stored_sha256) AS stored_sha256,min(stored_bytes) AS stored_bytes,
-        count(DISTINCT stored_sha256) AS hashes,count(DISTINCT stored_bytes) AS sizes
-        FROM repairs GROUP BY key,receipt_key,receipt_line,pointer_json"""),
-        dict(name='fixes',sql="SELECT * FROM evidence WHERE hashes=1 AND sizes<=1 AND regexp_like(stored_sha256,'^[a-f0-9]{64}$') AND (stored_bytes IS NULL OR stored_bytes>=0)"),
+        count(DISTINCT stored_sha256) AS hashes,count(DISTINCT stored_bytes) AS sizes,
+        count(DISTINCT etag) AS etags,
+        sum(invalid_measurement) AS invalid_measurements
+        FROM measured_repairs GROUP BY key,receipt_key,receipt_line,pointer_json"""),
+        dict(name='fixes',sql="SELECT * FROM evidence WHERE invalid_measurements=0 AND hashes=1 AND sizes=1 AND etags=1"),
         dict(name='patched',sql='SELECT '+','.join(projection)+' FROM old o LEFT JOIN fixes c ON '+match),
         dict(name='changed',sql='SELECT '+','.join(projection)+' FROM old o JOIN fixes c ON '+match+
              f' WHERE (o.stored_sha256 IS DISTINCT FROM {corrected_sha}) OR (c.stored_bytes IS NOT NULL AND (o.stored_bytes IS DISTINCT FROM c.stored_bytes))'),

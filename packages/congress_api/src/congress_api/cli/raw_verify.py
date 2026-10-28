@@ -34,6 +34,10 @@ def apply_staged(work,store):
     with records.open('rb') as source:
         if hashlib.file_digest(source,'sha256').hexdigest()!=report['records_sha256']:
             raise ValueError('Verification records changed after staging')
+    if report.get('accepted_records')==0:
+        if records.stat().st_size:
+            raise ValueError('Empty verification delta has nonempty records')
+        return dict(provenance=None,listed=report['listed'],checked=report['checked'])
     key=report['provenance_key']
     if not key.startswith('provenance/verification/'):
         raise ValueError('Invalid verification provenance key')
