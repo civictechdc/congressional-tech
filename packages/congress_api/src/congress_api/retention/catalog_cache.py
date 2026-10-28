@@ -89,7 +89,7 @@ class LocalStore:
         if key.startswith(RAW_PREFIXES):
             try:
                 return create_stored(LocalAdapter(self.root), key, BytesIO(data), 'application/octet-stream',
-                    operation='replace' if immutable is False else 'create', body_identity=False).outcome == 'stored'
+                    operation='replace' if immutable is False else 'create').outcome == 'stored'
             except RawNameCollision as error:
                 raise ValueError(f'Conflicting immutable object: {key}') from error
         path = self.root / key

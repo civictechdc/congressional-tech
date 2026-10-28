@@ -47,9 +47,11 @@ def test_sdk_file_upload_sends_complete_bytes_and_conditional_md5(tmp_path):
             ),
         )
         data = b"actual-sdk-body" * 10000
+        digest = hashlib.sha256(data).hexdigest()
+        key = f'bodies/sha256/{digest[:2]}/{digest}'
         path = tmp_path / "body"
         path.write_bytes(data)
-        assert R2Store(client, "test").put_file("bodies/object.gz", path)
+        assert R2Store(client, "test").put_file(key, path)
         headers, actual = received[0]
         assert actual == data
         assert headers["If-None-Match"] == "*"

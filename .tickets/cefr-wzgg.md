@@ -25,3 +25,7 @@ Local done: shared refusal/atomic/create-only store and all surviving raw writer
 **2026-10-28T01:35:51Z**
 
 Owner retro-review reopened B3: remove every body_identity bypass and its option/plumbing; validate file keys before source open. New sync/async/file/local malformed-name contracts written first. Project-runner baseline: 57 failed / 39 passed, expected red; existing four-file storage baseline: 102 passed. No production storage or network writes.
+
+**2026-10-28T01:37:03Z**
+
+Retro-review local repair: removed body_identity option/plumbing and all four bypass calls; R2 put_file validates names before opening source. New 96-case delegate/preparation contracts use recording fakes and local call profiling, no monkeypatch. Expected-red commit e5fe76cf: 57 failed / 39 passed. Focused production-offline now 198 passed in 1.23s with approved 48636e5 runtime. Positive write fixtures use SHA-derived names; legacy suffix support, MD5, collisions, retries and streaming assertions retained. Source wc 282/576/278 -> 282/577/278, net +1 early validation line. Loopback fixtures updated but not executed under no-network-writes scope. Awaiting parent CODE/ARCH review; no real storage writes.
