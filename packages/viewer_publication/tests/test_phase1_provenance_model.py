@@ -54,11 +54,11 @@ def test_native_recovery_decisions_and_original_attachment(tmp_path):
             dict(source_id='real-b',url_key='mirror'),dict(source_id='real-b-two',url_key='mirror')],source_id='Utf8',url_key='Utf8')]
     steps=[dict(name='captures',sql="SELECT *,decode(sha_hex,'hex') AS sha256 FROM raw_captures")]+current_steps()
     steps.extend([
-        dict(name='recovery_original_keys',sql="SELECT recovery_id,CASE receipt_line WHEN 1 THEN 'unique' WHEN 5 THEN 'editions' WHEN 6 THEN 'mirror' ELSE 'absent' END AS url_key FROM recovery_rows"),
-        dict(name='effective_filenames',sql="SELECT DISTINCT 'recovery:'||id AS input_id,cast(receipt_line AS VARCHAR)||'.pdf' AS filename FROM recovery_rows")])
+        dict(name='recovery_original_keys',sql="SELECT recovery_id,CASE receipt_line WHEN 1 THEN 'unique' WHEN 5 THEN 'editions' WHEN 6 THEN 'mirror' ELSE 'absent' END AS url_key FROM model_recovery_rows"),
+        dict(name='effective_filenames',sql="SELECT DISTINCT 'recovery:'||id AS input_id,cast(receipt_line AS VARCHAR)||'.pdf' AS filename FROM model_recovery_rows")])
     reports=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
         steps=steps+attachment_steps()+body_review_steps(),outputs=[],queries=[
-            dict(name='rows',sql='SELECT receipt_line,kind,decision_id,recovered_url FROM recovery_rows ORDER BY receipt_line'),
+            dict(name='rows',sql='SELECT receipt_line,kind,decision_id,recovered_url FROM model_recovery_rows ORDER BY receipt_line'),
             dict(name='attachments',sql='SELECT receipt_line,component FROM recovery_attachments ORDER BY receipt_line'),
             dict(name='fatal',sql='SELECT receipt_line,error FROM recovery_diagnostics WHERE is_fatal ORDER BY receipt_line'),
             dict(name='reviews',sql='SELECT id FROM current_reviews ORDER BY id'),
