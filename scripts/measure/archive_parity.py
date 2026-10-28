@@ -112,6 +112,7 @@ def load_descriptor(path):
     if set(pq.read_schema(members).names)!=MEMBER_COLUMNS:
         raise ValueError('Source-member sidecar must have the agreed seven columns')
     paths['source_members']=str(members)
+    paths['document_rows']=str(pinned_file(base,candidate.get('document_rows')))
     for name,pin in value.get('cause_relations',{}).items():
         source=pinned_file(base,pin)
         if not set(pin.get('required_columns',[]))<=set(pq.read_schema(source).names):
@@ -236,7 +237,7 @@ def validate_layout(loaded, *, engine, work):
     import pyarrow.parquet as pq
     value=loaded['descriptor'];base=loaded['base'];candidate=value['candidate'];paths=loaded['paths']
     job,result=producer_inputs(base,candidate,loaded['manifest'])
-    rows=pinned_file(base,candidate.get('document_rows'))
+    rows=Path(paths['document_rows'])
     if set(pq.read_schema(rows).names)!=set(['document_id','list_row',*LIST_COLUMNS,*DETAIL_COLUMNS]):
         raise ValueError('Private document rows need exactly the agreed public columns and IDs')
     paths['document_rows']=str(rows)
@@ -345,7 +346,7 @@ def normalization(loaded, *, directory):
         dict(name='old_committees',sql='''SELECT DISTINCT d.document_id AS doc,c.system_code FROM
             (SELECT document_id,unnest(committee_code) AS code FROM oracle_documents) d JOIN committee_codes c
             ON upper(d.code)=upper(c.code) OR (right(c.code,2)='00' AND upper(d.code)=upper(substr(c.code,1,length(c.code)-2)))''',materialize=True),
-        dict(name='old_times',sql="SELECT document_id,min(cast(try_cast(t AS TIMESTAMP WITH TIME ZONE) AT TIME ZONE 'America/New_York' AS DATE)) AS first_captured FROM (SELECT document_id,unnest(state_retrieved_at) AS t FROM oracle_documents) GROUP BY document_id",materialize=True),
+        dict(name='old_times',sql="SELECT document_id,min(cast(to_char(arrow_cast(try_cast(t AS TIMESTAMP),'Timestamp(Microsecond, Some(\"UTC\"))') AT TIME ZONE 'America/New_York','%Y-%m-%d') AS DATE)) AS first_captured FROM (SELECT document_id,unnest(state_retrieved_at) AS t FROM oracle_documents) GROUP BY document_id",materialize=True),
         dict(name='old_wide',sql='''SELECT d.document_id,d.filename,d.source_url,d.source_link_label,d.body_key,
             d.state_retrieved_at,d.date_token,d.document_kind,d.document_family,d.congress,d.format,
             d.measure_references,d.member_bioguide_id,d.hearing_package_id,d.committee_code,d.date_token_candidates,
@@ -367,7 +368,10 @@ def normalization(loaded, *, directory):
         new_ids="SELECT 'new' AS side,cast(s.list_row AS VARCHAR) AS doc,s.document_id,g.body_keys,g.source_ids FROM (SELECT DISTINCT document_id,list_row FROM source_members) s JOIN old_identity_groups g USING(document_id)"
     else:
         if {'capture_sources','record_roles'}<=set(loaded['descriptor'].get('cause_relations',{})):
-            steps.append(dict(name='model_real_sources',sql='SELECT DISTINCT c.source_id FROM capture_sources c JOIN record_roles r USING(receipt_key,receipt_line,capture_index) WHERE r.is_real_file',materialize=True))
+            real_step=dict(name='model_real_sources',sql='SELECT DISTINCT c.source_id FROM capture_sources c JOIN record_roles r USING(receipt_key,receipt_line,capture_index) WHERE r.is_real_file',materialize=True)
+            index=next(i for i,step in enumerate(steps) if step['name']=='new_bodies')
+            steps.insert(index,real_step)
+            next(step for step in steps if step['name']=='new_bodies')['sql']='SELECT DISTINCT cast(m.list_row AS VARCHAR) AS doc,m.body_key FROM source_members m JOIN model_real_sources r USING(source_id) WHERE m.body_key IS NOT NULL'
             body='CASE WHEN r.source_id IS NOT NULL THEN m.body_key END'
             table='source_members m LEFT JOIN model_real_sources r USING(source_id)'
         else:
@@ -531,8 +535,8 @@ CAUSES = {
         f"regexp_like({_text('original_url')},'^https?://([^/]+[.])?veterans[.]house[.]gov/') AND regexp_like({_text('recovered_url')},'^https?://([^/]+[.])?webharvest[.]gov/') AND {recovery_value_matches()}"),
     'publisher_link_kind': (['document_kind'], 'added',
         f"{_int('filename_kind_count')}=0 AND {_text('publisher_kind')}=value AND {_text('link_basis')}='saved_page'"),
-    'capture_header_names': (['filename','files'], 'added',
-        f"{_text('name_basis')}='content_disposition' AND {_text('header_filename')}=value"),
+    'capture_header_names': (['filename','files'], ['added','removed'],
+        f"{_text('name_basis')}='content_disposition' AND ((direction='added' AND {_text('header_filename')}=value) OR (direction='removed' AND {_text('header_filename')}<>value))"),
     'saved_text_exact_twins': (['body_keys','files','saved_body'], 'removed',
         f"{_text('fingerprint')} IS NOT NULL AND {_text('fingerprint')}={_text('other_fingerprint')} AND {_text('source_url')}={_text('other_source_url')} AND {_text('fidelity')}='saved_text' AND {_text('other_fidelity')}='exact'"),
     'govinfo_same_stem_groups': (['body_keys','files'], 'added',
@@ -623,7 +627,7 @@ def model_witness_steps(available, *, restrict_differences=False):
         if {'b7_recovery_decisions','b7_ready_imports','b7_source_time_minima'}<=set(available):
             steps.append(dict(name='e4_b7_active',sql='SELECT a.* FROM b7_recovery_decisions a LEFT ANTI JOIN b7_recovery_decisions b ON a.id=b.supersedes',materialize=True))
             steps.append(dict(name='e4_b7_recoveries',sql="""SELECT r.*,a.kind AS approved_kind,a.recovered_url AS approved_recovered_url,a.identity_note AS approved_identity_note,
-                cast(cast(try_cast(coalesce(t.retrieved_at,i.retrieved_at) AS TIMESTAMP WITH TIME ZONE) AT TIME ZONE 'America/New_York' AS DATE) AS VARCHAR) AS approved_imported_at,
+                to_char(arrow_cast(try_cast(coalesce(t.retrieved_at,i.retrieved_at) AS TIMESTAMP),'Timestamp(Microsecond, Some("UTC"))') AT TIME ZONE 'America/New_York','%Y-%m-%d') AS approved_imported_at,
                 i.stored_suffix AS approved_suffix,cast(i.bytes AS VARCHAR) AS approved_bytes
                 FROM e4_recovery_documents r JOIN e4_b7_active a ON r.id=a.id AND r.original_url=a.original_url AND r.body_sha256=a.body_sha256
                 LEFT JOIN b7_ready_imports i ON r.original_url=i.original_url AND r.body_sha256=i.body_sha256
@@ -659,8 +663,10 @@ def cause_steps(*, f0=False):
     branches = []
     for cause, (fields, direction, predicate) in CAUSES.items():
         scope = ','.join("'" + name + "'" for name in fields)
+        directions=direction if isinstance(direction,list) else [direction]
+        direction_sql=','.join("'"+name+"'" for name in directions)
         branches.append(f"""SELECT DISTINCT difference_id,'{cause}' AS cause,evidence_ref
-            FROM observed_differences WHERE field IN ({scope}) AND direction='{direction}'
+            FROM observed_differences WHERE field IN ({scope}) AND direction IN ({direction_sql})
             AND evidence_ref IS NOT NULL AND length(evidence_ref)>0 AND ({predicate})""")
     if f0:
         branches.append('SELECT difference_id,cause,evidence_ref FROM f0_cause_proofs')
