@@ -64,3 +64,9 @@ def source_steps(*,root=ROOT):
                       ('source_directories','source-directories')]:
         steps.append(dict(name=name,sql=(Path(root)/'model/sql'/(file+'.sql')).read_text(),materialize=True))
     return steps
+
+
+def link_steps(*,root=ROOT):
+    """Resolve each literal href once per body/address context, retaining attribution."""
+    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
+        for name in ['link-contexts','link-literals','link-parts','link-targets','link-errors','resolved-links']]
