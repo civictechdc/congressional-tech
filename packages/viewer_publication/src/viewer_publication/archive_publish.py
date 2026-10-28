@@ -257,13 +257,15 @@ def _seed_evidence(result,manifest,profile,listed):
     if excluded!=counts['excluded']:raise ValueError('Seed exclusion reasons do not reconcile')
     samples=report('seed_spot_checks');seen=set()
     fields={'filename_matches','format_matches','source_page_matches','meeting_matches'}
-    if len(samples)!=min(50,profile['document_rows']):raise ValueError('Seed requires fifty native spot checks')
+    sample_count=min(50,listed)
+    if len(samples)!=sample_count:raise ValueError('Seed requires fifty native spot checks')
     for row in samples:
         if (not isinstance(row,dict) or set(row)!=fields|{'source_row'}
                 or type(row['source_row']) is not int or not 0<=row['source_row']<profile['document_rows']
                 or row['source_row'] in seen or any(row[name] is not True for name in fields)):
             raise ValueError('Native seed spot check did not match its source')
         seen.add(row['source_row'])
+    if seen!=set(range(sample_count)):raise ValueError('Seed spot check ordinals are incomplete')
 
 
 def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
