@@ -9,7 +9,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from congress_api.lake.captures import COLUMNS,current_version
-from congress_api.lake.receipt_metadata import source_pins,recheck_source_pins
+from congress_api.lake.receipt_metadata import source_pins,recheck_source_pins,qualification_path
 from congress_api.lake.tables import table_input
 from congress_api.retention.provenance import file_pin,run_job
 
@@ -72,8 +72,12 @@ def _selected_qualifications(files,qualifications):
     bindings={str(Path(row['path']).resolve()):row['qualification'] for row in files
               if row.get('qualification')}
     paths={str(Path(row['path']).resolve()) for row in files}
+    external={}
     for path,authority in (qualifications or {}).items():
-        if str(Path(path).resolve()) in paths:bindings[str(Path(path).resolve())]=authority
+        canonical=str(qualification_path(path).resolve())
+        if canonical in external:raise ValueError("Duplicate source qualification binding")
+        external[canonical]=authority
+    bindings.update({path:authority for path,authority in external.items() if path in paths})
     return bindings
 
 
