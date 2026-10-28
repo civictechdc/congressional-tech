@@ -20,6 +20,15 @@ PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification
 REQUIRED={'version','engine_config',*TABLES,'parser_versions','catalog_version','output','scratch'}
 
 
+def provenance_record_kind(key):
+    """Recognize model records; other raw provenance remains identity metadata."""
+    parts=key.split('/') if isinstance(key,str) else []
+    if (len(parts)==3 and parts[0]=='provenance' and parts[1] in PROVENANCE.values()
+            and parts[2].endswith('.jsonl') and parts[2][:-6]):
+        return parts[1]
+    return None
+
+
 def _local(value,base):
     if not isinstance(value,str) or not value.strip() or urlsplit(value).scheme:
         raise ValueError('Expected an explicit local path')
@@ -81,8 +90,8 @@ def load_spec(path):
         for item in files:
             _pin(item,{'key','path','sha256','size'})
             key=item['key']
-            if not isinstance(key,str) or not key.startswith('provenance/'+family+'/'):
-                raise ValueError('Provenance pin has the wrong object family')
+            if provenance_record_kind(key)!=family:
+                raise ValueError('Expected a provenance record of the declared object family')
             validate_key(key)
             result[name].append(dict(item,path=_local(item['path'],base)))
     from congress_api.lake import readings,filenames
