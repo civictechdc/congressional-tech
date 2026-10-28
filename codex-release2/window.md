@@ -6,6 +6,8 @@ Only the lead executes these outward commands. B0 receipt rewriting and R2 bucke
 
 Current variable readback is the previous `c949c6762f001845d2933e55cb9d7cf237e80810` runtime: 220,185,776 bytes, SHA-256 `c14bfbd12b6ad958e9fa8cd8d2bc57feb014ef12431a9826ec078c631fdafd33`, bucket `congressional-tech-runtime`. Its complete JSON is in `rollback-runtime-artifact.json` in the packet. The application pin and variable must change together. Keep publishing, capture and Pages workflows paused during the window. Disabling a workflow preserves running jobs; the drain check below stops until every existing job finishes. Keep them paused after A and through B’s local seed publication, then restore the old capture and update jobs after Pages succeeds. The new capture stays disabled until the raw rebuild passes its release checks. A hosted check queued before the variable changes may need a rerun afterwards.
 
+The lead supplies `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY` through the environment before A, with access to the runtime bucket and existing raw control metadata. B also requires `DOCSPEC_CATALOG_TOKEN`, `DOCSPEC_S3_ACCESS_KEY_ID` and `DOCSPEC_S3_SECRET_ACCESS_KEY`; its raw SDK aliases use that same key pair. The existing hosted secret is `DOCSPEC_ENGINE_CREDENTIALS`; A changes only the public runtime descriptor and account variables. Credentials are never copied into the config, restart context, report or logs.
+
 B15 must already be on main before recording the rollback application commit. That preserves raw-before-push behavior even if the integration landing is rolled back. All Git operations below use the landing worktree, never the pinned rescue worktree.
 
 The lead also confirms that no local v6 publisher or opaque wrapper is running.
