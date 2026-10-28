@@ -76,3 +76,21 @@ def test_conflicting_duplicate_counter_facts_within_one_list_item_still_refuse(t
             source_qualifications=created_qualifications(counter),
             engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'stage')
     assert not (tmp_path/'stage/ingested-receipts.json').exists()
+
+
+@pytest.mark.parametrize('other_complete',[False,True])
+def test_cutoff_isolation_keeps_other_record_items_out_of_the_inference(tmp_path,other_complete):
+    stage=ingest(tmp_path,[dict(record=[dict(url='https://fixture.test/same',http_status=200,outcome='saved')]*2,
+        captures=[dict(body(pointer=[0,'content','body'],complete=False),bytes=64<<20),
+                  body(pointer=[1,'content','body'],complete=other_complete)])])
+    rows=pq.read_table(stage/'captures.parquet').to_pylist()
+    assert [r['outcome'] for r in rows]==['size_limit','stored']
+    assert [r['complete'] for r in rows]==[False,other_complete]
+
+
+def test_expansion_isolation_keeps_members_with_their_selected_record_item(tmp_path):
+    stage=ingest(tmp_path,[dict(record=[dict(url='https://fixture.test/same')]*2,captures=[
+        body(pointer=[0,'content','body']),
+        body(pointer=[0,'archive_members',0,'body'],member_path='inside.pdf'),
+        body(pointer=[1,'content','body'])])])
+    assert pq.read_table(stage/'captures.parquet')['expansion'].to_pylist()==['expanded',None,None]
