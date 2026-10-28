@@ -15,9 +15,10 @@ SELECT d.document_id AS doc_key,true AS body_expected,s.filename,a.title,
  m.in_archive_since,cast(NULL AS DATE) AS removed_on,cast(NULL AS VARCHAR) AS review_note,cast(NULL AS DATE) AS review_decided_at,
  coalesce(alt.alternates,array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR),
  'body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'size',cast(NULL AS BIGINT))),1,0)) AS alternates,
- a.package_id,a.facts,bodies.link_bodies
+ coalesce(pk.package_id,a.package_id) AS package_id,a.facts,bodies.link_bodies
 FROM document_identities d JOIN saved_files s ON d.component=s.component AND s.saved_rank=1
 JOIN source_annotations a ON s.source_id=a.source_id JOIN document_metadata m ON d.component=m.component
 JOIN body_evidence b ON s.body_sha=b.body_sha JOIN document_bodies bodies ON d.component=bodies.component
+LEFT JOIN document_packages pk ON d.component=pk.component
 LEFT JOIN document_alternates alt ON d.component=alt.component LEFT JOIN document_versions v ON d.component=v.component
 LEFT JOIN (SELECT source_id,max(media_type) AS media_type FROM capture_sources GROUP BY source_id) c ON s.source_id=c.source_id

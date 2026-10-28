@@ -147,7 +147,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
     steps += _sql_steps(['final-source-labels','final-recovery-attachments','document-link-keys'],root=root)
     steps += annotation_steps(catalog_version=catalog_version,root=root)
     steps += _sql_steps(['document-members','document-bodies','document-identities','saved-files','document-alternates',
-        'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals'],root=root)
+        'document-version-keys','document-versions','document-metadata','document-addresses','saved-recoveries','document-removals','document-packages'],root=root)
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
     from viewer_publication.archive_model_profile import completeness_steps,completeness_checks,profile_record
     from congress_api.lake.readings import bundle_version
