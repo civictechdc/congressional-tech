@@ -116,7 +116,12 @@ def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path):
     from test_archive_publish import Store
     model,_,_=real_model_spec(tmp_path)
     path=tmp_path/'template.json';path.write_text(json.dumps(model));model=load_spec(path)
-    store=Store();probes=[]
+    class PaginatedStore(Store):
+        def get_paginator(self,operation):
+            assert operation=='list_objects_v2'
+            from types import SimpleNamespace
+            return SimpleNamespace(paginate=lambda **request:[self.list_objects_v2(**request)])
+    store=PaginatedStore();probes=[]
     def probe(**context):
         probes.append(context['release_id'])
         return dict(status='passed',releaseId=context['release_id'],targets='measured')
