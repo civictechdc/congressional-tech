@@ -12,7 +12,7 @@ from uuid import UUID
 
 from congress_api.retention.body_store import validate_key
 from congress_api.retention.derived_files import file_identity, check_identity, retain_verified_file
-from congress_shared.custody import custody_identity
+from congress_shared.custody import custody_identity,VerifiedFile
 
 TABLES=('captures','readings','filename_readings')
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
@@ -113,7 +113,7 @@ def provenance_etag_md5(etag):
 
 
 @contextmanager
-def model_arguments(spec, *, provenance_etags=None):
+def model_arguments(spec, *, provenance_etags=None,verified_files=None):
     """Hold verified local inputs until native consumption completes successfully.
 
     The retained names prevent original-path replacement from selecting new bytes.
@@ -123,6 +123,8 @@ def model_arguments(spec, *, provenance_etags=None):
     for name in ['output','scratch']:
         path=Path(spec[name])
         if path.exists() or path.is_symlink():raise ValueError('Model output and scratch must be fresh')
+    if verified_files is None:verified_files={}
+    if not isinstance(verified_files,Mapping):raise ValueError('Verified input custody must be a path mapping')
     etags=None
     if provenance_etags is not None:
         keys={value['key'] for name in PROVENANCE for value in spec[name]}
@@ -151,9 +153,14 @@ def model_arguments(spec, *, provenance_etags=None):
                 if expected_md5 is not None and source.get('md5')!=expected_md5:
                     raise ValueError('Local provenance bytes differ from the selected ETag')
                 return str(verified.path)
-            verified=file_identity(path,additional_hashes={'md5':md5} if expected_md5 is not None else None)
+            verified=verified_files.get(str(path))
+            if verified is not None:
+                if not isinstance(verified,VerifiedFile):raise ValueError('Expected process-local verified input custody')
+                verified.require(path)
+            else:
+                verified=file_identity(path,additional_hashes={'md5':md5} if expected_md5 is not None else None)
             check_identity(verified,expected,key)
-            if expected_md5 is not None and verified['md5']!=expected_md5:
+            if expected_md5 is not None and verified.get('md5')!=expected_md5:
                 raise ValueError('Local provenance bytes differ from the selected ETag')
             destination=Path(directory)/(str(len(retained))+'-'+path.name)
             owned=retain_verified_file(path,destination,expected=verified,key=key)
