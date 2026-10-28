@@ -108,7 +108,13 @@ def test_validation_installs_private_runtime_only_for_trusted_sources(tmp_path, 
         assert install['if'] == "github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
         assert install['with']['artifact'] == '${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}'
     action = yaml.load((root / '.github/actions/setup-local-job-runtime/action.yml').read_text(), Loader=yaml.BaseLoader)
-    assert '--local' in action['runs']['steps'][0]['run']
+    runtime_steps = [step for step in action['runs']['steps']
+                     if 'setup-native-runtime.py' in step.get('run', '')]
+    assert len(runtime_steps) == 1
+    assert '--local' in runtime_steps[0]['run']
+    assert runtime_steps[0]['env']['DOCSPEC_ENGINE_CREDENTIALS'] == '${{ inputs.credentials }}'
+    assert all('DOCSPEC_ENGINE_CREDENTIALS' not in step.get('env', {})
+               for step in action['runs']['steps'] if step is not runtime_steps[0])
     assert any(step.get('run') == (
         'set +e\n'
         '.venv/bin/python scripts/dev.py test production-offline --shard ${{ matrix.shard }}/6 -- \\\n'
