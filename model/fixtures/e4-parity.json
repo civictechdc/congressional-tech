@@ -354,7 +354,37 @@
       "unclassified": 4,
       "invalid_ids": 0,
       "derived_only": 0
-    }
+    },
+    "difference_records": [
+      {
+        "difference_id": "c586e9d3659f429a2723427a9210fbfa43dd475e2edf2e31b4d39750045bbdaa",
+        "classification": "rule_change",
+        "note": "Fixture decision: rule_change",
+        "rule_ref": "ARCH 9.4",
+        "raw_signal": "receipts/fixture/2026-10-01/title.jsonl#1"
+      },
+      {
+        "difference_id": "bffc3a0e66e660494b6def88be5a28317d9f0ff811171e4b506afd14a07c379f",
+        "classification": "old_pipeline_error",
+        "note": "Fixture decision: old_pipeline_error",
+        "rule_ref": null,
+        "raw_signal": null
+      },
+      {
+        "difference_id": "c1629152edfd7d9832adf17ee85d0334132e72d070705d7ba7d6fceb41f58c77",
+        "classification": "derived_only_fact",
+        "note": "Fixture decision: derived_only_fact",
+        "rule_ref": null,
+        "raw_signal": null
+      },
+      {
+        "difference_id": "1e67498ad3b8c3a1bcea3e46662b19b6b80a643a9df4a940526413218ad84914",
+        "classification": "old_pipeline_error",
+        "note": "Fixture decision: old_pipeline_error",
+        "rule_ref": null,
+        "raw_signal": null
+      }
+    ]
   },
   "physical_order": {
     "rows": 131075,

@@ -117,6 +117,24 @@ def test_missing_identity_and_invalid_classification_records_refuse_completion(t
     assert result['decision_ready'] is False
 
 
+def test_classified_differences_stay_listed_and_derived_only_remains_a_blocker(tmp_path):
+    records=FIXTURE['integration']['difference_records']
+    result=parity.compare_relations(merge_inputs(tmp_path,records=records),engine=engine(),work=tmp_path/'comparison')
+    assert result['counts']['unexplained']==4
+    assert result['counts']['unclassified']==0
+    assert result['counts']['invalid_records']==0
+    assert result['counts']['derived_only']==1
+    assert result['decision_ready'] is False
+    assert sum(r['with_raw_signal'] for r in result['clusters'])==1
+    # A separately authored explicit decision changes the classification. It
+    # does not erase the difference or invent a large-cluster threshold.
+    approved=[dict(r,classification='old_pipeline_error') if r['classification']=='derived_only_fact' else r for r in records]
+    sub=tmp_path/'decided';sub.mkdir()
+    complete=parity.compare_relations(merge_inputs(sub,records=approved),engine=engine(),work=sub/'comparison')
+    assert complete['counts']['unexplained']==4 and complete['counts']['derived_only']==0
+    assert complete['decision_ready'] is True
+
+
 def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path):
     path=tmp_path/'parity-inputs.json'
     path.write_text(json.dumps(dict(version=1,oracle=dict(selector=dict(path='missing',sha256='0'*64,size=0)))))
