@@ -16,6 +16,7 @@ import gzip
 from hashlib import sha256
 import json
 from pathlib import Path
+from native_test_helpers import require_native_docspec
 import tempfile
 import unittest.mock as mock
 
@@ -110,6 +111,7 @@ def test_build_arrow_table_rejects_empty_or_null_primary_keys(bad_key):
 @pytest.mark.parametrize("bad_val", [None, "", "   "])
 def test_upsert_batch_rejects_empty_or_null_keys_and_order_by(tmp_path: Path, bad_val):
     """Verify _upsert_batch enforces non-null/non-empty PK and order_by."""
+    require_native_docspec()
     with WeeklyRetentionTables(tmp_path) as wt:
         # Invalid primary key
         with pytest.raises(ValueError, match="primary key column 'event_id' cannot be empty or null"):
@@ -138,6 +140,7 @@ def test_upsert_batch_rejects_empty_or_null_keys_and_order_by(tmp_path: Path, ba
 
 def test_operation_id_does_not_call_write_table(tmp_path: Path):
     """Verify _operation_id does not call pyarrow.parquet.write_table."""
+    require_native_docspec()
     with WeeklyRetentionTables(tmp_path) as wt:
         table = build_arrow_table("house_events", [{
             "event_id": "ev1",
@@ -155,6 +158,7 @@ def test_operation_id_does_not_call_write_table(tmp_path: Path):
 
 def test_operation_id_determinism_and_sensitivity(tmp_path: Path):
     """Verify _operation_id is deterministic and sensitive to single-cell mutations."""
+    require_native_docspec()
     with WeeklyRetentionTables(tmp_path) as wt:
         t1 = build_arrow_table("house_events", [{
             "event_id": "ev1",

@@ -344,3 +344,85 @@ def test_real_old_binary_refuses_required_protocol_before_workspace_or_material_
         with pytest.raises(DocSpecFailure, match='protocol 1'):
             native.latest('unused')
     assert not workspace.exists()
+
+
+def test_exact_pin_get_retries_only_transient_transport_before_stream(tmp_path, monkeypatch):
+    from docspec_client import client as module
+    pin = dict(id='initial', dataset=dict(dataset='read-only'), manifest=dict(digest='exact'))
+    calls, pauses = [], []
+    failure = DocSpecFailure(['GET', '/pin'], subprocess.CompletedProcess([], 500,
+        stderr='Failed to execute http request to /v1/config'))
+    failure.status_code = 500
+    def request(method, path, *, deadline):
+        calls.append((method, path, deadline))
+        if len(calls) < 3:
+            raise failure
+        return deepcopy(pin)
+    monkeypatch.setattr(module.time, 'sleep', pauses.append)
+    with NativeDatasets('unused', tmp_path) as native:
+        deadline = time.monotonic() + 30
+        host = SimpleNamespace(request=request)
+        native._verify_pin(host, '/pin', pin, deadline)
+        native._verify_pin(host, '/pin', pin, deadline)
+        assert calls == [('GET', '/pin', deadline)] * 3
+        assert pauses == [0.25, 0.5]
+        # Fresh bytes that differ from the selected pin still refuse after retry.
+        wrong = dict(pin, id='other')
+        with pytest.raises(ValueError, match='exact pin'):
+            native._verify_pin(host, '/pin', wrong, deadline)
+        assert len(calls) == 4
+
+
+@pytest.mark.parametrize('status,message,remaining,attempts', [
+    (500, 'Failed to execute http request', 30, 3),
+    (500, 'Failed to execute http request', 0.1, 1),
+    (422, 'Failed to execute http request', 30, 1),
+    (403, 'permission denied', 30, 1),
+    (500, 'invalid schema', 30, 1),
+])
+def test_exact_pin_retry_preserves_failure_and_original_deadline(tmp_path, monkeypatch, status, message, remaining, attempts):
+    from docspec_client import client as module
+    failure = DocSpecFailure(['GET', '/pin'], subprocess.CompletedProcess([], status, stderr=message))
+    failure.status_code = status
+    calls, pauses = [], []
+    monkeypatch.setattr(module.time, 'monotonic', lambda: 100.0)
+    monkeypatch.setattr(module.time, 'sleep', pauses.append)
+    def request(method, path, *, deadline):
+        calls.append((method, path, deadline))
+        raise failure
+    with NativeDatasets('unused', tmp_path) as native:
+        with pytest.raises(DocSpecFailure) as error:
+            native._verify_pin(SimpleNamespace(request=request), '/pin', dict(id='initial'), 100+remaining)
+        assert error.value is failure
+        assert calls == [('GET', '/pin', 100+remaining)] * attempts
+        assert len(pauses) == attempts-1
+        assert not native._verified_pins
+
+
+def test_transient_pin_get_retry_delivers_one_exact_source_stream(tmp_path, monkeypatch):
+    from docspec_client import client as module
+    pin = dict(dataset=dict(dataset='fixture'), id='initial', manifest=dict(digest='digest'))
+    table = pa.table({'row': [7, None, 7]})
+    output = pa.BufferOutputStream()
+    with pa.ipc.new_stream(output, table.schema) as writer:
+        writer.write_table(table)
+    body, calls, pauses = output.getvalue().to_pybytes(), [], []
+    def response(request):
+        calls.append((request.method, request.url.path))
+        if not request.url.path.endswith('/arrow/source'):
+            if len(calls) < 3:
+                return httpx.Response(500, json=dict(message='Failed to execute http request to /v1/config'))
+            return httpx.Response(200, json=pin)
+        return httpx.Response(200, stream=httpx.ByteStream(body), headers={
+            'docspec-dataset': 'fixture', 'docspec-version': 'initial',
+            'docspec-manifest-blake3': 'digest', 'content-type': 'application/vnd.apache.arrow.stream'})
+    monkeypatch.setattr(module.time, 'sleep', pauses.append)
+    with NativeDatasets('unused', tmp_path) as native, httpx.Client(
+            base_url='http://fixture', transport=httpx.MockTransport(response)) as client:
+        monkeypatch.setattr(native, '_execution_host', lambda: host_for_client(client))
+        with native.source_batches(pin, schema=table.schema) as reader:
+            assert reader.read_all().equals(table, check_metadata=True)
+        assert not native._responses
+    assert calls == [('GET', '/datasets/fixture/versions/initial')] * 3 + [
+        ('GET', '/datasets/fixture/versions/initial/arrow/source')]
+    assert pauses == [0.25, 0.5]

@@ -1,7 +1,7 @@
 """Publish the selected catalog to R2 without writing any archive/catalog keys."""
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -544,8 +544,28 @@ def upload(client, root, manifest, *, previous_etag, selected_etag, public_url=P
             print(f'Uploaded {name}: {path.stat().st_size:,} bytes', flush=True)
         return path.stat().st_size
 
-    with ThreadPoolExecutor(max_workers=6) as pool:
-        total = sum(pool.map(transfer, files.items()))
+    workers, total = 6, 0
+    uploads, pending, exhausted = iter(files.items()), set(), False
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        try:
+            while True:
+                # Bound submitted work, including completed but unconsumed jobs.
+                while not exhausted and len(pending) < workers:
+                    item = next(uploads, None)
+                    if item is None:
+                        exhausted = True
+                        break
+                    pending.add(pool.submit(transfer, item))
+                if not pending:
+                    break
+                done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                # Check this whole batch before admitting replacement uploads.
+                for future in done:
+                    total += future.result()
+        except BaseException:
+            for future in pending:
+                future.cancel()
+            raise
     put_json(client, PREFIX + pointer['manifest'], manifest, IfNoneMatch='*')
     probe(public_url, pointer, manifest)
     # Keep old review links usable. Never replace an existing catalog locator.

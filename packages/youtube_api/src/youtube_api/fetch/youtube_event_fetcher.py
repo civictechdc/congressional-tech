@@ -52,6 +52,7 @@ class YoutubeEventFetcher:
         committee_index: int,
         csv_path: Path,
         tinydb_dir: Path,
+        channel_ids: dict[str, str] | None = None,
     ):
         """
         Initialize the YouTube API client with the provided API key.
@@ -70,7 +71,7 @@ class YoutubeEventFetcher:
         )
 
         self.channels_tb = self.tinydb.table("youtube_channels")
-        self.channel_ids = get_channel_id_overrides(csv_path)
+        self.channel_ids = get_channel_id_overrides(csv_path) if channel_ids is None else channel_ids
 
     def get_channel(self, channel_handle: str) -> dict | None:
         """
@@ -213,6 +214,7 @@ class YoutubeEventFetcher:
         break_flag = False
         fetches = 0
         added = 0
+        existing = None
         while True:
             ## get this page's videos
             try:
@@ -236,8 +238,10 @@ class YoutubeEventFetcher:
             total_results = playlistItemsResponse["pageInfo"]["totalResults"]
             logging.info(f"Fetch {fetches} of {int(total_results // 50 + 1)}.")
 
+            if existing is None:
+                existing = video_document_ids(videos_tb)
             overlap, this_added = insert_videos_into_tb(
-                playlistItemsResponse["items"], videos_tb
+                playlistItemsResponse["items"], videos_tb, existing=existing
             )
             break_flag = overlap and allow_overlap_stop
 
@@ -284,16 +288,17 @@ class YoutubeEventFetcher:
             datetime.now(timezone.utc) - timedelta(days=CAPTION_RECHECK_DAYS)
         ).strftime("%Y-%m-%dT%H:%M:%SZ")
         metadata_before = (datetime.now(timezone.utc) - timedelta(days=METADATA_RECHECK_DAYS)).isoformat()
-        to_check = videos_tb.search(
-            ~where("metadata_version").exists()
-            | (where("metadata_version") != METADATA_VERSION)
-            | (where("details_checked_at") < metadata_before)
-            | ~where("caption").exists()
-            | ~where("duration").exists()
-            | ((where("caption") == False) & (where("publishedAt") >= recheck_after))  # noqa: E712
-        )
         if self.force:
             to_check = videos_tb.all()
+        else:
+            to_check = videos_tb.search(
+                ~where("metadata_version").exists()
+                | (where("metadata_version") != METADATA_VERSION)
+                | (where("details_checked_at") < metadata_before)
+                | ~where("caption").exists()
+                | ~where("duration").exists()
+                | ((where("caption") == False) & (where("publishedAt") >= recheck_after))  # noqa: E712
+            )
         if not to_check:
             return True
 
@@ -372,21 +377,43 @@ def parse_channel_details(channel_details: dict) -> dict:
     return channel_data
 
 
-def insert_videos_into_tb(items: list[dict], videos_tb: Table) -> tuple[bool, int]:
+def video_document_ids(videos_tb: Table) -> dict[str, list[int]]:
+    """Keep every retained document ID, including repeated video IDs."""
     existing = {}
     for row in videos_tb.all():
         existing.setdefault(row["videoId"], []).append(row.doc_id)
+    return existing
+
+
+def insert_videos_into_tb(
+    items: list[dict], videos_tb: Table, *, existing: dict[str, list[int]] | None = None
+) -> tuple[bool, int]:
+    if existing is None:
+        existing = video_document_ids(videos_tb)
     incoming = {doc["videoId"]: doc for doc in map(parse_video_details, items)}
     overlapping = incoming.keys() & existing.keys()
-    if overlapping:
-        def refresh(previous):
-            value = incoming[previous["videoId"]]
-            upstream = {**previous.get("upstream", {}), **value["upstream"]}
-            previous.update({**value, "upstream": upstream})
-        videos_tb.update(refresh, doc_ids=[id for video in overlapping for id in existing[video]])
-    added = [doc for video, doc in incoming.items() if video not in existing]
-    if added:
-        videos_tb.insert_multiple(added)
+    added = {}
+
+    def apply_page(table):
+        for video in overlapping:
+            value = incoming[video]
+            for doc_id in existing[video]:
+                previous = table[doc_id]
+                upstream = {**previous.get("upstream", {}), **value["upstream"]}
+                previous.update({**value, "upstream": upstream})
+        for video, document in incoming.items():
+            if video not in existing:
+                doc_id = videos_tb._get_next_id()
+                table[doc_id] = dict(document)
+                added[video] = [doc_id]
+
+    if incoming:
+        # TinyDB has no public mixed update/insert operation. Its maintained
+        # mutation hook owns table conversion, cache invalidation and one storage
+        # write; keep ID allocation there too. AtomicJSONStorage makes the page
+        # durable before the scan index advances or another page is requested.
+        videos_tb._update_table(apply_page)
+        existing.update(added)
     return bool(overlapping), len(added)
 
 

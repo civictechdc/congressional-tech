@@ -104,6 +104,7 @@ def main(
 
     existing = read_csv(output_path)
     upstream = upstream_evidence.read(evidence_path)
+    evidence_changed = False
     # Keep unfinished packages beside retained evidence in CI, or beside the CSV
     # for local runs. A later successful package must not advance past a failure.
     pending_path = Path(str(evidence_path or output_path) + '.pending.json')
@@ -256,6 +257,8 @@ def main(
     with ThreadPoolExecutor(nthreads) as pool:
         for i, (hearing, error, captured) in enumerate(pool.map(fetch_one, to_fetch.items()), 1):
             if captured is not None:
+                if captured != upstream.get(captured['package_id']):
+                    evidence_changed = True
                 upstream[captured['package_id']] = captured
             if error:
                 failures.append(error)
@@ -297,13 +300,16 @@ def main(
                 if read.get("text_read"):
                     row["text_read"] = read["text_read"]
                 if evidence_path and transcripts is not None:
-                    captured = upstream.setdefault(row['package_id'], {'package_id': row['package_id']})
-                    captured.setdefault('transcripts', {}).update(transcripts)
+                    captured = dict(upstream.get(row['package_id'], {'package_id': row['package_id']}))
+                    captured['transcripts'] = {**captured.get('transcripts', {}), **transcripts}
+                    if captured != upstream.get(row['package_id']):
+                        evidence_changed = True
+                    upstream[row['package_id']] = captured
 
     clean_rows(existing)
 
-    ## write what we have even on failure, so a local run keeps its progress
-    if evidence_path is not None:
+    ## Persist changed evidence before CSV/pending progress, including failures.
+    if evidence_path is not None and (evidence_changed or not Path(evidence_path).exists()):
         upstream_evidence.write(upstream, evidence_path)
     write_csv(existing, output_path)
     write_pending({package: modified for package, modified in pending.items() if package not in completed}, pending_path)

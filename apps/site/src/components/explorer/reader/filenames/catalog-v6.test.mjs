@@ -189,7 +189,8 @@ test('split giant document occurrences preserve full values and stay separate fr
     }
     await visit(manifest.roots.components);
     const entry=nodes.find(value=>value.key[2]===expected.document_id),files=entry.document_observations.files;
-    assert(files.observation_index && files.observations && files.observation_rows && files.occurrences);
+    assert(files.observation_index && files.observations && files.observation_rows);
+    assert.equal(files.occurrences,undefined,'document entries use the existing bounded binary observation path');
     const pagedRequests=[];
     const pagedReader=await createFilenameCatalog(manifestUrl,(url,options)=>{pagedRequests.push(String(url));return localFetch(url,options);});
     const docPage=await pagedReader.documentObservationPage(source.source_id,undefined,{offset:0,limit:20});
@@ -198,7 +199,8 @@ test('split giant document occurrences preserve full values and stay separate fr
     assert.equal(docPage.next,20);
     assert.equal(docPage.items[0],null);
     assert.deepEqual(docPage.items[1],expected.source_occurrences[1]);
-    assert(!pagedRequests.some(path=>path.endsWith('.bin')||path.endsWith('observation_index.json')),'20-row occurrence page uses flat occurrences.parquet without .bin decoding');
+    assert(!pagedRequests.some(path=>path.endsWith('/occurrences.parquet')),'document page uses its existing binary assets');
+    assert(pagedReader.diagnostics().maxDecodedPartBytes<=1024*1024,'document observation decode parts remain bounded');
     assert(pagedReader.diagnostics().rangeBytes < 64*1024*1024*0.01,'20-row occurrence slice stays under 1% of 64 MiB worker ceiling');
     const before=requests.length;await reader.documentRecord(source.source_id);
     assert.equal(requests.length,before,'complete repeat reads reuse immutable observation data');

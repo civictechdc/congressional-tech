@@ -75,6 +75,12 @@ def inventory(config):
 def doctor(config, lane_name=None):
     """Verify local runtime prerequisites, Python version, native CLI dependencies, and imports."""
     errors = []
+    try:
+        import_timeout = int(os.environ.get('CT_PREREQUISITE_TIMEOUT_SECONDS', '15'))
+    except ValueError:
+        raise ValueError('CT_PREREQUISITE_TIMEOUT_SECONDS must be an integer from 1 to 120') from None
+    if not 1 <= import_timeout <= 120:
+        raise ValueError('CT_PREREQUISITE_TIMEOUT_SECONDS must be an integer from 1 to 120')
     version_file = config['environment']['python_version_file']
     expected_python = (ROOT / version_file).read_text().strip()
     if sys.version_info[:3] != tuple(map(int, expected_python.split('.'))):
@@ -86,7 +92,7 @@ def doctor(config, lane_name=None):
         try:
             result = run([sys.executable, '-c',
                           'import importlib,sys; from pathlib import Path; '
-                          'm=importlib.import_module(sys.argv[1]); print(Path(m.__file__).resolve())', name])
+                          'm=importlib.import_module(sys.argv[1]); print(Path(m.__file__).resolve())', name], timeout=import_timeout)
             path = Path(result.stdout.strip())
             if not path.is_relative_to((ROOT / source).resolve()):
                 raise ValueError(f'import resolves outside this checkout: {path}')
@@ -94,7 +100,7 @@ def doctor(config, lane_name=None):
         except (OSError, ValueError, subprocess.SubprocessError) as error:
             errors.append(f'{name}: {error}; run uv sync --locked in this checkout')
     try:
-        version = run([sys.executable, '-c', 'import pyarrow; print(pyarrow.__version__)']).stdout.strip()
+        version = run([sys.executable, '-c', 'import pyarrow; print(pyarrow.__version__)'], timeout=import_timeout).stdout.strip()
         lock = tomllib.loads((ROOT / 'uv.lock').read_text())
         expected = next(package['version'] for package in lock['package'] if package['name'] == 'pyarrow')
         if version != expected:

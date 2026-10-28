@@ -65,13 +65,15 @@ class CatalogTable:
         self.rows = sum(self._views[name]['rows'] if self._views is not None else rows
                         for name, _, rows in self._partitions)
 
-    def iter_batches(self, *, partitions=None, columns=None):
+    def iter_batches(self, *, partitions=None, columns=None, include_order=False):
         """Read requested partitions only, checking types before restoring metadata.
 
         The maintained CLI currently reads every column of a selected partition;
         column selection happens after that bounded native read. No complete
         logical-table file is exported or materialized by this reader.
         """
+        if type(include_order) is not bool or include_order and self.order_column is None:
+            raise ValueError('Order output requires an explicitly ordered catalog read')
         requested = self.partition_names if partitions is None else tuple(partitions)
         requested_set = set(requested)
         if len(requested_set) != len(requested) or requested_set - set(self.partition_names):
@@ -79,8 +81,10 @@ class CatalogTable:
         columns = self.schema_arrow.names if columns is None else list(columns)
         if not columns or len(set(columns)) != len(columns) or set(columns) - set(self.schema_arrow.names):
             raise ValueError('Requested catalog columns must be nonempty distinct selected fields')
-        output_schema = pa.schema([self.schema_arrow.field(name) for name in columns],
-                                  metadata=self.schema_arrow.metadata)
+        output_columns = [*columns, self.order_column] if include_order else columns
+        output_schema = pa.schema([self.schema_arrow.field(name) for name in columns] +
+            ([pa.field(self.order_column, pa.int64(), nullable=False)] if include_order else []),
+            metadata=self.schema_arrow.metadata)
         for name, pin, rows in self._partitions:
             if name not in requested_set:
                 continue
@@ -115,7 +119,7 @@ class CatalogTable:
                         raise ValueError(f'Catalog view row count differs: {name}')
                 if not batch.num_rows:
                     continue
-                selected = batch.select(columns)
+                selected = batch.select(output_columns)
                 yield pa.RecordBatch.from_arrays(selected.columns, schema=output_schema)
             if view is not None and selected_rows != view['rows']:
                 raise ValueError(f'Catalog view row count differs: {name}')

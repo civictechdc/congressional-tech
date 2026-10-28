@@ -57,3 +57,42 @@ def test_source_identity_includes_its_maintained_implementation(tmp_path, relati
     after = source_files(tmp_path)
     assert after[relative] == hashlib.sha256(path.read_bytes()).hexdigest()
     assert after != before
+
+
+@pytest.mark.parametrize('relative', [
+    'packages/congress_api/src/congress_api/retention/helper.py',
+    'packages/viewer_publication/src/viewer_publication/plan.py',
+    'packages/viewer_publication/src/viewer_publication/reconciliation.py',
+    'packages/viewer_publication/src/viewer_publication/local.py',
+    '.python-version',
+])
+def test_source_identity_rereads_changed_bytes_with_identical_metadata(tmp_path, monkeypatch, relative):
+    path = tmp_path / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('VALUE = 1\n')
+    custody = path.stat()
+    original_stat = Path.stat
+    def same_tick(candidate, *args, **kwargs):
+        return custody if candidate == path else original_stat(candidate, *args, **kwargs)
+    monkeypatch.setattr(Path, 'stat', same_tick)
+    before = source_files(tmp_path)
+    path.write_text('VALUE = 2\n')
+    assert path.stat() == custody
+    after = source_files(tmp_path)
+    assert after[relative] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert after != before
+
+
+def test_source_identity_refuses_changes_during_hashing(tmp_path, monkeypatch):
+    from viewer_publication import release_identity as identity
+    path = tmp_path / 'packages/congress_api/src/congress_api/retention/helper.py'
+    path.parent.mkdir(parents=True)
+    path.write_text('VALUE = 1\n')
+    original_digest = hashlib.file_digest
+    def change_after_read(stream, *args, **kwargs):
+        result = original_digest(stream, *args, **kwargs)
+        path.write_text('VALUE = 1\n# changed while hashing\n')
+        return result
+    monkeypatch.setattr(identity.hashlib, 'file_digest', change_after_read)
+    with pytest.raises(ValueError, match='Release source changed during hashing'):
+        source_files(tmp_path)

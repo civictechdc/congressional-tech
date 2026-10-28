@@ -424,3 +424,22 @@ def test_retired_checkpoint_workflow_has_no_restore_or_publish_path():
     assert not any(step.get('uses', '').startswith('actions/download-artifact') for step in steps)
     assert 'resume_descriptor' not in json.dumps(value)
     assert not any('prepare_workflow_resume.py' in step.get('run', '') for step in steps)
+
+
+@pytest.mark.parametrize('resume_publication', [False, True])
+def test_publish_rejects_partial_preparation_before_artifact_or_remote_access(tmp_path, resume_publication):
+    from viewer_publication import attempt
+
+    root = partial(tmp_path / 'incomplete')
+
+    def forbidden_artifact(*args):
+        pytest.fail('Incomplete preparation reached artifact admission')
+
+    # Both workflow publish branches enter this maintained function. Its full
+    # prepared-inventory check must run before any remote or artifact operation.
+    with pytest.raises(FileNotFoundError) as error:
+        attempt.publish(object(), object(), root, artifact={}, public_url='unused',
+            resume=resume_publication, attempt='original' if resume_publication else None,
+            verify_artifact=forbidden_artifact)
+    assert Path(error.value.filename) == root / 'preparation.json'
+

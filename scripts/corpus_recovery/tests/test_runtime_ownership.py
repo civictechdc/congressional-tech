@@ -1,6 +1,8 @@
 """Real alternate-runtime imports must never reuse ambient project modules."""
 import importlib.util
 import json
+import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -137,3 +139,41 @@ def test_selected_helper_change_keeps_explicit_resume_pin_refusal(tmp_path):
     helper.write_text('version = 2\n')
     with pytest.raises(ValueError, match='continuation inputs changed'):
         Continuation(tmp_path / 'attempt', binding(), resume=True)
+
+
+@pytest.mark.parametrize('order', [
+    ('publication_cli', 'viewer_publication.publication_cli'),
+    ('viewer_publication.publication_cli', 'publication_cli'),
+])
+@pytest.mark.parametrize('foreign', [False, True])
+def test_publication_cli_import_orders_preserve_runtime_ownership(alternate, order, foreign):
+    selected = alternate / 'selected' if foreign else ROOT
+    command = r"""
+import importlib, importlib.util, sys
+from pathlib import Path
+root, selected, *order = sys.argv[1:]
+root = Path(root)
+spec = importlib.util.spec_from_file_location(
+    'runtime_dispatch', root / 'scripts/corpus_recovery/dispatch_corpus_recovery_publication.py')
+dispatch = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(dispatch)
+sys.path[:0] = [str(root / folder) for folder in dispatch.SelectedRuntime.PACKAGES.values()]
+sys.path[:0] = [str(root / 'scripts/publication'), str(root / 'scripts')]
+for name in order:
+    importlib.import_module(name)
+assert sys.modules['publication_cli'] is sys.modules['viewer_publication.publication_cli']
+try:
+    runtime = dispatch.SelectedRuntime(Path(selected))
+except ValueError as error:
+    assert Path(selected) != root, str(error)
+    assert 'cannot reuse loaded module' in str(error)
+    assert str(root) in str(error)
+    assert 'Start a fresh process with --runtime' in str(error)
+else:
+    assert Path(selected) == root, 'Foreign publication CLI was admitted'
+    runtime.check()
+"""
+    result = subprocess.run([sys.executable, '-I', '-B', '-c', command,
+                             str(ROOT), str(selected), *order],
+                            text=True, capture_output=True, timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr

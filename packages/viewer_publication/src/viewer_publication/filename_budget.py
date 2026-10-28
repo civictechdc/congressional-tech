@@ -94,6 +94,12 @@ def bounded_batches(source, *, columns=None, batch_rows=8192, policy=DEFAULT_DEC
         if python_values:
             maximum(metrics, 'max_python_json_estimate', estimate)
         yield batch
+    if isinstance(source, pa.Table):
+        selected = source if columns is None else source.select(columns)
+        with selected.to_reader(max_chunksize=batch_rows) as batches:
+            for batch in batches:
+                yield from admitted(batch)
+        return
     metadata = getattr(source, 'metadata', None)
     if metadata is None:
         # An already-decoded in-memory provider has no physical file admission.

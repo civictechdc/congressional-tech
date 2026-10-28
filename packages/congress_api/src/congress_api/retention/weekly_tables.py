@@ -714,9 +714,10 @@ def youtube_video_to_row(
             upstream_bytes = bytes(upstream)
         else:
             upstream_bytes = str(upstream).encode("utf-8")
-        upstream_sha256 = sha256(upstream_bytes).hexdigest()
         if staging_dir is not None:
-            stage_body_bytes(upstream_bytes, staging_dir, is_pdf=False)
+            upstream_sha256, _ = stage_body_bytes(upstream_bytes, staging_dir, is_pdf=False)
+        else:
+            upstream_sha256 = sha256(upstream_bytes).hexdigest()
 
     return {
         "system_code": str(system_code or record.get("systemCode") or ""),

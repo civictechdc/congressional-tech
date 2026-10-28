@@ -1,4 +1,5 @@
 """Stable viewer assets derived from one exact selected native catalog."""
+from concurrent.futures import ThreadPoolExecutor
 import ast
 from collections import OrderedDict
 from hashlib import sha256
@@ -57,18 +58,21 @@ class ViewerAssets:
         relative = f'releases/{digest[:32]}/{digest[32:]}/viewer-v2/page.json'
         path = self.root / relative
         if path.is_symlink():raise ValueError('Immutable viewer assets cannot be symlinks')
+        proof = None
         if not path.exists():
             path.parent.mkdir(parents=True, exist_ok=True)
             if self.state:
                 from io import BytesIO
-                self.state.publish_asset(BytesIO(raw),path,identity=dict(bytes=len(raw),sha256=digest),key=relative)
+                proof = self.state.publish_asset(BytesIO(raw),path,identity=dict(bytes=len(raw),sha256=digest),key=relative)
             else:
                 with path.open('xb') as stream:
                     stream.write(raw)
             self.writes += 1
             self.metadata_writes += 1
             self.written_bytes += len(raw)
-        proof = file_identity(path)
+        # A fresh retained copy already has an exact-file proof. Existing
+        # destinations and direct writes still require independent admission.
+        proof = file_identity(path) if proof is None else proof.require(path)
         if proof['sha256'] != digest or proof['bytes'] != len(raw):
             raise ValueError('Conflicting immutable viewer metadata page')
         self.identities[relative] = proof
@@ -82,18 +86,23 @@ class ViewerAssets:
                 or reference.get('path') != f'releases/{digest[:32]}/{digest[32:]}/viewer-v2/page.json'
                 or type(reference.get('bytes')) is not int or not 0 < reference['bytes'] <= self.max_node_bytes):
             raise ValueError('Invalid immutable viewer page reference')
-        raw = self._nodes.get(reference['path'])
-        if raw is None:
+        cached = self._nodes.get(reference['path'])
+        if cached is None:
             path = self.root / reference['path']
             raw = path.read_bytes() if path.is_file() else self.read_asset(reference['path']) if self.read_asset else None
             self.reads += 1
-        if raw is None or len(raw) != reference['bytes'] or sha256(raw).hexdigest() != digest:
+            if raw is None or len(raw) != reference['bytes']:
+                raise ValueError('Viewer metadata page identity differs')
+            raw = bytes(raw)  # Detach mutable acquisition buffers before proving them.
+            cached = (raw, sha256(raw).hexdigest(), len(raw))
+        if cached[1:] != (digest, reference['bytes']):
             raise ValueError('Viewer metadata page identity differs')
-        self._nodes[reference['path']] = raw
+        self._nodes[reference['path']] = cached
         self._nodes.move_to_end(reference['path'])
         if len(self._nodes) > 16:
             self._nodes.popitem(last=False)
-        return json.loads(raw)
+        # Each caller owns its mutable result; only verified bytes are shared.
+        return json.loads(cached[0])
 
 
 def browse_key(row):
@@ -290,25 +299,28 @@ def typed_observations(schema, identities, occurrences):
     return Source()
 
 
-def publish_occurrence_assets(source, folder, assets, *, policy, metrics, counts=None):
+def publish_occurrence_assets(source, folder, assets, *, policy, metrics, counts=None, include_flat=True):
     from viewer_publication.filename_observations import publish_observations
     from viewer_publication.filename_exports import OccurrenceParquetWriter
-    with OccurrenceParquetWriter(source, folder / 'occurrences.parquet', policy=policy, metrics=metrics) as writer:
+    from contextlib import nullcontext
+    with (OccurrenceParquetWriter(source, folder / 'occurrences.parquet', policy=policy, metrics=metrics)
+          if include_flat else nullcontext()) as writer:
         publish_observations(source, folder, counts=counts, policy=policy, metrics=metrics,
                              occurrence_writer=writer)
-    flat = writer.result()
     result = {name: assets.put_file(folder / filename, name=name + suffix)
               for name, filename, suffix in [('observations', 'observations.bin', '.bin'),
                   ('observation_rows', 'observation-rows.bin', '.bin'),
                   ('observation_index', 'observation-index.json', '.json')]}
-    result['occurrences'] = dict(
-        assets.put_file(folder / 'occurrences.parquet', name='occurrences.parquet'),
-        rows=flat['rows'],
-        parent_rows=flat['parent_rows'],
-        fields=flat['fields'],
-        row_slices=flat['row_slices'],
-        browse_ranges=flat['browse_ranges'],
-    )
+    if include_flat:
+        flat = writer.result()
+        result['occurrences'] = dict(
+            assets.put_file(folder / 'occurrences.parquet', name='occurrences.parquet'),
+            rows=flat['rows'],
+            parent_rows=flat['parent_rows'],
+            fields=flat['fields'],
+            row_slices=flat['row_slices'],
+            browse_ranges=flat['browse_ranges'],
+        )
     return result
 
 
@@ -391,12 +403,17 @@ class NativeSourceAssets:
             pq.write_table(table, path, compression=self.compression.codec, compression_level=self.compression.level,
                            row_group_size=self.compression.row_group_size)
             files = {'filenames': dict(self.assets.put_file(path, name='filenames.parquet'), rows=len(table))}
-            # These are real bounded physical files. No logical-table export or
-            # pretend Parquet metadata is introduced at the consumer boundary.
-            with pq.ParquetFile(path) as source, ObservationCounts(source) as counts:
+            # Keep the real export footer/schema check, then reuse the retained
+            # Arrow values. Parquet normalizes nested list field names; adopting
+            # its schema preserves exact detail output without decoding it again.
+            with pq.ParquetFile(path) as written:
+                if written.metadata.num_rows != len(table):
+                    raise ValueError('Viewer source leaf row count differs')
+                source = table.cast(written.schema_arrow)
+            with ObservationCounts(source) as counts:
                 if 'source_occurrences' in schema.names:
-                    observations = typed_observations(schema, table['source_id'], lambda identity:
-                        self.dependencies.source_occurrences(self.snapshot.selection['dependency'], release, identity))
+                    occurrences = self.dependencies.source_occurrence_reader(self.snapshot.selection['dependency'], release)
+                    observations = typed_observations(schema, table['source_id'], occurrences)
                     files.update(publish_occurrence_assets(observations, folder, self.assets, counts=counts,
                         policy=self.policy, metrics=self.metrics))
                 else:
@@ -417,11 +434,10 @@ class NativeSourceAssets:
                                 value = value.lower() if field == 'format' else value
                                 if value:
                                     facets[field][value] = facets[field].get(value, 0) + 1
-                # Details already read and admit every source row. Checking the
-                # physical row count needs its footer, not another data scan.
-                if source.metadata.num_rows != len(table):
-                    raise ValueError('Viewer source leaf row count differs')
             return dict(rows=len(table), files=files, facets=facets, occurrences_split='source_occurrences' in schema.names)
+
+
+COMPONENT_SCOPE_WORKERS = 6
 
 
 class NativeComponents:
@@ -484,13 +500,37 @@ class NativeComponents:
                 self._retire_tree(child)
 
     def plan(self, root, previous=None, *, prefix=''):
+        # Incremental reuse retains the serial path, including prior-tree checks.
+        if root is None or previous is not None:
+            return self._plan(root, previous, prefix=prefix)
+        with ThreadPoolExecutor(max_workers=COMPONENT_SCOPE_WORKERS) as pool:
+            return self._plan(root, prefix=prefix, pool=pool)
+
+    def _scope_page(self, reference, prefix):
+        from congress_api.retention.partition_routing import RoutingPages
+        # Each worker owns its reader caches; only validated pages cross threads.
+        return RoutingPages(self.snapshot.store, self.routes.objects.namespace)._read(reference, prefix)
+
+    def _scope_batch(self, children, characters, prefix, pool):
+        futures = [pool.submit(self._scope_page, children[char], prefix + char)
+                   if children[char] is not None else None for char in characters]
+        try:
+            # Admit the bounded batch before any recursive SQLite writes.
+            return [future.result() if future is not None else None for future in futures]
+        except BaseException:
+            for future in futures:
+                if future is not None:
+                    future.cancel()
+            raise
+
+    def _plan(self, root, previous=None, *, prefix='', pool=None, page=None):
         if root is None:
             self._retire_tree(previous)
             return None
         if previous is not None and previous.get('native_sha256') == root['sha256']:
             self.metrics['component_subtrees_reused'] = self.metrics.get('component_subtrees_reused', 0) + 1
             return previous
-        node = self.routes._read(root, prefix)
+        node = self.routes._read(root, prefix) if page is None else page
         old = self.assets.read_node(previous) if previous is not None else {}
         if old and (old.get('kind') not in ('component-branch', 'component-leaf') or old.get('prefix') != prefix):
             raise ValueError('Previous viewer component routing differs')
@@ -503,14 +543,22 @@ class NativeComponents:
                 old_members = None
             children = {}
             old_characters = {self._hash(key)[len(prefix)] for key in old_members} if old_members else set()
-            for char in sorted(set(node['children']) | set(old.get('children', {})) | old_characters):
-                child_previous = old.get('children', {}).get(char)
-                if old_members is not None:
-                    # This temporary in-process value owns no publication path.
-                    subset = {key: value for key, value in old_members.items()
-                              if self._hash(key).startswith(prefix + char)}
-                    child_previous = self._old_members(prefix + char, subset) if subset else None
-                children[char] = self.plan(node['children'].get(char), child_previous, prefix=prefix + char)
+            characters = sorted(set(node['children']) | set(old.get('children', {})) | old_characters)
+            width = COMPONENT_SCOPE_WORKERS if pool is not None else 1
+            for offset in range(0, len(characters), width):
+                batch = characters[offset:offset + width]
+                pages = (self._scope_batch(node['children'], batch, prefix, pool)
+                         if pool is not None else [None] * len(batch))
+                for index, char in enumerate(batch):
+                    child_previous = old.get('children', {}).get(char)
+                    if old_members is not None:
+                        # This temporary in-process value owns no publication path.
+                        subset = {key: value for key, value in old_members.items()
+                                  if self._hash(key).startswith(prefix + char)}
+                        child_previous = self._old_members(prefix + char, subset) if subset else None
+                    children[char] = self._plan(node['children'].get(char), child_previous,
+                        prefix=prefix + char, pool=pool, page=pages[index])
+                    pages[index] = None
             return self._stage(dict(kind='component-branch', prefix=prefix, native_sha256=root['sha256'],
                         children={char: value for char, value in children.items() if value is not None}))
         previous_members = old.get('members', {})
@@ -549,26 +597,57 @@ class NativeComponents:
         self._task('component-entries',self._prepare_entries)
 
     def _register_chunks(self):
-        from congress_api.retention.catalog_batches import CatalogComponentReader
+        from itertools import groupby, islice
+        from congress_api.retention.catalog_batches import CatalogComponentReader, PROOF_PAGE_ENTRIES
         reader = CatalogComponentReader(self.snapshot.store)
-        for component, raw_reference in self.db.execute('SELECT id,reference FROM components ORDER BY page,id'):
-            reference = json.loads(raw_reference)
-            proof = reader.read(reference)
-            if proof['component'] != component:
-                raise ValueError('Selected viewer component identity differs')
-            self.db.execute('UPDATE components SET proof=? WHERE id=?',
-                            (encoded(dict(validation=proof['validation'])).decode(), component))
-            self.db.execute('INSERT INTO stats VALUES (?,0,0,0,0)', (component,))
-            for label in ('filenames', 'documents'):
-                table = proof['tables'][label]
-                for chunk in table['chunks']:
-                    raw_pin = encoded(chunk['release']).decode()
-                    old = self.db.execute('SELECT pin,schema,label FROM chunks WHERE name=?', (chunk['name'],)).fetchone()
-                    if old and old != (raw_pin, table['schema'], label):
-                        raise ValueError('Mixed physical native viewer chunk metadata')
-                    self.db.execute('INSERT OR IGNORE INTO chunks VALUES (?,?,?,?)',
-                                    (chunk['name'], label, raw_pin, table['schema']))
-                    self.db.execute('INSERT INTO views VALUES (?,?,?)', (chunk['name'], component, chunk['rows']))
+        rows = self.db.execute('SELECT id,reference,page FROM components ORDER BY page,id')
+        def groups():
+            for raw_page, members in groupby(rows, key=lambda row: row[2]):
+                bounded = list(islice(members, PROOF_PAGE_ENTRIES + 1))
+                if len(bounded) > PROOF_PAGE_ENTRIES:
+                    raise ValueError('Selected component proof page exceeds its member bound')
+                yield json.loads(raw_page), bounded
+        def read_page(reference):
+            # Keep prefetched pages within this batch, not a growing corpus cache.
+            return CatalogComponentReader(self.snapshot.store).page(reference, remember=False)
+        pending = groups()
+        with ThreadPoolExecutor(max_workers=COMPONENT_SCOPE_WORKERS) as pool:
+            while batch := list(islice(pending, COMPONENT_SCOPE_WORKERS)):
+                futures = [pool.submit(read_page, reference) for reference, _ in batch]
+                try:
+                    pages = [future.result() for future in futures]
+                except BaseException:
+                    for future in futures:
+                        future.cancel()
+                    raise
+                futures.clear()
+                for index, (reference, members) in enumerate(batch):
+                    for component, raw_reference, _ in members:
+                        self._register_component(component, raw_reference, reader,
+                                                 page=pages[index], expected_page=reference)
+                    pages[index] = None
+                    batch[index] = None
+
+    def _register_component(self, component, raw_reference, reader, *, page=None, expected_page=None):
+        reference = json.loads(raw_reference)
+        if expected_page is not None and reference.get('page') != expected_page:
+            raise ValueError('Selected component proof page differs from its staged reference')
+        proof = reader.read(reference, page=page)
+        if proof['component'] != component:
+            raise ValueError('Selected viewer component identity differs')
+        self.db.execute('UPDATE components SET proof=? WHERE id=?',
+                        (encoded(dict(validation=proof['validation'])).decode(), component))
+        self.db.execute('INSERT INTO stats VALUES (?,0,0,0,0)', (component,))
+        for label in ('filenames', 'documents'):
+            table = proof['tables'][label]
+            for chunk in table['chunks']:
+                raw_pin = encoded(chunk['release']).decode()
+                old = self.db.execute('SELECT pin,schema,label FROM chunks WHERE name=?', (chunk['name'],)).fetchone()
+                if old and old != (raw_pin, table['schema'], label):
+                    raise ValueError('Mixed physical native viewer chunk metadata')
+                self.db.execute('INSERT OR IGNORE INTO chunks VALUES (?,?,?,?)',
+                                (chunk['name'], label, raw_pin, table['schema']))
+                self.db.execute('INSERT INTO views VALUES (?,?,?)', (chunk['name'], component, chunk['rows']))
 
     def _prepare_chunk(self,name,label,raw_pin,schema_text):
         from congress_api.retention.catalog_partitions import CatalogTable
@@ -587,41 +666,55 @@ class NativeComponents:
             [field for field in dict.fromkeys([*self.viewer.LIST_COLUMNS, 'document_kind_source']) if field in schema.names])
         core_schema = pa.schema([field for field in schema if field.name != 'source_occurrences'], metadata=schema.metadata)
         requested = columns if label == 'filenames' else [*core_schema.names, '_catalog_order']
-        size, document_batches = 0, []
-        for batch in table.iter_batches(columns=requested):
-            size += batch.nbytes
-            if size > self.policy.row_arrow_bytes:
-                raise ValueError('Native viewer component core chunk exceeds its Arrow byte bound')
-            if label == 'documents':
-                document_batches.append(batch.select(core_schema.names))
-            for row in batch.select(columns).to_pylist():
-                component = row['document_id']
-                if label == 'filenames':
-                    self.db.execute('INSERT INTO member_ids VALUES (?,?,?)',
-                                    (component, row['_catalog_order'], row['source_id']))
-                    self.db.execute('UPDATE stats SET n=n+1,saved=saved+?,api=api+?,video=video+? WHERE id=?',
-                        (int(saved_response(row)), int(bool(self.viewer.api_reference(row.get('source_url')))),
-                         int(bool(self.viewer.video_reference(row.get('source_url')))), component))
-                else:
-                    self.db.execute('UPDATE components SET record=? WHERE id=?', (encoded(row).decode(), component))
+        from viewer_publication.filename_budget import ArrowStager, bounded_batches
+        document_ids = []
+        def prepare(staging=None):
+            for incoming in table.iter_batches(columns=requested):
+                source = pa.Table.from_batches([incoming])
+                for batch in bounded_batches(source, policy=self.policy, metrics=self.metrics,
+                        stage='native component core', python_values=False):
+                    if staging is not None:
+                        staging.append(batch.select(core_schema.names))
+                        if 'source_occurrences' in schema.names:
+                            # Own only IDs, independent of a sliced IPC frame's parent buffers.
+                            document_ids.append(pa.concat_arrays([batch.column('document_id')]))
+                    records = pa.Table.from_batches([batch.select(columns)])
+                    for values in bounded_batches(records, policy=self.policy, metrics=self.metrics,
+                            stage='native component records'):
+                        for row in values.to_pylist():
+                            component = row['document_id']
+                            if label == 'filenames':
+                                self.db.execute('INSERT INTO member_ids VALUES (?,?,?)',
+                                                (component, row['_catalog_order'], row['source_id']))
+                                self.db.execute('UPDATE stats SET n=n+1,saved=saved+?,api=api+?,video=video+? WHERE id=?',
+                                    (int(saved_response(row)), int(bool(self.viewer.api_reference(row.get('source_url')))),
+                                     int(bool(self.viewer.video_reference(row.get('source_url')))), component))
+                            else:
+                                self.db.execute('UPDATE components SET record=? WHERE id=?', (encoded(row).decode(), component))
         if label == 'documents':
             import pyarrow.parquet as pq
             with tempfile.TemporaryDirectory(prefix='viewer-document-chunk-') as folder:
                 folder = Path(folder)
                 path = folder / 'documents.parquet'
-                exported = pa.Table.from_batches(document_batches, schema=core_schema)
-                pq.write_table(exported, path, compression=self.compression.codec, compression_level=self.compression.level,
-                               row_group_size=self.compression.row_group_size)
-                reference = dict(document_file=dict(self.assets.put_file(path, name='documents.parquet'), rows=len(exported)),
+                with pq.ParquetWriter(path, core_schema, compression=self.compression.codec,
+                                     compression_level=self.compression.level) as writer:
+                    staging = ArrowStager(writer, core_schema, row_group_size=self.compression.row_group_size,
+                        policy=self.policy, metrics=self.metrics, stage='native_component_documents')
+                    prepare(staging)
+                    staging.flush()
+                reference = dict(document_file=dict(self.assets.put_file(path, name='documents.parquet'), rows=table.rows),
                     document_occurrences_split='source_occurrences' in schema.names)
                 if 'source_occurrences' in schema.names:
                     from congress_api.retention.catalog_rows import CatalogRows
                     owner = CatalogRows(native=self.snapshot.native, store=self.snapshot.store)
-                    source = typed_observations(schema, exported['document_id'], lambda identity:
+                    identities = pa.chunked_array(document_ids, type=core_schema.field('document_id').type)
+                    source = typed_observations(schema, identities, lambda identity:
                         owner.occurrences(pin, schema=physical, owner_id=identity))
-                    reference['document_observations'] = dict(rows=len(exported), files=publish_occurrence_assets(
-                        source, folder, self.assets, policy=self.policy, metrics=self.metrics))
+                    reference['document_observations'] = dict(rows=table.rows, files=publish_occurrence_assets(
+                        source, folder, self.assets, policy=self.policy, metrics=self.metrics, include_flat=False))
                 self.db.execute('INSERT INTO chunk_assets VALUES (?,?)', (name, encoded(reference).decode()))
+        else:
+            prepare()
     def _prepare_entries(self):
         for component, raw_reference, raw_proof, raw_record in self.db.execute(
                 'SELECT id,reference,proof,record FROM components ORDER BY id'):

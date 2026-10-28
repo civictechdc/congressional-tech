@@ -93,16 +93,16 @@ def test_bounded_control_body_closes_for_bad_length_or_limit(raw,length,limit):
     assert response.closed
 
 
-def test_source_hashes_reuse_only_unchanged_custody_and_docs_do_not_invalidate(tmp_path,monkeypatch):
+def test_source_hashes_reread_bytes_and_ignore_unrelated_docs(tmp_path,monkeypatch):
     path=tmp_path/'packages/viewer_publication/src/viewer_publication/filename_helper.py';path.parent.mkdir(parents=True);path.write_text('one')
     original=identity.hashlib.file_digest;calls=[]
     def digest(stream,*a,**k):calls.append(stream.name);return original(stream,*a,**k)
     monkeypatch.setattr(identity.hashlib,'file_digest',digest)
-    before=identity.source_files(tmp_path);assert identity.source_files(tmp_path)==before and len(calls)==1
+    before=identity.source_files(tmp_path);assert identity.source_files(tmp_path)==before and len(calls)==2
     (tmp_path/'README.md').write_text('unrelated docs')
-    assert identity.source_files(tmp_path)==before and len(calls)==1
+    assert identity.source_files(tmp_path)==before and len(calls)==3
     stat=path.stat();path.write_text('two');os.utime(path,ns=(stat.st_atime_ns,stat.st_mtime_ns))
-    assert identity.source_files(tmp_path)!=before and len(calls)==2
+    assert identity.source_files(tmp_path)!=before and len(calls)==4
 
 
 def test_locked_and_installed_runtime_share_one_fingerprint(tmp_path,monkeypatch):

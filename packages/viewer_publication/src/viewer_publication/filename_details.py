@@ -61,7 +61,9 @@ def publish_details(source, path, *, observation_counts, policy=DEFAULT_DECODED_
 
 
 def _publish_details(source, path, owned, observation_counts, policy, metrics, compression_policy):
-    names = source.schema_arrow.names
+    source_schema = source.schema if isinstance(source, pa.Table) else source.schema_arrow
+    source_rows = len(source) if isinstance(source, pa.Table) else source.metadata.num_rows
+    names = source_schema.names
     core = [name for name in CORE + ORIGIN if name in names]
     core += [name for name in names if name.startswith('content_')]
     readings = [name for name in names if name not in NON_FILENAME and not name.startswith(('source_', 'content_'))]
@@ -69,10 +71,10 @@ def _publish_details(source, path, owned, observation_counts, policy, metrics, c
     # Include paired labels/measure fields used to avoid duplicate interpretations.
     visible = list(dict.fromkeys(visible + [name for name in readings if name.endswith('_label') or name in {'measure_type', 'measure_number'}]))
     typed = [name for name in TYPES if name in names]
-    schema = pa.schema([source.schema_arrow.field(name) for name in core] +
+    schema = pa.schema([source_schema.field(name) for name in core] +
                       [pa.field(name, TYPES[name]) for name in typed] +
                       [pa.field('fact_alternatives', READINGS), pa.field('filename_readings', READINGS),
-                       pa.field('filename_field_count', pa.uint16())], metadata=source.schema_arrow.metadata)
+                       pa.field('filename_field_count', pa.uint16())], metadata=source_schema.metadata)
     counts = owned.enter_context(closing(observation_counts.values(source)))
     expected = hashlib.sha256()
     def update(hasher, rows):
@@ -113,7 +115,7 @@ def _publish_details(source, path, owned, observation_counts, policy, metrics, c
         staging.flush()
     # Check every emitted typed/derived value, independently of browser reads.
     written = owned.enter_context(open_parquet(path))
-    if written.metadata.num_rows != count or count != source.metadata.num_rows or next(counts, None) is not None:
+    if written.metadata.num_rows != count or count != source_rows or next(counts, None) is not None:
         raise ValueError('Detail/source observation row counts differ')
     actual = hashlib.sha256()
     for batch in bounded_batches(written, policy=policy, stage='detail verification', metrics=metrics):

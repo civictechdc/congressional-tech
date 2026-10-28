@@ -1,0 +1,329 @@
+{
+  "version": 1,
+  "scope": "small generated fixture and in-memory remote only",
+  "inputs": {
+    "source_manifest_sha256": "34110f923a8d12f63ca7dbde9c1a380a5253673b9472281e351a9ef4e5500661",
+    "source_files": {
+      "native-runtime-input": {
+        "bytes": 31,
+        "sha256": "5b425fbee1a214780b2d659349c1b544516287742f3469817f57fffa8d558120"
+      },
+      "seed/documents.parquet": {
+        "bytes": 9866,
+        "sha256": "3dba451dc7feb56da49b7af582eb0638cc8cca8d8b7b1e9765850460527191f5"
+      },
+      "seed/document-filenames.parquet": {
+        "bytes": 8684,
+        "sha256": "640c779d8ad17d95250410ed3c796082d260971cc4c400aae69d81d938428dc2"
+      },
+      "indexes/catalog.json": {
+        "bytes": 242,
+        "sha256": "34110f923a8d12f63ca7dbde9c1a380a5253673b9472281e351a9ef4e5500661"
+      },
+      "indexes/.catalog.lock": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "indexes/native-manifests/catalog-scope-proofs-v1/3205bc60a39db9cd27b5929a01b25a6798519b496b0b79ba92d2da9c5fdceeea.json": {
+        "bytes": 10995,
+        "sha256": "3205bc60a39db9cd27b5929a01b25a6798519b496b0b79ba92d2da9c5fdceeea"
+      },
+      "indexes/native-manifests/selection-test-source-url-aliases/6fd77f5270bd67ba3cbd087fe4d3eec0868498e524eb504977058b71f3928964.json": {
+        "bytes": 298,
+        "sha256": "6fd77f5270bd67ba3cbd087fe4d3eec0868498e524eb504977058b71f3928964"
+      },
+      "indexes/native-manifests/catalog-scope-components-v1/c5934604eabdf6bf13eeef119111f5d5b622628216e0ea60681da938c789763f.json": {
+        "bytes": 848,
+        "sha256": "c5934604eabdf6bf13eeef119111f5d5b622628216e0ea60681da938c789763f"
+      },
+      "indexes/native-manifests/catalog-selections-v2/4f40e14b19234f3971a3e0c2d3fff122d8726dbc1866b0ed837c7abbb4369893.json": {
+        "bytes": 10826,
+        "sha256": "4f40e14b19234f3971a3e0c2d3fff122d8726dbc1866b0ed837c7abbb4369893"
+      },
+      "indexes/native-manifests/selection-test-aliases/8feca1a0f019bc01e71a694c023fecb8405632384eb1bfcfb5ebd52faab05fd7.json": {
+        "bytes": 294,
+        "sha256": "8feca1a0f019bc01e71a694c023fecb8405632384eb1bfcfb5ebd52faab05fd7"
+      },
+      "indexes/native-manifests/catalog-schemas-v1/de6029ff9c9b9bedcd2f0d9147b72c04924757ceaed91a994b948baac2bf8125.json": {
+        "bytes": 3181,
+        "sha256": "de6029ff9c9b9bedcd2f0d9147b72c04924757ceaed91a994b948baac2bf8125"
+      },
+      "indexes/native-manifests/catalog-schemas-v1/6afbe0ce5700f104a2adc2d97559899db4f93608b96d6e28ca772b851d926d97.json": {
+        "bytes": 2809,
+        "sha256": "6afbe0ce5700f104a2adc2d97559899db4f93608b96d6e28ca772b851d926d97"
+      },
+      "indexes/native-manifests/catalog-physical-chunks-v1/c91706169af872c12f2ae3fdf84aabf1cc09a9bed1894cd87f56d65ee31c432f.json": {
+        "bytes": 358,
+        "sha256": "c91706169af872c12f2ae3fdf84aabf1cc09a9bed1894cd87f56d65ee31c432f"
+      },
+      "indexes/native-manifests/catalog-physical-chunks-v1/6f473a2511ed83c8cb555b35c9f48636863aa4f0ac408d46fa1fcf01c337de58.json": {
+        "bytes": 359,
+        "sha256": "6f473a2511ed83c8cb555b35c9f48636863aa4f0ac408d46fa1fcf01c337de58"
+      },
+      "indexes/native-manifests/selection-test-source-schemas/d0f1d4491df98df811ad0628f422417776530cbbf8ae699a76d0f1ad84cf0ef5.json": {
+        "bytes": 2508,
+        "sha256": "d0f1d4491df98df811ad0628f422417776530cbbf8ae699a76d0f1ad84cf0ef5"
+      },
+      "indexes/native-manifests/selection-test-sources/49edb2eca09b669a79ef69968445222bf1454916a0e81210a55f8c1343491c09.json": {
+        "bytes": 490,
+        "sha256": "49edb2eca09b669a79ef69968445222bf1454916a0e81210a55f8c1343491c09"
+      },
+      "indexes/native-manifests/selection-test-body-key-aliases/4408af83e8163679aa463e67bc92b5d4815aa007c65d7bfc389f6728739d2c27.json": {
+        "bytes": 298,
+        "sha256": "4408af83e8163679aa463e67bc92b5d4815aa007c65d7bfc389f6728739d2c27"
+      },
+      "indexes/native-manifests/catalog-component-selection-v2/7650bfb68628d93290c13062495d867daf251affec780f4084197dbb0a54d110.json": {
+        "bytes": 799,
+        "sha256": "7650bfb68628d93290c13062495d867daf251affec780f4084197dbb0a54d110"
+      },
+      "indexes/native-manifests/catalog-component-pages-v1/51363b6b7a638f196ac0f1acc843b4d5a75a75299bbf9c6551fa01d098054e1e.json": {
+        "bytes": 3526,
+        "sha256": "51363b6b7a638f196ac0f1acc843b4d5a75a75299bbf9c6551fa01d098054e1e"
+      }
+    },
+    "revision": "7145114742d2915e6bf1757c86039e31e3254884",
+    "source_identity": {
+      "version": 1,
+      "implementation": "ea3a31987d9c180ef03396292ec16610e53fcd67f42b5b0aca2270e63bb84354",
+      "dependencies": "9e6c9c9ad5beb5ef2d047dfcd7707a28b6a3ce9b145cb377302c841061b639ea",
+      "publisher_version": 10
+    },
+    "python": "3.12.13 (main, Apr  7 2026, 21:09:58) [Clang 22.1.1 ]",
+    "executable": "/Users/mikewolfd/Work/congressional-tech/.venv/bin/python",
+    "maximum_source_bytes": 8388608,
+    "controlled_request_latency_ms": 1,
+    "runtime": {
+      "implementation": "CPython",
+      "platform": "macOS-26.6-arm64-arm-64bit",
+      "machine": "arm64",
+      "packages": {
+        "pyarrow": "25.0.1",
+        "boto3": "1.43.106",
+        "botocore": "1.43.106",
+        "lxml": "6.0.2",
+        "duckdb": "1.5.5",
+        "zstandard": "0.25.0",
+        "ijson": "3.6.0"
+      }
+    },
+    "command_process_model": "source identity cache starts cold for each timed command; interpreter/import startup excluded",
+    "prepared_recovery_supported": true,
+    "measurement_sources": {
+      "publication_costs.py": "0445f19049d50e5c9bb1555d85edcd70c076fc5f8c104171354a5a2f80329a32",
+      "measure_publication_control.py": "6c763dceeead5e637b46d1351163e995a7ac1e1e0068c3872a6d6c7f6c362977",
+      "process_rss.py": "d998bdfb02a3eed8491fe6a7203a3c1efdbf854fbc0f11b7c55592d1c5e079d5",
+      "benchmark_viewer_publication.py": "6f29d6e6a70272e415168ca918685e60bc8ed157258fe0d12051295d85e62a87"
+    }
+  },
+  "outcomes": {
+    "successful_publication": {
+      "catalog_id": "seed",
+      "bytes": 79047,
+      "files": 10,
+      "manifest": "releases/d79e1c3896a441b6bbe151c2eaeeb7da/manifest.json",
+      "status": "published",
+      "attempt": "123-1-2df07d82e6a6d2fb7e01bc429a53a6e27ec49065ad9b5edc839b53d88cc53f05",
+      "preparation_reused": false
+    },
+    "unchanged_poll": {
+      "status": "unchanged",
+      "catalog_id": "seed",
+      "accepted_recoveries": 0,
+      "affected_sources": 0,
+      "affected_groups": 0,
+      "recovery": {
+        "bytes": 446,
+        "path": "releases/f71a1fd6d1ac69e0bd4a81ed098cb941/93d611d8c7a67c35f1a6e77525bbcb00/viewer-v2/recovery-status.json",
+        "sha256": "f71a1fd6d1ac69e0bd4a81ed098cb94193d611d8c7a67c35f1a6e77525bbcb00"
+      },
+      "catalog_payloads_reused": true,
+      "raw_catalog_unchanged": true
+    },
+    "explicit_resume_failure": {
+      "status": "failed",
+      "error_type": "RuntimeError",
+      "error": "Explicit bounded fixture probe failure"
+    },
+    "explicit_resume": {
+      "catalog_id": "seed",
+      "bytes": 79047,
+      "files": 10,
+      "manifest": "releases/d79e1c3896a441b6bbe151c2eaeeb7da/manifest.json",
+      "status": "published",
+      "attempt": "123-1-2df07d82e6a6d2fb7e01bc429a53a6e27ec49065ad9b5edc839b53d88cc53f05",
+      "preparation_reused": true
+    }
+  },
+  "stages": [
+    {
+      "stage": "accepted_preparation",
+      "status": "complete",
+      "seconds": 3.78395479201572,
+      "sampled_process_tree_rss_peak_bytes": 178454528,
+      "memory_samples": 10,
+      "scratch_bytes": 268228,
+      "counts": {
+        "get_requests": 20,
+        "control_get_requests": 20,
+        "control_get_seconds": 0.08087850292213261,
+        "control_get_failures": 2,
+        "remote_body_bytes_read": 32616,
+        "hash_helper_bytes": 3641454,
+        "hash_helper_passes": 298,
+        "json_dumps_calls": 312,
+        "json_serialized_characters": 388594,
+        "json_serialization_seconds": 0.02492662490112707,
+        "state_json_dump_calls": 3,
+        "state_json_serialized_characters": 16174,
+        "state_json_serialization_seconds": 0.0004321250016801059,
+        "fsync_calls": 81,
+        "fsync_seconds": 0.035811918787658215,
+        "sqlite_selects": 142,
+        "decode_iterator_passes": 1,
+        "decoded_batches": 1,
+        "decoded_rows": 4,
+        "largest_decoded_batch_bytes": 773
+      }
+    },
+    {
+      "stage": "successful_publication",
+      "status": "complete",
+      "seconds": 1.1406815000227652,
+      "sampled_process_tree_rss_peak_bytes": 178683904,
+      "memory_samples": 5,
+      "scratch_bytes": 294125,
+      "counts": {
+        "get_requests": 11,
+        "control_get_requests": 10,
+        "control_get_seconds": 0.019961791986133903,
+        "control_get_failures": 6,
+        "remote_body_bytes_read": 968,
+        "hash_helper_bytes": 3641454,
+        "hash_helper_passes": 298,
+        "json_dumps_calls": 197,
+        "json_serialized_characters": 257944,
+        "json_serialization_seconds": 0.016059122048318386,
+        "state_json_dump_calls": 5,
+        "state_json_serialized_characters": 43274,
+        "state_json_serialization_seconds": 0.0011687088990584016,
+        "fsync_calls": 23,
+        "fsync_seconds": 0.008393288182560354,
+        "journal_get_requests": 1,
+        "journal_get_seconds": 0.001942250004503876,
+        "journal_get_failures": 1,
+        "put_requests": 30,
+        "put_body_bytes": 100528,
+        "journal_put_requests": 16,
+        "journal_put_seconds": 0.050843333010561764,
+        "journal_record_calls": 30,
+        "journal_lock_wait_seconds": 0.5799184629577212,
+        "journal_lock_held_seconds": 0.20192182692699134,
+        "payload_put_requests": 12,
+        "payload_put_seconds": 0.0623970000888221,
+        "control_put_requests": 2,
+        "control_put_seconds": 0.004847249947488308
+      }
+    },
+    {
+      "stage": "unchanged_poll",
+      "status": "complete",
+      "seconds": 0.9322302079526708,
+      "sampled_process_tree_rss_peak_bytes": 178487296,
+      "memory_samples": 4,
+      "scratch_bytes": 294125,
+      "counts": {
+        "get_requests": 8,
+        "control_get_requests": 6,
+        "control_get_seconds": 0.021340084029361606,
+        "control_get_failures": 2,
+        "remote_body_bytes_read": 11819,
+        "hash_helper_bytes": 3637724,
+        "hash_helper_passes": 297,
+        "json_dumps_calls": 3,
+        "json_serialized_characters": 39306,
+        "json_serialization_seconds": 0.0008577930275350809,
+        "payload_get_requests": 2,
+        "payload_get_seconds": 0.0043087079538963735
+      }
+    },
+    {
+      "stage": "explicit_resume_failure",
+      "status": "failed",
+      "seconds": 1.1979249160503969,
+      "sampled_process_tree_rss_peak_bytes": 178683904,
+      "memory_samples": 4,
+      "scratch_bytes": 295193,
+      "counts": {
+        "get_requests": 21,
+        "control_get_requests": 5,
+        "control_get_seconds": 0.018296707945410162,
+        "control_get_failures": 2,
+        "remote_body_bytes_read": 13925,
+        "hash_helper_bytes": 3651600,
+        "hash_helper_passes": 314,
+        "json_dumps_calls": 29,
+        "json_serialized_characters": 231905,
+        "json_serialization_seconds": 0.007657584152184427,
+        "state_json_dump_calls": 6,
+        "state_json_serialized_characters": 77736,
+        "state_json_serialization_seconds": 0.0023199579445645213,
+        "fsync_calls": 7,
+        "fsync_seconds": 0.00038037606282159686,
+        "journal_get_requests": 16,
+        "journal_get_seconds": 0.16947404196253046,
+        "put_requests": 1,
+        "put_body_bytes": 264,
+        "journal_put_requests": 1,
+        "journal_put_seconds": 0.0015937089920043945,
+        "journal_record_calls": 1,
+        "journal_lock_wait_seconds": 8.749775588512421e-07,
+        "journal_lock_held_seconds": 0.007475625025108457,
+        "journal_restore_calls": 1,
+        "journal_restore_seconds": 0.23224087501876056
+      }
+    },
+    {
+      "stage": "explicit_resume",
+      "status": "complete",
+      "seconds": 1.0910714999772608,
+      "sampled_process_tree_rss_peak_bytes": 178503680,
+      "memory_samples": 5,
+      "scratch_bytes": 295843,
+      "counts": {
+        "get_requests": 27,
+        "control_get_requests": 10,
+        "control_get_seconds": 0.027041957073379308,
+        "control_get_failures": 4,
+        "remote_body_bytes_read": 17968,
+        "hash_helper_bytes": 3651864,
+        "hash_helper_passes": 315,
+        "json_dumps_calls": 32,
+        "json_serialized_characters": 238692,
+        "json_serialization_seconds": 0.008554669155273587,
+        "state_json_dump_calls": 6,
+        "state_json_serialized_characters": 77736,
+        "state_json_serialization_seconds": 0.003621998941525817,
+        "fsync_calls": 8,
+        "fsync_seconds": 0.007961417955812067,
+        "journal_get_requests": 17,
+        "journal_get_seconds": 0.06348291708854958,
+        "put_requests": 1,
+        "put_body_bytes": 325,
+        "journal_put_requests": 1,
+        "journal_put_seconds": 0.007355250010732561,
+        "journal_record_calls": 1,
+        "journal_lock_wait_seconds": 1.6249832697212696e-06,
+        "journal_lock_held_seconds": 0.01662666699849069,
+        "journal_restore_calls": 1,
+        "journal_restore_seconds": 0.11057558399625123
+      }
+    }
+  ],
+  "sampling_errors": [],
+  "limits": {
+    "memory_sample_interval_seconds": 0.05,
+    "remote_network": false,
+    "excluded": "interpreter/import startup, GitHub artifact API, public HTTP, actual GitHub Actions setup/downloads; native Arrow I/O bytes and internal hashes",
+    "full_linux_oom_stage": "unknown; no retry or resource change"
+  }
+}

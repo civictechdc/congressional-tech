@@ -12,6 +12,7 @@ White-box stress testing of:
 from __future__ import annotations
 import hashlib
 from pathlib import Path
+from native_test_helpers import require_native_docspec
 import pytest
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -66,6 +67,7 @@ class TestM3ZeroCopyBufferDigestCollisions:
 
     @pytest.fixture
     def retention_tables(self, tmp_path: Path):
+        require_native_docspec()
         return WeeklyRetentionTables(workspace=tmp_path / "weekly_workspace")
 
     def test_sliced_table_buffer_sharing_collision(self, retention_tables: WeeklyRetentionTables):
