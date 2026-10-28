@@ -197,7 +197,7 @@ def test_matching_ack_keeps_the_initial_same_key_qualification(tmp_path):
     assert final['unreadable']==[initial]
 
 
-def native_fixture(tmp_path,count=1):
+def native_fixture(tmp_path,count=1,*,payloads=None):
     from capture_qualification_helpers import write_qualified_bytes
     from congress_api.models.raw_fetch import BodyFile,FetchAttempt,FetchResult
     from congress_api.retention.receipt_writer import ReceiptWriter
@@ -215,7 +215,8 @@ def native_fixture(tmp_path,count=1):
         run_id='daily',write_date='2026-10-28',archive_limits=None)
     files=[];inventory=[]
     for i in range(count):
-        data=json.dumps(dict(title='Daily input '+str(i),url='https://docs.house.gov/report'+str(i)+'.json')).encode()
+        data=(payloads[i] if payloads is not None else
+            json.dumps(dict(title='Daily input '+str(i),url='https://docs.house.gov/report'+str(i)+'.json')).encode())
         entity=tmp_path/('body'+str(i));entity.write_bytes(data);digest=hashlib.sha256(data).hexdigest()
         body=BodyFile(entity,digest,len(data),'application/json',None,None,None)
         url='https://docs.house.gov/report'+str(i)+'.json'
@@ -318,3 +319,30 @@ def test_native_daily_refuses_captures_committed_after_its_parser_work(tmp_path)
         produce_daily(dict(value,receipt_inventory=value['receipt_inventory'][:1],work=str(tmp_path/'second')),
             engine=ConcurrentNative(),raw_store=store)
     assert (tmp_path/'late-append/result.json').exists()
+
+
+def test_native_daily_r2_imports_and_resume_reuse_complete_qualified_inputs(tmp_path):
+    from congress_api.lake.daily import produce_daily
+    from congress_api.retention.body_store import R2Adapter
+    from test_provenance_inventory import R2,KEY,known_cache
+    prior=json.dumps(dict(id='prior',body_sha256='b'*64,parser='json',parser_version='old',
+        reason='timeout',decided_by='readings',decided_at=STAMP,supersedes=None)).encode()+b'\n'
+    public,_=known_cache(tmp_path,prior);client=R2([(KEY,prior)])
+    decision_store=BodyStore(R2Adapter(client,'bucket'))
+    value,engine,_=native_fixture(tmp_path,payloads=[b'{"unfinished":'])
+    value['provenance']['unreadable']=[public]
+    first=produce_daily(value,engine=engine,raw_store=decision_store)
+    assert first['status']=='completed' and first['producerreports']['readings']['unreadable']>=1
+    assert len(first['provenance']['unreadable'])>=2 and client.put_calls
+    for row in first['provenance']['unreadable']:
+        payload=client.objects[row['key']]
+        assert row['etag']==hashlib.md5(payload).hexdigest()
+        assert row['sha256']==hashlib.sha256(payload).hexdigest()
+        assert Path(row['path']).read_bytes()==payload
+    puts=len(client.put_calls)
+    second=produce_daily(dict(value,work=str(tmp_path/'second'),provenance=first['provenance']),
+        engine=engine,raw_store=decision_store)
+    assert second['status']=='completed' and second['receipt_keys']==first['receipt_keys']
+    assert second['producerreports']['readings']['work_items']==0
+    assert second['provenance']==first['provenance'] and len(client.put_calls)==puts
+    assert not client.list_calls and not client.get_calls and not client.head_calls
