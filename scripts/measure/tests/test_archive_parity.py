@@ -148,7 +148,7 @@ def test_descriptor_requires_the_pinned_pair_and_actual_candidate_files(tmp_path
         parity.load_descriptor(path)
 
 
-def f0_fixture(tmp_path, *, bad_filename=False):
+def f0_fixture(tmp_path, *, bad_filename=False, bad_metadata=False):
     import pyarrow as pa
     import pyarrow.parquet as pq
     from congress_api.retention.provenance import file_pin
@@ -168,15 +168,19 @@ def f0_fixture(tmp_path, *, bad_filename=False):
     manifest=convert_catalog(tmp_path/'documents.parquet',tmp_path/'filenames.parquet',tmp_path/'captures.parquet',tmp_path/'committees.parquet',
         catalog_id=parity.ORACLE_GENERATION,output=tmp_path/'release',scratch=tmp_path/'converter',engine=engine())
     release=tmp_path/'release';producer=tmp_path/'converter'
-    if bad_filename:
+    if bad_filename or bad_metadata:
         # This is an authored bad native job, not a patch to production code.
         from hashlib import sha256
         job=json.loads((producer/'job.json').read_text())
         normalized=next(s for s in job['steps'] if s['name']=='normalized')
         before='d.filename AS "filename"'
         assert before in normalized['sql']
-        normalized['sql']=normalized['sql'].replace(before,
-            "CASE WHEN d.filename='Beta.html' THEN 'Wrong.html' ELSE d.filename END AS \"filename\"",1)
+        if bad_filename:
+            normalized['sql']=normalized['sql'].replace(before,
+                "CASE WHEN d.filename='Beta.html' THEN 'Wrong.html' ELSE d.filename END AS \"filename\"",1)
+        if bad_metadata:
+            assert 'b.bytes AS \"bytes\"' in normalized['sql']
+            normalized['sql']=normalized['sql'].replace('b.bytes AS \"bytes\"','b.bytes+1 AS \"bytes\"').replace('coalesce(b.media_type,',"coalesce('application/x-corrupt',")
         release=tmp_path/'bad-release';release.mkdir()
         producer=tmp_path/'bad-producer';producer.mkdir()
         job['scratch']=str(producer/'native')
@@ -221,7 +225,7 @@ def test_actual_f0_candidate_has_only_converter_gaps(tmp_path):
     result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
     for field in ['unexplained','unclassified','invalid_ids']:
         assert result['counts'][field]==FIXTURE['f0_catalog']['expected'][field]
-    assert set(FIXTURE['f0_catalog']['expected']['required_causes'])<={row['cause'] for row in result['causes']}
+    assert set(FIXTURE['f0_catalog']['expected']['required_causes'])<={row['cause'] for row in result['causes'] if row['differences']}
     assert result['candidate_kind']=='f0'
     assert result['model_qualified'] is False
     assert result['decision_ready'] is True
@@ -278,3 +282,32 @@ def test_model_witnesses_use_native_receipt_keys_and_match_only_source_evidence(
     assert any(r['old_doc']=='old-0' and r['role']=='caption' for r in reports['witnesses'])
     assert any(r['new_doc']=='new-1' and r['role']=='document' and r['header']=='capture.txt' for r in reports['witnesses'])
     assert all(r['evidence_ref'].startswith('receipts/a.jsonl:') for r in reports['witnesses'])
+
+
+def test_corrupt_native_download_metadata_is_not_invisible(tmp_path):
+    template=f0_fixture(tmp_path,bad_metadata=True)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    result=parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
+    assert result['counts']['unexplained']==FIXTURE['f0_catalog']['expected']['bad_metadata_unexplained']
+    assert result['decision_ready'] is False
+
+
+def test_native_private_mapping_permutation_is_not_public_row_evidence(tmp_path):
+    from congress_api.retention.provenance import file_pin
+    template=f0_fixture(tmp_path)
+    descriptor=parity.prepare_f0(template,engine=engine(),work=tmp_path/'prepare')
+    value=json.loads(descriptor.read_text());candidate=value['candidate']
+    job=json.loads(Path(candidate['layout_job']['path']).read_text())
+    rows=next(o for o in job['outputs'] if o['name']=='document_rows')
+    members=next(o for o in job['outputs'] if o['name']=='source_members')
+    rows['sql']=rows['sql'].replace('SELECT list_row,','SELECT cast(mod(list_row+1,3) AS INT) AS list_row,',1)
+    members['sql']=members['sql'].replace('o.list_row,','cast(mod(o.list_row+1,3) AS INT) AS list_row,',1)
+    work=tmp_path/'permuted';work.mkdir();job['scratch']=str(work/'native')
+    for output in job['outputs']:output['path']=str(work/(output['name']+'.parquet'))
+    (work/'job.json').write_text(json.dumps(job));result=engine().run_job(work/'job.json')
+    (work/'result.json').write_text(json.dumps(result))
+    for key,name in [('layout_job','job.json'),('layout_result','result.json'),('source_members','source_members.parquet'),('document_rows','document_rows.parquet')]:
+        path=work/name;candidate[key]=dict(path=str(path),**file_pin(path))
+    descriptor.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='projection|lineage'):
+        parity.compare_descriptor(descriptor,engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'comparison')
