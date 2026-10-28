@@ -20,13 +20,15 @@ def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></b
     path=raw/key;path.parent.mkdir(parents=True)
     if not missing:path.write_bytes(body)
     captures=tmp_path/'captures.parquet'
-    schema=pa.schema([('sha256',pa.binary(32)),('stored_bytes',pa.int64()),('stored_suffix',pa.string())])
+    schema=pa.schema([('sha256',pa.binary(32)),('stored_bytes',pa.int64()),('stored_suffix',pa.string()),
+        ('sniffed_format',pa.string()),('sniff_version',pa.string()),('intact',pa.bool_())])
     pq.write_table(pa.Table.from_pylist([dict(sha256=digest,stored_bytes=len(body) if size is None else size,
         stored_suffix='')]*copies,schema=schema),captures)
     existing=tmp_path/'sniff.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,parser='sniff',parser_version='sniff-fixture',
         status='completed',format=body_format)],schema=pa.schema([('body_sha',pa.binary(32)),
-        ('parser',pa.string()),('parser_version',pa.string()),('status',pa.string()),('format',pa.string())])),existing)
+        ('parser',pa.string()),('parser_version',pa.string()),('status',pa.string()),('format',pa.string()),
+        ('intact',pa.bool_()),('error_type',pa.string())])),existing)
     inventory=tmp_path/'bodies.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,
         stored_bytes=len(body) if size is None else size,stored_gzip=False)],schema=pa.schema([
@@ -251,3 +253,72 @@ def test_reading_import_failure_never_claims_durability(tmp_path):
     args,_=setup(tmp_path)
     with pytest.raises(OSError,match='raw unavailable'):
         stage(args,tmp_path/'stage',worker_factory=_TerminalReadingWorker,unreadable_store=Refused())
+
+
+def test_d2_rebuild_uses_only_raw_receipts_bodies_and_durable_decisions(tmp_path):
+    import gzip
+    import shutil
+    from congress_api.lake.captures import stage_captures
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    from congress_api.retention.provenance import parquet_output,run_job
+    raw=tmp_path/'raw';store=BodyStore(LocalAdapter(raw));stages=tmp_path/'stages'
+    body=b'<html><body><p>Original retained evidence</p></body></html>'
+    digest=hashlib.sha256(body).hexdigest();key='bodies/sha256/'+digest[:2]+'/'+digest
+    source=tmp_path/'body';source.write_bytes(body);store.put(key,source,'text/html');source.unlink()
+    sniff_version=readings.current_version('sniff')
+    def receipt(name,data):
+        sha=hashlib.sha256(data).hexdigest();url='https://fixture.test/'+name+'.html'
+        row=dict(run_id='fixture',mode='fetch',outcome='stored',family='documents',requested_url=url,url=url,
+            http_status=200,complete=True,retrieved_at='2026-10-27T12:00:00Z',captures=[dict(sha256=sha,
+            bytes=len(data),media_type='text/html',fidelity='exact-bytes',complete=True,attempt=0,
+            sniffed_format='html',sniff_version=sniff_version,intact=None,stored_suffix='',stored_bytes=len(data),
+            stored_md5=hashlib.md5(data).hexdigest())])
+        payload=gzip.compress((json.dumps(row)+'\n').encode(),mtime=0)
+        receipt_key='receipts/documents/2026-10-27/'+name+'.jsonl.gz'
+        temporary=tmp_path/(name+'.receipt');temporary.write_bytes(payload)
+        store.put(receipt_key,temporary,'application/x-ndjson');temporary.unlink()
+        authority=tmp_path/(name+'.pin.json')
+        authority.write_text(json.dumps(dict(path=str((raw/receipt_key).resolve()),size=len(payload),
+            sha256=hashlib.sha256(payload).hexdigest(),producer='fixture creation')))
+        return dict(key=receipt_key,path=str(raw/receipt_key),qualification=str(authority))
+    retained=receipt('retained',body)
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    def rebuild(files):
+        stages.mkdir()
+        captures=stage_captures(files,engine=engine,work=stages/'captures')/'captures.parquet'
+        inventory=stages/'inventory';inventory.mkdir()
+        run_job(inventory,engine,inputs=[dict(name='captures',kind='parquet',path=str(captures))],steps=[],outputs=[
+            parquet_output(inventory,'bodies',"""SELECT DISTINCT sha256 AS body_sha,
+            'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS physical_key,
+            'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS relative_path,
+            stored_bytes,stored_suffix='.gz' AS stored_gzip FROM captures WHERE sha256 IS NOT NULL""",['body_sha'])])
+        return dict(captures=captures,body_inventory=inventory/'bodies.parquet',local_root=raw,engine=engine,
+            decided_at='2026-10-27T12:00:00Z',sniff_version=sniff_version,parser='html')
+    first=readings.stage(**rebuild([retained]),work=stages/'readings',worker_factory=_TerminalReadingWorker,
+        unreadable_store=store)
+    assert first['unreadable_key'] is not None and first['unreadable_pending'] is False
+    shutil.rmtree(stages)
+    unavailable=receipt('unavailable',b'<html><body>Not in the local body cache</body></html>')
+    decisions=[dict(key=p.relative_to(raw).as_posix(),path=str(p)) for p in raw.glob('provenance/unreadable/*.jsonl')]
+    second=readings.stage(**rebuild([retained,unavailable]),work=stages/'readings',unreadable_files=decisions)
+    assert pq.ParquetFile(second['work_list']).metadata.num_rows==1
+    assert pq.ParquetFile(second['readings']).metadata.num_rows==0
+    assert second['pending_reads']==1 and second['unreadable_key'] is None
+    assert len(list(raw.glob('provenance/unreadable/*.jsonl')))==1
+
+
+@pytest.mark.parametrize('captured_version',['current','old'])
+def test_fetcher_sniff_settles_only_the_pinned_version_without_a_second_read(tmp_path,captured_version):
+    args,_=setup(tmp_path)
+    args.pop('existing')
+    version=readings.current_version('sniff')
+    table=pq.read_table(args['captures']);rows=table.to_pylist()
+    for row in rows:row.update(sniffed_format='html',sniff_version=version if captured_version=='current' else 'old')
+    pq.write_table(pa.Table.from_pylist(rows,schema=table.schema),args['captures'])
+    if captured_version=='current':
+        for path in args['local_root'].rglob('*'):
+            if path.is_file():path.unlink()
+    result=readings.stage(**args,work=tmp_path/'stage',parser='sniff')
+    assert pq.ParquetFile(result['work_list']).metadata.num_rows==(0 if captured_version=='current' else 1)
+    assert result['pending_reads']==0
+    assert pq.ParquetFile(result['readings']).metadata.num_rows==(0 if captured_version=='current' else 1)
