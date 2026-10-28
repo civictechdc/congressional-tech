@@ -45,6 +45,11 @@
       "materialize": true
     },
     {
+      "name": "seed_source_status",
+      "sql_file": "model/sql/seed-v5-source-status.sql",
+      "materialize": true
+    },
+    {
       "name": "seed_members",
       "sql_file": "model/sql/seed-v5-members.sql",
       "materialize": true

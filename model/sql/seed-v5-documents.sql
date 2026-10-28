@@ -1,6 +1,6 @@
-SELECT d.document_id AS legacy_document_id,coalesce(nullif(d.filename,''),u.filename,b.filename) AS filename,d.source_url,d.body_key,
+SELECT d.document_id AS legacy_document_id,coalesce(CASE WHEN trim(d.filename)<>'' THEN d.filename END,u.filename,b.filename) AS filename,d.source_url,d.body_key,
  d.filename AS raw_filename,array_element(d.format,1) AS raw_format,
- CASE WHEN d.filename IS NULL OR d.filename='' THEN coalesce(u.candidates,b.candidates,0) ELSE 0 END AS filename_candidates,
+ CASE WHEN d.filename IS NULL OR trim(d.filename)='' THEN coalesce(u.candidates,b.candidates,0) ELSE 0 END AS filename_candidates,
  coalesce(f.candidates,0) AS byte_format_candidates,
  body_keys AS declared_body_keys,
  array_element(source_link_label,1) AS title,

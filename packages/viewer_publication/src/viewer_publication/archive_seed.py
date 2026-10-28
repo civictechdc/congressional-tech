@@ -132,7 +132,7 @@ def _seed_queries(spec):
         source_count_mismatch=f"(SELECT cast(count(*)<>{spec['document_rows']} AS BIGINT) FROM seed_docs)",
         duplicate_legacy_documents="(SELECT count(*) FROM (SELECT legacy_document_id FROM seed_docs GROUP BY legacy_document_id HAVING count(*)<>1))",
         documents_without_sources="(SELECT count(*) FROM seed_document_admission d LEFT JOIN seed_identities i USING(legacy_document_id) WHERE d.exclusion_reason IS NULL AND i.document_id IS NULL)",
-        orphan_source_rows="(SELECT count(*) FROM seed_members m LEFT JOIN seed_docs d USING(legacy_document_id) WHERE d.legacy_document_id IS NULL)",
+        unaccounted_source_rows="(SELECT abs((SELECT count(*) FROM seed_file_values)-(SELECT count(*) FROM seed_members)-(SELECT count(*) FROM seed_source_status WHERE exclusion_reason IS NOT NULL)))",
         conflicting_byte_formats="(SELECT count(*) FROM seed_docs WHERE byte_format_candidates>1)",
         missing_source_filenames="(SELECT count(*) FROM seed_members WHERE filename IS NULL OR trim(filename)='')",
         invalid_body_keys="(SELECT count(*) FROM seed_members WHERE body_key IS NOT NULL AND NOT regexp_like(body_key,'^bodies/sha256/[a-f0-9]{2}/[a-f0-9]{64}([.]gz|[.]pdf)?$'))",
@@ -174,15 +174,16 @@ def _seed_queries(spec):
     recovery_report=dict(name='seed_recovery_reconciliation',sql="""SELECT (SELECT count(*) FROM seed_recovery_candidates) AS accepted,
         (SELECT count(*) FROM seed_recoveries) AS attached,(SELECT count(*) FROM seed_recovery_candidates r LEFT JOIN seed_recovery_targets t USING(recovery_key)
         WHERE t.recovery_key IS NULL OR (t.targets<>1 AND t.original_targets<>1)) AS without_unique_v5_source""")
-    source_exclusions=dict(name='seed_source_exclusions',sql="""SELECT 'seed_missing_source_filename' AS reason,count(*) AS count
-        FROM seed_file_values f LEFT JOIN seed_name_url n ON f.body_key=n.body_key AND f.source_url IS NOT DISTINCT FROM n.source_url
-        WHERE coalesce(nullif(f.filename,''),n.filename) IS NULL HAVING count(*)>0""")
+    source_exclusions=dict(name='seed_source_exclusions',sql="SELECT exclusion_reason AS reason,count(*) AS count FROM seed_source_status WHERE exclusion_reason IS NOT NULL GROUP BY exclusion_reason")
+    source_reconciliation=dict(name='seed_source_reconciliation',sql="""SELECT (SELECT count(*) FROM seed_file_values) AS input_sources,
+        (SELECT count(*) FROM seed_members) AS included,(SELECT count(*) FROM seed_source_status WHERE exclusion_reason IS NOT NULL) AS excluded""")
+    source_examples=dict(name='seed_source_exclusion_examples',sql="SELECT * FROM seed_source_status WHERE exclusion_reason IS NOT NULL ORDER BY legacy_document_id,legacy_source_id LIMIT 10")
     mapping=dict(name='seed_mapping_choices',sql="""SELECT count(*) FILTER(WHERE filename_candidates>1) AS multiple_filename_candidates,
         count(*) FILTER(WHERE raw_filename IS NULL AND filename IS NOT NULL) AS repaired_filenames,
         count(*) FILTER(WHERE raw_format IS NULL AND format IS NOT NULL) AS repaired_formats,
         count(*) FILTER(WHERE filename IS NULL OR trim(filename)='') AS missing_filenames,
         count(*) FILTER(WHERE format IS NULL OR trim(format)='') AS missing_formats FROM seed_docs""")
-    return guard,[reconciliation,exclusions,spots,examples,probe,recovery_report,source_exclusions,mapping,merged,merged_examples]
+    return guard,[reconciliation,exclusions,spots,examples,probe,recovery_report,source_exclusions,mapping,merged,merged_examples,source_reconciliation,source_examples]
 
 
 def build_seed_release(spec,*,engine,output,scratch):
