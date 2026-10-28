@@ -50,14 +50,14 @@
       "bytes": 31496,
       "context_url": "https://www-senate-gov-media-srs.akamaized.net/hls/live/2036800/armed/armedA041823/master.m3u8",
       "fidelity": "exact-bytes",
-      "attempt_status": 200,
       "retrieved_at": "2026-09-29T02:12:37.958291+00:00",
       "stored_bytes": 4549,
       "stored_suffix": ".gz",
       "pointer": [
         "raw_body",
         "body"
-      ]
+      ],
+      "http_status": null
     }
   },
   {
