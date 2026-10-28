@@ -1,6 +1,6 @@
 # Lead runtime, main and data switch window
 
-Status: runtime `885e8c3` is qualified locally. A remains blocked on the frozen landing’s final local CI-environment full run and this revised checklist’s review. A covers runtime upload, main landing and variables after local qualification. Hosted validation is a separate CI-health follow-up. The full seed packet is accepted; B remains stopped until this local driver and rollback review closes. A does not require seed publication. Both blocks stop at their own readiness guards.
+Status: runtime `885e8c3` is qualified locally. A remains blocked on the frozen landing’s final local CI-environment full run. A covers runtime upload, main landing and variables after local qualification. Hosted validation is a separate CI-health follow-up. The full seed packet is accepted. The local driver and rollback review is approved through `befa40e9`; B is ready after A completes. A does not require seed publication. Both blocks stop at their own readiness guards.
 
 Only the lead executes these outward commands. B0 receipt rewriting and R2 bucket locks remain deferred to a supervised owner window; this block runs neither. The artifact is an ordinary `linux-amd64` build from `885e8c3c2a971a0c11b16ff9ca5a69e8ecb79c26`: 227161600 bytes, SHA-256 `bd337f62a9f98e23da834a04159d59b41860a14a718e91dc8728480cc1094edd`. Linux qualification evidence: 159 passed on application `553a8383`; the three affected cases passed on application `a27a3351` after the approved worker repair (3 passed in 157.29s). Initial failures and both source-specific logs remain in the packet; this does not claim all 163 tests passed on one source. The checks use amd64 Python 3.12.13 and real native model/group/export plus runtime setup. The unchanged 120-second bounded-metadata fanout assertion timed out under QEMU; hosted native amd64 execution remains unverified. The lead made hosted CI a separate health follow-up; never raise this timeout or claim that boundary passed. The immutable packet includes the exact descriptor, rollback descriptor, cross recipe and qualification evidence.
 
@@ -126,7 +126,7 @@ git -C "$LANDING" diff --quiet "$QUALIFIED_LANDING" HEAD -- . \
   ':(exclude)codex-release2/window.md' \
   ':(exclude)codex-release2/final-report.md' ':(exclude).tickets/clef2-7kpa.md' \
   ':(exclude).github/tests/test_release_window.py'
-test "$(git -C "$LANDING" rev-parse HEAD:.github/tests/test_release_window.py)" = 08bb4a3c510c132b3d8e9a76fefe480cce47d5b5
+test "$(git -C "$LANDING" rev-parse HEAD:.github/tests/test_release_window.py)" = f9746da32706d0b8dbdb5d65c9c7e9a1463db91d
 PREVIOUS_APPLICATION=$(git -C "$LANDING" rev-parse origin/main)
 git -C "$LANDING" merge-base --is-ancestor 5f9c4657 "$PREVIOUS_APPLICATION"
 printf '%s\n' "$PREVIOUS_APPLICATION" > "$WINDOW/previous-application-commit.txt"
@@ -224,7 +224,7 @@ The seed is display-only (`seed: v5 catalog 596f08fa`); raw rebuilding remains s
 ```sh
 set +x
 set -euo pipefail
-WINDOW_B_READY=0
+WINDOW_B_READY=1
 test "$WINDOW_B_READY" -eq 1
 test -e "$WINDOW/window-a-complete"
 test -s "$WINDOW/accepted-seed-manifest.json"
