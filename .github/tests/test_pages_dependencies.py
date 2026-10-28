@@ -39,7 +39,7 @@ def test_pages_uses_declared_locked_environments_and_checks_built_reader():
     assert commands.index('npm run test:explorer') > next(i for i, step in enumerate(steps) if step.get('uses') == shared)
     assert commands.index('npm run test:explorer') < commands.index('npm run build')
     assert any('verify(source)' in command and 'shutil.copytree(source, target, dirs_exist_ok=True)' in command for command in commands)
-    assert 'stage-document-reviews.py' in package['scripts']['build']
+    assert package['scripts']['build'] == 'astro build'
     lock = json.loads((ROOT / 'apps/site/package-lock.json').read_text())
     assert lock['packages']['']['dependencies'] == package['dependencies']
     assert lock['packages']['']['devDependencies'] == package['devDependencies']

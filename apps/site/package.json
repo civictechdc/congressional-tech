@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "../../.venv/bin/python -I scripts/stage-document-reviews.py && astro build",
+    "build": "astro build",
     "preview": "astro preview",
     "generate:explorer-types": "node scripts/generate-explorer-types.mjs",
     "check:explorer-types": "node scripts/generate-explorer-types.mjs --check",
