@@ -1,6 +1,6 @@
 ---
 id: cef-5fbs
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-28T08:22:14Z
