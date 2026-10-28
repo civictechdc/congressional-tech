@@ -22,22 +22,43 @@ def explain_step(spec,name,*,native,work):
     return next(row['plan'] for row in result['plan'] if row['plan_type']=='physical_plan')
 
 
-@pytest.mark.parametrize('step_name',['matched','old_only','new_only'])
-def test_actual_comparison_plan_hashes_every_identity_without_key_residuals(tmp_path,step_name):
+@pytest.mark.parametrize('scoped',[False,True])
+def test_actual_comparison_pivot_groups_nullable_identities_without_wide_builds(tmp_path,scoped):
     old,parts=batch_fixture(tmp_path)
     native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-    compare_old(parts,old,engine=native,work=tmp_path/'comparison')
+    compare_old(parts,old,engine=native,work=tmp_path/'comparison',receipt_keys=[KEY] if scoped else None)
     spec=json.loads((tmp_path/'comparison/job.json').read_text())
     work=tmp_path/'explain';work.mkdir()
-    physical=explain_step(spec,step_name,native=native,work=work)
+    physical=explain_step(spec,'paired',native=native,work=work)
+    aggregates=[line for line in physical.splitlines() if 'AggregateExec:' in line]
+    assert any('mode=Partial' in line for line in aggregates),physical
+    assert any('mode=FinalPartitioned' in line for line in aggregates),physical
+    assert 'RepartitionExec: partitioning=Hash' in physical,physical
+    for key in ('receipt_key','receipt_line','body_sha','pointer','occurrence','invalid_side'):
+        assert any(re.search(r'\b'+key+r'@',line) for line in aggregates),physical
+    # The surviving identity anti-join builds only secondary old-row IDs.
     joins=[line for line in physical.splitlines() if 'HashJoinExec:' in line]
     assert len(joins)==1,physical
     [join]=joins
-    keys=join.split('on=[',1)[1].split(']',1)[0]
-    for key in ('receipt_key','receipt_line','body_sha','pointer','occurrence'):
-        assert len(re.findall(r'\b'+key+r'@',keys))==2,physical
-    assert 'NullsEqual: true' in join,physical
+    assert 'join_type=RightAnti' in join and 'old_row@' in join,physical
     assert 'filter=' not in join,physical
+    assert 'projection=[old_row]' in physical,physical
+
+
+@pytest.mark.parametrize('step_name',['new_selected','excluded_receipts'])
+def test_comparison_scope_builds_only_the_small_receipt_key_set(tmp_path,step_name):
+    old,parts=batch_fixture(tmp_path)
+    native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    compare_old(parts,old,engine=native,work=tmp_path/'comparison',receipt_keys=[KEY])
+    spec=json.loads((tmp_path/'comparison/job.json').read_text())
+    work=tmp_path/'explain';work.mkdir()
+    physical=explain_step(spec,step_name,native=native,work=work)
+    join=next(line for line in physical.splitlines() if 'HashJoinExec:' in line)
+    assert ('join_type=RightSemi' if step_name=='new_selected' else 'join_type=RightAnti') in join,physical
+    # The first leaf below the join is the one-column explicit scope inventory.
+    leaves=[line for line in physical.splitlines()[physical.splitlines().index(join)+1:]
+            if 'DataSourceExec:' in line or 'StreamingTableExec:' in line]
+    assert leaves and 'receipt_key' in leaves[0] and 'projection=[receipt_key]' in leaves[0],physical
 
 
 @pytest.mark.parametrize('null_context',[False,True])
