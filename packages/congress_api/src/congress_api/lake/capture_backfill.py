@@ -157,8 +157,9 @@ def _allocated_bytes(root,*,scan=os.scandir):
     return total
 
 
-def check_scratch(root,*outputs,min_free_bytes=15<<30):
+def check_scratch(root,*outputs,min_free_bytes=15<<30,max_owned_scratch_bytes=5<<30):
     """Refuse unowned local outputs and resource exhaustion before an effect."""
+    _positive(max_owned_scratch_bytes,'max_owned_scratch_bytes')
     root=Path(root).resolve()
     if any(not Path(path).resolve().is_relative_to(root) for path in outputs):
         raise ValueError('Owned scratch root must contain every local backfill output')
@@ -167,7 +168,8 @@ def check_scratch(root,*outputs,min_free_bytes=15<<30):
     if shutil.disk_usage(existing).free<min_free_bytes:
         raise RuntimeError('Free disk is below the backfill floor')
     total=_allocated_bytes(root)
-    if total>5<<30:raise RuntimeError('Owned backfill scratch exceeds 5GiB')
+    if total>max_owned_scratch_bytes:
+        raise RuntimeError('Owned backfill scratch exceeds '+str(max_owned_scratch_bytes)+' allocated bytes')
     return root
 
 
@@ -224,7 +226,7 @@ def _cleanup_child(child,send):
 
 
 def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30,
-                    scratch_root=None):
+                    scratch_root=None,max_owned_scratch_bytes=5<<30):
     """Run one owned batch process and record sampled RSS/physical footprint.
 
     The separate process group watches this monitor too: losing the tool session
@@ -238,7 +240,7 @@ def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_b
         raise ValueError('A concrete batch command is required')
     work=Path(work)
     scratch_root=check_scratch(work if scratch_root is None else scratch_root,work,
-        min_free_bytes=min_free_bytes)
+        min_free_bytes=min_free_bytes,max_owned_scratch_bytes=max_owned_scratch_bytes)
     work.mkdir(parents=True,exist_ok=True)
     report=work/'measurement.json';partial=work/'measurement.json.partial';log=work/'process.log'
     if any(p.exists() for p in (report,partial,log)):raise FileExistsError('Batch measurement paths must be fresh')
@@ -282,7 +284,8 @@ raise SystemExit(process.returncode)
                         raise RuntimeError('Batch exceeded its physical memory limit')
                     if shutil.disk_usage(work).free<min_free_bytes:raise RuntimeError('Free disk dropped below the backfill floor')
                     if time.monotonic()>=disk_next:
-                        check_scratch(scratch_root,work,min_free_bytes=min_free_bytes)
+                        check_scratch(scratch_root,work,min_free_bytes=min_free_bytes,
+                                      max_owned_scratch_bytes=max_owned_scratch_bytes)
                         disk_next=time.monotonic()+5
                     if time.monotonic()-started>timeout:raise RuntimeError('Batch exceeded its time limit')
                     time.sleep(.5)
