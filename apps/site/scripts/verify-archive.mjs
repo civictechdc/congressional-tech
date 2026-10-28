@@ -3,19 +3,11 @@ import {readFile,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {performance} from 'node:perf_hooks';
 import {execFile} from 'node:child_process';
-import {createHash} from 'node:crypto';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
 import {argumentsMap,checkTargetRelease,readTargets} from './archive-targets.mjs';
 const hex=value=>typeof value==='string'?value:Buffer.from(value).toString('hex');
-function legacyPointer(value){
-  return value&&typeof value==='object'&&!Array.isArray(value)
-    &&(value.version===1||value.version==='1')&&(value.publisher_version===10||value.publisher_version==='10')
-    &&typeof value.catalog_id==='string'&&value.catalog_id.length>0
-    &&typeof value.manifest==='string'&&value.manifest.length>0
-    &&!('release_id' in value)&&!('previous_release_id' in value);
-}
 function safeUrl(value,local){
   const url=new URL(value);
   if(url.username||url.password)throw new Error('Use a public URL without credentials.');
@@ -43,13 +35,9 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
   };
   const timed=async(name,run)=>{const begin=performance.now(),value=await run();operations[name]=performance.now()-begin;if(name!=='stale')sample();return value;};
   try{
-    let legacyPointerSha256;
     const livePointer=await bounded(pointer.href,{cache:'no-store'});if(livePointer.ok){
-      const bytes=new Uint8Array(await livePointer.arrayBuffer()),value=JSON.parse(new TextDecoder().decode(bytes));
-      if(!/^[a-f0-9]{64}$/.test(value?.release_id)){
-        if(!/^[a-f0-9]{64}$/.test(releaseId)||!legacyPointer(value))throw new Error('Invalid live archive pointer.');
-        legacyPointerSha256=createHash('sha256').update(bytes).digest('hex');
-      }
+      const value=await livePointer.json();
+      if(!/^[a-f0-9]{64}$/.test(value?.release_id))throw new Error('Invalid live archive pointer.');
     }else{await livePointer.body?.cancel();if(livePointer.status!==404||!releaseId)throw new Error('Could not read the archive pointer.');}
     const reader=await timed('startup',()=>openArchive(pointer.href,{fetcher:bounded,releaseId,rawBase,heapBytes,signal:controller.signal}));
     const initial=await timed('listScan',()=>reader.search({limit:30},controller.signal));
@@ -83,7 +71,7 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
     const memory=sample();clearInterval(sampler);
     const missingFile=reader.manifest.files.find(file=>file.name==='detail.parquet'||file.shard==='detail').name;
     const remaining=Math.floor(deadlineMs-(performance.now()-started));
-    const stale=await timed('stale',()=>promisify(execFile)(process.execPath,[fileURLToPath(new URL('./archive-stale.mjs',import.meta.url)),JSON.stringify({pointerUrl:pointer.href,releaseId:reader.releaseId,heapBytes,missingFile,timeout:remaining,legacyPointerSha256})],{timeout:remaining,maxBuffer:1024*1024,signal:controller.signal}));
+    const stale=await timed('stale',()=>promisify(execFile)(process.execPath,[fileURLToPath(new URL('./archive-stale.mjs',import.meta.url)),JSON.stringify({pointerUrl:pointer.href,releaseId:reader.releaseId,heapBytes,missingFile,timeout:remaining})],{timeout:remaining,maxBuffer:1024*1024,signal:controller.signal}));
     const staleResult=JSON.parse(stale.stdout);if(staleResult.status!=='passed')throw new Error('Stale release probe failed.');
     const metrics={releaseId:reader.releaseId,startupMs:operations.startup,searchMs:operations.search,detailMs:Math.max(...[0,1,2].map(i=>operations['detail'+i])),heapBytes:peak,workerHeapBytes:0};
     // Browser timings and V8 heap have a different measurement basis. The
