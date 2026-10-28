@@ -69,6 +69,11 @@ def _selector(value,base):
 def load_spec(path):
     """Read only the job description and current definitions, never input payloads."""
     path=Path(path).resolve();value=json.loads(path.read_text())
+    return validate_spec(value,base=path.parent)
+
+
+def validate_spec(value,*,base):
+    """Apply the same selector and definition checks to file or daily inputs."""
     if not isinstance(value,dict):raise ValueError('Model job spec must be an object')
     if value.get('status')=='blocked':
         if not isinstance(value.get('reason'),str) or not value['reason']:
@@ -77,7 +82,6 @@ def load_spec(path):
     if set(value)-REQUIRED-PROVENANCE.keys():raise ValueError('Model job has unknown fields')
     if not REQUIRED<=value.keys() or type(value['version']) is not int or value['version']!=1:
         raise ValueError('Model job requires version 1 and all explicit inputs')
-    base=path.parent
     result=dict(value,**{name:_selector(value[name],base) for name in TABLES})
     for name in ['engine_config','output','scratch']:result[name]=_local(value[name],base)
     output,scratch=Path(result['output']),Path(result['scratch'])

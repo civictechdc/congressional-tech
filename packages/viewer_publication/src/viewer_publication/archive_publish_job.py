@@ -11,7 +11,10 @@ from uuid import UUID
 
 from congress_api.retention.body_store import validate_key
 from congress_api.retention.derived_files import file_identity,check_identity
-from viewer_publication.archive_model_job import load_spec as load_model_spec,_local,_pin
+from viewer_publication.archive_model_job import (
+    load_spec as load_model_spec,validate_spec as validate_model_spec,_local,_pin,
+    TABLES,PROVENANCE,provenance_record_kind,provenance_etag_md5,
+)
 from viewer_publication.receipt_pins import receipt_list
 
 ROOT=Path(__file__).resolve().parents[4]
@@ -19,6 +22,45 @@ SITE=ROOT/'apps/site'
 FIELDS={'version','model_spec','bucket','work','public_origin','receipt_keys','provenance','run',
         'contract_next_release','targets'}
 METADATA_BYTES=1<<20
+
+
+def completed_daily_inputs(template,production,records):
+    """Bind only a completed producer's fresh pins and complete receipt set."""
+    if not isinstance(production,dict) or production.get('status')!='completed':
+        raise ValueError('Publication requires completed daily production')
+    pins=production.get('pins');keys=production.get('receipt_keys');versions=production.get('currentversions')
+    if (not isinstance(pins,dict) or set(pins)!=set(TABLES)
+            or not isinstance(keys,list) or any(not isinstance(key,str) for key in keys)
+            or keys!=sorted(set(keys)) or not isinstance(versions,dict)
+            or not {'parsers','filename_readings'}<=versions.keys()):
+        raise ValueError('Daily publication requires three fresh pins, complete receipt keys and definitions')
+    receipt_list(keys)
+    value=dict(template,parser_versions=versions['parsers'],catalog_version=versions['filename_readings'])
+    for name in TABLES:
+        if (not isinstance(pins[name],dict)
+                or set(pins[name])!={'metadata_location','table_uuid','snapshot','schema_id'}):
+            raise ValueError('Invalid daily native table pin')
+        value[name]=dict(pins[name],kind='native_table')
+    selected={};families={family:[] for family in PROVENANCE.values()}
+    for row in records:
+        _pin(row,{'key','path','etag','sha256','size'})
+        kind=provenance_record_kind(row['key'])
+        if kind is None or row['key'] in selected:raise ValueError('Daily records must have distinct recognized keys')
+        provenance_etag_md5(row['etag'])
+        selected[row['key']]=row
+        families[kind].append({k:v for k,v in row.items() if k!='etag'})
+    produced=production.get('provenance')
+    if not isinstance(produced,dict) or set(produced)!={'recoveries','reviews','unreadable'}:
+        raise ValueError('Daily production requires complete decision provenance')
+    for kind,rows in produced.items():
+        if not isinstance(rows,list) or any(not isinstance(row,dict) for row in rows):
+            raise ValueError('Invalid daily decision provenance')
+        actual={key:row for key,row in selected.items() if provenance_record_kind(key)==kind}
+        if (len(rows)!=len(actual) or {row.get('key') for row in rows}!=set(actual)
+                or any(row!=actual[row['key']] for row in rows)):
+            raise ValueError('Daily provenance differs from checked records and acknowledged imports')
+    for name,kind in PROVENANCE.items():value[name]=sorted(families[kind],key=lambda row:row['key'])
+    return validate_model_spec(value,base=Path.cwd()),list(keys)
 
 
 def _metadata_pin(value,base):
