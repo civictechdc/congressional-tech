@@ -37,7 +37,13 @@ def run_state(tmp_path,change=None):
              (BASE+'member.pdf','folder/member.pdf','b'*64),(BASE+'error-only.pdf',None,'c'*64),
              (BASE+'caption.vtt?key=constant',None,'b'*64)]
     if change=='unknown_family':rows[3]['family']='not-registered'
-    if change=='line_conflict':rows[1]['complete']=False
+    if change=='line_conflict':rows[1]['http_status']=503
+    if change=='entry_facts':
+        rows[0]['complete']=False
+        rows[1]['retrieved_at']='2026-11-01T13:00:00Z'
+    if change=='batched_urls':
+        rows[1]['requested_url']=BASE+'second-report.pdf'
+        rows[1]['url']=rows[1]['requested_url']
     if change=='collision':targets.append((url+'?api_key=example',None,'b'*64))
     links=[dict(target_url=target,target_member_path=member,page_body=body,
         context_url=BASE+('error.html' if body=='c'*64 else 'wrapper.html'),member_path=None) for target,member,body in targets]
@@ -84,3 +90,15 @@ def test_url_state_reports_build_blocking_input_errors(tmp_path,change,field):
     if change=='unknown_family':
         row=next(r for r in result['state'] if r['requested_url']==BASE+'report.pdf')
         assert row['next_attempt_at'] is None
+
+
+@pytest.mark.parametrize('shape',['entry_facts','batched_urls'])
+def test_url_state_keeps_per_entry_facts_and_each_requested_address(tmp_path,shape):
+    result=run_state(tmp_path,shape)
+    assert not any(result['url_state_invariants'][0].values())
+    states={r['requested_url']:r for r in result['state']}
+    assert states[BASE+'report.pdf']['attempts']==3
+    if shape=='entry_facts':
+        assert states[BASE+'report.pdf']['last_good_at'].startswith('2026-11-01T13:00:00')
+    else:
+        assert states[BASE+'second-report.pdf']['attempts']==1
