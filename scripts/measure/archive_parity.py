@@ -579,10 +579,10 @@ def model_witness_steps(available, *, restrict_differences=False):
     steps=[dict(name='e4_source_observations',sql="""SELECT s.source_id,s.body_sha,s.filename,s.source_url,s.import_date,
         c.receipt_key,c.receipt_line,c.capture_index,c.format,c.mode,c.complete,c.http_status,c.outcome,c.url,c.requested_url,
         c.retrieved_at,c.fidelity,c.member_path,c.h_content_disposition,r.record_role,r.is_real_file,
-        p.status AS reading_status,p.fingerprint,p.error_type
+        p.status AS reading_status,encode(p.fingerprint,'hex') AS fingerprint,p.error_type
         FROM capture_sources s JOIN capture_evidence c USING(receipt_key,receipt_line,capture_index)
         JOIN record_roles r USING(receipt_key,receipt_line,capture_index)
-        LEFT JOIN page_facts p ON p.body_sha=s.body_sha""",materialize=True),
+        LEFT JOIN page_facts p ON encode(p.body_sha,'hex')=s.body_sha""",materialize=True),
         dict(name='e4_source_contexts',sql='SELECT body_sha,count(DISTINCT source_url) AS distinct_contexts FROM e4_source_observations GROUP BY body_sha',materialize=True),
         dict(name='e4_evidence_sources',sql="SELECT 'old' AS side,* FROM old_evidence_sources UNION ALL SELECT 'new',* FROM new_evidence_sources",materialize=True),
         dict(name='e4_observations',sql="""SELECT m.side,m.doc,m.body_key,c.*,x.distinct_contexts FROM e4_evidence_sources m
@@ -653,10 +653,8 @@ def model_witness_steps(available, *, restrict_differences=False):
         for subject in ["''","source_url"]:
             branch('e4_link_observations',dict(label_basis="'saved_page'",link_text='link_text'),subject=subject,evidence="'page:'||page_body||':'||cast(link_index AS VARCHAR)")
         missing.remove('link_label_provenance')
-        if 'document_kind' in available.get('capture_sources',set()):
-            steps.append(dict(name='e4_link_kinds',sql='SELECT o.*,cardinality(s.document_kind) AS filename_kind_count FROM e4_link_observations o JOIN capture_sources s USING(receipt_key,receipt_line,capture_index)',materialize=True))
-            branch('e4_link_kinds',dict(filename_kind_count='filename_kind_count',publisher_kind='publisher_kind',link_basis="'saved_page'"),subject="''",evidence="'page:'||page_body||':'||cast(link_index AS VARCHAR)")
-            missing.remove('publisher_link_kind')
+        # Raw doc_type is attribution, not a registry-mapped document kind.
+        # The model's canonical kind evidence is a producer dependency.
     # The official-package proof needs its retained raw association flag; no URL
     # inference substitutes for the owner's publisher_requested condition.
     official={'publisher_requested','match_basis','original_url'}
