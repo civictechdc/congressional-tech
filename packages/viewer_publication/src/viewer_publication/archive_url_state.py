@@ -8,11 +8,11 @@ ROOT=Path(__file__).parents[4]
 
 def url_state_steps(*,root=ROOT):
     """Use shared good-fetch and URL keys, preserving explicit input diagnostics."""
-    sqls=[('lines',"""SELECT receipt_key,receipt_line,max(requested_url) AS requested_url,max(family) AS family,
+    sqls=[('lines',"""SELECT receipt_key,receipt_line,requested_url,max(family) AS family,
         max(arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS retrieved_at,
         max(http_status) AS http_status,max(outcome) AS outcome,
-        count(DISTINCT json_array(requested_url,family,cast(retrieved_at AS VARCHAR),http_status,outcome,complete)) AS variants
-        FROM captures WHERE mode='fetch' GROUP BY receipt_key,receipt_line"""),
+        count(DISTINCT json_array(family,http_status,outcome)) AS variants
+        FROM captures WHERE mode='fetch' GROUP BY receipt_key,receipt_line,requested_url"""),
         ('good_lines',"SELECT DISTINCT receipt_key,receipt_line FROM good_fetches"),
         ('latest',"""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY requested_url ORDER BY
             retrieved_at DESC NULLS LAST,receipt_key DESC,receipt_line DESC) AS preference FROM url_state_lines

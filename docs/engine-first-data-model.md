@@ -605,7 +605,7 @@ Every list and fold column MUST be written in a fixed order: structs by their fi
 
 One row per requested URL, plus the queue: `requested_url` string, `attempts` int32, `last_attempt` ts nullable, `last_status` int16 nullable, `last_outcome` dict nullable, `last_good_at` ts nullable, `next_attempt_at` ts nullable.
 
-- Aggregated over distinct `(receipt_key, receipt_line)`, so a fetch line counts once however many bodies it references.
+- Aggregated per requested URL over distinct `(receipt_key, receipt_line)`, so a fetch line counts once for each requested address however many bodies it references. Its `retrieved_at` is the latest non-null retained entry time on that line; recorded entry times and completeness may differ without contradicting the line's final status, outcome or family.
 - The latest `mode = fetch` line wins, in the order `(retrieved_at nulls first, receipt_key, receipt_line)`, and gives `last_status` from its `http_status`; `last_good_at` is the `retrieved_at` of its latest good fetch (§7.3). Recovery rows MUST NOT appear.
 - **`next_attempt_at`:**
   - in phase 1, `last_attempt` plus the family's recheck interval for every outcome; `Retry-After` stays in raw and is not a bulk model input; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
