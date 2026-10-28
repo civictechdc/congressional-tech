@@ -49,7 +49,15 @@ def test_duplicate_captures_parse_once_and_nested_links_survive_native_export(tm
     assert rows[0]['parser']=='html' and rows[0]['status']=='completed'
     assert rows[0]['links'][0]['href']=='a.pdf'
     assert len(rows[0]['fingerprint'])==32
-    repeated=stage(args,tmp_path/'again',existing=result['readings'])
+    from congress_api.retention.provenance import run_job,parquet_output
+    retained=tmp_path/'retained';retained.mkdir()
+    reports=run_job(retained,args['engine'],inputs=[dict(name='sniff',kind='parquet',path=str(args['existing'])),
+        dict(name='pages',kind='parquet',path=str(result['readings']))],steps=[],outputs=[
+        parquet_output(retained,'existing',
+            'SELECT body_sha,parser,parser_version,status,format FROM sniff UNION ALL SELECT body_sha,parser,parser_version,status,format FROM pages',
+            readings.PK)],queries=[dict(name='coverage',sql="SELECT (SELECT count(*) FROM sniff WHERE parser='sniff' AND parser_version='sniff-fixture' AND status='completed' AND format='html') AS admitted,(SELECT count(*) FROM pages WHERE parser='html') AS completed")])
+    assert reports['coverage']==[dict(admitted=1,completed=1)]
+    repeated=stage(args,tmp_path/'again',existing=retained/'existing.parquet')
     assert pq.ParquetFile(repeated['work_list']).metadata.num_rows==0
 
 
