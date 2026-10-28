@@ -50,6 +50,21 @@ def test_pointer_response_evidence_is_never_overwritten(tmp_path):
     assert response.read_bytes()==b'previous held response' and store.requests==[]
 
 
+def test_pointer_directory_sync_failure_prevents_decode_and_publication(tmp_path,monkeypatch):
+    import stat
+    import viewer_publication.archive_publish as publication
+    store=Store();store.objects['viewer-publications/manifest.json']=OLD.read_bytes()
+    evidence=tmp_path/'outgoing-pointer.json';fsync=os.fsync
+    def sync_or_fail_directory(fd):
+        if stat.S_ISDIR(os.fstat(fd).st_mode):raise OSError('Injected directory sync failure')
+        return fsync(fd)
+    monkeypatch.setattr(os,'fsync',sync_or_fail_directory)
+    monkeypatch.setattr(publication.json,'loads',lambda _:pytest.fail('Decode preceded durable evidence'))
+    with pytest.raises(OSError,match='Injected directory sync failure'):
+        publication.read_pointer(store,bucket='derived-fixture',evidence=evidence)
+    assert evidence.read_bytes()==OLD.read_bytes() and store.requests==[]
+
+
 def test_legacy_pointer_has_no_engine_predecessor_but_retains_exact_evidence(tmp_path):
     from viewer_publication.archive_publish import read_pointer
     store=Store();raw=OLD.read_bytes();store.objects['viewer-publications/manifest.json']=raw
