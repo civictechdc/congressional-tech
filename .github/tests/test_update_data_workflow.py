@@ -86,8 +86,8 @@ def test_every_snapshot_save_also_keeps_the_snapshot_in_raw():
         assert set(step['env']) == {'CLOUDFLARE_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'}
         assert step['env']['R2_ACCESS_KEY_ID'] == '${{ secrets.R2_ACCESS_KEY_ID }}'
     script = (ROOT / '.github/scripts/save-pipeline-data.sh').read_text().splitlines()
-    push = script.index('git push -q -f origin snapshot:pipeline-data')
-    tail = '\n'.join(script[push + 1:])
-    assert 'prepare-raw-writer.sh' in tail
-    assert '"$writer_root/.venv/bin/python" -I -m congress_api.cli.pipeline_raw --snapshot "$snapshot_root"' in tail
+    setup = next(i for i,line in enumerate(script) if 'prepare-raw-writer.sh' in line)
+    preserve = next(i for i,line in enumerate(script) if 'congress_api.cli.pipeline_raw' in line)
+    push = next(i for i,line in enumerate(script) if 'push -q -f origin snapshot:pipeline-data' in line)
+    assert setup < preserve < push
     assert 'git -C "$application_root" rev-parse HEAD' in '\n'.join(script)

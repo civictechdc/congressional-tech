@@ -9,6 +9,10 @@ import pytest
 from botocore.exceptions import ClientError, ReadTimeoutError
 from congress_api.retention.r2 import R2Store
 
+DATA = b'bytes'
+SHA = hashlib.sha256(DATA).hexdigest()
+KEY = f'bodies/sha256/{SHA[:2]}/{SHA}'
+
 
 class Client:
     def __init__(self):
@@ -39,28 +43,28 @@ class Client:
 
 def test_file_upload_streams_and_retains_checksum(tmp_path):
     path = tmp_path / "body"
-    path.write_bytes(b"bytes")
+    path.write_bytes(DATA)
     client = Client()
     store = R2Store(client, "bucket")
-    assert store.put_file("bodies/x.gz", path)
+    assert store.put_file(KEY, path)
     assert client.data == b"bytes" and store.index_etags == {}
     assert client.puts[0]["Body"].closed
 
 
 def test_file_upload_checksum_failure_and_existing_body(tmp_path):
     path = tmp_path / "body"
-    path.write_bytes(b"bytes")
+    path.write_bytes(DATA)
     client = Client()
     store = R2Store(client, "bucket")
     client.put_object = lambda **kwargs: {"ETag": "bad"}
     with pytest.raises(ValueError, match="checksum"):
-        store.put_file("bodies/x.gz", path)
+        store.put_file(KEY, path)
 
     def collision(**kwargs):
         raise ClientError({"Error": {"Code": "PreconditionFailed"}}, "PutObject")
 
     client.put_object = collision
-    assert store.put_file("bodies/x.gz", path) is False
+    assert store.put_file(KEY, path) is False
 
 
 @pytest.mark.parametrize(

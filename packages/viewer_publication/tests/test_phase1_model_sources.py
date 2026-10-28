@@ -3,7 +3,7 @@ import json
 import os
 from pathlib import Path
 
-from congress_api.retention.provenance import json_input,run_job
+from congress_api.retention.provenance import json_input,run_job,parquet_output
 from docspec_client.client import NativeDatasets
 
 ROOT=Path(__file__).parents[3]
@@ -19,7 +19,7 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
             is_real_file=True,record_role='document',**values)
     rows=[]
     for index,name in [(1,'one.pdf'),(2,'two.pdf')]:
-        row=capture(index);row['h_content_disposition']='attachment; filename="'+name+'"';rows.append(row)
+        row=capture(index);row.update(url='https://fixture.test/'+name,context_url='https://fixture.test/'+name);rows.append(row)
     row=capture(3);row.update(url='https://fixture.test/mirror.pdf',context_url='https://fixture.test/mirror.pdf',retrieved_at='2026-10-19T12:00:00Z');rows.append(row)
     row=capture(4);row.update(body_hex=None,url='https://fixture.test/failed.pdf',is_real_file=False,record_role=None);rows.append(row)
     for index,path in [(5,'a/report.pdf'),(6,'b/report.pdf')]:
@@ -28,6 +28,9 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
     row=capture(8);row.update(body_hex='d'*64,mode='retained_import',url='https://fixture.test/recovered.pdf',context_url='https://fixture.test/recovered.pdf',is_real_file=False);rows.append(row)
     row=capture(9);row.update(body_hex='c'*64,url='https://fixture.test/import.pdf',context_url='https://fixture.test/import.pdf',retrieved_at=None);rows.append(row)
     row=capture(10);row.update(body_hex='e'*64,run_id='legacy-import',url='https://fixture.test/only-import.pdf',context_url='https://fixture.test/only-import.pdf');rows.append(row)
+    # Repeated fetches of the same address add no source; headers are outside the bulk index.
+    rows.append(dict(rows[0],receipt_line=11))
+    rows.append(dict(rows[0],receipt_line=12,h_content_disposition="attachment; filename*=UTF-8''retained%20header.pdf"))
     inputs=registry_inputs(tmp_path/'registries')
     inputs=[x for x in inputs if x['name']!='import_runs']
     inputs.append(json_input(tmp_path,'import_runs',[dict(run_id='legacy-import',date='2026-10-10')],run_id='Utf8',date='Utf8'))
@@ -39,15 +42,19 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
     steps=[dict(name='capture_evidence',sql="SELECT receipt_key,receipt_line,capture_index,run_id,mode,url,requested_url,context_url,member_path,h_content_disposition,retrieved_at,format,decode(body_hex,'hex') AS sha256 FROM fixture_captures"),
         dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
-        steps=steps+source_steps(),outputs=[],queries=[
+        steps=steps+source_steps(),outputs=[
+            parquet_output(tmp_path,'fixture-captures','SELECT * FROM capture_evidence',['receipt_line','capture_index']),
+            parquet_output(tmp_path,'model-names',"SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_filenames",['filename','source_url'])],queries=[
             dict(name='files',sql='SELECT filename,source_url,body_sha,is_real_file,cast(first_fetched AS VARCHAR) AS first_fetched,cast(in_archive_since AS VARCHAR) AS in_archive_since FROM source_files ORDER BY filename'),
             dict(name='members',sql="SELECT count(*) AS n FROM capture_sources WHERE source_url IS NULL AND member_path IS NOT NULL"),
             dict(name='ids',sql="SELECT count(*) AS n FROM source_files WHERE source_id<>encode(sha256(json_array(CASE WHEN body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(body_sha,1,2)||'/'||body_sha||'.gz' END,filename,source_url)),'hex')")])
 
-    assert len(result['files'])==8
+    assert len(result['files'])==9
     files={x['filename']:x for x in result['files']}
-    assert set(files)=={'one.pdf','two.pdf','mirror.pdf','failed.pdf','report.pdf','import.pdf','only-import.pdf','dead-original.pdf'}
-    assert files['one.pdf']['source_url']=='https://fixture.test/a'
+    assert set(files)=={'one.pdf','two.pdf','mirror.pdf','failed.pdf','report.pdf','import.pdf','only-import.pdf','dead-original.pdf','retained header.pdf'}
+    assert files['retained header.pdf']['source_url']=='https://fixture.test/one.pdf'
+    assert files['retained header.pdf']['body_sha']=='a'*64
+    assert files['one.pdf']['source_url']=='https://fixture.test/one.pdf'
     assert files['two.pdf']['body_sha']=='a'*64
     assert files['report.pdf']['source_url'] is None and files['report.pdf']['body_sha']=='b'*64
     assert files['failed.pdf']['body_sha'] is None and files['failed.pdf']['is_real_file'] is False
@@ -56,3 +63,15 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
     assert files['only-import.pdf']['first_fetched'] is None and files['only-import.pdf']['in_archive_since']=='2026-10-10'
     assert files['mirror.pdf']['first_fetched'].startswith('2026-10-19')
     assert result['members']==[dict(n=2)] and result['ids']==[dict(n=0)]
+
+    from congress_api.lake import filenames
+    producer=filenames.stage(captures=tmp_path/'fixture-captures.parquet',
+        recovery_files=next(x for x in inputs if x['name']=='current_recoveries')['files'],
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'filename-producer',
+        decided_at='2026-10-27T12:00:00Z')
+    parity=tmp_path/'parity';parity.mkdir()
+    compared=run_job(parity,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=[
+        dict(name='model_names',kind='parquet',path=str(tmp_path/'model-names.parquet')),
+        dict(name='producer_names',kind='parquet',path=str(producer['work_list']))],steps=[],outputs=[],queries=[
+            dict(name='difference',sql="SELECT count(*) AS n FROM ((SELECT filename,source_url FROM model_names EXCEPT ALL SELECT filename,source_url FROM producer_names) UNION ALL (SELECT filename,source_url FROM producer_names EXCEPT ALL SELECT filename,source_url FROM model_names))")])
+    assert compared['difference']==[dict(n=0)]

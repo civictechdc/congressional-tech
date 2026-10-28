@@ -1,6 +1,6 @@
 """Copy pipeline-data snapshot files into the raw bucket, create-only.
 
---snapshot reads a checkout's HEAD commit (the weekly job, after its force-push);
+--snapshot reads a checkout's local HEAD commit before the weekly job publishes it;
 --rescue-batch reads a content-addressed batch of earlier snapshots (blobs/,
 files.jsonl, commits.jsonl) without modifying it. --dry-run prints counts and
 planned keys and opens no connection.

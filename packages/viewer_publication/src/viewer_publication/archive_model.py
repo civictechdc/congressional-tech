@@ -58,9 +58,24 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT):
 
 def source_steps(*,root=ROOT):
     """Derive source grain and addresses from classified fetches and originals."""
-    steps=[]
-    for name,file in [('filename_inputs','source-filename-inputs'),('effective_filenames','effective-filenames'),
+    steps=[dict(name='filename_captures',sql='SELECT * FROM capture_evidence')]
+    for name,file in [('filename_inputs','filename-inputs'),('effective_filenames','effective-filenames'),
                       ('capture_source_names','capture-source-names'),('capture_sources','capture-sources'),('source_files','source-files'),
                       ('source_directories','source-directories')]:
         steps.append(dict(name=name,sql=(Path(root)/'model/sql'/(file+'.sql')).read_text(),materialize=True))
     return steps
+
+
+def link_steps(*,root=ROOT):
+    """Resolve each literal href once per body/address context, retaining attribution."""
+    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
+        for name in ['link-contexts','link-literals','link-parts','link-targets','link-errors','resolved-links']]
+
+
+def evidence_steps(*,root=ROOT):
+    """Join pinned parser facts and physical evidence before source/link expansion."""
+    names=['pinned-readings','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
+        'good-fetches','capture-locators','body-signals','locator-signals','placeholders','record-roles',
+        'page-contexts','link-inputs']
+    return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
+        for name in names]

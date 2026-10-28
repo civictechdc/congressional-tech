@@ -1,6 +1,6 @@
 """Append-only provenance records and pinned, local-only import stages."""
 from datetime import datetime
-from hashlib import file_digest
+from hashlib import file_digest, sha256
 import json
 from pathlib import Path
 import re
@@ -11,7 +11,7 @@ from congress_api.retention.body_store import BodyStore,LocalAdapter,validate_re
 from congress_api.retention.receipt_privacy import cut_paths
 
 
-KINDS=frozenset({'recoveries','reviews'})
+KINDS=frozenset({'recoveries','reviews','unreadable'})
 VERDICTS=frozenset({'hide','duplicate_of','title_override','kind_override','withdraw'})
 
 
@@ -29,9 +29,14 @@ def timestamp_key(value):
 
 def validate_provenance(kind,row):
     if kind not in KINDS or not isinstance(row,dict):raise ValueError('Unsupported provenance kind')
-    required=({'id','target','verdict','value','note','reviewer','decided_at','supersedes'} if kind=='reviews' else
-        {'id','original_url','recovered_url','recovered_filename','body_sha256','kind','match_basis',
-         'evidence_sha256','identity_note','decided_by','decided_at','supersedes'})
+    if kind=='unreadable':
+        identities=set(row)&{'body_sha256','record_sha'}
+        if len(identities)!=1:raise ValueError('Unreadable decision needs one input identity')
+        required={'id','parser','parser_version','reason','decided_by','decided_at','supersedes'}|identities
+    else:
+        required=({'id','target','verdict','value','note','reviewer','decided_at','supersedes'} if kind=='reviews' else
+            {'id','original_url','recovered_url','recovered_filename','body_sha256','kind','match_basis',
+             'evidence_sha256','identity_note','decided_by','decided_at','supersedes'})
     if set(row)!=required or not isinstance(row['id'],str) or not row['id'].strip():
         raise ValueError('Incomplete provenance record')
     def text(name,*,nullable=False,allow_blank=False):
@@ -58,7 +63,12 @@ def validate_provenance(kind,row):
     if row['supersedes'] is not None and (not isinstance(row['supersedes'],str) or not row['supersedes'].strip()
                                          or row['supersedes']==row['id']):
         raise ValueError('Invalid superseded decision')
-    if kind=='reviews':
+    if kind=='unreadable':
+        digest(next(iter(identities)))
+        for name in ('parser','parser_version','reason','decided_by'):text(name)
+        if re.fullmatch('[a-z][a-z0-9_]*',row['reason']) is None:
+            raise ValueError('Invalid unreadable reason')
+    elif kind=='reviews':
         verdict=row['verdict']
         if (not isinstance(verdict,str) or verdict not in VERDICTS or not isinstance(row['target'],str)
                 or re.fullmatch('[0-9a-f]{16}',row['target']) is None):
@@ -95,6 +105,7 @@ def validate_provenance(kind,row):
 
 
 def write_records(store,kind,records,*,timestamp):
+    if kind=='unreadable':raise ValueError('Use content-qualified import_unreadable for unreadable decisions')
     if not isinstance(timestamp,str) or not re.fullmatch('[0-9A-Za-z+_.-]+',timestamp):
         raise ValueError('Invalid provenance timestamp key')
     key=f'provenance/{kind}/{timestamp}.jsonl'
@@ -111,6 +122,25 @@ def write_records(store,kind,records,*,timestamp):
         if not count:raise ValueError('Empty provenance batch')
         store.put(key,path,'application/x-ndjson')
     return key,count
+
+
+
+def import_unreadable(store, decisions_path, *, decided_at, expected=None):
+    """Validate and freeze producer decisions, then import exact bytes create-only."""
+    stamp=timestamp_key(decided_at)
+    with TemporaryDirectory(prefix='raw-unreadable-') as temporary:
+        frozen=Path(temporary)/'decisions.jsonl'
+        digest=sha256();count=0;size=0
+        with Path(decisions_path).open('rb') as source,frozen.open('xb') as out:
+            for line in source:
+                validate_provenance('unreadable',json.loads(line))
+                out.write(line);digest.update(line);size+=len(line);count+=1
+        if not count:raise ValueError('Empty unreadable batch')
+        if expected is not None and expected!=dict(sha256=digest.hexdigest(),size=size):
+            raise ValueError('Reviewed unreadable decisions changed before import')
+        key='provenance/unreadable/'+stamp+'-'+digest.hexdigest()+'.jsonl'
+        store.put(key,frozen,'application/x-ndjson')
+    return dict(key=key,records=count,sha256=digest.hexdigest(),size=size)
 
 
 def record_review(store,record,*,timestamp):
@@ -153,6 +183,9 @@ def load_stage(root):
         if not item['path'].startswith('provenance/'+value['kind']+'/') or not item['path'].endswith('.jsonl'):
             raise ValueError('Wrong provenance stage prefix')
         if file_pin(path)!={k:item[k] for k in ('sha256','size')}:raise ValueError('Staged provenance changed')
+        if value['kind']=='unreadable' and item['path']!=('provenance/unreadable/'+
+                timestamp_key(value.get('decided_at'))+'-'+item['sha256']+'.jsonl'):
+            raise ValueError('Unreadable stage is not content-qualified')
         with path.open() as source:
             for line in source:
                 validate_provenance(value['kind'],json.loads(line));count+=1
@@ -169,7 +202,11 @@ def load_stage(root):
 def apply_staged(root,store):
     root,value=load_stage(root)
     for item in value['files']:
-        store.put(item['path'],root/item['path'],'application/x-ndjson')
+        if value['kind']=='unreadable':
+            import_unreadable(store,root/item['path'],decided_at=value['decided_at'],
+                expected={name:item[name] for name in ('sha256','size')})
+        else:
+            store.put(item['path'],root/item['path'],'application/x-ndjson')
     return dict(objects=len(value['files']),records=value['records'])
 
 

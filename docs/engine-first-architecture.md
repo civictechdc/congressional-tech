@@ -117,7 +117,7 @@ Five conformance classes each conform by meeting the requirements that apply to 
 
 1. **Raw is the only truth.** Every other layer MUST be derivable from the raw log, and from the pinned spicy-regs reference generations whose raw records spicy-regs keeps, plus versioned code, SQL, registries and engine.
 2. **Append or replace, never update.** Logs only grow. Derived outputs are recomputed and swapped atomically; catalog compaction rewrites files, not rows.
-3. **Do expensive work once.** Every body is stored once and parsed once per parser version; every filename is read once per catalog version. Platform primitives (content addressing, conditional writes, Content-MD5, ETags, catalog commits) replace hand-built bookkeeping.
+3. **Do expensive work once, and in bulk only what every release reads.** Every body is stored once and opened at most once per consumer and parser version; every filename is read once per catalog version. The lake holds only the fields every release reads across all rows; everything else stays in raw behind its row's pointer and is read for one item when a case needs it. Facts already held are used before raw is read again. Platform primitives (content addressing, conditional writes, Content-MD5, ETags, catalog commits) replace hand-built bookkeeping.
 4. **Expensive work grows with change, not with history.** Fetching new URLs, parsing and storing grow with what is new. The repeated work that remains is named in §16 and never re-reads stored bodies.
 5. **Engine first.** Data movement, joins, grouping, aggregation and export live in the engine. Application policy is passed in as SQL, data and specs and MUST NOT be compiled into the engine (§13).
 6. **Nothing reaches users unverified.** A release goes live only after the site's own reader has loaded it (§10.3.5).
@@ -276,7 +276,7 @@ One row per body a receipt line references, plus one per line that references no
 
 One row per `(body, parser, parser_version)`; each media family has its own parser and version, so a new HTML parser never re-reads a PDF ([[DATA-MODEL]] §6.2). Parsers record facts; the model classifies them.
 
-- **Every body has a sniffed format**, and every PDF a record of whether it is intact. The fetcher records both for new bodies; a `sniff` parser covers the rest.
+- **Every body has a format**, and every PDF a record of whether it is intact. The fetcher records both for new bodies. For older bodies, `sniff` opens each body once: none where the writer's facts already settle it (captions, playlists, an empty body); a page body during its parser's full read; any other body through a bounded prefix. A media type chooses how a body is read, never its format ([[DATA-MODEL]] §5.2).
 - **HTML, XML and JSON** are read in full once per version, with each body's links recorded as written. The model resolves the links against every address the page was fetched at, so link context covers all history while a page fetched many times stores its links once.
 - **PDF, ZIP and captions** get no full reading. Full-text extraction of every PDF (about 403 GB) is deferred to `pdf_text`; ZIP members are captured as their own entries.
 - **Text fingerprints come from the page readings** ([[DATA-MODEL]] §6.2), and a ZIP's from its member hashes in `captures`; no other format needs one today, so there is no fingerprint parser and no full-corpus text pass.

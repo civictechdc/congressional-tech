@@ -342,7 +342,7 @@ class R2Store:
             media = ('application/pdf' if key.endswith('.pdf') else
                      'application/gzip' if key.endswith('.gz') else 'application/octet-stream')
             return create_stored(R2Adapter(self.client, self.bucket), key, BytesIO(body), media,
-                operation='replace' if immutable is False else 'create', body_identity=False).outcome == 'stored'
+                operation='replace' if immutable is False else 'create').outcome == 'stored'
 
 
         if self._manifest_cache_dir is not None and immutable and key.startswith('indexes/native-manifests/'):
@@ -414,13 +414,14 @@ class R2Store:
         gzip ``content_encoding``; ``md5`` skips re-hashing a file the caller
         just wrote. R2 still checks the sent ``Content-MD5`` against the bytes.
         """
-        from congress_api.retention.body_store import R2Adapter, create_stored
+        from congress_api.retention.body_store import R2Adapter, create_stored, validate_key
+        validate_key(key)
         if not key.startswith('bodies/'):
             raise ValueError('File upload requires a body key')
         with Path(path).open('rb') as source:
             return create_stored(R2Adapter(self.client, self.bucket), key, source,
                 'application/pdf' if key.endswith('.pdf') else content_type,
-                encoding=content_encoding, body_identity=False).outcome == 'stored'
+                encoding=content_encoding).outcome == 'stored'
 
     def put_pdf_file(self, key_or_sha256, path):
         """Stream an uncompressed PDF file to bodies/sha256/<xx>/<sha256>.pdf."""

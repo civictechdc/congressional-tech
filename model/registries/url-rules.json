@@ -48,5 +48,25 @@
     "decoder": null,
     "sample": "https://www.congress.gov/bill/111th-congress/house-bill/1145/text?q=search&resultIndex=1",
     "sample_basis": "meeting_inventory/house-sites/shape-audit/sources.json target"
+  },
+  {
+    "id": "lis-gpo",
+    "kind": "wrapper",
+    "host_pattern": null,
+    "pattern": "(?i)^https?://(?:www\\.)?lis\\.gov/cgi-lis/t2GPO/(https?://(?:www\\.)?gpo\\.gov/fdsys/pkg/.+)$",
+    "replacement": "$1",
+    "decoder": "none",
+    "sample": "https://www.lis.gov/cgi-lis/t2GPO/https://www.gpo.gov/fdsys/pkg/BILLS-114hr456ih/pdf/BILLS-114hr456ih.pdf",
+    "sample_basis": "test_capture_url_admission.py retained CI37420553827 LIS GPO link"
+  },
+  {
+    "id": "concatenated-file-urls",
+    "kind": "repair",
+    "host_pattern": null,
+    "pattern": "(?i)(https?://)",
+    "replacement": "\n$1",
+    "decoder": "none",
+    "sample": "https://www.gpo.gov/fdsys/pkg/BILLS-115s585rfh/xml/BILLS-115s585rfh.xmlhttps://www.gpo.gov/fdsys/pkg/BILLS-115s585es/xml/BILLS-115s585es.xml",
+    "sample_basis": "test_capture_url_admission.py retained CI37420553827 concatenated GPO XML links"
   }
 ]

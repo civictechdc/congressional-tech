@@ -201,60 +201,60 @@ Iceberg tables in Basin Catalog, append-only ([[ARCHITECTURE]] §8).
 
 ### 6.1 `captures`
 
-One row per body a line references (each `captures[]` entry or, on an older line whose `captures[]` is empty, each `file_references[]` entry), plus one row per line that references none. A receipt field is kept only when a rule, an invariant or a job reads it; the ingest mapping, versioned with the table (§6), maps every receipt shape to these columns, and a new version adds any field a rule comes to need.
+One row per body a line references (each `captures[]` entry or, on an older line whose `captures[]` is empty, each `file_references[]` entry), plus one row per line that references none. A receipt field is kept only when a rule, an invariant or a job reads it. In phase 1 the table is a narrow index of the fields read in bulk by every release; other evidence stays in raw behind `(receipt_key, receipt_line, capture_index)` and is read when a case needs it. The ingest mapping is versioned with the table (§6) and reads every older receipt shape.
 
-| Column | Type | Notes |
+| Phase-1 column | Type | Notes |
 |---|---|---|
-| `receipt_key` | string | — |
-| `receipt_line` | int | — |
-| `capture_index` | int | Position in the list the row comes from; 0, with a null `sha256`, on the row of a line without a body, and a null `sha256` on a file reference retained without a body. |
-| `run_id`, `mode`, `outcome` | string | — |
+| `receipt_key` | string | Immutable raw receipt key. |
+| `receipt_line` | int | Source line, starting at 1. |
+| `capture_index` | int | Position in the primary list; 0, with null `sha256`, on a line without a body. A file reference retained without a body also has null `sha256`. |
+| `run_id`, `mode`, `outcome` | string | The producing run and final line facts; the mapping translates the older vocabulary. |
 | `family` | string | The entry's family, else the line's, else the receipt key's `<family>` segment. |
-| `requested_url`, `url` | string, nullable | Older lines without them take `_url`, `final_url`, `resolved_url` or `source_url`, the first present; the rest are null. |
-| `record_sha` | fixed[32], nullable | On a line whose `record` is itself a source record (an inline Congress.gov meeting record under `congress/meetings`): the SHA-256 of the compact JSON of `record`, or of `record.meeting` where it nests one, object keys sorted bytewise. |
-| `http_status` | int, nullable | The line's final response status. |
-| `attempt_status` | int, nullable | The row's attempt's status; equal to `http_status` for the final response and on a bodiless row. |
-| `complete` | boolean, nullable | The row's attempt's (§5.2). |
-| `context_url` | string, nullable | — |
+| `requested_url`, `url` | string, nullable | Older lines take `_url`, `final_url`, `resolved_url` or `source_url`, the first present, when their ordinary address fields are absent. |
+| `context_url` | string, nullable | The source endpoint for this body. |
 | `member_path` | string, nullable | The endpoint is `(context_url, member_path)`. |
-| `expansion` | string, nullable | §5.2. |
-| `h_content_disposition` | string, nullable | The download-name header (§7.4). |
-| `retry_after` | timestamptz, nullable | The `Retry-After` deadline, resolved against `retrieved_at`. |
-| `retrieved_at` | timestamptz, nullable | The line's time. |
-| `sha256` | fixed[32], nullable | — |
-| `bytes` | long, nullable | — |
-| `media_type`, `fidelity` | string, nullable | §5.2; the saved-file order reads `fidelity` (§7.5). |
-| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Null on older rows, which take format from the `sniff` reading. An older PDF's `intact` is true when the entry for its line's final response records `saved` and false when it records `invalid_document`, on lines written from 2026-10-01, when the capture check applied §5.2's rule (2026-10-01 lines cannot be tied to that code, so the whole read that writes the body's `.pdf` copy re-checks them); else null. |
+| `h_content_disposition` | string, nullable | The flat download-name header: `record.response_headers["content-disposition"]`, else `record.response_headers["Content-Disposition"]`. The existing filename function reads it (§7.4). |
+| `http_status` | int, nullable | Final response status, from `http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses. |
+| `complete` | boolean, nullable | The final line's explicit completeness; unknown older values remain null. Per-attempt completeness stays in raw. |
+| `retrieved_at` | timestamptz, nullable | Fetch time, with the older-entry fallbacks below. |
+| `sha256` | fixed[32], nullable | Digest of the referenced body. |
+| `bytes` | long, nullable | Body size. |
+| `media_type`, `fidelity` | string, nullable | §5.2; saved-file ordering reads `fidelity` (§7.5). |
+| `sniffed_format`, `sniff_version`, `intact` | string, string, boolean; nullable | Capture-time reading reused by D2; unknown older values take a retained-body reading (§6.2). |
+| `expansion` | string, nullable | §5.2; the ZIP fingerprint (§6.2) reads `expanded`. |
 | `stored_suffix` | string, nullable | §5.2. |
+| `stored_bytes` | long, nullable | Stored object size. |
 | `stored_md5` | fixed[16], nullable | Creating line only. |
-| `stored_bytes` | long, nullable | — |
-| `recovery_category`, `original_url`, `recovered_url`, `match_basis`, `evidence_sha256`, `imported_at` | string, string, string, string, fixed[32], timestamptz; nullable | Recovery rows only, with the older-line fallbacks below, so `original_url`, `match_basis` and `imported_at` are set on every recovery row; `recovery_category` is `prior_access_category`, else null. |
-| `writer_job`, `writer_commit` | string, nullable | Constant within a run; null on older rows. |
+| `recovery_category`, `original_url`, `recovered_url`, `match_basis`, `evidence_sha256`, `imported_at` | string, string, string, string, fixed[32], timestamptz; nullable | Recovery rows only. `recovery_category` is `prior_access_category`; the older-line fallbacks set `original_url`, `match_basis` and `imported_at`. |
+| `writer_job`, `writer_commit` | string, nullable | Required on new rows by invariant 3; null on older rows without writer identity. |
+
+These values are **on demand, not phase-1 columns**:
+
+| Raw evidence or derived value | Use |
+|---|---|
+| Prior attempts, their status and completeness | Read the pointed receipt when an individual attempt needs examination; bulk ingest does not expand or sort them. |
+| Other response headers, header items and `retry_after` | Retained in raw. Bulk ingest reads only the two flat download-name paths; scheduling uses the phase-1 intervals (§7.7). |
+| `record_sha` and inline meeting records | D4, phase 2 (§6.5): read the four `congress/meetings` receipt files (77 MB, 199,156 lines) once and compute the record hashes then. D1 stores only their pointers. |
+| Other writer metadata and supplements | Raw receipts and pinned producer/profile metadata retain these facts. |
 
 - **PK:** `(receipt_key, receipt_line, capture_index)`.
-- The line fields (`requested_url`, `retrieved_at`, `outcome`, `mode`, `http_status`) are on every row; with its own `attempt_status` and `complete`, a cut-off attempt never borrows its line's success.
-- **Older lines** (every line today) keep their fields under `record`, in shapes the ingest mapping reads one by one; §5.2 binds only new lines. The mapping:
-  - when both lists are present, uses `captures[]` for row grain and fills missing storage metadata from `file_references[]` matching the same body key and digest; it never borrows another response's status, time or completeness. A non-null secondary body not represented in `captures[]` refuses ingest with its receipt and line, rather than losing it. The 285 such lines in the pinned input duplicate one body each, but only the secondary reference records its stored size;
-  - sets `stored_suffix = '.gz'`, and `run_id` from `source_file`;
-  - takes `member_path` from `original_path` on a `captures[]` entry whose `pointer` passes through `archive_members`, never from a `file_references[]` entry's `original_path`, which is a retained file's local path; and `entry_index` from `record.archive_members[i]`;
-  - maps a `retained_import` line with association basis `direct_official_package` and `url == requested_url == source_associations[0].original_url` to `mode = fetch`, keeping its own `retrieved_at`. The 123 pinned lines are direct fetches of official packages, as the owner decided; the rule applies to any matching source;
-  - on other recovery lines, takes `original_url` from `record.source_associations[0].original_url` (present on all), `match_basis` from `source_associations[0].basis`, and a missing `imported_at` from the receipt key's write date, which equals its day on every line that carries it; `publisher_requested` is not read;
-  - does not read the lines' `links`;
-  - maps each shape's outcome and mode into §5.2's values by a table versioned with the mapping:
-    - a shape with no outcome derives one from its status and whether it references a body;
-    - a value the table does not list fails the ingest;
-    - 2.96M of 3.9M rows today carry no outcome; the rest use values such as `saved`, `html`, `captured` and `http_error`; most carry no mode;
-  - takes each attempt's own status and completeness where the line records them, and a status from `status_code` where it has no `http_status`;
-  - maps a confirmed legacy final response that reaches that writer's 64 MiB cap and explicitly records `complete = false` to line outcome `size_limit`, while preserving an explicit more-specific outcome or error. An incomplete prior attempt or archive member never triggers this inference when the final response completed; size alone, including a near-62 MiB body, does not establish a cut-off transfer;
-  - otherwise sets `complete` true unless the body is exactly 64 MiB or the outcome is `size_limit` or `request_failed`. Declared lengths are unused: about 61% of older 2xx HTML responses with full recorded headers declare none, and nearly all others name a `Content-Encoding`, so the length is the compressed transfer's;
-  - takes the fetch time from the row's own entry, else its line: the first of `retrieved_at`, `captured_at`, `observed_at`, `parent_retrieved_at` and `_retrieved_at` it carries, else `capture_date` at the start of that day, else null. `started_at`, `checked_at` and content dates such as a meeting's `updateDate` are not fetch times. On End of Term archive fetches, `retrieved_at` and `captured_at` are the archive's capture time;
-  - reads headers from `response_headers`, `response_header_items` or `record.headers`, whichever the shape keeps;
-  - sets `expansion = 'expanded'` on an archive line whose members were captured;
-  - reads `pointer` elements as strings or integers, and a list-valued `record` (99 lines) element by element;
-  - sets `record_sha` on an inline source record's bodiless row; the receipt line keeps the record, which its producer reads from raw (§6.5).
+- The line's final status, completeness, mode and outcome accompany its referenced bodies. No bulk prior-attempt lookup fills a missing final fact.
+- **Older lines** keep their fields under `record`, in shapes the mapping reads individually; §5.2 binds new lines. The narrow mapping:
+  - uses `captures[]` for row grain when both lists exist, filling missing storage metadata only from `file_references[]` with the same body key and digest. A secondary non-null body absent from the primary list refuses ingest with its receipt and line. Conflicting storage facts also refuse; the 285 duplicate-reference lines in the pinned input do not create extra capture rows;
+  - takes `run_id` from `source_file` and defaults the older stored suffix to `.gz`;
+  - takes `member_path` from `original_path` only on a capture whose pointer passes through `archive_members`, never from a retained file reference's local path;
+  - maps `retained_import` with association basis `direct_official_package` and `url == requested_url == source_associations[0].original_url` to `mode = fetch`, preserving its own fetch time. The owner identified 123 such pinned lines; the same rule applies to any matching source;
+  - for other recoveries, takes `original_url` from the first source association, `match_basis` from its `basis`, and a missing `imported_at` from the receipt key's write date. The 5,587 recovery-run lines remain recoveries; `publisher_requested` is not used to classify them;
+  - translates the versioned outcome/mode vocabulary, deriving a missing outcome from the final status and body presence. Unknown vocabulary refuses ingest rather than guessing success;
+  - keeps recorded completeness. Otherwise it sets `complete` true unless the body is exactly 64 MiB or the outcome is `size_limit` or `request_failed`. Declared lengths are unused: about 61% of older 2xx HTML responses with full recorded headers declare none, and nearly all others name a `Content-Encoding`, so the length is the compressed transfer's. The pinned census has 657,713 2xx lines without recorded completeness (451,414 senate/captions and 125,245 documents); this derivation preserves their eligibility for `good_fetch`;
+  - maps a confirmed legacy final response at its writer's 64 MiB cap with explicit `complete = false` to outcome `size_limit`, preserving an explicit more-specific outcome or error. Incomplete prior attempts and archive members do not trigger that inference when the final response completed;
+  - keeps `expansion` and records `expanded` on an archive line whose members were captured; it keeps `writer_job` and `writer_commit` from the line's writer identity for invariant 3;
+  - takes fetch time from the row's entry, then its line: `retrieved_at`, `captured_at`, `observed_at`, `parent_retrieved_at` or `_retrieved_at`, then `capture_date` at the start of its day, else null. `started_at`, `checked_at` and content dates are not fetch times. End of Term times remain the archive capture times;
+  - accepts pointer elements as strings or integers and selects the corresponding narrow facts from a list-valued `record` (99 pinned lines), without changing primary row ordinals;
+  - reads the two flat download-name paths only, excluding prior copies and `source_metadata`; no prior arrays, header-item expansion, inline meeting hashes, other writer supplements or `links` are read during bulk ingest.
+- **Read once:** each consumer reads a raw object at most once, selecting only its needed fields. D1 reads every receipt line once; D4 reads the four meeting files once in phase 2.
 - Not partitioned.
-- **Work list:** receipt keys not yet ingested, listed from date-shaped prefixes ([[ARCHITECTURE]] §8.2).
-- **Size:** 157 MB compact; 315 KB on a normal day.
+- **Work list:** receipt keys not yet ingested, listed from date-shaped prefixes ([[ARCHITECTURE]] §8.2). The backfill also reads non-date segments.
 
 ### 6.2 `readings`
 
@@ -286,8 +286,8 @@ One row per `(body, parser, parser_version)`; a reading depends only on its body
     For markup in a JSON string, its path is prefixed by the script's element path, `@`, and the compact JSON key path, so different strings cannot share a group.
   - An XML document list's link `text` is its entry's description.
   - `doc_type` and the three dates are kept as the publisher wrote them; `remove_date` marks a committee's removal of the document from its hearing page.
-- `sniff` reads every body whose capture rows carry no sniff at the pinned version, with one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`). For a bare PDF it also reads the last 8 KB, and runs the bounded reader only when that finds no `%%EOF`; borrowed PDF checks join in the model (§7.3).
-  - Only WARC/ARC is recognized through an original gzip layer; other gzip originals remain `other`. Storage compression is removed separately, so an older gzip-stored PDF still sniffs as `pdf`, with its integrity deferred or borrowed.
+- `sniff` reads every body with no reading at the pinned version; only a completed reading supplies its format. It makes one ranged read of its first bytes, decompressing the start of a gzip-stored body (a gzip original whose first member is a WARC or ARC record sniffs as `warc`). For a bare PDF it also reads the last 8 KB, and runs the bounded reader only when that finds no `%%EOF`; the model uses copy verification and pinned sniff checks (§7.3); older capture checks remain in raw behind the pointer.
+  - Only WARC/ARC is recognized through an original gzip layer; other gzip originals remain `other`. Storage compression is removed separately, so an older gzip-stored PDF still sniffs as `pdf`, with its integrity unchecked until a pinned sniff or copy verification supplies a check.
   - ZIP package detection shares the archive reader's bounds (64 MiB archive, 1 MiB directory, 1,024 entries). It currently reads the bounded archive to inspect root `[Content_Types].xml` or a bounded `mimetype` member naming an OpenDocument type; these packages sniff as `docx`, never from a URL or media type. An unsupported or over-limit ZIP is a failed reading, not an assumed generic archive. Stored gzip ZIPs obey the same decompressed limit.
   - a new sniff version re-reads about 1.04M bodies and can change the format parsers' work lists, so the profile moves them together.
 - `html`, `xml`, `json` read every body of their format once per version and record each body's fingerprint and links. No parser reads embedded PDF titles.
@@ -429,7 +429,7 @@ The model is one engine job of named steps ([[ARCHITECTURE]] §9.1) over `captur
 
 ### 7.1 Model Profile and Registries
 
-The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input that crashes its parser twice, or whose read always fails, is settled by a provenance `unreadable` decision (§5.3, §6), which removes it from that parser's work list.
+The **model profile** is the set of versions one publish reads. Publish MUST refuse when a pinned version's work list is not empty, or a lake PK is duplicated, at the pinned snapshot, and the refusal names the inputs. An input that crashes its parser twice is settled by a provenance `unreadable` decision (§5.3, §6), which removes it from that parser's work list. A missing or failed raw read stays pending; it never creates an unreadable decision.
 
 - It pins: the model SQL (the SHA-256 of its files), the engine revision, each lake table version (§6), each parser, the catalog, each registry the model or a producer reads, and the release writer settings (§8.1); until the engine's export meets [[ARCHITECTURE]] §10.2 by itself (spicy-stack ss-iwqu), also the runner class and the engine's limits (threads, batch rows, batch bytes).
 - A parser or catalog version is the SHA-256 of its source files, the vocabularies it reads and its locked dependencies.
@@ -508,14 +508,13 @@ Each capture row takes one record role; a real file is a good fetch whose role i
 
 ```
 good_fetch  := rows of c where mode = 'fetch' and complete
-               and outcome in ('stored', 'unchanged') and attempt_status between 200 and 299
+               and outcome in ('stored', 'unchanged') and http_status between 200 and 299
                (import-run rows included; capture dates exclude them, §7.4)
-format      := r[sniff].format at the pinned sniff version,
-               else c.sniffed_format when c.sniff_version is that version
+format      := r[sniff].format from a completed reading at the pinned sniff version
 intact      := for a PDF, the first set of: its .pdf copy's verification record (§5.3);
-               r[sniff].intact at the pinned sniff version; c.intact when
-               c.sniff_version is that version, or on an older row (§6.1)
-intact_basis := 'copy', 'read' or 'capture', by which gave intact;
+               r[sniff].intact at the pinned sniff version; phase 1 does not bulk-read
+               older capture integrity checks, which stay in raw behind the pointer
+intact_basis := 'copy' or 'read', by which gave intact;
                'unchecked' when none did
 reading     := the body's html, xml or json reading at the pinned version
 record_role := per capture row, the first that applies:
@@ -584,12 +583,12 @@ One row per source file: 1,683,430 today.
 - **Effective filename:** the first non-empty name in this order, else `''`, by one SQL definition that the filename producer (§6.3) and the model share:
   1. the `recovered_filename` of the row's recovery decision (§7.8), unless the decision rejects it;
   2. the member basename, for an archive member;
-  3. the `h_content_disposition` filename, `filename*` [[RFC6266]] first;
+  3. the admitted flat `h_content_disposition` filename, `filename*` [[RFC6266]] first; no header arrays or prior-attempt copies are read;
   4. the value of the first filename-parameter registry entry present in the source URL's query, else the requested URL's, at its first occurrence;
   5. the source URL's last path segment;
   6. the requested URL's last path segment.
 - **Decoding:** URL segments and query values are percent-decoded once as strict UTF-8, `+` kept literal; an invalid sequence stays encoded.
-- **One name per capture row.** When fetches of one body at one URL offered different names, each name is its own source file, joined by the same-body edge; the other names a row was offered stay in its receipt, and the document shows the saved file's name.
+- **One name per capture row.** Each admitted effective name is its own source file, joined by the same-body edge. Other header copies stay in raw behind the capture pointer. The document shows the saved file's effective name.
 - **Grain:** two archive members with the same body and name at different paths are one source file; `sources` keeps each path.
 
 ### 7.5 Edges and Documents
@@ -721,8 +720,7 @@ One row per requested URL, plus the queue: `requested_url` string, `attempts` in
 - Aggregated over distinct `(receipt_key, receipt_line)`, so a fetch line counts once however many bodies it references.
 - The latest `mode = fetch` line wins, in the order `(retrieved_at nulls first, receipt_key, receipt_line)`, and gives `last_status` from its `http_status`; `last_good_at` is the `retrieved_at` of its latest good fetch (§7.3). Recovery rows MUST NOT appear.
 - **`next_attempt_at`:**
-  - for a retryable outcome (`retry_later`, `size_limit`, `request_failed`), the later of `last_attempt` and the line's `retry_after`, but no later than `last_attempt` plus the family's recheck interval;
-  - for any other outcome, `last_attempt` plus that interval; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
+  - in phase 1, `last_attempt` plus the family's recheck interval for every outcome; `Retry-After` stays in raw and is not a bulk model input; for a banded family, the band is the age at `last_attempt` of the URL's earliest meeting date (§7.5), else of the date in its docs.house.gov `/meetings/` path, else the family's shortest band applies, so the job's clock never enters.
   - null, and so due now, when `last_attempt` is null (about 25,500 requested URLs today, nearly all from two undated backfill shapes).
 - **The queue:** every resolved URL target from a good-fetched page that is not an `error_response` (wrapper pages included), that matches the capture-scope registry, and whose `url_key` matches no `mode = fetch` row's requested or final URL (archive-member targets are not fetchable).
   - Each `url_key` adds one row under its byte-wise least target, with its credential parameters removed (`url_state` is public), `attempts = 0` and a null `next_attempt_at`.

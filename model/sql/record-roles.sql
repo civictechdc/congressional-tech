@@ -3,8 +3,9 @@
 -- heads remain inside the once-per-body signal step.
 WITH roles AS (
     SELECT c.receipt_key, c.receipt_line, c.capture_index, c.sha256, c.format,
-        c.intact_basis, c.error_type, c.mode, c.outcome, c.attempt_status,
+        c.intact_basis, c.error_type, c.mode, c.outcome, c.http_status,
         c.complete, c.bytes, p.sha256 AS placeholder_body, l.file_shaped,
+        g.receipt_key IS NOT NULL AS good_fetch,
         CASE
             WHEN c.format IS NULL THEN NULL
             WHEN c.format = 'vtt' THEN 'caption'
@@ -24,6 +25,7 @@ WITH roles AS (
             ELSE 'document'
         END AS record_role
     FROM capture_evidence c
+    LEFT JOIN good_fetches g USING(receipt_key,receipt_line,capture_index)
     LEFT JOIN body_signals b ON c.sha256 = b.body_sha
     LEFT JOIN locator_signals l ON (c.url IS NOT DISTINCT FROM l.url)
         AND (c.member_path IS NOT DISTINCT FROM l.member_path)
@@ -32,8 +34,7 @@ WITH roles AS (
 SELECT receipt_key, receipt_line, capture_index, sha256, format, intact_basis,
     error_type, record_role,
     coalesce(
-        mode = 'fetch' AND complete AND outcome IN ('stored', 'unchanged')
-        AND attempt_status BETWEEN 200 AND 299
+        good_fetch
         AND sha256 IS NOT NULL AND bytes > 0 AND placeholder_body IS NULL
         AND record_role = 'document'
         AND (format <> 'html' OR NOT file_shaped), false

@@ -20,22 +20,25 @@ def setup(tmp_path, body=b'<html><body><p>Evidence</p><a href="a.pdf">PDF</a></b
     path=raw/key;path.parent.mkdir(parents=True)
     if not missing:path.write_bytes(body)
     captures=tmp_path/'captures.parquet'
-    schema=pa.schema([('sha256',pa.binary(32)),('stored_bytes',pa.int64()),('stored_suffix',pa.string()),
-        ('sniffed_format',pa.string()),('sniff_version',pa.string())])
+    schema=pa.schema([('sha256',pa.binary(32)),('stored_bytes',pa.int64()),('stored_suffix',pa.string())])
     pq.write_table(pa.Table.from_pylist([dict(sha256=digest,stored_bytes=len(body) if size is None else size,
-        stored_suffix='',sniffed_format=body_format,sniff_version='sniff-fixture')]*copies,schema=schema),captures)
+        stored_suffix='')]*copies,schema=schema),captures)
+    existing=tmp_path/'sniff.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,parser='sniff',parser_version='sniff-fixture',
+        status='completed',format=body_format)],schema=pa.schema([('body_sha',pa.binary(32)),
+        ('parser',pa.string()),('parser_version',pa.string()),('status',pa.string()),('format',pa.string())])),existing)
     inventory=tmp_path/'bodies.parquet'
     pq.write_table(pa.Table.from_pylist([dict(body_sha=digest,physical_key=key,relative_path=key,
         stored_bytes=len(body) if size is None else size,stored_gzip=False)],schema=pa.schema([
         ('body_sha',pa.binary(32)),('physical_key',pa.string()),('relative_path',pa.string()),('stored_bytes',pa.int64()),
         ('stored_gzip',pa.bool_())])),inventory)
-    return dict(captures=captures,body_inventory=inventory,local_root=raw,
+    return dict(captures=captures,body_inventory=inventory,local_root=raw,existing=existing,
                 engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
                 decided_at='2026-10-27T12:00:00Z'),digest
 
 
 def stage(args,tmp_path,**kwargs):
-    return readings.stage(**args,work=tmp_path,parser='html',sniff_version='sniff-fixture',**kwargs)
+    return readings.stage(**{**args,**kwargs},work=tmp_path,parser='html',sniff_version='sniff-fixture')
 
 
 def test_duplicate_captures_parse_once_and_nested_links_survive_native_export(tmp_path):
@@ -46,7 +49,15 @@ def test_duplicate_captures_parse_once_and_nested_links_survive_native_export(tm
     assert rows[0]['parser']=='html' and rows[0]['status']=='completed'
     assert rows[0]['links'][0]['href']=='a.pdf'
     assert len(rows[0]['fingerprint'])==32
-    repeated=stage(args,tmp_path/'again',existing=result['readings'])
+    from congress_api.retention.provenance import run_job,parquet_output
+    retained=tmp_path/'retained';retained.mkdir()
+    reports=run_job(retained,args['engine'],inputs=[dict(name='sniff',kind='parquet',path=str(args['existing'])),
+        dict(name='pages',kind='parquet',path=str(result['readings']))],steps=[],outputs=[
+        parquet_output(retained,'existing',
+            'SELECT body_sha,parser,parser_version,status,format FROM sniff UNION ALL SELECT body_sha,parser,parser_version,status,format FROM pages',
+            readings.PK)],queries=[dict(name='coverage',sql="SELECT (SELECT count(*) FROM sniff WHERE parser='sniff' AND parser_version='sniff-fixture' AND status='completed' AND format='html') AS admitted,(SELECT count(*) FROM pages WHERE parser='html') AS completed")])
+    assert reports['coverage']==[dict(admitted=1,completed=1)]
+    repeated=stage(args,tmp_path/'again',existing=retained/'existing.parquet')
     assert pq.ParquetFile(repeated['work_list']).metadata.num_rows==0
 
 
@@ -174,3 +185,69 @@ def test_unreadable_batches_from_one_run_use_distinct_stable_raw_keys(tmp_path):
     assert page['unreadable_key']!=sniff['unreadable_key']
     assert page['unreadable_key']==repeated['unreadable_key']
     assert Path(page['unreadable_path']).read_bytes()==Path(repeated['unreadable_path']).read_bytes()
+
+
+@pytest.mark.parametrize('sniff_state', ['current','missing','old','failed'])
+def test_page_work_requires_a_completed_pinned_sniff_reading(tmp_path,sniff_state):
+    args,_=setup(tmp_path)
+    table=pq.read_table(args['existing'])
+    if sniff_state=='missing':table=table.slice(0,0)
+    elif sniff_state in {'old','failed'}:
+        row=table.to_pylist()[0]
+        row['parser_version']='old' if sniff_state=='old' else 'sniff-fixture'
+        row['status']='error' if sniff_state=='failed' else 'completed'
+        table=pa.Table.from_pylist([row],schema=table.schema)
+    pq.write_table(table,args['existing'])
+    result=stage(args,tmp_path/'stage')
+    expected=1 if sniff_state=='current' else 0
+    assert pq.ParquetFile(result['work_list']).metadata.num_rows==expected
+    assert pq.ParquetFile(result['readings']).metadata.num_rows==expected
+
+
+class _TerminalReadingWorker:
+    def __init__(self,*args,**kwargs):pass
+    def __enter__(self):return self
+    def __exit__(self,*args):pass
+    def parse(self,*args):return dict(status='unreadable',reason='parser_crash',attempts=2)
+
+
+def test_reading_failure_decisions_survive_deleting_all_stages(tmp_path):
+    import shutil
+    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    args,_=setup(tmp_path)
+    durable=tmp_path/'durable-raw'
+    first=stage(args,tmp_path/'first',worker_factory=_TerminalReadingWorker,
+        unreadable_store=BodyStore(LocalAdapter(durable)))
+    assert first['unreadable_pending'] is False
+    records=list(durable.glob('provenance/unreadable/*.jsonl'))
+    assert len(records)==1 and first['unreadable_key']==records[0].relative_to(durable).as_posix()
+    shutil.rmtree(tmp_path/'first')
+    pins=[dict(key=p.relative_to(durable).as_posix(),path=str(p)) for p in records]
+    rebuilt=stage(args,tmp_path/'rebuilt',unreadable_files=pins)
+    assert pq.ParquetFile(rebuilt['work_list']).metadata.num_rows==0
+    assert pq.ParquetFile(rebuilt['readings']).metadata.num_rows==0
+    assert rebuilt['pending_reads']==0
+    absent=tmp_path/'absent';absent.mkdir()
+    other,_=setup(absent,body=b'<html><body>Different unavailable body</body></html>',missing=True)
+    pending=stage(other,absent/'stage',unreadable_files=pins)
+    assert pending['pending_reads']==1 and pending['unreadable_key'] is None
+    assert len(list(durable.glob('provenance/unreadable/*.jsonl')))==1
+
+
+def test_reading_unreadable_stage_refuses_append_before_catalog_effects(tmp_path):
+    args,_=setup(tmp_path)
+    staged=stage(args,tmp_path/'stage',worker_factory=_TerminalReadingWorker)
+    assert staged['unreadable_pending'] is True
+    assert (Path(staged['unreadable_stage'])/'manifest.json').is_file()
+    with pytest.raises(ValueError,match='unreadable.*import'):
+        readings.append(staged,engine=object(),work=tmp_path/'append',catalog_root=tmp_path/'catalog',
+            table=dict(namespace=['archive'],name='readings'))
+    assert not (tmp_path/'catalog').exists() and not (tmp_path/'append').exists()
+
+
+def test_reading_import_failure_never_claims_durability(tmp_path):
+    class Refused:
+        def put(self,*args,**kwargs):raise OSError('raw unavailable')
+    args,_=setup(tmp_path)
+    with pytest.raises(OSError,match='raw unavailable'):
+        stage(args,tmp_path/'stage',worker_factory=_TerminalReadingWorker,unreadable_store=Refused())
