@@ -27,14 +27,14 @@ export async function startArchiveServer({release,siteDist,bodies={},nextRelease
     const bytes=await readFile(path);const expected=typeof value==='string'?match[2]:value.stored_sha256;if(!/^[a-f0-9]{64}$/.test(expected)||typeof value==='object'&&bytes.length!==value.stored_bytes||createHash('sha256').update(bytes).digest('hex')!==expected)throw new Error('Approved body hash does not match its physical key.');
     bodyAssets.set(key,{path:resolve(path),size:bytes.length,digest:expected});
   }
-  const state={releaseId:releases.keys().next().value,missingFile:null,flipOnMissing:null,pointerReads:0,delayDetailMs:0,requests:[]};
+  const state={releaseId:releases.keys().next().value,missingFile:null,flipOnMissing:null,pointerReads:0,pointerBody:null,delayDetailMs:0,requests:[]};
   const mime={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.woff2':'font/woff2'};
   const server=createServer(async(req,res)=>{
     try{
       if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);res.end();return;}
       const url=new URL(req.url,'http://localhost'),path=decodeURIComponent(url.pathname);let asset,cache='public,max-age=31536000,immutable';
       if(path==='/congressional-tech/data/archive/manifest.json'){
-        state.pointerReads++;const bytes=Buffer.from(JSON.stringify({release_id:state.releaseId,previous_release_id:null}));
+        state.pointerReads++;const bytes=Buffer.from(state.pointerBody??JSON.stringify({release_id:state.releaseId,previous_release_id:null}));
         res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store','Access-Control-Allow-Origin':'*','Content-Length':bytes.length});res.end(req.method==='HEAD'?undefined:bytes);return;
       }
       const match=/^\/congressional-tech\/data\/archive\/releases\/([a-f0-9]{64})\/([a-z_0-9.-]+)$/.exec(path);
