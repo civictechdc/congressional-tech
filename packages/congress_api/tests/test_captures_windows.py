@@ -77,3 +77,20 @@ def test_native_counter_plan_scans_once_and_joins_only_materialized_scalars(tmp_
     schema=pq.read_schema(second/'scalars.parquet')
     assert schema.field('selected_record_index').type==pa.int64()
     assert all(not pa.types.is_nested(field.type) for field in schema)
+
+
+def test_capture_hash_builds_keep_only_keys_and_flags(tmp_path):
+    from test_capture_comparison_hashkeys import explain_step
+    stage=ingest(tmp_path,[dict(http_status=200,captures=[body() for _ in range(32)])])
+    spec=json.loads((stage/'job.json').read_text())
+    native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    for name in ['retained_items','windowed']:
+        work=tmp_path/('physical-'+name);work.mkdir()
+        physical=explain_step(spec,name,native=native,work=work)
+        lines=physical.splitlines();joins=[i for i,line in enumerate(lines) if 'HashJoinExec:' in line]
+        assert joins,physical
+        for index in joins:
+            depth=len(lines[index])-len(lines[index].lstrip())
+            end=next((j for j in range(index+2,len(lines)) if len(lines[j])-len(lines[j].lstrip())<=depth+2),len(lines))
+            build='\n'.join(lines[index+1:end])
+            assert all(field not in build for field in ['outcome@','h_content_disposition@','recovery_category@','writer_job@']),physical
