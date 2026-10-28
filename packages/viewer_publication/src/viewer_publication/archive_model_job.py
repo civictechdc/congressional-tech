@@ -13,6 +13,7 @@ from uuid import UUID
 from congress_api.retention.body_store import validate_key
 from congress_api.retention.derived_files import file_identity, check_identity, retain_verified_file
 from congress_shared.custody import custody_identity,VerifiedFile
+from congress_shared.storage import single_put_md5 as provenance_etag_md5
 
 TABLES=('captures','readings','filename_readings')
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
@@ -105,15 +106,6 @@ def validate_spec(value,*,base):
     if value['catalog_version']!=filenames.current_version():
         raise ValueError('Catalog version must match the current definition')
     return result
-
-
-def provenance_etag_md5(etag):
-    """Normalize the stored-byte checksum of a single-PUT provenance object."""
-    if isinstance(etag,str) and etag.startswith('"') and etag.endswith('"'):
-        etag=etag[1:-1]
-    if not isinstance(etag,str) or re.fullmatch('[a-fA-F0-9]{32}',etag) is None:
-        raise ValueError('Provenance ETag must be a single-PUT MD5')
-    return etag.lower()
 
 
 @contextmanager
