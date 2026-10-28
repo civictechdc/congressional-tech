@@ -36,6 +36,9 @@ def run_state(tmp_path,change=None):
              ('https://outside.test/a.pdf',None,'b'*64),(BASE+'asset.css',None,'b'*64),
              (BASE+'member.pdf','folder/member.pdf','b'*64),(BASE+'error-only.pdf',None,'c'*64),
              (BASE+'caption.vtt?key=constant',None,'b'*64)]
+    if change=='non_acquisition':
+        rows += [row(12,url,outcome='reference',body_hex=None,http_status=None,family='record-only',retrieved_at='2026-11-21T00:00:00Z'),
+                 row(13,url,outcome='saved-record',body_hex=None,http_status=None,family='record-only',retrieved_at='2026-11-22T00:00:00Z')]
     if change=='unknown_family':rows[3]['family']='not-registered'
     if change=='line_conflict':rows[1]['http_status']=503
     if change=='entry_facts':
@@ -102,3 +105,10 @@ def test_url_state_keeps_per_entry_facts_and_each_requested_address(tmp_path,sha
         assert states[BASE+'report.pdf']['last_good_at'].startswith('2026-11-01T13:00:00')
     else:
         assert states[BASE+'second-report.pdf']['attempts']==1
+
+
+def test_references_and_inline_records_cannot_shadow_a_real_fetch(tmp_path):
+    result=run_state(tmp_path,'non_acquisition')
+    assert not any(result['url_state_invariants'][0].values())
+    [row]=[r for r in result['state'] if r['requested_url']==BASE+'report.pdf']
+    assert row['attempts']==3 and row['last_status']==503 and row['last_outcome']=='request_failed'

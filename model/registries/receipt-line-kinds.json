@@ -1,0 +1,295 @@
+{
+  "version": 1,
+  "receipt_filename_prefix": "assemble-",
+  "record_shape": "object",
+  "kinds": [
+    {
+      "id": "congress-api-record",
+      "outcome": "saved-record",
+      "cases": [
+        {
+          "family": "congress/committees",
+          "record_is_list": false,
+          "rows": 14570
+        },
+        {
+          "family": "congress/committees",
+          "record_is_list": true,
+          "rows": 236
+        },
+        {
+          "family": "congress/meetings",
+          "record_is_list": false,
+          "rows": 198940
+        }
+      ],
+      "url_pattern": "(?i)^https?://api[.]congress[.]gov/v3/(committee-meeting|committee)/"
+    },
+    {
+      "id": "govinfo-api-record",
+      "outcome": "saved-record",
+      "cases": [
+        {
+          "family": "documents",
+          "record_is_list": false,
+          "rows": 41
+        },
+        {
+          "family": "govinfo/mods",
+          "record_is_list": false,
+          "rows": 13
+        },
+        {
+          "family": "govinfo/transcript-html",
+          "record_is_list": true,
+          "rows": 1
+        }
+      ],
+      "url_pattern": "(?i)^https?://[^/]*govinfo[.]gov/(wssearch|collections|packages|published|search|api)"
+    },
+    {
+      "id": "run-evidence-record",
+      "outcome": "saved-record",
+      "cases": [
+        {
+          "family": "external/provider-responses",
+          "record_is_list": false,
+          "rows": 3
+        }
+      ],
+      "url_pattern": "(?i)^https?://[^/]*github[.]com/.*/actions/runs/"
+    },
+    {
+      "id": "unaddressed-record",
+      "outcome": "saved-record",
+      "cases": [
+        {
+          "family": "committee-reports",
+          "record_is_list": false,
+          "rows": 10
+        },
+        {
+          "family": "congress/committees",
+          "record_is_list": false,
+          "rows": 2
+        },
+        {
+          "family": "congress/meetings",
+          "record_is_list": false,
+          "rows": 6
+        },
+        {
+          "family": "documents",
+          "record_is_list": false,
+          "rows": 19849
+        },
+        {
+          "family": "documents",
+          "record_is_list": true,
+          "rows": 27151
+        },
+        {
+          "family": "external/legislators",
+          "record_is_list": true,
+          "rows": 539
+        },
+        {
+          "family": "external/provider-responses",
+          "record_is_list": false,
+          "rows": 4
+        },
+        {
+          "family": "external/provider-responses",
+          "record_is_list": true,
+          "rows": 2463
+        },
+        {
+          "family": "external/wayback",
+          "record_is_list": true,
+          "rows": 4
+        },
+        {
+          "family": "govinfo/mets",
+          "record_is_list": true,
+          "rows": 62
+        },
+        {
+          "family": "govinfo/mods",
+          "record_is_list": false,
+          "rows": 11
+        },
+        {
+          "family": "govinfo/mods",
+          "record_is_list": true,
+          "rows": 918
+        },
+        {
+          "family": "govinfo/transcript-html",
+          "record_is_list": false,
+          "rows": 27
+        },
+        {
+          "family": "govinfo/transcript-html",
+          "record_is_list": true,
+          "rows": 277
+        },
+        {
+          "family": "house/meeting-xml",
+          "record_is_list": false,
+          "rows": 15
+        },
+        {
+          "family": "house/meeting-xml",
+          "record_is_list": true,
+          "rows": 72
+        },
+        {
+          "family": "house/pages",
+          "record_is_list": true,
+          "rows": 34
+        },
+        {
+          "family": "house/witness-xml",
+          "record_is_list": true,
+          "rows": 36
+        },
+        {
+          "family": "meeting",
+          "record_is_list": true,
+          "rows": 3679
+        },
+        {
+          "family": "senate/captions",
+          "record_is_list": false,
+          "rows": 3563
+        },
+        {
+          "family": "senate/captions",
+          "record_is_list": true,
+          "rows": 660
+        },
+        {
+          "family": "senate/pages",
+          "record_is_list": false,
+          "rows": 100
+        },
+        {
+          "family": "senate/pages",
+          "record_is_list": true,
+          "rows": 21
+        },
+        {
+          "family": "senate/players",
+          "record_is_list": false,
+          "rows": 1
+        },
+        {
+          "family": "senate/players",
+          "record_is_list": true,
+          "rows": 133
+        },
+        {
+          "family": "wlist",
+          "record_is_list": true,
+          "rows": 20
+        },
+        {
+          "family": "youtube/api",
+          "record_is_list": false,
+          "rows": 542
+        },
+        {
+          "family": "youtube/api",
+          "record_is_list": true,
+          "rows": 123
+        },
+        {
+          "family": "youtube/captions",
+          "record_is_list": false,
+          "rows": 9369
+        },
+        {
+          "family": "youtube/captions",
+          "record_is_list": true,
+          "rows": 574
+        }
+      ]
+    },
+    {
+      "id": "document-reference",
+      "outcome": "reference",
+      "cases": [
+        {
+          "family": "documents",
+          "record_is_list": false,
+          "rows": 756494
+        },
+        {
+          "family": "documents",
+          "record_is_list": true,
+          "rows": 210891
+        },
+        {
+          "family": "external/provider-responses",
+          "record_is_list": true,
+          "rows": 2
+        },
+        {
+          "family": "external/wayback",
+          "record_is_list": true,
+          "rows": 1
+        },
+        {
+          "family": "govinfo/transcript-html",
+          "record_is_list": false,
+          "rows": 52
+        },
+        {
+          "family": "govinfo/transcript-html",
+          "record_is_list": true,
+          "rows": 14
+        },
+        {
+          "family": "senate/pages",
+          "record_is_list": false,
+          "rows": 5
+        },
+        {
+          "family": "senate/pages",
+          "record_is_list": true,
+          "rows": 35
+        },
+        {
+          "family": "senate/players",
+          "record_is_list": false,
+          "rows": 126
+        },
+        {
+          "family": "senate/players",
+          "record_is_list": true,
+          "rows": 126
+        },
+        {
+          "family": "youtube/api",
+          "record_is_list": true,
+          "rows": 17261
+        },
+        {
+          "family": "youtube/captions",
+          "record_is_list": true,
+          "rows": 3
+        },
+        {
+          "family": "youtube/watch-pages",
+          "record_is_list": true,
+          "rows": 1
+        }
+      ]
+    }
+  ],
+  "enumeration": {
+    "candidate_rows": 1269080,
+    "source_result_sha256": "ce400c205b3042abce2ef25953d0d624dfd52645d5292c1a2ede5352ab99ecc0",
+    "qualification": "Candidate legacy failed/no-body/no-status rows; explicit acquisition facts are preserved separately"
+  }
+}
