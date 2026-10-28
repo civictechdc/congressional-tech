@@ -94,8 +94,8 @@ def _check_pin(value):
         raise ValueError('Pinned model input changed: '+value['path'])
 
 
-def execute(spec):
-    """Verify local pins before opening the runtime, then invoke one model producer."""
+def model_arguments(spec):
+    """Verify local pins and fresh destinations before opening the native runtime."""
     for name in ['output','scratch']:
         path=Path(spec[name])
         if path.exists() or path.is_symlink():raise ValueError('Model output and scratch must be fresh')
@@ -111,6 +111,12 @@ def execute(spec):
         for value in spec[name]:
             _check_pin(value)
             arguments[name].append({key:value[key] for key in ['key','path']})
+    return arguments
+
+
+def execute(spec):
+    """Verify inputs, then invoke the one maintained model producer."""
+    arguments=model_arguments(spec)
     from docspec_client.client import NativeDatasets
     from viewer_publication.archive_model import build_release
     with NativeDatasets.from_config(spec['engine_config']) as engine:
