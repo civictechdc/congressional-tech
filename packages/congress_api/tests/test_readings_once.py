@@ -183,3 +183,32 @@ def test_writer_admission_requires_nonnull_proof_on_every_capture(tmp_path,proof
     assert pq.ParquetFile(result['work_list']).metadata.num_rows==1
     assert pq.ParquetFile(result['readings']).metadata.num_rows==0
     assert result['pending_reads']==1 and result['unreadable']==0
+
+
+def test_shared_writer_admission_step_requires_positive_uniform_evidence(tmp_path):
+    from congress_api.retention.provenance import json_input,run_job
+    def capture(body,**values):
+        return dict(dict(body_hex=body*64,bytes=100,media_type='text/vtt',fidelity='saved-text'),**values)
+    rows=[capture('a',bytes=0,media_type=None,fidelity=None),
+        capture('b'),capture('c',media_type='application/vnd.apple.mpegurl'),
+        capture('d',media_type='application/x-mpegurl'),
+        capture('e'),capture('e',fidelity=None),
+        capture('f',bytes=0,media_type='application/octet-stream',fidelity=None),
+        capture('f',bytes=None,media_type='application/octet-stream',fidelity=None),
+        capture('1'),capture('1',media_type='application/vnd.apple.mpegurl'),
+        capture('2',fidelity='exact-bytes'),capture('3'),capture('3',media_type=None)]
+    inputs=[json_input(tmp_path,'facts',rows,body_hex='Utf8',bytes='Int64',media_type='Utf8',fidelity='Utf8')]
+    result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
+        steps=[dict(name='captures',sql="SELECT decode(body_hex,'hex') AS sha256,* EXCLUDE(body_hex) FROM facts"),
+            readings.writer_admission_step()],outputs=[],queries=[dict(name='admitted',sql="SELECT encode(body_sha,'hex') AS body,format,basis FROM body_admissions ORDER BY body")])
+    assert result['admitted']==[dict(body=body*64,format=format,basis='writer_format')
+        for body,format in [('a','empty'),('b','vtt'),('c','m3u8'),('d','m3u8')]]
+
+
+def test_writer_admission_cannot_override_a_current_byte_format(tmp_path):
+    args,_,_=_review_inputs(tmp_path,available=False,metadata=[dict(bytes=100,media_type='text/vtt',
+        fidelity='saved-text',sniffed_format='html',sniff_version=readings.current_version('sniff'))])
+    work=tmp_path/'stage'
+    with pytest.raises(ValueError,match='Conflicting.*metadata'):
+        readings.stage_once(**args,work=work)
+    assert not (work/'parsed').exists()
