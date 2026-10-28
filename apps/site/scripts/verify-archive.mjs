@@ -86,9 +86,9 @@ export async function verifyArchive({pointerUrl,releaseId,rawBase,local=false,fe
     const stale=await timed('stale',()=>promisify(execFile)(process.execPath,[fileURLToPath(new URL('./archive-stale.mjs',import.meta.url)),JSON.stringify({pointerUrl:pointer.href,releaseId:reader.releaseId,heapBytes,missingFile,timeout:remaining,legacyPointerSha256})],{timeout:remaining,maxBuffer:1024*1024,signal:controller.signal}));
     const staleResult=JSON.parse(stale.stdout);if(staleResult.status!=='passed')throw new Error('Stale release probe failed.');
     const metrics={releaseId:reader.releaseId,startupMs:operations.startup,searchMs:operations.search,detailMs:Math.max(...[0,1,2].map(i=>operations['detail'+i])),heapBytes:peak,workerHeapBytes:0};
-    if(targets)checkTargets(metrics,targets);
+    if(targets)checkTargets(metrics,targets,reader.manifest.origin);
     const elapsedMs=performance.now()-started;if(elapsedMs>=deadlineMs)throw new Error('Archive canary exceeded its deadline.');
-    return {version:1,status:checkSaved?'passed':'incomplete',targets:targets?'measured':'owner-gated',savedCopyChecked:checkSaved,elapsedMs,...metrics,operations,estimatedListBytes:reader.metrics.decodedBytes,estimatedListPeakBytes:reader.metrics.decodedPeak,memory,transport:{requests:headers.length,ranges:headers.filter(item=>item.range).length}};
+    return {version:1,status:checkSaved?'passed':'incomplete',targets:targets?.status??'owner-gated',savedCopyChecked:checkSaved,elapsedMs,...metrics,operations,estimatedListBytes:reader.metrics.decodedBytes,estimatedListPeakBytes:reader.metrics.decodedPeak,memory,transport:{requests:headers.length,ranges:headers.filter(item=>item.range).length}};
   }catch(error){error.message+=` (elapsed ${Math.round(performance.now()-started)}ms; operations ${JSON.stringify(operations)})`;throw error;}finally{clearTimeout(timer);clearInterval(sampler);controller.abort();}
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){

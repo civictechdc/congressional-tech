@@ -21,7 +21,7 @@ test('targets require both real devices and measured worker heap',async()=>{
     const measurements=['real-phone','real-desktop'].map(deviceClass=>({deviceClass,samples:[sample]}));
     await assert.rejects(writeTargets({measurements,ceilings:{startupMs:1,searchMs:5,detailMs:5,heapBytes:50},output}),/startup/i);
     await writeTargets({measurements,ceilings:{startupMs:25,searchMs:5,detailMs:5,heapBytes:50},output});
-    const targets=JSON.parse(await readFile(output));assert.equal(targets.status,'measured');assert.equal(targets.devices.length,2);
+    const targets=JSON.parse(await readFile(output));assert.equal(targets.status,'owner-approved');assert.equal(targets.devices.length,2);
     assert.throws(()=>checkTargets({...sample,startupMs:26},targets),/startup/i);
     assert.throws(()=>checkTargets(sample,{status:'measured',ceilings:{}}),/target/i);
   }finally{await rm(folder,{recursive:true,force:true});}

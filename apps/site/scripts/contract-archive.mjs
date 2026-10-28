@@ -2,9 +2,9 @@
 import {readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
-import {argumentsMap,checkTargets,readTargets} from './archive-targets.mjs';
+import {argumentsMap,checkTargets,readTargets,measurementProfiles} from './archive-targets.mjs';
 import {startArchiveServer} from './archive-server.mjs';
-import {browserDependency,browserHeap,heapSampler} from './archive-browser.mjs';
+import {browserDependency,heapSampler,applyMeasurementProfile} from './archive-browser.mjs';
 import {openArchive} from '../src/components/explorer/reader/archive.ts';
 const args=argumentsMap(process.argv.slice(2));if(!args['next-release'])throw new Error('Supply --next-release for the required browser stale-tab check.');const targets=await readTargets(args.targets);
 const {chromium}=browserDependency('playwright');
@@ -29,9 +29,11 @@ const fixtureReader=args.hand==='true'?await openArchive(server.pointerUrl):null
 const fixtureEntries=fixtureReader?await Promise.all([1,2,5,6].map(index=>fixtureReader.entry(index))):[];
 const hex=value=>Buffer.from(value).toString('hex');
 try{
-  for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
+  for(const profileKind of ['desktop','phone']){
+    const profile=measurementProfiles[profileKind],viewport=profile.viewport;
     server.state.missingFile=null;server.state.flipOnMissing=null;server.state.releaseId=server.manifest.release_id;
-    const context=await fixtureContext({viewport}),page=await context.newPage();page.setDefaultTimeout(60000);
+    const context=await fixtureContext({viewport,deviceScaleFactor:profile.deviceScaleFactor,isMobile:profile.isMobile}),page=await context.newPage();page.setDefaultTimeout(60000);
+    const policy=targets?.status==='provisional-emulated'?await applyMeasurementProfile(page,profile):null;
     const sampler=heapSampler(browser,page);
     try{
       const errors=[];page.on('pageerror',error=>errors.push(error.message));let started=performance.now();
@@ -40,9 +42,9 @@ try{
       assert(!initialTotal.startsWith('0 '),'Release must contain visible documents');
       if(args.hand==='true')assert.equal(initialTotal,'6 documents');
       const initialHeap={heapBytes:0,workerHeapBytes:0,pageHeapBytes:0};
-      started=performance.now();await page.getByRole('searchbox').fill(args.hand==='true'?'record':'hearing');await page.getByRole('button',{name:'Search',exact:true}).click();await page.locator('[data-archive-total]').waitFor();const searchMs=performance.now()-started;
+      started=performance.now();await page.getByRole('searchbox').fill(args.hand==='true'?'record':'hearing');await page.getByRole('button',{name:'Search',exact:true}).click();await page.waitForFunction(query=>document.querySelector('[data-archive-query]')?.getAttribute('data-archive-query')===query,args.hand==='true'?'record':'hearing');const searchMs=performance.now()-started;
       if(args.hand==='true')assert.equal(await page.locator('[data-archive-total]').innerText(),'2 documents');
-      await page.getByRole('searchbox').fill('');await page.getByRole('button',{name:'Search',exact:true}).click();await page.locator('.archive-document').first().waitFor();
+      await page.getByRole('searchbox').fill('');await page.getByRole('button',{name:'Search',exact:true}).click();await page.waitForFunction(()=>document.querySelector('[data-archive-query]')?.getAttribute('data-archive-query')==='');await page.locator('.archive-document').first().waitFor();
       started=performance.now();await page.locator('.archive-document').first().click();await page.locator('[data-archive-detail]').waitFor();const detailMs=performance.now()-started;
       const measuredHeap=await sampler.stop();
       let publicKey=new URL(page.url()).searchParams.get('key');if(!publicKey){assert((await page.locator('[data-archive-detail]').innerText()).includes('No original saved copy is recorded.'));publicKey=args['link-key'];if(!publicKey)throw new Error('Supply --link-key from the real release when its first row is metadata-only.');await page.goto(server.pageUrl+'?key='+publicKey);await page.locator('[data-archive-detail]').waitFor();}assert.match(publicKey,/^[a-f0-9]{16}$/);
@@ -67,11 +69,11 @@ try{
       // Missing public keys have a usable error and retry, including on a phone-sized page.
       await page.goto(server.pageUrl+'?key='+'ff'.repeat(8));await page.getByRole('alert').waitFor();assert((await page.getByRole('alert').innerText()).includes('not found'));
       const finalHeap=measuredHeap,memory=finalHeap.heapBytes>initialHeap.heapBytes?finalHeap:initialHeap;
-      const sample={releaseId:observedReleaseId,pageUrl:page.url(),startupMs,searchMs,detailMs,...memory};if(targets)checkTargets(sample,targets);
+      const sample={releaseId:observedReleaseId,pageUrl:page.url(),startupMs,searchMs,detailMs,...memory};if(targets)checkTargets(sample,targets,server.manifest.origin,profileKind);
       assert.deepEqual(errors,[]);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'The phone profile must not overflow horizontally');
       if(args.screenshot)await page.screenshot({path:args.screenshot.replace(/(\.[a-z]+)$/i,`-${viewport.width}$1`),fullPage:true});
       results.push({viewport,...sample,publicKey,status:'passed'});
-    }finally{try{await sampler.stop();}finally{await context.close();}}
+    }finally{try{await sampler.stop();}finally{if(policy)await policy.detach();await context.close();}}
   }
   if(server.nextManifest){
     server.state.releaseId=server.manifest.release_id;server.state.missingFile=server.manifest.files.find(file=>file.name==='detail.parquet'||file.shard==='detail').name;server.state.flipOnMissing=server.nextManifest.release_id;
@@ -98,5 +100,5 @@ try{
     }finally{await context.close();}
   }
   if(args.hand==='true')assert(fixtureBodyReads.some(read=>read.status===404),'Hand saved-copy checks must exercise the local missing-body store');
-  const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?'measured':'owner-gated',results,fixtureBodyReads};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
+  const receipt={version:1,status:'passed',releaseId:server.manifest.release_id,targets:targets?.status??'owner-gated',results,fixtureBodyReads};if(args.output)await writeFile(args.output,JSON.stringify(receipt,null,2)+'\n',{flag:'wx'});console.log(JSON.stringify(receipt));
 }finally{await browser.close();await server.close();}

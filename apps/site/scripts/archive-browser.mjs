@@ -42,3 +42,13 @@ export function heapSampler(browser,page){
   running.catch(()=>{});
   let result;return {stop(){return result??=(async()=>{stopped=true;await running;const final=await browserHeap(browser,page);if(final.heapBytes>latest.heapBytes)latest=final;return {...latest,heapSamples:samples+1};})();}};
 }
+
+/** Apply the recorded page CDP policy before navigation; detach after the run. */
+export async function applyMeasurementProfile(page,profile){
+  const session=await page.context().newCDPSession(page);
+  try{
+    await session.send('Emulation.setCPUThrottlingRate',{rate:profile.cpuSlowdown});
+    if(profile.network){await session.send('Network.enable');await session.send('Network.emulateNetworkConditions',{offline:false,latency:profile.network.latency,downloadThroughput:profile.network.downloadThroughput,uploadThroughput:profile.network.uploadThroughput,connectionType:'cellular4g'});}
+    return session;
+  }catch(error){await session.detach();throw error;}
+}
