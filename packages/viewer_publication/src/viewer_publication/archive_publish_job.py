@@ -213,12 +213,16 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     """Refuse local problems, qualify a remote runtime, then connect the SDK."""
     spec['_model_identity'].require(spec['model_spec']['path'])
     targets,target_identity=_read_metadata(spec['targets'])
+    from viewer_publication.archive_gate import qualified_target_status
+    seed_origin=spec['_model'].get('profile') if spec.get('model_kind')=='seed_v5' else None
     names=['startupMs','searchMs','detailMs','heapBytes']
     if (not isinstance(targets,dict) or type(targets.get('version')) is not int or targets.get('version')!=1
-            or targets.get('status')!='measured' or not isinstance(targets.get('ceilings'),dict)
+            or not qualified_target_status(targets.get('status'),seed_origin)
+            or (targets.get('status')=='provisional-emulated' and targets.get('basis')!='emulated')
+            or not isinstance(targets.get('ceilings'),dict)
             or any(type(targets['ceilings'].get(name)) not in (int,float)
                    or not math.isfinite(targets['ceilings'][name]) or targets['ceilings'][name]<=0 for name in names)):
-        raise ValueError('Publication requires valid measured site targets')
+        raise ValueError('Publication requires valid measured site targets (owner-approved; provisional-emulated only for a seed)')
     for name in ['work']:
         path=Path(spec[name])
         if path.exists() or path.is_symlink():raise ValueError('Publication work must be fresh')
