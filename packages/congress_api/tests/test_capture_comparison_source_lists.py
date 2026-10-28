@@ -74,3 +74,39 @@ def test_expected_new_list_items_do_not_dismiss_old_only_facts(tmp_path):
     assert result['expected_new_only']==2 and result['old_only']==1 and result['owner_gate'] is True
     [row]=pq.read_table(work/'old-only.parquet').to_pylist()
     assert row['receipt_line']==9 and row['sha256']=='a'*64 and row['reference_kind']=='capture'
+
+
+@pytest.mark.parametrize('mixed',[False,True])
+def test_raw_source_list_proof_comes_from_the_actual_ingest_not_a_guessed_index(tmp_path,mixed):
+    from test_captures_ingest import ingest,body
+    records=[dict(url='https://fixture.test/first'),dict(url='https://fixture.test/bodiless',status_code=404)]
+    captures=[]
+    if mixed:
+        captures=[body(pointer=[0,'content','body']),
+            dict(body(pointer=[0,'another','body']),sha256='b'*64,
+                 body_key='bodies/sha256/bb/'+'b'*64+'.gz')]
+    else:records.append(dict(url='https://fixture.test/third',status_code=503))
+    staged=ingest(tmp_path/'source',[dict(source_file='owner-list',record=records,captures=captures)])
+    evidence=staged/'capture-evidence.parquet'
+    derived=pq.read_table(evidence).to_pylist()
+    assert all(r['record_is_list'] is True and r['source_record_count']==len(records) for r in derived)
+    originals=derived[:2] if mixed else derived[:1]
+    old_rows=[]
+    for row in originals:
+        old={name:row[name] for name in ('receipt_key','receipt_line','context_url','bytes','stored_bytes',
+            'media_type','fidelity','http_status','family')}
+        old.update(source_file=row['run_id'],sha256=row['sha256'].hex() if row['sha256'] is not None else None,
+            reference_kind='capture' if mixed else 'metadata',pointer_json=row['pointer_json'] if mixed else '[]',
+            body_key=row['body_key'],retrieved_at=row['retrieved_at'].isoformat() if row['retrieved_at'] else None)
+        old_rows.append(old)
+    schema=pa.schema([(name,pa.int64() if name in {'receipt_line','bytes','stored_bytes','http_status'} else pa.string())
+        for name in old_rows[0]])
+    old=tmp_path/'old.parquet';pq.write_table(pa.Table.from_pylist(old_rows,schema=schema),old)
+    result=compare_old(evidence,old,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        work=tmp_path/'comparison')
+    assert result['new_only']==result['expected_new_only']==(1 if mixed else 2)
+    assert result['old_only']==result['unexplained_new_only']==result['unexplained']==0
+    assert result['owner_gate'] is False
+    restored=pq.read_table(tmp_path/'comparison/expected-new-only.parquet').to_pylist()
+    assert [r['source_record_index'] for r in restored]==([1] if mixed else [1,2])
+    assert all(r['reference_kind']=='line' and r['body_sha'] is None and r['pointer'] is None for r in restored)
