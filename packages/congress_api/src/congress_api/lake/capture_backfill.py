@@ -320,6 +320,7 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
         if captures.current_version()!=definition or any(custody_identity(path)!=identity
                 for path,identity in runtime_custody.items()):
             raise ValueError('Backfill producer/runtime changed; rebuild an unpublished generation')
+    measurement_work=None
     try:
         for batch in plan['batches']:
             unchanged()
@@ -343,7 +344,8 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
                               if str(Path(path).resolve()) in paths}
                     qualification=directory/'qualifications.json';qualification.write_text(json.dumps(bindings)+'\n')
                     command+=['--source-qualifications',str(qualification)]
-            measured=monitor_command(command,work=directory/'monitor',scratch_root=scratch_root or work)
+            measurement_work=directory/'monitor'
+            measured=monitor_command(command,work=measurement_work,scratch_root=scratch_root or work)
             unchanged()
             outcome=None
             for line in reversed((directory/'monitor/process.log').read_text().splitlines()):
@@ -364,8 +366,9 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
         spec=acceptance/'spec.json';spec.write_text(json.dumps(dict(engine_config=str(Path(engine_config).resolve()),
             catalog_root=str(Path(catalog_root).resolve()) if catalog_root is not None else None,
             table=table,counts=str(counts_path),work=str(acceptance/'jobs'),mapping_digest=definition),indent=2)+'\n')
+        measurement_work=acceptance/'monitor'
         result['acceptance_measurement']=monitor_command([sys.executable,'-I','-m',
-            'congress_api.lake.capture_backfill','--validate-spec',str(spec)],work=acceptance/'monitor',scratch_root=scratch_root or work)
+            'congress_api.lake.capture_backfill','--validate-spec',str(spec)],work=measurement_work,scratch_root=scratch_root or work)
         accepted=json.loads((acceptance/'accepted.json').read_text())
         unchanged();result.update(status='public_guard_passed',pin=accepted['pin'],guard=accepted['guard'])
         completed_rows=accepted['guard']['rows']
@@ -374,6 +377,13 @@ def execute_batches(files,counts,*,engine,engine_config,work,table,catalog_root,
         return result
     except BaseException as error:
         result.update(status='rejected',error_type=type(error).__name__)
+        if measurement_work is not None:
+            for name in ('measurement.json','measurement.json.partial'):
+                try:
+                    measured=json.loads((measurement_work/name).read_text())
+                    observed=measured.get('sampled_peak_tree_physical_footprint')
+                    if type(observed) is int and observed>=0:peak=max(peak,observed)
+                except (OSError,ValueError):continue
         progress('fail',batch=len(reports)+1,note=type(error).__name__+'; see '+str(work/'backfill.json'))
         raise
     finally:

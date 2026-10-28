@@ -1,6 +1,6 @@
 ---
 id: cefr-xjsp
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T18:55:33Z
@@ -62,3 +62,7 @@ Owner urgent display-only seed correction: refuse manifest.origin.kind=seed_v5 o
 **2026-10-28T10:26:27Z**
 
 Seed refusal contracts5dd031da failed19 cases before implementation. Final focused scheduler/new admission group passes52 cases13.60s on shared engine-b2fd2d8. Guard runs immediately after manifest and at direct planning/capture/binding/cutoff entrypoints; public inputs stop after pointer+manifest. Public origin is retained as manifest_origin beside transport origin. CODE review pending; no live capture.
+
+**2026-10-28T10:30:30Z**
+
+Seed authority correction reviewed APPROVE, no findings: codex-raw/run2/seed-progress-code-review/review.md. Contracts5dd031da ->6636eb6d; 52 focused scheduler checks passed13.60s, including local/public pre-download refusal and direct entrypoints. Local scope closed; first live remains exact owner command in docs/measurements/engine-first-20261027/f2/README.md. No live action.
