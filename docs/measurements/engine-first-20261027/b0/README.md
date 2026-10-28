@@ -46,7 +46,7 @@ The owner's [ordered checklist](../owner-raw-safety.md) gives push/merge, drain,
 
 First confirm both patterns in `scan.json`: recorded authorization/cookie headers and absolute local paths, with URLs and pointer targets protected. Deploy the patched old writers and drain their prior revisions; pause recovery imports and the weekly raw writer for the cleanup window. Use a dedicated cleanup credential, supplied outside this report.
 
-Run from the congressional-tech worktree. Set `B0_WORK` to a private, durable owner directory with enough room for originals and the final mirror. The following commands are prepared, not executed against live storage:
+Run from `/Users/mikewolfd/Work/wt/ct-release-b0`. Set `B0_WORK` to a private, durable owner directory with enough room for originals and the final mirror. The following commands are prepared, not executed against live storage:
 
 ```sh
 .venv/bin/python -I -m congress_api.cli.receipt_cleanup --bucket congressional-tech-raw --list-inventory --inventory "$B0_WORK/keys.json" --report "$B0_WORK/listing-before.json"
