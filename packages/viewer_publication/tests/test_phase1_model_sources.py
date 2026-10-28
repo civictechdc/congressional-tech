@@ -3,7 +3,7 @@ import json
 import os
 from pathlib import Path
 
-from congress_api.retention.provenance import json_input,run_job
+from congress_api.retention.provenance import json_input,run_job,parquet_output
 from docspec_client.client import NativeDatasets
 
 ROOT=Path(__file__).parents[3]
@@ -42,7 +42,9 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
     steps=[dict(name='capture_evidence',sql="SELECT receipt_key,receipt_line,capture_index,run_id,mode,url,requested_url,context_url,member_path,h_content_disposition,retrieved_at,format,decode(body_hex,'hex') AS sha256 FROM fixture_captures"),
         dict(name='record_roles',sql='SELECT receipt_key,receipt_line,capture_index,is_real_file,record_role FROM fixture_captures')]
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
-        steps=steps+source_steps(),outputs=[],queries=[
+        steps=steps+source_steps(),outputs=[
+            parquet_output(tmp_path,'fixture-captures','SELECT * FROM capture_evidence',['receipt_line','capture_index']),
+            parquet_output(tmp_path,'model-names',"SELECT DISTINCT filename,coalesce(source_url,'') AS source_url FROM effective_filenames",['filename','source_url'])],queries=[
             dict(name='files',sql='SELECT filename,source_url,body_sha,is_real_file,cast(first_fetched AS VARCHAR) AS first_fetched,cast(in_archive_since AS VARCHAR) AS in_archive_since FROM source_files ORDER BY filename'),
             dict(name='members',sql="SELECT count(*) AS n FROM capture_sources WHERE source_url IS NULL AND member_path IS NOT NULL"),
             dict(name='ids',sql="SELECT count(*) AS n FROM source_files WHERE source_id<>encode(sha256(json_array(CASE WHEN body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(body_sha,1,2)||'/'||body_sha||'.gz' END,filename,source_url)),'hex')")])
@@ -61,3 +63,15 @@ def test_native_sources_preserve_names_member_paths_imports_and_failed_urls(tmp_
     assert files['only-import.pdf']['first_fetched'] is None and files['only-import.pdf']['in_archive_since']=='2026-10-10'
     assert files['mirror.pdf']['first_fetched'].startswith('2026-10-19')
     assert result['members']==[dict(n=2)] and result['ids']==[dict(n=0)]
+
+    from congress_api.lake import filenames
+    producer=filenames.stage(captures=tmp_path/'fixture-captures.parquet',
+        recovery_files=next(x for x in inputs if x['name']=='current_recoveries')['files'],
+        engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),work=tmp_path/'filename-producer',
+        decided_at='2026-10-27T12:00:00Z')
+    parity=tmp_path/'parity';parity.mkdir()
+    compared=run_job(parity,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=[
+        dict(name='model_names',kind='parquet',path=str(tmp_path/'model-names.parquet')),
+        dict(name='producer_names',kind='parquet',path=str(producer['work_list']))],steps=[],outputs=[],queries=[
+            dict(name='difference',sql="SELECT count(*) AS n FROM ((SELECT filename,source_url FROM model_names EXCEPT ALL SELECT filename,source_url FROM producer_names) UNION ALL (SELECT filename,source_url FROM producer_names EXCEPT ALL SELECT filename,source_url FROM model_names))")])
+    assert compared['difference']==[dict(n=0)]
