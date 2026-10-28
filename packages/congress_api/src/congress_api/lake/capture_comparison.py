@@ -292,10 +292,11 @@ def compare_old(evidence, old_index, *, engine, work, receipt_keys=None):
             AND n.record_is_list IS TRUE AND n.source_record_count>1
             AND n.source_record_index>=0 AND n.source_record_index<n.source_record_count
             AND q.source_ordinal_occurrences=1 AND o.old_source_key IS NOT NULL,false)
-            AS expected_source_list_item FROM new_only n LEFT JOIN source_ordinals q
+            AS expected_source_list_item FROM old_source_lines o RIGHT JOIN (
+            source_ordinals q RIGHT JOIN new_only n
             ON n.receipt_key=q.proof_receipt_key AND n.receipt_line=q.proof_receipt_line
-            AND n.source_record_index=q.proof_record_index
-            LEFT JOIN old_source_lines o ON n.receipt_key=o.old_source_key AND n.receipt_line=o.old_source_line''',materialize=True,
+            AND n.source_record_index=q.proof_record_index)
+            ON n.receipt_key=o.old_source_key AND n.receipt_line=o.old_source_line''',materialize=True,
              release_after=['new_only','source_ordinals','old_source_lines']),
         dict(name='new_only_classified',sql="""SELECT *,CASE WHEN expected_source_list_item
             THEN 'source_list_item_restored' ELSE 'unexplained_new_row' END AS reason
