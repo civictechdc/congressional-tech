@@ -42,3 +42,7 @@ Local scope complete: CODE/ARCH APPROVE including bounded shared-validator follo
 **2026-10-28T01:49:38Z**
 
 Owner retro-review reopened F2: contract-first fixtures require persist-before-inspection, capture-time sniff facts on returned receipt, drain queued work after discovery replan bound, and remove authored identity overrides. Local synthetic expected-red runner: 14 failed in 3.30s. No live HTTP/storage action, credentials, production branches or monkeypatch. Root retains review and live-run authority.
+
+**2026-10-28T01:53:21Z**
+
+Review correction implemented locally after contract af44f627: writer-enriched returned receipt drives discovery; discovery bound limits replans and drains planned queue; authored SQL/input override routes and unused finite fixture generator deleted. Actual-profile focused runner 84 passed in 15.44s; sniff/pending subset 36 passed in 1.67s using approved48636e5. Local fakes/stores only; no monkeypatch, live network/storage writes or credentials. Source total901->894 (fetcher158->155, writer132->150, scheduler522->508, CLI89->81). Independent parent CODE/ARCH review and broad group remain pending.

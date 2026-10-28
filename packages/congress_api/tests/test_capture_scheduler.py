@@ -41,16 +41,6 @@ def release(tmp_path, rows, *, entries=None):
     pq.write_table(pa.Table.from_pylist([],schema=pa.schema([('canonical_url',pa.string()),
         ('variant_url',pa.string())])),root/'url_variants.parquet')
     write_manifest(root)
-    # Finite authored identity adapter: this checks scheduler joins, not E's
-    # normalization algorithm or its registry qualification. Unknown URLs have
-    # no key and therefore refuse the native identity contract.
-    pairs=[('https://fixture.test/'+name,'fixture:'+name) for name in
-        ['a','b','c','z','new','queue','old','cut','future','good','pending','missing','child','end']]
-    pairs.extend([('https://fixture.test/a%20b.pdf','fixture:space-alias'),
-                  ('https://fixture.test/a b.pdf','fixture:space-alias'),
-                  ('https://outside.example/a','outside:a')])
-    values=','.join("('"+url+"','"+key+"')" for url,key in pairs)
-    (root/'fixture-url-keys.sql').write_text('SELECT i.input_id,i.url,f.url_key FROM url_inputs i LEFT JOIN (VALUES '+values+') f(url,url_key) ON i.url=f.url')
     return root
 
 
@@ -233,7 +223,7 @@ def test_discovery_budget_and_cycles_terminate_without_index_state(tmp_path):
         'https://fixture.test/a':(200,b'<html><a href="/b">b</a></html>',{}),
         'https://fixture.test/b':(200,b'<html><a href="/a">a</a><a href="/c">c</a></html>',{})},max_discovery_jobs=1)
     assert adapter.calls==['https://fixture.test/a','https://fixture.test/b']
-    assert result['stop_reason']=='discovery_job_budget' and result['discovery_jobs']==1
+    assert result['stop_reason']=='queue_empty' and result['discovery_jobs']==1
 
 
 def test_byte_and_spool_budget_refuse_before_adapters(tmp_path):
@@ -365,11 +355,11 @@ def test_attempted_alias_is_not_scheduled_again(tmp_path):
     assert pq.read_table(result['queue']).num_rows==0
 
 
-def test_missing_shared_url_definition_refuses_before_native_planning(tmp_path):
+def test_missing_selected_profile_refuses_before_native_planning(tmp_path):
     from congress_api.acquisition.capture_scheduler import plan_queue
     selected=load(release(tmp_path,[]),tmp_path/'read')
-    selected['url_keys_sql']=tmp_path/'missing-shared-url-keys.sql'
-    with pytest.raises(ValueError,match='url_key'):
+    Path(selected['profile']).unlink()
+    with pytest.raises(FileNotFoundError):
         plan_queue(selected,engine=engine(),work=tmp_path/'plan',as_of=ASOF,request_budget=20)
     assert not (tmp_path/'plan').exists()
 
@@ -413,12 +403,12 @@ def test_release_profile_refuses_unqualified_sql_or_engine_before_planning(tmp_p
     assert not (tmp_path/'plan').exists()
 
 
-def test_public_release_rejects_authored_workspace_identity_override(tmp_path):
+def test_public_profile_identity_is_rechecked_before_native_planning(tmp_path):
     from congress_api.acquisition.capture_scheduler import load_release,plan_queue
     root=release(tmp_path,[])
     selected=load_release(pointer='https://public.fixture/current.json',session=PublicSession(root),work=tmp_path/'read')
-    selected['url_keys_sql']=root/'fixture-url-keys.sql'
-    with pytest.raises(ValueError,match='public|override'):
+    with Path(selected['profile']).open('ab') as profile:profile.write(b' changed')
+    with pytest.raises(ValueError,match='identity|size'):
         plan_queue(selected,engine=engine(),work=tmp_path/'plan',as_of=ASOF,request_budget=20)
     assert not (tmp_path/'plan').exists()
 

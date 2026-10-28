@@ -181,26 +181,14 @@ def _records(path):
 
 def _url_binding(release,engine):
     """Bind SQL, rules, variants and engine to the selected immutable release."""
-    overrides=('url_keys_sql','url_normalized_sql','url_key_inputs')
-    if release.get('origin')!='local' and any(name in release for name in overrides):
-        raise ValueError('Public release URL identity overrides are forbidden')
     for key,name in [('state','url_state.parquet'),('scope','capture_scope.json'),
                      ('profile','capture_profile.json'),('variants','url_variants.parquet')]:
         _identity(release[key],release['identities'][name])
     profile=validate_capture_profile(json.loads(Path(release['profile']).read_text()),
         engine_revision=engine.source_revision)
-    definitions={}
-    for name in ('url_normalized','url_keys'):
-        definitions[name]=profile['sql'][name]['text']
-        override=release.get(name+'_sql')
-        if override is not None:
-            if not Path(override).is_file():raise ValueError('Authored url_key SQL is unavailable')
-            definitions[name]=Path(override).read_text()
-    inputs=release.get('url_key_inputs')
-    if inputs is not None and (not isinstance(inputs,list) or any(not isinstance(item,dict) for item in inputs)):
-        raise ValueError('Authored url_key profile inputs must be native input declarations')
+    definitions={name:profile['sql'][name]['text'] for name in ('url_normalized','url_keys')}
     binding=dict(sql=definitions,rules=profile['url_rules'],variants_sha256=release['identities']['url_variants.parquet']['sha256'],
-        engine_revision=profile['engine_revision'],authored_inputs=inputs)
+        engine_revision=profile['engine_revision'])
     digest=hashlib.sha256(json.dumps(binding,sort_keys=True,separators=(',',':'),ensure_ascii=False).encode()).hexdigest()
     if release.get('url_key_definition_sha256',digest)!=digest:
         raise ValueError('Capture profile changed within the capture run')
@@ -208,7 +196,6 @@ def _url_binding(release,engine):
 
 
 def _profile_inputs(release,binding,work):
-    if binding['authored_inputs'] is not None:return binding['authored_inputs']
     return [json_input(work,'url_rules',binding['rules'],**{name:'Utf8' for name in RULE_FIELDS}),
             dict(name='url_variants',kind='parquet',path=str(Path(release['variants']).resolve()))]
 
@@ -465,15 +452,16 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
                 _record_attempt(attempted,url,attempted=True,complete=result.final.complete,
                     outcome=line['outcome'],http_status=line['http_status'],error_type=result.final.error)
                 body=result.final.body;links=[]
-                if (body is not None and result.final.complete and result.final.http_status is not None
-                        and 200<=result.final.http_status<300 and body.sniffed_format in {'html','xml','json'}):
+                parser=line['captures'][0]['sniffed_format'] if body is not None else None
+                if (generation<max_discovery_jobs and body is not None and result.final.complete
+                        and result.final.http_status is not None and 200<=result.final.http_status<300
+                        and parser in {'html','xml','json'}):
                     if body.size>PAGE_BYTES:
                         stats['discovery_errors'].append(dict(url=url,reason='discovery_size_limit'))
                     else:
                         if discover is not None:
-                            facts=discover(body.path.read_bytes(),body.sniffed_format)
+                            facts=discover(body.path.read_bytes(),parser)
                         else:
-                            parser=body.sniffed_format
                             if parser not in workers:
                                 workers[parser]=worker_stack.enter_context(worker_factory(parser,worker_version,
                                     'congress_api.acquisition.capture_scheduler:read_discovery_payload',
@@ -497,8 +485,6 @@ def run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bud
                 # The surrounding spool owns every original attempt file and
                 # removes them only after body+receipt storage has completed.
             if links:
-                if generation>=max_discovery_jobs:
-                    stats['stop_reason']='discovery_job_budget';break
                 generation+=1
                 entry=json_input(work,f'discovered-{generation}',links,href='Utf8',base_href='Utf8',context='Utf8',source='Utf8',pointer='Utf8')
                 discovered.extend(entry['files'])

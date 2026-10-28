@@ -10,7 +10,6 @@ from urllib.parse import urljoin, urlsplit
 import requests
 
 from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
-from congress_api.retention.sniff import read_sniff_file
 from congress_api.retention.body_store import validate_record
 
 
@@ -99,9 +98,7 @@ class Fetcher:
                 if sha is None:
                     with destination.open('rb') as source:
                         sha = hashlib.file_digest(source,'sha256').hexdigest()
-                reading = read_sniff_file(destination)
-                body = BodyFile(destination,sha,size,headers.get('content-type'),reading['format'],
-                    reading['parser_version'],reading['intact'],reading['error_type'])
+                body = BodyFile(destination,sha,size,headers.get('content-type'),None,None,None)
             return FetchAttempt(requested,transfer.url,timestamp,transport,transfer.http_status,
                 transfer.provider_status,headers,tuple(redirects),transfer.complete and valid_final,body,
                 transfer.error if valid_final else 'excluded_redirect')
