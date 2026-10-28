@@ -956,5 +956,39 @@
     "listed_on": "https://fixture.test/listing",
     "raw_type": "CV",
     "late_text": "Late label"
-  }
+  },
+  "producer_profile_cases": [
+    {
+      "case": "clean",
+      "accepted": true
+    },
+    {
+      "case": "missing-pin",
+      "accepted": false
+    },
+    {
+      "case": "changed-profile",
+      "accepted": false
+    },
+    {
+      "case": "missing-check",
+      "accepted": false
+    },
+    {
+      "case": "empty-check",
+      "accepted": false
+    },
+    {
+      "case": "positive-count",
+      "accepted": false
+    },
+    {
+      "case": "null-count",
+      "accepted": false
+    },
+    {
+      "case": "boolean-count",
+      "accepted": false
+    }
+  ]
 }

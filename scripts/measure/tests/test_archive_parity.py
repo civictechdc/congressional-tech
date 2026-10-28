@@ -504,3 +504,41 @@ def test_publisher_witness_uses_canonical_kind_and_the_saved_source(tmp_path,eff
     wanted=[dict(difference_id='canonical-kind',cause='publisher_link_kind'),dict(difference_id='page-url',cause='link_label_provenance')]
     if effective_title==expected['listing_title']:wanted.insert(1,dict(difference_id='chosen-title',cause='link_label_provenance'))
     assert reports['causes']==wanted
+
+
+@pytest.mark.parametrize('case',FIXTURE['producer_profile_cases'],ids=lambda case:case['case'])
+def test_model_profile_is_pinned_and_the_same_producer_has_zero_completeness_errors(tmp_path,case):
+    from congress_api.retention.provenance import file_pin
+    template=f0_fixture(tmp_path)
+    value=json.loads(template.read_text());candidate=value['candidate'];candidate['kind']='model'
+    manifest=json.loads((Path(candidate['release'])/'manifest.json').read_text())
+    profile=tmp_path/'profile.json';profile.write_text(json.dumps({'owner_admission':'E2'}))
+    candidate['producer_profile']=dict(path=str(profile),**file_pin(profile))
+    job_path=Path(candidate['build_job']['path']);result_path=Path(candidate['build_result']['path'])
+    job=json.loads(job_path.read_text());result=json.loads(result_path.read_text())
+    job['queries'].append(dict(name='profile_completeness',sql='SELECT 0 AS missing_pages'))
+    check=dict(name='profile_completeness',data=[dict(missing_pages=0)])
+    result['queries'].append(check)
+    name=case['case']
+    if name=='missing-pin':candidate.pop('producer_profile')
+    if name=='changed-profile':profile.write_text('{}')
+    if name=='missing-check':result['queries'].remove(check)
+    if name=='empty-check':check['data']=[]
+    if name=='positive-count':check['data'][0]['missing_pages']=1
+    if name=='null-count':check['data'][0]['missing_pages']=None
+    if name=='boolean-count':check['data'][0]['missing_pages']=False
+    job_path.write_text(json.dumps(job));result_path.write_text(json.dumps(result))
+    for key,path in [('build_job',job_path),('build_result',result_path)]:candidate[key]=dict(path=str(path),**file_pin(path))
+    if case['accepted']:parity.producer_inputs(template.parent,candidate,manifest)
+    else:
+        with pytest.raises(ValueError,match='profile|completeness|pin|digest'):
+            parity.producer_inputs(template.parent,candidate,manifest)
+
+
+def test_cause_metadata_cannot_replace_the_pinned_oracle_or_public_candidate(tmp_path):
+    from congress_api.retention.provenance import file_pin
+    template=f0_fixture(tmp_path);value=json.loads(template.read_text())
+    value['cause_relations']={'oracle_documents':dict(value['oracle']['filenames'],required_columns=[])}
+    template.write_text(json.dumps(value))
+    with pytest.raises(ValueError,match='replace|reserved'):
+        parity.load_descriptor(template)
