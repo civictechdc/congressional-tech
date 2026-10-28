@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {dateLabels, lookupUrl, recoveryLabel, savedCopy} from './archive.ts';
+import {dateLabels, lookupUrl, recoveryLabel, savedCopy, openArchive} from './archive.ts';
 import {rangeFile} from './range-file.ts';
 import {readFile} from 'node:fs/promises';
 import {byteCache} from './filenames/cache.ts';
@@ -95,4 +95,14 @@ test('all named recovery claims remain readable without becoming recovered origi
   const fixture=JSON.parse(await readFile(new URL('../../../../scripts/fixtures/recovery-labels.json',import.meta.url),'utf8'));
   for(const [kind,label] of Object.entries(fixture.expected_labels))assert.equal(recoveryLabel(kind),label,kind);
   assert.equal(recoveryLabel(fixture.unknown.kind),fixture.unknown.label);
+});
+
+
+test('the actual old viewer pointer refuses before any archive or legacy asset request',async()=>{
+  const pointer=JSON.parse(await readFile(new URL('../../../../scripts/fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
+  const url='https://public.test/viewer-publications/manifest.json',requests=[];
+  await assert.rejects(openArchive(url,{fetcher:async address=>{
+    requests.push(String(address));return Response.json(pointer);
+  }}),{message:'Invalid archive release identity.'});
+  assert.deepEqual(requests,[url]);
 });
