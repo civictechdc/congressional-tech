@@ -36,15 +36,22 @@ def test_actual_comparison_plan_hashes_every_identity_without_key_residuals(tmp_
     keys=join.split('on=[',1)[1].split(']',1)[0]
     for key in ('receipt_key','receipt_line','body_sha','pointer','occurrence'):
         assert len(re.findall(r'\b'+key+r'@',keys))==2,physical
-    assert 'NullEqualsNull' in join,physical
+    assert 'NullsEqual: true' in join,physical
     assert 'filter=' not in join,physical
 
 
-def test_secondary_comparison_plan_hashes_all_four_identity_keys(tmp_path):
+@pytest.mark.parametrize('null_context',[False,True])
+def test_secondary_comparison_plan_hashes_all_four_identity_keys(tmp_path,null_context):
     old,parts=batch_fixture(tmp_path)
+    if null_context:
+        for path in (old,*parts):
+            table=pq.read_table(path)
+            table=table.set_column(table.schema.get_field_index('context_url'),'context_url',
+                pa.array([None]*table.num_rows,type=pa.string()))
+            pq.write_table(table,path)
     old_rows=pq.read_table(old).to_pylist()
     old_rows.append(dict(old_rows[0],reference_kind='file',pointer_json='["secondary"]'))
-    pq.write_table(pa.Table.from_pylist(old_rows),old)
+    pq.write_table(pa.Table.from_pylist(old_rows,schema=pq.read_schema(old)),old)
     native=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     report=compare_old(parts,old,engine=native,work=tmp_path/'comparison')
     assert report['secondary_duplicates']==1
@@ -57,7 +64,7 @@ def test_secondary_comparison_plan_hashes_all_four_identity_keys(tmp_path):
         keys=join.split('on=[',1)[1].split(']',1)[0]
         for key in ('receipt_key','receipt_line','body_sha','context_url'):
             assert len(re.findall(r'\b'+key+r'@',keys))==2,physical
-        assert 'NullEqualsNull' in join,physical
+        assert 'NullsEqual: true' in join,physical
         if 'filter=' in join:
             residual=join.split('filter=',1)[1]
             assert all(re.search(r'\b'+key+r'@',residual) is None
