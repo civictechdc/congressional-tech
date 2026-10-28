@@ -138,3 +138,65 @@ def test_cli_pool_memory_refuses_before_transport(tmp_path,capsys):
             '--max-work-items','1','--raw-bucket','unopened','--parser-workers','2'])
     assert error.value.code==2 and 'memory' in capsys.readouterr().err
     assert not (tmp_path/'work').exists()
+
+
+def test_prefetch_window_reserves_slots_for_still_active_range_parsers(tmp_path):
+    args,_,_=inputs(tmp_path);schema=pq.read_schema(args['captures']);objects={};captures=[];listed=[]
+    workers=16;release=threading.Event();first_wave=threading.Event();lock=threading.Lock()
+    state=dict(active=0,overlap=False)
+    for i in range(128):
+        data=b'%PDF-1.7\n'+str(i).encode()+b'x'*100+b'\n%%EOF';sha=hashlib.sha256(data).digest()
+        key='bodies/sha256/'+sha.hex()[:2]+'/'+sha.hex();objects[key]=data
+    first=min(objects)
+    for index,key in enumerate(sorted(objects)):
+        data=objects[key];sha=hashlib.sha256(data).digest()
+        captures.append(dict(sha256=sha,bytes=len(data),media_type='application/pdf' if index<64 else 'text/html',
+            fidelity='exact-bytes',stored_suffix='',stored_bytes=len(data),stored_md5=hashlib.md5(data).digest()))
+        listed.append(dict(key=key,size=len(data),etag='"'+hashlib.md5(data).hexdigest()+'"'))
+    pq.write_table(pa.Table.from_pylist(captures,schema=schema),args['captures'])
+    listing=tmp_path/'listing.parquet';pq.write_table(pa.Table.from_pylist(listed),listing)
+    args.update(body_inventory=None,body_listing=listing)
+    class Mixed(Client):
+        def get_object(self,**kwargs):
+            data=objects[kwargs['Key']]
+            with lock:self.reads.append(kwargs)
+            result=dict(Body=io.BytesIO(data),ContentLength=len(data),ETag=kwargs['IfMatch'])
+            if 'Range' in kwargs:
+                with lock:
+                    state['active']+=1
+                    if state['active']==workers:first_wave.set()
+                try:
+                    if kwargs['Key']==first:assert first_wave.wait(5)
+                    else:assert release.wait(5)
+                    return dict(result,ContentRange=f'bytes 0-{len(data)-1}/{len(data)}',ResponseMetadata={'HTTPStatusCode':206})
+                finally:
+                    with lock:state['active']-=1
+            return result
+    class CheckedStore(R2Store):
+        def prefetch_immutable(self,keys,*,max_workers=64,**kwargs):
+            if keys:
+                with lock:overlap=state['active']>0
+                try:
+                    assert overlap,'Second page window must overlap unfinished range reads'
+                    state['overlap']=True
+                    assert max_workers+workers<=64,'Prefetch allocation must leave slots for active parsers'
+                finally:release.set()
+            return super().prefetch_immutable(keys,max_workers=max_workers,**kwargs)
+    client=Mixed(b'fixture');work=tmp_path/'stage';store=CheckedStore(client,'bucket',cache_dir=work/'raw-pages')
+    class Worker:
+        def __init__(self,*args,**kwargs):pass
+        def __enter__(self):return self
+        def __exit__(self,*args):pass
+        def parse(self,body,payload):
+            request=json.loads(payload)
+            if request.get('prefetched'):data=Path(request['path']).read_bytes()
+            else:
+                remote=request['remote'];data=store.read(remote['key'],start=0,length=request['stored_bytes'],
+                    expected=dict(etag=remote['etag'],md5=remote['md5'],bytes=request['stored_bytes']))
+            assert hashlib.sha256(data).hexdigest()==body
+            return dict(status='completed',value=dict(read_bytes=len(data),rows=[dict(parser='sniff',
+                parser_version=request['versions']['sniff'],status='completed',format='pdf')]))
+    result=readings.stage_once(**args,work=work,body_store=store,worker_factory=Worker,
+        parser_workers=workers,parser_memory_bytes=8<<30,max_cache_bytes=8<<20)
+    assert state['overlap'] and len(client.reads)==128 and result['pending_reads']==0
+    assert pq.read_metadata(result['readings']).num_rows==128
