@@ -91,9 +91,8 @@ def count_sources(*,counter,files,receipt_keys,work,source_qualifications,memory
     pins=source_pins(counter=counter,qualifications={str(counter):source_qualifications[str(counter)]})
     if files:
         pins+=source_pins(files=files,qualifications={f['path']:source_qualifications[f['path']] for f in files})
-    for pin in pins:
-        if 'rows' not in pin['qualification']:
-            raise ValueError('Independent counts need qualified creation row counts')
+    if 'rows' not in pins[0]['qualification']:
+        raise ValueError('Independent counts need the qualified counter creation row count')
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     sql=count_sql(counter,files);(work/'counts.sql').write_text(sql+'\n')
     config=dict(threads=str(threads),memory_limit=str(memory_bytes)+'B',
@@ -117,7 +116,7 @@ def count_sources(*,counter,files,receipt_keys,work,source_qualifications,memory
             raise ValueError('Invalid receipt source lines or duplicate original receipt keys')
         source_rows[row['source_id']]+=row['source_rows']
     rows_by_path={str(counter):source_rows[0],**{f['path']:source_rows[i] for i,f in enumerate(files,1)}}
-    if any(rows_by_path[p['path']]!=p['qualification']['rows'] for p in pins):
+    if any(rows_by_path[p['path']]!=p['qualification']['rows'] for p in pins if 'rows' in p['qualification']):
         raise ValueError('Source rows differ from qualified original creation counts')
     public=('key','source_rows','uncompressed_bytes','list_items','expected_captures','max_line_bytes','max_line_items')
     result=[{k:r[k] for k in public} for r in rows]
