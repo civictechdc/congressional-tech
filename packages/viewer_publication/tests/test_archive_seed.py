@@ -50,9 +50,9 @@ def test_seed_keeps_real_ids_sizes_recovery_sources_and_reconciles(tmp_path):
     manifest,spec,fixture=build(tmp_path)
     result=json.loads((Path(spec['scratch'])/'result.json').read_text())
     reports={item['name']:item['data'] for item in result['queries']}
-    assert reports['seed_reconciliation']==[dict(input_docs=4,listed=3,excluded=1)]
-    assert sum(row['count'] for row in reports['seed_exclusions'])==1
-    assert reports['seed_exclusions'][0]['reason']=='duplicate_document_identity'
+    assert reports['seed_reconciliation']==[dict(input_docs=4,listed=3,merged_duplicates=1,excluded=0)]
+    assert reports['seed_exclusions']==[]
+    assert reports['seed_merged_duplicates']==[dict(merged_duplicates=1)]
     assert reports['seed_invariants'] and all(type(v) is int and v==0 for v in reports['seed_invariants'][0].values())
     assert len(reports['probe_selectors'])==1
     out=Path(spec['output'])
@@ -162,7 +162,7 @@ def test_seed_repairs_recorded_names_formats_and_reconciles_explicit_exclusions(
     expected=json.loads((ROOT/'model/fixtures/seed-v5-mapping.json').read_text())['expected']
     manifest,spec,_=build(tmp_path,mapping_fixture)
     reports={q['name']:q['data'] for q in json.loads((Path(spec['scratch'])/'result.json').read_text())['queries']}
-    assert reports['seed_reconciliation']==[{k:expected[k] for k in ['input_docs','listed','excluded']}]
+    assert reports['seed_reconciliation']==[{k:expected[k] for k in ['input_docs','listed','merged_duplicates','excluded']}]
     assert {r['reason']:r['count'] for r in reports['seed_exclusions']}==expected['exclusions']
     assert {r['reason']:r['count'] for r in reports['seed_source_exclusions']}==expected['source_exclusions']
     rows=pq.read_table(Path(spec['output'])/'list.parquet').to_pylist()
