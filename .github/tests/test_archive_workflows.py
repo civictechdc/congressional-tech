@@ -201,3 +201,19 @@ def test_publish_builds_once_after_node_and_before_the_single_publisher():
     publish=next(i for i,step in enumerate(steps) if step.get('run','').endswith('run-archive-job.py publish'))
     assert node<builds[0]<publish
     assert steps[builds[0]]['working-directory']=='apps/site' and 'env' not in steps[builds[0]]
+
+
+def test_publish_retains_only_named_run_evidence_on_success_or_failure():
+    steps=workflow('archive-jobs.yml')['jobs']['publish']['steps']
+    uploads=[step for step in steps if step.get('uses')=='actions/upload-artifact@v4']
+    assert len(uploads)==1
+    evidence=uploads[0]
+    assert evidence['name']=='Retain run evidence (access follows repository)'
+    assert evidence['if']=="${{ always() && steps.publisher_binding.outputs.publisher_work != '' }}"
+    assert evidence['with']['if-no-files-found']=='ignore'
+    assert evidence['with']['path'].splitlines()==[
+        '${{ steps.publisher_binding.outputs.publisher_work }}/'+name
+        for name in ['outgoing-pointer.json','contract.json','canary.json']]
+    assert 'env' not in evidence
+    assert steps.index(evidence)>next(i for i,step in enumerate(steps)
+        if step.get('run','').endswith('run-archive-job.py publish'))
