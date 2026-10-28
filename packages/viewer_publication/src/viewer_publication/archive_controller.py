@@ -8,7 +8,9 @@ from congress_api.retention.provenance import file_pin,run_job
 from viewer_publication.archive_model import (
     prepare_model_inputs,build_prepared_release,admission_checks,input_receipts_query,
 )
-from viewer_publication.archive_model_job import model_arguments,provenance_record_kind,PROVENANCE
+from viewer_publication.archive_model_job import (
+    model_arguments,provenance_record_kind,provenance_etag_md5,PROVENANCE,
+)
 from viewer_publication.archive_publish import (
     NativeArchiveStore,input_digest,matching_live_input,publish_candidate,read_pointer,write_status,
 )
@@ -56,7 +58,11 @@ def _provenance_snapshot(client,bucket,expected):
         next_token=page.get('NextContinuationToken')
         if not next_token or next_token==token:raise ValueError('Current provenance listing did not advance')
         token=next_token
-    if set(actual)!=set(pinned) or any(actual[key]!=pinned[key] for key in actual):
+    def same_etag(key):
+        if provenance_record_kind(key) is not None:
+            return provenance_etag_md5(actual[key])==provenance_etag_md5(pinned[key])
+        return actual[key]==pinned[key]
+    if set(actual)!=set(pinned) or any(not same_etag(key) for key in actual):
         raise ValueError('Pinned provenance differs from the current immutable raw inventory')
     return [dict(key=key,etag=actual[key]) for key in sorted(actual)]
 
