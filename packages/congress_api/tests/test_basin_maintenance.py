@@ -1,18 +1,17 @@
-"""D5 is one explicit catalog policy, tested without a provider connection."""
-from copy import deepcopy
+"""D5 owner policy disables managed activation without observing remote state."""
+import ast
+import inspect
 import json
 
 import pytest
 
 ACCOUNT='a'*32
 BUCKET='archive-fixture'
-POLICY={'compaction':{'state':'enabled','target_size_mb':'128'},
-        'snapshot_expiration':{'state':'enabled','max_snapshot_age':'30d','min_snapshots_to_keep':5}}
+POLICY={'compaction':{'state':'disabled','target_size_mb':'128'},
+        'snapshot_expiration':{'state':'disabled','max_snapshot_age':'30d','min_snapshots_to_keep':5}}
 URL=f'https://api.cloudflare.com/client/v4/accounts/{ACCOUNT}/basin-catalog/{BUCKET}/maintenance-configs'
-
-
-def result(policy,credential='present'):
-    return dict(success=True,result=dict(credential_status=credential,maintenance_config=policy))
+REPLACEMENT='congress_api.lake.maintenance.rebuild_generation'
+REFUSAL='Managed Basin maintenance is disabled by local project policy'
 
 
 class Reply:
@@ -29,60 +28,71 @@ class Client:
         return value
 
 
-def test_plan_uses_exact_policy_and_never_calls_the_client():
+def result(policy):
+    return dict(success=True,result=dict(credential_status='present',maintenance_config=policy))
+
+
+def test_plan_reports_only_local_policy_without_contacting_client():
     from congress_api.retention.basin_maintenance import configure
     client=Client()
     plan=configure(ACCOUNT,BUCKET,session=client)
-    assert plan==dict(status='planned',endpoint=URL,policy=POLICY)
+    assert plan==dict(status='disabled_by_local_policy',remote_state='not_observed',
+        endpoint=URL,policy=POLICY,replacement=REPLACEMENT)
     assert client.calls==[]
 
 
-def test_matching_current_policy_is_one_metadata_read_and_no_write():
-    from congress_api.retention.basin_maintenance import configure
-    current=deepcopy(POLICY);current['interval']='1h'
-    client=Client(Reply(result(current)))
-    assert configure(ACCOUNT,BUCKET,execute=True,session=client)['status']=='unchanged'
-    assert [(m,u) for m,u,_ in client.calls]==[('GET',URL)]
-
-
-def test_changed_policy_writes_once_and_checks_effective_metadata():
-    from congress_api.retention.basin_maintenance import configure
-    current=deepcopy(POLICY);current['compaction']['state']='disabled'
-    client=Client(Reply(result(current)),Reply(dict(success=True,result=POLICY)),Reply(result(POLICY)))
-    assert configure(ACCOUNT,BUCKET,execute=True,session=client)==dict(status='updated',endpoint=URL,policy=POLICY)
-    assert [m for m,_,_ in client.calls]==['GET','POST','GET']
-    assert client.calls[1][2]['json']==POLICY
-    assert all(c[1]==URL and c[2]['allow_redirects'] is False and c[2]['timeout']==30 for c in client.calls)
-
-
-@pytest.mark.parametrize('reply',[Reply(result(POLICY,'absent')),
-    Reply(dict(success=False,errors=[dict(message='synthetic-secret')])),Reply(dict(success=True,result={}),status=403)])
-def test_absent_service_credential_or_api_failure_refuses_before_write(reply):
+@pytest.mark.parametrize('replies',[
+    [Reply(result(POLICY))],
+    [Reply(result({'compaction':{'state':'enabled'}}))],
+    [Reply(dict(success=False,errors=[dict(message='synthetic-secret')]))],
+    [Reply(dict(success=True,result={}),status=403)],
+    [RuntimeError('synthetic-secret')],
+    [],
+])
+def test_execute_refuses_every_client_state_before_any_request(replies):
     from congress_api.retention.basin_maintenance import configure,MaintenanceError
-    client=Client(reply)
-    with pytest.raises(MaintenanceError) as error:configure(ACCOUNT,BUCKET,execute=True,session=client)
-    assert len(client.calls)==1 and 'synthetic-secret' not in str(error.value)
-
-
-def test_mismatched_readback_is_not_reported_as_enabled():
-    from congress_api.retention.basin_maintenance import configure,MaintenanceError
-    disabled=deepcopy(POLICY);disabled['snapshot_expiration']['state']='disabled'
-    client=Client(Reply(result(disabled)),Reply(dict(success=True,result=POLICY)),Reply(result(disabled)))
-    with pytest.raises(MaintenanceError,match='readback'):
+    client=Client(*replies)
+    with pytest.raises(MaintenanceError,match=REFUSAL) as error:
         configure(ACCOUNT,BUCKET,execute=True,session=client)
-    assert [m for m,_,_ in client.calls]==['GET','POST','GET']
+    assert client.calls==[] and 'synthetic-secret' not in str(error.value)
 
 
-def test_uncertain_write_is_not_retried_or_disclosed():
-    import requests
+def test_execute_requires_no_client_or_client_attribute_access():
     from congress_api.retention.basin_maintenance import configure,MaintenanceError
-    client=Client(Reply(result({})),requests.ConnectionError('synthetic-secret'))
-    with pytest.raises(MaintenanceError) as error:configure(ACCOUNT,BUCKET,execute=True,session=client)
-    assert 'synthetic-secret' not in str(error.value)
-    assert [m for m,_,_ in client.calls]==['GET','POST']
+    class InaccessibleClient:
+        def __getattribute__(self,name):raise AssertionError('Client must not be inspected')
+    for client in (None,InaccessibleClient()):
+        with pytest.raises(MaintenanceError,match=REFUSAL):
+            configure(ACCOUNT,BUCKET,execute=True,session=client)
 
 
-def test_cli_defaults_to_plan_without_a_credential(capsys):
+@pytest.mark.parametrize('account,bucket',[('',BUCKET),(ACCOUNT,''),(ACCOUNT,'../wrong'),(None,BUCKET)])
+@pytest.mark.parametrize('execute',[False,True])
+def test_explicit_account_and_bucket_validation_is_preserved(account,bucket,execute):
+    from congress_api.retention.basin_maintenance import configure
+    client=Client()
+    with pytest.raises(ValueError,match='Explicit Cloudflare account ID and bucket name'):
+        configure(account,bucket,execute=execute,session=client)
+    assert client.calls==[]
+
+
+def test_cli_defaults_to_local_policy_without_a_credential(capsys):
     from congress_api.cli.basin_maintenance import main
     assert main(['--account-id',ACCOUNT,'--bucket',BUCKET,'--token-env','NO_SUCH_D5_CREDENTIAL'])==0
-    assert json.loads(capsys.readouterr().out)==dict(status='planned',endpoint=URL,policy=POLICY)
+    assert json.loads(capsys.readouterr().out)==dict(status='disabled_by_local_policy',
+        remote_state='not_observed',endpoint=URL,policy=POLICY,replacement=REPLACEMENT)
+
+
+def test_cli_execute_refuses_without_reading_token_or_creating_http_client(capsys):
+    from congress_api.cli import basin_maintenance
+    # This retired CLI needs no environment or transport dependency at all.
+    # Check the dependency boundary as well as its observable refusal.
+    imports={node.name for node in ast.walk(ast.parse(inspect.getsource(basin_maintenance)))
+        if isinstance(node,ast.alias)}
+    assert not ({'os','requests'} & imports)
+    with pytest.raises(SystemExit) as error:
+        basin_maintenance.main(['--account-id',ACCOUNT,'--bucket',BUCKET,
+            '--execute','--token-env','NO_SUCH_D5_CREDENTIAL'])
+    assert error.value.code==2
+    captured=capsys.readouterr()
+    assert REFUSAL in captured.err and captured.out==''
