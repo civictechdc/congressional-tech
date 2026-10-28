@@ -12,7 +12,7 @@ def test_native_recovery_decisions_and_original_attachment(tmp_path):
         return dict(dict(receipt_key='receipt',receipt_line=line,capture_index=0,mode='retained_import',
             sha_hex=body*64,original_url=original,recovery_category='recovered_document',match_basis=None,
             recovered_url='https://retained.test/'+str(line),imported_at='2026-10-20T12:00:00Z',bytes=500),**changes)
-    rows=[capture(1,'a','https://original.test/unique'),
+    rows=[capture(1,'a','https://original.test/unique',recovery_category=None),
           capture(2,'b','https://original.test/absent',recovery_category=None,match_basis='official_document_identifier'),
           capture(3,'c','https://original.test/rejected'),
           capture(4,'d','https://original.test/unknown',recovery_category='not_registered'),
@@ -28,6 +28,7 @@ def test_native_recovery_decisions_and_original_attachment(tmp_path):
         decision('new','a',rows[0]['original_url'],kind='official_report_counterpart_available',supersedes='old'),
         decision('latest','a',rows[0]['original_url'],kind='requested_content_in_official_hearing',decided_at='2026-10-21T12:00:00Z'),
         decision('reject','c',rows[2]['original_url'],kind='rejected'),
+        decision('category-priority','e',rows[4]['original_url'],kind='official_report_counterpart_available'),
         decision('wrong-exact','1','https://original.test/exact?a=1',kind='rejected'),
         decision('ghost','9','https://original.test/unmatched')]
     reviews=[dict(id='body-edge',target='a'*16,verdict='duplicate_of',value_json='"'+('b'*16)+'"',decided_at='2026-10-20T12:00:00Z',supersedes=None),
@@ -63,10 +64,10 @@ def test_native_recovery_decisions_and_original_attachment(tmp_path):
             dict(name='reviews',sql='SELECT id FROM current_reviews ORDER BY id'),
             dict(name='edges',sql='SELECT left_node,right_node FROM body_review_edges')])
     assert reports['rows']==[
-        dict(receipt_line=1,kind='recovered_document',decision_id='latest',recovered_url='https://retained.test/1'),
+        dict(receipt_line=1,kind='requested_content_in_official_hearing',decision_id='latest',recovered_url='https://retained.test/1'),
         dict(receipt_line=2,kind='recovered_document',decision_id=None,recovered_url='https://retained.test/2'),
         dict(receipt_line=4,kind=None,decision_id=None,recovered_url='https://retained.test/4'),
-        dict(receipt_line=5,kind='recovered_document',decision_id=None,recovered_url='https://retained.test/5'),
+        dict(receipt_line=5,kind='recovered_document',decision_id='category-priority',recovered_url='https://retained.test/5'),
         dict(receipt_line=6,kind='recovered_document',decision_id=None,recovered_url='https://retained.test/6'),
         dict(receipt_line=7,kind='recovered_document',decision_id=None,recovered_url='https://retained.test/7'),
         dict(receipt_line=8,kind='recovered_document',decision_id=None,recovered_url='https://retained.test/8')]
