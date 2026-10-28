@@ -78,7 +78,7 @@ git -C "$LANDING" diff --quiet "$QUALIFIED_LANDING" HEAD -- . \
   ':(exclude)codex-release2/window.md' \
   ':(exclude)codex-release2/final-report.md' ':(exclude).tickets/clef2-7kpa.md' \
   ':(exclude).github/tests/test_release_window.py'
-test "$(git -C "$LANDING" rev-parse HEAD:.github/tests/test_release_window.py)" = c71f5cdcbc46acc729d4c0da0b4e50c73e812942
+test "$(git -C "$LANDING" rev-parse HEAD:.github/tests/test_release_window.py)" = 08bb4a3c510c132b3d8e9a76fefe480cce47d5b5
 PREVIOUS_APPLICATION=$(git -C "$LANDING" rev-parse origin/main)
 git -C "$LANDING" merge-base --is-ancestor 5f9c4657 "$PREVIOUS_APPLICATION"
 printf '%s\n' "$PREVIOUS_APPLICATION" > "$WINDOW/previous-application-commit.txt"
@@ -280,6 +280,11 @@ Run this from the still-landed checkout before restoring its tree. Keep publishe
 ```sh
 set +x
 set -euo pipefail
+# Refuse a moved main or changed checkout BEFORE any rollback write.
+LANDED_APPLICATION=$(cat "$WINDOW/landed-application-commit.txt")
+test -z "$(git -C "$LANDING" status --porcelain)"
+test "$(git -C "$LANDING" rev-parse HEAD)" = "$LANDED_APPLICATION"
+test "$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)" = "$LANDED_APPLICATION"
 export ROLLBACK_WINDOW="$WINDOW"
 PUBLISH_RUN_ID=$(cat "$WINDOW/run-archive-jobs-id.txt")
 test "$(gh run view "$PUBLISH_RUN_ID" --repo "$REPO" --json headSha --jq .headSha)" = "$(cat "$WINDOW/landed-application-commit.txt")"
