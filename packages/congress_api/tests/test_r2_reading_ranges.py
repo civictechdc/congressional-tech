@@ -115,3 +115,12 @@ def test_listed_opaque_etag_drift_refuses_before_body_consumption(tmp_path):
         R2Store(client,'bucket',cache_dir=tmp_path/'cache').read(KEY,start=0,length=8192,
             expected=dict(etag='"listed"',md5=None,bytes=len(DATA)))
     assert client.streams[0].closed
+
+
+def test_opaque_version_cache_without_checksum_is_requalified_conditionally(tmp_path):
+    client=Client();client.change={'ETag':'"opaque"'}
+    store=R2Store(client,'bucket',cache_dir=tmp_path/'cache')
+    cache=store._immutable_cache_path(KEY);cache.parent.mkdir(parents=True)
+    cache.write_bytes(b'wrong'+b'x'*(len(DATA)-5))
+    assert store.read(KEY,expected=dict(etag='"opaque"',md5=None,bytes=len(DATA)))==DATA
+    assert len(client.reads)==1 and cache.read_bytes()==DATA
