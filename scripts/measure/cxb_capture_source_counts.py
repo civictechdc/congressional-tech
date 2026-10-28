@@ -28,7 +28,7 @@ def count_sql(counter,files):
         sources.append(f'''SELECT {literal(item['key'])} AS key,row_number() OVER () AS source_line,
             __raw_line AS raw,{number} AS source_id FROM read_csv({literal(item['path'])},
             columns={{'__raw_line':'VARCHAR'}},header=false,delim='\x1e',quote='',escape='',
-            compression='gzip',parallel=false,max_line_size=268435456,buffer_size=268435456)''')
+            compression='gzip',parallel=false,max_line_size=8388608,buffer_size=8388608)''')
     # This is independently expressed source arithmetic, not copied mapper SQL.
     # Distinct pointer ordinals establish coverage, not reference multiplicity.
     return '''WITH source AS NOT MATERIALIZED (
