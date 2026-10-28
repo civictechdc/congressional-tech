@@ -58,8 +58,8 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT):
 
 def source_steps(*,root=ROOT):
     """Derive source grain and addresses from classified fetches and originals."""
-    steps=[]
-    for name,file in [('filename_inputs','source-filename-inputs'),('effective_filenames','effective-filenames'),
+    steps=[dict(name='filename_captures',sql='SELECT * FROM capture_evidence')]
+    for name,file in [('filename_inputs','filename-inputs'),('effective_filenames','effective-filenames'),
                       ('capture_source_names','capture-source-names'),('capture_sources','capture-sources'),('source_files','source-files'),
                       ('source_directories','source-directories')]:
         steps.append(dict(name=name,sql=(Path(root)/'model/sql'/(file+'.sql')).read_text(),materialize=True))
