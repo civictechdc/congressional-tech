@@ -1,0 +1,242 @@
+"""Plan or execute the one guarded archive publication path."""
+import argparse
+import json
+import math
+from pathlib import Path
+import re
+import subprocess
+from urllib.parse import urlsplit
+from tempfile import TemporaryDirectory
+from uuid import UUID
+
+from congress_api.retention.body_store import validate_key
+from congress_api.retention.derived_files import file_identity,check_identity
+from viewer_publication.archive_model_job import load_spec as load_model_spec,_local,_pin
+from viewer_publication.receipt_pins import receipt_list
+
+ROOT=Path(__file__).resolve().parents[4]
+SITE=ROOT/'apps/site'
+FIELDS={'version','model_spec','bucket','work','public_origin','receipt_keys','provenance','run',
+        'contract_next_release','targets'}
+METADATA_BYTES=1<<20
+
+
+def _metadata_pin(value,base):
+    _pin(value,{'path','sha256','size'})
+    if value['size']>METADATA_BYTES:raise ValueError('Publication metadata exceeds the small JSON allowance')
+    return dict(value,path=_local(value['path'],base))
+
+
+def _verify_metadata(pin):
+    path=Path(pin['path'])
+    if path.stat().st_size>METADATA_BYTES:raise ValueError('Publication metadata exceeds the small JSON allowance')
+    identity=file_identity(path)
+    check_identity(identity,dict(sha256=pin['sha256'],bytes=pin['size']),str(path))
+    return identity
+
+
+def _read_metadata(pin):
+    identity=_verify_metadata(pin)
+    value=json.loads(Path(pin['path']).read_text())
+    identity.require(pin['path'])
+    return value,identity
+
+
+def load_spec(path):
+    """Read only the publisher/model descriptions and current code definitions."""
+    path=Path(path).resolve();value=json.loads(path.read_text())
+    if not isinstance(value,dict):raise ValueError('Publication job spec must be an object')
+    if value.get('status')=='blocked':
+        if set(value)!={'status','reason'} or not isinstance(value['reason'],str) or not value['reason'].strip():
+            raise ValueError('Blocked publication job requires exactly its reason')
+        return value
+    if set(value)-FIELDS-{'site_dist'}:raise ValueError('Publication job has unknown fields')
+    if not FIELDS<=value.keys() or type(value['version']) is not int or value['version']!=1:
+        raise ValueError('Publication job requires version 1 and all explicit inputs')
+    base=path.parent
+    result=dict(value)
+    for name in ['model_spec','targets']:result[name]=_metadata_pin(value[name],base)
+    for name in ['work','contract_next_release']:result[name]=_local(value[name],base)
+    result['site_dist']=_local(value['site_dist'],base) if 'site_dist' in value else str(SITE/'dist')
+    origin=urlsplit(value['public_origin']) if isinstance(value['public_origin'],str) else None
+    if (origin is None or origin.scheme!='https' or not origin.hostname or origin.username or origin.password
+            or origin.query or origin.fragment or origin.path not in {'','/'}
+            or any(char.isspace() or ord(char)<32 for char in value['public_origin'])):
+        raise ValueError('Publication requires an HTTPS public origin without a path or credentials')
+    # Accessing port also refuses malformed authorities before any SDK construction.
+    try:origin.port
+    except ValueError:raise ValueError('Invalid HTTPS public origin') from None
+    result['public_origin']=value['public_origin'].rstrip('/')
+    if not isinstance(value['bucket'],str) or re.fullmatch('[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]',value['bucket']) is None:
+        raise ValueError('Invalid archive bucket')
+    if not isinstance(value['receipt_keys'],list):raise ValueError('Publication receipt keys must be a list')
+    receipt_list(value['receipt_keys'])
+    if not isinstance(value['run'],dict) or not value['run']:raise ValueError('Publication requires explicit run metadata')
+    if not isinstance(value['provenance'],list):raise ValueError('Publication provenance must be a list')
+    seen=set()
+    for item in value['provenance']:
+        if (not isinstance(item,dict) or set(item)!={'key','etag'} or not isinstance(item['key'],str)
+                or not item['key'].startswith('provenance/') or not isinstance(item['etag'],str) or not item['etag'].strip()
+                or item['key'] in seen):raise ValueError('Publication requires distinct provenance keys and ETags')
+        validate_key(item['key']);seen.add(item['key'])
+    result['_model_identity']=_verify_metadata(result['model_spec'])
+    result['_model']=load_model_spec(result['model_spec']['path'])
+    result['_model_identity'].require(result['model_spec']['path'])
+    if result['_model'].get('status')=='blocked':return result['_model']
+    directories=[Path(result['work']),Path(result['_model']['output']),Path(result['_model']['scratch'])]
+    if any(left.is_relative_to(right) or right.is_relative_to(left)
+           for index,left in enumerate(directories) for right in directories[index+1:]):
+        raise ValueError('Publication work, model output and model scratch must be separate')
+    return result
+
+
+def _public_configuration(path):
+    path=Path(path)
+    if path.stat().st_size>METADATA_BYTES:raise ValueError('Publication destination metadata is oversized')
+    identity=file_identity(path);value=json.loads(path.read_text());identity.require(path)
+    if not isinstance(value,dict):raise ValueError('Invalid publication destination configuration')
+    return value,identity
+
+
+def publication_configuration(path,*,bucket):
+    """Read public destination metadata; never read the credential file.
+
+    The model keeps its lake scope. A derived upload runtime changes only the
+    owned object prefix, using the same explicit R2 account/bucket and native pins.
+    """
+    path=Path(path).resolve();settings,runtime_identity=_public_configuration(path)
+    if not settings.get('remote'):raise ValueError('Publication requires an explicitly configured remote native engine')
+    settings=dict(settings)
+    for name in ['binary','workspace','remote','limits','credentials']:
+        if name in settings:settings[name]=_local(settings[name],path.parent)
+    remote,remote_identity=_public_configuration(settings['remote'])
+    properties=remote.get('properties');references=remote.get('secret_env')
+    allowed={'uri','warehouse','s3.endpoint','s3.region','s3.path-style-access',
+             's3.disable-ec2-metadata','s3.disable-config-load','docspec.namespace-generation'}
+    if (set(remote)!={'owned_prefix','properties','secret_env'} or not isinstance(properties,dict)
+            or set(properties)-allowed or any(not isinstance(value,str) for value in properties.values())
+            or not isinstance(references,dict)
+            or not {'token','s3.access-key-id','s3.secret-access-key'}<=references.keys()
+            or references.keys()-{'token','s3.access-key-id','s3.secret-access-key','s3.session-token'}
+            or any(not isinstance(key,str) or not isinstance(value,str)
+                   or re.fullmatch('DOCSPEC_[A-Z0-9_]+',value) is None for key,value in references.items())):
+        raise ValueError('Publication destination requires public properties and explicit secret environment references')
+    endpoint=properties.get('s3.endpoint')
+    account=(re.fullmatch(r'https://([a-f0-9]{32})\.r2\.cloudflarestorage\.com',endpoint)
+             if isinstance(endpoint,str) else None)
+    scope=remote.get('owned_prefix')
+    if (account is None or properties.get('s3.region')!='auto' or not isinstance(scope,str)
+            or re.fullmatch(re.escape('s3://'+bucket+'/__r2_data_catalog/')+r'[A-Za-z0-9][A-Za-z0-9_.-]*/?',scope) is None):
+        raise ValueError('Publication destination must be one explicit R2 account, bucket and lake namespace')
+    account=account[1]
+    if (properties.get('uri')!='https://catalog.cloudflarestorage.com/'+account+'/'+bucket
+            or properties.get('warehouse')!=account+'_'+bucket):
+        raise ValueError('Publication destination catalog and object provider identities differ')
+    try:
+        if UUID(properties.get('docspec.namespace-generation','')).int==0:raise ValueError
+    except (ValueError,TypeError,AttributeError):
+        raise ValueError('Publication destination requires an explicit catalog namespace generation') from None
+    return settings,remote,endpoint,[(path,runtime_identity),(Path(settings['remote']),remote_identity)]
+
+
+class PublicationRuntime:
+    """Use lake SQL and publication uploads through their two explicit scopes."""
+    def __init__(self,model,uploads):self.model,self.uploads=model,uploads
+    def __getattr__(self,name):return getattr(self.model,name)
+    @property
+    def remote(self):return self.uploads.remote
+    def create_file(self,spec):return self.uploads.create_file(spec)
+    def verify_runtime(self):
+        model=self.model.verify_runtime();uploads=self.uploads.verify_runtime()
+        if model!=uploads:raise ValueError('Publication runtime qualification pins differ')
+        return model
+
+
+def probe_commands(spec,*,release,release_id,probe_selectors):
+    """Fixed external probes; a job description cannot supply executable commands."""
+    if (not isinstance(probe_selectors,dict) or set(probe_selectors)!={'saved_row','link_key'}
+            or type(probe_selectors['saved_row']) is not int or probe_selectors['saved_row']<0
+            or not isinstance(probe_selectors['link_key'],str)
+            or re.fullmatch('[a-f0-9]{16}',probe_selectors['link_key']) is None):
+        raise ValueError('Publication requires actual native probe selectors')
+    targets=spec['targets']['path'];work=Path(spec['work']);origin=spec['public_origin']
+    return dict(contract=['npm','run','contract:archive','--','--release',str(release),
+        '--next-release',spec['contract_next_release'],'--dist',spec['site_dist'],'--targets',targets,
+        '--output',str(work/'contract.json'),'--link-key',probe_selectors['link_key']],
+        canary=['npm','run','canary:archive','--','--pointer',origin+'/viewer-publications/manifest.json',
+        '--release',release_id,'--raw',origin+'/','--targets',targets,'--output',str(work/'canary.json'),'--saved-row',str(probe_selectors['saved_row'])])
+
+
+def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None):
+    """Refuse local problems, qualify a remote runtime, then connect the SDK."""
+    spec['_model_identity'].require(spec['model_spec']['path'])
+    targets,target_identity=_read_metadata(spec['targets'])
+    names=['startupMs','searchMs','detailMs','heapBytes']
+    if (not isinstance(targets,dict) or type(targets.get('version')) is not int or targets.get('version')!=1
+            or targets.get('status')!='measured' or not isinstance(targets.get('ceilings'),dict)
+            or any(type(targets['ceilings'].get(name)) not in (int,float)
+                   or not math.isfinite(targets['ceilings'][name]) or targets['ceilings'][name]<=0 for name in names)):
+        raise ValueError('Publication requires valid measured site targets')
+    for name in ['work']:
+        path=Path(spec[name])
+        if path.exists() or path.is_symlink():raise ValueError('Publication work must be fresh')
+    for name in ['output','scratch']:
+        path=Path(spec['_model'][name])
+        if path.exists() or path.is_symlink():raise ValueError('Model output and scratch must be fresh')
+    if not Path(spec['site_dist']).is_dir():raise ValueError('Publication site_dist must already exist; build the site first')
+    from docspec_client.client import NativeDatasets
+    from congress_shared.storage import connect_r2
+    from viewer_publication.archive_controller import run_publish
+    runtime_factory=runtime_factory or NativeDatasets.from_config
+    storage_factory=storage_factory or connect_r2
+    process_runner=process_runner or subprocess.run
+    settings,remote,endpoint,configuration_pins=publication_configuration(spec['_model']['engine_config'],bucket=spec['bucket'])
+    def require_configuration():
+        for path,identity in configuration_pins:identity.require(path)
+    parent=Path(spec['work']).parent;parent.mkdir(parents=True,exist_ok=True)
+    with TemporaryDirectory(prefix='.'+Path(spec['work']).name+'-startup-',dir=parent) as directory:
+        directory=Path(directory)
+        upload_remote=directory/'remote.json';upload_settings=directory/'runtime.json'
+        upload_remote.write_text(json.dumps(dict(remote,owned_prefix='s3://'+spec['bucket']+'/viewer-publications')))
+        upload_settings.write_text(json.dumps(dict(settings,remote=str(upload_remote),workspace=str(directory/'workspace'))))
+        with runtime_factory(spec['_model']['engine_config']) as model, runtime_factory(upload_settings) as uploads:
+            if (Path(model.remote).resolve()!=Path(settings['remote']) or Path(uploads.remote).resolve()!=upload_remote):
+                raise ValueError('Publication destination differs from the loaded runtime')
+            engine=PublicationRuntime(model,uploads)
+            engine.verify_runtime();require_configuration()
+            spec['_model_identity'].require(spec['model_spec']['path'])
+            target_identity.require(spec['targets']['path'])
+            client=storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1})
+            def probe(name,context):
+                target_identity.require(spec['targets']['path']);require_configuration()
+                commands=probe_commands(spec,release=context.get('release',spec['_model']['output']),
+                    release_id=context['release_id'],probe_selectors=context.get('probe_selectors'))
+                process_runner(commands[name],cwd=SITE,check=True,timeout=180)
+                receipt_path=Path(spec['work'])/(name+'.json')
+                if receipt_path.stat().st_size>METADATA_BYTES:raise ValueError('Site probe receipt exceeds the metadata allowance')
+                receipt=json.loads(receipt_path.read_text())
+                target_identity.require(spec['targets']['path']);require_configuration()
+                return receipt
+            result=run_publish(spec['_model'],client=client,engine=engine,bucket=spec['bucket'],work=spec['work'],
+                receipt_keys=spec['receipt_keys'],provenance=spec['provenance'],run=spec['run'],public_origin=spec['public_origin'],
+                contract=lambda **context:probe('contract',context),canary=lambda **context:probe('canary',context))
+            spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
+            return result
+
+
+def main(argv=None):
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--spec',type=Path,required=True)
+    mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
+    args=parser.parse_args(argv)
+    try:
+        spec=load_spec(args.spec)
+        if spec.get('status')=='blocked':print(json.dumps(spec,sort_keys=True));return 2
+        result=execute(spec) if args.execute else dict(status='planned',executed=False,
+            model_spec=spec['model_spec'],bucket=spec['bucket'],work=spec['work'],public_origin=spec['public_origin'],
+            targets=spec['targets'],site_dist=spec['site_dist'])
+    except (ValueError,OSError,subprocess.SubprocessError) as error:parser.error(str(error))
+    print(json.dumps(result,sort_keys=True));return 0
+
+
+if __name__=='__main__':raise SystemExit(main())

@@ -69,17 +69,20 @@ def write_input_receipts(store, release_id, input_digest, record, keys):
     return record
 
 
-def kept_receipt_keys(store, release_ids):
+def kept_input_records(store, release_ids):
     """Verify every input of kept releases before retention can remove a prefix.
 
     Missing evidence refuses maintenance, rather than treating a release as
-    rebuildable. Returns the exact protected input records and receipt lists.
+    rebuildable. Returns (entries, protected object keys); entries retain every
+    parsed input record and its validated receipt keys for downstream guards.
     """
     protected = set()
-    for release in set(release_ids):
-        prefix = PREFIX + _digest(release) + '/inputs/'
-        records = [key for key in store.keys(prefix)
-                   if re.fullmatch(re.escape(prefix) + '[a-f0-9]{64}[.]json', key)]
+    entries = []
+    receipt_lists = {}
+    for release in sorted({_digest(value) for value in release_ids}):
+        prefix = PREFIX + release + '/inputs/'
+        records = sorted({key for key in store.keys(prefix)
+                   if re.fullmatch(re.escape(prefix) + '[a-f0-9]{64}[.]json', key)})
         if not records: raise ValueError('Kept release has no input record')
         for key in records:
             try:
@@ -88,8 +91,17 @@ def kept_receipt_keys(store, release_ids):
                     raise ValueError('Input record identity differs')
                 digest = _digest(record['receipt_keys_sha256'])
                 receipt_key = prefix + 'receipts/' + digest + '.json.gz'
-                read_receipt_list(digest, store.get(receipt_key))
+                # Different kept prefixes must each contain valid evidence.
+                if receipt_key not in receipt_lists:
+                    receipt_lists[receipt_key] = read_receipt_list(digest, store.get(receipt_key))
             except (KeyError, OSError, UnicodeError, json.JSONDecodeError) as error:
                 raise ValueError('Kept release receipt evidence is missing or unreadable') from error
             protected.update([key, receipt_key])
-    return protected
+            entries.append(dict(release_id=release, key=key, record=record,
+                receipt_keys=receipt_lists[receipt_key]))
+    return entries, protected
+
+
+def kept_receipt_keys(store, release_ids):
+    """Return protected input/list keys through the maintained validation pass."""
+    return kept_input_records(store, release_ids)[1]

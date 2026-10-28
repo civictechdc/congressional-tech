@@ -122,3 +122,34 @@ def test_in_place_local_mutation_refuses_after_consumption(tmp_path,target):
             entry=arguments[target][0] if target=='review_files' else arguments[target]
             Path(item['path']).write_bytes(b'in-place mutation')
             assert Path(entry['path']).read_bytes()==b'in-place mutation'
+
+
+def test_provenance_etag_matches_exact_local_bytes_in_retained_inputs(tmp_path):
+    from hashlib import md5
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path);item=value['review_files'][0]
+    etag='"'+md5(Path(item['path']).read_bytes()).hexdigest().upper()+'"'
+    alias=dict(item,key='provenance/reviews/alias.jsonl');value['review_files'].append(alias)
+    with model_arguments(value,provenance_etags={item['key']:etag,alias['key']:etag.strip(chr(34)).lower()}) as arguments:
+        assert Path(arguments['review_files'][0]['path']).read_bytes()==Path(item['path']).read_bytes()
+        assert arguments['review_files'][0]['path']==arguments['review_files'][1]['path']
+    assert not list(tmp_path.glob('.model-inputs-*'))
+
+
+@pytest.mark.parametrize('failure',['changed','opaque','multipart','missing','extra','alias_conflict'])
+def test_invalid_provenance_etag_binding_refuses_before_yield(tmp_path,failure):
+    from hashlib import md5
+    from viewer_publication.archive_model_job import model_arguments
+    value=pinned_local_spec(tmp_path);item=value['review_files'][0]
+    etags={item['key']:md5(Path(item['path']).read_bytes()).hexdigest()}
+    if failure=='changed':etags[item['key']]='0'*32
+    elif failure=='opaque':etags[item['key']]='opaque'
+    elif failure=='multipart':etags[item['key']]='a'*32+'-2'
+    elif failure=='missing':etags={}
+    elif failure=='extra':etags['provenance/reviews/extra.jsonl']='a'*32
+    else:
+        value['review_files'].append(dict(item,key='provenance/reviews/alias.jsonl'))
+        etags['provenance/reviews/alias.jsonl']='a'*32
+    with pytest.raises(ValueError,match='provenance|ETag'):
+        with model_arguments(value,provenance_etags=etags):
+            pytest.fail('Unbound provenance reached model consumption')

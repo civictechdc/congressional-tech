@@ -340,18 +340,20 @@ def select_oracle_scope(loaded, *, engine, work):
         UNION SELECT CASE WHEN body_sha256 IS NOT NULL THEN 'bodies/sha256/'||substr(body_sha256,1,2)||'/'||body_sha256||'.gz' END,original_url FROM current_recoveries)
         WHERE body_key IS NOT NULL OR source_url IS NOT NULL""",materialize=True),
         # A narrow key pass plus a filtered metadata pass avoids sorting every
-        # wide old row. Hash joins are O(F + E) expected; only S selected rows
+        # wide old row. Keep the single-use key projection lazy and small join
+        # inputs first so materialized inputs do not build a catalog-sized hash.
+        # Hash joins are O(F + E) expected; only S selected rows
         # reach the metadata export and its O(S log S) output sort.
-        dict(name='oracle_file_keys',sql='SELECT document_id,body_key,source_url FROM oracle_filenames',materialize=True),
-        dict(name='touched_documents',sql="""SELECT DISTINCT f.document_id FROM oracle_file_keys f JOIN slice_evidence e
+        dict(name='oracle_file_keys',sql='SELECT document_id,body_key,source_url FROM oracle_filenames'),
+        dict(name='touched_documents',sql="""SELECT DISTINCT f.document_id FROM slice_evidence e JOIN oracle_file_keys f
             ON (f.body_key IS NOT DISTINCT FROM e.body_key) AND (f.source_url IS NOT DISTINCT FROM e.source_url)""",materialize=True,release_after=['oracle_file_keys']),
         dict(name='scoped_files',sql=f"""SELECT {file_sql},e.body_key IS NOT NULL OR e.source_url IS NOT NULL AS covered
-            FROM oracle_filenames f JOIN touched_documents t USING(document_id) LEFT JOIN slice_evidence e
+            FROM touched_documents t JOIN oracle_filenames f USING(document_id) LEFT JOIN slice_evidence e
             ON (f.body_key IS NOT DISTINCT FROM e.body_key) AND (f.source_url IS NOT DISTINCT FROM e.source_url)""",materialize=True,
             release_after=['oracle_filenames','slice_evidence','touched_documents']),
         dict(name='scope_coverage',sql='SELECT document_id,count(*) AS files,count(*) FILTER(WHERE covered) AS covered FROM scoped_files GROUP BY document_id',materialize=True)]
     outputs=[parquet_output(work,'oracle-filenames','SELECT '+columns+' FROM scoped_files',['document_id','source_id']),
-        parquet_output(work,'oracle-documents',f'SELECT {document_sql} FROM oracle_documents d JOIN scope_coverage c USING(document_id)',['document_id']),
+        parquet_output(work,'oracle-documents',f'SELECT {document_sql} FROM scope_coverage c JOIN oracle_documents d USING(document_id)',['document_id']),
         parquet_output(work,'scope-gaps','SELECT document_id,source_id,body_key,filename,source_url FROM scoped_files WHERE NOT covered',['document_id','source_id'])]
     total=loaded['selector']['files']['documents']['rows']
     reports=run_job(work,engine,inputs=inputs,steps=steps,outputs=outputs,queries=[dict(name='scope',sql=f"""SELECT

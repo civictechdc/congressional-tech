@@ -1,6 +1,8 @@
 """Plan or execute the maintained archive model over exact immutable inputs."""
 import argparse
 from contextlib import contextmanager
+from collections.abc import Mapping
+from hashlib import md5
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -93,7 +95,7 @@ def load_spec(path):
 
 
 @contextmanager
-def model_arguments(spec):
+def model_arguments(spec, *, provenance_etags=None):
     """Hold verified local inputs until native consumption completes successfully.
 
     The retained names prevent original-path replacement from selecting new bytes.
@@ -103,12 +105,24 @@ def model_arguments(spec):
     for name in ['output','scratch']:
         path=Path(spec[name])
         if path.exists() or path.is_symlink():raise ValueError('Model output and scratch must be fresh')
+    etags=None
+    if provenance_etags is not None:
+        keys={value['key'] for name in PROVENANCE for value in spec[name]}
+        if not isinstance(provenance_etags,Mapping) or set(provenance_etags)!=keys:
+            raise ValueError('Selected provenance keys must exactly match their ETags')
+        etags={}
+        for key,etag in provenance_etags.items():
+            if isinstance(etag,str) and etag.startswith('"') and etag.endswith('"'):
+                etag=etag[1:-1]
+            if not isinstance(etag,str) or re.fullmatch('[a-fA-F0-9]{32}',etag) is None:
+                raise ValueError('Provenance ETag must be a single-PUT MD5')
+            etags[key]=etag.lower()
     parent=Path(spec['scratch']).parent
     parent.mkdir(parents=True,exist_ok=True)
     with TemporaryDirectory(prefix='.'+Path(spec['scratch']).name+'-inputs-',dir=parent) as directory:
         retained={}
 
-        def hold(value):
+        def hold(value,expected_md5=None):
             path=Path(value['path'])
             identity=custody_identity(path)
             physical=identity[:2]
@@ -120,21 +134,27 @@ def model_arguments(spec):
                 if identity!=source.custody:
                     raise ValueError('Verified catalog file custody changed: '+str(path))
                 check_identity(verified,expected,key)
+                if expected_md5 is not None and source.get('md5')!=expected_md5:
+                    raise ValueError('Local provenance bytes differ from the selected ETag')
                 return str(verified.path)
-            verified=file_identity(path)
+            verified=file_identity(path,additional_hashes={'md5':md5} if expected_md5 is not None else None)
             check_identity(verified,expected,key)
+            if expected_md5 is not None and verified['md5']!=expected_md5:
+                raise ValueError('Local provenance bytes differ from the selected ETag')
             destination=Path(directory)/(str(len(retained))+'-'+path.name)
             owned=retain_verified_file(path,destination,expected=verified,key=key)
             retained[physical]=(verified,owned)
             return str(owned.path)
 
         arguments={}
+        # Verify provenance first so any physical aliases share its one SHA/MD5 pass.
+        for name in PROVENANCE:
+            arguments[name]=[dict(key=value['key'],path=hold(value,None if etags is None else etags[value['key']]))
+                             for value in spec[name]]
         for name in TABLES:
             value=spec[name]
             arguments[name]=(dict(kind='parquet',path=hold(value))
                              if value['kind']=='parquet' else dict(value))
-        for name in PROVENANCE:
-            arguments[name]=[dict(key=value['key'],path=hold(value)) for value in spec[name]]
         for _source,verified in retained.values():verified.require(verified.path)
         yield arguments
         for _source,verified in retained.values():verified.require(verified.path)

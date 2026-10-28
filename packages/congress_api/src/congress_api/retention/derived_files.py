@@ -20,8 +20,9 @@ def require_derived_key(key):
         raise ValueError('Derived file operation requires an exact catalog table key')
 
 
-def file_identity(path):
-    return verify_local_file(path, sha256_factory=sha256, identity_fn=custody_identity)
+def file_identity(path, *, additional_hashes=None):
+    return verify_local_file(path, sha256_factory=sha256, identity_fn=custody_identity,
+                             additional_hashes=additional_hashes)
 
 
 def retain_verified_file(path, destination, *, expected, key):

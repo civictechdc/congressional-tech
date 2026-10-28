@@ -34,3 +34,13 @@ test('pinned candidate canaries still check live pointer cache policy',async()=>
   await assert.rejects(verifyArchive({pointerUrl:'https://public.test/manifest.json',releaseId:'ab'.repeat(32),fetcher:async()=>Response.json({release_id:'cd'.repeat(32)})}),/no-store/);
 });
 
+
+
+test('the live canary refuses the actual old viewer pointer without reading old folders',async()=>{
+  const pointer=JSON.parse(await readFile(new URL('./fixtures/old-viewer-pointer.json',import.meta.url),'utf8'));
+  const pointerUrl='https://public.test/viewer-publications/manifest.json',requests=[];
+  await assert.rejects(verifyArchive({pointerUrl,fetcher:async address=>{
+    requests.push(String(address));return Response.json(pointer,{headers:{'Cache-Control':'no-store'}});
+  }}),/Invalid live archive pointer/);
+  assert.deepEqual(requests,[pointerUrl]);
+});

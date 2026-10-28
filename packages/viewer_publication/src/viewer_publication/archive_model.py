@@ -91,7 +91,17 @@ def evidence_checks():
         conflicting_sniffs='(SELECT count(*) FROM sniff_conflicts)',
         conflicting_original_sizes='(SELECT count(*) FROM (SELECT sha256 FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING count(DISTINCT bytes)>1))',
         conflicting_verifications='(SELECT count(*) FROM verification_conflicts)',
-        invalid_recoveries='(SELECT count(*) FROM recovery_diagnostics WHERE is_fatal)')
+        invalid_recoveries='(SELECT count(*) FROM recovery_diagnostics WHERE is_fatal)',
+        duplicate_recovery_kind_selectors='''(SELECT count(*) FROM (
+            SELECT category AS selector FROM recovery_kinds WHERE category IS NOT NULL AND match_basis IS NULL
+            GROUP BY category HAVING count(*)>1 UNION ALL
+            SELECT match_basis AS selector FROM recovery_kinds WHERE match_basis IS NOT NULL AND category IS NULL
+            GROUP BY match_basis HAVING count(*)>1) duplicate_selectors)''',
+        invalid_recovery_kind_selectors='''(SELECT count(*) FROM recovery_kinds
+            WHERE (category IS NULL)=(match_basis IS NULL)
+            OR (category IS NOT NULL AND trim(category)='')
+            OR (match_basis IS NOT NULL AND trim(match_basis)='')
+            OR kind IS NULL OR trim(kind)='')''')
 
 
 def _sql_steps(names,*,root=ROOT):
