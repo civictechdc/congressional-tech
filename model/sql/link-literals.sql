@@ -10,5 +10,5 @@ WITH literals AS (SELECT DISTINCT href FROM link_inputs), wrapped AS (
  AND NOT regexp_like(l.href,'[[:space:]?#]') AND regexp_like(l.href,r.pattern)
  GROUP BY l.href
 )
-SELECT href,repair_matches,string_to_array(CASE WHEN repair_matches=1 THEN substr(repaired,2)
- ELSE href END,chr(10)) AS parts FROM matches
+SELECT href,repair_matches,CASE WHEN repair_matches=1 THEN string_to_array(substr(repaired,2),chr(10))
+ ELSE make_array(href) END AS parts FROM matches
