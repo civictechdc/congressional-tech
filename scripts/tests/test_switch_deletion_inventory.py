@@ -146,7 +146,12 @@ def test_shared_client_fallback_has_exact_path_and_preserved_public_api(inventor
     specs=group['partial']['packages/docspec_client/src/docspec_client/specs.py']
     assert 'producer_input_entry' not in specs
     assert 'build_export_spec' not in specs and 'parse_export_pin' not in specs
-    assert 'scripts/measure/tests/test_viewer_benchmark.py' in inventory.SPEED_KEEP
+    assert 'apps/site/scripts/measure-archive.mjs' in inventory.SPEED_KEEP
+    assert 'scripts/measure/benchmark_viewer_browser.mjs' not in inventory.SPEED_KEEP
+    measurements=next(g for g in inventory.seeds() if g['binding_row']==15)
+    for path in ('scripts/measure/benchmark_viewer_browser.mjs',
+                 'scripts/measure/tests/test_viewer_benchmark.py'):
+        assert path in measurements['patterns']
 
 
 def test_current_publisher_custody_helpers_survive_the_switch(inventory):
