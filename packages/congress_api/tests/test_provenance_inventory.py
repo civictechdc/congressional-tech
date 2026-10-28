@@ -196,3 +196,58 @@ def test_response_bytes_must_match_single_put_checksum(tmp_path):
     with pytest.raises(ValueError,match='MD5|checksum'):
         unreadable_inventory(BodyStore(R2Adapter(client,'bucket')),work=tmp_path/'snapshot')
     assert len(client.get_calls)==1 and not client.head_calls
+
+
+def test_initial_qualified_snapshot_and_ack_deltas_need_no_second_listing(tmp_path):
+    from congress_api.retention.provenance_inventory import UnreadableInventory
+    data=b'qualified';public,proof=known_cache(tmp_path,data);client=R2([(KEY,data)])
+    store=BodyStore(R2Adapter(client,'bucket'))
+    snapshot=UnreadableInventory.from_qualified(store,qualified=[public],verified={public['path']:proof})
+    assert snapshot.rows()==[public] and snapshot.files()==[dict(key=KEY,path=public['path'])]
+    assert not client.list_calls and not client.get_calls and not client.head_calls
+
+
+def test_initial_snapshot_checks_its_actual_remote_checksum_without_get(tmp_path):
+    from congress_api.retention.provenance_inventory import UnreadableInventory
+    public,_=known_cache(tmp_path,b'qualified');public['etag']='0'*32;client=R2()
+    with pytest.raises(ValueError,match='MD5|checksum'):
+        UnreadableInventory.from_qualified(BodyStore(R2Adapter(client,'bucket')),qualified=[public])
+    assert not client.list_calls and not client.get_calls and not client.head_calls
+
+
+def test_default_standalone_backfill_refreshes_remote_inventory_once(tmp_path):
+    from congress_api.lake import readings
+    payload=b'opaque-native-parser-input';client=R2([(KEY,payload)])
+    class EmptyWorkNative:
+        remote=None
+        def run_job(self,path):
+            job=json.loads(path.read_text())
+            selected=next(i for i in job['inputs'] if i['name']=='unreadable')['files']
+            assert len(selected)==1 and selected[0]['key']==KEY
+            assert Path(selected[0]['path']).read_bytes()==payload
+            return dict(queries=[dict(name=q['name'],data=[dict(n=0)]) for q in job['queries']])
+    report=readings.run(engine=EmptyWorkNative(),work=tmp_path/'backfill',mode='backfill',execute=True,
+        batch_size=2,table=dict(namespace=['archive'],name='readings'),catalog_root=tmp_path/'catalog',
+        captures=tmp_path/'unused-captures.parquet',body_inventory=tmp_path/'unused-bodies.parquet',
+        local_root=tmp_path/'body-cache',decided_at='2026-10-28T12:00:00Z',
+        read_current=lambda **kwargs:None,unreadable_store=BodyStore(R2Adapter(client,'bucket')))
+    assert report['status']=='completed' and report['work_items']==0
+    assert len(client.list_calls)==1 and len(client.get_calls)==1 and not client.head_calls
+
+
+def test_daily_r2_decision_store_accepts_complete_qualified_snapshot_without_list(tmp_path):
+    from congress_api.lake.daily import produce_daily
+    public,_=known_cache(tmp_path,b'qualified');client=R2([(KEY,b'qualified')]);jobs=[]
+    names=['captures','readings','filename_readings']
+    class MissingNative:
+        remote=None
+        def run_job(self,path):
+            jobs.append(json.loads(path.read_text()))
+            return dict(table_operations=[dict(name=n,kind='resolve',exists=False) for n in names])
+    spec=dict(work=str(tmp_path/'daily'),decided_at='2026-10-28T12:00:00Z',
+        catalog_root=str(tmp_path/'catalog'),tables={n:dict(namespace=['archive'],name=n) for n in names},
+        receipt_inventory=[],body_inventory=str(tmp_path/'bodies.parquet'),local_root=str(tmp_path/'body-cache'),
+        max_work_items=5,provenance=dict(recoveries=[],reviews=[],unreadable=[public]))
+    with pytest.raises(ValueError,match='table does not exist'):
+        produce_daily(spec,engine=MissingNative(),raw_store=BodyStore(R2Adapter(client,'bucket')))
+    assert len(jobs)==1 and not client.list_calls and not client.get_calls and not client.head_calls
