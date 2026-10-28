@@ -209,6 +209,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         origin=dict(kind='model',gaps=[]),content_files={'capture_profile.json':capture_profile},auxiliary=auxiliary,extra_outputs=extra,
         capture_scope=json.loads((Path(root)/'model/registries/capture-scope.json').read_text()),
         diagnostics=[dict(name='model_invariants',sql="""SELECT (SELECT count(*) FROM sniff_conflicts) AS conflicting_sniffs,
+            (SELECT count(*) FROM (SELECT sha256 FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256 HAVING count(DISTINCT bytes)>1)) AS conflicting_original_sizes,
             (SELECT count(*) FROM verification_conflicts) AS conflicting_verifications,
             (SELECT count(*) FROM model_url_keys WHERE error IS NOT NULL) AS invalid_url_keys,
             (SELECT count(*) FROM recovery_diagnostics WHERE is_fatal) AS invalid_recoveries,

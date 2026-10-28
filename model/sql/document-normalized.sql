@@ -10,7 +10,7 @@ SELECT d.document_id AS doc_key,true AS body_expected,s.filename,a.title,
  WHEN 'json' THEN 'application/json' WHEN 'text' THEN 'text/plain' WHEN 'doc' THEN 'application/msword'
  WHEN 'docx' THEN 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
  WHEN 'zip' THEN 'application/zip' ELSE c.media_type END AS media_type,
- b.stored_size AS bytes,
+ b.original_size AS bytes,
  CASE WHEN a.filename_date IS NOT NULL THEN 'filename' WHEN a.content_date IS NOT NULL THEN 'content' END AS document_date_source,
  m.in_archive_since,cast(NULL AS DATE) AS removed_on,cast(NULL AS VARCHAR) AS review_note,cast(NULL AS DATE) AS review_decided_at,
  coalesce(alt.alternates,array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR),

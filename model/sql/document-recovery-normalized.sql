@@ -5,7 +5,7 @@ SELECT d.document_id AS doc_key,false AS body_expected,n.filename,cast(NULL AS V
  arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS witness_keys,
  arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS version_keys,
  r.body_sha AS body_hex,r.original_url AS source_url,b.suffix,
- coalesce(c.media_type,'application/octet-stream') AS media_type,b.stored_size AS bytes,
+ coalesce(c.media_type,'application/octet-stream') AS media_type,r.bytes AS bytes,
  CASE WHEN a.filename_date IS NOT NULL THEN 'filename' END AS document_date_source,
  cast(r.imported_at AS DATE) AS in_archive_since,cast(NULL AS DATE) AS removed_on,
  cast(NULL AS VARCHAR) AS review_note,cast(NULL AS DATE) AS review_decided_at,
