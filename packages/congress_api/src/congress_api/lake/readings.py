@@ -169,6 +169,8 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     if max_work_items is not None:_positive(max_work_items,'max_work_items')
     if type(raw_ranges) is not bool:raise ValueError('raw_ranges must be an explicit boolean')
     if body_listing is not None and not raw_ranges:raise ValueError('Body listing requires ranged reads')
+    direct_listing=body_inventory is None
+    if direct_listing and body_listing is None:raise ValueError('A selected inventory or complete body listing is required')
     instant(decided_at)
     combined=parser is None
     versions={p:current_version(p) for p in ['sniff','html','xml','json']}
@@ -184,8 +186,9 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     raw=Path(local_root).resolve()
     inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in ({**versions,'sniff':sniff_version} if combined else {'sniff':sniff_version}).items()],parser='Utf8',version='Utf8'),
-            table_input('captures',captures),
-            dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve()))]
+            table_input('captures',captures)]
+    if not direct_listing:
+        inputs.append(dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve())))
     if body_listing is not None:
         inputs.append(dict(name='body_listing',kind='parquet',path=str(Path(body_listing).resolve())))
     unreadable_schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')
@@ -201,7 +204,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     quote=lambda value:"'"+value.replace("'","''")+"'"
     steps=[]
     if raw_ranges:
-        steps.append(dict(name='body_storage',sql="""SELECT sha256 AS body_sha,
+        steps.append(dict(name='body_storage',sql="""SELECT sha256 AS body_sha,coalesce(stored_suffix,'.gz') AS stored_suffix,
             concat('bodies/sha256/',substr(encode(sha256,'hex'),1,2),'/',encode(sha256,'hex'),
                 coalesce(stored_suffix,'.gz')) AS physical_key,
             max(stored_bytes) AS captured_stored_bytes,max(encode(stored_md5,'hex')) AS stored_md5,
@@ -211,6 +214,33 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                 ends_with(lower(split_part(media_type,';',1)),'+xml') OR
                 ends_with(lower(split_part(media_type,';',1)),'+json')) AS page_hint
             FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256,coalesce(stored_suffix,'.gz')""",materialize=True))
+    if direct_listing:
+        # Choose only capture-recorded copies. Rank before consulting availability;
+        # a rejected higher-ranked copy contributes its own fallback reason.
+        steps.extend([
+            dict(name='listed_copies',sql='''SELECT s.*,l.size AS listed_size,l.key IS NULL AS listing_missing,
+                CASE s.stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END AS priority,
+                coalesce(l.etag,CASE WHEN s.stored_md5 IS NOT NULL THEN concat('"',s.stored_md5,'"') END) AS version,
+                coalesce(s.conflict,false) OR coalesce(s.stored_md5 IS NOT NULL AND l.etag IS NOT NULL AND
+                    s.stored_md5<>lower(trim(BOTH '"' FROM l.etag)),false) OR
+                    coalesce(s.captured_stored_bytes<>l.size,false) AS pin_conflict
+                FROM body_storage s LEFT JOIN body_listing l ON s.physical_key=l.key''',materialize=True),
+            dict(name='copy_candidates',sql='''SELECT *,NOT listing_missing AND NOT pin_conflict AND
+                captured_stored_bytes IS NOT NULL AND nullif(version,'') IS NOT NULL AS usable
+                FROM listed_copies''',materialize=True),
+            dict(name='ranked_copies',sql='''SELECT *,row_number() OVER (
+                PARTITION BY body_sha ORDER BY usable DESC,priority ASC) AS choice FROM copy_candidates''',materialize=True),
+            dict(name='copy_fallbacks',sql='''SELECT r.body_sha,
+                sum(CASE WHEN c.listing_missing THEN 1 ELSE 0 END) AS fallback_missing,
+                sum(CASE WHEN c.pin_conflict THEN 1 ELSE 0 END) AS fallback_conflict,
+                sum(CASE WHEN c.captured_stored_bytes IS NULL OR nullif(c.version,'') IS NULL THEN 1 ELSE 0 END) AS fallback_pin
+                FROM ranked_copies r JOIN copy_candidates c ON r.body_sha=c.body_sha
+                WHERE r.choice=1 AND (NOT r.usable OR c.priority<r.priority) GROUP BY r.body_sha''',materialize=True),
+            dict(name='body_inventory',sql='''SELECT r.body_sha,r.physical_key,r.physical_key AS relative_path,
+                coalesce(r.captured_stored_bytes,r.listed_size) AS stored_bytes,false AS stored_gzip,
+                r.usable,r.listing_missing,coalesce(f.fallback_missing,0) AS fallback_missing,
+                coalesce(f.fallback_conflict,0) AS fallback_conflict,coalesce(f.fallback_pin,0) AS fallback_pin
+                FROM ranked_copies r LEFT JOIN copy_fallbacks f ON r.body_sha=f.body_sha WHERE r.choice=1''',materialize=True)])
     if not existing:
         steps.append(dict(name='existing',sql='SELECT decode(body_hex,\'hex\') AS body_sha,* FROM existing_json'))
     steps.extend([
@@ -254,6 +284,9 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         else:
             extra+=''',CASE WHEN s.stored_md5 IS NOT NULL THEN concat('"',s.stored_md5,'"') END AS conditional_etag,
                 false AS md5_conflict,false AS size_conflict'''
+        extra+=(''',coalesce(i.usable,false) AS copy_usable,coalesce(i.listing_missing,true) AS listing_missing,
+            i.fallback_missing,i.fallback_conflict,i.fallback_pin''' if direct_listing else
+            ',true AS copy_usable,false AS listing_missing,0 AS fallback_missing,0 AS fallback_conflict,0 AS fallback_pin')
     settled_join=' LEFT JOIN settled_parsers sp ON b.body_sha=sp.body_sha' if combined else ''
     sql=f'''SELECT b.body_sha,i.physical_key,i.relative_path,i.stored_bytes,i.stored_gzip{extra}
         FROM bodies b LEFT JOIN body_inventory i ON b.body_sha=i.body_sha{settled_join}{storage_join}
@@ -267,24 +300,31 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         dict(name='conflicts',sql='''SELECT count(*) AS n FROM (
             SELECT body_sha FROM body_inventory GROUP BY body_sha HAVING count(*)>1
             UNION ALL SELECT body_sha FROM sniff_conflicts)'''),
-        dict(name='invalid_inventory',sql='''SELECT count(*) AS n FROM body_inventory
+        dict(name='invalid_inventory',sql=f'''SELECT count(*) AS n FROM body_inventory
             WHERE body_sha IS NULL OR physical_key IS NULL OR relative_path IS NULL
-               OR stored_bytes IS NULL OR stored_bytes<0 OR stored_gzip IS NULL''')]+([
+               {'OR stored_bytes IS NULL' if not direct_listing else ''} OR stored_bytes<0 OR stored_gzip IS NULL''')]+([
         dict(name='writer_admission_conflicts',sql=writer_admission_conflict_sql())]
-        if combined else [])+[dict(name='work_items',sql='SELECT count(*) AS n FROM pending_bodies')]+([
+        if combined else [])+([dict(name='listing_conflicts',sql='''SELECT count(*) AS n FROM (
+            SELECT key FROM body_listing GROUP BY key HAVING count(*)>1
+            UNION ALL SELECT key FROM body_listing WHERE key IS NULL OR size IS NULL OR size<0)''')]
+            if body_listing is not None else [])+[dict(name='work_items',sql='SELECT count(*) AS n FROM pending_bodies')]+([
+        dict(name='invalid_storage_suffix',sql="SELECT count(*) AS n FROM body_storage WHERE stored_suffix NOT IN ('','.gz','.pdf')"),
         dict(name='storage_conflicts',sql='''SELECT count(*) AS n FROM body_inventory i JOIN body_storage s
             ON i.body_sha=s.body_sha AND i.physical_key=s.physical_key
             WHERE s.conflict OR i.stored_bytes<>s.captured_stored_bytes'''),
         dict(name='raw_custody',sql=f'''SELECT count(*) AS bodies,
-            coalesce(sum(CASE WHEN physical_key IS NULL OR conditional_etag IS NULL OR captured_stored_bytes IS NULL THEN 1 ELSE 0 END),0) AS missing_pins,
-            coalesce(sum(CASE WHEN physical_key IS NULL THEN 1 ELSE 0 END),0) AS missing_physical,
+            coalesce(sum(CASE WHEN physical_key IS NULL OR conditional_etag IS NULL OR captured_stored_bytes IS NULL OR NOT copy_usable THEN 1 ELSE 0 END),0) AS missing_pins,
+            coalesce(sum(CASE WHEN physical_key IS NULL OR listing_missing THEN 1 ELSE 0 END),0) AS missing_physical,
             coalesce(sum(CASE WHEN stored_md5 IS NULL THEN 1 ELSE 0 END),0) AS missing_md5,
             coalesce(sum(CASE WHEN captured_stored_bytes IS NULL THEN 1 ELSE 0 END),0) AS missing_size,
             coalesce(sum(CASE WHEN stored_md5 IS NOT NULL THEN 1 ELSE 0 END),0) AS capture_md5,
             coalesce(sum(CASE WHEN stored_md5 IS NULL AND conditional_etag IS NOT NULL THEN 1 ELSE 0 END),0) AS listing_etag,
             coalesce(sum(CASE WHEN md5_conflict THEN 1 ELSE 0 END),0) AS md5_conflicts,
             coalesce(sum(CASE WHEN size_conflict THEN 1 ELSE 0 END),0) AS size_conflicts,
-            coalesce(sum(CASE WHEN md5_conflict OR size_conflict THEN 1 ELSE 0 END),0) AS conflicts
+            coalesce(sum(CASE WHEN md5_conflict OR size_conflict THEN 1 ELSE 0 END),0) AS conflicts,
+            coalesce(sum(fallback_missing),0) AS fallback_missing,
+            coalesce(sum(fallback_conflict),0) AS fallback_conflict,
+            coalesce(sum(fallback_pin),0) AS fallback_pin
             FROM pending_bodies WHERE NOT ({
                 "coalesce(stored_bytes>67108864,false) AND coalesce(known_format IN ('html','xml','json'),false)" if combined else
                 'coalesce(stored_bytes>67108864,false)' if parser!='sniff' else 'false'})''')]
