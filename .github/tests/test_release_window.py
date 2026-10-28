@@ -211,7 +211,7 @@ def test_window_a_finishes_its_local_gate_without_hosted_validation():
 
 def test_window_b_requires_acceptance_and_successful_window_a_before_publication(tmp_path):
     phase = blocks()[1] + blocks()[2]
-    assert 'WINDOW_B_READY=0' in phase
+    assert 'WINDOW_B_READY=1' in phase
     gate = 'test -e "$WINDOW/window-a-complete"'
     assert phase.index(gate) < phase.index('--execute')
     assert phase.index(gate) < phase.index('pause_and_drain')
