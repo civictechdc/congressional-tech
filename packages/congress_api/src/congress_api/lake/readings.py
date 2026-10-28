@@ -10,7 +10,7 @@ from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_
 from congress_api.retention.body_keys import body_object_digest
 from congress_api.retention.parser_worker import ParserWorker, reading_input
 from congress_api.retention.provenance import (field, instant, json_input, list_of,
-    parquet_output, parquet_records, run_job, struct, timestamp_key)
+    parquet_output, parquet_records, run_job, struct, finish_stage, import_unreadable)
 
 ROOT=Path(__file__).resolve().parents[5]
 PK=['body_sha','parser','parser_version']
@@ -95,7 +95,7 @@ def _reading_fields():
 
 def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
           sniff_version=None,parser_version=None,existing=None,unreadable_files=(),
-          worker_factory=ParserWorker):
+          worker_factory=ParserWorker,unreadable_store=None):
     """Stage missing body readings; never commit a table or write real raw data."""
     instant(decided_at)
     version=current_version(parser)
@@ -147,7 +147,6 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         raise ValueError('Conflicting or incomplete pinned body metadata')
     parsed=work/'parsed';parsed.mkdir()
     decisions_path=parsed/'unreadable.jsonl'
-    decisions_digest=sha256()
     counters=dict(pending_reads=0,read_bytes=0,unreadable=0)
     def rows():
         with worker_factory(parser,version,'congress_api.lake.readings:parse_payload',
@@ -180,7 +179,6 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                             decided_by='readings',decided_at=decided_at,supersedes=None)
                         encoded=json.dumps(record,separators=(',',':'))+'\n'
                         decisions.write(encoded)
-                        decisions_digest.update(encoded.encode())
                         counters['unreadable']+=1;continue
                     if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
                     response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
@@ -199,13 +197,21 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
              "arrow_cast(decode(fingerprint_hex,'hex'),'FixedSizeBinary(32)') AS fingerprint",'fields']
     run_job(parsed,engine,inputs=[source],steps=[],outputs=[parquet_output(work,'readings',
         'SELECT '+','.join(columns)+' FROM parsed_readings',PK)])
-    key=path=None
+    key=path=unreadable_stage=None
+    pending=bool(counters['unreadable'] and unreadable_store is None)
     if counters['unreadable']:
-        key='provenance/unreadable/'+timestamp_key(decided_at)+'-'+decisions_digest.hexdigest()+'.jsonl'
-        BodyStore(LocalAdapter(work/'raw')).put(key,decisions_path,'application/x-ndjson')
-        path=str(work/'raw'/key)
+        if pending:
+            unreadable_stage=work/'unreadable-stage';unreadable_stage.mkdir()
+            imported=import_unreadable(BodyStore(LocalAdapter(unreadable_stage)),decisions_path,decided_at=decided_at)
+            path=str(unreadable_stage/imported['key'])
+            finish_stage(unreadable_stage,kind='unreadable',provenance=imported['key'],
+                records=counters['unreadable'],inputs={},extra=dict(decided_at=decided_at))
+        else:
+            imported=import_unreadable(unreadable_store,decisions_path,decided_at=decided_at)
+        key=imported['key']
     return dict(readings=work/'readings.parquet',work_list=work/'work-list.parquet',
-        parser=parser,parser_version=version,unreadable_key=key,unreadable_path=path,**counters)
+        parser=parser,parser_version=version,unreadable_key=key,unreadable_path=path,
+        unreadable_stage=unreadable_stage,unreadable_pending=pending,**counters)
 
 
 def create_table(**kwargs):
@@ -217,6 +223,9 @@ def create_table(**kwargs):
 
 
 def append(staged,**kwargs):
+    if staged.get('unreadable_pending'):
+        raise ValueError('Pending unreadable decisions require durable import: '
+            '.venv/bin/python -I -m congress_api.cli.provenance --stage '+str(staged['unreadable_stage'])+' --apply --bucket congressional-tech-raw')
     from congress_api.lake.tables import append_rows
     return append_rows(staged['readings'],**kwargs,keys=PK,
         definition='readings:'+staged['parser']+':'+staged['parser_version'])
