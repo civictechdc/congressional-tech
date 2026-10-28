@@ -46,7 +46,7 @@ def test_list_item_projection_precedes_reference_join_and_discards_item_text(tmp
 
 def test_equal_duplicate_source_lines_do_not_multiply_through_item_lookup(tmp_path):
     from congress_api.lake.captures import stage_captures
-    key='receipts/documents/2026-10-28/duplicate.gz'
+    key='receipts/documents/2026-10-28/assemble-duplicate.gz'
     raw=dict(record=[dict(url='https://fixture.test/same')],captures=[])
     counter=minimal_counter(tmp_path,[(key,raw),(key,raw)],False)
     from congress_api.lake.captures import mapping_steps
