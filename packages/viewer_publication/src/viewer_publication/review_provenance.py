@@ -55,16 +55,14 @@ def stage_reviews(reviews,descriptor,identities,*,output,engine,decided_at):
         inputs=dict(reviews=file_pin(reviews),descriptor=file_pin(descriptor),identities=file_pin(identities)))
 
 
-ROOT=Path(__file__).resolve().parents[4]
-
 
 def main(argv=None):
     import argparse
     from docspec_client.client import NativeDatasets
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--reviews',type=Path,required=True)
-    parser.add_argument('--descriptor',type=Path,default=ROOT/'apps/site/document-review-publication.json')
-    parser.add_argument('--identities',type=Path,default=ROOT/'apps/site/document-review-identities.json')
+    parser.add_argument('--descriptor',type=Path,default=Path(__file__).resolve().parent/'data/document-review-publication.json')
+    parser.add_argument('--identities',type=Path,default=Path(__file__).resolve().parent/'data/document-review-identities.json')
     parser.add_argument('--stage',type=Path,required=True)
     parser.add_argument('--decided-at',required=True,help='Explicit migration decision timestamp, with timezone')
     parser.add_argument('--native-config',type=Path,required=True)
