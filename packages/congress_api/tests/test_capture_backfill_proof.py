@@ -12,48 +12,68 @@ def metrics(key,cost,**changes):
         expected_captures=1,max_line_bytes=1,max_line_items=1,**changes)
 
 
-def test_equivalence_sample_includes_each_extreme_then_cheapest_not_top200():
-    from congress_api.lake.capture_backfill_proof import select_sample
-    keys=[f'receipts/test/2026-10-28/{i:04d}.jsonl.gz' for i in range(250)]
-    files=[dict(key=key) for key in keys]
+def sample_sources():
+    keys=[f'receipts/house/pages/2026-10-28/{i:04d}.jsonl.gz' for i in range(250)]
+    files=[dict(key=key,path='/original/'+str(i)+'.gz',qualification='/authority/'+str(i)+'.json')
+           for i,key in enumerate(keys)]
     counts=[metrics(key,i+1) for i,key in enumerate(keys)]
-    counts[247]['max_line_bytes']=248
-    counts[248]['max_line_items']=249
-    selected=select_sample(files,counts,byte_target=100,item_target=100)
-    assert len(selected['files'])==200
-    assert set(selected['mandatory_keys'])==set(keys[-3:])
-    assert {row['key'] for row in selected['files']}==set(keys[:197]+keys[-3:])
-    assert selected['counts']==[r for r in counts if r['key'] in set(keys[:197]+keys[-3:])]
+    # Family line extremes are mandatory; aggregate receipt weight is not.
+    files[247]['key']=counts[247]['key']='receipts/senate/pages/undated/assemble.gz'
+    files[248]['key']=counts[248]['key']='receipts/youtube/metadata/undated/assemble.gz'
+    for i in (246,247,248):counts[i]['max_line_bytes']=counts[i]['uncompressed_bytes']
+    counts[249]['uncompressed_bytes']=10000
+    return files,counts
 
 
-def test_equivalence_sample_uses_only_original_counter_receipts_and_is_order_independent():
+def test_equivalence_sample_includes_family_lines_required_shapes_and_cheapest():
     from congress_api.lake.capture_backfill_proof import select_sample
-    files=[dict(key='receipts/test/2026-10-28/'+name+'.gz') for name in ['a','b','c','d']]
-    counts=[metrics(row['key'],index+1) for index,row in enumerate(files)]
-    files[2]['path']='/explicit/direct.gz';files[3]['prepared_stage']='/explicit/accepted'
-    one=select_sample(files,counts,byte_target=10,item_target=10)
-    two=select_sample(list(reversed(files)),list(reversed(counts)),byte_target=10,item_target=10)
-    assert one==two
-    assert one['files']==files[:2] and len(one['counts'])==2
-    assert one['excluded_non_counter_keys']==[files[2]['key'],files[3]['key']]
+    files,counts=sample_sources();required=[files[240]['key']]
+    selected=select_sample(files,counts,byte_target=100,item_target=100,required_keys=required,
+                           proof_bytes=30000)
+    expected={files[i]['key'] for i in list(range(196))+[240,246,247,248]}
+    assert len(selected['files'])==200
+    assert set(selected['mandatory_keys'])=={files[i]['key'] for i in (240,246,247,248)}
+    assert {row['key'] for row in selected['files']}==expected
+    assert selected['counts']==sorted([r for r in counts if r['key'] in expected],key=lambda r:r['key'])
+    assert selected['logical_bytes']==sum(r['uncompressed_bytes'] for r in selected['counts'])
+    assert selected['proof_bytes']==30000
+    assert selected['family_largest_lines']['house']['key']==files[246]['key']
+    assert selected['required_keys']==required
+    assert files[249]['key'] not in expected
+
+
+def test_equivalence_sample_is_order_independent_and_cap_keeps_receipts_whole():
+    from congress_api.lake.capture_backfill_proof import select_sample
+    files,counts=sample_sources()
+    options=dict(byte_target=10,item_target=10,proof_bytes=750,sample_size=200)
+    one=select_sample(files,counts,**options)
+    assert one==select_sample(files[::-1],counts[::-1],**options)
+    assert one['logical_bytes']<=750 and len(one['files'])<200
+    assert one['logical_bytes']==sum(r['uncompressed_bytes'] for r in one['counts'])
+    assert set(one['mandatory_keys'])=={files[i]['key'] for i in (246,247,248)}
 
 
 @pytest.mark.parametrize('size',[0,False,1])
 def test_invalid_or_too_small_sample_refuses_without_losing_required_extremes(size):
     from congress_api.lake.capture_backfill_proof import select_sample
-    files=[dict(key='receipts/test/2026-10-28/'+name+'.gz') for name in ['a','b','c']]
-    counts=[metrics(row['key'],10) for row in files]
-    counts[0]['max_line_bytes']=10;counts[1]['max_line_items']=10
-    counts[2]['uncompressed_bytes']=20
+    files,counts=sample_sources()
     with pytest.raises(ValueError):select_sample(files,counts,byte_target=10,item_target=10,sample_size=size)
 
 
-def test_sample_refuses_missing_counts_or_no_original_counter_source():
+@pytest.mark.parametrize('change',['missing_counts','counter','prepared','unqualified',
+    'missing_required','duplicate_required','cap','bad_cap'])
+def test_sample_refuses_invalid_sources_requirements_or_mandatory_overflow(change):
     from congress_api.lake.capture_backfill_proof import select_sample
-    row=dict(key='receipts/test/2026-10-28/a.gz')
-    with pytest.raises(ValueError):select_sample([row],[],byte_target=10,item_target=10)
-    with pytest.raises(ValueError,match='counter'):
-        select_sample([dict(row,path='/direct.gz')],[metrics(row['key'],1)],byte_target=10,item_target=10)
+    files,counts=sample_sources();options={}
+    if change=='missing_counts':counts=[]
+    elif change=='counter':files[0].pop('path')
+    elif change=='prepared':files[0]['prepared_stage']='/accepted'
+    elif change=='unqualified':files[0].pop('qualification')
+    elif change=='missing_required':options['required_keys']=['receipts/missing.gz']
+    elif change=='duplicate_required':options['required_keys']=[files[0]['key']]*2
+    elif change=='cap':options['proof_bytes']=743
+    elif change=='bad_cap':options['proof_bytes']=True
+    with pytest.raises(ValueError):select_sample(files,counts,byte_target=10,item_target=10,**options)
 
 
 def test_native_comparison_checks_every_public_field_and_both_directions(tmp_path):
@@ -87,40 +107,28 @@ def test_native_comparison_row_counts_prevent_distinct_only_false_equivalence(tm
     assert (error.value.report['left_rows'],error.value.report['right_rows'])==(2,3)
 
 
-def test_three_original_counter_receipts_rebuild_equally_in_fresh_native_generations(tmp_path):
+def test_three_original_gzip_receipts_rebuild_equally_in_fresh_native_generations(tmp_path):
     from congress_api.lake.capture_backfill_proof import prove_equivalence
-    from test_captures_root_objects import minimal_counter
-    from test_captures_ingest import body
-    from capture_qualification_helpers import created_qualifications
+    from test_captures_ingest import body,files as receipt_files
     keys=['receipts/documents/2026-10-28/'+name+'.gz' for name in ('a','b','c')]
     records=[dict(run_id='proof',record=dict(url='https://example.org/a',http_status=200),captures=[body()]),
         dict(run_id='proof',record=[dict(url='https://example.org/b',status_code=404),
             dict(url='https://example.org/b2',status_code=404)],captures=[]),
         dict(run_id='proof',record=dict(url='https://example.org/c',http_status=503),captures=[body()])]
-    counter=minimal_counter(tmp_path,list(zip(keys,records)),False)
-    # C1's actual reader retains its source shape and object record projection.
-    # The minimal legacy fixture deliberately omits both; complete them here.
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from capture_qualification_helpers import write_qualified_parquet
-    table_data=pq.read_table(counter)
-    typed=table_data.to_pylist()
-    for row,raw in zip(typed,records):
-        row['record']={'url':raw['record']['url']} if isinstance(raw['record'],dict) else None
-    table_data=pa.Table.from_pylist(typed,schema=table_data.schema).append_column(
-        '__line_shape',pa.array(['record:object','record:array','record:object']))
-    write_qualified_parquet(table_data,counter)
+    files=[]
+    for index,(key,record) in enumerate(zip(keys,records)):
+        files+=receipt_files(tmp_path/'original'/str(index),[record],key)
     counts=[]
     for key,record,items in zip(keys,records,[1,2,1]):
         size=len(json.dumps(record).encode())
         counts.append(dict(key=key,source_rows=1,uncompressed_bytes=size,list_items=items,
             expected_captures=items,max_line_bytes=size,max_line_items=items))
-    report=prove_equivalence([dict(key=key) for key in keys],counts,
+    report=prove_equivalence(files,counts,
         engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
         engine_config=os.environ['DOCSPEC_JOB_CONFIG'],work=tmp_path/'proof',
         table=dict(namespace=['archive'],name='captures'),catalog_root=tmp_path/'catalog',
         location=tmp_path/'tables/captures',byte_target=1,item_target=1,
-        validated_counter=counter,source_qualifications=created_qualifications(counter))
+        required_keys=keys,proof_bytes=1<<20)
     assert report['status']=='equivalent' and report['qualified_for_downstream'] is False
     assert len(report['generations']['one_shot']['batches'])==1
     assert len(report['generations']['batched']['batches'])==3
@@ -131,6 +139,17 @@ def test_three_original_counter_receipts_rebuild_equally_in_fresh_native_generat
     compare=json.loads((tmp_path/'proof/comparison/job.json').read_text())
     assert len(compare['inputs'])==2 and all(v['kind']=='native_table' for v in compare['inputs'])
     identity=report['identity']
-    assert identity['mapping_digest'] and identity['proof_definition'] and len(identity['sources'])==1
+    assert identity['mapping_digest'] and identity['proof_definition'] and len(identity['sources'])==3
     assert identity['engine']['binary_sha256'] and identity['sources'][0]['qualification']['sha256']
     assert json.loads((tmp_path/'proof/proof.json').read_text())['status']=='equivalent'
+
+
+def test_proof_identity_binds_selected_raw_authorities_without_counter(tmp_path):
+    from congress_api.lake.capture_backfill_proof import proof_identity
+    from test_captures_ingest import files as receipt_files
+    files=receipt_files(tmp_path/'raw',[dict(record={})])
+    identity=proof_identity(engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        engine_config=os.environ['DOCSPEC_JOB_CONFIG'],files=files)
+    assert len(identity['sources'])==1
+    assert identity['sources'][0]['path']==files[0]['path']
+    assert identity['sources'][0]['qualification']['path']==files[0]['qualification']
