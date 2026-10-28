@@ -114,3 +114,15 @@ def test_pre_switch_rollback_stops_before_changes_after_publication_attempt(tmp_
     result = subprocess.run(['/bin/bash'], input=prefix, text=True,
                             env={**os.environ, 'WINDOW': str(tmp_path)})
     assert result.returncode != 0
+
+
+def test_upload_is_bound_to_approved_bytes_and_the_guarded_checkout():
+    forward = blocks()[0]
+    assert 'cd "$CI"' not in forward
+    assert forward.index('cd "$LANDING"') < forward.index('--upload --bucket')
+    assert '--expected-descriptor "$RUNTIME_PACKET/runtime-artifact.json"' in forward
+
+
+def test_rollback_is_prepared_locally_before_remote_variables_change():
+    rollback = blocks()[2]
+    assert rollback.index('git -C "$LANDING" commit') < rollback.index('gh variable set')
