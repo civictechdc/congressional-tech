@@ -19,6 +19,8 @@ ORACLE_CATALOG = '469ef1ebf6864739a2c8a4c096defcc0'
 ORACLE_GENERATION = '596f08fa2dbf4875bb8da7dc94e33847'
 MEMBER_COLUMNS = {'document_id','list_row','source_id','body_key','effective_filename','source_url','member_path'}
 
+MEMBER_CHECKS=['SELECT count(*) AS errors FROM (SELECT source_id FROM source_members GROUP BY source_id HAVING count(DISTINCT json_array(document_id,list_row,body_key,effective_filename,source_url))<>1)', 'SELECT count(*) AS errors FROM (SELECT document_id,list_row,source_id,body_key,effective_filename,source_url,member_path FROM source_members GROUP BY document_id,list_row,source_id,body_key,effective_filename,source_url,member_path HAVING count(*)>1)']
+
 
 def pinned_file(base, pin):
     if not isinstance(pin,dict) or not isinstance(pin.get('path'),str):
@@ -101,11 +103,14 @@ def load_descriptor(path):
     import pyarrow.parquet as pq
     path=Path(path).resolve()
     value=json.loads(path.read_text())
-    if value.get('version')!=1:
+    if type(value.get('version')) is not int or value['version']!=1:
         raise ValueError('Missing version-1 parity descriptor')
     base=path.parent
     paths,selector=oracle_inputs(base,value.get('oracle',{}))
     candidate=value.get('candidate',{})
+    scope=value['oracle'].get('scope','full')
+    if scope not in {'full','source_evidence'} or candidate.get('kind')=='f0' and scope!='full':
+        raise ValueError('Oracle scope must be full, or source_evidence for a real model slice')
     release_paths,manifest=release_inputs(base,candidate)
     paths.update(release_paths)
     members=pinned_file(base,candidate.get('source_members'))
@@ -130,7 +135,7 @@ def load_descriptor(path):
         if pin['path'] in {'owner-records.parquet','ready-imports.parquet','source-time-minima.parquet','recovery-decisions.parquet'}:
             source=pinned_file(b7.parent,pin)
             paths['b7_'+Path(pin['path']).stem.replace('-','_')]=str(source)
-    return dict(base=base,descriptor=value,paths=paths,manifest=manifest,selector=selector,
+    return dict(base=base,oracle_scope=scope,descriptor=value,paths=paths,manifest=manifest,selector=selector,
         descriptor_sha256=sha256(path.read_bytes()).hexdigest())
 
 
@@ -219,7 +224,7 @@ def prepare_f0(template, *, engine, work):
     for item in inputs:
         if item['name'] in {'legacy_documents','legacy_filenames'}:
             item['path']=paths['oracle_'+item['name'].removeprefix('legacy_')]
-    columns=','.join('"'+name+'"' for name in LIST_COLUMNS+DETAIL_COLUMNS)
+    columns=','.join(LIST_COLUMNS+DETAIL_COLUMNS)
     outputs=[parquet_output(work,'source_members',
         'SELECT f.document_id,o.list_row,f.source_id,f.body_key,f.filename AS effective_filename,f.source_url,cast(NULL AS VARCHAR) AS member_path FROM e4_source_evidence f JOIN ordered o ON f.document_id=o.doc_key',
         ['list_row','source_id']),
@@ -234,8 +239,10 @@ def prepare_f0(template, *, engine, work):
     captures=next(item for item in job['inputs'] if item['name']=='legacy_captures')
     capture_path=Path(captures['path']).resolve()
     value['cause_relations']=dict(catalog_capture_metadata=dict(pin(capture_path),required_columns=['body_key','bytes','media_type']))
-    for group in ['oracle','provenance']:
-        for item in value[group].values():item['path']=str((template.parent/item['path']).resolve())
+    value['oracle']['scope']='full'
+    for group,names in [('oracle',['selector','documents','filenames','documents_receipt','filenames_receipt']),('provenance',['owner_decisions','b7_manifest'])]:
+        for name in names:
+            item=value[group][name];item['path']=str((template.parent/item['path']).resolve())
     output=work/'parity-inputs.json';output.write_text(json.dumps(value,indent=2)+'\n')
     return output
 
@@ -272,7 +279,7 @@ def validate_layout(loaded, *, engine, work):
     columns=','.join('"'+name+'"' for name in LIST_COLUMNS+DETAIL_COLUMNS)
     expected=[f'SELECT list_row,doc_key AS document_id,{columns} FROM details',
               f"SELECT list_row,encode(document_id,'hex') AS document_id,{columns} FROM details"]
-    compact=lambda sql:re.sub(r'\s+','',sql).lower()
+    compact=lambda sql:re.sub(r'\s+','',re.sub(r'"([a-z_]+)"',r'\1',sql)).lower()
     if compact(row_spec['sql']) not in {compact(sql) for sql in expected} or not approved_order(row_spec['settings']['order_by'],['list_row']):
         raise ValueError('Private document projection lineage must preserve the ordered details row')
     if candidate['kind']=='f0':
@@ -293,8 +300,8 @@ def validate_layout(loaded, *, engine, work):
         "SELECT count(*) AS errors FROM source_members m LEFT ANTI JOIN document_rows d ON m.list_row=d.list_row AND m.document_id=d.document_id",
         "SELECT count(*) AS errors FROM document_rows d LEFT ANTI JOIN source_members m ON m.list_row=d.list_row",
         "SELECT count(*) AS errors FROM source_members WHERE source_id IS NULL OR NOT regexp_like(source_id,'^[0-9a-f]{64}$') OR (body_key IS NOT NULL AND NOT regexp_like(body_key,'^bodies/sha256/[0-9a-f]{2}/[0-9a-f]{64}[.]gz$'))",
-        "SELECT count(*) AS errors FROM (SELECT source_id FROM source_members GROUP BY source_id HAVING count(*)<>1)",
         "SELECT CASE WHEN count(*)=0 OR min(list_row)=0 AND max(list_row)=count(*)-1 THEN 0 ELSE 1 END AS errors FROM document_rows"]
+    checks.extend(MEMBER_CHECKS)
     for table,prefix in [('sources','src'),('recoveries','rec')]:
         steps.append(dict(name=table+'_counts',sql=f"SELECT list_row,count(*) AS n,min(ordinal) AS lo,max(ordinal) AS hi,count(DISTINCT ordinal) AS unique_ordinals FROM release_{table} GROUP BY list_row",materialize=True))
         steps.append(dict(name=table+'_bounds',sql=f'SELECT *,sum(n) OVER(ORDER BY list_row ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)-n AS start FROM {table}_counts',materialize=True))
@@ -305,10 +312,66 @@ def validate_layout(loaded, *, engine, work):
         raise ValueError('Public/private row values, membership or attachment ranges disagree')
 
 
+def select_oracle_scope(loaded, *, engine, work):
+    """Select actual slice evidence natively; retain each old component in full."""
+    paths=loaded['paths'];work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
+    names=['oracle_documents','oracle_filenames','capture_sources','current_recoveries']
+    if any(name not in paths for name in names):
+        raise ValueError('Slice oracle selection requires canonical captures and recoveries')
+    inputs=[dict(name=name,kind='parquet',path=paths[name]) for name in names]
+    document_columns,file_columns=oracle_columns()
+    file_sql=','.join('f."'+name+'"' for name in sorted(file_columns))
+    columns=','.join('"'+name+'"' for name in sorted(file_columns))
+    document_sql=','.join('array_slice(d."source_link_label",1,1) AS "source_link_label"' if name=='source_link_label' else 'd."'+name+'"' for name in sorted(document_columns))
+    steps=[dict(name='slice_evidence',sql="""SELECT * FROM (
+        SELECT CASE WHEN body_sha IS NOT NULL THEN 'bodies/sha256/'||substr(body_sha,1,2)||'/'||body_sha||'.gz' END AS body_key,source_url FROM capture_sources
+        UNION SELECT CASE WHEN body_sha256 IS NOT NULL THEN 'bodies/sha256/'||substr(body_sha256,1,2)||'/'||body_sha256||'.gz' END,original_url FROM current_recoveries)
+        WHERE body_key IS NOT NULL OR source_url IS NOT NULL""",materialize=True),
+        # A narrow key pass plus a filtered metadata pass avoids sorting every
+        # wide old row. Hash joins are O(F + E) expected; only S selected rows
+        # reach the metadata export and its O(S log S) output sort.
+        dict(name='oracle_file_keys',sql='SELECT document_id,body_key,source_url FROM oracle_filenames',materialize=True),
+        dict(name='touched_documents',sql="""SELECT DISTINCT f.document_id FROM oracle_file_keys f JOIN slice_evidence e
+            ON (f.body_key IS NOT DISTINCT FROM e.body_key) AND (f.source_url IS NOT DISTINCT FROM e.source_url)""",materialize=True,release_after=['oracle_file_keys']),
+        dict(name='scoped_files',sql=f"""SELECT {file_sql},e.body_key IS NOT NULL OR e.source_url IS NOT NULL AS covered
+            FROM oracle_filenames f JOIN touched_documents t USING(document_id) LEFT JOIN slice_evidence e
+            ON (f.body_key IS NOT DISTINCT FROM e.body_key) AND (f.source_url IS NOT DISTINCT FROM e.source_url)""",materialize=True,
+            release_after=['oracle_filenames','slice_evidence','touched_documents']),
+        dict(name='scope_coverage',sql='SELECT document_id,count(*) AS files,count(*) FILTER(WHERE covered) AS covered FROM scoped_files GROUP BY document_id',materialize=True)]
+    outputs=[parquet_output(work,'oracle-filenames','SELECT '+columns+' FROM scoped_files',['document_id','source_id']),
+        parquet_output(work,'oracle-documents',f'SELECT {document_sql} FROM oracle_documents d JOIN scope_coverage c USING(document_id)',['document_id']),
+        parquet_output(work,'scope-gaps','SELECT document_id,source_id,body_key,filename,source_url FROM scoped_files WHERE NOT covered',['document_id','source_id'])]
+    total=loaded['selector']['files']['documents']['rows']
+    reports=run_job(work,engine,inputs=inputs,steps=steps,outputs=outputs,queries=[dict(name='scope',sql=f"""SELECT
+        count(*) AS selected_documents,coalesce(sum(files),0) AS selected_files,{total}-count(*) AS outside_documents,
+        count(*) FILTER(WHERE files<>covered) AS partial_documents,coalesce(sum(files-covered),0) AS missing_files FROM scope_coverage"""),
+        dict(name='examples',sql='SELECT document_id,files,covered FROM scope_coverage WHERE files<>covered ORDER BY document_id LIMIT 3')])
+    scope=dict(reports['scope'][0],kind='source_evidence',examples=reports['examples'],
+        job=dict(path=str(work/'job.json'),**file_pin(work/'job.json')),
+        result=dict(path=str(work/'result.json'),**file_pin(work/'result.json')))
+    # These are native-selected intermediate files, never a replacement oracle.
+    # The original pair and native job/result pins remain in the final report.
+    paths['oracle_documents']=str(work/'oracle-documents.parquet')
+    paths['oracle_filenames']=str(work/'oracle-filenames.parquet')
+    (work/'scope.json').write_text(json.dumps(scope,indent=2)+'\n')
+    return scope
+
+
 def field_rows(table, doc, scalars, arrays=(), *, subject="''"):
     branches=[f"SELECT {doc} AS doc,'{field}' AS field,{subject} AS subject,cast({value} AS VARCHAR) AS value FROM {table}" for field,value in scalars.items()]
     branches += [f"SELECT {doc} AS doc,'{field}' AS field,{subject} AS subject,cast(unnest({value}) AS VARCHAR) AS value FROM {table}" for field,value in arrays]
     return 'SELECT * FROM ('+' UNION ALL '.join(branches)+') WHERE value IS NOT NULL'
+
+
+def oracle_columns(display=None):
+    if display is None:display=json.loads((ROOT/'model/registries/display-facts.json').read_text())
+    document_columns={'document_id','filename','source_url','source_link_label','body_key','body_keys',
+        'state_retrieved_at','date_token','document_kind','document_family','congress','format',
+        'measure_references','member_bioguide_id','hearing_package_id','committee_code','date_token_candidates','source_meeting_id'}
+    document_columns.update(row['field'] for row in display)
+    file_columns={'document_id','source_id','body_key','filename','source_url','http_status','capture_outcome',
+        'response_usable','response_body_complete','body_format','format','media_type','source_page_url','source_link_label','source_paths'}
+    return document_columns,file_columns
 
 
 def normalization(loaded, *, directory):
@@ -451,12 +514,7 @@ def normalization(loaded, *, directory):
         steps.append(dict(name='witnesses',sql="SELECT cast(NULL AS VARCHAR) AS old_doc,cast(NULL AS VARCHAR) AS new_doc,cast(NULL AS VARCHAR) AS subject,cast(NULL AS VARCHAR) AS fact,cast(NULL AS VARCHAR) AS evidence_ref WHERE false"))
     # Each original wide file is parsed once by this consumer. All downstream
     # joins reuse only browser fields and the identity evidence they need.
-    document_columns={'document_id','filename','source_url','source_link_label','body_key','body_keys',
-        'state_retrieved_at','date_token','document_kind','document_family','congress','format',
-        'measure_references','member_bioguide_id','hearing_package_id','committee_code','date_token_candidates','source_meeting_id'}
-    document_columns.update(row['field'] for row in display)
-    file_columns={'document_id','source_id','body_key','filename','source_url','http_status','capture_outcome',
-        'response_usable','response_body_complete','body_format','format','media_type','source_page_url','source_link_label','source_paths'}
+    document_columns,file_columns=oracle_columns(display)
     for step in steps:
         step['sql']=step['sql'].replace('oracle_documents','old_catalog').replace('oracle_filenames','old_file_rows')
     steps=[dict(name=name,sql='SELECT '+','.join(('array_slice("source_link_label",1,1) AS "source_link_label"' if name=='old_catalog' and c=='source_link_label' else '"'+c+'"') for c in sorted(columns))+' FROM '+source,materialize=True,release_after=[source])
@@ -744,7 +802,7 @@ def comparison_steps(*, f0_release=None, witness_step=None):
         dict(name='unexplained',sql='SELECT d.* FROM differences d LEFT ANTI JOIN known_causes c ON d.difference_id=c.difference_id',materialize=True),
         dict(name='classified',sql='''SELECT u.*,r.classification,r.rule_ref,r.note,r.raw_signal FROM unexplained u
             LEFT JOIN difference_records r ON u.difference_id=r.difference_id''',materialize=True),
-        dict(name='source_identity_errors',sql="""SELECT side,doc,'source_id' AS identity,source_id AS declared,
+        dict(name='source_identity_errors',sql="""SELECT DISTINCT side,doc,'source_id' AS identity,source_id AS declared,
             encode(sha256(json_array(body_key,filename,source_url)),'hex') AS computed
             FROM identity_sources WHERE source_id IS DISTINCT FROM encode(sha256(json_array(body_key,filename,source_url)),'hex')""",materialize=True),
         dict(name='document_identity_errors',sql="""SELECT side,doc,'document_id' AS identity,document_id AS declared,
@@ -838,6 +896,18 @@ def compare_descriptor(descriptor, *, engine_config, work):
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     parallel=NativeDatasets.from_config(restricted_runtime(engine_config,work/'comparison-runtime',threads=4))
     validate_layout(loaded,engine=parallel,work=work/'layout-validation')
+    scope=None
+    if loaded['oracle_scope']=='source_evidence':
+        scope=select_oracle_scope(loaded,engine=parallel,work=work/'scope')
+        if scope['partial_documents']:
+            result=dict(version=1,status='incomplete',decision_ready=False,scope_comparison_ready=False,model_qualified=False,
+                candidate_kind='model',release_id=loaded['manifest']['release_id'],scope=scope,
+                reason='Selected inputs do not cover every source of a touched old component; field comparison was not run.',
+                counts=dict(differences=None,unexplained=None,unclassified=None,invalid_ids=None,missing_evidence=scope['missing_files']),
+                causes=[dict(cause=name,differences=None,evidence_status='unavailable') for name in [*CAUSES,'document_id_inputs_changed']],
+                oracle=loaded['selector'],descriptor_sha256=loaded['descriptor_sha256'])
+            (work/'comparison.json').write_text(json.dumps(result,indent=2)+'\n')
+            return result
     staging=work/'inputs';staging.mkdir()
     inputs,steps=normalization(loaded,directory=staging)
     kind=loaded['descriptor']['candidate']['kind']
@@ -856,6 +926,9 @@ def compare_descriptor(descriptor, *, engine_config, work):
         if row['cause'] in missing:row['differences']=None
     result.update(candidate_kind=kind,model_qualified=kind=='model' and result['decision_ready'],missing_causes=missing,missing_coverage=missing_coverage,release_id=loaded['manifest']['release_id'],
         oracle=loaded['selector'],descriptor_sha256=loaded['descriptor_sha256'])
+    if scope is not None:
+        result.update(scope=scope,scope_comparison_ready=result['decision_ready'],decision_ready=False,model_qualified=False,status='incomplete',
+            reason='This comparison covers a declared source-evidence slice, not the full oracle population.')
     (work/'comparison.json').write_text(json.dumps(result,indent=2)+'\n')
     return result
 
