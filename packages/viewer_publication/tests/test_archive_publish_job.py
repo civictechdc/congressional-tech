@@ -105,10 +105,91 @@ def test_fixed_site_probe_arguments_use_one_publisher_and_declared_paths(tmp_pat
     from viewer_publication.archive_publish_job import load_spec,probe_commands
     value=publish_spec(tmp_path);path=tmp_path/'publish.json';path.write_text(json.dumps(value))
     spec=load_spec(path);candidate=tmp_path/'release';release='a'*64
-    commands=probe_commands(spec,release=candidate,release_id=release)
+    commands=probe_commands(spec,release=candidate,release_id=release,probe_selectors=dict(saved_row=7,link_key='0123456789abcdef'))
     assert commands['contract']==['npm','run','contract:archive','--','--release',str(candidate),
         '--next-release',value['contract_next_release'],'--dist',value['site_dist'],'--targets',value['targets']['path'],
-        '--output',str(tmp_path/'publish/contract.json')]
+        '--output',str(tmp_path/'publish/contract.json'),'--link-key','0123456789abcdef']
     assert commands['canary']==['npm','run','canary:archive','--','--pointer','https://archive.fixture.test/viewer-publications/manifest.json',
         '--release',release,'--raw','https://archive.fixture.test/','--targets',value['targets']['path'],
-        '--output',str(tmp_path/'publish/canary.json')]
+        '--output',str(tmp_path/'publish/canary.json'),'--saved-row','7']
+
+
+def remote_config(tmp_path,*,endpoint=None,owned_prefix=None):
+    path=tmp_path/'public-remote.json'
+    path.write_text(json.dumps(dict(owned_prefix=owned_prefix or 's3://derived-fixture/viewer-publications',
+        properties={'s3.endpoint':endpoint or 'https://'+'a'*32+'.r2.cloudflarestorage.com','s3.region':'auto'},
+        secret_env={'s3.access-key-id':'DOCSPEC_R2_ACCESS','s3.secret-access-key':'DOCSPEC_R2_SECRET'})))
+    return path
+
+
+@pytest.mark.parametrize('endpoint,prefix',[
+    ('https://different-provider.test',None),('http://'+'a'*32+'.r2.cloudflarestorage.com',None),
+    ('https://'+'a'*32+'.r2.cloudflarestorage.com/other-account',None),
+    (None,'s3://other-bucket/viewer-publications'),(None,'s3://derived-fixture/other-namespace'),
+    (None,'s3://derived-fixture/viewer-publications-other'),
+])
+def test_destination_refuses_provider_bucket_or_namespace_before_any_native_or_sdk_call(tmp_path,endpoint,prefix):
+    from viewer_publication.archive_publish_job import execute,load_spec
+    value=publish_spec(tmp_path);path=tmp_path/'publish.json';path.write_text(json.dumps(value))
+    remote=remote_config(tmp_path,endpoint=endpoint,owned_prefix=prefix);events=[]
+    class Runtime:
+        def __init__(self):self.remote=remote
+        def __enter__(self):return self
+        def __exit__(self,*_):pass
+        def verify_runtime(self):events.append('native');raise AssertionError('Must refuse before native activity')
+    def storage_factory(**kwargs):events.append('sdk');raise AssertionError('Must refuse before SDK activity')
+    with pytest.raises(ValueError,match='destination'):
+        execute(load_spec(path),runtime_factory=lambda _:Runtime(),storage_factory=storage_factory)
+    assert events==[] and not Path(value['work']).exists()
+
+
+def test_metadata_first_probe_selectors_are_required_and_not_daily_owner_options(tmp_path):
+    from viewer_publication.archive_publish_job import load_spec,probe_commands
+    value=publish_spec(tmp_path);path=tmp_path/'publish.json';path.write_text(json.dumps(value));spec=load_spec(path)
+    # Native metadata selects a saved row beyond metadata-only rows at the start.
+    selectors=dict(saved_row=7,link_key='0123456789abcdef')
+    commands=probe_commands(spec,release=tmp_path/'release',release_id='a'*64,probe_selectors=selectors)
+    assert commands['contract'][-2:]==['--link-key',selectors['link_key']]
+    assert commands['canary'][-2:]==['--saved-row','7']
+    for invalid in [None,{},dict(saved_row=True,link_key='0'*16),dict(saved_row=-1,link_key='0'*16),
+                    dict(saved_row=1,link_key='ABCDEF0123456789'),dict(saved_row=1,link_key='0'*15),
+                    dict(saved_row=1,link_key='0'*16,extra=True)]:
+        with pytest.raises(ValueError,match='probe selectors'):
+            probe_commands(spec,release=tmp_path/'release',release_id='a'*64,probe_selectors=invalid)
+
+
+def test_execute_binds_matching_destination_and_records_actual_native_probe_commands(tmp_path):
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_publish_job import execute,load_spec
+    from archive_job_fixture import real_model_spec
+    from test_archive_controller import Runtime as NativeTransport
+    from test_archive_publish import Store
+    value=publish_spec(tmp_path);model,_,_=real_model_spec(tmp_path)
+    path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
+    specpath=tmp_path/'publish.json';specpath.write_text(json.dumps(value));spec=load_spec(specpath)
+    remote=remote_config(tmp_path);store=Store();events=[];commands=[]
+    class Runtime(NativeTransport):
+        def __init__(self,native):super().__init__(native,store);self.remote=remote
+        def __enter__(self):return self
+        def __exit__(self,*_):self.native.close()
+        def verify_runtime(self):events.append('qualified');return self.native.verify_runtime()
+    def runtime_factory(_):return Runtime(NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']))
+    def storage_factory(**kwargs):
+        assert events and events[0]=='qualified'
+        assert kwargs==dict(bucket='derived-fixture',endpoint_url='https://'+'a'*32+'.r2.cloudflarestorage.com',retries={'total_max_attempts':1})
+        events.append('sdk');return store
+    def process_runner(command,**kwargs):
+        assert command[:3] in [['npm','run','contract:archive'],['npm','run','canary:archive']]
+        assert kwargs['check'] is True and kwargs['cwd'].name=='site'
+        commands.append(command)
+        # External browser execution is recorded; native model and publisher remain actual.
+        manifest=json.loads((Path(model['output'])/'manifest.json').read_text())
+        output=Path(command[command.index('--output')+1])
+        output.write_text(json.dumps(dict(status='passed',releaseId=manifest['release_id'],targets='measured')))
+    result=execute(spec,runtime_factory=runtime_factory,storage_factory=storage_factory,process_runner=process_runner)
+    assert result['status']=='published' and len(commands)==2 and events.index('sdk')>events.index('qualified')
+    native=json.loads((Path(model['scratch'])/'result.json').read_text())
+    selectors=next(query['data'][0] for query in native['queries'] if query['name']=='probe_selectors')
+    assert commands[0][-2:]==['--link-key',selectors['link_key']]
+    assert commands[1][-2:]==['--saved-row',str(selectors['saved_row'])]
+    assert spec['provenance']==value['provenance']
