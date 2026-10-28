@@ -203,7 +203,9 @@ def test_r2_stream_read_backoff_is_async_and_cancellable(monkeypatch):
 def test_r2_429_retries_with_real_sdk_and_preserves_upload(transport, code, caplog):
     from congress_api.retention.r2 import R2Store
     import json
-    data, key = b'compressed', 'bodies/sha256/test.gz'
+    data = b'compressed'
+    digest = hashlib.sha256(data).hexdigest()
+    key = f'bodies/sha256/{digest[:2]}/{digest}'
     with s3_responses([(429, code, {'Retry-After': '1'}), (200, '', {})]) as (options, calls):
         if transport == 'sync':
             with closing(boto3.client('s3', **options)) as client:
