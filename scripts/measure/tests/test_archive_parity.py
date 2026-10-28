@@ -267,7 +267,7 @@ def test_model_witnesses_use_native_receipt_keys_and_match_only_source_evidence(
     captures=[dict(receipt_key=s['receipt_key'],receipt_line=s['receipt_line'],capture_index=0,
         format='vtt' if i==0 else 'html',mode='fetch',complete=True,http_status=200,outcome='stored',
         url=s['source_url'],requested_url=s['source_url'],retrieved_at='2026-10-27T00:00:00Z',
-        fidelity='saved_text' if i==2 else 'exact',member_path=None,h_content_disposition='attachment; filename="capture.txt"',
+        fidelity='saved-text' if i==2 else 'exact-bytes',member_path=None,h_content_disposition='attachment; filename="capture.txt"',
         match_basis=None,original_url=None,recovered_url=None,publisher_requested=True)
         for i,s in enumerate(sources)]
     roles=[dict(receipt_key=s['receipt_key'],receipt_line=s['receipt_line'],capture_index=0,
@@ -467,3 +467,40 @@ def test_source_members_have_one_identity_but_preserve_distinct_member_paths(tmp
     inputs=[json_input(tmp_path,'source_members',[row,second],**fields)]
     reports=run_job(tmp_path,engine(),inputs=inputs,steps=[],outputs=[],queries=[dict(name='check_'+str(i),sql=sql) for i,sql in enumerate(parity.MEMBER_CHECKS)])
     assert [reports['check_'+str(i)][0]['errors'] for i in range(2)]==case['errors']
+
+
+@pytest.mark.parametrize('effective_title',['Chosen title','Reading wins'])
+def test_publisher_witness_uses_canonical_kind_and_the_saved_source(tmp_path,effective_title):
+    expected=FIXTURE['publisher_witness_expected'];m=FIXTURE['integration']['members'][1]
+    body=m['body_key'].split('/')[-1][:-3];pk=dict(receipt_key='Utf8',receipt_line='Int64',capture_index='Int64')
+    source=dict(receipt_key='receipts/source',receipt_line=1,capture_index=0,source_id=m['source_id'],body_sha=body,filename=m['filename'],source_url=m['source_url'],import_date=None)
+    capture=dict(receipt_key=source['receipt_key'],receipt_line=1,capture_index=0,format='pdf',mode='fetch',complete=True,http_status=200,outcome='stored',url=m['source_url'],requested_url=m['source_url'],retrieved_at='2026-10-27T12:00:00Z',fidelity='exact-bytes',member_path=None,h_content_disposition=None)
+    role=dict(receipt_key=source['receipt_key'],receipt_line=1,capture_index=0,record_role='document',is_real_file=True)
+    inputs=[json_input(tmp_path,'capture_sources',[source],**pk,source_id='Utf8',body_sha='Utf8',filename='Utf8',source_url='Utf8',import_date='Utf8'),
+        json_input(tmp_path,'capture_evidence',[capture],**pk,**{k:'Utf8' for k in ['format','mode','outcome','url','requested_url','retrieved_at','fidelity','member_path','h_content_disposition']},complete='Boolean',http_status='Int64'),
+        json_input(tmp_path,'record_roles',[role],**pk,record_role='Utf8',is_real_file='Boolean'),
+        json_input(tmp_path,'page_facts',[],body_sha='Utf8',status='Utf8',fingerprint='Utf8',error_type='Utf8'),
+        json_input(tmp_path,'old_evidence_sources',[],doc='Utf8',source_id='Utf8',body_key='Utf8',filename='Utf8',source_url='Utf8'),
+        json_input(tmp_path,'new_evidence_sources',[dict(doc='new',**m)],doc='Utf8',source_id='Utf8',body_key='Utf8',filename='Utf8',source_url='Utf8'),
+        json_input(tmp_path,'new_wide_rows',[dict(doc='new',list_row=0,filename=m['filename'],body_hex=body)],doc='Utf8',list_row='Int32',filename='Utf8',body_hex='Utf8'),
+        json_input(tmp_path,'release_sources',[dict(list_row=0,url=m['source_url'],member_path=None,is_saved=True)],list_row='Int32',url='Utf8',member_path='Utf8',is_saved='Boolean'),
+        json_input(tmp_path,'source_filename_readings',[dict(source_id=m['source_id'],status='completed',document_kind=[])],source_id='Utf8',status='Utf8',document_kind=list_of('Utf8')),
+        json_input(tmp_path,'source_annotation_publisher',[dict(source_id=m['source_id'],document_kind=[expected['kind']],listing_title=expected['listing_title'])],source_id='Utf8',document_kind=list_of('Utf8'),listing_title='Utf8'),
+        json_input(tmp_path,'source_annotations',[dict(source_id=m['source_id'],title=effective_title)],source_id='Utf8',title='Utf8'),
+        json_input(tmp_path,'publisher_links',[dict(source_id=m['source_id'],page_body='a'*64,context=json.dumps([expected['listed_on'],None]),context_url=expected['listed_on'],text=expected['late_text'],doc_type=expected['raw_type'],link_index=0)],source_id='Utf8',page_body='Utf8',context='Utf8',context_url='Utf8',text='Utf8',doc_type='Utf8',link_index='Int64')]
+    cases=[dict(difference_id=name,field=field,subject=subject,value=value,direction='added',old_doc=None,new_doc='new') for name,field,subject,value in [
+        ('canonical-kind','document_kind','',expected['kind']),('raw-code','document_kind','',expected['raw_type']),
+        ('chosen-title','title','',expected['listing_title']),('late-title','title','',expected['late_text']),
+        ('page-url','source.listed_on',m['source_url'],expected['listed_on'])]]
+    inputs.append(json_input(tmp_path,'case_differences',cases,**{k:'Utf8' for k in cases[0]}))
+    available={item['name']:set(f['name'] for f in item['schema']['fields']) for item in inputs}
+    available['new_wide']={'doc','list_row','filename','saved_body'}
+    steps,missing=parity.model_witness_steps(available)
+    assert 'publisher_link_kind' not in missing
+    steps.insert(0,dict(name='new_wide',sql="SELECT doc,list_row,filename,decode(body_hex,'hex') AS saved_body FROM new_wide_rows",materialize=True))
+    steps.append(dict(name='observed_differences',sql='SELECT d.*,w.fact,w.evidence_ref FROM case_differences d JOIN witnesses w ON d.new_doc=w.new_doc AND d.subject=w.subject'))
+    steps+=parity.cause_steps()
+    reports=run_job(tmp_path,engine(),inputs=inputs,steps=steps,outputs=[],queries=[dict(name='causes',sql='SELECT DISTINCT difference_id,cause FROM known_causes ORDER BY difference_id')])
+    wanted=[dict(difference_id='canonical-kind',cause='publisher_link_kind'),dict(difference_id='page-url',cause='link_label_provenance')]
+    if effective_title==expected['listing_title']:wanted.insert(1,dict(difference_id='chosen-title',cause='link_label_provenance'))
+    assert reports['causes']==wanted

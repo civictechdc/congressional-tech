@@ -152,8 +152,8 @@
         "other_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "source_url": "https://fixture.test/twin",
         "other_source_url": "https://fixture.test/twin",
-        "fidelity": "saved_text",
-        "other_fidelity": "exact"
+        "fidelity": "saved-text",
+        "other_fidelity": "exact-bytes"
       },
       "expected_causes": [
         "saved_text_exact_twins"
@@ -264,6 +264,35 @@
       },
       "expected_causes": [
         "capture_header_names"
+      ]
+    },
+    {
+      "name": "reading_size_limit",
+      "field": "body_keys",
+      "direction": "removed",
+      "value": "body",
+      "fact": {
+        "complete": true,
+        "format": "html",
+        "reading_status": "size_limit",
+        "error_type": "stored_size_limit"
+      },
+      "expected_causes": [
+        "incomplete_damaged_failed_feed"
+      ]
+    },
+    {
+      "name": "link_label_page",
+      "field": "source.listed_on",
+      "direction": "added",
+      "value": "https://fixture.test/listing",
+      "fact": {
+        "label_basis": "saved_page",
+        "listed_on": "https://fixture.test/listing",
+        "link_text": "Other text"
+      },
+      "expected_causes": [
+        "link_label_provenance"
       ]
     }
   ],
@@ -920,5 +949,12 @@
         1
       ]
     }
-  ]
+  ],
+  "publisher_witness_expected": {
+    "kind": "committee-vote",
+    "listing_title": "Chosen title",
+    "listed_on": "https://fixture.test/listing",
+    "raw_type": "CV",
+    "late_text": "Late label"
+  }
 }
