@@ -196,6 +196,23 @@ def _signal_group(group,number,send,is_live):
         raise
 
 
+def _cleanup_child(child,send):
+    errors=[]
+    def attempt(operation):
+        try:
+            note=operation()
+            if isinstance(note,dict):errors.append(note)
+        except Exception as error:
+            errors.append(dict(type=type(error).__name__,message=str(error)))
+    if child.poll() is None:
+        attempt(lambda:send(signal.SIGTERM))
+        attempt(lambda:child.wait(timeout=5))
+    # A TERM-ignoring descendant may outlive the already-exited leader.
+    attempt(lambda:send(signal.SIGKILL))
+    attempt(lambda:child.wait(timeout=5))
+    return errors
+
+
 def monitor_command(command,*,work,physical_limit=16<<30,timeout=2700,min_free_bytes=15<<30,
                     scratch_root=None):
     """Run one owned batch process and record sampled RSS/physical footprint.
@@ -262,20 +279,8 @@ raise SystemExit(process.returncode)
             except Exception as error:
                 primary_error=error
                 failure=dict(type=type(error).__name__,message=str(error))
-                if child.poll() is None:
-                    try:
-                        note=_signal_group(child.pid,signal.SIGTERM,os.killpg,_group_is_live)
-                        if note:cleanup_errors.append(note)
-                    except OSError as cleanup:cleanup_errors.append(dict(type=type(cleanup).__name__,message=str(cleanup)))
-                    try:child.wait(timeout=5)
-                    except subprocess.TimeoutExpired:pass
-                # The group can outlive its leader when a descendant ignores TERM.
-                try:
-                    note=_signal_group(child.pid,signal.SIGKILL,os.killpg,_group_is_live)
-                    if note:cleanup_errors.append(note)
-                except OSError as cleanup:cleanup_errors.append(dict(type=type(cleanup).__name__,message=str(cleanup)))
-                try:child.wait(timeout=5)
-                except subprocess.TimeoutExpired:cleanup_errors.append(dict(type='TimeoutExpired',message='Owned group did not stop'))
+                cleanup_errors=_cleanup_child(child,
+                    lambda number:_signal_group(child.pid,number,os.killpg,_group_is_live))
             result=dict(returncode=child.poll(),seconds=time.monotonic()-started,
                 monitor_pid=os.getpid(),owned_pgid=child.pid,samples=samples,
                 sampled_peak_tree_rss=peak,sampled_peak_tree_physical_footprint=physical_peak,
