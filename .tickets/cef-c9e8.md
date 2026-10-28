@@ -29,3 +29,7 @@ Sniff binding 35315b74 covers all 14 DM formats, exact PDF ranges, the actual bo
 **2026-10-27T11:16:26Z**
 
 Owner-bounded extractor choice: Trafilatura on existing available evidence; no more comparisons. Current replay3425/0errors. Bounded native real-slice cache join found212HouseXML;12hash-checked readings complete. Selected available GovInfoZIP empty; EOT body absent. Semantic slice/grouping SQL and real registry seeds keep S1 open.
+
+**2026-10-28T05:11:54Z**
+
+Ownership transferred to site by owner decision 20261028T051000Z. Existing S1/E1 fixture and real-slice evidence retained; new feed-context regression fe45f84b/6b8968f6 reuses XML listing role and passes2native checks. Root keeps model SQL/S2 and does not restart S1/E1 fixtures.

@@ -277,8 +277,9 @@ def stage_captures(files, *, engine, work, existing=None, validated_counter=None
                              receipt_key='Utf8'))
     mapping=mapping_steps()
     steps+=mapping
-    steps.append(dict(name='source_counts',sql='''SELECT count(DISTINCT (receipt_key,receipt_line)) AS rows,
-        count(DISTINCT receipt_key) AS receipts FROM scalar_rows WHERE NOT is_secondary AND list_ordinal=0''',materialize=True))
+    steps.append(dict(name='source_counts',sql='''SELECT count(*) AS rows,count(DISTINCT receipt_key) AS receipts
+        FROM (SELECT receipt_key,receipt_line FROM scalar_rows WHERE NOT is_secondary AND list_ordinal=0
+              GROUP BY receipt_key,receipt_line)''',materialize=True))
     checks=capture_checks()
     violations=' UNION ALL '.join(f"SELECT {index} AS check_order,v.* FROM ({check['sql']}) v"
                                   for index,check in enumerate(checks))

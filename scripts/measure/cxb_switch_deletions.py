@@ -329,7 +329,7 @@ def seeds():
         group(18,'Disabled viewer workflow and cron',['.github/workflows/publish-filename-viewer.yml'],
             gate='Site F1 deletion commit or switch approval; do not remove weekly update job before B14'),
         group(19,'Engine archive-obsolete lifecycle surfaces',[
-            'src/cli_args.rs','src/engine/connected_components/sha256.rs','adapters/dagster/**',
+            'src/engine/connected_components/sha256.rs','adapters/dagster/**',
             'src/engine/remote_build_provider_tests*','src/engine/remote_build_provider_tests/**',
             'src/engine/remote_query_tests.rs','src/engine/remote_startup_tests.rs',
             'src/engine/backfill*','src/engine/backfill/**','src/engine/changes/retirement.rs',

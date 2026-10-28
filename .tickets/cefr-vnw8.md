@@ -42,3 +42,7 @@ Local F5 preparation complete at CT572ccb64/DS48636e5. Selected codex-raw/cxb_sw
 **2026-10-28T03:35:54Z**
 
 Final reviewed-generator refresh at CT7a1f5453/DS9b59263:19groups706files194221population lines, SHA9ec321ed588350719c2ef434dff3ced242081fb31ad788e8082bde4a41c699b5. Fixed-head regeneration byte-identical; verify stale=false/no scanned dirty source;6runner checks PASS0.13s. Selected scratch cxb_switch_deletions.json refreshed, old selections retained.19manual ranges/13manual branch splits remain switch gates, not authorized deletions. Engine must regenerate at final integration heads and measure actual cuts.
+
+**2026-10-28T04:14:12Z**
+
+Updated consolidated-BIND keep boundary b258f488/d156a6ff: active cli_args.rs excluded. Final-current selection CTd156a6ff/DS9b59263 SHA0cdcade164547350c2da4b31bcea7feb1dd73917362e7fedfbe5cf122bf24edd:19groups714files194822populationlines,19manualranges13branchsplits. Fixed-head regeneration byte-identical/verify stale=false;7runner checks PASS0.22s. Source artifacts remain preparation only; remeasure at next qualified engine head and actual switch. No cuts.

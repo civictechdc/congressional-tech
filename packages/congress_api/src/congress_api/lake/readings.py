@@ -104,8 +104,19 @@ def bundle_version(versions,*,policy):
         'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
         'resources':Path(__file__).parents[1]/'retention/process_resources.py'}
     files.update({name:ROOT/'model/sql'/(name+'.sql') for name in
-        ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts']})
+        ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','body-admissions']})
     return version_digest(packages={},files=files,values=dict(leaf_versions=versions,policy=policy))
+
+
+def writer_admission_step(*,root=ROOT):
+    """Derive current writer proofs from captures using the one versioned rule."""
+    return dict(name='body_admissions',sql=(Path(root)/'model/sql/body-admissions.sql').read_text(),materialize=True)
+
+
+def writer_admission_conflict_sql():
+    """Count contradictions between current writer proof and current byte facts."""
+    return """SELECT count(*) AS n FROM body_admissions a
+        JOIN sniff_facts s ON a.body_sha=s.body_sha WHERE a.format IS DISTINCT FROM s.format"""
 
 
 def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
@@ -152,12 +163,7 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         dict(name='active_unreadable',sql='''SELECT u.* FROM unreadable u
             WHERE NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)''')])
     if combined:
-        steps.append(dict(name='body_admissions',sql="""SELECT sha256 AS body_sha,
-            CASE WHEN bool_and(coalesce(bytes=0,false)) THEN 'empty' WHEN min(media_type)='text/vtt' THEN 'vtt' ELSE 'm3u8' END AS format,
-            'writer_format' AS basis FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256
-            HAVING bool_and(coalesce(bytes=0,false)) OR
-              (bool_and(coalesce(fidelity='saved-text',false)) AND count(media_type)=count(*) AND count(DISTINCT media_type)=1
-               AND min(media_type) IN ('text/vtt','application/vnd.apple.mpegurl','application/x-mpegurl'))""",materialize=True))
+        steps.append(writer_admission_step())
     candidate=(f"NOT EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha)" if parser=='sniff' else
                f"EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha AND f.format={quote(parser)})")
     if combined:
@@ -190,7 +196,9 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
             UNION ALL SELECT body_sha FROM sniff_conflicts)'''),
         dict(name='invalid_inventory',sql='''SELECT count(*) AS n FROM body_inventory
             WHERE body_sha IS NULL OR physical_key IS NULL OR relative_path IS NULL
-               OR stored_bytes IS NULL OR stored_bytes<0 OR stored_gzip IS NULL''')])
+               OR stored_bytes IS NULL OR stored_bytes<0 OR stored_gzip IS NULL''')]+([
+        dict(name='writer_admission_conflicts',sql=writer_admission_conflict_sql())]
+        if combined else []))
     if any(rows[0]['n'] for rows in checks.values()):
         raise ValueError('Conflicting or incomplete pinned body metadata')
     parsed=work/'parsed';parsed.mkdir()
