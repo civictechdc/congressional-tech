@@ -150,6 +150,17 @@ def test_private_ack_custody_rejects_replacement_even_with_a_valid_initial_alias
             {str(alias):custody_identity(alias)},acknowledgements={row['key']:custody})
 
 
+def test_private_ack_custody_keeps_a_deleted_import_mandatory(tmp_path):
+    from congress_api.lake.daily import _final_provenance
+    from congress_api.retention.provenance import imported_unreadable_provenance
+    store,imported,row=acknowledged_import(tmp_path)
+    public,custody=imported_unreadable_provenance(imported,store,row['path'])
+    Path(row['path']).unlink()
+    with pytest.raises(ValueError,match='[Aa]cknowledged|custody|changed'):
+        _final_provenance({k:[] for k in ['recoveries','reviews','unreadable']},store,[public],{},
+            acknowledgements={row['key']:custody})
+
+
 def test_initial_same_key_qualification_is_checked_before_any_path_preference(tmp_path):
     from congress_api.lake.daily import _final_provenance
     store,_,row=acknowledged_import(tmp_path)
