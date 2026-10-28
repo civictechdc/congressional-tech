@@ -22,6 +22,10 @@ test "$WINDOW_A_READY" -eq 1
 export REPO=civictechdc/congressional-tech
 export CLOUDFLARE_ACCOUNT_ID=174055408ff1560e60601c4d12c561c4
 export LANDING=/Users/mikewolfd/Work/wt/ct-landing-engine-first-20261028
+export PYTHON="$LANDING/.venv/bin/python"
+export PATH=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-release2/npm-11.19.1/bin:/Users/mikewolfd/.nvm/versions/node/v22.22.2/bin:$PATH
+test "$(node --version)" = v22.22.2
+test "$(npm --version)" = 11.19.1
 export RUNTIME_PACKET=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-coord/shared/linux-runtime-885e8c3
 export WINDOW=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-release2/lead-window
 mkdir "$WINDOW"
@@ -114,7 +118,7 @@ assert_no_local_publishers() {
 
 # Public operator helpers; no credentials are written here.
 declare -f dispatch_and_watch pause_and_drain assert_no_local_publishers > "$WINDOW/operator-functions.sh"
-printf 'export WINDOW=%q LANDING=%q REPO=%q\n' "$WINDOW" "$LANDING" "$REPO" > "$WINDOW/operator-context.sh"
+printf 'export WINDOW=%q LANDING=%q REPO=%q PYTHON=%q PATH=%q\n' "$WINDOW" "$LANDING" "$REPO" "$PYTHON" "$PATH" > "$WINDOW/operator-context.sh"
 
 # Lead only: refresh the target before its local merge; release never fetched.
 git -C "$LANDING" fetch origin main
@@ -219,7 +223,7 @@ The push is normal and fast-forward only; it never forces main. If main changed 
 
 The accepted immutable packet is `codex-coord/shared/seed-publish-2ebf773d/`. After A, copy its `publish.json` to `$WINDOW/accepted-publish-spec.json` and its `accepted-seed-manifest.json` to the same basename under `$WINDOW`. Exact copy commands: `cp -n "$SEED_PACKET/publish.json" "$WINDOW/accepted-publish-spec.json"` and `cp -n "$SEED_PACKET/accepted-seed-manifest.json" "$WINDOW/accepted-seed-manifest.json"`, with `SEED_PACKET` set to that absolute packet path. Verify SHA-256 respectively `127f93ad7a4d981132c4e552b932a9801176d318d1ef6391f08a6bad5c23aa0b` and `06bcc6f1f0f65b89cba5713ab0e5ed7577d0c6f8e8cb1299956e82a5da95f8e8`. Build the final source with `npm --prefix apps/site run build` before launch; its output path is pinned by the spec. The manifest reconciles 1,241,157 inputs: 936,580 listed, 281,200 merged and 23,377 reasoned exclusions (1.88%). Engine accepted the fifty-document comparison, canary, phone/desktop/404 checks and emulated targets.
 
-The seed is display-only (`seed: v5 catalog 596f08fa`); raw rebuilding remains separate. The lead supplies existing DOCSPEC credentials through the environment without printing them. Keep the A shell, or restore its public context and helper files. The first block launches once and returns; the second block only polls, then deploys Pages after acceptance. Poll again while running; an uncertain or failed attempt requires inspection, never a new launch.
+The seed is display-only (`seed: v5 catalog 596f08fa`); raw rebuilding remains separate. The lead supplies existing DOCSPEC credentials through the environment without printing them. Keep the A shell, or restore its public context and helper files. For a fresh shell, set `WINDOW=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-release2/lead-window` and run `source "$WINDOW/operator-context.sh"`. The context retains public paths and tool versions only; resupply credentials from the owner environment. The first block launches once and returns; the second block only polls, then deploys Pages after acceptance. Poll again while running; an uncertain or failed attempt requires inspection, never a new launch.
 
 ```sh
 set +x
@@ -232,6 +236,7 @@ test -s "$WINDOW/accepted-publish-spec.json"
 test -s "$WINDOW/previous-pipeline-revision.txt"
 test "$(shasum -a 256 "$WINDOW/accepted-publish-spec.json" | cut -d ' ' -f 1)" = 127f93ad7a4d981132c4e552b932a9801176d318d1ef6391f08a6bad5c23aa0b
 test "$(shasum -a 256 "$WINDOW/accepted-seed-manifest.json" | cut -d ' ' -f 1)" = 06bcc6f1f0f65b89cba5713ab0e5ed7577d0c6f8e8cb1299956e82a5da95f8e8
+source "$WINDOW/operator-context.sh"
 source "$WINDOW/operator-functions.sh"
 LANDED_APPLICATION=$(cat "$WINDOW/landed-application-commit.txt")
 export LANDED_APPLICATION
