@@ -347,10 +347,11 @@ class R2Store:
         def consume(response, stream):
             if pin is not None:
                 wanted=length if ranged else pin['bytes']
-                # LIST versions are opaque. MD5-only callers retain the prior
-                # normalized single-PUT comparison; an explicit version is exact.
-                version_matches=(response.get('ETag')==pin['etag'] if 'etag' in expected else
-                    single_put_md5(response.get('ETag'))==pin['md5'])
+                # LIST versions are opaque. A canonical captured-MD5 condition
+                # retains shared quote normalization through prefetch as well.
+                version_matches=(single_put_md5(response.get('ETag'))==pin['md5']
+                    if pin['md5'] is not None and pin['etag']=='"'+pin['md5']+'"' else
+                    response.get('ETag')==pin['etag'])
                 if (type(response.get('ContentLength')) is not int or response['ContentLength']!=wanted
                         or not version_matches):
                     raise ValueError('Pinned raw response changed')
