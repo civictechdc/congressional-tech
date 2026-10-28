@@ -3,7 +3,8 @@ name: Update committee data
 # Weekly pipeline. Raw caches (YouTube TinyDBs, Congress.gov meeting records)
 # and compact parsed committee-source state
 # live on the bot-owned `pipeline-data` branch, replaced by a single snapshot
-# commit each run so history doesn't grow. main only gets the small derived
+# commit each run so history doesn't grow; each save also keeps that snapshot in
+# the raw bucket (create-only bodies and a receipt). main only gets the small derived
 # CSVs. Every tool exits non-zero on any failure. Derived output commits require
 # success; committee raw state also preserves failed-refresh receipts and the
 # last usable result. Fetching is incremental, so the next run catches up.
@@ -40,8 +41,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.21"
       - name: Install packages
-        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/docspec_client -e packages/youtube_api -e packages/congress_api
+        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/docspec_client -e packages/youtube_api -e 'packages/congress_api[archive]'
 
       - name: Fetch YouTube channels
         id: youtube_fetch
@@ -60,6 +64,10 @@ jobs:
         # Preserve completed channel captures and incomplete scan markers even
         # when another channel or a later report fails.
         if: ${{ !cancelled() && (steps.youtube_fetch.outcome == 'success' || steps.youtube_fetch.outcome == 'failure') }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: "174055408ff1560e60601c4d12c561c4"
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: .github/scripts/save-pipeline-data.sh "YouTube fetch"
 
       - name: Commit outputs to ${{ github.ref_name }}
@@ -84,8 +92,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.21"
       - name: Install packages
-        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/docspec_client -e packages/youtube_api -e packages/congress_api
+        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/docspec_client -e packages/youtube_api -e 'packages/congress_api[archive]'
 
       - name: Fetch GPO hearing transcripts
         id: gpo
@@ -111,6 +122,10 @@ jobs:
       - name: Save pipeline data snapshot
         id: congress_snapshot
         if: ${{ !cancelled() && (steps.gpo.outcome == 'success' || steps.gpo.outcome == 'failure') }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: "174055408ff1560e60601c4d12c561c4"
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: .github/scripts/save-pipeline-data.sh "Congress.gov meetings and retained evidence"
 
       - name: Commit completed GPO hearings after partial failure
@@ -212,6 +227,10 @@ jobs:
         # raising. Persist that evidence even when a later reader/inventory fails;
         # do not save when setup/tests stopped the job before any reader ran.
         if: ${{ !cancelled() && (steps.house_records.outcome == 'success' || steps.house_records.outcome == 'failure') }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: "174055408ff1560e60601c4d12c561c4"
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: .github/scripts/save-pipeline-data.sh "Parsed committee records"
 
       - name: Commit outputs to ${{ github.ref_name }}
@@ -238,8 +257,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.11.21"
       - name: Install packages
-        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/docspec_client -e packages/youtube_api -e packages/congress_api
+        run: pip install -e packages/house-naming -e packages/committee_meeting -e packages/congress_shared -e packages/docspec_client -e packages/youtube_api -e 'packages/congress_api[archive]'
       - name: Refresh official committee metadata
         env:
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
@@ -247,4 +269,8 @@ jobs:
           congress-committees --meetings-path pipeline-data/congress_meetings.jsonl.gz \
             --gpo-path "$DATA_DIR/gpo_hearings.csv" --output-path pipeline-data/congress_committees.jsonl.gz
       - name: Save committee metadata
+        env:
+          CLOUDFLARE_ACCOUNT_ID: "174055408ff1560e60601c4d12c561c4"
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: .github/scripts/save-pipeline-data.sh "Official committee metadata"

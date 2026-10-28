@@ -84,8 +84,10 @@ def test_index_update_uses_read_etag_and_keeps_conflict_visible(key):
 def test_existing_body_is_preserved_and_receipt_name_collision_fails():
     c = client()
     data = b"compressed"
+    digest = hashlib.sha256(data).hexdigest()
+    body_key = f'bodies/sha256/{digest[:2]}/{digest}'
     with Stubber(c) as stub:
-        for key in ("bodies/sha256/a.gz", "receipts/documents/run.jsonl.gz"):
+        for key in (body_key, "receipts/documents/run.jsonl.gz"):
             stub.add_client_error(
                 "put_object",
                 service_error_code="PreconditionFailed",
@@ -95,12 +97,12 @@ def test_existing_body_is_preserved_and_receipt_name_collision_fails():
                     "Key": key,
                     "Body": data,
                     "ContentMD5": base64.b64encode(hashlib.md5(data).digest()).decode(),
-                    "ContentType": "application/gzip",
+                    "ContentType": "application/gzip" if key.endswith('.gz') else "application/octet-stream",
                     "IfNoneMatch": "*",
                 },
             )
         store = R2Store(c, "archive")
-        assert store.put("bodies/sha256/a.gz", data, immutable=True) is False
+        assert store.put(body_key, data, immutable=True) is False
         with pytest.raises(RuntimeError, match="reused receipt"):
             store.put("receipts/documents/run.jsonl.gz", data, immutable=True)
 

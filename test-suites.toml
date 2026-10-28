@@ -96,3 +96,12 @@ owner = "Filename-patterns experiment maintainers"
 requirements = "docs/experiments/filename-patterns-20261015/requirements.lock"
 rationale = "Historical research requires its separately frozen runtime and reviewed protocol. All fourteen test files run as active regressions; none are retained-only."
 purpose = "Reserved for deliberate research reproduction in an isolated environment; never inferred from regression success."
+
+[lanes.storage-loopback]
+roots = [
+    "packages/congress_api/tests/test_async_capture_native.py",
+    "packages/congress_api/tests/test_r2_body_files_native.py",
+]
+marker = "loopback"
+offline = false
+purpose = "Real S3 SDK transport against local HTTP fakes; no source-fetch binary or live storage."
