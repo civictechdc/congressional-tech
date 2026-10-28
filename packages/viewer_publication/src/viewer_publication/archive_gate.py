@@ -4,6 +4,14 @@ import re
 from viewer_publication.client import publish_manifest_pointer
 
 
+def validate_receipt(receipt, *, release_id, name):
+    """Require the measured reader result for this exact candidate."""
+    if not isinstance(receipt, dict) or receipt.get('status') != 'passed' or receipt.get('releaseId') != release_id:
+        raise ValueError(f'Archive {name} did not pass for the candidate')
+    if receipt.get('targets') != 'measured':
+        raise ValueError(f'Archive {name} requires measured-target qualification')
+
+
 def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_etag, canary, contract):
     """Callbacks run the shipped reader checks; any refusal prevents the flip.
 
@@ -17,10 +25,6 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
         raise ValueError('Outgoing release and pointer ETag must be pinned together')
     # Admit the local candidate before the publisher uploads and probes HTTPS.
     for name, check in [('contract', contract), ('canary', canary)]:
-        receipt = check()
-        if not isinstance(receipt, dict) or receipt.get('status') != 'passed' or receipt.get('releaseId') != release_id:
-            raise ValueError(f'Archive {name} did not pass for the candidate')
-        if receipt.get('targets') != 'measured':
-            raise ValueError(f'Archive {name} requires measured-target qualification')
+        validate_receipt(check(), release_id=release_id, name=name)
     return publish_manifest_pointer(client, bucket=bucket,
         pointer={'release_id': release_id, 'previous_release_id': previous_release_id}, expected_etag=expected_etag)
