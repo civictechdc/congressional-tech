@@ -1,6 +1,6 @@
 # D2 ranged raw readings
 
-The producer uses the existing `R2Store` and read-once worker. Each GET is
+The producer uses the existing `R2Store` and bounded persistent `ParserWorker` pool. Each GET is
 conditional on the selected physical object's captured stored MD5, or its exact
 listed ETag when captured MD5 is absent. Opaque and multipart ETags remain
 versions, not checksums. Range responses must
@@ -24,10 +24,10 @@ differences remain an owner gate. D2 reads its body identities independently,
 as directed by the lead. The first `full.spec.json` execute refused before any
 GET or write: 364,193 historical captures lacked stored size even though every
 selected key had a listed size and ETag. Preserve that failed work directory.
-The corrected fresh specs are `full-listed-size.plan.spec.json` and
-`full-listed-size.spec.json`, with distinct fresh plan and execute directories.
-The exact owner commands are in `full-listed-size-owner-commands.txt` beside
-them in the protocol scratch. The engine owner's complete native listing is
+The exact-key size correction allowed the owner to execute about 327 batches.
+The owner stopped that serial run before the parser pool was introduced; its
+committed readings remain valid. The current fresh production specs and
+monitor are under `$RAW/run2/d2-production-32/`. The engine owner's complete native listing is
 `$COORD/shared/body-listing-28f59cf4/listing.parquet`: 1,343,571 unique keys,
 with unchanged `key`, `size` and `etag` fields. The producer reads this directly
 through native SQL; it does not parse the original LIST JSON.
@@ -54,7 +54,7 @@ pending. A supplied selected inventory chooses the physical copy; its storage pi
 receive only exact-key listing enrichment. No suffix supplies a different suffix's checksum.
 
 The intended owner catalog is under `codex-raw/run2/rebuild-885/catalog`, with
-the empty local table `d2_full_0cb.readings` at
+the current local table `d2_full_0cb.readings` at
 `tables/readings_full_0cb`. The fresh specs retain the exact D1 snapshot; these
 paths alone do not establish data acceptance.
 
@@ -65,9 +65,9 @@ directories and the accepted spec written, run the metadata-only plan first:
 
 ```sh
 .venv/bin/python -I -m congress_api.cli.readings \
-  --engine-config "$RAW/run2/rebuild-885/runtime-domain.json" \
-  --spec "$RAW/run2/d2-ranged/full-listed-size.plan.spec.json" \
-  --mode backfill --plan --batch-size 32 \
+  --engine-config "$RAW/run2/d2-production-32/runtime.json" \
+  --spec "$RAW/run2/d2-production-32/plan.spec.json" \
+  --mode backfill --plan --batch-size 2048 --parser-workers 32 \
   --raw-bucket congressional-tech-raw \
   --body-listing "$COORD/shared/body-listing-28f59cf4/listing.parquet" \
   --raw-cache-bytes 4294967296 --raw-get-workers 64
@@ -88,26 +88,40 @@ body GET. The owner approved this exact-key listing fallback; no checksum is
 guessed and no unrecorded copy is selected. Known oversized page
 decisions that require no GET are excluded from this read-custody count.
 
-After the owner accepts coverage and supplies a fresh spec work directory,
-the live command is:
+The owner-only production command uses the existing detached monitor and fresh
+work/spec paths. Its exclusive launch and status files prevent a second copy:
 
 ```sh
-.venv/bin/python -I -m congress_api.cli.readings \
-  --engine-config "$RAW/run2/rebuild-885/runtime-domain.json" \
-  --spec "$RAW/run2/d2-ranged/full-listed-size.spec.json" \
-  --mode backfill --execute --batch-size 32 \
-  --raw-bucket congressional-tech-raw \
-  --body-listing "$COORD/shared/body-listing-28f59cf4/listing.parquet" \
-  --raw-cache-bytes 4294967296 --raw-get-workers 64
+.venv/bin/python -I "$RAW/run2/d2-production-32/cxb_owner_production.py" launch
 ```
 
-This second command is owner-gated: credentials are runtime environment only,
-and terminal parser failures can append unreadable provenance to raw storage.
-The 4 GiB cache budget leaves room within the agent scratch limit; GET
-concurrency is capped at 64. This cache limit is distinct from the owner's process-memory guard.
-The owner must run it under the approved process-memory and disk monitoring.
-Re-entry reads the current readings table and makes a new work list; retained
-cache files are evidence, not a resume journal.
+The monitor executes the same CLI with `--mode backfill --execute`,
+`--batch-size 2048 --parser-workers 32 --request-timings`, the complete body
+listing, a 4 GiB cache and the existing `d2_full_0cb.readings` table. It pins the
+runtime, spec and producer bytes before and after execution. The local profile
+allows 20 GiB native memory, 24 GiB sampled physical memory, at least 25 GiB free
+disk and at most 5 GiB of total owned scratch. The lead owns this live run:
+credentials stay in the runtime environment, and terminal parser failures can
+append unreadable provenance to raw storage. The lead checks the first committed
+batches and stops at a commit boundary if cold throughput falls below about
+40 bodies/second.
+
+Each parser has a 512 MiB cap and its own share of the range-cache budget.
+At most four inputs per worker are queued. Page prefetch reserves request slots
+for still-active range parsers, so their combined GET count stays at most 64.
+All parser processes close before native export and append. A fresh invocation
+reads the current readings table and unreadable inventory, then anti-joins once;
+cache files remain evidence rather than resume authority.
+
+The owner measured the same 6,144 inputs with three local 2,048-input commits:
+8, 16 and 32 workers reached 23.0, 65.2 and 98.4 bodies/second, with sampled
+physical peaks of 1.55, 2.62 and 4.73 GB. Later arms re-read objects that the
+first arm may have warmed at the R2 edge. Those measurements preceded the
+GET-slot correction in `4589322b`; the live run measures the corrected scheduler.
+All arms had zero transport read errors and zero unreadables, with 2, 1 and 1
+pending reads respectively. CLI success alone does not settle pending reads.
+The independent code review found only that GET-slot issue; its failing
+mixed-window fixture and 64 passing focused checks qualify the correction.
 
 For prefix-only bodies without an authoritative storage-encoding fact, the
 amended owner rule uses the held prefix and at most one conditional four-byte
