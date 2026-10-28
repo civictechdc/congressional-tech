@@ -8,6 +8,10 @@ Current variable readback is the previous `c949c6762f001845d2933e55cb9d7cf237e80
 
 B15 must already be on main before recording the rollback application commit. That preserves raw-before-push behavior even if the integration landing is rolled back. All Git operations below use the landing worktree, never the pinned rescue worktree.
 
+The lead also confirms that no local v6 publisher or opaque wrapper is running.
+The process gate covers the maintained CLI names; workflow pauses do not drain
+local commands. Let each publisher's owner finish or stop it safely before this window.
+
 ## Forward: upload, merge landing, set variable
 
 ```sh
@@ -18,7 +22,6 @@ test "$WINDOW_READY" -eq 1
 export REPO=civictechdc/congressional-tech
 export CLOUDFLARE_ACCOUNT_ID=174055408ff1560e60601c4d12c561c4
 export LANDING=/Users/mikewolfd/Work/wt/ct-landing-engine-first-20261028
-export CI=/Users/mikewolfd/Work/wt/ct-release2-ci
 export RUNTIME_PACKET=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-coord/shared/@RUNTIME_PACKET_NAME@
 export WINDOW=/private/tmp/claude-501/-Users-mikewolfd-Work/71969fc5-4a0f-4f4e-aa49-d2dd9f4c2272/scratchpad/codex-release2/lead-window
 mkdir "$WINDOW"
@@ -100,10 +103,21 @@ while IFS= read -r workflow_id; do
   done
 done < "$WINDOW/managed-workflow-ids.txt"
 
+# Local v6 publishers are separate from Actions and must also be drained.
+if pgrep -f '[p]ublish[-_]viewer[-_]r2|[p]ublish_local_preparation[.]py|[p]ublish-filename-viewer[.]py' \
+  > "$WINDOW/local-v6-publisher-pids.txt"; then
+  echo 'A local v6 publisher is active; its PIDs are retained in the window evidence.'
+  exit 1
+else
+  local_probe_status=$?
+  test "$local_probe_status" -eq 1
+fi
+
 # 1. Private binary upload is create-only and verifies complete readback.
-cd "$CI"
+cd "$LANDING"
 .venv/bin/python -I -m viewer_publication.publish_docspec_runtime \
   --upload --bucket congressional-tech-runtime --binary "$RUNTIME_PACKET/docspec" \
+  --expected-descriptor "$RUNTIME_PACKET/runtime-artifact.json" \
   --source-revision @SOURCE_REVISION@ --platform linux-amd64 \
   --output "$WINDOW/uploaded-runtime-artifact.json"
 jq -S . "$WINDOW/uploaded-runtime-artifact.json" > "$WINDOW/uploaded-canonical.json"
@@ -181,6 +195,11 @@ test ! -e "$WINDOW/data-activation-started"
 test -z "$(git -C "$LANDING" status --porcelain)"
 git -C "$LANDING" fetch origin main
 test "$(git -C "$LANDING" rev-parse origin/main)" = "$LANDED_APPLICATION"
+git -C "$LANDING" switch -c rollback/engine-first-20261028 "$LANDED_APPLICATION"
+git -C "$LANDING" restore --source="$PREVIOUS_APPLICATION" --staged --worktree -- .
+git -C "$LANDING" commit -m 'Restore the previous application with its qualified runtime' \
+  -m 'Roll back the integration landing as one forward commit; preserve the pre-window B15 raw safety repair and leave all stored data intact.'
+test "$(gh api "repos/$REPO/git/ref/heads/main" --jq .object.sha)" = "$LANDED_APPLICATION"
 gh variable set DOCSPEC_RUNTIME_ARTIFACT --repo "$REPO" \
   --body "$(cat "$WINDOW/previous-runtime-artifact.json")"
 case "$(cat "$WINDOW/previous-account-present.txt")" in
@@ -188,10 +207,6 @@ case "$(cat "$WINDOW/previous-account-present.txt")" in
   false) gh variable delete CLOUDFLARE_ACCOUNT_ID --repo "$REPO" ;;
   *) exit 1 ;;
 esac
-git -C "$LANDING" switch -c rollback/engine-first-20261028 "$LANDED_APPLICATION"
-git -C "$LANDING" restore --source="$PREVIOUS_APPLICATION" --staged --worktree -- .
-git -C "$LANDING" commit -m 'Restore the previous application with its qualified runtime' \
-  -m 'Roll back the integration landing as one forward commit; preserve the pre-window B15 raw safety repair and leave all stored data intact.'
 git -C "$LANDING" push origin HEAD:refs/heads/main
 gh variable get DOCSPEC_RUNTIME_ARTIFACT --repo "$REPO" > "$WINDOW/rollback-readback.json"
 jq -S . "$WINDOW/rollback-readback.json" > "$WINDOW/rollback-canonical.json"
