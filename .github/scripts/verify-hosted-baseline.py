@@ -30,8 +30,8 @@ def verify(run, log_lines, baseline, expected_head):
     run = run if isinstance(run, dict) else {}
     if not re.fullmatch('[0-9a-f]{40}', expected_head) or run.get('headSha') != expected_head:
         issues.append('Run head differs from the qualified application')
-    if run.get('event') != 'workflow_dispatch' or run.get('status') != 'completed' or run.get('conclusion') != 'failure':
-        issues.append('The completed workflow_dispatch run must remain visibly red')
+    if run.get('event') != 'workflow_dispatch' or run.get('status') != 'completed' or run.get('conclusion') not in {'failure', 'success'}:
+        issues.append('A completed workflow_dispatch result is required')
     jobs = run.get('jobs', [])
     jobs = [job for job in jobs if isinstance(job, dict)] if isinstance(jobs, list) else []
     jobs = [job for job in jobs if str(job.get('name', '')).startswith('Offline regressions')]
@@ -129,12 +129,18 @@ def verify(run, log_lines, baseline, expected_head):
                              selected_nodes=collection, runner_exits=statuses))
     observed = set().union(*failures.values())
     new, missing = sorted(observed - expected), sorted(expected - observed)
-    if new or missing:
-        issues.append('Failure identities differ from the pinned baseline')
-    return dict(accepted=not issues, hosted_status=(
-        'red on the 36 pre-existing baseline failures, no new failures' if not issues else 'not accepted'),
+    if new:
+        issues.append('Failure identities outside the pinned baseline are forbidden')
+    if run.get('conclusion') != ('failure' if observed else 'success'):
+        issues.append('Workflow conclusion differs from the retained test failures')
+    if observed:
+        status = ('red on the 36 pre-existing baseline failures, no new failures' if not missing else
+                  f'red on {len(observed)} pre-existing baseline failures, no new failures; {len(missing)} resolved')
+    else:
+        status = f'green: no failures; {len(missing)} baseline identities resolved'
+    return dict(accepted=not issues, hosted_status=status if not issues else 'not accepted',
         expected_head=expected_head, baseline=sorted(expected), observed=sorted(observed),
-        new=new, missing=missing, issues=issues, shards=recorded)
+        new=new, missing=missing, resolved=missing, issues=issues, shards=recorded)
 
 
 def main(argv=None):
