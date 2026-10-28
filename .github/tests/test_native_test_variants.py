@@ -110,8 +110,12 @@ def test_validation_installs_private_runtime_only_for_trusted_sources(tmp_path, 
     action = yaml.load((root / '.github/actions/setup-local-job-runtime/action.yml').read_text(), Loader=yaml.BaseLoader)
     assert '--local' in action['runs']['steps'][0]['run']
     assert any(step.get('run') == (
-        '.venv/bin/python scripts/dev.py test production-offline --shard ${{ matrix.shard }}/6 -- '
-        '--junitxml=${{ runner.temp }}/offline-${{ matrix.shard }}.xml')
+        'set +e\n'
+        '.venv/bin/python scripts/dev.py test production-offline --shard ${{ matrix.shard }}/6 -- \\\n'
+        '  -v --junitxml=${{ runner.temp }}/offline-${{ matrix.shard }}.xml\n'
+        'test_status=$?\n'
+        "printf 'CT_OFFLINE_EXIT_STATUS=%s\\n' \"$test_status\"\n"
+        'exit "$test_status"\n')
         for step in workflow['jobs']['offline']['steps'])
     # Exercise the maintained missing-artifact refusal before any download or export.
     spec = importlib.util.spec_from_file_location('landing_native_setup', root/'.github/scripts/setup-native-runtime.py')
