@@ -17,7 +17,7 @@ def blocks():
 
 
 def test_all_operator_blocks_have_valid_shell_syntax():
-    assert len(blocks()) == 4
+    assert len(blocks()) == 5
     for block in blocks():
         result = subprocess.run(['/bin/bash', '-n'], input=block, text=True, capture_output=True)
         assert result.returncode == 0, result.stderr
@@ -192,16 +192,17 @@ def test_baseline_mode_cannot_relax_the_publish_gate(dispatcher):
 
 
 def test_window_selects_only_the_lead_approved_hosted_baseline_gate():
-    assert 'dispatch_and_watch validate-explorer.yml --baseline-validation' in blocks()[0]
+    assert 'dispatch_and_watch validate-explorer.yml --baseline-validation' in blocks()[4]
     assert 'dispatch_and_watch validate-explorer.yml' not in blocks()[1]
     assert 'a real hosted green' not in WINDOW.read_text()
 
 
-def test_window_a_finishes_hosted_gate_before_its_durable_completion_marker():
+def test_window_a_finishes_its_local_gate_without_hosted_validation():
     forward = blocks()[0]
     assert 'WINDOW_A_READY=0' in forward or 'WINDOW_A_READY=1' in forward
     assert 'WINDOW_B_READY' not in forward
-    assert forward.index('dispatch_and_watch validate-explorer.yml --baseline-validation') < forward.index('touch "$WINDOW/window-a-complete"')
+    assert 'dispatch_and_watch validate-explorer.yml' not in forward
+    assert 'touch "$WINDOW/window-a-complete"' in forward
     assert 'operation=publish' not in forward
     assert 'dispatch_and_watch deploy-pages.yml' not in forward
 
@@ -323,3 +324,21 @@ else:raise AssertionError('Unexpected effect: '+repr(args))
     invoked=[json.loads(line) for line in calls.read_text().splitlines()]
     assert all(call[0]=='git' or call[1]=='api' for call in invoked)
     assert not (tmp_path/'post-data-rollback').exists()
+
+
+def test_hosted_ci_health_is_separate_and_requires_actual_green_with_zero_failures():
+    health=blocks()[4]
+    assert 'test -e "$WINDOW/window-a-complete"' in health
+    assert 'dispatch_and_watch validate-explorer.yml --baseline-validation' in health
+    assert '.observed == [] and .new == []' in health
+    assert 'hosted-validation-run.json' in health
+    assert '= success' in health
+
+
+def test_seed_publication_uses_only_the_local_existing_controller():
+    phase=blocks()[1]
+    assert '-m viewer_publication.archive_publish_job' in phase
+    assert '--execute' in phase
+    assert 'dispatch_and_watch archive-jobs.yml' not in phase
+    assert 'gh workflow enable archive-jobs.yml' not in phase
+    assert phase.index('local-publish/accepted.json') < phase.index('dispatch_and_watch deploy-pages.yml')
