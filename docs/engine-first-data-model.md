@@ -186,7 +186,7 @@ One row per body a line references (each `captures[]` entry or, on an older line
 | `requested_url`, `url` | string, nullable | Older lines take `_url`, `final_url`, `resolved_url` or `source_url`, the first present, when their ordinary address fields are absent. |
 | `context_url` | string, nullable | The source endpoint for this body. |
 | `member_path` | string, nullable | The endpoint is `(context_url, member_path)`. |
-| `h_content_disposition` | string, nullable | The flat download-name header: `record.response_headers["content-disposition"]`, else `record.response_headers["Content-Disposition"]`. The existing filename function reads it (§7.4). |
+| `h_content_disposition` | string, nullable | The flat download-name header: when root `writer.job` and `writer.commit` are both non-null, root `response_headers["content-disposition"]`, else root `response_headers["Content-Disposition"]`; then legacy `record.response_headers["content-disposition"]`, else `record.response_headers["Content-Disposition"]`. Unqualified root headers are ignored. The existing filename function reads it (§7.4). |
 | `http_status` | int, nullable | Final response status, from `http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses. |
 | `complete` | boolean, nullable | The entry's recorded completeness, else a recorded final-line value for the final response, else the older-line derivation below; `good_fetch` (§7.3) reads it. |
 | `retrieved_at` | timestamptz, nullable | Fetch time, with the older-entry fallbacks below. |
@@ -206,7 +206,7 @@ Everything else stays in raw and is read **on demand**; this table is the single
 | Raw evidence or derived value | Use |
 |---|---|
 | Prior attempts, their status and completeness | Read the pointed receipt when an individual attempt needs examination; bulk ingest does not expand or sort them. |
-| Other response headers, header items and `retry_after` | Retained in raw. Bulk ingest reads only the two flat download-name paths, not prior copies or `source_metadata`; scheduling uses the phase-1 intervals (§7.7). |
+| Other response headers, header items and `retry_after` | Retained in raw. Bulk ingest reads only the two flat download-name header names at the admitted root or legacy locations above, not prior copies or `source_metadata`; scheduling uses the phase-1 intervals (§7.7). |
 | `record_sha` and inline meeting records | D4, phase 2 ([[PHASE-2]] §1.2), which reads them once by their pointers. |
 | Other writer metadata and supplements, and `links` | Raw receipts and pinned producer/profile metadata retain these facts. |
 

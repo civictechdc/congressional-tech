@@ -118,3 +118,24 @@ def test_comparison_preserves_repeated_capture_occurrences(
     assert report['owner_gate'] is bool(old_only or new_only)
     assert pq.read_metadata(tmp_path/'comparison/old-only.parquet').num_rows==old_only
     assert pq.read_metadata(tmp_path/'comparison/new-only.parquet').num_rows==new_only
+
+
+def test_repeated_times_rank_by_utc_instant_without_losing_source_spelling(tmp_path):
+    from datetime import datetime
+    from congress_api.lake.capture_comparison import compare_old
+    base=dict(receipt_key='receipts/f/2026-10-20/run.gz',receipt_line=1,
+        pointer_json='[]',context_url='https://example.org/a',bytes=100,
+        stored_bytes=42,media_type='text/plain',fidelity='exact-bytes',http_status=200)
+    old_times=['2026-10-20T01:00:00+01:00','2026-10-20T00:30:00Z']
+    new_times=['2026-10-20T00:00:00+00:00','2026-10-20T00:30:00+00:00']
+    old=tmp_path/'old.parquet';new=tmp_path/'new.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(base,sha256='a'*64,reference_kind='capture',
+        retrieved_at=value) for value in old_times]),old)
+    rows=[dict(base,sha256=bytes.fromhex('a'*64),capture_index=index,
+        retrieved_at=datetime.fromisoformat(value)) for index,value in enumerate(new_times)]
+    pq.write_table(pa.Table.from_pylist(rows),new)
+    report=compare_old(new,old,engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        work=tmp_path/'comparison')
+    assert report['matched']==2 and report['unexplained']==0 and report['owner_gate'] is False
+    assert pq.read_metadata(tmp_path/'comparison/changed-fields.parquet').num_rows==0
+    assert pq.read_table(old)['retrieved_at'].to_pylist()==old_times

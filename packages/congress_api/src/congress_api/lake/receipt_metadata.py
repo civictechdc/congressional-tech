@@ -95,7 +95,7 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
         selected='true'
     paths=[prefix+(name,) for prefix in [(),('record',)] for name in SCALARS]
     paths += [prefix+path for prefix in [(),('record',)] for path in RECOVERY.values()]
-    paths += [('record',)+path for path in DOWNLOAD_HEADERS]
+    paths += [prefix+path for prefix in [(),('record',)] for path in DOWNLOAD_HEADERS]
     paths += [('captures',),('file_references',),('writer','job'),('writer','commit'),('error',),('record','error')]
     slots=projection('__raw_line',paths)
     def typed(name,kind,record=False):
@@ -113,6 +113,8 @@ def source_plan(*,counter=None,files=None,receipt_keys=None):
     records={name:typed(name,kind,True) for name,kind in SCALARS.items()}
     roots.update(writer_job=scalar(slots[('writer','job')],'str'),
                  writer_commit=scalar(slots[('writer','commit')],'str'))
+    roots['h_content_disposition']='CASE WHEN '+roots['writer_job']+' IS NOT NULL AND '+roots['writer_commit']+\
+        ' IS NOT NULL THEN coalesce('+','.join(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS)+') END'
     for fields,prefix in ((roots,()),(records,('record',))):
         fields['error_present']=get(slots[prefix+('error',)],kind='json')+' IS NOT NULL'
     for name,path in RECOVERY.items():

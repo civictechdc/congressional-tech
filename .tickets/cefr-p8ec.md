@@ -1,6 +1,6 @@
 ---
 id: cefr-p8ec
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T13:54:32Z
@@ -45,3 +45,7 @@ Acquisition review correction underway: transfer-only fetcher; receipt writer mu
 **2026-10-28T01:53:21Z**
 
 Review correction implemented after contract af44f627: acquisition returns transfer facts, then ReceiptWriter inspects only after body-store acknowledgement. Known read/resource failures retain exact durable body+receipt, stable sniff_error and unknown verdict; transfer complete/outcome and provider fallback stay unchanged. Successful capture-time sniff facts remain for D1/D2. Focused84 plus sniff/pending36 pass on approved486runtime; parent review pending. Archive-member inspection/expansion unchanged; no live action.
+
+**2026-10-28T03:34:02Z**
+
+Reopened durability concerns fixed: body PUT precedes sniffing; known inspection failure defers archive expansion and retains durable error receipt; source/member facts publish only for completed maintained-sniffer status. Contract-first fixes and CODE-approved0e0ab719. Combined104 focused checks PASS19.25s on9b59263; no live capture or network writes.

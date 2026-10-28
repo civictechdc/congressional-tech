@@ -8,7 +8,7 @@ from congress_api.retention.provenance import parquet_output, run_job
 
 
 RULES = {
-    'secondary_duplicates': 'Remove only a file/retained-file row duplicating a capture body on the same line and context; preserve other occurrences.',
+    'secondary_duplicates': 'Remove only a file/retained-file row duplicating a capture body on the same line and context whose non-null stored size and location agree with the target; preserve contradictions and other occurrences.',
     'http_status': 'A missing old status may be restored. Every changed or lost non-null status remains an owner gate, including possible old per-attempt/provider facts.',
     'retrieved_at': 'Compare equivalent UTC instants. Only a missing old time restored to a valid new time is accepted; invalid, lost or conflicting times remain owner gates.',
     'family_run': 'Compare old family and source_file directly with family and run_id. Missing values may be restored; never strip ci/ or invent a family equivalence.',
@@ -43,15 +43,15 @@ def compare_old(evidence, old_index, *, engine, work):
         sha = f'lower({sha})' if old else f"encode({sha},'hex')"
         raw_pointer = f'json_canonical({value(schema,"pointer_json")})'
         kind = value(schema,'reference_kind')
-        bodiless = f"({kind}='metadata' AND {sha} IS NULL AND {raw_pointer}='[]')" if old else 'false'
+        bodiless = f"coalesce({kind}='metadata' AND {sha} IS NULL AND {raw_pointer}='[]',false)" if old else 'false'
         pointer = f'CASE WHEN {bodiless} THEN cast(NULL AS VARCHAR) ELSE {raw_pointer} END' if old else raw_pointer
         cols = ['receipt_key','receipt_line',f'{sha} AS body_sha',f'{pointer} AS pointer',
                 f'{kind} AS reference_kind',f'{bodiless} AS qualified_bodiless',
                 value(schema,'family')+' AS family',
                 value(schema,'source_file' if old else 'run_id')+' AS run_id']
         if old:
-            member = (f"CASE WHEN {kind}='capture' AND position('\"archive_members\"' IN "
-                      f"coalesce({raw_pointer},''))>0 THEN {value(schema,'original_path')} END")
+            member = (f"CASE WHEN {kind}='capture' AND coalesce(array_has(json_get_array("
+                      f"{raw_pointer}),'\"archive_members\"'),false) THEN {value(schema,'original_path')} END")
             location = value(schema,'body_key')
         else:
             member = value(schema,'member_path')
@@ -75,10 +75,15 @@ def compare_old(evidence, old_index, *, engine, work):
               SELECT 1 FROM old_facts c WHERE c.receipt_key=o.receipt_key
                 AND c.receipt_line=o.receipt_line AND c.body_sha=o.body_sha
                 AND (c.context_url IS NOT DISTINCT FROM o.context_url)
-                AND c.reference_kind IN ('capture','embedded'))'''),
+                AND c.reference_kind IN ('capture','embedded'))
+            AND EXISTS (SELECT 1 FROM new_values n WHERE n.receipt_key=o.receipt_key
+                AND n.receipt_line=o.receipt_line AND n.body_sha=o.body_sha
+                AND (n.context_url IS NOT DISTINCT FROM o.context_url)
+                AND (o.stored_bytes IS NULL OR o.stored_bytes IS NOT DISTINCT FROM n.stored_bytes)
+                AND (o.body_key IS NULL OR o.body_key IS NOT DISTINCT FROM n.body_key))'''),
         dict(name='old_values',sql='SELECT * FROM old_facts WHERE old_row NOT IN (SELECT old_row FROM secondary_duplicates)')]
     occurrence_keys='receipt_key,receipt_line,body_sha,pointer'
-    occurrence_order='context_url,bytes,media_type,fidelity,http_status,retrieved_at,stored_bytes,family,run_id,member_path,body_key'
+    occurrence_order='context_url,bytes,media_type,fidelity,http_status,try_cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),stored_bytes,family,run_id,member_path,body_key'
     steps.extend([
         dict(name='old_normalized',sql=f'''SELECT *,row_number() OVER (
             PARTITION BY {occurrence_keys} ORDER BY {occurrence_order},old_row) AS occurrence

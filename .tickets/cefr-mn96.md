@@ -1,6 +1,6 @@
 ---
 id: cefr-mn96
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-10-27T14:08:33Z
@@ -25,3 +25,7 @@ Local done: exact-evidence repairs preserve ordinal/schema/old versions/counts a
 **2026-10-28T02:02:34Z**
 
 Retro-review requires actual measured stored SHA/size matching receipt assertion before repair eligibility. Contradictions retained and unmeasured candidates never become repairs; no added GETs beyond existing sample/orphans. Shared narrow native proof predicate before grouping preserves binary/order/count/CAS/source-pin guards.38 focused passed13.23s with48636e5; no real repairs/network writes. Await mandatory CODE/ARCH review before close.
+
+**2026-10-28T03:34:02Z**
+
+Measured proof ingress, conflicts, binary types, ordering and CAS covered by contract-first0f50a23f/58230b33; exact restore/apply guard preserved. Reviewed forward custody fix dc854def;40focused PASS13.31s and final combined104PASS19.25s on9b59263. Repair/restore application owner-gated with exact README commands; no real repair ran.
