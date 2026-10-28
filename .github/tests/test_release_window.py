@@ -126,3 +126,18 @@ def test_upload_is_bound_to_approved_bytes_and_the_guarded_checkout():
 def test_rollback_is_prepared_locally_before_remote_variables_change():
     rollback = blocks()[2]
     assert rollback.index('git -C "$LANDING" commit') < rollback.index('gh variable set')
+
+
+@pytest.mark.parametrize('status,expected', [(0,1),(1,0),(2,1)])
+def test_local_v6_publisher_gate_drains_and_refuses_probe_errors(tmp_path, status, expected):
+    forward = blocks()[0]
+    gate = re.search(r'# Local v6 publishers[^\n]*\n(.*?)\n# 1\. Private', forward, re.S)
+    assert gate is not None
+    assert forward.index(gate[0]) < forward.index('--upload --bucket')
+    tool = tmp_path / 'pgrep'
+    tool.write_text('#!/bin/bash\nif test "$PGREP_STATUS" = 0; then echo 123; fi\nexit "$PGREP_STATUS"\n')
+    tool.chmod(0o755)
+    result = subprocess.run(['/bin/bash'], input='set -euo pipefail\n' + gate[1], text=True,
+        env={**os.environ, 'PATH': str(tmp_path) + os.pathsep + os.environ['PATH'],
+             'WINDOW': str(tmp_path), 'PGREP_STATUS': str(status)}, capture_output=True)
+    assert (result.returncode == 0) == (expected == 0)
