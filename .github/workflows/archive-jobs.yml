@@ -21,7 +21,7 @@ permissions:
 
 # One workflow-level group protects all lake writers and release retention.
 concurrency:
-  group: archive-lake-and-publication
+  group: raw-source-mirror
   cancel-in-progress: false
   queue: max
 

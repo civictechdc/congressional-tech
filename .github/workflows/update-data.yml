@@ -19,8 +19,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: update-data
+  group: raw-source-mirror
   cancel-in-progress: false
+  queue: max
 
 env:
   CHANNELS_CSV: packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv
