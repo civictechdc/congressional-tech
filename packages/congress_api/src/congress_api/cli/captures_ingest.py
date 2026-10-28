@@ -19,9 +19,9 @@ def main(argv=None,*,engine_factory=None):
         help='Family to discover below receipt-root; repeat for each family')
     parser.add_argument('--inventory-mode',choices=['incremental','backfill','raw-check'],default='incremental',
         help='Incremental lists dated prefixes inclusively; backfill/raw-check also list non-date segments')
-    source=parser.add_mutually_exclusive_group()
-    source.add_argument('--validated-counter',type=Path)
-    source.add_argument('--metadata',type=Path)
+    parser.add_argument('--validated-counter',type=Path)
+    parser.add_argument('--source-qualifications',type=Path,
+        help='Reviewed JSON map of source paths to immutable creation or qualification manifests')
     parser.add_argument('--existing',type=Path)
     parser.add_argument('--old-index',type=Path)
     parser.add_argument('--engine-config',default=os.environ.get('DOCSPEC_JOB_CONFIG'))
@@ -47,6 +47,13 @@ def main(argv=None,*,engine_factory=None):
         parser.error('Choose an explicit inventory or discovered families')
     if not args.receipt_inventory and (not args.receipt_root or not args.receipt_family):
         parser.error('Discovery requires --receipt-root and at least one --receipt-family')
+    qualifications=None
+    if args.source_qualifications:
+        qualifications=json.loads(args.source_qualifications.read_text())
+        if (not isinstance(qualifications,dict)
+                or any(not isinstance(k,str) or not isinstance(v,str)
+                       for k,v in qualifications.items())):
+            parser.error('source qualifications must map source paths to manifest paths')
     engine=(engine_factory or NativeDatasets.from_config)(args.engine_config)
     if args.apply:
         try:
@@ -69,7 +76,7 @@ def main(argv=None,*,engine_factory=None):
             if relative.is_absolute() or '..' in relative.parts:
                 parser.error('Receipt keys must be relative raw keys')
             item['path']=str((args.receipt_root/relative).resolve())
-        if 'path' not in item and not (args.metadata or args.validated_counter):
+        if 'path' not in item and not args.validated_counter:
             parser.error('Local receipt inputs require --receipt-root or inventory paths')
         normalized.append(item)
     if args.receipt_inventory:
@@ -77,11 +84,11 @@ def main(argv=None,*,engine_factory=None):
     if not normalized:
         print(json.dumps(dict(stage=None,applied=False,no_work=True,receipts=0),sort_keys=True))
         return 0
-    # Native receipt file declarations accept only source key and local path;
-    # listing metadata remains in the preceding inventory job for inspection.
-    reader_files=[{k:item[k] for k in ('key','path') if k in item} for item in normalized]
-    stage=stage_captures(reader_files,engine=engine,work=args.work,
-                         existing=args.existing,counter=args.metadata,validated_counter=args.validated_counter)
+    # Keep explicit qualification references for admission; the stage passes
+    # only source keys and paths to the native receipt reader.
+    stage=stage_captures(normalized,engine=engine,work=args.work,
+                         existing=args.existing,validated_counter=args.validated_counter,
+                         source_qualifications=qualifications)
     comparison=None
     if args.old_index:
         comparison=compare_old(stage/'capture-evidence.parquet',args.old_index,

@@ -11,19 +11,19 @@ NARROW_COLUMNS = [
     'receipt_key', 'receipt_line', 'capture_index', 'run_id', 'mode', 'outcome',
     'family', 'requested_url', 'url', 'context_url', 'member_path', 'h_content_disposition', 'http_status',
     'complete', 'retrieved_at', 'sha256', 'bytes', 'media_type', 'fidelity',
-    'stored_suffix', 'stored_bytes', 'stored_md5', 'recovery_category',
-    'original_url', 'recovered_url', 'match_basis', 'evidence_sha256', 'imported_at',
+    'sniffed_format', 'sniff_version', 'intact', 'expansion', 'stored_suffix', 'stored_bytes', 'stored_md5', 'recovery_category',
+    'original_url', 'recovered_url', 'match_basis', 'evidence_sha256', 'imported_at', 'writer_job', 'writer_commit',
 ]
 
 
-def test_public_index_has_only_the_28_bulk_columns(tmp_path):
+def test_public_index_has_only_the_34_bulk_columns(tmp_path):
     stage = ingest(tmp_path, [dict(record=dict(url='https://example.test/a'),
                                     captures=[body()])])
     assert pq.read_schema(stage/'captures.parquet').names == NARROW_COLUMNS
 
 
 @pytest.mark.parametrize('complete', [True, False])
-def test_final_line_completeness_is_repeated_without_prior_or_member_borrowing(tmp_path, complete):
+def test_entry_completeness_precedes_root_and_selected_record(tmp_path, complete):
     source = dict(http_status=200, complete=complete, retrieved_at=STAMP,
         prior_attempts=[dict(http_status=206, complete=not complete)],
         record=dict(complete=not complete), captures=[
@@ -33,7 +33,7 @@ def test_final_line_completeness_is_repeated_without_prior_or_member_borrowing(t
                  pointer=['archive_members', 0, 'body'])])
     stage = ingest(tmp_path, [source])
     rows = pq.read_table(stage/'captures.parquet').to_pylist()
-    assert [row['complete'] for row in rows] == [complete]*3
+    assert [row['complete'] for row in rows] == [not complete, complete, not complete]
     assert [row['http_status'] for row in rows] == [200]*3
     assert [row['capture_index'] for row in rows] == [0, 1, 2]
 
@@ -45,24 +45,25 @@ def test_prior_header_writer_and_inline_payload_are_not_bulk_evidence(tmp_path):
         response_header_items=[dict(name='Retry-After', value='120'),
                                dict(name='Content-Disposition', value=marker*2000)],
         prior_attempts=[dict(complete=False, http_status=206, body=marker*2000)],
-        writer=dict(job=marker*2000, commit=marker),
+        writer=dict(job='capture-job', commit='a'*40, lockfile_digest=marker*2000),
         record=dict(meeting=dict(description=marker*2000)),
         captures=[body(attempt=0, complete=True) for _ in range(32)])
     stage = ingest(tmp_path, [source], key='receipts/congress/meetings/2026-10-20/run.jsonl.gz')
     rows = pq.read_table(stage/'captures.parquet').to_pylist()
+    assert {(row['writer_job'], row['writer_commit']) for row in rows} == {('capture-job', 'a'*40)}
     assert len(rows) == 32 and {row['outcome'] for row in rows} == {'retry_later'}
     assert marker not in str(pq.read_table(stage/'capture-evidence.parquet').to_pylist())
     job = json.loads((stage/'job.json').read_text())
     sql = '\n'.join(step['sql'] for step in job['steps'])
-    for excluded in ('prior_attempts', 'response_header_items',
+    for excluded in ('response_header_items',
                      '_ingest_writer', 'record_sha'):
         assert excluded not in sql
 
 
-def test_older_line_without_final_completeness_keeps_null(tmp_path):
+def test_entry_completeness_survives_without_final_completeness(tmp_path):
     stage = ingest(tmp_path, [dict(record=dict(http_status=200,
         prior_attempts=[dict(complete=False)]), captures=[body(complete=True)])])
-    assert pq.read_table(stage/'captures.parquet')['complete'].to_pylist() == [None]
+    assert pq.read_table(stage/'captures.parquet')['complete'].to_pylist() == [True]
 
 
 def test_headers_do_not_override_final_status_outcome(tmp_path):

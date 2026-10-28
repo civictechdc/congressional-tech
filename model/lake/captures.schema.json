@@ -62,30 +62,6 @@
       "type": "string"
     },
     {
-      "id": 10,
-      "name": "record_sha",
-      "required": false,
-      "type": "fixed[32]"
-    },
-    {
-      "id": 11,
-      "name": "http_status",
-      "required": false,
-      "type": "int"
-    },
-    {
-      "id": 12,
-      "name": "attempt_status",
-      "required": false,
-      "type": "int"
-    },
-    {
-      "id": 13,
-      "name": "complete",
-      "required": false,
-      "type": "boolean"
-    },
-    {
       "id": 14,
       "name": "context_url",
       "required": false,
@@ -98,22 +74,22 @@
       "type": "string"
     },
     {
-      "id": 16,
-      "name": "expansion",
-      "required": false,
-      "type": "string"
-    },
-    {
       "id": 17,
       "name": "h_content_disposition",
       "required": false,
       "type": "string"
     },
     {
-      "id": 18,
-      "name": "retry_after",
+      "id": 11,
+      "name": "http_status",
       "required": false,
-      "type": "timestamptz"
+      "type": "int"
+    },
+    {
+      "id": 13,
+      "name": "complete",
+      "required": false,
+      "type": "boolean"
     },
     {
       "id": 19,
@@ -164,22 +140,28 @@
       "type": "boolean"
     },
     {
+      "id": 16,
+      "name": "expansion",
+      "required": false,
+      "type": "string"
+    },
+    {
       "id": 27,
       "name": "stored_suffix",
       "required": false,
       "type": "string"
     },
     {
-      "id": 28,
-      "name": "stored_md5",
-      "required": false,
-      "type": "fixed[16]"
-    },
-    {
       "id": 29,
       "name": "stored_bytes",
       "required": false,
       "type": "long"
+    },
+    {
+      "id": 28,
+      "name": "stored_md5",
+      "required": false,
+      "type": "fixed[16]"
     },
     {
       "id": 30,

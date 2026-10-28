@@ -1,13 +1,12 @@
-"""Bounded receipt-key batches preserve native metadata and pinned outputs."""
+"""Narrow source helpers validate counters before native registration."""
 import gzip
 import json
-import os
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
+from capture_qualification_helpers import write_qualified_bytes,write_qualified_parquet
 
-from docspec_client.client import NativeDatasets
 
 
 def counter_fixture(tmp_path):
@@ -31,165 +30,29 @@ def counter_fixture(tmp_path):
                 __receipt_key=key,__receipt_line=line,__receipt_family='documents',
                 __raw_line=json.dumps(raw),__type_conflicts=[]))
             raw_rows.append(raw)
-        with gzip.open(path,'wt') as output:
-            output.write(''.join(json.dumps(raw)+'\n' for raw in raw_rows))
-        files.append(dict(key=key,path=str(path)))
+        data=gzip.compress(''.join(json.dumps(raw)+'\n' for raw in raw_rows).encode(),mtime=0)
+        qualification=write_qualified_bytes(path,data)
+        files.append(dict(key=key,path=str(path),qualification=qualification))
     counter=tmp_path/'counter.parquet'
-    pq.write_table(pa.Table.from_pylist(rows,schema=schema),counter,row_group_size=2)
+    write_qualified_parquet(pa.Table.from_pylist(rows,schema=schema),counter,row_group_size=2)
     return counter,files
 
 
-def engine():
-    return NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
-
-
-def test_batched_counter_matches_single_native_projection_and_pins_parts(tmp_path):
-    from congress_api.lake.receipt_metadata import compact, compact_counter, validate_metadata
-    counter,files=counter_fixture(tmp_path)
-    native=engine()
-    single=compact(counter=counter,engine=native,work=tmp_path/'single')
-    parts=compact_counter(counter,engine=native,work=tmp_path/'batched',receipt_batch_size=1)
-    assert parts.is_dir() and len(list(parts.glob('*.parquet')))==3
-    actual=pq.read_table(parts)
-    assert actual.equals(pq.read_table(single))
-    assert actual.num_rows==6
-    descriptor=validate_metadata(parts,engine=native)
-    assert descriptor['version']==2 and descriptor['kind']=='receipt-metadata'
-    assert descriptor['rows']==6 and descriptor['receipts']==3
-    assert descriptor['selection']['receipt_batch_size']==1
-    assert descriptor['selection']['receipt_keys']==[row['key'] for row in files]
-    assert [entry['path'] for entry in descriptor['files']]==sorted(entry['path'] for entry in descriptor['files'])
-    assert len(descriptor['source'])==1 and descriptor['source'][0]['path']==str(counter)
-    for batch in sorted((tmp_path/'batched/jobs').iterdir()):
-        job=json.loads((batch/'job.json').read_text())
-        steps={step['name']:step for step in job['steps']}
-        assert 'WHERE __receipt_key IN' in steps['counter']['sql']
-        assert not steps['counter'].get('materialize',False)
-        assert steps['small_records']['materialize'] is True
-        assert steps['root_metadata']['materialize'] is True
-    assert all('raw-payload' not in str(row) and 'prior prior' not in str(row)
-               for row in actual.to_pylist())
-
-
-def test_explicit_selection_is_native_and_empty_selection_has_valid_schema(tmp_path):
-    from congress_api.lake.receipt_metadata import compact_counter, validate_metadata
-    counter,files=counter_fixture(tmp_path)
-    native=engine()
-    selected=compact_counter(counter,engine=native,work=tmp_path/'selected',
-        receipt_keys=[files[1]['key']],receipt_batch_size=2)
-    assert pq.read_table(selected)['__receipt_key'].to_pylist()==[files[1]['key']]*2
-    assert validate_metadata(selected)['receipts']==1
-    empty=compact_counter(counter,engine=native,work=tmp_path/'empty',receipt_keys=[])
-    assert pq.read_table(empty).num_rows==0
-    assert pq.ParquetDataset(empty).schema==pq.ParquetDataset(selected).schema
-    assert validate_metadata(empty)['rows']==0
-    with pytest.raises(ValueError,match='not present'):
-        compact_counter(counter,engine=native,work=tmp_path/'missing',
-            receipt_keys=['receipts/documents/2026-10-20/missing.gz'])
-
-
-@pytest.mark.parametrize('size',[True,False,0,-1,1.5,'1',1025])
-def test_invalid_receipt_batch_size_refuses_before_stage_creation(tmp_path,size):
-    from congress_api.lake.receipt_metadata import compact_counter
-    with pytest.raises(ValueError,match='batch'):
-        compact_counter(tmp_path/'unopened-counter',engine=engine(),work=tmp_path/'refused',
-                        receipt_batch_size=size)
-    assert not (tmp_path/'refused').exists()
-
-
-def test_metadata_validation_refuses_changed_parts_definition_and_runtime(tmp_path):
-    from congress_api.lake.receipt_metadata import compact_counter, validate_metadata
+def test_source_projection_selects_disjoint_bulk_leaves(tmp_path):
+    from congress_api.lake.receipt_metadata import source_plan
     counter,_=counter_fixture(tmp_path)
-    parts=compact_counter(counter,engine=engine(),work=tmp_path/'batch')
-    manifest=tmp_path/'batch/metadata.json'
-    original=manifest.read_text();descriptor=json.loads(original)
-    descriptor['producer']['sha256']='0'*64
-    manifest.write_text(json.dumps(descriptor))
-    with pytest.raises(ValueError,match='producer'):
-        validate_metadata(parts)
-    descriptor=json.loads(original);descriptor['producer']['binary_sha256']='0'*64
-    manifest.write_text(json.dumps(descriptor))
-    with pytest.raises(ValueError,match='runtime'):
-        validate_metadata(parts,engine=engine())
-    manifest.write_text(original)
-    [part]=list(parts.glob('*.parquet'))
-    with part.open('ab') as output:
-        output.write(b'changed')
-    with pytest.raises(ValueError,match='pin'):
-        validate_metadata(parts)
+    plan=source_plan(counter=counter)
+    assert len(plan['inputs'])==1 and plan['inputs'][0]['path']==str(counter)
+    sql=plan['steps'][0]['sql']
+    assert 'json_get_many' in sql and "arrow_cast(json_get_json(__raw_line,'record'),'Utf8View')" in sql
+    for excluded in ('prior_attempts','response_header_items','lockfile_digest','record_sha'):
+        assert excluded not in sql
+    assert not plan['steps'][0].get('materialize',False)
 
 
-def test_prior_metadata_contains_only_real_array_attempts(tmp_path):
-    from congress_api.lake.receipt_metadata import metadata_plan
-    from congress_api.retention.provenance import run_job
-    counter,files=counter_fixture(tmp_path)
-    table=pq.read_table(counter);rows=table.to_pylist()
-    # Absent, null, empty and object-shaped values contain no array attempts.
-    # Explicit null elements of a real array still occupy their source slot.
-    values=[None,None,[],dict(http_status=200,complete=False),
-            [dict(http_status=206,complete=False)],[None,dict(http_status=503,complete=False)]]
-    for index,(row,value) in enumerate(zip(rows,values)):
-        source=json.loads(row['__raw_line']);source['record'].pop('prior_attempts',None)
-        if index:
-            source['record']['prior_attempts']=value
-            source['prior_attempts']=value
-        row['__raw_line']=json.dumps(source)
-    pq.write_table(pa.Table.from_pylist(rows,schema=table.schema),counter)
-    plan=metadata_plan(counter=counter)
-    boundary=next(index for index,step in enumerate(plan['steps']) if step['name']=='prior_metadata')
-    steps=plan['steps'][:boundary+1]
-    work=tmp_path/'prior';work.mkdir()
-    result=run_job(work,engine(),inputs=plan['inputs'],steps=steps,outputs=[],queries=[
-        dict(name='prior',sql='''SELECT receipt_key,receipt_line,record_index,
-            cast(prior_json AS VARCHAR) AS value FROM prior_metadata
-            ORDER BY receipt_key,receipt_line,record_index''')])['prior']
-    assert [(row['receipt_key'],row['receipt_line'],row['record_index']) for row in result]==[
-        (files[2]['key'],1,-1),(files[2]['key'],1,0),(files[2]['key'],2,-1),(files[2]['key'],2,0)]
-    for row in result:
-        attempts=json.loads(row['value'])
-        if row['receipt_line']==1:
-            assert len(attempts)==1 and attempts[0]['http_status']==206 and attempts[0]['complete'] is False
-        else:
-            assert len(attempts)==2 and all(value is None for value in attempts[0].values())
-            assert attempts[1]['http_status']==503 and attempts[1]['complete'] is False
-
-
-def test_prior_materialization_keeps_sparse_root_list_slots_and_public_facts(tmp_path):
-    from congress_api.lake.receipt_metadata import compact
-    from congress_api.lake.captures import stage_captures
-    from test_captures_ingest import body,STAMP
-    counter,files=counter_fixture(tmp_path)
-    table=pq.read_table(counter);rows=table.to_pylist()
-    source=[dict(record=dict(row['record'],complete=True),captures=[body()]) for row in rows]
-    for index,value in [(1,None),(2,[]),(3,dict(http_status=200,complete=False))]:
-        source[index]['record']['prior_attempts']=value
-        source[index]['prior_attempts']=value
-    source[4]['prior_attempts']=[dict(http_status=206,complete=False,content=dict(body='ignored-prior-body'*3000))]
-    source[4]['record']['prior_attempts']=[dict(http_status=208,complete=True)]
-    source[4]['captures']=[body(attempt=1),body(attempt=0)]
-    source[5]['record']=[dict(url='https://example.test/list/a',http_status=200,retrieved_at=STAMP,
-        prior_attempts=[None,dict(http_status=201,complete=True),dict(http_status=202,complete=False)]),
-        dict(url='https://example.test/list/b',http_status=200,retrieved_at=STAMP,
-        prior_attempts=[dict(http_status=203,complete=True)])]
-    source[5]['captures']=[body(attempt=1,pointer=[0,'content','body']),
-        body(attempt=2,pointer=['0','content','body']),body(attempt=3,pointer=[0,'content','body']),
-        body(attempt=1,pointer=[1,'content','body'])]
-    for row,raw in zip(rows,source):
-        row['__raw_line']=json.dumps(raw);row['captures']=raw['captures']
-    rows[5]['record']=None
-    pq.write_table(pa.Table.from_pylist(rows,schema=table.schema),counter)
-    native=engine()
-    metadata=compact(counter=counter,engine=native,work=tmp_path/'metadata')
-    narrow=pq.read_table(metadata).to_pylist()
-    assert all(row['line']['_ingest_prior_attempts_json'] is None for row in narrow[:4])
-    assert len(json.loads(narrow[4]['line']['_ingest_prior_attempts_json']))==1
-    assert [len(json.loads(record['_ingest_prior_attempts_json'])) for record in narrow[5]['record_values']]==[3,1]
-    assert all(value is None for value in json.loads(narrow[5]['record_values'][0]['_ingest_prior_attempts_json'])[0].values())
-    assert 'ignored-prior-body' not in str(narrow)
-    stage=stage_captures([dict(key=row['key']) for row in files],engine=native,work=tmp_path/'stage',counter=metadata)
-    actual=pq.read_table(stage/'captures.parquet')
-    assert actual.num_rows==10
-    assert actual['attempt_status'].to_pylist()==[200,200,200,200,206,200,None,201,202,203]
-    assert actual['complete'].to_pylist()==[True,True,True,True,False,True,True,True,False,True]
-    assert actual['http_status'].to_pylist()==[200]*10
-    assert actual['url'].to_pylist()[-4:]==['https://example.test/list/a']*3+['https://example.test/list/b']
+@pytest.mark.parametrize('operation',['plan','pins'])
+def test_source_directory_counter_refuses_before_registration(tmp_path,operation):
+    from congress_api.lake.receipt_metadata import source_plan,source_pins
+    directory=tmp_path/'counter';directory.mkdir()
+    with pytest.raises(ValueError,match='single.*file'):
+        (source_plan if operation=='plan' else source_pins)(counter=directory)

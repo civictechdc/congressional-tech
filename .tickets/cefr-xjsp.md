@@ -38,3 +38,15 @@ Shared seam adapters now fail closed: missing model/sql/url-keys.sql or default 
 **2026-10-27T21:48:25Z**
 
 Local scope complete: CODE/ARCH APPROVE including bounded shared-validator followup98abd12f; models-path bindingd64aecc3 passes69 focused checks18.32s (33scheduler/10profile/26import). Actual shared SQL/variants and persistent worker exercised with fake HTTP/local stores. Exact first-live command and release/Linux/budget prerequisites in docs/measurements/engine-first-20261027/f2/README.md; no live action ran.
+
+**2026-10-28T01:49:38Z**
+
+Owner retro-review reopened F2: contract-first fixtures require persist-before-inspection, capture-time sniff facts on returned receipt, drain queued work after discovery replan bound, and remove authored identity overrides. Local synthetic expected-red runner: 14 failed in 3.30s. No live HTTP/storage action, credentials, production branches or monkeypatch. Root retains review and live-run authority.
+
+**2026-10-28T01:53:21Z**
+
+Review correction implemented locally after contract af44f627: writer-enriched returned receipt drives discovery; discovery bound limits replans and drains planned queue; authored SQL/input override routes and unused finite fixture generator deleted. Actual-profile focused runner 84 passed in 15.44s; sniff/pending subset 36 passed in 1.67s using approved48636e5. Local fakes/stores only; no monkeypatch, live network/storage writes or credentials. Source total901->894 (fetcher158->155, writer132->150, scheduler522->508, CLI89->81). Independent parent CODE/ARCH review and broad group remain pending.
+
+**2026-10-28T03:34:02Z**
+
+Local review fixes complete: af44f627/6f2d9f80, archive-reopen refusal 714966f9/2f060977, completed-inspection facts 32ae2804/0e0ab719. Confirmed CODE/ARCH findings fixed forward; latest raw-writing correction CODE APPROVE. Combined real-profile scheduler/verifier/repair/fetcher/writer/archive group104PASS19.25s on approved9b59263 at9d250ef5, local fakes/stores only. Exact first-live owner command and Linux/release/budget gates remain README; no live run.

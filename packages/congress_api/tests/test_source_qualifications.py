@@ -2,7 +2,7 @@
 from hashlib import sha256
 import json
 import os
-from pathlib import Path
+import subprocess
 import sys
 
 import pytest
@@ -29,19 +29,22 @@ def admit(source, authority):
 
 @pytest.mark.parametrize('embedded_path', [True, False])
 def test_reuses_exact_authority_without_opening_source(tmp_path, embedded_path):
-    from congress_api.lake.receipt_metadata import recheck_source_pins
     source, authority, facts = qualified_source(tmp_path, embedded_path=embedded_path)
-    active = [True]
-    def deny_source(event, args):
-        if active[0] and event == 'open' and isinstance(args[0], (str, bytes, Path)):
-            if os.fsdecode(args[0]) == str(source):
-                raise AssertionError('Pinning opened source payload')
-    sys.addaudithook(deny_source)
-    try:
-        [pin] = admit(source, authority)
-        recheck_source_pins([pin])
-    finally:
-        active[0] = False
+    script = '''
+import json, os, sys
+from congress_api.lake.receipt_metadata import source_pins, recheck_source_pins
+source, authority = sys.argv[1:]
+def deny_source(event, args):
+    if event == 'open' and isinstance(args[0], (str, bytes)) and os.fsdecode(args[0]) == source:
+        raise AssertionError('Pinning opened source payload')
+sys.addaudithook(deny_source)
+pins = source_pins(files=[dict(path=source)], qualifications={source:authority})
+recheck_source_pins(pins)
+print(json.dumps(pins))
+'''
+    result = subprocess.run([sys.executable, '-I', '-c', script, str(source), str(authority)],
+                            capture_output=True, text=True, check=True)
+    [pin] = json.loads(result.stdout)
     assert (pin['path'], pin['sha256'], pin['size']) == (
         str(source), facts['sha256'], facts['size'])
     qualification = pin['qualification']
@@ -55,6 +58,7 @@ def test_reuses_exact_authority_without_opening_source(tmp_path, embedded_path):
 @pytest.mark.parametrize('value', [None, [], 'bad', {}, {'sha256':'a'*64},
     {'sha256':'g'*64,'size':15}, {'sha256':'a'*63,'size':15},
     {'sha256':'a'*64,'size':True}, {'sha256':'a'*64,'size':-1},
+    {'sha256':123,'size':15}, {'sha256':'a'*64,'size':15.0},
     {'sha256':'a'*64,'size':15,'rows':True},
     {'sha256':'a'*64,'size':15,'rows':1.5}])
 def test_malformed_qualification_refuses(tmp_path, value):
@@ -65,7 +69,8 @@ def test_malformed_qualification_refuses(tmp_path, value):
 
 
 @pytest.mark.parametrize('problem', ['json', 'size', 'path', 'relative-path',
-    'source-symlink', 'authority-symlink', 'authority-directory', 'authority-missing'])
+    'source-symlink', 'authority-symlink', 'authority-directory', 'authority-missing',
+    'source-directory', 'source-missing', 'oversize'])
 def test_invalid_binding_refuses(tmp_path, problem):
     source, authority, facts = qualified_source(tmp_path)
     if problem == 'json':
@@ -79,10 +84,13 @@ def test_invalid_binding_refuses(tmp_path, problem):
         moved = target.with_suffix('.original')
         target.rename(moved)
         target.symlink_to(moved)
+    elif problem == 'oversize':
+        authority.write_bytes(b' '*(1024*1024+1))
     else:
-        authority.unlink()
-        if problem == 'authority-directory':
-            authority.mkdir()
+        path = source if problem.startswith('source-') else authority
+        path.unlink()
+        if problem.endswith('-directory'):
+            path.mkdir()
     with pytest.raises((ValueError, OSError)):
         admit(source, authority)
 
@@ -122,7 +130,8 @@ def test_custody_drift_refuses_even_when_mtime_restored(tmp_path, target, mutati
 
 
 @pytest.mark.parametrize('target', ['source', 'authority'])
-def test_native_drift_refuses_before_public_export(tmp_path, target):
+@pytest.mark.parametrize('mutation_call', [1, 2])
+def test_native_drift_refuses_before_public_acceptance(tmp_path, target, mutation_call):
     from congress_api.lake.captures import stage_captures
     source, authority, _ = qualified_source(tmp_path)
     class MutatingEngine:
@@ -131,15 +140,47 @@ def test_native_drift_refuses_before_public_export(tmp_path, target):
         calls = 0
         def run_job(self, path):
             self.calls += 1
-            changed = source if target == 'source' else authority
-            changed.write_bytes(changed.read_bytes()+b'x')
-            return dict(queries=[dict(name='violations',data=[]),
-                dict(name='source_counts',data=[dict(rows=2,receipts=1)])])
+            if self.calls == mutation_call:
+                changed = source if target == 'source' else authority
+                changed.write_bytes(changed.read_bytes()+b'x')
+            return dict(outputs=[],queries=[dict(name='violations',data=[]),
+                dict(name='source_counts',data=[dict(rows=2,receipts=1)]),
+                dict(name='counts',data=[dict(rows=2,receipts=1)]),
+                dict(name='receipts',data=[dict(receipt_key='receipts/f/undated/one.gz')])])
     engine = MutatingEngine()
     work = tmp_path/'stage'
     with pytest.raises(ValueError, match='changed'):
         stage_captures([dict(key='receipts/f/undated/one.gz',path=str(source))],
             engine=engine,work=work,source_qualifications={str(source):str(authority)})
-    assert engine.calls == 1
-    assert not (work/'export').exists()
+    assert engine.calls == mutation_call
+    assert (work/'export').exists() == (mutation_call == 2)
     assert not (work/'ingested-receipts.json').exists()
+
+
+def test_authority_change_during_its_read_refuses(tmp_path):
+    source, authority, _ = qualified_source(tmp_path)
+    active = [True]
+    def mutate_authority(event, args):
+        if active[0] and event == 'open' and args[0] == str(authority):
+            active[0] = False
+            authority.write_text('{}')
+    sys.addaudithook(mutate_authority)
+    try:
+        with pytest.raises(ValueError, match='changed'):
+            admit(source, authority)
+    finally:
+        active[0] = False
+
+
+def test_missing_qualification_refuses_before_native_read(tmp_path):
+    from congress_api.lake.captures import stage_captures
+    source, _, _ = qualified_source(tmp_path)
+    class UnopenedEngine:
+        source_revision = 'fixture'
+        binary_sha256 = 'a'*64
+        def run_job(self, path):
+            raise AssertionError('Unqualified source reached native execution')
+    with pytest.raises(ValueError, match='qualification'):
+        stage_captures([dict(key='receipts/f/undated/one.gz',path=str(source))],
+            engine=UnopenedEngine(),work=tmp_path/'stage')
+    assert not (tmp_path/'stage/job.json').exists()

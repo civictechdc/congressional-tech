@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import stat
+import shutil
 
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
 from congress_api.retention.body_keys import body_object_digest
@@ -34,11 +35,8 @@ def current_version(parser):
     return version_digest(packages={},files={
         'parser':Path(__file__).parents[1]/'parsers/archive_readings.py',
         'xml_helper':Path(__file__).parents[1]/'parsers/xml.py',
-        'producer':Path(__file__), 'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
-        'resources':Path(__file__).parents[1]/'retention/process_resources.py',
         'lock':ROOT/'uv.lock','schema':ROOT/'model/lake/readings.schema.json'},
-        values=dict(parser=parser,stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES,
-                    memory_bytes=WORKER_MEMORY_BYTES,timeout_seconds=WORKER_TIMEOUT_SECONDS))
+        values=dict(parser=parser,stored_bytes=MAX_STORED_BYTES,decoded_bytes=MAX_DECODED_BYTES))
 
 
 def parse_payload(payload):
@@ -93,19 +91,43 @@ def _reading_fields():
     return result
 
 
+def worker_limits():
+    """Name the exact resource policy passed to the supervised producer."""
+    return dict(timeout_seconds=WORKER_TIMEOUT_SECONDS,memory_bytes=WORKER_MEMORY_BYTES,
+                max_input_bytes=65536,max_output_bytes=8<<20)
+
+
+def bundle_version(versions,*,policy):
+    """Pin combined failure authority without invalidating completed leaf facts."""
+    from congress_api.lake.versions import version_digest
+    files={'producer':Path(__file__),
+        'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
+        'resources':Path(__file__).parents[1]/'retention/process_resources.py'}
+    files.update({name:ROOT/'model/sql'/(name+'.sql') for name in
+        ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts']})
+    return version_digest(packages={},files=files,values=dict(leaf_versions=versions,policy=policy))
+
+
 def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
           sniff_version=None,parser_version=None,existing=None,unreadable_files=(),
           worker_factory=ParserWorker,unreadable_store=None):
-    """Stage missing body readings; never commit a table or write real raw data."""
+    """Stage missing readings; raw decisions require an explicitly supplied store."""
     instant(decided_at)
-    version=current_version(parser)
+    combined=parser is None
+    versions={p:current_version(p) for p in ['sniff','html','xml','json']}
+    limits=worker_limits()
+    version=(bundle_version(versions,policy=limits) if combined else versions[parser])
+    parser='readings' if combined else parser
     if parser_version is not None and parser_version!=version:
         raise ValueError('Parser version does not match its current definition')
+    if combined and sniff_version is not None and sniff_version!=versions['sniff']:
+        raise ValueError('Combined sniff version must match the current definition')
     if sniff_version is None:
-        sniff_version=current_version('sniff')
+        sniff_version=versions['sniff']
     work=Path(work).resolve();work.mkdir(parents=True,exist_ok=False)
     raw=Path(local_root).resolve()
-    inputs=[dict(name='captures',kind='parquet',path=str(Path(captures).resolve())),
+    inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in ({**versions,'sniff':sniff_version} if combined else {'sniff':sniff_version}).items()],parser='Utf8',version='Utf8'),
+            dict(name='captures',kind='parquet',path=str(Path(captures).resolve())),
             dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve()))]
     unreadable_schema=dict(id='Utf8',body_sha256='Utf8',parser='Utf8',parser_version='Utf8',supersedes='Utf8')
     if unreadable_files:
@@ -123,23 +145,49 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         steps.append(dict(name='existing',sql='SELECT decode(body_hex,\'hex\') AS body_sha,* FROM existing_json'))
     steps.extend([
         dict(name='bodies',sql='SELECT DISTINCT sha256 AS body_sha FROM captures WHERE sha256 IS NOT NULL',materialize=True),
-        dict(name='known_formats',sql=f'''SELECT body_sha,format FROM existing WHERE parser='sniff'
-            AND parser_version={quote(sniff_version)} AND status='completed' '''),
+        dict(name='readings',sql='SELECT * FROM existing'),
+        *[dict(name=name.replace('-','_'),sql=(ROOT/'model/sql'/(name+'.sql')).read_text())
+          for name in ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts']],
+        dict(name='known_formats',sql='SELECT body_sha,format FROM sniff_facts'),
         dict(name='active_unreadable',sql='''SELECT u.* FROM unreadable u
             WHERE NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)''')])
+    if combined:
+        steps.append(dict(name='body_admissions',sql="""SELECT sha256 AS body_sha,
+            CASE WHEN bool_and(coalesce(bytes=0,false)) THEN 'empty' WHEN min(media_type)='text/vtt' THEN 'vtt' ELSE 'm3u8' END AS format,
+            'writer_format' AS basis FROM captures WHERE sha256 IS NOT NULL GROUP BY sha256
+            HAVING bool_and(coalesce(bytes=0,false)) OR
+              (bool_and(coalesce(fidelity='saved-text',false)) AND count(media_type)=count(*) AND count(DISTINCT media_type)=1
+               AND min(media_type) IN ('text/vtt','application/vnd.apple.mpegurl','application/x-mpegurl'))""",materialize=True))
     candidate=(f"NOT EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha)" if parser=='sniff' else
                f"EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha AND f.format={quote(parser)})")
-    sql=f'''SELECT b.body_sha,i.physical_key,i.relative_path,i.stored_bytes,i.stored_gzip
-        FROM bodies b LEFT JOIN body_inventory i ON b.body_sha=i.body_sha
+    if combined:
+        steps.append(dict(name='settled_parsers',sql="""SELECT body_sha,array_agg(DISTINCT parser) AS parsers FROM (
+            SELECT body_sha,parser FROM pinned_readings UNION
+            SELECT decode(u.body_sha256,'hex') AS body_sha,u.parser FROM active_unreadable u
+            JOIN parser_versions v ON u.parser=v.parser AND u.parser_version=v.version
+            WHERE u.body_sha256 IS NOT NULL) GROUP BY body_sha""",materialize=True))
+        candidate="""NOT EXISTS(SELECT 1 FROM body_admissions a WHERE a.body_sha=b.body_sha) AND
+         ((NOT EXISTS(SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha) AND NOT EXISTS(
+           SELECT 1 FROM settled_parsers sp WHERE sp.body_sha=b.body_sha AND array_has(sp.parsers,'sniff'))) OR EXISTS(
+          SELECT 1 FROM known_formats f WHERE f.body_sha=b.body_sha AND f.format IN ('html','xml','json')
+          AND NOT EXISTS(SELECT 1 FROM existing e JOIN parser_versions v ON e.parser=v.parser AND e.parser_version=v.version
+              WHERE e.body_sha=f.body_sha AND e.parser=f.format)
+          AND NOT EXISTS(SELECT 1 FROM active_unreadable u JOIN parser_versions v ON u.parser=v.parser AND u.parser_version=v.version
+              WHERE u.body_sha256=encode(f.body_sha,'hex') AND u.parser=f.format)))"""
+    extra=""",(SELECT max(format) FROM known_formats f WHERE f.body_sha=b.body_sha) AS known_format,
+       sp.parsers AS skip_parsers""" if combined else ''
+    settled_join=' LEFT JOIN settled_parsers sp ON b.body_sha=sp.body_sha' if combined else ''
+    sql=f'''SELECT b.body_sha,i.physical_key,i.relative_path,i.stored_bytes,i.stored_gzip{extra}
+        FROM bodies b LEFT JOIN body_inventory i ON b.body_sha=i.body_sha{settled_join}
         WHERE {candidate} AND NOT EXISTS(SELECT 1 FROM existing e WHERE e.body_sha=b.body_sha
           AND e.parser={quote(parser)} AND e.parser_version={quote(version)})
         AND NOT EXISTS(SELECT 1 FROM active_unreadable u WHERE u.body_sha256=encode(b.body_sha,'hex')
           AND u.parser={quote(parser)} AND u.parser_version={quote(version)})'''
     checks=run_job(work,engine,inputs=inputs,steps=steps,
-        outputs=[parquet_output(work,'work-list',sql,['body_sha'])],queries=[
+        outputs=[parquet_output(work,'work-list',sql,['body_sha'])]+([parquet_output(work,'body-admissions','SELECT * FROM body_admissions',['body_sha'])] if combined else []),queries=[
         dict(name='conflicts',sql='''SELECT count(*) AS n FROM (
             SELECT body_sha FROM body_inventory GROUP BY body_sha HAVING count(*)>1
-            UNION ALL SELECT body_sha FROM known_formats GROUP BY body_sha HAVING count(DISTINCT format)>1)'''),
+            UNION ALL SELECT body_sha FROM sniff_conflicts)'''),
         dict(name='invalid_inventory',sql='''SELECT count(*) AS n FROM body_inventory
             WHERE body_sha IS NULL OR physical_key IS NULL OR relative_path IS NULL
                OR stored_bytes IS NULL OR stored_bytes<0 OR stored_gzip IS NULL''')])
@@ -149,9 +197,8 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     decisions_path=parsed/'unreadable.jsonl'
     counters=dict(pending_reads=0,read_bytes=0,unreadable=0)
     def rows():
-        with worker_factory(parser,version,'congress_api.lake.readings:parse_payload',
-                timeout_seconds=WORKER_TIMEOUT_SECONDS,memory_bytes=WORKER_MEMORY_BYTES,
-                max_input_bytes=65536) as worker,decisions_path.open('x') as decisions:
+        with worker_factory(parser,version,'congress_api.lake.readings:'+('parse_once_payload' if combined else 'parse_payload'),
+                **limits) as worker,decisions_path.open('x') as decisions:
             for item in parquet_records(work/'work-list.parquet'):
                 if item['physical_key'] is None:
                     counters['pending_reads']+=1;continue
@@ -164,32 +211,41 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
                 body_hex=item['body_sha'].hex()
                 if body_object_digest(item['physical_key'])!=body_hex:
                     raise ValueError('Pinned physical key names a different body')
-                if parser!='sniff' and item['stored_bytes']>MAX_STORED_BYTES:
-                    value=dict(status='size_limit',error_type='stored_size_limit')
-                else:
-                    payload=json.dumps(dict(path=str(path),parser=parser,stored_bytes=item['stored_bytes'],
-                        stored_gzip=item['stored_gzip']),separators=(',',':')).encode()
-                    outcome=worker.parse(body_hex,payload)
-                    if outcome['status']=='read_error':
-                        counters['pending_reads']+=1;continue
-                    if outcome['status']=='unreadable':
-                        identity=json.dumps([body_hex,parser,version,decided_at],separators=(',',':'))
-                        record=dict(id=sha256(identity.encode()).hexdigest(),body_sha256=body_hex,
-                            parser=parser,parser_version=version,reason=outcome['reason'],
-                            decided_by='readings',decided_at=decided_at,supersedes=None)
-                        encoded=json.dumps(record,separators=(',',':'))+'\n'
-                        decisions.write(encoded)
-                        counters['unreadable']+=1;continue
-                    if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
-                    response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
-                    if response.get('read_error'):
-                        counters['pending_reads']+=1;continue
-                    value=response['row']
-                value=dict(value,body_hex=body_hex,parser=parser,parser_version=version,
-                    fingerprint_hex=value.get('fingerprint'),named_meetings=value.get('named_meetings',[]),
-                    links=value.get('links',[]),fields=value.get('fields',[]))
-                value.pop('fingerprint',None)
-                yield value
+                cache=work/'body-bytes'/body_hex if combined else None
+                try:
+                    if not combined and parser!='sniff' and item['stored_bytes']>MAX_STORED_BYTES:
+                        value=dict(status='size_limit',error_type='stored_size_limit')
+                    else:
+                        payload=json.dumps(dict(path=str(path),parser=parser,stored_bytes=item['stored_bytes'],
+                            stored_gzip=item['stored_gzip']),separators=(',',':')).encode()
+                        if combined:
+                            payload=json.dumps(dict(path=str(path),cache=str(cache),stored_bytes=item['stored_bytes'],
+                                stored_gzip=item['stored_gzip'],versions=versions,known_format=item['known_format'],
+                                skip_parsers=sorted(set(item['skip_parsers'] or []) | ({'sniff'} if item['known_format'] is not None else set()))),separators=(',',':')).encode()
+                        outcome=worker.parse(body_hex,payload)
+                        if outcome['status']=='read_error':
+                            counters['pending_reads']+=1;continue
+                        if outcome['status']=='unreadable':
+                            identity=json.dumps([body_hex,parser,version,decided_at],separators=(',',':'))
+                            record=dict(id=sha256(identity.encode()).hexdigest(),body_sha256=body_hex,
+                                parser=parser,parser_version=version,reason=outcome['reason'],
+                                decided_by='readings',decided_at=decided_at,supersedes=None)
+                            encoded=json.dumps(record,separators=(',',':'))+'\n'
+                            decisions.write(encoded)
+                            counters['unreadable']+=1;continue
+                        if outcome['status']!='completed':raise ValueError('Invalid reading worker outcome')
+                        response=outcome['value'];counters['read_bytes']+=response.get('read_bytes',0)
+                        if response.get('read_error'):
+                            counters['pending_reads']+=1;continue
+                        value=response.get('rows') if combined else response['row']
+                    for value in (value if combined else [value]):
+                        value=dict(value,body_hex=body_hex,parser=value.get('parser',parser),parser_version=value.get('parser_version',version),
+                            fingerprint_hex=value.get('fingerprint'),named_meetings=value.get('named_meetings',[]),
+                            links=value.get('links',[]),fields=value.get('fields',[]))
+                        value.pop('fingerprint',None)
+                        yield value
+                finally:
+                    if cache is not None and cache.exists():shutil.rmtree(cache)
     source=json_input(parsed,'parsed_readings',rows(),**_reading_fields())
     columns=["arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha",
              *[f'cast({name} AS DATE) AS {name}' if name=='content_date' else name for name in STRINGS],
@@ -211,7 +267,13 @@ def stage(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         key=imported['key']
     return dict(readings=work/'readings.parquet',work_list=work/'work-list.parquet',
         parser=parser,parser_version=version,unreadable_key=key,unreadable_path=path,
-        unreadable_stage=unreadable_stage,unreadable_pending=pending,**counters)
+        unreadable_stage=unreadable_stage,unreadable_pending=pending,
+        body_admissions=work/'body-admissions.parquet' if combined else None,**counters)
+
+
+def stage_once(**kwargs):
+    """Stage sniff and page evidence from one cached read per body."""
+    return stage(**kwargs,parser=None)
 
 
 def create_table(**kwargs):
@@ -229,3 +291,99 @@ def append(staged,**kwargs):
     from congress_api.lake.tables import append_rows
     return append_rows(staged['readings'],**kwargs,keys=PK,
         definition='readings:'+staged['parser']+':'+staged['parser_version'])
+
+
+class _ReadOnceBody:
+    """Keep disjoint bounded byte ranges for supervised parser retries."""
+    def __init__(self,path,cache,stored_bytes):
+        import re
+        self.path=Path(path);self.cache=Path(cache);self.cache.mkdir(parents=True,exist_ok=True)
+        self.source=None;self.size=stored_bytes;self.ranges=[]
+        with reading_input():
+            observed=self.path.stat()
+        if not stat.S_ISREG(observed.st_mode) or observed.st_size!=stored_bytes:
+            raise OSError('changed_input')
+        self.identity=[observed.st_dev,observed.st_ino,observed.st_size,observed.st_mtime_ns,observed.st_ctime_ns]
+        pin=self.cache/'identity.json'
+        if pin.exists():
+            if json.loads(pin.read_text())!=self.identity:raise OSError('changed_input')
+        else:pin.write_text(json.dumps(self.identity))
+        for path in self.cache.glob('*.bin'):
+            match=re.fullmatch(r'(\d+)-(\d+)\.bin',path.name)
+            if not match:raise OSError('invalid_range_cache')
+            start,end=map(int,match.groups())
+            if not 0<=start<end<=self.size or path.stat().st_size!=end-start:
+                raise OSError('invalid_range_cache')
+            self.ranges.append((start,end,path))
+        self.ranges.sort()
+
+    def close(self):
+        if self.source is not None:self.source.close()
+
+    @property
+    def read_bytes(self):
+        return sum(end-start for start,end,_ in self.ranges)
+
+    def read(self,start,length):
+        if not 0<=start<=start+length<=self.size:raise OSError('invalid_range')
+        cursor=start;end=start+length;pieces=[]
+        while cursor<end:
+            cached=next((item for item in self.ranges if item[0]<=cursor<item[1]),None)
+            if cached:
+                left,right,path=cached;stop=min(end,right)
+                with reading_input(),path.open('rb') as stream:
+                    stream.seek(cursor-left);piece=stream.read(stop-cursor)
+                if len(piece)!=stop-cursor:raise OSError('short_cache_read')
+            else:
+                stop=min([end]+[left for left,_,_ in self.ranges if left>cursor])
+                with reading_input():
+                    if self.source is None:
+                        self.source=self.path.open('rb')
+                        observed=os.fstat(self.source.fileno())
+                        current=[observed.st_dev,observed.st_ino,observed.st_size,observed.st_mtime_ns,observed.st_ctime_ns]
+                        if current!=self.identity:raise OSError('changed_input')
+                    self.source.seek(cursor);piece=self.source.read(stop-cursor)
+                    if len(piece)!=stop-cursor:raise OSError('short_read')
+                    path=self.cache/f'{cursor}-{stop}.bin';pending=path.with_suffix('.pending')
+                    pending.write_bytes(piece);pending.replace(path)
+                self.ranges.append((cursor,stop,path));self.ranges.sort()
+            pieces.append(piece);cursor=stop
+        return b''.join(pieces)
+
+
+def parse_once_payload(payload):
+    """Use one bounded source read for sniff and its actual page parser."""
+    import io
+    from congress_api.retention.sniff import read_sniff
+    from congress_api.parsers.archive_readings import read_page
+    request=json.loads(payload);source=None
+    try:
+        source=_ReadOnceBody(request['path'],request['cache'],request['stored_bytes'])
+        versions=request['versions'];skip=set(request['skip_parsers']);rows=[]
+        known=request['known_format']
+        sniff=(dict(status='completed',format=known) if known is not None else
+            read_sniff(source.read,stored_size=source.size,stored_gzip=request['stored_gzip']))
+        if 'sniff' not in skip:
+            rows.append(dict(sniff,parser='sniff',parser_version=versions['sniff']))
+        parser=sniff.get('format')
+        if sniff['status']=='completed' and parser in {'html','xml','json'} and parser not in skip:
+            if source.size>MAX_STORED_BYTES:
+                row=dict(status='size_limit',error_type='stored_size_limit')
+            else:
+                stored=source.read(0,source.size)
+                if request['stored_gzip']:
+                    try:
+                        with gzip.GzipFile(fileobj=io.BytesIO(stored)) as stream:
+                            data=stream.read(MAX_DECODED_BYTES+1)
+                    except (OSError,EOFError):
+                        row=dict(status='error',error_type='invalid_gzip');data=None
+                else:data=stored
+                if data is not None:
+                    row=(dict(status='error',error_type='decoded_size_limit') if len(data)>MAX_DECODED_BYTES else
+                         read_page(data,parser))
+            rows.append(dict(row,parser=parser,parser_version=versions[parser]))
+        return dict(rows=rows,read_bytes=source.read_bytes)
+    except (OSError,EOFError) as error:
+        return dict(read_error=type(error).__name__,rows=[],read_bytes=0 if source is None else source.read_bytes)
+    finally:
+        if source is not None:source.close()

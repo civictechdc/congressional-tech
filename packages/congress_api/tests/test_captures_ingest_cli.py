@@ -41,9 +41,17 @@ def test_cli_discovers_local_receipts_and_reuses_existing_namespace(tmp_path):
     target=tmp_path/'raw'/receipt['key']
     target.parent.mkdir(parents=True)
     Path(receipt['path']).rename(target)
+    # Bind the fixture's existing creation digest to its new custody location.
+    facts=json.loads(Path(receipt['qualification']).read_text())
+    facts['path']=str(target.resolve())
+    authority=tmp_path/'relocated-receipt.qualification.json'
+    authority.write_text(json.dumps(facts))
+    qualifications=tmp_path/'source-qualifications.json'
+    qualifications.write_text(json.dumps({str(target.resolve()):str(authority.resolve())}))
     work=tmp_path/'stage'
     assert main(['--receipt-root',str(tmp_path/'raw'),'--receipt-family','documents',
         '--engine-config',os.environ['DOCSPEC_JOB_CONFIG'],'--work',str(work),
+        '--source-qualifications',str(qualifications),
         '--apply','--catalog-root',str(tmp_path/'catalog'),'--table','archive.captures_v1',
         '--create-table','--table-location',str(tmp_path/'data')])==0
     assert pq.read_metadata(work/'captures.parquet').num_rows==1
