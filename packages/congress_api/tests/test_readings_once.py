@@ -43,7 +43,7 @@ def run(payload):
 ''')
     if retry:wrapper.with_suffix('.retry').touch()
     versions={p:readings.current_version(p) for p in ['sniff','html','xml','json']}
-    payload=json.dumps(dict(path=str(source),cache=str(tmp_path/'bytes'),stored_bytes=len(stored),stored_gzip=stored_gzip,
+    payload=json.dumps(dict(path=str(source),body_sha=hashlib.sha256(body).hexdigest(),cache=str(tmp_path/'bytes'),stored_bytes=len(stored),stored_gzip=stored_gzip,
         versions=versions,known_format=None,skip_parsers=[])).encode()
     with ParserWorker('readings','fixture',str(wrapper)+':run',timeout_seconds=15,memory_bytes=512<<20,max_input_bytes=65536) as worker:
         outcome=worker.parse('body',payload)

@@ -132,8 +132,8 @@ class ProvenanceInventory:
         return rows
 
     def verified(self):
-        """Return private custody for selected persistent cache files."""
-        return {row['path']:self.store._provenance_cache[row['key']][1] for row in self._cache_rows(self._keys)}
+        """Return held custody for the same initial and acknowledged rows."""
+        return {row['path']:self.store._provenance_cache[row['key']][1] for row in self.rows()}
 
     @classmethod
     def from_qualified(cls,store,*,qualified,verified=None):

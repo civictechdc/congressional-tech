@@ -8,6 +8,7 @@ import stat
 import shutil
 from contextlib import nullcontext
 from itertools import islice
+from functools import lru_cache
 
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
@@ -106,7 +107,8 @@ def bundle_version(versions,*,policy):
     from congress_api.lake.versions import version_digest
     files={'producer':Path(__file__),
         'supervisor':Path(__file__).parents[1]/'retention/parser_worker.py',
-        'resources':Path(__file__).parents[1]/'retention/process_resources.py'}
+        'resources':Path(__file__).parents[1]/'retention/process_resources.py',
+        'raw_transport':Path(__file__).parents[1]/'retention/r2.py'}
     files.update({name:ROOT/'model/sql'/(name+'.sql') for name in
         ['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','body-admissions']})
     return version_digest(packages={},files=files,values=dict(leaf_versions=versions,policy=policy))
@@ -273,10 +275,10 @@ def _execute_plan(planned,*,engine,worker_factory=ParserWorker,unreadable_store=
                     if not combined and parser!='sniff' and item['stored_bytes']>MAX_STORED_BYTES:
                         value=dict(status='size_limit',error_type='stored_size_limit')
                     else:
-                        payload=json.dumps(dict(path=str(path),parser=parser,stored_bytes=item['stored_bytes'],
+                        payload=json.dumps(dict(path=str(path),body_sha=body_hex,parser=parser,stored_bytes=item['stored_bytes'],
                             stored_gzip=item['stored_gzip']),separators=(',',':')).encode()
                         if combined:
-                            payload=json.dumps(dict(path=str(path),cache=str(cache),stored_bytes=item['stored_bytes'],
+                            payload=json.dumps(dict(path=str(path),body_sha=body_hex,cache=str(cache),stored_bytes=item['stored_bytes'],
                                 stored_gzip=item['stored_gzip'],versions=versions,known_format=item['known_format'],
                                 skip_parsers=sorted(set(item['skip_parsers'] or []) | ({'sniff'} if item['known_format'] is not None else set()))),separators=(',',':')).encode()
                         outcome=active_worker.parse(body_hex,payload)
@@ -435,18 +437,29 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
 
 class _ReadOnceBody:
     """Keep disjoint bounded byte ranges for supervised parser retries."""
-    def __init__(self,path,cache,stored_bytes):
+    def __init__(self,path,cache,stored_bytes,*,remote=None,body_store=None,stored_gzip=False):
         import re
-        self.path=Path(path);self.cache=Path(cache);self.cache.mkdir(parents=True,exist_ok=True)
+        self.path=Path(path) if remote is None else None
+        self.remote,self.body_store,self.stored_gzip=remote,body_store,stored_gzip
+        self.encoding=None
+        self.cache=Path(cache);self.cache.mkdir(parents=True,exist_ok=True)
         self.source=None;self.size=stored_bytes;self.ranges=[]
-        with reading_input():
-            observed=self.path.stat()
-        if not stat.S_ISREG(observed.st_mode) or observed.st_size!=stored_bytes:
-            raise OSError('changed_input')
-        self.identity=[observed.st_dev,observed.st_ino,observed.st_size,observed.st_mtime_ns,observed.st_ctime_ns]
+        if remote is None:
+            with reading_input():observed=self.path.stat()
+            if not stat.S_ISREG(observed.st_mode) or observed.st_size!=stored_bytes:raise OSError('changed_input')
+            self.identity=[observed.st_dev,observed.st_ino,observed.st_size,observed.st_mtime_ns,observed.st_ctime_ns]
+        else:
+            from congress_api.retention.r2 import _raw_pin
+            expected=_raw_pin(remote['key'],dict(md5=remote['md5'],bytes=stored_bytes))
+            self.identity=dict(kind='r2',bucket=remote['bucket'],key=remote['key'],**expected,stored_gzip=stored_gzip)
         pin=self.cache/'identity.json'
         if pin.exists():
-            if json.loads(pin.read_text())!=self.identity:raise OSError('changed_input')
+            previous=json.loads(pin.read_text())
+            if remote is not None and isinstance(previous,dict):
+                self.encoding=previous.pop('encoding',None)
+                if self.encoding not in (None,'','gzip'):raise OSError('invalid_range_encoding')
+                self.stored_gzip=stored_gzip or self.encoding=='gzip'
+            if previous!=self.identity:raise OSError('changed_input')
         else:pin.write_text(json.dumps(self.identity))
         for path in self.cache.glob('*.bin'):
             match=re.fullmatch(r'(\d+)-(\d+)\.bin',path.name)
@@ -477,12 +490,28 @@ class _ReadOnceBody:
             else:
                 stop=min([end]+[left for left,_,_ in self.ranges if left>cursor])
                 with reading_input():
-                    if self.source is None:
-                        self.source=self.path.open('rb')
-                        observed=os.fstat(self.source.fileno())
-                        current=[observed.st_dev,observed.st_ino,observed.st_size,observed.st_mtime_ns,observed.st_ctime_ns]
-                        if current!=self.identity:raise OSError('changed_input')
-                    self.source.seek(cursor);piece=self.source.read(stop-cursor)
+                    if self.remote is not None:
+                        from botocore.exceptions import BotoCoreError,ClientError
+                        metadata={}
+                        try:
+                            store=self.body_store or _ranged_store(self.remote['bucket'])
+                            piece=store.read(self.remote['key'],start=cursor,length=stop-cursor,
+                                expected={k:self.identity[k] for k in ('md5','bytes')},metadata=metadata)
+                        except (BotoCoreError,ClientError,ValueError) as error:
+                            raise OSError('raw_range_'+type(error).__name__) from None
+                        encoding=metadata.get('content_encoding') or ''
+                        if encoding not in ('','gzip') or self.encoding not in (None,encoding):
+                            raise OSError('changed_storage_encoding')
+                        if self.encoding is None:
+                            self.encoding=encoding;self.stored_gzip=self.stored_gzip or encoding=='gzip'
+                            (self.cache/'identity.json').write_text(json.dumps(dict(self.identity,encoding=encoding)))
+                    else:
+                        if self.source is None:
+                            self.source=self.path.open('rb')
+                            observed=os.fstat(self.source.fileno())
+                            current=[observed.st_dev,observed.st_ino,observed.st_size,observed.st_mtime_ns,observed.st_ctime_ns]
+                            if current!=self.identity:raise OSError('changed_input')
+                        self.source.seek(cursor);piece=self.source.read(stop-cursor)
                     if len(piece)!=stop-cursor:raise OSError('short_read')
                     path=self.cache/f'{cursor}-{stop}.bin';pending=path.with_suffix('.pending')
                     pending.write_bytes(piece);pending.replace(path)
@@ -491,19 +520,48 @@ class _ReadOnceBody:
         return b''.join(pieces)
 
 
-def parse_once_payload(payload):
+@lru_cache(maxsize=2)
+def _ranged_store(bucket):
+    """One maintained SDK client per persistent worker; credentials stay in env."""
+    from congress_shared.storage import R2Config,connect_r2
+    from congress_api.retention.r2 import R2Store
+    return R2Store(connect_r2(R2Config.from_env(bucket=bucket)),bucket)
+
+
+def _page_entity(stored,body_sha):
+    """Prove storage decoding from the content-addressed identity, not suffix."""
+    if sha256(stored).hexdigest()==body_sha:return stored,False
+    if stored.startswith(b'\x1f\x8b'):
+        import io
+        try:
+            with gzip.GzipFile(fileobj=io.BytesIO(stored)) as stream:data=stream.read(MAX_DECODED_BYTES+1)
+        except (OSError,EOFError):raise OSError('invalid_storage_gzip') from None
+        if len(data)>MAX_DECODED_BYTES:return None,True
+        if sha256(data).hexdigest()==body_sha:return data,True
+    raise OSError('decoded_sha_mismatch')
+
+
+def parse_once_payload(payload,*,body_store=None):
     """Use one bounded source read for sniff and its actual page parser."""
-    import io
     from congress_api.retention.sniff import read_sniff
     from congress_api.parsers.archive_readings import read_page
     request=json.loads(payload);source=None
     try:
-        versions=request['versions'];skip=set(request['skip_parsers']);rows=[]
+        versions=request['versions'];skip=set(request['skip_parsers']);rows=[];data=None
         known=request['known_format']
-        if known is None:
-            source=_ReadOnceBody(request['path'],request['cache'],request['stored_bytes'])
+        def open_source():
+            return _ReadOnceBody(request['path'],request['cache'],request['stored_bytes'],
+                remote=request.get('remote'),body_store=body_store,stored_gzip=request['stored_gzip'])
+        if request.get('remote') and body_object_digest(request['remote']['key'])!=request['body_sha']:
+            raise OSError('body_key_mismatch')
+        if request.get('prefetched'):
+            source=open_source()
+            data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
+        elif known is None:
+            source=open_source()
+            source.read(0,min(source.size,8192))
         sniff=(dict(status='completed',format=known) if known is not None else
-            read_sniff(source.read,stored_size=source.size,stored_gzip=request['stored_gzip']))
+            read_sniff(source.read,stored_size=source.size,stored_gzip=source.stored_gzip))
         if 'sniff' not in skip:
             rows.append(dict(sniff,parser='sniff',parser_version=versions['sniff']))
         parser=sniff.get('format')
@@ -511,18 +569,10 @@ def parse_once_payload(payload):
             if request['stored_bytes']>MAX_STORED_BYTES:
                 row=dict(status='size_limit',error_type='stored_size_limit')
             else:
-                if source is None:source=_ReadOnceBody(request['path'],request['cache'],request['stored_bytes'])
-                stored=source.read(0,source.size)
-                if request['stored_gzip']:
-                    try:
-                        with gzip.GzipFile(fileobj=io.BytesIO(stored)) as stream:
-                            data=stream.read(MAX_DECODED_BYTES+1)
-                    except (OSError,EOFError):
-                        row=dict(status='error',error_type='invalid_gzip');data=None
-                else:data=stored
-                if data is not None:
-                    row=(dict(status='error',error_type='decoded_size_limit') if len(data)>MAX_DECODED_BYTES else
-                         read_page(data,parser))
+                if source is None:source=open_source()
+                if not request.get('prefetched'):
+                    data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
+                row=(dict(status='error',error_type='decoded_size_limit') if data is None else read_page(data,parser))
             rows.append(dict(row,parser=parser,parser_version=versions[parser]))
         return dict(rows=rows,read_bytes=0 if source is None else source.read_bytes)
     except (OSError,EOFError) as error:

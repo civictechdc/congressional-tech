@@ -9,6 +9,7 @@ import logging
 import os
 from pathlib import Path
 import random
+import re
 import threading
 import time
 from contextlib import asynccontextmanager, closing
@@ -17,6 +18,16 @@ from email.utils import parsedate_to_datetime
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _raw_pin(key,expected):
+    from congress_api.retention.body_store import validate_key
+    from congress_shared.storage import single_put_md5
+    validate_key(key)
+    if (not key.startswith('bodies/') or not isinstance(expected,dict) or set(expected)!={'md5','bytes'}
+            or type(expected['bytes']) is not int or expected['bytes']<0):
+        raise ValueError('Pinned raw read requires a body key, stored MD5 and total bytes')
+    return dict(md5=single_put_md5(expected['md5']),bytes=expected['bytes'])
 
 
 def _stream_read_attempts(client):
@@ -253,26 +264,50 @@ class R2Store:
             return None
         return self._immutable_cache_dir / key
 
-    def prefetch_immutable(self, keys, *, max_workers=64):
+    def prefetch_immutable(self, keys, *, max_workers=64,expected=None):
         if self._immutable_cache_dir is None:
+            if expected is not None:raise ValueError('Pinned prefetch requires a local cache')
             return
+        keys=list(dict.fromkeys(keys))
+        pins=None
+        if expected is not None:
+            if not isinstance(expected,dict) or set(expected)!=set(keys):
+                raise ValueError('Pinned prefetch needs exactly every selected body pin')
+            pins={key:_raw_pin(key,expected[key]) for key in keys}
         missing = []
-        for k in dict.fromkeys(keys):
+        for k in keys:
             cache_path = self._immutable_cache_path(k)
-            if cache_path is not None and not cache_path.is_file():
+            if cache_path is not None and (pins is not None or not cache_path.is_file()):
                 missing.append(k)
         if not missing:
             return
+        def fetch(key):
+            if pins is None:self.read(key)
+            else:self.read(key,expected=pins[key])
+            # Cache the bytes, not a second batch-sized collection of results.
         with ThreadPoolExecutor(max_workers=min(max_workers, len(missing))) as pool:
-            list(pool.map(self.read, missing))
+            list(pool.map(fetch, missing))
 
-    def read(self, key):
+    def read(self, key, *, start=None,length=None,expected=None,metadata=None):
         from botocore.exceptions import ClientError
+        from congress_shared.storage import single_put_md5
+        ranged=start is not None or length is not None
+        pin=_raw_pin(key,expected) if expected is not None else None
+        if metadata is not None and (not isinstance(metadata,dict) or pin is None):
+            raise ValueError('Response metadata requires a pinned raw read and an output mapping')
+        if ranged:
+            if (pin is None or type(start) is not int or type(length) is not int or start<0 or length<0
+                    or start+length>pin['bytes']):
+                raise ValueError('Raw range requires an exact captured pin and valid bounds')
+            if length==0:return b''
 
-        immutable_path = self._immutable_cache_path(key)
+        immutable_path = None if ranged else self._immutable_cache_path(key)
         if immutable_path is not None and immutable_path.is_file():
             try:
-                return immutable_path.read_bytes()
+                data=immutable_path.read_bytes()
+                if pin is not None and (len(data)!=pin['bytes'] or hashlib.md5(data).hexdigest()!=pin['md5']):
+                    raise ValueError('Pinned immutable cache changed')
+                return data
             except OSError:
                 pass
 
@@ -294,16 +329,35 @@ class R2Store:
 
         def request():
             try:
-                return self.client.get_object(Bucket=self.bucket, Key=key)
+                options={} if pin is None else dict(IfMatch='"'+pin['md5']+'"')
+                if ranged:options['Range']=f'bytes={start}-{start+length-1}'
+                return self.client.get_object(Bucket=self.bucket, Key=key,**options)
             except ClientError as error:
                 if error.response["Error"]["Code"] in {"NoSuchKey", "404"}:
                     if key.startswith("indexes/"):
                         self.index_etags[key] = None
-                    return None
+                    if pin is None:return None
                 raise
 
         def consume(response, stream):
-            if key == 'indexes/catalog.json':
+            if pin is not None:
+                wanted=length if ranged else pin['bytes']
+                if (type(response.get('ContentLength')) is not int or response['ContentLength']!=wanted
+                        or single_put_md5(response.get('ETag'))!=pin['md5']):
+                    raise ValueError('Pinned raw response changed')
+                if ranged:
+                    match=re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)',response.get('ContentRange',''))
+                    if (match is None or tuple(map(int,match.groups()))!=(start,start+length-1,pin['bytes'])
+                            or response.get('ResponseMetadata',{}).get('HTTPStatusCode')!=206):
+                        raise ValueError('Pinned raw range or total size changed')
+                if metadata is not None:
+                    metadata.update(content_encoding=response.get('ContentEncoding'),bytes=pin['bytes'],
+                                    etag=response['ETag'])
+                data=stream.read(wanted+1)
+                if len(data)!=wanted:raise ValueError('Incomplete pinned raw response')
+                if not ranged and hashlib.md5(data).hexdigest()!=pin['md5']:
+                    raise ValueError('Pinned raw MD5 mismatch')
+            elif key == 'indexes/catalog.json':
                 if response['ContentLength'] > 1024**2:
                     raise ValueError('Catalog selector exceeds 1 MiB read budget')
                 data = stream.read(1024**2 + 1)
@@ -332,6 +386,7 @@ class R2Store:
             )
         elif immutable_path is not None:
             self._write_manifest_disk_cache(immutable_path, data)
+            if pin is not None and not immutable_path.is_file():raise OSError('Pinned raw cache write failed')
         return data
 
     def put(self, key, body, *, immutable=None):

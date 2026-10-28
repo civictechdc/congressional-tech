@@ -191,7 +191,7 @@ These components survive, so they are bound now.
 Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
 
 1. **Captures ingest:**
-   - backfill the narrow phase-1 index ([[DATA-MODEL]] §6.1, which lists what stays in raw) from all 2,289 receipts (1.08 GB compressed) in one read, including the non-date segments ([[ARCHITECTURE]] §7.2), with a test sample of each older receipt shape;
+   - backfill the narrow phase-1 index ([[DATA-MODEL]] §6.1) from the complete pinned raw receipt inventory, including non-date segments ([[ARCHITECTURE]] §7.2), through the existing incremental capture CLI in whole-receipt batches sized by uncompressed bytes and list items; run the heaviest first in separate OS processes with one idempotent Iceberg commit per batch and one source read per receipt. Keep receipt-local source guards mandatory in each batch, then gate the unpublished generation on whole-table public constraints, exact receipt coverage and independent source counts, and prove one-shot/batched equality on about 200 receipts including the heaviest lines before downstream reads;
    - the backfill restores the HTTP status on the about 37,000 bodiless lines that record one (`http_status` or `status_code`; `capture_status` and `meetingStatus` are not HTTP statuses);
    - it maps a fetch time from every receipt shape: 522,448 rows in dated receipts have no time in the snapshot, and 500,689 of them carry one on their own entry or line;
    - the rebuild-equivalence test;
@@ -203,7 +203,7 @@ Each producer is built to [[ARCHITECTURE]] §8 and [[DATA-MODEL]] §6.
      - new-only rows from record-list items the old index collapsed: source evidence must prove the list and the distinct item's ordinal; count and report those rows as expected. Unproved new-only rows remain owner gates.
 
      A row that exists only in the old index is a fact raw does not hold, and it blocks the switch until the owner decides (§8).
-2. **Parsers,** written in S1, appending through the engine, each body opened once (counts from the pinned index's metadata, before any body read):
+2. **Parsers,** written in S1, appending through the engine, each body read once through the existing adapter: remote reads use captured stored-MD5/size-pinned ranges, declared or known pages use bounded per-batch `R2Store.prefetch_immutable` caches, unknown pages complete through disjoint cached ranges, and every full page's decoded SHA-256 is checked against its body key before parsing; caches stay below 10 GB with at most 64 concurrent GETs and are removed only after their readings commit. Main's 491,699 local readings are a format-comparison oracle, never inputs (counts below come from the pinned index's metadata, before any body read):
    - no read where the writer's facts settle the format: 362,208 captions, 953 playlists and one empty body;
    - one full read of each page body the media type routes to HTML, XML or JSON (288,223 bodies, 4.98 GB), sniffed from those bytes and parsed in the same pass; a body whose bytes say otherwise is sniffed as what it is;
    - a bounded prefix read for the other 384,871 bodies, mostly PDFs and ZIPs, whose media type proves nothing;

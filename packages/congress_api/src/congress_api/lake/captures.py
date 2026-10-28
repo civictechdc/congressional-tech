@@ -70,9 +70,21 @@ def mapping_steps():
     steps=[]
     def step(name,sql,**options):
         steps.append(dict(name=name,sql=sql,**options))
-    # Secondary storage references share the source pass and become scalar rows
-    # immediately. Each bodiless list item retains its own source ordinal.
-    step('reference_lists', """SELECT *,
+    # One shared source projection feeds the independent item and reference
+    # branches. Items are parsed once, before scalar lookup by source/item ID.
+    step('item_entries', """SELECT source_row_id,receipt_key,receipt_line,
+        unnest(record_items) AS item,
+        unnest(range(0,cast(record_count AS BIGINT))) AS item_index
+        FROM lines WHERE record_is_list""")
+    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',)]
+    slots=projection('item',paths)
+    item_fields={name:scalar(slots[(name,)],kind) for name,kind in SCALARS.items()}
+    item_fields.update({name:scalar(slots[path],'str') for name,path in RECOVERY.items()})
+    item_fields['h_content_disposition']=first(*(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS))
+    item_fields['error_present']=get(slots[('error',)],kind='json')+' IS NOT NULL'
+    step('items','SELECT source_row_id,receipt_key,receipt_line,item_index,'+
+        ','.join(value+' AS i_'+name for name,value in item_fields.items())+' FROM item_entries',materialize=True)
+    step('reference_lists', """SELECT * EXCEPT(record_items),
         CASE WHEN coalesce(array_length(caps),0)>0 THEN 'capture'
              WHEN coalesce(array_length(refs),0)>0 THEN 'file' ELSE 'line' END AS reference_kind,
         CASE WHEN coalesce(array_length(caps),0)>0 THEN caps
@@ -84,7 +96,7 @@ def mapping_steps():
         CASE WHEN record_is_list AND reference_kind<>'line' THEN coalesce(record_count,0) ELSE 0 END AS placeholder_count,
         CASE WHEN coalesce(array_length(caps),0)>0 THEN coalesce(array_length(refs),0) ELSE 0 END AS storage_count
         FROM reference_lists""")
-    step('entries', """SELECT receipt_key,receipt_line,line,record,record_is_list,list_raw,reference_kind,
+    step('entries', """SELECT source_row_id,receipt_key,receipt_line,line,record,record_is_list,reference_kind,
         primary_count,placeholder_count,cast(record_count AS BIGINT) AS source_record_count,invalid_lists,
         unnest(array_concat(array_concat(primary_refs,array_repeat(cast(NULL AS VARCHAR),cast(placeholder_count AS BIGINT))),
             CASE WHEN storage_count>0 THEN storage_refs ELSE make_array() END)) AS entry,
@@ -96,25 +108,6 @@ def mapping_steps():
         cast(CASE WHEN record_is_list THEN CASE WHEN ordinal>=primary_count AND ordinal<primary_count+placeholder_count
             THEN ordinal-primary_count WHEN reference_kind='line' THEN ordinal
             ELSE cast({pointer_index} AS BIGINT) END ELSE 0 END AS BIGINT) AS selected_record_index FROM entries""")
-    step('selected_records',"""SELECT * EXCEPT(list_raw,reference_kind),
-        CASE WHEN is_placeholder THEN 'line' ELSE reference_kind END AS reference_kind,
-        CASE WHEN is_placeholder OR reference_kind='line' THEN selected_record_index ELSE 0 END AS list_ordinal,
-        ordinal AS capture_index,
-        CASE WHEN record_is_list AND NOT is_secondary THEN json_get_json(list_raw,selected_record_index) END AS selected_record
-        FROM entry_positions""")
-    paths=[(name,) for name in SCALARS]+list(RECOVERY.values())+DOWNLOAD_HEADERS+[('error',)]
-    slots=projection('selected_record',paths)
-    list_record={name:first(scalar(slots[(name,)],kind),metadata_field('record',name))
-                 for name,kind in SCALARS.items()}
-    list_record.update({name:first(scalar(slots[path],'str'),metadata_field('record',name))
-                        for name,path in RECOVERY.items()})
-    list_record['h_content_disposition']=first(
-        *(scalar(slots[path],'str') for path in DOWNLOAD_HEADERS),
-        metadata_field('record','h_content_disposition'))
-    list_record['error_present']=f"({get(slots[('error',)],kind='json')} IS NOT NULL OR {metadata_field('record','error_present')})"
-    step('records',f"""SELECT * EXCEPT(record,selected_record),
-        {obj(list_record)} AS record
-        FROM selected_records""")
     # One shared literal entry bundle; only scalar values and its small pointer
     # remain after this step. No original body, prior or header object is read.
     strings=('sha256','body_key','family','context_url','member_path','original_path',
@@ -125,7 +118,19 @@ def mapping_steps():
            **dict.fromkeys(('complete','intact'),'bool'),'pointer':'json'}
     entry_slots=projection('entry',[(name,) for name in kinds])
     step('entry_facts','SELECT * EXCEPT(entry),'+','.join(
-        scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+' FROM records')
+        scalar(entry_slots[(name,)],kind)+' AS e_'+name for name,kind in kinds.items())+' FROM entry_positions')
+    step('selected_records',"""SELECT e.* EXCEPT(source_row_id,reference_kind),
+        CASE WHEN is_placeholder THEN 'line' ELSE e.reference_kind END AS reference_kind,
+        CASE WHEN is_placeholder OR e.reference_kind='line' THEN selected_record_index ELSE 0 END AS list_ordinal,
+        ordinal AS capture_index,"""+','.join('i.i_'+name for name in item_fields)+"""
+        FROM entry_facts e LEFT JOIN items i ON e.source_row_id=i.source_row_id
+        AND (e.receipt_key IS NOT DISTINCT FROM i.receipt_key)
+        AND (e.receipt_line IS NOT DISTINCT FROM i.receipt_line)
+        AND e.selected_record_index=i.item_index AND e.record_is_list AND NOT e.is_secondary""")
+    list_record={name:first('i_'+name,metadata_field('record',name)) for name in item_fields}
+    list_record['error_present']="(coalesce(i_error_present,false) OR "+metadata_field('record','error_present')+')'
+    step('records','SELECT * EXCEPT(record,'+','.join('i_'+name for name in item_fields)+'),'+
+        obj(list_record)+' AS record FROM selected_records')
     def item_first(line,record):
         return f'CASE WHEN record_is_list THEN {first(record,line)} ELSE {line} END'
     def both(name):
@@ -138,7 +143,7 @@ def mapping_steps():
         {item_first(first(metadata_field('line','run_id'),metadata_field('line','source_file'),metadata_field('record','source_file')),first(metadata_field('record','run_id'),metadata_field('record','source_file')))} AS source_run,
         {item_first(first(metadata_field('line','requested_url'),metadata_field('record','requested_url'),metadata_field('record','_url'),metadata_field('record','url'),metadata_field('line','url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')),first(metadata_field('record','requested_url'),metadata_field('record','_url'),metadata_field('record','url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')))} AS requested,
         {item_first(first(metadata_field('line','url'),metadata_field('record','url'),metadata_field('record','_url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')),first(metadata_field('record','url'),metadata_field('record','_url'),metadata_field('record','final_url'),metadata_field('record','resolved_url'),metadata_field('record','source_url')))} AS final_url
-        FROM entry_facts""")
+        FROM records""")
     modes=','.join(literal(v) for v in sorted(LEGACY_MODES))
     outcomes=','.join(literal(v) for v in sorted(LEGACY_OUTCOMES))
     transfer={'retry_later','request_failed','size_limit','stored','unchanged','failed',
