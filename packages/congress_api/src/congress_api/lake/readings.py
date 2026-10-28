@@ -15,7 +15,7 @@ from congress_api.retention.body_keys import body_object_digest
 from congress_api.retention.parser_worker import ParserWorker, reading_input
 from congress_api.retention.provenance import (field, instant, json_input, list_of,
     parquet_output, parquet_records, run_job, struct, finish_stage, import_unreadable,
-    local_unreadable_inventory,imported_unreadable_provenance)
+    imported_unreadable_provenance)
 
 ROOT=Path(__file__).resolve().parents[5]
 PK=['body_sha','parser','parser_version']
@@ -356,7 +356,7 @@ def append(staged,**kwargs):
 
 def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,parser=None,
         table=None,catalog_root=None,read_current=None,existing=None,
-        unreadable_store=None,read_unreadable=None,worker_factory=ParserWorker,**inputs):
+        unreadable_store=None,read_unreadable=None,unreadable_snapshot=None,worker_factory=ParserWorker,**inputs):
     """Admit one plan; execute daily once, or stream bounded backfill batches.
 
     The native anti-join runs once per invocation. The sorted metadata work list
@@ -375,6 +375,11 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
         raise ValueError('Execution and backfill require current lake readings, not existing pins')
     if execute and unreadable_store is None:
         raise ValueError('Execution requires an explicit durable unreadable store')
+    if unreadable_snapshot is not None:
+        from congress_api.retention.provenance_inventory import UnreadableInventory
+        if (not isinstance(unreadable_snapshot,UnreadableInventory)
+                or unreadable_snapshot.store is not unreadable_store or read_unreadable is not None):
+            raise ValueError('Readings require an inventory bound to the same unreadable store')
     work=Path(work).resolve()
     if execute or mode=='backfill':
         from congress_api.lake.tables import validate_catalog_authority
@@ -387,14 +392,18 @@ def run(*,engine,work,mode,execute=False,max_work_items=None,batch_size=None,par
         else:
             existing=read_current(engine=engine,work=work/'current',catalog_root=catalog_root,table=table)
     if execute:
-        # Refresh filenames once per invocation, before the native anti-join.
-        # Raw decisions are append-only; the original spec cannot know later batches.
-        if read_unreadable is not None:
+        # The daily controller shares its complete qualified snapshot. A
+        # standalone invocation discovers current filenames once before planning.
+        if unreadable_snapshot is not None:
+            fresh=unreadable_snapshot.files()
+        elif read_unreadable is not None:
             fresh=read_unreadable(store=unreadable_store)
         else:
-            fresh=local_unreadable_inventory(unreadable_store)
-        inventory={(r['key'],r['path']):r for r in inputs.get('unreadable_files',())}
-        inventory.update({(r['key'],r['path']):r for r in fresh})
+            from congress_api.retention.provenance_inventory import unreadable_inventory
+            unreadable_snapshot=unreadable_inventory(unreadable_store,work=work/'unreadable-inventory')
+            fresh=unreadable_snapshot.files()
+        inventory={r['key']:r for r in inputs.get('unreadable_files',())}
+        inventory.update({r['key']:r for r in fresh})
         inputs['unreadable_files']=list(inventory.values())
     planned=plan(engine=engine,work=work/'plan',parser=parser,existing=existing,
         max_work_items=max_work_items if mode=='daily' else None,**inputs)

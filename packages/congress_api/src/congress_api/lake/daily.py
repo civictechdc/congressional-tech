@@ -7,8 +7,9 @@ import pyarrow.parquet as pq
 
 from congress_api.lake import captures,filenames,readings,tables
 from congress_api.lake.receipt_inventory import select_receipts
-from congress_api.retention.body_store import BodyStore,LocalAdapter,validate_key
+from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,validate_key
 from congress_api.retention.provenance import file_pin,instant,local_unreadable_inventory,run_job
+from congress_api.retention.provenance_inventory import UnreadableInventory,unreadable_inventory
 from congress_shared.custody import custody_identity,VerifiedFile
 
 
@@ -17,7 +18,7 @@ PROVENANCE_KINDS=('recoveries','reviews','unreadable')
 QUALIFIED_FIELDS={'key','etag','path','sha256','size'}
 
 
-def _qualified(row,kind):
+def _qualified(row,kind,*,check_file=True):
     if (not isinstance(row,dict) or set(row)!=QUALIFIED_FIELDS
             or not isinstance(row['key'],str) or not row['key'].startswith('provenance/'+kind+'/')
             or not isinstance(row['path'],str) or not Path(row['path']).is_absolute()
@@ -27,6 +28,7 @@ def _qualified(row,kind):
             or (row['etag'] is not None and (not isinstance(row['etag'],str) or not row['etag']))):
         raise ValueError('Invalid qualified daily provenance')
     validate_key(row['key'])
+    if not check_file:return dict(row),None
     observed,before=_qualify_path(row['path'])
     if observed!={k:row[k] for k in ('sha256','size')}:
         raise ValueError('Qualified daily provenance changed')
@@ -71,8 +73,8 @@ def _validate(spec,engine,raw_store):
         raise ValueError('Daily tables must name three distinct explicit targets')
     if not isinstance(spec['receipt_inventory'],list) or any(not isinstance(r,dict) for r in spec['receipt_inventory']):
         raise ValueError('Daily receipt inventory must contain original receipt metadata')
-    if not isinstance(raw_store,BodyStore) or not isinstance(raw_store.adapter,LocalAdapter):
-        raise ValueError('Daily producer requires a local durable raw inventory authority')
+    if not isinstance(raw_store,BodyStore) or not isinstance(raw_store.adapter,(LocalAdapter,R2Adapter)):
+        raise ValueError('Daily producer requires an explicit durable raw store')
     tables.validate_catalog_authority(engine,spec['catalog_root'])
     if (not isinstance(spec['provenance'],dict) or set(spec['provenance'])!=set(PROVENANCE_KINDS)
             or any(not isinstance(v,list) for v in spec['provenance'].values())):
@@ -81,9 +83,10 @@ def _validate(spec,engine,raw_store):
     for kind in PROVENANCE_KINDS:
         qualified[kind]=[];keys=set()
         for row in spec['provenance'][kind]:
-            row,identity=_qualified(row,kind)
+            row,identity=_qualified(row,kind,check_file=kind!='unreadable')
             if row['key'] in keys:raise ValueError('Duplicate daily provenance key')
-            keys.add(row['key']);qualified[kind].append(row);identities[row['path']]=identity
+            keys.add(row['key']);qualified[kind].append(row)
+            if identity is not None:identities[row['path']]=identity
     work=Path(spec['work']).resolve()
     if work.exists():raise FileExistsError('Daily producer requires a fresh work directory')
     return work,qualified,identities
@@ -107,7 +110,7 @@ def _source_qualifications(spec,selected):
     return {key:value for key,value in bindings.items() if str(Path(key).resolve()) in paths}
 
 
-def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=None):
+def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=None,unreadable_snapshot=None):
     result={kind:list(rows) for kind,rows in initial.items()}
     known={row['key']:row for row in result['unreadable']}
     required={};acknowledgements=acknowledgements or {}
@@ -131,14 +134,19 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
         # An unchanged initial qualification keeps its exact path and ETag.
         # Every acknowledged source is still independently mandatory below.
         if key not in known:known[key]=dict(row)
-    for ref in local_unreadable_inventory(raw_store):
+    discovered=(unreadable_snapshot.rows() if unreadable_snapshot is not None
+                else local_unreadable_inventory(raw_store))
+    for ref in discovered:
         if ref['key'] in required:continue
         if ref['key'] in known and known[ref['key']]['path']==ref['path']:continue
         # Older imports not in the supplied snapshot are qualified once as
         # small provenance records; body bytes never enter this inventory.
         validate_key(ref['key'])
-        observed,identity=_qualify_path(ref['path'])
-        row=dict(ref,etag=None,**observed);identities[row['path']]=identity
+        if unreadable_snapshot is not None:
+            row=dict(ref)
+        else:
+            observed,identity=_qualify_path(ref['path'])
+            row=dict(ref,etag=None,**observed);identities[row['path']]=identity
         if ref['key'] in known and any(known[ref['key']][k]!=row[k] for k in ('sha256','size')):
             raise ValueError('Conflicting unreadable provenance inputs')
         if ref['key'] not in known:known[ref['key']]=row
@@ -146,6 +154,7 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
     for path,identity in identities.items():
         if custody_identity(path)!=identity:raise ValueError('Daily provenance changed while producing')
     for key,row in required.items():require_ack(row,acknowledgements[key])
+    if unreadable_snapshot is not None:unreadable_snapshot.rows()
     return result
 
 
@@ -155,11 +164,17 @@ def produce_daily(spec,*,engine,raw_store):
     Native jobs own table scans, joins, sorting and appends. Each producer builds
     one work list; parser workers persist for that list. Head lookups are batched
     at preflight/finalization, with required intermediate refreshes after writes.
-    Local provenance discovery is O(U log U) in filenames per consumer; native
+    Local provenance discovery is once per invocation, O(U log U); daily R2
+    decisions reuse the controller's complete qualified initial snapshot plus
+    acknowledged imports, with no second LIST or GET. Native
     key anti-joins and sorted appends retain their existing O(N+M)/O(K log K) cost.
     """
     work,provenance,identities=_validate(spec,engine,raw_store)
     work.mkdir(parents=True,exist_ok=False)
+    unreadable_snapshot=(UnreadableInventory.from_qualified(raw_store,qualified=provenance['unreadable'])
+        if isinstance(raw_store.adapter,R2Adapter) else unreadable_inventory(raw_store,
+            work=work/'unreadable-inventory',qualified=provenance['unreadable']))
+    provenance['unreadable']=unreadable_snapshot.rows()
     authority=dict(engine=engine,catalog_root=spec['catalog_root'])
     heads=tables.resolve_tables(**authority,work=work/'initial-heads',tables=spec['tables'])
     versions=dict(captures=captures.current_version())
@@ -187,7 +202,7 @@ def produce_daily(spec,*,engine,raw_store):
             max_work_items=spec['max_work_items'],table=spec['tables']['readings'],
             catalog_root=spec['catalog_root'],unreadable_store=raw_store,
             captures=heads['captures'],body_inventory=spec['body_inventory'],local_root=spec['local_root'],
-            decided_at=spec['decided_at'],unreadable_files=_input_files(provenance['unreadable']))
+            decided_at=spec['decided_at'],unreadable_snapshot=unreadable_snapshot)
     except readings.BackfillRequired as error:
         report.update(status='backfill_required');report['producerreports']['readings']=error.as_dict()
         return report
@@ -199,15 +214,13 @@ def produce_daily(spec,*,engine,raw_store):
         for batch in parsed['batches'] if batch['unreadable_provenance'] is not None}
     if parsed['status']=='pending':
         report.update(status='pending',provenance=_final_provenance(provenance,raw_store,imports,identities,
-            acknowledgements=acknowledgements))
+            acknowledgements=acknowledgements,unreadable_snapshot=unreadable_snapshot))
         return report
     filename_head=tables.resolve_tables(**authority,work=work/'filename-head',
         tables={'filename_readings':spec['tables']['filename_readings']})['filename_readings']
-    current_unreadable={r['key']:r for r in _input_files(provenance['unreadable'])}
-    current_unreadable.update({r['key']:r for r in local_unreadable_inventory(raw_store)})
     names=filenames.stage(captures=heads['captures'],existing=filename_head,engine=engine,
         work=work/'filenames',decided_at=spec['decided_at'],vocabularies=spec.get('vocabularies'),
-        recovery_files=_input_files(provenance['recoveries']),unreadable_files=list(current_unreadable.values()),
+        recovery_files=_input_files(provenance['recoveries']),unreadable_files=unreadable_snapshot.files(),
         unreadable_store=raw_store)
     names['append']=(filenames.append(names,**authority,work=work/'filenames-append',
         table=spec['tables']['filename_readings']) if pq.ParquetFile(names['readings']).metadata.num_rows else None)
@@ -216,7 +229,7 @@ def produce_daily(spec,*,engine,raw_store):
         acknowledgements[names['unreadable_provenance']['key']]=names['_unreadable_custody']
     report['producerreports']['filename_readings']=names;versions['filename_readings']=names['catalog_version']
     report['provenance']=_final_provenance(provenance,raw_store,imports,identities,
-        acknowledgements=acknowledgements)
+        acknowledgements=acknowledgements,unreadable_snapshot=unreadable_snapshot)
     final=tables.resolve_tables(**authority,work=work/'final-heads',tables=spec['tables'])
     if final['captures']!=heads['captures']:
         raise ValueError('Current captures head changed after daily parser work; rerun from fresh heads')

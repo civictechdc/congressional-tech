@@ -46,6 +46,7 @@ class UnreadableInventory:
         supplied={}
         for value in qualified:
             row=_public(value);key=row['key']
+            if self.remote:row['etag']=single_put_md5(row['etag'])
             if key in supplied:raise ValueError('Duplicate qualified unreadable provenance')
             if key in known and any(known[key][k]!=row[k] for k in ('etag','size','sha256')):
                 raise ValueError('Previously checked raw provenance changed')
@@ -92,6 +93,44 @@ class UnreadableInventory:
                 row=dict(key=key,path=path,etag=None,sha256=custody.sha256,size=custody.size_bytes)
             store.remember_provenance(row,custody)
 
+    @classmethod
+    def from_qualified(cls,store,*,qualified,verified=None):
+        """Use the controller's complete current snapshot without another LIST.
+
+        The controller supplies every qualified key and checks concurrency again
+        before publishing. This path checks held local bytes and adds only this
+        invocation's acknowledged imports; it never discovers remote state.
+        """
+        if not isinstance(store,BodyStore) or not isinstance(store.adapter,(LocalAdapter,R2Adapter)):
+            raise ValueError('Qualified unreadable snapshot requires a supported raw store')
+        snapshot=cls.__new__(cls)
+        snapshot.store,snapshot.epoch=store,store._provenance_epoch
+        snapshot.remote=isinstance(store.adapter,R2Adapter)
+        snapshot.work=None;snapshot._keys=set();verified=verified or {}
+        rows=[]
+        for value in qualified:
+            row=_public(value)
+            if snapshot.remote:row['etag']=single_put_md5(row['etag'])
+            if row['size']>MAX_OBJECT_BYTES:raise ValueError('Unreadable object exceeds its byte limit')
+            if row['key'] in snapshot._keys:raise ValueError('Duplicate qualified unreadable provenance')
+            snapshot._keys.add(row['key']);rows.append(row)
+        if store._provenance_cache.keys()-snapshot._keys:
+            raise ValueError('Previously checked raw provenance is missing from initial qualified snapshot')
+        for row in rows:
+            cached=store._provenance_cache.get(row['key'])
+            custody=verified.get(row['path']) or (cached[1] if cached else None)
+            try:
+                if not isinstance(custody,VerifiedFile):raise ValueError('Unqualified cache')
+                custody.require(row['path'])
+                if snapshot.remote and custody.get('md5') is None:raise ValueError('Unqualified MD5 cache')
+            except (OSError,ValueError):
+                custody=verify_local_file(row['path'],expected_sha256=row['sha256'],expected_size=row['size'],
+                    additional_hashes={'md5':md5} if snapshot.remote else None)
+            if snapshot.remote and custody.get('md5')!=row['etag']:
+                raise ValueError('Qualified unreadable cache MD5 checksum differs from its inventory')
+            store.remember_provenance(row,custody)
+        return snapshot
+
     def _download(self,metadata,*,expected):
         response=self.store.adapter.get(metadata['key'],if_match=metadata['etag'])
         path=self.work/(sha256(metadata['key'].encode()).hexdigest()+'-'+uuid4().hex+'.jsonl')
@@ -128,7 +167,7 @@ class UnreadableInventory:
         return rows
 
     def files(self):
-        return [dict(key=row['key'],path=row['path']) for row in self.rows()]
+        return [dict(key=row['key'],path=row['path']) for row in self.rows() if row['key'].endswith('.jsonl')]
 
     def __enter__(self):return self
     def __exit__(self,*_):return False
