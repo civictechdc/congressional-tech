@@ -64,7 +64,10 @@ def validate_provenance(kind,row):
                                          or row['supersedes']==row['id']):
         raise ValueError('Invalid superseded decision')
     if kind=='unreadable':
-        digest(next(iter(identities)))
+        identity=next(iter(identities))
+        digest(identity)
+        if re.fullmatch('[0-9a-f]{64}',row[identity]) is None:
+            raise ValueError('Unreadable identity must be canonical lowercase SHA-256')
         for name in ('parser','parser_version','reason','decided_by'):text(name)
         if re.fullmatch('[a-z][a-z0-9_]*',row['reason']) is None:
             raise ValueError('Invalid unreadable reason')
@@ -130,10 +133,12 @@ def import_unreadable(store, decisions_path, *, decided_at, expected=None):
     stamp=timestamp_key(decided_at)
     with TemporaryDirectory(prefix='raw-unreadable-') as temporary:
         frozen=Path(temporary)/'decisions.jsonl'
-        digest=sha256();count=0;size=0
+        digest=sha256();count=0;size=0;seen=set()
         with Path(decisions_path).open('rb') as source,frozen.open('xb') as out:
             for line in source:
-                validate_provenance('unreadable',json.loads(line))
+                row=validate_provenance('unreadable',json.loads(line))
+                if row['id'] in seen:raise ValueError('Duplicate unreadable decision ID')
+                seen.add(row['id'])
                 out.write(line);digest.update(line);size+=len(line);count+=1
         if not count:raise ValueError('Empty unreadable batch')
         if expected is not None and expected!=dict(sha256=digest.hexdigest(),size=size):
