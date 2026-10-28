@@ -120,7 +120,7 @@ def remote_config(tmp_path,*,endpoint=None,owned_prefix=None):
         properties={'s3.endpoint':endpoint or 'https://'+'a'*32+'.r2.cloudflarestorage.com','s3.region':'auto',
                     'uri':'https://catalog.cloudflarestorage.com/'+'a'*32+'/derived-fixture',
                     'warehouse':'a'*32+'_derived-fixture','docspec.namespace-generation':'00000000-0000-4000-8000-000000000001'},
-        secret_env={'s3.access-key-id':'DOCSPEC_R2_ACCESS','s3.secret-access-key':'DOCSPEC_R2_SECRET'})))
+        secret_env={'token':'DOCSPEC_CATALOG_TOKEN','s3.access-key-id':'DOCSPEC_R2_ACCESS','s3.secret-access-key':'DOCSPEC_R2_SECRET'})))
     return path
 
 
@@ -215,3 +215,18 @@ def test_execute_binds_matching_destination_and_records_actual_native_probe_comm
     assert len(configs)==2 and configs[0]['remote']!=configs[1]['remote']
     assert all(configs[0][name]==configs[1][name] for name in ['binary','limits','binary_sha256','source_revision'])
     assert not Path(configs[1]['remote']).exists()  # Owned startup metadata was cleaned up.
+
+
+@pytest.mark.parametrize('change',['catalog_account','catalog_bucket','warehouse','namespace','inline_secret','endpoint_override'])
+def test_destination_description_cannot_select_another_account_or_persist_secrets(tmp_path,change):
+    from viewer_publication.archive_publish_job import publication_configuration
+    path=remote_config(tmp_path);remote=json.loads(path.read_text())
+    if change=='catalog_account':remote['properties']['uri']='https://catalog.cloudflarestorage.com/'+'b'*32+'/derived-fixture'
+    elif change=='catalog_bucket':remote['properties']['uri']='https://catalog.cloudflarestorage.com/'+'a'*32+'/other-bucket'
+    elif change=='warehouse':remote['properties']['warehouse']='a'*32+'_other-bucket'
+    elif change=='namespace':remote['properties']['docspec.namespace-generation']=''
+    elif change=='inline_secret':remote['properties']['token']='synthetic-inline-secret'
+    elif change=='endpoint_override':remote['secret_env']['s3.endpoint']='DOCSPEC_ENDPOINT'
+    path.write_text(json.dumps(remote));runtime=tmp_path/'runtime.json'
+    runtime.write_text(json.dumps(dict(version=1,remote=str(path))))
+    with pytest.raises(ValueError,match='destination'):publication_configuration(runtime,bucket='derived-fixture')
